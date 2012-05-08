@@ -618,7 +618,7 @@ fn parse_field(p: parser, sep: token::token) -> ast::field {
     ret spanned(lo, e.span.hi, {mutbl: m, ident: i, expr: e});
 }
 
-fn mk_expr(p: parser, lo: uint, hi: uint, node: ast::expr_) -> @ast::expr {
+fn mk_expr(p: parser, lo: uint, hi: uint, +node: ast::expr_) -> @ast::expr {
     ret @{id: p.get_id(), node: node, span: mk_sp(lo, hi)};
 }
 
@@ -1501,7 +1501,7 @@ fn parse_instance_var(p:parser, pr: ast::privacy) -> @ast::class_member {
           span: mk_sp(lo, p.last_span.hi)};
 }
 
-fn parse_stmt(p: parser, first_item_attrs: [ast::attribute]) -> @ast::stmt {
+fn parse_stmt(p: parser, +first_item_attrs: [ast::attribute]) -> @ast::stmt {
     fn check_expected_item(p: parser, current_attrs: [ast::attribute]) {
         // If we have attributes then we should have an item
         if vec::is_not_empty(current_attrs) {
@@ -1603,7 +1603,7 @@ fn parse_block_tail(p: parser, lo: uint, s: ast::blk_check_mode) -> ast::blk {
 }
 
 fn parse_block_tail_(p: parser, lo: uint, s: ast::blk_check_mode,
-                     first_item_attrs: [ast::attribute]) -> ast::blk {
+                     +first_item_attrs: [ast::attribute]) -> ast::blk {
     let mut stmts = [];
     let mut expr = none;
     let view_items = maybe_parse_view_import_only(p, first_item_attrs);
@@ -1788,8 +1788,8 @@ fn parse_fn_header(p: parser) -> {ident: ast::ident, tps: [ast::ty_param]} {
     ret {ident: id, tps: ty_params};
 }
 
-fn mk_item(p: parser, lo: uint, hi: uint, ident: ast::ident, node: ast::item_,
-           attrs: [ast::attribute]) -> @ast::item {
+fn mk_item(p: parser, lo: uint, hi: uint, +ident: ast::ident,
+           +node: ast::item_, +attrs: [ast::attribute]) -> @ast::item {
     ret @{ident: ident,
           attrs: attrs,
           id: p.get_id(),
@@ -1797,15 +1797,13 @@ fn mk_item(p: parser, lo: uint, hi: uint, ident: ast::ident, node: ast::item_,
           span: mk_sp(lo, hi)};
 }
 
-fn parse_item_fn(p: parser, purity: ast::purity,
-                 attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+type item_info = (ast::ident, ast::item_, option<[ast::attribute]>);
+
+fn parse_item_fn(p: parser, purity: ast::purity) -> item_info {
     let t = parse_fn_header(p);
     let (decl, _) = parse_fn_decl(p, purity, parse_arg);
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
-    let attrs = attrs + inner_attrs;
-    ret mk_item(p, lo, body.span.hi, t.ident,
-                ast::item_fn(decl, t.tps, body), attrs);
+    (t.ident, ast::item_fn(decl, t.tps, body), some(inner_attrs))
 }
 
 fn parse_method_name(p: parser) -> ast::ident {
@@ -1834,21 +1832,19 @@ fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
       self_id: p.get_id(), privacy: pr}
 }
 
-fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo, ident = parse_ident(p);
+fn parse_item_iface(p: parser) -> item_info {
+    let ident = parse_ident(p);
     let rp = parse_region_param(p);
     let tps = parse_ty_params(p);
     let meths = parse_ty_methods(p);
-    ret mk_item(p, lo, p.last_span.hi, ident,
-                ast::item_iface(tps, rp, meths), attrs);
+    (ident, ast::item_iface(tps, rp, meths), none)
 }
 
 // Parses three variants (with the region/type params always optional):
 //    impl /&<T: copy> of to_str for [T] { ... }
 //    impl name/&<T> of to_str for [T] { ... }
 //    impl name/&<T> for [T] { ... }
-fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+fn parse_item_impl(p: parser) -> item_info {
     fn wrap_path(p: parser, pt: @ast::path) -> @ast::ty {
         @{id: p.get_id(), node: ast::ty_path(pt, p.get_id()), span: pt.span}
     }
@@ -1882,12 +1878,10 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let mut meths = [];
     expect(p, token::LBRACE);
     while !eat(p, token::RBRACE) { meths += [parse_method(p, ast::pub)]; }
-    ret mk_item(p, lo, p.last_span.hi, ident,
-                ast::item_impl(tps, rp, ifce, ty, meths), attrs);
+    (ident, ast::item_impl(tps, rp, ifce, ty, meths), none)
 }
 
-fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+fn parse_item_res(p: parser) -> item_info {
     let ident = parse_value_ident(p);
     let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
@@ -1897,20 +1891,17 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let t = parse_ty(p, false);
     expect(p, token::RPAREN);
     let dtor = parse_block_no_value(p);
-    let decl =
-        {inputs:
-             [{mode: ast::expl(ast::by_ref), ty: t,
-               ident: arg_ident, id: p.get_id()}],
-         output: @{id: p.get_id(),
-                   node: ast::ty_nil,
-                   span: mk_sp(lo, lo)},
-         purity: ast::impure_fn,
-         cf: ast::return_val,
-         constraints: []};
-    ret mk_item(p, lo, dtor.span.hi, ident,
-                ast::item_res(decl, ty_params, dtor,
-                              p.get_id(), p.get_id(), rp),
-                attrs);
+    let decl = {
+        inputs: [{mode: ast::expl(ast::by_ref), ty: t,
+                  ident: arg_ident, id: p.get_id()}],
+        output: @{id: p.get_id(), node: ast::ty_nil,
+                  span: ast_util::dummy_sp()},
+        purity: ast::impure_fn,
+        cf: ast::return_val,
+        constraints: []
+    };
+    (ident, ast::item_res(decl, ty_params, dtor,
+                          p.get_id(), p.get_id(), rp), none)
 }
 
 // Instantiates ident <i> with references to <typarams> as arguments.  Used to
@@ -1946,8 +1937,7 @@ fn parse_iface_ref_list(p:parser) -> [@ast::iface_ref] {
                             parse_iface_ref, p)
 }
 
-fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+fn parse_item_class(p: parser) -> item_info {
     let class_name = parse_value_ident(p);
     let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
@@ -1970,13 +1960,15 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     p.bump();
     alt the_ctor {
       some((ct_d, ct_b, ct_s)) {
-          ret mk_item(p, lo, p.last_span.hi, class_name,
-                      ast::item_class(ty_params, ifaces, ms,
-                                      {node: {id: ctor_id,
-                                              self_id: p.get_id(),
-                                              dec: ct_d,
-                                              body: ct_b},
-                                       span: ct_s}, rp), attrs); }
+        (class_name,
+         ast::item_class(ty_params, ifaces, ms, {
+             node: {id: ctor_id,
+                    self_id: p.get_id(),
+                    dec: ct_d,
+                    body: ct_b},
+             span: ct_s}, rp),
+        none)
+      }
        /*
          Is it strange for the parser to check this?
        */
@@ -2034,13 +2026,14 @@ fn parse_class_item(p:parser, class_name_with_tps: @ast::path)
 }
 
 fn parse_mod_items(p: parser, term: token::token,
-                   first_item_attrs: [ast::attribute]) -> ast::_mod {
+                   +first_item_attrs: [ast::attribute]) -> ast::_mod {
     // Shouldn't be any view items since we've already parsed an item attr
     let view_items = maybe_parse_view(p, first_item_attrs);
     let mut items: [@ast::item] = [];
-    let mut initial_attrs = first_item_attrs;
+    let mut first = true;
     while p.token != term {
-        let attrs = initial_attrs + parse_outer_attributes(p);
+        let mut attrs = parse_outer_attributes(p);
+        if first { attrs = first_item_attrs + attrs; first = false; }
         #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
         alt parse_item(p, attrs) {
           some(i) { items += [i]; }
@@ -2050,10 +2043,9 @@ fn parse_mod_items(p: parser, term: token::token,
           }
         }
         #debug["parse_mod_items: attrs=%?", attrs];
-        initial_attrs = [];
     }
 
-    if vec::is_not_empty(initial_attrs) {
+    if first && first_item_attrs.len() > 0u {
         // We parsed attributes for the first item but didn't find the item
         p.fatal("expected item");
     }
@@ -2061,31 +2053,26 @@ fn parse_mod_items(p: parser, term: token::token,
     ret {view_items: view_items, items: items};
 }
 
-fn parse_item_const(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+fn parse_item_const(p: parser) -> item_info {
     let id = parse_value_ident(p);
     expect(p, token::COLON);
     let ty = parse_ty(p, false);
     expect(p, token::EQ);
     let e = parse_expr(p);
-    let mut hi = p.span.hi;
     expect(p, token::SEMI);
-    ret mk_item(p, lo, hi, id, ast::item_const(ty, e), attrs);
+    (id, ast::item_const(ty, e), none)
 }
 
-fn parse_item_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+fn parse_item_mod(p: parser) -> item_info {
     let id = parse_ident(p);
     expect(p, token::LBRACE);
     let inner_attrs = parse_inner_attrs_and_next(p);
-    let first_item_outer_attrs = inner_attrs.next;
-    let m = parse_mod_items(p, token::RBRACE, first_item_outer_attrs);
-    let mut hi = p.span.hi;
+    let m = parse_mod_items(p, token::RBRACE, inner_attrs.next);
     expect(p, token::RBRACE);
-    ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs + inner_attrs.inner);
+    (id, ast::item_mod(m), some(inner_attrs.inner))
 }
 
-fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
+fn parse_item_native_fn(p: parser, +attrs: [ast::attribute],
                         purity: ast::purity) -> @ast::native_item {
     let lo = p.last_span.lo;
     let t = parse_fn_header(p);
@@ -2109,12 +2096,12 @@ fn parse_fn_purity(p: parser) -> ast::purity {
     else { unexpected(p); }
 }
 
-fn parse_native_item(p: parser, attrs: [ast::attribute]) ->
+fn parse_native_item(p: parser, +attrs: [ast::attribute]) ->
    @ast::native_item {
     parse_item_native_fn(p, attrs, parse_fn_purity(p))
 }
 
-fn parse_native_mod_items(p: parser, first_item_attrs: [ast::attribute]) ->
+fn parse_native_mod_items(p: parser, +first_item_attrs: [ast::attribute]) ->
    ast::native_mod {
     // Shouldn't be any view items since we've already parsed an item attr
     let view_items =
@@ -2132,18 +2119,14 @@ fn parse_native_mod_items(p: parser, first_item_attrs: [ast::attribute]) ->
          items: items};
 }
 
-fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+fn parse_item_native_mod(p: parser) -> item_info {
     expect_keyword(p, "mod");
     let id = parse_ident(p);
     expect(p, token::LBRACE);
     let more_attrs = parse_inner_attrs_and_next(p);
-    let inner_attrs = more_attrs.inner;
-    let first_item_outer_attrs = more_attrs.next;
-    let m = parse_native_mod_items(p, first_item_outer_attrs);
-    let mut hi = p.span.hi;
+    let m = parse_native_mod_items(p, more_attrs.next);
     expect(p, token::RBRACE);
-    ret mk_item(p, lo, hi, id, ast::item_native_mod(m), attrs + inner_attrs);
+    (id, ast::item_native_mod(m), some(more_attrs.inner))
 }
 
 fn parse_type_decl(p: parser) -> {lo: uint, ident: ast::ident} {
@@ -2152,15 +2135,14 @@ fn parse_type_decl(p: parser) -> {lo: uint, ident: ast::ident} {
     ret {lo: lo, ident: id};
 }
 
-fn parse_item_type(p: parser, attrs: [ast::attribute]) -> @ast::item {
+fn parse_item_type(p: parser) -> item_info {
     let t = parse_type_decl(p);
     let rp = parse_region_param(p);
     let tps = parse_ty_params(p);
     expect(p, token::EQ);
     let ty = parse_ty(p, false);
-    let mut hi = p.span.hi;
     expect(p, token::SEMI);
-    ret mk_item(p, t.lo, hi, t.ident, ast::item_ty(ty, tps, rp), attrs);
+    (t.ident, ast::item_ty(ty, tps, rp), none)
 }
 
 fn parse_region_param(p: parser) -> ast::region_param {
@@ -2172,8 +2154,7 @@ fn parse_region_param(p: parser) -> ast::region_param {
     }
 }
 
-fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo;
+fn parse_item_enum(p: parser) -> item_info {
     let id = parse_ident(p);
     let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
@@ -2191,8 +2172,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
                      args: [{ty: ty, id: p.get_id()}],
                      id: p.get_id(),
                      disr_expr: none});
-        ret mk_item(p, lo, ty.span.hi, id,
-                    ast::item_enum([variant], ty_params, rp), attrs);
+        ret (id, ast::item_enum([variant], ty_params, rp), none);
     }
     expect(p, token::LBRACE);
 
@@ -2227,8 +2207,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
     if (have_disr && !all_nullary) {
         p.fatal("discriminator values can only be used with a c-like enum");
     }
-    ret mk_item(p, lo, p.last_span.hi, id,
-                ast::item_enum(variants, ty_params, rp), attrs);
+    (id, ast::item_enum(variants, ty_params, rp), none)
 }
 
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
@@ -2262,40 +2241,44 @@ fn fn_expr_lookahead(tok: token::token) -> bool {
     }
 }
 
-fn parse_item(p: parser, attrs: [ast::attribute]) -> option<@ast::item> {
-    if eat_keyword(p, "const") {
-        ret some(parse_item_const(p, attrs));
+fn parse_item(p: parser, +attrs: [ast::attribute]) -> option<@ast::item> {
+    let lo = p.span.lo;
+    let (ident, item_, extra_attrs) = if eat_keyword(p, "const") {
+        parse_item_const(p)
     } else if is_keyword(p, "fn") && !fn_expr_lookahead(p.look_ahead(1u)) {
         p.bump();
-        ret some(parse_item_fn(p, ast::impure_fn, attrs));
+        parse_item_fn(p, ast::impure_fn)
     } else if eat_keyword(p, "pure") {
         expect_keyword(p, "fn");
-        ret some(parse_item_fn(p, ast::pure_fn, attrs));
+        parse_item_fn(p, ast::pure_fn)
     } else if is_keyword(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
         p.bump();
         expect_keyword(p, "fn");
-        ret some(parse_item_fn(p, ast::unsafe_fn, attrs));
+        parse_item_fn(p, ast::unsafe_fn)
     } else if eat_keyword(p, "crust") {
         expect_keyword(p, "fn");
-        ret some(parse_item_fn(p, ast::crust_fn, attrs));
+        parse_item_fn(p, ast::crust_fn)
     } else if eat_keyword(p, "mod") {
-        ret some(parse_item_mod(p, attrs));
+        parse_item_mod(p)
     } else if eat_keyword(p, "native") {
-        ret some(parse_item_native_mod(p, attrs));
-    } if eat_keyword(p, "type") {
-        ret some(parse_item_type(p, attrs));
+        parse_item_native_mod(p)
+    } else if eat_keyword(p, "type") {
+        parse_item_type(p)
     } else if eat_keyword(p, "enum") {
-        ret some(parse_item_enum(p, attrs));
+        parse_item_enum(p)
     } else if eat_keyword(p, "iface") {
-        ret some(parse_item_iface(p, attrs));
+        parse_item_iface(p)
     } else if eat_keyword(p, "impl") {
-        ret some(parse_item_impl(p, attrs));
+        parse_item_impl(p)
     } else if eat_keyword(p, "resource") {
-        ret some(parse_item_res(p, attrs));
+        parse_item_res(p)
     } else if eat_keyword(p, "class") {
-        ret some(parse_item_class(p, attrs));
-    }
-else { ret none; }
+        parse_item_class(p)
+    } else { ret none; };
+    some(mk_item(p, lo, p.last_span.hi, ident, item_, alt extra_attrs {
+        some(as) { attrs + as }
+        none { attrs }
+    }))
 }
 
 fn parse_use(p: parser) -> ast::view_item_ {
