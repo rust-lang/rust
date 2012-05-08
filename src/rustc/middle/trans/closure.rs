@@ -116,7 +116,7 @@ fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
 }
 
 fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
-    let cbox_ty = tuplify_cbox_ty(tcx, cdata_ty, ty::mk_type(tcx));
+    let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     ret ty::mk_imm_uniq(tcx, cbox_ty);
 }
 

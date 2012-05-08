@@ -654,15 +654,8 @@ fn T_opaque_vec(targ_cfg: @session::config) -> TypeRef {
 // representation of @T as a tuple (i.e., the ty::t version of what T_box()
 // returns).
 fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
-    ret tuplify_cbox_ty(tcx, t, ty::mk_type(tcx));
-}
-
-// As tuplify_box_ty(), but allows the caller to specify what type of type
-// descr is embedded in the box (ty::type vs ty::send_type).  This is useful
-// for unique closure boxes, hence the name "cbox_ty" (closure box type).
-fn tuplify_cbox_ty(tcx: ty::ctxt, t: ty::t, tydesc_t: ty::t) -> ty::t {
     let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm});
-    ret ty::mk_tup(tcx, [ty::mk_uint(tcx), tydesc_t,
+    ret ty::mk_tup(tcx, [ty::mk_uint(tcx), ty::mk_type(tcx),
                          ptr, ptr,
                          t]);
 }
