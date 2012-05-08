@@ -58,12 +58,16 @@ fn require_keyword(p: parser, word: str) {
     }
 }
 
-fn is_keyword(p: parser, word: str) -> bool {
+fn token_is_keyword(p: parser, word: str, tok: token::token) -> bool {
     require_keyword(p, word);
-    ret alt p.token {
-          token::IDENT(sid, false) { str::eq(word, p.get_str(sid)) }
-          _ { false }
-        };
+    alt tok {
+      token::IDENT(sid, false) { str::eq(word, p.get_str(sid)) }
+      _ { false }
+    }
+}
+
+fn is_keyword(p: parser, word: str) -> bool {
+    token_is_keyword(p, word, p.token)
 }
 
 fn eat_keyword(p: parser, word: str) -> bool {

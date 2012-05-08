@@ -39,7 +39,7 @@ fn parse_outer_attrs_or_ext(
 // Parse attributes that appear before an item
 fn parse_outer_attributes(p: parser) -> [ast::attribute] {
     let mut attrs: [ast::attribute] = [];
-    while p.token == token::POUND {
+    while p.token == token::POUND && p.look_ahead(1u) == token::LBRACKET {
         attrs += [parse_attribute(p, ast::attr_outer)];
     }
     ret attrs;

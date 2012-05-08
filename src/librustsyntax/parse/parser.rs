@@ -1606,8 +1606,8 @@ fn parse_block_tail_(p: parser, lo: uint, s: blk_check_mode,
                      +first_item_attrs: [attribute]) -> blk {
     let mut stmts = [];
     let mut expr = none;
-    let view_items = maybe_parse_view_import_only(p, first_item_attrs);
-    let mut initial_attrs = first_item_attrs;
+    let {attrs_remaining, view_items} = parse_view(p, first_item_attrs, true);
+    let mut initial_attrs = attrs_remaining;
 
     if p.token == token::RBRACE && !vec::is_empty(initial_attrs) {
         p.fatal("expected item");
@@ -2036,12 +2036,13 @@ fn parse_visibility(p: parser, def: visibility) -> visibility {
 fn parse_mod_items(p: parser, term: token::token,
                    +first_item_attrs: [attribute]) -> _mod {
     // Shouldn't be any view items since we've already parsed an item attr
-    let view_items = maybe_parse_view(p, first_item_attrs);
+    let {attrs_remaining, view_items} =
+        parse_view(p, first_item_attrs, false);
     let mut items: [@item] = [];
     let mut first = true;
     while p.token != term {
         let mut attrs = parse_outer_attributes(p);
-        if first { attrs = first_item_attrs + attrs; first = false; }
+        if first { attrs = attrs_remaining + attrs; first = false; }
         #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
         let vis = parse_visibility(p, private);
         alt parse_item(p, attrs, vis) {
@@ -2054,7 +2055,7 @@ fn parse_mod_items(p: parser, term: token::token,
         #debug["parse_mod_items: attrs=%?", attrs];
     }
 
-    if first && first_item_attrs.len() > 0u {
+    if first && attrs_remaining.len() > 0u {
         // We parsed attributes for the first item but didn't find the item
         p.fatal("expected item");
     }
@@ -2113,12 +2114,10 @@ fn parse_native_item(p: parser, +attrs: [attribute]) ->
 fn parse_native_mod_items(p: parser, +first_item_attrs: [attribute]) ->
    native_mod {
     // Shouldn't be any view items since we've already parsed an item attr
-    let view_items =
-        if vec::len(first_item_attrs) == 0u {
-            parse_native_view(p)
-        } else { [] };
+    let {attrs_remaining, view_items} =
+        parse_view(p, first_item_attrs, false);
     let mut items: [@native_item] = [];
-    let mut initial_attrs = first_item_attrs;
+    let mut initial_attrs = attrs_remaining;
     while p.token != token::RBRACE {
         let attrs = initial_attrs + parse_outer_attributes(p);
         initial_attrs = [];
@@ -2378,58 +2377,38 @@ fn parse_view_paths(p: parser) -> [@view_path] {
     ret vp;
 }
 
-fn parse_view_item(p: parser) -> @view_item {
-    let lo = p.span.lo;
-    let the_item =
-        if eat_keyword(p, "use") {
-            parse_use(p)
-        } else if eat_keyword(p, "import") {
-            view_item_import(parse_view_paths(p))
-        } else if eat_keyword(p, "export") {
-            view_item_export(parse_view_paths(p))
-        } else {
-            fail
-    };
-    let mut hi = p.span.lo;
-    expect(p, token::SEMI);
-    ret @spanned(lo, hi, the_item);
-}
-
 fn is_view_item(p: parser) -> bool {
-    is_keyword(p, "use") || is_keyword(p, "import") || is_keyword(p, "export")
+    let tok = if !is_keyword(p, "pub") && !is_keyword(p, "priv") { p.token }
+              else { p.look_ahead(1u) };
+    token_is_keyword(p, "use", tok) || token_is_keyword(p, "import", tok) ||
+        token_is_keyword(p, "export", tok)
 }
 
-fn maybe_parse_view(
-    p: parser,
-    first_item_attrs: [attribute]) -> [@view_item] {
-
-    maybe_parse_view_while(p, first_item_attrs, is_view_item)
+fn parse_view_item(p: parser, +attrs: [attribute]) -> @view_item {
+    let lo = p.span.lo, vis = parse_visibility(p, private);
+    let node = if eat_keyword(p, "use") {
+        parse_use(p)
+    } else if eat_keyword(p, "import") {
+        view_item_import(parse_view_paths(p))
+    } else if eat_keyword(p, "export") {
+        view_item_export(parse_view_paths(p))
+    } else { fail; };
+    expect(p, token::SEMI);
+    @{node: node, attrs: attrs,
+      vis: vis, span: mk_sp(lo, p.last_span.hi)}
 }
 
-fn maybe_parse_view_import_only(
-    p: parser,
-    first_item_attrs: [attribute]) -> [@view_item] {
-
-    maybe_parse_view_while(p, first_item_attrs, bind is_keyword(_, "import"))
-}
-
-fn maybe_parse_view_while(
-    p: parser,
-    first_item_attrs: [attribute],
-    f: fn@(parser) -> bool) -> [@view_item] {
-
-    if vec::len(first_item_attrs) == 0u {
-        let mut items = [];
-        while f(p) { items += [parse_view_item(p)]; }
-        ret items;
-    } else {
-        // Shouldn't be any view items since we've already parsed an item attr
-        ret [];
+fn parse_view(p: parser, +first_item_attrs: [attribute],
+              only_imports: bool) -> {attrs_remaining: [attribute],
+                                      view_items: [@view_item]} {
+    let mut attrs = first_item_attrs + parse_outer_attributes(p);
+    let mut items = [];
+    while if only_imports { is_keyword(p, "import") }
+          else { is_view_item(p) } {
+        items += [parse_view_item(p, attrs)];
+        attrs = parse_outer_attributes(p);
     }
-}
-
-fn parse_native_view(p: parser) -> [@view_item] {
-    maybe_parse_view_while(p, [], is_view_item)
+    {attrs_remaining: attrs, view_items: items}
 }
 
 // Parses a source module as a crate
@@ -2494,7 +2473,7 @@ fn parse_crate_directive(p: parser, first_outer_attr: [attribute]) ->
           _ { unexpected(p); }
         }
     } else if is_view_item(p) {
-        let vi = parse_view_item(p);
+        let vi = parse_view_item(p, outer_attrs);
         ret spanned(lo, vi.span.hi, cdir_view_item(vi));
     } else { ret p.fatal("expected crate directive"); }
 }

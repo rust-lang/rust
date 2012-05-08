@@ -612,7 +612,8 @@ enum view_path_ {
 }
 
 #[auto_serialize]
-type view_item = spanned<view_item_>;
+type view_item = {node: view_item_, attrs: [attribute],
+                  vis: visibility, span: span};
 
 #[auto_serialize]
 enum view_item_ {

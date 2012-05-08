@@ -679,6 +679,8 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     fn f_view_item(afp: ast_fold_precursor, f: ast_fold, &&x: @view_item) ->
        @view_item {
         ret @{node: afp.fold_view_item(x.node, f),
+              attrs: vec::map(x.attrs, {|a| fold_attribute_(a, f)}),
+              vis: x.vis,
               span: afp.new_span(x.span)};
     }
     fn f_native_item(afp: ast_fold_precursor, f: ast_fold, &&x: @native_item)
