@@ -88,6 +88,8 @@ upcall_call_shim_on_rust_stack
 upcall_new_stack
 upcall_del_stack
 upcall_reset_stack_limit
+upcall_exchange_malloc
+upcall_exchange_free
 rust_uv_loop_new
 rust_uv_loop_delete
 rust_uv_loop_refcount
