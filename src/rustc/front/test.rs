@@ -195,6 +195,7 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
          attrs: [resolve_unexported_attr],
          id: cx.sess.next_node_id(),
          node: item_,
+         vis: ast::public,
          span: dummy_sp()};
 
     #debug("Synthetic test module:\n%s\n", pprust::item_to_str(@item));
@@ -233,6 +234,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
          attrs: [],
          id: cx.sess.next_node_id(),
          node: item_,
+         vis: ast::public,
          span: dummy_sp()};
     ret @item;
 }
@@ -415,6 +417,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
          attrs: [],
          id: cx.sess.next_node_id(),
          node: item_,
+         vis: ast::public,
          span: dummy_sp()};
     ret @item;
 }

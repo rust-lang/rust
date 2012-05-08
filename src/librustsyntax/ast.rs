@@ -557,7 +557,7 @@ enum ret_style {
 type method = {ident: ident, attrs: [attribute],
                tps: [ty_param], decl: fn_decl, body: blk,
                id: node_id, span: span, self_id: node_id,
-               privacy: privacy}; // privacy is always public, unless it's a
+               vis: visibility};  // always public, unless it's a
                                   // class method
 
 #[auto_serialize]
@@ -580,7 +580,7 @@ type variant_arg = {ty: @ty, id: node_id};
 
 #[auto_serialize]
 type variant_ = {name: ident, attrs: [attribute], args: [variant_arg],
-                 id: node_id, disr_expr: option<@expr>};
+                 id: node_id, disr_expr: option<@expr>, vis: visibility};
 
 #[auto_serialize]
 type variant = spanned<variant_>;
@@ -642,8 +642,12 @@ type attribute_ = {style: attr_style, value: meta_item};
 type iface_ref = {path: @path, id: node_id};
 
 #[auto_serialize]
+enum visibility { public, private }
+
+#[auto_serialize]
 type item = {ident: ident, attrs: [attribute],
-             id: node_id, node: item_, span: span};
+             id: node_id, node: item_,
+             vis: visibility, span: span};
 
 #[auto_serialize]
 enum region_param {
@@ -679,15 +683,12 @@ type class_member = spanned<class_member_>;
 
 #[auto_serialize]
 enum class_member_ {
-    instance_var(ident, @ty, class_mutability, node_id, privacy),
+    instance_var(ident, @ty, class_mutability, node_id, visibility),
     class_method(@method)
 }
 
 #[auto_serialize]
 enum class_mutability { class_mutable, class_immutable }
-
-#[auto_serialize]
-enum privacy { priv, pub }
 
 #[auto_serialize]
 type class_ctor = spanned<class_ctor_>;

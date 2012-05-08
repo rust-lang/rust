@@ -546,6 +546,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
                           constraints: []},
                          ser_tps,
                          ser_blk),
+      vis: ast::public,
       span: span}
 }
 
@@ -744,6 +745,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
                           constraints: []},
                          deser_tps,
                          deser_blk),
+      vis: ast::public,
       span: span}
 }
 

@@ -229,7 +229,7 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
         "implements",
         "move",
         "of",
-        "priv",
+        "priv", "pub",
         "self", "send", "static",
         "to",
         "use",

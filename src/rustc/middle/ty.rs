@@ -165,7 +165,7 @@ type method = {ident: ast::ident,
                tps: @[param_bounds],
                fty: fn_ty,
                purity: ast::purity,
-               privacy: ast::privacy};
+               vis: ast::visibility};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -181,7 +181,7 @@ enum vstore {
 type field_ty = {
   ident: ident,
   id: def_id,
-  privacy: ast::privacy,
+  vis: ast::visibility,
   mutability: ast::class_mutability
 };
 
@@ -2540,21 +2540,21 @@ fn lookup_public_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
 }
 
 pure fn is_public(f: field_ty) -> bool {
-  alt f.privacy {
-       pub { true }
-       priv { false }
+  alt f.vis {
+    public { true }
+    private { false }
   }
 }
 
 // Look up the list of method names and IDs for a given class
 // Fails if the id is not bound to a class.
 fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
-    : is_local(did) -> [{name: ident, id: node_id, privacy: privacy}] {
+    : is_local(did) -> [{name: ident, id: node_id, vis: visibility}] {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(@{node: item_class(_,_,items,_,_), _}, _)) {
          let (_,ms) = split_class_items(items);
          vec::map(ms, {|m| {name: m.ident, id: m.id,
-                         privacy: m.privacy}})
+                            vis: m.vis}})
        }
        _ {
            cx.sess.bug("lookup_class_method_ids: id not bound to a class");
@@ -2588,9 +2588,9 @@ fn class_field_tys(items: [@class_member]) -> [field_ty] {
     let mut rslt = [];
     for items.each {|it|
        alt it.node {
-          instance_var(nm, _, cm, id, privacy) {
+          instance_var(nm, _, cm, id, vis) {
               rslt += [{ident: nm, id: ast_util::local_def(id),
-                          privacy: privacy, mutability: cm}];
+                        vis: vis, mutability: cm}];
           }
           class_method(_) { }
        }

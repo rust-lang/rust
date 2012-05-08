@@ -241,6 +241,7 @@ fn noop_fold_item(&&i: @item, fld: ast_fold) -> @item {
           attrs: vec::map(i.attrs, fold_attribute),
           id: fld.new_id(i.id),
           node: fld.fold_item_underscore(i.node),
+          vis: i.vis,
           span: fld.new_span(i.span)};
 }
 
@@ -323,7 +324,7 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
           id: fld.new_id(m.id),
           span: fld.new_span(m.span),
           self_id: fld.new_id(m.self_id),
-          privacy: m.privacy};
+          vis: m.vis};
 }
 
 
@@ -564,7 +565,8 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     ret {name: v.name,
          attrs: attrs,
          args: args, id: fld.new_id(v.id),
-         disr_expr: de};
+         disr_expr: de,
+         vis: v.vis};
 }
 
 fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident { ret i; }

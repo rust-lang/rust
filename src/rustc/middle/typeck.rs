@@ -1176,7 +1176,7 @@ fn ty_of_method(ccx: @crate_ctxt,
      fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare,
                         m.decl, none),
      purity: m.decl.purity,
-     privacy: m.privacy}
+     vis: m.vis}
 }
 
 fn ty_of_ty_method(self: @crate_ctxt,
@@ -1187,7 +1187,7 @@ fn ty_of_ty_method(self: @crate_ctxt,
      fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare,
                         m.decl, none),
      // assume public, because this is only invoked on iface methods
-     purity: m.decl.purity, privacy: ast::pub}
+     purity: m.decl.purity, vis: ast::public}
 }
 
 // Functions that write types into the node type table
@@ -2705,7 +2705,7 @@ impl methods for lookup {
         for ms.each {|m|
             if m.ident != self.m_name { cont; }
 
-            if m.privacy == ast::priv && !self.include_private {
+            if m.vis == ast::private && !self.include_private {
                 self.tcx().sess.span_fatal(
                     self.expr.span,
                     "Call to private method not allowed outside \

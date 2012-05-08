@@ -1485,7 +1485,7 @@ fn parse_let(p: parser) -> @ast::decl {
 }
 
 /* assumes "let" token has already been consumed */
-fn parse_instance_var(p:parser, pr: ast::privacy) -> @ast::class_member {
+fn parse_instance_var(p:parser, pr: ast::visibility) -> @ast::class_member {
     let mut is_mutbl = ast::class_immutable;
     let lo = p.span.lo;
     if eat_keyword(p, "mut") {
@@ -1527,7 +1527,7 @@ fn parse_stmt(p: parser, +first_item_attrs: [ast::attribute]) -> @ast::stmt {
 
         let item_attrs = first_item_attrs + item_attrs;
 
-        alt parse_item(p, item_attrs) {
+        alt parse_item(p, item_attrs, ast::public) {
           some(i) {
             let mut hi = i.span.hi;
             let decl = @spanned(lo, hi, ast::decl_item(i));
@@ -1789,11 +1789,13 @@ fn parse_fn_header(p: parser) -> {ident: ast::ident, tps: [ast::ty_param]} {
 }
 
 fn mk_item(p: parser, lo: uint, hi: uint, +ident: ast::ident,
-           +node: ast::item_, +attrs: [ast::attribute]) -> @ast::item {
+           +node: ast::item_, vis: ast::visibility,
+           +attrs: [ast::attribute]) -> @ast::item {
     ret @{ident: ident,
           attrs: attrs,
           id: p.get_id(),
           node: node,
+          vis: vis,
           span: mk_sp(lo, hi)};
 }
 
@@ -1819,7 +1821,7 @@ fn parse_method_name(p: parser) -> ast::ident {
     }
 }
 
-fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
+fn parse_method(p: parser, pr: ast::visibility) -> @ast::method {
     let attrs = parse_outer_attributes(p);
     let lo = p.span.lo, pur = parse_fn_purity(p);
     let ident = parse_method_name(p);
@@ -1829,7 +1831,7 @@ fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
     let attrs = attrs + inner_attrs;
     @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
       id: p.get_id(), span: mk_sp(lo, body.span.hi),
-      self_id: p.get_id(), privacy: pr}
+      self_id: p.get_id(), vis: pr}
 }
 
 fn parse_item_iface(p: parser) -> item_info {
@@ -1877,7 +1879,7 @@ fn parse_item_impl(p: parser) -> item_info {
     let ty = parse_ty(p, false);
     let mut meths = [];
     expect(p, token::LBRACE);
-    while !eat(p, token::RBRACE) { meths += [parse_method(p, ast::pub)]; }
+    while !eat(p, token::RBRACE) { meths += [parse_method(p, ast::public)]; }
     (ident, ast::item_impl(tps, rp, ifce, ty, meths), none)
 }
 
@@ -1978,15 +1980,15 @@ fn parse_item_class(p: parser) -> item_info {
     }
 }
 
-fn parse_single_class_item(p: parser, privcy: ast::privacy)
+fn parse_single_class_item(p: parser, vis: ast::visibility)
     -> @ast::class_member {
    if eat_keyword(p, "let") {
-      let a_var = parse_instance_var(p, privcy);
+      let a_var = parse_instance_var(p, vis);
       expect(p, token::SEMI);
       ret a_var;
    }
    else {
-       let m = parse_method(p, privcy);
+       let m = parse_method(p, vis);
        ret @{node: ast::class_method(m), span: m.span};
    }
 }
@@ -2014,15 +2016,21 @@ fn parse_class_item(p:parser, class_name_with_tps: @ast::path)
             expect(p, token::LBRACE);
             let mut results = [];
             while p.token != token::RBRACE {
-                    results += [parse_single_class_item(p, ast::priv)];
+                    results += [parse_single_class_item(p, ast::private)];
             }
             p.bump();
             ret members(results);
     }
     else {
         // Probably need to parse attrs
-        ret members([parse_single_class_item(p, ast::pub)]);
+        ret members([parse_single_class_item(p, ast::public)]);
     }
+}
+
+fn parse_visibility(p: parser, def: ast::visibility) -> ast::visibility {
+    if eat_keyword(p, "pub") { ast::public }
+    else if eat_keyword(p, "priv") { ast::private }
+    else { def }
 }
 
 fn parse_mod_items(p: parser, term: token::token,
@@ -2035,7 +2043,8 @@ fn parse_mod_items(p: parser, term: token::token,
         let mut attrs = parse_outer_attributes(p);
         if first { attrs = first_item_attrs + attrs; first = false; }
         #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
-        alt parse_item(p, attrs) {
+        let vis = parse_visibility(p, ast::private);
+        alt parse_item(p, attrs, vis) {
           some(i) { items += [i]; }
           _ {
             p.fatal("expected item but found '" +
@@ -2154,7 +2163,7 @@ fn parse_region_param(p: parser) -> ast::region_param {
     }
 }
 
-fn parse_item_enum(p: parser) -> item_info {
+fn parse_item_enum(p: parser, default_vis: ast::visibility) -> item_info {
     let id = parse_ident(p);
     let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
@@ -2171,7 +2180,8 @@ fn parse_item_enum(p: parser) -> item_info {
                      attrs: [],
                      args: [{ty: ty, id: p.get_id()}],
                      id: p.get_id(),
-                     disr_expr: none});
+                     disr_expr: none,
+                     vis: ast::public});
         ret (id, ast::item_enum([variant], ty_params, rp), none);
     }
     expect(p, token::LBRACE);
@@ -2181,6 +2191,7 @@ fn parse_item_enum(p: parser) -> item_info {
     while p.token != token::RBRACE {
         let variant_attrs = parse_outer_attributes(p);
         let vlo = p.span.lo;
+        let vis = parse_visibility(p, default_vis);
         let ident = parse_value_ident(p);
         let mut args = [], disr_expr = none;
         if p.token == token::LPAREN {
@@ -2198,7 +2209,7 @@ fn parse_item_enum(p: parser) -> item_info {
 
         let vr = {name: ident, attrs: variant_attrs,
                   args: args, id: p.get_id(),
-                  disr_expr: disr_expr};
+                  disr_expr: disr_expr, vis: vis};
         variants += [spanned(vlo, p.last_span.hi, vr)];
 
         if !eat(p, token::COMMA) { break; }
@@ -2241,7 +2252,8 @@ fn fn_expr_lookahead(tok: token::token) -> bool {
     }
 }
 
-fn parse_item(p: parser, +attrs: [ast::attribute]) -> option<@ast::item> {
+fn parse_item(p: parser, +attrs: [ast::attribute], vis: ast::visibility)
+    -> option<@ast::item> {
     let lo = p.span.lo;
     let (ident, item_, extra_attrs) = if eat_keyword(p, "const") {
         parse_item_const(p)
@@ -2265,7 +2277,7 @@ fn parse_item(p: parser, +attrs: [ast::attribute]) -> option<@ast::item> {
     } else if eat_keyword(p, "type") {
         parse_item_type(p)
     } else if eat_keyword(p, "enum") {
-        parse_item_enum(p)
+        parse_item_enum(p, vis)
     } else if eat_keyword(p, "iface") {
         parse_item_iface(p)
     } else if eat_keyword(p, "impl") {
@@ -2275,10 +2287,11 @@ fn parse_item(p: parser, +attrs: [ast::attribute]) -> option<@ast::item> {
     } else if eat_keyword(p, "class") {
         parse_item_class(p)
     } else { ret none; };
-    some(mk_item(p, lo, p.last_span.hi, ident, item_, alt extra_attrs {
-        some(as) { attrs + as }
-        none { attrs }
-    }))
+    some(mk_item(p, lo, p.last_span.hi, ident, item_, vis,
+                 alt extra_attrs {
+                     some(as) { attrs + as }
+                     none { attrs }
+                 }))
 }
 
 fn parse_use(p: parser) -> ast::view_item_ {

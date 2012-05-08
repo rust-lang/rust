@@ -533,9 +533,9 @@ fn print_item(s: ps, &&item: @ast::item) {
                    */
              hardbreak_if_not_bol(s);
              maybe_print_comment(s, ci.span.lo);
-             let pr = ast_util::class_member_privacy(ci);
+             let pr = ast_util::class_member_visibility(ci);
              alt pr {
-                ast::priv {
+                ast::private {
                     head(s, "priv");
                     bopen(s);
                     hardbreak_if_not_bol(s);
@@ -559,7 +559,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                 }
              }
              alt pr {
-                 ast::priv { bclose(s, ci.span); }
+                 ast::private { bclose(s, ci.span); }
                  _ {}
              }
           }

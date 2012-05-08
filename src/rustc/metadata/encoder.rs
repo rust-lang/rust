@@ -99,9 +99,9 @@ fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
 fn encode_class_item_paths(ebml_w: ebml::writer,
      items: [@class_member], path: [str], &index: [entry<str>]) {
     for items.each {|it|
-     alt ast_util::class_member_privacy(it) {
-          priv { cont; }
-          pub {
+     alt ast_util::class_member_visibility(it) {
+          private { cont; }
+          public {
               let (id, ident) = alt it.node {
                  instance_var(v, _, _, vid, _) { (vid, v) }
                  class_method(it) { (it.id, it.ident) }
@@ -399,9 +399,10 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     ebml_w.end_tag();
 }
 
-fn encode_privacy(ebml_w: ebml::writer, privacy: privacy) {
-    encode_family(ebml_w, alt privacy {
-                pub { 'g' } priv { 'j' }});
+fn encode_visibility(ebml_w: ebml::writer, visibility: visibility) {
+    encode_family(ebml_w, alt visibility {
+        public { 'g' } private { 'j' }
+    });
 }
 
 /* Returns an index of items in this class */
@@ -417,11 +418,11 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
       alt ci.node {
-        instance_var(nm, _, mt, id, pr) {
+        instance_var(nm, _, mt, id, vis) {
           *index += [{val: id, pos: ebml_w.writer.tell()}];
           ebml_w.start_tag(tag_items_data_item);
           #debug("encode_info_for_class: doing %s %d", nm, id);
-          encode_privacy(ebml_w, pr);
+          encode_visibility(ebml_w, vis);
           encode_name(ebml_w, nm);
           encode_path(ebml_w, path, ast_map::path_name(nm));
           encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
@@ -430,8 +431,8 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
           ebml_w.end_tag();
         }
         class_method(m) {
-           alt m.privacy {
-              pub {
+           alt m.vis {
+              public {
                 *index += [{val: m.id, pos: ebml_w.writer.tell()}];
                 /* Not sure whether we really need to have two indices,
                    but it works for now -- tjc */
@@ -625,15 +626,15 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         let (fs,ms) = ast_util::split_class_items(items);
         for fs.each {|f|
            ebml_w.start_tag(tag_item_field);
-           encode_privacy(ebml_w, f.privacy);
+           encode_visibility(ebml_w, f.vis);
            encode_name(ebml_w, f.ident);
            encode_def_id(ebml_w, local_def(f.id));
            ebml_w.end_tag();
         }
         for ms.each {|m|
-           alt m.privacy {
-              priv { /* do nothing */ }
-              pub {
+           alt m.vis {
+              private { /* do nothing */ }
+              public {
                 /* Write the info that's needed when viewing this class
                    as an iface */
                 ebml_w.start_tag(tag_item_iface_method);
@@ -648,7 +649,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 ebml_w.start_tag(tag_item_impl_method);
                 ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
                 ebml_w.end_tag();
-
               }
            }
         }

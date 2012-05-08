@@ -454,7 +454,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
                       'u' { ast::unsafe_fn }
                       'f' { ast::impure_fn }
                       'p' { ast::pure_fn }
-                    }, privacy: ast::pub}];
+                    }, vis: ast::public}];
     }
     @result
 }
@@ -471,17 +471,17 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
           let name = item_name(an_item);
           let did = class_member_id(an_item, cdata);
           let mt = field_mutability(an_item);
-          result += [{ident: name, id: did, privacy:
-                  family_to_privacy(f), mutability: mt}];
+          result += [{ident: name, id: did, vis:
+                  family_to_visibility(f), mutability: mt}];
        }
     }
     result
 }
 
-pure fn family_to_privacy(family: char) -> ast::privacy {
+pure fn family_to_visibility(family: char) -> ast::visibility {
     alt family {
-      'g' { ast::pub }
-      _   { ast::priv }
+      'g' { ast::public }
+      _   { ast::private }
     }
 }
 

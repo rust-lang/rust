@@ -1642,6 +1642,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
                             id: ctor.node.id,
                             node:
                               item_fn(ctor.node.dec, tps, ctor.node.body),
+                            vis: ast::public,
                             span: ctor.node.body.span}));
           }
         }

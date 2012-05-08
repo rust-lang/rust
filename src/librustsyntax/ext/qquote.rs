@@ -173,7 +173,7 @@ fn parse_stmt(p: parser) -> @ast::stmt {
 }
 
 fn parse_item(p: parser) -> @ast::item {
-    alt (parser::parse_item(p, [])) {
+    alt parser::parse_item(p, [], ast::public) {
       some(item) { item }
       none       { fail "parse_item: parsing an item failed"; }
     }

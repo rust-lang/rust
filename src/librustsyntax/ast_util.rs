@@ -276,11 +276,11 @@ pure fn class_item_ident(ci: @class_member) -> ident {
 }
 
 type ivar = {ident: ident, ty: @ty, cm: class_mutability,
-             id: node_id, privacy: privacy};
+             id: node_id, vis: visibility};
 
 fn public_methods(ms: [@method]) -> [@method] {
-    vec::filter(ms, {|m| alt m.privacy {
-                    pub { true }
+    vec::filter(ms, {|m| alt m.vis {
+                    public { true }
                     _   { false }}})
 }
 
@@ -288,8 +288,8 @@ fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
     let mut vs = [], ms = [];
     for cs.each {|c|
       alt c.node {
-        instance_var(i, t, cm, id, privacy) {
-          vs += [{ident: i, ty: t, cm: cm, id: id, privacy: privacy}];
+        instance_var(i, t, cm, id, vis) {
+          vs += [{ident: i, ty: t, cm: cm, id: id, vis: vis}];
         }
         class_method(m) { ms += [m]; }
       }
@@ -297,10 +297,10 @@ fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
     (vs, ms)
 }
 
-pure fn class_member_privacy(ci: @class_member) -> privacy {
+pure fn class_member_visibility(ci: @class_member) -> visibility {
   alt ci.node {
-     instance_var(_, _, _, _, p) { p }
-     class_method(m) { m.privacy }
+     instance_var(_, _, _, _, vis) { vis }
+     class_method(m) { m.vis }
   }
 }
 
