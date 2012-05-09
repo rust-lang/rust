@@ -916,7 +916,9 @@ fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
 }
 
 fn dummy_substs(tps: [ty::t]) -> ty::substs {
-    {self_r: some(ty::re_bound(ty::br_self)), tps: tps}
+    {self_r: some(ty::re_bound(ty::br_self)),
+     self_ty: none,
+     tps: tps}
 }
 
 //

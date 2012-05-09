@@ -115,6 +115,7 @@ fn enc_opt<T>(w: io::writer, t: option<T>, enc_f: fn(T)) {
 
 fn enc_substs(w: io::writer, cx: @ctxt, substs: ty::substs) {
     enc_opt(w, substs.self_r) { |r| enc_region(w, cx, r) }
+    enc_opt(w, substs.self_ty) { |t| enc_ty(w, cx, t) }
     w.write_char('[');
     for substs.tps.each { |t| enc_ty(w, cx, t); }
     w.write_char(']');
@@ -281,10 +282,8 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char('|');
         w.write_str(uint::str(id));
       }
-      ty::ty_self(substs) {
-        w.write_str("s["/&);
-        enc_substs(w, cx, substs);
-        w.write_char(']');
+      ty::ty_self {
+        w.write_char('s');
       }
       ty::ty_type { w.write_char('Y'); }
       ty::ty_opaque_closure_ptr(ty::ck_block) { w.write_str("C&"/&); }

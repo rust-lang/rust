@@ -272,7 +272,7 @@ fn instantiate_path(fcx: @fn_ctxt,
         pth.types.map { |aty| fcx.to_ty(aty) }
     };
 
-    let substs = {self_r: self_r, tps: tps};
+    let substs = {self_r: self_r, self_ty: none, tps: tps};
     fcx.write_ty_substs(id, tpt.ty, substs);
 }
 
@@ -340,6 +340,8 @@ iface ast_conv {
     fn tcx() -> ty::ctxt;
     fn ccx() -> @crate_ctxt;
     fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty;
+
+    // what type should we use when a type is omitted?
     fn ty_infer(span: span) -> ty::t;
 }
 
@@ -536,7 +538,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy>(
     }
     let tps = path.types.map { |a_t| ast_ty_to_ty(self, rscope, a_t) };
 
-    let substs = {self_r: self_r, tps: tps};
+    let substs = {self_r:self_r, self_ty:none, tps:tps};
     {substs: substs, ty: ty::subst(tcx, substs, decl_ty)}
 }
 
@@ -569,9 +571,11 @@ fn instantiate_iface_ref(ccx: @crate_ctxt, t: @ast::iface_ref,
     let sp = t.path.span, err = "can only implement interface types",
         sess = ccx.tcx.sess;
 
+    let rscope = type_rscope(rp);
+
     alt lookup_def_tcx(ccx.tcx, t.path.span, t.id) {
       ast::def_ty(t_id) {
-        let tpt = ast_path_to_ty(ccx, type_rscope(rp), t_id, t.path, t.id);
+        let tpt = ast_path_to_ty(ccx, rscope, t_id, t.path, t.id);
         alt ty::get(tpt.ty).struct {
            ty::ty_iface(*) {
               (t_id, tpt)
@@ -740,11 +744,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             ty::mk_param(tcx, n, id)
           }
-          ast::def_self(self_id) {
-            let {substs, ty: _} =
-                ast_path_to_substs_and_ty(self, rscope,
-                                          local_def(self_id), path);
-            ty::mk_self(tcx, substs)
+          ast::def_self(_) {
+            // n.b.: resolve guarantees that the self type only appears in an
+            // iface, which we rely upon in various places when creating
+            // substs
+            ty::mk_self(tcx)
           }
           _ {
             tcx.sess.span_fatal(ast_ty.span,
@@ -1137,30 +1141,35 @@ fn ty_of_native_fn_decl(ccx: @crate_ctxt,
 fn ty_param_bounds(ccx: @crate_ctxt,
                    params: [ast::ty_param]) -> @[ty::param_bounds] {
 
+    fn compute_bounds(ccx: @crate_ctxt,
+                      param: ast::ty_param) -> ty::param_bounds {
+        @vec::flat_map(*param.bounds) { |b|
+            alt b {
+              ast::bound_send { [ty::bound_send] }
+              ast::bound_copy { [ty::bound_copy] }
+              ast::bound_iface(t) {
+                let ity = ast_ty_to_ty(ccx, empty_rscope, t);
+                alt ty::get(ity).struct {
+                  ty::ty_iface(*) {
+                    [ty::bound_iface(ity)]
+                  }
+                  _ {
+                    ccx.tcx.sess.span_err(
+                        t.span, "type parameter bounds must be \
+                                 interface types");
+                    []
+                  }
+                }
+              }
+            }
+        }
+    }
+
     @params.map { |param|
         alt ccx.tcx.ty_param_bounds.find(param.id) {
           some(bs) { bs }
           none {
-            let bounds = @vec::flat_map(*param.bounds) { |b|
-                alt b {
-                  ast::bound_send { [ty::bound_send] }
-                  ast::bound_copy { [ty::bound_copy] }
-                  ast::bound_iface(t) {
-                    let ity = ccx.to_ty(empty_rscope, t);
-                    alt ty::get(ity).struct {
-                      ty::ty_iface(_, _) {
-                        [ty::bound_iface(ity)]
-                      }
-                      _ {
-                        ccx.tcx.sess.span_err(
-                            t.span, "type parameter bounds must be \
-                                     interface types");
-                        []
-                      }
-                    }
-                  }
-                }
-            };
+            let bounds = compute_bounds(ccx, param);
             ccx.tcx.ty_param_bounds.insert(param.id, bounds);
             bounds
           }
@@ -1354,7 +1363,7 @@ fn mk_substs(ccx: @crate_ctxt, atps: [ast::ty_param], rp: ast::region_param)
       ast::rp_self { some(ty::re_bound(ty::br_self)) }
       ast::rp_none { none }
     };
-    {bounds: bounds, substs: {self_r: self_r, tps: params}}
+    {bounds: bounds, substs: {self_r: self_r, self_ty: none, tps: params}}
 }
 
 fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
@@ -1375,7 +1384,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
     } else {
         let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
             alt ty::get(f.ty).struct {
-              ty::ty_param(_, _) | ty::ty_self(_)
+              ty::ty_param(*) | ty::ty_self
               if alt i.mode { ast::infer(_) { true } _ { false } } {
                 {mode: ast::expl(ast::by_ref) with i}
               }
@@ -1387,117 +1396,19 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         // Add dummy substs for the parameters of the impl method
         let substs = {
             self_r: substs.self_r,
+            self_ty: some(self_ty),
             tps: substs.tps + vec::from_fn(vec::len(*if_m.tps), {|i|
                 ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
             })
         };
         let mut if_fty = ty::mk_fn(tcx, if_m.fty);
         if_fty = ty::subst(tcx, substs, if_fty);
-        if_fty = fixup_self_full(tcx, if_fty, substs, self_ty, impl_tps);
         require_same_types(
             tcx, sp, impl_fty, if_fty,
             {|| "method `" + if_m.ident +
                  "` has an incompatible type"});
         ret impl_fty;
     }
-}
-
-// Mangles an iface method ty to make its self type conform to the self type
-// of a specific impl or bounded type parameter. This is rather involved
-// because the type parameters of ifaces and impls are not required to line up
-// (an impl can have less or more parameters than the iface it implements), so
-// some mangling of the substituted types is required.
-fn fixup_self_full(cx: ty::ctxt, mty: ty::t, m_substs: ty::substs,
-                   selfty: ty::t, impl_n_tps: uint) -> ty::t {
-
-    if !ty::type_has_vars(mty) { ret mty; }
-
-    ty::fold_ty(cx, mty) {|t|
-        alt ty::get(t).struct {
-          ty::ty_self(substs) if ty::substs_is_noop(substs) {
-            selfty
-          }
-          ty::ty_self(substs) {
-            // Move the substs into the type param system of the
-            // context.
-            let mut substs_tps = vec::map(substs.tps) {|t|
-                let f = fixup_self_full(cx, t, m_substs, selfty, impl_n_tps);
-                ty::subst(cx, m_substs, f)
-            };
-
-            // Add extra substs for impl type parameters.
-            while vec::len(substs_tps) < impl_n_tps {
-                substs_tps += [ty::mk_param(cx, substs_tps.len(),
-                                            {crate: 0, node: 0})];
-            }
-
-            // And for method type parameters.
-            let method_n_tps = (
-                m_substs.tps.len() - substs_tps.len()) as int;
-            if method_n_tps > 0 {
-                substs_tps += vec::tailn(
-                    m_substs.tps,
-                    m_substs.tps.len() - (method_n_tps as uint));
-            }
-
-            // And then instantiate the self type using all those.
-            let substs_1 = {
-                self_r: substs.self_r,
-                tps: substs_tps
-            };
-            ty::subst(cx, substs_1, selfty)
-          }
-          _ {
-              t
-          }
-        }
-    }
-}
-
-// Mangles an iface method ty to make its self type conform to the self type
-// of a specific impl or bounded type parameter. This is rather involved
-// because the type parameters of ifaces and impls are not required to line up
-// (an impl can have less or more parameters than the iface it implements), so
-// some mangling of the substituted types is required.
-fn fixup_self_param(fcx: @fn_ctxt, mty: ty::t, m_substs: ty::substs,
-                    selfty: ty::t, sp: span) -> ty::t {
-    if !ty::type_has_vars(mty) { ret mty; }
-
-    let tcx = fcx.ccx.tcx;
-    ty::fold_ty(tcx, mty) {|t|
-        alt ty::get(t).struct {
-          ty::ty_self(substs) if ty::substs_is_noop(substs) {
-            selfty
-          }
-          ty::ty_self(substs) {
-            // Move the substs into the type param system of the context.
-            let tps_p = vec::map(substs.tps) {|t|
-                let f = fixup_self_param(fcx, t, m_substs, selfty, sp);
-                ty::subst(tcx, m_substs, f)
-            };
-            let substs_p = {self_r: substs.self_r, tps: tps_p};
-            let self_p = ty::mk_self(tcx, substs_p);
-            let m_self = ty::mk_self(tcx, m_substs);
-            demand::suptype(fcx, sp, m_self, self_p);
-            selfty
-          }
-          _ { t }
-        }
-    }
-}
-
-// Replaces all occurrences of the `self` region with `with_region`.  Note
-// that we descend into `fn()` types here, because `fn()` does not bind the
-// `self` region.
-fn replace_self_region(tcx: ty::ctxt, with_region: ty::region,
-                       ty: ty::t) -> ty::t {
-
-   ty::fold_region(tcx, ty) {|r, _under_rptr|
-       alt r {
-           ty::re_bound(re_self) { with_region }
-           _ { r }
-       }
-   }
 }
 
 // Item collection - a pair of bootstrap passes:
@@ -1932,7 +1843,7 @@ mod writeback {
 
     fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
        option<ty::t> {
-        if !ty::type_has_vars(typ) { ret some(typ); }
+        if !ty::type_needs_infer(typ) { ret some(typ); }
         alt infer::resolve_deep(fcx.infcx, typ, true) {
           result::ok(new_type) { ret some(new_type); }
           result::err(e) {
@@ -2571,7 +2482,8 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
                       {self_r: alt rp {
                           ast::rp_self { some(fcx.next_region_var()) }
                           ast::rp_none { none }},
-                      tps: ty::ty_params_to_tys(tcx, ts)})}
+                       self_ty: none,
+                       tps: ty::ty_params_to_tys(tcx, ts)})}
           }
           _ { tcx.sess.bug("impl_self_ty: unbound item or item that \
                doesn't have a self_ty"); }
@@ -2589,7 +2501,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
     };
     let tps = fcx.next_ty_vars(n_tps);
 
-    let substs = {self_r: self_r, tps: tps};
+    let substs = {self_r: self_r, self_ty: none, tps: tps};
     let substd_ty = ty::subst(tcx, substs, raw_ty);
     {substs: substs, ty: substd_ty}
 }
@@ -2657,8 +2569,18 @@ impl methods for lookup {
               }
 
               some(pos) {
+                // Replace any appearance of `self` with the type of the
+                // generic parameter itself.  Note that this is the only case
+                // where this replacement is necessary: in all other cases, we
+                // are either invoking a method directly from an impl or class
+                // (where the self type is not permitted), or from a iface
+                // type (in which case methods that refer to self are not
+                // permitted).
+                let substs = {self_ty: some(self.self_ty)
+                              with bound_substs};
+
                 ret some(self.write_mty_from_m(
-                    some(self.self_ty), bound_substs, ifce_methods[pos],
+                    substs, ifce_methods[pos],
                     method_param(iid, pos, n, iface_bnd_idx)));
               }
             }
@@ -2675,23 +2597,28 @@ impl methods for lookup {
 
             let m_fty = ty::mk_fn(self.tcx(), m.fty);
 
-            if ty::type_has_vars(m_fty) {
-                self.tcx().sess.span_fatal(
+            if ty::type_has_self(m_fty) {
+                self.tcx().sess.span_err(
                     self.expr.span,
                     "can not call a method that contains a \
                      self type through a boxed iface");
             }
 
             if (*m.tps).len() > 0u {
-                self.tcx().sess.span_fatal(
+                self.tcx().sess.span_err(
                     self.expr.span,
                     "can not call a generic method through a \
                      boxed iface");
             }
 
+            // Note: although it is illegal to invoke a method that uses self
+            // through a iface instance, we use a dummy subst here so that we
+            // can soldier on with the compilation.
+            let substs = {self_ty: some(self.self_ty)
+                          with iface_substs};
+
             ret some(self.write_mty_from_m(
-                none, iface_substs, m,
-                method_iface(did, i)));
+                substs, m, method_iface(did, i)));
         }
 
         ret none;
@@ -2717,7 +2644,7 @@ impl methods for lookup {
                 self.tcx(), did, self.m_name, self.expr.span);
 
             ret some(self.write_mty_from_m(
-                none, class_substs, m,
+                class_substs, m,
                 method_static(m_declared)));
         }
 
@@ -2813,7 +2740,7 @@ impl methods for lookup {
                 let (self_substs, n_tps, did) = results[0];
                 let fty = self.ty_from_did(did);
                 ret some(self.write_mty_from_fty(
-                    none, self_substs, n_tps, fty,
+                    self_substs, n_tps, fty,
                     method_static(did)));
             }
         }
@@ -2821,8 +2748,7 @@ impl methods for lookup {
         ret none;
     }
 
-    fn write_mty_from_m(self_ty_sub: option<ty::t>,
-                        self_substs: ty::substs,
+    fn write_mty_from_m(self_substs: ty::substs,
                         m: ty::method,
                         origin: method_origin) -> method_origin {
         let tcx = self.fcx.ccx.tcx;
@@ -2831,18 +2757,16 @@ impl methods for lookup {
         // a.b has a protocol like fn@() (perhaps eventually fn&()):
         let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
 
-        ret self.write_mty_from_fty(self_ty_sub, self_substs,
-                                    (*m.tps).len(), fty, origin);
+        ret self.write_mty_from_fty(self_substs, (*m.tps).len(),
+                                    fty, origin);
     }
 
-    fn write_mty_from_fty(self_ty_sub: option<ty::t>,
-                          self_substs: ty::substs,
+    fn write_mty_from_fty(self_substs: ty::substs,
                           n_tps_m: uint,
                           fty: ty::t,
                           origin: method_origin) -> method_origin {
 
         let tcx = self.fcx.ccx.tcx;
-        let has_self = ty::type_has_vars(fty);
 
         // Here I will use the "c_" prefix to refer to the method's
         // owner.  You can read it as class, but it may also be an iface.
@@ -2867,25 +2791,10 @@ impl methods for lookup {
             }
         };
 
-        let all_substs = {self_r: self_substs.self_r,
-                          tps: self_substs.tps + m_substs};
+        let all_substs = {tps: self_substs.tps + m_substs
+                          with self_substs};
+
         self.fcx.write_ty_substs(self.node_id, fty, all_substs);
-
-        // n.b. This treatment of self is risky but ok.  As a rule of thumb,
-        // one ought to substitute all type parameters at once, and we are not
-        // doing so here.  The danger you open up has to do with the
-        // possibility that one of the substs in `all_substs` maps to a self
-        // type.  However, right now I think it is safe because the types in
-        // `all_substs` may not refer to self.  This may not stay true
-        // forever, though.
-
-        if has_self && !option::is_none(self_ty_sub) {
-            let fty = self.fcx.node_ty(self.node_id);
-            let fty = fixup_self_param(
-                self.fcx, fty, all_substs, self_ty_sub.get(),
-                self.expr.span);
-            self.fcx.write_ty(self.node_id, fty);
-        }
 
         ret origin;
     }
@@ -4697,13 +4606,13 @@ mod vtable {
     }
 
     fn fixup_substs(fcx: @fn_ctxt, sp: span,
-                    substs: ty::substs) -> ty::substs {
+                    id: ast::def_id, substs: ty::substs) -> ty::substs {
         let tcx = fcx.ccx.tcx;
         // use a dummy type just to package up the substs that need fixing up
-        let t = ty::mk_self(tcx, substs);
+        let t = ty::mk_iface(tcx, id, substs);
         let t_f = fixup_ty(fcx, sp, t);
         alt check ty::get(t_f).struct {
-          ty::ty_self(substs_f) { substs_f }
+          ty::ty_iface(_, substs_f) { substs_f }
         }
     }
 
@@ -4754,7 +4663,7 @@ mod vtable {
             relate_iface_tys(fcx, sp, iface_ty, ty);
             if !allow_unsafe {
                 for vec::each(*ty::iface_methods(tcx, did)) {|m|
-                    if ty::type_has_vars(ty::mk_fn(tcx, m.fty)) {
+                    if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
                         tcx.sess.span_err(
                             sp, "a boxed iface with self types may not be \
                                  passed as a bounded type");
@@ -4804,7 +4713,7 @@ mod vtable {
 
                     // recursively process the bounds
                     let iface_tps = iface_substs.tps;
-                    let substs_f = fixup_substs(fcx, sp, substs);
+                    let substs_f = fixup_substs(fcx, sp, iface_id, substs);
                     connect_iface_tps(fcx, sp, substs_f.tps,
                                       iface_tps, im.did);
                     let subres = lookup_vtables(fcx, isc, sp,

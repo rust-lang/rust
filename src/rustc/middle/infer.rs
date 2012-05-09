@@ -630,12 +630,15 @@ impl methods for resolve_state {
     fn resolve1(typ: ty::t) -> ty::t {
         #debug("Resolve1(%s)", typ.to_str(self.infcx));
         indent(fn&() -> ty::t {
-            if !ty::get(typ).has_vars { ret typ; }
+            if !ty::type_needs_infer(typ) { ret typ; }
 
-            let tb = ty::get(typ);
-            alt tb.struct {
-              ty::ty_var(vid) { self.resolve_ty_var(vid) }
-              _ if !tb.has_regions && !self.deep { typ }
+            alt ty::get(typ).struct {
+              ty::ty_var(vid) {
+                self.resolve_ty_var(vid)
+              }
+              _ if !ty::type_has_regions(typ) && !self.deep {
+                typ
+              }
               _ {
                 ty::fold_regions_and_ty(
                     self.infcx.tcx, typ,
@@ -935,6 +938,7 @@ iface combine {
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]>;
+    fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>>;
     fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs>;
     fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty>;
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
@@ -982,8 +986,10 @@ fn super_substs<C:combine>(
     }
 
     self.tps(a.tps, b.tps).chain { |tps|
-        eq_opt_regions(self.infcx(), a.self_r, b.self_r).chain { |self_r|
-            ok({self_r: self_r, tps: tps})
+        self.self_tys(a.self_ty, b.self_ty).chain { |self_ty|
+            eq_opt_regions(self.infcx(), a.self_r, b.self_r).chain { |self_r|
+                ok({self_r: self_r, self_ty: self_ty, tps: tps})
+            }
         }
     }
 }
@@ -995,12 +1001,38 @@ fn super_tps<C:combine>(
     // (otherwise the type system would be unsound).  In the
     // future we could allow type parameters to declare a
     // variance.
+
     if check vec::same_length(as, bs) {
         iter2(as, bs) {|a, b| self.infcx().eq_tys(a, b) }.then {||
             ok(as)
         }
     } else {
         err(ty::terr_ty_param_size(bs.len(), as.len()))
+    }
+}
+
+fn super_self_tys<C:combine>(
+    self: C, a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+
+    // Note: the self type parameter is (currently) always treated as
+    // *invariant* (otherwise the type system would be unsound).
+
+    alt (a, b) {
+      (none, none) {
+        ok(none)
+      }
+      (some(a), some(b)) {
+        self.infcx().eq_tys(a, b).then {||
+            ok(some(a))
+        }
+      }
+      (none, some(_)) |
+      (some(_), none) {
+        // I think it should never happen that we unify two substs and
+        // one of them has a self_ty and one doesn't...? I could be
+        // wrong about this.
+        err(ty::terr_self_substs)
+      }
     }
 }
 
@@ -1374,6 +1406,10 @@ impl of combine for sub {
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]> {
         super_tps(self, as, bs)
     }
+
+    fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+        super_self_tys(self, a, b)
+    }
 }
 
 impl of combine for lub {
@@ -1548,6 +1584,10 @@ impl of combine for lub {
 
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]> {
         super_tps(self, as, bs)
+    }
+
+    fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+        super_self_tys(self, a, b)
     }
 }
 
@@ -1738,6 +1778,10 @@ impl of combine for glb {
 
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]> {
         super_tps(self, as, bs)
+    }
+
+    fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+        super_self_tys(self, a, b)
     }
 }
 

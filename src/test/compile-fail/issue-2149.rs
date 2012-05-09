@@ -1,7 +1,4 @@
-iface monad<A> {
-    fn bind<B>(fn(A) -> self<B>);
-}
-impl monad<A> of monad<A> for [A] {
+impl monad<A> for [A] {
     fn bind<B>(f: fn(A) -> [B]) {
         let mut r = fail;
         for self.each {|elt| r += f(elt); }

@@ -35,7 +35,7 @@ export expr_ty;
 export expr_ty_params_and_ty;
 export expr_is_lval;
 export field_ty;
-export fold_ty, fold_sty_to_ty, fold_region, fold_regions, fold_ty_var;
+export fold_ty, fold_sty_to_ty, fold_region, fold_regions;
 export fold_regions_and_ty, walk_regions_and_ty;
 export field;
 export field_idx;
@@ -61,7 +61,7 @@ export sequence_element_type;
 export sort_methods;
 export stmt_node_id;
 export sty;
-export subst, subst_tps, substs_is_noop, substs;
+export subst, subst_tps, substs_is_noop, substs_to_str, substs;
 export t;
 export new_ty_hash;
 export enum_variants, substd_enum_variants;
@@ -97,10 +97,11 @@ export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var, type_is_var;
-export ty_self, mk_self;
+export ty_self, mk_self, type_has_self;
 export region, bound_region;
-export get, type_has_params, type_has_vars, type_has_regions;
+export get, type_has_params, type_needs_infer, type_has_regions;
 export type_has_resources, type_id;
+export tbox_has_flag;
 export ty_var_id;
 export ty_to_def_id;
 export ty_fn_args;
@@ -230,12 +231,21 @@ type ctxt =
       borrowings: hashmap<ast::node_id, ()>,
       normalized_cache: hashmap<t, t>};
 
+enum tbox_flag {
+    has_params = 1,
+    has_self = 2,
+    needs_infer = 4,
+    has_regions = 8,
+    has_resources = 16,
+
+    // a meta-flag: subst may be required if the type has parameters, a self
+    // type, or references bound regions
+    needs_subst = 1 | 2 | 8
+}
+
 type t_box = @{struct: sty,
                id: uint,
-               has_params: bool,
-               has_vars: bool,
-               has_regions: bool,
-               has_resources: bool,
+               flags: uint,
                o_def_id: option<ast::def_id>};
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
@@ -253,10 +263,14 @@ pure fn get(t: t) -> t_box unsafe {
     t3
 }
 
-fn type_has_params(t: t) -> bool { get(t).has_params }
-fn type_has_vars(t: t) -> bool { get(t).has_vars }
-fn type_has_regions(t: t) -> bool { get(t).has_regions }
-fn type_has_resources(t: t) -> bool { get(t).has_resources }
+fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
+    (tb.flags & (flag as uint)) != 0u
+}
+fn type_has_params(t: t) -> bool { tbox_has_flag(get(t), has_params) }
+fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
+fn type_needs_infer(t: t) -> bool { tbox_has_flag(get(t), needs_infer) }
+fn type_has_regions(t: t) -> bool { tbox_has_flag(get(t), has_regions) }
+fn type_has_resources(t: t) -> bool { tbox_has_flag(get(t), has_resources) }
 fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
 fn type_id(t: t) -> uint { get(t).id }
 
@@ -301,6 +315,7 @@ type opt_region = option<region>;
 // `&self.T` within the type and report an error.
 type substs = {
     self_r: opt_region,
+    self_ty: option<ty::t>,
     tps: [t]
 };
 
@@ -331,7 +346,7 @@ enum sty {
 
     ty_var(ty_vid), // type variable during typechecking
     ty_param(uint, def_id), // type parameter
-    ty_self(substs), // interface method self type
+    ty_self, // special, implicit `self` type parameter
 
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
@@ -371,7 +386,8 @@ enum type_err {
     terr_regions_differ(region, region),
     terr_vstores_differ(terr_vstore_kind, vstore, vstore),
     terr_in_field(@type_err, str),
-    terr_sorts(t, t)
+    terr_sorts(t, t),
+    terr_self_substs
 }
 
 enum param_bound {
@@ -480,95 +496,65 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       some(t) { unsafe { ret unsafe::reinterpret_cast(t); } }
       _ {}
     }
-    let mut has_params = false, has_vars = false, has_regions = false,
-    has_resources = false;
-    fn derive_flags(&has_params: bool, &has_vars: bool, &has_regions: bool,
-                    &has_resources: bool, tt: t) {
-        let t = get(tt);
-        has_params |= t.has_params;
-        has_vars |= t.has_vars;
-        has_regions |= t.has_regions;
-        has_resources |= t.has_resources;
-    }
-    fn derive_rflags(&has_vars: bool, &has_regions: bool, r: region) {
-        has_regions = true;
-        alt r {
-          ty::re_var(_) { has_vars = true; }
-          _ { }
+    let mut flags = 0u;
+    fn rflags(r: region) -> uint {
+        (has_regions as uint) | {
+            alt r {
+              ty::re_var(_) {needs_infer as uint}
+              _ {0u}
+            }
         }
     }
-    fn derive_sflags(&has_params: bool, &has_vars: bool, &has_regions: bool,
-                     &has_resources: bool, substs: substs) {
-        for substs.tps.each {|tt|
-            derive_flags(has_params, has_vars, has_regions,
-                         has_resources, tt);
-        }
-        substs.self_r.iter { |r| derive_rflags(has_vars, has_regions, r) }
+    fn sflags(substs: substs) -> uint {
+        let mut f = 0u;
+        for substs.tps.each {|tt| f |= get(tt).flags; }
+        substs.self_r.iter { |r| f |= rflags(r) }
+        ret f;
     }
     alt st {
       ty_estr(vstore_slice(r)) {
-        derive_rflags(has_vars, has_regions, r);
+        flags |= rflags(r);
       }
       ty_evec(mt, vstore_slice(r)) {
-        derive_rflags(has_vars, has_regions, r);
-        derive_flags(has_params, has_vars, has_regions,
-                     has_resources, mt.ty);
+        flags |= rflags(r);
+        flags |= get(mt.ty).flags;
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_str | ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box {}
-      ty_param(_, _) { has_params = true; }
-      ty_var(_) | ty_self(_) { has_vars = true; }
+      ty_param(_, _) { flags |= has_params as uint; }
+      ty_var(_) { flags |= needs_infer as uint; }
+      ty_self { flags |= has_self as uint; }
       ty_enum(_, substs) | ty_class(_, substs) | ty_iface(_, substs) {
-        derive_sflags(has_params, has_vars, has_regions,
-                      has_resources, substs);
+        flags |= sflags(substs);
       }
       ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_evec(m, _) | ty_ptr(m) {
-        derive_flags(has_params, has_vars, has_regions,
-                     has_resources, m.ty);
+        flags |= get(m.ty).flags;
       }
       ty_rptr(r, m) {
-        derive_rflags(has_vars, has_regions, r);
-        derive_flags(has_params, has_vars, has_regions,
-                     has_resources, m.ty);
+        flags |= rflags(r);
+        flags |= get(m.ty).flags;
       }
       ty_rec(flds) {
-        for flds.each {|f|
-          derive_flags(has_params, has_vars, has_regions,
-                       has_resources, f.mt.ty);
-        }
+        for flds.each {|f| flags |= get(f.mt.ty).flags; }
       }
       ty_tup(ts) {
-        for ts.each {|tt| derive_flags(has_params, has_vars,
-                                       has_regions, has_resources, tt); }
+        for ts.each {|tt| flags |= get(tt).flags; }
       }
       ty_fn(f) {
-        for f.inputs.each {|a|
-          derive_flags(has_params, has_vars, has_regions,
-                       has_resources, a.ty);
-        }
-        derive_flags(has_params, has_vars, has_regions,
-                     has_resources, f.output);
+        for f.inputs.each {|a| flags |= get(a.ty).flags; }
+        flags |= get(f.output).flags;
       }
       ty_res(_, tt, substs) {
-        has_resources = true;
-        derive_flags(has_params, has_vars, has_regions,
-                     has_resources, tt);
-        derive_sflags(has_params, has_vars, has_regions,
-                      has_resources, substs);
+        flags |= (has_resources as uint);
+        flags |= get(tt).flags;
+        flags |= sflags(substs);
       }
       ty_constr(tt, _) {
-        derive_flags(has_params, has_vars, has_regions,
-                     has_resources, tt);
+        flags |= get(tt).flags;
       }
     }
-    let t = @{struct: st,
-              id: cx.next_id,
-              has_params: has_params,
-              has_vars: has_vars,
-              has_regions: has_regions,
-              has_resources: has_resources,
-              o_def_id: o_def_id};
+    let t = @{struct: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
     cx.interner.insert(key, t);
     cx.next_id += 1u;
     unsafe { unsafe::reinterpret_cast(t) }
@@ -660,7 +646,7 @@ fn mk_res(cx: ctxt, did: ast::def_id,
 
 fn mk_var(cx: ctxt, v: ty_vid) -> t { mk_t(cx, ty_var(v)) }
 
-fn mk_self(cx: ctxt, substs: substs) -> t { mk_t(cx, ty_self(substs)) }
+fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
 fn mk_param(cx: ctxt, n: uint, k: def_id) -> t { mk_t(cx, ty_param(n, k)) }
 
@@ -699,14 +685,15 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     if !f(ty) { ret; }
     alt get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_estr(_) | ty_type | ty_opaque_box |
-      ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
+      ty_str | ty_estr(_) | ty_type | ty_opaque_box | ty_self |
+      ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {
+      }
       ty_box(tm) | ty_vec(tm) | ty_evec(tm, _) |
       ty_ptr(tm) | ty_rptr(_, tm) {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, substs) | ty_class(_, substs) |
-      ty_iface(_, substs) | ty_self(substs) {
+      ty_iface(_, substs) {
         for substs.tps.each {|subty| maybe_walk_ty(subty, f); }
       }
       ty_rec(fields) {
@@ -733,6 +720,7 @@ fn fold_sty_to_ty(tcx: ty::ctxt, sty: sty, foldop: fn(t) -> t) -> t {
 fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: substs, fldop: fn(t) -> t) -> substs {
         {self_r: substs.self_r,
+         self_ty: substs.self_ty.map { |t| fldop(t) },
          tps: substs.tps.map { |t| fldop(t) }}
     }
 
@@ -757,9 +745,6 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       }
       ty_iface(did, substs) {
         ty_iface(did, fold_substs(substs, fldop))
-      }
-      ty_self(substs) {
-        ty_self(fold_substs(substs, fldop))
       }
       ty_rec(fields) {
         let new_fields = vec::map(fields) {|fl|
@@ -796,7 +781,7 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box | ty_var(_) | ty_param(_, _) {
+      ty_opaque_box | ty_var(_) | ty_param(*) | ty_self {
         sty
       }
     }
@@ -806,15 +791,6 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
 fn fold_ty(cx: ctxt, t0: t, fldop: fn(t) -> t) -> t {
     let sty = fold_sty(get(t0).struct) {|t| fold_ty(cx, t, fldop) };
     fldop(mk_t(cx, sty))
-}
-
-fn fold_ty_var(cx: ctxt, t0: t, fldop: fn(ty_vid) -> t) -> t {
-    let tb = get(t0);
-    if !tb.has_vars { ret t0; }
-    alt tb.struct {
-      ty_var(id) { fldop(id) }
-      sty { fold_sty_to_ty(cx, sty) {|t| fold_ty_var(cx, t, fldop) } }
-    }
 }
 
 fn walk_regions_and_ty(
@@ -845,6 +821,7 @@ fn fold_regions_and_ty(
         fldt: fn(t: t) -> t) -> substs {
 
         {self_r: substs.self_r.map { |r| fldr(r) },
+         self_ty: substs.self_ty.map { |t| fldt(t) },
          tps: substs.tps.map { |t| fldt(t) }}
     }
 
@@ -872,9 +849,6 @@ fn fold_regions_and_ty(
       }
       ty_iface(def_id, substs) {
         ty::mk_iface(cx, def_id, fold_substs(substs, fldr, fldt))
-      }
-      ty_self(substs) {
-        ty::mk_self(cx, fold_substs(substs, fldr, fldt))
       }
       ty_res(def_id, t, substs) {
         ty::mk_res(cx, def_id, fldt(t),
@@ -916,7 +890,7 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
     fn do_fold(cx: ctxt, t0: t, under_r: bool,
                fldop: fn(region, bool) -> region) -> t {
         let tb = get(t0);
-        if !tb.has_regions { ret t0; }
+        if !tbox_has_flag(tb, has_regions) { ret t0; }
         alt tb.struct {
           ty_rptr(r, {ty: t1, mutbl: m}) {
             let m_r = fldop(r, under_r);
@@ -951,7 +925,7 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
 fn subst_tps(cx: ctxt, tps: [t], typ: t) -> t {
     if tps.len() == 0u { ret typ; }
     let tb = ty::get(typ);
-    if !tb.has_params { ret typ; }
+    if !tbox_has_flag(tb, has_params) { ret typ; }
     alt tb.struct {
       ty_param(idx, _) { tps[idx] }
       sty { fold_sty_to_ty(cx, sty) {|t| subst_tps(cx, tps, t) } }
@@ -959,12 +933,15 @@ fn subst_tps(cx: ctxt, tps: [t], typ: t) -> t {
 }
 
 fn substs_is_noop(substs: substs) -> bool {
-    substs.tps.len() == 0u && substs.self_r.is_none()
+    substs.tps.len() == 0u &&
+        substs.self_r.is_none() &&
+        substs.self_ty.is_none()
 }
 
 fn substs_to_str(cx: ctxt, substs: substs) -> str {
-    #fmt["substs(self_r=%s, tps=%?)",
+    #fmt["substs(self_r=%s, self_ty=%s, tps=%?)",
          substs.self_r.map_default("none", { |r| region_to_str(cx, r) }),
+         substs.self_ty.map_default("none", { |t| ty_to_str(cx, t) }),
          substs.tps.map { |t| ty_to_str(cx, t) }]
 }
 
@@ -985,20 +962,17 @@ fn subst(cx: ctxt,
                 substs: substs,
                 typ: t) -> t {
         let tb = get(typ);
-        if !tb.has_params && !tb.has_regions { ret typ; }
+        if !tbox_has_flag(tb, needs_subst) { ret typ; }
         alt tb.struct {
-          ty_param(idx, _) { substs.tps[idx] }
+          ty_param(idx, _) {substs.tps[idx]}
+          ty_self {substs.self_ty.get()}
           _ {
             fold_regions_and_ty(
                 cx, typ,
                 { |r|
                     alt r {
-                      re_bound(br_self) {
-                        option::get(substs.self_r)
-                      }
-                      _ {
-                        r
-                      }
+                      re_bound(br_self) {substs.self_r.get()}
+                      _ {r}
                     }
                 },
                 { |t| do_subst(cx, substs, t) },
@@ -1406,14 +1380,14 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
-      // Resources are always noncopyable.
       ty_res(did, inner, tps) { kind_noncopyable }
       ty_param(_, did) {
           param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
-      ty_var(_) { fail "FIXME"; }
-      ty_self(_) { kind_noncopyable }
+      ty_self { kind_noncopyable }
+
+      ty_var(_) { cx.sess.bug("Asked to compute kind of a type variable"); }
     };
 
     cx.kind_cache.insert(ty, result);
@@ -1459,7 +1433,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_fn(_) |
           ty_var(_) |
           ty_param(_, _) |
-          ty_self(_) |
+          ty_self |
           ty_type |
           ty_opaque_box |
           ty_opaque_closure_ptr(_) |
@@ -1850,9 +1824,7 @@ fn hash_type_structure(st: sty) -> uint {
       }
       ty_var(v) { hash_uint(30u, v.to_uint()) }
       ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
-      ty_self(substs) {
-        hash_substs(28u, substs)
-      }
+      ty_self { 28u }
       ty_type { 32u }
       ty_bot { 34u }
       ty_ptr(mt) { hash_subty(35u, mt.ty) }
@@ -2081,7 +2053,7 @@ fn sort_methods(meths: [method]) -> [method] {
 
 fn occurs_check(tcx: ctxt, sp: span, vid: ty_vid, rt: t) {
     // Fast path
-    if !type_has_vars(rt) { ret; }
+    if !type_needs_infer(rt) { ret; }
 
     // Occurs check!
     if vec::contains(vars_in_type(rt), vid) {
@@ -2190,7 +2162,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> str {
       ty_tup(_) { "tuple" }
       ty_var(_) { "variable" }
       ty_param(_, _) { "type parameter" }
-      ty_self(_) { "self" }
+      ty_self { "self" }
       ty_constr(t, _) { ty_sort_str(cx, t) }
     }
 }
@@ -2273,6 +2245,9 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
       }
       terr_sorts(exp, act) {
         ret #fmt("%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act));
+      }
+      terr_self_substs {
+        ret "inconsistent self substitution"; // XXX this is more of a bug
       }
     }
 }
@@ -2730,7 +2705,9 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             alt r.self_r {
               some(_) {
                 // This enum has a self region. Get rid of it
-                mk_enum(cx, did, {self_r: none, tps: r.tps })
+                mk_enum(cx, did, {self_r: none,
+                                  self_ty: none,
+                                  tps: r.tps})
               }
               none { t }
             }

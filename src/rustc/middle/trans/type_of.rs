@@ -44,7 +44,7 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t) -> TypeRef {
 }
 
 fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
-    assert !ty::type_has_vars(t);
+    assert !ty::type_needs_infer(t);
 
     let t_norm = ty::normalize_ty(cx.tcx, t);
     if t != t_norm {
@@ -62,7 +62,7 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 }
 
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
-    assert !ty::type_has_vars(t);
+    assert !ty::type_needs_infer(t);
 
     #debug("type_of %?: %?", t, ty::get(t));
 
@@ -149,8 +149,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             };
             T_struct(tys)
           }
-          ty::ty_self(_) { cx.tcx.sess.unimpl("type_of: ty_self \
-                                               not implemented"); }
+          ty::ty_self { cx.tcx.sess.unimpl("type_of: ty_self"); }
           ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }
         }
     };

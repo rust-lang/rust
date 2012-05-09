@@ -97,7 +97,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         let modestr = alt canon_mode(cx, mode) {
           ast::infer(_) { "" }
           ast::expl(m) {
-            if !ty::type_has_vars(ty) &&
+            if !ty::type_needs_infer(ty) &&
                 m == ty::default_arg_mode_for_ty(ty) {
                 ""
             } else {
@@ -185,9 +185,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
-      ty_self(substs) {
-        parameterized(cx, "self", substs.self_r, substs.tps)
-      }
+      ty_self { "self" }
       ty_enum(did, substs) | ty_res(did, _, substs) | ty_class(did, substs) {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);

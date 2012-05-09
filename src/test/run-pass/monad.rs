@@ -1,8 +1,4 @@
-iface monad<A> {
-    fn bind<B>(fn(A) -> self<B>) -> self<B>;
-}
-
-impl <A> of monad<A> for [A] {
+impl monad<A> for [A] {
     fn bind<B>(f: fn(A) -> [B]) -> [B] {
         let mut r = [];
         for self.each {|elt| r += f(elt); }
@@ -10,7 +6,7 @@ impl <A> of monad<A> for [A] {
     }
 }
 
-impl <A> of monad<A> for option<A> {
+impl monad<A> for option<A> {
     fn bind<B>(f: fn(A) -> option<B>) -> option<B> {
         alt self {
           some(a) { f(a) }

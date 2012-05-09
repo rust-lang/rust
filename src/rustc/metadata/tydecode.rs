@@ -199,12 +199,16 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
 fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
     let self_r = parse_opt(st) {|| parse_region(st) };
 
+    let self_ty = parse_opt(st) {|| parse_ty(st, conv) };
+
     assert next(st) == '[';
     let mut params: [ty::t] = [];
     while peek(st) != ']' { params += [parse_ty(st, conv)]; }
     st.pos = st.pos + 1u;
 
-    ret {self_r: self_r, tps: params};
+    ret {self_r: self_r,
+         self_ty: self_ty,
+         tps: params};
 }
 
 fn parse_bound_region(st: @pstate) -> ty::bound_region {
@@ -298,10 +302,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret ty::mk_param(st.tcx, parse_int(st) as uint, did);
       }
       's' {
-        assert next(st) == '[';
-        let substs = parse_substs(st, conv);
-        assert next(st) == ']';
-        ret ty::mk_self(st.tcx, substs);
+        ret ty::mk_self(st.tcx);
       }
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, conv)); }
       '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, conv)); }
