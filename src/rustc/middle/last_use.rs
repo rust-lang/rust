@@ -103,7 +103,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         leave_fn(cx);
       }
       expr_break { add_block_exit(cx, lp); }
-      expr_while(_, _) | expr_do_while(_, _) | expr_loop(_) {
+      expr_while(_, _) | expr_loop(_) {
         visit_block(lp, cx) {|| visit::visit_expr(ex, cx, v);}
       }
       expr_alt(input, arms, _) {

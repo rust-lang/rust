@@ -975,14 +975,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         space(s.s);
         print_block(s, blk);
       }
-      ast::expr_do_while(blk, expr) {
-        head(s, "do");
-        space(s.s);
-        print_block(s, blk);
-        space(s.s);
-        word_space(s, "while");
-        print_expr(s, expr);
-      }
       ast::expr_alt(expr, arms, mode) {
         cbox(s, alt_indent_unit);
         ibox(s, 4u);

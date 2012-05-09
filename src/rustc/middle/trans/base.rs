@@ -1761,23 +1761,6 @@ fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
     ret next_cx;
 }
 
-fn trans_do_while(cx: block, body: ast::blk, cond: @ast::expr) ->
-    block {
-    let _icx = cx.insn_ctxt("trans_do_while");
-    let next_cx = sub_block(cx, "next");
-    let body_cx =
-        loop_scope_block(cx, cont_self, next_cx,
-                                  "do-while loop body", body.span);
-    let body_end = trans_block(body_cx, body, ignore);
-    let cond_cx = scope_block(body_cx, "do-while cond");
-    cleanup_and_Br(body_end, body_cx, cond_cx.llbb);
-    let cond_res = trans_temp_expr(cond_cx, cond);
-    let cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
-    CondBr(cond_bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
-    Br(cx, body_cx.llbb);
-    ret next_cx;
-}
-
 fn trans_loop(cx:block, body: ast::blk) -> block {
     let _icx = cx.insn_ctxt("trans_loop");
     let next_cx = sub_block(cx, "next");
@@ -3284,10 +3267,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       ast::expr_loop(body) {
         assert dest == ignore;
         ret trans_loop(bcx, body);
-      }
-      ast::expr_do_while(body, cond) {
-        assert dest == ignore;
-        ret trans_do_while(bcx, body, cond);
       }
       ast::expr_assign(dst, src) {
         assert dest == ignore;
