@@ -384,6 +384,32 @@ fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
     ret {box: box, body: body};
 }
 
+fn malloc_unique_raw(bcx: block, t: ty::t) -> ValueRef {
+    let _icx = bcx.insn_ctxt("malloc_unique_box_raw");
+    let ccx = bcx.ccx();
+
+    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
+    // wants.
+    let box_ptr = ty::mk_imm_uniq(ccx.tcx, t);
+    let llty = type_of(ccx, box_ptr);
+
+    // Get the tydesc for the body:
+    let mut static_ti = none;
+    let lltydesc = get_tydesc(ccx, t, static_ti);
+    lazily_emit_all_tydesc_glue(ccx, static_ti);
+
+    // Allocate space:
+    let rval = Call(bcx, ccx.upcalls.exchange_malloc, [lltydesc]);
+    ret PointerCast(bcx, rval, llty);
+}
+
+fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
+    let _icx = bcx.insn_ctxt("malloc_unique_box");
+    let box = malloc_unique_raw(bcx, t);
+    let body = GEPi(bcx, box, [0u, abi::box_field_body]);
+    ret {box: box, body: body};
+}
+
 // Type descriptor and type glue stuff
 
 fn get_tydesc_simple(ccx: @crate_ctxt, t: ty::t) -> ValueRef {
