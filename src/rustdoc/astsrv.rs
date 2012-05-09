@@ -123,34 +123,8 @@ fn build_ctxt(sess: session::session, ast: @ast::crate,
     }
 }
 
-// FIXME: this whole structure should not be duplicated here. makes it
-// painful to add or remove options.
 fn build_session() -> (session::session, @mut bool) {
-    let sopts: @session::options = @{
-        crate_type: session::lib_crate,
-        static: false,
-        optimize: 0u,
-        debuginfo: false,
-        extra_debuginfo: false,
-        verify: false,
-        lint_opts: [],
-        save_temps: false,
-        stats: false,
-        time_passes: false,
-        count_llvm_insns: false,
-        time_llvm_passes: false,
-        output_type: link::output_type_exe,
-        addl_lib_search_paths: [],
-        maybe_sysroot: none,
-        target_triple: driver::host_triple(),
-        cfg: [],
-        test: false,
-        parse_only: false,
-        no_trans: false,
-        no_asm_comments: false,
-        debug_rustc: false,
-    };
-
+    let sopts: @session::options = session::basic_options();
     let codemap = codemap::new_codemap();
     let error_handlers = build_error_handlers(codemap);
     let {emitter, span_handler, ignore_errors} = error_handlers;

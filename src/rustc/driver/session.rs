@@ -6,6 +6,7 @@ import syntax::ast::{int_ty, uint_ty, float_ty};
 import syntax::parse::parse_sess;
 import util::filesearch;
 import back::target_strs;
+import back::link;
 import middle::lint;
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
@@ -110,6 +111,34 @@ impl session for session {
     }
     fn diagnostic() -> diagnostic::span_handler {
         self.span_diagnostic
+    }
+}
+
+#[doc = "Some reasonable defaults"]
+fn basic_options() -> @options {
+    @{
+        crate_type: session::lib_crate,
+        static: false,
+        optimize: 0u,
+        debuginfo: false,
+        extra_debuginfo: false,
+        verify: false,
+        lint_opts: [],
+        save_temps: false,
+        stats: false,
+        time_passes: false,
+        count_llvm_insns: false,
+        time_llvm_passes: false,
+        output_type: link::output_type_exe,
+        addl_lib_search_paths: [],
+        maybe_sysroot: none,
+        target_triple: driver::host_triple(),
+        cfg: [],
+        test: false,
+        parse_only: false,
+        no_trans: false,
+        no_asm_comments: false,
+        debug_rustc: false,
     }
 }
 
