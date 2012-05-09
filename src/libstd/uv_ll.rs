@@ -1318,7 +1318,7 @@ mod test {
         assert str::contains(msg_from_server, server_resp_msg);
     }
 
-    // don't run this test on fbsd or 32bit linux
+    // FIXME don't run on fbsd or linux 32 bit(#2064)
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
