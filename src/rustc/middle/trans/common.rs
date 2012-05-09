@@ -686,6 +686,15 @@ fn T_opaque_box_ptr(cx: @crate_ctxt) -> TypeRef {
     ret T_box_ptr(T_opaque_box(cx));
 }
 
+fn T_unique(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
+    ret T_struct(T_box_header_fields(cx) + [t]);
+}
+
+fn T_unique_ptr(t: TypeRef) -> TypeRef {
+    const unique_addrspace: uint = 0u;
+    ret llvm::LLVMPointerType(t, unique_addrspace as c_uint);
+}
+
 fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
     ret T_struct([cx.int_type]); // Refcount
 

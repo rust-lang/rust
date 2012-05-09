@@ -91,7 +91,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_evec(mt, ty::vstore_box) |
           ty::ty_box(mt) { T_box_ptr(T_box(cx, type_of(cx, mt.ty))) }
           ty::ty_opaque_box { T_box_ptr(T_box(cx, T_i8())) }
-          ty::ty_uniq(mt) { T_ptr(type_of(cx, mt.ty)) }
+          ty::ty_uniq(mt) { T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))) }
           ty::ty_evec(mt, ty::vstore_uniq) |
           ty::ty_vec(mt) { T_ptr(T_vec(cx, type_of(cx, mt.ty))) }
           ty::ty_ptr(mt) { T_ptr(type_of(cx, mt.ty)) }

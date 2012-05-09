@@ -243,6 +243,13 @@ fn trans_shared_free(cx: block, v: ValueRef) -> block {
     ret cx;
 }
 
+fn trans_unique_free(cx: block, v: ValueRef) -> block {
+    let _icx = cx.insn_ctxt("trans_shared_free");
+    Call(cx, cx.ccx().upcalls.exchange_free,
+         [PointerCast(cx, v, T_ptr(T_i8()))]);
+    ret cx;
+}
+
 fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("umax");
     let cond = ICmp(cx, lib::llvm::IntULT, a, b);
@@ -1780,7 +1787,7 @@ fn autoderef(cx: block, e_id: ast::node_id,
             v1 = PointerCast(cx, body, T_ptr(llty));
           }
           ty::ty_uniq(_) {
-            let derefed = uniq::autoderef(v1, t1);
+            let derefed = uniq::autoderef(cx, v1, t1);
             t1 = derefed.t;
             v1 = derefed.v;
           }
@@ -2662,6 +2669,9 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
                 let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
+              ty::ty_uniq(_) {
+                GEPi(sub.bcx, sub.val, [0u, abi::box_field_body])
+              }
               ty::ty_res(_, _, _) {
                 GEPi(sub.bcx, sub.val, [0u, 1u])
               }
@@ -2670,7 +2680,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
                 let ellty = T_ptr(type_of(ccx, ety));
                 PointerCast(sub.bcx, sub.val, ellty)
               }
-              ty::ty_ptr(_) | ty::ty_uniq(_) | ty::ty_rptr(_,_) { sub.val }
+              ty::ty_ptr(_) | ty::ty_rptr(_,_) { sub.val }
             };
             ret lval_owned(sub.bcx, val);
           }
@@ -2946,7 +2956,15 @@ fn adapt_borrowed_value(lv: lval_result, _arg: ty::arg,
       }
 
       ty::ty_uniq(_) {
-        ret lv; // no change needed at runtime (I think)
+        let box_ptr = {
+            alt lv.kind {
+              temporary { lv.val }
+              owned { Load(bcx, lv.val) }
+              owned_imm { lv.val }
+            }
+        };
+        let body_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_body]);
+        ret lval_temp(bcx, body_ptr);
       }
 
       ty::ty_str | ty::ty_vec(_) |
