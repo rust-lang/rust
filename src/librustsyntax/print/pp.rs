@@ -1,4 +1,5 @@
 import io::writer_util;
+import dvec::{dvec, extensions};
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
@@ -102,7 +103,6 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     let token: [mut token] = vec::to_mut(vec::from_elem(n, EOF));
     let size: [mut int] = vec::to_mut(vec::from_elem(n, 0));
     let scan_stack: [mut uint] = vec::to_mut(vec::from_elem(n, 0u));
-    let print_stack: [print_stack_elt] = [];
     @{out: out,
       buf_len: n,
       mut margin: linewidth as int,
@@ -117,7 +117,7 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
       mut scan_stack_empty: true,
       mut top: 0u,
       mut bottom: 0u,
-      mut print_stack: print_stack,
+      print_stack: dvec(),
       mut pending_indentation: 0}
 }
 
@@ -221,7 +221,7 @@ type printer = @{
     mut top: uint, // index of top of scan_stack
     mut bottom: uint, // index of bottom of scan_stack
     // stack of blocks-in-progress being flushed by print
-    mut print_stack: [print_stack_elt],
+    print_stack: dvec<print_stack_elt>,
     // buffered indentation to avoid writing trailing whitespace
     mut pending_indentation: int
 };
@@ -398,11 +398,12 @@ impl printer for printer {
         self.pending_indentation += amount;
     }
     fn get_top() -> print_stack_elt {
-        let n = vec::len(self.print_stack);
-        let mut top: print_stack_elt =
-            {offset: 0, pbreak: broken(inconsistent)};
-        if n != 0u { top = self.print_stack[n - 1u]; }
-        ret top;
+        let n = self.print_stack.len();
+        if n != 0u {
+            self.print_stack[n - 1u]
+        } else {
+            {offset: 0, pbreak: broken(inconsistent)}
+        }
     }
     fn write_str(s: str) {
         while self.pending_indentation > 0 {
@@ -420,16 +421,18 @@ impl printer for printer {
             if L > self.space {
                 let col = self.margin - self.space + b.offset;
                 #debug("print BEGIN -> push broken block at col %d", col);
-                self.print_stack += [{offset: col, pbreak: broken(b.breaks)}];
+                self.print_stack.push({offset: col,
+                                       pbreak: broken(b.breaks)});
             } else {
                 #debug("print BEGIN -> push fitting block");
-                self.print_stack += [{offset: 0, pbreak: fits}];
+                self.print_stack.push({offset: 0,
+                                       pbreak: fits});
             }
           }
           END {
             #debug("print END -> pop END");
-            assert (vec::len(self.print_stack) != 0u);
-            vec::pop(self.print_stack);
+            assert (self.print_stack.len() != 0u);
+            self.print_stack.pop();
           }
           BREAK(b) {
             let top = self.get_top();

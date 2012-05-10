@@ -7,6 +7,7 @@ import pp::{break_offset, word, printer,
             inconsistent, eof};
 import diagnostic;
 import ast_util::operator_prec;
+import dvec::{dvec, extensions};
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {
@@ -29,22 +30,27 @@ type ps =
       literals: option<[comments::lit]>,
       mut cur_cmnt: uint,
       mut cur_lit: uint,
-      mut boxes: [pp::breaks],
+      boxes: dvec<pp::breaks>,
       ann: pp_ann};
 
-fn ibox(s: ps, u: uint) { s.boxes += [pp::inconsistent]; pp::ibox(s.s, u); }
+fn ibox(s: ps, u: uint) {
+    s.boxes.push(pp::inconsistent);
+    pp::ibox(s.s, u);
+}
 
-fn end(s: ps) { vec::pop(s.boxes); pp::end(s.s); }
+fn end(s: ps) {
+    s.boxes.pop();
+    pp::end(s.s);
+}
 
 fn rust_printer(writer: io::writer) -> ps {
-    let boxes: [pp::breaks] = [];
     ret @{s: pp::mk_printer(writer, default_columns),
           cm: none::<codemap>,
           comments: none::<[comments::cmnt]>,
           literals: none::<[comments::lit]>,
           mut cur_cmnt: 0u,
           mut cur_lit: 0u,
-          mut boxes: boxes,
+          boxes: dvec(),
           ann: no_ann()};
 }
 
@@ -59,7 +65,6 @@ const default_columns: uint = 78u;
 fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: str, in: io::reader,
                out: io::writer, ann: pp_ann) {
-    let boxes: [pp::breaks] = [];
     let r = comments::gather_comments_and_literals(span_diagnostic,
                                                    filename, in);
     let s =
@@ -69,7 +74,7 @@ fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
           literals: some(r.lits),
           mut cur_cmnt: 0u,
           mut cur_lit: 0u,
-          mut boxes: boxes,
+          boxes: dvec(),
           ann: ann};
     print_crate_(s, crate);
 }
@@ -195,9 +200,15 @@ fn test_variant_to_str() {
     assert varstr == "principle_skinner";
 }
 
-fn cbox(s: ps, u: uint) { s.boxes += [pp::consistent]; pp::cbox(s.s, u); }
+fn cbox(s: ps, u: uint) {
+    s.boxes.push(pp::consistent);
+    pp::cbox(s.s, u);
+}
 
-fn box(s: ps, u: uint, b: pp::breaks) { s.boxes += [b]; pp::box(s.s, u, b); }
+fn box(s: ps, u: uint, b: pp::breaks) {
+    s.boxes.push(b);
+    pp::box(s.s, u, b);
+}
 
 fn nbsp(s: ps) { word(s.s, " "); }
 
@@ -245,7 +256,7 @@ fn is_bol(s: ps) -> bool {
 }
 
 fn in_cbox(s: ps) -> bool {
-    let len = vec::len(s.boxes);
+    let len = s.boxes.len();
     if len == 0u { ret false; }
     ret s.boxes[len - 1u] == pp::consistent;
 }

@@ -20,9 +20,12 @@ fn check_crate(tcx: ty::ctxt,
                crate: @ast::crate) -> (root_map, mutbl_map) {
 
     // big hack to keep this off except when I want it on
-    let msg_level = alt os::getenv("RUST_BORROWCK") {
-      none {tcx.sess.opts.borrowck}
-      some(v) {option::get(uint::from_str(v))}
+    let msg_level = if tcx.sess.opts.borrowck != 0u {
+        tcx.sess.opts.borrowck
+    } else {
+        os::getenv("RUST_BORROWCK").map_default(0u) { |v|
+            option::get(uint::from_str(v))
+        }
     };
 
     let bccx = @{tcx: tcx,

@@ -13,6 +13,7 @@ import attr::{parse_outer_attrs_or_ext,
               parse_outer_attributes,
               parse_optional_meta};
 import common::*;
+import dvec::{dvec, extensions};
 
 export expect;
 export file_type;
@@ -54,7 +55,7 @@ type parser = @{
     mut token: token::token,
     mut span: span,
     mut last_span: span,
-    mut buffer: [{tok: token::token, span: span}],
+    buffer: dvec<{tok: token::token, span: span}>,
     mut restriction: restriction,
     reader: reader,
     keywords: hashmap<str, ()>,
@@ -64,12 +65,12 @@ type parser = @{
 impl parser for parser {
     fn bump() {
         self.last_span = self.span;
-        if vec::len(self.buffer) == 0u {
+        if self.buffer.len() == 0u {
             let next = lexer::next_token(self.reader);
             self.token = next.tok;
             self.span = mk_sp(next.chpos, self.reader.chpos);
         } else {
-            let next = vec::shift(self.buffer);
+            let next = self.buffer.shift();
             self.token = next.tok;
             self.span = next.span;
         }
@@ -79,10 +80,10 @@ impl parser for parser {
         self.span = mk_sp(lo, hi);
     }
     fn look_ahead(distance: uint) -> token::token {
-        while vec::len(self.buffer) < distance {
+        while self.buffer.len() < distance {
             let next = lexer::next_token(self.reader);
             let sp = mk_sp(next.chpos, self.reader.chpos);
-            vec::push(self.buffer, {tok: next.tok, span: sp});
+            self.buffer.push({tok: next.tok, span: sp});
         }
         ret self.buffer[distance - 1u].tok;
     }
