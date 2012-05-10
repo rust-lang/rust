@@ -1,0 +1,237 @@
+// Dynamic Vector
+//
+// A growable vector that makes use of unique pointers so that the
+// result can be sent between tasks and so forth.
+//
+// Note that recursive use is not permitted.
+
+import dvec_iter::extensions;
+import unsafe::reinterpret_cast;
+import ptr::{null, extensions};
+
+export dvec;
+export from_vec;
+export extensions;
+export unwrap;
+
+#[doc = "
+
+A growable, modifiable vector type that accumulates elements into a
+unique vector.
+
+# Limitations on recursive use
+
+This class works by swapping the unique vector out of the data
+structure whenever it is to be used.  Therefore, recursive use is not
+permitted.  That is, while iterating through a vector, you cannot
+access the vector in any other way or else the program will fail.  If
+you wish, you can use the `swap()` method to gain access to the raw
+vector and transform it or use it any way you like.  Eventually, we
+may permit read-only access during iteration or other use.
+
+# WARNING
+
+For maximum performance, this type is implemented using some rather
+unsafe code.  In particular, this innocent looking `[mut A]` pointer
+*may be null!*  Therefore, it is important you not reach into the
+data structure manually but instead use the provided extensions.
+
+The reason that I did not use an unsafe pointer in the structure
+itself is that I wanted to ensure that the vector would be freed when
+the dvec is dropped.  The reason that I did not use an `option<T>`
+instead of a nullable pointer is that I found experimentally that it
+becomes approximately 50% slower. This can probably be improved
+through optimization.  You can run your own experiments using
+`src/test/bench/vec-append.rs`. My own tests found that using null
+pointers achieved about 103 million pushes/second.  Using an option
+type could only produce 47 million pushes/second.
+
+"]
+type dvec<A> = {
+
+    mut data: [mut A]
+};
+
+#[doc = "Creates a new, empty dvec"]
+fn dvec<A>() -> dvec<A> {
+    {mut data: [mut]}
+}
+
+#[doc = "Creates a new dvec with the contents of a vector"]
+fn from_vec<A>(+v: [mut A]) -> dvec<A> {
+    {mut data: v}
+}
+
+#[doc = "Consumes the vector and returns its contents"]
+fn unwrap<A>(-d: dvec<A>) -> [mut A] {
+    let {data: v} <- d;
+    ret v;
+}
+
+impl private_methods<A> for dvec<A> {
+    fn check_not_borrowed() {
+        unsafe {
+            let data: *() = unsafe::reinterpret_cast(self.data);
+            if data.is_null() {
+                fail "Recursive use of dvec";
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn borrow<B>(f: fn(-[mut A]) -> B) -> B {
+        unsafe {
+            let mut data = unsafe::reinterpret_cast(null::<()>());
+            data <-> self.data;
+            let data_ptr: *() = unsafe::reinterpret_cast(data);
+            if data_ptr.is_null() { fail "Recursive use of dvec"; }
+            ret f(data);
+        }
+    }
+
+    #[inline(always)]
+    fn return(-data: [mut A]) {
+        unsafe {
+            self.data <- data;
+        }
+    }
+}
+
+// In theory, most everything should work with any A, but in practice
+// almost nothing works without the copy bound due to limitations
+// around closures.
+impl extensions<A> for dvec<A> {
+    #[doc = "
+
+    Swaps out the current vector and hands it off to a user-provided
+    function `f`.  The function should transform it however is desired
+    and return a new vector to replace it with.
+
+    "]
+    fn swap(f: fn(-[mut A]) -> [mut A]) {
+        self.borrow { |v| self.return(f(v)) }
+    }
+
+    #[doc = "Returns the number of elements currently in the dvec"]
+    fn len() -> uint {
+        self.borrow { |v|
+            let l = v.len();
+            self.return(v);
+            l
+        }
+    }
+
+    #[doc = "Overwrite the current contents"]
+    fn set(+w: [mut A]) {
+        self.check_not_borrowed();
+        self.data <- w; //FIXME check for recursive use
+    }
+}
+
+impl extensions<A:copy> for dvec<A> {
+    #[doc = "Append a single item to the end of the list"]
+    fn push(t: A) {
+        self.swap { |v| v += [t]; v } // more efficient than v + [t]
+    }
+
+    #[doc = "Remove and return the last element"]
+    fn pop() -> A {
+        self.borrow { |v|
+            let result = vec::pop(v);
+            self.return(v);
+            result
+        }
+    }
+
+    #[doc = "
+        Append all elements of a vector to the end of the list
+
+        Equivalent to `append_iter()` but potentially more efficient.
+    "]
+    fn push_all(ts: [const A]/&) {
+        self.push_slice(ts, 0u, vec::len(ts));
+    }
+
+    #[doc = "
+        Appends elements from `from_idx` to `to_idx` (exclusive)
+    "]
+    fn push_slice(ts: [const A]/&, from_idx: uint, to_idx: uint) {
+        self.swap { |v|
+            let new_len = vec::len(v) + to_idx - from_idx;
+            vec::reserve(v, new_len);
+            let mut i = from_idx;
+            while i < to_idx {
+                v += [ts[i]];
+                i += 1u;
+            }
+            v
+        }
+    }
+
+    //FIXME--
+    //#[doc = "
+    //    Append all elements of an iterable.
+    //
+    //    Failure will occur if the iterable's `each()` method
+    //    attempts to access this vector.
+    //"]
+    //fn append_iter<I:iter::base<A>>(ts: I) {
+    //    self.dvec.swap { |v|
+    //        alt ts.size_hint() {
+    //          none {}
+    //          some(h) { vec::reserve(v, len(v) + h) }
+    //        }
+    //
+    //        for ts.each { |t| v = v + [t] };
+    //
+    //        v
+    //    }
+    //}
+
+    #[doc = "
+        Gets a copy of the current contents.
+
+        See `unwrap()` if you do not wish to copy the contents.
+    "]
+    fn get() -> [A] {
+        self.borrow { |v|
+            let w = vec::from_mut(copy v);
+            self.return(v);
+            w
+        }
+    }
+
+    #[doc = "Remove and return the first element"]
+    fn shift() -> A {
+        self.borrow { |v|
+            let mut v = vec::from_mut(v);
+            let result = vec::shift(v);
+            self.return(vec::to_mut(v));
+            result
+        }
+    }
+
+    #[doc = "Copy out an individual element"]
+    #[inline]
+    fn [](idx: uint) -> A {
+        self.get_elt(idx)
+    }
+
+    #[doc = "Copy out an individual element"]
+    #[inline]
+    fn get_elt(idx: uint) -> A {
+        self.check_not_borrowed();
+        ret self.data[idx];
+    }
+
+    #[doc = "Overwrites the contents of the element at `idx` with `a`"]
+    fn set_elt(idx: uint, a: A) {
+        self.check_not_borrowed();
+        self.data[idx] = a;
+    }
+
+    #[doc = "Overwrites the contents of the element at `idx` with `a`"]
+    fn grow_set_elt(idx: uint, initval: A, val: A) {
+        self.swap { |v| vec::grow_set(v, idx, initval, val); v }
+    }
+}
