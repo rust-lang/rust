@@ -74,9 +74,6 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_alt(_, _, _) { false }
           ast::expr_while(_, _) { false }
 
-          // https://github.com/mozilla/rust/issues/955
-          ast::expr_do_while(_, _) { false }
-
           // https://github.com/mozilla/rust/issues/929
           ast::expr_cast(_, _) { false }
           ast::expr_assert(_) { false }

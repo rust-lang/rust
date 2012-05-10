@@ -761,9 +761,9 @@ impl categorize_methods for borrowck_ctxt {
           ast::expr_vstore(*) | ast::expr_vec(*) | ast::expr_tup(*) |
           ast::expr_if_check(*) | ast::expr_if(*) | ast::expr_log(*) |
           ast::expr_new(*) | ast::expr_binary(*) | ast::expr_while(*) |
-          ast::expr_do_while(*) | ast::expr_block(*) | ast::expr_loop(*) |
-          ast::expr_alt(*) | ast::expr_lit(*) | ast::expr_break |
-          ast::expr_mac(*) | ast::expr_cont | ast::expr_rec(*) {
+          ast::expr_block(*) | ast::expr_loop(*) | ast::expr_alt(*) |
+          ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
+          ast::expr_cont | ast::expr_rec(*) {
             @{id:expr.id, span:expr.span,
               cat:cat_rvalue(rv_misc), lp:none,
               mutbl:m_imm, ty:expr_ty}

@@ -727,8 +727,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(parse_for_expr(p));
     } else if eat_keyword(p, "while") {
         ret pexpr(parse_while_expr(p));
-    } else if eat_keyword(p, "do") {
-        ret pexpr(parse_do_while_expr(p));
     } else if eat_keyword(p, "loop") {
         ret pexpr(parse_loop_expr(p));
     } else if eat_keyword(p, "alt") {
@@ -1231,15 +1229,6 @@ fn parse_while_expr(p: parser) -> @expr {
     let body = parse_block_no_value(p);
     let mut hi = body.span.hi;
     ret mk_expr(p, lo, hi, expr_while(cond, body));
-}
-
-fn parse_do_while_expr(p: parser) -> @expr {
-    let lo = p.last_span.lo;
-    let body = parse_block_no_value(p);
-    expect_keyword(p, "while");
-    let cond = parse_expr(p);
-    let mut hi = cond.span.hi;
-    ret mk_expr(p, lo, hi, expr_do_while(body, cond));
 }
 
 fn parse_loop_expr(p: parser) -> @expr {

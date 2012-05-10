@@ -425,25 +425,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
                          intersect_states(expr_postcond(fcx.ccx, test),
                                           block_postcond(fcx.ccx, body)));
       }
-      expr_do_while(body, test) {
-        find_pre_post_block(fcx, body);
-        find_pre_post_expr(fcx, test);
-        let mut loop_postcond =
-            seq_postconds(fcx,
-                          [block_postcond(fcx.ccx, body),
-                           expr_postcond(fcx.ccx, test)]);
-        /* conservative approximation: if the body
-           could break or cont, the test may never be executed */
-
-        if has_nonlocal_exits(body) {
-            loop_postcond = empty_poststate(num_local_vars);
-        }
-        set_pre_and_post(fcx.ccx, e.id,
-                         seq_preconds(fcx,
-                                      [block_pp(fcx.ccx, body),
-                                       expr_pp(fcx.ccx, test)]),
-                         loop_postcond);
-      }
       expr_loop(body) {
         find_pre_post_block(fcx, body);
         /* Infinite loop: if control passes it, everything is true. */

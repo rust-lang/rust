@@ -540,40 +540,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                       intersect_states(e_post, b_post));
         }
       }
-      expr_do_while(body, test) {
-        let loop_pres = intersect_states(expr_poststate(fcx.ccx, test), pres);
-
-        let mut changed = set_prestate_ann(fcx.ccx, e.id, loop_pres);
-        changed |= find_pre_post_state_block(fcx, loop_pres, body);
-        /* conservative approximination: if the body of the loop
-           could break or cont, we revert to the prestate
-           (TODO: could treat cont differently from break, since
-           if there's a cont, the test will execute) */
-
-        changed |=
-            find_pre_post_state_expr(fcx, block_poststate(fcx.ccx, body),
-                                     test);
-
-        let breaks = has_nonlocal_exits(body);
-        if breaks {
-            // this should probably be true_poststate and not pres,
-            // b/c the body could invalidate stuff
-            // FIXME [Break-unsound]
-            // This is unsound as it is -- consider
-            // while (true) {
-            //    x <- y;
-            //    break;
-            // }
-            // The poststate wouldn't take into account that
-            // y gets deinitialized
-            changed |= set_poststate_ann(fcx.ccx, e.id, pres);
-        } else {
-            changed |=
-                set_poststate_ann(fcx.ccx, e.id,
-                                  expr_poststate(fcx.ccx, test));
-        }
-        ret changed;
-      }
       expr_loop(body) {
         let loop_pres =
             intersect_states(block_poststate(fcx.ccx, body), pres);
