@@ -17,6 +17,7 @@ import std::{list};
 import std::list::{list, nil, cons};
 import option::{is_none, is_some};
 import syntax::print::pprust::*;
+import dvec::{dvec, extensions};
 
 export resolve_crate;
 export def_map, ext_map, exp_map, impl_map;
@@ -1798,7 +1799,7 @@ fn check_arm(e: @env, a: ast::arm, &&x: (), v: vt<()>) {
     visit::visit_arm(a, x, v);
     let ch0 = checker(*e, "binding");
     check_pat(e, ch0, a.pats[0]);
-    let seen0 = ch0.seen;
+    let seen0 = ch0.seen.get();
     let mut i = vec::len(a.pats);
     while i > 1u {
         i -= 1u;
@@ -1807,7 +1808,7 @@ fn check_arm(e: @env, a: ast::arm, &&x: (), v: vt<()>) {
 
         // Ensure the bindings introduced in this pattern are the same as in
         // the first pattern.
-        if vec::len(ch.seen) != vec::len(seen0) {
+        if ch.seen.len() != seen0.len() {
             e.sess.span_err(a.pats[i].span,
                             "inconsistent number of bindings");
         } else {
@@ -1902,11 +1903,10 @@ fn check_ty(e: @env, ty: @ast::ty, &&x: (), v: vt<()>) {
     visit::visit_ty(ty, x, v);
 }
 
-type checker = @{mut seen: [ident], kind: str, sess: session};
+type checker = @{seen: dvec<ident>, kind: str, sess: session};
 
 fn checker(e: env, kind: str) -> checker {
-    let seen: [ident] = [];
-    ret @{mut seen: seen, kind: kind, sess: e.sess};
+    ret @{seen: dvec(), kind: kind, sess: e.sess};
 }
 
 fn check_name(ch: checker, sp: span, name: ident) {
@@ -1918,7 +1918,7 @@ fn check_name(ch: checker, sp: span, name: ident) {
 }
 fn add_name(ch: checker, sp: span, name: ident) {
     check_name(ch, sp, name);
-    ch.seen += [name];
+    ch.seen.push(name);
 }
 
 fn ensure_unique<T>(e: env, sp: span, elts: [T], id: fn(T) -> ident,

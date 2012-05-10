@@ -15,6 +15,7 @@ import syntax::ast_util::dummy_sp;
 import syntax::util::interner;
 import util::common;
 import syntax::codemap::span;
+import dvec::{dvec, extensions};
 
 import std::map::hashmap;
 
@@ -26,7 +27,7 @@ type ctxt =
     {mut next_tag_id: u16,
      pad: u16,
      tag_id_to_index: hashmap<ast::def_id, u16>,
-     mut tag_order: [ast::def_id],
+     tag_order: dvec<ast::def_id>,
      resources: interner::interner<res_info>,
      llshapetablesty: TypeRef,
      llshapetables: ValueRef};
@@ -273,7 +274,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     ret {mut next_tag_id: 0u16,
          pad: 0u16,
          tag_id_to_index: common::new_def_hash(),
-         mut tag_order: [],
+         tag_order: dvec(),
          resources: interner::mk(hash_res_info, {|a, b| a == b}),
          llshapetablesty: llshapetablesty,
          llshapetables: llshapetables};
@@ -328,7 +329,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
               none {
                 id = ccx.shape_cx.next_tag_id;
                 ccx.shape_cx.tag_id_to_index.insert(did, id);
-                ccx.shape_cx.tag_order += [did];
+                ccx.shape_cx.tag_order.push(did);
                 ccx.shape_cx.next_tag_id += 1u16;
               }
               some(existing_id) { id = existing_id; }
@@ -497,7 +498,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut i = 0u;
     let mut data = [];
     let mut offsets = [];
-    while i < vec::len(ccx.shape_cx.tag_order) {
+    while i < ccx.shape_cx.tag_order.len() {
         let did = ccx.shape_cx.tag_order[i];
         let variants = ty::enum_variants(ccx.tcx, did);
         let item_tyt = ty::lookup_item_type(ccx.tcx, did);
