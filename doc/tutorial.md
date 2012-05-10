@@ -668,6 +668,15 @@ keyword `break` can be used to abort the loop, and `cont` can be used
 to abort the current iteration and continue with the next.
 
 ~~~~
+let mut cake_amount = 8;
+while cake_amount > 0 {
+    cake_amount -= 1;
+}
+~~~~
+
+`loop` is the preferred way of writing `while true`:
+
+~~~~
 let mut x = 5;
 while true {
     x += x - 3;
@@ -678,17 +687,6 @@ while true {
 
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
-
-There's also `while`'s ugly cousin, `do`/`while`, which does not check
-its condition on the first iteration, using traditional syntax:
-
-~~~~
-# fn eat_cake() {}
-# fn any_cake_left() -> bool { false }
-do {
-    eat_cake();
-} while any_cake_left();
-~~~~
 
 For more involved iteration, such as going over the elements of a
 collection, Rust uses higher-order functions. We'll come back to those
@@ -2496,12 +2494,12 @@ Here is the function which implements the child task:
 fn stringifier(from_parent: comm::port<uint>,
                to_parent: comm::chan<str>) {
     let mut value: uint;
-    do {
+    loop {
         value = comm::recv(from_parent);
         comm::send(to_parent, uint::to_str(value, 10u));
-    } while value != 0u;
+        if value == 0u { break; }
+    }
 }
-
 ~~~~
 
 You can see that the function takes two parameters.  The first is a

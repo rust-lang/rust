@@ -16,7 +16,7 @@ fn what() {
 }
 
 fn zombiejesus() {
-    do  {
+    loop {
         while (ret) {
             if (ret) {
                 alt (ret) {
@@ -33,7 +33,8 @@ fn zombiejesus() {
                 ret;
             }
         }
-    } while ret
+        if (ret) { break; }
+    }
 }
 
 fn notsure() {
@@ -58,7 +59,7 @@ fn canttouchthis() -> uint {
 fn angrydome() {
     loop { if break { } }
     let mut i = 0;
-    do  { i += 1; if i == 1 { alt check cont { 1 { } } } } while false
+    loop { i += 1; if i == 1 { alt check cont { 1 { } } } break; }
 }
 
 fn evil_lincoln() { let evil <- #debug("lincoln"); }
