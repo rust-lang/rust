@@ -122,7 +122,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         check_lval(cx, dest, sc, v);
       }
       ast::expr_if(c, then, els) { check_if(c, then, els, sc, v); }
-      ast::expr_while(_, _) | ast::expr_do_while(_, _) {
+      ast::expr_while(_, _) {
         check_loop(*cx, sc) {|| visit::visit_expr(ex, sc, v); }
       }
       _ { handled = false; }

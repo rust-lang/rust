@@ -444,9 +444,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_while(cond, body) {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
           }
-          expr_do_while(blk, expr) {
-            expr_do_while(fld.fold_block(blk), fld.fold_expr(expr))
-          }
           expr_loop(body) {
               expr_loop(fld.fold_block(body))
           }

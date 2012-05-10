@@ -1991,28 +1991,19 @@ way.
 
 *TODO*.
 
-### While expressions
+### While loops
 
 ~~~~~~~~{.ebnf .gram}
 while_expr : "while" expr '{' block '}'
            | "do" '{' block '}' "while" expr ;
 ~~~~~~~~
 
-A `while` expression is a loop construct. A `while` loop may be either a
-simple `while` or a `do`-`while` loop.
+A `while` loop begins by evaluating the boolean loop conditional expression.
+If the loop conditional expression evaluates to `true`, the loop body block
+executes and control returns to the loop conditional expression. If the loop
+conditional expression evaluates to `false`, the `while` expression completes.
 
-In the case of a simple `while`, the loop begins by evaluating the boolean
-loop conditional expression. If the loop conditional expression evaluates to
-`true`, the loop body block executes and control returns to the loop
-conditional expression. If the loop conditional expression evaluates to
-`false`, the `while` expression completes.
-
-In the case of a `do`-`while`, the loop begins with an execution of the loop
-body. After the loop body executes, it evaluates the loop conditional
-expression. If it evaluates to `true`, control returns to the beginning of the
-loop body. If it evaluates to `false`, control exits the loop.
-
-An example of a simple `while` expression:
+An example:
 
 ~~~~
 # let mut i = 0;
@@ -2022,18 +2013,6 @@ while i < 10 {
     println("hello\n");
     i = i + 1;
 }
-~~~~
-
-An example of a `do`-`while` expression:
-
-~~~~
-# let mut i = 0;
-# let println = io::println;
-
-do {
-    println("hello\n");
-    i = i + 1;
-} while i < 10;
 ~~~~
 
 ### Infinite loops

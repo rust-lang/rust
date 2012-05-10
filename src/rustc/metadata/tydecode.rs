@@ -69,10 +69,11 @@ fn parse_constrs(st: @pstate, conv: conv_did) -> [@ty::constr] {
     let mut rslt: [@ty::constr] = [];
     alt peek(st) {
       ':' {
-        do  {
+        loop {
             next(st);
             rslt += [parse_constr(st, conv, parse_constr_arg)];
-        } while peek(st) == ';'
+            if peek(st) != ';' { break; }
+        }
       }
       _ { }
     }
@@ -84,10 +85,11 @@ fn parse_ty_constrs(st: @pstate, conv: conv_did) -> [@ty::type_constr] {
     let mut rslt: [@ty::type_constr] = [];
     alt peek(st) {
       ':' {
-        do  {
+        loop {
             next(st);
             rslt += [parse_constr(st, conv, parse_ty_constr_arg)];
-        } while peek(st) == ';'
+            if peek(st) != ';' { break; }
+        }
       }
       _ { }
     }
@@ -154,12 +156,13 @@ fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
     assert (ignore == '(');
     let def = parse_def(st, conv);
     let mut an_arg: constr_arg_general_<T>;
-    do  {
+    loop {
         an_arg = pser(st);
         // FIXME use a real span
         args += [@respan(sp, an_arg)];
         ignore = next(st);
-    } while ignore == ';'
+        if ignore != ';' { break; }
+    }
     assert (ignore == ')');
     ret @respan(sp, {path: pth, args: args, id: def});
 }

@@ -251,7 +251,7 @@ fn normalize(p: path) -> path {
         let mut t = [];
         let mut i = vec::len(s);
         let mut skip = 0;
-        do {
+        while i != 0u {
             i -= 1u;
             if s[i] == ".." {
                 skip += 1;
@@ -262,7 +262,7 @@ fn normalize(p: path) -> path {
                     skip -= 1;
                 }
             }
-        } while i != 0u;
+        }
         let mut t = vec::reversed(t);
         while skip > 0 {
             t += [".."];

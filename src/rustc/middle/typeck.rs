@@ -3444,11 +3444,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
       }
-      ast::expr_do_while(body, cond) {
-        bot = check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
-              check_block_no_value(fcx, body);
-        fcx.write_ty(id, fcx.node_ty(body.node.id));
-      }
       ast::expr_loop(body) {
           check_block_no_value(fcx, body);
           fcx.write_ty(id, ty::mk_nil(tcx));
