@@ -1,6 +1,7 @@
 #[doc = "AST-parsing helpers"];
 
 import rustc::driver::driver;
+import driver::{file_input, str_input};
 import rustc::driver::session;
 import rustc::driver::diagnostic;
 import rustc::syntax::ast;
@@ -33,14 +34,15 @@ fn from_str(source: str) -> @ast::crate {
 }
 
 fn from_file_sess(sess: session::session, file: str) -> @ast::crate {
-    parse::parse_crate_from_file(file, cfg(sess), sess.parse_sess)
+    parse::parse_crate_from_file(
+        file, cfg(sess, file_input(file)), sess.parse_sess)
 }
 
 fn from_str_sess(sess: session::session, source: str) -> @ast::crate {
     parse::parse_crate_from_source_str(
-        "-", @source, cfg(sess), sess.parse_sess)
+        "-", @source, cfg(sess, str_input(source)), sess.parse_sess)
 }
 
-fn cfg(sess: session::session) -> ast::crate_cfg {
-    driver::default_configuration(sess, "rustdoc", "<anon>")
+fn cfg(sess: session::session, input: driver::input) -> ast::crate_cfg {
+    driver::default_configuration(sess, "rustdoc", input)
 }

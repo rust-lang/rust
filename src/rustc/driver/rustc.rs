@@ -15,6 +15,7 @@ import rustc::driver::driver::*;
 import rustc::syntax::codemap;
 import rustc::driver::diagnostic;
 import rustc::middle::lint;
+import io::reader_util;
 
 fn version(argv0: str) {
     let mut vers = "unknown version";
@@ -138,9 +139,17 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
         version(binary);
         ret;
     }
-    let ifile = alt vec::len(match.free) {
+    let input = alt vec::len(match.free) {
       0u { early_error(demitter, "no input filename given") }
-      1u { match.free[0] }
+      1u {
+        let ifile = match.free[0];
+        if ifile == "-" {
+            let src = str::from_bytes(io::stdin().read_whole_stream());
+            str_input(src)
+        } else {
+            file_input(ifile)
+        }
+      }
       _ { early_error(demitter, "multiple input filenames provided") }
     };
 
@@ -148,22 +157,29 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(match, "out-dir");
     let ofile = getopts::opt_maybe_str(match, "o");
-    let cfg = build_configuration(sess, binary, ifile);
+    let cfg = build_configuration(sess, binary, input);
     let pretty =
         option::map(getopts::opt_default(match, "pretty",
                                          "normal"),
                     bind parse_pretty(sess, _));
     alt pretty {
-      some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, ifile, ppm); ret; }
+      some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, input, ppm); ret; }
       none::<pp_mode> {/* continue */ }
     }
     let ls = opt_present(match, "ls");
     if ls {
-        list_metadata(sess, ifile, io::stdout());
+        alt input {
+          file_input(ifile) {
+            list_metadata(sess, ifile, io::stdout());
+          }
+          str_input(_) {
+            early_error(demitter, "can not list metadata for stdin");
+          }
+        }
         ret;
     }
 
-    compile_input(sess, cfg, ifile, odir, ofile);
+    compile_input(sess, cfg, input, odir, ofile);
 }
 
 /*

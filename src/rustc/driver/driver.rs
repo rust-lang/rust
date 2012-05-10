@@ -18,7 +18,20 @@ import back::{x86, x86_64};
 enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
               ppm_expanded_identified }
 
-fn default_configuration(sess: session, argv0: str, input: str) ->
+#[doc = "
+The name used for source code that doesn't originate in a file
+(e.g. source from stdin or a string)
+"]
+fn anon_src() -> str { "<anon>" }
+
+fn source_name(input: input) -> str {
+    alt input {
+      file_input(ifile) { ifile }
+      str_input(_) { anon_src() }
+    }
+}
+
+fn default_configuration(sess: session, argv0: str, input: input) ->
    ast::crate_cfg {
     let libc = alt sess.targ_cfg.os {
       session::os_win32 { "msvcrt.dll" }
@@ -42,10 +55,10 @@ fn default_configuration(sess: session, argv0: str, input: str) ->
          mk("target_libc", libc),
          // Build bindings.
          mk("build_compiler", argv0),
-         mk("build_input", input)];
+         mk("build_input", source_name(input))];
 }
 
-fn build_configuration(sess: session, argv0: str, input: str) ->
+fn build_configuration(sess: session, argv0: str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -71,15 +84,24 @@ fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
     ret words;
 }
 
-fn input_is_stdin(filename: str) -> bool { filename == "-" }
+enum input {
+    #[doc = "Load source from file"]
+    file_input(str),
+    #[doc = "The string is the source"]
+    str_input(str)
+}
 
-fn parse_input(sess: session, cfg: ast::crate_cfg, input: str)
+fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
-    if !input_is_stdin(input) {
-        parse::parse_crate_from_file(input, cfg, sess.parse_sess)
-    } else {
-        let src = @str::from_bytes(io::stdin().read_whole_stream());
-        parse::parse_crate_from_source_str(input, src, cfg, sess.parse_sess)
+    alt input {
+      file_input(file) {
+        parse::parse_crate_from_file(file, cfg, sess.parse_sess)
+      }
+      str_input(src) {
+        // FIXME: Don't really want to box the source string
+        parse::parse_crate_from_source_str(
+            anon_src(), @src, cfg, sess.parse_sess)
+      }
     }
 }
 
@@ -102,7 +124,7 @@ enum compile_upto {
 }
 
 fn compile_upto(sess: session, cfg: ast::crate_cfg,
-                input: str, upto: compile_upto,
+                input: input, upto: compile_upto,
                 outputs: option<output_filenames>)
     -> {crate: @ast::crate, tcx: option<ty::ctxt>} {
     let time_passes = sess.opts.time_passes;
@@ -208,7 +230,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     ret {crate: crate, tcx: some(ty_cx)};
 }
 
-fn compile_input(sess: session, cfg: ast::crate_cfg, input: str,
+fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
                  outdir: option<str>, output: option<str>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
@@ -218,7 +240,7 @@ fn compile_input(sess: session, cfg: ast::crate_cfg, input: str,
     compile_upto(sess, cfg, input, upto, some(outputs));
 }
 
-fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
+fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         alt node { pprust::node_expr(s, expr) { pprust::popen(s); } _ { } }
@@ -277,9 +299,10 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
       }
       ppm_expanded | ppm_normal {}
     }
-    let src = codemap::get_filemap(sess.codemap, input).src;
+    let src = codemap::get_filemap(sess.codemap, source_name(input)).src;
     io::with_str_reader(*src) { |rdr|
-        pprust::print_crate(sess.codemap, sess.span_diagnostic, crate, input,
+        pprust::print_crate(sess.codemap, sess.span_diagnostic, crate,
+                            source_name(input),
                             rdr, io::stdout(), ann);
     }
 }
@@ -549,7 +572,7 @@ fn opts() -> [getopts::opt] {
 
 type output_filenames = @{out_filename: str, obj_filename:str};
 
-fn build_output_filenames(ifile: str,
+fn build_output_filenames(input: input,
                           odir: option<str>,
                           ofile: option<str>,
                           sess: session)
@@ -582,19 +605,25 @@ fn build_output_filenames(ifile: str,
         let dirname = alt odir {
           some(d) { d }
           none {
-            if input_is_stdin(ifile) {
+            alt input {
+              str_input(_) {
                 os::getcwd()
-            } else {
+              }
+              file_input(ifile) {
                 path::dirname(ifile)
+              }
             }
           }
         };
 
-        let base_filename = if !input_is_stdin(ifile) {
+        let base_filename = alt input {
+          file_input(ifile) {
             let (path, _) = path::splitext(ifile);
             path::basename(path)
-        } else {
+          }
+          str_input(_) {
             "rust_out"
+          }
         };
         let base_path = path::connect(dirname, base_filename);
 
@@ -659,7 +688,7 @@ mod test {
             };
         let sessopts = build_session_options(match, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, "whatever", "whatever");
+        let cfg = build_configuration(sess, "whatever", str_input(""));
         assert (attr::contains_name(cfg, "test"));
     }
 
@@ -675,7 +704,7 @@ mod test {
             };
         let sessopts = build_session_options(match, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, "whatever", "whatever");
+        let cfg = build_configuration(sess, "whatever", str_input(""));
         let test_items = attr::find_meta_items_by_name(cfg, "test");
         assert (vec::len(test_items) == 1u);
     }
