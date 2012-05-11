@@ -7,8 +7,7 @@ fn main() {
       none {}
       some(i) {
         // Not ok: i is an outstanding ptr into x.
-        x = some(i+1);
-        //!^ ERROR cannot assign to mutable local variable due to outstanding loan
+        x = some(i+1); //! ERROR assigning to mutable local variable prohibited due to outstanding loan
       }
     }
 }

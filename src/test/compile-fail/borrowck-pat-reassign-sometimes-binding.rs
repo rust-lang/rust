@@ -10,7 +10,7 @@ fn main() {
         x = some(0);
       }
       some(i) {
-        x = some(1); //! ERROR cannot assign to mutable local variable due to outstanding loan
+        x = some(1); //! ERROR assigning to mutable local variable prohibited due to outstanding loan
       }
     }
 }

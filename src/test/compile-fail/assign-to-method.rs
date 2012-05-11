@@ -1,4 +1,3 @@
-// error-pattern:assigning to immutable field
 class cat {
   priv {
     let mut meows : uint;
@@ -12,5 +11,5 @@ class cat {
 
 fn main() {
   let nyan : cat = cat(52u, 99);
-  nyan.speak = fn@() { log(error, "meow"); };
+  nyan.speak = fn@() { #debug["meow"]; }; //! ERROR assigning to method
 }

@@ -1,11 +1,8 @@
-// error-pattern: assigning to immutable box
-
 use std;
 
 fn main() {
     unsafe fn f(&&v: *const int) {
-        // This shouldn't be possible
-        *v = 1
+        *v = 1 //! ERROR assigning to dereference of const pointer
     }
 
     unsafe {

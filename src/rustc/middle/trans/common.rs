@@ -64,7 +64,7 @@ resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
 
 // Misc. auxiliary maps used in the crate_ctxt
 type maps = {
-    mutbl_map: middle::mutbl::mutbl_map,
+    mutbl_map: middle::borrowck::mutbl_map,
     copy_map: middle::alias::copy_map,
     last_uses: middle::last_use::last_uses,
     impl_map: middle::resolve::impl_map,

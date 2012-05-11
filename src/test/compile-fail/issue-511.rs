@@ -7,4 +7,5 @@ fn f<T>(&o: option<T>) {
 
 fn main() {
     f::<int>(option::none);
+    //!^ ERROR taking mut reference to static item
 }

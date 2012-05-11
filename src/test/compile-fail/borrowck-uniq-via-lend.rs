@@ -17,9 +17,9 @@ fn local_recs() {
     borrow(v.f.g.h);
 }
 
-fn aliased_imm() { // NDM: Spurious
+fn aliased_imm() {
     let mut v = ~3;
-    let _w = &v; //! ERROR illegal borrow: mutability mismatch, required immutable but found mutable
+    let _w = &v;
     borrow(v);
 }
 

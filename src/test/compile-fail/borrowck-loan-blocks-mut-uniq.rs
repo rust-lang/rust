@@ -7,7 +7,7 @@ fn borrow(v: &int, f: fn(x: &int)) {
 fn box_imm() {
     let mut v = ~3;
     borrow(v) { |w| //! NOTE loan of mutable local variable granted here
-        v = ~4; //! ERROR cannot assign to mutable local variable due to outstanding loan
+        v = ~4; //! ERROR assigning to mutable upvar prohibited due to outstanding loan
         assert *v == 3;
         assert *w == 4;
     }

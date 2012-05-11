@@ -12,11 +12,11 @@ import result::{result, ok, err, extensions};
 import syntax::print::pprust;
 import util::common::indenter;
 
-export check_crate, root_map;
+export check_crate, root_map, mutbl_map;
 
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
-               crate: @ast::crate) -> root_map {
+               crate: @ast::crate) -> (root_map, mutbl_map) {
 
     // big hack to keep this off except when I want it on
     let msg_level = alt os::getenv("RUST_BORROWCK") {
@@ -28,13 +28,15 @@ fn check_crate(tcx: ty::ctxt,
                  method_map: method_map,
                  msg_level: msg_level,
                  root_map: int_hash(),
-                 in_ctor: none};
+                 mutbl_map: int_hash()};
 
-    if msg_level > 0u {
-        let req_loan_map = gather_loans(bccx, crate);
-        check_loans(bccx, req_loan_map, crate);
-    }
-    ret bccx.root_map;
+    let req_loan_map = if msg_level > 0u {
+        gather_loans(bccx, crate)
+    } else {
+        int_hash()
+    };
+    check_loans(bccx, req_loan_map, crate);
+    ret (bccx.root_map, bccx.mutbl_map);
 }
 
 const TREAT_CONST_AS_IMM: bool = true;
@@ -46,16 +48,16 @@ type borrowck_ctxt = @{tcx: ty::ctxt,
                        method_map: typeck::method_map,
                        msg_level: uint,
                        root_map: root_map,
-
-                       // Keep track of whether we're inside a ctor, so as to
-                       // allow mutating immutable fields in the same class if
-                       // we are in a ctor, we track the self id
-                       in_ctor: option<ast::node_id>};
+                       mutbl_map: mutbl_map};
 
 // a map mapping id's of expressions of task-local type (@T, []/@, etc) where
 // the box needs to be kept live to the id of the scope for which they must
 // stay live.
 type root_map = hashmap<ast::node_id, ast::node_id>;
+
+// set of ids of local vars / formal arguments that are modified / moved.
+// this is used in trans for optimization purposes.
+type mutbl_map = std::map::hashmap<ast::node_id, ()>;
 
 enum bckerr_code {
     err_mutbl(ast::mutability, ast::mutability),
@@ -69,9 +71,11 @@ type bckerr = {cmt: cmt, code: bckerr_code};
 type bckres<T> = result<T, bckerr>;
 
 enum categorization {
-    cat_rvalue(rvalue_kind),    // result of eval'ing some rvalue
+    cat_rvalue,                 // result of eval'ing some misc expr
+    cat_special(special_kind),  //
     cat_local(ast::node_id),    // local variable
     cat_arg(ast::node_id),      // formal argument
+    cat_stack_upvar(cmt),       // upvar in stack closure
     cat_deref(cmt, ptr_kind),   // deref of a ptr
     cat_comp(cmt, comp_kind),   // adjust to locate an internal component
 }
@@ -82,19 +86,18 @@ enum ptr_kind {uniq_ptr, gc_ptr, region_ptr, unsafe_ptr}
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
 enum comp_kind {comp_tuple, comp_res, comp_variant,
-                comp_field(str), comp_index}
+                comp_field(str), comp_index(ty::t)}
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
 enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
 
 // different kinds of expressions we might evaluate
-enum rvalue_kind {
-    rv_method,
-    rv_static_item,
-    rv_upvar,
-    rv_misc,
-    rv_self
+enum special_kind {
+    sk_method,
+    sk_static_item,
+    sk_self,
+    sk_heap_upvar
 }
 
 // a complete categorization of a value indicating where it originated
@@ -184,19 +187,13 @@ fn req_loans_in_expr(ex: @ast::expr,
       ast::expr_addr_of(mutbl, base) {
         let base_cmt = self.bccx.cat_expr(base);
 
-        // make sure that if we taking an &mut or &imm ptr, the thing it
-        // points at is mutable or immutable respectively:
-        self.bccx.report_if_err(
-            check_sup_mutbl(mutbl, base_cmt).chain { |_ok|
-                // make sure that the thing we are pointing out stays valid
-                // for the lifetime `scope_r`:
-                let scope_r =
-                    alt check ty::get(tcx.ty(ex)).struct {
-                      ty::ty_rptr(r, _) { r }
-                    };
-                self.guarantee_valid(base_cmt, mutbl, scope_r);
-                ok(())
-            });
+        // make sure that the thing we are pointing out stays valid
+        // for the lifetime `scope_r` of the resulting ptr:
+        let scope_r =
+            alt check ty::get(tcx.ty(ex)).struct {
+              ty::ty_rptr(r, _) { r }
+            };
+        self.guarantee_valid(base_cmt, mutbl, scope_r);
       }
 
       ast::expr_call(f, args, _) {
@@ -396,17 +393,41 @@ impl methods for gather_loan_ctxt {
 
 enum check_loan_ctxt = @{
     bccx: borrowck_ctxt,
-    req_loan_map: req_loan_map
+    req_loan_map: req_loan_map,
+
+    // Keep track of whether we're inside a ctor, so as to
+    // allow mutating immutable fields in the same class if
+    // we are in a ctor, we track the self id
+    mut in_ctor: bool
 };
 
 fn check_loans(bccx: borrowck_ctxt,
                req_loan_map: req_loan_map,
                crate: @ast::crate) {
-    let clcx = check_loan_ctxt(@{bccx: bccx, req_loan_map: req_loan_map});
+    let clcx = check_loan_ctxt(@{bccx: bccx,
+                                 req_loan_map: req_loan_map,
+                                 mut in_ctor: false});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
-                            visit_block: check_loans_in_block
+                            visit_block: check_loans_in_block,
+                            visit_fn: check_loans_in_fn
                             with *visit::default_visitor()});
     visit::visit_crate(*crate, clcx, vt);
+}
+
+enum assignment_type {
+    at_straight_up,
+    at_swap,
+    at_mutbl_ref,
+}
+
+impl methods for assignment_type {
+    fn ing_form(desc: str) -> str {
+        alt self {
+          at_straight_up { "assigning to " + desc }
+          at_swap { "swapping to and from " + desc }
+          at_mutbl_ref { "taking mut reference to " + desc }
+        }
+    }
 }
 
 impl methods for check_loan_ctxt {
@@ -479,81 +500,138 @@ impl methods for check_loan_ctxt {
         }
     }
 
-    fn check_assignment(ex: @ast::expr) {
+    fn is_self_field(cmt: cmt) -> bool {
+        alt cmt.cat {
+          cat_comp(cmt_base, comp_field(_)) {
+            alt cmt_base.cat {
+              cat_special(sk_self) { true }
+              _ { false }
+            }
+          }
+          _ { false }
+        }
+    }
+
+    fn check_assignment(at: assignment_type, ex: @ast::expr) {
         let cmt = self.bccx.cat_expr(ex);
 
         #debug["check_assignment(cmt=%s)",
                self.bccx.cmt_to_repr(cmt)];
 
-        alt cmt.mutbl {
-          m_mutbl { /*ok*/ }
-          m_const | m_imm {
-            self.bccx.span_err(
-                ex.span,
-                #fmt["Cannot assign to %s", self.bccx.cmt_to_str(cmt)]);
-            ret;
-          }
-        }
-
-        // check for a conflicting loan as well
-        let lp = alt cmt.lp {
-          none { ret; }
-          some(lp) { lp }
-        };
-        for self.walk_loans_of(ex.id, lp) { |loan|
-            alt loan.mutbl {
-              m_mutbl | m_const { /*ok*/ }
-              m_imm {
+        // check that the lvalue `ex` is assignable, but be careful
+        // because assigning to self.foo in a ctor is always allowed.
+        if !self.in_ctor || !self.is_self_field(cmt) {
+            alt cmt.mutbl {
+              m_mutbl { /*ok*/ }
+              m_const | m_imm {
                 self.bccx.span_err(
                     ex.span,
-                    #fmt["cannot assign to %s due to outstanding loan",
-                         self.bccx.cmt_to_str(cmt)]);
-                self.bccx.span_note(
-                    loan.cmt.span,
-                    #fmt["loan of %s granted here",
-                         self.bccx.cmt_to_str(loan.cmt)]);
+                    at.ing_form(self.bccx.cmt_to_str(cmt)));
                 ret;
               }
             }
         }
+
+        // check for a conflicting loan as well, except in the case of
+        // taking a mutable ref.  that will create a loan of its own
+        // which will be checked for compat separately in
+        // check_for_conflicting_loans()
+        if at != at_mutbl_ref {
+            let lp = alt cmt.lp {
+              none { ret; }
+              some(lp) { lp }
+            };
+            for self.walk_loans_of(ex.id, lp) { |loan|
+                alt loan.mutbl {
+                  m_mutbl | m_const { /*ok*/ }
+                  m_imm {
+                    self.bccx.span_err(
+                        ex.span,
+                        #fmt["%s prohibited due to outstanding loan",
+                             at.ing_form(self.bccx.cmt_to_str(cmt))]);
+                    self.bccx.span_note(
+                        loan.cmt.span,
+                        #fmt["loan of %s granted here",
+                             self.bccx.cmt_to_str(loan.cmt)]);
+                    ret;
+                  }
+                }
+            }
+        }
+
+        self.bccx.add_to_mutbl_map(cmt);
     }
 
     fn check_move_out(ex: @ast::expr) {
         let cmt = self.bccx.cat_expr(ex);
+        self.check_move_out_from_cmt(cmt);
+    }
+
+    fn check_move_out_from_cmt(cmt: cmt) {
+        #debug["check_move_out_from_cmt(cmt=%s)",
+               self.bccx.cmt_to_repr(cmt)];
 
         alt cmt.cat {
           // Rvalues and locals can be moved:
-          cat_rvalue(_) | cat_local(_) { /*ok*/ }
+          cat_rvalue | cat_local(_) { }
 
           // Owned arguments can be moved:
-          cat_arg(_) if cmt.mutbl == m_mutbl { /*ok*/ }
+          cat_arg(_) if cmt.mutbl == m_mutbl { }
+
+          // We allow moving out of static items because the old code
+          // did.  This seems consistent with permitting moves out of
+          // rvalues, I guess.
+          cat_special(sk_static_item) { }
 
           // Nothing else.
           _ {
             self.bccx.span_err(
-                ex.span,
-                #fmt["Cannot move from %s", self.bccx.cmt_to_str(cmt)]);
+                cmt.span,
+                #fmt["moving out of %s", self.bccx.cmt_to_str(cmt)]);
             ret;
           }
         }
+
+        self.bccx.add_to_mutbl_map(cmt);
 
         // check for a conflicting loan:
         let lp = alt cmt.lp {
           none { ret; }
           some(lp) { lp }
         };
-        for self.walk_loans_of(ex.id, lp) { |loan|
+        for self.walk_loans_of(cmt.id, lp) { |loan|
             self.bccx.span_err(
-                ex.span,
-                #fmt["Cannot move from %s due to outstanding loan",
+                cmt.span,
+                #fmt["moving out of %s prohibited due to outstanding loan",
                      self.bccx.cmt_to_str(cmt)]);
             self.bccx.span_note(
                 loan.cmt.span,
-                #fmt["Loan of %s granted here",
+                #fmt["loan of %s granted here",
                      self.bccx.cmt_to_str(loan.cmt)]);
             ret;
         }
     }
+}
+
+fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
+                     sp: span, id: ast::node_id, &&self: check_loan_ctxt,
+                     visitor: visit::vt<check_loan_ctxt>) {
+
+    let old_in_ctor = self.in_ctor;
+
+    // In principle, we could consider fk_anon(*) or fk_fn_block(*) to
+    // be in a ctor, I suppose, but the purpose of the in_ctor flag is
+    // to allow modifications of otherwise immutable fields and
+    // typestate wouldn't be able to "see" into those functions
+    // anyway, so it wouldn't be very helpful.
+    alt fk {
+      visit::fk_ctor(*) { self.in_ctor = true; }
+      _ { self.in_ctor = false; }
+    };
+
+    visit::visit_fn(fk, decl, body, sp, id, self, visitor);
+
+    self.in_ctor = old_in_ctor;
 }
 
 fn check_loans_in_expr(expr: @ast::expr,
@@ -562,16 +640,44 @@ fn check_loans_in_expr(expr: @ast::expr,
     self.check_for_conflicting_loans(expr.id);
     alt expr.node {
       ast::expr_swap(l, r) {
-        self.check_assignment(l);
-        self.check_assignment(r);
+        self.check_assignment(at_swap, l);
+        self.check_assignment(at_swap, r);
       }
       ast::expr_move(dest, src) {
-        self.check_assignment(dest);
+        self.check_assignment(at_straight_up, dest);
         self.check_move_out(src);
       }
       ast::expr_assign(dest, _) |
       ast::expr_assign_op(_, dest, _) {
-        self.check_assignment(dest);
+        self.check_assignment(at_straight_up, dest);
+      }
+      ast::expr_fn(_, _, _, cap_clause) |
+      ast::expr_fn_block(_, _, cap_clause) {
+        for (*cap_clause).each { |cap_item|
+            if cap_item.is_move {
+                let def = self.tcx().def_map.get(cap_item.id);
+
+                // Hack: the type that is used in the cmt doesn't actually
+                // matter here, so just subst nil instead of looking up
+                // the type of the def that is referred to
+                let cmt = self.bccx.cat_def(cap_item.id, cap_item.span,
+                                            ty::mk_nil(self.tcx()), def);
+                self.check_move_out_from_cmt(cmt);
+            }
+        }
+      }
+      ast::expr_addr_of(mutbl, base) {
+        alt mutbl {
+          m_const { /*all memory is const*/ }
+          m_mutbl {
+            // If we are taking an &mut ptr, make sure the memory
+            // being pointed at is assignable in the first place:
+            self.check_assignment(at_mutbl_ref, base);
+          }
+          m_imm {
+            // XXX explain why no check is req'd here
+          }
+        }
       }
       ast::expr_call(f, args, _) {
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
@@ -580,11 +686,10 @@ fn check_loans_in_expr(expr: @ast::expr,
               ast::by_move {
                 self.check_move_out(arg);
               }
-              ast::by_mutbl_ref |
-              ast::by_ref {
-                // these are translated into loans
+              ast::by_mutbl_ref {
+                self.check_assignment(at_mutbl_ref, arg);
               }
-              ast::by_copy | ast::by_val {
+              ast::by_ref | ast::by_copy | ast::by_val {
               }
             }
         }
@@ -720,7 +825,7 @@ impl categorize_methods for borrowck_ctxt {
 
         if self.method_map.contains_key(expr.id) {
             ret @{id:expr.id, span:expr.span,
-                  cat:cat_rvalue(rv_method), lp:none,
+                  cat:cat_special(sk_method), lp:none,
                   mutbl:m_imm, ty:expr_ty};
         }
 
@@ -749,7 +854,7 @@ impl categorize_methods for borrowck_ctxt {
 
           ast::expr_path(_) {
             let def = self.tcx.def_map.get(expr.id);
-            self.cat_def(expr, expr_ty, def)
+            self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
           ast::expr_addr_of(*) | ast::expr_call(*) | ast::expr_bind(*) |
@@ -765,7 +870,7 @@ impl categorize_methods for borrowck_ctxt {
           ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
           ast::expr_cont | ast::expr_rec(*) {
             @{id:expr.id, span:expr.span,
-              cat:cat_rvalue(rv_misc), lp:none,
+              cat:cat_rvalue, lp:none,
               mutbl:m_imm, ty:expr_ty}
           }
         }
@@ -870,9 +975,10 @@ impl categorize_methods for borrowck_ctxt {
         let deref_cmt = @{id:expr.id, span:expr.span,
                           cat:cat_deref(base_cmt, ptr), lp:deref_lp,
                           mutbl:mt.mutbl, ty:mt.ty};
-        let index_lp = deref_lp.map { |lp| @lp_comp(lp, comp_index) };
+        let comp = comp_index(base_cmt.ty);
+        let index_lp = deref_lp.map { |lp| @lp_comp(lp, comp) };
         @{id:expr.id, span:expr.span,
-          cat:cat_comp(deref_cmt, comp_index), lp:index_lp,
+          cat:cat_comp(deref_cmt, comp), lp:index_lp,
           mutbl:mt.mutbl, ty:mt.ty}
     }
 
@@ -892,7 +998,8 @@ impl categorize_methods for borrowck_ctxt {
           ty: self.tcx.ty(elt)}
     }
 
-    fn cat_def(expr: @ast::expr,
+    fn cat_def(id: ast::node_id,
+               span: span,
                expr_ty: ty::t,
                def: ast::def) -> cmt {
         alt def {
@@ -902,8 +1009,8 @@ impl categorize_methods for borrowck_ctxt {
           ast::def_ty(_) | ast::def_prim_ty(_) |
           ast::def_ty_param(_, _) | ast::def_class(_) |
           ast::def_region(_) {
-            @{id:expr.id, span:expr.span,
-              cat:cat_rvalue(rv_static_item), lp:none,
+            @{id:id, span:span,
+              cat:cat_special(sk_static_item), lp:none,
               mutbl:m_imm, ty:expr_ty}
           }
 
@@ -931,14 +1038,14 @@ impl categorize_methods for borrowck_ctxt {
                 {m:m_imm, lp:some(@lp_arg(vid))}
               }
             };
-            @{id:expr.id, span:expr.span,
+            @{id:id, span:span,
               cat:cat_arg(vid), lp:lp,
               mutbl:m, ty:expr_ty}
           }
 
           ast::def_self(_) {
-            @{id:expr.id, span:expr.span,
-              cat:cat_rvalue(rv_self), lp:none,
+            @{id:id, span:span,
+              cat:cat_special(sk_self), lp:none,
               mutbl:m_imm, ty:expr_ty}
           }
 
@@ -947,12 +1054,15 @@ impl categorize_methods for borrowck_ctxt {
             let proto = ty::ty_fn_proto(ty);
             alt proto {
               ast::proto_any | ast::proto_block {
-                self.cat_def(expr, expr_ty, *inner)
+                let upcmt = self.cat_def(id, span, expr_ty, *inner);
+                @{id:id, span:span,
+                  cat:cat_stack_upvar(upcmt), lp:upcmt.lp,
+                  mutbl:upcmt.mutbl, ty:upcmt.ty}
               }
               ast::proto_bare | ast::proto_uniq | ast::proto_box {
                 // FIXME #2152 allow mutation of moved upvars
-                @{id:expr.id, span:expr.span,
-                  cat:cat_rvalue(rv_upvar), lp:none,
+                @{id:id, span:span,
+                  cat:cat_special(sk_heap_upvar), lp:none,
                   mutbl:m_imm, ty:expr_ty}
               }
             }
@@ -960,7 +1070,7 @@ impl categorize_methods for borrowck_ctxt {
 
           ast::def_local(vid, mutbl) {
             let m = if mutbl {m_mutbl} else {m_imm};
-            @{id:expr.id, span:expr.span,
+            @{id:id, span:span,
               cat:cat_local(vid), lp:some(@lp_local(vid)),
               mutbl:m, ty:expr_ty}
           }
@@ -968,38 +1078,21 @@ impl categorize_methods for borrowck_ctxt {
           ast::def_binding(vid) {
             // no difference between a binding and any other local variable
             // from out point of view, except that they are always immutable
-            @{id:expr.id, span:expr.span,
+            @{id:id, span:span,
               cat:cat_local(vid), lp:some(@lp_local(vid)),
               mutbl:m_imm, ty:expr_ty}
           }
         }
     }
 
-    fn cat_to_str(mutbl: str, cat: categorization) -> str {
-        alt cat {
-          cat_rvalue(rv_method) { "method" }
-          cat_rvalue(rv_static_item) { "static item" }
-          cat_rvalue(rv_upvar) { "upvar" }
-          cat_rvalue(rv_misc) { "non-lvalue" }
-          cat_rvalue(rv_self) { "self reference" }
-          cat_local(_) { mutbl + " local variable" }
-          cat_arg(_) { mutbl + " argument" }
-          cat_deref(_, _) { mutbl + " dereference" }
-          cat_comp(_, comp_field(_)) { mutbl + " field" }
-          cat_comp(_, comp_index) { mutbl + " vector/string contents" }
-          cat_comp(_, comp_tuple) { mutbl + " tuple contents" }
-          cat_comp(_, comp_res) { mutbl + " resource contents" }
-          cat_comp(_, comp_variant) { mutbl + " enum contents" }
-        }
-    }
-
     fn cat_to_repr(cat: categorization) -> str {
         alt cat {
-          cat_rvalue(rv_method) { "method" }
-          cat_rvalue(rv_static_item) { "static_item" }
-          cat_rvalue(rv_upvar) { "upvar" }
-          cat_rvalue(rv_misc) { "rvalue" }
-          cat_rvalue(rv_self) { "self" }
+          cat_special(sk_method) { "method" }
+          cat_special(sk_static_item) { "static_item" }
+          cat_special(sk_self) { "self" }
+          cat_special(sk_heap_upvar) { "heap-upvar" }
+          cat_stack_upvar(_) { "stack-upvar" }
+          cat_rvalue { "rvalue" }
           cat_local(node_id) { #fmt["local(%d)", node_id] }
           cat_arg(node_id) { #fmt["arg(%d)", node_id] }
           cat_deref(cmt, ptr) {
@@ -1031,7 +1124,7 @@ impl categorize_methods for borrowck_ctxt {
     fn comp_to_repr(comp: comp_kind) -> str {
         alt comp {
           comp_field(fld) { fld }
-          comp_index { "[]" }
+          comp_index(_) { "[]" }
           comp_tuple { "()" }
           comp_res { "<res>" }
           comp_variant { "<enum>" }
@@ -1068,7 +1161,34 @@ impl categorize_methods for borrowck_ctxt {
 
     fn cmt_to_str(cmt: cmt) -> str {
         let mut_str = self.mut_to_str(cmt.mutbl);
-        self.cat_to_str(mut_str, cmt.cat)
+        alt cmt.cat {
+          cat_special(sk_method) { "method" }
+          cat_special(sk_static_item) { "static item" }
+          cat_special(sk_self) { "self reference" }
+          cat_special(sk_heap_upvar) { "upvar" }
+          cat_rvalue { "non-lvalue" }
+          cat_local(_) { mut_str + " local variable" }
+          cat_arg(_) { mut_str + " argument" }
+          cat_deref(_, _) { "dereference of " + mut_str + " pointer" }
+          cat_stack_upvar(_) { mut_str + " upvar" }
+          cat_comp(_, comp_field(_)) { mut_str + " field" }
+          cat_comp(_, comp_tuple) { "tuple content" }
+          cat_comp(_, comp_res) { "resource content" }
+          cat_comp(_, comp_variant) { "enum content" }
+          cat_comp(_, comp_index(t)) {
+            alt ty::get(t).struct {
+              ty::ty_vec(*) | ty::ty_evec(*) {
+                mut_str + " vec content"
+              }
+
+              ty::ty_str | ty::ty_estr(*) {
+                mut_str + " str content"
+              }
+
+              _ { mut_str + " indexed content" }
+            }
+          }
+        }
     }
 
     fn bckerr_code_to_str(code: bckerr_code) -> str {
@@ -1114,6 +1234,18 @@ impl categorize_methods for borrowck_ctxt {
 
     fn span_note(s: span, m: str) {
         self.tcx.sess.span_note(s, m);
+    }
+
+    fn add_to_mutbl_map(cmt: cmt) {
+        alt cmt.cat {
+          cat_local(id) | cat_arg(id) {
+            self.mutbl_map.insert(id, ());
+          }
+          cat_stack_upvar(cmt) {
+            self.add_to_mutbl_map(cmt);
+          }
+          _ {}
+        }
     }
 }
 
@@ -1167,8 +1299,11 @@ impl preserve_methods for preserve_ctxt {
         let _i = indenter();
 
         alt cmt.cat {
-          cat_rvalue(_) {
+          cat_rvalue | cat_special(_) {
             ok(())
+          }
+          cat_stack_upvar(cmt) {
+            self.preserve(cmt)
           }
           cat_local(_) {
             // This should never happen.  Local variables are always lendable,
@@ -1185,7 +1320,7 @@ impl preserve_methods for preserve_ctxt {
             ok(())
           }
           cat_comp(cmt_base, comp_field(_)) |
-          cat_comp(cmt_base, comp_index) |
+          cat_comp(cmt_base, comp_index(_)) |
           cat_comp(cmt_base, comp_tuple) |
           cat_comp(cmt_base, comp_res) {
             // Most embedded components: if the base is stable, the
@@ -1282,16 +1417,17 @@ impl loan_methods for loan_ctxt {
         }
 
         alt cmt.cat {
-          cat_rvalue(_) {
+          cat_rvalue | cat_special(_) {
+            // should never be loanable
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
                 "rvalue with a non-none lp");
           }
-          cat_local(_) | cat_arg(_) {
+          cat_local(_) | cat_arg(_) | cat_stack_upvar(_) {
             self.ok_with_loan_of(cmt, req_mutbl)
           }
           cat_comp(cmt_base, comp_field(_)) |
-          cat_comp(cmt_base, comp_index) |
+          cat_comp(cmt_base, comp_index(_)) |
           cat_comp(cmt_base, comp_tuple) |
           cat_comp(cmt_base, comp_res) {
             // For most components, the type of the embedded data is

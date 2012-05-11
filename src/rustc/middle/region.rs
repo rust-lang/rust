@@ -340,6 +340,16 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                       with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
+      ast::expr_fn(_, _, _, cap_clause) |
+      ast::expr_fn_block(_, _, cap_clause) {
+        // although the capture items are not expressions per se, they
+        // do get "evaluated" in some sense as copies or moves of the
+        // relevant variables so we parent them like an expression
+        for (*cap_clause).each { |cap_item|
+            record_parent(cx, cap_item.id);
+        }
+        visit::visit_expr(expr, cx, visitor);
+      }
       _ {
         visit::visit_expr(expr, cx, visitor);
       }
