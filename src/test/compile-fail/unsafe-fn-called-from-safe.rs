@@ -1,8 +1,7 @@
 // -*- rust -*-
-// error-pattern: safe function calls function marked unsafe
 
 unsafe fn f() { ret; }
 
 fn main() {
-    f();
+    f(); //! ERROR access to unsafe function requires unsafe function or block
 }

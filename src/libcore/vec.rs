@@ -997,7 +997,7 @@ impl extensions<T> for [const T] {
     fn iteri(f: fn(uint, T)) { iteri(self, f) }
     #[doc = "Returns the length of a vector"]
     #[inline]
-    fn len() -> uint { len(self) }
+    pure fn len() -> uint { len(self) }
     #[doc = "
     Find the first index matching some predicate
 

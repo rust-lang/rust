@@ -1349,18 +1349,6 @@ impl methods for @fn_ctxt {
         infer::mk_eqty(self.infcx, sub, sup)
     }
 
-    fn require_impure(sp: span) {
-        alt self.purity {
-          ast::unsafe_fn { ret; }
-          ast::impure_fn | ast::crust_fn { ret; }
-          ast::pure_fn {
-            self.ccx.tcx.sess.span_err(
-                sp,
-                "found impure expression in pure function decl");
-          }
-        }
-    }
-
     fn require_unsafe(sp: span, op: str) {
         alt self.purity {
           ast::unsafe_fn {/*ok*/}
@@ -2425,45 +2413,6 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     }
 }
 
-fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
-                     callee: @ast::expr, sp: span) {
-    if caller_purity == ast::unsafe_fn { ret; }
-    let callee_purity = alt ccx.tcx.def_map.find(callee.id) {
-      some(ast::def_fn(_, p)) { p }
-      some(ast::def_variant(_, _)) { ast::pure_fn }
-      _ {
-        alt ccx.method_map.find(callee.id) {
-          some(method_static(did)) {
-            if did.crate == ast::local_crate {
-                alt ccx.tcx.items.get(did.node) {
-                  ast_map::node_method(m, _, _) { m.decl.purity }
-                  _ { ccx.tcx.sess.span_bug(sp,
-                             "Node not bound to a method") }
-                }
-            } else {
-                csearch::lookup_method_purity(ccx.tcx.sess.cstore, did)
-            }
-          }
-          some(method_param(iid, n_m, _, _)) | some(method_iface(iid, n_m)) {
-            ty::iface_methods(ccx.tcx, iid)[n_m].purity
-          }
-          none { ast::impure_fn }
-        }
-      }
-    };
-    alt (caller_purity, callee_purity) {
-      (ast::impure_fn, ast::unsafe_fn) | (ast::crust_fn, ast::unsafe_fn) {
-        ccx.tcx.sess.span_err(sp, "safe function calls function marked \
-                                   unsafe");
-      }
-      (ast::pure_fn, ast::unsafe_fn) | (ast::pure_fn, ast::impure_fn) {
-        ccx.tcx.sess.span_err(sp, "pure function calls function not \
-                                   known to be pure");
-      }
-      _ {}
-    }
-}
-
 fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     check_expr(fcx, expr, some(expected))
 }
@@ -2989,10 +2938,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             r.fty
         };
 
-        // Need to restrict oper to being an explicit expr_path if we're
-        // inside a pure function
-        require_pure_call(fcx.ccx, fcx.purity, f, sp);
-
         // Pull the return type out of the type of the function.
         alt structure_of(fcx, sp, fty) {
           ty::ty_fn(f) {
@@ -3277,7 +3222,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot |= check_binop(fcx, expr, op, lhs, rhs);
       }
       ast::expr_assign_op(op, lhs, rhs) {
-        fcx.require_impure(expr.span);
         bot |= check_binop(fcx, expr, op, lhs, rhs);
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
@@ -3437,15 +3381,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, fcx.expr_ty(a));
       }
       ast::expr_move(lhs, rhs) {
-        fcx.require_impure(expr.span);
         bot = check_assignment(fcx, expr.span, lhs, rhs, id);
       }
       ast::expr_assign(lhs, rhs) {
-        fcx.require_impure(expr.span);
         bot = check_assignment(fcx, expr.span, lhs, rhs, id);
       }
       ast::expr_swap(lhs, rhs) {
-        fcx.require_impure(expr.span);
         bot = check_assignment(fcx, expr.span, lhs, rhs, id);
       }
       ast::expr_if(cond, thn, elsopt) {

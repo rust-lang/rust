@@ -149,6 +149,13 @@ fn check_sup_mutbl(req_m: ast::mutability,
     }
 }
 
+fn save_and_restore<T:copy,U>(&t: T, f: fn() -> U) -> U {
+    let old_t = t;
+    let u <- f();
+    t = old_t;
+    ret u;
+}
+
 // ----------------------------------------------------------------------
 // Gathering loans
 //
@@ -398,7 +405,9 @@ enum check_loan_ctxt = @{
     // Keep track of whether we're inside a ctor, so as to
     // allow mutating immutable fields in the same class if
     // we are in a ctor, we track the self id
-    mut in_ctor: bool
+    mut in_ctor: bool,
+
+    mut is_pure: bool
 };
 
 fn check_loans(bccx: borrowck_ctxt,
@@ -406,7 +415,8 @@ fn check_loans(bccx: borrowck_ctxt,
                crate: @ast::crate) {
     let clcx = check_loan_ctxt(@{bccx: bccx,
                                  req_loan_map: req_loan_map,
-                                 mut in_ctor: false});
+                                 mut in_ctor: false,
+                                 mut is_pure: false});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
                             visit_block: check_loans_in_block,
                             visit_fn: check_loans_in_fn
@@ -462,6 +472,76 @@ impl methods for check_loan_ctxt {
             if loan.lp == lp {
                 if !f(loan) { ret; }
             }
+        }
+    }
+
+    // when we are in a pure context, we check each call to ensure
+    // that the function which is invoked is itself pure.
+    fn check_pure(expr: @ast::expr) {
+        let tcx = self.tcx();
+        alt ty::get(tcx.ty(expr)).struct {
+          ty::ty_fn(_) {
+            // Extract purity or unsafety based on what kind of callee
+            // we've got.  This would be cleaner if we just admitted
+            // that we have an effect system and carried the purity
+            // etc around in the type.
+
+            // First, check the def_map---if expr.id is present then
+            // expr must be a path (at least I think that's the idea---NDM)
+            let callee_purity = alt tcx.def_map.find(expr.id) {
+              some(ast::def_fn(_, p)) { p }
+              some(ast::def_variant(_, _)) { ast::pure_fn }
+              _ {
+                // otherwise it may be a method call that we can trace
+                // to the def'n site:
+                alt self.bccx.method_map.find(expr.id) {
+                  some(typeck::method_static(did)) {
+                    if did.crate == ast::local_crate {
+                        alt tcx.items.get(did.node) {
+                          ast_map::node_method(m, _, _) { m.decl.purity }
+                          _ { tcx.sess.span_bug(expr.span,
+                                                "Node not bound \
+                                                 to a method") }
+                        }
+                    } else {
+                        metadata::csearch::lookup_method_purity(
+                            tcx.sess.cstore,
+                            did)
+                    }
+                  }
+                  some(typeck::method_param(iid, n_m, _, _)) |
+                  some(typeck::method_iface(iid, n_m)) {
+                    ty::iface_methods(tcx, iid)[n_m].purity
+                  }
+                  none {
+                    // otherwise it's just some dang thing.  We know
+                    // it cannot be unsafe because we do not allow
+                    // unsafe functions to be used as values (or,
+                    // rather, we only allow that inside an unsafe
+                    // block, and then it's up to the user to keep
+                    // things confined).
+                    ast::impure_fn
+                  }
+                }
+              }
+            };
+
+            alt callee_purity {
+              ast::crust_fn | ast::pure_fn { /*ok*/ }
+              ast::impure_fn {
+                self.bccx.span_err(
+                    expr.span,
+                    "pure function calls function \
+                     not known to be pure");
+              }
+              ast::unsafe_fn {
+                self.bccx.span_err(
+                    expr.span,
+                    "pure function calls unsafe function");
+              }
+            }
+          }
+          _ { /* not a fn, ok */ }
         }
     }
 
@@ -530,6 +610,16 @@ impl methods for check_loan_ctxt {
                 ret;
               }
             }
+        }
+
+        // if this is a pure function, only loan-able state can be
+        // assigned, because it is uniquely tied to this function and
+        // is not visible from the outside
+        if self.is_pure && cmt.lp.is_none() {
+            self.bccx.span_err(
+                ex.span,
+                #fmt["%s prohibited in pure functions",
+                     at.ing_form(self.bccx.cmt_to_str(cmt))]);
         }
 
         // check for a conflicting loan as well, except in the case of
@@ -617,21 +707,27 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      sp: span, id: ast::node_id, &&self: check_loan_ctxt,
                      visitor: visit::vt<check_loan_ctxt>) {
 
-    let old_in_ctor = self.in_ctor;
+    save_and_restore(self.in_ctor) {||
+        save_and_restore(self.is_pure) {||
+            // In principle, we could consider fk_anon(*) or
+            // fk_fn_block(*) to be in a ctor, I suppose, but the
+            // purpose of the in_ctor flag is to allow modifications
+            // of otherwise immutable fields and typestate wouldn't be
+            // able to "see" into those functions anyway, so it
+            // wouldn't be very helpful.
+            alt fk {
+              visit::fk_ctor(*) { self.in_ctor = true; }
+              _ { self.in_ctor = false; }
+            };
 
-    // In principle, we could consider fk_anon(*) or fk_fn_block(*) to
-    // be in a ctor, I suppose, but the purpose of the in_ctor flag is
-    // to allow modifications of otherwise immutable fields and
-    // typestate wouldn't be able to "see" into those functions
-    // anyway, so it wouldn't be very helpful.
-    alt fk {
-      visit::fk_ctor(*) { self.in_ctor = true; }
-      _ { self.in_ctor = false; }
-    };
+            alt decl.purity {
+              ast::pure_fn { self.is_pure = true; }
+              _ { }
+            }
 
-    visit::visit_fn(fk, decl, body, sp, id, self, visitor);
-
-    self.in_ctor = old_in_ctor;
+            visit::visit_fn(fk, decl, body, sp, id, self, visitor);
+        }
+    }
 }
 
 fn check_loans_in_expr(expr: @ast::expr,
@@ -680,6 +776,10 @@ fn check_loans_in_expr(expr: @ast::expr,
         }
       }
       ast::expr_call(f, args, _) {
+        if self.is_pure {
+            self.check_pure(f);
+            for args.each { |arg| self.check_pure(arg) }
+        }
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         vec::iter2(args, arg_tys) { |arg, arg_ty|
             alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
@@ -696,14 +796,25 @@ fn check_loans_in_expr(expr: @ast::expr,
       }
       _ { }
     }
+
     visit::visit_expr(expr, self, vt);
 }
 
 fn check_loans_in_block(blk: ast::blk,
                         &&self: check_loan_ctxt,
                         vt: visit::vt<check_loan_ctxt>) {
-    self.check_for_conflicting_loans(blk.node.id);
-    visit::visit_block(blk, self, vt);
+    save_and_restore(self.is_pure) {||
+        self.check_for_conflicting_loans(blk.node.id);
+
+        alt blk.node.rules {
+          ast::default_blk {
+          }
+          ast::unchecked_blk |
+          ast::unsafe_blk { self.is_pure = false; }
+        }
+
+        visit::visit_block(blk, self, vt);
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -1022,20 +1133,25 @@ impl categorize_methods for borrowck_ctxt {
             // lp: loan path, must be none for aliasable things
             let {m,lp} = alt ty::resolved_mode(self.tcx, mode) {
               ast::by_mutbl_ref {
-                {m:m_mutbl, lp:none}
+                {m: m_mutbl,
+                 lp: none}
               }
               ast::by_move | ast::by_copy {
-                {m:m_mutbl, lp:some(@lp_arg(vid))}
+                {m: m_mutbl,
+                 lp: some(@lp_arg(vid))}
               }
               ast::by_ref {
-                if TREAT_CONST_AS_IMM {
-                    {m:m_imm, lp:some(@lp_arg(vid))}
-                } else {
-                    {m:m_const, lp:none}
-                }
+                {m: if TREAT_CONST_AS_IMM {m_imm} else {m_const},
+                 lp: none}
               }
               ast::by_val {
-                {m:m_imm, lp:some(@lp_arg(vid))}
+                // by-value is this hybrid mode where we have a
+                // pointer but we do not own it.  This is not
+                // considered loanable because, for example, a by-ref
+                // and and by-val argument might both actually contain
+                // the same unique ptr.
+                {m: m_imm,
+                 lp: none}
               }
             };
             @{id:id, span:span,
