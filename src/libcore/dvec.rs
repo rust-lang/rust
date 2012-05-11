@@ -176,7 +176,7 @@ impl extensions<A:copy> for dvec<A> {
     //    attempts to access this vector.
     //"]
     //fn append_iter<I:iter::base<A>>(ts: I) {
-    //    self.dvec.swap { |v|
+    //    self.data.swap { |v|
     //        alt ts.size_hint() {
     //          none {}
     //          some(h) { vec::reserve(v, len(v) + h) }

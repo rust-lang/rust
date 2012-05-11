@@ -6,6 +6,7 @@ Basic input/output
 
 import result::result;
 
+import dvec::{dvec, extensions};
 import libc::{c_int, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
 import libc::consts::os::extra::*;
@@ -574,32 +575,32 @@ fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 fn print(s: str) { stdout().write_str(s); }
 fn println(s: str) { stdout().write_line(s); }
 
-type mem_buffer = @{mut buf: [mut u8],
-                    mut pos: uint};
+type mem_buffer = @{buf: dvec<u8>, mut pos: uint};
 
 impl of writer for mem_buffer {
     fn write(v: [const u8]/&) {
         // Fast path.
-        if self.pos == vec::len(self.buf) {
-            for vec::each(v) {|b| self.buf += [mut b]; }
-            self.pos += vec::len(v);
+        let vlen = vec::len(v);
+        let buf_len = self.buf.len();
+        if self.pos == buf_len {
+            self.buf.push_all(v);
+            self.pos += vlen;
             ret;
         }
-        // FIXME: Optimize: These should be unique pointers. // #2004
-        let vlen = vec::len(v);
-        let mut vpos = 0u;
-        while vpos < vlen {
-            let b = v[vpos];
-            if self.pos == vec::len(self.buf) {
-                self.buf += [mut b];
-            } else { self.buf[self.pos] = b; }
-            self.pos += 1u;
+
+        // FIXME #2004--use memcpy here?
+        let mut pos = self.pos, vpos = 0u;
+        while vpos < vlen && pos < buf_len {
+            self.buf.set_elt(pos, v[vpos]);
+            pos += 1u;
             vpos += 1u;
         }
+        self.buf.push_slice(v, vpos, vlen);
+        self.pos += vlen;
     }
     fn seek(offset: int, whence: seek_style) {
         let pos = self.pos;
-        let len = vec::len(self.buf);
+        let len = self.buf.len();
         self.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { self.pos }
@@ -607,13 +608,12 @@ impl of writer for mem_buffer {
 }
 
 fn mem_buffer() -> mem_buffer {
-    @{mut buf: [mut], mut pos: 0u}
+    @{buf: dvec(), mut pos: 0u}
 }
 fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
-fn mem_buffer_buf(b: mem_buffer) -> [u8] { vec::from_mut(b.buf) }
+fn mem_buffer_buf(b: mem_buffer) -> [u8] { b.buf.get() }
 fn mem_buffer_str(b: mem_buffer) -> str {
-    let b_ = vec::from_mut(b.buf);
-    str::from_bytes(b_)
+    str::from_bytes(b.buf.get())
 }
 
 fn with_str_writer(f: fn(writer)) -> str {
@@ -826,6 +826,21 @@ mod tests {
           }
           result::ok(_) { fail; }
         }
+    }
+
+    #[test]
+    fn mem_buffer_overwrite() {
+        let mbuf = mem_buffer();
+        mbuf.write([0u8, 1u8, 2u8, 3u8]);
+        assert mem_buffer_buf(mbuf) == [0u8, 1u8, 2u8, 3u8];
+        mbuf.seek(-2, seek_cur);
+        mbuf.write([4u8, 5u8, 6u8, 7u8]);
+        assert mem_buffer_buf(mbuf) == [0u8, 1u8, 4u8, 5u8, 6u8, 7u8];
+        mbuf.seek(-2, seek_end);
+        mbuf.write([8u8]);
+        mbuf.seek(1, seek_set);
+        mbuf.write([9u8]);
+        assert mem_buffer_buf(mbuf) == [0u8, 9u8, 4u8, 5u8, 8u8, 7u8];
     }
 }
 
