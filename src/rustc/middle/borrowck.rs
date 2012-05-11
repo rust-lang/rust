@@ -11,6 +11,7 @@ import std::list::{list, cons, nil};
 import result::{result, ok, err, extensions};
 import syntax::print::pprust;
 import util::common::indenter;
+import ast_util::op_expr_callee_id;
 
 export check_crate, root_map, mutbl_map;
 
@@ -301,7 +302,7 @@ impl methods for gather_loan_ctxt {
               _ {
                 self.bccx.span_err(
                     cmt.span,
-                    #fmt["Cannot guarantee the stability \
+                    #fmt["cannot guarantee the stability \
                           of this expression for the entirety of \
                           its lifetime, %s",
                          region_to_str(self.tcx(), scope_r)]);
@@ -989,21 +990,30 @@ impl categorize_methods for borrowck_ctxt {
         }
     }
 
-    fn cat_expr(expr: @ast::expr) -> cmt {
-        let tcx = self.tcx;
-        let expr_ty = tcx.ty(expr);
+    fn cat_method_ref(expr: @ast::expr, expr_ty: ty::t) -> cmt {
+        @{id:expr.id, span:expr.span,
+          cat:cat_special(sk_method), lp:none,
+          mutbl:m_imm, ty:expr_ty}
+    }
 
+    fn cat_rvalue(expr: @ast::expr, expr_ty: ty::t) -> cmt {
+        @{id:expr.id, span:expr.span,
+          cat:cat_rvalue, lp:none,
+          mutbl:m_imm, ty:expr_ty}
+    }
+
+    fn cat_expr(expr: @ast::expr) -> cmt {
         #debug["cat_expr: id=%d expr=%s",
                expr.id, pprust::expr_to_str(expr)];
 
-        if self.method_map.contains_key(expr.id) {
-            ret @{id:expr.id, span:expr.span,
-                  cat:cat_special(sk_method), lp:none,
-                  mutbl:m_imm, ty:expr_ty};
-        }
-
+        let tcx = self.tcx;
+        let expr_ty = tcx.ty(expr);
         alt expr.node {
           ast::expr_unary(ast::deref, e_base) {
+            if self.method_map.contains_key(expr.id) {
+                ret self.cat_rvalue(expr, expr_ty);
+            }
+
             let base_cmt = self.cat_expr(e_base);
             alt self.cat_deref(expr, base_cmt, 0u, true) {
               some(cmt) { ret cmt; }
@@ -1017,11 +1027,19 @@ impl categorize_methods for borrowck_ctxt {
           }
 
           ast::expr_field(base, f_name, _) {
+            if self.method_map.contains_key(expr.id) {
+                ret self.cat_method_ref(expr, expr_ty);
+            }
+
             let base_cmt = self.cat_autoderef(base);
             self.cat_field(expr, base_cmt, f_name)
           }
 
           ast::expr_index(base, _) {
+            if self.method_map.contains_key(expr.id) {
+                ret self.cat_rvalue(expr, expr_ty);
+            }
+
             self.cat_index(expr, base)
           }
 
@@ -1042,9 +1060,7 @@ impl categorize_methods for borrowck_ctxt {
           ast::expr_block(*) | ast::expr_loop(*) | ast::expr_alt(*) |
           ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
           ast::expr_cont | ast::expr_rec(*) {
-            @{id:expr.id, span:expr.span,
-              cat:cat_rvalue, lp:none,
-              mutbl:m_imm, ty:expr_ty}
+            ret self.cat_rvalue(expr, expr_ty);
           }
         }
     }
