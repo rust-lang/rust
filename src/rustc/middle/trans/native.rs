@@ -782,7 +782,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
                    ref_id: option<ast::node_id>) {
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
                                some(substs), some(item.span));
-    let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
+    let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let tp_ty = substs.tys[0], lltp_ty = type_of::type_of(ccx, tp_ty);
     alt check item.ident {
       "size_of" {
@@ -835,27 +835,83 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
               fcx.llretptr);
       }
       "visit_ty" {
-        let vp_ty = substs.tys[1], _llvp_ty = type_of::type_of(ccx, vp_ty);
+
+        // signature: fn visit_ty<T,V:ty_visitor>(tv: V);
+
+        let tp_ty = substs.tys[0];
+        let vp_ty = substs.tys[1];
         let visitor = get_param(decl, first_real_arg);
-        // FIXME: implement a proper iface-call. Nontrivial.
-        Call(bcx, visitor, []);
+
+        // We're going to synthesize a monomorphized vtbl call here much
+        // like what impl::trans_monomorphized_callee does, but without
+        // having quite as much source machinery to go on.
+
+        alt impl::find_vtable_in_fn_ctxt(substs,
+                                         1u, /* n_param */
+                                         0u  /* n_bound */ ) {
+
+          typeck::vtable_static(impl_did, impl_substs, sub_origins) {
+
+            let (tyname, args) = alt ty::get(tp_ty).struct {
+              ty::ty_bot { ("bot", []) }
+              ty::ty_nil { ("nil", []) }
+              ty::ty_bool { ("bool", []) }
+              ty::ty_int(ast::ty_i) { ("int", []) }
+              ty::ty_int(ast::ty_char) { ("char", []) }
+              ty::ty_int(ast::ty_i8) { ("i8", []) }
+              ty::ty_int(ast::ty_i16) { ("i16", []) }
+              ty::ty_int(ast::ty_i32) { ("i32", []) }
+              ty::ty_int(ast::ty_i64) { ("i64", []) }
+              ty::ty_uint(ast::ty_u) { ("uint", []) }
+              ty::ty_uint(ast::ty_u8) { ("u8", []) }
+              ty::ty_uint(ast::ty_u16) { ("u16", []) }
+              ty::ty_uint(ast::ty_u32) { ("u32", []) }
+              ty::ty_uint(ast::ty_u64) { ("u64", []) }
+              ty::ty_float(ast::ty_f) { ("float", []) }
+              ty::ty_float(ast::ty_f32) { ("f32", []) }
+              ty::ty_float(ast::ty_f64) { ("f64", []) }
+              ty::ty_str { ("str", []) }
+              _ {
+                bcx.sess().unimpl("trans::native::visit_ty on "
+                                  + ty_to_str(ccx.tcx, tp_ty));
+              }
+            };
+
+            let mth_id = impl::method_with_name(ccx, impl_did,
+                                                "visit_" + tyname);
+            let mth_ty = ty::lookup_item_type(ccx.tcx, mth_id).ty;
+
+            // FIXME: is this safe? There is no callee AST node,
+            // we're synthesizing it.
+            let callee_id = (-1) as ast::node_id;
+
+            let dest = ignore;
+
+            bcx = trans_call_inner(bcx,
+                                   mth_ty,
+                                   ty::mk_nil(ccx.tcx),
+                                   {|bcx|
+                                       let lval =
+                                           lval_static_fn_inner
+                                           (bcx, mth_id, callee_id,
+                                            impl_substs,  some(sub_origins));
+                                       {env: self_env(visitor, vp_ty, none)
+                                        with lval}
+                                   }, arg_vals(args), dest);
+          }
+          _ {
+            ccx.sess.span_bug(item.span,
+                              "non-static callee in 'visit_ty' intrinsinc");
+          }
+        }
       }
 
       "visit_val" {
-        let vp_ty = substs.tys[1], _llvp_ty = type_of::type_of(ccx, vp_ty);
-        let val = get_param(decl, first_real_arg);
-        let visitor = get_param(decl, first_real_arg + 1u);
-        // FIXME: implement a proper iface-call. Nontrivial.
-        Call(bcx, visitor, [val]);
+        bcx.sess().unimpl("trans::native::visit_val");
       }
 
       "visit_val_pair" {
-        let vp_ty = substs.tys[1], _llvp_ty = type_of::type_of(ccx, vp_ty);
-        let a = get_param(decl, first_real_arg);
-        let b = get_param(decl, first_real_arg + 1u);
-        let visitor = get_param(decl, first_real_arg + 2u);
-        // FIXME: implement a proper iface-call. Nontrivial.
-        Call(bcx, visitor, [a, b]);
+        bcx.sess().unimpl("trans::native::visit_val_pair");
       }
     }
     build_return(bcx);

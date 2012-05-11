@@ -18,6 +18,7 @@ mod intrinsic {
     }
 
     iface ty_visitor {
+        fn visit_bot();
         fn visit_nil();
         fn visit_bool();
 
@@ -36,6 +37,8 @@ mod intrinsic {
         fn visit_float();
         fn visit_f32();
         fn visit_f64();
+
+        fn visit_char();
         fn visit_str();
 
         fn visit_vec(cells_mut: bool,
@@ -68,6 +71,7 @@ mod intrinsic {
     iface val_visitor {
 
         // Basic types we can visit directly.
+        fn visit_bot();
         fn visit_nil();
         fn visit_bool(b: &bool);
 
@@ -86,6 +90,8 @@ mod intrinsic {
         fn visit_float(f: &float);
         fn visit_f32(f: &f32);
         fn visit_f64(f: &f64);
+
+        fn visit_char(c: &char);
 
         // Vecs and strs we can provide a stub view of.
         fn visit_str(repr: &vec::unsafe::vec_repr,
