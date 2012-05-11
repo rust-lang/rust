@@ -149,6 +149,10 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     if upto == cu_expand { ret {crate: crate, tcx: none}; }
 
     crate =
+        time(time_passes, "intrinsic injection",
+             bind front::intrinsic_inject::inject_intrinsic(sess, crate));
+
+    crate =
         time(time_passes, "core injection",
              bind front::core_inject::maybe_inject_libcore_ref(sess, crate));
 

@@ -834,6 +834,29 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
         Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
               fcx.llretptr);
       }
+      "visit_ty" {
+        let vp_ty = substs.tys[1], _llvp_ty = type_of::type_of(ccx, vp_ty);
+        let visitor = get_param(decl, first_real_arg);
+        // FIXME: implement a proper iface-call. Nontrivial.
+        Call(bcx, visitor, []);
+      }
+
+      "visit_val" {
+        let vp_ty = substs.tys[1], _llvp_ty = type_of::type_of(ccx, vp_ty);
+        let val = get_param(decl, first_real_arg);
+        let visitor = get_param(decl, first_real_arg + 1u);
+        // FIXME: implement a proper iface-call. Nontrivial.
+        Call(bcx, visitor, [val]);
+      }
+
+      "visit_val_pair" {
+        let vp_ty = substs.tys[1], _llvp_ty = type_of::type_of(ccx, vp_ty);
+        let a = get_param(decl, first_real_arg);
+        let b = get_param(decl, first_real_arg + 1u);
+        let visitor = get_param(decl, first_real_arg + 2u);
+        // FIXME: implement a proper iface-call. Nontrivial.
+        Call(bcx, visitor, [a, b]);
+      }
     }
     build_return(bcx);
     finish_fn(fcx, lltop);

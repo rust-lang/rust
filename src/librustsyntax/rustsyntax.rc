@@ -63,6 +63,7 @@ mod ext {
     mod simplext;
     mod concat_idents;
     mod ident_to_str;
+    mod include;
     mod log_syntax;
     mod auto_serialize;
 }

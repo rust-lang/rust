@@ -8,6 +8,7 @@ export parse_crate_from_file;
 export parse_crate_from_crate_file;
 export parse_crate_from_source_str;
 export parse_expr_from_source_str;
+export parse_item_from_source_str;
 export parse_from_source_str;
 
 import parser::parser;
@@ -88,6 +89,17 @@ fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
     let p = new_parser_from_source_str(
         sess, cfg, name, codemap::fss_none, source);
     let r = parser::parse_expr(p);
+    sess.chpos = p.reader.chpos;
+    sess.byte_pos = sess.byte_pos + p.reader.pos;
+    ret r;
+}
+
+fn parse_item_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
+                              +attrs: [ast::attribute], vis: ast::visibility,
+                              sess: parse_sess) -> option<@ast::item> {
+    let p = new_parser_from_source_str(
+        sess, cfg, name, codemap::fss_none, source);
+    let r = parser::parse_item(p, attrs, vis);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;

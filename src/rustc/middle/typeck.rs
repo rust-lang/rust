@@ -2072,6 +2072,19 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
       "addr_of" { (1u, [arg(ast::by_ref, param(ccx, 0u))],
                    ty::mk_imm_ptr(tcx, param(ccx, 0u))) }
       "needs_drop" { (1u, [], ty::mk_bool(tcx)) }
+
+      "visit_ty" { (2u, [arg(ast::by_ref, param(ccx, 1u))],
+                    ty::mk_nil(tcx)) }
+
+      "visit_val" { (2u, [arg(ast::by_ref, param(ccx, 0u)),
+                          arg(ast::by_ref, param(ccx, 1u))],
+                     ty::mk_nil(tcx)) }
+
+      "visit_val_pair" { (2u, [arg(ast::by_ref, param(ccx, 0u)),
+                               arg(ast::by_ref, param(ccx, 0u)),
+                               arg(ast::by_ref, param(ccx, 1u))],
+                          ty::mk_nil(tcx)) }
+
       other {
         tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +
                           other + "`");

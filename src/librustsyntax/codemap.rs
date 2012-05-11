@@ -12,6 +12,7 @@ export mk_substr_filename;
 export lookup_char_pos;
 export adjust_span;
 export span_to_str;
+export span_to_filename;
 export span_to_lines;
 export file_lines;
 export get_line;
@@ -169,6 +170,11 @@ fn span_to_str(sp: span, cm: codemap) -> str {
 }
 
 type file_lines = {file: filemap, lines: [uint]};
+
+fn span_to_filename(sp: span, cm: codemap::codemap) -> filename {
+    let lo = lookup_char_pos(cm, sp.lo);
+    ret lo.file.name;
+}
 
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);

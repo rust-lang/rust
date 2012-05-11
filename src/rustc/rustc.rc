@@ -76,6 +76,7 @@ mod front {
     mod config;
     mod test;
     mod core_inject;
+    mod intrinsic_inject;
 }
 
 mod back {
