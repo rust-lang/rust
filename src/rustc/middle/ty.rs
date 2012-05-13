@@ -1,4 +1,4 @@
-import std::{ufind, map, smallintmap};
+import std::{map, smallintmap};
 import result::result;
 import std::map::hashmap;
 import driver::session;

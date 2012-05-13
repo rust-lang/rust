@@ -15,7 +15,7 @@ import core::*;
 
 export net, uv;
 export c_vec, util, timer;
-export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
+export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap;
 export rope, arena;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
@@ -49,8 +49,6 @@ mod rope;
 mod smallintmap;
 mod sort;
 mod treemap;
-mod ufind;
-
 
 // And ... other stuff
 
