@@ -43,10 +43,10 @@ is returned. If `f` matches no elements then none is returned.
 fn find<T: copy>(ls: list<T>, f: fn(T) -> bool) -> option<T> {
     let mut ls = ls;
     loop {
-        alt ls {
+        ls = alt ls {
           cons(hd, tl) {
             if f(hd) { ret some(hd); }
-            ls = *tl;
+            *tl
           }
           nil { ret none; }
         }
@@ -55,13 +55,10 @@ fn find<T: copy>(ls: list<T>, f: fn(T) -> bool) -> option<T> {
 
 #[doc = "Returns true if a list contains an element with the given value"]
 fn has<T: copy>(ls: list<T>, elt: T) -> bool {
-    let mut ls = ls;
-    loop {
-        alt ls {
-          cons(hd, tl) { if elt == hd { ret true; } else { ls = *tl; } }
-          nil { ret false; }
-        }
-    };
+    for each(ls) { |e|
+        if e == elt { ret true; }
+    }
+    ret false;
 }
 
 #[doc = "Returns true if the list is empty"]

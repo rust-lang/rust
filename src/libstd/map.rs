@@ -214,12 +214,12 @@ mod chained {
         while i < n {
             let mut chain = tbl.chains[i];
             loop {
-                alt chain {
+                chain = alt chain {
                   absent { break; }
                   present(entry) {
                     let next = entry.next;
                     if !blk(entry) { ret; }
-                    chain = next;
+                    next
                   }
                 }
             }

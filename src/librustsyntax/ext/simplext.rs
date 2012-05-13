@@ -210,9 +210,9 @@ fn follow(m: arb_depth<matchable>, idx_path: @mut [uint]) ->
    arb_depth<matchable> {
     let mut res: arb_depth<matchable> = m;
     for vec::each(*idx_path) {|idx|
-        alt res {
+        res = alt res {
           leaf(_) { ret res;/* end of the line */ }
-          seq(new_ms, _) { res = new_ms[idx]; }
+          seq(new_ms, _) { new_ms[idx] }
         }
     }
     ret res;

@@ -1452,15 +1452,15 @@ fn list_search<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option<U>)
         -> option<U> {
     let mut ls = ls;
     loop {
-        alt ls {
+        ls = alt ls {
           cons(hd, tl) {
             let result = f(hd);
             if !is_none(result) { ret result; }
-            ls = *tl;
+            *tl
           }
           nil { ret none; }
-        }
-    };
+        };
+    }
 }
 
 fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
