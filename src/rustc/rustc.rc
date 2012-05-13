@@ -17,6 +17,18 @@ use rustsyntax(vers = "0.2");
 
 import core::*;
 
+/*
+Alternate names for some modules.
+
+I am using this to help extract metadata into its own crate. In metadata.rs
+it redefines all these modules in order to gate access from metadata to the
+rest of the compiler, then uses these to access the original implementation.
+*/
+import util_ = util;
+import lib_ = lib;
+import driver_ = driver;
+import middle_ = middle;
+
 mod middle {
     mod trans {
         mod common;
