@@ -1214,7 +1214,7 @@ mod node {
         }
 
         fn get_next_char_in_leaf(it: t) -> option<char> {
-            alt(it.leaf) {
+            alt copy it.leaf {
               option::none { ret option::none }
               option::some(aleaf) {
                 if it.leaf_byte_pos >= aleaf.byte_len {

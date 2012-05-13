@@ -345,7 +345,7 @@ fn malloc_boxed_raw(bcx: block, t: ty::t,
 
     // Get the tydesc for the body:
     let lltydesc = get_tydesc(ccx, t, static_ti);
-    lazily_emit_all_tydesc_glue(ccx, static_ti);
+    lazily_emit_all_tydesc_glue(ccx, copy static_ti);
 
     // Allocate space:
     let rval = Call(bcx, ccx.upcalls.malloc, [lltydesc]);

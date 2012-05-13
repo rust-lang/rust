@@ -36,7 +36,7 @@ enum x86_64_reg_class {
     memory_class
 }
 
-fn is_sse(c: x86_64_reg_class) -> bool {
+fn is_sse(++c: x86_64_reg_class) -> bool {
     ret alt c {
         sse_fs_class | sse_fv_class |
         sse_ds_class | sse_dv_class { true }
