@@ -24,10 +24,16 @@ fn main(args: [str]) {
     let args = if vec::len(args) <= 1u {["", "100000"]} else {args};
     let max = uint::from_str(args[1]).get();
     let start = std::time::precise_time_s();
-    collect_raw(max);
+    let raw_v = collect_raw(max);
     let mid = std::time::precise_time_s();
-    collect_dvec(max);
+    let dvec_v = collect_dvec(max);
     let end = std::time::precise_time_s();
+
+    // check each vector
+    assert raw_v.len() == max;
+    for raw_v.eachi { |i, v| assert i == v; }
+    assert dvec_v.len() == max;
+    for dvec_v.eachi { |i, v| assert i == v; }
 
     let raw = mid - start;
     let dvec = end - mid;
