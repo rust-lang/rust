@@ -9,17 +9,8 @@ export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> @ast::expr {
-    let arg = get_mac_arg(cx,sp,arg);
-    let args: [@ast::expr] =
-        alt arg.node {
-          ast::expr_vec(elts, _) { elts }
-          _ {
-            cx.span_fatal(sp, "#env requires arguments of the form `[...]`.")
-          }
-        };
-    if vec::len::<@ast::expr>(args) != 1u {
-        cx.span_fatal(sp, "malformed #env call");
-    }
+    let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "env");
+
     // FIXME: if this was more thorough it would manufacture an
     // option<str> rather than just an maybe-empty string. (Issue #2248)
 

@@ -668,15 +668,7 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
 
 fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> base::macro_def {
-    let arg = get_mac_arg(cx,sp,arg);
-    let args: [@ast::expr] =
-        alt arg.node {
-          ast::expr_vec(elts, _) { elts }
-          _ {
-            cx.span_fatal(sp,
-                          "#macro requires arguments of the form `[...]`.")
-          }
-        };
+    let args = get_mac_args_no_max(cx, sp, arg, 0u, "macro");
 
     let mut macro_name: option<str> = none;
     let mut clauses: [@clause] = [];
@@ -712,9 +704,13 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                                       "macro name must not be a path");
                       }
                     }
+                    let arg = alt invoc_arg {
+                      some(arg) { arg }
+                      none { cx.span_fatal(mac.span,
+                                           "macro must have arguments")}
+                    };
                     clauses +=
-                        [@{params: pattern_to_selectors
-                               (cx, get_mac_arg(cx,mac.span,invoc_arg)),
+                        [@{params: pattern_to_selectors(cx, arg),
                            body: elts[1u]}];
 
                     // FIXME: check duplicates (or just simplify
@@ -746,16 +742,18 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
              alt macro_name {
                some(id) { id }
                none {
-                 cx.span_fatal(sp,
-                               "macro definition must have " +
-                                   "at least one clause")
+                 cx.span_fatal(sp, "macro definition must have " +
+                               "at least one clause")
                }
              },
-         ext: normal({expander: ext, span: some(arg.span)})};
+         ext: normal({expander: ext, span: some(option::get(arg).span)})};
 
     fn generic_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          _body: ast::mac_body, clauses: [@clause]) -> @expr {
-        let arg = get_mac_arg(cx,sp,arg);
+        let arg = alt arg {
+          some(arg) { arg }
+          none { cx.span_fatal(sp, "macro must have arguments")}
+        };
         for clauses.each {|c|
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body); }

@@ -13,17 +13,7 @@ export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> @ast::expr {
-    let arg = get_mac_arg(cx,sp,arg);
-    let args: [@ast::expr] =
-        alt arg.node {
-          ast::expr_vec(elts, _) { elts }
-          _ {
-            cx.span_fatal(sp, "#fmt requires arguments of the form `[...]`.")
-          }
-        };
-    if vec::len::<@ast::expr>(args) == 0u {
-        cx.span_fatal(sp, "#fmt requires a format string");
-    }
+    let args = get_mac_args_no_max(cx, sp, arg, 1u, "fmt");
     let fmt =
         expr_to_str(cx, args[0],
                     "first argument to #fmt must be a string literal.");

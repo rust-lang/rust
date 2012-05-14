@@ -153,10 +153,37 @@ fn make_new_lit(cx: ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
     ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
 }
 
-fn get_mac_arg(cx: ext_ctxt, sp: span, arg: ast::mac_arg) -> @ast::expr {
-    alt (arg) {
-      some(expr) {expr}
-      none {cx.span_fatal(sp, "missing macro args")}
+fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
+                       min: uint, name: str) -> [@ast::expr] {
+    ret get_mac_args(cx, sp, arg, min, none, name);
+}
+
+fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
+                min: uint, max: option<uint>, name: str) -> [@ast::expr] {
+    alt arg {
+      some(expr) {
+        alt expr.node {
+          ast::expr_vec(elts, _) {
+            let elts_len = vec::len(elts);
+            alt max {
+              some(max) if ! (min <= elts_len && elts_len <= max) {
+                cx.span_fatal(sp,
+                              #fmt["#%s takes between %u and %u arguments.",
+                                   name, min, max]);
+              }
+              none if ! (min <= elts_len) {
+                cx.span_fatal(sp, #fmt["#%s needs at least %u arguments.",
+                                       name, min]);
+              }
+              _ { ret elts; /* we're good */}
+            }
+          }
+          _ {
+            cx.span_fatal(sp, #fmt["#%s: malformed invocation", name])
+          }
+        }
+      }
+      none {cx.span_fatal(sp, #fmt["#%s: missing arguments", name])}
     }
 }
 

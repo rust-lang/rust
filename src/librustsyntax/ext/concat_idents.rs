@@ -2,14 +2,7 @@ import base::*;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> @ast::expr {
-    let arg = get_mac_arg(cx,sp,arg);
-    let args: [@ast::expr] =
-        alt arg.node {
-          ast::expr_vec(elts, _) { elts }
-          _ {
-            cx.span_fatal(sp, "#concat_idents requires a vector argument .")
-          }
-        };
+    let args = get_mac_args_no_max(cx,sp,arg,1u,"concat_idents");
     let mut res: ast::ident = "";
     for args.each {|e|
         res += expr_to_ident(cx, e, "expected an ident");

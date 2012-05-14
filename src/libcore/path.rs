@@ -136,7 +136,7 @@ fn connect_many(paths: [path]) -> path {
 }
 
 #[doc = "
-Split a path into it's individual components
+Split a path into its individual components
 
 Splits a given path by path separators and returns a vector containing
 each piece of the path. On Windows, if the path is absolute then
