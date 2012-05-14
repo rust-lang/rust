@@ -210,7 +210,7 @@ The keywords in [source files](#source-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
 alt assert
-be break
+break
 check claim class const cont copy crust
 do
 else enum export

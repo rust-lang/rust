@@ -825,10 +825,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if eat_keyword(p, "cont") {
         ex = expr_cont;
         hi = p.span.hi;
-    } else if eat_keyword(p, "be") {
-        let e = parse_expr(p);
-        hi = e.span.hi;
-        ex = expr_be(e);
     } else if eat_keyword(p, "copy") {
         let e = parse_expr(p);
         ex = expr_copy(e);

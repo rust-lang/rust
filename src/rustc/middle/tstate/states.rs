@@ -483,14 +483,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         }
         ret changed;
       }
-      expr_be(val) {
-        let mut changed = set_prestate_ann(fcx.ccx, e.id, pres);
-        let post = false_postcond(num_constrs);
-        // except for the "diverges" bit...
-        kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
-        set_poststate_ann(fcx.ccx, e.id, post);
-        ret changed | find_pre_post_state_expr(fcx, pres, val);
-      }
       expr_if(antec, conseq, maybe_alt) {
         ret join_then_else(fcx, antec, conseq, maybe_alt, e.id, plain_if,
                            pres);

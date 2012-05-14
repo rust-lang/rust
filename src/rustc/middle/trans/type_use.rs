@@ -172,7 +172,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_assign(val, _) | expr_swap(val, _) | expr_assign_op(_, val, _) |
-      expr_ret(some(val)) | expr_be(val) {
+      expr_ret(some(val)) {
         node_type_needs(cx, use_repr, val.id);
       }
       expr_index(base, _) | expr_field(base, _, _) {

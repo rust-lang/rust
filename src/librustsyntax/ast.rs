@@ -336,7 +336,6 @@ enum expr_ {
     expr_break,
     expr_cont,
     expr_ret(option<@expr>),
-    expr_be(@expr),
     expr_log(int, @expr, @expr),
 
     expr_new(/* arena */ @expr,

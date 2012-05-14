@@ -35,8 +35,8 @@ fn select_random(r: u32, genelist: [aminoacids]) -> char {
         if hi > lo + 1u {
             let mid: uint = lo + (hi - lo) / 2u;
             if target < v[mid].prob {
-                be bisect(v, lo, mid, target);
-            } else { be bisect(v, mid, hi, target); }
+                ret bisect(v, lo, mid, target);
+            } else { ret bisect(v, mid, hi, target); }
         } else { ret v[hi].ch; }
     }
     ret bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);

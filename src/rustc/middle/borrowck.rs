@@ -972,7 +972,7 @@ impl categorize_methods for borrowck_ctxt {
           ast::expr_swap(*) | ast::expr_move(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) | ast::expr_fn(*) | ast::expr_fn_block(*) |
           ast::expr_assert(*) | ast::expr_check(*) | ast::expr_ret(*) |
-          ast::expr_be(*) | ast::expr_loop_body(*) | ast::expr_unary(*) |
+          ast::expr_loop_body(*) | ast::expr_unary(*) |
           ast::expr_copy(*) | ast::expr_cast(*) | ast::expr_fail(*) |
           ast::expr_vstore(*) | ast::expr_vec(*) | ast::expr_tup(*) |
           ast::expr_if_check(*) | ast::expr_if(*) | ast::expr_log(*) |

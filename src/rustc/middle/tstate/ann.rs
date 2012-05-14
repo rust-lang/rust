@@ -41,13 +41,15 @@ type pre_and_post_state = {prestate: prestate, poststate: poststate};
 
 type ts_ann = @{conditions: pre_and_post, states: pre_and_post_state};
 
-fn true_precond(num_vars: uint) -> precond { be create_tritv(num_vars); }
+fn true_precond(num_vars: uint) -> precond { ret create_tritv(num_vars); }
 
-fn true_postcond(num_vars: uint) -> postcond { be true_precond(num_vars); }
+fn true_postcond(num_vars: uint) -> postcond { ret true_precond(num_vars); }
 
-fn empty_prestate(num_vars: uint) -> prestate { be true_precond(num_vars); }
+fn empty_prestate(num_vars: uint) -> prestate { ret true_precond(num_vars); }
 
-fn empty_poststate(num_vars: uint) -> poststate { be true_precond(num_vars); }
+fn empty_poststate(num_vars: uint) -> poststate {
+    ret true_precond(num_vars);
+}
 
 fn false_postcond(num_vars: uint) -> postcond {
     let rslt = create_tritv(num_vars);

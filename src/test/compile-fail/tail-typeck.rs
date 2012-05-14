@@ -1,6 +1,6 @@
 // error-pattern: mismatched types
 
-fn f() -> int { be g(); }
+fn f() -> int { ret g(); }
 
 fn g() -> uint { ret 0u; }
 

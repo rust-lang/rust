@@ -488,7 +488,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_fail(e) { expr_fail(option::map(e, fld.fold_expr)) }
           expr_break | expr_cont { e }
           expr_ret(e) { expr_ret(option::map(e, fld.fold_expr)) }
-          expr_be(e) { expr_be(fld.fold_expr(e)) }
           expr_log(i, lv, e) { expr_log(i, fld.fold_expr(lv),
                                         fld.fold_expr(e)) }
           expr_assert(e) { expr_assert(fld.fold_expr(e)) }

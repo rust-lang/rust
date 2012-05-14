@@ -391,11 +391,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
           }
         }
       }
-      expr_be(val) {
-        find_pre_post_expr(fcx, val);
-        set_pre_and_post(fcx.ccx, e.id, expr_prestate(fcx.ccx, val),
-                         false_postcond(num_local_vars));
-      }
       expr_if(antec, conseq, maybe_alt) {
         join_then_else(fcx, antec, conseq, maybe_alt, e.id, plain_if);
       }

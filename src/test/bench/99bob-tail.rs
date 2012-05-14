@@ -12,21 +12,21 @@ fn main() {
         #debug("Take one down and pass it around, %d \
                 bottles of beer on the wall.", n-1);
         #debug("");
-        if n > 3 { be multiple(n - 1); } else { be dual(); }
+        if n > 3 { ret multiple(n - 1); } else { ret dual(); }
     }
     fn dual() {
         #debug("2 bottles of beer on the wall, 2 bottles of beer,");
         #debug("Take one down and pass it around, \
                 1 bottle of beer on the wall.");
         #debug("");
-        be single();
+        ret single();
     }
     fn single() {
         #debug("1 bottle of beer on the wall, 1 bottle of beer,");
         #debug("Take one down and pass it around, \
                 no more bottles of beer on the wall.");
         #debug("");
-        be none();
+        ret none();
     }
     fn none() {
         #debug("No more bottles of beer on the wall, \

@@ -42,7 +42,6 @@ fn need_parens(expr: @ast::expr, outer_prec: uint) -> bool {
       ast::expr_swap(_, _) { true }
       ast::expr_assign_op(_, _, _) { true }
       ast::expr_ret(_) { true }
-      ast::expr_be(_) { true }
       ast::expr_assert(_) { true }
       ast::expr_check(_, _) { true }
       ast::expr_log(_, _, _) { true }
@@ -55,7 +54,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
       ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i), _}) { true }
       ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
       ast::expr_move(_, sub) | ast::expr_copy(sub) |
-      ast::expr_assign(_, sub) | ast::expr_be(sub) |
+      ast::expr_assign(_, sub) |
       ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
       ast::expr_log(_, _, sub) | ast::expr_assert(sub) |
       ast::expr_check(_, sub) { ends_in_lit_int(sub) }

@@ -104,7 +104,7 @@ fn is_bin_digit(c: char) -> bool { ret c == '0' || c == '1'; }
 
 fn consume_whitespace_and_comments(rdr: reader) {
     while is_whitespace(rdr.curr) { rdr.bump(); }
-    be consume_any_line_comment(rdr);
+    ret consume_any_line_comment(rdr);
 }
 
 fn consume_any_line_comment(rdr: reader) {
@@ -114,9 +114,9 @@ fn consume_any_line_comment(rdr: reader) {
             while rdr.curr != '\n' && !rdr.is_eof() { rdr.bump(); }
             // Restart whitespace munch.
 
-            be consume_whitespace_and_comments(rdr);
+            ret consume_whitespace_and_comments(rdr);
           }
-          '*' { rdr.bump(); rdr.bump(); be consume_block_comment(rdr); }
+          '*' { rdr.bump(); rdr.bump(); ret consume_block_comment(rdr); }
           _ { ret; }
         }
     }
@@ -140,7 +140,7 @@ fn consume_block_comment(rdr: reader) {
     }
     // restart whitespace munch.
 
-    be consume_whitespace_and_comments(rdr);
+    ret consume_whitespace_and_comments(rdr);
 }
 
 fn scan_exponent(rdr: reader) -> option<str> {

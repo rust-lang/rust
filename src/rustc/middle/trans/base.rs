@@ -3267,9 +3267,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         assert dest == ignore;
         ret trans_ret(bcx, ex);
       }
-      ast::expr_be(ex) {
-        ret trans_be(bcx, ex);
-      }
       ast::expr_fail(expr) {
         assert dest == ignore;
         ret trans_fail_expr(bcx, some(e.span), expr);
@@ -3639,13 +3636,6 @@ fn trans_ret(bcx: block, e: option<@ast::expr>) -> block {
 fn build_return(bcx: block) {
     let _icx = bcx.insn_ctxt("build_return");
     Br(bcx, bcx.fcx.llreturn);
-}
-
-fn trans_be(cx: block, e: @ast::expr) -> block {
-    // FIXME: Turn this into a real tail call once
-    // calling convention issues are settled
-    let _icx = cx.insn_ctxt("trans_be");
-    ret trans_ret(cx, some(e));
 }
 
 fn init_local(bcx: block, local: @ast::local) -> block {

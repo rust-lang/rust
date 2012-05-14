@@ -80,24 +80,24 @@ fn print_crate_(s: ps, &&crate: @ast::crate) {
     eof(s.s);
 }
 
-fn ty_to_str(ty: @ast::ty) -> str { be to_str(ty, print_type); }
+fn ty_to_str(ty: @ast::ty) -> str { ret to_str(ty, print_type); }
 
-fn pat_to_str(pat: @ast::pat) -> str { be to_str(pat, print_pat); }
+fn pat_to_str(pat: @ast::pat) -> str { ret to_str(pat, print_pat); }
 
-fn expr_to_str(e: @ast::expr) -> str { be to_str(e, print_expr); }
+fn expr_to_str(e: @ast::expr) -> str { ret to_str(e, print_expr); }
 
-fn stmt_to_str(s: ast::stmt) -> str { be to_str(s, print_stmt); }
+fn stmt_to_str(s: ast::stmt) -> str { ret to_str(s, print_stmt); }
 
-fn item_to_str(i: @ast::item) -> str { be to_str(i, print_item); }
+fn item_to_str(i: @ast::item) -> str { ret to_str(i, print_item); }
 
-fn attr_to_str(i: ast::attribute) -> str { be to_str(i, print_attribute); }
+fn attr_to_str(i: ast::attribute) -> str { ret to_str(i, print_attribute); }
 
 fn typarams_to_str(tps: [ast::ty_param]) -> str {
-    be to_str(tps, print_type_params)
+    ret to_str(tps, print_type_params)
 }
 
 fn path_to_str(&&p: @ast::path) -> str {
-    be to_str(p, bind print_path(_, _, false));
+    ret to_str(p, bind print_path(_, _, false));
 }
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
@@ -174,11 +174,11 @@ fn meta_item_to_str(mi: ast::meta_item) -> str {
 }
 
 fn attribute_to_str(attr: ast::attribute) -> str {
-    be to_str(attr, print_attribute);
+    ret to_str(attr, print_attribute);
 }
 
 fn variant_to_str(var: ast::variant) -> str {
-    be to_str(var, print_variant);
+    ret to_str(var, print_variant);
 }
 
 #[test]
@@ -1102,7 +1102,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           _ { }
         }
       }
-      ast::expr_be(result) { word_nbsp(s, "be"); print_expr(s, result); }
       ast::expr_log(lvl, lexp, expr) {
         alt check lvl {
           1 { word_nbsp(s, "log"); print_expr(s, expr); }
@@ -1149,7 +1148,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
       ast::expr_fail(_) | ast::expr_ret(_) |
       ast::expr_binary(_, _, _) | ast::expr_unary(_, _) |
       ast::expr_move(_, _) | ast::expr_copy(_) |
-      ast::expr_assign(_, _) | ast::expr_be(_) |
+      ast::expr_assign(_, _) |
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
       ast::expr_log(_, _, _) | ast::expr_assert(_) |
       ast::expr_call(_, _, true) |
@@ -1623,7 +1622,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
     }
 }
 
-fn lit_to_str(l: @ast::lit) -> str { be to_str(l, print_literal); }
+fn lit_to_str(l: @ast::lit) -> str { ret to_str(l, print_literal); }
 
 fn next_lit(s: ps, pos: uint) -> option<comments::lit> {
     alt s.literals {

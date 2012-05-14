@@ -44,12 +44,6 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
                 }
                 visit::visit_expr_opt(oe, cx, v);
               }
-              expr_be(re) {
-                if !cx.can_ret {
-                    tcx.sess.span_err(e.span, "`be` in block function");
-                }
-                v.visit_expr(re, cx, v);
-              }
               _ { visit::visit_expr(e, cx, v); }
             }
         }
