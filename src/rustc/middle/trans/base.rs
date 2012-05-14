@@ -1408,9 +1408,11 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(un_expr);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, expr_ty(bcx, un_expr), {|bcx|
-            impl::trans_method_callee(bcx, callee_id, e, origin)
-        }, arg_exprs([]), dest);
+        ret trans_call_inner(
+            bcx, un_expr.info(), fty,
+            expr_ty(bcx, un_expr),
+            {|bcx| impl::trans_method_callee(bcx, callee_id, e, origin) },
+            arg_exprs([]), dest);
       }
       _ {}
     }
@@ -1601,10 +1603,14 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, expr_ty(bcx, ex), {|bcx|
-            // FIXME provide the already-computed address, not the expr
-            impl::trans_method_callee(bcx, callee_id, dst, origin)
-        }, arg_exprs([src]), save_in(lhs_res.val));
+        ret trans_call_inner(
+            bcx, ex.info(), fty,
+            expr_ty(bcx, ex),
+            {|bcx|
+                // FIXME provide the already-computed address, not the expr
+                impl::trans_method_callee(bcx, callee_id, dst, origin)
+            },
+            arg_exprs([src]), save_in(lhs_res.val));
       }
       _ {}
     }
@@ -1688,8 +1694,11 @@ enum lazy_binop_ty { lazy_and, lazy_or }
 fn trans_lazy_binop(bcx: block, op: lazy_binop_ty, a: @ast::expr,
                     b: @ast::expr, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("trans_lazy_binop");
-    let {bcx: past_lhs, val: lhs} = with_scope_result(bcx, "lhs")
-        {|bcx| trans_temp_expr(bcx, a)};
+    let {bcx: past_lhs, val: lhs} = {
+        with_scope_result(bcx, a.info(), "lhs") { |bcx|
+            trans_temp_expr(bcx, a)
+        }
+    };
     if past_lhs.unreachable { ret past_lhs; }
     let join = sub_block(bcx, "join"), before_rhs = sub_block(bcx, "rhs");
 
@@ -1697,8 +1706,11 @@ fn trans_lazy_binop(bcx: block, op: lazy_binop_ty, a: @ast::expr,
       lazy_and { CondBr(past_lhs, lhs, before_rhs.llbb, join.llbb); }
       lazy_or { CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb); }
     }
-    let {bcx: past_rhs, val: rhs} = with_scope_result(before_rhs, "rhs")
-        {|bcx| trans_temp_expr(bcx, b)};
+    let {bcx: past_rhs, val: rhs} = {
+        with_scope_result(before_rhs, b.info(), "rhs") { |bcx|
+            trans_temp_expr(bcx, b)
+        }
+    };
 
     if past_rhs.unreachable { ret store_in_dest(join, lhs, dest); }
     Br(past_rhs, join.llbb);
@@ -1714,9 +1726,13 @@ fn trans_binary(bcx: block, op: ast::binop, lhs: @ast::expr,
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, expr_ty(bcx, ex), {|bcx|
-            impl::trans_method_callee(bcx, callee_id, lhs, origin)
-        }, arg_exprs([rhs]), dest);
+        ret trans_call_inner(
+            bcx, ex.info(), fty,
+            expr_ty(bcx, ex),
+            {|bcx|
+                impl::trans_method_callee(bcx, callee_id, lhs, origin)
+            },
+            arg_exprs([rhs]), dest);
       }
       _ {}
     }
@@ -1748,10 +1764,8 @@ fn trans_if(cx: block, cond: @ast::expr, thn: ast::blk,
 
     let then_dest = dup_for_join(dest);
     let else_dest = dup_for_join(dest);
-    let then_cx = scope_block(bcx, "then");
-    then_cx.block_span = some(thn.span);
-    let else_cx = scope_block(bcx, "else");
-    option::iter(els) {|e| else_cx.block_span = some(e.span); }
+    let then_cx = scope_block(bcx, thn.info(), "then");
+    let else_cx = scope_block(bcx, els.info(), "else");
     CondBr(bcx, cond_val, then_cx.llbb, else_cx.llbb);
     let then_bcx = trans_block(then_cx, thn, then_dest);
     let then_bcx = trans_block_cleanups(then_bcx, then_cx);
@@ -1783,9 +1797,9 @@ fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
     -> block {
     let _icx = cx.insn_ctxt("trans_while");
     let next_cx = sub_block(cx, "while next");
-    let loop_cx = loop_scope_block(cx, next_cx, "`while`", body.span);
-    let cond_cx = scope_block(loop_cx, "while loop cond");
-    let body_cx = scope_block(loop_cx, "while loop body");
+    let loop_cx = loop_scope_block(cx, next_cx, "`while`", body.info());
+    let cond_cx = scope_block(loop_cx, cond.info(), "while loop cond");
+    let body_cx = scope_block(loop_cx, body.info(), "while loop body");
     Br(cx, loop_cx.llbb);
     Br(loop_cx, cond_cx.llbb);
     let cond_res = trans_temp_expr(cond_cx, cond);
@@ -1799,7 +1813,7 @@ fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
 fn trans_loop(cx:block, body: ast::blk) -> block {
     let _icx = cx.insn_ctxt("trans_loop");
     let next_cx = sub_block(cx, "next");
-    let body_cx = loop_scope_block(cx, next_cx, "`loop`", body.span);
+    let body_cx = loop_scope_block(cx, next_cx, "`loop`", body.info());
     let body_end = trans_block(body_cx, body, ignore);
     cleanup_and_Br(body_end, body_cx, body_cx.llbb);
     Br(cx, body_cx.llbb);
@@ -2808,12 +2822,13 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
          retslot: llretslot};
 }
 
-fn trans_call(in_cx: block, f: @ast::expr,
+fn trans_call(in_cx: block, call_ex: @ast::expr, f: @ast::expr,
               args: call_args, id: ast::node_id, dest: dest)
     -> block {
     let _icx = in_cx.insn_ctxt("trans_call");
-    trans_call_inner(in_cx, expr_ty(in_cx, f), node_id_type(in_cx, id),
-                     {|cx| trans_callee(cx, f)}, args, dest)
+    trans_call_inner(
+        in_cx, call_ex.info(), expr_ty(in_cx, f), node_id_type(in_cx, id),
+        {|cx| trans_callee(cx, f)}, args, dest)
 }
 
 fn body_contains_ret(body: ast::blk) -> bool {
@@ -2832,20 +2847,26 @@ fn body_contains_ret(body: ast::blk) -> bool {
     cx.found
 }
 
-fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
-                    get_callee: fn(block) -> lval_maybe_callee,
-                    args: call_args, dest: dest)
-    -> block {
-    let ret_in_loop = alt args {
-      arg_exprs(args) { args.len() > 0u && alt vec::last(args).node {
-        ast::expr_loop_body(@{node: ast::expr_fn_block(_, body, _), _}) {
-          body_contains_ret(body)
-        }
-        _ { false }
-      } }
-      _ { false }
-    };
-    with_scope(in_cx, "call") {|cx|
+fn trans_call_inner(
+    in_cx: block,
+    call_info: option<node_info>,
+    fn_expr_ty: ty::t,
+    ret_ty: ty::t,
+    get_callee: fn(block) -> lval_maybe_callee,
+    args: call_args,
+    dest: dest) -> block {
+
+    with_scope(in_cx, call_info, "call") {|cx|
+        let ret_in_loop = alt args {
+          arg_exprs(args) { args.len() > 0u && alt vec::last(args).node {
+            ast::expr_loop_body(@{node: ast::expr_fn_block(_, body, _), _}) {
+              body_contains_ret(body)
+            }
+            _ { false }
+          } }
+          _ { false }
+        };
+
         let f_res = get_callee(cx);
         let mut bcx = f_res.bcx;
         let ccx = cx.ccx();
@@ -3177,11 +3198,10 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         ret trans_if(bcx, cond, thn, els, dest);
       }
       ast::expr_alt(expr, arms, mode) {
-        ret alt::trans_alt(bcx, expr, arms, mode, dest);
+        ret alt::trans_alt(bcx, e, expr, arms, mode, dest);
       }
       ast::expr_block(blk) {
-        ret with_scope(bcx, "block-expr body") {|bcx|
-            bcx.block_span = some(blk.span);
+        ret with_scope(bcx, blk.info(), "block-expr body") {|bcx|
             trans_block(bcx, blk, dest)
         };
       }
@@ -3231,7 +3251,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       }
       ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
       ast::expr_call(f, args, _) {
-        ret trans_call(bcx, f, arg_exprs(args), e.id, dest);
+        ret trans_call(bcx, e, f, arg_exprs(args), e.id, dest);
       }
       ast::expr_field(base, _, _) {
         if dest == ignore { ret trans_expr(bcx, base, ignore); }
@@ -3246,9 +3266,13 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         let origin = bcx.ccx().maps.method_map.get(e.id);
         let callee_id = ast_util::op_expr_callee_id(e);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, expr_ty(bcx, e), {|bcx|
-            impl::trans_method_callee(bcx, callee_id, base, origin)
-        }, arg_exprs([idx]), dest);
+        ret trans_call_inner(
+            bcx, e.info(), fty,
+            expr_ty(bcx, e),
+            { |bcx|
+                impl::trans_method_callee(bcx, callee_id, base, origin)
+            },
+            arg_exprs([idx]), dest);
       }
 
       // These return nothing
@@ -3270,15 +3294,15 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       }
       ast::expr_log(_, lvl, a) {
         assert dest == ignore;
-        ret trans_log(lvl, bcx, a);
+        ret trans_log(e, lvl, bcx, a);
       }
       ast::expr_assert(a) {
         assert dest == ignore;
-        ret trans_check_expr(bcx, a, "Assertion");
+        ret trans_check_expr(bcx, e, a, "Assertion");
       }
       ast::expr_check(ast::checked_expr, a) {
         assert dest == ignore;
-        ret trans_check_expr(bcx, a, "Predicate");
+        ret trans_check_expr(bcx, e, a, "Predicate");
       }
       ast::expr_check(ast::claimed_expr, a) {
         assert dest == ignore;
@@ -3290,7 +3314,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         let c = get_extern_const(bcx.ccx().externs, bcx.ccx().llmod,
                                  "check_claims", T_bool());
         ret with_cond(bcx, Load(bcx, c)) {|bcx|
-            trans_check_expr(bcx, a, "Claim")
+            trans_check_expr(bcx, e, a, "Claim")
         };
       }
       ast::expr_while(cond, body) {
@@ -3361,9 +3385,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         let args = [llsize_of(ccx, llval_ty), llalign_of(ccx, llval_ty)];
         let origin = bcx.ccx().maps.method_map.get(alloc_id);
         let bcx = trans_call_inner(
-            bcx,
-            node_id_type(bcx, alloc_id),
-            void_ty,
+            bcx, e.info(), node_id_type(bcx, alloc_id), void_ty,
             {|bcx| impl::trans_method_callee(bcx, alloc_id, pool, origin) },
             arg_vals(args),
             save_in(voidval));
@@ -3440,7 +3462,8 @@ fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     ret v;
 }
 
-fn trans_log(lvl: @ast::expr, bcx: block, e: @ast::expr) -> block {
+fn trans_log(log_ex: @ast::expr, lvl: @ast::expr,
+             bcx: block, e: @ast::expr) -> block {
     let _icx = bcx.insn_ctxt("trans_log");
     let ccx = bcx.ccx();
     if ty::type_is_bot(expr_ty(bcx, lvl)) {
@@ -3468,12 +3491,14 @@ fn trans_log(lvl: @ast::expr, bcx: block, e: @ast::expr) -> block {
         global
     };
     let current_level = Load(bcx, global);
-    let {bcx, val: level} = with_scope_result(bcx, "level") {|bcx|
-        trans_temp_expr(bcx, lvl)
+    let {bcx, val: level} = {
+        with_scope_result(bcx, lvl.info(), "level") {|bcx|
+            trans_temp_expr(bcx, lvl)
+        }
     };
 
     with_cond(bcx, ICmp(bcx, lib::llvm::IntUGE, current_level, level)) {|bcx|
-        with_scope(bcx, "log") {|bcx|
+        with_scope(bcx, log_ex.info(), "log") {|bcx|
             let {bcx, val, _} = trans_temp_expr(bcx, e);
             let e_ty = expr_ty(bcx, e);
             let tydesc = get_tydesc_simple(ccx, e_ty);
@@ -3486,14 +3511,17 @@ fn trans_log(lvl: @ast::expr, bcx: block, e: @ast::expr) -> block {
     }
 }
 
-fn trans_check_expr(bcx: block, e: @ast::expr, s: str) -> block {
+fn trans_check_expr(bcx: block, chk_expr: @ast::expr,
+                    pred_expr: @ast::expr, s: str) -> block {
     let _icx = bcx.insn_ctxt("trans_check_expr");
-    let expr_str = s + " " + expr_to_str(e) + " failed";
-    let {bcx, val} = with_scope_result(bcx, "check") {|bcx|
-        trans_temp_expr(bcx, e)
+    let expr_str = s + " " + expr_to_str(pred_expr) + " failed";
+    let {bcx, val} = {
+        with_scope_result(bcx, chk_expr.info(), "check") {|bcx|
+            trans_temp_expr(bcx, pred_expr)
+        }
     };
     with_cond(bcx, Not(bcx, val)) {|bcx|
-        trans_fail(bcx, some(e.span), expr_str)
+        trans_fail(bcx, some(pred_expr.span), expr_str)
     }
 }
 
@@ -3725,7 +3753,8 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block(cx: fn_ctxt, parent: block_parent, kind: block_kind,
-             name: str, block_span: option<span>) -> block {
+             name: str, opt_node_info: option<node_info>) -> block {
+
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
         cx.ccx.names(name)
     } else { "" };
@@ -3737,7 +3766,7 @@ fn new_block(cx: fn_ctxt, parent: block_parent, kind: block_kind,
                 mut unreachable: false,
                 parent: parent,
                 kind: kind,
-                mut block_span: block_span,
+                node_info: opt_node_info,
                 fcx: cx};
     alt parent {
       parent_some(cx) {
@@ -3754,24 +3783,26 @@ fn simple_block_scope() -> block_kind {
 }
 
 // Use this when you're at the top block of a function or the like.
-fn top_scope_block(fcx: fn_ctxt, sp: option<span>) -> block {
+fn top_scope_block(fcx: fn_ctxt, opt_node_info: option<node_info>) -> block {
     ret new_block(fcx, parent_none, simple_block_scope(),
-                  "function top level", sp);
+                  "function top level", opt_node_info);
 }
 
-fn scope_block(bcx: block, n: str) -> block {
+fn scope_block(bcx: block,
+               opt_node_info: option<node_info>,
+               n: str) -> block {
     ret new_block(bcx.fcx, parent_some(bcx), simple_block_scope(),
-                  n, none);
+                  n, opt_node_info);
 }
 
-fn loop_scope_block(bcx: block, loop_break: block, n: str, sp: span)
-    -> block {
+fn loop_scope_block(bcx: block, loop_break: block, n: str,
+                    opt_node_info: option<node_info>) -> block {
     ret new_block(bcx.fcx, parent_some(bcx), block_scope({
         loop_break: some(loop_break),
         mut cleanups: [],
         mut cleanup_paths: [],
         mut landing_pad: none
-    }), n, some(sp));
+    }), n, opt_node_info);
 }
 
 
@@ -3786,7 +3817,7 @@ fn raw_block(fcx: fn_ctxt, llbb: BasicBlockRef) -> block {
           mut unreachable: false,
           parent: parent_none,
           kind: block_non_scope,
-          mut block_span: none,
+          node_info: none,
           fcx: fcx};
 }
 
@@ -3879,17 +3910,19 @@ fn leave_block(bcx: block, out_of: block) -> block {
     next_cx
 }
 
-fn with_scope(bcx: block, name: str, f: fn(block) -> block) -> block {
+fn with_scope(bcx: block, opt_node_info: option<node_info>,
+              name: str, f: fn(block) -> block) -> block {
     let _icx = bcx.insn_ctxt("with_scope");
-    let scope_cx = scope_block(bcx, name);
+    let scope_cx = scope_block(bcx, opt_node_info, name);
     Br(bcx, scope_cx.llbb);
     leave_block(f(scope_cx), scope_cx)
 }
 
-fn with_scope_result(bcx: block, name: str, f: fn(block) -> result)
+fn with_scope_result(bcx: block, opt_node_info: option<node_info>,
+                     name: str, f: fn(block) -> result)
     -> result {
     let _icx = bcx.insn_ctxt("with_scope_result");
-    let scope_cx = scope_block(bcx, name);
+    let scope_cx = scope_block(bcx, opt_node_info, name);
     Br(bcx, scope_cx.llbb);
     let {bcx, val} = f(scope_cx);
     {bcx: leave_block(bcx, scope_cx), val: val}
@@ -4138,7 +4171,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
-    let bcx_top = top_scope_block(fcx, some(body.span));
+    let bcx_top = top_scope_block(fcx, body.info());
     let mut bcx = bcx_top;
     let lltop = bcx.llbb;
     let block_ty = node_id_type(bcx, body.node.id);
@@ -4429,7 +4462,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                                    some(psubsts), some(sp));
   // FIXME: need to substitute into the fn arg types too?
   create_llargs_for_fn_args(fcx, no_self, decl.inputs);
-  let mut bcx_top = top_scope_block(fcx, some(sp));
+  let mut bcx_top = top_scope_block(fcx, body.info());
   let lltop = bcx_top.llbb;
   bcx_top = copy_args_to_allocas(fcx, bcx_top, decl.inputs,
               ty::ty_fn_args(node_id_type(bcx_top, ctor_id)));

@@ -313,6 +313,29 @@ type scope_info = {
     mut landing_pad: option<BasicBlockRef>,
 };
 
+impl node_info for @ast::expr {
+    fn info() -> option<node_info> {
+        some({id: self.id, span: self.span})
+    }
+}
+
+impl node_info for ast::blk {
+    fn info() -> option<node_info> {
+        some({id: self.node.id, span: self.span})
+    }
+}
+
+impl node_info for option<@ast::expr> {
+    fn info() -> option<node_info> {
+        self.chain { |s| s.info() }
+    }
+}
+
+type node_info = {
+    id: ast::node_id,
+    span: span
+};
+
 // Basic block context.  We create a block context for each basic block
 // (single-entry, single-exit sequence of instructions) we generate from Rust
 // code.  Each basic block we generate is attached to a function, typically
@@ -330,9 +353,8 @@ type block = @{
     parent: block_parent,
     // The 'kind' of basic block this is.
     kind: block_kind,
-    // The source span where the block came from, if it is a block that
-    // actually appears in the source code.
-    mut block_span: option<span>,
+    // info about the AST node this block originated from, if any
+    node_info: option<node_info>,
     // The function context for the function to which this block is
     // attached.
     fcx: fn_ctxt

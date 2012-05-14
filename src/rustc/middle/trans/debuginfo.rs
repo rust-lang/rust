@@ -236,19 +236,17 @@ fn line_from_span(cm: codemap::codemap, sp: span) -> uint {
 fn create_block(cx: block) -> @metadata<block_md> {
     let cache = get_cache(cx.ccx());
     let mut cx = cx;
-    while option::is_none(cx.block_span) {
+    while option::is_none(cx.node_info) {
         alt cx.parent {
           parent_some(b) { cx = b; }
           parent_none { fail; }
         }
     }
-    let sp = option::get(cx.block_span);
+    let sp = option::get(cx.node_info).span;
 
-    let start = codemap::lookup_char_pos(cx.sess().codemap,
-                                         sp.lo);
+    let start = codemap::lookup_char_pos(cx.sess().codemap, sp.lo);
     let fname = start.file.name;
-    let end = codemap::lookup_char_pos(cx.sess().codemap,
-                                       sp.hi);
+    let end = codemap::lookup_char_pos(cx.sess().codemap, sp.hi);
     let tg = LexicalBlockTag;
     /*alt cached_metadata::<@metadata<block_md>>(
         cache, tg,

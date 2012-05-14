@@ -370,8 +370,10 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
                 let loc = local_mem(option::get(assoc(key, m[0].bound)));
                 bcx.fcx.lllocals.insert(val, loc);
             };
-            let {bcx: guard_cx, val} = with_scope_result(bcx, "guard") {|bcx|
-                trans_temp_expr(bcx, e)
+            let {bcx: guard_cx, val} = {
+                with_scope_result(bcx, e.info(), "guard") {|bcx|
+                    trans_temp_expr(bcx, e)
+                }
             };
             bcx = with_cond(guard_cx, Not(guard_cx, val)) {|bcx|
                 compile_submatch(bcx, vec::tail(m), vals, chk, exits);
@@ -517,19 +519,20 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
               }
               compare {
                 let t = node_id_type(bcx, pat_id);
-                let {bcx: after_cx, val: matches} =
-                    with_scope_result(bcx, "compare_scope") {|bcx|
-                    alt trans_opt(bcx, opt) {
-                      single_result({bcx, val}) {
-                        trans_compare(bcx, ast::eq, test_val, t, val, t)
-                      }
-                      range_result({val: vbegin, _}, {bcx, val: vend}) {
-                        let {bcx, val: ge} = trans_compare(
-                            bcx, ast::ge, test_val, t, vbegin, t);
-                        let {bcx, val: le} = trans_compare(
-                            bcx, ast::le, test_val, t, vend, t);
-                        {bcx: bcx, val: And(bcx, ge, le)}
-                      }
+                let {bcx: after_cx, val: matches} = {
+                    with_scope_result(bcx, none, "compare_scope") {|bcx|
+                        alt trans_opt(bcx, opt) {
+                          single_result({bcx, val}) {
+                            trans_compare(bcx, ast::eq, test_val, t, val, t)
+                          }
+                          range_result({val: vbegin, _}, {bcx, val: vend}) {
+                            let {bcx, val: ge} = trans_compare(
+                                bcx, ast::ge, test_val, t, vbegin, t);
+                            let {bcx, val: le} = trans_compare(
+                                bcx, ast::le, test_val, t, vend, t);
+                            {bcx: bcx, val: And(bcx, ge, le)}
+                          }
+                        }
                     }
                 };
                 bcx = sub_block(after_cx, "compare_next");
@@ -608,10 +611,14 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
     ret success;
 }
 
-fn trans_alt(bcx: block, expr: @ast::expr, arms: [ast::arm],
-             mode: ast::alt_mode, dest: dest) -> block {
+fn trans_alt(bcx: block,
+             alt_expr: @ast::expr,
+             expr: @ast::expr,
+             arms: [ast::arm],
+             mode: ast::alt_mode,
+             dest: dest) -> block {
     let _icx = bcx.insn_ctxt("alt::trans_alt");
-    with_scope(bcx, "alt") {|bcx|
+    with_scope(bcx, alt_expr.info(), "alt") {|bcx|
         trans_alt_inner(bcx, expr, arms, mode, dest)
     }
 }
@@ -626,8 +633,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
     if bcx.unreachable { ret bcx; }
 
     for vec::each(arms) {|a|
-        let body = scope_block(bcx, "case_body");
-        body.block_span = some(a.body.span);
+        let body = scope_block(bcx, a.body.info(), "case_body");
         let id_map = pat_util::pat_id_map(tcx.def_map, a.pats[0]);
         bodies += [body];
         for vec::each(a.pats) {|p|

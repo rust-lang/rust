@@ -864,7 +864,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
                                                     some(sub_origins));
                     {env: self_env(visitor, vp_ty, none) with lval}
                 };
-                bcx = trans_call_inner(bcx, mth_ty, ty::mk_bool(ccx.tcx),
+                bcx = trans_call_inner(bcx, none, mth_ty, ty::mk_bool(ccx.tcx),
                                        get_lval, arg_vals(args), ignore);
             }
           }
