@@ -31,7 +31,7 @@ import c = common;
 import e = encoder;
 
 // used in testing:
-import driver::diagnostic;
+import syntax::diagnostic;
 import syntax::codemap;
 import syntax::parse;
 import syntax::print::pprust;

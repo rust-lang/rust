@@ -45,8 +45,6 @@ mod back {
 mod driver {
     import session = driver_::session;
     export session;
-    import diagnostic = syntax::diagnostic;
-    export diagnostic;
 }
 
 mod util {
