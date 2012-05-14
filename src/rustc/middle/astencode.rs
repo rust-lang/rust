@@ -27,8 +27,15 @@ import driver::session::session;
 import middle::freevars::{freevar_entry,
                           serialize_freevar_entry,
                           deserialize_freevar_entry};
-import c = common;
-import e = encoder;
+import c = metadata::common;
+import e = metadata::encoder;
+import cstore = metadata::cstore;
+import metadata::maps;
+import metadata::encoder;
+import metadata::decoder;
+import metadata::tyencode;
+import metadata::tydecode;
+
 
 // used in testing:
 import syntax::diagnostic;

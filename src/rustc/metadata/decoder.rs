@@ -15,6 +15,7 @@ import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 import util::ppaux::ty_to_str;
 import ebml::deserializer;
+import middle::astencode;
 
 export get_class_fields;
 export get_symbol;

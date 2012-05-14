@@ -32,6 +32,8 @@ mod middle {
     export borrowck;
     import alias = middle_::alias;
     export alias;
+    import astencode = middle_::astencode;
+    export astencode;
 }
 
 mod front {

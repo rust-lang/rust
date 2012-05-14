@@ -20,6 +20,7 @@ import std::ebml::serializer;
 import middle::resolve;
 import syntax::ast;
 import driver::session::session;
+import middle::astencode;
 
 export encode_parms;
 export encode_metadata;
