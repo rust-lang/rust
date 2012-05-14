@@ -48,7 +48,10 @@ type options =
      no_trans: bool,
      no_asm_comments: bool,
      debug_rustc: bool,
-     borrowck: uint}; // 0=off,1=warn,2=err
+
+     // temporary hack: 0=off,1=warn,2=err --> if 2, alias is disabled
+     borrowck: uint,
+    };
 
 type crate_metadata = {name: str, data: [u8]};
 

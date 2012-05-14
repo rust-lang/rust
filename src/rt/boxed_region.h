@@ -6,6 +6,7 @@
 struct type_desc;
 class memory_region;
 struct rust_opaque_box;
+struct rust_env;
 
 /* Tracks the data allocated by a particular task in the '@' region.
  * Currently still relies on the standard malloc as a backing allocator, but
@@ -13,6 +14,7 @@ struct rust_opaque_box;
  * a type descr which describes the payload (what follows the header). */
 class boxed_region {
 private:
+    rust_env *env;
     memory_region *backing_region;
     rust_opaque_box *live_allocs;
 
@@ -24,8 +26,9 @@ private:
     }
 
 public:
-    boxed_region(memory_region *br)
-        : backing_region(br)
+    boxed_region(rust_env *e, memory_region *br)
+        : env(e)
+        , backing_region(br)
         , live_allocs(NULL)
     {}
 

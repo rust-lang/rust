@@ -1,8 +1,7 @@
-
-
 #include "boxed_region.h"
 #include "rust_globals.h"
 #include "rust_task.h"
+#include "rust_env.h"
 
 // #define DUMP_BOXED_REGION
 
@@ -52,8 +51,15 @@ void boxed_region::free(rust_opaque_box *box) {
     if (box->prev) box->prev->next = box->next;
     if (box->next) box->next->prev = box->prev;
     if (live_allocs == box) live_allocs = box->next;
+
+    if (env->poison_on_free) {
+        memset(box_body(box), 0xab, box->td->size);
+        return;
+    }
+
     box->prev = NULL;
     box->next = NULL;
     box->td = NULL;
+
     backing_region->free(box);
 }

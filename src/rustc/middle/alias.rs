@@ -159,6 +159,12 @@ fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
 }
 
 fn cant_copy(cx: ctx, b: binding) -> bool {
+
+    if cx.tcx.sess.opts.borrowck == 2u {
+        // borrowck is enabled. disable alias analysis.
+        ret false;
+    }
+
     alt b.copied {
       not_allowed { ret true; }
       copied { ret false; }
