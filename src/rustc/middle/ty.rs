@@ -2326,7 +2326,7 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
               _, _, some(@{id: id, _}), _, _), _}, _)) {
               some(node_id_to_type(cx, id))
            }
-           some(ast_map::node_item(@{node: ast::item_class(_, _, _, _, _),
+           some(ast_map::node_item(@{node: ast::item_class(_, _, _, _, _, _),
                            _},_)) {
              alt cx.def_map.find(id.node) {
                some(def_ty(iface_id)) {
@@ -2408,6 +2408,10 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           ast_map::node_ctor(nm, _, _, path) {
               *path + [ast_map::path_name(nm)]
           }
+          ast_map::node_dtor(_, _, _, path) {
+              *path + [ast_map::path_name("dtor")]
+          }
+
 
           ast_map::node_expr(_) | ast_map::node_arg(_, _) |
           ast_map::node_local(_) | ast_map::node_export(_, _) |
@@ -2527,7 +2531,7 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) {
          alt i.node {
-           ast::item_class(_, _, items, _, _) {
+                 ast::item_class(_, _, items, _, _, _) {
                class_field_tys(items)
            }
            _ { cx.sess.bug("class ID bound to non-class"); }
@@ -2569,7 +2573,7 @@ pure fn is_public(f: field_ty) -> bool {
 fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
     : is_local(did) -> [{name: ident, id: node_id, vis: visibility}] {
     alt cx.items.find(did.node) {
-       some(ast_map::node_item(@{node: item_class(_,_,items,_,_), _}, _)) {
+       some(ast_map::node_item(@{node: item_class(_,_,items,_,_,_), _}, _)) {
          let (_,ms) = split_class_items(items);
          vec::map(ms, {|m| {name: m.ident, id: m.id,
                             vis: m.vis}})

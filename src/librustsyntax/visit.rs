@@ -19,7 +19,10 @@ enum fn_kind {
     fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
     fk_ctor(ident, [ty_param], node_id /* self id */,
-            def_id /* parent class id */) // class constructor
+            def_id /* parent class id */), // class constructor
+    fk_dtor([ty_param], node_id /* self id */,
+            def_id /* parent class id */) // class destructor
+
 }
 
 fn name_of_fn(fk: fn_kind) -> ident {
@@ -27,13 +30,14 @@ fn name_of_fn(fk: fn_kind) -> ident {
       fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _, _)
           | fk_ctor(name, _, _, _) { name }
       fk_anon(*) | fk_fn_block(*) { "anon" }
+      fk_dtor(*)                  { "drop" }
     }
 }
 
 fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
       fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps, _)
-          | fk_ctor(_, tps, _, _) { tps }
+          | fk_ctor(_, tps, _, _) | fk_dtor(tps, _, _) { tps }
       fk_anon(*) | fk_fn_block(*) { [] }
     }
 }
@@ -140,7 +144,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, ifaces, members, ctor, _) {
+      item_class(tps, ifaces, members, ctor, m_dtor, _) {
           v.visit_ty_params(tps, e, v);
           for members.each {|m|
              v.visit_class_item(m, e, v);
@@ -148,6 +152,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
           for ifaces.each {|p| visit_path(p.path, e, v); }
           visit_class_ctor_helper(ctor, i.ident, tps,
                                   ast_util::local_def(i.id), e, v);
+          option::iter(m_dtor) {|dtor|
+                  visit_class_dtor_helper(dtor, tps,
+                     ast_util::local_def(i.id), e, v)};
       }
       item_iface(tps, _rp, methods) {
         v.visit_ty_params(tps, e, v);
@@ -280,9 +287,17 @@ fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
 // Similar logic to the comment on visit_method_helper - Tim
 fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: [ty_param],
                               parent_id: def_id, e: E, v: vt<E>) {
-    v.visit_fn(visit::fk_ctor(nm, tps, ctor.node.self_id,
+    v.visit_fn(fk_ctor(nm, tps, ctor.node.self_id,
                               parent_id), ctor.node.dec,
                ctor.node.body, ctor.span, ctor.node.id, e, v)
+
+}
+
+fn visit_class_dtor_helper<E>(dtor: class_dtor, tps: [ty_param],
+                              parent_id: def_id, e: E, v: vt<E>) {
+    v.visit_fn(fk_dtor(tps, dtor.node.self_id,
+                       parent_id), ast_util::dtor_dec(),
+               dtor.node.body, dtor.span, dtor.node.id, e, v)
 
 }
 

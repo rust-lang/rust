@@ -94,7 +94,7 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
             method_from_methods(ms, name)
           }
           ast_map::node_item(@{node:
-               ast::item_class(_, _, items, _, _), _}, _) {
+              ast::item_class(_, _, items, _, _, _), _}, _) {
             let (_,ms) = split_class_items(items);
             method_from_methods(ms, name)
           }

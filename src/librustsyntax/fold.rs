@@ -274,10 +274,16 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                       fold_ty_params(typms, fld),
                       r)
           }
-          item_class(typms, ifaces, items, ctor, rp) {
+          item_class(typms, ifaces, items, ctor, m_dtor, rp) {
               let ctor_body = fld.fold_block(ctor.node.body);
               let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
               let ctor_id   = fld.new_id(ctor.node.id);
+              let dtor = option::map(m_dtor) {|dtor|
+                let dtor_body = fld.fold_block(dtor.node.body);
+                let dtor_id   = fld.new_id(dtor.node.id);
+                {node: {body: dtor_body,
+                        id: dtor_id with dtor.node}
+                    with dtor}};
               item_class(
                   typms,
                   vec::map(ifaces, {|p| fold_iface_ref(p, fld) }),
@@ -285,8 +291,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                   {node: {body: ctor_body,
                           dec: ctor_decl,
                           id: ctor_id with ctor.node}
-                   with ctor},
-                  rp)
+                      with ctor}, dtor, rp)
           }
           item_impl(tps, rp, ifce, ty, methods) {
               item_impl(fold_ty_params(tps, fld),

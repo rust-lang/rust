@@ -187,7 +187,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          item_class(_, _, items, ctor, _) {
+          // FIXME: I don't *think* dtor needs to be serialized?
+          item_class(_, _, items, ctor, _dtor, _) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
@@ -621,7 +622,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps, ifaces, items, ctor, rp) {
+      // FIXME: not sure if the dtor should be serialized
+      item_class(tps, ifaces, items, ctor, _dtor, rp) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -801,7 +803,8 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
                 alt i.node {
-                  item_class(tps, _, _, ctor, _) {
+                   // FIXME: not doing anything with dtor
+                   item_class(tps, _, _, ctor, _, _) {
                    /* this is assuming that ctors aren't inlined...
                       probably shouldn't assume that */
                    #debug("encoding info for ctor %s %d", i.ident,

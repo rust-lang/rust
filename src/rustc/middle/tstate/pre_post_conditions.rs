@@ -57,7 +57,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              ccx: ccx};
         find_pre_post_fn(fcx, body);
       }
-      item_class(_,_,_,_,_) {
+      item_class(*) {
           fail "find_pre_post_item: shouldn't be called on item_class";
       }
       item_impl(_, _, _, _, ms) {

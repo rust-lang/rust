@@ -361,6 +361,12 @@ fn operator_prec(op: ast::binop) -> uint {
       or                {  1u }
   }
 }
+
+fn dtor_dec() -> fn_decl {
+    {inputs: [], output: @{id: 0, node: ty_nil, span: dummy_sp()},
+     purity: impure_fn, cf: return_val, constraints: []}
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

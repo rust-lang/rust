@@ -214,6 +214,13 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
                 vfn(self_id);
                 vfn(parent_id.node);
               }
+              // not sure if this should be here? FIXME
+              visit::fk_dtor(tps, self_id, parent_id) {
+                vec::iter(tps) {|tp| vfn(tp.id)}
+                vfn(id);
+                vfn(self_id);
+                vfn(parent_id.node);
+              }
               visit::fk_item_fn(_, tps) |
               visit::fk_res(_, tps, _) {
                 vec::iter(tps) {|tp| vfn(tp.id)}

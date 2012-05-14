@@ -437,7 +437,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           ast::item_impl(_, _, ifce, _, _) {
             ifce.iter {|p| resolve_iface_ref(p, sc, e);}
           }
-          ast::item_class(_, ifaces, _, _, _) {
+          ast::item_class(_, ifaces, _, _, _, _) {
             for ifaces.each {|p|
                resolve_iface_ref(p, sc, e);
             }
@@ -564,22 +564,31 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
             v.visit_ty(m.decl.output, msc, v);
         }
       }
-      ast::item_class(tps, ifaces, members, ctor, _) {
+      ast::item_class(tps, ifaces, members, ctor, m_dtor, _) {
         visit::visit_ty_params(tps, sc, v);
         // Can maybe skip this now that we require self on class fields
         let class_scope = cons(scope_item(i), @sc);
         /* visit the constructor... */
         let ctor_scope = cons(scope_method(ctor.node.self_id, tps),
                               @class_scope);
-        /*
-          but, I should visit the ifaces refs in the class scope, no?
-         */
+        /* visit the iface refs in the class scope */
         for ifaces.each {|p|
             visit::visit_path(p.path, class_scope, v);
         }
+        // FIXME: should be fk_ctor?
         visit_fn_with_scope(e, visit::fk_item_fn(i.ident, tps), ctor.node.dec,
                             ctor.node.body, ctor.span, ctor.node.id,
                             ctor_scope, v);
+        option::iter(m_dtor) {|dtor|
+          let dtor_scope = cons(scope_method(dtor.node.self_id, tps),
+                              @class_scope);
+
+          visit_fn_with_scope(e, visit::fk_dtor(tps, dtor.node.self_id,
+                                                local_def(i.id)),
+                            ast_util::dtor_dec(),
+                            dtor.node.body, dtor.span, dtor.node.id,
+                            dtor_scope, v);
+        };
         /* visit the items */
         for members.each {|cm|
             alt cm.node {
@@ -625,7 +634,8 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     for decl.constraints.each {|c| resolve_constr(e, c, sc, v); }
     let scope = alt fk {
       visit::fk_item_fn(_, tps) | visit::fk_res(_, tps, _) |
-      visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _) {
+      visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _)  |
+      visit::fk_dtor(tps, _, _) {
         scope_bare_fn(decl, id, tps) }
       visit::fk_anon(ast::proto_bare, _) {
         scope_bare_fn(decl, id, []) }
@@ -1041,7 +1051,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
               ast::item_native_mod(m) {
                 ret lookup_in_local_native_mod(e, it.id, sp, name, ns);
               }
-              ast::item_class(tps, _, members, ctor, _) {
+              ast::item_class(tps, _, members, ctor, _, _) {
                   if ns == ns_type {
                     ret lookup_in_ty_params(e, name, tps);
                   }
@@ -1633,7 +1643,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
-          ast::item_class(tps, _, items, ctor, _) {
+          ast::item_class(tps, _, items, ctor, _, _) {
               // add the class name itself
               add_to_index(index, it.ident, mie_item(it));
               // add the constructor decl
@@ -2236,7 +2246,7 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
                         })}];
         }
       }
-      ast::item_class(tps, ifces, items, _, _) {
+      ast::item_class(tps, ifces, items, _, _, _) {
           let (_, mthds) = ast_util::split_class_items(items);
           let n_tps = tps.len();
           vec::iter(ifces) {|p|

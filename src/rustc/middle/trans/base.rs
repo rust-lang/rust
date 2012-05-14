@@ -4443,6 +4443,15 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   finish_fn(fcx, lltop);
 }
 
+fn trans_class_dtor(ccx: @crate_ctxt, path: path,
+                    body: ast::blk, lldtor_decl: ValueRef,
+                    dtor_id: ast::node_id,
+                    parent_id: ast::def_id) {
+    let class_ty = ty::lookup_item_type(ccx.tcx, parent_id).ty;
+  trans_fn(ccx, path, ast_util::dtor_dec(),
+           body, lldtor_decl, impl_self(class_ty), none, dtor_id);
+}
+
 fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
     let path = alt check ccx.tcx.items.get(item.id) {
@@ -4509,7 +4518,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         };
         native::trans_native_mod(ccx, native_mod, abi);
       }
-      ast::item_class(tps, _ifaces, items, ctor, _) {
+      ast::item_class(tps, _ifaces, items, ctor, m_dtor, _) {
         if tps.len() == 0u {
           let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
                          // FIXME: vtables have to get filled in depending
@@ -4519,6 +4528,11 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
           trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
                            get_item_val(ccx, ctor.node.id), psubsts,
                            ctor.node.id, local_def(item.id), ctor.span);
+          option::iter(m_dtor) {|dtor|
+            trans_class_dtor(ccx, *path, dtor.node.body,
+                           get_item_val(ccx, dtor.node.id),
+                           dtor.node.id, local_def(item.id));
+          };
         }
         // If there are ty params, the ctor will get monomorphized
 
@@ -4744,6 +4758,12 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
               }
             }
           }
+          ast_map::node_dtor(tps, dt, parent_id, pt) {
+            let my_path = *pt + [path_name("dtor")];
+            let t = ty::node_id_to_type(ccx.tcx, dt.node.id);
+            register_fn_full(ccx, dt.span, my_path, dt.node.id, t)
+          }
+
           ast_map::node_variant(v, enm, pth) {
             assert v.node.args.len() != 0u;
             let pth = *pth + [path_name(enm.ident), path_name(v.node.name)];

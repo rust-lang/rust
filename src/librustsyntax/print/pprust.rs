@@ -507,7 +507,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps,ifaces,items,ctor, rp) {
+      ast::item_class(tps, ifaces, items, ctor, m_dtor, rp) {
           head(s, "class");
           word_nbsp(s, item.ident);
           print_region_param(s, rp);
@@ -522,6 +522,11 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_fn_args_and_ret(s, ctor.node.dec, []);
           space(s.s);
           print_block(s, ctor.node.body);
+          option::iter(m_dtor) {|dtor|
+            hardbreak_if_not_bol(s);
+            head(s, "drop");
+            print_block(s, dtor.node.body);
+          }
           for items.each {|ci|
                   /*
                      FIXME: collect all private items and print them

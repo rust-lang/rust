@@ -102,8 +102,11 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, _ifaces, items, ctor, _) {
+      item_class(tps, _ifaces, items, ctor, m_dtor, _) {
         cx.rmap.insert(ctor.node.id, ());
+        option::iter(m_dtor) {|dtor|
+            cx.rmap.insert(dtor.node.id, ());
+        }
         for vec::each(items) {|item|
             alt item.node {
               class_method(m) {

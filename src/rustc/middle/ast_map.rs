@@ -47,6 +47,8 @@ enum ast_node {
     node_local(uint),
     // Constructor for either a resource or a class
     node_ctor(ident, [ty_param], a_ctor, @path),
+    // Destructor for a class
+    node_dtor([ty_param], @class_dtor, def_id, @path),
     node_block(blk),
 }
 
@@ -134,6 +136,12 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
           cx.map.insert(id, node_ctor(nm, tps, class_ctor(ct, parent_id),
                                       @cx.path));
        }
+      visit::fk_dtor(tps, self_id, parent_id) {
+          let dt = @{node: {id: id, self_id: self_id, body: body},
+                    span: sp};
+          cx.map.insert(id, node_dtor(tps, dt, parent_id, @cx.path));
+       }
+
        _ {}
     }
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
@@ -204,7 +212,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(nitem.id, node_native_item(nitem, abi, @cx.path));
         }
       }
-      item_class(tps, ifces, items, ctor, _) {
+      item_class(tps, ifces, items, ctor, dtor, _) {
           let (_, ms) = ast_util::split_class_items(items);
           // Map iface refs to their parent classes. This is
           // so we can find the self_ty
@@ -283,8 +291,11 @@ fn node_id_to_str(map: map, id: node_id) -> str {
       some(node_local(_)) { // FIXME: add more info here
         #fmt["local (id=%?)", id]
       }
-      some(node_ctor(_, _, _, _)) { // FIXME: add more info here
+      some(node_ctor(*)) { // FIXME: add more info here
         #fmt["node_ctor (id=%?)", id]
+      }
+      some(node_dtor(*)) { // FIXME: add more info here
+        #fmt["node_dtor (id=%?)", id]
       }
       some(node_block(_)) {
         #fmt["block"]

@@ -1940,14 +1940,24 @@ fn parse_item_class(p: parser) -> item_info {
     let mut ms: [@class_member] = [];
     let ctor_id = p.get_id();
     let mut the_ctor : option<(fn_decl, blk, codemap::span)> = none;
+    let mut the_dtor : option<(blk, codemap::span)> = none;
     while p.token != token::RBRACE {
         alt parse_class_item(p, class_path) {
-            ctor_decl(a_fn_decl, blk, s) {
-               the_ctor = some((a_fn_decl, blk, s));
-            }
-            members(mms) { ms += mms; }
+          ctor_decl(a_fn_decl, blk, s) {
+            the_ctor = some((a_fn_decl, blk, s));
+          }
+          dtor_decl(blk, s) {
+            the_dtor = some((blk, s));
+          }
+          members(mms) { ms += mms; }
        }
     }
+    let actual_dtor = option::map(the_dtor) {|dtor|
+       let (d_body, d_s) = dtor;
+       {node: {id: p.get_id(),
+               self_id: p.get_id(),
+               body: d_body},
+               span: d_s}};
     p.bump();
     alt the_ctor {
       some((ct_d, ct_b, ct_s)) {
@@ -1957,7 +1967,7 @@ fn parse_item_class(p: parser) -> item_info {
                     self_id: p.get_id(),
                     dec: ct_d,
                     body: ct_b},
-             span: ct_s}, rp),
+                     span: ct_s}, actual_dtor, rp),
         none)
       }
        /*
@@ -1982,24 +1992,41 @@ fn parse_single_class_item(p: parser, vis: visibility)
    }
 }
 
-// lets us identify the constructor declaration at
-// parse time
+/*
+  So that we can distinguish a class ctor or dtor
+  from other class members
+ */
 enum class_contents { ctor_decl(fn_decl, blk, codemap::span),
+                      dtor_decl(blk, codemap::span),
                       members([@class_member]) }
+
+fn parse_ctor(p: parser, result_ty: ast::ty_) -> class_contents {
+  // Can ctors/dtors have attrs? FIXME
+  let lo = p.last_span.lo;
+  let (decl_, _) = parse_fn_decl(p, impure_fn, parse_arg);
+  let decl = {output: @{id: p.get_id(),
+                        node: result_ty, span: decl_.output.span}
+              with decl_};
+  let body = parse_block(p);
+  ctor_decl(decl, body, mk_sp(lo, p.last_span.hi))
+}
+
+fn parse_dtor(p: parser) -> class_contents {
+  // Can ctors/dtors have attrs? FIXME
+  let lo = p.last_span.lo;
+  let body = parse_block(p);
+  dtor_decl(body, mk_sp(lo, p.last_span.hi))
+}
 
 fn parse_class_item(p:parser, class_name_with_tps: @path)
     -> class_contents {
     if eat_keyword(p, "new") {
-        let lo = p.last_span.lo;
-        // Can ctors have attrs?
-            // result type is always the type of the class
-        let (decl_, _) = parse_fn_decl(p, impure_fn, parse_arg);
-        let decl = {output: @{id: p.get_id(),
-                      node: ty_path(class_name_with_tps, p.get_id()),
-                      span: decl_.output.span}
-                    with decl_};
-        let body = parse_block(p);
-        ret ctor_decl(decl, body, mk_sp(lo, p.last_span.hi));
+       // result type is always the type of the class
+       ret parse_ctor(p, ty_path(class_name_with_tps,
+                              p.get_id()));
+    }
+    else if eat_keyword(p, "drop") {
+      ret parse_dtor(p);
     }
     else if eat_keyword(p, "priv") {
             expect(p, token::LBRACE);

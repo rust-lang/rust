@@ -926,7 +926,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_class(tps, _, _, _, rp) {
+      ast::item_class(tps, _, _, _, _, rp) {
           let {bounds,substs} = mk_substs(ccx, tps, rp);
           let t = ty::mk_class(tcx, local_def(it.id), substs);
           let tpt = {bounds: bounds, rp: rp, ty: t};
@@ -1487,7 +1487,7 @@ mod collect {
                   ty_of_ty_method(ccx, m, rp)
               };
           }
-          ast_map::node_item(@{node: ast::item_class(_,_,its,_,rp), _}, _) {
+          ast_map::node_item(@{node: ast::item_class(_,_,its,_,_,rp), _}, _) {
               let (_,ms) = split_class_items(its);
               // All methods need to be stored, since lookup_method
               // relies on the same method cache for self-calls
@@ -1654,7 +1654,7 @@ mod collect {
             write_ty_to_tcx(tcx, it.id, tpt.ty);
             ensure_iface_methods(ccx, it.id);
           }
-          ast::item_class(tps, ifaces, members, ctor, rp) {
+          ast::item_class(tps, ifaces, members, ctor, m_dtor, rp) {
             // Write the class type
             let tpt = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, tpt.ty);
@@ -1671,6 +1671,22 @@ mod collect {
                               {bounds: tpt.bounds,
                                rp: ast::rp_none,
                                ty: t_ctor});
+            option::iter(m_dtor) {|dtor|
+              // Write the dtor type
+              let t_dtor = ty::mk_fn(tcx,
+                                   // not sure about empty_rscope
+                                   // FIXME
+                                   ty_of_fn_decl(ccx,
+                                                 empty_rscope,
+                                                 ast::proto_any,
+                                                 ast_util::dtor_dec(),
+                                                 none));
+              write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
+              tcx.tcache.insert(local_def(dtor.node.id),
+                                {bounds: tpt.bounds,
+                                 rp: ast::rp_none,
+                                 ty: t_dtor});
+            };
             ensure_iface_methods(ccx, it.id);
             /* FIXME: check for proper public/privateness */
             // Write the type of each of the members
@@ -2441,7 +2457,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
              raw_ty: fcx.ccx.to_ty(type_rscope(rp), st)}
           }
           some(ast_map::node_item(@{node: ast::item_class(ts,
-                                    _,_,_,rp), id: class_id, _},_)) {
+                                 _,_,_,_,rp), id: class_id, _},_)) {
               /* If the impl is a class, the self ty is just the class ty
                  (doing a no-op subst for the ty params; in the next step,
                  we substitute in fresh vars for them)
@@ -4443,7 +4459,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let self_ty = ccx.to_ty(type_rscope(rp), ty);
         for ms.each {|m| check_method(ccx, m, self_ty);}
       }
-      ast::item_class(tps, ifaces, members, ctor, rp) {
+      ast::item_class(tps, ifaces, members, ctor, m_dtor, rp) {
           let cid = some(it.id), tcx = ccx.tcx;
           let class_t = ty::node_id_to_type(tcx, it.id);
           let members_info = class_types(ccx, members, rp);
@@ -4458,6 +4474,14 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           // Write the ctor's self's type
           write_ty_to_tcx(tcx, ctor.node.self_id, class_t);
 
+          option::iter(m_dtor) {|dtor|
+            // typecheck the dtor
+           check_bare_fn(class_ccx, ast_util::dtor_dec(),
+                           dtor.node.body, dtor.node.id,
+                           some(class_t));
+           // Write the dtor's self's type
+           write_ty_to_tcx(tcx, dtor.node.self_id, class_t);
+          };
           // typecheck the members
           for members.each {|m| check_class_member(class_ccx, class_t, m); }
       }

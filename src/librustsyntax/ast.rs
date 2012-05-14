@@ -669,8 +669,10 @@ enum item_ {
     item_class([ty_param], /* ty params for class */
                [@iface_ref],   /* ifaces this class implements */
                [@class_member], /* methods, etc. */
-                               /* (not including ctor) */
+                               /* (not including ctor or dtor) */
                class_ctor,
+               /* dtor is optional */
+               option<class_dtor>,
                region_param
                ),
     item_iface([ty_param], region_param, [ty_method]),
@@ -697,6 +699,14 @@ type class_ctor = spanned<class_ctor_>;
 type class_ctor_ = {id: node_id,
                     self_id: node_id,
                     dec: fn_decl,
+                    body: blk};
+
+#[auto_serialize]
+type class_dtor = spanned<class_dtor_>;
+
+#[auto_serialize]
+type class_dtor_ = {id: node_id,
+                    self_id: node_id,
                     body: blk};
 
 #[auto_serialize]
