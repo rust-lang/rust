@@ -179,10 +179,7 @@ fn allocate_cbox(bcx: block,
         (bcx, box)
       }
       ty::ck_uniq {
-        let uniq_cbox_ty = mk_tuplified_uniq_cbox_ty(tcx, cdata_ty);
-        let box = uniq::alloc_uniq(bcx, uniq_cbox_ty);
-        nuke_ref_count(bcx, box);
-        let bcx = store_tydesc(bcx, cdata_ty, box, ti);
+        let box = malloc_unique_raw(bcx, cdata_ty);
         (bcx, box)
       }
       ty::ck_block {
@@ -606,7 +603,7 @@ fn make_opaque_cbox_free_glue(
       ty::ck_box | ty::ck_uniq { /* hard cases: */ }
     }
 
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let ccx = bcx.ccx();
     with_cond(bcx, IsNotNull(bcx, cbox)) {|bcx|
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
@@ -628,8 +625,7 @@ fn make_opaque_cbox_free_glue(
             trans_free(bcx, cbox)
           }
           ty::ck_uniq {
-            let bcx = free_ty(bcx, tydesc, ty::mk_type(tcx));
-            trans_shared_free(bcx, cbox)
+            trans_unique_free(bcx, cbox)
           }
         }
     }

@@ -5,7 +5,7 @@ import build::*;
 import base::*;
 import shape::llsize_of;
 
-export trans_uniq, make_free_glue, autoderef, duplicate, alloc_uniq;
+export trans_uniq, make_free_glue, autoderef, duplicate;
 
 fn trans_uniq(bcx: block, contents: @ast::expr,
               node_id: ast::node_id, dest: dest) -> block {
@@ -17,15 +17,6 @@ fn trans_uniq(bcx: block, contents: @ast::expr,
     let bcx = trans_expr_save_in(bcx, contents, body);
     revoke_clean(bcx, box);
     ret store_in_dest(bcx, box, dest);
-}
-
-fn alloc_uniq(bcx: block, uniq_ty: ty::t) -> ValueRef {
-    let _icx = bcx.insn_ctxt("uniq::alloc_uniq");
-    let contents_ty = content_ty(uniq_ty);
-    let llty = type_of::type_of(bcx.ccx(), contents_ty);
-    let llsz = llsize_of(bcx.ccx(), llty);
-    let llptrty = T_ptr(llty);
-    shared_malloc(bcx, llptrty, llsz)
 }
 
 fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
