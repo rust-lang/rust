@@ -450,3 +450,13 @@ rust_uv_get_kernel_global_chan_ptr() {
     LOG(task, stdlib,"global loop val: %lu", (unsigned long int)*result);
     return result;
 }
+
+extern "C" void*
+rust_uv_current_kernel_malloc(size_t size) {
+	return current_kernel_malloc(size, "rust_uv_current_kernel_malloc");
+}
+
+extern "C" void*
+rust_uv_current_kernel_free(void* mem) {
+	return current_kernel_free(mem);
+}
