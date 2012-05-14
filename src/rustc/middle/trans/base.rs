@@ -1783,8 +1783,7 @@ fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
     -> block {
     let _icx = cx.insn_ctxt("trans_while");
     let next_cx = sub_block(cx, "while next");
-    let loop_cx = loop_scope_block(cx, cont_self, next_cx,
-                                   "while loop", body.span);
+    let loop_cx = loop_scope_block(cx, next_cx, "`while`", body.span);
     let cond_cx = scope_block(loop_cx, "while loop cond");
     let body_cx = scope_block(loop_cx, "while loop body");
     Br(cx, loop_cx.llbb);
@@ -1800,9 +1799,7 @@ fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
 fn trans_loop(cx:block, body: ast::blk) -> block {
     let _icx = cx.insn_ctxt("trans_loop");
     let next_cx = sub_block(cx, "next");
-    let body_cx =
-        loop_scope_block(cx, cont_self, next_cx,
-                                  "infinite loop body", body.span);
+    let body_cx = loop_scope_block(cx, next_cx, "`loop`", body.span);
     let body_end = trans_block(body_cx, body, ignore);
     cleanup_and_Br(body_end, body_cx, body_cx.llbb);
     Br(cx, body_cx.llbb);
@@ -3567,14 +3564,11 @@ fn trans_break_cont(bcx: block, to_end: bool)
     let mut target = bcx;
     loop {
         alt unwind.kind {
-          block_scope({is_loop: some({cnt, brk}), _}) {
+          block_scope({loop_break: some(brk), _}) {
             target = if to_end {
                 brk
             } else {
-                alt cnt {
-                  cont_other(o) { o }
-                  cont_self { unwind }
-                }
+                unwind
             };
             break;
           }
@@ -3755,7 +3749,7 @@ fn new_block(cx: fn_ctxt, parent: block_parent, kind: block_kind,
 }
 
 fn simple_block_scope() -> block_kind {
-    block_scope({is_loop: none, mut cleanups: [],
+    block_scope({loop_break: none, mut cleanups: [],
                  mut cleanup_paths: [], mut landing_pad: none})
 }
 
@@ -3770,11 +3764,10 @@ fn scope_block(bcx: block, n: str) -> block {
                   n, none);
 }
 
-fn loop_scope_block(bcx: block, _cont: loop_cont,
-                    _break: block, n: str, sp: span)
+fn loop_scope_block(bcx: block, loop_break: block, n: str, sp: span)
     -> block {
     ret new_block(bcx.fcx, parent_some(bcx), block_scope({
-        is_loop: some({cnt: _cont, brk: _break}),
+        loop_break: some(loop_break),
         mut cleanups: [],
         mut cleanup_paths: [],
         mut landing_pad: none

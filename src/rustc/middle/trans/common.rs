@@ -300,10 +300,8 @@ enum block_kind {
     block_non_scope,
 }
 
-enum loop_cont { cont_self, cont_other(block), }
-
 type scope_info = {
-    is_loop: option<{cnt: loop_cont, brk: block}>,
+    loop_break: option<block>,
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
