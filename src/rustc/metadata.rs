@@ -45,7 +45,7 @@ mod back {
 mod driver {
     import session = driver_::session;
     export session;
-    import diagnostic = rustsyntax::diagnostic;
+    import diagnostic = syntax::diagnostic;
     export diagnostic;
 }
 

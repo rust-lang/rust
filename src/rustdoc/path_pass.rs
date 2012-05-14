@@ -1,5 +1,7 @@
 #[doc = "Records the full path to items"];
 
+import syntax::ast;
+
 export mk_pass;
 
 fn mk_pass() -> pass {
@@ -36,7 +38,7 @@ fn fold_item(fold: fold::fold<ctxt>, doc: doc::itemdoc) -> doc::itemdoc {
 }
 
 fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
-    let is_topmod = doc.id() == rustc::syntax::ast::crate_node_id;
+    let is_topmod = doc.id() == ast::crate_node_id;
 
     if !is_topmod { vec::push(fold.ctxt.path, doc.name()); }
     let doc = fold::default_any_fold_mod(fold, doc);

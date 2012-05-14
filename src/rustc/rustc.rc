@@ -13,7 +13,7 @@
 
 use core(vers = "0.2");
 use std(vers = "0.2");
-use rustsyntax(vers = "0.2");
+use syntax(name = "rustsyntax", vers = "0.2");
 
 import core::*;
 
@@ -81,8 +81,6 @@ mod middle {
         mod tritv;
     }
 }
-
-mod syntax;
 
 mod front {
     mod config;

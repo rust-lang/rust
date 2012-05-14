@@ -1,10 +1,10 @@
 // cargo.rs - Rust package manager
 
-import rustc::syntax::{ast, codemap};
-import rustc::syntax::parse;
+import syntax::{ast, codemap};
+import syntax::parse;
 import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
                                  get_cargo_sysroot, libdir};
-import rustc::driver::diagnostic;
+import syntax::diagnostic;
 
 import result::{ok, err};
 import io::writer_util;

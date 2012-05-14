@@ -6,7 +6,7 @@
      of the natural-language documentation for a crate."
 )];
 
-import rustc::syntax::ast;
+import syntax::ast;
 import rustc::middle::ast_map;
 import std::map::hashmap;
 

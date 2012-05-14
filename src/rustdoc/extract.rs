@@ -1,6 +1,6 @@
 #[doc = "Converts the Rust AST to the rustdoc document model"];
 
-import rustc::syntax::ast;
+import syntax::ast;
 
 export from_srv, extract;
 

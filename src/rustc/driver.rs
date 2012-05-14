@@ -1,4 +1,4 @@
-import rustsyntax::diagnostic;
+import syntax::diagnostic;
 export diagnostic;
 
 export driver;

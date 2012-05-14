@@ -3,12 +3,12 @@
 import std::map;
 import std::map::hashmap;
 import std::list;
-import rustc::syntax::ast;
-import rustc::syntax::ast_util;
+import syntax::ast;
+import syntax::ast_util;
 import rustc::util::common;
 import rustc::middle::ast_map;
-import rustc::syntax::visit;
-import rustc::syntax::codemap;
+import syntax::visit;
+import syntax::codemap;
 import rustc::middle::resolve;
 
 export mk_pass;
@@ -316,7 +316,7 @@ fn merge_reexports(
     fn fold_mod(fold: fold::fold<path_map>, doc: doc::moddoc) -> doc::moddoc {
         let doc = fold::default_seq_fold_mod(fold, doc);
 
-        let is_topmod = doc.id() == rustc::syntax::ast::crate_node_id;
+        let is_topmod = doc.id() == ast::crate_node_id;
 
         // In the case of the top mod, it really doesn't have a name;
         // the name we have here is actually the crate name

@@ -1,7 +1,7 @@
 #[doc = "Prunes branches of the tree that are not exported"];
 
-import rustc::syntax::ast;
-import rustc::syntax::ast_util;
+import syntax::ast;
+import syntax::ast_util;
 import rustc::middle::ast_map;
 import std::map::hashmap;
 

@@ -10,10 +10,10 @@
 import std::map::hashmap;
 import rustc::driver::session;
 import rustc::driver::driver;
-import rustc::driver::diagnostic;
-import rustc::driver::diagnostic::handler;
-import rustc::syntax::ast;
-import rustc::syntax::codemap;
+import syntax::diagnostic;
+import syntax::diagnostic::handler;
+import syntax::ast;
+import syntax::codemap;
 import rustc::middle::ast_map;
 import rustc::back::link;
 import rustc::util::filesearch;

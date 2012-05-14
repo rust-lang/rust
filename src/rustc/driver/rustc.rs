@@ -3,6 +3,7 @@
 use core(vers = "0.2");
 use std(vers = "0.2");
 use rustc(vers = "0.2");
+use syntax(name = "rustsyntax", vers = "0.2");
 
 import core::*;
 
@@ -12,7 +13,7 @@ import std::getopts;
 import std::map::hashmap;
 import getopts::{opt_present};
 import rustc::driver::driver::*;
-import rustc::syntax::codemap;
+import syntax::codemap;
 import rustc::driver::diagnostic;
 import rustc::middle::lint;
 import io::reader_util;

@@ -7,6 +7,8 @@ modules, pages for the crate, indexes, etc.
 
 "];
 
+import syntax::ast;
+
 export mk_pass;
 
 fn mk_pass(output_style: config::output_style) -> pass {
@@ -92,7 +94,7 @@ fn fold_mod(
 
     let doc = fold::default_any_fold_mod(fold, doc);
 
-    if doc.id() != rustc::syntax::ast::crate_node_id {
+    if doc.id() != ast::crate_node_id {
 
         let doc = strip_mod(doc);
         let page = doc::itempage(doc::modtag(doc));

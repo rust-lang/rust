@@ -5,8 +5,8 @@
      an AST's attributes."
 )];
 
-import rustc::syntax::ast;
-import rustc::syntax::attr;
+import syntax::ast;
+import syntax::attr;
 import core::tuple;
 
 export crate_attrs;
@@ -21,10 +21,10 @@ type crate_attrs = {
 mod test {
 
     fn parse_attributes(source: str) -> [ast::attribute] {
-        import rustc::syntax::parse;
-        import rustc::syntax::parse::parser;
-        import rustc::syntax::codemap;
-        import rustc::driver::diagnostic;
+        import syntax::parse;
+        import parse::parser;
+        import syntax::codemap;
+        import syntax::diagnostic;
 
         let cm = codemap::new_codemap();
         let handler = diagnostic::mk_handler(none);

@@ -180,7 +180,7 @@ fn write_header_(ctxt: ctxt, lvl: hlvl, title: str) {
 fn header_kind(doc: doc::itemtag) -> str {
     alt doc {
       doc::modtag(_) {
-        if doc.id() == rustc::syntax::ast::crate_node_id {
+        if doc.id() == syntax::ast::crate_node_id {
             "Crate"
         } else {
             "Module"
@@ -216,7 +216,7 @@ fn header_kind(doc: doc::itemtag) -> str {
 fn header_name(doc: doc::itemtag) -> str {
     let fullpath = str::connect(doc.path() + [doc.name()], "::");
     alt doc {
-      doc::modtag(_) if doc.id() != rustc::syntax::ast::crate_node_id {
+      doc::modtag(_) if doc.id() != syntax::ast::crate_node_id {
         fullpath
       }
       doc::nmodtag(_) {

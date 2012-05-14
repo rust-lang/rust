@@ -3,10 +3,10 @@
 import rustc::driver::driver;
 import driver::{file_input, str_input};
 import rustc::driver::session;
-import rustc::driver::diagnostic;
-import rustc::syntax::ast;
-import rustc::syntax::codemap;
-import rustc::syntax::parse;
+import syntax::diagnostic;
+import syntax::ast;
+import syntax::codemap;
+import syntax::parse;
 
 export from_file, from_str, from_file_sess, from_str_sess;
 

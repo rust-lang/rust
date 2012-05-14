@@ -1,8 +1,8 @@
 #[doc =
   "Pulls type information out of the AST and attaches it to the document"];
 
-import rustc::syntax::ast;
-import rustc::syntax::print::pprust;
+import syntax::ast;
+import syntax::print::pprust;
 import rustc::middle::ast_map;
 import std::map::hashmap;
 

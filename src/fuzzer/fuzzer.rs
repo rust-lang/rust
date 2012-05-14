@@ -1,9 +1,9 @@
 import io::writer_util;
 
-import rustc::syntax::{ast, ast_util, fold, visit, codemap};
-import rustc::syntax::parse;
-import rustc::syntax::print::pprust;
-import rustc::driver::diagnostic;
+import syntax::{ast, ast_util, fold, visit, codemap};
+import syntax::parse;
+import syntax::print::pprust;
+import syntax::diagnostic;
 
 enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
