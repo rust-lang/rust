@@ -820,6 +820,8 @@ fn iter_between<T>(v: [const T], start: uint, end: uint, f: fn(T)) {
 
 #[doc = "
 Iterates over a vector, with option to break
+
+Return true to continue, false to break.
 "]
 #[inline(always)]
 fn each<T>(v: [const T]/&, f: fn(T) -> bool) unsafe {
@@ -836,6 +838,8 @@ fn each<T>(v: [const T]/&, f: fn(T) -> bool) unsafe {
 
 #[doc = "
 Iterates over a vector's elements and indices
+
+Return true to continue, false to break.
 "]
 #[inline(always)]
 fn eachi<T>(v: [const T]/&, f: fn(uint, T) -> bool) unsafe {
