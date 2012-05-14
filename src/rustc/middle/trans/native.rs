@@ -10,7 +10,7 @@ import lib::llvm::{ llvm, TypeRef, ValueRef,
                     StructRetAttribute, ByValAttribute
                   };
 import syntax::{ast, ast_util};
-import back::link;
+import back::{link, abi};
 import common::*;
 import build::*;
 import base::*;
@@ -842,63 +842,65 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
         let vp_ty = substs.tys[1];
         let visitor = get_param(decl, first_real_arg);
 
-        // We're going to synthesize a monomorphized vtbl call here much
-        // like what impl::trans_monomorphized_callee does, but without
-        // having quite as much source machinery to go on.
+        let (tyname, args) = alt ty::get(tp_ty).struct {
+          ty::ty_bot { ("bot", []) }
+          ty::ty_nil { ("nil", []) }
+          ty::ty_bool { ("bool", []) }
+          ty::ty_int(ast::ty_i) { ("int", []) }
+          ty::ty_int(ast::ty_char) { ("char", []) }
+          ty::ty_int(ast::ty_i8) { ("i8", []) }
+          ty::ty_int(ast::ty_i16) { ("i16", []) }
+          ty::ty_int(ast::ty_i32) { ("i32", []) }
+          ty::ty_int(ast::ty_i64) { ("i64", []) }
+          ty::ty_uint(ast::ty_u) { ("uint", []) }
+          ty::ty_uint(ast::ty_u8) { ("u8", []) }
+          ty::ty_uint(ast::ty_u16) { ("u16", []) }
+          ty::ty_uint(ast::ty_u32) { ("u32", []) }
+          ty::ty_uint(ast::ty_u64) { ("u64", []) }
+          ty::ty_float(ast::ty_f) { ("float", []) }
+          ty::ty_float(ast::ty_f32) { ("f32", []) }
+          ty::ty_float(ast::ty_f64) { ("f64", []) }
+          ty::ty_str { ("str", []) }
+          _ {
+            bcx.sess().unimpl("trans::native::visit_ty on "
+                              + ty_to_str(ccx.tcx, tp_ty));
+          }
+        };
+
+        let mth_name = "visit_" + tyname;
+        let dest = ignore;
 
         alt impl::find_vtable_in_fn_ctxt(substs,
                                          1u, /* n_param */
                                          0u  /* n_bound */ ) {
 
           typeck::vtable_static(impl_did, impl_substs, sub_origins) {
-
-            let (tyname, args) = alt ty::get(tp_ty).struct {
-              ty::ty_bot { ("bot", []) }
-              ty::ty_nil { ("nil", []) }
-              ty::ty_bool { ("bool", []) }
-              ty::ty_int(ast::ty_i) { ("int", []) }
-              ty::ty_int(ast::ty_char) { ("char", []) }
-              ty::ty_int(ast::ty_i8) { ("i8", []) }
-              ty::ty_int(ast::ty_i16) { ("i16", []) }
-              ty::ty_int(ast::ty_i32) { ("i32", []) }
-              ty::ty_int(ast::ty_i64) { ("i64", []) }
-              ty::ty_uint(ast::ty_u) { ("uint", []) }
-              ty::ty_uint(ast::ty_u8) { ("u8", []) }
-              ty::ty_uint(ast::ty_u16) { ("u16", []) }
-              ty::ty_uint(ast::ty_u32) { ("u32", []) }
-              ty::ty_uint(ast::ty_u64) { ("u64", []) }
-              ty::ty_float(ast::ty_f) { ("float", []) }
-              ty::ty_float(ast::ty_f32) { ("f32", []) }
-              ty::ty_float(ast::ty_f64) { ("f64", []) }
-              ty::ty_str { ("str", []) }
-              _ {
-                bcx.sess().unimpl("trans::native::visit_ty on "
-                                  + ty_to_str(ccx.tcx, tp_ty));
-              }
-            };
-
-            let mth_id = impl::method_with_name(ccx, impl_did,
-                                                "visit_" + tyname);
+            let mth_id = impl::method_with_name(ccx, impl_did, mth_name);
             let mth_ty = ty::lookup_item_type(ccx.tcx, mth_id).ty;
-
             // FIXME: is this safe? There is no callee AST node,
             // we're synthesizing it.
             let callee_id = (-1) as ast::node_id;
-
-            let dest = ignore;
-
-            bcx = trans_call_inner(bcx,
-                                   mth_ty,
-                                   ty::mk_nil(ccx.tcx),
-                                   {|bcx|
-                                       let lval =
-                                           lval_static_fn_inner
-                                           (bcx, mth_id, callee_id,
-                                            impl_substs,  some(sub_origins));
-                                       {env: self_env(visitor, vp_ty, none)
-                                        with lval}
-                                   }, arg_vals(args), dest);
+            let get_lval = {|bcx|
+                let lval = lval_static_fn_inner(bcx, mth_id, callee_id,
+                                                impl_substs,
+                                                some(sub_origins));
+                {env: self_env(visitor, vp_ty, none) with lval}
+            };
+            bcx = trans_call_inner(bcx, mth_ty, ty::mk_bool(ccx.tcx),
+                                   get_lval, arg_vals(args), dest);
           }
+
+          typeck::vtable_iface(iid, _tps) {
+            let methods = ty::iface_methods(ccx.tcx, iid);
+            let mth_idx = option::get(ty::method_idx(mth_name, *methods));
+            let mth_ty = ty::mk_fn(ccx.tcx, methods[mth_idx].fty);
+            let get_lval = {|bcx|
+                impl::trans_iface_callee(bcx, visitor, mth_ty, mth_idx)
+            };
+            bcx = trans_call_inner(bcx, mth_ty, ty::mk_bool(ccx.tcx),
+                                   get_lval, arg_vals(args), dest);
+          }
+
           _ {
             ccx.sess.span_bug(item.span,
                               "non-static callee in 'visit_ty' intrinsinc");

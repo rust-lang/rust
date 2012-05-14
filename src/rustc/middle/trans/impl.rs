@@ -64,22 +64,11 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         }
       }
       typeck::method_iface(_, off) {
-        trans_iface_callee(bcx, self, callee_id, off)
+        let {bcx, val} = trans_temp_expr(bcx, self);
+        let fty = node_id_type(bcx, callee_id);
+        trans_iface_callee(bcx, val, fty, off)
       }
     }
-}
-
-fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
-                       callee_id: ast::node_id, n_method: uint)
-    -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt("impl::trans_vtable_callee");
-    let bcx = bcx, ccx = bcx.ccx();
-    let fty = node_id_type(bcx, callee_id);
-    let llfty = type_of::type_of_fn_from_ty(ccx, fty);
-    let vtable = PointerCast(bcx, vtable,
-                             T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
-    let mptr = Load(bcx, GEPi(bcx, vtable, [0u, n_method]));
-    {bcx: bcx, val: mptr, kind: owned, env: env}
 }
 
 fn method_from_methods(ms: [@ast::method], name: ast::ident) -> ast::def_id {
@@ -139,7 +128,9 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
          with lval}
       }
       typeck::vtable_iface(iid, tps) {
-        trans_iface_callee(bcx, base, callee_id, n_method)
+        let {bcx, val} = trans_temp_expr(bcx, base);
+        let fty = node_id_type(bcx, callee_id);
+        trans_iface_callee(bcx, val, fty, n_method)
       }
       typeck::vtable_param(n_param, n_bound) {
         fail "vtable_param left in monomorphized function's vtable substs";
@@ -148,18 +139,22 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
 }
 
 // Method callee where the vtable comes from a boxed iface
-fn trans_iface_callee(bcx: block, base: @ast::expr,
-                      callee_id: ast::node_id, n_method: uint)
+fn trans_iface_callee(bcx: block, val: ValueRef,
+                      callee_ty: ty::t, n_method: uint)
     -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("impl::trans_iface_callee");
-    let {bcx, val} = trans_temp_expr(bcx, base);
+    let ccx = bcx.ccx();
     let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0u, 0u]),
-                                     T_ptr(T_ptr(T_vtable()))));
+                                       T_ptr(T_ptr(T_vtable()))));
     let box = Load(bcx, GEPi(bcx, val, [0u, 1u]));
     // FIXME[impl] I doubt this is alignment-safe
     let self = GEPi(bcx, box, [0u, abi::box_field_body]);
     let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(box));
-    trans_vtable_callee(bcx, env, vtable, callee_id, n_method)
+    let llfty = type_of::type_of_fn_from_ty(ccx, callee_ty);
+    let vtable = PointerCast(bcx, vtable,
+                             T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
+    let mptr = Load(bcx, GEPi(bcx, vtable, [0u, n_method]));
+    {bcx: bcx, val: mptr, kind: owned, env: env}
 }
 
 fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)

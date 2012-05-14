@@ -7,112 +7,117 @@
 //
 
 iface ty_visitor {
-    fn visit_bot();
-    fn visit_nil();
-    fn visit_bool();
+    fn visit_bot() -> bool;
+    fn visit_nil() -> bool;
+    fn visit_bool() -> bool;
 
-    fn visit_int();
-    fn visit_i8();
-    fn visit_i16();
-    fn visit_i32();
-    fn visit_i64();
+    fn visit_int() -> bool;
+    fn visit_i8() -> bool;
+    fn visit_i16() -> bool;
+    fn visit_i32() -> bool;
+    fn visit_i64() -> bool;
 
-    fn visit_uint();
-    fn visit_u8();
-    fn visit_u16();
-    fn visit_u32();
-    fn visit_u64();
+    fn visit_uint() -> bool;
+    fn visit_u8() -> bool;
+    fn visit_u16() -> bool;
+    fn visit_u32() -> bool;
+    fn visit_u64() -> bool;
 
-    fn visit_float();
-    fn visit_f32();
-    fn visit_f64();
+    fn visit_float() -> bool;
+    fn visit_f32() -> bool;
+    fn visit_f64() -> bool;
 
-    fn visit_char();
-    fn visit_str();
+    fn visit_char() -> bool;
+    fn visit_str() -> bool;
 
-    fn visit_vec(cells_mut: bool,
-                 visit_cell: fn(uint, self));
-
-    fn visit_box(inner_mut: bool,
-                 visit_inner: fn(self));
-
-    fn visit_uniq(inner_mut: bool,
-                  visit_inner: fn(self));
-
-    fn visit_ptr(inner_mut: bool,
-                 visit_inner: fn(self));
-
-    fn visit_rptr(inner_mut: bool,
-                  visit_inner: fn(self));
-
-    fn visit_rec(n_fields: uint,
-                 field_name: fn(uint) -> str/&,
-                 field_mut: fn(uint) -> bool,
-                 visit_field: fn(uint, self));
-    fn visit_tup(n_fields: uint,
-                 visit_field: fn(uint, self));
-    fn visit_enum(n_variants: uint,
-                  variant: uint,
-                  variant_name: fn(uint) -> str/&,
-                  visit_variant: fn(uint, self));
+    // FIXME: possibly pair these as enter/leave calls
+    // not just enter with implicit number of subsequent
+    // calls.
+    fn visit_vec_of(is_mut: bool) -> bool;
+    fn visit_box_of(is_mut: bool) -> bool;
+    fn visit_uniq_of(is_mut: bool) -> bool;
+    fn visit_ptr_of(is_mut: bool) -> bool;
+    fn visit_rptr_of(is_mut: bool) -> bool;
+    fn visit_rec_of(n_fields: uint) -> bool;
+    fn visit_rec_field(name: str/&, is_mut: bool) -> bool;
+    fn visit_tup_of(n_fields: uint) -> bool;
+    fn visit_tup_field(is_mut: bool) -> bool;
+    fn visit_enum_of(n_variants: uint) -> bool;
+    fn visit_enum_variant(name: str/&) -> bool;
 }
 
 enum my_visitor = { mut types: [str] };
 
 impl of ty_visitor for my_visitor {
-    fn visit_bot() { self.types += ["bot"] }
-    fn visit_nil() { self.types += ["nil"] }
-    fn visit_bool() { self.types += ["bool"] }
+    fn visit_bot() -> bool {
+        self.types += ["bot"];
+        #error("visited bot type");
+        true
+    }
+    fn visit_nil() -> bool {
+        self.types += ["nil"];
+        #error("visited nil type");
+        true
+    }
+    fn visit_bool() -> bool {
+        self.types += ["bool"];
+        #error("visited bool type");
+        true
+    }
+    fn visit_int() -> bool {
+        self.types += ["int"];
+        #error("visited int type");
+        true
+    }
+    fn visit_i8() -> bool {
+        self.types += ["i8"];
+        #error("visited i8 type");
+        true
+    }
+    fn visit_i16() -> bool {
+        self.types += ["i16"];
+        #error("visited i16 type");
+        true
+    }
+    fn visit_i32() -> bool { true }
+    fn visit_i64() -> bool { true }
 
-    fn visit_int() { self.types += ["int"] }
-    fn visit_i8() { self.types += ["i8"] }
-    fn visit_i16() { self.types += ["i16"] }
-    fn visit_i32() { }
-    fn visit_i64() { }
+    fn visit_uint() -> bool { true }
+    fn visit_u8() -> bool { true }
+    fn visit_u16() -> bool { true }
+    fn visit_u32() -> bool { true }
+    fn visit_u64() -> bool { true }
 
-    fn visit_uint() { }
-    fn visit_u8() { }
-    fn visit_u16() { }
-    fn visit_u32() { }
-    fn visit_u64() { }
+    fn visit_float() -> bool { true }
+    fn visit_f32() -> bool { true }
+    fn visit_f64() -> bool { true }
 
-    fn visit_float() { }
-    fn visit_f32() { }
-    fn visit_f64() { }
+    fn visit_char() -> bool { true }
+    fn visit_str() -> bool { true }
 
-    fn visit_char() { }
-    fn visit_str() { }
-
-    fn visit_vec(_cells_mut: bool,
-                 _visit_cell: fn(uint, my_visitor)) { }
-
-    fn visit_box(_inner_mut: bool,
-                 _visit_inner: fn(my_visitor)) { }
-
-    fn visit_uniq(_inner_mut: bool,
-                  _visit_inner: fn(my_visitor)) { }
-
-    fn visit_ptr(_inner_mut: bool,
-                 _visit_inner: fn(my_visitor)) { }
-
-    fn visit_rptr(_inner_mut: bool,
-                  _visit_inner: fn(my_visitor)) { }
-
-    fn visit_rec(_n_fields: uint,
-                 _field_name: fn(uint) -> str/&,
-                 _field_mut: fn(uint) -> bool,
-                 _visit_field: fn(uint, my_visitor)) { }
-    fn visit_tup(_n_fields: uint,
-                 _visit_field: fn(uint, my_visitor)) { }
-    fn visit_enum(_n_variants: uint,
-                  _variant: uint,
-                  _variant_name: fn(uint) -> str/&,
-                  _visit_variant: fn(uint, my_visitor)) { }
+    fn visit_vec_of(_is_mut: bool) -> bool { true }
+    fn visit_box_of(_is_mut: bool) -> bool { true }
+    fn visit_uniq_of(_is_mut: bool) -> bool { true }
+    fn visit_ptr_of(_is_mut: bool) -> bool { true }
+    fn visit_rptr_of(_is_mut: bool) -> bool { true }
+    fn visit_rec_of(_n_fields: uint) -> bool { true }
+    fn visit_rec_field(_name: str/&, _is_mut: bool) -> bool { true }
+    fn visit_tup_of(_n_fields: uint) -> bool { true }
+    fn visit_tup_field(_is_mut: bool) -> bool { true }
+    fn visit_enum_of(_n_variants: uint) -> bool { true }
+    fn visit_enum_variant(_name: str/&) -> bool { true }
 }
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn visit_ty<T,V:ty_visitor>(tv: V);
+}
+
+fn via_iface(v: ty_visitor) {
+    rusti::visit_ty::<bool,ty_visitor>(v);
+    rusti::visit_ty::<int,ty_visitor>(v);
+    rusti::visit_ty::<i8,ty_visitor>(v);
+    rusti::visit_ty::<i16,ty_visitor>(v);
 }
 
 fn main() {
@@ -127,4 +132,6 @@ fn main() {
         io::println(#fmt("type: %s", s));
     }
     assert v.types == ["bool", "int", "i8", "i16"];
+
+    via_iface(v as ty_visitor);
 }
