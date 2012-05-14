@@ -28,6 +28,7 @@ import util_ = util;
 import lib_ = lib;
 import driver_ = driver;
 import middle_ = middle;
+import back_ = back;
 
 mod middle {
     mod trans {

@@ -28,3 +28,6 @@ export attr;
 
 import rustsyntax::ext;
 export ext;
+
+import rustsyntax::diagnostic;
+export diagnostic;

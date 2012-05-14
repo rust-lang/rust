@@ -13,7 +13,6 @@ import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
         parse_ident};
 import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
-import middle::trans::common::maps;
 import util::ppaux::ty_to_str;
 import ebml::deserializer;
 

@@ -38,7 +38,7 @@ import link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_path,
               mangle_internal_name_by_path_and_seq,
               mangle_exported_name};
-import metadata::{csearch, cstore};
+import metadata::{csearch, cstore, encoder};
 import util::ppaux::{ty_to_str, ty_to_short_str};
 
 import common::*;
@@ -4932,9 +4932,26 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
          C_array(ccx.int_type, subcrates)]));
 }
 
+fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
+    -> encoder::encode_parms {
+
+    {
+        tcx: cx.tcx,
+        reachable: cx.reachable,
+        exp_map: cx.exp_map,
+        item_symbols: cx.item_symbols,
+        discrim_symbols: cx.discrim_symbols,
+        link_meta: cx.link_meta,
+        cstore: cx.sess.cstore,
+        maps: cx.maps,
+    }
+
+}
+
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
     if !cx.sess.building_library { ret; }
-    let llmeta = C_bytes(metadata::encoder::encode_metadata(cx, crate));
+    let encode_parms = crate_ctxt_to_encode_parms(cx);
+    let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
     let llconst = C_struct([llmeta]);
     let mut llglobal = str::as_c_str("rust_metadata", {|buf|
         llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
@@ -4961,7 +4978,8 @@ fn write_abi_version(ccx: @crate_ctxt) {
 }
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
-               output: str, emap: resolve::exp_map, maps: maps)
+               output: str, emap: resolve::exp_map,
+               maps: metadata::maps)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);

@@ -17,7 +17,7 @@ import lib::llvm::{llvm, target_data, type_names, associate_type,
                    name_has_type};
 import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
-import metadata::csearch;
+import metadata::{csearch, encoder};
 import ast_map::path;
 
 type namegen = fn@(str) -> str;
@@ -62,17 +62,6 @@ type stats =
 
 resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
 
-// Misc. auxiliary maps used in the crate_ctxt
-type maps = {
-    mutbl_map: middle::borrowck::mutbl_map,
-    copy_map: middle::alias::copy_map,
-    last_uses: middle::last_use::last_uses,
-    impl_map: middle::resolve::impl_map,
-    method_map: middle::typeck::method_map,
-    vtable_map: middle::typeck::vtable_map,
-    spill_map: last_use::spill_map
-};
-
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt = {
      sess: session::session,
@@ -110,7 +99,7 @@ type crate_ctxt = {
      type_short_names: hashmap<ty::t, str>,
      all_llvm_symbols: set<str>,
      tcx: ty::ctxt,
-     maps: maps,
+     maps: metadata::maps,
      stats: stats,
      upcalls: @upcall::upcalls,
      tydesc_type: TypeRef,

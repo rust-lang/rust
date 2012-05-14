@@ -7,7 +7,6 @@ import middle::{ty, ast_map};
 import option::{some, none};
 import driver::session;
 import driver::session::expect;
-import middle::trans::common::maps;
 import common::*;
 import std::map::hashmap;
 
