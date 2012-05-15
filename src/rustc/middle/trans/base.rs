@@ -470,7 +470,8 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
           align: llalign,
           mut take_glue: none,
           mut drop_glue: none,
-          mut free_glue: none};
+          mut free_glue: none,
+          mut visit_glue: none};
     log(debug, "--- declare_tydesc " + ty_to_str(ccx.tcx, t));
     ret inf;
 }
@@ -552,6 +553,11 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               none { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
+        let visit_glue =
+            alt ti.visit_glue {
+              none { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
+              some(v) { ccx.stats.n_real_glues += 1u; v }
+            };
 
         let shape = shape_of(ccx, key, []);
         let shape_tables =
@@ -566,7 +572,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                             take_glue, // take_glue
                             drop_glue, // drop_glue
                             free_glue, // free_glue
-                            C_null(T_ptr(T_i8())), // unused
+                            visit_glue, // visit_glue
                             C_null(glue_fn_ty), // sever_glue
                             C_null(glue_fn_ty), // mark_glue
                             C_null(glue_fn_ty), // unused
@@ -631,6 +637,20 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
     let rc = Add(cx, rc, C_int(ccx, 1));
     Store(cx, rc, rc_ptr);
 }
+
+fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
+    let _icx = bcx.insn_ctxt("make_visit_glue");
+    let mut bcx = bcx;
+    alt bcx.ccx().intrinsic_ifaces.find("visit_ty") {
+      some(iid) {
+        bcx = reflect::emit_calls_to_iface_visit_ty(bcx, t, v, iid);
+      }
+      none {
+      }
+    }
+    build_return(bcx);
+}
+
 
 fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     // v is a pointer to the actual box component of the type here. The
@@ -1065,7 +1085,23 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
                        ty_to_str(ccx.tcx, ti.ty));
               }
             }
+        } else if field == abi::tydesc_field_visit_glue {
+            alt ti.free_glue {
+              some(_) { }
+              none {
+                #debug("+++ lazily_emit_tydesc_glue VISIT %s",
+                       ty_to_str(ccx.tcx, ti.ty));
+                let glue_fn =
+                    declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "visit");
+                ti.visit_glue = some(glue_fn);
+                make_generic_glue(ccx, ti.ty, glue_fn,
+                                  make_visit_glue, "visit");
+                #debug("--- lazily_emit_tydesc_glue VISIT %s",
+                       ty_to_str(ccx.tcx, ti.ty));
+              }
+            }
         }
+
       }
     }
 }
@@ -5056,6 +5092,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tn: tn,
           externs: str_hash::<ValueRef>(),
           intrinsics: intrinsics,
+          intrinsic_ifaces: reflect::find_intrinsic_ifaces(crate),
           item_vals: int_hash::<ValueRef>(),
           exp_map: emap,
           reachable: reachable,

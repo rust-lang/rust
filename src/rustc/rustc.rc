@@ -42,6 +42,7 @@ mod middle {
         mod tvec;
         mod impl;
         mod native;
+        mod reflect;
         mod shape;
         mod debuginfo;
         mod type_use;

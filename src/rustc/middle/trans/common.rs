@@ -33,7 +33,8 @@ type tydesc_info =
      align: ValueRef,
      mut take_glue: option<ValueRef>,
      mut drop_glue: option<ValueRef>,
-     mut free_glue: option<ValueRef>};
+     mut free_glue: option<ValueRef>,
+     mut visit_glue: option<ValueRef>};
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".
@@ -70,6 +71,7 @@ type crate_ctxt = {
      tn: type_names,
      externs: hashmap<str, ValueRef>,
      intrinsics: hashmap<str, ValueRef>,
+     intrinsic_ifaces: hashmap<str, ast::def_id>,
      item_vals: hashmap<ast::node_id, ValueRef>,
      exp_map: resolve::exp_map,
      reachable: reachable::map,
@@ -572,8 +574,8 @@ fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
     let int_type = T_int(targ_cfg);
     let elems =
         [tydescpp, int_type, int_type,
-         glue_fn_ty, glue_fn_ty, glue_fn_ty,
-         T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, T_ptr(T_i8()),
+         glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
+         glue_fn_ty, glue_fn_ty, glue_fn_ty, T_ptr(T_i8()),
          T_ptr(T_i8()), T_ptr(T_i8()), int_type, int_type];
     set_struct_body(tydesc, elems);
     ret tydesc;
