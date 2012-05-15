@@ -7,18 +7,8 @@ mod middle {
     export ast_map;
     import ty = middle_::ty;
     export ty;
-    import typeck = middle_::typeck;
-    export typeck;
-    import last_use = middle_::last_use;
-    export last_use;
-    import freevars = middle_::freevars;
-    export freevars;
     import resolve = middle_::resolve;
     export resolve;
-    import borrowck = middle_::borrowck;
-    export borrowck;
-    import alias = middle_::alias;
-    export alias;
 }
 
 mod front {
