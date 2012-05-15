@@ -93,25 +93,27 @@ fn listen<T: send, U>(f: fn(chan<T>) -> U) -> U {
     f(po.chan())
 }
 
-resource port_ptr<T: send>(po: *rust_port) {
-    // Once the port is detached it's guaranteed not to receive further
-    // messages
-    let yield = 0u;
-    let yieldp = ptr::addr_of(yield);
-    rustrt::rust_port_begin_detach(po, yieldp);
-    if yield != 0u {
-        // Need to wait for the port to be detached
-        // FIXME: If this fails then we're going to leave our port
-        // in a bogus state. (Issue #1988)
-        task::yield();
-    }
-    rustrt::rust_port_end_detach(po);
+resource port_ptr<T: send>(po: *rust_port) unsafe {
+    task::unkillable {||
+        // Once the port is detached it's guaranteed not to receive further
+        // messages
+        let yield = 0u;
+        let yieldp = ptr::addr_of(yield);
+        rustrt::rust_port_begin_detach(po, yieldp);
+        if yield != 0u {
+            // Need to wait for the port to be detached
+            // FIXME: If this fails then we're going to leave our port
+            // in a bogus state. (Issue #1988)
+            task::yield();
+        }
+        rustrt::rust_port_end_detach(po);
 
-    // Drain the port so that all the still-enqueued items get dropped
-    while rustrt::rust_port_size(po) > 0u {
-       recv_::<T>(po);
+        // Drain the port so that all the still-enqueued items get dropped
+        while rustrt::rust_port_size(po) > 0u {
+            recv_::<T>(po);
+        }
+        rustrt::del_port(po);
     }
-    rustrt::del_port(po);
 }
 
 #[doc = "
@@ -457,5 +459,26 @@ fn test_listen() {
             parent.send("oatmeal-salad");
         }
         assert parent.recv() == "oatmeal-salad";
+    }
+}
+
+#[test]
+#[ignore(cfg(target_os="win32"))]
+fn test_port_detach_fail() {
+    iter::repeat(100u) {||
+        let builder = task::builder();
+        task::unsupervise(builder);
+        task::run(builder) {||
+            let po = port();
+            let ch = po.chan();
+
+            task::spawn {||
+                fail;
+            }
+
+            task::spawn {||
+                ch.send(());
+            }
+        }
     }
 }
