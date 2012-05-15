@@ -248,7 +248,7 @@ rust_task::kill() {
     killed = true;
     // Unblock the task so it can unwind.
 
-    if (blocked()) {
+    if (blocked() && must_fail_from_being_killed_unlocked()) {
         wakeup(cond);
     }
 
@@ -648,11 +648,13 @@ rust_task::on_rust_stack() {
 
 void
 rust_task::inhibit_kill() {
+    scoped_lock with(kill_lock);
     disallow_kill = true;
 }
 
 void
 rust_task::allow_kill() {
+    scoped_lock with(kill_lock);
     disallow_kill = false;
 }
 

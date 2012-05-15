@@ -149,7 +149,7 @@ private:
     rust_cond *cond;
     const char *cond_name;
 
-    // Protects the killed flag
+    // Protects the killed flag, disallow_kill flag, reentered_rust_stack
     lock_and_signal kill_lock;
     // Indicates that the task was killed and needs to unwind
     bool killed;
@@ -372,7 +372,10 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     assert(next_rust_sp);
 
     bool had_reentered_rust_stack = reentered_rust_stack;
-    reentered_rust_stack = true;
+    {
+        scoped_lock with(kill_lock);
+        reentered_rust_stack = true;
+    }
 
     uintptr_t prev_c_sp = next_c_sp;
     next_c_sp = get_sp();
@@ -384,7 +387,10 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     __morestack(args, fn_ptr, sp);
 
     next_c_sp = prev_c_sp;
-    reentered_rust_stack = had_reentered_rust_stack;
+    {
+        scoped_lock with(kill_lock);
+        reentered_rust_stack = had_reentered_rust_stack;
+    }
 }
 
 inline void
