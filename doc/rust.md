@@ -46,7 +46,7 @@ keep the size and complexity of the language under control.
 very incomplete; only a modest number of sections have accompanying grammar
 rules. Formalizing the grammar accepted by the Rust parser is ongoing work,
 but future versions of this document will contain a complete
-grammar. Moreover, we hope that this grammar will be be extracted and verified
+grammar. Moreover, we hope that this grammar will be extracted and verified
 as LL(1) by an automated grammar-analysis tool, and further tested against the
 Rust sources. Preliminary versions of this automation exist, but are not yet
 complete.
@@ -1450,7 +1450,7 @@ init : [ '=' | '<-' ] expr ;
 ~~~~~~~~
 
 
-A _slot declaration_ has one one of two forms:
+A _slot declaration_ has one of two forms:
 
 * `let` `pattern` `optional-init`;
 * `let` `pattern` : `type` `optional-init`;
@@ -2647,7 +2647,7 @@ The machine types are the following:
 #### Machine-dependent integer types
 
 The Rust type `uint`^[A Rust `uint` is analogous to a C99 `uintptr_t`.] is an
-unsigned integer type with with target-machine-dependent size. Its size, in
+unsigned integer type with target-machine-dependent size. Its size, in
 bits, is equal to the number of bits required to hold any memory address on
 the target machine.
 

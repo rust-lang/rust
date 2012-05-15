@@ -2223,7 +2223,7 @@ native mod something {
 Most native C code use the cdecl calling convention, so that is what
 Rust uses by default when calling native functions. Some native functions,
 most notably the Windows API, use other calling conventions, so Rust
-provides a way to to hint to the compiler which is expected by using
+provides a way to hint to the compiler which is expected by using
 the `"abi"` attribute:
 
 ~~~~
