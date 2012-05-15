@@ -581,6 +581,16 @@ fn all<T>(v: [T], f: fn(T) -> bool) -> bool {
 }
 
 #[doc = "
+Return true if a predicate matches all elements
+
+If the vector contains no elements then true is returned.
+"]
+fn alli<T>(v: [T], f: fn(uint, T) -> bool) -> bool {
+    for eachi(v) {|i, elem| if !f(i, elem) { ret false; } }
+    ret true;
+}
+
+#[doc = "
 Return true if a predicate matches all elements in both vectors.
 
 If the vectors are not the same size then false is returned.
@@ -1106,6 +1116,12 @@ impl extensions<T> for [T] {
     fn mapi<U>(f: fn(uint, T) -> U) -> [U] {
         let mut i = 0u;
         self.map { |e| i += 1u; f(i - 1u, e) }
+    }
+    #[doc = "Returns true if the function returns true for all elements.
+
+    If the vector is empty, true is returned."]
+    fn alli(f: fn(uint, T) -> bool) -> bool {
+        alli(self, f)
     }
     #[doc = "
     Apply a function to each element of a vector and return a concatenation

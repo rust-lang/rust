@@ -337,6 +337,10 @@ fn print_region(s: ps, region: @ast::region) {
 }
 
 fn print_type(s: ps, &&ty: @ast::ty) {
+    print_type_ex(s, ty, false);
+}
+
+fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     alt ty.node {
@@ -384,7 +388,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
       ast::ty_fn(proto, d) {
         print_ty_fn(s, some(proto), d, none, none);
       }
-      ast::ty_path(path, _) { print_path(s, path, false); }
+      ast::ty_path(path, _) { print_path(s, path, print_colons); }
       ast::ty_constr(t, cs) {
         print_type(s, t);
         space(s.s);
@@ -961,7 +965,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_op_maybe_parens(s, expr, parse::prec::as_prec);
         space(s.s);
         word_space(s, "as");
-        print_type(s, ty);
+        print_type_ex(s, ty, true);
       }
       ast::expr_if(test, blk, elseopt) {
         print_if(s, test, blk, elseopt, false);
