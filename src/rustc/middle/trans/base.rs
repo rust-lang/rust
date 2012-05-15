@@ -5000,6 +5000,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         link_meta: cx.link_meta,
         cstore: cx.sess.cstore,
         maps: cx.maps,
+        encode_inlined_item: middle::astencode::encode_inlined_item
     }
 
 }

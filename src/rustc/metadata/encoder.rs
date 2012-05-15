@@ -20,12 +20,12 @@ import std::ebml::serializer;
 import middle::resolve;
 import syntax::ast;
 import driver::session::session;
-import middle::astencode;
 
 export encode_parms;
 export encode_metadata;
 export encoded_ty;
 export reachable;
+export encode_inlined_item;
 
 // used by astencode:
 export def_to_str;
@@ -35,6 +35,11 @@ export encode_def_id;
 
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
+type encode_inlined_item = fn@(ecx: @encode_ctxt,
+                               ebml_w: ebml::writer,
+                               path: ast_map::path,
+                               ii: ast::inlined_item);
+
 type encode_parms = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
@@ -43,10 +48,11 @@ type encode_parms = {
     discrim_symbols: hashmap<ast::node_id, str>,
     link_meta: back::link::link_meta,
     cstore: cstore::cstore,
-    maps: maps
+    maps: maps,
+    encode_inlined_item: encode_inlined_item
 };
 
-type encode_ctxt = {
+enum encode_ctxt = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     exp_map: resolve::exp_map,
@@ -55,6 +61,7 @@ type encode_ctxt = {
     link_meta: back::link::link_meta,
     cstore: cstore::cstore,
     maps: maps,
+    encode_inlined_item: encode_inlined_item,
     type_abbrevs: abbrev_map
 };
 
@@ -491,7 +498,7 @@ fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_path(ebml_w, path, ast_map::path_name(ident));
         alt item {
            some(it) {
-             astencode::encode_inlined_item(ecx, ebml_w, path, it);
+             ecx.encode_inlined_item(ecx, ebml_w, path, it);
            }
            none {
              encode_symbol(ecx, ebml_w, id);
@@ -513,7 +520,7 @@ fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: ebml::writer,
     encode_name(ebml_w, m.ident);
     encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
     if all_tps.len() > 0u || should_inline {
-        astencode::encode_inlined_item(
+        ecx.encode_inlined_item(
            ecx, ebml_w, impl_path,
            ii_method(local_def(parent_id), m));
     } else {
@@ -574,7 +581,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         if tps.len() > 0u || should_inline(item.attrs) {
-            astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
+            ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         } else {
             encode_symbol(ecx, ebml_w, item.id);
         }
@@ -616,7 +623,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             for variants.each {|v|
                 encode_variant_id(ebml_w, local_def(v.node.id));
             }
-            astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
+            ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
             encode_path(ebml_w, path, ast_map::path_name(item.ident));
             encode_region_param(ebml_w, rp);
         }
@@ -692,7 +699,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, ty::ty_fn_ret(fn_ty));
         encode_name(ebml_w, item.ident);
-        astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
+        ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         if (tps.len() == 0u) {
             encode_symbol(ecx, ebml_w, item.id);
         }
@@ -777,8 +784,8 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         if abi == native_abi_rust_intrinsic {
-            astencode::encode_inlined_item(ecx, ebml_w, path,
-                                           ii_native(nitem));
+            ecx.encode_inlined_item(ecx, ebml_w, path,
+                                    ii_native(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }
@@ -1045,7 +1052,7 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
 }
 
 fn encode_metadata(parms: encode_parms, crate: @crate) -> [u8] {
-    let ecx: @encode_ctxt = @{
+    let ecx: @encode_ctxt = @encode_ctxt({
         tcx: parms.tcx,
         reachable: parms.reachable,
         exp_map: parms.exp_map,
@@ -1054,8 +1061,9 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> [u8] {
         link_meta: parms.link_meta,
         cstore: parms.cstore,
         maps: parms.maps,
+        encode_inlined_item: parms.encode_inlined_item,
         type_abbrevs: ty::new_ty_hash()
-     };
+     });
 
     let buf = io::mem_buffer();
     let buf_w = io::mem_buffer_writer(buf);
