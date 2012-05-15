@@ -805,6 +805,18 @@ rust_global_env_chan_ptr() {
     return task->kernel->get_global_env_chan();
 }
 
+extern "C" void
+rust_task_inhibit_kill() {
+    rust_task *task = rust_get_current_task();
+    task->inhibit_kill();
+}
+
+extern "C" void
+rust_task_allow_kill() {
+    rust_task *task = rust_get_current_task();
+    task->allow_kill();
+}
+
 //
 // Local Variables:
 // mode: C++

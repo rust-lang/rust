@@ -155,6 +155,7 @@ private:
     bool killed;
     // Indicates that we've called back into Rust from C
     bool reentered_rust_stack;
+    bool disallow_kill;
 
     // The stack used for running C code, borrowed from the scheduler thread
     stk_seg *c_stack;
@@ -268,6 +269,9 @@ public:
     const char *get_cond_name() { return cond_name; }
 
     void cleanup_after_turn();
+
+    void inhibit_kill();
+    void allow_kill();
 };
 
 // FIXME: It would be really nice to be able to get rid of this.

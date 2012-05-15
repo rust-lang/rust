@@ -51,7 +51,7 @@ export try;
 export yield;
 export failing;
 export get_task;
-
+export unkillable;
 
 /* Data types */
 
@@ -467,6 +467,29 @@ fn get_task() -> task {
     task(rustrt::get_task_id())
 }
 
+#[doc = "
+Temporarily make the task unkillable
+
+# Example
+
+    task::unkillable {||
+        // detach / yield / destroy must all be called together
+        rustrt::rust_port_detach(po);
+        // This must not result in the current task being killed
+        task::yield();
+        rustrt::rust_port_destroy(po);
+    }
+
+"]
+unsafe fn unkillable(f: fn()) {
+    resource allow_failure(_i: ()) {
+        rustrt::rust_task_allow_kill();
+    }
+    let _allow_failure = allow_failure(());
+    rustrt::rust_task_inhibit_kill();
+    f();
+}
+
 
 /* Internal */
 
@@ -566,6 +589,8 @@ native mod rustrt {
     fn rust_task_is_unwinding(rt: *rust_task) -> bool;
     fn unsupervise();
     fn rust_osmain_sched_id() -> sched_id;
+    fn rust_task_inhibit_kill();
+    fn rust_task_allow_kill();
 }
 
 
@@ -929,4 +954,40 @@ fn test_osmain() {
         comm::send(ch, ());
     }
     comm::recv(po);
+}
+
+#[test]
+#[ignore(cfg(target_os = "win32"))]
+#[should_fail]
+fn test_unkillable() unsafe {
+    import comm::methods;
+    let po = comm::port();
+    let ch = po.chan();
+
+    // We want to do this after failing
+    spawn {||
+        iter::repeat(10u, yield);
+        ch.send(());
+    }
+
+    spawn {||
+        yield();
+        // We want to fail after the unkillable task
+        // blocks on recv
+        fail;
+    }
+
+    unkillable {||
+        let p = ~0;
+        let pp: *uint = unsafe::reinterpret_cast(p);
+        unsafe::forget(p);
+
+        // If we are killed here then the box will leak
+        po.recv();
+
+        let _p: ~int = unsafe::reinterpret_cast(pp);
+    }
+
+    // Now we can be killed
+    po.recv();
 }

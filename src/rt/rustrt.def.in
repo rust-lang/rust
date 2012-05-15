@@ -152,3 +152,5 @@ rust_global_env_chan_ptr
 rust_port_take
 rust_port_drop
 rust_port_task
+rust_task_inhibit_kill
+rust_task_allow_kill
