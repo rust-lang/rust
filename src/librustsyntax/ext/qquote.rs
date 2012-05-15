@@ -6,6 +6,7 @@ import ext::base::*;
 import ext::build::*;
 import parse::parser;
 import parse::parser::parse_from_source_str;
+import dvec::{dvec, extensions};
 
 import print::*;
 import io::*;
@@ -13,9 +14,9 @@ import io::*;
 import codemap::span;
 
 type aq_ctxt = @{lo: uint,
-                 mut gather: [{lo: uint, hi: uint,
-                                   e: @ast::expr,
-                                   constr: str}]};
+                 gather: dvec<{lo: uint, hi: uint,
+                               e: @ast::expr,
+                               constr: str}>};
 enum fragment {
     from_expr(@ast::expr),
     from_ty(@ast::ty)
@@ -101,11 +102,13 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
               visit_ty: {|node, &&cx, v|
                   visit_aq(node, "from_ty", cx, v)}
               with *default_visitor()};
-    let cx = @{lo:lo, mut gather: []};
+    let cx = @{lo:lo, gather: dvec()};
     node.visit(cx, mk_vt(v));
     // FIXME: Maybe this is an overkill (merge_sort), it might be better
     //   to just keep the gather array in sorted order ... (Issue #2250)
-    cx.gather = std::sort::merge_sort({|a,b| a.lo < b.lo}, copy cx.gather);
+    cx.gather.swap { |v|
+        vec::to_mut(std::sort::merge_sort({|a,b| a.lo < b.lo}, v))
+    };
     ret cx;
 }
 
@@ -113,8 +116,8 @@ fn visit_aq<T:qq_helper>(node: T, constr: str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
 {
     alt (node.extract_mac()) {
       some(mac_aq(sp, e)) {
-        cx.gather += [{lo: sp.lo - cx.lo, hi: sp.hi - cx.lo,
-                       e: e, constr: constr}];
+        cx.gather.push({lo: sp.lo - cx.lo, hi: sp.hi - cx.lo,
+                        e: e, constr: constr});
       }
       _ {node.visit(cx, v);}
     }
@@ -196,7 +199,7 @@ fn finish<T: qq_helper>
     let qcx = gather_anti_quotes(sp.lo, node);
     let cx = qcx;
 
-    uint::range(1u, vec::len(cx.gather)) {|i|
+    uint::range(1u, cx.gather.len()) {|i|
         assert cx.gather[i-1u].lo < cx.gather[i].lo;
         // ^^ check that the vector is sorted
         assert cx.gather[i-1u].hi <= cx.gather[i].lo;
@@ -207,7 +210,7 @@ fn finish<T: qq_helper>
     enum state {active, skip(uint), blank};
     let mut state = active;
     let mut i = 0u, j = 0u;
-    let g_len = vec::len(cx.gather);
+    let g_len = cx.gather.len();
     str::chars_iter(*str) {|ch|
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
@@ -261,7 +264,7 @@ fn finish<T: qq_helper>
         rcall = mk_call(cx,sp,
                         ["syntax", "ext", "qquote", "replace"],
                         [pcall,
-                         mk_vec_e(cx,sp, vec::map(gather) {|g|
+                         mk_vec_e(cx,sp, qcx.gather.map_to_vec {|g|
                              mk_call(cx,sp,
                                      ["syntax", "ext", "qquote", g.constr],
                                      [g.e])}),
