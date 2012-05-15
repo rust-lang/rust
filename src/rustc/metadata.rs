@@ -15,8 +15,6 @@ mod front {
 }
 
 mod back {
-    import link = back_::link;
-    export link;
 }
 
 mod driver {

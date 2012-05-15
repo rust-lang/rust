@@ -286,10 +286,8 @@ mod write {
  *
  */
 
-type link_meta = {name: str, vers: str, extras_hash: str};
-
 fn build_link_meta(sess: session, c: ast::crate, output: str,
-                   sha: sha1) -> link_meta {
+                   sha: sha1) -> encoder::link_meta {
 
     type provided_metas =
         {name: option<str>,
@@ -412,8 +410,8 @@ fn truncated_sha1_result(sha: sha1) -> str unsafe {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: link_meta) ->
-   str {
+fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t,
+               link_meta: encoder::link_meta) -> str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -526,7 +524,7 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 fn link_binary(sess: session,
                obj_filename: str,
                out_filename: str,
-               lm: link_meta) {
+               lm: encoder::link_meta) {
     // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {

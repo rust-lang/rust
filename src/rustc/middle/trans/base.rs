@@ -4950,7 +4950,7 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
 }
 
 
-fn decl_crate_map(sess: session::session, mapmeta: link::link_meta,
+fn decl_crate_map(sess: session::session, mapmeta: encoder::link_meta,
                   llmod: ModuleRef) -> ValueRef {
     let targ_cfg = sess.targ_cfg;
     let int_type = T_int(targ_cfg);
@@ -5043,7 +5043,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map,
                maps: astencode::maps)
-    -> (ModuleRef, link::link_meta) {
+    -> (ModuleRef, encoder::link_meta) {
     let sha = std::sha1::sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
     let reachable = reachable::find_reachable(crate.node.module, emap, tcx,

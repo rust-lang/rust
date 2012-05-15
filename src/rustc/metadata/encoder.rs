@@ -21,6 +21,7 @@ import middle::resolve;
 import syntax::ast;
 import driver::session::session;
 
+export link_meta;
 export encode_parms;
 export encode_metadata;
 export encoded_ty;
@@ -32,6 +33,9 @@ export def_to_str;
 export encode_ctxt;
 export write_type;
 export encode_def_id;
+
+// FIXME: This probably belongs somewhere else
+type link_meta = {name: str, vers: str, extras_hash: str};
 
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
@@ -47,7 +51,7 @@ type encode_parms = {
     impl_map: resolve::impl_map,
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
-    link_meta: back::link::link_meta,
+    link_meta: link_meta,
     cstore: cstore::cstore,
     encode_inlined_item: encode_inlined_item
 };
@@ -59,7 +63,7 @@ enum encode_ctxt = {
     impl_map: resolve::impl_map,
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
-    link_meta: back::link::link_meta,
+    link_meta: link_meta,
     cstore: cstore::cstore,
     encode_inlined_item: encode_inlined_item,
     type_abbrevs: abbrev_map

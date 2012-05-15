@@ -77,7 +77,7 @@ type crate_ctxt = {
      reachable: reachable::map,
      item_symbols: hashmap<ast::node_id, str>,
      mut main_fn: option<ValueRef>,
-     link_meta: link::link_meta,
+     link_meta: encoder::link_meta,
      enum_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
