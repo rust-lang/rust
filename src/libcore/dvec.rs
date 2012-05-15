@@ -212,13 +212,13 @@ impl extensions<A:copy> for dvec<A> {
     }
 
     #[doc = "Copy out an individual element"]
-    #[inline]
+    #[inline(always)]
     fn [](idx: uint) -> A {
         self.get_elt(idx)
     }
 
     #[doc = "Copy out an individual element"]
-    #[inline]
+    #[inline(always)]
     fn get_elt(idx: uint) -> A {
         self.check_not_borrowed();
         ret self.data[idx];
