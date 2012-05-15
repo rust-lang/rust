@@ -3,25 +3,26 @@
 // type, and vice versa.
 import std::map;
 import std::map::{hashmap, hashfn, eqfn};
+import dvec::{dvec, extensions};
 
 type interner<T> =
     {map: hashmap<T, uint>,
-     mut vect: [T],
+     vect: dvec<T>,
      hasher: hashfn<T>,
      eqer: eqfn<T>};
 
 fn mk<T: copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
     let m = map::hashmap::<T, uint>(hasher, eqer);
-    ret {map: m, mut vect: [], hasher: hasher, eqer: eqer};
+    ret {map: m, vect: dvec(), hasher: hasher, eqer: eqer};
 }
 
 fn intern<T: copy>(itr: interner<T>, val: T) -> uint {
     alt itr.map.find(val) {
       some(idx) { ret idx; }
       none {
-        let new_idx = vec::len::<T>(itr.vect);
+        let new_idx = itr.vect.len();
         itr.map.insert(val, new_idx);
-        itr.vect += [val];
+        itr.vect.push(val);
         ret new_idx;
       }
     }
@@ -32,8 +33,8 @@ fn intern<T: copy>(itr: interner<T>, val: T) -> uint {
 // where we first check a pred and then rely on it, ceasing to fail is ok.
 pure fn get<T: copy>(itr: interner<T>, idx: uint) -> T {
     unchecked {
-        itr.vect[idx]
+        itr.vect.get_elt(idx)
     }
 }
 
-fn len<T>(itr: interner<T>) -> uint { ret vec::len(itr.vect); }
+fn len<T>(itr: interner<T>) -> uint { ret itr.vect.len(); }
