@@ -1,3 +1,5 @@
+import dvec::{dvec, extensions};
+
 export filename;
 export filemap;
 export span;
@@ -42,11 +44,11 @@ type filemap =
     @{name: filename, substr: file_substr, src: @str,
       start_pos: file_pos, mut lines: [file_pos]};
 
-type codemap = @{mut files: [filemap]};
+type codemap = @{files: dvec<filemap>};
 
 type loc = {file: filemap, line: uint, col: uint};
 
-fn new_codemap() -> codemap { @{mut files: [] } }
+fn new_codemap() -> codemap { @{files: dvec()} }
 
 fn new_filemap_w_substr(filename: filename, substr: file_substr,
                         src: @str,
@@ -79,7 +81,7 @@ type lookup_fn = fn@(file_pos) -> uint;
 fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
     -> {fm: filemap, line: uint}
 {
-    let len = vec::len(map.files);
+    let len = map.files.len();
     let mut a = 0u;
     let mut b = len;
     while b - a > 1u {

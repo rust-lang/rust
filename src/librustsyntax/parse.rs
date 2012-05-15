@@ -1,4 +1,5 @@
 #[doc = "The main parser interface"];
+import dvec::extensions;
 
 export parse_sess;
 export next_node_id;
@@ -152,7 +153,7 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
     let ftype = parser::SOURCE_FILE;
     let filemap = codemap::new_filemap_w_substr
         (name, ss, source, sess.chpos, sess.byte_pos);
-    sess.cm.files += [filemap];
+    sess.cm.files.push(filemap);
     let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.span_diagnostic,
                                 filemap, itr);
@@ -173,7 +174,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
     };
     let filemap = codemap::new_filemap(path, src,
                                        sess.chpos, sess.byte_pos);
-    sess.cm.files += [filemap];
+    sess.cm.files.push(filemap);
     let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.span_diagnostic, filemap, itr);
     ret new_parser(sess, cfg, rdr, ftype);
