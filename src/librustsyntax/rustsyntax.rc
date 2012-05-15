@@ -66,4 +66,5 @@ mod ext {
     mod include;
     mod log_syntax;
     mod auto_serialize;
+    mod source_util;
 }

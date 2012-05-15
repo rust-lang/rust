@@ -1,0 +1,7 @@
+/* this is for run-pass/syntax-extension-source-utils.rs */
+
+{
+    assert(#file[].ends_with("utils-files/includeme.fragment"));
+    assert(#line[] == 5u);
+    #fmt["victory robot %u", #line[]]
+}

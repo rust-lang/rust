@@ -43,6 +43,16 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
                             builtin(ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert("ast",
                             builtin(ext::qquote::expand_ast));
+    syntax_expanders.insert("line",
+                            builtin(ext::source_util::expand_line));
+    syntax_expanders.insert("col",
+                            builtin(ext::source_util::expand_col));
+    syntax_expanders.insert("file",
+                            builtin(ext::source_util::expand_file));
+    syntax_expanders.insert("stringify",
+                            builtin(ext::source_util::expand_stringify));
+    syntax_expanders.insert("include",
+                            builtin(ext::source_util::expand_include));
     ret syntax_expanders;
 }
 
