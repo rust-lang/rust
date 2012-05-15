@@ -681,7 +681,8 @@ impl helpers for ebml::ebml_deserializer {
 
 impl helpers for @e::encode_ctxt {
     fn ty_str_ctxt() -> @tyencode::ctxt {
-        @{ds: e::def_to_str,
+        @{diag: self.tcx.sess.diagnostic(),
+          ds: e::def_to_str,
           tcx: self.tcx,
           reachable: encoder::reachable(self, _),
           abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}

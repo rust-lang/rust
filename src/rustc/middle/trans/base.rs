@@ -4998,6 +4998,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         bind astencode::encode_inlined_item(_, _, _, _, cx.maps);
 
     {
+        diag: cx.sess.diagnostic(),
         tcx: cx.tcx,
         reachable: cx.reachable,
         exp_map: cx.exp_map,

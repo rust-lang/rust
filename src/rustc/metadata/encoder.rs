@@ -19,7 +19,7 @@ import std::serialization::serializer;
 import std::ebml::serializer;
 import middle::resolve;
 import syntax::ast;
-import driver::session::session;
+import syntax::diagnostic::span_handler;
 
 export link_meta;
 export encode_parms;
@@ -45,6 +45,7 @@ type encode_inlined_item = fn@(ecx: @encode_ctxt,
                                ii: ast::inlined_item);
 
 type encode_parms = {
+    diag: span_handler,
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     exp_map: resolve::exp_map,
@@ -57,6 +58,7 @@ type encode_parms = {
 };
 
 enum encode_ctxt = {
+    diag: span_handler,
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     exp_map: resolve::exp_map,
@@ -281,7 +283,8 @@ fn def_to_str(did: def_id) -> str { ret #fmt["%d:%d", did.crate, did.node]; }
 
 fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             params: [ty_param]) {
-    let ty_str_ctxt = @{ds: def_to_str,
+    let ty_str_ctxt = @{diag: ecx.diag,
+                        ds: def_to_str,
                         tcx: ecx.tcx,
                         reachable: reachable(ecx, _),
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
@@ -301,7 +304,8 @@ fn encode_variant_id(ebml_w: ebml::writer, vid: def_id) {
 
 fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
     let ty_str_ctxt =
-        @{ds: def_to_str,
+        @{diag: ecx.diag,
+          ds: def_to_str,
           tcx: ecx.tcx,
           reachable: reachable(ecx, _),
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
@@ -318,8 +322,10 @@ fn encode_symbol(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     let sym = alt ecx.item_symbols.find(id) {
       some(x) { x }
-      none { ecx.tcx.sess.bug(#fmt("encode_symbol: \
-                    id not found %d", id)); }
+      none {
+        ecx.diag.handler().bug(
+            #fmt("encode_symbol: id not found %d", id));
+      }
     };
     ebml_w.writer.write(str::bytes(sym));
     ebml_w.end_tag();
@@ -426,8 +432,8 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
             } // for
       } // list::cons alt
       _ {
-          ecx.tcx.sess.bug(#fmt("encode_info_for_mod: empty impl_map \
-            entry for %?", path));
+          ecx.diag.handler().bug(#fmt("encode_info_for_mod: empty impl_map \
+                                       entry for %?", path));
       }
     }
     encode_path(ebml_w, path, ast_map::path_mod(name));
@@ -1057,6 +1063,7 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
 
 fn encode_metadata(parms: encode_parms, crate: @crate) -> [u8] {
     let ecx: @encode_ctxt = @encode_ctxt({
+        diag: parms.diag,
         tcx: parms.tcx,
         reachable: parms.reachable,
         exp_map: parms.exp_map,
@@ -1102,7 +1109,8 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> [u8] {
 
 // Get the encoded string for a type
 fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> str {
-    let cx = @{ds: def_to_str,
+    let cx = @{diag: tcx.diag,
+               ds: def_to_str,
                tcx: tcx,
                reachable: {|_id| false},
                abbrevs: tyencode::ac_no_abbrevs};

@@ -4,7 +4,6 @@ import std::{ebml, map};
 import std::map::hashmap;
 import io::writer_util;
 import syntax::{ast, ast_util};
-import driver::session::session;
 import syntax::attr;
 import middle::ty;
 import middle::ast_map;
@@ -15,6 +14,7 @@ import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 import util::ppaux::ty_to_str;
 import ebml::deserializer;
+import syntax::diagnostic::span_handler;
 
 export get_class_fields;
 export get_symbol;
@@ -455,7 +455,9 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
         let fty = alt ty::get(ty).struct { ty::ty_fn(f) { f }
-          _ { tcx.sess.bug("get_iface_methods: id has non-function type");
+          _ {
+            tcx.diag.handler().bug(
+                "get_iface_methods: id has non-function type");
         } };
         result += [{ident: name, tps: bounds, fty: fty,
                     purity: alt check item_family(mth) {

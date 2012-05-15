@@ -3,7 +3,7 @@
 import io::writer_util;
 import std::map::hashmap;
 import syntax::ast::*;
-import driver::session::session;
+import syntax::diagnostic::span_handler;
 import middle::ty;
 import middle::ty::vid;
 import syntax::print::pprust::*;
@@ -17,6 +17,7 @@ export enc_bounds;
 export enc_mode;
 
 type ctxt = {
+    diag: span_handler,
     // Def -> str Callback:
     ds: fn@(def_id) -> str,
     // The type context.
@@ -145,7 +146,7 @@ fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
       }
       ty::re_var(_) {
         // these should not crop up after typeck
-        cx.tcx.sess.bug("Cannot encode region variables");
+        cx.diag.handler().bug("Cannot encode region variables");
       }
     }
 }

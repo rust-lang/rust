@@ -200,7 +200,8 @@ enum ast_ty_to_ty_cache_entry {
 }
 
 type ctxt =
-    @{interner: hashmap<intern_key, t_box>,
+    @{diag: syntax::diagnostic::span_handler,
+      interner: hashmap<intern_key, t_box>,
       mut next_id: uint,
       sess: session::session,
       def_map: resolve::def_map,
@@ -462,7 +463,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
         hash_type_structure(k.struct) +
             option::map_default(k.o_def_id, 0u, ast_util::hash_def_id)
     }, {|&&a, &&b| a == b});
-    @{interner: interner,
+    @{diag: s.diagnostic(),
+      interner: interner,
       mut next_id: 0u,
       sess: s,
       def_map: dm,
