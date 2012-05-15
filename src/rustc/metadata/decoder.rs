@@ -15,7 +15,6 @@ import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 import util::ppaux::ty_to_str;
 import ebml::deserializer;
-import middle::astencode;
 
 export get_class_fields;
 export get_symbol;
@@ -41,6 +40,7 @@ export get_item_path;
 export maybe_find_item; // sketchy
 export item_type; // sketchy
 export maybe_get_item_ast;
+export decode_inlined_item;
 
 // Used internally by astencode:
 export translate_def_id;
@@ -339,19 +339,27 @@ fn get_item_path(cdata: cmd, id: ast::node_id) -> ast_map::path {
     item_path(lookup_item(id, cdata.data))
 }
 
-fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt, maps: maps,
-                      id: ast::node_id) -> csearch::found_ast {
+type decode_inlined_item = fn(
+    cdata: cstore::crate_metadata,
+    tcx: ty::ctxt,
+    path: ast_map::path,
+    par_doc: ebml::doc) -> option<ast::inlined_item>;
+
+fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
+                      id: ast::node_id,
+                      decode_inlined_item: decode_inlined_item
+                     ) -> csearch::found_ast {
     #debug("Looking up item: %d", id);
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(item_doc));
-    alt astencode::decode_inlined_item(cdata, tcx, maps, path, item_doc) {
+    alt decode_inlined_item(cdata, tcx, path, item_doc) {
       some(ii) { csearch::found(ii) }
       none {
         alt item_parent_item(item_doc) {
           some(did) {
             let did = translate_def_id(cdata, did);
             let parent_item = lookup_item(did.node, cdata.data);
-            alt astencode::decode_inlined_item(cdata, tcx, maps, path,
+            alt decode_inlined_item(cdata, tcx, path,
                                                parent_item) {
               some(ii) { csearch::found_parent(did, ii) }
               none { csearch::not_found }

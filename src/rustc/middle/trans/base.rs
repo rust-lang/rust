@@ -2066,7 +2066,10 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
       }
       some(none) { fn_id } // Not inlinable
       none { // Not seen yet
-        alt check csearch::maybe_get_item_ast(ccx.tcx, ccx.maps, fn_id) {
+        alt check csearch::maybe_get_item_ast(
+            ccx.tcx, fn_id,
+            bind astencode::decode_inlined_item(_, _, ccx.maps, _, _)) {
+
           csearch::not_found {
             ccx.external.insert(fn_id, none);
             fn_id
@@ -4991,16 +4994,19 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
 fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
     -> encoder::encode_parms {
 
+    let encode_inlined_item =
+        bind astencode::encode_inlined_item(_, _, _, _, cx.maps);
+
     {
         tcx: cx.tcx,
         reachable: cx.reachable,
         exp_map: cx.exp_map,
+        impl_map: cx.maps.impl_map,
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
         link_meta: cx.link_meta,
         cstore: cx.sess.cstore,
-        maps: cx.maps,
-        encode_inlined_item: middle::astencode::encode_inlined_item
+        encode_inlined_item: encode_inlined_item
     }
 
 }
@@ -5036,7 +5042,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map,
-               maps: metadata::maps)
+               maps: astencode::maps)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);

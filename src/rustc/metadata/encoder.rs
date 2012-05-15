@@ -44,11 +44,11 @@ type encode_parms = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     exp_map: resolve::exp_map,
+    impl_map: resolve::impl_map,
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
     link_meta: back::link::link_meta,
     cstore: cstore::cstore,
-    maps: maps,
     encode_inlined_item: encode_inlined_item
 };
 
@@ -56,11 +56,11 @@ enum encode_ctxt = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     exp_map: resolve::exp_map,
+    impl_map: resolve::impl_map,
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
     link_meta: back::link::link_meta,
     cstore: cstore::cstore,
-    maps: maps,
     encode_inlined_item: encode_inlined_item,
     type_abbrevs: abbrev_map
 };
@@ -396,7 +396,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm');
     encode_name(ebml_w, name);
-    alt ecx.maps.impl_map.get(id) {
+    alt ecx.impl_map.get(id) {
       list::cons(impls, @list::nil) {
         for vec::each(*impls) {|i|
             if ast_util::is_exported(i.ident, md) {
@@ -1056,11 +1056,11 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> [u8] {
         tcx: parms.tcx,
         reachable: parms.reachable,
         exp_map: parms.exp_map,
+        impl_map: parms.impl_map,
         item_symbols: parms.item_symbols,
         discrim_symbols: parms.discrim_symbols,
         link_meta: parms.link_meta,
         cstore: parms.cstore,
-        maps: parms.maps,
         encode_inlined_item: parms.encode_inlined_item,
         type_abbrevs: ty::new_ty_hash()
      });

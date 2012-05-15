@@ -30,7 +30,6 @@ import middle::freevars::{freevar_entry,
 import c = metadata::common;
 import e = metadata::encoder;
 import cstore = metadata::cstore;
-import metadata::maps;
 import metadata::encoder;
 import metadata::decoder;
 import metadata::tyencode;
@@ -43,8 +42,20 @@ import syntax::codemap;
 import syntax::parse;
 import syntax::print::pprust;
 
+export maps;
 export encode_inlined_item;
 export decode_inlined_item;
+
+// Auxiliary maps of things to be encoded
+type maps = {
+    mutbl_map: middle::borrowck::mutbl_map,
+    copy_map: middle::alias::copy_map,
+    last_uses: middle::last_use::last_uses,
+    impl_map: middle::resolve::impl_map,
+    method_map: middle::typeck::method_map,
+    vtable_map: middle::typeck::vtable_map,
+    spill_map: middle::last_use::spill_map
+};
 
 type decode_ctxt = @{
     cdata: cstore::crate_metadata,
@@ -68,7 +79,8 @@ iface tr {
 fn encode_inlined_item(ecx: @e::encode_ctxt,
                        ebml_w: ebml::writer,
                        path: ast_map::path,
-                       ii: ast::inlined_item) {
+                       ii: ast::inlined_item,
+                       maps: maps) {
     #debug["> Encoding inlined item: %s::%s (%u)",
            ast_map::path_to_str(path), ii.ident(),
            ebml_w.writer.tell()];
@@ -77,7 +89,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
     ebml_w.wr_tag(c::tag_ast as uint) {||
         encode_id_range(ebml_w, id_range);
         encode_ast(ebml_w, simplify_ast(ii));
-        encode_side_tables_for_ii(ecx, ebml_w, ii);
+        encode_side_tables_for_ii(ecx, maps, ebml_w, ii);
     }
 
     #debug["< Encoded inlined fn: %s::%s (%u)",
@@ -719,6 +731,7 @@ impl writer for ebml::writer {
 }
 
 fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
+                             maps: maps,
                              ebml_w: ebml::writer,
                              ii: ast::inlined_item) {
     ebml_w.wr_tag(c::tag_table as uint) {||
@@ -726,12 +739,13 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
             // Note: this will cause a copy of ebml_w, which is bad as
             // it has mut fields.  But I believe it's harmless since
             // we generate balanced EBML.
-            encode_side_tables_for_id(ecx, ebml_w, id)
+            encode_side_tables_for_id(ecx, maps, ebml_w, id)
         });
     }
 }
 
 fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
+                             maps: maps,
                              ebml_w: ebml::writer,
                              id: ast::node_id) {
     let tcx = ecx.tcx;
@@ -808,25 +822,25 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     //    }
     //}
 
-    option::iter(ecx.maps.mutbl_map.find(id)) {|_m|
+    option::iter(maps.mutbl_map.find(id)) {|_m|
         ebml_w.tag(c::tag_table_mutbl) {||
             ebml_w.id(id);
         }
     }
 
-    option::iter(ecx.maps.copy_map.find(id)) {|_m|
+    option::iter(maps.copy_map.find(id)) {|_m|
         ebml_w.tag(c::tag_table_copy) {||
             ebml_w.id(id);
         }
     }
 
-    option::iter(ecx.maps.spill_map.find(id)) {|_m|
+    option::iter(maps.spill_map.find(id)) {|_m|
         ebml_w.tag(c::tag_table_spill) {||
             ebml_w.id(id);
         }
     }
 
-    option::iter(ecx.maps.last_uses.find(id)) {|m|
+    option::iter(maps.last_uses.find(id)) {|m|
         ebml_w.tag(c::tag_table_last_use) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -838,7 +852,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     // impl_map is not used except when emitting metadata,
     // don't need to keep it.
 
-    option::iter(ecx.maps.method_map.find(id)) {|mo|
+    option::iter(maps.method_map.find(id)) {|mo|
         ebml_w.tag(c::tag_table_method_map) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -847,7 +861,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::iter(ecx.maps.vtable_map.find(id)) {|dr|
+    option::iter(maps.vtable_map.find(id)) {|dr|
         ebml_w.tag(c::tag_table_vtable_map) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||

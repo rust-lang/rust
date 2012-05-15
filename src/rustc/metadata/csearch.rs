@@ -98,11 +98,13 @@ enum found_ast {
 // Finds the AST for this item in the crate metadata, if any.  If the item was
 // not marked for inlining, then the AST will not be present and hence none
 // will be returned.
-fn maybe_get_item_ast(tcx: ty::ctxt, maps: maps, def: ast::def_id)
+fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
+                      decode_inlined_item: decoder::decode_inlined_item)
     -> found_ast {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::maybe_get_item_ast(cdata, tcx, maps, def.node)
+    decoder::maybe_get_item_ast(cdata, tcx, def.node,
+                                decode_inlined_item)
 }
 
 fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
