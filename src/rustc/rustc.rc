@@ -52,7 +52,12 @@ mod middle {
     mod infer;
     mod ast_map;
     mod resolve;
-    mod typeck;
+    mod typeck {
+        mod astconv;
+        mod collect;
+        mod vtable;
+        mod writeback;
+    }
     mod check_loop;
     mod check_alt;
     mod check_const;
