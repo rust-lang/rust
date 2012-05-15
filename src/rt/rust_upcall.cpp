@@ -155,6 +155,26 @@ upcall_trace(char const *msg,
  * Allocate an object in the exchange heap
  */
 
+extern "C" CDECL uintptr_t
+exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
+
+    LOG(task, mem, "upcall exchange malloc(0x%" PRIxPTR ")", td);
+
+    // Copied from boxed_region
+    size_t header_size = sizeof(rust_opaque_box);
+    size_t body_size = size;
+    size_t body_align = td->align;
+    size_t total_size = align_to(header_size, body_align) + body_size;
+
+    void *p = task->kernel->malloc(total_size, "exchange malloc");
+    memset(p, '\0', total_size);
+
+    rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
+    header->td = td;
+
+    return (uintptr_t)header;
+}
+
 struct s_exchange_malloc_args {
     uintptr_t retval;
     type_desc *td;
@@ -165,27 +185,36 @@ upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
     rust_task *task = rust_get_current_task();
     LOG_UPCALL_ENTRY(task);
 
-    LOG(task, mem, "upcall exchange malloc(0x%" PRIxPTR ")", args->td);
-
-    // Copied from boxed_region
-    size_t header_size = sizeof(rust_opaque_box);
-    size_t body_size = args->td->size;
-    size_t body_align = args->td->align;
-    size_t total_size = align_to(header_size, body_align) + body_size;
-
-    void *p = task->kernel->malloc(total_size, "exchange malloc");
-    memset(p, '\0', total_size);
-
-    rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
-    header->td = args->td;
-
-    args->retval = (uintptr_t)header;
+    uintptr_t retval = exchange_malloc(task, args->td, args->td->size);
+    args->retval = retval;
 }
 
 extern "C" CDECL uintptr_t
 upcall_exchange_malloc(type_desc *td) {
     s_exchange_malloc_args args = {0, td};
     UPCALL_SWITCH_STACK(&args, upcall_s_exchange_malloc);
+    return args.retval;
+}
+
+struct s_exchange_malloc_dyn_args {
+    uintptr_t retval;
+    type_desc *td;
+    uintptr_t size;
+};
+
+extern "C" CDECL void
+upcall_s_exchange_malloc_dyn(s_exchange_malloc_dyn_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+
+    uintptr_t retval = exchange_malloc(task, args->td, args->size);
+    args->retval = retval;
+}
+
+extern "C" CDECL uintptr_t
+upcall_exchange_malloc_dyn(type_desc *td, uintptr_t size) {
+    s_exchange_malloc_dyn_args args = {0, td, size};
+    UPCALL_SWITCH_STACK(&args, upcall_s_exchange_malloc_dyn);
     return args.retval;
 }
 
