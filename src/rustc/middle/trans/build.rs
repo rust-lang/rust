@@ -652,7 +652,7 @@ fn add_comment(bcx: block, text: str) {
     let ccx = bcx.ccx();
     if (!ccx.sess.opts.no_asm_comments) {
         let sanitized = str::replace(text, "$", "");
-        let comment_text = "; " + sanitized;
+        let comment_text = "# " + sanitized;
         let asm = str::as_c_str(comment_text, {|c|
             str::as_c_str("", {|e|
                 count_insn(bcx, "inlineasm");

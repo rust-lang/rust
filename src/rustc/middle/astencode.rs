@@ -49,6 +49,7 @@ export decode_inlined_item;
 // Auxiliary maps of things to be encoded
 type maps = {
     mutbl_map: middle::borrowck::mutbl_map,
+    root_map: middle::borrowck::root_map,
     copy_map: middle::alias::copy_map,
     last_uses: middle::last_use::last_uses,
     impl_map: middle::resolve::impl_map,

@@ -54,7 +54,6 @@ void boxed_region::free(rust_opaque_box *box) {
 
     if (env->poison_on_free) {
         memset(box_body(box), 0xab, box->td->size);
-        return;
     }
 
     box->prev = NULL;

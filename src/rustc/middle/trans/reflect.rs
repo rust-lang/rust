@@ -50,7 +50,7 @@ fn emit_calls_to_iface_visit_ty(bcx: block, t: ty::t,
         let get_lval = {|bcx|
             impl::trans_iface_callee(bcx, visitor_val, mth_ty, mth_idx)
         };
-        trans_call_inner(bcx, mth_ty, ty::mk_bool(tcx),
+        trans_call_inner(bcx, none, mth_ty, ty::mk_bool(tcx),
                          get_lval, arg_vals(args), ignore)
     }
 }

@@ -19,6 +19,7 @@ import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
 import metadata::{csearch, encoder};
 import ast_map::path;
+import util::ppaux::ty_to_str;
 
 type namegen = fn@(str) -> str;
 fn new_namegen() -> namegen {
@@ -227,6 +228,9 @@ fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
 
 fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
+    #debug["add_clean(%s, %s, %s)",
+           cx.to_str(), val_str(cx.ccx().tn, val),
+           ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     in_scope_cx(cx) {|info|
         info.cleanups += [clean(bind base::drop_ty(_, val, ty),
@@ -236,6 +240,9 @@ fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
+    #debug["add_clean_temp(%s, %s, %s)",
+           cx.to_str(), val_str(cx.ccx().tn, val),
+           ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
        block {
@@ -253,6 +260,9 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
+    #debug["add_clean_temp_mem(%s, %s, %s)",
+           cx.to_str(), val_str(cx.ccx().tn, val),
+           ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     in_scope_cx(cx) {|info|
         info.cleanups += [clean_temp(val, bind base::drop_ty(_, val, ty),
@@ -408,10 +418,21 @@ fn block_parent(cx: block) -> block {
 
 // Accessors
 
-impl bxc_cxs for block {
+impl bcx_cxs for block {
     fn ccx() -> @crate_ctxt { self.fcx.ccx }
     fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
     fn sess() -> session { self.fcx.ccx.sess }
+
+    fn to_str() -> str {
+        alt self.node_info {
+          some(node_info) {
+            #fmt["[block %d]", node_info.id]
+          }
+          none {
+            #fmt["[block %x]", ptr::addr_of(*self) as uint]
+          }
+        }
+    }
 }
 
 // LLVM type constructors.

@@ -27,7 +27,7 @@ fn check_crate(tcx: ty::ctxt,
     let bccx = @{tcx: tcx,
                  method_map: method_map,
                  msg_level: msg_level,
-                 root_map: int_hash(),
+                 root_map: root_map(),
                  mutbl_map: int_hash()};
 
     let req_loan_map = if msg_level > 0u {
@@ -53,7 +53,14 @@ type borrowck_ctxt = @{tcx: ty::ctxt,
 // a map mapping id's of expressions of task-local type (@T, []/@, etc) where
 // the box needs to be kept live to the id of the scope for which they must
 // stay live.
-type root_map = hashmap<ast::node_id, ast::node_id>;
+type root_map = hashmap<root_map_key, ast::node_id>;
+
+// the keys to the root map combine the `id` of the expression with
+// the number of types that it is autodereferenced.  So, for example,
+// if you have an expression `x.f` and x has type ~@T, we could add an
+// entry {id:x, derefs:0} to refer to `x` itself, `{id:x, derefs:1}`
+// to refer to the deref of the unique pointer, and so on.
+type root_map_key = {id: ast::node_id, derefs: uint};
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
@@ -71,13 +78,13 @@ type bckerr = {cmt: cmt, code: bckerr_code};
 type bckres<T> = result<T, bckerr>;
 
 enum categorization {
-    cat_rvalue,                 // result of eval'ing some misc expr
-    cat_special(special_kind),  //
-    cat_local(ast::node_id),    // local variable
-    cat_arg(ast::node_id),      // formal argument
-    cat_stack_upvar(cmt),       // upvar in stack closure
-    cat_deref(cmt, ptr_kind),   // deref of a ptr
-    cat_comp(cmt, comp_kind),   // adjust to locate an internal component
+    cat_rvalue,                     // result of eval'ing some misc expr
+    cat_special(special_kind),      //
+    cat_local(ast::node_id),        // local variable
+    cat_arg(ast::node_id),          // formal argument
+    cat_stack_upvar(cmt),           // upvar in stack closure
+    cat_deref(cmt, uint, ptr_kind), // deref of a ptr
+    cat_comp(cmt, comp_kind),       // adjust to locate an internal component
 }
 
 // different kinds of pointers:
@@ -154,6 +161,18 @@ fn save_and_restore<T:copy,U>(&t: T, f: fn() -> U) -> U {
     let u <- f();
     t = old_t;
     ret u;
+}
+
+fn root_map() -> root_map {
+    ret hashmap(root_map_key_hash, root_map_key_eq);
+
+    fn root_map_key_eq(k1: root_map_key, k2: root_map_key) -> bool {
+        k1.id == k2.id && k1.derefs == k2.derefs
+    }
+
+    fn root_map_key_hash(k: root_map_key) -> uint {
+        (k.id << 4) as uint | k.derefs
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -374,7 +393,7 @@ impl methods for gather_loan_ctxt {
 
           ast::pat_box(subpat) | ast::pat_uniq(subpat) {
             // @p1, ~p1
-            alt self.bccx.cat_deref(pat, cmt, true) {
+            alt self.bccx.cat_deref(pat, cmt, 0u, true) {
               some(subcmt) { self.gather_pat(subcmt, subpat, alt_id); }
               none { tcx.sess.span_bug(pat.span, "Non derefable type"); }
             }
@@ -915,7 +934,7 @@ impl categorize_methods for borrowck_ctxt {
 
           ty::ty_uniq(*) | ty::ty_box(*) | ty::ty_rptr(*) {
             let cmt = self.cat_expr(expr);
-            self.cat_deref(expr, cmt, true).get()
+            self.cat_deref(expr, cmt, 0u, true).get()
           }
 
           _ {
@@ -943,7 +962,7 @@ impl categorize_methods for borrowck_ctxt {
         alt expr.node {
           ast::expr_unary(ast::deref, e_base) {
             let base_cmt = self.cat_expr(e_base);
-            alt self.cat_deref(expr, base_cmt, true) {
+            alt self.cat_deref(expr, base_cmt, 0u, true) {
               some(cmt) { ret cmt; }
               none {
                 tcx.sess.span_bug(
@@ -955,7 +974,7 @@ impl categorize_methods for borrowck_ctxt {
           }
 
           ast::expr_field(base, f_name, _) {
-            let base_cmt = self.cat_autoderef(expr, base);
+            let base_cmt = self.cat_autoderef(base);
             self.cat_field(expr, base_cmt, f_name, expr_ty)
           }
 
@@ -1010,7 +1029,7 @@ impl categorize_methods for borrowck_ctxt {
           mutbl: m, ty: f_ty}
     }
 
-    fn cat_deref<N:ast_node>(node: N, base_cmt: cmt,
+    fn cat_deref<N:ast_node>(node: N, base_cmt: cmt, derefs: uint,
                              expl: bool) -> option<cmt> {
         ty::deref(self.tcx, base_cmt.ty, expl).map { |mt|
             alt deref_kind(self.tcx, base_cmt.ty) {
@@ -1027,7 +1046,7 @@ impl categorize_methods for borrowck_ctxt {
                     }
                 };
                 @{id:node.id(), span:node.span(),
-                  cat:cat_deref(base_cmt, ptr), lp:lp,
+                  cat:cat_deref(base_cmt, derefs, ptr), lp:lp,
                   mutbl:mt.mutbl, ty:mt.ty}
               }
 
@@ -1041,7 +1060,7 @@ impl categorize_methods for borrowck_ctxt {
         }
     }
 
-    fn cat_autoderef(expr: @ast::expr, base: @ast::expr) -> cmt {
+    fn cat_autoderef(base: @ast::expr) -> cmt {
         // Creates a string of implicit derefences so long as base is
         // dereferencable.  n.b., it is important that these dereferences are
         // associated with the field/index that caused the autoderef (expr).
@@ -1050,8 +1069,10 @@ impl categorize_methods for borrowck_ctxt {
         // Given something like base.f where base has type @m1 @m2 T, we want
         // to yield the equivalent categories to (**base).f.
         let mut cmt = self.cat_expr(base);
+        let mut ctr = 0u;
         loop {
-            alt self.cat_deref(expr, cmt, false) {
+            ctr += 1u;
+            alt self.cat_deref(base, cmt, ctr, false) {
               none { ret cmt; }
               some(cmt1) { cmt = cmt1; }
             }
@@ -1059,7 +1080,7 @@ impl categorize_methods for borrowck_ctxt {
     }
 
     fn cat_index(expr: @ast::expr, base: @ast::expr) -> cmt {
-        let base_cmt = self.cat_autoderef(expr, base);
+        let base_cmt = self.cat_autoderef(base);
 
         let mt = alt ty::index(self.tcx, base_cmt.ty) {
           some(mt) { mt }
@@ -1084,7 +1105,7 @@ impl categorize_methods for borrowck_ctxt {
         // the head of this section
         let deref_lp = base_cmt.lp.map { |lp| @lp_deref(lp, ptr) };
         let deref_cmt = @{id:expr.id, span:expr.span,
-                          cat:cat_deref(base_cmt, ptr), lp:deref_lp,
+                          cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
                           mutbl:mt.mutbl, ty:mt.ty};
         let comp = comp_index(base_cmt.ty);
         let index_lp = deref_lp.map { |lp| @lp_comp(lp, comp) };
@@ -1211,8 +1232,9 @@ impl categorize_methods for borrowck_ctxt {
           cat_rvalue { "rvalue" }
           cat_local(node_id) { #fmt["local(%d)", node_id] }
           cat_arg(node_id) { #fmt["arg(%d)", node_id] }
-          cat_deref(cmt, ptr) {
-            #fmt["%s->(%s)", self.cat_to_repr(cmt.cat), self.ptr_sigil(ptr)]
+          cat_deref(cmt, derefs, ptr) {
+            #fmt["%s->(%s, %u)", self.cat_to_repr(cmt.cat),
+                 self.ptr_sigil(ptr), derefs]
           }
           cat_comp(cmt, comp) {
             #fmt["%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)]
@@ -1285,7 +1307,7 @@ impl categorize_methods for borrowck_ctxt {
           cat_rvalue { "non-lvalue" }
           cat_local(_) { mut_str + " local variable" }
           cat_arg(_) { mut_str + " argument" }
-          cat_deref(_, _) { "dereference of " + mut_str + " pointer" }
+          cat_deref(*) { "dereference of " + mut_str + " pointer" }
           cat_stack_upvar(_) { mut_str + " upvar" }
           cat_comp(_, comp_field(_)) { mut_str + " field" }
           cat_comp(_, comp_tuple) { "tuple content" }
@@ -1446,26 +1468,31 @@ impl preserve_methods for preserve_ctxt {
           cat_comp(cmt1, comp_variant) {
             self.require_imm(cmt, cmt1, err_mut_variant)
           }
-          cat_deref(cmt1, uniq_ptr) {
+          cat_deref(cmt1, _, uniq_ptr) {
             self.require_imm(cmt, cmt1, err_mut_uniq)
           }
-          cat_deref(_, region_ptr) {
+          cat_deref(_, _, region_ptr) {
             // References are always "stable" by induction (when the
             // reference of type &MT was created, the memory must have
             // been stable)
             ok(())
           }
-          cat_deref(_, unsafe_ptr) {
+          cat_deref(_, _, unsafe_ptr) {
             // Unsafe pointers are the user's problem
             ok(())
           }
-          cat_deref(_, gc_ptr) {
+          cat_deref(_, derefs, gc_ptr) {
             // GC'd pointers of type @MT: always stable because we can inc
             // the ref count or keep a GC root as necessary.  We need to
             // insert this id into the root_map, however.
             alt self.opt_scope_id {
               some(scope_id) {
-                self.bccx.root_map.insert(cmt.id, scope_id);
+                #debug["Inserting root map entry for %s: \
+                        node %d:%u -> scope %d",
+                       self.bccx.cmt_to_repr(cmt), cmt.id,
+                       derefs, scope_id];
+                let rk = {id: cmt.id, derefs: derefs};
+                self.bccx.root_map.insert(rk, scope_id);
                 ok(())
               }
               none {
@@ -1562,7 +1589,7 @@ impl loan_methods for loan_ctxt {
             }
           }
           cat_comp(cmt1, comp_variant) |
-          cat_deref(cmt1, uniq_ptr) {
+          cat_deref(cmt1, _, uniq_ptr) {
             // Variant components: the base must be immutable, because
             // if it is overwritten, the types of the embedded data
             // could change.
@@ -1573,9 +1600,9 @@ impl loan_methods for loan_ctxt {
                 self.ok_with_loan_of(cmt, req_mutbl)
             }
           }
-          cat_deref(cmt1, unsafe_ptr) |
-          cat_deref(cmt1, gc_ptr) |
-          cat_deref(cmt1, region_ptr) {
+          cat_deref(cmt1, _, unsafe_ptr) |
+          cat_deref(cmt1, _, gc_ptr) |
+          cat_deref(cmt1, _, region_ptr) {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,

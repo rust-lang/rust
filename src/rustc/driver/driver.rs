@@ -190,7 +190,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
          bind middle::check_self::check_crate(ty_cx, crate));
     time(time_passes, "typestate checking",
          bind middle::tstate::ck::check_crate(ty_cx, crate));
-    let (_root_map, mutbl_map) = time(
+    let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
         bind middle::borrowck::check_crate(ty_cx, method_map, crate));
     time(time_passes, "region checking",
@@ -208,10 +208,10 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
 
-    let maps = {mutbl_map: mutbl_map, copy_map: copy_map,
-                last_uses: last_uses, impl_map: impl_map,
-                method_map: method_map, vtable_map: vtable_map,
-                spill_map: spill_map};
+    let maps = {mutbl_map: mutbl_map, root_map: root_map,
+                copy_map: copy_map, last_uses: last_uses,
+                impl_map: impl_map, method_map: method_map,
+                vtable_map: vtable_map, spill_map: spill_map};
 
     let (llmod, link_meta) =
         time(time_passes, "translation",
