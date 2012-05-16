@@ -62,7 +62,7 @@ to pump constraints along and reach a fixed point, but it does impose
 some heuristics in the case where the user is relating two type
 variables A <: B.
 
-The key point when relating type variables is that we do not know whta
+The key point when relating type variables is that we do not know what
 type the variable represents, but we must make some change that will
 ensure that, whatever types A and B are resolved to, they are resolved
 to types which have a subtype relation.
@@ -989,34 +989,34 @@ impl assignment for infer_ctxt {
             alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
               (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) {
                 let nr_b = ty::mk_box(self.tcx, mt_b);
-                self.crosspolinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) {
                 let nr_b = ty::mk_uniq(self.tcx, mt_b);
-                self.crosspolinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_estr(vs_a),
                ty::ty_estr(ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_estr(self.tcx, vs_a);
-                self.crosspolinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_str,
                ty::ty_estr(ty::vstore_slice(r_b))) {
                 let nr_b = ty::mk_str(self.tcx);
-                self.crosspolinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, r_b)
               }
 
               (ty::ty_evec(mt_a, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_evec(self.tcx, mt_b, vs_a);
-                self.crosspolinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_vec(mt_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b))) {
                 let nr_b = ty::mk_vec(self.tcx, mt_b);
-                self.crosspolinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, r_b)
               }
               _ {
                 self.sub_tys(a, b)
@@ -1029,12 +1029,12 @@ impl assignment for infer_ctxt {
         }
     }
 
-    fn crosspolinate(anmnt: assignment,
+    fn crosspollinate(anmnt: assignment,
                      a: ty::t,
                      nr_b: ty::t,
                      r_b: ty::region) -> ures {
 
-        #debug["crosspolinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
+        #debug["crosspollinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
                anmnt, a.to_str(self), nr_b.to_str(self),
                r_b.to_str(self)];
 
