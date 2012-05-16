@@ -30,21 +30,11 @@ independently:
   the `cx.tcache` table for later use
 
 - check: walks over function bodies and type checks them, inferring types for
-  local variables, type parameters, etc as necessary.  Temporary types (which
-  may contain references to type variables whose values have yet to be
-  inferred) for each item within a function are stored in a temporary table
-  inside of @fn_ctxt (function context).
+  local variables, type parameters, etc as necessary.
 
 - infer: finds the types to use for each type variable such that
-  all subtyping and assignment constraints are met
-
-- vtable: find and records the impls to use for each iface bound that
-  appears on a type parameter
-
-- writeback: writes the final types within a function body, replacing
-  type variables with their final inferred types.  These final types
-  are written into the `tcx.node_types` table, which should *never* contain
-  any reference to a type variable.
+  all subtyping and assignment constraints are met.  In essence, the check
+  module specifies the constraints, and the infer module solves them.
 
 */
 

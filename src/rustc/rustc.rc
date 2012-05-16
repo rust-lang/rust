@@ -54,14 +54,14 @@ mod middle {
     mod typeck {
         mod check {
             mod alt;
+            mod vtable;
+            mod writeback;
+            mod regionck;
+            mod demand;
         }
-        mod regionck;
-        mod demand;
-        mod infer;
         mod astconv;
+        mod infer;
         mod collect;
-        mod vtable;
-        mod writeback;
     }
     mod check_loop;
     mod check_alt;

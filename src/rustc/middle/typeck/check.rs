@@ -1,3 +1,46 @@
+/*
+
+# check.rs
+
+Within the check phase of type check, we check each item one at a time
+(bodies of function expressions are checked as part of the containing
+function).  Inference is used to supply types wherever they are
+unknown.
+
+By far the most complex case is checking the body of a function. This
+can be broken down into several distinct phases:
+
+- gather: creates type variables to represent the type of each local
+  variable and pattern binding.
+
+- main: the main pass does the lion's share of the work: it
+  determines the types of all expressions, resolves
+  methods, checks for most invalid conditions, and so forth.  In
+  some cases, where a type is unknown, it may create a type or region
+  variable and use that as the type of an expression.
+
+  In the process of checking, various constraints will be placed on
+  these type variables through the subtyping relationships requested
+  through the `demand` module.  The `typeck::infer` module is in charge
+  of resolving those constraints.
+
+- regionck: after main is complete, the regionck pass goes over all
+  types looking for regions and making sure that they did not escape
+  into places they are not in scope.  This may also influence the
+  final assignments of the various region variables if there is some
+  flexibility.
+
+- vtable: find and records the impls to use for each iface bound that
+  appears on a type parameter.
+
+- writeback: writes the final types within a function body, replacing
+  type variables with their final inferred types.  These final types
+  are written into the `tcx.node_types` table, which should *never* contain
+  any reference to a type variable.
+
+
+*/
+
 import astconv::{ast_conv, region_scope, empty_rscope, ast_ty_to_ty,
                  in_anon_rscope};
 import collect::{methods}; // ccx.to_ty()
