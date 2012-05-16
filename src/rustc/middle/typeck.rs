@@ -630,6 +630,7 @@ impl methods for @fn_ctxt {
     fn next_region_var() -> ty::region {
         ret ty::re_var(self.next_region_var_id());
     }
+
     fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
                                err: ty::type_err) {
         self.ccx.tcx.sess.span_err(
@@ -646,6 +647,10 @@ impl methods for @fn_ctxt {
 
     fn mk_eqty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
         infer::mk_eqty(self.infcx, sub, sup)
+    }
+
+    fn mk_subr(sub: ty::region, sup: ty::region) -> result<(), ty::type_err> {
+        infer::mk_subr(self.infcx, sub, sup)
     }
 
     fn require_unsafe(sp: span, op: str) {
@@ -795,47 +800,6 @@ fn require_same_types(
       }
     }
 }
-
-mod demand {
-    // Requires that the two types unify, and prints an error message if they
-    // don't.
-    fn suptype(fcx: @fn_ctxt, sp: span,
-              expected: ty::t, actual: ty::t) {
-
-        // n.b.: order of actual, expected is reversed
-        alt infer::mk_subty(fcx.infcx, actual, expected) {
-          result::ok(()) { /* ok */ }
-          result::err(err) {
-            fcx.report_mismatched_types(sp, expected, actual, err);
-          }
-        }
-    }
-
-    fn eqtype(fcx: @fn_ctxt, sp: span,
-              expected: ty::t, actual: ty::t) {
-
-        alt infer::mk_eqty(fcx.infcx, actual, expected) {
-          result::ok(()) { /* ok */ }
-          result::err(err) {
-            fcx.report_mismatched_types(sp, expected, actual, err);
-          }
-        }
-    }
-
-    // Checks that the type `actual` can be assigned to `expected`.
-    fn assign(fcx: @fn_ctxt, sp: span, borrow_scope: ast::node_id,
-              expected: ty::t, expr: @ast::expr) {
-        let expr_ty = fcx.expr_ty(expr);
-        let anmnt = {expr_id: expr.id, borrow_scope: borrow_scope};
-        alt infer::mk_assignty(fcx.infcx, anmnt, expr_ty, expected) {
-          result::ok(()) { /* ok */ }
-          result::err(err) {
-            fcx.report_mismatched_types(sp, expected, expr_ty, err);
-          }
-        }
-    }
-}
-
 
 // Returns true if the two types unify and false if they don't.
 fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
@@ -1594,8 +1558,7 @@ fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
  */
 fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
     fn borrow(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
-        let parent_id = fcx.ccx.tcx.region_map.parents.get(expr.id);
-        ret ty::re_scope(parent_id);
+        ty::encl_region(fcx.ccx.tcx, expr.id)
     }
 
     fn deref(fcx: @fn_ctxt, base: @ast::expr) -> ty::region {
@@ -1970,7 +1933,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let ret_ty = ty::ty_fn_ret(fty);
         let arg_tys = vec::map(ty::ty_fn_args(fty)) {|a| a.ty };
 
-        check_fn(fcx.ccx, proto, decl, body, expr.id,
+        check_fn(fcx.ccx, proto, decl, body,
                  ret_ty, arg_tys, is_loop_body, some(fcx),
                  fcx.self_ty);
     }
@@ -2780,6 +2743,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let cty = fcx.expr_ty(e);
     let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
     demand::suptype(fcx, e.span, declty, cty);
+    regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
 }
 
@@ -2984,7 +2948,7 @@ fn check_bare_fn(ccx: @crate_ctxt,
     let fty = ty::node_id_to_type(ccx.tcx, id);
     let ret_ty = ty::ty_fn_ret(fty);
     let arg_tys = vec::map(ty::ty_fn_args(fty)) {|a| a.ty };
-    check_fn(ccx, ast::proto_bare, decl, body, id,
+    check_fn(ccx, ast::proto_bare, decl, body,
              ret_ty, arg_tys, false, none, self_ty);
 }
 
@@ -2992,7 +2956,6 @@ fn check_fn(ccx: @crate_ctxt,
             proto: ast::proto,
             decl: ast::fn_decl,
             body: ast::blk,
-            fid: ast::node_id,
             ret_ty: ty::t,
             arg_tys: [ty::t],
             indirect_ret: bool,
@@ -3012,7 +2975,7 @@ fn check_fn(ccx: @crate_ctxt,
         let old_isr = option::map_default(old_fcx, @nil) {
             |fcx| fcx.in_scope_regions };
         collect_bound_regions_in_tys(tcx, old_isr, all_tys) {
-            |br| ty::re_free(fid, br) }
+            |br| ty::re_free(body.node.id, br) }
     };
 
     // Replace the bound regions that appear in the arg tys, ret ty, etc with
@@ -3108,6 +3071,7 @@ fn check_fn(ccx: @crate_ctxt,
     // resolved when the enclosing scope finishes up.
     if option::is_none(old_fcx) {
         vtable::resolve_in_block(fcx, body);
+        regionck::regionck_fn(fcx, decl, body);
         writeback::resolve_type_vars_in_fn(fcx, decl, body);
     }
 

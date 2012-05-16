@@ -1512,20 +1512,18 @@ impl of combine for lub {
 
               (f @ ty::re_free(f_id, _), ty::re_scope(s_id)) |
               (ty::re_scope(s_id), f @ ty::re_free(f_id, _)) {
-                // For LUB, generally the scope is within the fn and
-                // the free region is a parameter to the fn.  In that case,
-                // the free region will always live as long as the fn,
-                // which is longer than the scope.
-                //
-                // However, with nested fns, it can happen that the
-                // scope surrounds the fn itself.  In that case, we do
-                // not know which will live longer---it depends on the
-                // value provided for the free region in any given
-                // call.  And so we must just back off to re_static as
-                // the LUB.
+                // A "free" region can be interpreted as "some region
+                // at least as big as the block f_id".  So, we can
+                // reasonably compare free regions and scopes:
                 let rm = self.infcx().tcx.region_map;
                 alt region::nearest_common_ancestor(rm, f_id, s_id) {
+                  // if the free region's scope `f_id` is bigger than
+                  // the scope region `s_id`, then the LUB is the free
+                  // region itself:
                   some(r_id) if r_id == f_id { ok(f) }
+
+                  // otherwise, we don't know what the free region is,
+                  // so we must conservatively say the LUB is static:
                   _ { ok(ty::re_static) }
                 }
               }
@@ -1703,15 +1701,11 @@ impl of combine for glb {
 
               (ty::re_free(f_id, _), s @ ty::re_scope(s_id)) |
               (s @ ty::re_scope(s_id), ty::re_free(f_id, _)) {
-                // For GLB, generally the scope is within the fn and
-                // the free region is a parameter to the fn.  In that case,
-                // the scope is always shorter than the free region.
-                //
-                // However, with nested fns, it can happen that the
-                // scope surrounds the fn itself.  In that case, we do
-                // not know which will live longer---it depends on the
-                // value provided for the free region in any given
-                // call.  And so we cannot give a GLB.
+                // Free region is something "at least as big as
+                // `f_id`."  If we find that the scope `f_id` is bigger
+                // than the scope `s_id`, then we can say that the GLB
+                // is the scope `s_id`.  Otherwise, as we do not know
+                // big the free region is precisely, the GLB is undefined.
                 let rm = self.infcx().tcx.region_map;
                 alt region::nearest_common_ancestor(rm, f_id, s_id) {
                   some(r_id) if r_id == f_id { ok(s) }

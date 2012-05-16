@@ -52,6 +52,8 @@ mod middle {
     mod ast_map;
     mod resolve;
     mod typeck {
+        mod regionck;
+        mod demand;
         mod infer;
         mod astconv;
         mod collect;
@@ -72,7 +74,6 @@ mod middle {
     mod capture;
     mod pat_util;
     mod region;
-    mod regionck;
     mod const_eval;
     mod astencode;
 

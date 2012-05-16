@@ -193,8 +193,6 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
         bind middle::borrowck::check_crate(ty_cx, method_map, crate));
-    time(time_passes, "region checking",
-         bind middle::regionck::check_crate(ty_cx, crate));
     let (copy_map, ref_map) =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));

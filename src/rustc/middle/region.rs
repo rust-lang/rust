@@ -364,8 +364,7 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx: ctxt = {closure_parent: some(item.id),
-                        parent: some(item.id) with cx};
+    let new_cx: ctxt = {closure_parent: none, parent: none with cx};
     visit::visit_item(item, new_cx, visitor);
 }
 

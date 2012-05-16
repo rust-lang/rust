@@ -101,7 +101,7 @@ export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var, type_is_var;
 export ty_self, mk_self, type_has_self;
-export region, bound_region;
+export region, bound_region, encl_region;
 export get, type_has_params, type_needs_infer, type_has_regions;
 export type_has_resources, type_id;
 export tbox_has_flag;
@@ -683,6 +683,15 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 fn default_arg_mode_for_ty(ty: ty::t) -> ast::rmode {
     if ty::type_is_immediate(ty) { ast::by_val }
     else { ast::by_ref }
+}
+
+// Returns the narrowest lifetime enclosing the evaluation of the expression
+// with id `id`.
+fn encl_region(cx: ctxt, id: ast::node_id) -> ty::region {
+    alt cx.region_map.parents.find(id) {
+      some(encl_scope) {ty::re_scope(encl_scope)}
+      none {ty::re_static}
+    }
 }
 
 fn walk_ty(ty: t, f: fn(t)) {
