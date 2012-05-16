@@ -370,6 +370,157 @@ fn dtor_dec() -> fn_decl {
      output: nil_t, purity: impure_fn, cf: return_val, constraints: []}
 }
 
+// ______________________________________________________________________
+// Enumerating the IDs which appear in an AST
+
+#[auto_serialize]
+type id_range = {min: node_id, max: node_id};
+
+fn empty(range: id_range) -> bool {
+    range.min >= range.max
+}
+
+fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
+    visit::mk_simple_visitor(@{
+        visit_mod: fn@(_m: _mod, _sp: span, id: node_id) {
+            vfn(id)
+        },
+
+        visit_view_item: fn@(vi: @view_item) {
+            alt vi.node {
+              view_item_use(_, _, id) { vfn(id) }
+              view_item_import(vps) | view_item_export(vps) {
+                vec::iter(vps) {|vp|
+                    alt vp.node {
+                      view_path_simple(_, _, id) { vfn(id) }
+                      view_path_glob(_, id) { vfn(id) }
+                      view_path_list(_, _, id) { vfn(id) }
+                    }
+                }
+              }
+            }
+        },
+
+        visit_native_item: fn@(ni: @native_item) {
+            vfn(ni.id)
+        },
+
+        visit_item: fn@(i: @item) {
+            vfn(i.id);
+            alt i.node {
+              item_res(_, _, _, d_id, c_id, _) { vfn(d_id); vfn(c_id); }
+              item_enum(vs, _, _) { for vs.each {|v| vfn(v.node.id); } }
+              _ {}
+            }
+        },
+
+        visit_local: fn@(l: @local) {
+            vfn(l.node.id);
+        },
+
+        visit_block: fn@(b: blk) {
+            vfn(b.node.id);
+        },
+
+        visit_stmt: fn@(s: @stmt) {
+            vfn(ast_util::stmt_id(*s));
+        },
+
+        visit_arm: fn@(_a: arm) { },
+
+        visit_pat: fn@(p: @pat) {
+            vfn(p.id)
+        },
+
+        visit_decl: fn@(_d: @decl) {
+        },
+
+        visit_expr: fn@(e: @expr) {
+            vfn(e.id);
+            alt e.node {
+              expr_unary(_, _) | expr_binary(_, _, _) {
+                vfn(ast_util::op_expr_callee_id(e));
+              }
+              _ { /* fallthrough */ }
+            }
+        },
+
+        visit_ty: fn@(t: @ty) {
+            alt t.node {
+              ty_path(_, id) {
+                vfn(id)
+              }
+              _ { /* fall through */ }
+            }
+        },
+
+        visit_ty_params: fn@(ps: [ty_param]) {
+            vec::iter(ps) {|p| vfn(p.id) }
+        },
+
+        visit_constr: fn@(_p: @path, _sp: span, id: node_id) {
+            vfn(id);
+        },
+
+        visit_fn: fn@(fk: visit::fn_kind, d: fn_decl,
+                      _b: blk, _sp: span, id: node_id) {
+            vfn(id);
+
+            alt fk {
+              visit::fk_ctor(_, tps, self_id, parent_id) |
+              visit::fk_dtor(tps, self_id, parent_id) {
+                vec::iter(tps) {|tp| vfn(tp.id)}
+                vfn(id);
+                vfn(self_id);
+                vfn(parent_id.node);
+              }
+              visit::fk_item_fn(_, tps) |
+              visit::fk_res(_, tps, _) {
+                vec::iter(tps) {|tp| vfn(tp.id)}
+              }
+              visit::fk_method(_, tps, m) {
+                vfn(m.self_id);
+                vec::iter(tps) {|tp| vfn(tp.id)}
+              }
+              visit::fk_anon(*) | visit::fk_fn_block(*) {
+              }
+            }
+
+            vec::iter(d.inputs) {|arg|
+                vfn(arg.id)
+            }
+        },
+
+        visit_class_item: fn@(c: @class_member) {
+            alt c.node {
+              instance_var(_, _, _, id,_) {
+                vfn(id)
+              }
+              class_method(_) {
+              }
+            }
+        }
+    })
+}
+
+fn visit_ids_for_inlined_item(item: inlined_item, vfn: fn@(node_id)) {
+    item.accept((), id_visitor(vfn));
+}
+
+fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
+    let min = @mut int::max_value;
+    let max = @mut int::min_value;
+    visit_ids_fn { |id|
+        *min = int::min(*min, id);
+        *max = int::max(*max, id + 1);
+    }
+    ret {min:*min, max:*max};
+}
+
+fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
+    compute_id_range { |f| visit_ids_for_inlined_item(item, f) }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
