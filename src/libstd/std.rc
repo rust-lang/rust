@@ -19,6 +19,7 @@ export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap;
 export rope, arena;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
+export par;
 
 // General io and system-services modules
 
@@ -58,6 +59,7 @@ mod getopts;
 mod json;
 mod sha1;
 mod md4;
+mod par;
 mod tempfile;
 mod term;
 mod time;
