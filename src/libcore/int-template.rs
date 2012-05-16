@@ -97,7 +97,9 @@ fn to_str(n: T, radix: uint) -> str {
 fn str(i: T) -> str { ret to_str(i, 10u); }
 
 
+// FIXME: Has alignment issues on windows
 #[test]
+#[ignore(cfg(target_os = "win32"))]
 fn test_from_str() {
     assert from_str("0") == some(0 as T);
     assert from_str("3") == some(3 as T);
