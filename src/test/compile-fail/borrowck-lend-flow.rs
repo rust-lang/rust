@@ -1,3 +1,4 @@
+// xfail-fast  (compile-flags unsupported on windows)
 // compile-flags:--borrowck=err
 
 // Note: the borrowck analysis is currently flow-insensitive.

@@ -1,3 +1,4 @@
+// xfail-fast  (compile-flags unsupported on windows)
 // compile-flags:--borrowck=err
 
 fn match_imm_box(v: &const @option<int>) -> int {

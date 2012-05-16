@@ -1,3 +1,4 @@
+// xfail-fast  (compile-flags unsupported on windows)
 // compile-flags:--borrowck=err
 // xfail-pretty -- comments are infaithfully preserved
 
