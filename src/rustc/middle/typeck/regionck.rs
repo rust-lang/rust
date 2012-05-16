@@ -16,21 +16,24 @@ the region scope `r`.
 import util::ppaux;
 import syntax::print::pprust;
 
+type rcx = @{fcx: @fn_ctxt, mut errors_reported: uint};
+type rvt = visit::vt<rcx>;
+
 fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
-    let v = regionck_visitor(fcx);
-    v.visit_expr(e, fcx, v);
+    let rcx = @{fcx:fcx, mut errors_reported: 0u};
+    let v = regionck_visitor();
+    v.visit_expr(e, rcx, v);
 }
 
 fn regionck_fn(fcx: @fn_ctxt,
                _decl: ast::fn_decl,
                blk: ast::blk) {
-    let v = regionck_visitor(fcx);
-    v.visit_block(blk, fcx, v);
+    let rcx = @{fcx:fcx, mut errors_reported: 0u};
+    let v = regionck_visitor();
+    v.visit_block(blk, rcx, v);
 }
 
-type rvt = visit::vt<@fn_ctxt>;
-
-fn regionck_visitor(_fcx: @fn_ctxt) -> rvt {
+fn regionck_visitor() -> rvt {
     visit::mk_vt(@{visit_item: visit_item,
                    visit_stmt: visit_stmt,
                    visit_expr: visit_expr,
@@ -40,43 +43,80 @@ fn regionck_visitor(_fcx: @fn_ctxt) -> rvt {
                    with *visit::default_visitor()})
 }
 
-fn visit_item(_item: @ast::item, &&_fcx: @fn_ctxt, _v: rvt) {
+fn visit_item(_item: @ast::item, &&_rcx: rcx, _v: rvt) {
     // Ignore items
 }
 
-fn visit_local(l: @ast::local, &&fcx: @fn_ctxt, v: rvt) {
-    visit::visit_local(l, fcx, v);
+fn visit_local(l: @ast::local, &&rcx: rcx, v: rvt) {
+    let e = rcx.errors_reported;
+    v.visit_pat(l.node.pat, rcx, v);
+    if e != rcx.errors_reported {
+        ret; // if decl has errors, skip initializer expr
+    }
+
+    v.visit_ty(l.node.ty, rcx, v);
+    for l.node.init.each { |i|
+        v.visit_expr(i.expr, rcx, v);
+    }
 }
 
-fn visit_pat(p: @ast::pat, &&fcx: @fn_ctxt, v: rvt) {
-    visit::visit_pat(p, fcx, v);
+fn visit_pat(p: @ast::pat, &&rcx: rcx, v: rvt) {
+    let fcx = rcx.fcx;
+    alt p.node {
+      ast::pat_ident(path, _)
+      if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
+        #debug["visit_pat binding=%s", path.idents[0]];
+        visit_node(p.id, p.span, rcx);
+      }
+      _ {}
+    }
+
+    visit::visit_pat(p, rcx, v);
 }
 
-fn visit_block(b: ast::blk, &&fcx: @fn_ctxt, v: rvt) {
-    visit::visit_block(b, fcx, v);
+fn visit_block(b: ast::blk, &&rcx: rcx, v: rvt) {
+    visit::visit_block(b, rcx, v);
 }
 
-fn visit_expr(e: @ast::expr, &&fcx: @fn_ctxt, v: rvt) {
+fn visit_expr(e: @ast::expr, &&rcx: rcx, v: rvt) {
     #debug["visit_expr(e=%s)", pprust::expr_to_str(e)];
 
-    visit_ty(fcx.expr_ty(e), e.id, e.span, fcx);
-    visit::visit_expr(e, fcx, v);
+    alt e.node {
+      ast::expr_path(*) {
+        // Avoid checking the use of local variables, as we already
+        // check their definitions.  The def'n always encloses the
+        // use.  So if the def'n is enclosed by the region, then the
+        // uses will also be enclosed (and otherwise, an error will
+        // have been reported at the def'n site).
+        alt lookup_def(rcx.fcx, e.span, e.id) {
+          ast::def_local(*) | ast::def_arg(*) | ast::def_upvar(*) { ret; }
+          _ { }
+        }
+      }
+      _ { }
+    }
+
+    if !visit_node(e.id, e.span, rcx) { ret; }
+    visit::visit_expr(e, rcx, v);
 }
 
-fn visit_stmt(s: @ast::stmt, &&fcx: @fn_ctxt, v: rvt) {
-    visit::visit_stmt(s, fcx, v);
+fn visit_stmt(s: @ast::stmt, &&rcx: rcx, v: rvt) {
+    visit::visit_stmt(s, rcx, v);
 }
 
-fn visit_ty(ty: ty::t,
-            id: ast::node_id,
-            span: span,
-            fcx: @fn_ctxt) {
+// checks the type of the node `id` and reports an error if it
+// references a region that is not in scope for that node.  Returns
+// false if an error is reported; this is used to cause us to cut off
+// region checking for that subtree to avoid reporting tons of errors.
+fn visit_node(id: ast::node_id, span: span, rcx: rcx) -> bool {
+    let fcx = rcx.fcx;
 
     // Try to resolve the type.  If we encounter an error, then typeck
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
-    let ty = alt infer::resolve_deep(fcx.infcx, ty, false) {
-      result::err(_) { ret; }
+    let ty0 = fcx.node_ty(id);
+    let ty = alt infer::resolve_deep(fcx.infcx, ty0, false) {
+      result::err(_) { ret true; }
       result::ok(ty) { ty }
     };
 
@@ -84,23 +124,25 @@ fn visit_ty(ty: ty::t,
     let tcx = fcx.ccx.tcx;
     let encl_region = ty::encl_region(tcx, id);
 
-    #debug["visit_ty(ty=%s, id=%d, encl_region=%s)",
+    #debug["visit_node(ty=%s, id=%d, encl_region=%s, ty0=%s)",
            ppaux::ty_to_str(tcx, ty),
            id,
-           ppaux::region_to_str(tcx, encl_region)];
+           ppaux::region_to_str(tcx, encl_region),
+           ppaux::ty_to_str(tcx, ty0)];
 
     // Otherwise, look at the type and see if it is a region pointer.
-    if !ty::type_has_regions(ty) { ret; }
+    let e = rcx.errors_reported;
     ty::walk_regions_and_ty(
         tcx, ty,
-        { |r| constrain_region(fcx, encl_region, span, r); },
+        { |r| constrain_region(rcx, encl_region, span, r); },
         { |t| ty::type_has_regions(t) });
+    ret (e == rcx.errors_reported);
 
-    fn constrain_region(fcx: @fn_ctxt,
+    fn constrain_region(rcx: rcx,
                         encl_region: ty::region,
                         span: span,
                         region: ty::region) {
-        let tcx = fcx.ccx.tcx;
+        let tcx = rcx.fcx.ccx.tcx;
 
         #debug["constrain_region(encl_region=%s, region=%s)",
                ppaux::region_to_str(tcx, encl_region),
@@ -117,13 +159,14 @@ fn visit_ty(ty: ty::t,
           _ {}
         }
 
-        alt fcx.mk_subr(encl_region, region) {
+        alt rcx.fcx.mk_subr(encl_region, region) {
           result::err(_) {
             tcx.sess.span_err(
                 span,
                 #fmt["reference is not valid outside \
                       of its lifetime, %s",
                      ppaux::region_to_str(tcx, region)]);
+            rcx.errors_reported += 1u;
           }
           result::ok(()) {
           }

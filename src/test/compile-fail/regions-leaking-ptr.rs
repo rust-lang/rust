@@ -12,8 +12,6 @@ fn broken() -> int {
     //!^ ERROR reference is not valid
     //!^^ ERROR reference is not valid
     //!^^^ ERROR reference is not valid
-    //!^^^^ ERROR reference is not valid
-    //!^^^^^ ERROR reference is not valid
 }
 
 fn main() { }

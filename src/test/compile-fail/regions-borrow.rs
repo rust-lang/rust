@@ -5,5 +5,4 @@ fn main() {
     let r = foo(p);
     //!^ ERROR reference is not valid
     assert *p == *r;
-    //!^ ERROR reference is not valid
 }

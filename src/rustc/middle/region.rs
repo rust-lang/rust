@@ -151,20 +151,16 @@ type binding = {node_id: ast::node_id,
                 name: str,
                 br: ty::bound_region};
 
-type region_map = {
-    // Mapping from a block/function expression to its parent.
-    parents: hashmap<ast::node_id,ast::node_id>,
-
-    // Mapping from arguments and local variables to the block in
-    // which they are declared. Arguments are considered to be declared
-    // within the body of the function.
-    local_blocks: hashmap<ast::node_id,ast::node_id>
-};
+// Mapping from a block/expr/binding to the innermost scope that
+// bounds its lifetime.  For a block/expression, this is the lifetime
+// in which it will be evaluated.  For a binding, this is the lifetime
+// in which is in scope.
+type region_map = hashmap<ast::node_id, ast::node_id>;
 
 type ctxt = {
     sess: session,
     def_map: resolve::def_map,
-    region_map: @region_map,
+    region_map: region_map,
 
     // These two fields (parent and closure_parent) specify the parent
     // scope of the current expression.  The parent scope is the
@@ -207,11 +203,11 @@ type ctxt = {
 
 // Returns true if `subscope` is equal to or is lexically nested inside
 // `superscope` and false otherwise.
-fn scope_contains(region_map: @region_map, superscope: ast::node_id,
+fn scope_contains(region_map: region_map, superscope: ast::node_id,
                   subscope: ast::node_id) -> bool {
     let mut subscope = subscope;
     while superscope != subscope {
-        alt region_map.parents.find(subscope) {
+        alt region_map.find(subscope) {
             none { ret false; }
             some(scope) { subscope = scope; }
         }
@@ -219,15 +215,15 @@ fn scope_contains(region_map: @region_map, superscope: ast::node_id,
     ret true;
 }
 
-fn nearest_common_ancestor(region_map: @region_map, scope_a: ast::node_id,
+fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
                            scope_b: ast::node_id) -> option<ast::node_id> {
 
-    fn ancestors_of(region_map: @region_map, scope: ast::node_id)
+    fn ancestors_of(region_map: region_map, scope: ast::node_id)
                     -> [ast::node_id] {
         let mut result = [scope];
         let mut scope = scope;
         loop {
-            alt region_map.parents.find(scope) {
+            alt region_map.find(scope) {
                 none { ret result; }
                 some(superscope) {
                     result += [superscope];
@@ -285,7 +281,7 @@ fn record_parent(cx: ctxt, child_id: ast::node_id) {
       none { /* no-op */ }
       some(parent_id) {
         #debug["parent of node %d is node %d", child_id, parent_id];
-        cx.region_map.parents.insert(child_id, parent_id);
+        cx.region_map.insert(child_id, parent_id);
       }
     }
 }
@@ -314,8 +310,7 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
           }
           _ {
             /* This names a local. Bind it to the containing scope. */
-            let local_blocks = cx.region_map.local_blocks;
-            local_blocks.insert(pat.id, parent_id(cx, pat.span));
+            record_parent(cx, pat.id);
           }
         }
       }
@@ -357,8 +352,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
 }
 
 fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
-    cx.region_map.local_blocks.insert(
-        local.node.id, parent_id(cx, local.span));
+    record_parent(cx, local.node.id);
     visit::visit_local(local, cx, visitor);
 }
 
@@ -391,19 +385,17 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
            cx.closure_parent, fn_cx.parent];
 
     for decl.inputs.each { |input|
-        cx.region_map.local_blocks.insert(
-            input.id, body.node.id);
+        cx.region_map.insert(input.id, body.node.id);
     }
 
     visit::visit_fn(fk, decl, body, sp, id, fn_cx, visitor);
 }
 
 fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
-        -> @region_map {
+        -> region_map {
     let cx: ctxt = {sess: sess,
                     def_map: def_map,
-                    region_map: @{parents: map::int_hash(),
-                                  local_blocks: map::int_hash()},
+                    region_map: map::int_hash(),
                     parent: none,
                     closure_parent: none};
     let visitor = visit::mk_vt(@{

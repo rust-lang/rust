@@ -1577,9 +1577,8 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
         alt defn {
           ast::def_local(local_id, _) |
           ast::def_upvar(local_id, _, _) {
-            let local_blocks = fcx.ccx.tcx.region_map.local_blocks;
-            let local_block_id = local_blocks.get(local_id);
-            ty::re_scope(local_block_id)
+            let local_scope = fcx.ccx.tcx.region_map.get(local_id);
+            ty::re_scope(local_scope)
           }
           _ {
             ty::re_static
@@ -2629,8 +2628,7 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     }
 
     let region =
-        ty::re_scope(
-            fcx.ccx.tcx.region_map.local_blocks.get(local.node.id));
+        ty::re_scope(fcx.ccx.tcx.region_map.get(local.node.id));
     let pcx = {
         fcx: fcx,
         map: pat_id_map(fcx.ccx.tcx.def_map, local.node.pat),

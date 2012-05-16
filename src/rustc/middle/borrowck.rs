@@ -465,7 +465,7 @@ impl methods for check_loan_ctxt {
     fn walk_loans(scope_id: ast::node_id,
                   f: fn(loan) -> bool) {
         let mut scope_id = scope_id;
-        let parents = self.tcx().region_map.parents;
+        let region_map = self.tcx().region_map;
         let req_loan_map = self.req_loan_map;
 
         loop {
@@ -477,7 +477,7 @@ impl methods for check_loan_ctxt {
                 }
             }
 
-            alt parents.find(scope_id) {
+            alt region_map.find(scope_id) {
               none { ret; }
               some(next_scope_id) { scope_id = next_scope_id; }
             }
@@ -570,7 +570,7 @@ impl methods for check_loan_ctxt {
             some(loanss) { loanss }
         };
 
-        let par_scope_id = self.tcx().region_map.parents.get(scope_id);
+        let par_scope_id = self.tcx().region_map.get(scope_id);
         for self.walk_loans(par_scope_id) { |old_loan|
             for (*new_loanss).each { |new_loans|
                 for (*new_loans).each { |new_loan|

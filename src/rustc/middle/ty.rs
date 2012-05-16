@@ -206,7 +206,7 @@ type ctxt =
       mut next_id: uint,
       sess: session::session,
       def_map: resolve::def_map,
-      region_map: @middle::region::region_map,
+      region_map: middle::region::region_map,
 
       // Stores the types for various nodes in the AST.  Note that this table
       // is not guaranteed to be populated until after typeck.  See
@@ -459,7 +459,7 @@ fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map,
-           region_map: @middle::region::region_map) -> ctxt {
+           region_map: middle::region::region_map) -> ctxt {
     let interner = map::hashmap({|&&k: intern_key|
         hash_type_structure(k.struct) +
             option::map_default(k.o_def_id, 0u, ast_util::hash_def_id)
@@ -688,7 +688,7 @@ fn default_arg_mode_for_ty(ty: ty::t) -> ast::rmode {
 // Returns the narrowest lifetime enclosing the evaluation of the expression
 // with id `id`.
 fn encl_region(cx: ctxt, id: ast::node_id) -> ty::region {
-    alt cx.region_map.parents.find(id) {
+    alt cx.region_map.find(id) {
       some(encl_scope) {ty::re_scope(encl_scope)}
       none {ty::re_static}
     }
