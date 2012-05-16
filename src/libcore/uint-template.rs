@@ -134,6 +134,7 @@ fn to_str(num: T, radix: uint) -> str {
 fn str(i: T) -> str { ret to_str(i, 10u); }
 
 #[test]
+#[ignore]
 fn test_from_str() {
     assert from_str("0") == some(0u as T);
     assert from_str("3") == some(3u as T);
@@ -147,6 +148,7 @@ fn test_from_str() {
 }
 
 #[test]
+#[ignore]
 fn test_parse_buf() {
     import str::bytes;
     assert parse_buf(bytes("123"), 10u) == some(123u as T);
