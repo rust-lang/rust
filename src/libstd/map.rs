@@ -5,6 +5,7 @@ export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
 export bytes_hash, int_hash, uint_hash, set_add;
 export hash_from_vec, hash_from_strs, hash_from_bytes;
 export hash_from_ints, hash_from_uints;
+export vec_from_set;
 
 #[doc = "
 A function that returns a hash of a value
@@ -330,6 +331,18 @@ fn uint_hash<V: copy>() -> hashmap<uint, V> {
 Convenience function for adding keys to a hashmap with nil type keys
 "]
 fn set_add<K: copy>(set: set<K>, key: K) -> bool { ret set.insert(key, ()); }
+
+#[doc = "
+Convert a set into a vector.
+"]
+fn vec_from_set<T: copy>(s: set<T>) -> [T] {
+    let mut v = [];
+    s.each_key() {|k|
+        v += [k];
+        true
+    };
+    v
+}
 
 #[doc = "Construct a hashmap from a vector"]
 fn hash_from_vec<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
