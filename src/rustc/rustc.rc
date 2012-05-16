@@ -52,9 +52,7 @@ mod middle {
     mod ast_map;
     mod resolve;
     mod typeck {
-        mod check {
-            mod alt;
-        }
+        mod check;
         mod regionck;
         mod demand;
         mod infer;
