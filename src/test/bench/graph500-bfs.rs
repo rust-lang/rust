@@ -403,9 +403,10 @@ fn validate(edges: [(node_id, node_id)],
 }
 
 fn main() {
-    let scale = 15u;
+    let scale = 14u;
     let num_keys = 16u;
     let do_validate = false;
+    let do_sequential = true;
 
     let start = time::precise_time_s();
     let edges = make_edges(scale, 16u);
@@ -431,44 +432,49 @@ fn main() {
     gen_search_keys(graph, num_keys).map() {|root|
         io::stdout().write_line("");
         io::stdout().write_line(#fmt("Search key: %?", root));
-    
-        let start = time::precise_time_s();
-        let bfs_tree = bfs(graph, root);
-        let stop = time::precise_time_s();
 
-        total_seq += stop - start;
-
-        io::stdout().write_line(#fmt("Sequential BFS completed in %? seconds.",
-                                     stop - start));
-
-        if do_validate {
+        if do_sequential {
             let start = time::precise_time_s();
-            assert(validate(edges, root, bfs_tree));
+            let bfs_tree = bfs(graph, root);
             let stop = time::precise_time_s();
             
-            io::stdout().write_line(#fmt("Validation completed in %? seconds.",
-                                         stop - start));
-        }
+            //total_seq += stop - start;
 
-        let start = time::precise_time_s();
-        let bfs_tree = bfs2(graph, root);
-        let stop = time::precise_time_s();
-
-        //total_seq += stop - start;
-
-        io::stdout().write_line(
-            #fmt("Slow Sequential BFS completed in %? seconds.",
-                 stop - start));
-
-        if do_validate {
+            io::stdout().write_line(
+                #fmt("Sequential BFS completed in %? seconds.",
+                     stop - start));
+            
+            if do_validate {
+                let start = time::precise_time_s();
+                assert(validate(edges, root, bfs_tree));
+                let stop = time::precise_time_s();
+                
+                io::stdout().write_line(
+                    #fmt("Validation completed in %? seconds.",
+                         stop - start));
+            }
+            
             let start = time::precise_time_s();
-            assert(validate(edges, root, bfs_tree));
+            let bfs_tree = bfs2(graph, root);
             let stop = time::precise_time_s();
             
-            io::stdout().write_line(#fmt("Validation completed in %? seconds.",
-                                         stop - start));
+            total_seq += stop - start;
+            
+            io::stdout().write_line(
+                #fmt("Alternate Sequential BFS completed in %? seconds.",
+                     stop - start));
+            
+            if do_validate {
+                let start = time::precise_time_s();
+                assert(validate(edges, root, bfs_tree));
+                let stop = time::precise_time_s();
+                
+                io::stdout().write_line(
+                    #fmt("Validation completed in %? seconds.",
+                         stop - start));
+            }
         }
-
+        
         let start = time::precise_time_s();
         let bfs_tree = pbfs(graph, root);
         let stop = time::precise_time_s();
@@ -502,49 +508,7 @@ import comm::port;
 import comm::chan;
 import comm::send;
 import comm::recv;
-import task::spawn;
-
-iface future<T: send> {
-    fn get() -> T;
-}
-
-type future_<T: send> = {
-    mut slot : option<T>,
-    port : port<T>,
-};
-
-impl<T: send> of future<T> for future_<T> {
-    fn get() -> T {
-        get(self)
-    }
-}
-
-fn get<T: send>(f: future_<T>) -> T {
-    alt(f.slot) {
-      some(x) { x }
-      none {
-        let x = recv(f.port);
-        f.slot = some(x);
-        x
-      }
-    }
-}
-
-
-#[doc="Executes a bit of code asynchronously.
-
-Returns a handle that can be used to retrieve the result at your
-leisure."]
-fn future<T: send>(thunk : fn~() -> T) -> future<T> {
-    let p = port();
-    let c = chan(p);
-
-    spawn() {||
-        send(c, thunk());
-    }
-
-    {mut slot: none::<T>, port : p} as future::<T>
-}
+import future::future;
 
 #[doc="The maximum number of tasks this module will spawn for a single
  operationg."]
@@ -576,7 +540,7 @@ fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
         while base < len {
             let slice = vec::slice(xs, base,
                                    uint::min(len, base + items_per_task));
-            futures += [future() {|copy base|
+            futures += [future::spawn() {|copy base|
                 f(base, slice)
             }];
             base += items_per_task;
