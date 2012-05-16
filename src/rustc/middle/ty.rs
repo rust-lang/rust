@@ -1411,7 +1411,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     ret result;
 }
 
-// True if instantiating an instance of `ty` requires an instead of `r_ty`.
+// True if instantiating an instance of `ty` requires an instance of `r_ty`.
 fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
     fn type_requires(cx: ctxt, seen: @mut [def_id],
