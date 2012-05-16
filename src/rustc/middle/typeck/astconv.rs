@@ -1,17 +1,18 @@
 #[doc = "
 
-Conversion from AST representation of types to the ty.rs representation.
+Conversion from AST representation of types to the ty.rs
+representation.  The main routine here is `ast_ty_to_ty()`: each use
+is parameterized by an instance of `ast_conv` and a `region_scope`.
 
-The main routine here is `ast_ty_to_ty()`: each use is parameterized
-by an instance of `ast_conv` and a `region_scope`.
-
-The `ast_conv` interface is the conversion context.  It has two
-implementations, one for the crate context and one for the function
-context.  The main purpose is to provide the `get_item_ty()` hook
-which looks up the type of an item by its def-id.  This can be done in
-two ways: in the initial phase, when a crate context is provided, this
-will potentially trigger a call to `ty_of_item()`.  Later, when a
-function context is used, this will simply be a lookup.
+The parameterization of `ast_ty_to_ty()` is because it behaves
+somewhat differently during the collect and check phases, particularly
+with respect to looking up the types of top-level items.  In the
+collect phase, the crate context is used as the `ast_conv` instance;
+in this phase, the `get_item_ty()` function triggers a recursive call
+to `ty_of_item()` (note that `ast_ty_to_ty()` will detect recursive
+types and report an error).  In the check phase, when the @fn_ctxt is
+used as the `ast_conv`, `get_item_ty()` just looks up the item type in
+`tcx.tcache`.
 
 The `region_scope` interface controls how region references are
 handled.  It has two methods which are used to resolve anonymous
@@ -21,7 +22,29 @@ commonly you want either `empty_rscope`, which permits only the static
 region, or `type_rscope`, which permits the self region if the type in
 question is parameterized by a region.
 
+Unlike the `ast_conv` iface, the region scope can change as we descend
+the type.  This is to accommodate the fact that (a) fn types are binding
+scopes and (b) the default region may change.  To understand case (a),
+consider something like:
+
+  type foo = { x: &a.int, y: fn(&a.int) }
+
+The type of `x` is an error because there is no region `a` in scope.
+In the type of `y`, however, region `a` is considered a bound region
+as it does not already appear in scope.
+
+Case (b) says that if you have a type:
+  type foo/& = ...;
+  type bar = fn(&foo, &a.foo)
+The fully expanded version of type bar is:
+  type bar = fn(&foo/&, &a.foo/&a)
+Note that the self region for the `foo` defaulted to `&` in the first
+case but `&a` in the second.  Basically, defaults that appear inside
+an rptr (`&r.T`) use the region `r` that appears in the rptr.
+
 "];
+
+import check::fn_ctxt;
 
 iface ast_conv {
     fn tcx() -> ty::ctxt;
@@ -30,48 +53,6 @@ iface ast_conv {
 
     // what type should we use when a type is omitted?
     fn ty_infer(span: span) -> ty::t;
-}
-
-impl of ast_conv for @crate_ctxt {
-    fn tcx() -> ty::ctxt { self.tcx }
-    fn ccx() -> @crate_ctxt { self }
-
-    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty {
-        if id.crate != ast::local_crate {
-            csearch::get_type(self.tcx, id)
-        } else {
-            alt self.tcx.items.find(id.node) {
-              some(ast_map::node_item(item, _)) {
-                ty_of_item(self, item)
-              }
-              some(ast_map::node_native_item(native_item, _, _)) {
-                ty_of_native_item(self, native_item)
-              }
-              x {
-                self.tcx.sess.bug(#fmt["unexpected sort of item \
-                                        in get_item_ty(): %?", x]);
-              }
-            }
-        }
-    }
-
-    fn ty_infer(span: span) -> ty::t {
-        self.tcx.sess.span_bug(span,
-                               "found `ty_infer` in unexpected place");
-    }
-}
-
-impl of ast_conv for @fn_ctxt {
-    fn tcx() -> ty::ctxt { self.ccx.tcx }
-    fn ccx() -> @crate_ctxt { self.ccx }
-
-    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty {
-        ty::lookup_item_type(self.tcx(), id)
-    }
-
-    fn ty_infer(_span: span) -> ty::t {
-        self.next_ty_var()
-    }
 }
 
 iface region_scope {
@@ -112,23 +93,6 @@ impl of region_scope for type_rscope {
     }
 }
 
-impl of region_scope for @fn_ctxt {
-    fn anon_region() -> result<ty::region, str> {
-        result::ok(self.next_region_var())
-    }
-    fn named_region(id: str) -> result<ty::region, str> {
-        empty_rscope.named_region(id).chain_err { |_e|
-            alt self.in_scope_regions.find(ty::br_named(id)) {
-              some(r) { result::ok(r) }
-              none if id == "blk" { self.block_region() }
-              none {
-                result::err(#fmt["named region `%s` not in scope here", id])
-              }
-            }
-        }
-    }
-}
-
 enum anon_rscope = {anon: ty::region, base: region_scope};
 fn in_anon_rscope<RS: region_scope copy>(self: RS, r: ty::region)
     -> @anon_rscope {
@@ -156,6 +120,19 @@ impl of region_scope for @binding_rscope {
         self.base.named_region(id).chain_err {|_e|
             result::ok(ty::re_bound(ty::br_named(id)))
         }
+    }
+}
+
+fn get_region_reporting_err(tcx: ty::ctxt,
+                            span: span,
+                            res: result<ty::region, str>) -> ty::region {
+
+    alt res {
+      result::ok(r) { r }
+      result::err(e) {
+        tcx.sess.span_err(span, e);
+        ty::re_static
+      }
     }
 }
 
@@ -231,36 +208,6 @@ fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy>(
     write_ty_to_tcx(tcx, path_id, ty);
     write_substs_to_tcx(tcx, path_id, substs.tps);
     ret {substs: substs, ty: ty};
-}
-
-/*
-  Instantiates the path for the given iface reference, assuming that
-  it's bound to a valid iface type. Returns the def_id for the defining
-  iface. Fails if the type is a type other than an iface type.
- */
-fn instantiate_iface_ref(ccx: @crate_ctxt, t: @ast::iface_ref,
-                         rp: ast::region_param)
-    -> (ast::def_id, ty_param_substs_and_ty) {
-
-    let sp = t.path.span, err = "can only implement interface types",
-        sess = ccx.tcx.sess;
-
-    let rscope = type_rscope(rp);
-
-    alt lookup_def_tcx(ccx.tcx, t.path.span, t.id) {
-      ast::def_ty(t_id) {
-        let tpt = ast_path_to_ty(ccx, rscope, t_id, t.path, t.id);
-        alt ty::get(tpt.ty).struct {
-           ty::ty_iface(*) {
-              (t_id, tpt)
-           }
-           _ { sess.span_fatal(sp, err); }
-        }
-      }
-      _ {
-          sess.span_fatal(sp, err);
-      }
-    }
 }
 
 const NO_REGIONS: uint = 1u;
@@ -474,103 +421,6 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
     ret typ;
 }
 
-fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
-    -> ty::ty_param_bounds_and_ty {
-
-    let def_id = local_def(it.id);
-    let tcx = ccx.tcx;
-    alt tcx.tcache.find(def_id) {
-      some(tpt) { ret tpt; }
-      _ {}
-    }
-    alt it.node {
-      ast::item_const(t, _) {
-        let typ = ccx.to_ty(empty_rscope, t);
-        let tpt = no_params(typ);
-        tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
-      }
-      ast::item_fn(decl, tps, _) {
-        let bounds = ty_param_bounds(ccx, tps);
-        let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare,
-                                 decl, none);
-        let tpt = {bounds: bounds,
-                   rp: ast::rp_none, // functions do not have a self
-                   ty: ty::mk_fn(ccx.tcx, tofd)};
-        ccx.tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
-      }
-      ast::item_ty(t, tps, rp) {
-        alt tcx.tcache.find(local_def(it.id)) {
-          some(tpt) { ret tpt; }
-          none { }
-        }
-
-        let tpt = {
-            let ty = {
-                let t0 = ccx.to_ty(type_rscope(rp), t);
-                // Do not associate a def id with a named, parameterized type
-                // like "foo<X>".  This is because otherwise ty_to_str will
-                // print the name as merely "foo", as it has no way to
-                // reconstruct the value of X.
-                if !vec::is_empty(tps) { t0 } else {
-                    ty::mk_with_id(tcx, t0, def_id)
-                }
-            };
-            {bounds: ty_param_bounds(ccx, tps), rp: rp, ty: ty}
-        };
-
-        check_bounds_are_used(ccx, t.span, tps, rp, tpt.ty);
-
-        tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
-      }
-      ast::item_res(decl, tps, _, _, _, rp) {
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let t_arg = ty_of_arg(ccx, type_rscope(rp),
-                              decl.inputs[0], none);
-        let t = ty::mk_res(tcx, local_def(it.id), t_arg.ty, substs);
-        let t_res = {bounds: bounds, rp: rp, ty: t};
-        tcx.tcache.insert(local_def(it.id), t_res);
-        ret t_res;
-      }
-      ast::item_enum(_, tps, rp) {
-        // Create a new generic polytype.
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let t = ty::mk_enum(tcx, local_def(it.id), substs);
-        let tpt = {bounds: bounds, rp: rp, ty: t};
-        tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
-      }
-      ast::item_iface(tps, rp, ms) {
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let t = ty::mk_iface(tcx, local_def(it.id), substs);
-        let tpt = {bounds: bounds, rp: rp, ty: t};
-        tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
-      }
-      ast::item_class(tps, _, _, _, _, rp) {
-          let {bounds,substs} = mk_substs(ccx, tps, rp);
-          let t = ty::mk_class(tcx, local_def(it.id), substs);
-          let tpt = {bounds: bounds, rp: rp, ty: t};
-          tcx.tcache.insert(local_def(it.id), tpt);
-          ret tpt;
-      }
-      ast::item_impl(*) | ast::item_mod(_) |
-      ast::item_native_mod(_) { fail; }
-    }
-}
-
-fn ty_of_native_item(ccx: @crate_ctxt, it: @ast::native_item)
-    -> ty::ty_param_bounds_and_ty {
-    alt it.node {
-      ast::native_item_fn(fn_decl, params) {
-        ret ty_of_native_fn_decl(ccx, fn_decl, params,
-                                 local_def(it.id));
-      }
-    }
-}
-
 fn ty_of_arg<AC: ast_conv, RS: region_scope copy>(
     self: AC, rscope: RS, a: ast::arg,
     expected_ty: option<ty::arg>) -> ty::arg {
@@ -651,61 +501,3 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
 }
 
 
-fn ty_param_bounds(ccx: @crate_ctxt,
-                   params: [ast::ty_param]) -> @[ty::param_bounds] {
-
-    fn compute_bounds(ccx: @crate_ctxt,
-                      param: ast::ty_param) -> ty::param_bounds {
-        @vec::flat_map(*param.bounds) { |b|
-            alt b {
-              ast::bound_send { [ty::bound_send] }
-              ast::bound_copy { [ty::bound_copy] }
-              ast::bound_iface(t) {
-                let ity = ast_ty_to_ty(ccx, empty_rscope, t);
-                alt ty::get(ity).struct {
-                  ty::ty_iface(*) {
-                    [ty::bound_iface(ity)]
-                  }
-                  _ {
-                    ccx.tcx.sess.span_err(
-                        t.span, "type parameter bounds must be \
-                                 interface types");
-                    []
-                  }
-                }
-              }
-            }
-        }
-    }
-
-    @params.map { |param|
-        alt ccx.tcx.ty_param_bounds.find(param.id) {
-          some(bs) { bs }
-          none {
-            let bounds = compute_bounds(ccx, param);
-            ccx.tcx.ty_param_bounds.insert(param.id, bounds);
-            bounds
-          }
-        }
-    }
-}
-
-fn ty_of_native_fn_decl(ccx: @crate_ctxt,
-                        decl: ast::fn_decl,
-                        ty_params: [ast::ty_param],
-                        def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {
-
-    let bounds = ty_param_bounds(ccx, ty_params);
-    let rb = in_binding_rscope(empty_rscope);
-    let input_tys = decl.inputs.map { |a| ty_of_arg(ccx, rb, a, none) };
-    let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
-
-    let t_fn = ty::mk_fn(ccx.tcx, {proto: ast::proto_bare,
-                                   inputs: input_tys,
-                                   output: output_ty,
-                                   ret_style: ast::return_val,
-                                   constraints: []});
-    let tpt = {bounds: bounds, rp: ast::rp_none, ty: t_fn};
-    ccx.tcx.tcache.insert(def_id, tpt);
-    ret tpt;
-}

@@ -15,6 +15,7 @@ the region scope `r`.
 
 import util::ppaux;
 import syntax::print::pprust;
+import check::{fn_ctxt, methods};
 
 type rcx = @{fcx: @fn_ctxt, mut errors_reported: uint};
 type rvt = visit::vt<rcx>;

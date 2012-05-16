@@ -1,3 +1,5 @@
+import check::{fn_ctxt, impl_self_ty, methods};
+
 fn has_iface_bounds(tps: [ty::param_bounds]) -> bool {
     vec::any(tps, {|bs|
         vec::any(*bs, {|b|

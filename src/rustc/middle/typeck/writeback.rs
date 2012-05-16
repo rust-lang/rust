@@ -1,6 +1,9 @@
 // Type resolution: the phase that finds all the types in the AST with
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
+
+import check::{fn_ctxt, lookup_local, methods};
+
 export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;
 

@@ -1,3 +1,5 @@
+import check::{fn_ctxt, methods};
+
 // Requires that the two types unify, and prints an error message if they
 // don't.
 fn suptype(fcx: @fn_ctxt, sp: span,
