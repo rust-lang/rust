@@ -302,7 +302,6 @@ fn node_id_to_str(map: map, id: node_id) -> str {
       }
     }
 }
-
 // Local Variables:
 // mode: rust
 // fill-column: 78;

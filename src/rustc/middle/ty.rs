@@ -6,7 +6,7 @@ import session::session;
 import syntax::ast;
 import syntax::ast::*;
 import syntax::ast_util;
-import syntax::ast_util::{is_local, split_class_items};
+import syntax::ast_util::{is_local, local_def, split_class_items};
 import syntax::codemap::span;
 import metadata::csearch;
 import util::common::*;
@@ -69,6 +69,7 @@ export new_ty_hash;
 export enum_variants, substd_enum_variants;
 export iface_methods, store_iface_methods, impl_iface;
 export enum_variant_with_id;
+export ty_dtor;
 export ty_param_bounds_and_ty;
 export ty_bool, mk_bool, type_is_bool;
 export ty_bot, mk_bot, type_is_bot;
@@ -2375,6 +2376,22 @@ fn substd_enum_variants(cx: ctxt,
 
 fn item_path_str(cx: ctxt, id: ast::def_id) -> str {
     ast_map::path_to_str(item_path(cx, id))
+}
+
+/* If class_id names a class with a dtor, return some(the dtor's id).
+   Otherwise return none. */
+fn ty_dtor(cx: ctxt, class_id: def_id) -> option<def_id> {
+    if is_local(class_id) {
+       alt cx.items.find(class_id.node) {
+         some(ast_map::node_item(@{node: ast::item_class(_, _, _, _,
+                                     some(dtor), _), _}, _))
+             { some(local_def(dtor.node.id))  }
+          _  { none }
+       }
+    }
+    else {
+      csearch::class_dtor(cx.sess.cstore, class_id)
+    }
 }
 
 fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {

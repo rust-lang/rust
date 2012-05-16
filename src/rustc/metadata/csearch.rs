@@ -10,6 +10,7 @@ import driver::session::expect;
 import common::*;
 import std::map::hashmap;
 
+export class_dtor;
 export get_symbol;
 export get_class_fields;
 export get_class_method;
@@ -185,6 +186,12 @@ fn get_class_method(cstore: cstore::cstore, def: ast::def_id, mname: str)
     decoder::get_class_method(cdata, def.node, mname)
 }
 
+/* If def names a class with a dtor, return it. Otherwise, return none. */
+fn class_dtor(cstore: cstore::cstore, def: ast::def_id)
+    -> option<ast::def_id> {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::class_dtor(cdata, def.node)
+}
 // Local Variables:
 // mode: rust
 // fill-column: 78;

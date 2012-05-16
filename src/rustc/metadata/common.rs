@@ -95,6 +95,7 @@ const tag_mod_impl_iface: uint = 0x47u;
   different tags.
  */
 const tag_item_impl_method: uint = 0x48u;
+const tag_item_dtor: uint = 0x49u;
 
 // used to encode crate_ctxt side tables
 enum astencode_tag { // Reserves 0x50 -- 0x6f

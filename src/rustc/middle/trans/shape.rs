@@ -414,10 +414,25 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         s
       }
       ty::ty_iface(_, _) { [shape_box_fn] }
-      ty::ty_class(did, ts) {
-        // same as records
-        let mut s = [shape_struct], sub = [];
-        for ty::class_items_as_fields(ccx.tcx, did, ts).each {|f|
+      ty::ty_class(did, substs) {
+        // same as records, unless there's a dtor
+        let tps = substs.tps;
+        let m_dtor_did = ty::ty_dtor(ccx.tcx, did);
+        let mut s = if option::is_some(m_dtor_did) {
+            [shape_res]
+          }
+          else { [shape_struct] };
+        let mut sub = [];
+        option::iter(m_dtor_did) {|dtor_did|
+          let ri = {did: dtor_did, tps: tps};
+          let id = interner::intern(ccx.shape_cx.resources, ri);
+          add_u16(s, id as u16);
+          add_u16(s, vec::len(tps) as u16);
+          for vec::each(tps) {|tp|
+             add_substr(s, shape_of(ccx, tp, ty_param_map));
+          }
+        };
+        for ty::class_items_as_fields(ccx.tcx, did, substs).each {|f|
             sub += shape_of(ccx, f.mt.ty, ty_param_map);
         }
         add_substr(s, sub);
@@ -571,14 +586,11 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
 fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut dtors = [];
-    let mut i = 0u;
     let len = interner::len(ccx.shape_cx.resources);
-    while i < len {
-        let ri = interner::get(ccx.shape_cx.resources, i);
-        dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.tps)];
-        i += 1u;
+    uint::range(0u, len) {|i|
+      let ri = interner::get(ccx.shape_cx.resources, i);
+      dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.tps)];
     }
-
     ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
 

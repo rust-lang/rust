@@ -147,7 +147,13 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
                 let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
                 type_of(cx, t)
             };
-            T_struct(tys)
+            if ty::ty_dtor(cx.tcx, did) == none {
+              T_struct(tys)
+            }
+            else {
+              // resource type
+              T_struct([T_i8(), T_struct(tys)])
+            }
           }
           ty::ty_self { cx.tcx.sess.unimpl("type_of: ty_self"); }
           ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }

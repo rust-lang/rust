@@ -363,8 +363,11 @@ fn operator_prec(op: ast::binop) -> uint {
 }
 
 fn dtor_dec() -> fn_decl {
-    {inputs: [], output: @{id: 0, node: ty_nil, span: dummy_sp()},
-     purity: impure_fn, cf: return_val, constraints: []}
+    let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
+    // dtor has one argument, of type ()
+    {inputs: [{mode: ast::expl(ast::by_ref),
+               ty: nil_t, ident: "_", id: 0}],
+     output: nil_t, purity: impure_fn, cf: return_val, constraints: []}
 }
 
 // Local Variables:

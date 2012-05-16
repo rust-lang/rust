@@ -717,6 +717,48 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_res(did, inner, substs) {
         trans_res_drop(bcx, v0, did, inner, substs.tps)
       }
+      ty::ty_class(did, substs) {
+        let tcx = bcx.tcx();
+        alt ty::ty_dtor(tcx, did) {
+          some(dtor) {
+            let drop_flag = GEPi(bcx, v0, [0u, 0u]);
+            with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|cx|
+               let mut bcx = cx;
+                // we have to cast v0
+               let classptr = GEPi(bcx, v0, [0u, 1u]);
+                // Find and call the actual destructor
+                let dtor_addr = get_res_dtor(bcx.ccx(), dtor, substs.tps);
+                // The second argument is the "self" argument for drop
+                let params = lib::llvm::fn_ty_param_tys
+                   (llvm::LLVMGetElementType
+                    (llvm::LLVMTypeOf(dtor_addr)));
+                let self_arg = PointerCast(bcx, v0, params[1u]);
+                let args = [bcx.fcx.llretptr, self_arg];
+                let val_llty = lib::llvm::fn_ty_param_tys
+                    (llvm::LLVMGetElementType
+                     (llvm::LLVMTypeOf(dtor_addr)))[args.len()];
+                let val_cast = BitCast(bcx, classptr, val_llty);
+                #debug("fn_ty: %s", ty_str(bcx.ccx().tn,
+                                           (llvm::LLVMGetElementType
+                                            (llvm::LLVMTypeOf(dtor_addr)))));
+                #debug("self's ty: %s", val_str(bcx.ccx().tn, v0));
+                Call(bcx, dtor_addr, args + [val_cast]);
+                // Drop the fields
+                for vec::eachi(ty::class_items_as_fields(tcx, did, substs))
+                     {|i, fld|
+                         let llfld_a = GEPi(bcx, classptr, [0u, i]);
+                         bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
+                     }
+                Store(bcx, C_u8(0u), drop_flag);
+                bcx
+             }
+          }
+          none {
+            // No dtor? Just the default case
+            iter_structural_ty(bcx, v0, t, drop_ty)
+          }
+        }
+      }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v0, t, drop_ty)
       }
@@ -1015,11 +1057,12 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         ret next_cx;
       }
       ty::ty_class(did, substs) {
-          // a class is like a record type
-          for vec::eachi(ty::class_items_as_fields(cx.tcx(), did, substs))
+        assert(ty::ty_dtor(cx.tcx(), did) == none);
+        // a class w/ no dtor is like a record type
+        for vec::eachi(ty::class_items_as_fields(cx.tcx(), did, substs))
            {|i, fld|
-             let llfld_a = GEPi(cx, av, [0u, i]);
-             cx = f(cx, llfld_a, fld.mt.ty);
+               let llfld_a = GEPi(cx, av, [0u, i]);
+               cx = f(cx, llfld_a, fld.mt.ty);
            }
       }
       _ { cx.sess().unimpl("type in iter_structural_ty"); }
@@ -2340,16 +2383,24 @@ fn trans_rec_field(bcx: block, base: @ast::expr,
 
 fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
                          field: ast::ident, sp: span) -> lval_result {
+    let mut is_class_with_dtor = false;
     let fields = alt ty::get(ty).struct {
-            ty::ty_rec(fs) { fs }
-            ty::ty_class(did, substs) {
-                ty::class_items_as_fields(bcx.tcx(), did, substs) }
-            // Constraint?
-            _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
+       ty::ty_rec(fs) { fs }
+       ty::ty_class(did, substs) {
+         if option::is_some(ty::ty_dtor(bcx.tcx(), did)) {
+            is_class_with_dtor = true;
+         }
+         ty::class_items_as_fields(bcx.tcx(), did, substs)
+       }
+       // Constraint?
+       _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
                  base expr has non-record type"); }
-        };
+    };
     let ix = field_idx_strict(bcx.tcx(), sp, field, fields);
-    let val = GEPi(bcx, val, [0u, ix]);
+    let val = GEPi(bcx, if is_class_with_dtor {
+            GEPi(bcx, val, [0u, 1u])
+        }
+        else { val }, [0u, ix]);
     ret {bcx: bcx, val: val, kind: owned};
 }
 
@@ -4596,6 +4647,19 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   // So we initialize it here
 
   let selfptr = alloc_ty(bcx_top, rslt_ty);
+  // If we have a dtor, we have a two-word representation with a drop
+  // flag, then a pointer to the class itself
+  let valptr = if option::is_some(ty::ty_dtor(bcx_top.tcx(),
+                                  parent_id)) {
+    // Initialize the drop flag
+    let one = C_u8(1u);
+    let flag = GEPi(bcx_top, selfptr, [0u, 0u]);
+    Store(bcx_top, one, flag);
+    // Select the pointer to the class itself
+    GEPi(bcx_top, selfptr, [0u, 1u])
+  }
+  else { selfptr };
+
   // initialize fields to zero
   let fields = ty::class_items_as_fields(bcx_top.tcx(), parent_id,
                                          dummy_substs(psubsts.tys));
@@ -4604,7 +4668,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   // drop their LHS
   for fields.each {|field|
      let ix = field_idx_strict(bcx.tcx(), sp, field.ident, fields);
-     bcx = zero_alloca(bcx, GEPi(bcx, selfptr, [0u, ix]),
+     bcx = zero_alloca(bcx, GEPi(bcx, valptr, [0u, ix]),
                        field.mt.ty);
   }
 
@@ -4626,7 +4690,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
                     body: ast::blk, lldtor_decl: ValueRef,
                     dtor_id: ast::node_id,
                     parent_id: ast::def_id) {
-    let class_ty = ty::lookup_item_type(ccx.tcx, parent_id).ty;
+  let class_ty = ty::lookup_item_type(ccx.tcx, parent_id).ty;
   trans_fn(ccx, path, ast_util::dtor_dec(),
            body, lldtor_decl, impl_self(class_ty), none, dtor_id);
 }

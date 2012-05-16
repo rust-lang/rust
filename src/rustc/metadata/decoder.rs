@@ -16,6 +16,7 @@ import util::ppaux::ty_to_str;
 import ebml::deserializer;
 import syntax::diagnostic::span_handler;
 
+export class_dtor;
 export get_class_fields;
 export get_symbol;
 export get_enum_variants;
@@ -329,6 +330,19 @@ fn get_class_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
       some(found) { found }
       none { fail (#fmt("get_class_method: no method named %s", name)) }
     }
+}
+
+fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
+    let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
+    let cls_items = alt maybe_find_item(id, items) {
+            some(it) { it }
+            none     { ret none; }};
+    let mut rslt = none;
+    ebml::tagged_docs(cls_items, tag_item_dtor) {|f|
+        let did = parse_def_id(ebml::doc_data(f));
+        rslt = some(translate_def_id(cdata, did));
+    }
+    rslt
 }
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {

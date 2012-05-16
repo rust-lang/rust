@@ -201,8 +201,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          // FIXME: I don't *think* dtor needs to be serialized?
-          item_class(_, _, items, ctor, _dtor, _) {
+          item_class(_, _, items, ctor, m_dtor, _) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
@@ -212,6 +211,12 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             add_to_index(ebml_w, path, index, it.ident);
             #debug("ctor id: %d", ctor.node.id);
             encode_named_def_id(ebml_w, it.ident, local_def(ctor.node.id));
+            /* Encode id for dtor */
+            option::iter(m_dtor) {|dtor|
+                ebml_w.start_tag(tag_item_dtor);
+                encode_def_id(ebml_w, local_def(dtor.node.id));
+                ebml_w.end_tag();
+            };
             encode_class_item_paths(ebml_w, items, path + [it.ident],
                                       index);
             ebml_w.end_tag();
