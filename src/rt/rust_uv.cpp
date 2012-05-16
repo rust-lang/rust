@@ -456,7 +456,7 @@ rust_uv_current_kernel_malloc(size_t size) {
 	return current_kernel_malloc(size, "rust_uv_current_kernel_malloc");
 }
 
-extern "C" void*
+extern "C" void
 rust_uv_current_kernel_free(void* mem) {
-	return current_kernel_free(mem);
+	current_kernel_free(mem);
 }
