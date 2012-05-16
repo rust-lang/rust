@@ -223,7 +223,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         if str::len(num_str) == 0u {
             rdr.fatal("no valid digits found for number");
         }
-        let parsed = option::get(u64::from_str(num_str, base as u64));
+        let parsed = option::get(u64::from_str_radix(num_str, base as u64));
         alt tp {
           either::left(t) { ret token::LIT_INT(parsed as i64, t); }
           either::right(t) { ret token::LIT_UINT(parsed, t); }
@@ -271,7 +271,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         if str::len(num_str) == 0u {
             rdr.fatal("no valid digits found for number");
         }
-        let parsed = option::get(u64::from_str(num_str, base as u64));
+        let parsed = option::get(u64::from_str_radix(num_str, base as u64));
         ret token::LIT_INT(parsed as i64, ast::ty_i);
     }
 }

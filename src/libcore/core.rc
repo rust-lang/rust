@@ -95,10 +95,10 @@ mod i64 {
 mod uint {
     import inst::{
         div_ceil, div_round, div_floor, hash, iterate,
-        next_power_of_two, parse_buf, from_str, to_str, str
+        next_power_of_two
     };
     export div_ceil, div_round, div_floor, hash, iterate,
-    next_power_of_two, parse_buf, from_str, to_str, str;
+    next_power_of_two;
 
     #[path = "uint.rs"]
     mod inst;
@@ -131,9 +131,6 @@ mod u32 {
 #[doc = "Operations and constants for `u64`"]
 #[path = "uint-template"]
 mod u64 {
-    import inst::{ to_str, str, from_str };
-    export to_str, str, from_str;
-
     #[path = "u64.rs"]
     mod inst;
 }
