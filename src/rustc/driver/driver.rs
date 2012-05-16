@@ -672,7 +672,7 @@ fn early_error(emitter: diagnostic::emitter, msg: str) -> ! {
 }
 
 fn list_metadata(sess: session, path: str, out: io::writer) {
-    metadata::creader::list_file_metadata(sess, path, out);
+    metadata::loader::list_file_metadata(sess, path, out);
 }
 
 #[cfg(test)]

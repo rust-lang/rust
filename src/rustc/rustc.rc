@@ -117,6 +117,7 @@ mod metadata {
     export decoder;
     export tyencode;
     export tydecode;
+    export loader;
 
     mod common;
     mod tyencode;
@@ -126,6 +127,7 @@ mod metadata {
     mod creader;
     mod cstore;
     mod csearch;
+    mod loader;
 }
 
 mod driver {
