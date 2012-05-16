@@ -115,6 +115,7 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
 
 fn convert_class_item(ccx: @crate_ctxt,
                       rp: ast::region_param,
+                      bounds: @[ty::param_bounds],
                       v: ast_util::ivar) {
     /* we want to do something here, b/c within the
     scope of the class, it's ok to refer to fields &
@@ -123,6 +124,8 @@ fn convert_class_item(ccx: @crate_ctxt,
     class. outside the class, it's done with expr_field */
     let tt = ccx.to_ty(type_rscope(rp), v.ty);
     write_ty_to_tcx(ccx.tcx, v.id, tt);
+    /* add the field to the tcache */
+    ccx.tcx.tcache.insert(local_def(v.id), {bounds: bounds, rp: rp, ty: tt});
 }
 
 fn convert_methods(ccx: @crate_ctxt,
@@ -228,6 +231,8 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
+        tcx.tcache.insert(local_def(it.id), {bounds: tpt.bounds,
+              rp: rp, ty: tpt.ty});
         // Write the ctor type
         let t_ctor =
             ty::mk_fn(
@@ -264,7 +269,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         // Write the type of each of the members
         let (fields, methods) = split_class_items(members);
         for fields.each {|f|
-            convert_class_item(ccx, rp, f);
+           convert_class_item(ccx, rp, tpt.bounds, f);
         }
         // The selfty is just the class type
         let {bounds:_, substs} = mk_substs(ccx, tps, rp);
