@@ -1058,7 +1058,7 @@ impl assignment for infer_ctxt {
 // ______________________________________________________________________
 // Type combining
 //
-// There are three type combiners, sub, lub, and gub.  Each implements
+// There are three type combiners, sub, lub, and glb.  Each implements
 // the interface `combine` contains methods for combining two
 // instances of various things and yielding a new instance.  These
 // combiner methods always yield a `result<T>`---failure is propagated
