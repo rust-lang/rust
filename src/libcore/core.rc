@@ -13,7 +13,7 @@ built-in types and runtime services, or that is used in nearly every
 non-trivial program.
 
 `core` includes modules corresponding to each of the integer types, each of
-the floating point types, the `bool` type, tules, characters, strings, vectors
+the floating point types, the `bool` type, tuples, characters, strings, vectors
 (`vec`), shared boxes (`box`), and unsafe pointers (`ptr`).  Additionally,
 `core` provides very commonly used built-in types and operations, concurrency
 primitives, platform abstractions, I/O, and complete bindings to the C
