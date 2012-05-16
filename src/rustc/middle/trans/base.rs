@@ -1057,8 +1057,6 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         ret next_cx;
       }
       ty::ty_class(did, substs) {
-        assert(ty::ty_dtor(cx.tcx(), did) == none);
-        // a class w/ no dtor is like a record type
         for vec::eachi(ty::class_items_as_fields(cx.tcx(), did, substs))
            {|i, fld|
                let llfld_a = GEPi(cx, av, [0u, i]);
