@@ -97,9 +97,9 @@ fn to_str(n: T, radix: uint) -> str {
 fn str(i: T) -> str { ret to_str(i, 10u); }
 
 
-// FIXME: Has alignment issues on windows
+// FIXME: Has alignment issues on windows and 32-bit linux
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore]
 fn test_from_str() {
     assert from_str("0") == some(0 as T);
     assert from_str("3") == some(3 as T);
@@ -117,9 +117,9 @@ fn test_from_str() {
     assert from_str("x") == none;
 }
 
-// FIXME: Has alignment issues on windows
+// FIXME: Has alignment issues on windows and 32-bit linux
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore]
 fn test_parse_buf() {
     import str::bytes;
     assert parse_buf(bytes("123"), 10u) == some(123 as T);
