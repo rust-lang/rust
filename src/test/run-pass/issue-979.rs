@@ -1,5 +1,9 @@
-resource r(b: @mut int) {
-    *b += 1;
+class r {
+  let b: @mut int;
+  new(b: @mut int) {
+    self.b = b;
+  }
+  drop { *(self.b) += 1; }
 }
 
 fn main() {

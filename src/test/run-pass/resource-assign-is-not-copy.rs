@@ -1,4 +1,10 @@
-resource r(i: @mut int) { *i += 1; }
+class r {
+  let i: @mut int;
+  new(i: @mut int) {
+    self.i = i;
+  }
+  drop { *(self.i) += 1; }
+}
 
 fn main() {
     let i = @mut 0;

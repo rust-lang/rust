@@ -1,8 +1,12 @@
 // Resources can't be copied, but storing into data structures counts
 // as a move unless the stored thing is used afterwards.
 
-resource r(i: @mut int) {
-    *i = *i + 1;
+class r {
+  let i: @mut int;
+  new(i: @mut int) {
+    self.i = i;
+  }
+  drop { *(self.i) = *(self.i) + 1; }
 }
 
 fn test_box() {

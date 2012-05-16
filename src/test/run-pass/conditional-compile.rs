@@ -25,9 +25,13 @@ enum tg { foo, }
 enum tg { bar, }
 
 #[cfg(bogus)]
-resource r(i: int) { }
+class r {
+  new(i:int) {}
+}
 
-resource r(i: int) { }
+class r {
+  new(i:int) {}
+}
 
 #[cfg(bogus)]
 mod m {
