@@ -1481,7 +1481,7 @@ impl preserve_methods for preserve_ctxt {
             // Unsafe pointers are the user's problem
             ok(())
           }
-          cat_deref(_, derefs, gc_ptr) {
+          cat_deref(base, derefs, gc_ptr) {
             // GC'd pointers of type @MT: always stable because we can inc
             // the ref count or keep a GC root as necessary.  We need to
             // insert this id into the root_map, however.
@@ -1489,9 +1489,9 @@ impl preserve_methods for preserve_ctxt {
               some(scope_id) {
                 #debug["Inserting root map entry for %s: \
                         node %d:%u -> scope %d",
-                       self.bccx.cmt_to_repr(cmt), cmt.id,
+                       self.bccx.cmt_to_repr(cmt), base.id,
                        derefs, scope_id];
-                let rk = {id: cmt.id, derefs: derefs};
+                let rk = {id: base.id, derefs: derefs};
                 self.bccx.root_map.insert(rk, scope_id);
                 ok(())
               }
