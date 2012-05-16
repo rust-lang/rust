@@ -8,27 +8,35 @@ import result::*;
 import str::*;
 
 // data
-export tcp_socket, tcp_err_data;
+export tcp_socket, tcp_conn_port, tcp_err_data;
 // operations on a tcp_socket
 export write, read_start, read_stop;
 // tcp server stuff
-export listen, accept;
+export new_listener, listen_for_conn, accept;
 // tcp client stuff
 export connect;
 // misc util
 export is_responding;
+
+#[nolink]
+native mod rustrt {
+    fn rust_uv_current_kernel_malloc(size: libc::size_t) -> *libc::c_void;
+    fn rust_uv_current_kernel_free(mem: *libc::c_void);
+}
 
 #[doc="
 Encapsulates an open TCP/IP connection through libuv
 
 `tcp_socket` non-sendable and handles automatically closing the underlying libuv data structures when it goes out of scope.
 "]
-resource tcp_socket(socket_data: @tcp_socket_data) unsafe {
+resource tcp_socket(socket_data_wrap: @{data:*mut tcp_socket_data})
+    unsafe {
     let closed_po = comm::port::<()>();
     let closed_ch = comm::chan(closed_po);
     let close_data = {
         closed_ch: closed_ch
     };
+    let socket_data = (*socket_data_wrap).data;
     let close_data_ptr = ptr::addr_of(close_data);
     let stream_handle_ptr = ptr::addr_of((*socket_data).stream_handle);
     uv::hl::interact((*socket_data).hl_loop) {|loop_ptr|
@@ -39,7 +47,22 @@ resource tcp_socket(socket_data: @tcp_socket_data) unsafe {
         uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
     };
     comm::recv(closed_po);
+    log(debug, #fmt("about to free socket_data at %?", socket_data));
+    rustrt::rust_uv_current_kernel_free(socket_data as *libc::c_void);
     log(debug, "exiting dtor for tcp_socket");
+}
+
+resource tcp_conn_port(conn_data: @tcp_conn_port_data) unsafe {
+    let conn_data_ptr = ptr::addr_of(*conn_data);
+    let server_stream_ptr = ptr::addr_of((*conn_data_ptr).server_stream);
+    let stream_closed_po = (*conn_data).stream_closed_po;
+    let hl_loop = (*conn_data_ptr).hl_loop;
+    uv::hl::interact(hl_loop) {|loop_ptr|
+        log(debug, #fmt("dtor for tcp_conn_port loop: %?",
+                       loop_ptr));
+        uv::ll::close(server_stream_ptr, tcp_nl_close_cb);
+    }
+    comm::recv(stream_closed_po);
 }
 
 #[doc="
@@ -75,7 +98,8 @@ fn connect(input_ip: ip::ip_addr, port: uint)
     let conn_data_ptr = ptr::addr_of(conn_data);
     let hl_loop = uv::global_loop::get();
     let reader_po = comm::port::<result::result<[u8], tcp_err_data>>();
-    let socket_data = @{
+    let socket_data_ptr = new_socket_data();
+    *socket_data_ptr = {
         reader_po: reader_po,
         reader_ch: comm::chan(reader_po),
         stream_handle : uv::ll::tcp_t(),
@@ -86,8 +110,6 @@ fn connect(input_ip: ip::ip_addr, port: uint)
     log(debug, #fmt("tcp_connect result_ch %?", conn_data.result_ch));
     // get an unsafe representation of our stream_handle_ptr that
     // we can send into the interact cb to be handled in libuv..
-    let socket_data_ptr: *tcp_socket_data =
-        ptr::addr_of(*socket_data);
     log(debug, #fmt("stream_handl_ptr outside interact %?",
         ptr::addr_of((*socket_data_ptr).stream_handle)));
     uv::hl::interact(hl_loop) {|loop_ptr|
@@ -117,7 +139,8 @@ fn connect(input_ip: ip::ip_addr, port: uint)
                     // reusable data that we'll have for the
                     // duration..
                     uv::ll::set_data_for_uv_handle(stream_handle_ptr,
-                                               socket_data_ptr);
+                                               socket_data_ptr as
+                                                  *libc::c_void);
                     // just so the connect_cb can send the
                     // outcome..
                     uv::ll::set_data_for_req(connect_req_ptr,
@@ -151,7 +174,7 @@ fn connect(input_ip: ip::ip_addr, port: uint)
     alt comm::recv(result_po) {
       conn_success {
         log(debug, "tcp::connect - received success on result_po");
-        result::ok(tcp_socket(socket_data))
+        result::ok(tcp_socket(@{data:socket_data_ptr}))
       }
       conn_failure(err_data) {
         comm::recv(closed_signal_po);
@@ -177,7 +200,7 @@ A `result` object with a `()` value, in the event of success, or a
 "]
 fn write(sock: tcp_socket, raw_write_data: [[u8]])
     -> result::result<(), tcp_err_data> unsafe {
-    let socket_data_ptr = ptr::addr_of(**sock);
+    let socket_data_ptr = ((**sock).data);
     let write_req_ptr = ptr::addr_of((*socket_data_ptr).write_req);
     let stream_handle_ptr =
         ptr::addr_of((*socket_data_ptr).stream_handle);
@@ -231,11 +254,12 @@ on) from until `read_stop` is called, or a `tcp_err_data` record
 fn read_start(sock: tcp_socket)
     -> result::result<comm::port<
         result::result<[u8], tcp_err_data>>, tcp_err_data> unsafe {
-    let stream_handle_ptr = ptr::addr_of((**sock).stream_handle);
+    let socket_data = (**sock).data;
+    let stream_handle_ptr = ptr::addr_of((*socket_data).stream_handle);
     let start_po = comm::port::<option<uv::ll::uv_err_data>>();
     let start_ch = comm::chan(start_po);
     log(debug, "in tcp::read_start before interact loop");
-    uv::hl::interact((**sock).hl_loop) {|loop_ptr|
+    uv::hl::interact((*socket_data).hl_loop) {|loop_ptr|
         log(debug, #fmt("in tcp::read_start interact cb %?", loop_ptr));
         alt uv::ll::read_start(stream_handle_ptr as *uv::ll::uv_stream_t,
                                on_alloc_cb,
@@ -256,7 +280,7 @@ fn read_start(sock: tcp_socket)
         result::err(err_data.to_tcp_err())
       }
       none {
-        result::ok((**sock).reader_po)
+        result::ok((*socket_data).reader_po)
       }
     }
 }
@@ -266,10 +290,11 @@ Stop reading from an open TCP connection.
 "]
 fn read_stop(sock: tcp_socket) ->
     result::result<(), tcp_err_data> unsafe {
-    let stream_handle_ptr = ptr::addr_of((**sock).stream_handle);
+    let socket_data = (**sock).data;
+    let stream_handle_ptr = ptr::addr_of((*socket_data).stream_handle);
     let stop_po = comm::port::<option<tcp_err_data>>();
     let stop_ch = comm::chan(stop_po);
-    uv::hl::interact((**sock).hl_loop) {|loop_ptr|
+    uv::hl::interact((*socket_data).hl_loop) {|loop_ptr|
         log(debug, "in interact cb for tcp::read_stop");
         alt uv::ll::read_stop(stream_handle_ptr as *uv::ll::uv_stream_t) {
           0i32 {
@@ -303,39 +328,32 @@ Bind to a given IP/port and listen for new connections
 * `port` - a uint representing the port to listen on
 * `backlog` - a uint representing the number of incoming connections
 to cache in memory
-* `new_connect_cb` - a callback to be evaluated, on the libuv thread,
-whenever a client attempts to conect on the provided ip/port. The
-callback's arguments are:
-    * `new_conn` - an opaque type that can be passed to
-    `net::tcp::accept` in order to be converted to a `tcp_socket`.
-    * `kill_ch` - channel of type `comm::chan<option<tcp_err_data>>`. This
-    channel can be used to send a message to cause `listen` to begin
-    closing the underlying libuv data structures.
 
 # Returns
 
-A `result` instance containing empty data of type `()` on a successful
-or normal shutdown, and a `tcp_err_data` record in the event of listen
-exiting because of an error
+A `result` instance containing either a `tcp_conn_port` which can used
+to listen for, and accept, new connections, or a `tcp_err_data` if
+failure to create the tcp listener occurs
 "]
-fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
-          new_connect_cb: fn~(tcp_new_connection,
-                              comm::chan<option<tcp_err_data>>))
-    -> result::result<(), tcp_err_data> unsafe {
+fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint)
+    -> result::result<tcp_conn_port, tcp_err_data> unsafe {
     let stream_closed_po = comm::port::<()>();
-    let kill_po = comm::port::<option<tcp_err_data>>();
-    let server_stream = uv::ll::tcp_t();
-    let server_stream_ptr = ptr::addr_of(server_stream);
+    let stream_closed_ch = comm::chan(stream_closed_po);
     let hl_loop = uv::global_loop::get();
-    let server_data = {
-        server_stream_ptr: server_stream_ptr,
-        stream_closed_ch: comm::chan(stream_closed_po),
-        kill_ch: comm::chan(kill_po),
-        new_connect_cb: new_connect_cb,
+    let new_conn_po = comm::port::<result::result<*uv::ll::uv_tcp_t,
+                                                  tcp_err_data>>();
+    let new_conn_ch = comm::chan(new_conn_po);
+    let server_data: @tcp_conn_port_data = @{
+        server_stream: uv::ll::tcp_t(),
+        stream_closed_po: stream_closed_po,
+        stream_closed_ch: stream_closed_ch,
         hl_loop: hl_loop,
-        mut active: true
+        new_conn_po: new_conn_po,
+        new_conn_ch: new_conn_ch
     };
-    let server_data_ptr = ptr::addr_of(server_data);
+    let server_data_ptr = ptr::addr_of(*server_data);
+    let server_stream_ptr = ptr::addr_of((*server_data_ptr)
+                                         .server_stream);
 
     let setup_po = comm::port::<option<tcp_err_data>>();
     let setup_ch = comm::chan(setup_po);
@@ -349,7 +367,7 @@ fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
               0i32 {
                 alt uv::ll::listen(server_stream_ptr,
                                    backlog as libc::c_int,
-                                   tcp_listen_on_connection_cb) {
+                                   tcp_nl_on_connection_cb) {
                   0i32 {
                     uv::ll::set_data_for_uv_handle(
                         server_stream_ptr,
@@ -377,31 +395,13 @@ fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
           }
         }
     };
-    let mut kill_result: option<tcp_err_data> = none;
     alt comm::recv(setup_po) {
       some(err_data) {
         // we failed to bind/list w/ libuv
         result::err(err_data.to_tcp_err())
       }
       none {
-        kill_result = comm::recv(kill_po);
-        uv::hl::interact(hl_loop) {|loop_ptr|
-            log(debug, #fmt("tcp::listen post-kill recv hl interact %?",
-                            loop_ptr));
-            (*server_data_ptr).active = false;
-            uv::ll::close(server_stream_ptr, tcp_listen_close_cb);
-        };
-        comm::recv(stream_closed_po);
-        alt kill_result {
-          // some failure post bind/listen
-          some(err_data) {
-            result::err(err_data)
-          }
-          // clean exit
-          none {
-            result::ok(())
-          }
-        }
+        result::ok(tcp_conn_port(server_data))
       }
     }
 }
@@ -474,10 +474,11 @@ fn accept(new_conn: tcp_new_connection)
     alt new_conn{
       new_tcp_conn(server_handle_ptr) {
         let server_data_ptr = uv::ll::get_data_for_uv_handle(
-            server_handle_ptr) as *tcp_server_data;
+            server_handle_ptr) as *tcp_listen_fc_data;
         let reader_po = comm::port::<result::result<[u8], tcp_err_data>>();
         let hl_loop = (*server_data_ptr).hl_loop;
-        let client_socket_data = @{
+        let client_socket_data_ptr = new_socket_data();
+        *client_socket_data_ptr = {
             reader_po: reader_po,
             reader_ch: comm::chan(reader_po),
             stream_handle : uv::ll::tcp_t(),
@@ -485,7 +486,6 @@ fn accept(new_conn: tcp_new_connection)
             write_req : uv::ll::write_t(),
             hl_loop: hl_loop
         };
-        let client_socket_data_ptr = ptr::addr_of(*client_socket_data);
         let client_stream_handle_ptr = ptr::addr_of(
             (*client_socket_data_ptr).stream_handle);
 
@@ -510,7 +510,8 @@ fn accept(new_conn: tcp_new_connection)
               0i32 {
                 log(debug, "successfully accepted client connection");
                 uv::ll::set_data_for_uv_handle(client_stream_handle_ptr,
-                                               client_socket_data_ptr);
+                                               client_socket_data_ptr
+                                                   as *libc::c_void);
                 comm::send(result_ch, none);
               }
               _ {
@@ -532,7 +533,7 @@ fn accept(new_conn: tcp_new_connection)
             result::err(err_data)
           }
           none {
-            result::ok(tcp_socket(client_socket_data))
+            result::ok(tcp_socket(@{data: client_socket_data_ptr }))
           }
         }
       }
@@ -585,13 +586,142 @@ fn is_responding(remote_ip: ip::ip_addr, remote_port: uint,
     }
 }
 
-// INTERNAL API
+#[doc="
+Bind to a given IP/port and listen for new connections
+
+# Arguments
+
+* `host_ip` - a `net::ip::ip_addr` representing a unique IP
+(versions 4 or 6)
+* `port` - a uint representing the port to listen on
+* `backlog` - a uint representing the number of incoming connections
+to cache in memory
+* `on_establish_cb` - a callback that is evaluated if/when the listener
+is successfully established. it takes no parameters
+* `new_connect_cb` - a callback to be evaluated, on the libuv thread,
+whenever a client attempts to conect on the provided ip/port. the
+callback's arguments are:
+    * `new_conn` - an opaque type that can be passed to
+    `net::tcp::accept` in order to be converted to a `tcp_socket`.
+    * `kill_ch` - channel of type `comm::chan<option<tcp_err_data>>`. this
+    channel can be used to send a message to cause `listen` to begin
+    closing the underlying libuv data structures.
+
+# returns
+
+a `result` instance containing empty data of type `()` on a successful
+or normal shutdown, and a `tcp_err_data` record in the event of listen
+exiting because of an error
+"]
+fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
+          on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
+          new_connect_cb: fn~(tcp_new_connection,
+                              comm::chan<option<tcp_err_data>>))
+    -> result::result<(), tcp_err_data> unsafe {
+    let stream_closed_po = comm::port::<()>();
+    let kill_po = comm::port::<option<tcp_err_data>>();
+    let kill_ch = comm::chan(kill_po);
+    let server_stream = uv::ll::tcp_t();
+    let server_stream_ptr = ptr::addr_of(server_stream);
+    let hl_loop = uv::global_loop::get();
+    let server_data = {
+        server_stream_ptr: server_stream_ptr,
+        stream_closed_ch: comm::chan(stream_closed_po),
+        kill_ch: kill_ch,
+        new_connect_cb: new_connect_cb,
+        hl_loop: hl_loop,
+        mut active: true
+    };
+    let server_data_ptr = ptr::addr_of(server_data);
+
+    let setup_po = comm::port::<option<tcp_err_data>>();
+    let setup_ch = comm::chan(setup_po);
+    uv::hl::interact(hl_loop) {|loop_ptr|
+        let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
+                                                   port);
+        alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
+          0i32 {
+            alt uv::ll::tcp_bind(server_stream_ptr,
+                                 ptr::addr_of(tcp_addr)) {
+              0i32 {
+                alt uv::ll::listen(server_stream_ptr,
+                                   backlog as libc::c_int,
+                                   tcp_lfc_on_connection_cb) {
+                  0i32 {
+                    uv::ll::set_data_for_uv_handle(
+                        server_stream_ptr,
+                        server_data_ptr);
+                    comm::send(setup_ch, none);
+                  }
+                  _ {
+                    log(debug, "failure to uv_listen()");
+                    let err_data = uv::ll::get_last_err_data(loop_ptr);
+                    comm::send(setup_ch, some(err_data));
+                  }
+                }
+              }
+              _ {
+                log(debug, "failure to uv_tcp_bind");
+                let err_data = uv::ll::get_last_err_data(loop_ptr);
+                comm::send(setup_ch, some(err_data));
+              }
+            }
+          }
+          _ {
+            log(debug, "failure to uv_tcp_init");
+            let err_data = uv::ll::get_last_err_data(loop_ptr);
+            comm::send(setup_ch, some(err_data));
+          }
+        }
+    };
+    let mut kill_result: option<tcp_err_data> = none;
+    alt comm::recv(setup_po) {
+      some(err_data) {
+        // we failed to bind/list w/ libuv
+        result::err(err_data.to_tcp_err())
+      }
+      none {
+        on_establish_cb(kill_ch);
+        kill_result = comm::recv(kill_po);
+        uv::hl::interact(hl_loop) {|loop_ptr|
+            log(debug, #fmt("tcp::listen post-kill recv hl interact %?",
+                            loop_ptr));
+            (*server_data_ptr).active = false;
+            uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
+        };
+        comm::recv(stream_closed_po);
+        alt kill_result {
+          // some failure post bind/listen
+          some(err_data) {
+            result::err(err_data)
+          }
+          // clean exit
+          none {
+            result::ok(())
+          }
+        }
+      }
+    }
+}
+
+// internal api
 
 enum tcp_new_connection {
     new_tcp_conn(*uv::ll::uv_tcp_t)
 }
 
-type tcp_server_data = {
+type tcp_conn_port_data = {
+    server_stream: uv::ll::uv_tcp_t,
+    stream_closed_po: comm::port<()>,
+    stream_closed_ch: comm::chan<()>,
+    hl_loop: uv::hl::high_level_loop,
+    new_conn_po: comm::port<result::result<*uv::ll::uv_tcp_t,
+                                           tcp_err_data>>,
+    new_conn_ch: comm::chan<result::result<*uv::ll::uv_tcp_t,
+                                           tcp_err_data>>
+};
+
+type tcp_listen_fc_data = {
     server_stream_ptr: *uv::ll::uv_tcp_t,
     stream_closed_ch: comm::chan<()>,
     kill_ch: comm::chan<option<tcp_err_data>>,
@@ -601,16 +731,16 @@ type tcp_server_data = {
     mut active: bool
 };
 
-crust fn tcp_listen_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
+crust fn tcp_lfc_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
     let server_data_ptr = uv::ll::get_data_for_uv_handle(
-        handle) as *tcp_server_data;
+        handle) as *tcp_listen_fc_data;
     comm::send((*server_data_ptr).stream_closed_ch, ());
 }
 
-crust fn tcp_listen_on_connection_cb(handle: *uv::ll::uv_tcp_t,
+crust fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
                                      status: libc::c_int) unsafe {
     let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
-        as *tcp_server_data;
+        as *tcp_listen_fc_data;
     let kill_ch = (*server_data_ptr).kill_ch;
     alt (*server_data_ptr).active {
       true {
@@ -629,6 +759,80 @@ crust fn tcp_listen_on_connection_cb(handle: *uv::ll::uv_tcp_t,
         }
       }
       _ {
+      }
+    }
+}
+
+crust fn tcp_nl_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
+    let conn_data_ptr = uv::ll::get_data_for_uv_handle(
+        handle) as *tcp_conn_port_data;
+    comm::send((*conn_data_ptr).stream_closed_ch, ());
+}
+
+fn new_socket_data() -> *mut tcp_socket_data unsafe {
+    rustrt::rust_uv_current_kernel_malloc(
+        sys::size_of::<tcp_socket_data>()) as
+    *mut tcp_socket_data
+}
+
+crust fn tcp_nl_on_connection_cb(server_handle_ptr: *uv::ll::uv_tcp_t,
+                                     status: libc::c_int) unsafe {
+    let server_data_ptr = uv::ll::get_data_for_uv_handle(server_handle_ptr)
+        as *tcp_conn_port_data;
+    let new_conn_ch = (*server_data_ptr).new_conn_ch;
+    let loop_ptr = uv::ll::get_loop_for_uv_handle(server_handle_ptr);
+    alt status {
+      0i32 {
+        let hl_loop = (*server_data_ptr).hl_loop;
+        let reader_po = comm::port::<result::result<[u8], tcp_err_data>>();
+        let client_socket_data_ptr = new_socket_data();
+        *client_socket_data_ptr = {
+            reader_po: reader_po,
+            reader_ch: comm::chan(reader_po),
+            stream_handle : uv::ll::tcp_t(),
+            connect_req : uv::ll::connect_t(),
+            write_req : uv::ll::write_t(),
+            hl_loop: hl_loop
+        }; 
+        let client_stream_handle_ptr = ptr::addr_of(
+            (*client_socket_data_ptr).stream_handle);
+        alt uv::ll::tcp_init(loop_ptr, client_stream_handle_ptr) {
+          0i32 {
+            log(debug, "uv_tcp_init successful for client stream");
+            alt uv::ll::accept(
+                server_handle_ptr as *libc::c_void,
+                client_stream_handle_ptr as *libc::c_void) {
+              0i32 {
+                log(debug, "successfully accepted client connection");
+                uv::ll::set_data_for_uv_handle(client_stream_handle_ptr,
+                                               client_socket_data_ptr as
+                                               *libc::c_void);
+                comm::send(new_conn_ch,
+                           result::ok(client_stream_handle_ptr));
+              }
+              _ {
+                log(debug, "failed to accept client conn");
+                comm::send(
+                    new_conn_ch,
+                    result::err(uv::ll::get_last_err_data(loop_ptr)
+                        .to_tcp_err()));
+              }
+            }
+          }
+          _ {
+            log(debug, "failed to init client stream");
+            comm::send(
+                new_conn_ch,
+                result::err(uv::ll::get_last_err_data(loop_ptr)
+                    .to_tcp_err()));
+          }
+        }
+      }
+      _ {
+        comm::send(
+            new_conn_ch,
+            result::err(uv::ll::get_last_err_data(loop_ptr)
+                .to_tcp_err()));
       }
     }
 }
@@ -849,6 +1053,9 @@ mod test {
 
         let server_result_po = comm::port::<str>();
         let server_result_ch = comm::chan(server_result_po);
+
+        let cont_po = comm::port::<()>();
+        let cont_ch = comm::chan(cont_po);
         // server
         task::spawn_sched(task::manual_threads(1u)) {||
             let actual_req = comm::listen {|server_ch|
@@ -856,16 +1063,15 @@ mod test {
                     server_ip,
                     server_port,
                     expected_resp,
-                    server_ch)
+                    server_ch,
+                    cont_ch)
             };
             server_result_ch.send(actual_req);
         };
+        comm::recv(cont_po);
         // client
         log(debug, "server started, firing up client..");
         let actual_resp = comm::listen {|client_ch|
-            log(debug, "before client sleep");
-            timer::sleep(2u);
-            log(debug, "after client sleep");
             run_tcp_test_client(
                 server_ip,
                 server_port,
@@ -882,13 +1088,21 @@ mod test {
     }
 
     fn run_tcp_test_server(server_ip: str, server_port: uint, resp: str,
-                          server_ch: comm::chan<str>) -> str {
+                          server_ch: comm::chan<str>,
+                          cont_ch: comm::chan<()>) -> str {
 
         task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
-            let listen_result = listen(server_ip_addr, server_port, 128u)
-                // this callback is ran on the loop.
-                // .. should it go?
+            let listen_result =
+                listen_for_conn(server_ip_addr, server_port, 128u,
+                // on_establish_cb -- called when listener is set up
+                {|kill_ch|
+                    log(debug, #fmt("establish_cb %?",
+                        kill_ch));
+                    comm::send(cont_ch, ());
+                },
+                // risky to run this on the loop, but some users
+                // will want the POWER
                 {|new_conn, kill_ch|
                 log(debug, "SERVER: new connection!");
                 comm::listen {|cont_ch|
@@ -935,7 +1149,7 @@ mod test {
                     cont_ch.recv()
                 };
                 log(debug, "SERVER: recv'd on cont_ch..leaving listen cb");
-            };
+            });
             // err check on listen_result
             if result::is_failure(listen_result) {
                 let err_data = result::get_err(listen_result);
