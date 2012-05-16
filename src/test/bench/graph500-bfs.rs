@@ -115,14 +115,30 @@ fn make_graph(N: uint, edges: [(node_id, node_id)]) -> graph {
     }
 
     graph.map() {|v|
-        let mut neighbors = [];
-        v.each_key() {|u|
-            neighbors += [u];
-            true
-        };
-
-        neighbors
+        map::vec_from_set(v)
     }
+}
+
+fn gen_search_keys(graph: graph, n: uint) -> [node_id] {
+    let keys = map::int_hash();
+    let r = rand::rng();
+
+    impl methods for rand::rng {
+        fn r64() -> u64 {
+            self.next() as u64 << 32u + self.next() as u64
+        }
+    }
+
+    while keys.size() < n {
+        let k = r.r64() % graph.len() as node_id;
+
+        if graph[k].len() > 0u && vec::any(graph[k]) {|i|
+            i != k
+        } {
+            map::set_add(keys, k);
+        }
+    }
+    map::vec_from_set(keys)
 }
 
 #[doc="Returns a vector of all the parents in the BFS tree rooted at key.
@@ -315,7 +331,9 @@ fn validate(edges: [(node_id, node_id)],
 }
 
 fn main() {
-    let scale = 14u;
+    let scale = 15u;
+    let num_keys = 16u;
+    let do_validate = false;
 
     let start = time::precise_time_s();
     let edges = make_edges(scale, 16u);
@@ -335,21 +353,54 @@ fn main() {
                                  total_edges / 2u,
                                  stop - start));
 
-    let root = 0;
+    let mut total_seq = 0.0;
+    let mut total_par = 0.0;
+
+    gen_search_keys(graph, num_keys).map() {|root|
+        io::stdout().write_line("");
+        io::stdout().write_line(#fmt("Search key: %?", root));
     
-    let start = time::precise_time_s();
-    let bfs_tree = pbfs(graph, root);
-    let stop = time::precise_time_s();
+        let start = time::precise_time_s();
+        let bfs_tree = bfs(graph, root);
+        let stop = time::precise_time_s();
 
-    io::stdout().write_line(#fmt("BFS completed in %? seconds.",
-                                 stop - start));
+        total_seq += stop - start;
 
-    let start = time::precise_time_s();
-    assert(validate(edges, root, bfs_tree));
-    let stop = time::precise_time_s();
+        io::stdout().write_line(#fmt("Sequential BFS completed in %? seconds.",
+                                     stop - start));
 
-    io::stdout().write_line(#fmt("Validation completed in %? seconds.",
-                                 stop - start));
+        if do_validate {
+            let start = time::precise_time_s();
+            assert(validate(edges, root, bfs_tree));
+            let stop = time::precise_time_s();
+            
+            io::stdout().write_line(#fmt("Validation completed in %? seconds.",
+                                         stop - start));
+        }
+
+        let start = time::precise_time_s();
+        let bfs_tree = pbfs(graph, root);
+        let stop = time::precise_time_s();
+
+        total_par += stop - start;
+
+        io::stdout().write_line(#fmt("Parallel BFS completed in %? seconds.",
+                                     stop - start));
+
+        if do_validate {
+            let start = time::precise_time_s();
+            assert(validate(edges, root, bfs_tree));
+            let stop = time::precise_time_s();
+            
+            io::stdout().write_line(#fmt("Validation completed in %? seconds.",
+                                         stop - start));
+        }
+    };
+
+    io::stdout().write_line("");
+    io::stdout().write_line(
+        #fmt("Total sequential: %? \t Total Parallel: %? \t Speedup: %?x",
+             total_seq, total_par, total_seq / total_par));
 }
 
 
