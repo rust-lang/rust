@@ -56,8 +56,10 @@ mod middle {
             mod alt;
             mod vtable;
             mod writeback;
+            mod regionmanip;
             mod regionck;
             mod demand;
+            mod method;
         }
         mod astconv;
         mod infer;

@@ -1,0 +1,195 @@
+// Helper functions related to manipulating region types.
+
+// Helper for the other universally_quantify_*() routines.  Extracts the bound
+// regions from bound_tys and then replaces those same regions with fresh
+// variables in `sty`, returning the resulting type.
+fn universally_quantify_from_sty(fcx: @fn_ctxt,
+                                 span: span,
+                                 bound_tys: [ty::t],
+                                 sty: ty::sty) -> ty::t {
+
+    #debug["universally_quantify_from_sty(bound_tys=%?)",
+           bound_tys.map {|x| fcx.ty_to_str(x) }];
+    indent {||
+        let tcx = fcx.tcx();
+        let isr = collect_bound_regions_in_tys(tcx, @nil, bound_tys) { |br|
+            let rvar = fcx.next_region_var();
+            #debug["Bound region %s maps to %s",
+                   bound_region_to_str(fcx.ccx.tcx, br),
+                   region_to_str(fcx.ccx.tcx, rvar)];
+            rvar
+        };
+        let t_res = ty::fold_sty_to_ty(fcx.ccx.tcx, sty) { |t|
+            replace_bound_regions(tcx, span, isr, t)
+        };
+        #debug["Result of universal quant. is %s", fcx.ty_to_str(t_res)];
+        t_res
+    }
+}
+
+// Replaces all region parameters in the given type with region variables.
+// Does not descend into fn types.  This is used when deciding whether an impl
+// applies at a given call site.  See also universally_quantify_before_call().
+fn universally_quantify_regions(fcx: @fn_ctxt,
+                                span: span,
+                                ty: ty::t) -> ty::t {
+    universally_quantify_from_sty(fcx, span, [ty], ty::get(ty).struct)
+}
+
+// Expects a function type.  Replaces all region parameters in the arguments
+// and return type with fresh region variables. This is used when typechecking
+// function calls, bind expressions, and method calls.
+fn universally_quantify_regions_before_call(fcx: @fn_ctxt,
+                                            span: span,
+                                            ty: ty::t) -> ty::t {
+
+    #debug["universally_quantify_before_call(ty=%s)",
+           fcx.ty_to_str(ty)];
+
+    // This is subtle: we expect `ty` to be a function type, which normally
+    // introduce a level of binding.  In this case, we want to process the
+    // types bound by the function but not by any nested functions.
+    // Therefore, we match one level of structure.
+    alt structure_of(fcx, span, ty) {
+      sty @ ty::ty_fn(fty) {
+        let all_tys = fty.inputs.map({|a| a.ty}) + [fty.output];
+        universally_quantify_from_sty(fcx, span, all_tys, sty)
+      }
+      sty {
+        #debug["not a fn ty: %?", sty];
+
+        // if not a function type, we're gonna' report an error
+        // at some point, since the user is trying to call this thing
+        ty
+      }
+    }
+}
+
+fn replace_bound_regions(
+    tcx: ty::ctxt,
+    span: span,
+    isr: isr_alist,
+    ty: ty::t) -> ty::t {
+
+    ty::fold_regions(tcx, ty) { |r, in_fn|
+        alt r {
+          // As long as we are not within a fn() type, `&T` is mapped to the
+          // free region anon_r.  But within a fn type, it remains bound.
+          ty::re_bound(ty::br_anon) if in_fn { r }
+
+          ty::re_bound(br) {
+            alt isr.find(br) {
+              // In most cases, all named, bound regions will be mapped to
+              // some free region.
+              some(fr) { fr }
+
+              // But in the case of a fn() type, there may be named regions
+              // within that remain bound:
+              none if in_fn { r }
+              none {
+                tcx.sess.span_bug(
+                    span,
+                    #fmt["Bound region not found in \
+                          in_scope_regions list: %s",
+                         region_to_str(tcx, r)]);
+              }
+            }
+          }
+
+          // Free regions like these just stay the same:
+          ty::re_static |
+          ty::re_scope(_) |
+          ty::re_free(_, _) |
+          ty::re_var(_) { r }
+        }
+    }
+}
+
+/* Returns the region that &expr should be placed into.  If expr is an
+ * lvalue, this will be the region of the lvalue.  Otherwise, if region is
+ * an rvalue, the semantics are that the result is stored into a temporary
+ * stack position and so the resulting region will be the enclosing block.
+ */
+fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
+    fn borrow(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
+        ty::encl_region(fcx.ccx.tcx, expr.id)
+    }
+
+    fn deref(fcx: @fn_ctxt, base: @ast::expr) -> ty::region {
+        let base_ty = fcx.expr_ty(base);
+        let base_ty = structurally_resolved_type(fcx, base.span, base_ty);
+        alt ty::get(base_ty).struct {
+          ty::ty_rptr(region, _) { region }
+          ty::ty_box(_) | ty::ty_uniq(_) { borrow(fcx, base) }
+          _ { region_of(fcx, base) }
+        }
+    }
+
+    alt expr.node {
+      ast::expr_path(path) {
+        let defn = lookup_def(fcx, path.span, expr.id);
+        alt defn {
+          ast::def_local(local_id, _) |
+          ast::def_upvar(local_id, _, _) {
+            let local_scope = fcx.ccx.tcx.region_map.get(local_id);
+            ty::re_scope(local_scope)
+          }
+          _ {
+            ty::re_static
+          }
+        }
+      }
+      ast::expr_field(base, _, _) { deref(fcx, base) }
+      ast::expr_index(base, _) { deref(fcx, base) }
+      ast::expr_unary(ast::deref, base) { deref(fcx, base) }
+      _ { borrow(fcx, expr) }
+    }
+}
+
+fn collect_bound_regions_in_tys(
+    tcx: ty::ctxt,
+    isr: isr_alist,
+    tys: [ty::t],
+    to_r: fn(ty::bound_region) -> ty::region) -> isr_alist {
+
+    tys.foldl(isr) { |isr, t|
+        collect_bound_regions_in_ty(tcx, isr, t, to_r)
+    }
+}
+
+fn collect_bound_regions_in_ty(
+    tcx: ty::ctxt,
+    isr: isr_alist,
+    ty: ty::t,
+    to_r: fn(ty::bound_region) -> ty::region) -> isr_alist {
+
+    fn append_isr(isr: isr_alist,
+                  to_r: fn(ty::bound_region) -> ty::region,
+                  r: ty::region) -> isr_alist {
+        alt r {
+          ty::re_free(_, _) | ty::re_static | ty::re_scope(_) |
+          ty::re_var(_) {
+            isr
+          }
+          ty::re_bound(br) {
+            alt isr.find(br) {
+              some(_) { isr }
+              none { @cons((br, to_r(br)), isr) }
+            }
+          }
+        }
+    }
+
+    let mut isr = isr;
+
+    // Using fold_regions is inefficient, because it constructs new types, but
+    // it avoids code duplication in terms of locating all the regions within
+    // the various kinds of types.  This had already caused me several bugs
+    // so I decided to switch over.
+    ty::fold_regions(tcx, ty) { |r, in_fn|
+        if !in_fn { isr = append_isr(isr, to_r, r); }
+        r
+    };
+
+    ret isr;
+}
