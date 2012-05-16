@@ -168,6 +168,78 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     vec::from_mut(marks)
 }
 
+#[doc="Another version of the bfs function.
+
+This one uses the same algorithm as the parallel one, just without
+using the parallel vector operators."]
+fn bfs2(graph: graph, key: node_id) -> bfs_result {
+    // This works by doing functional updates of a color vector.
+
+    enum color {
+        white,
+        // node_id marks which node turned this gray/black.
+        // the node id later becomes the parent.
+        gray(node_id),
+        black(node_id)
+    };
+
+    let mut colors = vec::from_fn(graph.len()) {|i|
+        if i as node_id == key {
+            gray(key)
+        }
+        else {
+            white
+        }
+    };
+
+    fn is_gray(c: color) -> bool {
+        alt c {
+          gray(_) { true }
+          _ { false }
+        }
+    }
+
+    let mut i = 0u;
+    while vec::any(colors, is_gray) {
+        // Do the BFS.
+        log(info, #fmt("PBFS iteration %?", i));
+        i += 1u;
+        colors = colors.mapi() {|i, c|
+            let c : color = c;
+            alt c {
+              white {
+                let i = i as node_id;
+                
+                let neighbors = graph[i];
+                
+                let mut color = white;
+
+                neighbors.each() {|k|
+                    if is_gray(colors[k]) {
+                        color = gray(k);
+                        false
+                    }
+                    else { true }
+                };
+
+                color
+              }
+              gray(parent) { black(parent) }
+              black(parent) { black(parent) }
+            }
+        }
+    }
+
+    // Convert the results.
+    vec::map(colors) {|c|
+        alt c {
+          white { -1 }
+          black(parent) { parent }
+          _ { fail "Found remaining gray nodes in BFS" }
+        }
+    }
+}
+
 #[doc="A parallel version of the bfs function."]
 fn pbfs(graph: graph, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
@@ -368,6 +440,25 @@ fn main() {
 
         io::stdout().write_line(#fmt("Sequential BFS completed in %? seconds.",
                                      stop - start));
+
+        if do_validate {
+            let start = time::precise_time_s();
+            assert(validate(edges, root, bfs_tree));
+            let stop = time::precise_time_s();
+            
+            io::stdout().write_line(#fmt("Validation completed in %? seconds.",
+                                         stop - start));
+        }
+
+        let start = time::precise_time_s();
+        let bfs_tree = bfs2(graph, root);
+        let stop = time::precise_time_s();
+
+        //total_seq += stop - start;
+
+        io::stdout().write_line(
+            #fmt("Slow Sequential BFS completed in %? seconds.",
+                 stop - start));
 
         if do_validate {
             let start = time::precise_time_s();
