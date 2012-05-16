@@ -1,3 +1,147 @@
+/*
+
+# Type inference engine
+
+This is loosely based on standard HM-type inference, but with an
+extension to try and accommodate subtyping.  There is nothing
+principled about this extension; it's sound---I hope!---but it's a
+heuristic, ultimately, and does not guarantee that it finds a valid
+typing even if one exists (in fact, there are known scenarios where it
+fails, some of which may eventually become problematic).
+
+## Key idea
+
+The main change is that each type variable T is associated with a
+lower-bound L and an upper-bound U.  L and U begin as bottom and top,
+respectively, but gradually narrow in response to new constraints
+being introduced.  When a variable is finally resolved to a concrete
+type, it can (theoretically) select any type that is a supertype of L
+and a subtype of U.
+
+There are several critical invariants which we maintain:
+
+- the upper-bound of a variable only becomes lower and the lower-bound
+  only becomes higher over time;
+- the lower-bound L is always a subtype of the upper bound U;
+- the lower-bound L and upper-bound U never refer to other type variables,
+  but only to types (though those types may contain type variables).
+
+> An aside: if the terms upper- and lower-bound confuse you, think of
+> "supertype" and "subtype".  The upper-bound is a "supertype"
+> (super=upper in Latin, or something like that anyway) and the lower-bound
+> is a "subtype" (sub=lower in Latin).  I find it helps to visualize
+> a simple class hierarchy, like Java minus interfaces and
+> primitive types.  The class Object is at the root (top) and other
+> types lie in between.  The bottom type is then the Null type.
+> So the tree looks like:
+>
+>             Object
+>             /    \
+>         String   Other
+>             \    /
+>             (null)
+>
+> So the upper bound type is the "supertype" and the lower bound is the
+> "subtype" (also, super and sub mean upper and lower in Latin, or something
+> like that anyway).
+
+## Satisfying constraints
+
+At a primitive level, there is only one form of constraint that the
+inference understands: a subtype relation.  So the outside world can
+say "make type A a subtype of type B".  If there are variables
+involved, the inferencer will adjust their upper- and lower-bounds as
+needed to ensure that this relation is satisfied. (We also allow "make
+type A equal to type B", but this is translated into "A <: B" and "B
+<: A")
+
+As stated above, we always maintain the invariant that type bounds
+never refer to other variables.  This keeps the inference relatively
+simple, avoiding the scenario of having a kind of graph where we have
+to pump constraints along and reach a fixed point, but it does impose
+some heuristics in the case where the user is relating two type
+variables A <: B.
+
+The key point when relating type variables is that we do not know whta
+type the variable represents, but we must make some change that will
+ensure that, whatever types A and B are resolved to, they are resolved
+to types which have a subtype relation.
+
+There are basically two options here:
+
+- we can merge A and B.  Basically we make them the same variable.
+  The lower bound of this new variable is LUB(LB(A), LB(B)) and
+  the upper bound is GLB(UB(A), UB(B)).
+
+- we can adjust the bounds of A and B.  Because we do not allow
+  type variables to appear in each other's bounds, this only works if A
+  and B have appropriate bounds.  But if we can ensure that UB(A) <: LB(B),
+  then we know that whatever happens A and B will be resolved to types with
+  the appropriate relation.
+
+Our current technique is to *try* (transactionally) to relate the
+existing bounds of A and B, if there are any (i.e., if `UB(A) != top
+&& LB(B) != bot`).  If that succeeds, we're done.  If it fails, then
+we merge A and B into same variable.
+
+This is not clearly the correct course.  For example, if `UB(A) !=
+top` but `LB(B) == bot`, we could conceivably set `LB(B)` to `UB(A)`
+and leave the variables unmerged.  This is sometimes the better
+course, it depends on the program.
+
+The main case which fails today that I would like to support is:
+
+    fn foo<T>(x: T, y: T) { ... }
+
+    fn bar() {
+        let x: @mut int = @mut 3;
+        let y: @int = @3;
+        foo(x, y);
+    }
+
+In principle, the inferencer ought to find that the parameter `T` to
+`foo(x, y)` is `@const int`.  Today, however, it does not; this is
+because the type variable `T` is merged with the type variable for
+`X`, and thus inherits its UB/LB of `@mut int`.  This leaves no
+flexibility for `T` to later adjust to accommodate `@int`.
+
+## Transactional support
+
+Whenever we adjust merge variables or adjust their bounds, we always
+keep a record of the old value.  This allows the changes to be undone.
+
+## Regions
+
+I've only talked about type variables here, but region variables
+follow the same principle.  They have upper- and lower-bounds.  A
+region A is a subregion of a region B if A being valid implies that B
+is valid.  This basically corresponds to the block nesting structure:
+the regions for outer block scopes are superregions of those for inner
+block scopes.
+
+## GLB/LUB
+
+Computing the greatest-lower-bound and least-upper-bound of two
+types/regions is generally straightforward except when type variables
+are involved. In that case, we follow a similar "try to use the bounds
+when possible but otherwise merge the variables" strategy.  In other
+words, `GLB(A, B)` where `A` and `B` are variables will often result
+in `A` and `B` being merged and the result being `A`.
+
+## Type assignment
+
+We have a notion of assignability which differs somewhat from
+subtyping; in particular it may cause region borrowing to occur.  See
+the big comment later in this file on Type Assignment for specifics.
+
+# Implementation details
+
+We make use of a trait-like impementation strategy to consolidate
+duplicated code between subtypes, GLB, and LUB computations.  See the
+section on "Type Combining" below for details.
+
+*/
+
 import std::smallintmap;
 import std::smallintmap::smallintmap;
 import std::smallintmap::map;
@@ -914,27 +1058,46 @@ impl assignment for infer_ctxt {
 // ______________________________________________________________________
 // Type combining
 //
-// There are three type combiners, sub, lub, and gub.  `sub` is a bit
-// different from the other two: it takes two types and makes the first
-// a subtype of the other, or fails if this cannot be done.  It does
-// return a new type but its return value is meaningless---it is only
-// there to allow for greater code reuse.
-//
-// `lub` and `glb` compute the Least Upper Bound and Greatest Lower
-// Bound respectively of two types `a` and `b`.  The LUB is a mutual
-// supertype type `c` where `a <: c` and `b <: c`.  As the name
-// implies, it tries to pick the most precise `c` possible.  The GLB
-// is a mutual subtype, aiming for the most general such type
-// possible.  Both computations may fail.
+// There are three type combiners, sub, lub, and gub.  Each implements
+// the interface `combine` contains methods for combining two
+// instances of various things and yielding a new instance.  These
+// combiner methods always yield a `result<T>`---failure is propagated
+// upward using `chain()` methods.
 //
 // There is a lot of common code for these operations, which is
 // abstracted out into functions named `super_X()` which take a combiner
 // instance as the first parameter.  This would be better implemented
-// using traits.
+// using traits.  For this system to work properly, you should not
+// call the `super_X(foo, ...)` functions directly, but rather call
+// `foo.X(...)`.  The implemtation of `X()` can then choose to delegate
+// to the `super` routine or to do other things.
 //
-// The `super_X()` top-level items work for *sub, lub, and glb*: any
-// operation which varies will be dynamically dispatched using a
-// `self.Y()` operation.
+// In reality, the sub operation is rather different from lub/glb, but
+// they are combined into one interface to avoid duplication (they
+// used to be separate but there were many bugs because there were two
+// copies of most routines.
+//
+// The differences are:
+//
+// - when making two things have a sub relationship, the order of the
+//   arguments is significant (a <: b) and the return value of the
+//   combine functions is largely irrelevant.  The important thing is
+//   whether the action succeeds or fails.  If it succeeds, then side
+//   effects have been committed into the type variables.
+//
+// - for GLB/LUB, the order of arguments is not significant (GLB(a,b) ==
+//   GLB(b,a)) and the return value is important (it is the GLB).  Of
+//   course GLB/LUB may also have side effects.
+//
+// Contravariance
+//
+// When you are relating two things which have a contravariant
+// relationship, you should use `contratys()` or `contraregions()`,
+// rather than inversing the order of arguments!  This is necessary
+// because the order of arguments is not relevant for LUB and GLB.  It
+// is also useful to track which value is the "expected" value in
+// terms of error reporting, although we do not do that properly right
+// now.
 
 type cres<T> = result<T,ty::type_err>;
 
