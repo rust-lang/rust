@@ -16,7 +16,7 @@ import comm::*;
 import int::abs;
 
 type node_id = i64;
-type graph = [map::set<node_id>];
+type graph = [[node_id]];
 type bfs_result = [node_id];
 
 iface queue<T: send> {
@@ -114,7 +114,15 @@ fn make_graph(N: uint, edges: [(node_id, node_id)]) -> graph {
         true
     }
 
-    graph
+    graph.map() {|v|
+        let mut neighbors = [];
+        v.each_key() {|u|
+            neighbors += [u];
+            true
+        };
+
+        neighbors
+    }
 }
 
 #[doc="Returns a vector of all the parents in the BFS tree rooted at key.
@@ -132,7 +140,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     while Q.size() > 0u {
         let t = Q.pop_front();
 
-        graph[t].each_key() {|k| 
+        graph[t].each() {|k| 
             if marks[k] == -1 {
                 marks[k] = t;
                 Q.add_back(k);
@@ -142,6 +150,75 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     }
 
     vec::from_mut(marks)
+}
+
+#[doc="A parallel version of the bfs function."]
+fn pbfs(graph: graph, key: node_id) -> bfs_result {
+    // This works by doing functional updates of a color vector.
+
+    enum color {
+        white,
+        // node_id marks which node turned this gray/black.
+        // the node id later becomes the parent.
+        gray(node_id),
+        black(node_id)
+    };
+
+    let mut colors = vec::from_fn(graph.len()) {|i|
+        if i as node_id == key {
+            gray(key)
+        }
+        else {
+            white
+        }
+    };
+
+    fn is_gray(c: color) -> bool {
+        alt c {
+          gray(_) { true }
+          _ { false }
+        }
+    }
+
+    let mut i = 0u;
+    while par::any(colors, is_gray) {
+        // Do the BFS.
+        log(info, #fmt("PBFS iteration %?", i));
+        i += 1u;
+        colors = par::mapi(colors) {|i, c, copy colors|
+            let c : color = c;
+            alt c {
+              white {
+                let i = i as node_id;
+                
+                let neighbors = graph[i];
+                
+                let mut color = white;
+
+                neighbors.each() {|k|
+                    if is_gray(colors[k]) {
+                        color = gray(k);
+                        false
+                    }
+                    else { true }
+                };
+
+                color
+              }
+              gray(parent) { black(parent) }
+              black(parent) { black(parent) }
+            }
+        }
+    }
+
+    // Convert the results.
+    par::map(colors) {|c|
+        alt c {
+          white { -1 }
+          black(parent) { parent }
+          _ { fail "Found remaining gray nodes in BFS" }
+        }
+    }
 }
 
 #[doc="Performs at least some of the validation in the Graph500 spec."]
@@ -252,7 +329,7 @@ fn main() {
     let stop = time::precise_time_s();
 
     let mut total_edges = 0u;
-    vec::each(graph) {|edges| total_edges += edges.size(); true };
+    vec::each(graph) {|edges| total_edges += edges.len(); true };
 
     io::stdout().write_line(#fmt("Generated graph with %? edges in %? seconds.",
                                  total_edges / 2u,
@@ -261,7 +338,7 @@ fn main() {
     let root = 0;
     
     let start = time::precise_time_s();
-    let bfs_tree = bfs(graph, root);
+    let bfs_tree = pbfs(graph, root);
     let stop = time::precise_time_s();
 
     io::stdout().write_line(#fmt("BFS completed in %? seconds.",
@@ -342,6 +419,7 @@ like map or alli."]
 fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
     let len = xs.len();
     if len < min_granularity {
+        log(info, "small slice");
         // This is a small vector, fall back on the normal map.
         [f(0u, xs)]
     }
@@ -352,6 +430,7 @@ fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
 
         let mut futures = [];
         let mut base = 0u;
+        log(info, "spawning tasks");
         while base < len {
             let slice = vec::slice(xs, base,
                                    uint::min(len, base + items_per_task));
@@ -360,6 +439,7 @@ fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
             }];
             base += items_per_task;
         }
+        log(info, "tasks spawned");
 
         futures.map() {|ys|
             ys.get()
@@ -370,7 +450,16 @@ fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
 #[doc="A parallel version of map."]
 fn map<A: send, B: send>(xs: [A], f: fn~(A) -> B) -> [B] {
     vec::concat(map_slices(xs) {|_base, slice|
-        map(slice, f)
+        vec::map(slice, f)
+    })
+}
+
+#[doc="A parallel version of mapi."]
+fn mapi<A: send, B: send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
+    vec::concat(map_slices(xs) {|base, slice|
+        slice.mapi() {|i, x|
+            f(i + base, x)
+        }
     })
 }
 
@@ -382,4 +471,12 @@ fn alli<A: send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
         }
     }) {|x| x }
 }
+
+    #[doc="Returns true if the function holds for any elements in the vector."]
+    fn any<A: send>(xs: [A], f: fn~(A) -> bool) -> bool {
+        vec::any(map_slices(xs) {|_base, slice|
+            slice.any(f)
+        }) {|x| x }
+    }
+
 }
