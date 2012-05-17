@@ -44,6 +44,7 @@ export foldr;
 export any;
 export any2;
 export all;
+export alli;
 export all2;
 export contains;
 export count;
