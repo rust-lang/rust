@@ -239,6 +239,7 @@ fn resolve_crate_deps(e: env, cdata: @[u8]) -> cstore::cnum_map {
             #debug("need to load it");
             // This is a new one so we've got to load it
             // FIXME: Need better error reporting than just a bogus span
+            // #2404
             let fake_span = ast_util::dummy_sp();
             let local_cnum =
                 resolve_crate(e, cname, cmetas, dep.hash, fake_span);

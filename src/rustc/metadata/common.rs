@@ -132,3 +132,6 @@ fn hash_path(&&s: str) -> uint {
     for str::each(s) {|ch| h = (h << 5u) + h ^ (ch as uint); }
     ret h;
 }
+
+type link_meta = {name: str, vers: str, extras_hash: str};
+

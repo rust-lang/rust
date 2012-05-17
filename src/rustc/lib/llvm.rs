@@ -4,8 +4,8 @@ import libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
 
 type Opcode = u32;
 type Bool = c_uint;
-const True: Bool = 1u32; // FIXME: should be '1 as Bool'
-const False: Bool = 0u32;
+const True: Bool = 1 as Bool;
+const False: Bool = 0 as Bool;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 
@@ -75,9 +75,7 @@ enum Attribute {
     NonLazyBindAttribute = 2147483648,
 }
 
-// Consts for the LLVM IntPredicate type, pre-cast to uint.
-// FIXME: as above.
-
+// enum for the LLVM IntPredicate type
 enum IntPredicate {
     IntEQ = 32,
     IntNE = 33,
@@ -91,9 +89,7 @@ enum IntPredicate {
     IntSLE = 41,
 }
 
-// Consts for the LLVM RealPredicate type, pre-case to uint.
-// FIXME: as above.
-
+// enum for the LLVM RealPredicate type
 enum RealPredicate {
     RealOEQ = 1,
     RealOGT = 2,
@@ -109,6 +105,34 @@ enum RealPredicate {
     RealULT = 12,
     RealULE = 13,
     RealUNE = 14,
+}
+
+// enum for the LLVM TypeKind type - must stay in sync with the def of
+// LLVMTypeKind in llvm/include/llvm-c/Core.h
+enum TypeKind {
+    Void      = 0,
+    Half      = 1,
+    Float     = 2,
+    Double    = 3,
+    X86_FP80  = 4,
+    FP128     = 5,
+    PPC_FP128 = 6,
+    Label     = 7,
+    Integer   = 8,
+    Function  = 9,
+    Struct    = 10,
+    Array     = 11,
+    Pointer   = 12,
+    Vector    = 13,
+    Metadata  = 14,
+    X86_MMX   = 15
+}
+
+// FIXME: Not used right now, but will be once #2334 is fixed
+// Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
+enum FileType {
+    AssemblyFile = 0,
+    ObjectFile = 1
 }
 
 // Opaque pointer types
@@ -171,12 +195,7 @@ native mod llvm {
     fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *c_char);
 
     /** See llvm::LLVMTypeKind::getTypeID. */
-
-    // FIXME: returning int rather than TypeKind because
-    // we directly inspect the values, and casting from
-    // a native doesn't work yet (only *to* a native).
-
-    fn LLVMGetTypeKind(Ty: TypeRef) -> c_int;
+    fn LLVMGetTypeKind(Ty: TypeRef) -> TypeKind;
 
     /** See llvm::LLVMType::getContext. */
     fn LLVMGetTypeContext(Ty: TypeRef) -> ContextRef;
@@ -294,9 +313,7 @@ native mod llvm {
     /* Operations on scalar constants */
     fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool) ->
        ValueRef;
-    // FIXME: radix is actually u8, but our native layer can't handle this
-    // yet.  lucky for us we're little-endian. Small miracles.
-    fn LLVMConstIntOfString(IntTy: TypeRef, Text: *c_char, Radix: c_int) ->
+    fn LLVMConstIntOfString(IntTy: TypeRef, Text: *c_char, Radix: u8) ->
        ValueRef;
     fn LLVMConstIntOfStringAndSize(IntTy: TypeRef, Text: *c_char,
                                    SLen: c_uint,
@@ -764,8 +781,8 @@ native mod llvm {
     /** Adds the target data to the given pass manager. The pass manager
         references the target data only weakly. */
     fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
-    /** Returns the size of a type. FIXME: rv is actually a C_Ulonglong! */
-    fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
+    /** Returns the size of a type. */
+    fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
     fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
     /** Returns the preferred alignment of a type. */
     fn LLVMPreferredAlignmentOfType(TD: TargetDataRef,
@@ -879,10 +896,11 @@ native mod llvm {
     fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *c_char) ->
        MemoryBufferRef;
 
-    /* FIXME: The FileType is an enum.*/
     fn LLVMRustWriteOutputFile(PM: PassManagerRef, M: ModuleRef,
                                Triple: *c_char,
-                               Output: *c_char, FileType: c_int,
+                               // FIXME: When #2334 is fixed, change
+                               // c_uint to FileType
+                               Output: *c_char, FileType: c_uint,
                                OptLevel: c_int,
                                EnableSegmentedStacks: bool);
 
@@ -895,10 +913,6 @@ native mod llvm {
 
     /** Parses LLVM asm in the given file */
     fn LLVMRustParseAssemblyFile(Filename: *c_char) -> ModuleRef;
-
-    /** FiXME: Hacky adaptor for lack of c_ulonglong in FFI: */
-    fn LLVMRustConstInt(IntTy: TypeRef, N_hi: c_uint, N_lo: c_uint,
-                        SignExtend: Bool) -> ValueRef;
 
     fn LLVMRustAddPrintModulePass(PM: PassManagerRef, M: ModuleRef,
                                   Output: *c_char);
@@ -970,7 +984,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
 
     let outer = outer0 + [ty];
 
-    let kind: int = llvm::LLVMGetTypeKind(ty) as int;
+    let kind = llvm::LLVMGetTypeKind(ty);
 
     fn tys_str(names: type_names, outer: [TypeRef], tys: [TypeRef]) -> str {
         let mut s: str = "";
@@ -983,20 +997,18 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
     }
 
     alt kind {
-      // FIXME: more enum-as-int constants determined from Core::h;
-      // horrible, horrible. Complete as needed.
-      0 { ret "Void"; }
-      1 { ret "Half"; }
-      2 { ret "Float"; }
-      3 { ret "Double"; }
-      4 { ret "X86_FP80"; }
-      5 { ret "FP128"; }
-      6 { ret "PPC_FP128"; }
-      7 { ret "Label"; }
-      8 {
+      Void { ret "Void"; }
+      Half { ret "Half"; }
+      Float { ret "Float"; }
+      Double { ret "Double"; }
+      X86_FP80 { ret "X86_FP80"; }
+      FP128 { ret "FP128"; }
+      PPC_FP128 { ret "PPC_FP128"; }
+      Label { ret "Label"; }
+      Integer {
         ret "i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
-      9 {
+      Function {
         let mut s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args = llvm::LLVMCountParamTypes(ty) as uint;
@@ -1009,7 +1021,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += type_to_str_inner(names, outer, out_ty);
         ret s;
       }
-      10 {
+      Struct {
         let mut s: str = "{";
         let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
         let elts: [TypeRef] = vec::from_elem::<TypeRef>(n_elts, 0 as TypeRef);
@@ -1020,12 +1032,12 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         s += "}";
         ret s;
       }
-      11 {
+      Array {
         let el_ty = llvm::LLVMGetElementType(ty);
         ret "[" + type_to_str_inner(names, outer, el_ty) + " x " +
             uint::str(llvm::LLVMGetArrayLength(ty) as uint) + "]";
       }
-      12 {
+      Pointer {
         let mut i: uint = 0u;
         for outer0.each {|tout|
             i += 1u;
@@ -1045,10 +1057,9 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         ret addrstr + "*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
-      13 { ret "Vector"; }
-      14 { ret "Metadata"; }
-      15 { ret "X86_MMAX"; }
-      _ { #error("unknown TypeKind %d", kind as int); fail; }
+      Vector { ret "Vector"; }
+      Metadata { ret "Metadata"; }
+      X86_MMX { ret "X86_MMAX"; }
     }
 }
 

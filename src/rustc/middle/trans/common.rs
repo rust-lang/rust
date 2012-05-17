@@ -17,7 +17,8 @@ import lib::llvm::{llvm, target_data, type_names, associate_type,
                    name_has_type};
 import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
-import metadata::{csearch, encoder};
+import metadata::{csearch};
+import metadata::common::link_meta;
 import ast_map::path;
 import util::ppaux::ty_to_str;
 
@@ -77,7 +78,7 @@ type crate_ctxt = {
      reachable: reachable::map,
      item_symbols: hashmap<ast::node_id, str>,
      mut main_fn: option<ValueRef>,
-     link_meta: encoder::link_meta,
+     link_meta: link_meta,
      enum_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
@@ -749,9 +750,7 @@ fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 fn C_null(t: TypeRef) -> ValueRef { ret llvm::LLVMConstNull(t); }
 
 fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
-    let u_hi = (u >> 32u64) as c_uint;
-    let u_lo = u as c_uint;
-    ret llvm::LLVMRustConstInt(t, u_hi, u_lo, sign_extend);
+    ret llvm::LLVMConstInt(t, u, sign_extend);
 }
 
 fn C_floating(s: str, t: TypeRef) -> ValueRef {

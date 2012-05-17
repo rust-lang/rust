@@ -20,7 +20,6 @@ import std::ebml::serializer;
 import syntax::ast;
 import syntax::diagnostic::span_handler;
 
-export link_meta;
 export encode_parms;
 export encode_metadata;
 export encoded_ty;
@@ -32,9 +31,6 @@ export def_to_str;
 export encode_ctxt;
 export write_type;
 export encode_def_id;
-
-// FIXME: This probably belongs somewhere else
-type link_meta = {name: str, vers: str, extras_hash: str};
 
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
@@ -916,7 +912,7 @@ fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
             ebml_w.end_tag();
             ebml_w.end_tag();
           }
-          _ {/* FIXME (#611) */ }
+          _ {/* FIXME (#623): encode other variants */ }
         }
       }
       meta_list(name, items) {

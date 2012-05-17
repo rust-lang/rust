@@ -5,7 +5,7 @@ import syntax::codemap;
 import codemap::span;
 import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
-                   CallConv};
+        CallConv, TypeKind};
 import common::*;
 
 fn B(cx: block) -> BuilderRef {
@@ -399,7 +399,7 @@ fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
     let ccx = cx.fcx.ccx;
     if cx.unreachable {
         let ty = val_ty(PointerVal);
-        let eltty = if llvm::LLVMGetTypeKind(ty) == 11 as c_int {
+        let eltty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Array {
             llvm::LLVMGetElementType(ty) } else { ccx.int_type };
         ret llvm::LLVMGetUndef(eltty);
     }
@@ -632,7 +632,7 @@ fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
 fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
     let ccx = cx.fcx.ccx;
     let ty = val_ty(Fn);
-    let retty = if llvm::LLVMGetTypeKind(ty) == 8 as c_int {
+    let retty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Integer {
         llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
         count_insn(cx, "");
     ret llvm::LLVMGetUndef(retty);

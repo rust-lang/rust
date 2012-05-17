@@ -39,6 +39,7 @@ import link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_path_and_seq,
               mangle_exported_name};
 import metadata::{csearch, cstore, encoder};
+import metadata::common::link_meta;
 import util::ppaux::{ty_to_str, ty_to_short_str};
 
 import common::*;
@@ -5150,7 +5151,7 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
 }
 
 
-fn decl_crate_map(sess: session::session, mapmeta: encoder::link_meta,
+fn decl_crate_map(sess: session::session, mapmeta: link_meta,
                   llmod: ModuleRef) -> ValueRef {
     let targ_cfg = sess.targ_cfg;
     let int_type = T_int(targ_cfg);
@@ -5274,7 +5275,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map,
                maps: astencode::maps)
-    -> (ModuleRef, encoder::link_meta) {
+    -> (ModuleRef, link_meta) {
     let sha = std::sha1::sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
     let reachable = reachable::find_reachable(crate.node.module, emap, tcx,

@@ -578,8 +578,8 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
         let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         let n = str::from_bytes(ebml::doc_data(nd));
         let v = str::from_bytes(ebml::doc_data(vd));
-        // FIXME (#611): Should be able to decode meta_name_value variants,
-        // but currently they can't be encoded
+        // FIXME (#623): Should be able to decode meta_name_value variants,
+        // but currently the encoder just drops them
         items += [attr::mk_name_value_item_str(n, v)];
     };
     ebml::tagged_docs(md, tag_meta_item_list) {|meta_item_doc|

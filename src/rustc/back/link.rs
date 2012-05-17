@@ -6,11 +6,13 @@ import syntax::attr;
 import middle::ty;
 import metadata::{encoder, cstore};
 import middle::trans::common::crate_ctxt;
+import metadata::common::link_meta;
 import std::map::hashmap;
 import std::sha1::sha1;
 import syntax::ast;
 import syntax::print::pprust;
-import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
+import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
+        FileType};
 import util::filesearch;
 import middle::ast_map::{path, path_mod, path_name};
 
@@ -125,8 +127,6 @@ mod write {
         }
         if opts.verify { llvm::LLVMAddVerifierPass(pm.llpm); }
         if is_object_or_assembly_or_exe(opts.output_type) {
-            let LLVMAssemblyFile  = 0 as c_int;
-            let LLVMObjectFile    = 1 as c_int;
             let LLVMOptNone       = 0 as c_int; // -O0
             let LLVMOptLess       = 1 as c_int; // -O1
             let LLVMOptDefault    = 2 as c_int; // -O2, -Os
@@ -143,8 +143,8 @@ mod write {
             let mut FileType;
             if opts.output_type == output_type_object ||
                    opts.output_type == output_type_exe {
-                FileType = LLVMObjectFile;
-            } else { FileType = LLVMAssemblyFile; }
+               FileType = lib::llvm::ObjectFile;
+            } else { FileType = lib::llvm::AssemblyFile; }
             // Write optimized bitcode if --save-temps was on.
 
             if opts.save_temps {
@@ -169,7 +169,7 @@ mod write {
                                     llmod,
                                     buf_t,
                                     buf_o,
-                                    LLVMAssemblyFile,
+                                    lib::llvm::AssemblyFile as c_uint,
                                     CodeGenOptLevel,
                                     true)})});
                 }
@@ -189,7 +189,7 @@ mod write {
                                         llmod,
                                         buf_t,
                                         buf_o,
-                                        LLVMObjectFile,
+                                        lib::llvm::ObjectFile as c_uint,
                                         CodeGenOptLevel,
                                         true)})});
                 }
@@ -207,7 +207,7 @@ mod write {
                                     llmod,
                                     buf_t,
                                     buf_o,
-                                    FileType,
+                                    FileType as c_uint,
                                     CodeGenOptLevel,
                                     true)})});
             }
@@ -288,7 +288,7 @@ mod write {
  */
 
 fn build_link_meta(sess: session, c: ast::crate, output: str,
-                   sha: sha1) -> encoder::link_meta {
+                   sha: sha1) -> link_meta {
 
     type provided_metas =
         {name: option<str>,
@@ -412,7 +412,7 @@ fn truncated_sha1_result(sha: sha1) -> str unsafe {
 
 // This calculates STH for a symbol, as defined above
 fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t,
-               link_meta: encoder::link_meta) -> str {
+               link_meta: link_meta) -> str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -525,7 +525,7 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 fn link_binary(sess: session,
                obj_filename: str,
                out_filename: str,
-               lm: encoder::link_meta) {
+               lm: link_meta) {
     // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {

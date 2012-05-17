@@ -141,7 +141,6 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     decoder::get_type(cdata, def.node, tcx)
 }
 
-/* FIXME: Refactor */
 fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                   def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.sess.cstore;
