@@ -14,7 +14,7 @@
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
 import libc::c_uint;
-import std::{map, time};
+import std::{map, time, list};
 import std::map::hashmap;
 import std::map::{int_hash, str_hash};
 import driver::session;
@@ -5202,7 +5202,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         tcx: cx.tcx,
         reachable: cx.reachable,
         reexports: reexports(cx),
-        impl_map: cx.maps.impl_map,
+        impl_map: impl_map(cx, _),
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
         link_meta: cx.link_meta,
@@ -5226,6 +5226,20 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         ret reexports;
     }
 
+    fn impl_map(cx: @crate_ctxt,
+                id: ast::node_id) -> [(ast::ident, ast::def_id)] {
+        alt cx.maps.impl_map.get(id) {
+          list::cons(impls, @list::nil) {
+            (*impls).map {|i|
+                (i.ident, i.did)
+            }
+          }
+          _ {
+            cx.sess.bug(#fmt("encode_info_for_mod: empty impl_map \
+                              entry for %?", id));
+          }
+        }
+    }
 }
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {

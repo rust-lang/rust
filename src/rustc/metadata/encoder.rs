@@ -2,7 +2,7 @@
 
 import util::ppaux::ty_to_str;
 
-import std::{ebml, map, list};
+import std::{ebml, map};
 import std::map::hashmap;
 import io::writer_util;
 import ebml::writer;
@@ -17,7 +17,6 @@ import middle::ast_map;
 import syntax::attr;
 import std::serialization::serializer;
 import std::ebml::serializer;
-import middle::resolve;
 import syntax::ast;
 import syntax::diagnostic::span_handler;
 
@@ -49,7 +48,7 @@ type encode_parms = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     reexports: [(str, def_id)],
-    impl_map: resolve::impl_map,
+    impl_map: fn@(ast::node_id) -> [(ident, def_id)],
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
     link_meta: link_meta,
@@ -62,7 +61,7 @@ enum encode_ctxt = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     reexports: [(str, def_id)],
-    impl_map: resolve::impl_map,
+    impl_map: fn@(ast::node_id) -> [(ident, def_id)],
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
     link_meta: link_meta,
@@ -405,36 +404,31 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm');
     encode_name(ebml_w, name);
-    alt ecx.impl_map.get(id) {
-      list::cons(impls, @list::nil) {
-        for vec::each(*impls) {|i|
-            if ast_util::is_exported(i.ident, md) {
-                ebml_w.start_tag(tag_mod_impl);
+    let impls = ecx.impl_map(id);
+    for impls.each {|i|
+        let (ident, did) = i;
+        if ast_util::is_exported(ident, md) {
+            ebml_w.start_tag(tag_mod_impl);
             /* If did stands for an iface
-               ref, we need to map it to its parent class */
-                alt ecx.tcx.items.get(i.did.node) {
-                  ast_map::node_item(it@@{node: cl@item_class(*),_},_) {
-                    ebml_w.wr_str(def_to_str(local_def(it.id)));
-                    some(ty::lookup_item_type(ecx.tcx, i.did).ty)
-                  }
-                  ast_map::node_item(@{node: item_impl(_,_,
-                                           some(ifce),_,_),_},_) {
-                    ebml_w.wr_str(def_to_str(i.did));
-                    some(ty::node_id_to_type(ecx.tcx, ifce.id))
-                  }
-                  _ {
-                      ebml_w.wr_str(def_to_str(i.did)); none
-                  }
-                };
-                ebml_w.end_tag();
-            } // if
-            } // for
-      } // list::cons alt
-      _ {
-          ecx.diag.handler().bug(#fmt("encode_info_for_mod: empty impl_map \
-                                       entry for %?", path));
-      }
-    }
+            ref, we need to map it to its parent class */
+            alt ecx.tcx.items.get(did.node) {
+              ast_map::node_item(it@@{node: cl@item_class(*),_},_) {
+                ebml_w.wr_str(def_to_str(local_def(it.id)));
+                some(ty::lookup_item_type(ecx.tcx, did).ty)
+              }
+              ast_map::node_item(@{node: item_impl(_,_,
+                                                   some(ifce),_,_),_},_) {
+                ebml_w.wr_str(def_to_str(did));
+                some(ty::node_id_to_type(ecx.tcx, ifce.id))
+              }
+              _ {
+                ebml_w.wr_str(def_to_str(did)); none
+              }
+            };
+            ebml_w.end_tag();
+        } // if
+    } // for
+
     encode_path(ebml_w, path, ast_map::path_mod(name));
     ebml_w.end_tag();
 }
