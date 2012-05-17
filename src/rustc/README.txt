@@ -20,7 +20,8 @@ High-level concepts
 Rustc consists of the following subdirectories:
 
 front/    - front-end: attributes, conditional compilation
-middle/   - middle-end: resolving, typechecking, generating LLVM code
+middle/   - middle-end: name resolution, typechecking, LLVM code
+                  generation
 back/     - back-end: linking and ABI
 metadata/ - serializer and deserializer for data required by
                     separate compilation
@@ -83,8 +84,8 @@ Control and information flow within the compiler:
 - Multiple middle-end passes (middle/resolve.rs, middle/typeck.rs)
   analyze the semantics of the resulting AST. Each pass generates new
   information about the AST and stores it in various environment data
-  structures. The driver is in charge of passing the correct
-  environments to each compiler pass that needs to refer to them.
+  structures. The driver passes environments to each compiler pass
+  that needs to refer to them.
 
 - Finally middle/trans.rs translates the Rust AST to LLVM bitcode in a
   type-directed way. When it's finished synthesizing LLVM values,
