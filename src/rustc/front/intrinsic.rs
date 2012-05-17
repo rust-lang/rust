@@ -32,7 +32,7 @@ mod intrinsic {
 
         // FIXME: possibly pair these as enter/leave calls
         // not just enter with implicit number of subsequent
-        // calls.
+        // calls. (#2402)
         fn visit_vec_of(mutbl: uint) -> bool;
         fn visit_box_of(mutbl: uint) -> bool;
         fn visit_uniq_of(mutbl: uint) -> bool;
