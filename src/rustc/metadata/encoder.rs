@@ -48,7 +48,7 @@ type encode_parms = {
     diag: span_handler,
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
-    exp_map: resolve::exp_map,
+    reexports: [(str, def_id)],
     impl_map: resolve::impl_map,
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
@@ -61,7 +61,7 @@ enum encode_ctxt = {
     diag: span_handler,
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
-    exp_map: resolve::exp_map,
+    reexports: [(str, def_id)],
     impl_map: resolve::impl_map,
     item_symbols: hashmap<ast::node_id, str>,
     discrim_symbols: hashmap<ast::node_id, str>,
@@ -260,19 +260,13 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
 
 fn encode_reexport_paths(ebml_w: ebml::writer,
                          ecx: @encode_ctxt, &index: [entry<str>]) {
-    let tcx = ecx.tcx;
-    for ecx.exp_map.each {|exp_id, defs|
-        for defs.each {|def|
-            if !def.reexp { cont; }
-            let path = alt check tcx.items.get(exp_id) {
-              ast_map::node_export(_, path) { ast_map::path_to_str(*path) }
-            };
-            index += [{val: path, pos: ebml_w.writer.tell()}];
-            ebml_w.start_tag(tag_paths_data_item);
-            encode_name(ebml_w, path);
-            encode_def_id(ebml_w, def.id);
-            ebml_w.end_tag();
-        }
+    for ecx.reexports.each {|reexport|
+        let (path, def_id) = reexport;
+        index += [{val: path, pos: ebml_w.writer.tell()}];
+        ebml_w.start_tag(tag_paths_data_item);
+        encode_name(ebml_w, path);
+        encode_def_id(ebml_w, def_id);
+        ebml_w.end_tag();
     }
 }
 
@@ -1071,7 +1065,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> [u8] {
         diag: parms.diag,
         tcx: parms.tcx,
         reachable: parms.reachable,
-        exp_map: parms.exp_map,
+        reexports: parms.reexports,
         impl_map: parms.impl_map,
         item_symbols: parms.item_symbols,
         discrim_symbols: parms.discrim_symbols,

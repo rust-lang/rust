@@ -5197,17 +5197,33 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
     let encode_inlined_item =
         bind astencode::encode_inlined_item(_, _, _, _, cx.maps);
 
-    {
+    ret {
         diag: cx.sess.diagnostic(),
         tcx: cx.tcx,
         reachable: cx.reachable,
-        exp_map: cx.exp_map,
+        reexports: reexports(cx),
         impl_map: cx.maps.impl_map,
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
         link_meta: cx.link_meta,
         cstore: cx.sess.cstore,
         encode_inlined_item: encode_inlined_item
+    };
+
+    fn reexports(cx: @crate_ctxt) -> [(str, ast::def_id)] {
+        let mut reexports = [];
+        for cx.exp_map.each {|exp_id, defs|
+            for defs.each {|def|
+                if !def.reexp { cont; }
+                let path = alt check cx.tcx.items.get(exp_id) {
+                  ast_map::node_export(_, path) {
+                    ast_map::path_to_str(*path)
+                  }
+                };
+                reexports += [(path, def.id)];
+            }
+        }
+        ret reexports;
     }
 
 }
