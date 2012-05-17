@@ -42,6 +42,7 @@ export maybe_find_item; // sketchy
 export item_type; // sketchy
 export maybe_get_item_ast;
 export decode_inlined_item;
+export method_info, _impl;
 
 // Used internally by astencode:
 export translate_def_id;
@@ -416,8 +417,12 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     ret infos;
 }
 
+// NB: These types are duplicated in resolve.rs
+type method_info = {did: ast::def_id, n_tps: uint, ident: ast::ident};
+type _impl = {did: ast::def_id, ident: ast::ident, methods: [@method_info]};
+
 fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
-    -> [@middle::resolve::method_info] {
+    -> [@method_info] {
     let mut rslt = [];
     ebml::tagged_docs(item, tag_item_impl_method) {|doc|
         let m_did = parse_def_id(ebml::doc_data(doc));
@@ -434,7 +439,7 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
 fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
                      name: option<ast::ident>,
                      get_cdata: fn(ast::crate_num) -> cmd)
-    -> @[@middle::resolve::_impl] {
+    -> @[@_impl] {
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = [];

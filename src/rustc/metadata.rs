@@ -7,8 +7,6 @@ mod middle {
     export ast_map;
     import ty = middle_::ty;
     export ty;
-    import resolve = middle_::resolve;
-    export resolve;
 }
 
 mod front {
