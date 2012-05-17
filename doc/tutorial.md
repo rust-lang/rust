@@ -471,11 +471,11 @@ The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 `<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
 `&&` (and) and `||` (or).
 
-For type casting, Rust uses the binary `as` operator, which has a
-precedence between the bitwise combination operators (`&`, `|`, `^`)
-and the comparison operators. It takes an expression on the left side,
-and a type on the right side, and will, if a meaningful conversion
-exists, convert the result of the expression to the given type.
+For type casting, Rust uses the binary `as` operator, which has high
+precedence, just lower than multiplication and division.  It takes an
+expression on the left side, and a type on the right side, and will,
+if a meaningful conversion exists, convert the result of the
+expression to the given type.
 
 ~~~~
 let x: float = 4.0;
