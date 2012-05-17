@@ -89,6 +89,7 @@ mod write {
         // -Os, etc
         // FIXME3: Should we expose and use the pass lists used by the opt
         // tool?
+        // See #2396
 
         if opts.optimize != 0u {
             let fpm = mk_pass_manager();
@@ -661,6 +662,7 @@ fn link_binary(sess: session,
 
     // FIXME: At some point we want to rpath our guesses as to where
     // native libraries might live, based on the addl_lib_search_paths
+    // #2397
     cc_args += rpath::get_rpath_flags(sess, output);
 
     #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));

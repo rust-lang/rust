@@ -79,6 +79,7 @@ fn build_configuration(sess: session, argv0: str, input: input) ->
 fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
+    // #2399
     let mut words = [];
     for cfgspecs.each {|s| words += [attr::mk_word_item(s)]; }
     ret words;
@@ -99,6 +100,7 @@ fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
       }
       str_input(src) {
         // FIXME: Don't really want to box the source string
+        // #2319
         parse::parse_crate_from_source_str(
             anon_src(), @src, cfg, sess.parse_sess)
       }
@@ -369,7 +371,7 @@ fn host_triple() -> str {
     // normalize all ix86 architectures to i386.
     // FIXME: Instead of grabbing the host triple we really should be
     // grabbing (at compile time) the target triple that this rustc is
-    // built with and calling that (at runtime) the host triple.
+    // built with and calling that (at runtime) the host triple. (#2400)
     let ht = #env("CFG_HOST_TRIPLE");
     ret if ht != "" {
             ht
@@ -654,7 +656,7 @@ fn build_output_filenames(input: input,
             // FIXME: We might want to warn here; we're actually not going to
             // respect the user's choice of library name when it comes time to
             // link, we'll be linking to lib<basename>-<hash>-<version>.so no
-            // matter what.
+            // matter what. (#2401)
         }
 
         if odir != none {
