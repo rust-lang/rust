@@ -453,10 +453,10 @@ rust_uv_get_kernel_global_chan_ptr() {
 
 extern "C" void*
 rust_uv_current_kernel_malloc(size_t size) {
-	return current_kernel_malloc(size, "rust_uv_current_kernel_malloc");
+    return current_kernel_malloc(size, "rust_uv_current_kernel_malloc");
 }
 
 extern "C" void
 rust_uv_current_kernel_free(void* mem) {
-	current_kernel_free(mem);
+    current_kernel_free(mem);
 }
