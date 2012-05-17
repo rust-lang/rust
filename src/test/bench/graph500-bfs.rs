@@ -540,8 +540,11 @@ fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
         while base < len {
             let slice = vec::slice(xs, base,
                                    uint::min(len, base + items_per_task));
+            let f = ptr::addr_of(f);
             futures += [future::spawn() {|copy base|
-                f(base, slice)
+                unsafe {
+                    (*f)(base, slice)
+                }
             }];
             base += items_per_task;
         }
