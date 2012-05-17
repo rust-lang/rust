@@ -165,6 +165,7 @@ export mk_assignty;
 export resolve_shallow;
 export resolve_deep;
 export resolve_deep_var;
+export ty_and_region_var_methods;
 export compare_tys;
 export fixup_err, fixup_err_to_str;
 
@@ -195,6 +196,10 @@ enum infer_ctxt = @{
     tcx: ty::ctxt,
     vb: vals_and_bindings<ty::ty_vid, ty::t>,
     rb: vals_and_bindings<ty::region_vid, ty::region>,
+
+    // For keeping track of existing type/region variables.
+    ty_var_counter: @mut uint,
+    region_var_counter: @mut uint,
 };
 
 enum fixup_err {
@@ -219,8 +224,9 @@ type fres<T> = result::result<T, fixup_err>;
 fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
     infer_ctxt(@{tcx: tcx,
                  vb: {vals: smallintmap::mk(), mut bindings: []},
-                 rb: {vals: smallintmap::mk(), mut bindings: []}})
-}
+                 rb: {vals: smallintmap::mk(), mut bindings: []},
+                 ty_var_counter: @mut 0u,
+                 region_var_counter: @mut 0u})}
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
@@ -420,6 +426,32 @@ impl methods for infer_ctxt {
           }
         }
         ret r;
+    }
+}
+
+impl ty_and_region_var_methods for infer_ctxt {
+    fn next_ty_var_id() -> ty_vid {
+        let id = *self.ty_var_counter;
+        *self.ty_var_counter += 1u;
+        ret ty_vid(id);
+    }
+
+    fn next_ty_var() -> ty::t {
+        ty::mk_var(self.tcx, self.next_ty_var_id())
+    }
+
+    fn next_ty_vars(n: uint) -> [ty::t] {
+        vec::from_fn(n) {|_i| self.next_ty_var() }
+    }
+
+    fn next_region_var_id() -> region_vid {
+        let id = *self.region_var_counter;
+        *self.region_var_counter += 1u;
+        ret region_vid(id);
+    }
+
+    fn next_region_var() -> ty::region {
+        ret ty::re_var(self.next_region_var_id());
     }
 }
 

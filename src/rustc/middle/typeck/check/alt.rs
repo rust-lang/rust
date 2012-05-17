@@ -1,3 +1,5 @@
+import middle::typeck::infer::{ty_and_region_var_methods};
+
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
              discrim: @ast::expr,
@@ -5,7 +7,7 @@ fn check_alt(fcx: @fn_ctxt,
     let tcx = fcx.ccx.tcx;
     let mut bot = false;
 
-    let pattern_ty = fcx.next_ty_var();
+    let pattern_ty = fcx.infcx.next_ty_var();
     bot = check_expr_with(fcx, discrim, pattern_ty);
 
     // Typecheck the patterns first, so that we get types for all the
@@ -22,7 +24,7 @@ fn check_alt(fcx: @fn_ctxt,
         for arm.pats.each {|p| check_pat(pcx, p, pattern_ty);}
     }
     // Now typecheck the blocks.
-    let mut result_ty = fcx.next_ty_var();
+    let mut result_ty = fcx.infcx.next_ty_var();
     let mut arm_non_bot = false;
     for arms.each {|arm|
         alt arm.guard {

@@ -86,8 +86,6 @@ type fn_ctxt =
      proto: ast::proto,
      infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, ty_vid>,
-     ty_var_counter: @mut uint,
-     region_var_counter: @mut uint,
 
      mut blocks: [ast::node_id], // stack of blocks in scope, may be empty
      in_scope_regions: isr_alist,
@@ -181,13 +179,11 @@ fn check_fn(ccx: @crate_ctxt,
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
     let fcx: @fn_ctxt = {
-        let {infcx, locals, tvc, rvc, purity,
-             node_types, node_type_substs} = alt old_fcx {
+        let {infcx, locals, purity, node_types, node_type_substs} =
+        alt old_fcx {
           none {
             {infcx: infer::new_infer_ctxt(tcx),
              locals: int_hash(),
-             tvc: @mut 0u,
-             rvc: @mut 0u,
              purity: decl.purity,
              node_types: smallintmap::mk(),
              node_type_substs: map::int_hash()}
@@ -196,8 +192,6 @@ fn check_fn(ccx: @crate_ctxt,
             assert decl.purity == ast::impure_fn;
             {infcx: fcx.infcx,
              locals: fcx.locals,
-             tvc: fcx.ty_var_counter,
-             rvc: fcx.region_var_counter,
              purity: fcx.purity,
              node_types: fcx.node_types,
              node_type_substs: fcx.node_type_substs}
@@ -219,8 +213,6 @@ fn check_fn(ccx: @crate_ctxt,
           proto: proto,
           infcx: infcx,
           locals: locals,
-          ty_var_counter: tvc,
-          region_var_counter: rvc,
           mut blocks: [],
           in_scope_regions: isr,
           node_types: node_types,
@@ -265,7 +257,7 @@ fn check_fn(ccx: @crate_ctxt,
         let tcx = fcx.ccx.tcx;
 
         let assign = fn@(nid: ast::node_id, ty_opt: option<ty::t>) {
-            let var_id = fcx.next_ty_var_id();
+            let var_id = fcx.infcx.next_ty_var_id();
             fcx.locals.insert(nid, var_id);
             alt ty_opt {
               none {/* nothing to do */ }
@@ -429,13 +421,13 @@ impl of ast_conv for @fn_ctxt {
     }
 
     fn ty_infer(_span: span) -> ty::t {
-        self.next_ty_var()
+        self.infcx.next_ty_var()
     }
 }
 
 impl of region_scope for @fn_ctxt {
     fn anon_region() -> result<ty::region, str> {
-        result::ok(self.next_region_var())
+        result::ok(self.infcx.next_region_var())
     }
     fn named_region(id: str) -> result<ty::region, str> {
         empty_rscope.named_region(id).chain_err { |_e|
@@ -521,25 +513,6 @@ impl methods for @fn_ctxt {
     }
     fn opt_node_ty_substs(id: ast::node_id) -> option<ty::substs> {
         self.node_type_substs.find(id)
-    }
-    fn next_ty_var_id() -> ty_vid {
-        let id = *self.ty_var_counter;
-        *self.ty_var_counter += 1u;
-        ret ty_vid(id);
-    }
-    fn next_ty_var() -> ty::t {
-        ty::mk_var(self.ccx.tcx, self.next_ty_var_id())
-    }
-    fn next_ty_vars(n: uint) -> [ty::t] {
-        vec::from_fn(n) {|_i| self.next_ty_var() }
-    }
-    fn next_region_var_id() -> region_vid {
-        let id = *self.region_var_counter;
-        *self.region_var_counter += 1u;
-        ret region_vid(id);
-    }
-    fn next_region_var() -> ty::region {
-        ret ty::re_var(self.next_region_var_id());
     }
 
     fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
@@ -691,7 +664,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
                rp: rp,
                raw_ty: ty::mk_class(tcx, local_def(class_id),
                       {self_r: alt rp {
-                          ast::rp_self { some(fcx.next_region_var()) }
+                          ast::rp_self { some(fcx.infcx.next_region_var()) }
                           ast::rp_none { none }},
                        self_ty: none,
                        tps: ty::ty_params_to_tys(tcx, ts)})}
@@ -708,9 +681,9 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
 
     let self_r = alt rp {
       ast::rp_none { none }
-      ast::rp_self { some(fcx.next_region_var()) }
+      ast::rp_self { some(fcx.infcx.next_region_var()) }
     };
-    let tps = fcx.next_ty_vars(n_tps);
+    let tps = fcx.infcx.next_ty_vars(n_tps);
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};
     let substd_ty = ty::subst(tcx, substs, raw_ty);
@@ -772,7 +745,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                              } else {
                                  "s were"
                              }]);
-                fcx.next_ty_vars(supplied_arg_count)
+                fcx.infcx.next_ty_vars(supplied_arg_count)
             }
           }
 
@@ -875,7 +848,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let (if_t, if_bot) =
             alt elsopt {
               some(els) {
-                let if_t = fcx.next_ty_var();
+                let if_t = fcx.infcx.next_ty_var();
                 let thn_bot = check_block(fcx, thn);
                 let thn_t = fcx.node_ty(thn.node.id);
                 demand::suptype(fcx, thn.span, if_t, thn_t);
@@ -938,7 +911,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             // result [ML T] where TL <: T and TR <: T.  In other words, the
             // result type is (generally) the LUB of (TL, TR) and takes the
             // mutability from the LHS.
-            let t_var = fcx.next_ty_var();
+            let t_var = fcx.infcx.next_ty_var();
             let const_vec_t = ty::mk_vec(tcx, {ty: t_var,
                                                mutbl: ast::m_const});
             demand::suptype(fcx, lhs.span, const_vec_t, lhs_t);
@@ -960,7 +933,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
 
           (_, _) if ty::is_binopable(tcx, lhs_t, op) {
-            let tvar = fcx.next_ty_var();
+            let tvar = fcx.infcx.next_ty_var();
             demand::suptype(fcx, expr.span, tvar, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
             let rhs_t = alt op {
@@ -1087,7 +1060,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
           ast::expr_vec(args, mutbl) {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vec::len(args), vst);
-            let t: ty::t = fcx.next_ty_var();
+            let t: ty::t = fcx.infcx.next_ty_var();
             for args.each {|e| bot |= check_expr_with(fcx, e, t); }
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
@@ -1117,7 +1090,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_binary(ast::gt, lhs, rhs) |
       ast::expr_binary(ast::ge, lhs, rhs) {
         let tcx = fcx.ccx.tcx;
-        let tvar = fcx.next_ty_var();
+        let tvar = fcx.infcx.next_ty_var();
         bot |= check_expr_with(fcx, lhs, tvar);
         bot |= check_expr_with(fcx, rhs, tvar);
         fcx.write_ty(id, ty::mk_bool(tcx));
@@ -1463,7 +1436,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, t_1);
       }
       ast::expr_vec(args, mutbl) {
-        let t: ty::t = fcx.next_ty_var();
+        let t: ty::t = fcx.infcx.next_ty_var();
         for args.each {|e| bot |= check_expr_with(fcx, e, t); }
         let typ = ty::mk_vec(tcx, {ty: t, mutbl: mutbl});
         fcx.write_ty(id, typ);
@@ -1608,7 +1581,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                field, ty_to_str(tcx, t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
-                fcx.write_ty(id, fcx.next_ty_var());
+                fcx.write_ty(id, fcx.infcx.next_ty_var());
               }
             }
         }
@@ -1836,8 +1809,6 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash(),
-          ty_var_counter: @mut 0u,
-          region_var_counter: @mut 0u,
           mut blocks: [],
           in_scope_regions: @nil,
           node_types: smallintmap::mk(),
@@ -1878,8 +1849,6 @@ fn check_enum_variants(ccx: @crate_ctxt,
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash(),
-          ty_var_counter: @mut 0u,
-          region_var_counter: @mut 0u,
           mut blocks: [],
           in_scope_regions: @nil,
           node_types: smallintmap::mk(),
@@ -2148,24 +2117,24 @@ fn instantiate_path(fcx: @fn_ctxt,
     // For now, there is no way to explicitly specify the region bound.
     // This will have to change eventually.
     let self_r = alt tpt.rp {
-      ast::rp_self { some(fcx.next_region_var()) }
+      ast::rp_self { some(fcx.infcx.next_region_var()) }
       ast::rp_none { none }
     };
 
     let tps = if ty_substs_len == 0u {
-        fcx.next_ty_vars(ty_param_count)
+        fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_param_count == 0u {
         fcx.ccx.tcx.sess.span_err
             (sp, "this item does not take type parameters");
-        fcx.next_ty_vars(ty_param_count)
+        fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_substs_len > ty_param_count {
         fcx.ccx.tcx.sess.span_err
             (sp, "too many type parameters provided for this item");
-        fcx.next_ty_vars(ty_param_count)
+        fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_substs_len < ty_param_count {
         fcx.ccx.tcx.sess.span_err
             (sp, "not enough type parameters provided for this item");
-        fcx.next_ty_vars(ty_param_count)
+        fcx.infcx.next_ty_vars(ty_param_count)
     } else {
         pth.types.map { |aty| fcx.to_ty(aty) }
     };

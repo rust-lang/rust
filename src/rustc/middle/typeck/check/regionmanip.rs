@@ -1,3 +1,5 @@
+import middle::typeck::infer::{ty_and_region_var_methods};
+
 // Helper functions related to manipulating region types.
 
 // Helper for the other universally_quantify_*() routines.  Extracts the bound
@@ -13,7 +15,7 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
     indent {||
         let tcx = fcx.tcx();
         let isr = collect_bound_regions_in_tys(tcx, @nil, bound_tys) { |br|
-            let rvar = fcx.next_region_var();
+            let rvar = fcx.infcx.next_region_var();
             #debug["Bound region %s maps to %s",
                    bound_region_to_str(fcx.ccx.tcx, br),
                    region_to_str(fcx.ccx.tcx, rvar)];

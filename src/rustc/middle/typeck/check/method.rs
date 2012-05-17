@@ -1,6 +1,7 @@
 /* Code to handle method lookups (which can be quite complex) */
 
 import regionmanip::universally_quantify_regions;
+import middle::typeck::infer::{ty_and_region_var_methods};
 
 enum lookup = {
     fcx: @fn_ctxt,
@@ -266,18 +267,18 @@ impl methods for lookup {
         let n_tps_supplied = self.supplied_tps.len();
         let m_substs = {
             if n_tps_supplied == 0u {
-                self.fcx.next_ty_vars(n_tps_m)
+                self.fcx.infcx.next_ty_vars(n_tps_m)
             } else if n_tps_m == 0u {
                 tcx.sess.span_err(
                     self.expr.span,
                     "this method does not take type parameters");
-                self.fcx.next_ty_vars(n_tps_m)
+                self.fcx.infcx.next_ty_vars(n_tps_m)
             } else if n_tps_supplied != n_tps_m {
                 tcx.sess.span_err(
                     self.expr.span,
                     "incorrect number of type \
                      parameters given for this method");
-                self.fcx.next_ty_vars(n_tps_m)
+                self.fcx.infcx.next_ty_vars(n_tps_m)
             } else {
                 self.supplied_tps
             }
