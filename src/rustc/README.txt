@@ -1,10 +1,17 @@
 An informal guide to reading and working on the rustc compiler.
 ==================================================================
 
-If you wish to expand on this document, or have one of the
-slightly-more-familiar authors add anything else to it, please get in
-touch or file a bug. Your concerns are probably the same as someone
-else's.
+If you wish to expand on this document, or have a more experienced
+Rust contributor add anything else to it, please get in touch:
+
+https://github.com/mozilla/rust/wiki/Note-development-policy
+("Communication" subheading)
+
+or file a bug:
+
+https://github.com/mozilla/rust/issues
+
+Your concerns are probably the same as someone else's.
 
 
 High-level concepts
@@ -12,14 +19,20 @@ High-level concepts
 
 Rustc consists of the following subdirectories:
 
-syntax/   - pure syntax concerns: lexer, parser, AST.
 front/    - front-end: attributes, conditional compilation
-middle/   - middle-end: resolving, typechecking, translating
+middle/   - middle-end: resolving, typechecking, generating LLVM code
 back/     - back-end: linking and ABI
+metadata/ - serializer and deserializer for data required by
+                    separate compilation
 driver/   - command-line processing, main() entrypoint
 util/     - ubiquitous types and helper functions
 lib/      - bindings to LLVM
-pretty/   - pretty-printing
+
+The files concerned purely with syntax -- that is, the AST, parser,
+pretty-printer, lexer, macro expander, and utilities for traversing
+ASTs -- are in a separate crate called "rustsyntax", whose files are
+in ./../librustsyntax if the parent directory of front/, middle/,
+back/, and so on is . .
 
 The entry-point for the compiler is main() in driver/rustc.rs, and
 this file sequences the various parts together.
@@ -28,10 +41,9 @@ this file sequences the various parts together.
 The 3 central data structures:
 ------------------------------
 
-#1: syntax/ast.rs defines the AST. The AST is treated as immutable
-    after parsing despite containing some mutable types (hashtables
-    and such).  There are three interesting details to know about this
-    structure:
+#1: ../librustsyntax/ast.rs defines the AST. The AST is treated as immutable
+    after parsing, but it depends on mutable context data structures
+    (mainly hash maps) to give it meaning.
 
       - Many -- though not all -- nodes within this data structure are
         wrapped in the type spanned<T>, meaning that the front-end has
@@ -55,7 +67,7 @@ The 3 central data structures:
 
 #3: lib/llvm.rs defines the exported types ValueRef, TypeRef,
     BasicBlockRef, and several others. Each of these is an opaque
-    pointer to an LLVM type, manipulated through the lib.llvm
+    pointer to an LLVM type, manipulated through the lib::llvm
     interface.
 
 
@@ -65,13 +77,16 @@ Control and information flow within the compiler:
 - main() in driver/rustc.rs assumes control on startup. Options are
   parsed, platform is detected, etc.
 
-- front/parser.rs is driven over the input files.
+- librustsyntax/parse/parser.rs parses the input files and produces an
+  AST that represents the input crate.
 
-- Multiple middle-end passes (middle/resolve.rs, middle/typeck.rs) are
-  run over the resulting AST. Each pass generates new information
-  about the AST which is stored in various side data structures.
+- Multiple middle-end passes (middle/resolve.rs, middle/typeck.rs)
+  analyze the semantics of the resulting AST. Each pass generates new
+  information about the AST and stores it in various environment data
+  structures. The driver is in charge of passing the correct
+  environments to each compiler pass that needs to refer to them.
 
-- Finally middle/trans.rs is applied to the AST, which performs a
-  type-directed translation to LLVM-ese. When it's finished
-  synthesizing LLVM values, rustc asks LLVM to write them out in some
-  form (.bc, .o) and possibly run the system linker.
+- Finally middle/trans.rs translates the Rust AST to LLVM bitcode in a
+  type-directed way. When it's finished synthesizing LLVM values,
+  rustc asks LLVM to write them out in some form (.bc, .o) and
+  possibly run the system linker.
