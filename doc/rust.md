@@ -1850,11 +1850,12 @@ from strong to weak:
 
 ~~~~ {.precedence}
 * / %
+as
 + -
 << >> >>>
 &
-^ |
-as
+^
+|
 < > <= >=
 == !=
 &&
