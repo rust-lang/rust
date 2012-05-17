@@ -24,6 +24,34 @@ import astconv::{type_rscope, empty_rscope, in_binding_rscope, ast_conv,
                  ty_of_fn_decl, ty_of_arg, region_scope, ast_ty_to_ty};
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
+
+    // FIXME: hooking into the "intrinsic" root module is crude.
+    // there ought to be a better approach. Attributes?
+
+    for crate.node.module.items.each {|crate_item|
+        if crate_item.ident == "intrinsic" {
+            alt crate_item.node {
+              ast::item_mod(m) {
+                for m.items.each {|intrinsic_item|
+                    alt intrinsic_item.node {
+                      ast::item_iface(_, _, _) {
+                        let def_id = { crate: ast::local_crate,
+                                      node: intrinsic_item.id };
+                        let substs = {self_r: none, self_ty: none, tps: []};
+                        let ty = ty::mk_iface(ccx.tcx, def_id, substs);
+                        ccx.tcx.intrinsic_ifaces.insert
+                            (intrinsic_item.ident, (def_id, ty));
+                      }
+                      _ { }
+                    }
+                }
+              }
+              _ { }
+            }
+            break;
+        }
+    }
+
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_item: bind convert(ccx, _),
         visit_native_item: bind convert_native(ccx, _)
@@ -461,17 +489,11 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
                    ty::mk_imm_ptr(tcx, param(ccx, 0u))) }
       "needs_drop" { (1u, [], ty::mk_bool(tcx)) }
 
-      "visit_ty" { (2u, [arg(ast::by_ref, param(ccx, 1u))],
-                    ty::mk_nil(tcx)) }
-
-      "visit_val" { (2u, [arg(ast::by_ref, param(ccx, 0u)),
-                          arg(ast::by_ref, param(ccx, 1u))],
-                     ty::mk_nil(tcx)) }
-
-      "visit_val_pair" { (2u, [arg(ast::by_ref, param(ccx, 0u)),
-                               arg(ast::by_ref, param(ccx, 0u)),
-                               arg(ast::by_ref, param(ccx, 1u))],
-                          ty::mk_nil(tcx)) }
+      "visit_ty" {
+        assert ccx.tcx.intrinsic_ifaces.contains_key("ty_visitor");
+        let (_, visitor_iface) = ccx.tcx.intrinsic_ifaces.get("ty_visitor");
+        (1u, [arg(ast::by_ref, visitor_iface)], ty::mk_nil(tcx))
+      }
 
       other {
         tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +

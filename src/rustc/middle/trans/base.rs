@@ -641,13 +641,10 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
-    alt bcx.ccx().intrinsic_ifaces.find("visit_ty") {
-      some(iid) {
-        bcx = reflect::emit_calls_to_iface_visit_ty(bcx, t, v, iid);
-      }
-      none {
-      }
-    }
+    assert bcx.ccx().tcx.intrinsic_ifaces.contains_key("ty_visitor");
+    let (iid, ty) = bcx.ccx().tcx.intrinsic_ifaces.get("ty_visitor");
+    let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
+    bcx = reflect::emit_calls_to_iface_visit_ty(bcx, t, Load(bcx, v), iid);
     build_return(bcx);
 }
 
@@ -1073,6 +1070,7 @@ fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_visit_glue, static_ti);
 }
 
 fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
@@ -5302,7 +5300,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tn: tn,
           externs: str_hash::<ValueRef>(),
           intrinsics: intrinsics,
-          intrinsic_ifaces: reflect::find_intrinsic_ifaces(crate),
           item_vals: int_hash::<ValueRef>(),
           exp_map: emap,
           reachable: reachable,

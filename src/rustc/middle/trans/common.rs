@@ -72,7 +72,6 @@ type crate_ctxt = {
      tn: type_names,
      externs: hashmap<str, ValueRef>,
      intrinsics: hashmap<str, ValueRef>,
-     intrinsic_ifaces: hashmap<str, ast::def_id>,
      item_vals: hashmap<ast::node_id, ValueRef>,
      exp_map: resolve::exp_map,
      reachable: reachable::map,

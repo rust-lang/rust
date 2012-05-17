@@ -836,53 +836,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
       }
       "visit_ty" {
         let tp_ty = substs.tys[0];
-        let vp_ty = substs.tys[1];
         let visitor = get_param(decl, first_real_arg);
-
-        alt impl::find_vtable_in_fn_ctxt(substs,
-                                         1u, /* n_param */
-                                         0u  /* n_bound */ ) {
-
-          typeck::vtable_iface(iid, _) {
-            bcx = reflect::emit_calls_to_iface_visit_ty(bcx, tp_ty,
-                                                        visitor, iid);
-          }
-
-          // This case is a slightly weird and possibly redundant path in
-          // which we monomorphize the reflection interface.  FIXME:
-          // possibly remove this, it might be overkill.
-          typeck::vtable_static(impl_did, impl_substs, sub_origins) {
-            reflect::visit_ty_steps(bcx, tp_ty) {|mth_name, args|
-                let mth_id = impl::method_with_name(ccx, impl_did, mth_name);
-                let mth_ty = ty::lookup_item_type(ccx.tcx, mth_id).ty;
-                // FIXME: is this safe? There is no callee AST node,
-                // we're synthesizing it.
-                let callee_id = (-1) as ast::node_id;
-                let get_lval = {|bcx|
-                    let lval = lval_static_fn_inner(bcx, mth_id, callee_id,
-                                                    impl_substs,
-                                                    some(sub_origins));
-                    {env: self_env(visitor, vp_ty, none) with lval}
-                };
-                bcx = trans_call_inner(
-                    bcx, none, mth_ty, ty::mk_bool(ccx.tcx),
-                    get_lval, arg_vals(args), ignore);
-            }
-          }
-
-          _ {
-            ccx.sess.span_bug(item.span,
-                              "non-static callee in 'visit_ty' intrinsinc");
-          }
-        }
-      }
-
-      "visit_val" {
-        bcx.sess().unimpl("trans::native::visit_val");
-      }
-
-      "visit_val_pair" {
-        bcx.sess().unimpl("trans::native::visit_val_pair");
+        call_tydesc_glue(bcx, visitor, tp_ty, abi::tydesc_field_visit_glue);
       }
     }
     build_return(bcx);
