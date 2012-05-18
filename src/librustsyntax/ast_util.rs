@@ -521,6 +521,13 @@ fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
     compute_id_range { |f| visit_ids_for_inlined_item(item, f) }
 }
 
+pure fn is_item_impl(item: @ast::item) -> bool {
+    alt item.node {
+       item_impl(*) { true }
+       _            { false }
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

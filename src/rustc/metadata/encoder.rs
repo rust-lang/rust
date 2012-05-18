@@ -79,6 +79,13 @@ fn encode_def_id(ebml_w: ebml::writer, id: def_id) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
 }
 
+/* Encodes the given name, then def_id as tagged strings */
+fn encode_name_and_def_id(ebml_w: ebml::writer, nm: ident,
+                          id: node_id) {
+    encode_name(ebml_w, nm);
+    encode_def_id(ebml_w, local_def(id));
+}
+
 fn encode_region_param(ebml_w: ebml::writer, rp: region_param) {
     ebml_w.wr_tag(tag_region_param) {||
         serialize_region_param(ebml_w, rp)
@@ -146,90 +153,79 @@ fn encode_class_item_paths(ebml_w: ebml::writer,
 
 fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             module: _mod, path: [str], &index: [entry<str>]) {
-    // FIXME factor out add_to_index/start/encode_name/encode_def_id/end ops
     for module.items.each {|it|
         if !reachable(ecx, it.id) ||
            !ast_util::is_exported(it.ident, module) { cont; }
+        if !ast_util::is_item_impl(it) {
+            add_to_index(ebml_w, path, index, it.ident);
+        }
         alt it.node {
           item_const(_, _) {
-            add_to_index(ebml_w, path, index, it.ident);
             encode_named_def_id(ebml_w, it.ident, local_def(it.id));
           }
           item_fn(_, tps, _) {
-            add_to_index(ebml_w, path, index, it.ident);
             encode_named_def_id(ebml_w, it.ident, local_def(it.id));
           }
           item_mod(_mod) {
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_mod);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            encode_module_item_paths(ebml_w, ecx, _mod, path + [it.ident],
-                                     index);
-            ebml_w.end_tag();
+            ebml_w.wr_tag(tag_paths_data_mod) {||
+               encode_name_and_def_id(ebml_w, it.ident, it.id);
+               encode_module_item_paths(ebml_w, ecx, _mod, path + [it.ident],
+                                        index);
+            }
           }
           item_native_mod(nmod) {
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_mod);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            encode_native_module_item_paths(ebml_w, nmod, path + [it.ident],
-                                            index);
-            ebml_w.end_tag();
+            ebml_w.wr_tag(tag_paths_data_mod) {||
+              encode_name_and_def_id(ebml_w, it.ident, it.id);
+              encode_native_module_item_paths(ebml_w, nmod,
+                   path + [it.ident], index);
+            }
           }
           item_ty(_, tps, _) {
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            ebml_w.end_tag();
+            ebml_w.wr_tag(tag_paths_data_item) {||
+              encode_name_and_def_id(ebml_w, it.ident, it.id);
+            }
           }
           item_res(_, tps, _, _, ctor_id, _) {
+            ebml_w.wr_tag(tag_paths_data_item) {||
+                encode_name_and_def_id(ebml_w, it.ident, ctor_id);
+            }
+            // The same ident has to be added twice (with different positions)
+            // because it's for both the ctor and the dtor.
             add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(ctor_id));
-            ebml_w.end_tag();
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            ebml_w.end_tag();
+            ebml_w.wr_tag(tag_paths_data_item) {||
+                encode_name_and_def_id(ebml_w, it.ident, it.id);
+            }
           }
           item_class(_, _, items, ctor, m_dtor, _) {
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            ebml_w.end_tag();
-            ebml_w.start_tag(tag_paths);
-            add_to_index(ebml_w, path, index, it.ident);
-            #debug("ctor id: %d", ctor.node.id);
-            encode_named_def_id(ebml_w, it.ident, local_def(ctor.node.id));
-            /* Encode id for dtor */
-            option::iter(m_dtor) {|dtor|
-                ebml_w.start_tag(tag_item_dtor);
-                encode_def_id(ebml_w, local_def(dtor.node.id));
-                ebml_w.end_tag();
-            };
-            encode_class_item_paths(ebml_w, items, path + [it.ident],
-                                      index);
-            ebml_w.end_tag();
+            ebml_w.wr_tag(tag_paths_data_item) {||
+                encode_name_and_def_id(ebml_w, it.ident, it.id);
+            }
+            ebml_w.wr_tag(tag_paths) {||
+                // As in the res case, we add the same ident twice: for the
+                // class and for its ctor
+                add_to_index(ebml_w, path, index, it.ident);
+                encode_named_def_id(ebml_w, it.ident,
+                                    local_def(ctor.node.id));
+                /* Encode id for dtor */
+                option::iter(m_dtor) {|dtor|
+                        ebml_w.wr_tag(tag_item_dtor) {||
+                           encode_def_id(ebml_w, local_def(dtor.node.id));
+                    }
+                };
+                encode_class_item_paths(ebml_w, items, path + [it.ident],
+                                        index);
+            }
           }
           item_enum(variants, _, _) {
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            ebml_w.end_tag();
-            encode_enum_variant_paths(ebml_w, variants, path, index);
+              ebml_w.wr_tag(tag_paths_data_item) {||
+                  encode_name_and_def_id(ebml_w, it.ident, it.id);
+              }
+              encode_enum_variant_paths(ebml_w, variants, path, index);
           }
           item_iface(*) {
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.start_tag(tag_paths_data_item);
-            encode_name(ebml_w, it.ident);
-            encode_def_id(ebml_w, local_def(it.id));
-            ebml_w.end_tag();
+              ebml_w.wr_tag(tag_paths_data_item) {||
+                  encode_name_and_def_id(ebml_w, it.ident, it.id);
+              }
           }
           item_impl(*) {}
         }
@@ -629,7 +625,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      // FIXME: not sure if the dtor should be serialized
       item_class(tps, ifaces, items, ctor, _dtor, rp) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
@@ -810,7 +805,6 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
                 alt i.node {
-                   // FIXME: not doing anything with dtor
                    item_class(tps, _, _, ctor, _, _) {
                    /* this is assuming that ctors aren't inlined...
                       probably shouldn't assume that */
@@ -1023,6 +1017,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
     // the assumption that they are numbered 1 to n.
     // FIXME: This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
+    // See #2166
     ebml_w.start_tag(tag_crate_deps);
     for get_ordered_deps(cstore).each {|dep|
         encode_crate_dep(ebml_w, dep);
