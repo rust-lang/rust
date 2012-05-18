@@ -12,9 +12,12 @@ export tcp_socket, tcp_conn_port, tcp_err_data;
 // operations on a tcp_socket
 export write, read_start, read_stop;
 // tcp server stuff
-export new_listener, listen_for_conn, accept, conn_recv;
+export listen_for_conn, accept;
+export new_listener, conn_recv, conn_recv_spawn, conn_peek;
 // tcp client stuff
 export connect;
+// helper methods
+export conn_port_methods, sock_methods;
 
 #[nolink]
 native mod rustrt {
@@ -410,6 +413,8 @@ fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint)
 #[doc="
 Block on a `net::tcp::tcp_conn_port` until a new connection arrives
 
+This function behaves similarly to `comm::recv()`
+
 # Arguments
 
 * server_port -- a `net::tcp::tcp_conn_port` that you wish to listen
@@ -436,6 +441,22 @@ fn conn_recv(server_port: tcp_conn_port)
     }
 }
 
+#[doc="
+Identical to `net::tcp::conn_recv`, but ran on a new task
+
+The recv'd tcp_socket is created with a new task on the current scheduler,
+and given as a parameter to the provided callback
+
+# Arguments
+
+* `server_port` -- a `net::tcp::tcp_conn_port` that you wish to listen
+on for an incoming connection
+* `cb` -- a callback that will be ran, in a new task on the current scheduler,
+once a new connection is recv'd. Its parameter:
+  * A `result` object containing a `net::tcp::tcp_socket`, ready for immediate
+    use, as the `ok` varient, or a `net::tcp::tcp_err_data` for the `err`
+    variant
+"]
 fn conn_recv_spawn(server_port: tcp_conn_port,
                    cb: fn~(result::result<tcp_socket, tcp_err_data>)) {
     let new_conn_po = (**server_port).new_conn_po;
@@ -454,6 +475,19 @@ fn conn_recv_spawn(server_port: tcp_conn_port,
     };
 }
 
+#[doc="
+Check if a `net::tcp::tcp_conn_port` has one-or-more pending, new connections
+
+This function behaves similarly to `comm::peek()`
+
+# Arguments
+
+* `server_port` -- a `net::tcp::tcp_conn_port` representing a server connection
+
+# Returns
+
+`true` if there are one-or-more pending connections, `false` if there are none.
+"]
 fn conn_peek(server_port: tcp_conn_port) -> bool {
     let new_conn_po = (**server_port).new_conn_po;
     comm::peek(new_conn_po)
@@ -713,6 +747,33 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
     }
 }
 
+#[doc="
+Convenience methods extending `net::tcp::tcp_conn_port`
+"]
+impl conn_port_methods for tcp_conn_port {
+    fn recv() -> result::result<tcp_socket, tcp_err_data> { conn_recv(self) }
+    fn recv_spawn(cb: fn~(result::result<tcp_socket,tcp_err_data>))
+                  { conn_recv_spawn(self, cb); }
+    fn peek() -> bool { conn_peek(self) }
+}
+
+#[doc="
+Convenience methods extending `net::tcp::tcp_socket`
+"]
+impl sock_methods for tcp_socket {
+    fn read_start() -> result::result<comm::port<
+        result::result<[u8], tcp_err_data>>, tcp_err_data> {
+        read_start(self)
+    }
+    fn read_stop() ->
+        result::result<(), tcp_err_data> {
+        read_stop(self)
+    }
+    fn write(raw_write_data: [[u8]])
+        -> result::result<(), tcp_err_data> {
+        write(self, raw_write_data)
+    }
+}
 // INTERNAL API
 
 // various recv_* can use a tcp_conn_port can re-use this..
@@ -1256,7 +1317,7 @@ mod test {
             // receive a single new connection.. normally this'd be
             // in a loop {}, but we're just going to take a single
             // client.. get their req, write a resp and then exit
-            let new_conn_result = conn_recv(server_port);
+            let new_conn_result = server_port.recv();
             if result::is_failure(new_conn_result) {
                 let err_data = result::get_err(new_conn_result);
                 log(debug, #fmt("SERVER: exited abnormally name %s msg %s",
@@ -1324,7 +1385,7 @@ mod test {
     fn tcp_read_single(sock: tcp_socket)
         -> result::result<[u8],tcp_err_data> {
         log(debug, "starting tcp_read_single");
-        let rs_result = read_start(sock);
+        let rs_result = sock.read_start();
         if result::is_failure(rs_result) {
             let err_data = result::get_err(rs_result);
             result::err(err_data)
@@ -1345,6 +1406,7 @@ mod test {
               }
               some(data_result) {
                 log(debug, "tcp_read_single: got data");
+                sock.read_stop();
                 data_result
               }
             }
@@ -1352,7 +1414,7 @@ mod test {
     }
 
     fn tcp_write_single(sock: tcp_socket, val: [u8]) {
-        let write_result = write(sock, [val]);
+        let write_result = sock.write([val]);
         if result::is_failure(write_result) {
             log(debug, "tcp_write_single: write failed!");
             let err_data = result::get_err(write_result);
