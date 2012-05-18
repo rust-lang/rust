@@ -53,7 +53,7 @@ mod write {
 
     fn run_passes(sess: session, llmod: ModuleRef, output: str) {
         let opts = sess.opts;
-        if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
+        if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
         let mut pm = mk_pass_manager();
         let td = mk_target_data(
             sess.targ_cfg.target_strs.data_layout);
@@ -84,7 +84,7 @@ mod write {
               }
             }
         }
-        if opts.verify { llvm::LLVMAddVerifierPass(pm.llpm); }
+        if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
         // FIXME: This is mostly a copy of the bits of opt's -O2 that are
         // available in the C api.
         // FIXME2: We might want to add optimization levels like -O1, -O2,
@@ -125,7 +125,7 @@ mod write {
 
             llvm::LLVMPassManagerBuilderDispose(MPMB);
         }
-        if opts.verify { llvm::LLVMAddVerifierPass(pm.llpm); }
+        if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
         if is_object_or_assembly_or_exe(opts.output_type) {
             let LLVMOptNone       = 0 as c_int; // -O0
             let LLVMOptLess       = 1 as c_int; // -O1
@@ -214,7 +214,7 @@ mod write {
             // Clean up and return
 
             llvm::LLVMDisposeModule(llmod);
-            if opts.time_llvm_passes { llvm::LLVMRustPrintPassTimings(); }
+            if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
             ret;
         }
 
@@ -231,7 +231,7 @@ mod write {
         }
 
         llvm::LLVMDisposeModule(llmod);
-        if opts.time_llvm_passes { llvm::LLVMRustPrintPassTimings(); }
+        if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
     }
 }
 

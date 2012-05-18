@@ -12,10 +12,10 @@ import driver::session::session;
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> str {
     alt br {
-      br_anon                             { "&" }
-      br_named(str)                       { #fmt["&%s", str] }
-      br_self if cx.sess.opts.debug_rustc { "&<self>" }
-      br_self                             { "&self" }
+      br_anon                        { "&" }
+      br_named(str)                  { #fmt["&%s", str] }
+      br_self if cx.sess.ppregions() { "&<self>" }
+      br_self                        { "&self" }
     }
 }
 
@@ -51,7 +51,7 @@ fn region_to_str(cx: ctxt, region: region) -> str {
       re_scope(node_id) { #fmt["&%s", re_scope_id_to_str(cx, node_id)] }
       re_bound(br) { bound_region_to_str(cx, br) }
       re_free(id, br) {
-        if cx.sess.opts.debug_rustc {
+        if cx.sess.ppregions() {
             // For debugging, this version is sometimes helpful:
             #fmt["{%d} %s", id, bound_region_to_str(cx, br)]
         } else {

@@ -23,6 +23,26 @@ type config =
      uint_type: uint_ty,
      float_type: float_ty};
 
+const ppregions: uint = 1u;
+const time_passes: uint = 2u;
+const count_llvm_insns: uint = 4u;
+const time_llvm_passes: uint = 8u;
+const stats: uint = 16u;
+const no_asm_comments: uint = 32u;
+const no_verify: uint = 64u;
+
+fn debugging_opts_map() -> [(str, str, uint)] {
+    [("ppregions", "prettyprint regions with \
+                    internal repr details", ppregions),
+     ("time-passes", "measure time of each rustc pass", time_passes),
+     ("count-llvm-insns", "count where LLVM \
+                           instrs originate", count_llvm_insns),
+     ("time-llvm-passes", "measure time of each LLVM pass", time_llvm_passes),
+     ("stats", "gather trans statistics", stats),
+     ("no-asm-comments", "omit comments when using -S", no_asm_comments),
+     ("no-verify", "skip LLVM verification", no_verify)]
+}
+
 type options =
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
@@ -31,13 +51,8 @@ type options =
      optimize: uint,
      debuginfo: bool,
      extra_debuginfo: bool,
-     verify: bool,
      lint_opts: [(lint::lint, lint::level)],
      save_temps: bool,
-     stats: bool,
-     time_passes: bool,
-     count_llvm_insns: bool,
-     time_llvm_passes: bool,
      output_type: back::link::output_type,
      addl_lib_search_paths: [str],
      maybe_sysroot: option<str>,
@@ -46,8 +61,8 @@ type options =
      test: bool,
      parse_only: bool,
      no_trans: bool,
-     no_asm_comments: bool,
-     debug_rustc: bool,
+
+     debugging_opts: uint,
 
      // temporary hack: 0=off,1=warn,2=err --> if 2, alias is disabled
      borrowck: uint,
@@ -116,6 +131,16 @@ impl session for session {
     fn diagnostic() -> diagnostic::span_handler {
         self.span_diagnostic
     }
+    fn debugging_opt(opt: uint) -> bool {
+        (self.opts.debugging_opts & opt) != 0u
+    }
+    fn ppregions() -> bool { self.debugging_opt(ppregions) }
+    fn time_passes() -> bool { self.debugging_opt(time_passes) }
+    fn count_llvm_insns() -> bool { self.debugging_opt(count_llvm_insns) }
+    fn time_llvm_passes() -> bool { self.debugging_opt(time_llvm_passes) }
+    fn stats() -> bool { self.debugging_opt(stats) }
+    fn no_asm_comments() -> bool { self.debugging_opt(no_asm_comments) }
+    fn no_verify() -> bool { self.debugging_opt(no_verify) }
 }
 
 #[doc = "Some reasonable defaults"]
@@ -126,13 +151,8 @@ fn basic_options() -> @options {
         optimize: 0u,
         debuginfo: false,
         extra_debuginfo: false,
-        verify: false,
         lint_opts: [],
         save_temps: false,
-        stats: false,
-        time_passes: false,
-        count_llvm_insns: false,
-        time_llvm_passes: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: [],
         maybe_sysroot: none,
@@ -141,8 +161,7 @@ fn basic_options() -> @options {
         test: false,
         parse_only: false,
         no_trans: false,
-        no_asm_comments: false,
-        debug_rustc: false,
+        debugging_opts: 0u,
         borrowck: 0u,
     }
 }

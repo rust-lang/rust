@@ -7,6 +7,7 @@ import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
         CallConv, TypeKind};
 import common::*;
+import driver::session::session;
 
 fn B(cx: block) -> BuilderRef {
     let b = *cx.fcx.ccx.builder;
@@ -15,7 +16,7 @@ fn B(cx: block) -> BuilderRef {
 }
 
 fn count_insn(cx: block, category: str) {
-    if (cx.ccx().sess.opts.count_llvm_insns) {
+    if cx.ccx().sess.count_llvm_insns() {
 
         let h = cx.ccx().stats.llvm_insns;
         let v = cx.ccx().stats.llvm_insn_ctxt;
@@ -640,7 +641,7 @@ fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
 
 fn add_span_comment(bcx: block, sp: span, text: str) {
     let ccx = bcx.ccx();
-    if !ccx.sess.opts.no_asm_comments {
+    if !ccx.sess.no_asm_comments() {
         let s = text + " (" + codemap::span_to_str(sp, ccx.sess.codemap)
             + ")";
         log(debug, s);
@@ -650,7 +651,7 @@ fn add_span_comment(bcx: block, sp: span, text: str) {
 
 fn add_comment(bcx: block, text: str) {
     let ccx = bcx.ccx();
-    if (!ccx.sess.opts.no_asm_comments) {
+    if !ccx.sess.no_asm_comments() {
         let sanitized = str::replace(text, "$", "");
         let comment_text = "# " + sanitized;
         let asm = str::as_c_str(comment_text, {|c|

@@ -237,7 +237,7 @@ fn store_environment(bcx: block,
     vec::iteri(bound_values) { |i, bv|
         #debug["Copy %s into closure", ev_to_str(ccx, bv)];
 
-        if (!ccx.sess.opts.no_asm_comments) {
+        if !ccx.sess.no_asm_comments() {
             add_comment(bcx, #fmt("Copy %s into closure",
                                   ev_to_str(ccx, bv)));
         }

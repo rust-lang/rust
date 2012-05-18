@@ -91,14 +91,11 @@ endif
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
-ifdef ENFORCE_MUT_VARS
-  CFG_RUSTC_FLAGS += --enforce-mut-vars
-endif
 ifdef TIME_PASSES
-  CFG_RUSTC_FLAGS += --time-passes
+  CFG_RUSTC_FLAGS += -Z time-passes
 endif
 ifdef TIME_LLVM_PASSES
-  CFG_RUSTC_FLAGS += --time-llvm-passes
+  CFG_RUSTC_FLAGS += -Z time-llvm-passes
 endif
 
 # platform-specific auto-configuration

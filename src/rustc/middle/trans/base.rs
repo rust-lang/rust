@@ -82,7 +82,7 @@ fn dup_for_join(dest: dest) -> dest {
 }
 
 resource icx_popper(ccx: @crate_ctxt) {
-    if (ccx.sess.opts.count_llvm_insns) {
+    if ccx.sess.count_llvm_insns() {
         vec::pop(*ccx.stats.llvm_insn_ctxt);
     }
 }
@@ -90,7 +90,7 @@ resource icx_popper(ccx: @crate_ctxt) {
 impl ccx_icx for @crate_ctxt {
     fn insn_ctxt(s: str) -> icx_popper {
         #debug("new insn_ctxt: %s", s);
-        if (self.sess.opts.count_llvm_insns) {
+        if self.sess.count_llvm_insns() {
             *self.stats.llvm_insn_ctxt += [s];
         }
         icx_popper(self)
@@ -522,7 +522,7 @@ fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
                      helper: glue_helper, name: str)
     -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue");
-    if !ccx.sess.opts.stats {
+    if !ccx.sess.stats() {
         ret make_generic_glue_inner(ccx, t, llfn, helper);
     }
 
@@ -1698,7 +1698,7 @@ fn autoderef(cx: block, e_id: ast::node_id,
         alt cx.ccx().maps.root_map.find({id:e_id, derefs:derefs}) {
           none {}
           some(scope_id) {
-            if !cx.sess().opts.no_asm_comments {
+            if !cx.sess().no_asm_comments() {
                 add_comment(cx, #fmt["preserving until end of scope %d",
                                      scope_id]);
             }
@@ -2495,7 +2495,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
       some(scope_id) {
         let lv = unrooted(cx, e);
 
-        if !cx.sess().opts.no_asm_comments {
+        if !cx.sess().no_asm_comments() {
             add_comment(cx, #fmt["preserving until end of scope %d",
                                  scope_id]);
         }
@@ -3336,7 +3336,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         let root_loc = alloca(bcx, type_of(bcx.ccx(), ty));
         let bcx = unrooted(bcx, e, save_in(root_loc));
 
-        if !bcx.sess().opts.no_asm_comments {
+        if !bcx.sess().no_asm_comments() {
             add_comment(bcx, #fmt["preserving until end of scope %d",
                                   scope_id]);
         }
@@ -3889,7 +3889,7 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
     let _icx = cx.insn_ctxt("trans_stmt");
     #debug["trans_stmt(%s)", stmt_to_str(s)];
 
-    if (!cx.sess().opts.no_asm_comments) {
+    if !cx.sess().no_asm_comments() {
         add_span_comment(cx, s.span, stmt_to_str(s));
     }
 
@@ -4035,7 +4035,7 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
     loop {
         #debug["cleanup_and_leave: leaving %s", cur.to_str()];
 
-        if !bcx.sess().opts.no_asm_comments {
+        if !bcx.sess().no_asm_comments() {
             add_comment(bcx, #fmt["cleanup_and_leave(%s)", cur.to_str()]);
         }
 
@@ -4386,7 +4386,7 @@ fn trans_fn(ccx: @crate_ctxt,
             ty_self: self_arg,
             param_substs: option<param_substs>,
             id: ast::node_id) {
-    let do_time = ccx.sess.opts.stats;
+    let do_time = ccx.sess.stats();
     let start = if do_time { time::get_time() }
                 else { {sec: 0i64, nsec: 0i32} };
     let _icx = ccx.insn_ctxt("trans_fn");
@@ -5397,7 +5397,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
 
     // Translate the metadata.
     write_metadata(ccx, crate);
-    if ccx.sess.opts.stats {
+    if ccx.sess.stats() {
         io::println("--- trans stats ---");
         io::println(#fmt("n_static_tydescs: %u",
                          ccx.stats.n_static_tydescs));
@@ -5415,7 +5415,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
         }
     }
 
-    if ccx.sess.opts.count_llvm_insns {
+    if ccx.sess.count_llvm_insns() {
         for ccx.stats.llvm_insns.each { |k, v|
             io::println(#fmt("%-7u %s", v, k));
         }

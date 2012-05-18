@@ -14,7 +14,7 @@ import std::map::hashmap;
 import getopts::{opt_present};
 import rustc::driver::driver::*;
 import syntax::codemap;
-import rustc::driver::diagnostic;
+import rustc::driver::{diagnostic, session};
 import rustc::middle::lint;
 import io::reader_util;
 
@@ -41,10 +41,7 @@ Options:
     -L <path>          Add a directory to the library search path
     --lib              Compile a library crate
     --ls               List the symbols defined by a compiled library crate
-    --no-asm-comments  Do not add comments into the assembly source
     --no-trans         Run all passes except translation; no output
-    --no-verify        Suppress LLVM verification step (slight speedup)
-                       (see http://llvm.org/docs/Passes.html for detail)
     -O                 Equivalent to --opt-level=2
     -o <filename>      Write output to <filename>
     --opt-level <lvl>  Optimize with possible levels 0-3
@@ -66,18 +63,13 @@ Options:
                        (default: host triple)
                        (see http://sources.redhat.com/autobook/autobook/
                        autobook_17.html for detail)
-    --debug-rustc      enables different output that helps in debugging rustc,
-                       but may be less clear for normal use
 
     -W <foo>           enable warning <foo>
     -W no-<foo>        disable warning <foo>
     -W err-<foo>       enable warning <foo> as an error
-
     -W help            Print available warnings and default settings
 
-    --time-passes      Time the individual phases of the compiler
-    --time-llvm-passes Time the individual phases of the LLVM backend
-    --count-llvm-insns Count and categorize generated LLVM instructions
+    -Z help            list internal options for debugging rustc
 
     -v --version       Print version info and exit
 ");
@@ -107,6 +99,14 @@ fn describe_warnings() {
     io::println("");
 }
 
+fn describe_debug_flags() {
+    io::println(#fmt("\nAvailable debug options:\n"));
+    for session::debugging_opts_map().each { |pair|
+        let (name, desc, _) = pair;
+        io::println(#fmt("    -Z%-20s -- %s", name, desc));
+    }
+}
+
 fn run_compiler(args: [str], demitter: diagnostic::emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
@@ -133,6 +133,11 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
                       + getopts::opt_strs(match, "warn"));
     if lint_flags.contains("help") {
         describe_warnings();
+        ret;
+    }
+
+    if getopts::opt_strs(match, "Z").contains("help") {
+        describe_debug_flags();
         ret;
     }
 

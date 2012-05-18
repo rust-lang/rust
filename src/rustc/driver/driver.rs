@@ -129,7 +129,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 input: input, upto: compile_upto,
                 outputs: option<output_filenames>)
     -> {crate: @ast::crate, tcx: option<ty::ctxt>} {
-    let time_passes = sess.opts.time_passes;
+    let time_passes = sess.time_passes();
     let mut crate = time(time_passes, "parsing",
                          bind parse_input(sess, cfg, input));
     if upto == cu_parse { ret {crate: crate, tcx: none}; }
@@ -404,6 +404,21 @@ fn build_session_options(match: getopts::match,
         }
     };
 
+    let mut debugging_opts = 0u;
+    let debug_flags = getopts::opt_strs(match, "Z");
+    let debug_map = session::debugging_opts_map();
+    for debug_flags.each { |debug_flag|
+        let mut this_bit = 0u;
+        for debug_map.each { |pair|
+            let (name, _, bit) = pair;
+            if name == debug_flag { this_bit = bit; break; }
+        }
+        if this_bit == 0u {
+            early_error(demitter, #fmt("unknown debug flag: %s", debug_flag))
+        }
+        debugging_opts |= this_bit;
+    }
+
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
@@ -416,18 +431,11 @@ fn build_session_options(match: getopts::match,
         } else if opt_present(match, "emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let verify = !opt_present(match, "no-verify");
-    let save_temps = opt_present(match, "save-temps");
     let extra_debuginfo = opt_present(match, "xg");
     let debuginfo = opt_present(match, "g") || extra_debuginfo;
-    let stats = opt_present(match, "stats");
-    let time_passes = opt_present(match, "time-passes");
-    let time_llvm_passes = opt_present(match, "time-llvm-passes");
-    let count_llvm_insns = opt_present(match, "count-llvm-insns");
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
     let target_opt = getopts::opt_maybe_str(match, "target");
-    let mut no_asm_comments = getopts::opt_present(match, "no-asm-comments");
-    let debug_rustc = getopts::opt_present(match, "debug-rustc");
+    let save_temps = getopts::opt_present(match, "save-temps");
     let borrowck = alt getopts::opt_maybe_str(match, "borrowck") {
       none { 0u }
       some("warn") { 1u }
@@ -439,7 +447,7 @@ fn build_session_options(match: getopts::match,
     alt output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
       link::output_type_llvm_assembly | link::output_type_assembly {}
-      _ { no_asm_comments = true; }
+      _ { debugging_opts |= session::no_asm_comments; }
     }
     let opt_level: uint =
         if opt_present(match, "O") {
@@ -474,13 +482,8 @@ fn build_session_options(match: getopts::match,
           optimize: opt_level,
           debuginfo: debuginfo,
           extra_debuginfo: extra_debuginfo,
-          verify: verify,
           lint_opts: lint_opts,
           save_temps: save_temps,
-          stats: stats,
-          time_passes: time_passes,
-          count_llvm_insns: count_llvm_insns,
-          time_llvm_passes: time_llvm_passes,
           output_type: output_type,
           addl_lib_search_paths: addl_lib_search_paths,
           maybe_sysroot: sysroot_opt,
@@ -489,8 +492,7 @@ fn build_session_options(match: getopts::match,
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
-          no_asm_comments: no_asm_comments,
-          debug_rustc: debug_rustc,
+          debugging_opts: debugging_opts,
           borrowck: borrowck};
     ret sopts;
 }
@@ -559,17 +561,14 @@ fn opts() -> [getopts::opt] {
          optflag("O"), optopt("opt-level"), optmulti("L"), optflag("S"),
          optopt("o"), optopt("out-dir"), optflag("xg"),
          optflag("c"), optflag("g"), optflag("save-temps"),
-         optopt("sysroot"), optopt("target"), optflag("stats"),
-         optflag("time-passes"), optflag("time-llvm-passes"),
-         optflag("count-llvm-insns"),
-         optflag("no-verify"),
+         optopt("sysroot"), optopt("target"),
 
          optmulti("W"), optmulti("warn"),
 
+         optmulti("Z"),
+
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
-         optflag("no-asm-comments"),
-         optflag("debug-rustc"),
          optopt("borrowck")];
 }
 
