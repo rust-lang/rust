@@ -22,6 +22,7 @@ export init;
 export last;
 export last_opt;
 export slice;
+export view;
 export split;
 export splitn;
 export rsplit;
@@ -252,6 +253,18 @@ fn slice<T: copy>(v: [const T], start: uint, end: uint) -> [T] {
     let mut i = start;
     while i < end { result += [v[i]]; i += 1u; }
     ret result;
+}
+
+#[doc = "Return a slice that points into another slice."]
+fn view<T: copy>(v: [const T]/&, start: uint, end: uint) -> [T]/&a {
+    assert (start <= end);
+    assert (end <= len(v));
+    unpack_slice(v) {|p, _len|
+        unsafe {
+            ::unsafe::reinterpret_cast(
+                (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+        }
+    }
 }
 
 #[doc = "
@@ -2028,6 +2041,15 @@ mod tests {
         let mut v = [0u32];
         reserve(v, 10u);
         assert capacity(v) == 10u;
+    }
+
+    #[test]
+    fn test_view() {
+        let v = [1, 2, 3, 4, 5];
+        let v = view(v, 1u, 3u);
+        assert(len(v) == 2u);
+        assert(v[0] == 2);
+        assert(v[1] == 3);
     }
 }
 
