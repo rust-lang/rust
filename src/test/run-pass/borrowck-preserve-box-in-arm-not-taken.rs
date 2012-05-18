@@ -1,4 +1,4 @@
-// xfail-fast  (compile-flags unsupported on windows)
+// xfail-fast   (compile-flags unsupported on windows)
 // compile-flags:--borrowck=err
 // exec-env:RUST_POISON_ON_FREE=1
 
@@ -10,7 +10,6 @@ fn main() {
         // `y` remains valid even if `*x` is modified.
         *x = @none;
       }
-
       @@none {
         // here, no bump of the ref count of `*x` is needed, but in
         // fact a bump occurs anyway because of how pattern marching
