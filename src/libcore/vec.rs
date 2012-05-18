@@ -33,6 +33,7 @@ export grow;
 export grow_fn;
 export grow_set;
 export map;
+export mapi;
 export map2;
 export flat_map;
 export filter_map;
@@ -440,10 +441,20 @@ fn grow_set<T: copy>(&v: [mut T], index: uint, initval: T, val: T) {
 #[doc = "
 Apply a function to each element of a vector and return the results
 "]
-fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
+fn map<T, U>(v: [const T]/&, f: fn(T) -> U) -> [U] {
     let mut result = [];
     reserve(result, len(v));
     for each(v) {|elem| result += [f(elem)]; }
+    ret result;
+}
+
+#[doc = "
+Apply a function to each element of a vector and return the results
+"]
+fn mapi<T, U>(v: [const T]/&, f: fn(uint, T) -> U) -> [U] {
+    let mut result = [];
+    reserve(result, len(v));
+    for eachi(v) {|i, elem| result += [f(i, elem)]; }
     ret result;
 }
 
@@ -537,7 +548,7 @@ fn foldl<T: copy, U>(z: T, v: [const U], p: fn(T, U) -> T) -> T {
 }
 
 #[doc = "Reduce a vector from right to left"]
-fn foldr<T, U: copy>(v: [const T], z: U, p: fn(T, U) -> U) -> U {
+fn foldr<T, U: copy>(v: [const T]/&, z: U, p: fn(T, U) -> U) -> U {
     let mut accum = z;
     riter(v) { |elt|
         accum = p(elt, accum);
@@ -550,7 +561,7 @@ Return true if a predicate matches any elements
 
 If the vector contains no elements then false is returned.
 "]
-fn any<T>(v: [T], f: fn(T) -> bool) -> bool {
+fn any<T>(v: [const T]/&, f: fn(T) -> bool) -> bool {
     for each(v) {|elem| if f(elem) { ret true; } }
     ret false;
 }
@@ -560,7 +571,7 @@ Return true if a predicate matches any elements in both vectors.
 
 If the vectors contains no elements then false is returned.
 "]
-fn any2<T, U>(v0: [const T], v1: [U], f: fn(T, U) -> bool) -> bool {
+fn any2<T, U>(v0: [const T]/&, v1: [const U]/&, f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     let v1_len = len(v1);
     let mut i = 0u;
@@ -576,7 +587,7 @@ Return true if a predicate matches all elements
 
 If the vector contains no elements then true is returned.
 "]
-fn all<T>(v: [T], f: fn(T) -> bool) -> bool {
+fn all<T>(v: [const T]/&, f: fn(T) -> bool) -> bool {
     for each(v) {|elem| if !f(elem) { ret false; } }
     ret true;
 }
@@ -586,7 +597,7 @@ Return true if a predicate matches all elements
 
 If the vector contains no elements then true is returned.
 "]
-fn alli<T>(v: [T], f: fn(uint, T) -> bool) -> bool {
+fn alli<T>(v: [const T]/&, f: fn(uint, T) -> bool) -> bool {
     for eachi(v) {|i, elem| if !f(i, elem) { ret false; } }
     ret true;
 }
@@ -596,7 +607,7 @@ Return true if a predicate matches all elements in both vectors.
 
 If the vectors are not the same size then false is returned.
 "]
-fn all2<T, U>(v0: [const T], v1: [const U], f: fn(T, U) -> bool) -> bool {
+fn all2<T, U>(v0: [const T]/&, v1: [const U]/&, f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     if v0_len != len(v1) { ret false; }
     let mut i = 0u;
@@ -899,7 +910,7 @@ Iterates over a vector in reverse
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
 "]
-fn riter<T>(v: [const T], f: fn(T)) {
+fn riter<T>(v: [const T]/&, f: fn(T)) {
     riteri(v) { |_i, v| f(v) }
 }
 
@@ -909,7 +920,7 @@ Iterates over a vector's elements and indexes in reverse
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 "]
-fn riteri<T>(v: [const T], f: fn(uint, T)) {
+fn riteri<T>(v: [const T]/&, f: fn(uint, T)) {
     let mut i = len(v);
     while 0u < i {
         i -= 1u;
@@ -1115,8 +1126,7 @@ impl extensions<T> for [T] {
     and return the results
     "]
     fn mapi<U>(f: fn(uint, T) -> U) -> [U] {
-        let mut i = 0u;
-        self.map { |e| i += 1u; f(i - 1u, e) }
+        mapi(self, f)
     }
     #[doc = "Returns true if the function returns true for all elements.
 

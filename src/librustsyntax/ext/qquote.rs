@@ -257,10 +257,11 @@ fn finish<T: qq_helper>
                       );
     let mut rcall = pcall;
     if (g_len > 0u) {
+        let gather = copy qcx.gather;
         rcall = mk_call(cx,sp,
                         ["syntax", "ext", "qquote", "replace"],
                         [pcall,
-                         mk_vec_e(cx,sp, vec::map(copy qcx.gather) {|g|
+                         mk_vec_e(cx,sp, vec::map(gather) {|g|
                              mk_call(cx,sp,
                                      ["syntax", "ext", "qquote", g.constr],
                                      [g.e])}),

@@ -652,15 +652,16 @@ fn install_named(c: cargo, wd: str, name: str) {
 
 fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
     alt c.sources.find(src) {
-        some(s) {
-            if vec::any(copy s.packages, { |p|
-                if p.uuid == uuid {
-                    install_package(c, wd, p);
-                    true
-                } else { false }
-            }) { ret; }
-        }
-        _ { }
+      some(s) {
+        let packages = copy s.packages;
+        if vec::any(packages, { |p|
+            if p.uuid == uuid {
+                install_package(c, wd, p);
+                true
+            } else { false }
+        }) { ret; }
+      }
+      _ { }
     }
     error("Can't find package " + src + "/" + uuid);
 }
@@ -668,7 +669,8 @@ fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
 fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     alt c.sources.find(src) {
         some(s) {
-            if vec::any(copy s.packages, { |p|
+          let packages = copy s.packages;
+          if vec::any(packages, { |p|
                 if p.name == name {
                     install_package(c, wd, p);
                     true

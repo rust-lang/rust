@@ -213,7 +213,8 @@ fn run_tests_console(opts: test_opts,
 
 fn print_failures(st: console_test_state) {
     st.out.write_line("\nfailures:");
-    let failures = vec::map(copy st.failures) {|test| test.name};
+    let failures = copy st.failures;
+    let failures = vec::map(failures) {|test| test.name};
     let failures = sort::merge_sort(str::le, failures);
     for vec::each(failures) {|name|
         st.out.write_line(#fmt["    %s", name]);

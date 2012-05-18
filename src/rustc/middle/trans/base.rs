@@ -4012,7 +4012,8 @@ fn trans_block_cleanups_(bcx: block, cleanup_cx: block, is_lpad: bool) ->
     let mut bcx = bcx;
     alt check cleanup_cx.kind {
       block_scope({cleanups, _}) {
-        vec::riter(copy cleanups) {|cu|
+        let cleanups = copy cleanups;
+        vec::riter(cleanups) {|cu|
             alt cu {
               clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) {
                 // Some types don't need to be cleaned up during
