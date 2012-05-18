@@ -1686,6 +1686,13 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_constr(subt, _) { result = type_is_pod(cx, subt); }
       ty_param(_, _) { result = false; }
       ty_opaque_closure_ptr(_) { result = true; }
+      ty_class(did, substs) {
+        result = vec::any(lookup_class_fields(cx, did)) { |f|
+            let fty = ty::lookup_item_type(cx, f.id);
+            let sty = subst(cx, substs, fty.ty);
+            type_is_pod(cx, sty)
+        };
+      }
       _ { cx.sess.bug("unexpected type in type_is_pod"); }
     }
 
