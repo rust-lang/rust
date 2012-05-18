@@ -14,6 +14,9 @@ fn main() {
     assert(#stringify[(2*3) + 5] == "2 * 3 + 5");
     assert(#include["syntax-extension-source-utils-files/includeme.fragment"]
            == "victory robot 6");
+    assert(
+        #include_str["syntax-extension-source-utils-files/includeme.fragment"]
+        .starts_with("/* this is for "));
     // The Windows tests are wrapped in an extra module for some reason
     assert(m1::m2::where_am_i().ends_with("m1::m2"));
 }

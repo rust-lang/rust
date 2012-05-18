@@ -31,8 +31,6 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
     syntax_expanders.insert("auto_serialize",
                             item_decorator(ext::auto_serialize::expand));
     syntax_expanders.insert("env", builtin(ext::env::expand_syntax_ext));
-    syntax_expanders.insert("include_str",
-                            builtin(ext::include::str::expand_syntax_ext));
     syntax_expanders.insert("macro",
                             macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert("concat_idents",
@@ -53,6 +51,8 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
                             builtin(ext::source_util::expand_stringify));
     syntax_expanders.insert("include",
                             builtin(ext::source_util::expand_include));
+    syntax_expanders.insert("include_str",
+                            builtin(ext::source_util::expand_include_str));
     syntax_expanders.insert("mod",
                             builtin(ext::source_util::expand_mod));
     ret syntax_expanders;

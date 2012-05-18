@@ -3,6 +3,14 @@ import ast;
 import codemap::span;
 import print::pprust;
 
+export expand_line;
+export expand_col;
+export expand_file;
+export expand_stringify;
+export expand_mod;
+export expand_include;
+export expand_include_str;
+
 /* #line(): expands to the current line number */
 fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
@@ -35,19 +43,53 @@ fn expand_stringify(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     ret make_new_lit(cx, sp, ast::lit_str(pprust::expr_to_str(args[0])));
 }
 
-fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                  _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "include");
-    let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    let path = path::connect(path::dirname(loc.file.name),
-        expr_to_str(cx, args[0], "#include requires a string literal"));
-    let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(), path,
-                                        parse::parser::SOURCE_FILE);
-    ret parse::parser::parse_expr(p)
-}
-
 fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
     -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
     ret make_new_lit(cx, sp, ast::lit_str(str::connect(cx.mod_path(), "::")));
 }
+
+fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
+                  _body: ast::mac_body) -> @ast::expr {
+    let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "include");
+    let file = expr_to_str(cx, args[0], "#include_str requires a string");
+    let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(),
+                                        res_rel_file(cx, sp, file),
+                                        parse::parser::SOURCE_FILE);
+    ret parse::parser::parse_expr(p)
+}
+
+fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
+                      _body: ast::mac_body) -> @ast::expr {
+    let args = get_mac_args(cx,sp,arg,1u,option::some(1u),"include_str");
+
+    let file = expr_to_str(cx, args[0], "#include_str requires a string");
+
+    alt io::read_whole_file_str(res_rel_file(cx, sp, file)) {
+      result::ok(src) { ret make_new_lit(cx, sp, ast::lit_str(src)); }
+      result::err(e) {
+        cx.parse_sess().span_diagnostic.handler().fatal(e)
+      }
+    }
+}
+
+fn res_rel_file(cx: ext_ctxt, sp: codemap::span, arg: path) -> path {
+    // NB: relative paths are resolved relative to the compilation unit
+    if !path::path_is_absolute(arg) {
+        let cu = codemap::span_to_filename(sp, cx.codemap());
+        let dir = path::dirname(cu);
+        ret path::connect(dir, arg);
+    } else {
+        ret arg;
+    }
+}
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
+//
