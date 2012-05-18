@@ -352,8 +352,9 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     }
 }
 
-// FIXME less copy-and-paste
-fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
+fn enc_constr_gen<T>(w: io::writer, cx: @ctxt,
+                  c: @ty::constr_general<T>,
+                  write_arg: fn(@sp_constr_arg<T>)) {
     w.write_str(path_to_str(c.node.path));
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
@@ -361,30 +362,29 @@ fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
     let mut semi = false;
     for c.node.args.each {|a|
         if semi { w.write_char(';'); } else { semi = true; }
-        alt a.node {
-          carg_base { w.write_char('*'); }
-          carg_ident(i) { w.write_uint(i); }
-          carg_lit(l) { w.write_str(lit_to_str(l)); }
-        }
+        write_arg(a);
     }
     w.write_char(')');
 }
 
+fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
+    enc_constr_gen(w, cx, c, {|a|
+      alt a.node {
+        carg_base     { w.write_char('*'); }
+        carg_ident(i) { w.write_uint(i); }
+        carg_lit(l)   { w.write_str(lit_to_str(l)); }
+      }
+    });
+}
+
 fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
-    w.write_str(path_to_str(c.node.path));
-    w.write_char('(');
-    w.write_str(cx.ds(c.node.id));
-    w.write_char('|');
-    let mut semi = false;
-    for c.node.args.each {|a|
-        if semi { w.write_char(';'); } else { semi = true; }
-        alt a.node {
-          carg_base { w.write_char('*'); }
-          carg_ident(p) { w.write_str(path_to_str(p)); }
-          carg_lit(l) { w.write_str(lit_to_str(l)); }
-        }
-    }
-    w.write_char(')');
+    enc_constr_gen(w, cx, c, {|a|
+      alt a.node {
+        carg_base     { w.write_char('*'); }
+        carg_ident(p) { w.write_str(path_to_str(p)); }
+        carg_lit(l)  { w.write_str(lit_to_str(l)); }
+      }
+    });
 }
 
 fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {

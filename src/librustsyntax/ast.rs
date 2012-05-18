@@ -503,7 +503,7 @@ type constr_arg = spanned<fn_constr_arg>;
 
 #[auto_serialize]
 type constr_general_<ARG, ID> =
-    {path: @path, args: [@spanned<constr_arg_general_<ARG>>], id: ID};
+    {path: @path, args: [@sp_constr_arg<ARG>], id: ID};
 
 // In the front end, constraints have a node ID attached.
 // Typeck turns this to a def_id, using the output of resolve.

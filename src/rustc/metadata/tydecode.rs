@@ -63,35 +63,29 @@ fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
     }
 }
 
-fn parse_constrs(st: @pstate, conv: conv_did) -> [@ty::constr] {
-    let mut rslt: [@ty::constr] = [];
+fn parse_constrs_gen<T: copy>(st: @pstate, conv: conv_did,
+                                       pser: fn(@pstate)
+  -> ast::constr_arg_general_<T>) -> [@ty::constr_general<T>] {
+    let mut rslt: [@ty::constr_general<T>] = [];
     alt peek(st) {
       ':' {
         loop {
-            next(st);
-            rslt += [parse_constr(st, conv, parse_constr_arg)];
-            if peek(st) != ';' { break; }
+          next(st);
+          rslt += [parse_constr(st, conv, pser)];
+          if peek(st) != ';' { break; }
         }
       }
-      _ { }
+      _ {}
     }
-    ret rslt;
+    rslt
 }
 
-// FIXME less copy-and-paste
+fn parse_constrs(st: @pstate, conv: conv_did) -> [@ty::constr] {
+    parse_constrs_gen(st, conv, parse_constr_arg)
+}
+
 fn parse_ty_constrs(st: @pstate, conv: conv_did) -> [@ty::type_constr] {
-    let mut rslt: [@ty::type_constr] = [];
-    alt peek(st) {
-      ':' {
-        loop {
-            next(st);
-            rslt += [parse_constr(st, conv, parse_ty_constr_arg)];
-            if peek(st) != ';' { break; }
-        }
-      }
-      _ { }
-    }
-    ret rslt;
+    parse_constrs_gen(st, conv, parse_ty_constr_arg)
 }
 
 fn parse_path(st: @pstate) -> @ast::path {
@@ -121,11 +115,11 @@ fn parse_constr_arg(st: @pstate) -> ast::fn_constr_arg {
            an arg index and a lit argument? */
         if c >= '0' && c <= '9' {
             next(st);
-            // FIXME
+            // FIXME #877
             ret ast::carg_ident((c as uint) - 48u);
         } else {
             #error("Lit args are unimplemented");
-            fail; // FIXME
+            fail; // FIXME #877
         }
         /*
           else {
@@ -147,7 +141,8 @@ fn parse_ty_constr_arg(st: @pstate) -> ast::constr_arg_general_<@path> {
 fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
                          pser: fn(@pstate) -> ast::constr_arg_general_<T>)
     -> @ty::constr_general<T> {
-    let sp = ast_util::dummy_sp(); // FIXME: use a real span
+    // FIXME: use real spans and not a bogus one (#2407)
+    let sp = ast_util::dummy_sp();
     let mut args: [@sp_constr_arg<T>] = [];
     let pth = parse_path(st);
     let mut ignore: char = next(st);
@@ -156,7 +151,6 @@ fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
     let mut an_arg: constr_arg_general_<T>;
     loop {
         an_arg = pser(st);
-        // FIXME use a real span
         args += [@respan(sp, an_arg)];
         ignore = next(st);
         if ignore != ';' { break; }
