@@ -273,6 +273,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         // Do the BFS.
         log(info, #fmt("PBFS iteration %?", i));
         i += 1u;
+        let old_len = colors.len();
         colors = par::mapi(colors) {|i, c, copy colors|
             let c : color = c;
             alt c {
@@ -296,7 +297,8 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
               gray(parent) { black(parent) }
               black(parent) { black(parent) }
             }
-        }
+        };
+        assert(colors.len() == old_len);
     }
 
     // Convert the results.
@@ -403,10 +405,10 @@ fn validate(edges: [(node_id, node_id)],
 }
 
 fn main() {
-    let scale = 14u;
-    let num_keys = 16u;
+    let scale = 18u;
+    let num_keys = 64u;
     let do_validate = false;
-    let do_sequential = true;
+    let do_sequential = false;
 
     let start = time::precise_time_s();
     let edges = make_edges(scale, 16u);
@@ -522,7 +524,9 @@ const min_granularity : uint = 1024u;
 
 This is used to build most of the other parallel vector functions,
 like map or alli."]
-fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
+fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [const A]/&) -> B) 
+    -> [B] {
+
     let len = xs.len();
     if len < min_granularity {
         log(info, "small slice");
@@ -538,21 +542,37 @@ fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [A]) -> B) -> [B] {
         let mut base = 0u;
         log(info, "spawning tasks");
         while base < len {
-            let slice = vec::slice(xs, base,
-                                   uint::min(len, base + items_per_task));
-            let f = ptr::addr_of(f);
-            futures += [future::spawn() {|copy base|
-                unsafe {
-                    (*f)(base, slice)
-                }
-            }];
+            let end = uint::min(len, base + items_per_task);
+            // FIXME: why is the ::<A, ()> annotation required here?
+            vec::unpack_slice::<A, ()>(xs) {|p, _len|
+                let f = ptr::addr_of(f);
+                futures += [future::spawn() {|copy base|
+                    unsafe {
+                        let len = end - base;
+                        let slice = (ptr::offset(p, base),
+                                     len * sys::size_of::<A>());
+                        log(info, #fmt("pre-slice: %?", (base, slice)));
+                        let slice : [const A]/& = 
+                            unsafe::reinterpret_cast(slice);
+                        log(info, #fmt("slice: %?",
+                                       (base, vec::len(slice), end - base)));
+                        assert(vec::len(slice) == end - base);
+                        (*f)(base, slice)
+                    }
+                }];
+            };
             base += items_per_task;
         }
         log(info, "tasks spawned");
 
-        futures.map() {|ys|
+        log(info, #fmt("num_tasks: %?", (num_tasks, futures.len())));
+        assert(num_tasks == futures.len());
+
+        let r = futures.map() {|ys|
             ys.get()
-        }
+        };
+        assert(r.len() == futures.len());
+        r
     }
 }
 
@@ -565,17 +585,25 @@ fn map<A: send, B: send>(xs: [A], f: fn~(A) -> B) -> [B] {
 
 #[doc="A parallel version of mapi."]
 fn mapi<A: send, B: send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
-    vec::concat(map_slices(xs) {|base, slice|
-        slice.mapi() {|i, x|
+    let slices = map_slices(xs) {|base, slice|
+        vec::mapi(slice) {|i, x|
             f(i + base, x)
         }
-    })
+    };
+    log(info, slices.len());
+    for vec::eachi(slices) {|i, inner|
+        log(info, #fmt("slice %?: %?", i, inner.len()));
+    }
+    let r = vec::concat(slices);
+    log(info, (r.len(), xs.len()));
+    assert(r.len() == xs.len());
+    r
 }
 
 #[doc="Returns true if the function holds for all elements in the vector."]
 fn alli<A: send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
     vec::all(map_slices(xs) {|base, slice|
-        slice.alli() {|i, x|
+        vec::alli(slice) {|i, x|
             f(i + base, x)
         }
     }) {|x| x }
@@ -584,7 +612,7 @@ fn alli<A: send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
     #[doc="Returns true if the function holds for any elements in the vector."]
     fn any<A: send>(xs: [A], f: fn~(A) -> bool) -> bool {
         vec::any(map_slices(xs) {|_base, slice|
-            slice.any(f)
+            vec::any(slice, f)
         }) {|x| x }
     }
 
