@@ -131,8 +131,8 @@ mod chained {
             ret not_found;
           }
           present(e) {
-            let e_key = e.key; // Satisfy alias checker.
-            if e.hash == h && tbl.eqer(e_key, k) {
+            // FIXME: This copy of the key is not good for perf
+            if e.hash == h && tbl.eqer(copy e.key, k) {
                 #debug("search_tbl: present, comp %u, hash %u, idx %u",
                        1u, h, idx);
                 ret found_first(idx, e);
