@@ -17,6 +17,10 @@ fn main() {
     assert(
         #include_str["syntax-extension-source-utils-files/includeme.fragment"]
         .starts_with("/* this is for "));
+    assert(
+        #include_bin["syntax-extension-source-utils-files/includeme.fragment"]
+        [1] == (42 as u8)); // '*'
     // The Windows tests are wrapped in an extra module for some reason
     assert(m1::m2::where_am_i().ends_with("m1::m2"));
+
 }

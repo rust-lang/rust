@@ -53,6 +53,8 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
                             builtin(ext::source_util::expand_include));
     syntax_expanders.insert("include_str",
                             builtin(ext::source_util::expand_include_str));
+    syntax_expanders.insert("include_bin",
+                            builtin(ext::source_util::expand_include_bin));
     syntax_expanders.insert("mod",
                             builtin(ext::source_util::expand_mod));
     ret syntax_expanders;
@@ -171,6 +173,11 @@ fn make_new_lit(cx: ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
    @ast::expr {
     let sp_lit = @{node: lit, span: sp};
     ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
+}
+
+fn make_new_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
+    @ast::expr {
+    ret @{id: cx.next_id(), node: expr, span: sp};
 }
 
 fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,

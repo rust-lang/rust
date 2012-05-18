@@ -10,6 +10,7 @@ export expand_stringify;
 export expand_mod;
 export expand_include;
 export expand_include_str;
+export expand_include_bin;
 
 /* #line(): expands to the current line number */
 fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
@@ -67,6 +68,25 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     alt io::read_whole_file_str(res_rel_file(cx, sp, file)) {
       result::ok(src) { ret make_new_lit(cx, sp, ast::lit_str(src)); }
+      result::err(e) {
+        cx.parse_sess().span_diagnostic.handler().fatal(e)
+      }
+    }
+}
+
+fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
+                      _body: ast::mac_body) -> @ast::expr {
+    let args = get_mac_args(cx,sp,arg,1u,option::some(1u),"include_bin");
+
+    let file = expr_to_str(cx, args[0], "#include_bin requires a string");
+
+    alt io::read_whole_file(res_rel_file(cx, sp, file)) {
+      result::ok(src) {
+        let u8_exprs = vec::map(src) { |char: u8|
+            make_new_lit(cx, sp, ast::lit_uint(char as u64, ast::ty_u8))
+        };
+        ret make_new_expr(cx, sp, ast::expr_vec(u8_exprs, ast::m_imm));
+      }
       result::err(e) {
         cx.parse_sess().span_diagnostic.handler().fatal(e)
       }
