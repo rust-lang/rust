@@ -89,6 +89,21 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
     ret {items: new_items with module};
 }
 
+/* record module we enter for `#mod` */
+fn expand_item(cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
+               orig: fn@(&&@ast::item, ast_fold) -> @ast::item)
+    -> @ast::item
+{
+    let is_mod = alt it.node {
+      ast::item_mod(_) | ast::item_native_mod(_) {true}
+      _ {false}
+    };
+    if is_mod { cx.mod_push(it.ident); }
+    let ret_val = orig(it, fld);
+    if is_mod { cx.mod_pop(); }
+    ret ret_val;
+}
+
 fn new_span(cx: ext_ctxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
     ret {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
@@ -117,6 +132,7 @@ fn expand_crate(parse_sess: parse::parse_sess,
     let f_pre =
         {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr),
          fold_mod: bind expand_mod_items(exts, cx, _, _, afp.fold_mod),
+         fold_item: bind expand_item(cx, _, _, afp.fold_item),
          new_span: bind new_span(cx, _)
             with *afp};
     let f = make_fold(f_pre);

@@ -3,7 +3,6 @@ import ast;
 import codemap::span;
 import print::pprust;
 
-
 /* #line(): expands to the current line number */
 fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
@@ -45,4 +44,10 @@ fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(), path,
                                         parse::parser::SOURCE_FILE);
     ret parse::parser::parse_expr(p)
+}
+
+fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
+    -> @ast::expr {
+    get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
+    ret make_new_lit(cx, sp, ast::lit_str(str::connect(cx.mod_path(), "::")));
 }

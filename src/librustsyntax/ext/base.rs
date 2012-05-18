@@ -53,6 +53,8 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
                             builtin(ext::source_util::expand_stringify));
     syntax_expanders.insert("include",
                             builtin(ext::source_util::expand_include));
+    syntax_expanders.insert("mod",
+                            builtin(ext::source_util::expand_mod));
     ret syntax_expanders;
 }
 
@@ -62,6 +64,9 @@ iface ext_ctxt {
     fn cfg() -> ast::crate_cfg;
     fn print_backtrace();
     fn backtrace() -> expn_info;
+    fn mod_push(mod_name: ast::ident);
+    fn mod_pop();
+    fn mod_path() -> [ast::ident];
     fn bt_push(ei: codemap::expn_info_);
     fn bt_pop();
     fn span_fatal(sp: span, msg: str) -> !;
@@ -76,13 +81,17 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
            cfg: ast::crate_cfg) -> ext_ctxt {
     type ctxt_repr = {parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
-                      mut backtrace: expn_info};
+                      mut backtrace: expn_info,
+                      mut mod_path: [ast::ident]};
     impl of ext_ctxt for ctxt_repr {
         fn codemap() -> codemap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }
         fn backtrace() -> expn_info { self.backtrace }
+        fn mod_push(i: ast::ident) { vec::push(self.mod_path, i); }
+        fn mod_pop() { vec::pop(self.mod_path); }
+        fn mod_path() -> [ast::ident] { ret self.mod_path; }
         fn bt_push(ei: codemap::expn_info_) {
             alt ei {
               expanded_from({call_site: cs, callie: callie}) {
@@ -129,7 +138,8 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
     let imp : ctxt_repr = {
         parse_sess: parse_sess,
         cfg: cfg,
-        mut backtrace: none
+        mut backtrace: none,
+        mut mod_path: []
     };
     ret imp as ext_ctxt
 }
