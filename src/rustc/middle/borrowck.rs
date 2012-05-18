@@ -85,6 +85,7 @@ enum categorization {
     cat_stack_upvar(cmt),           // upvar in stack closure
     cat_deref(cmt, uint, ptr_kind), // deref of a ptr
     cat_comp(cmt, comp_kind),       // adjust to locate an internal component
+    cat_discr(cmt, ast::node_id),   // alt discriminant (see preserve())
 }
 
 // different kinds of pointers:
@@ -205,7 +206,8 @@ fn req_loans_in_expr(ex: @ast::expr,
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.borrowings.find(ex.id).each { |scope_id|
         let cmt = self.bccx.cat_borrow_of_expr(ex);
-        self.guarantee_valid(cmt, m_const, ty::re_scope(scope_id));
+        let scope_r = ty::re_scope(scope_id);
+        self.guarantee_valid(cmt, m_const, scope_r);
     }
 
     // Special checks for various kinds of expressions:
@@ -224,20 +226,19 @@ fn req_loans_in_expr(ex: @ast::expr,
 
       ast::expr_call(f, args, _) {
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
+        let scope_r = ty::re_scope(ex.id);
         vec::iter2(args, arg_tys) { |arg, arg_ty|
             alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
               ast::by_mutbl_ref {
                 let arg_cmt = self.bccx.cat_expr(arg);
-                self.guarantee_valid(arg_cmt, m_mutbl, ty::re_scope(ex.id));
+                self.guarantee_valid(arg_cmt, m_mutbl, scope_r);
               }
               ast::by_ref {
                 let arg_cmt = self.bccx.cat_expr(arg);
                 if TREAT_CONST_AS_IMM {
-                    self.guarantee_valid(arg_cmt, m_imm,
-                                         ty::re_scope(ex.id));
+                    self.guarantee_valid(arg_cmt, m_imm,  scope_r);
                 } else {
-                    self.guarantee_valid(arg_cmt, m_const,
-                                         ty::re_scope(ex.id));
+                    self.guarantee_valid(arg_cmt, m_const, scope_r);
                 }
               }
               ast::by_move | ast::by_copy | ast::by_val {}
@@ -249,7 +250,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         let cmt = self.bccx.cat_expr(ex_v);
         for arms.each { |arm|
             for arm.pats.each { |pat|
-                self.gather_pat(cmt, pat, arm.body.node.id);
+                self.gather_pat(cmt, pat, arm.body.node.id, ex.id);
             }
         }
       }
@@ -265,8 +266,10 @@ impl methods for gather_loan_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
     // guarantees that addr_of(cmt) will be valid for the duration of
-    // `scope_r`, or reports an error.  This may entail taking out loans,
-    // which will be added to the `req_loan_map`.
+    // `static_scope_r`, or reports an error.  This may entail taking
+    // out loans, which will be added to the `req_loan_map`.  This can
+    // also entail "rooting" GC'd pointers, which means ensuring
+    // dynamically that they are not freed.
     fn guarantee_valid(cmt: cmt,
                        mutbl: ast::mutability,
                        scope_r: ty::region) {
@@ -334,16 +337,24 @@ impl methods for gather_loan_ctxt {
         }
     }
 
-    fn gather_pat(cmt: cmt, pat: @ast::pat, alt_id: ast::node_id) {
+    fn gather_pat(cmt: cmt, pat: @ast::pat,
+                  arm_id: ast::node_id, alt_id: ast::node_id) {
 
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
         //
-        // In general, the way that this works is that we
+        // In general, the way that this works is that we walk down
+        // the pattern, constructing a cmt that represents the path
+        // that will be taken to reach the value being matched.
+        //
+        // When we encounter named bindings, we take the cmt that has
+        // been built up and pass it off to guarantee_valid() so that
+        // we can be sure that the binding will remain valid for the
+        // duration of the arm.
 
-        #debug["gather_pat: id=%d pat=%s cmt=%s alt_id=%d",
+        #debug["gather_pat: id=%d pat=%s cmt=%s arm_id=%d alt_id=%d",
                pat.id, pprust::pat_to_str(pat),
-               self.bccx.cmt_to_repr(cmt), alt_id];
+               self.bccx.cmt_to_repr(cmt), arm_id, alt_id];
         let _i = indenter();
 
         let tcx = self.tcx();
@@ -359,7 +370,7 @@ impl methods for gather_loan_ctxt {
             // variant(x, y, z)
             for subpats.each { |subpat|
                 let subcmt = self.bccx.cat_variant(pat, cmt, subpat);
-                self.gather_pat(subcmt, subpat, alt_id);
+                self.gather_pat(subcmt, subpat, arm_id, alt_id);
             }
           }
 
@@ -370,8 +381,16 @@ impl methods for gather_loan_ctxt {
           ast::pat_ident(id, o_pat) {
             // x or x @ p --- `x` must remain valid for the scope of the alt
             #debug["defines identifier %s", pprust::path_to_str(id)];
-            self.guarantee_valid(cmt, m_const, ty::re_scope(alt_id));
-            for o_pat.each { |p| self.gather_pat(cmt, p, alt_id); }
+
+            // Note: there is a discussion of the function of
+            // cat_discr in the method preserve():
+            let cmt1 = self.bccx.cat_discr(cmt, alt_id);
+            let arm_scope = ty::re_scope(arm_id);
+            self.guarantee_valid(cmt1, m_const, arm_scope);
+
+            for o_pat.each { |p|
+                self.gather_pat(cmt, p, arm_id, alt_id);
+            }
           }
 
           ast::pat_rec(field_pats, _) {
@@ -379,7 +398,7 @@ impl methods for gather_loan_ctxt {
             for field_pats.each { |fp|
                 let cmt_field = self.bccx.cat_field(pat, cmt, fp.ident,
                                                     tcx.ty(fp.pat));
-                self.gather_pat(cmt_field, fp.pat, alt_id);
+                self.gather_pat(cmt_field, fp.pat, arm_id, alt_id);
             }
           }
 
@@ -387,15 +406,19 @@ impl methods for gather_loan_ctxt {
             // (p1, ..., pN)
             for subpats.each { |subpat|
                 let subcmt = self.bccx.cat_tuple_elt(pat, cmt, subpat);
-                self.gather_pat(subcmt, subpat, alt_id);
+                self.gather_pat(subcmt, subpat, arm_id, alt_id);
             }
           }
 
           ast::pat_box(subpat) | ast::pat_uniq(subpat) {
             // @p1, ~p1
             alt self.bccx.cat_deref(pat, cmt, 0u, true) {
-              some(subcmt) { self.gather_pat(subcmt, subpat, alt_id); }
-              none { tcx.sess.span_bug(pat.span, "Non derefable type"); }
+              some(subcmt) {
+                self.gather_pat(subcmt, subpat, arm_id, alt_id);
+              }
+              none {
+                tcx.sess.span_bug(pat.span, "Non derefable type");
+              }
             }
           }
 
@@ -1006,6 +1029,10 @@ impl categorize_methods for borrowck_ctxt {
         }
     }
 
+    fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
+        ret @{cat:cat_discr(cmt, alt_id) with *cmt};
+    }
+
     fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
                              f_name: str, f_ty: ty::t) -> cmt {
         let f_mutbl = alt field_mutbl(self.tcx, base_cmt.ty, f_name) {
@@ -1239,6 +1266,7 @@ impl categorize_methods for borrowck_ctxt {
           cat_comp(cmt, comp) {
             #fmt["%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)]
           }
+          cat_discr(cmt, _) { self.cat_to_repr(cmt.cat) }
         }
     }
 
@@ -1325,6 +1353,9 @@ impl categorize_methods for borrowck_ctxt {
 
               _ { mut_str + " indexed content" }
             }
+          }
+          cat_discr(cmt, _) {
+            self.cmt_to_str(cmt)
           }
         }
     }
@@ -1420,20 +1451,9 @@ fn field_mutbl(tcx: ty::ctxt,
 // Preserve(Ex, S) holds if ToAddr(Ex) will remain valid for the entirety of
 // the scope S.
 
-enum preserve_ctxt = @{
-    bccx: borrowck_ctxt, opt_scope_id: option<ast::node_id>
-};
-
 impl preserve_methods for borrowck_ctxt {
-    fn preserve(cmt: cmt,
-                opt_scope_id: option<ast::node_id>) -> bckres<()> {
-        preserve_ctxt(@{bccx:self, opt_scope_id:opt_scope_id}).preserve(cmt)
-    }
-}
-
-impl preserve_methods for preserve_ctxt {
-    fn preserve(cmt: cmt) -> bckres<()> {
-        #debug["preserve(%s)", self.bccx.cmt_to_repr(cmt)];
+    fn preserve(cmt: cmt, opt_scope_id: option<ast::node_id>) -> bckres<()> {
+        #debug["preserve(%s)", self.cmt_to_repr(cmt)];
         let _i = indenter();
 
         alt cmt.cat {
@@ -1441,13 +1461,13 @@ impl preserve_methods for preserve_ctxt {
             ok(())
           }
           cat_stack_upvar(cmt) {
-            self.preserve(cmt)
+            self.preserve(cmt, opt_scope_id)
           }
           cat_local(_) {
             // This should never happen.  Local variables are always lendable,
             // so either `loan()` should be called or there must be some
             // intermediate @ or &---they are not lendable but do not recurse.
-            self.bccx.tcx.sess.span_bug(
+            self.tcx.sess.span_bug(
                 cmt.span,
                 "preserve() called with local");
           }
@@ -1463,13 +1483,13 @@ impl preserve_methods for preserve_ctxt {
           cat_comp(cmt_base, comp_res) {
             // Most embedded components: if the base is stable, the
             // type never changes.
-            self.preserve(cmt_base)
+            self.preserve(cmt_base, opt_scope_id)
           }
           cat_comp(cmt1, comp_variant) {
-            self.require_imm(cmt, cmt1, err_mut_variant)
+            self.require_imm(cmt, cmt1, opt_scope_id, err_mut_variant)
           }
           cat_deref(cmt1, _, uniq_ptr) {
-            self.require_imm(cmt, cmt1, err_mut_uniq)
+            self.require_imm(cmt, cmt1, opt_scope_id, err_mut_uniq)
           }
           cat_deref(_, _, region_ptr) {
             // References are always "stable" by induction (when the
@@ -1482,17 +1502,18 @@ impl preserve_methods for preserve_ctxt {
             ok(())
           }
           cat_deref(base, derefs, gc_ptr) {
-            // GC'd pointers of type @MT: always stable because we can inc
-            // the ref count or keep a GC root as necessary.  We need to
-            // insert this id into the root_map, however.
-            alt self.opt_scope_id {
+            // GC'd pointers of type @MT: always stable because we can
+            // inc the ref count or keep a GC root as necessary.  We
+            // need to insert this id into the root_map, however.
+            alt opt_scope_id {
               some(scope_id) {
                 #debug["Inserting root map entry for %s: \
                         node %d:%u -> scope %d",
-                       self.bccx.cmt_to_repr(cmt), base.id,
+                       self.cmt_to_repr(cmt), base.id,
                        derefs, scope_id];
+
                 let rk = {id: base.id, derefs: derefs};
-                self.bccx.root_map.insert(rk, scope_id);
+                self.root_map.insert(rk, scope_id);
                 ok(())
               }
               none {
@@ -1500,15 +1521,77 @@ impl preserve_methods for preserve_ctxt {
               }
             }
           }
+          cat_discr(base, alt_id) {
+            // Subtle: in an alt, we must ensure that each binding
+            // variable remains valid for the duration of the arm in
+            // which it appears, presuming that this arm is taken.
+            // But it is inconvenient in trans to root something just
+            // for one arm.  Therefore, we insert a cat_discr(),
+            // basically a special kind of category that says "if this
+            // value must be dynamically rooted, root it for the scope
+            // `alt_id`.
+            //
+            // As an example, consider this scenario:
+            //
+            //    let mut x = @some(3);
+            //    alt *x { some(y) {...} none {...} }
+            //
+            // Technically, the value `x` need only be rooted
+            // in the `some` arm.  However, we evaluate `x` in trans
+            // before we know what arm will be taken, so we just
+            // always root it for the duration of the alt.
+            //
+            // As a second example, consider *this* scenario:
+            //
+            //    let x = @mut @some(3);
+            //    alt x { @@some(y) {...} @@none {...} }
+            //
+            // Here again, `x` need only be rooted in the `some` arm.
+            // In this case, the value which needs to be rooted is
+            // found only when checking which pattern matches: but
+            // this check is done before entering the arm.  Therefore,
+            // even in this case we just choose to keep the value
+            // rooted for the entire alt.  This means the value will be
+            // rooted even if the none arm is taken.  Oh well.
+            //
+            // At first, I tried to optimize the second case to only
+            // root in one arm, but the result was suboptimal: first,
+            // it interfered with the construction of phi nodes in the
+            // arm, as we were adding code to root values before the
+            // phi nodes were added.  This could have been addressed
+            // with a second basic block.  However, the naive approach
+            // also yielded suboptimal results for patterns like:
+            //
+            //    let x = @mut @...;
+            //    alt x { @@some_variant(y) | @@some_other_variant(y) {...} }
+            //
+            // The reason is that we would root the value once for
+            // each pattern and not once per arm.  This is also easily
+            // fixed, but it's yet more code for what is really quite
+            // the corner case.
+            //
+            // Nonetheless, if you decide to optimize this case in the
+            // future, you need only adjust where the cat_discr()
+            // node appears to draw the line between what will be rooted
+            // in the *arm* vs the *alt*.
+
+            // current scope must be the arm, which is always a child of alt:
+            assert self.tcx.region_map.get(opt_scope_id.get()) == alt_id;
+
+            self.preserve(base, some(alt_id))
+          }
         }
     }
 
-    fn require_imm(cmt: cmt, cmt1: cmt, code: bckerr_code) -> bckres<()> {
+    fn require_imm(cmt: cmt,
+                   cmt1: cmt,
+                   opt_scope_id: option<ast::node_id>,
+                   code: bckerr_code) -> bckres<()> {
         // Variant contents and unique pointers: must be immutably
         // rooted to a preserved address.
         alt cmt1.mutbl {
           m_mutbl | m_const { err({cmt:cmt, code:code}) }
-          m_imm { self.preserve(cmt1) }
+          m_imm { self.preserve(cmt1, opt_scope_id) }
         }
     }
 }
@@ -1568,6 +1651,9 @@ impl loan_methods for loan_ctxt {
           }
           cat_local(_) | cat_arg(_) | cat_stack_upvar(_) {
             self.ok_with_loan_of(cmt, req_mutbl)
+          }
+          cat_discr(base, _) {
+            self.loan(base, req_mutbl)
           }
           cat_comp(cmt_base, comp_field(_)) |
           cat_comp(cmt_base, comp_index(_)) |

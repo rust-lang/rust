@@ -1681,6 +1681,17 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
                           save_in(lhs_res.val));
 }
 
+fn root_value(bcx: block, val: ValueRef, ty: ty::t,
+              scope_id: ast::node_id) {
+    if !bcx.sess().opts.no_asm_comments {
+        add_comment(bcx, #fmt["preserving until end of scope %d",
+                              scope_id]);
+    }
+    let root_loc = alloca(bcx, type_of(bcx.ccx(), ty));
+    copy_val(bcx, INIT, root_loc, val, ty);
+    add_root_cleanup(bcx, scope_id, root_loc, ty);
+}
+
 fn autoderef(cx: block, e_id: ast::node_id,
              v: ValueRef, t: ty::t) -> result_t {
     let _icx = cx.insn_ctxt("autoderef");
@@ -1693,19 +1704,12 @@ fn autoderef(cx: block, e_id: ast::node_id,
                e_id, val_str(ccx.tn, v1), ty_to_str(ccx.tcx, t1),
                derefs];
 
-        // check if the result of this autoderef must be preserved
+        // root the autoderef'd value, if necessary:
         derefs += 1u;
-        alt cx.ccx().maps.root_map.find({id:e_id, derefs:derefs}) {
-          none {}
+        alt ccx.maps.root_map.find({id:e_id, derefs:derefs}) {
+          none { }
           some(scope_id) {
-            if !cx.sess().no_asm_comments() {
-                add_comment(cx, #fmt["preserving until end of scope %d",
-                                     scope_id]);
-            }
-            let root_loc = alloca(cx, type_of(cx.ccx(), t1));
-            Store(cx, v1, root_loc);
-            take_ty(cx, root_loc, t1);
-            add_root_cleanup(cx, scope_id, root_loc, t1);
+            root_value(cx, v1, t1, scope_id);
           }
         }
 

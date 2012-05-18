@@ -87,7 +87,7 @@ fn assoc(key: str, list: bind_map) -> option<ValueRef> {
 type match_branch =
     @{pats: [@ast::pat],
       bound: bind_map,
-      data: @{body: BasicBlockRef,
+      data: @{bodycx: block,
               guard: option<@ast::expr>,
               id_map: pat_id_map}};
 type match = [match_branch];
@@ -302,6 +302,26 @@ fn collect_record_fields(m: match, col: uint) -> [ast::ident] {
     ret fields;
 }
 
+fn root_pats_as_necessary(bcx: block, m: match, col: uint, val: ValueRef) {
+    for vec::each(m) {|br|
+        let pat_id = br.pats[col].id;
+
+        alt bcx.ccx().maps.root_map.find({id:pat_id, derefs:0u}) {
+          none {}
+          some(scope_id) {
+            // Note: the scope_id will always be the id of the alt.  See the
+            // extended comment in rustc::middle::borrowck::preserve() for
+            // details (look for the case covering cat_discr).
+
+            let ty = node_id_type(bcx, pat_id);
+            let val = load_if_immediate(bcx, val, ty);
+            root_value(bcx, val, ty, scope_id);
+            ret; // if we kept going, we'd only be rooting same value again
+          }
+        }
+    }
+}
+
 fn any_box_pat(m: match, col: uint) -> bool {
     for vec::each(m) {|br|
         alt br.pats[col].node { ast::pat_box(_) { ret true; } _ { } }
@@ -383,9 +403,10 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
           _ { }
         }
         if !bcx.unreachable {
-            exits += [{bound: m[0].bound, from: bcx.llbb, to: data.body}];
+            exits += [{bound: m[0].bound, from: bcx.llbb,
+                       to: data.bodycx.llbb}];
         }
-        Br(bcx, data.body);
+        Br(bcx, data.bodycx.llbb);
         ret;
     }
 
@@ -404,6 +425,8 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
         // each column is guaranteed to have at least one real pattern)
         if pat_id == 0 { pat_id = br.pats[col].id; }
     }
+
+    root_pats_as_necessary(bcx, m, col, val);
 
     let rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
@@ -639,7 +662,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
         for vec::each(a.pats) {|p|
             match += [@{pats: [p],
                         bound: [],
-                        data: @{body: body.llbb, guard: a.guard,
+                        data: @{bodycx: body, guard: a.guard,
                                 id_map: id_map}}];
         }
     }
