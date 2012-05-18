@@ -1683,7 +1683,7 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
 
 fn root_value(bcx: block, val: ValueRef, ty: ty::t,
               scope_id: ast::node_id) {
-    if !bcx.sess().opts.no_asm_comments {
+    if !bcx.sess().no_asm_comments() {
         add_comment(bcx, #fmt["preserving until end of scope %d",
                               scope_id]);
     }

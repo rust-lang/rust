@@ -66,13 +66,13 @@ type parameter).
 
 */
 
-import astconv::{ast_conv, region_scope, empty_rscope, ast_ty_to_ty,
-                 in_anon_rscope};
+import astconv::{ast_conv, ast_ty_to_ty};
 import collect::{methods}; // ccx.to_ty()
 import method::{methods};  // methods for method::lookup
 import regionmanip::{universally_quantify_regions_before_call,
                      region_of, replace_bound_regions,
                      collect_bound_regions_in_tys};
+import rscope::*;
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -335,7 +335,7 @@ fn class_types(ccx: @crate_ctxt, members: [@ast::class_member],
                rp: ast::region_param) -> class_map {
 
     let rslt = int_hash::<ty::t>();
-    let rs = astconv::type_rscope(rp);
+    let rs = rscope::type_rscope(rp);
     for members.each { |m|
       alt m.node {
          ast::instance_var(_,t,_,id,_) {
@@ -375,7 +375,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_bare_fn(ccx, decl, body, dtor_id, none);
       }
       ast::item_impl(tps, rp, _, ty, ms) {
-        let self_ty = ccx.to_ty(astconv::type_rscope(rp), ty);
+        let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each {|m| check_method(ccx, m, self_ty);}
       }
       ast::item_class(tps, ifaces, members, ctor, m_dtor, rp) {
@@ -652,7 +652,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
                                   _}, _)) {
             {n_tps: ts.len(),
              rp: rp,
-             raw_ty: fcx.ccx.to_ty(astconv::type_rscope(rp), st)}
+             raw_ty: fcx.ccx.to_ty(rscope::type_rscope(rp), st)}
           }
           some(ast_map::node_item(@{node: ast::item_class(ts,
                                  _,_,_,_,rp), id: class_id, _},_)) {

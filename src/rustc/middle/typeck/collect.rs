@@ -20,8 +20,8 @@ are represented as `ty_param()` instances.
 
 */
 
-import astconv::{type_rscope, empty_rscope, in_binding_rscope, ast_conv,
-                 ty_of_fn_decl, ty_of_arg, region_scope, ast_ty_to_ty};
+import astconv::{ast_conv, ty_of_fn_decl, ty_of_arg, ast_ty_to_ty};
+import rscope::*;
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 

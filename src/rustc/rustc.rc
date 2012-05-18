@@ -61,6 +61,7 @@ mod middle {
             mod demand;
             mod method;
         }
+        mod rscope;
         mod astconv;
         mod infer;
         mod collect;
