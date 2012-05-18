@@ -80,12 +80,13 @@ fn seq_preconds(fcx: fn_ctxt, pps: [pre_and_post]) -> precond {
     let sz: uint = vec::len(pps);
     let num_vars: uint = num_constraints(fcx.enclosing);
 
-    fn seq_preconds_go(fcx: fn_ctxt, pps: [pre_and_post], first: pre_and_post)
+    fn seq_preconds_go(fcx: fn_ctxt, pps: [pre_and_post],
+                       idx: uint, first: pre_and_post)
        -> precond {
-        let mut pps = pps;
+        let mut idx = idx;
         let mut first = first;
         loop {
-            let sz: uint = vec::len(pps);
+            let sz: uint = vec::len(pps) - idx;
             if sz >= 1u {
                 let second = pps[0];
                 assert (pps_len(second) == num_constraints(fcx.enclosing));
@@ -95,7 +96,7 @@ fn seq_preconds(fcx: fn_ctxt, pps: [pre_and_post]) -> precond {
                 union(next_first, second_pre);
                 let next_first_post = clone(first.postcondition);
                 seq_tritv(next_first_post, second.postcondition);
-                pps = vec::slice(pps, 1u, sz);
+                idx += 1u;
                 first = @{precondition: next_first,
                           postcondition: next_first_post};
             } else { ret first.precondition; }
@@ -105,7 +106,7 @@ fn seq_preconds(fcx: fn_ctxt, pps: [pre_and_post]) -> precond {
     if sz >= 1u {
         let first = pps[0];
         assert (pps_len(first) == num_vars);
-        ret seq_preconds_go(fcx, vec::slice(pps, 1u, sz), first);
+        ret seq_preconds_go(fcx, pps, 1u, first);
     } else { ret true_precond(num_vars); }
 }
 
