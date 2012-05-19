@@ -276,7 +276,10 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
             pprust::synth_comment(s, int::to_str(expr.id, 10u));
             pprust::pclose(s);
           }
-          _ { }
+          pprust::node_pat(s, pat) {
+            pp::space(s.s);
+            pprust::synth_comment(s, "pat " + int::to_str(pat.id, 10u));
+          }
         }
     }
 
