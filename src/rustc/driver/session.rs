@@ -30,6 +30,7 @@ const time_llvm_passes: uint = 8u;
 const stats: uint = 16u;
 const no_asm_comments: uint = 32u;
 const no_verify: uint = 64u;
+const trace: uint = 128u;
 
 fn debugging_opts_map() -> [(str, str, uint)] {
     [("ppregions", "prettyprint regions with \
@@ -40,7 +41,8 @@ fn debugging_opts_map() -> [(str, str, uint)] {
      ("time-llvm-passes", "measure time of each LLVM pass", time_llvm_passes),
      ("stats", "gather trans statistics", stats),
      ("no-asm-comments", "omit comments when using -S", no_asm_comments),
-     ("no-verify", "skip LLVM verification", no_verify)]
+     ("no-verify", "skip LLVM verification", no_verify),
+     ("trace", "emit trace logs", trace)]
 }
 
 type options =
@@ -141,6 +143,7 @@ impl session for session {
     fn stats() -> bool { self.debugging_opt(stats) }
     fn no_asm_comments() -> bool { self.debugging_opt(no_asm_comments) }
     fn no_verify() -> bool { self.debugging_opt(no_verify) }
+    fn trace() -> bool { self.debugging_opt(trace) }
 }
 
 #[doc = "Some reasonable defaults"]

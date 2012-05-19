@@ -9,6 +9,7 @@ import lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
 
 type upcalls =
     {_fail: ValueRef,
+     trace: ValueRef,
      malloc: ValueRef,
      free: ValueRef,
      validate_box: ValueRef,
@@ -53,6 +54,9 @@ fn declare_upcalls(targ_cfg: @session::config,
     ret @{_fail: dv("fail", [T_ptr(T_i8()),
                              T_ptr(T_i8()),
                              size_t]),
+          trace: dv("trace", [T_ptr(T_i8()),
+                              T_ptr(T_i8()),
+                              int_t]),
           malloc:
               nothrow(d("malloc", [T_ptr(tydesc_type)],
                         T_ptr(T_i8()))),

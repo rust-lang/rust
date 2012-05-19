@@ -669,6 +669,11 @@ fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         count_insn(cx, "call");
+
+        #debug["Call(Fn=%s, Args=%?)",
+               val_str(cx.ccx().tn, Fn),
+               Args.map { |arg| val_str(cx.ccx().tn, arg) }];
+
         ret llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                 Args.len() as c_uint, noname());
     }

@@ -129,6 +129,28 @@ upcall_fail(char const *expr,
     UPCALL_SWITCH_STACK(&args, upcall_s_fail);
 }
 
+struct s_trace_args {
+    char const *msg;
+    char const *file;
+    size_t line;
+};
+
+extern "C" CDECL void
+upcall_s_trace(s_trace_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+    LOG(task, trace, "Trace %s:%d: %s",
+        args->file, args->line, args->msg);
+}
+
+extern "C" CDECL void
+upcall_trace(char const *msg,
+             char const *file,
+             size_t line) {
+    s_trace_args args = {msg,file,line};
+    UPCALL_SWITCH_STACK(&args, upcall_s_trace);
+}
+
 /**********************************************************************
  * Allocate an object in the task-local heap.
  */

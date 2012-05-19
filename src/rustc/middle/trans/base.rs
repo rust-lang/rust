@@ -1683,10 +1683,12 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
 
 fn root_value(bcx: block, val: ValueRef, ty: ty::t,
               scope_id: ast::node_id) {
-    if !bcx.sess().no_asm_comments() {
-        add_comment(bcx, #fmt["preserving until end of scope %d",
-                              scope_id]);
+    if bcx.sess().trace() {
+        trans_trace(
+            bcx, none,
+            #fmt["preserving until end of scope %d", scope_id]);
     }
+
     let root_loc = alloca(bcx, type_of(bcx.ccx(), ty));
     copy_val(bcx, INIT, root_loc, val, ty);
     add_root_cleanup(bcx, scope_id, root_loc, ty);
@@ -3725,6 +3727,30 @@ fn trans_fail_expr(bcx: block, sp_opt: option<span>,
     }
 }
 
+fn trans_trace(bcx: block, sp_opt: option<span>, trace_str: str) {
+    if !bcx.sess().trace() { ret; }
+    let _icx = bcx.insn_ctxt("trans_trace");
+    add_comment(bcx, trace_str);
+    let V_trace_str = C_cstr(bcx.ccx(), trace_str);
+    let {V_filename, V_line} = alt sp_opt {
+      some(sp) {
+        let sess = bcx.sess();
+        let loc = codemap::lookup_char_pos(sess.parse_sess.cm, sp.lo);
+        {V_filename: C_cstr(bcx.ccx(), loc.file.name),
+         V_line: loc.line as int}
+      }
+      none {
+        {V_filename: C_cstr(bcx.ccx(), "<runtime>"),
+         V_line: 0}
+      }
+    };
+    let ccx = bcx.ccx();
+    let V_trace_str = PointerCast(bcx, V_trace_str, T_ptr(T_i8()));
+    let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
+    let args = [V_trace_str, V_filename, C_int(ccx, V_line)];
+    Call(bcx, ccx.upcalls.trace, args);
+}
+
 fn trans_fail(bcx: block, sp_opt: option<span>, fail_str: str) ->
     block {
     let _icx = bcx.insn_ctxt("trans_fail");
@@ -4040,8 +4066,10 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
     loop {
         #debug["cleanup_and_leave: leaving %s", cur.to_str()];
 
-        if !bcx.sess().no_asm_comments() {
-            add_comment(bcx, #fmt["cleanup_and_leave(%s)", cur.to_str()]);
+        if bcx.sess().trace() {
+            trans_trace(
+                bcx, none,
+                #fmt["cleanup_and_leave(%s)", cur.to_str()]);
         }
 
         alt cur.kind {

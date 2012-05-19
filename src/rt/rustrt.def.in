@@ -65,6 +65,7 @@ vec_from_buf_shared
 unsupervise
 upcall_cmp_type
 upcall_fail
+upcall_trace
 upcall_free
 upcall_validate_box
 upcall_log_type
