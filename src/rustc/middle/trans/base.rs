@@ -2620,11 +2620,16 @@ fn float_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
 enum cast_kind { cast_pointer, cast_integral, cast_float,
                 cast_enum, cast_other, }
 fn cast_type_kind(t: ty::t) -> cast_kind {
-    if ty::type_is_fp(t) { cast_float }
-    else if ty::type_is_unsafe_ptr(t) { cast_pointer }
-    else if ty::type_is_integral(t) { cast_integral }
-    else if ty::type_is_enum(t) { cast_enum }
-    else { cast_other }
+    alt ty::get(t).struct {
+      ty::ty_float(*)   {cast_float}
+      ty::ty_ptr(*)     {cast_pointer}
+      ty::ty_rptr(*)    {cast_pointer}
+      ty::ty_int(*)     {cast_integral}
+      ty::ty_uint(*)    {cast_integral}
+      ty::ty_bool       {cast_integral}
+      ty::ty_enum(*)    {cast_enum}
+      _                 {cast_other}
+    }
 }
 
 
