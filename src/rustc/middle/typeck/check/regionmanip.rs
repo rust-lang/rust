@@ -1,4 +1,5 @@
 import middle::typeck::infer::{ty_and_region_var_methods};
+import syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
 
@@ -113,6 +114,20 @@ fn replace_bound_regions(
  * stack position and so the resulting region will be the enclosing block.
  */
 fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
+    #debug["region_of(expr=%s)", expr_to_str(expr)];
+    ret alt expr.node {
+      ast::expr_path(path) {
+        def(fcx, expr, lookup_def(fcx, path.span, expr.id))}
+      ast::expr_field(base, _, _) {
+        deref(fcx, base)}
+      ast::expr_index(base, _) {
+        deref(fcx, base)}
+      ast::expr_unary(ast::deref, base) {
+        deref(fcx, base)}
+      _ {
+        borrow(fcx, expr)}
+    };
+
     fn borrow(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
         ty::encl_region(fcx.ccx.tcx, expr.id)
     }
@@ -127,24 +142,38 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
         }
     }
 
-    alt expr.node {
-      ast::expr_path(path) {
-        let defn = lookup_def(fcx, path.span, expr.id);
-        alt defn {
+    fn def(fcx: @fn_ctxt, expr: @ast::expr, d: ast::def) -> ty::region {
+        alt d {
+          ast::def_arg(local_id, _) |
           ast::def_local(local_id, _) |
-          ast::def_upvar(local_id, _, _) {
+          ast::def_binding(local_id) {
+            #debug["region_of.def/arg/local/binding(id=%d)", local_id];
             let local_scope = fcx.ccx.tcx.region_map.get(local_id);
             ty::re_scope(local_scope)
           }
-          _ {
+          ast::def_upvar(_, inner, _) {
+            #debug["region_of.def/upvar"];
+            def(fcx, expr, *inner)
+          }
+          ast::def_self(*) {
+            alt fcx.in_scope_regions.find(ty::br_self) {
+              some(r) {r}
+              none {
+                // eventually, this should never happen... self should
+                // always be an &self.T rptr
+                borrow(fcx, expr)
+              }
+            }
+          }
+          ast::def_fn(_, _) | ast::def_mod(_) |
+          ast::def_native_mod(_) | ast::def_const(_) |
+          ast::def_use(_) | ast::def_variant(_, _) |
+          ast::def_ty(_) | ast::def_prim_ty(_) |
+          ast::def_ty_param(_, _) | ast::def_class(_) |
+          ast::def_region(_) {
             ty::re_static
           }
         }
-      }
-      ast::expr_field(base, _, _) { deref(fcx, base) }
-      ast::expr_index(base, _) { deref(fcx, base) }
-      ast::expr_unary(ast::deref, base) { deref(fcx, base) }
-      _ { borrow(fcx, expr) }
     }
 }
 

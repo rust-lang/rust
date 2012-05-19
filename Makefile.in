@@ -198,7 +198,7 @@ STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,          \
 COMPILER_CRATE := $(S)src/rustc/rustc.rc
 COMPILER_INPUTS := $(filter-out $(S)src/rustc/driver/rustc.rs,     \
                        $(wildcard $(addprefix $(S)src/rustc/,      \
-                           rustc.rc *.rs */*.rs */*/*.rs)))
+                           rustc.rc *.rs */*.rs */*/*.rs */*/*/*.rs)))
 
 LIBRUSTSYNTAX_CRATE := $(S)src/librustsyntax/rustsyntax.rc
 LIBRUSTSYNTAX_INPUTS := $(wildcard $(addprefix $(S)src/librustsyntax/, \
