@@ -260,7 +260,6 @@ fn finish<T: qq_helper>
                       );
     let mut rcall = pcall;
     if (g_len > 0u) {
-        let gather = copy qcx.gather;
         rcall = mk_call(cx,sp,
                         ["syntax", "ext", "qquote", "replace"],
                         [pcall,
