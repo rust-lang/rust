@@ -351,6 +351,27 @@ impl methods for gather_loan_ctxt {
         // been built up and pass it off to guarantee_valid() so that
         // we can be sure that the binding will remain valid for the
         // duration of the arm.
+        //
+        // The correspondence between the id in the cmt and which
+        // pattern is being referred to is somewhat...subtle.  In
+        // general, the id of the cmt is the id of the node that
+        // produces the value.  For patterns, that's actually the
+        // *subpattern*, generally speaking.
+        //
+        // To see what I mean about ids etc, consider:
+        //
+        //     let x = @@3;
+        //     alt x {
+        //       @@y { ... }
+        //     }
+        //
+        // Here the cmt for `y` would be something like
+        //
+        //     local(x)->@->@
+        //
+        // where the id of `local(x)` is the id of the `x` that appears
+        // in the alt, the id of `local(x)->@` is the `@y` pattern,
+        // and the id of `local(x)->@->@` is the id of the `y` pattern.
 
         #debug["gather_pat: id=%d pat=%s cmt=%s arm_id=%d alt_id=%d",
                pat.id, pprust::pat_to_str(pat),
@@ -369,7 +390,7 @@ impl methods for gather_loan_ctxt {
           ast::pat_enum(_, some(subpats)) {
             // variant(x, y, z)
             for subpats.each { |subpat|
-                let subcmt = self.bccx.cat_variant(pat, cmt, subpat);
+                let subcmt = self.bccx.cat_variant(subpat, cmt);
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
             }
           }
@@ -396,8 +417,7 @@ impl methods for gather_loan_ctxt {
           ast::pat_rec(field_pats, _) {
             // {f1: p1, ..., fN: pN}
             for field_pats.each { |fp|
-                let cmt_field = self.bccx.cat_field(pat, cmt, fp.ident,
-                                                    tcx.ty(fp.pat));
+                let cmt_field = self.bccx.cat_field(fp.pat, cmt, fp.ident);
                 self.gather_pat(cmt_field, fp.pat, arm_id, alt_id);
             }
           }
@@ -405,14 +425,14 @@ impl methods for gather_loan_ctxt {
           ast::pat_tup(subpats) {
             // (p1, ..., pN)
             for subpats.each { |subpat|
-                let subcmt = self.bccx.cat_tuple_elt(pat, cmt, subpat);
+                let subcmt = self.bccx.cat_tuple_elt(subpat, cmt);
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
             }
           }
 
           ast::pat_box(subpat) | ast::pat_uniq(subpat) {
             // @p1, ~p1
-            alt self.bccx.cat_deref(pat, cmt, 0u, true) {
+            alt self.bccx.cat_deref(subpat, cmt, 0u, true) {
               some(subcmt) {
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
               }
@@ -998,7 +1018,7 @@ impl categorize_methods for borrowck_ctxt {
 
           ast::expr_field(base, f_name, _) {
             let base_cmt = self.cat_autoderef(base);
-            self.cat_field(expr, base_cmt, f_name, expr_ty)
+            self.cat_field(expr, base_cmt, f_name)
           }
 
           ast::expr_index(base, _) {
@@ -1033,8 +1053,7 @@ impl categorize_methods for borrowck_ctxt {
         ret @{cat:cat_discr(cmt, alt_id) with *cmt};
     }
 
-    fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
-                             f_name: str, f_ty: ty::t) -> cmt {
+    fn cat_field<N:ast_node>(node: N, base_cmt: cmt, f_name: str) -> cmt {
         let f_mutbl = alt field_mutbl(self.tcx, base_cmt.ty, f_name) {
           some(f_mutbl) { f_mutbl }
           none {
@@ -1053,7 +1072,7 @@ impl categorize_methods for borrowck_ctxt {
         };
         @{id: node.id(), span: node.span(),
           cat: cat_comp(base_cmt, comp_field(f_name)), lp:lp,
-          mutbl: m, ty: f_ty}
+          mutbl: m, ty: self.tcx.ty(node)}
     }
 
     fn cat_deref<N:ast_node>(node: N, base_cmt: cmt, derefs: uint,
@@ -1141,16 +1160,16 @@ impl categorize_methods for borrowck_ctxt {
           mutbl:mt.mutbl, ty:mt.ty}
     }
 
-    fn cat_variant<N: ast_node>(variant: N, cmt: cmt, arg: N) -> cmt {
-        @{id: variant.id(), span: variant.span(),
+    fn cat_variant<N: ast_node>(arg: N, cmt: cmt) -> cmt {
+        @{id: arg.id(), span: arg.span(),
           cat: cat_comp(cmt, comp_variant),
           lp: cmt.lp.map { |l| @lp_comp(l, comp_variant) },
           mutbl: cmt.mutbl, // imm iff in an immutable context
           ty: self.tcx.ty(arg)}
     }
 
-    fn cat_tuple_elt<N: ast_node>(pat: N, cmt: cmt, elt: N) -> cmt {
-        @{id: pat.id(), span: pat.span(),
+    fn cat_tuple_elt<N: ast_node>(elt: N, cmt: cmt) -> cmt {
+        @{id: elt.id(), span: elt.span(),
           cat: cat_comp(cmt, comp_tuple),
           lp: cmt.lp.map { |l| @lp_comp(l, comp_tuple) },
           mutbl: cmt.mutbl, // imm iff in an immutable context
