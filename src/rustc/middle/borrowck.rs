@@ -541,6 +541,15 @@ enum assignment_type {
 }
 
 impl methods for assignment_type {
+    fn checked_by_liveness() -> bool {
+        // the liveness pass guarantees that immutable local variables
+        // are only assigned once; but it doesn't consider &mut
+        alt self {
+          at_straight_up {true}
+          at_swap {true}
+          at_mutbl_ref {false}
+        }
+    }
     fn ing_form(desc: str) -> str {
         alt self {
           at_straight_up { "assigning to " + desc }
@@ -717,6 +726,13 @@ impl methods for check_loan_ctxt {
         }
     }
 
+    fn is_local_variable(cmt: cmt) -> bool {
+        alt cmt.cat {
+          cat_local(_) {true}
+          _ {false}
+        }
+    }
+
     fn is_self_field(cmt: cmt) -> bool {
         alt cmt.cat {
           cat_comp(cmt_base, comp_field(_)) {
@@ -735,9 +751,13 @@ impl methods for check_loan_ctxt {
         #debug["check_assignment(cmt=%s)",
                self.bccx.cmt_to_repr(cmt)];
 
-        // check that the lvalue `ex` is assignable, but be careful
-        // because assigning to self.foo in a ctor is always allowed.
-        if !self.in_ctor || !self.is_self_field(cmt) {
+        if self.in_ctor && self.is_self_field(cmt)
+            && at.checked_by_liveness() {
+            // assigning to self.foo in a ctor is always allowed.
+        } else if self.is_local_variable(cmt) && at.checked_by_liveness() {
+            // liveness guarantees that immutable local variables
+            // are only assigned once
+        } else {
             alt cmt.mutbl {
               m_mutbl { /*ok*/ }
               m_const | m_imm {

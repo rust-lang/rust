@@ -1,5 +1,6 @@
 import syntax::{ast, ast_util};
 import driver::session::session;
+import syntax::codemap::span;
 import std::map;
 import std::map::hashmap;
 
@@ -14,15 +15,17 @@ export cap_drop;
 export cap_ref;
 
 enum capture_mode {
-    cap_copy, //< Copy the value into the closure.
-    cap_move, //< Move the value into the closure.
-    cap_drop, //< Drop value after creating closure.
-    cap_ref,  //< Reference directly from parent stack frame (block fn).
+    cap_copy, // Copy the value into the closure.
+    cap_move, // Move the value into the closure.
+    cap_drop, // Drop value after creating closure.
+    cap_ref,  // Reference directly from parent stack frame (block fn).
 }
 
 type capture_var = {
-    def: ast::def,     //< The variable being accessed free.
-    mode: capture_mode //< How is the variable being accessed.
+    def: ast::def,                       // Variable being accessed free
+    span: span,                          // Location of access or cap item
+    cap_item: option<ast::capture_item>, // Capture item, if any
+    mode: capture_mode                   // How variable is being accessed
 };
 
 type capture_map = map::hashmap<ast::def_id, capture_var>;
@@ -70,15 +73,24 @@ fn compute_capture_vars(tcx: ty::ctxt,
             // if we are moving the value in, but it's not actually used,
             // must drop it.
             if vec::any(*freevars, {|fv| fv.def == cap_def}) {
-                cap_map.insert(cap_def_id, { def:cap_def, mode:cap_move });
+                cap_map.insert(cap_def_id, {def:cap_def,
+                                            span: cap_item.span,
+                                            cap_item: some(cap_item),
+                                            mode:cap_move});
             } else {
-                cap_map.insert(cap_def_id, { def:cap_def, mode:cap_drop });
+                cap_map.insert(cap_def_id, {def:cap_def,
+                                            span: cap_item.span,
+                                            cap_item: some(cap_item),
+                                            mode:cap_drop});
             }
         } else {
             // if we are copying the value in, but it's not actually used,
             // just ignore it.
             if vec::any(*freevars, {|fv| fv.def == cap_def}) {
-                cap_map.insert(cap_def_id, { def:cap_def, mode:cap_copy });
+                cap_map.insert(cap_def_id, {def:cap_def,
+                                            span: cap_item.span,
+                                            cap_item: some(cap_item),
+                                            mode:cap_copy});
             }
         }
     }
@@ -96,7 +108,10 @@ fn compute_capture_vars(tcx: ty::ctxt,
         alt cap_map.find(fvar_def_id) {
           option::some(_) { /* was explicitly named, do nothing */ }
           option::none {
-            cap_map.insert(fvar_def_id, {def:fvar.def, mode:implicit_mode});
+            cap_map.insert(fvar_def_id, {def:fvar.def,
+                                         span: fvar.span,
+                                         cap_item: none,
+                                         mode:implicit_mode});
           }
         }
     }

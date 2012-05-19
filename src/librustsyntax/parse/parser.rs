@@ -434,7 +434,7 @@ class parser {
         fn parse_capture_item(p:parser, is_move: bool) -> capture_item {
             let sp = mk_sp(p.span.lo, p.span.hi);
             let ident = parse_ident(p);
-            {id: p.get_id(), is_move: is_move, name: ident, span: sp}
+            @{id: p.get_id(), is_move: is_move, name: ident, span: sp}
         }
 
         if eat_keyword(self, "move") {
@@ -1710,7 +1710,7 @@ class parser {
                     let id = p.get_id();
                     let sp = mk_sp(p.span.lo, p.span.hi);
                     let ident = parse_ident(p);
-                    res += [{id:id, is_move: is_move, name:ident, span:sp}];
+                    res += [@{id:id, is_move: is_move, name:ident, span:sp}];
                     if !eat(p, token::COMMA) {
                         ret res;
                     }

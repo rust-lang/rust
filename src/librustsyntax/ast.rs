@@ -351,7 +351,7 @@ enum expr_ {
 }
 
 #[auto_serialize]
-type capture_item = {
+type capture_item = @{
     id: int,
     is_move: bool,
     name: ident, // Currently, can only capture a local var.
