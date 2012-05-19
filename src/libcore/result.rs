@@ -218,13 +218,11 @@ fn iter2<S,T,U:copy>(ss: [S], ts: [T],
 
 #[doc="
 Unwraps a result, assuming it is an `ok(T)`
-
-This operation is unsafe.
 "]
 fn unwrap<T, U>(-res: result<T, U>) -> T unsafe {
     let addr = alt res {
       ok(x) { ptr::addr_of(x) }
-      err(_) { fail "option none" }
+      err(_) { fail "error result" }
     };
     let liberated_value = unsafe::reinterpret_cast(*addr);
     unsafe::forget(res);
