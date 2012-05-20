@@ -178,16 +178,41 @@ rust_str_push(rust_vec** sp, uint8_t byte) {
     (*sp)->fill = fill + 1;
 }
 
+extern "C" CDECL rust_vec*
+rand_seed() {
+    size_t size = sizeof(ub4) * RANDSIZ;
+    rust_task *task = rust_get_current_task();
+    rust_vec *v = (rust_vec *) task->kernel->malloc(vec_size<uint8_t>(size),
+                                            "rand_seed");
+    v->fill = v->alloc = size;
+    isaac_seed((uint8_t*) &v->data);
+    return v;
+}
+
 extern "C" CDECL void *
 rand_new() {
     rust_task *task = rust_get_current_task();
     rust_sched_loop *thread = task->sched_loop;
-    randctx *rctx = (randctx *) task->malloc(sizeof(randctx), "randctx");
+    randctx *rctx = (randctx *) task->malloc(sizeof(randctx), "rand_new");
     if (!rctx) {
         task->fail();
         return NULL;
     }
-    isaac_init(thread->kernel, rctx);
+    isaac_init(thread->kernel, rctx, NULL);
+    return rctx;
+}
+
+extern "C" CDECL void *
+rand_new_seeded(rust_vec* seed) {
+    rust_task *task = rust_get_current_task();
+    rust_sched_loop *thread = task->sched_loop;
+    randctx *rctx = (randctx *) task->malloc(sizeof(randctx),
+                                             "rand_new_seeded");
+    if (!rctx) {
+        task->fail();
+        return NULL;
+    }
+    isaac_init(thread->kernel, rctx, seed);
     return rctx;
 }
 

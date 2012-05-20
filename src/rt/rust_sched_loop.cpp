@@ -29,7 +29,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched,int id) :
     name("main")
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
-    isaac_init(kernel, &rctx);
+    isaac_init(kernel, &rctx, NULL);
 
     if (!tls_initialized)
         init_tls();

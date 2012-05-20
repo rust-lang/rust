@@ -1,12 +1,14 @@
 #[doc = "Random number generation"];
 
-export rng, weighted, extensions;
+export rng, seed, seeded_rng, weighted, extensions;
 
 enum rctx {}
 
 #[abi = "cdecl"]
 native mod rustrt {
+    fn rand_seed() -> [u8];
     fn rand_new() -> *rctx;
+    fn rand_new_seeded(seed: [u8]) -> *rctx;
     fn rand_next(c: *rctx) -> u32;
     fn rand_free(c: *rctx);
 }
@@ -227,19 +229,49 @@ impl extensions for rng {
 
 }
 
-#[doc = "Create a random number generator"]
+resource rand_res(c: *rctx) { rustrt::rand_free(c); }
+
+impl of rng for @rand_res {
+    fn next() -> u32 { ret rustrt::rand_next(**self); }
+}
+
+#[doc = "Create a new random seed for seeded_rng"]
+fn seed() -> [u8] {
+    rustrt::rand_seed()
+}
+
+#[doc = "Create a random number generator with a system specified seed"]
 fn rng() -> rng {
-    resource rand_res(c: *rctx) { rustrt::rand_free(c); }
-
-    impl of rng for @rand_res {
-        fn next() -> u32 { ret rustrt::rand_next(**self); }
-    }
-
     @rand_res(rustrt::rand_new()) as rng
+}
+
+#[doc = "Create a random number generator using the specified seed. A \
+         generator constructed with a given seed will generate the same \
+         sequence of values as all other generators constructed with the \
+         same seed. The seed may be any length."]
+fn seeded_rng(seed: [u8]) -> rng {
+    @rand_res(rustrt::rand_new_seeded(seed)) as rng
 }
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn rng_seeded() {
+        let seed = rand::seed();
+        let ra = rand::seeded_rng(seed);
+        let rb = rand::seeded_rng(seed);
+        assert ra.gen_str(100u) == rb.gen_str(100u);
+    }
+
+    #[test]
+    fn rng_seeded_custom_seed() {
+        // much shorter than generated seeds which are 1024 bytes
+        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
+        let ra = rand::seeded_rng(seed);
+        let rb = rand::seeded_rng(seed);
+        assert ra.gen_str(100u) == rb.gen_str(100u);
+    }
 
     #[test]
     fn gen_int_from() {
