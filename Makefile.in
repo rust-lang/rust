@@ -68,7 +68,7 @@ ifneq ($(wildcard $(NON_HOST_TRIPLES)),)
 CFG_INFO := $(info cfg: non host triples $(NON_HOST_TRIPLES))
 endif
 
-CFG_RUSTC_FLAGS :=
+CFG_RUSTC_FLAGS := $(RUSTFLAGS)
 CFG_GCCISH_CFLAGS :=
 CFG_GCCISH_LINK_FLAGS :=
 
