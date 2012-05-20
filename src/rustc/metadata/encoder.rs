@@ -406,15 +406,13 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
             alt ecx.tcx.items.get(did.node) {
               ast_map::node_item(it@@{node: cl@item_class(*),_},_) {
                 ebml_w.wr_str(def_to_str(local_def(it.id)));
-                some(ty::lookup_item_type(ecx.tcx, did).ty)
               }
               ast_map::node_item(@{node: item_impl(_,_,
                                                    some(ifce),_,_),_},_) {
                 ebml_w.wr_str(def_to_str(did));
-                some(ty::node_id_to_type(ecx.tcx, ifce.id))
               }
               _ {
-                ebml_w.wr_str(def_to_str(did)); none
+                ebml_w.wr_str(def_to_str(did));
               }
             };
             ebml_w.end_tag();
