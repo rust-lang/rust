@@ -405,10 +405,10 @@ fn validate(edges: [(node_id, node_id)],
 }
 
 fn main() {
-    let scale = 18u;
+    let scale = 15u;
     let num_keys = 64u;
     let do_validate = false;
-    let do_sequential = false;
+    let do_sequential = true;
 
     let start = time::precise_time_s();
     let edges = make_edges(scale, 16u);
@@ -590,10 +590,6 @@ fn mapi<A: send, B: send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
             f(i + base, x)
         }
     };
-    log(info, slices.len());
-    for vec::eachi(slices) {|i, inner|
-        log(info, #fmt("slice %?: %?", i, inner.len()));
-    }
     let r = vec::concat(slices);
     log(info, (r.len(), xs.len()));
     assert(r.len() == xs.len());
