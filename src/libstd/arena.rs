@@ -3,9 +3,10 @@
 export arena, arena_with_size;
 
 import list;
+import list::{list, cons, nil};
 
 type chunk = {data: [u8], mut fill: uint};
-type arena = {mut chunks: list::list<@chunk>};
+type arena = {mut chunks: @list<@chunk>};
 
 fn chunk(size: uint) -> @chunk {
     let mut v = [];
@@ -14,7 +15,7 @@ fn chunk(size: uint) -> @chunk {
 }
 
 fn arena_with_size(initial_size: uint) -> arena {
-    ret {mut chunks: list::cons(chunk(initial_size), @list::nil)};
+    ret {mut chunks: @cons(chunk(initial_size), @nil)};
 }
 
 fn arena() -> arena {
@@ -28,7 +29,7 @@ impl arena for arena {
         let chunk_size = vec::capacity(head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
         head = chunk(uint::next_power_of_two(new_min_chunk_size + 1u));
-        self.chunks = list::cons(head, @self.chunks);
+        self.chunks = @cons(head, self.chunks);
 
         ret self.alloc(n_bytes, align);
     }

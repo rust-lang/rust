@@ -37,7 +37,7 @@ enum seen { unset, seen(node_id), }
 enum block_type { func, lp, }
 
 enum use { var_use(node_id), close_over(node_id), }
-type set = [{def: node_id, uses: list<use>}];
+type set = [{def: node_id, uses: @list<use>}];
 type bl = @{type: block_type, mut second: bool, mut exits: [set]};
 
 enum use_id { path(node_id), close(node_id, node_id) }
@@ -52,7 +52,7 @@ type ctx = {last_uses: std::map::hashmap<use_id, bool>,
             tcx: ty::ctxt,
             // The current set of local last uses
             mut current: set,
-            mut blocks: list<bl>};
+            mut blocks: @list<bl>};
 
 fn find_last_uses(c: @crate, def_map: resolve::def_map,
                   ref_map: alias::ref_map, tcx: ty::ctxt)
@@ -67,7 +67,7 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
               ref_map: ref_map,
               tcx: tcx,
               mut current: [],
-              mut blocks: nil};
+              mut blocks: @nil};
     visit::visit_crate(*c, cx, v);
     let mini_table = std::map::int_hash();
     for cx.last_uses.each {|key, val|
@@ -136,7 +136,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
             option::iter(def_is_owned_local(cx, my_def)) {|nid|
                 clear_in_current(cx, nid, false);
                 cx.current += [{def: nid,
-                                uses: cons(var_use(ex.id), @nil)}];
+                                uses: @cons(var_use(ex.id), @nil)}];
             }
           }
         }
@@ -249,13 +249,13 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
                 option::iter(def_is_owned_local(cx, v.def)) {|nid|
                     clear_in_current(cx, nid, false);
                     cx.current += [{def: nid,
-                                    uses: cons(close_over(id), @nil)}];
+                                    uses: @cons(close_over(id), @nil)}];
                 }
             }
           }
           _ {}
         }
-        let mut old_cur = [], old_blocks = nil;
+        let mut old_cur = [], old_blocks = @nil;
         cx.blocks <-> old_blocks;
         cx.current <-> old_cur;
         visit::visit_fn(fk, decl, body, sp, id, cx, v);
@@ -268,7 +268,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 
 fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
     let local = @{type: tp, mut second: false, mut exits: []};
-    cx.blocks = cons(local, @cx.blocks);
+    cx.blocks = @cons(local, cx.blocks);
     visit();
     local.second = true;
     local.exits = [];
@@ -281,23 +281,20 @@ fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
 
 fn add_block_exit(cx: ctx, tp: block_type) -> bool {
     let mut cur = cx.blocks;
-    while cur != nil {
-        alt cur {
+    loop {
+        alt *cur {
           cons(b, tail) {
             if (b.type == tp) {
                 if !b.second { b.exits += [cx.current]; }
                 ret true;
             }
-            cur = *tail;
+            cur = tail;
           }
           nil {
-            // typestate can't use the while loop condition --
-            // *sigh*
-            unreachable();
+            ret false;
           }
         }
     }
-    ret false;
 }
 
 fn join_branches(branches: [set]) -> set {
@@ -312,7 +309,7 @@ fn join_branches(branches: [set]) -> set {
                     for vec::each(branches[j]) {|elt2|
                         if elt2.def == elt.def {
                             list::iter(elt2.uses) {|e|
-                                if !list::has(nne, e) { nne = cons(e, @nne); }
+                                if !list::has(nne, e) { nne = @cons(e, nne); }
                             }
                         }
                     }

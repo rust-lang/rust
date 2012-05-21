@@ -33,7 +33,7 @@ type binding = @{node_id: node_id,
 
 // FIXME it may be worthwhile to use a linked list of bindings instead
 type scope = {bs: [binding],
-              invalid: @mut list<@invalid>};
+              invalid: @mut @list<@invalid>};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option<node_id>,
               unsafe_tys: [unsafe_ty]) -> binding {
@@ -68,7 +68,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
-    let sc = {bs: [], invalid: @mut list::nil};
+    let sc = {bs: [], invalid: @mut @list::nil};
     visit::visit_crate(*crate, sc, visit::mk_vt(v));
     tcx.sess.abort_if_errors();
     ret (cx.copy_map, cx.ref_map);
@@ -88,7 +88,7 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
         check_loop(*cx, sc) {|| v.visit_block(body, sc, v);}
       }
       ast::proto_box | ast::proto_uniq | ast::proto_bare {
-        let sc = {bs: [], invalid: @mut list::nil};
+        let sc = {bs: [], invalid: @mut @list::nil};
         v.visit_block(body, sc, v);
       }
     }
@@ -400,7 +400,7 @@ fn check_var(cx: ctx, ex: @ast::expr, p: @ast::path, id: ast::node_id,
                 if ty_can_unsafely_include(cx, unsafe_ty, var_t, assign) {
                     let inv = @{reason: val_taken, node_id: b.node_id,
                                 sp: ex.span, path: p};
-                    *sc.invalid = list::cons(inv, @*sc.invalid);
+                    *sc.invalid = @list::cons(inv, *sc.invalid);
                 }
             }
         } else if b.node_id == my_defnum {
@@ -418,7 +418,7 @@ fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
             if b.root_var == some(dnum) {
                 let inv = @{reason: overwritten, node_id: b.node_id,
                             sp: dest.span, path: p};
-                *sc.invalid = list::cons(inv, @*sc.invalid);
+                *sc.invalid = @list::cons(inv, *sc.invalid);
             }
         }
       }
@@ -791,46 +791,43 @@ fn unsafe_set(from: option<unsafe_ty>) -> [unsafe_ty] {
     alt from { some(t) { [t] } _ { [] } }
 }
 
-fn find_invalid(id: node_id, lst: list<@invalid>)
-    -> option<@invalid> {
+fn find_invalid(id: node_id, lst: @list<@invalid>) -> option<@invalid> {
     let mut cur = lst;
     loop {
-        alt cur {
+        alt *cur {
           list::nil { ret none; }
           list::cons(head, tail) {
             if head.node_id == id { ret some(head); }
-            cur = *tail;
+            cur = tail;
           }
         }
     };
 }
 
-fn join_invalid(a: list<@invalid>, b: list<@invalid>) -> list<@invalid> {
+fn join_invalid(a: @list<@invalid>, b: @list<@invalid>) -> @list<@invalid> {
     let mut result = a;
     list::iter(b) {|elt|
         let mut found = false;
         list::iter(a) {|e| if e == elt { found = true; } }
-        if !found { result = list::cons(elt, @result); }
+        if !found { result = @list::cons(elt, result); }
     }
     result
 }
 
-fn filter_invalid(src: list<@invalid>, bs: [binding]) -> list<@invalid> {
-    let mut out = list::nil, cur = src;
-    while cur != list::nil {
-        alt cur {
+fn filter_invalid(src: @list<@invalid>, bs: [binding]) -> @list<@invalid> {
+    let mut out = @list::nil, cur = src;
+    loop {
+        alt *cur {
           list::cons(head, tail) {
             let p = vec::position(bs, {|b| b.node_id == head.node_id});
-            if !is_none(p) { out = list::cons(head, @out); }
-            cur = *tail;
+            if !is_none(p) { out = @list::cons(head, out); }
+            cur = tail;
           }
           list::nil {
-            // typestate would help...
-            unreachable();
+            ret out;
           }
         }
     }
-    ret out;
 }
 
 fn err(cx: ctx, sp: span, err: str) {

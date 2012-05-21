@@ -105,7 +105,7 @@ impl methods for isr_alist {
     }
 
     fn find(br: ty::bound_region) -> option<ty::region> {
-        for list::each(*self) { |isr|
+        for list::each(self) { |isr|
             let (isr_br, isr_r) = isr;
             if isr_br == br { ret some(isr_r); }
         }

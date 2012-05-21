@@ -11,7 +11,7 @@ enum list<T> {
 
 #[doc = "Create a list from a vector"]
 fn from_vec<T: copy>(v: [const T]) -> @list<T> {
-    @vec::foldr(v, @nil::<T>, { |h, t| @cons(h, t) })
+    vec::foldr(v, @nil::<T>, { |h, t| @cons(h, t) })
 }
 
 #[doc = "
@@ -43,7 +43,7 @@ is returned. If `f` matches no elements then none is returned.
 fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
     let mut ls = ls;
     loop {
-        ls = alt ls {
+        ls = alt *ls {
           cons(hd, tl) {
             if f(hd) { ret some(hd); }
             tl
@@ -82,7 +82,7 @@ fn len<T>(ls: @list<T>) -> uint {
 }
 
 #[doc = "Returns all but the first element of a list"]
-pure fn tail<T: copy>(ls: @list<T>) -> list<T> {
+pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
     alt *ls {
         cons(_, tl) { ret tl; }
         nil { fail "list empty" }
@@ -98,7 +98,7 @@ pure fn head<T: copy>(ls: @list<T>) -> T {
 pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
     alt *l {
       nil { ret m; }
-      cons(x, xs) { let rest = append(*xs, m); ret @cons(x, @rest); }
+      cons(x, xs) { let rest = append(xs, m); ret @cons(x, rest); }
     }
 }
 
@@ -117,12 +117,13 @@ fn iter<T>(l: @list<T>, f: fn(T)) {
 }
 
 #[doc = "Iterate over a list"]
-fn each<T>(l: list<T>, f: fn(T) -> bool) {
+fn each<T>(l: @list<T>, f: fn(T) -> bool) {
     let mut cur = l;
     loop {
         cur = alt *cur {
           cons(hd, tl) {
             if !f(hd) { ret; }
+            tl
           }
           nil { break; }
         }
@@ -163,7 +164,7 @@ mod tests {
     #[test]
     fn test_from_vec_empty() {
         let empty : @list::list<int> = from_vec([]);
-        assert (empty == list::nil::<int>);
+        assert (empty == @list::nil::<int>);
     }
 
     #[test]
@@ -208,7 +209,7 @@ mod tests {
     fn test_find_fail() {
         fn match(&&_i: int) -> bool { ret false; }
         let l = from_vec([0, 1, 2]);
-        let empty = list::nil::<int>;
+        let empty = @list::nil::<int>;
         assert (list::find(l, match) == option::none::<int>);
         assert (list::find(empty, match) == option::none::<int>);
     }
