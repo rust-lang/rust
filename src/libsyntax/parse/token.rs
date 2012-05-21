@@ -1,9 +1,21 @@
 import util::interner;
 import util::interner::interner;
 import std::map::{hashmap, str_hash};
+import std::serialization::{serializer,
+                            deserializer,
+                            serialize_uint,
+                            deserialize_uint,
+                            serialize_i64,
+                            deserialize_i64,
+                            serialize_u64,
+                            deserialize_u64,
+                            serialize_bool,
+                            deserialize_bool};
 
+#[auto_serialize]
 type str_num = uint;
 
+#[auto_serialize]
 enum binop {
     PLUS,
     MINUS,
@@ -17,6 +29,7 @@ enum binop {
     SHR,
 }
 
+#[auto_serialize]
 enum token {
     /* Expression-operator symbols. */
     EQ,

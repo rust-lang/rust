@@ -17,6 +17,8 @@ import std::serialization::{serializer,
                             deserialize_str,
                             serialize_bool,
                             deserialize_bool};
+import parse::token;
+
 
 /* Note #1972 -- spans are serialized but not deserialized */
 fn serialize_span<S>(_s: S, _v: span) {
@@ -372,6 +374,16 @@ enum blk_sort {
 */
 
 #[auto_serialize]
+type token_tree = spanned<token_tree_>;
+
+#[auto_serialize]
+enum token_tree_ {
+    /* for macro invocations; parsing is the macro's job */
+    tt_delim(token::token, [token_tree]),
+    tt_flat(token::token)
+}
+
+#[auto_serialize]
 type mac = spanned<mac_>;
 
 #[auto_serialize]
@@ -386,6 +398,7 @@ type mac_body = option<mac_body_>;
 #[auto_serialize]
 enum mac_ {
     mac_invoc(@path, mac_arg, mac_body),
+    mac_invoc_tt(@path, token_tree), //will kill mac_invoc and steal its name
     mac_embed_type(@ty),
     mac_embed_block(blk),
     mac_ellipsis,

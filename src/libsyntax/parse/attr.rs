@@ -24,6 +24,7 @@ impl parser_attr for parser {
                 ret some(left([first_attr] + self.parse_outer_attributes()));
             } else if !(self.look_ahead(1u) == token::LT
                         || self.look_ahead(1u) == token::LBRACKET
+                        || self.look_ahead(1u) == token::POUND
                         || expect_item_next) {
                 self.bump();
                 ret some(right(self.parse_syntax_ext_naked(lo)));

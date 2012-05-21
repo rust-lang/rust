@@ -549,6 +549,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
     alt mac.node {
       ast::mac_ellipsis { cx.span_fatal(mac.span, "misused `...`"); }
       ast::mac_invoc(_, _, _) { no_des(cx, mac.span, "macro calls"); }
+      ast::mac_invoc_tt(_, _) { no_des(cx, mac.span, "macro calls"); }
       ast::mac_embed_type(ty) {
         alt ty.node {
           ast::ty_path(pth, _) {

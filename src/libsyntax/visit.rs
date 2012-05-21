@@ -351,6 +351,7 @@ fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
     alt m.node {
       ast::mac_invoc(pth, arg, body) {
         option::map(arg) {|arg| v.visit_expr(arg, e, v)}; }
+      ast::mac_invoc_tt(pth, tt) { /* no user-serviceable parts inside */ }
       ast::mac_embed_type(ty) { v.visit_ty(ty, e, v); }
       ast::mac_embed_block(blk) { v.visit_block(blk, e, v); }
       ast::mac_ellipsis { }

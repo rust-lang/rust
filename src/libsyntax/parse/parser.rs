@@ -4,7 +4,7 @@ import std::map::{hashmap, str_hash};
 import token::{can_begin_expr, is_ident, is_plain_ident};
 import codemap::{span,fss_none};
 import util::interner;
-import ast_util::{spanned, mk_sp, ident_to_path, operator_prec};
+import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
 import ast::*;
 import lexer::reader;
 import prec::{as_prec, token_to_binop};
@@ -802,9 +802,15 @@ class parser {
             hi = self.span.hi;
             ex = expr_vec(es, mutbl);
         } else if self.token == token::POUND
+            && self.look_ahead(1u) == token::POUND {
+            self.bump(); self.bump();
+            let macname = self.parse_path_without_tps();
+            let macbody = self.parse_token_tree();
+            ret pexpr(self.mk_mac_expr(lo, self.span.hi,
+                                       mac_invoc_tt(macname, macbody)));
+        } else if self.token == token::POUND
             && self.look_ahead(1u) == token::LT {
-            self.bump();
-            self.bump();
+            self.bump(); self.bump();
             let ty = self.parse_ty(false);
             self.expect(token::GT);
 
@@ -813,8 +819,7 @@ class parser {
                                        mac_embed_type(ty)));
         } else if self.token == token::POUND
             && self.look_ahead(1u) == token::LBRACE {
-            self.bump();
-            self.bump();
+            self.bump(); self.bump();
             let blk = mac_embed_block(
                 self.parse_block_tail(lo, default_blk));
             ret pexpr(self.mk_mac_expr(lo, self.span.hi, blk));
@@ -1052,6 +1057,47 @@ class parser {
     }
     ret e;
 }
+
+    fn parse_token_tree() -> token_tree {
+        #[doc="what's the opposite delimiter?"]
+        fn flip(t: token::token) -> token::token {
+            alt t {
+              token::LPAREN { token::RPAREN }
+              token::LBRACE { token::RBRACE }
+              token::LBRACKET { token::RBRACKET }
+              _ { fail }
+            }
+        }
+
+        fn parse_tt_flat(p: parser, delim_ok: bool) -> token_tree {
+            alt p.token {
+              token::RPAREN | token::RBRACE | token::RBRACKET
+              if !delim_ok {
+                p.fatal("incorrect close delimiter: `"
+                           + token_to_str(p.reader, p.token) + "`");
+              }
+              token::EOF {
+                p.fatal("file ended in the middle of a macro invocation");
+              }
+              _ { /* ok */ }
+            }
+            let res = tt_flat(p.span.lo, p.token);
+            p.bump();
+            ret res;
+        }
+
+        ret alt self.token {
+          token::LPAREN | token::LBRACE | token::LBRACKET {
+            let ket = flip(self.token);
+            tt_delim([parse_tt_flat(self, true)] +
+                     self.parse_seq_to_before_end(ket, seq_sep_none(),
+                                                  {|p| p.parse_token_tree()})
+                     + [parse_tt_flat(self, true)])
+          }
+          _ { parse_tt_flat(self, false) }
+        };
+    }
+
 
     fn parse_prefix_expr() -> pexpr {
         let lo = self.span.lo;

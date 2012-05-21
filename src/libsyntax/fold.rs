@@ -119,6 +119,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
                  mac_invoc(fld.fold_path(pth),
                            option::map(arg, fld.fold_expr), body)
                }
+               mac_invoc_tt(pth, tt) { m.node }
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
                mac_ellipsis { mac_ellipsis }
