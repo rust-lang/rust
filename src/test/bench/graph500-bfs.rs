@@ -261,6 +261,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         }
     };
 
+    #[inline(always)]
     fn is_gray(c: color) -> bool {
         alt c {
           gray(_) { true }
@@ -274,25 +275,28 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         log(info, #fmt("PBFS iteration %?", i));
         i += 1u;
         let old_len = colors.len();
-        colors = par::mapi(colors) {|i, c, copy colors|
+        let pc = ptr::addr_of(colors);
+        let pg = ptr::addr_of(graph);
+        colors = par::mapi(colors) {|i, c|
             let c : color = c;
             alt c {
               white {
-                let i = i as node_id;
-                
-                let neighbors = graph[i];
-                
-                let mut color = white;
-
-                neighbors.each() {|k|
-                    if is_gray(colors[k]) {
-                        color = gray(k);
-                        false
-                    }
-                    else { true }
-                };
-
-                color
+                unsafe {
+                    let i = i as node_id;
+                    
+                    let neighbors = &(*pg)[i];
+                    
+                    let mut color = white;
+                    
+                    (*neighbors).each() {|k|
+                        if is_gray((*pc)[k]) {
+                            color = gray(k);
+                            false
+                        }
+                        else { true }
+                    };
+                    color
+                }
               }
               gray(parent) { black(parent) }
               black(parent) { black(parent) }
