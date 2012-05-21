@@ -107,9 +107,9 @@ fn connect(input_ip: ip::ip_addr, port: uint)
     let socket_data = @{
         reader_po: reader_po,
         reader_ch: comm::chan(reader_po),
-        stream_handle_ptr : stream_handle_ptr,
-        connect_req : uv::ll::connect_t(),
-        write_req : uv::ll::write_t(),
+        stream_handle_ptr: stream_handle_ptr,
+        connect_req: uv::ll::connect_t(),
+        write_req: uv::ll::write_t(),
         hl_loop: hl_loop
     };
     let socket_data_ptr = ptr::addr_of(*socket_data);
@@ -523,13 +523,14 @@ net::tcp::listen(remote_ip, remote_port, backlog) {|new_conn, kill_ch|
     let cont_ch = comm::chan(cont_po);
     task::spawn {||
         let accept_result = net::tcp::accept(new_conn);
-        alt accept_result.is_failure() {
-          false { comm::send(cont_ch, result::get_err(accept_result)); }
-          true {
+        if accept_result.is_failure() {
+            comm::send(cont_ch, result::get_err(accept_result));
+            // fail?
+        }
+        else {
             let sock = result::get(accept_result);
             comm::send(cont_ch, true);
             // do work here
-          }
         }
     };
     alt comm::recv(cont_po) {
@@ -841,8 +842,7 @@ crust fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
     let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
         as *tcp_listen_fc_data;
     let kill_ch = (*server_data_ptr).kill_ch;
-    alt (*server_data_ptr).active {
-      true {
+    if (*server_data_ptr).active {
         alt status {
           0i32 {
             let new_conn = new_tcp_conn(handle);
@@ -856,9 +856,6 @@ crust fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
             (*server_data_ptr).active = false;
           }
         }
-      }
-      _ {
-      }
     }
 }
 
@@ -1101,7 +1098,7 @@ fn ipv4_ip_addr_to_sockaddr_in(input_ip: ip::ip_addr,
       ip::ipv4(_,_,_,_) {
         uv::ll::ip4_addr(ip::format_addr(input_ip), port as int)
       }
-      _ {
+      ip::ipv6(_,_,_,_,_,_,_,_) {
         fail "FIXME ipv6 not yet supported";
       }
     }
@@ -1324,24 +1321,22 @@ mod test {
                                 err_data.err_name, err_data.err_msg));
                 fail "couldn't recv new conn";
             }
-            else {
-                let sock = result::unwrap(new_conn_result);
-                log(debug, "SERVER: successfully accepted"+
-                    "connection!");
-                let received_req_bytes =
-                    tcp_read_single(sock);
-                alt received_req_bytes {
-                  result::ok(data) {
-                    server_ch.send(
-                        str::from_bytes(data));
-                    log(debug, "SERVER: before write");
-                    tcp_write_single(sock, str::bytes(resp));
-                    log(debug, "SERVER: after write.. die");
-                  }
-                  result::err(err_data) {
-                    server_ch.send("");
-                  }
-                }
+            let sock = result::unwrap(new_conn_result);
+            log(debug, "SERVER: successfully accepted"+
+                "connection!");
+            let received_req_bytes =
+                tcp_read_single(sock);
+            alt received_req_bytes {
+              result::ok(data) {
+                server_ch.send(
+                    str::from_bytes(data));
+                log(debug, "SERVER: before write");
+                tcp_write_single(sock, str::bytes(resp));
+                log(debug, "SERVER: after write.. die");
+              }
+              result::err(err_data) {
+                server_ch.send("");
+              }
             }
         };
         let ret_val = server_ch.recv();
