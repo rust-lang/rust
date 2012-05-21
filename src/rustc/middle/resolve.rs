@@ -681,28 +681,29 @@ fn visit_arm_with_scope(a: ast::arm, sc: scopes, v: vt<scopes>) {
 
 // This is only for irrefutable patterns (e.g. ones that appear in a let)
 // So if x occurs, and x is already known to be a enum, that's always an error
-fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
-    // Check whether the given local has the same name as a enum that's
-    // in scope
-    // We disallow this, in order to make alt patterns consisting of
-    // a single identifier unambiguous (does the pattern "foo" refer
-    // to enum foo, or is it binding a new name foo?)
-    alt loc.node.pat.node {
-      pat_ident(an_ident,_) {
-          alt lookup_in_scope(*e, sc, loc.span, path_to_ident(an_ident),
-                              ns_val, false) {
-              some(ast::def_variant(enum_id,variant_id)) {
-                  // Declaration shadows an enum that's in scope.
-                  // That's an error.
-                  e.sess.span_err(loc.span,
-                    #fmt("declaration of `%s` shadows an \
-                          enum that's in scope",
-                         path_to_ident(an_ident)));
-                  }
+fn visit_local_with_scope(e: @env, loc: @local, &&sc: scopes, v:vt<scopes>) {
+    // Check whether the given local has the same name as a enum that's in
+    // scope. We disallow this, in order to make alt patterns consisting of a
+    // single identifier unambiguous (does the pattern "foo" refer to enum
+    // foo, or is it binding a new name foo?)
+    pat_util::walk_pat(loc.node.pat) { |p|
+        alt p.node {
+          pat_ident(path, _) {
+            alt lookup_in_scope(*e, sc, loc.span, path_to_ident(path),
+                                ns_val, false) {
+              some(ast::def_variant(enum_id, variant_id)) {
+                // Declaration shadows an enum that's in scope.
+                // That's an error.
+                e.sess.span_err(loc.span,
+                                #fmt("declaration of `%s` shadows an \
+                                      enum that's in scope",
+                                     path_to_ident(path)));
+              }
               _ {}
+            }
           }
-      }
-      _ {}
+          _ {}
+        }
     }
     visit::visit_local(loc, sc, v);
 }
