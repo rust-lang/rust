@@ -6,11 +6,12 @@ import ip = net_ip;
 import comm::*;
 import result::*;
 import str::*;
+import future::*;
 
 // data
 export tcp_socket, tcp_conn_port, tcp_err_data;
 // operations on a tcp_socket
-export write, read_start, read_stop;
+export write, write_future, read_start, read_stop;
 // tcp server stuff
 export listen_for_conn, accept;
 export new_listener, conn_recv, conn_recv_spawn, conn_peek;
@@ -189,7 +190,7 @@ fn connect(input_ip: ip::ip_addr, port: uint)
 }
 
 #[doc="
-Write binary data to a tcp stream
+Write binary data to a tcp stream; Blocks until operatoin completes
 
 # Arguments
 
@@ -199,55 +200,56 @@ This value must remain valid for the duration of the `write` call
 
 # Returns
 
-A `result` object with a `()` value, in the event of success, or a
-`tcp_err_data` value in the event of failure
+A `result` object with a `nil` value as the `ok` variant, or a `tcp_err_data`
+value as the `err` variant
 "]
-fn write(sock: tcp_socket, raw_write_data: [[u8]])
+fn write(sock: tcp_socket, raw_write_data: [u8])
     -> result::result<(), tcp_err_data> unsafe {
     let socket_data_ptr = ptr::addr_of(**sock);
-    let write_req_ptr = ptr::addr_of((*socket_data_ptr).write_req);
-    let stream_handle_ptr =
-        (*socket_data_ptr).stream_handle_ptr;
-    let write_buf_vec = iter::map_to_vec(raw_write_data) {|raw_bytes|
-        uv::ll::buf_init(vec::unsafe::to_ptr(raw_bytes),
-                         vec::len(raw_bytes))
-    };
-    let write_buf_vec_ptr = ptr::addr_of(write_buf_vec);
-    let result_po = comm::port::<tcp_write_result>();
-    let write_data = {
-        result_ch: comm::chan(result_po)
-    };
-    let write_data_ptr = ptr::addr_of(write_data);
-    uv::hl::interact((*socket_data_ptr).hl_loop) {|loop_ptr|
-        log(debug, #fmt("in interact cb for tcp::write %?", loop_ptr));
-        alt uv::ll::write(write_req_ptr,
-                          stream_handle_ptr,
-                          write_buf_vec_ptr,
-                          tcp_write_complete_cb) {
-          0i32 {
-            log(debug, "uv_write() invoked successfully");
-            uv::ll::set_data_for_req(write_req_ptr, write_data_ptr);
-          }
-          _ {
-            log(debug, "error invoking uv_write()");
-            let err_data = uv::ll::get_last_err_data(loop_ptr);
-            comm::send((*write_data_ptr).result_ch,
-                       tcp_write_error(err_data.to_tcp_err()));
-          }
-        }
-    };
-    alt comm::recv(result_po) {
-      tcp_write_success { result::ok(()) }
-      tcp_write_error(err_data) { result::err(err_data.to_tcp_err()) }
+    write_common_impl(socket_data_ptr, raw_write_data)
+}
+
+#[doc="
+Write binary data to tcp stream; Returns a `future::future` value immediately
+
+# Safety
+
+This function can produce unsafe results if the call to `write_future` is
+made, the `future::future` value returned is never resolved via
+`future::get`, and then the `tcp_socket` passed in to `write_future` leaves
+scope and is destructured before the task that runs the libuv write
+operation completes.
+
+As such: If using `write_future`, always be sure to resolve the returned
+`future` so as to ensure libuv doesn't try to access a released write handle.
+Otherwise, use the blocking `tcp::write` function instead.
+
+# Arguments
+
+* sock - a `tcp_socket` to write to
+* raw_write_data - a vector of `[u8]` that will be written to the stream.
+This value must remain valid for the duration of the `write` call
+
+# Returns
+
+A `future` value that, once the `write` operation completes, resolves to a
+`result` object with a `nil` value as the `ok` variant, or a `tcp_err_data`
+value as the `err` variant
+"]
+fn write_future(sock: tcp_socket, raw_write_data: [u8])
+    -> future::future<result::result<(), tcp_err_data>> unsafe {
+    let socket_data_ptr = ptr::addr_of(**sock);
+    future::spawn {||
+        write_common_impl(socket_data_ptr, raw_write_data)
     }
 }
 
 #[doc="
-Begin reading binary data from an open TCP connection.
+Begin reading binary data from an open TCP connection; used with `read_stop`
 
 # Arguments
 
-* sock -- a `tcp_socket` for the connection to read from
+* sock -- a `net::tcp::tcp_socket` for the connection to read from
 
 # Returns
 
@@ -290,7 +292,11 @@ fn read_start(sock: tcp_socket)
 }
 
 #[doc="
-Stop reading from an open TCP connection.
+Stop reading from an open TCP connection; used with `read_start`
+
+# Arguments
+
+* `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
 "]
 fn read_stop(sock: tcp_socket) ->
     result::result<(), tcp_err_data> unsafe {
@@ -482,11 +488,13 @@ This function behaves similarly to `comm::peek()`
 
 # Arguments
 
-* `server_port` -- a `net::tcp::tcp_conn_port` representing a server connection
+* `server_port` -- a `net::tcp::tcp_conn_port` representing a server
+connection
 
 # Returns
 
-`true` if there are one-or-more pending connections, `false` if there are none.
+`true` if there are one-or-more pending connections, `false` if there are
+none.
 "]
 fn conn_peek(server_port: tcp_conn_port) -> bool {
     let new_conn_po = (**server_port).new_conn_po;
