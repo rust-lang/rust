@@ -10,8 +10,8 @@ enum list<T> {
 }
 
 #[doc = "Create a list from a vector"]
-fn from_vec<T: copy>(v: [const T]) -> list<T> {
-    *vec::foldr(v, @nil::<T>, { |h, t| @cons(h, t) })
+fn from_vec<T: copy>(v: [const T]) -> @list<T> {
+    @vec::foldr(v, @nil::<T>, { |h, t| @cons(h, t) })
 }
 
 #[doc = "
@@ -27,7 +27,7 @@ accumulated result.
 * z - The initial value
 * f - The function to apply
 "]
-fn foldl<T: copy, U>(z: T, ls: list<U>, f: fn(T, U) -> T) -> T {
+fn foldl<T: copy, U>(z: T, ls: @list<U>, f: fn(T, U) -> T) -> T {
     let mut accum: T = z;
     iter(ls) {|elt| accum = f(accum, elt);}
     accum
@@ -40,13 +40,13 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 "]
-fn find<T: copy>(ls: list<T>, f: fn(T) -> bool) -> option<T> {
+fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
     let mut ls = ls;
     loop {
         ls = alt ls {
           cons(hd, tl) {
             if f(hd) { ret some(hd); }
-            *tl
+            tl
           }
           nil { ret none; }
         }
@@ -54,7 +54,7 @@ fn find<T: copy>(ls: list<T>, f: fn(T) -> bool) -> option<T> {
 }
 
 #[doc = "Returns true if a list contains an element with the given value"]
-fn has<T: copy>(ls: list<T>, elt: T) -> bool {
+fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
     for each(ls) { |e|
         if e == elt { ret true; }
     }
@@ -62,83 +62,70 @@ fn has<T: copy>(ls: list<T>, elt: T) -> bool {
 }
 
 #[doc = "Returns true if the list is empty"]
-pure fn is_empty<T: copy>(ls: list<T>) -> bool {
-    alt ls {
+pure fn is_empty<T: copy>(ls: @list<T>) -> bool {
+    alt *ls {
         nil { true }
         _ { false }
     }
 }
 
 #[doc = "Returns true if the list is not empty"]
-pure fn is_not_empty<T: copy>(ls: list<T>) -> bool {
+pure fn is_not_empty<T: copy>(ls: @list<T>) -> bool {
     ret !is_empty(ls);
 }
 
 #[doc = "Returns the length of a list"]
-fn len<T>(ls: list<T>) -> uint {
+fn len<T>(ls: @list<T>) -> uint {
     let mut count = 0u;
     iter(ls) {|_e| count += 1u;}
     count
 }
 
 #[doc = "Returns all but the first element of a list"]
-pure fn tail<T: copy>(ls: list<T>) -> list<T> {
-    alt ls {
-        cons(_, tl) { ret *tl; }
+pure fn tail<T: copy>(ls: @list<T>) -> list<T> {
+    alt *ls {
+        cons(_, tl) { ret tl; }
         nil { fail "list empty" }
     }
 }
 
 #[doc = "Returns the first element of a list"]
-pure fn head<T: copy>(ls: list<T>) -> T {
-    alt check ls { cons(hd, _) { hd } }
+pure fn head<T: copy>(ls: @list<T>) -> T {
+    alt check *ls { cons(hd, _) { hd } }
 }
 
 #[doc = "Appends one list to another"]
-pure fn append<T: copy>(l: list<T>, m: list<T>) -> list<T> {
-    alt l {
+pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
+    alt *l {
       nil { ret m; }
-      cons(x, xs) { let rest = append(*xs, m); ret cons(x, @rest); }
+      cons(x, xs) { let rest = append(*xs, m); ret @cons(x, @rest); }
     }
 }
 
 #[doc = "Iterate over a list"]
-fn iter<T>(l: list<T>, f: fn(T)) {
-    alt l {
-      cons(hd, tl) {
-        f(hd);
-        let mut cur = tl;
-        loop {
-            alt *cur {
-              cons(hd, tl) {
-                f(hd);
-                cur = tl;
-              }
-              nil { break; }
-            }
+fn iter<T>(l: @list<T>, f: fn(T)) {
+    let mut cur = l;
+    loop {
+        cur = alt *cur {
+          cons(hd, tl) {
+            f(hd);
+            tl
+          }
+          nil { break; }
         }
-      }
-      nil {}
     }
 }
 
 #[doc = "Iterate over a list"]
 fn each<T>(l: list<T>, f: fn(T) -> bool) {
-    alt l {
-      cons(hd, tl) {
-        if !f(hd) { ret; }
-        let mut cur = tl;
-        loop {
-            alt *cur {
-              cons(hd, tl) {
-                if !f(hd) { ret; }
-                cur = tl;
-              }
-              nil { break; }
-            }
+    let mut cur = l;
+    loop {
+        cur = alt *cur {
+          cons(hd, tl) {
+            if !f(hd) { ret; }
+          }
+          nil { break; }
         }
-      }
-      nil {}
     }
 }
 
@@ -147,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let empty : list::list<int> = from_vec([]);
+        let empty : @list::list<int> = from_vec([]);
         let full1 = from_vec([1]);
         let full2 = from_vec(['r', 'u']);
 
@@ -175,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_from_vec_empty() {
-        let empty : list::list<int> = from_vec([]);
+        let empty : @list::list<int> = from_vec([]);
         assert (empty == list::nil::<int>);
     }
 
@@ -196,7 +183,7 @@ mod tests {
     fn test_foldl() {
         fn add(&&a: uint, &&b: int) -> uint { ret a + (b as uint); }
         let l = from_vec([0, 1, 2, 3, 4]);
-        let empty = list::nil::<int>;
+        let empty = @list::nil::<int>;
         assert (list::foldl(0u, l, add) == 10u);
         assert (list::foldl(0u, empty, add) == 0u);
     }
@@ -229,7 +216,7 @@ mod tests {
     #[test]
     fn test_has() {
         let l = from_vec([5, 8, 6]);
-        let empty = list::nil::<int>;
+        let empty = @list::nil::<int>;
         assert (list::has(l, 5));
         assert (!list::has(l, 7));
         assert (list::has(l, 8));
@@ -239,7 +226,7 @@ mod tests {
     #[test]
     fn test_len() {
         let l = from_vec([0, 1, 2]);
-        let empty = list::nil::<int>;
+        let empty = @list::nil::<int>;
         assert (list::len(l) == 3u);
         assert (list::len(empty) == 0u);
     }
