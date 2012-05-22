@@ -300,6 +300,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(target_os = "win3"))]
     fn gen_uint_from_fail() {
         rand::rng().gen_uint_from(5u, 2u);
     }
