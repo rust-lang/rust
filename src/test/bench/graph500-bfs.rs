@@ -38,7 +38,7 @@ fn create_queue<T: send>() -> queue<T> {
     let p = port();
     let c = chan(p);
 
-    impl<T: send> of queue<T> for repr<T> {
+    impl<T: copy send> of queue<T> for repr<T> {
         fn add_back(x : T) {
             let x = x;
             send(self.c, x);
@@ -524,7 +524,8 @@ const min_granularity : uint = 1024u;
 
 This is used to build most of the other parallel vector functions,
 like map or alli."]
-fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [const A]/&) -> B) 
+fn map_slices<A: copy send, B: copy send>(xs: [A],
+                                          f: fn~(uint, [const A]/&) -> B) 
     -> [B] {
 
     let len = xs.len();
@@ -577,14 +578,14 @@ fn map_slices<A: send, B: send>(xs: [A], f: fn~(uint, [const A]/&) -> B)
 }
 
 #[doc="A parallel version of map."]
-fn map<A: send, B: send>(xs: [A], f: fn~(A) -> B) -> [B] {
+fn map<A: copy send, B: copy send>(xs: [A], f: fn~(A) -> B) -> [B] {
     vec::concat(map_slices(xs) {|_base, slice|
         vec::map(slice, f)
     })
 }
 
 #[doc="A parallel version of mapi."]
-fn mapi<A: send, B: send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
+fn mapi<A: copy send, B: copy send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
     let slices = map_slices(xs) {|base, slice|
         vec::mapi(slice) {|i, x|
             f(i + base, x)
@@ -597,7 +598,7 @@ fn mapi<A: send, B: send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
 }
 
 #[doc="Returns true if the function holds for all elements in the vector."]
-fn alli<A: send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
+fn alli<A: copy send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
     vec::all(map_slices(xs) {|base, slice|
         vec::alli(slice) {|i, x|
             f(i + base, x)
@@ -606,7 +607,7 @@ fn alli<A: send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
 }
 
     #[doc="Returns true if the function holds for any elements in the vector."]
-    fn any<A: send>(xs: [A], f: fn~(A) -> bool) -> bool {
+    fn any<A: copy send>(xs: [A], f: fn~(A) -> bool) -> bool {
         vec::any(map_slices(xs) {|_base, slice|
             vec::any(slice, f)
         }) {|x| x }
