@@ -54,9 +54,21 @@
   (let ((table (make-hash-table :test 'equal)))
     (dolist (word '("mod" "type" "resource" "fn" "enum" "iface" "impl"))
       (puthash word 'def table))
-    (dolist (word '("if" "else" "while" "do" "for" "break" "cont" "ret" "be" "fail" "const"
-                    "check" "assert" "claim" "prove" "native" "import" "export" "let" "mut" "log"
-                    "use" "pure" "unsafe"))
+    (dolist (word '("assert"
+                    "be" "break"
+                    "check" "claim" "class" "const" "cont" "copy" "crust"
+                    "drop"
+                    "else" "export"
+                    "fail" "for"
+                    "if" "import"
+                    "let" "log" "loop"
+                    "mut"
+                    "native" "new"
+                    "pure"
+                    "ret"
+                    "trait"
+                    "unchecked" "unsafe"
+                    "while"))
       (puthash word t table))
     (puthash "alt" 'alt table)
     (dolist (word '("true" "false")) (puthash word 'atom table))

@@ -15,7 +15,7 @@ if !exists("main_syntax")
 endif
 
 syn keyword   rustKeyword     alt as assert be bind break
-syn keyword   rustKeyword     check claim cont const copy do else export fail
+syn keyword   rustKeyword     check claim cont const copy else export fail
 syn keyword   rustKeyword     for if impl import in inline lambda let log
 syn keyword   rustKeyword     loop mod mut mutable native note of prove pure
 syn keyword   rustKeyword     ret self syntax to unchecked
