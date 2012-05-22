@@ -7,6 +7,7 @@ export
     get_time,
     precise_time_ns,
     precise_time_s,
+    tzset,
     tm,
     empty_tm,
     now,
@@ -20,6 +21,7 @@ native mod rustrt {
     fn get_time(&sec: i64, &nsec: i32);
     fn precise_time_ns(&ns: u64);
 
+    fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
     fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: tm);
     fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: tm);
@@ -57,6 +59,10 @@ in seconds since an unspecified epoch.
 "]
 fn precise_time_s() -> float {
     ret (precise_time_ns() as float) / 1000000000.;
+}
+
+fn tzset() {
+    rustrt::rust_tzset();
 }
 
 type tm = {
@@ -869,6 +875,7 @@ mod tests {
     #[test]
     fn test_at_utc() {
         os::setenv("TZ", "America/Los_Angeles");
+        tzset();
 
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let utc = at_utc(time);
@@ -890,9 +897,12 @@ mod tests {
     #[test]
     fn test_at() {
         os::setenv("TZ", "America/Los_Angeles");
+        tzset();
 
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let local = at(time);
+
+        #error("time_at: %?", local);
 
         assert local.tm_sec == 30_i32;
         assert local.tm_min == 31_i32;
@@ -916,6 +926,7 @@ mod tests {
     #[test]
     fn test_to_timespec() {
         os::setenv("TZ", "America/Los_Angeles");
+        tzset();
 
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let utc = at_utc(time);
@@ -927,6 +938,7 @@ mod tests {
     #[test]
     fn test_conversions() {
         os::setenv("TZ", "America/Los_Angeles");
+        tzset();
 
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let utc = at_utc(time);
@@ -943,6 +955,7 @@ mod tests {
     #[test]
     fn test_strptime() {
         os::setenv("TZ", "America/Los_Angeles");
+        tzset();
 
         alt strptime("", "") {
           ok(tm) {
@@ -1088,10 +1101,13 @@ mod tests {
     #[test]
     fn test_ctime() {
         os::setenv("TZ", "America/Los_Angeles");
+        tzset();
 
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let utc   = at_utc(time);
         let local = at(time);
+
+        #error("test_ctime: %? %?", utc.ctime(), local.ctime());
 
         assert utc.ctime()   == "Fri Feb 13 23:31:30 2009";
         assert local.ctime() == "Fri Feb 13 15:31:30 2009";
@@ -1100,6 +1116,7 @@ mod tests {
     #[test]
     fn test_strftime() {
         os::setenv("TZ", "America/Los_Angeles");
+        tzset();
 
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let utc = at_utc(time);
