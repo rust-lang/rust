@@ -1,5 +1,6 @@
 /* Code to handle method lookups (which can be quite complex) */
 
+import syntax::ast_map;
 import regionmanip::universally_quantify_regions;
 import middle::typeck::infer::{ty_and_region_var_methods};
 

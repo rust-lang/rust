@@ -4,14 +4,14 @@ import common::*;
 import type_of::*;
 import build::*;
 import driver::session::session;
-import syntax::ast;
+import syntax::{ast, ast_map};
+import ast_map::{path, path_mod, path_name, node_id_to_str};
 import syntax::ast_util::{local_def, split_class_items};
 import metadata::csearch;
 import back::{link, abi};
 import lib::llvm::llvm;
 import lib::llvm::{ValueRef, TypeRef};
 import lib::llvm::llvm::LLVMGetParam;
-import ast_map::{path, path_mod, path_name, node_id_to_str};
 import std::map::hashmap;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,

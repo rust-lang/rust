@@ -1,4 +1,4 @@
-import syntax::{ast, ast_util, codemap};
+import syntax::{ast, ast_util, codemap, ast_map};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
 import syntax::ast_util::{local_def, def_id_of_def,

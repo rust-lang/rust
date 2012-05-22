@@ -3,6 +3,7 @@ import util::ppaux::ty_to_str;
 import syntax::ast;
 import syntax::fold;
 import syntax::visit;
+import syntax::ast_map;
 import syntax::ast_util;
 import syntax::ast_util::inlined_item_methods;
 import syntax::codemap::span;
@@ -17,7 +18,7 @@ import std::serialization::serializer_helpers;
 import std::serialization::deserializer_helpers;
 import std::prettyprint::serializer;
 import std::smallintmap::map;
-import middle::{ty, typeck, last_use, ast_map};
+import middle::{ty, typeck, last_use};
 import middle::typeck::{method_origin,
                         serialize_method_origin,
                         deserialize_method_origin,

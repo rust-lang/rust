@@ -23,6 +23,7 @@ import std::list::{list, cons, nil};
 import driver::session::session;
 import metadata::csearch;
 import syntax::ast::*, syntax::ast_util, syntax::visit;
+import syntax::ast_map;
 import common::*;
 
 // FIXME distinguish between size/alignment and take/drop dependencies

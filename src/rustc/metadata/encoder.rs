@@ -13,7 +13,7 @@ import syntax::ast_util::local_def;
 import common::*;
 import middle::ty;
 import middle::ty::node_id_to_type;
-import middle::ast_map;
+import syntax::ast_map;
 import syntax::attr;
 import std::serialization::serializer;
 import std::ebml::serializer;

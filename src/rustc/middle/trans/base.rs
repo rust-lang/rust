@@ -21,7 +21,7 @@ import driver::session;
 import session::session;
 import syntax::attr;
 import back::{link, abi, upcall};
-import syntax::{ast, ast_util, codemap};
+import syntax::{ast, ast_util, codemap, ast_map};
 import ast_util::{inlined_item_methods, local_def, path_to_ident};
 import syntax::visit;
 import syntax::codemap::span;
@@ -46,7 +46,7 @@ import build::*;
 import shape::*;
 import type_of::*;
 import type_of::type_of; // Issue #1873
-import ast_map::{path, path_mod, path_name};
+import syntax::ast_map::{path, path_mod, path_name};
 
 import std::smallintmap;
 

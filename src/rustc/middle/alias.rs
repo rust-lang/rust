@@ -1,4 +1,4 @@
-import syntax::{ast, ast_util};
+import syntax::{ast, ast_util, ast_map};
 import ast_util::path_to_ident;
 import ast::{ident, fn_ident, node_id};
 import syntax::codemap::span;

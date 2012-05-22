@@ -6,7 +6,7 @@
 // reachable as well.
 
 import syntax::ast::*;
-import syntax::{visit, ast_util};
+import syntax::{visit, ast_util, ast_map};
 import syntax::ast_util::def_id_of_def;
 import syntax::attr;
 import std::map::hashmap;

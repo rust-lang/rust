@@ -4,7 +4,7 @@
 import driver::session::{session, arch_x86_64};
 import syntax::codemap::span;
 import libc::c_uint;
-import syntax::attr;
+import syntax::{attr, ast_map};
 import lib::llvm::{ llvm, TypeRef, ValueRef,
                     ModuleRef, CallConv, Attribute,
                     StructRetAttribute, ByValAttribute

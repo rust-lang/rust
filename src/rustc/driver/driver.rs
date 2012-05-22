@@ -160,7 +160,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let ast_map =
         time(time_passes, "ast indexing",
-             bind middle::ast_map::map_crate(sess.diagnostic(), *crate));
+             bind syntax::ast_map::map_crate(sess.diagnostic(), *crate));
     time(time_passes, "external crate/lib resolution",
          bind creader::read_crates(sess, *crate));
     let {def_map, exp_map, impl_map} =

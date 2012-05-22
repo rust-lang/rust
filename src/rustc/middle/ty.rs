@@ -3,7 +3,7 @@ import result::result;
 import std::map::hashmap;
 import driver::session;
 import session::session;
-import syntax::ast;
+import syntax::{ast, ast_map};
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::{is_local, local_def, split_class_items};

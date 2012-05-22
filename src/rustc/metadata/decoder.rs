@@ -6,7 +6,7 @@ import io::writer_util;
 import syntax::{ast, ast_util};
 import syntax::attr;
 import middle::ty;
-import middle::ast_map;
+import syntax::ast_map;
 import common::*;
 import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
         parse_ident};

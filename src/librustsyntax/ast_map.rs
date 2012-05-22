@@ -1,13 +1,10 @@
 import std::map;
 import std::map::hashmap;
-import syntax::ast::*;
-import syntax::print::pprust;
-import syntax::ast_util;
-import syntax::ast_util::path_to_ident;
-import syntax::ast_util::inlined_item_methods;
-import syntax::{visit, codemap};
-import syntax::attr;
-import syntax::diagnostic::span_handler;
+import ast::*;
+import print::pprust;
+import ast_util::path_to_ident;
+import ast_util::inlined_item_methods;
+import diagnostic::span_handler;
 
 enum path_elt { path_mod(str), path_name(str) }
 type path = [path_elt];

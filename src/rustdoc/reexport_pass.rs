@@ -6,7 +6,7 @@ import std::list;
 import syntax::ast;
 import syntax::ast_util;
 import rustc::util::common;
-import rustc::middle::ast_map;
+import syntax::ast_map;
 import syntax::visit;
 import syntax::codemap;
 import rustc::middle::resolve;

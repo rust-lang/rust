@@ -3,7 +3,8 @@
 import std::{ebml};
 import syntax::ast;
 import syntax::ast_util;
-import middle::{ty, ast_map};
+import syntax::ast_map;
+import middle::ty;
 import option::{some, none};
 import driver::session;
 import driver::session::expect;

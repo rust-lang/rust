@@ -6,7 +6,7 @@ import trans::common::*;
 import trans::base;
 import trans::build::B;
 import middle::ty;
-import syntax::{ast, codemap, ast_util};
+import syntax::{ast, codemap, ast_util, ast_map};
 import codemap::span;
 import ast::ty;
 import pat_util::*;

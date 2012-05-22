@@ -15,7 +15,7 @@ import syntax::diagnostic;
 import syntax::diagnostic::handler;
 import syntax::ast;
 import syntax::codemap;
-import rustc::middle::ast_map;
+import syntax::ast_map;
 import rustc::back::link;
 import rustc::util::filesearch;
 import rustc::front;

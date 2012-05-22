@@ -1,5 +1,5 @@
 import syntax::ast::*;
-import syntax::{visit, ast_util};
+import syntax::{visit, ast_util, ast_map};
 import driver::session::session;
 import std::map::hashmap;
 
