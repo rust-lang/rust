@@ -154,7 +154,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         let vid = lookup_local(pcx.fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
         demand::suptype(pcx.fcx, pat.span, expected, typ);
-        let canon_id = pcx.map.get(pat_util::path_to_ident(name));
+        let canon_id = pcx.map.get(ast_util::path_to_ident(name));
         if canon_id != pat.id {
             let tv_id = lookup_local(pcx.fcx, pat.span, canon_id);
             let ct = ty::mk_var(tcx, tv_id);

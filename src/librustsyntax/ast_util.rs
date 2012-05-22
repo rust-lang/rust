@@ -25,6 +25,8 @@ fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
 fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
+fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
+
 fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
 
 pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }

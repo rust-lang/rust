@@ -6,7 +6,7 @@ import build::*;
 import base::*;
 import syntax::ast;
 import syntax::ast_util;
-import syntax::ast_util::{dummy_sp};
+import syntax::ast_util::{dummy_sp, path_to_ident};
 import syntax::ast::def_id;
 import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;

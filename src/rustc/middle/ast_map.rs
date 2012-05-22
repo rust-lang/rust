@@ -4,6 +4,7 @@ import syntax::ast::*;
 import syntax::print::pprust;
 import syntax::ast_util;
 import middle::pat_util::*;
+import syntax::ast_util::path_to_ident;
 import syntax::ast_util::inlined_item_methods;
 import syntax::{visit, codemap};
 import driver::session::session;

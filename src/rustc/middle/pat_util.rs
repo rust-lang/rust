@@ -1,5 +1,6 @@
 import syntax::ast::*;
 import syntax::ast_util;
+import syntax::ast_util::path_to_ident;
 import syntax::ast_util::respan;
 import syntax::fold;
 import syntax::fold::*;
@@ -9,7 +10,6 @@ import std::map::hashmap;
 export walk_pat;
 export pat_binding_ids, pat_bindings, pat_id_map;
 export pat_is_variant;
-export path_to_ident;
 
 type pat_id_map = std::map::hashmap<str, node_id>;
 
@@ -68,5 +68,3 @@ fn pat_binding_ids(dm: resolve::def_map, pat: @pat) -> [node_id] {
     pat_bindings(dm, pat) {|b_id, _sp, _pt| found += [b_id]; };
     ret found;
 }
-
-fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
