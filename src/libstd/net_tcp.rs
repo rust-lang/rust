@@ -1424,7 +1424,7 @@ mod test {
                             let sock = result::unwrap(accept_result);
                             log(debug, "SERVER: successfully accepted"+
                                 "connection!");
-                            let received_req_bytes = sock.read(2000u);
+                            let received_req_bytes = sock.read(0u);
                             alt received_req_bytes {
                               result::ok(data) {
                                 server_ch.send(
@@ -1492,7 +1492,7 @@ mod test {
             log(debug, "SERVER: successfully accepted"+
                 "connection!");
             let received_req_bytes =
-                sock.read(2000u);
+                sock.read(0u);
             alt received_req_bytes {
               result::ok(data) {
                 server_ch.send(
@@ -1529,7 +1529,7 @@ mod test {
             let sock = result::unwrap(connect_result);
             let resp_bytes = str::bytes(resp);
             tcp_write_single(sock, resp_bytes);
-            let read_result = sock.read(2000u);
+            let read_result = sock.read(0u);
             if read_result.is_failure() {
                 log(debug, "CLIENT: failure to read");
                 ""
