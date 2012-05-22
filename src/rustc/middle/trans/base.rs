@@ -539,22 +539,22 @@ fn emit_tydescs(ccx: @crate_ctxt) {
         let glue_fn_ty = T_ptr(T_glue_fn(ccx));
         let ti = val;
         let take_glue =
-            alt ti.take_glue {
+            alt copy ti.take_glue {
               none { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
         let drop_glue =
-            alt ti.drop_glue {
+            alt copy ti.drop_glue {
               none { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
         let free_glue =
-            alt ti.free_glue {
+            alt copy ti.free_glue {
               none { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
         let visit_glue =
-            alt ti.visit_glue {
+            alt copy ti.visit_glue {
               none { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
@@ -2308,7 +2308,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         ret take_local(cx.fcx.lllocals, nid);
       }
       ast::def_self(_) {
-        let slf = alt cx.fcx.llself {
+        let slf = alt copy cx.fcx.llself {
              some(s) { s }
              none { cx.sess().bug("trans_local_var: reference to self \
                                  out of context"); }
@@ -3030,7 +3030,7 @@ fn trans_call_inner(
             Unreachable(bcx);
         } else if ret_in_loop {
             bcx = with_cond(bcx, Load(bcx, option::get(ret_flag))) {|bcx|
-                option::iter(bcx.fcx.loop_ret) {|lret|
+                option::iter(copy bcx.fcx.loop_ret) {|lret|
                     Store(bcx, C_bool(true), lret.flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);
                 }
@@ -3119,7 +3119,7 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
     let mut cached = none, pad_bcx = bcx; // Guaranteed to be set below
     in_lpad_scope_cx(bcx) {|inf|
         // If there is a valid landing pad still around, use it
-        alt inf.landing_pad {
+        alt copy inf.landing_pad {
           some(target) { cached = some(target); }
           none {
             pad_bcx = sub_block(bcx, "unwind");
@@ -3148,7 +3148,7 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
 
     // We store the retval in a function-central alloca, so that calls to
     // Resume can find it.
-    alt bcx.fcx.personality {
+    alt copy bcx.fcx.personality {
       some(addr) { Store(pad_bcx, llretval, addr); }
       none {
         let addr = alloca(pad_bcx, val_ty(llretval));
@@ -3831,7 +3831,7 @@ fn trans_cont(cx: block) -> block {
 fn trans_ret(bcx: block, e: option<@ast::expr>) -> block {
     let _icx = bcx.insn_ctxt("trans_ret");
     let mut bcx = bcx;
-    let retptr = alt bcx.fcx.loop_ret {
+    let retptr = alt copy bcx.fcx.loop_ret {
       some({flagptr, retptr}) {
         // This is a loop body return. Must set continue flag (our retptr)
         // to false, return flag to true, and then store the value in the
