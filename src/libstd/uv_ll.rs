@@ -250,7 +250,7 @@ type sockaddr_in = {
 #[cfg(target_os = "win32")]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
-    a2: *u8, a3: *u8
+    a2: *u8, a3: (u8, u8, u8, u8)
 };
 
 mod uv_ll_struct_stubgen {
@@ -637,21 +637,24 @@ unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
                                  addr_ptr);
 }
 
-unsafe fn listen(stream: *libc::c_void, backlog: libc::c_int,
+unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
                  cb: *u8) -> libc::c_int {
-    ret rustrt::rust_uv_listen(stream, backlog, cb);
+    ret rustrt::rust_uv_listen(stream as *libc::c_void, backlog, cb);
 }
 
 unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
     -> libc::c_int {
-    ret rustrt::rust_uv_accept(server, client);
+    ret rustrt::rust_uv_accept(server as *libc::c_void,
+                               client as *libc::c_void);
 }
 
-unsafe fn write(req: *libc::c_void, stream: *libc::c_void,
+unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::unsafe::to_ptr(*buf_in);
     let buf_cnt = vec::len(*buf_in) as i32;
-    ret rustrt::rust_uv_write(req, stream, buf_ptr, buf_cnt, cb);
+    ret rustrt::rust_uv_write(req as *libc::c_void,
+                              stream as *libc::c_void,
+                              buf_ptr, buf_cnt, cb);
 }
 unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8,
                      on_read: *u8) -> libc::c_int {
@@ -777,12 +780,13 @@ unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
     rustrt::rust_uv_set_data_for_uv_handle(handle as *libc::c_void,
                                            data as *libc::c_void);
 }
-unsafe fn get_data_for_req(req: *libc::c_void) -> *libc::c_void {
-    ret rustrt::rust_uv_get_data_for_req(req);
+unsafe fn get_data_for_req<T>(req: *T) -> *libc::c_void {
+    ret rustrt::rust_uv_get_data_for_req(req as *libc::c_void);
 }
-unsafe fn set_data_for_req(req: *libc::c_void,
-                    data: *libc::c_void) {
-    rustrt::rust_uv_set_data_for_req(req, data);
+unsafe fn set_data_for_req<T, U>(req: *T,
+                    data: *U) {
+    rustrt::rust_uv_set_data_for_req(req as *libc::c_void,
+                                     data as *libc::c_void);
 }
 unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
     ret rustrt::rust_uv_get_base_from_buf(buf);
@@ -806,6 +810,19 @@ unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> str {
     ret #fmt("LIBUV ERROR: name: %s msg: %s",
                     err_name, err_msg);
 }
+
+unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
+    let err = last_error(uv_loop);
+    let err_ptr = ptr::addr_of(err);
+    let err_name = str::unsafe::from_c_str(err_name(err_ptr));
+    let err_msg = str::unsafe::from_c_str(strerror(err_ptr));
+    { err_name: err_name, err_msg: err_msg }
+}
+
+type uv_err_data = {
+    err_name: str,
+    err_msg: str
+};
 
 #[cfg(test)]
 mod test {
@@ -893,7 +910,7 @@ mod test {
             let client_data = get_data_for_req(
                 connect_req_ptr as *libc::c_void)
                 as *request_wrapper;
-            let write_handle = (*client_data).write_req as *libc::c_void;
+            let write_handle = (*client_data).write_req;
             log(debug, #fmt("on_connect_cb: tcp: %d write_hdl: %d",
                             stream as int, write_handle as int));
             let write_result = write(write_handle,
@@ -1039,7 +1056,7 @@ mod test {
                 let server_chan = *((*client_data).server_chan);
                 comm::send(server_chan, request_str);
                 let write_result = write(
-                    write_req as *libc::c_void,
+                    write_req,
                     client_stream_ptr as *libc::c_void,
                     (*client_data).server_resp_buf,
                     after_server_resp_write);
@@ -1263,7 +1280,7 @@ mod test {
     fn impl_uv_tcp_server_and_request() unsafe {
         let bind_ip = "0.0.0.0";
         let request_ip = "127.0.0.1";
-        let port = 8888;
+        let port = 8887;
         let kill_server_msg = "does a dog have buddha nature?";
         let server_resp_msg = "mu!";
         let client_port = comm::port::<str>();
@@ -1301,7 +1318,7 @@ mod test {
         assert str::contains(msg_from_server, server_resp_msg);
     }
 
-    // don't run this test on fbsd or 32bit linux
+    // FIXME don't run on fbsd or linux 32 bit(#2064)
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
