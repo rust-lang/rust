@@ -35,12 +35,12 @@ fn check_crate(tcx: ty::ctxt,
                  root_map: root_map(),
                  mutbl_map: int_hash()};
 
-    let req_loan_map = if msg_level > 0u {
+    let req_maps = if msg_level > 0u {
         gather_loans(bccx, crate)
     } else {
-        int_hash()
+        {req_loan_map: int_hash()}
     };
-    check_loans(bccx, req_loan_map, crate);
+    check_loans(bccx, req_maps, crate);
     ret (bccx.root_map, bccx.mutbl_map);
 }
 
@@ -189,17 +189,19 @@ fn root_map() -> root_map {
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-// Maps a scope to a list of loans that were issued within that scope.
-type req_loan_map = hashmap<ast::node_id, @mut [@const [loan]]>;
+type req_maps = {
+    req_loan_map: hashmap<ast::node_id, @mut [@const [loan]]>
+};
 
-enum gather_loan_ctxt = @{bccx: borrowck_ctxt, req_loan_map: req_loan_map};
+enum gather_loan_ctxt = @{bccx: borrowck_ctxt, req_maps: req_maps};
 
-fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_loan_map {
-    let glcx = gather_loan_ctxt(@{bccx: bccx, req_loan_map: int_hash()});
+fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
+    let glcx = gather_loan_ctxt(@{bccx: bccx,
+                                  req_maps: {req_loan_map: int_hash()}});
     let v = visit::mk_vt(@{visit_expr: req_loans_in_expr
                            with *visit::default_visitor()});
     visit::visit_crate(*crate, glcx, v);
-    ret glcx.req_loan_map;
+    ret glcx.req_maps;
 }
 
 fn req_loans_in_expr(ex: @ast::expr,
@@ -332,12 +334,12 @@ impl methods for gather_loan_ctxt {
     }
 
     fn add_loans(scope_id: ast::node_id, loans: @const [loan]) {
-        alt self.req_loan_map.find(scope_id) {
+        alt self.req_maps.req_loan_map.find(scope_id) {
           some(l) {
             *l += [loans];
           }
           none {
-            self.req_loan_map.insert(scope_id, @mut [loans]);
+            self.req_maps.req_loan_map.insert(scope_id, @mut [loans]);
           }
         }
     }
@@ -467,7 +469,7 @@ impl methods for gather_loan_ctxt {
 
 enum check_loan_ctxt = @{
     bccx: borrowck_ctxt,
-    req_loan_map: req_loan_map,
+    req_maps: req_maps,
 
     // Keep track of whether we're inside a ctor, so as to
     // allow mutating immutable fields in the same class if
@@ -478,10 +480,10 @@ enum check_loan_ctxt = @{
 };
 
 fn check_loans(bccx: borrowck_ctxt,
-               req_loan_map: req_loan_map,
+               req_maps: req_maps,
                crate: @ast::crate) {
     let clcx = check_loan_ctxt(@{bccx: bccx,
-                                 req_loan_map: req_loan_map,
+                                 req_maps: req_maps,
                                  mut in_ctor: false,
                                  mut is_pure: false});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
@@ -514,7 +516,7 @@ impl methods for check_loan_ctxt {
                   f: fn(loan) -> bool) {
         let mut scope_id = scope_id;
         let region_map = self.tcx().region_map;
-        let req_loan_map = self.req_loan_map;
+        let req_loan_map = self.req_maps.req_loan_map;
 
         loop {
             for req_loan_map.find(scope_id).each { |loanss|
@@ -613,7 +615,7 @@ impl methods for check_loan_ctxt {
     }
 
     fn check_for_conflicting_loans(scope_id: ast::node_id) {
-        let new_loanss = alt self.req_loan_map.find(scope_id) {
+        let new_loanss = alt self.req_maps.req_loan_map.find(scope_id) {
             none { ret; }
             some(loanss) { loanss }
         };
