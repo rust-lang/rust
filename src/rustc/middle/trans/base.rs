@@ -3890,9 +3890,11 @@ fn trans_fail_expr(bcx: block, sp_opt: option<span>,
         bcx = expr_res.bcx;
 
         if ty::type_is_str(e_ty) {
-            let data = tvec::get_dataptr(
-                bcx, expr_res.val, type_of(
-                    ccx, ty::mk_mach_uint(tcx, ast::ty_u8)));
+            let unit_ty = ty::mk_mach_uint(tcx, ast::ty_u8);
+            let vec_ty = ty::mk_vec(tcx, {ty: unit_ty, mutbl: ast::m_imm});
+            let unit_llty = type_of(ccx, unit_ty);
+            let body = tvec::get_bodyptr(bcx, expr_res.val, vec_ty);
+            let data = tvec::get_dataptr(bcx, body, unit_llty);
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable || ty::type_is_bot(e_ty) {
             ret bcx;
