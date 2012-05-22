@@ -40,13 +40,8 @@ fn find_library_crate(sess: session::session, span: span,
     let metas = metas;
 
     let nn = default_native_lib_naming(sess, sess.opts.static);
-    let x =
-        find_library_crate_aux(sess, span, nn,
-                               metas, hash, sess.filesearch);
-    if x != none || sess.opts.static { ret x; }
-    let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(sess, span, nn2, metas, hash,
-                               sess.filesearch);
+    find_library_crate_aux(sess, span, nn,
+                           metas, hash, sess.filesearch)
 }
 
 fn default_native_lib_naming(sess: session::session, static: bool) ->
