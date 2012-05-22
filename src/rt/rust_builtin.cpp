@@ -185,7 +185,7 @@ rand_seed() {
     rust_vec *v = (rust_vec *) task->kernel->malloc(vec_size<uint8_t>(size),
                                             "rand_seed");
     v->fill = v->alloc = size;
-    isaac_seed((uint8_t*) &v->data);
+    isaac_seed(task->kernel, (uint8_t*) &v->data);
     return v;
 }
 

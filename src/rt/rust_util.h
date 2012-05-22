@@ -98,7 +98,7 @@ make_str_vec(rust_kernel* kernel, size_t nstrs, char **strs) {
 
 // Initialization helpers for ISAAC RNG
 
-inline void isaac_seed(uint8_t* dest)
+inline void isaac_seed(rust_kernel* kernel, uint8_t* dest)
 {
     size_t size = sizeof(ub4) * RANDSIZ;
 #ifdef __WIN32__
@@ -137,7 +137,7 @@ isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec* user_seed)
             seed = (seed + 0x7ed55d16) + (seed << 12);
         }
     } else {
-        isaac_seed((uint8_t*) &rctx->randrsl);
+        isaac_seed(kernel, (uint8_t*) &rctx->randrsl);
     }
 
     randinit(rctx, 1);
