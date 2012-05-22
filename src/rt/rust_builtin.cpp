@@ -530,6 +530,11 @@ struct tm* LOCALTIME(const time_t *clock, tm *result) {
 #endif
 
 extern "C" CDECL void
+rust_tzset() {
+    TZSET();
+}
+
+extern "C" CDECL void
 rust_gmtime(int64_t *sec, int32_t *nsec, rust_tm *timeptr) {
     tm tm;
     time_t s = *sec;
@@ -541,7 +546,6 @@ rust_gmtime(int64_t *sec, int32_t *nsec, rust_tm *timeptr) {
 extern "C" CDECL void
 rust_localtime(int64_t *sec, int32_t *nsec, rust_tm *timeptr) {
     tm tm;
-    TZSET();
     time_t s = *sec;
     LOCALTIME(&s, &tm);
 
