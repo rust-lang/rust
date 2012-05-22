@@ -182,40 +182,58 @@ mod test {
         }
     }
 
+    // Because valgrind serializes multithreaded programs it can
+    // make timing-sensitive tests fail in wierd ways. In these
+    // next test we run them many times and expect them to pass
+    // the majority of tries.
+
     #[test]
     fn test_gl_timer_recv_timeout_before_time_passes() {
-        let expected = rand::rng().gen_str(16u);
-        let test_po = comm::port::<str>();
-        let test_ch = comm::chan(test_po);
+        let times = 100;
+        let mut successes = 0;
+        let mut failures = 0;
 
-        task::spawn() {||
-            delayed_send(1u, test_ch, expected);
-        };
+        iter::repeat(times as uint) {||
+            task::yield();
 
-        let actual = alt recv_timeout(1000u, test_po) {
-          some(val) { val }
-          _ { fail "test_timer_recv_timeout_before_time_passes:"+
-                    " didn't receive result before timeout"; }
-        };
-        assert actual == expected;
+            let expected = rand::rng().gen_str(16u);
+            let test_po = comm::port::<str>();
+            let test_ch = comm::chan(test_po);
+
+            task::spawn() {||
+                delayed_send(1u, test_ch, expected);
+            };
+
+            alt recv_timeout(10u, test_po) {
+              some(val) { assert val == expected; successes += 1; }
+              _ { failures += 1; }
+            };
+        }
+
+        assert successes > times / 2;
     }
 
     #[test]
     fn test_gl_timer_recv_timeout_after_time_passes() {
-        let expected = rand::rng().gen_str(16u);
-        let fail_msg = rand::rng().gen_str(16u);
-        let test_po = comm::port::<str>();
-        let test_ch = comm::chan(test_po);
+        let times = 100;
+        let mut successes = 0;
+        let mut failures = 0;
 
-        task::spawn() {||
-            delayed_send(1000u, test_ch, expected);
-        };
+        iter::repeat(times as uint) {||
+            let expected = rand::rng().gen_str(16u);
+            let test_po = comm::port::<str>();
+            let test_ch = comm::chan(test_po);
 
-        let actual = alt recv_timeout(1u, test_po) {
-          none { fail_msg }
-          _ { fail "test_timer_recv_timeout_before_time_passes:"+
-                    " didn't receive result before timeout"; }
-        };
-        assert actual == fail_msg;
+            task::spawn() {||
+                delayed_send(1000u, test_ch, expected);
+            };
+
+            let actual = alt recv_timeout(1u, test_po) {
+              none { successes += 1; }
+              _ { failures += 1; }
+            };
+        }
+
+        assert successes > times / 2;
     }
 }
