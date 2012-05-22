@@ -30,11 +30,11 @@ impl extensions for rng {
         self.gen_i64() as int
     }
 
-    #[doc = "Return an int randomly chosen from the range [start, end], \
-             failing if start > end"]
-    fn gen_int_from(start: int, end: int) -> int {
-        assert start <= end;
-        start + int::abs(self.gen_int() % (end - start + 1))
+    #[doc = "Return an int randomly chosen from the range [start, end), \
+             failing if start >= end"]
+    fn gen_int_range(start: int, end: int) -> int {
+        assert start < end;
+        start + int::abs(self.gen_int() % (end - start))
     }
 
     #[doc = "Return a random i8"]
@@ -62,11 +62,11 @@ impl extensions for rng {
         self.gen_u64() as uint
     }
 
-    #[doc = "Return a uint randomly chosen from the range [start, end], \
-             failing if start > end"]
-    fn gen_uint_from(start: uint, end: uint) -> uint {
-        assert start <= end;
-        start + (self.gen_uint() % (end - start + 1u))
+    #[doc = "Return a uint randomly chosen from the range [start, end), \
+             failing if start >= end"]
+    fn gen_uint_range(start: uint, end: uint) -> uint {
+        assert start < end;
+        start + (self.gen_uint() % (end - start))
     }
 
     #[doc = "Return a random u8"]
@@ -130,7 +130,7 @@ impl extensions for rng {
         if n == 0u {
             true
         } else {
-            self.gen_uint_from(1u, n) == 1u
+            self.gen_uint_range(1u, n + 1u) == 1u
         }
     }
 
@@ -166,7 +166,7 @@ impl extensions for rng {
         if values.is_empty() {
             none
         } else {
-            some(values[self.gen_uint_from(0u, values.len() - 1u)])
+            some(values[self.gen_uint_range(0u, values.len())])
         }
     }
 
@@ -186,7 +186,7 @@ impl extensions for rng {
         if total == 0u {
             ret none;
         }
-        let chosen = self.gen_uint_from(0u, total - 1u);
+        let chosen = self.gen_uint_range(0u, total);
         let mut so_far = 0u;
         for v.each {|item|
             so_far += item.weight;
@@ -223,7 +223,7 @@ impl extensions for rng {
             // invariant: elements with index >= i have been locked in place.
             i -= 1u;
             // lock element i in place.
-            vec::swap(values, i, self.gen_uint_from(0u, i));
+            vec::swap(values, i, self.gen_uint_range(0u, i + 1u));
         }
     }
 
@@ -274,35 +274,35 @@ mod tests {
     }
 
     #[test]
-    fn gen_int_from() {
+    fn gen_int_range() {
         let r = rand::rng();
-        let a = r.gen_int_from(-3, 42);
-        assert a >= -3 && a <= 42;
-        assert r.gen_int_from(0, 0) == 0;
-        assert r.gen_int_from(-12, -12) == -12;
+        let a = r.gen_int_range(-3, 42);
+        assert a >= -3 && a < 42;
+        assert r.gen_int_range(0, 1) == 0;
+        assert r.gen_int_range(-12, -11) == -12;
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(target_os = "win3"))]
     fn gen_int_from_fail() {
-        rand::rng().gen_int_from(5, -2);
+        rand::rng().gen_int_range(5, -2);
     }
 
     #[test]
-    fn gen_uint_from() {
+    fn gen_uint_range() {
         let r = rand::rng();
-        let a = r.gen_uint_from(3u, 42u);
-        assert a >= 3u && a <= 42u;
-        assert r.gen_uint_from(0u, 0u) == 0u;
-        assert r.gen_uint_from(12u, 12u) == 12u;
+        let a = r.gen_uint_range(3u, 42u);
+        assert a >= 3u && a < 42u;
+        assert r.gen_uint_range(0u, 1u) == 0u;
+        assert r.gen_uint_range(12u, 13u) == 12u;
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(target_os = "win3"))]
-    fn gen_uint_from_fail() {
-        rand::rng().gen_uint_from(5u, 2u);
+    fn gen_uint_range_fail() {
+        rand::rng().gen_uint_range(5u, 2u);
     }
 
     #[test]
