@@ -1,4 +1,6 @@
+// xfail-test
 // xfail-fast
+
 use std;
 import std::map::*;
 

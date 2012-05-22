@@ -24,6 +24,7 @@ spawn {||
 
 import result::result;
 import dvec::extensions;
+import dvec_iter::extensions;
 
 export task;
 export task_result;
@@ -31,7 +32,7 @@ export notification;
 export sched_mode;
 export sched_opts;
 export task_opts;
-export builder::{};
+export builder;
 
 export default_task_opts;
 export get_opts;

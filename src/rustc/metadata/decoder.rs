@@ -1,7 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 import std::{ebml, map};
-import std::map::hashmap;
+import std::map::{hashmap, str_hash};
 import io::writer_util;
 import syntax::{ast, ast_util};
 import syntax::attr;
@@ -37,6 +37,12 @@ export get_crate_vers;
 export get_impls_for_mod;
 export get_iface_methods;
 export get_crate_module_paths;
+export def_like;
+export dl_def;
+export dl_impl;
+export dl_field;
+export path_entry;
+export each_path;
 export get_item_path;
 export maybe_find_item; // sketchy
 export item_type; // sketchy
@@ -116,6 +122,7 @@ fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
     found
 }
 
+// XXX: This has nothing to do with classes.
 fn class_member_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
     let tagdoc = ebml::get_doc(d, tag_def_id);
     ret translate_def_id(cdata, parse_def_id(ebml::doc_data(tagdoc)));
@@ -257,29 +264,37 @@ fn lookup_item_name(data: @~[u8], id: ast::node_id) -> ast::ident {
     item_name(lookup_item(id, data))
 }
 
-fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
-   ast::def {
-    let item = lookup_item(did_.node, data);
+fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
+        -> def_like {
     let fam_ch = item_family(item);
-    let did = {crate: cnum, node: did_.node};
-    // We treat references to enums as references to types.
-    alt check fam_ch {
-      'c' { ast::def_const(did) }
-      'C' { ast::def_class(did) }
-      'u' { ast::def_fn(did, ast::unsafe_fn) }
-      'f' { ast::def_fn(did, ast::impure_fn) }
-      'p' { ast::def_fn(did, ast::pure_fn) }
-      'y' { ast::def_ty(did) }
-      't' { ast::def_ty(did) }
-      'm' { ast::def_mod(did) }
-      'n' { ast::def_foreign_mod(did) }
+    alt fam_ch {
+      'c' { dl_def(ast::def_const(did)) }
+      'C' { dl_def(ast::def_class(did)) }
+      'u' { dl_def(ast::def_fn(did, ast::unsafe_fn)) }
+      'f' { dl_def(ast::def_fn(did, ast::impure_fn)) }
+      'p' { dl_def(ast::def_fn(did, ast::pure_fn)) }
+      'y' { dl_def(ast::def_ty(did)) }
+      't' { dl_def(ast::def_ty(did)) }
+      'm' { dl_def(ast::def_mod(did)) }
+      'n' { dl_def(ast::def_foreign_mod(did)) }
       'v' {
         let mut tid = option::get(item_parent_item(item));
         tid = {crate: cnum, node: tid.node};
-        ast::def_variant(tid, did)
+        dl_def(ast::def_variant(tid, did))
       }
-      'I' { ast::def_ty(did) }
+      'I' { dl_def(ast::def_ty(did)) }
+      'i' { dl_impl(did) }
+      'g' | 'j' { dl_field }
+      ch { fail #fmt("unexpected family code: '%c'", ch) }
     }
+}
+
+fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
+   ast::def {
+    let item = lookup_item(did_.node, data);
+    let did = {crate: cnum, node: did_.node};
+    // We treat references to enums as references to types.
+    ret def_like_to_def(item_to_def_like(item, did, cnum));
 }
 
 fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
@@ -354,6 +369,104 @@ fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
 
 fn get_symbol(data: @~[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
+}
+
+// Something that a name can resolve to.
+enum def_like {
+    dl_def(ast::def),
+    dl_impl(ast::def_id),
+    dl_field
+}
+
+fn def_like_to_def(def_like: def_like) -> ast::def {
+    alt def_like {
+        dl_def(def) { ret def; }
+        dl_impl(*) { fail "found impl in def_like_to_def"; }
+        dl_field { fail "found field in def_like_to_def"; }
+    }
+}
+
+// A path.
+class path_entry {
+    // The full path, separated by '::'.
+    let path_string: str;
+    // The definition, implementation, or field that this path corresponds to.
+    let def_like: def_like;
+
+    new(path_string: str, def_like: def_like) {
+        self.path_string = path_string;
+        self.def_like = def_like;
+    }
+}
+
+#[doc="Iterates over all the paths in the given crate."]
+fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
+    let root = ebml::doc(cdata.data);
+    let items = ebml::get_doc(root, tag_items);
+    let items_data = ebml::get_doc(items, tag_items_data);
+
+    let mut broken = false;
+
+    // First, go through all the explicit items.
+    do ebml::tagged_docs(items_data, tag_items_data_item) |item_doc| {
+        if !broken {
+            let name = ast_map::path_to_str_with_sep(item_path(item_doc),
+                                                     "::");
+            if name != "" {
+                // Extract the def ID.
+                let def_id = class_member_id(item_doc, cdata);
+
+                // Construct the def for this item.
+                #debug("(each_path) yielding explicit item: %s", name);
+                let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
+
+                // Hand the information off to the iteratee.
+                let this_path_entry = path_entry(name, def_like);
+                if !f(this_path_entry) {
+                    broken = true;      // XXX: This is awful.
+                }
+            }
+        }
+    }
+
+    // If broken, stop here.
+    if broken {
+        ret;
+    }
+
+    // Next, go through all the paths. We will find items that we didn't know
+    // about before (reexports in particular).
+    let outer_paths = ebml::get_doc(root, tag_paths);
+    let inner_paths = ebml::get_doc(outer_paths, tag_paths);
+    do ebml::tagged_docs(inner_paths, tag_paths_data_item) |path_doc| {
+        if !broken {
+            let path = item_name(path_doc);
+
+            // Extract the def ID.
+            let def_id = class_member_id(path_doc, cdata);
+
+            // Get the item.
+            alt maybe_find_item(def_id.node, items) {
+                none {
+                    #debug("(each_path) ignoring implicit item: %s",
+                            *path);
+                }
+                some(item_doc) {
+                    // Construct the def for this item.
+                    let def_like = item_to_def_like(item_doc, def_id,
+                                                    cdata.cnum);
+
+                    // Hand the information off to the iteratee.
+                    #debug("(each_path) yielding implicit item: %s",
+                            *path);
+                    let this_path_entry = path_entry(*path, def_like);
+                    if (!f(this_path_entry)) {
+                        broken = true;      // XXX: This is awful.
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn get_item_path(cdata: cmd, id: ast::node_id) -> ast_map::path {
@@ -441,10 +554,12 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     rslt
 }
 
-fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
+fn get_impls_for_mod(cdata: cmd,
+                     m_id: ast::node_id,
                      name: option<ast::ident>,
                      get_cdata: fn(ast::crate_num) -> cmd)
-    -> @~[@_impl] {
+                  -> @~[@_impl] {
+
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];

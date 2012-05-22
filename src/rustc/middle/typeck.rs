@@ -53,8 +53,6 @@ import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
                     ty_param_bounds_and_ty, lookup_public_fields};
 import middle::typeck::infer::methods;
-import util::ppaux::{ty_to_str, tys_to_str, region_to_str,
-                     bound_region_to_str, vstore_to_str};
 import std::smallintmap;
 import std::smallintmap::map;
 import std::map;
@@ -62,6 +60,8 @@ import std::map::{hashmap, int_hash};
 import std::serialization::{serialize_uint, deserialize_uint};
 import vec::each;
 import syntax::print::pprust::*;
+import util::ppaux::{ty_to_str, tys_to_str, region_to_str,
+                     bound_region_to_str, vstore_to_str};
 import util::common::{indent, indenter};
 import std::list;
 import list::{list, nil, cons};

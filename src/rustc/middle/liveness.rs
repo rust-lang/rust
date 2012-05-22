@@ -283,7 +283,7 @@ class ir_maps {
           some(var) {var}
           none {
             self.tcx.sess.span_bug(
-                span, "No variable registered for this id");
+                span, #fmt("No variable registered for id %d", node_id));
           }
         }
     }

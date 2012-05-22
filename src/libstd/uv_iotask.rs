@@ -7,7 +7,7 @@ The I/O task runs in its own single-threaded scheduler.  By using the
 
 "];
 
-export iotask::{};
+export iotask;
 export spawn_iotask;
 export interact;
 export exit;

@@ -24,7 +24,7 @@ import rustc::middle::resolve;
 
 export ctxt;
 export ctxt_handler;
-export srv::{};
+export srv;
 export from_str;
 export from_file;
 export exec;

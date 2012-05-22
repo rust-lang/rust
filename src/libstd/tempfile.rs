@@ -3,6 +3,7 @@
 import core::option;
 import option::{none, some};
 import rand;
+import core::rand::extensions;
 
 fn mkdtemp(prefix: str, suffix: str) -> option<str> {
     let r = rand::rng();

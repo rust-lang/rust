@@ -39,14 +39,16 @@ import link::{mangle_internal_name_by_type_only,
               mangle_exported_name};
 import metadata::{csearch, cstore, encoder};
 import metadata::common::link_meta;
+import util::ppaux;
 import util::ppaux::{ty_to_str, ty_to_short_str};
 import syntax::diagnostic::expect;
 
-import common::*;
 import build::*;
 import shape::*;
 import type_of::*;
+import common::*;
 import type_of::type_of; // Issue #1873
+import common::result;
 import syntax::ast_map::{path, path_mod, path_name};
 
 import std::smallintmap;
@@ -511,7 +513,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
           mut drop_glue: none,
           mut free_glue: none,
           mut visit_glue: none};
-    log(debug, "--- declare_tydesc " + ty_to_str(ccx.tcx, t));
+    log(debug, "--- declare_tydesc " + ppaux::ty_to_str(ccx.tcx, t));
     ret inf;
 }
 
@@ -1106,14 +1108,14 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue TAKE %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
                 let glue_fn = declare_generic_glue
                     (ccx, ti.ty, T_glue_fn(ccx), "take");
                 ti.take_glue = some(glue_fn);
                 make_generic_glue(ccx, ti.ty, glue_fn,
                                   make_take_glue, "take");
                 #debug("--- lazily_emit_tydesc_glue TAKE %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
               }
             }
         } else if field == abi::tydesc_field_drop_glue {
@@ -1121,14 +1123,14 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue DROP %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
                 let glue_fn =
                     declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "drop");
                 ti.drop_glue = some(glue_fn);
                 make_generic_glue(ccx, ti.ty, glue_fn,
                                   make_drop_glue, "drop");
                 #debug("--- lazily_emit_tydesc_glue DROP %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
               }
             }
         } else if field == abi::tydesc_field_free_glue {
@@ -1136,14 +1138,14 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue FREE %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
                 let glue_fn =
                     declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "free");
                 ti.free_glue = some(glue_fn);
                 make_generic_glue(ccx, ti.ty, glue_fn,
                                   make_free_glue, "free");
                 #debug("--- lazily_emit_tydesc_glue FREE %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
               }
             }
         } else if field == abi::tydesc_field_visit_glue {
@@ -1151,14 +1153,14 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue VISIT %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
                 let glue_fn =
                     declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "visit");
                 ti.visit_glue = some(glue_fn);
                 make_generic_glue(ccx, ti.ty, glue_fn,
                                   make_visit_glue, "visit");
                 #debug("--- lazily_emit_tydesc_glue VISIT %s",
-                       ty_to_str(ccx.tcx, ti.ty));
+                       ppaux::ty_to_str(ccx.tcx, ti.ty));
               }
             }
         }
@@ -1383,7 +1385,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
         ret take_ty(bcx, dst, t);
     }
     ccx.sess.bug("unexpected type in trans::copy_val_no_check: " +
-                     ty_to_str(ccx.tcx, t));
+                     ppaux::ty_to_str(ccx.tcx, t));
 }
 
 
@@ -1422,7 +1424,7 @@ fn move_val(cx: block, action: copy_action, dst: ValueRef,
         ret cx;
     }
     cx.sess().bug("unexpected type in trans::move_val: " +
-                  ty_to_str(tcx, t));
+                  ppaux::ty_to_str(tcx, t));
 }
 
 fn store_temp_expr(cx: block, action: copy_action, dst: ValueRef,
@@ -1810,7 +1812,7 @@ fn autoderef(cx: block, e_id: ast::node_id,
     let mut derefs = 0u;
     while derefs < max {
         #debug["autoderef(e_id=%d, v1=%s, t1=%s, derefs=%u)",
-               e_id, val_str(ccx.tn, v1), ty_to_str(ccx.tcx, t1),
+               e_id, val_str(ccx.tn, v1), ppaux::ty_to_str(ccx.tcx, t1),
                derefs];
 
         // root the autoderef'd value, if necessary:
@@ -2140,7 +2142,6 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
 
     for real_substs.each() |s| { assert !ty::type_has_params(s); }
     for substs.each() |s| { assert !ty::type_has_params(s); }
-
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, some(param_uses));
     if vec::any(hash_id.params,
@@ -2156,6 +2157,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
 
     alt ccx.monomorphized.find(hash_id) {
       some(val) {
+        #debug["leaving monomorphic fn %s",
+               ty::item_path_str(ccx.tcx, fn_id)];
         ret {val: val, must_cast: must_cast};
       }
       none {}
@@ -2286,6 +2289,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       }
     };
     ccx.monomorphizing.insert(fn_id, depth);
+
+    #debug["leaving monomorphic fn %s", ty::item_path_str(ccx.tcx, fn_id)];
     {val: lldecl, must_cast: must_cast}
 }
 
@@ -3056,7 +3061,7 @@ fn adapt_borrowed_value(lv: lval_result,
       _ {
         bcx.tcx().sess.span_bug(
             e.span, #fmt["cannot borrow a value of type %s",
-                         ty_to_str(bcx.tcx(), e_ty)]);
+                         ppaux::ty_to_str(bcx.tcx(), e_ty)]);
       }
     }
 }
@@ -3517,7 +3522,7 @@ fn add_root_cleanup(bcx: block, scope_id: ast::node_id,
 
     #debug["add_root_cleanup(bcx=%s, scope_id=%d, root_loc=%s, ty=%s)",
            bcx.to_str(), scope_id, val_str(bcx.ccx().tn, root_loc),
-           ty_to_str(bcx.ccx().tcx, ty)];
+           ppaux::ty_to_str(bcx.ccx().tcx, ty)];
 
     let bcx_scope = find_bcx_for_scope(bcx, scope_id);
     add_clean_temp_mem(bcx_scope, root_loc, ty);
@@ -3614,7 +3619,8 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             alt check ty::get(expr_ty(bcx, e)).struct {
               ty::ty_fn({proto, _}) {
                 #debug("translating fn_block %s with type %s",
-                       expr_to_str(e), ty_to_str(tcx, expr_ty(bcx, e)));
+                       expr_to_str(e),
+                       ppaux::ty_to_str(tcx, expr_ty(bcx, e)));
                 ret closure::trans_expr_fn(bcx, proto, decl, body,
                                            e.id, cap_clause, none, dest);
               }
@@ -3754,7 +3760,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             let ptr_ty = expr_ty(bcx, e);
             let ptr_ptr_val = alloc_ty(bcx, ptr_ty);
 
-            #debug["ptr_ty = %s", ty_to_str(tcx, ptr_ty)];
+            #debug["ptr_ty = %s", ppaux::ty_to_str(tcx, ptr_ty)];
             #debug["ptr_ptr_val = %s", val_str(ccx.tn, ptr_ptr_val)];
 
             let void_ty = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx),
@@ -3947,7 +3953,7 @@ fn trans_fail_expr(bcx: block, sp_opt: option<span>,
         } else {
             bcx.sess().span_bug(
                 expr.span, "fail called with unsupported type " +
-                ty_to_str(tcx, e_ty));
+                ppaux::ty_to_str(tcx, e_ty));
         }
       }
       _ { ret trans_fail(bcx, sp_opt, "explicit failure"); }
@@ -4345,7 +4351,7 @@ fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
     let _icx = bcx.insn_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let llty = type_of(ccx, t);
-    if ty::type_has_params(t) { log(error, ty_to_str(ccx.tcx, t)); }
+    if ty::type_has_params(t) { log(error, ppaux::ty_to_str(ccx.tcx, t)); }
     assert !ty::type_has_params(t);
     let val = alloca(bcx, llty);
     ret val;

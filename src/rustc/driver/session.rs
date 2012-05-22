@@ -35,6 +35,7 @@ const trace: uint = 128u;
 // FIXME (#2377): This exists to transition to a Rust crate runtime
 // It should be removed
 const no_rt: uint = 256u;
+const fast_resolve: uint = 512u;
 
 fn debugging_opts_map() -> ~[(str, str, uint)] {
     ~[("ppregions", "prettyprint regions with \
@@ -47,7 +48,8 @@ fn debugging_opts_map() -> ~[(str, str, uint)] {
      ("no-asm-comments", "omit comments when using -S", no_asm_comments),
      ("no-verify", "skip LLVM verification", no_verify),
      ("trace", "emit trace logs", trace),
-     ("no-rt", "do not link to the runtime", no_rt)
+     ("no-rt", "do not link to the runtime", no_rt),
+     ("fast-resolve", "use fast name resolution", fast_resolve)
     ]
 }
 
@@ -162,6 +164,7 @@ impl session for session {
     fn no_asm_comments() -> bool { self.debugging_opt(no_asm_comments) }
     fn no_verify() -> bool { self.debugging_opt(no_verify) }
     fn trace() -> bool { self.debugging_opt(trace) }
+    fn fast_resolve() -> bool { self.debugging_opt(fast_resolve) }
 }
 
 #[doc = "Some reasonable defaults"]

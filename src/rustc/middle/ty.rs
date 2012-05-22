@@ -11,11 +11,11 @@ import syntax::codemap::span;
 import metadata::csearch;
 import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
-import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
 import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
                       ignore};
 import syntax::ast::*;
 import syntax::print::pprust::*;
+import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
 
 export tv_vid, tvi_vid, region_vid, vid;
 export br_hashmap;
@@ -105,7 +105,10 @@ export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var, type_is_var;
 export ty_var_integral, mk_var_integral, type_is_var_integral;
 export ty_self, mk_self, type_has_self;
+export ty_class;
 export region, bound_region, encl_region;
+export re_bound, re_free, re_scope, re_static, re_var;
+export br_self, br_anon, br_named;
 export get, type_has_params, type_needs_infer, type_has_regions;
 export type_has_resources, type_id;
 export tbox_has_flag;
@@ -2528,6 +2531,7 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
 
 fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
     if id.crate == ast::local_crate {
+        #debug("(impl_iface) searching for iface impl %?", id);
         alt cx.items.find(id.node) {
            some(ast_map::node_item(@{node: ast::item_impl(
               _, _, some(@{id: id, _}), _, _), _}, _)) {
@@ -2537,11 +2541,16 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
                            _},_)) {
              alt cx.def_map.find(id.node) {
                some(def_ty(iface_id)) {
-                   some(node_id_to_type(cx, id.node))
+                   // XXX: Doesn't work cross-crate.
+                   #debug("(impl_iface) found iface id %?", iface_id);
+                   some(node_id_to_type(cx, iface_id.node))
                }
-               _ {
-                 cx.sess.bug("impl_iface: iface ref isn't in iface map \
-                         and isn't bound to a def_ty");
+               some(x) {
+                 cx.sess.bug(#fmt("impl_iface: iface ref is in iface map \
+                                   but is bound to %?", x));
+               }
+               none {
+                 none
                }
              }
            }

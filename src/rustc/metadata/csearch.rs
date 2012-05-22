@@ -22,6 +22,7 @@ export lookup_method_purity;
 export get_enum_variants;
 export get_impls_for_mod;
 export get_iface_methods;
+export each_path;
 export get_type;
 export get_impl_iface;
 export get_impl_method;
@@ -79,6 +80,13 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
         }
     }
     ret result;
+}
+
+#[doc="Iterates over all the paths in the given crate."]
+fn each_path(cstore: cstore::cstore, cnum: ast::crate_num,
+             f: fn(decoder::path_entry) -> bool) {
+    let crate_data = cstore::get_crate_data(cstore, cnum);
+    decoder::each_path(crate_data, f);
 }
 
 fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {

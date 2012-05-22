@@ -74,6 +74,8 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                 alt check ty::get(ity).struct {
                   ty::ty_iface(idid, substs) {
                     if iface_id == idid {
+                        #debug("(checking vtable) @0 relating ty to iface ty
+                                with did %?", idid);
                         relate_iface_tys(fcx, sp, iface_ty, ity);
                         ret vtable_param(n, n_bound);
                     }
@@ -86,6 +88,9 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
       }
 
       ty::ty_iface(did, substs) if iface_id == did {
+        #debug("(checking vtable) @1 relating ty to iface ty with did %?",
+               did);
+
         relate_iface_tys(fcx, sp, iface_ty, ty);
         if !allow_unsafe {
             for vec::each(*ty::iface_methods(tcx, did)) |m| {
@@ -134,6 +139,10 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                     }
 
                     // check that desired iface type unifies
+                    #debug("(checking vtable) @2 relating iface ty %s to \
+                            of_ty %s",
+                            fcx.infcx.ty_to_str(iface_ty),
+                            fcx.infcx.ty_to_str(of_ty));
                     let of_ty = ty::subst(tcx, substs, of_ty);
                     relate_iface_tys(fcx, sp, iface_ty, of_ty);
 
@@ -186,6 +195,8 @@ fn connect_iface_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
     let tcx = fcx.ccx.tcx;
     let ity = option::get(ty::impl_iface(tcx, impl_did));
     let iface_ty = ty::subst_tps(tcx, impl_tys, ity);
+    #debug("(connect iface tps) iface type is %?, impl did is %?",
+           ty::get(iface_ty).struct, impl_did);
     alt check ty::get(iface_ty).struct {
       ty::ty_iface(_, substs) {
         vec::iter2(substs.tps, iface_tys,

@@ -1,3 +1,5 @@
+// xfail-test
+
 use std;
 import std::map::*;
 import vec::*;

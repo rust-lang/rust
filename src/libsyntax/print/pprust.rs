@@ -1,4 +1,3 @@
-import parse::classify::*;
 import parse::comments;
 import parse::lexer;
 import codemap::codemap;
@@ -8,6 +7,7 @@ import pp::{break_offset, word, printer,
 import diagnostic;
 import ast_util::operator_prec;
 import dvec::{dvec, extensions};
+import parse::classify::*;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {

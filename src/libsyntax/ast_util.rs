@@ -572,6 +572,13 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
     }
 }
 
+fn view_path_id(p: @view_path) -> node_id {
+    alt p.node {
+      view_path_simple(_, _, id) | view_path_glob(_, id) |
+      view_path_list(_, _, id) { id }
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

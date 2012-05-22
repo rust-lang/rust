@@ -102,6 +102,11 @@ pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
     }
 }
 
+#[doc = "Push an element to the front of a list"]
+fn push<T: copy>(&l: list<T>, v: T) {
+    l = cons(v, @l);
+}
+
 #[doc = "Iterate over a list"]
 fn iter<T>(l: @list<T>, f: fn(T)) {
     let mut cur = l;

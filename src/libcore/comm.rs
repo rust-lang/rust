@@ -27,8 +27,8 @@ io::println(comm::recv(p));
 import either::either;
 import libc::size_t;
 
-export port::{};
-export chan::{};
+export port;
+export chan;
 export send;
 export recv;
 export peek;

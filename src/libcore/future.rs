@@ -14,7 +14,6 @@ io::println(#fmt(\"fib(5000) = %?\", delayed_fib.get()))
 import either::either;
 
 export future;
-export future::{};
 export from_value;
 export from_port;
 export from_fn;

@@ -5,18 +5,21 @@ import token::{can_begin_expr, is_ident, is_plain_ident};
 import codemap::{span,fss_none};
 import util::interner;
 import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
-import ast::*;
 import lexer::reader;
 import prec::{as_prec, token_to_binop};
 import attr::parser_attr;
 import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
-                seq_sep_none, token_to_str};
-import common::*;//{parser_common};
+                seq_sep_none, token_to_str, parser_common};
 import dvec::{dvec, extensions};
 import vec::{push};
+import ast::*;
 
 export file_type;
 export parser;
+export parse_expr;
+export parse_pat;
+export CRATE_FILE;
+export SOURCE_FILE;
 
 // FIXME (#1893): #ast expects to find this here but it's actually
 // defined in `parse` Fixing this will be easier when we have export

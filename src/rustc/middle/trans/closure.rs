@@ -264,6 +264,9 @@ fn store_environment(bcx: block,
             bcx = move_val(bcx, INIT, bound_data, src, ty);
           }
           env_ref(val, ty, owned) {
+            #debug["> storing %s into %s",
+                   val_str(bcx.ccx().tn, val),
+                   val_str(bcx.ccx().tn, bound_data)];
             Store(bcx, val, bound_data);
           }
           env_ref(val, ty, owned_imm) {
@@ -298,6 +301,8 @@ fn build_closure(bcx0: block,
         #debug["Building closure: captured variable %?", cap_var];
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
+        #debug["Node id is %s",
+               syntax::ast_map::node_id_to_str(bcx.ccx().tcx.items, nid)];
         let mut ty = node_id_type(bcx, nid);
         alt cap_var.mode {
           capture::cap_ref {

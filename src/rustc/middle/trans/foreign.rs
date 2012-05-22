@@ -9,8 +9,7 @@ import lib::llvm::{ llvm, TypeRef, ValueRef,
                     ModuleRef, CallConv, Attribute,
                     StructRetAttribute, ByValAttribute,
                    SequentiallyConsistent, Acquire, Release,
-                   Xchg, Add, Sub
-                  };
+                   Xchg };
 import syntax::{ast, ast_util};
 import back::{link, abi};
 import common::*;
@@ -830,42 +829,42 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         Store(bcx, old, fcx.llretptr);
       }
       "atomic_add" {
-        let old = AtomicRMW(bcx, Add,
+        let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
       "atomic_add_acq" {
-        let old = AtomicRMW(bcx, Add,
+        let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
       "atomic_add_rel" {
-        let old = AtomicRMW(bcx, Add,
+        let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Release);
         Store(bcx, old, fcx.llretptr);
       }
       "atomic_sub" {
-        let old = AtomicRMW(bcx, Sub,
+        let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
       "atomic_sub_acq" {
-        let old = AtomicRMW(bcx, Sub,
+        let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
       "atomic_sub_rel" {
-        let old = AtomicRMW(bcx, Sub,
+        let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Release);
