@@ -10,7 +10,6 @@ import std::map;
 import std::map::hashmap;
 import std::deque;
 import std::deque::t;
-//import std::par;
 import io::writer_util;
 import comm::*;
 import int::abs;
@@ -76,7 +75,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)] {
             let j = j * 2;
             let scale = scale - 1u;
             
-            let x = r.next_float();
+            let x = r.gen_float();
 
             if x < A {
                 choose_edge(i, j, scale, r)
@@ -123,14 +122,8 @@ fn gen_search_keys(graph: graph, n: uint) -> [node_id] {
     let keys = map::int_hash();
     let r = rand::rng();
 
-    impl methods for rand::rng {
-        fn r64() -> u64 {
-            self.next() as u64 << 32u + self.next() as u64
-        }
-    }
-
     while keys.size() < n {
-        let k = r.r64() % graph.len() as node_id;
+        let k = r.gen_u64() % graph.len() as node_id;
 
         if graph[k].len() > 0u && vec::any(graph[k]) {|i|
             i != k
