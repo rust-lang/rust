@@ -154,7 +154,7 @@ fn map_block(b: blk, cx: ctx, v: vt) {
 }
 
 fn number_pat(cx: ctx, pat: @pat) {
-    pat_util::walk_pat(pat) {|p|
+    ast_util::walk_pat(pat) {|p|
         alt p.node {
           pat_ident(_, _) {
             cx.map.insert(p.id, node_local(cx.local_id));

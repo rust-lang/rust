@@ -1,13 +1,11 @@
 import syntax::ast::*;
 import syntax::ast_util;
-import syntax::ast_util::path_to_ident;
-import syntax::ast_util::respan;
+import syntax::ast_util::{path_to_ident, respan, walk_pat};
 import syntax::fold;
 import syntax::fold::*;
 import syntax::codemap::span;
 import std::map::hashmap;
 
-export walk_pat;
 export pat_binding_ids, pat_bindings, pat_id_map;
 export pat_is_variant;
 
@@ -48,18 +46,6 @@ fn pat_bindings(dm: resolve::def_map, pat: @pat,
           }
           _ {}
         }
-    }
-}
-
-fn walk_pat(pat: @pat, it: fn(@pat)) {
-    it(pat);
-    alt pat.node {
-      pat_ident(pth, some(p)) { walk_pat(p, it); }
-      pat_rec(fields, _) { for fields.each {|f| walk_pat(f.pat, it); } }
-      pat_enum(_, some(s)) | pat_tup(s) { for s.each {|p| walk_pat(p, it); } }
-      pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
-      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _)
-        | pat_enum(_, _) {}
     }
 }
 

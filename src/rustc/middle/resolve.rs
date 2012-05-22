@@ -688,7 +688,7 @@ fn visit_local_with_scope(e: @env, loc: @local, &&sc: scopes, v:vt<scopes>) {
     // scope. We disallow this, in order to make alt patterns consisting of a
     // single identifier unambiguous (does the pattern "foo" refer to enum
     // foo, or is it binding a new name foo?)
-    pat_util::walk_pat(loc.node.pat) { |p|
+    ast_util::walk_pat(loc.node.pat) { |p|
         alt p.node {
           pat_ident(path, _) {
             alt lookup_in_scope(*e, sc, loc.span, path_to_ident(path),
