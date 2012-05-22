@@ -1090,8 +1090,8 @@ impl assignment for infer_ctxt {
 // ______________________________________________________________________
 // Type combining
 //
-// There are three type combiners, sub, lub, and glb.  Each implements
-// the interface `combine` contains methods for combining two
+// There are three type combiners: sub, lub, and glb.  Each implements
+// the interface `combine` and contains methods for combining two
 // instances of various things and yielding a new instance.  These
 // combiner methods always yield a `result<T>`---failure is propagated
 // upward using `chain()` methods.
@@ -1101,13 +1101,13 @@ impl assignment for infer_ctxt {
 // instance as the first parameter.  This would be better implemented
 // using traits.  For this system to work properly, you should not
 // call the `super_X(foo, ...)` functions directly, but rather call
-// `foo.X(...)`.  The implemtation of `X()` can then choose to delegate
+// `foo.X(...)`.  The implementation of `X()` can then choose to delegate
 // to the `super` routine or to do other things.
 //
 // In reality, the sub operation is rather different from lub/glb, but
 // they are combined into one interface to avoid duplication (they
 // used to be separate but there were many bugs because there were two
-// copies of most routines.
+// copies of most routines).
 //
 // The differences are:
 //
@@ -1177,7 +1177,7 @@ fn super_substs<C:combine>(
           (_, _) {
             // If these two substitutions are for the same type (and
             // they should be), then the type should either
-            // consistenly have a region parameter or not have a
+            // consistently have a region parameter or not have a
             // region parameter.
             infcx.tcx.sess.bug(
                 #fmt["substitution a had opt_region %s and \

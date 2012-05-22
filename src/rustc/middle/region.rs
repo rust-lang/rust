@@ -52,7 +52,7 @@ Regions are more complex than type parameters because, unlike type
 parameters, they can be universally quantified within a type.  To put
 it another way, you cannot (at least at the time of this writing) have
 a variable `x` of type `fn<T>(T) -> T`.  You can have an *item* of
-type `fn<T>(T) - T`, but whenever it is referenced within a method,
+type `fn<T>(T) -> T`, but whenever it is referenced within a method,
 that type parameter `T` is replaced with a concrete type *variable*
 `$T`.  To make this more concrete, imagine this code:
 
@@ -114,7 +114,7 @@ to `&a` would be `re_bound(rid_param("a", 0u))`, and the inner reference
 would be `re_free(rid_param("a", 0u))`.  In `item2()`, the inner reference
 would be `re_bound(rid_param("a", 0u))`.
 
-#### Impliciations for typeck
+#### Implications for typeck
 
 In typeck, whenever we call a function, we must go over and replace
 all references to `re_bound()` regions within its parameters with
