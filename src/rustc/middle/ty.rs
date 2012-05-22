@@ -425,9 +425,9 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     for vec::each(*bounds) {|bound|
         alt bound {
           bound_copy {
-            if kind != kind_sendable() { kind = kind_copyable(); }
+            kind = lower_kind(kind, kind_copyable());
           }
-          bound_send { kind = kind_sendable(); }
+          bound_send { kind = lower_kind(kind, kind_send_only()); }
           _ {}
         }
     }
@@ -1277,6 +1277,10 @@ fn kind_sendable() -> kind {
     kind_(KIND_MASK_COPY | KIND_MASK_SEND)
 }
 
+fn kind_send_only() -> kind {
+    kind_(KIND_MASK_SEND)
+}
+
 // Using these query functons is preferable to direct comparison or matching
 // against the kind constants, as we may modify the kind hierarchy in the
 // future.
@@ -1303,7 +1307,7 @@ fn kind_lteq(a: kind, b: kind) -> bool {
 }
 
 fn lower_kind(a: kind, b: kind) -> kind {
-    if kind_lteq(a, b) { a } else { b }
+    kind_(*a | *b)
 }
 
 #[test]
@@ -1402,7 +1406,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
-      ty_res(did, inner, tps) { kind_noncopyable() }
+      ty_res(did, inner, tps) { kind_send_only() }
       ty_param(_, did) {
           param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }

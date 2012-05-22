@@ -20,7 +20,7 @@ for *at least* that period of time.
 * ch - a channel of type T to send a `val` on
 * val - a value of type T to send over the provided `ch`
 "]
-fn delayed_send<T: send>(msecs: uint, ch: comm::chan<T>, val: T) {
+fn delayed_send<T: copy send>(msecs: uint, ch: comm::chan<T>, val: T) {
     task::spawn() {||
         unsafe {
             let timer_done_po = comm::port::<()>();
@@ -94,7 +94,9 @@ An `option<T>` representing the outcome of the call. If the call `recv`'d on
 the provided port in the allotted timeout period, then the result will be a
 `some(T)`. If not, then `none` will be returned.
 "]
-fn recv_timeout<T: send>(msecs: uint, wait_po: comm::port<T>) -> option<T> {
+fn recv_timeout<T: copy send>(msecs: uint, wait_po: comm::port<T>)
+    -> option<T> {
+
     let timeout_po = comm::port::<()>();
     let timeout_ch = comm::chan(timeout_po);
     delayed_send(msecs, timeout_ch, ());

@@ -24,10 +24,12 @@ import freevars::freevar_entry;
 // types.
 
 fn kind_to_str(k: kind) -> str {
-    if k == kind_sendable() { "sendable" }
-    else if k == kind_copyable() { "copyable" }
-    else if k == kind_noncopyable() { "noncopyable" }
-    else { fail "unknown kind" }
+    alt (ty::kind_can_be_copied(k), ty::kind_can_be_sent(k)) {
+      (false, false) { "noncopyable" }
+      (false, true)  { "sendable" }
+      (true,  false) { "copyable" }
+      (true,  true)  { "copy-sendable" }
+    }
 }
 
 type rval_map = std::map::hashmap<node_id, ()>;
