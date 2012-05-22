@@ -7,6 +7,7 @@ export level, fatal, error, warning, note;
 export span_handler, handler, mk_span_handler, mk_handler;
 export codemap_span_handler, codemap_handler;
 export ice_msg;
+export expect;
 
 type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
                    msg: str, lvl: level);
@@ -251,5 +252,13 @@ fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
         let ss = codemap::span_to_str(ei.call_site, cm);
         print_diagnostic(ss, note, "expansion site");
         print_macro_backtrace(cm, ei.call_site);
+    }
+}
+
+fn expect<T: copy>(diag: span_handler,
+                   opt: option<T>, msg: fn() -> str) -> T {
+    alt opt {
+       some(t) { t }
+       none { diag.handler().bug(msg()); }
     }
 }
