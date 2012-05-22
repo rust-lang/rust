@@ -9,7 +9,7 @@
 # the snapshot runtime (resp. corelib) rather than the runtime
 # (resp. corelib) from the working directory.
 USE_SNAPSHOT_RUNTIME=1
-USE_SNAPSHOT_CORELIB=0
+USE_SNAPSHOT_CORELIB=1
 
 define TARGET_STAGE_N
 
