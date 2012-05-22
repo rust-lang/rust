@@ -16,11 +16,13 @@ for *at least* that period of time.
 
 # Arguments
 
+* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
 * msecs - a timeout period, in milliseconds, to wait
 * ch - a channel of type T to send a `val` on
 * val - a value of type T to send over the provided `ch`
 "]
-fn delayed_send<T: copy send>(msecs: uint, ch: comm::chan<T>, val: T) {
+fn delayed_send<T: send>(hl_loop: uv::hl::high_level_loop,
+                         msecs: uint, ch: comm::chan<T>, val: T) {
     task::spawn() {||
         unsafe {
             let timer_done_po = comm::port::<()>();
@@ -28,7 +30,6 @@ fn delayed_send<T: copy send>(msecs: uint, ch: comm::chan<T>, val: T) {
             let timer_done_ch_ptr = ptr::addr_of(timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(timer);
-            let hl_loop = uv::global_loop::get();
             uv::hl::interact(hl_loop) {|loop_ptr|
                 let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
                 if (init_result == 0i32) {
@@ -67,12 +68,13 @@ for *at least* that period of time.
 
 # Arguments
 
+* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
 * msecs - an amount of time, in milliseconds, for the current task to block
 "]
-fn sleep(msecs: uint) {
+fn sleep(hl_loop: uv::hl::high_level_loop, msecs: uint) {
     let exit_po = comm::port::<()>();
     let exit_ch = comm::chan(exit_po);
-    delayed_send(msecs, exit_ch, ());
+    delayed_send(hl_loop, msecs, exit_ch, ());
     comm::recv(exit_po);
 }
 
@@ -85,6 +87,7 @@ timeout. Depending on whether the provided port receives in that time period,
 
 # Arguments
 
+* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
 * msecs - an mount of time, in milliseconds, to wait to receive
 * wait_port - a `comm::port<T>` to receive on
 
@@ -94,12 +97,11 @@ An `option<T>` representing the outcome of the call. If the call `recv`'d on
 the provided port in the allotted timeout period, then the result will be a
 `some(T)`. If not, then `none` will be returned.
 "]
-fn recv_timeout<T: copy send>(msecs: uint, wait_po: comm::port<T>)
-    -> option<T> {
-
+fn recv_timeout<T: send>(hl_loop: uv::hl::high_level_loop,
+                         msecs: uint, wait_po: comm::port<T>) -> option<T> {
     let timeout_po = comm::port::<()>();
     let timeout_ch = comm::chan(timeout_po);
-    delayed_send(msecs, timeout_ch, ());
+    delayed_send(hl_loop, msecs, timeout_ch, ());
     either::either(
         {|left_val|
             log(debug, #fmt("recv_time .. left_val %?",
@@ -140,13 +142,15 @@ crust fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
 mod test {
     #[test]
     fn test_gl_timer_simple_sleep_test() {
-        sleep(1u);
+        let hl_loop = uv::global_loop::get();
+        sleep(hl_loop, 1u);
     }
 
     #[test]
     fn test_gl_timer_sleep_stress1() {
+        let hl_loop = uv::global_loop::get();
         iter::repeat(200u) {||
-            sleep(1u);
+            sleep(hl_loop, 1u);
         }
     }
 
@@ -154,6 +158,7 @@ mod test {
     fn test_gl_timer_sleep_stress2() {
         let po = comm::port();
         let ch = comm::chan(po);
+        let hl_loop = uv::global_loop::get();
 
         let repeat = 20u;
         let spec = {
@@ -172,7 +177,7 @@ mod test {
                     import rand::*;
                     let rng = rng();
                     iter::repeat(times) {||
-                        sleep(rng.next() as uint % maxms);
+                        sleep(hl_loop, rng.next() as uint % maxms);
                     }
                     comm::send(ch, ());
                 }
@@ -195,6 +200,7 @@ mod test {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;
+        let hl_loop = uv::global_loop::get();
 
         iter::repeat(times as uint) {||
             task::yield();
@@ -204,10 +210,10 @@ mod test {
             let test_ch = comm::chan(test_po);
 
             task::spawn() {||
-                delayed_send(1u, test_ch, expected);
+                delayed_send(hl_loop, 1u, test_ch, expected);
             };
 
-            alt recv_timeout(10u, test_po) {
+            alt recv_timeout(hl_loop, 10u, test_po) {
               some(val) { assert val == expected; successes += 1; }
               _ { failures += 1; }
             };
@@ -221,6 +227,7 @@ mod test {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;
+        let hl_loop = uv::global_loop::get();
 
         iter::repeat(times as uint) {||
             let expected = rand::rng().gen_str(16u);
@@ -228,10 +235,10 @@ mod test {
             let test_ch = comm::chan(test_po);
 
             task::spawn() {||
-                delayed_send(1000u, test_ch, expected);
+                delayed_send(hl_loop, 1000u, test_ch, expected);
             };
 
-            let actual = alt recv_timeout(1u, test_po) {
+            let actual = alt recv_timeout(hl_loop, 1u, test_po) {
               none { successes += 1; }
               _ { failures += 1; }
             };

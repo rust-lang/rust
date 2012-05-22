@@ -83,8 +83,9 @@ Initiate a client connection over TCP/IP
 
 # Arguments
 
-* ip - The IP address (versions 4 or 6) of the remote host
-* port - the unsigned integer of the desired remote host port
+* `ip` - The IP address (versions 4 or 6) of the remote host
+* `port` - the unsigned integer of the desired remote host port
+* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
 
 # Returns
 
@@ -92,7 +93,8 @@ A `result` that, if the operation succeeds, contains a `tcp_socket` that
 can be used to send and receive data to/from the remote host. In the event
 of failure, a `tcp_err_data` will be returned
 "]
-fn connect(input_ip: ip::ip_addr, port: uint)
+fn connect(input_ip: ip::ip_addr, port: uint,
+           hl_loop: uv::hl::high_level_loop)
     -> result::result<tcp_socket, tcp_err_data> unsafe {
     let result_po = comm::port::<conn_attempt>();
     let closed_signal_po = comm::port::<()>();
@@ -101,7 +103,6 @@ fn connect(input_ip: ip::ip_addr, port: uint)
         closed_signal_ch: comm::chan(closed_signal_po)
     };
     let conn_data_ptr = ptr::addr_of(conn_data);
-    let hl_loop = uv::global_loop::get();
     let reader_po = comm::port::<result::result<[u8], tcp_err_data>>();
     let stream_handle_ptr = malloc_uv_tcp_t();
     *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
@@ -343,6 +344,7 @@ Bind to a given IP/port and listen for new connections
 * `port` - a uint representing the port to listen on
 * `backlog` - a uint representing the number of incoming connections
 to cache in memory
+* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
 
 # Returns
 
@@ -350,11 +352,11 @@ A `result` instance containing either a `tcp_conn_port` which can used
 to listen for, and accept, new connections, or a `tcp_err_data` if
 failure to create the tcp listener occurs
 "]
-fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint)
+fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint,
+                hl_loop: uv::hl::high_level_loop)
     -> result::result<tcp_conn_port, tcp_err_data> unsafe {
     let stream_closed_po = comm::port::<()>();
     let stream_closed_ch = comm::chan(stream_closed_po);
-    let hl_loop = uv::global_loop::get();
     let new_conn_po = comm::port::<result::result<*uv::ll::uv_tcp_t,
                                                   tcp_err_data>>();
     let new_conn_ch = comm::chan(new_conn_po);
@@ -653,6 +655,7 @@ Bind to a given IP/port and listen for new connections
 * `port` - a uint representing the port to listen on
 * `backlog` - a uint representing the number of incoming connections
 to cache in memory
+* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
 * `on_establish_cb` - a callback that is evaluated if/when the listener
 is successfully established. it takes no parameters
 * `new_connect_cb` - a callback to be evaluated, on the libuv thread,
@@ -671,6 +674,7 @@ successful/normal shutdown, and a `tcp_err_data` record in the event
 of listen exiting because of an error
 "]
 fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
+          hl_loop: uv::hl::high_level_loop,
           on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
           new_connect_cb: fn~(tcp_new_connection,
                               comm::chan<option<tcp_err_data>>))
@@ -680,7 +684,6 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
     let kill_ch = comm::chan(kill_po);
     let server_stream = uv::ll::tcp_t();
     let server_stream_ptr = ptr::addr_of(server_stream);
-    let hl_loop = uv::global_loop::get();
     let server_data = {
         server_stream_ptr: server_stream_ptr,
         stream_closed_ch: comm::chan(stream_closed_po),
@@ -804,8 +807,9 @@ impl sock_methods for tcp_socket {
 
 // shared implementation for tcp::read
 fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
-    -> result::result<[u8],tcp_err_data> {
+    -> result::result<[u8],tcp_err_data> unsafe {
     log(debug, "starting tcp::read");
+    let hl_loop = (*socket_data).hl_loop;
     let rs_result = read_start_common_impl(socket_data);
     if result::is_failure(rs_result) {
         let err_data = result::get_err(rs_result);
@@ -815,7 +819,7 @@ fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
         log(debug, "tcp::read before recv_timeout");
         let read_result = if timeout_msecs > 0u {
             timer::recv_timeout(
-                timeout_msecs, result::get(rs_result))
+                hl_loop, timeout_msecs, result::get(rs_result))
         } else {
             some(comm::recv(result::get(rs_result)))
         };
@@ -1270,7 +1274,7 @@ fn ipv4_ip_addr_to_sockaddr_in(input_ip: ip::ip_addr,
     }
 }
 
-//#[cfg(test)]
+#[cfg(test)]
 mod test {
     // FIXME don't run on fbsd or linux 32 bit(#2064)
     #[cfg(target_os="win32")]
@@ -1303,6 +1307,7 @@ mod test {
         }
     }
     fn impl_gl_tcp_ipv4_server_and_client() {
+        let hl_loop = uv::global_loop::get();
         let server_ip = "127.0.0.1";
         let server_port = 8888u;
         let expected_req = "ping";
@@ -1321,7 +1326,8 @@ mod test {
                     server_port,
                     expected_resp,
                     server_ch,
-                    cont_ch)
+                    cont_ch,
+                    hl_loop)
             };
             server_result_ch.send(actual_req);
         };
@@ -1333,7 +1339,8 @@ mod test {
                 server_ip,
                 server_port,
                 expected_req,
-                client_ch)
+                client_ch,
+                hl_loop)
         };
         let actual_req = comm::recv(server_result_po);
         log(debug, #fmt("REQ: expected: '%s' actual: '%s'",
@@ -1344,6 +1351,7 @@ mod test {
         assert str::contains(actual_resp, expected_resp);
     }
     fn impl_gl_tcp_ipv4_server_listener_and_client() {
+        let hl_loop = uv::global_loop::get();
         let server_ip = "127.0.0.1";
         let server_port = 8889u;
         let expected_req = "ping";
@@ -1362,7 +1370,8 @@ mod test {
                     server_port,
                     expected_resp,
                     server_ch,
-                    cont_ch)
+                    cont_ch,
+                    hl_loop)
             };
             server_result_ch.send(actual_req);
         };
@@ -1374,7 +1383,8 @@ mod test {
                 server_ip,
                 server_port,
                 expected_req,
-                client_ch)
+                client_ch,
+                hl_loop)
         };
         let actual_req = comm::recv(server_result_po);
         log(debug, #fmt("REQ: expected: '%s' actual: '%s'",
@@ -1387,12 +1397,14 @@ mod test {
 
     fn run_tcp_test_server(server_ip: str, server_port: uint, resp: str,
                           server_ch: comm::chan<str>,
-                          cont_ch: comm::chan<()>) -> str {
+                          cont_ch: comm::chan<()>,
+                          hl_loop: uv::hl::high_level_loop) -> str {
 
         task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let listen_result =
                 listen_for_conn(server_ip_addr, server_port, 128u,
+                hl_loop,
                 // on_establish_cb -- called when listener is set up
                 {|kill_ch|
                     log(debug, #fmt("establish_cb %?",
@@ -1464,12 +1476,13 @@ mod test {
     fn run_tcp_test_server_listener(server_ip: str,
                                     server_port: uint, resp: str,
                                     server_ch: comm::chan<str>,
-                                    cont_ch: comm::chan<()>) -> str {
+                                    cont_ch: comm::chan<()>,
+                                    hl_loop: uv::hl::high_level_loop) -> str {
 
         task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let new_listener_result =
-                new_listener(server_ip_addr, server_port, 128u);
+                new_listener(server_ip_addr, server_port, 128u, hl_loop);
             if result::is_failure(new_listener_result) {
                 let err_data = result::get_err(new_listener_result);
                 log(debug, #fmt("SERVER: exited abnormally name %s msg %s",
@@ -1512,12 +1525,13 @@ mod test {
     }
 
     fn run_tcp_test_client(server_ip: str, server_port: uint, resp: str,
-                          client_ch: comm::chan<str>) -> str {
+                          client_ch: comm::chan<str>,
+                          hl_loop: uv::hl::high_level_loop) -> str {
 
         let server_ip_addr = ip::v4::parse_addr(server_ip);
 
         log(debug, "CLIENT: starting..");
-        let connect_result = connect(server_ip_addr, server_port);
+        let connect_result = connect(server_ip_addr, server_port, hl_loop);
         if result::is_failure(connect_result) {
             log(debug, "CLIENT: failed to connect");
             let err_data = result::get_err(connect_result);
