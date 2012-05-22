@@ -17,96 +17,67 @@ export fold_ty_param;
 export fold_ty_params;
 export fold_fn_decl;
 
-type ast_fold = @mut a_f;
+iface ast_fold {
+    fn fold_crate(crate) -> crate;
+    fn fold_crate_directive(&&@crate_directive) -> @crate_directive;
+    fn fold_view_item(&&@view_item) -> @view_item;
+    fn fold_native_item(&&@native_item) -> @native_item;
+    fn fold_item(&&@item) -> @item;
+    fn fold_class_item(&&@class_member) -> @class_member;
+    fn fold_item_underscore(item_) -> item_;
+    fn fold_method(&&@method) -> @method;
+    fn fold_block(blk) -> blk;
+    fn fold_stmt(&&@stmt) -> @stmt;
+    fn fold_arm(arm) -> arm;
+    fn fold_pat(&&@pat) -> @pat;
+    fn fold_decl(&&@decl) -> @decl;
+    fn fold_expr(&&@expr) -> @expr;
+    fn fold_ty(&&@ty) -> @ty;
+    fn fold_constr(&&@constr) -> @constr;
+    fn fold_ty_constr(&&@ty_constr) -> @ty_constr;
+    fn fold_mod(_mod) -> _mod;
+    fn fold_native_mod(native_mod) -> native_mod;
+    fn fold_variant(variant) -> variant;
+    fn fold_ident(&&ident) -> ident;
+    fn fold_path(&&@path) -> @path;
+    fn fold_local(&&@local) -> @local;
+    fn map_exprs(fn@(&&@expr) -> @expr, [@expr]) -> [@expr];
+    fn new_id(node_id) -> node_id;
+    fn new_span(span) -> span;
+}
 
 // We may eventually want to be able to fold over type parameters, too
 
-type ast_fold_precursor =
+type ast_fold_precursor = @{
     //unlike the others, item_ is non-trivial
-    {fold_crate: fn@(crate_, span, ast_fold) -> (crate_, span),
-     fold_crate_directive: fn@(crate_directive_, span,
-                               ast_fold) -> (crate_directive_, span),
-     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
-     fold_native_item: fn@(&&@native_item, ast_fold) -> @native_item,
-     fold_item: fn@(&&@item, ast_fold) -> @item,
-     fold_class_item: fn@(&&@class_member, ast_fold) -> @class_member,
-     fold_item_underscore: fn@(item_, ast_fold) -> item_,
-     fold_method: fn@(&&@method, ast_fold) -> @method,
-     fold_block: fn@(blk_, span, ast_fold) -> (blk_, span),
-     fold_stmt: fn@(stmt_, span, ast_fold) -> (stmt_, span),
-     fold_arm: fn@(arm, ast_fold) -> arm,
-     fold_pat: fn@(pat_, span, ast_fold) -> (pat_, span),
-     fold_decl: fn@(decl_, span, ast_fold) -> (decl_, span),
-     fold_expr: fn@(expr_, span, ast_fold) -> (expr_, span),
-     fold_ty: fn@(ty_, span, ast_fold) -> (ty_, span),
-     fold_constr: fn@(ast::constr_, span, ast_fold) -> (constr_, span),
-     fold_ty_constr: fn@(ast::ty_constr_, span, ast_fold)
+    fold_crate: fn@(crate_, span, ast_fold) -> (crate_, span),
+    fold_crate_directive: fn@(crate_directive_, span,
+                              ast_fold) -> (crate_directive_, span),
+    fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
+    fold_native_item: fn@(&&@native_item, ast_fold) -> @native_item,
+    fold_item: fn@(&&@item, ast_fold) -> @item,
+    fold_class_item: fn@(&&@class_member, ast_fold) -> @class_member,
+    fold_item_underscore: fn@(item_, ast_fold) -> item_,
+    fold_method: fn@(&&@method, ast_fold) -> @method,
+    fold_block: fn@(blk_, span, ast_fold) -> (blk_, span),
+    fold_stmt: fn@(stmt_, span, ast_fold) -> (stmt_, span),
+    fold_arm: fn@(arm, ast_fold) -> arm,
+    fold_pat: fn@(pat_, span, ast_fold) -> (pat_, span),
+    fold_decl: fn@(decl_, span, ast_fold) -> (decl_, span),
+    fold_expr: fn@(expr_, span, ast_fold) -> (expr_, span),
+    fold_ty: fn@(ty_, span, ast_fold) -> (ty_, span),
+    fold_constr: fn@(ast::constr_, span, ast_fold) -> (constr_, span),
+    fold_ty_constr: fn@(ast::ty_constr_, span, ast_fold)
         -> (ty_constr_, span),
-     fold_mod: fn@(_mod, ast_fold) -> _mod,
-     fold_native_mod: fn@(native_mod, ast_fold) -> native_mod,
-     fold_variant: fn@(variant_, span, ast_fold) -> (variant_, span),
-     fold_ident: fn@(&&ident, ast_fold) -> ident,
-     fold_path: fn@(path, ast_fold) -> path,
-     fold_local: fn@(local_, span, ast_fold) -> (local_, span),
-     map_exprs: fn@(fn@(&&@expr) -> @expr, [@expr]) -> [@expr],
-     new_id: fn@(node_id) -> node_id,
-     new_span: fn@(span) -> span};
-
-type a_f =
-    {fold_crate: fn@(crate) -> crate,
-     fold_crate_directive: fn@(&&@crate_directive) -> @crate_directive,
-     fold_view_item: fn@(&&@view_item) -> @view_item,
-     fold_native_item: fn@(&&@native_item) -> @native_item,
-     fold_item: fn@(&&@item) -> @item,
-     fold_class_item: fn@(&&@class_member) -> @class_member,
-     fold_item_underscore: fn@(item_) -> item_,
-     fold_method: fn@(&&@method) -> @method,
-     fold_block: fn@(blk) -> blk,
-     fold_stmt: fn@(&&@stmt) -> @stmt,
-     fold_arm: fn@(arm) -> arm,
-     fold_pat: fn@(&&@pat) -> @pat,
-     fold_decl: fn@(&&@decl) -> @decl,
-     fold_expr: fn@(&&@expr) -> @expr,
-     fold_ty: fn@(&&@ty) -> @ty,
-     fold_constr: fn@(&&@constr) -> @constr,
-     fold_ty_constr: fn@(&&@ty_constr) -> @ty_constr,
-     fold_mod: fn@(_mod) -> _mod,
-     fold_native_mod: fn@(native_mod) -> native_mod,
-     fold_variant: fn@(variant) -> variant,
-     fold_ident: fn@(&&ident) -> ident,
-     fold_path: fn@(&&@path) -> @path,
-     fold_local: fn@(&&@local) -> @local,
-     map_exprs: fn@(fn@(&&@expr) -> @expr, [@expr]) -> [@expr],
-     new_id: fn@(node_id) -> node_id,
-     new_span: fn@(span) -> span};
-
-
-//fn nf_dummy<T>(&T node) -> T { fail; }
-fn nf_crate_dummy(_c: crate) -> crate { fail; }
-fn nf_crate_directive_dummy(&&_c: @crate_directive) -> @crate_directive {
-    fail;
-}
-fn nf_view_item_dummy(&&_v: @view_item) -> @view_item { fail; }
-fn nf_native_item_dummy(&&_n: @native_item) -> @native_item { fail; }
-fn nf_item_dummy(&&_i: @item) -> @item { fail; }
-fn nf_class_item_dummy(&&_ci: @class_member) -> @class_member { fail; }
-fn nf_item_underscore_dummy(_i: item_) -> item_ { fail; }
-fn nf_method_dummy(&&_m: @method) -> @method { fail; }
-fn nf_blk_dummy(_b: blk) -> blk { fail; }
-fn nf_stmt_dummy(&&_s: @stmt) -> @stmt { fail; }
-fn nf_arm_dummy(_a: arm) -> arm { fail; }
-fn nf_pat_dummy(&&_p: @pat) -> @pat { fail; }
-fn nf_decl_dummy(&&_d: @decl) -> @decl { fail; }
-fn nf_expr_dummy(&&_e: @expr) -> @expr { fail; }
-fn nf_ty_dummy(&&_t: @ty) -> @ty { fail; }
-fn nf_constr_dummy(&&_c: @constr) -> @constr { fail; }
-fn nf_ty_constr_dummy(&&_c: @ty_constr) -> @ty_constr { fail; }
-fn nf_mod_dummy(_m: _mod) -> _mod { fail; }
-fn nf_native_mod_dummy(_n: native_mod) -> native_mod { fail; }
-fn nf_variant_dummy(_v: variant) -> variant { fail; }
-fn nf_ident_dummy(&&_i: ident) -> ident { fail; }
-fn nf_path_dummy(&&_p: @path) -> @path { fail; }
-fn nf_local_dummy(&&_o: @local) -> @local { fail; }
+    fold_mod: fn@(_mod, ast_fold) -> _mod,
+    fold_native_mod: fn@(native_mod, ast_fold) -> native_mod,
+    fold_variant: fn@(variant_, span, ast_fold) -> (variant_, span),
+    fold_ident: fn@(&&ident, ast_fold) -> ident,
+    fold_path: fn@(path, ast_fold) -> path,
+    fold_local: fn@(local_, span, ast_fold) -> (local_, span),
+    map_exprs: fn@(fn@(&&@expr) -> @expr, [@expr]) -> [@expr],
+    new_id: fn@(node_id) -> node_id,
+    new_span: fn@(span) -> span};
 
 /* some little folds that probably aren't useful to have in ast_fold itself*/
 
@@ -604,8 +575,7 @@ fn noop_id(i: node_id) -> node_id { ret i; }
 
 fn noop_span(sp: span) -> span { ret sp; }
 
-
-fn default_ast_fold() -> @ast_fold_precursor {
+fn default_ast_fold() -> ast_fold_precursor {
     ret @{fold_crate: wrap(noop_fold_crate),
           fold_crate_directive: wrap(noop_fold_crate_directive),
           fold_view_item: noop_fold_view_item,
@@ -634,177 +604,129 @@ fn default_ast_fold() -> @ast_fold_precursor {
           new_span: noop_span};
 }
 
-fn make_fold(afp: ast_fold_precursor) -> ast_fold {
-    // FIXME: Have to bind all the bare functions into shared functions
-    // because @mut is invariant with respect to its contents
-    // I assume this has something to do with Issue #1973 - tjc
-    let result: ast_fold =
-        @mut {fold_crate: bind nf_crate_dummy(_),
-                  fold_crate_directive: bind nf_crate_directive_dummy(_),
-                  fold_view_item: bind nf_view_item_dummy(_),
-                  fold_native_item: bind nf_native_item_dummy(_),
-                  fold_item: bind nf_item_dummy(_),
-                  fold_class_item: bind nf_class_item_dummy(_),
-                  fold_item_underscore: bind nf_item_underscore_dummy(_),
-                  fold_method: bind nf_method_dummy(_),
-                  fold_block: bind nf_blk_dummy(_),
-                  fold_stmt: bind nf_stmt_dummy(_),
-                  fold_arm: bind nf_arm_dummy(_),
-                  fold_pat: bind nf_pat_dummy(_),
-                  fold_decl: bind nf_decl_dummy(_),
-                  fold_expr: bind nf_expr_dummy(_),
-                  fold_ty: bind nf_ty_dummy(_),
-                  fold_constr: bind nf_constr_dummy(_),
-                  fold_ty_constr: bind nf_ty_constr_dummy(_),
-                  fold_mod: bind nf_mod_dummy(_),
-                  fold_native_mod: bind nf_native_mod_dummy(_),
-                  fold_variant: bind nf_variant_dummy(_),
-                  fold_ident: bind nf_ident_dummy(_),
-                  fold_path: bind nf_path_dummy(_),
-                  fold_local: bind nf_local_dummy(_),
-                  map_exprs: bind noop_map_exprs(_, _),
-                  new_id: bind noop_id(_),
-                  new_span: bind noop_span(_)};
-
+impl of ast_fold for ast_fold_precursor {
     /* naturally, a macro to write these would be nice */
-    fn f_crate(afp: ast_fold_precursor, f: ast_fold, c: crate) -> crate {
-        let (n, s) = afp.fold_crate(c.node, c.span, f);
-        ret {node: n, span: afp.new_span(s)};
+    fn fold_crate(c: crate) -> crate {
+        let (n, s) = self.fold_crate(c.node, c.span, self as ast_fold);
+        ret {node: n, span: self.new_span(s)};
     }
-    fn f_crate_directive(afp: ast_fold_precursor, f: ast_fold,
-                         &&c: @crate_directive) -> @crate_directive {
-        let (n, s) = afp.fold_crate_directive(c.node, c.span, f);
+    fn fold_crate_directive(&&c: @crate_directive) -> @crate_directive {
+        let (n, s) = self.fold_crate_directive(c.node, c.span,
+                                               self as ast_fold);
         ret @{node: n,
-              span: afp.new_span(s)};
+              span: self.new_span(s)};
     }
-    fn f_view_item(afp: ast_fold_precursor, f: ast_fold, &&x: @view_item) ->
+    fn fold_view_item(&&x: @view_item) ->
        @view_item {
-        ret @{node: afp.fold_view_item(x.node, f),
-              attrs: vec::map(x.attrs, {|a| fold_attribute_(a, f)}),
+        ret @{node: self.fold_view_item(x.node, self as ast_fold),
+              attrs: vec::map(x.attrs, {|a|
+                  fold_attribute_(a, self as ast_fold)}),
               vis: x.vis,
-              span: afp.new_span(x.span)};
+              span: self.new_span(x.span)};
     }
-    fn f_native_item(afp: ast_fold_precursor, f: ast_fold, &&x: @native_item)
+    fn fold_native_item(&&x: @native_item)
         -> @native_item {
-        ret afp.fold_native_item(x, f);
+        ret self.fold_native_item(x, self as ast_fold);
     }
-    fn f_item(afp: ast_fold_precursor, f: ast_fold, &&i: @item) -> @item {
-        ret afp.fold_item(i, f);
+    fn fold_item(&&i: @item) -> @item {
+        ret self.fold_item(i, self as ast_fold);
     }
-    fn f_class_item(afp: ast_fold_precursor, f: ast_fold,
-                      &&ci: @class_member) -> @class_member {
+    fn fold_class_item(&&ci: @class_member) -> @class_member {
         @{node: alt ci.node {
            instance_var(nm, t, mt, id, p) {
-               instance_var(nm, f_ty(afp, f, t),
+               instance_var(nm, (self as ast_fold).fold_ty(t),
                             mt, id, p)
            }
            class_method(m) {
-               class_method(afp.fold_method(m, f))
+               class_method(self.fold_method(m, self as ast_fold))
            }
-          }, span: afp.new_span(ci.span)}
+          }, span: self.new_span(ci.span)}
     }
-    fn f_item_underscore(afp: ast_fold_precursor, f: ast_fold, i: item_) ->
+    fn fold_item_underscore(i: item_) ->
        item_ {
-        ret afp.fold_item_underscore(i, f);
+        ret self.fold_item_underscore(i, self as ast_fold);
     }
-    fn f_method(afp: ast_fold_precursor, f: ast_fold, &&x: @method)
+    fn fold_method(&&x: @method)
         -> @method {
-        ret afp.fold_method(x, f);
+        ret self.fold_method(x, self as ast_fold);
     }
-    fn f_block(afp: ast_fold_precursor, f: ast_fold, x: blk) -> blk {
-        let (n, s) = afp.fold_block(x.node, x.span, f);
-        ret {node: n, span: afp.new_span(s)};
+    fn fold_block(x: blk) -> blk {
+        let (n, s) = self.fold_block(x.node, x.span, self as ast_fold);
+        ret {node: n, span: self.new_span(s)};
     }
-    fn f_stmt(afp: ast_fold_precursor, f: ast_fold, &&x: @stmt) -> @stmt {
-        let (n, s) = afp.fold_stmt(x.node, x.span, f);
-        ret @{node: n, span: afp.new_span(s)};
+    fn fold_stmt(&&x: @stmt) -> @stmt {
+        let (n, s) = self.fold_stmt(x.node, x.span, self as ast_fold);
+        ret @{node: n, span: self.new_span(s)};
     }
-    fn f_arm(afp: ast_fold_precursor, f: ast_fold, x: arm) -> arm {
-        ret afp.fold_arm(x, f);
+    fn fold_arm(x: arm) -> arm {
+        ret self.fold_arm(x, self as ast_fold);
     }
-    fn f_pat(afp: ast_fold_precursor, f: ast_fold, &&x: @pat) -> @pat {
-        let (n, s) =  afp.fold_pat(x.node, x.span, f);
-        ret @{id: afp.new_id(x.id),
+    fn fold_pat(&&x: @pat) -> @pat {
+        let (n, s) =  self.fold_pat(x.node, x.span, self as ast_fold);
+        ret @{id: self.new_id(x.id),
               node: n,
-              span: afp.new_span(s)};
+              span: self.new_span(s)};
     }
-    fn f_decl(afp: ast_fold_precursor, f: ast_fold, &&x: @decl) -> @decl {
-        let (n, s) = afp.fold_decl(x.node, x.span, f);
-        ret @{node: n, span: afp.new_span(s)};
+    fn fold_decl(&&x: @decl) -> @decl {
+        let (n, s) = self.fold_decl(x.node, x.span, self as ast_fold);
+        ret @{node: n, span: self.new_span(s)};
     }
-    fn f_expr(afp: ast_fold_precursor, f: ast_fold, &&x: @expr) -> @expr {
-        let (n, s) = afp.fold_expr(x.node, x.span, f);
-        ret @{id: afp.new_id(x.id),
+    fn fold_expr(&&x: @expr) -> @expr {
+        let (n, s) = self.fold_expr(x.node, x.span, self as ast_fold);
+        ret @{id: self.new_id(x.id),
               node: n,
-              span: afp.new_span(s)};
+              span: self.new_span(s)};
     }
-    fn f_ty(afp: ast_fold_precursor, f: ast_fold, &&x: @ty) -> @ty {
-        let (n, s) = afp.fold_ty(x.node, x.span, f);
-        ret @{id: afp.new_id(x.id), node: n, span: afp.new_span(s)};
+    fn fold_ty(&&x: @ty) -> @ty {
+        let (n, s) = self.fold_ty(x.node, x.span, self as ast_fold);
+        ret @{id: self.new_id(x.id), node: n, span: self.new_span(s)};
     }
-    fn f_constr(afp: ast_fold_precursor, f: ast_fold, &&x: @ast::constr) ->
+    fn fold_constr(&&x: @ast::constr) ->
        @ast::constr {
-        let (n, s) = afp.fold_constr(x.node, x.span, f);
-        ret @{node: n, span: afp.new_span(s)};
+        let (n, s) = self.fold_constr(x.node, x.span, self as ast_fold);
+        ret @{node: n, span: self.new_span(s)};
     }
-    fn f_ty_constr(afp: ast_fold_precursor, f: ast_fold,
-                   &&x: @ast::ty_constr) ->
+    fn fold_ty_constr(&&x: @ast::ty_constr) ->
        @ast::ty_constr {
         let (n, s) : (ty_constr_, span) =
-            afp.fold_ty_constr(x.node, x.span, f);
-        ret @{node: n, span: afp.new_span(s)};
+            self.fold_ty_constr(x.node, x.span, self as ast_fold);
+        ret @{node: n, span: self.new_span(s)};
     }
-    fn f_mod(afp: ast_fold_precursor, f: ast_fold, x: _mod) -> _mod {
-        ret afp.fold_mod(x, f);
+    fn fold_mod(x: _mod) -> _mod {
+        ret self.fold_mod(x, self as ast_fold);
     }
-    fn f_native_mod(afp: ast_fold_precursor, f: ast_fold, x: native_mod) ->
+    fn fold_native_mod(x: native_mod) ->
        native_mod {
-        ret afp.fold_native_mod(x, f);
+        ret self.fold_native_mod(x, self as ast_fold);
     }
-    fn f_variant(afp: ast_fold_precursor, f: ast_fold, x: variant) ->
+    fn fold_variant(x: variant) ->
        variant {
-        let (n, s) = afp.fold_variant(x.node, x.span, f);
-        ret {node: n, span: afp.new_span(s)};
+        let (n, s) = self.fold_variant(x.node, x.span, self as ast_fold);
+        ret {node: n, span: self.new_span(s)};
     }
-    fn f_ident(afp: ast_fold_precursor, f: ast_fold, &&x: ident) -> ident {
-        ret afp.fold_ident(x, f);
+    fn fold_ident(&&x: ident) -> ident {
+        ret self.fold_ident(x, self as ast_fold);
     }
-    fn f_path(afp: ast_fold_precursor, f: ast_fold, &&x: @path) -> @path {
-        @afp.fold_path(*x, f)
+    fn fold_path(&&x: @path) -> @path {
+        @self.fold_path(*x, self as ast_fold)
     }
-    fn f_local(afp: ast_fold_precursor, f: ast_fold, &&x: @local) -> @local {
-        let (n, s) = afp.fold_local(x.node, x.span, f);
-        ret @{node: n, span: afp.new_span(s)};
+    fn fold_local(&&x: @local) -> @local {
+        let (n, s) = self.fold_local(x.node, x.span, self as ast_fold);
+        ret @{node: n, span: self.new_span(s)};
     }
+    fn map_exprs(f: fn@(&&@expr) -> @expr, e: [@expr]) -> [@expr] {
+        self.map_exprs(f, e)
+    }
+    fn new_id(node_id: ast::node_id) -> node_id {
+        self.new_id(node_id)
+    }
+    fn new_span(span: span) -> span {
+        self.new_span(span)
+    }
+}
 
-    *result =
-        {fold_crate: bind f_crate(afp, result, _),
-         fold_crate_directive: bind f_crate_directive(afp, result, _),
-         fold_view_item: bind f_view_item(afp, result, _),
-         fold_native_item: bind f_native_item(afp, result, _),
-         fold_item: bind f_item(afp, result, _),
-         fold_class_item: bind f_class_item(afp, result, _),
-         fold_item_underscore: bind f_item_underscore(afp, result, _),
-         fold_method: bind f_method(afp, result, _),
-         fold_block: bind f_block(afp, result, _),
-         fold_stmt: bind f_stmt(afp, result, _),
-         fold_arm: bind f_arm(afp, result, _),
-         fold_pat: bind f_pat(afp, result, _),
-         fold_decl: bind f_decl(afp, result, _),
-         fold_expr: bind f_expr(afp, result, _),
-         fold_ty: bind f_ty(afp, result, _),
-         fold_constr: bind f_constr(afp, result, _),
-         fold_ty_constr: bind f_ty_constr(afp, result, _),
-         fold_mod: bind f_mod(afp, result, _),
-         fold_native_mod: bind f_native_mod(afp, result, _),
-         fold_variant: bind f_variant(afp, result, _),
-         fold_ident: bind f_ident(afp, result, _),
-         fold_path: bind f_path(afp, result, _),
-         fold_local: bind f_local(afp, result, _),
-         map_exprs: afp.map_exprs,
-         new_id: afp.new_id,
-         new_span: afp.new_span};
-    ret result;
+fn make_fold(afp: ast_fold_precursor) -> ast_fold {
+    afp as ast_fold
 }
 
 //

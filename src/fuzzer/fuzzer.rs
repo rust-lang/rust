@@ -188,9 +188,9 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint,
         }
     }
     let afp =
-        {fold_expr: fold::wrap(bind fold_expr_rep(j, i,
-                                                  newexpr.node, _, _, tm))
-         with *fold::default_ast_fold()};
+        @{fold_expr: fold::wrap(bind fold_expr_rep(j, i,
+                                                   newexpr.node, _, _, tm))
+          with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
     *crate2
@@ -211,8 +211,8 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty,
         } else { fold::noop_fold_ty(original, fld) }
     }
     let afp =
-        {fold_ty: fold::wrap(bind fold_ty_rep(j, i, newty.node, _, _, tm))
-            with *fold::default_ast_fold()};
+        @{fold_ty: fold::wrap(bind fold_ty_rep(j, i, newty.node, _, _, tm))
+         with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
     *crate2

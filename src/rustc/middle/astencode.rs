@@ -401,7 +401,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         fold::noop_fold_block(blk_sans_items, fld)
     }
 
-    let fld = fold::make_fold({
+    let fld = fold::make_fold(@{
         fold_block: fold::wrap(drop_nested_items)
         with *fold::default_ast_fold()
     });
@@ -434,7 +434,7 @@ fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
 
 fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
     -> ast::inlined_item {
-    let fld = fold::make_fold({
+    let fld = fold::make_fold(@{
         new_id: xcx.tr_id(_),
         new_span: xcx.tr_span(_)
         with *fold::default_ast_fold()

@@ -278,11 +278,11 @@ fn replace<T>(node: T, repls: [fragment], ff: fn (ast_fold, T) -> T)
     -> T
 {
     let aft = default_ast_fold();
-    let f_pre = {fold_expr: bind replace_expr(repls, _, _, _,
-                                              aft.fold_expr),
-                 fold_ty: bind replace_ty(repls, _, _, _,
-                                          aft.fold_ty)
-                 with *aft};
+    let f_pre = @{fold_expr: bind replace_expr(repls, _, _, _,
+                                               aft.fold_expr),
+                  fold_ty: bind replace_ty(repls, _, _, _,
+                                           aft.fold_ty)
+                  with *aft};
     ret ff(make_fold(f_pre), node);
 }
 fn fold_crate(f: ast_fold, &&n: @ast::crate) -> @ast::crate {

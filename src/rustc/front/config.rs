@@ -24,10 +24,10 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
     let ctxt = @{in_cfg: in_cfg};
 
     let precursor =
-        {fold_mod: bind fold_mod(ctxt, _, _),
-         fold_block: fold::wrap(bind fold_block(ctxt, _, _)),
-         fold_native_mod: bind fold_native_mod(ctxt, _, _)
-            with *fold::default_ast_fold()};
+        @{fold_mod: bind fold_mod(ctxt, _, _),
+          fold_block: fold::wrap(bind fold_block(ctxt, _, _)),
+          fold_native_mod: bind fold_native_mod(ctxt, _, _)
+          with *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
