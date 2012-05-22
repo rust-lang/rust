@@ -72,10 +72,11 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 type mutbl_map = std::map::hashmap<ast::node_id, ()>;
 
 enum bckerr_code {
-    err_mutbl(ast::mutability, ast::mutability),
     err_mut_uniq,
     err_mut_variant,
-    err_preserve_gc
+    err_preserve_gc,
+    err_mutbl(ast::mutability,
+              ast::mutability)
 }
 
 type bckerr = {cmt: cmt, code: bckerr_code};
@@ -135,32 +136,6 @@ enum loan_path {
 
 // a complete record of a loan that was granted
 type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
-
-fn sup_mutbl(req_m: ast::mutability,
-             act_m: ast::mutability) -> bool {
-    alt (req_m, act_m) {
-      (m_const, _) |
-      (m_imm, m_imm) |
-      (m_mutbl, m_mutbl) {
-        true
-      }
-
-      (_, m_const) |
-      (m_imm, m_mutbl) |
-      (m_mutbl, m_imm) {
-        false
-      }
-    }
-}
-
-fn check_sup_mutbl(req_m: ast::mutability,
-                   cmt: cmt) -> bckres<()> {
-    if sup_mutbl(req_m, cmt.mutbl) {
-        ok(())
-    } else {
-        err({cmt:cmt, code:err_mutbl(req_m, cmt.mutbl)})
-    }
-}
 
 fn save_and_restore<T:copy,U>(&t: T, f: fn() -> U) -> U {
     let old_t = t;
@@ -278,12 +253,12 @@ impl methods for gather_loan_ctxt {
     // also entail "rooting" GC'd pointers, which means ensuring
     // dynamically that they are not freed.
     fn guarantee_valid(cmt: cmt,
-                       mutbl: ast::mutability,
+                       req_mutbl: ast::mutability,
                        scope_r: ty::region) {
 
-        #debug["guarantee_valid(cmt=%s, mutbl=%s, scope_r=%s)",
+        #debug["guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
                self.bccx.cmt_to_repr(cmt),
-               self.bccx.mut_to_str(mutbl),
+               self.bccx.mut_to_str(req_mutbl),
                region_to_str(self.tcx(), scope_r)];
         let _i = indenter();
 
@@ -300,10 +275,8 @@ impl methods for gather_loan_ctxt {
           some(_) {
             alt scope_r {
               ty::re_scope(scope_id) {
-                alt self.bccx.loan(cmt, mutbl) {
-                  ok(loans) { self.add_loans(scope_id, loans); }
-                  err(e) { self.bccx.report(e); }
-                }
+                let loans = self.bccx.loan(cmt, req_mutbl);
+                self.add_loans(scope_id, loans);
               }
               _ {
                 self.bccx.span_err(
@@ -321,7 +294,7 @@ impl methods for gather_loan_ctxt {
           // rooted in some immutable path)
           none {
             self.bccx.report_if_err(
-                check_sup_mutbl(mutbl, cmt).chain { |_ok|
+                self.check_mutbl(req_mutbl, cmt).chain { |_ok|
                     let opt_scope_id = alt scope_r {
                       ty::re_scope(scope_id) { some(scope_id) }
                       _ { none }
@@ -329,6 +302,32 @@ impl methods for gather_loan_ctxt {
 
                     self.bccx.preserve(cmt, opt_scope_id)
                 })
+          }
+        }
+    }
+
+    // Check that the pat `cmt` is compatible with the required
+    // mutability, presuming that it can be preserved to stay alive
+    // long enough.
+    //
+    // For example, if you have an expression like `&x.f` where `x`
+    // has type `@mut{f:int}`, this check might fail because `&x.f`
+    // reqires an immutable pointer, but `f` lives in (aliased)
+    // mutable memory.
+    fn check_mutbl(req_mutbl: ast::mutability,
+                   cmt: cmt) -> bckres<()> {
+        alt (req_mutbl, cmt.mutbl) {
+          (m_const, _) |
+          (m_imm, m_imm) |
+          (m_mutbl, m_mutbl) {
+            ok(())
+          }
+
+          (_, m_const) |
+          (m_imm, m_mutbl) |
+          (m_mutbl, m_imm) {
+            err({cmt: cmt,
+                 code: err_mutbl(req_mutbl, cmt.mutbl)})
           }
         }
     }
@@ -1404,7 +1403,7 @@ impl categorize_methods for borrowck_ctxt {
     fn bckerr_code_to_str(code: bckerr_code) -> str {
         alt code {
           err_mutbl(req, act) {
-            #fmt["mutability mismatch, required %s but found %s",
+            #fmt["creating %s alias to aliasable, %s memory",
                  self.mut_to_str(req), self.mut_to_str(act)]
           }
           err_mut_uniq {
@@ -1647,29 +1646,25 @@ type loan_ctxt = @{
 };
 
 impl loan_methods for borrowck_ctxt {
-    fn loan(cmt: cmt,
-            mutbl: ast::mutability) -> bckres<@const [loan]> {
+    fn loan(cmt: cmt, mutbl: ast::mutability) -> @const [loan] {
         let lc = @{bccx: self, loans: @mut []};
-        alt lc.loan(cmt, mutbl) {
-          ok(()) { ok(lc.loans) }
-          err(e) { err(e) }
-        }
+        lc.loan(cmt, mutbl);
+        ret lc.loans;
     }
 }
 
 impl loan_methods for loan_ctxt {
     fn ok_with_loan_of(cmt: cmt,
-                       mutbl: ast::mutability) -> bckres<()> {
+                       mutbl: ast::mutability) {
         // Note: all cmt's that we deal with will have a non-none lp, because
         // the entry point into this routine, `borrowck_ctxt::loan()`, rejects
         // any cmt with a none-lp.
         *self.loans += [{lp:option::get(cmt.lp),
                          cmt:cmt,
                          mutbl:mutbl}];
-        ok(())
     }
 
-    fn loan(cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
+    fn loan(cmt: cmt, req_mutbl: ast::mutability) {
 
         #debug["loan(%s, %s)",
                self.bccx.cmt_to_repr(cmt),
@@ -1711,9 +1706,8 @@ impl loan_methods for loan_ctxt {
               m_const | m_mutbl { m_const }
             };
 
-            self.loan(cmt_base, base_mutbl).chain { |_ok|
-                self.ok_with_loan_of(cmt, req_mutbl)
-            }
+            self.loan(cmt_base, base_mutbl);
+            self.ok_with_loan_of(cmt, req_mutbl)
           }
           cat_comp(cmt1, comp_variant) |
           cat_deref(cmt1, _, uniq_ptr) {
@@ -1723,9 +1717,8 @@ impl loan_methods for loan_ctxt {
             //
             // Unique pointers: the base must be immutable, because if
             // it is overwritten, the unique content will be freed.
-            self.loan(cmt1, m_imm).chain { |_ok|
-                self.ok_with_loan_of(cmt, req_mutbl)
-            }
+            self.loan(cmt1, m_imm);
+            self.ok_with_loan_of(cmt, req_mutbl)
           }
           cat_deref(cmt1, _, unsafe_ptr) |
           cat_deref(cmt1, _, gc_ptr) |
