@@ -85,7 +85,7 @@ rust_getcwd() {
 }
 
 #if defined(__WIN32__)
-extern "C" CDECL rust_vec *
+extern "C" CDECL rust_vec_box *
 rust_env_pairs() {
     rust_task *task = rust_get_current_task();
     size_t envc = 0;
@@ -102,7 +102,7 @@ rust_env_pairs() {
     for (size_t i = 0; i < envc; ++i) {
         size_t n = strlen(c);
         rust_str *str = make_str(task->kernel, c, n, "str");
-        ((rust_str**)&v->data)[i] = str;
+        ((rust_str**)&v->body.data)[i] = str;
         c += n + 1;
     }
     if (ch) {
@@ -111,7 +111,7 @@ rust_env_pairs() {
     return v;
 }
 #else
-extern "C" CDECL rust_vec *
+extern "C" CDECL rust_vec_box *
 rust_env_pairs() {
     rust_task *task = rust_get_current_task();
 #ifdef __APPLE__
@@ -140,14 +140,14 @@ unsupervise() {
 }
 
 extern "C" CDECL void
-vec_reserve_shared(type_desc* ty, rust_vec** vp,
+vec_reserve_shared(type_desc* ty, rust_vec_box** vp,
                    size_t n_elts) {
     rust_task *task = rust_get_current_task();
     reserve_vec_exact(task, vp, n_elts * ty->size);
 }
 
 extern "C" CDECL void
-str_reserve_shared(rust_vec** sp,
+str_reserve_shared(rust_vec_box** sp,
                    size_t n_elts) {
     rust_task *task = rust_get_current_task();
     reserve_vec_exact(task, sp, n_elts + 1);
@@ -169,13 +169,13 @@ vec_from_buf_shared(type_desc *ty, void *ptr, size_t count) {
 }
 
 extern "C" CDECL void
-rust_str_push(rust_vec** sp, uint8_t byte) {
+rust_str_push(rust_vec_box** sp, uint8_t byte) {
     rust_task *task = rust_get_current_task();
-    size_t fill = (*sp)->fill;
+    size_t fill = (*sp)->body.fill;
     reserve_vec(task, sp, fill + 1);
-    (*sp)->data[fill-1] = byte;
-    (*sp)->data[fill] = 0;
-    (*sp)->fill = fill + 1;
+    (*sp)->body.data[fill-1] = byte;
+    (*sp)->body.data[fill] = 0;
+    (*sp)->body.fill = fill + 1;
 }
 
 extern "C" CDECL rust_vec*
@@ -373,7 +373,7 @@ rust_list_files(rust_str *path) {
     array_list<rust_str*> strings;
 #if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
-    HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
+    HANDLE hFind = FindFirstFile((char*)path->body.data, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
             rust_str *str = make_str(task->kernel, FindFileData.cFileName,
@@ -384,13 +384,13 @@ rust_list_files(rust_str *path) {
         FindClose(hFind);
     }
 #else
-    DIR *dirp = opendir((char*)path->data);
+    DIR *dirp = opendir((char*)path->body.data);
   if (dirp) {
       struct dirent *dp;
       while ((dp = readdir(dirp))) {
-          rust_vec *str = make_str(task->kernel, dp->d_name,
-                                    strlen(dp->d_name),
-                                    "list_files_str");
+          rust_vec_box *str = make_str(task->kernel, dp->d_name,
+                                       strlen(dp->d_name),
+                                       "list_files_str");
           strings.push(str);
       }
       closedir(dirp);
@@ -520,9 +520,9 @@ void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
     if (zone != NULL) {
         size_t size = strlen(zone);
         str_reserve_shared(&out_tm->tm_zone, size);
-        memcpy(out_tm->tm_zone->data, zone, size);
-        out_tm->tm_zone->fill = size + 1;
-        out_tm->tm_zone->data[size] = '\0';
+        memcpy(out_tm->tm_zone->body.data, zone, size);
+        out_tm->tm_zone->body.fill = size + 1;
+        out_tm->tm_zone->body.data[size] = '\0';
     }
 }
 

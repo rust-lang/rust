@@ -417,6 +417,33 @@ fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
     ret {box: box, body: body};
 }
 
+fn malloc_unique_dyn_raw(bcx: block, t: ty::t, size: ValueRef) -> ValueRef {
+    let _icx = bcx.insn_ctxt("malloc_unique_box_raw");
+    let ccx = bcx.ccx();
+
+    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
+    // wants.
+    let box_ptr = ty::mk_imm_uniq(ccx.tcx, t);
+    let llty = type_of(ccx, box_ptr);
+
+    // Get the tydesc for the body:
+    let mut static_ti = none;
+    let lltydesc = get_tydesc(ccx, t, static_ti);
+    lazily_emit_all_tydesc_glue(ccx, static_ti);
+
+    // Allocate space:
+    let rval = Call(bcx, ccx.upcalls.exchange_malloc_dyn, [lltydesc, size]);
+    ret PointerCast(bcx, rval, llty);
+}
+
+fn malloc_unique_dyn(bcx: block, t: ty::t, size: ValueRef
+                    ) -> {box: ValueRef, body: ValueRef} {
+    let _icx = bcx.insn_ctxt("malloc_unique_box");
+    let box = malloc_unique_dyn_raw(bcx, t, size);
+    let body = GEPi(bcx, box, [0u, abi::box_field_body]);
+    ret {box: box, body: body};
+}
+
 // Type descriptor and type glue stuff
 
 fn get_tydesc_simple(ccx: @crate_ctxt, t: ty::t) -> ValueRef {
@@ -560,7 +587,9 @@ fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
     // the caller has no idea if it's dealing with something that can be
     // passed by value.
 
+    #error("%?", ty::get(t));
     let llty = T_ptr(type_of(ccx, t));
+    #error("%?", ty_str(ccx.tn, llty));
 
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;

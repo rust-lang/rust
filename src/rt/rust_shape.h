@@ -1110,9 +1110,9 @@ data<T,U>::walk_variant1(tag_info &tinfo, tag_variant_t variant_id) {
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
 data<T,U>::get_vec_data_range(ptr dp) {
-    rust_vec* ptr = bump_dp<rust_vec*>(dp);
-    uint8_t* data = &ptr->data[0];
-    return std::make_pair(data, data + ptr->fill);
+    rust_vec_box* ptr = bump_dp<rust_vec_box*>(dp);
+    uint8_t* data = &ptr->body.data[0];
+    return std::make_pair(data, data + ptr->body.fill);
 }
 
 template<typename T,typename U>
