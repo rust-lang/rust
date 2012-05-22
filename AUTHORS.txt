@@ -27,6 +27,7 @@ Eric Holk <eric.holk@gmail.com>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Erik Rose <erik@mozilla.com>
 Evan McClanahan <evan@evanmcc.com>
+Gareth Daniel Smith <garethdanielsmith@gmail.com>
 Grahame Bowland <grahame@angrygoats.net>
 Graham Fawcett <fawcett@uwindsor.ca>
 Haitao Li <lihaitao@gmail.com>
