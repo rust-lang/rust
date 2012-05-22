@@ -1162,7 +1162,12 @@ impl extensions<T> for [T] {
 mod unsafe {
     // FIXME: This should have crate visibility (#1893 blocks that)
     #[doc = "The internal representation of a vector"]
-    type vec_repr = {mut fill: uint, mut alloc: uint, data: u8};
+    type vec_repr = {
+        box_header: (uint, uint, uint, uint),
+        mut fill: uint,
+        mut alloc: uint,
+        data: u8
+    };
 
     #[doc = "
     Constructs a vector from an unsafe pointer to a buffer
