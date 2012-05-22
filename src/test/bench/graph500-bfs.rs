@@ -71,8 +71,8 @@ fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)] {
             (i, j)
         }
         else {
-            let i = i * 2;
-            let j = j * 2;
+            let i = i * 2i64;
+            let j = j * 2i64;
             let scale = scale - 1u;
             
             let x = r.gen_float();
@@ -83,15 +83,15 @@ fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)] {
             else {
                 let x = x - A;
                 if x < B {
-                    choose_edge(i + 1, j, scale, r)
+                    choose_edge(i + 1i64, j, scale, r)
                 }
                 else {
                     let x = x - B;
                     if x < C {
-                        choose_edge(i, j + 1, scale, r)
+                        choose_edge(i, j + 1i64, scale, r)
                     }
                     else {
-                        choose_edge(i + 1, j + 1, scale, r)
+                        choose_edge(i + 1i64, j + 1i64, scale, r)
                     }
                 }
             }
@@ -99,12 +99,14 @@ fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)] {
     }
 
     vec::from_fn((1u << scale) * edgefactor) {|_i|
-        choose_edge(0, 0, scale, r)
+        choose_edge(0i64, 0i64, scale, r)
     }
 }
 
 fn make_graph(N: uint, edges: [(node_id, node_id)]) -> graph {
-    let graph = vec::from_fn(N) {|_i| map::int_hash() };
+    let graph = vec::from_fn(N) {|_i| 
+        map::hashmap::<node_id, ()>({|x| x as uint }, {|x, y| x == y })
+    };
 
     vec::each(edges) {|e| 
         let (i, j) = e;
@@ -119,16 +121,16 @@ fn make_graph(N: uint, edges: [(node_id, node_id)]) -> graph {
 }
 
 fn gen_search_keys(graph: graph, n: uint) -> [node_id] {
-    let keys = map::int_hash();
+    let keys = map::hashmap::<node_id, ()>({|x| x as uint }, {|x, y| x == y });
     let r = rand::rng();
 
     while keys.size() < n {
-        let k = r.gen_u64() % graph.len() as node_id;
+        let k = r.gen_uint_range(0u, graph.len());
 
         if graph[k].len() > 0u && vec::any(graph[k]) {|i|
-            i != k
+            i != k as node_id
         } {
-            map::set_add(keys, k);
+            map::set_add(keys, k as node_id);
         }
     }
     map::vec_from_set(keys)
@@ -139,7 +141,7 @@ fn gen_search_keys(graph: graph, n: uint) -> [node_id] {
 Nodes that are unreachable have a parent of -1."]
 fn bfs(graph: graph, key: node_id) -> bfs_result {
     let marks : [mut node_id] 
-        = vec::to_mut(vec::from_elem(vec::len(graph), -1));
+        = vec::to_mut(vec::from_elem(vec::len(graph), -1i64));
 
     let Q = create_queue();
 
@@ -150,7 +152,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
         let t = Q.pop_front();
 
         graph[t].each() {|k| 
-            if marks[k] == -1 {
+            if marks[k] == -1i64 {
                 marks[k] = t;
                 Q.add_back(k);
             }
@@ -226,7 +228,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     // Convert the results.
     vec::map(colors) {|c|
         alt c {
-          white { -1 }
+          white { -1i64 }
           black(parent) { parent }
           _ { fail "Found remaining gray nodes in BFS" }
         }
@@ -301,7 +303,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
     // Convert the results.
     par::map(colors) {|c|
         alt c {
-          white { -1 }
+          white { -1i64 }
           black(parent) { parent }
           _ { fail "Found remaining gray nodes in BFS" }
         }
@@ -326,7 +328,7 @@ fn validate(edges: [(node_id, node_id)],
         let mut parent = parent;
         let mut path = [];
 
-        if parent == -1 {
+        if parent == -1i64 {
             // This node was not in the tree.
             -1
         }
@@ -354,7 +356,7 @@ fn validate(edges: [(node_id, node_id)],
     log(info, "Verifying tree edges...");
 
     let status = tree.alli() {|k, parent|
-        if parent != root && parent != -1 {
+        if parent != root && parent != -1i64 {
             level[parent] == level[k] - 1
         }
         else {
@@ -387,11 +389,12 @@ fn validate(edges: [(node_id, node_id)],
     log(info, "Verifying tree and graph edges...");
 
     let status = par::alli(tree) {|u, v|
-        if v == -1 || u as int == root {
+        let u = u as node_id;
+        if v == -1i64 || u == root {
             true
         }
         else {
-            edges.contains((u as int, v)) || edges.contains((v, u as int))
+            edges.contains((u, v)) || edges.contains((v, u))
         }
     };
 
