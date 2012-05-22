@@ -59,7 +59,7 @@ impl extensions for rng {
 
     #[doc = "Return a random uint"]
     fn gen_uint() -> uint {
-        self.gen_u64() as u64
+        self.gen_u64() as uint
     }
 
     #[doc = "Return a uint randomly chosen from the range [start, end], \
