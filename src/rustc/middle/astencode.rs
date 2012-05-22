@@ -115,7 +115,8 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                     to_id_range: to_id_range};
         let raw_ii = decode_ast(ast_doc);
         let ii = renumber_ast(xcx, raw_ii);
-        ast_map::map_decoded_item(tcx.sess, dcx.tcx.items, path, ii);
+        ast_map::map_decoded_item(tcx.sess.diagnostic(),
+                                  dcx.tcx.items, path, ii);
         #debug["Fn named: %s", ii.ident()];
         decode_side_tables(xcx, ast_doc);
         #debug["< Decoded inlined fn: %s::%s",

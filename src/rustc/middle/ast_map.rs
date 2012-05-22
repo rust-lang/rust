@@ -6,8 +6,8 @@ import syntax::ast_util;
 import syntax::ast_util::path_to_ident;
 import syntax::ast_util::inlined_item_methods;
 import syntax::{visit, codemap};
-import driver::session::session;
 import syntax::attr;
+import syntax::diagnostic::span_handler;
 
 enum path_elt { path_mod(str), path_name(str) }
 type path = [path_elt];
@@ -59,7 +59,7 @@ enum a_ctor {
 
 type map = std::map::hashmap<node_id, ast_node>;
 type ctx = {map: map, mut path: path,
-            mut local_id: uint, sess: session};
+            mut local_id: uint, diag: span_handler};
 type vt = visit::vt<ctx>;
 
 fn extend(cx: ctx, elt: str) -> @path {
@@ -79,11 +79,11 @@ fn mk_ast_map_visitor() -> vt {
     });
 }
 
-fn map_crate(sess: session, c: crate) -> map {
+fn map_crate(diag: span_handler, c: crate) -> map {
     let cx = {map: std::map::int_hash(),
               mut path: [],
               mut local_id: 0u,
-              sess: sess};
+              diag: diag};
     visit::visit_crate(c, cx, mk_ast_map_visitor());
     ret cx.map;
 }
@@ -91,7 +91,8 @@ fn map_crate(sess: session, c: crate) -> map {
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-fn map_decoded_item(sess: session, map: map, path: path, ii: inlined_item) {
+fn map_decoded_item(diag: span_handler,
+                    map: map, path: path, ii: inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.  (In particular, I think these ids are only used in
@@ -101,7 +102,7 @@ fn map_decoded_item(sess: session, map: map, path: path, ii: inlined_item) {
     let cx = {map: map,
               mut path: path,
               mut local_id: 0u,
-              sess: sess};
+              diag: diag};
     let v = mk_ast_map_visitor();
 
     // methods get added to the AST map when their impl is visited.  Since we
@@ -205,7 +206,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       }
       item_native_mod(nm) {
         let abi = alt attr::native_abi(i.attrs) {
-          either::left(msg) { cx.sess.span_fatal(i.span, msg); }
+          either::left(msg) { cx.diag.span_fatal(i.span, msg); }
           either::right(abi) { abi }
         };
         for nm.items.each {|nitem|
