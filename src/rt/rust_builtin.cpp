@@ -367,7 +367,7 @@ debug_get_stk_seg() {
     return task->stk;
 }
 
-extern "C" CDECL rust_vec*
+extern "C" CDECL rust_vec_box*
 rust_list_files(rust_str *path) {
     rust_task *task = rust_get_current_task();
     array_list<rust_str*> strings;
@@ -397,12 +397,12 @@ rust_list_files(rust_str *path) {
   }
 #endif
 
-  rust_vec *vec = (rust_vec *)
-      task->kernel->malloc(vec_size<rust_vec*>(strings.size()),
+  rust_vec_box *vec = (rust_vec_box *)
+      task->kernel->malloc(vec_size<rust_vec_box*>(strings.size()),
                            "list_files_vec");
   size_t alloc_sz = sizeof(rust_vec*) * strings.size();
-  vec->fill = vec->alloc = alloc_sz;
-  memcpy(&vec->data[0], strings.data(), alloc_sz);
+  vec->body.fill = vec->body.alloc = alloc_sz;
+  memcpy(&vec->body.data[0], strings.data(), alloc_sz);
   return vec;
 }
 
