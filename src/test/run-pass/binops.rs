@@ -47,7 +47,6 @@ fn test_char() {
     assert (ch10 / ch4 == ch2);
     assert (ch10 % ch4 == ch2);
     assert (ch10 >> ch2 == ch2);
-    assert (ch10 >>> ch2 == ch2);
     assert (ch10 << ch4 == 160 as char);
     assert (ch10 | ch4 == 14 as char);
     assert (ch10 & ch2 == ch2);

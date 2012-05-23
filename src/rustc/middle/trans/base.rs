@@ -1617,9 +1617,12 @@ fn trans_eager_binop(cx: block, op: ast::binop, lhs: ValueRef,
       ast::bitor { Or(cx, lhs, rhs) }
       ast::bitand { And(cx, lhs, rhs) }
       ast::bitxor { Xor(cx, lhs, rhs) }
-      ast::lsl { Shl(cx, lhs, rhs) }
-      ast::lsr { LShr(cx, lhs, rhs) }
-      ast::asr { AShr(cx, lhs, rhs) }
+      ast::shl { Shl(cx, lhs, rhs) }
+      ast::shr {
+        if ty::type_is_signed(intype) {
+            AShr(cx, lhs, rhs)
+        } else { LShr(cx, lhs, rhs) }
+      }
       _ {
         let cmpr = trans_compare(cx, op, lhs, lhs_t, rhs, rhs_t);
         cx = cmpr.bcx;
@@ -4565,9 +4568,11 @@ fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           ast::bitxor { llvm::LLVMConstXor(te1, te2) }
           ast::bitand { llvm::LLVMConstAnd(te1, te2) }
           ast::bitor  { llvm::LLVMConstOr(te1, te2) }
-          ast::lsl    { llvm::LLVMConstShl(te1, te2) }
-          ast::lsr    { llvm::LLVMConstLShr(te1, te2) }
-          ast::asr    { llvm::LLVMConstAShr(te1, te2) }
+          ast::shl    { llvm::LLVMConstShl(te1, te2) }
+          ast::shr    {
+            if signed { llvm::LLVMConstAShr(te1, te2) }
+            else      { llvm::LLVMConstLShr(te1, te2) }
+          }
           ast::eq     |
           ast::lt     |
           ast::le     |

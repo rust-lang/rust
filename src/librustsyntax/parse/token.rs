@@ -14,9 +14,8 @@ enum binop {
     CARET,
     AND,
     OR,
-    LSL,
-    LSR,
-    ASR,
+    SHL,
+    SHR,
 }
 
 enum token {
@@ -78,9 +77,8 @@ fn binop_to_str(o: binop) -> str {
       CARET { ret "^"; }
       AND { ret "&"; }
       OR { ret "|"; }
-      LSL { ret "<<"; }
-      LSR { ret ">>"; }
-      ASR { ret ">>>"; }
+      SHL { ret "<<"; }
+      SHR { ret ">>"; }
     }
 }
 

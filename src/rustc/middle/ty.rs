@@ -2711,9 +2711,8 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ast::bitxor { opcat_bit }
           ast::bitand { opcat_bit }
           ast::bitor { opcat_bit }
-          ast::lsl { opcat_shift }
-          ast::lsr { opcat_shift }
-          ast::asr { opcat_shift }
+          ast::shl { opcat_shift }
+          ast::shr { opcat_shift }
           ast::eq { opcat_eq }
           ast::ne { opcat_eq }
           ast::lt { opcat_rel }

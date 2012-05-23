@@ -72,9 +72,8 @@ fn binop_to_str(op: binop) -> str {
       bitxor { ret "^"; }
       bitand { ret "&"; }
       bitor { ret "|"; }
-      lsl { ret "<<"; }
-      lsr { ret ">>"; }
-      asr { ret ">>>"; }
+      shl { ret "<<"; }
+      shr { ret ">>"; }
       eq { ret "=="; }
       lt { ret "<"; }
       le { ret "<="; }
@@ -90,9 +89,8 @@ pure fn lazy_binop(b: binop) -> bool {
 
 pure fn is_shift_binop(b: binop) -> bool {
     alt b {
-      lsl { true }
-      lsr { true }
-      asr { true }
+      shl { true }
+      shr { true }
       _ { false }
     }
 }
@@ -353,7 +351,7 @@ fn operator_prec(op: ast::binop) -> uint {
       mul | div | rem   { 12u }
       // 'as' sits between here with 11
       add | subtract    { 10u }
-      lsl | lsr | asr   {  9u }
+      shl | shr         {  9u }
       bitand            {  8u }
       bitxor            {  7u }
       bitor             {  6u }
