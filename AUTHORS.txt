@@ -52,6 +52,7 @@ Kevin Cantu <me@kevincantu.org>
 Lennart Kudling
 Lindsey Kuper <lindsey@rockstargirl.org>
 Magnus Auvinen <magnus.auvinen@gmail.com>
+Margaret Meyerhofer <mmeyerho@andrew.cmu.edu>
 Marijn Haverbeke <marijnh@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Matthew O'Connor <thegreendragon@gmail.com>
