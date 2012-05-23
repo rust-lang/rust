@@ -157,14 +157,15 @@ str_reserve_shared(rust_vec_box** sp,
  * Copies elements in an unsafe buffer to the given interior vector. The
  * vector must have size zero.
  */
-extern "C" CDECL rust_vec*
+extern "C" CDECL rust_vec_box*
 vec_from_buf_shared(type_desc *ty, void *ptr, size_t count) {
     rust_task *task = rust_get_current_task();
     size_t fill = ty->size * count;
-    rust_vec* v = (rust_vec*)task->kernel->malloc(fill + sizeof(rust_vec),
-                                                    "vec_from_buf");
-    v->fill = v->alloc = fill;
-    memmove(&v->data[0], ptr, fill);
+    rust_vec_box* v = (rust_vec_box*)
+        task->kernel->malloc(fill + sizeof(rust_vec_box),
+                             "vec_from_buf");
+    v->body.fill = v->body.alloc = fill;
+    memmove(&v->body.data[0], ptr, fill);
     return v;
 }
 
