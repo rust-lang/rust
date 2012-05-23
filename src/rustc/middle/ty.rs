@@ -427,9 +427,9 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     for vec::each(*bounds) {|bound|
         alt bound {
           bound_copy {
-            kind = lower_kind(kind, kind_copyable());
+            kind = raise_kind(kind, kind_copyable());
           }
-          bound_send { kind = lower_kind(kind, kind_send_only()); }
+          bound_send { kind = raise_kind(kind, kind_send_only()); }
           _ {}
         }
     }
@@ -1284,6 +1284,10 @@ fn kind_send_only() -> kind {
     kind_(KIND_MASK_SEND)
 }
 
+fn kind_top() -> kind {
+    kind_(0xffffffffu32)
+}
+
 // Using these query functons is preferable to direct comparison or matching
 // against the kind constants, as we may modify the kind hierarchy in the
 // future.
@@ -1310,6 +1314,10 @@ fn kind_lteq(a: kind, b: kind) -> bool {
 }
 
 fn lower_kind(a: kind, b: kind) -> kind {
+    kind_(*a & *b)
+}
+
+fn raise_kind(a: kind, b: kind) -> kind {
     kind_(*a | *b)
 }
 
