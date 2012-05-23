@@ -147,12 +147,14 @@ import std::smallintmap::smallintmap;
 import std::smallintmap::map;
 import std::map::hashmap;
 import middle::ty;
-import middle::ty::{ty_vid, region_vid, vid};
-import syntax::ast;
+import middle::ty::{ty_vid, tys_in_fn_ty, region_vid, vid};
+import syntax::{ast, ast_util};
 import syntax::ast::{ret_style};
 import util::ppaux::{ty_to_str, mt_to_str};
 import result::{result, extensions, ok, err, map, map2, iter2};
-import ty::type_is_bot;
+import ty::{mk_fn, type_is_bot};
+import check::regionmanip::{collect_bound_regions_in_tys,
+                            replace_bound_regions};
 import driver::session::session;
 import util::common::{indent, indenter};
 
@@ -452,6 +454,18 @@ impl ty_and_region_var_methods for infer_ctxt {
 
     fn next_region_var() -> ty::region {
         ret ty::re_var(self.next_region_var_id());
+    }
+
+    fn ty_to_str(t: ty::t) -> str {
+        ty_to_str(self.tcx,
+                  self.resolve_type_vars_if_possible(t))
+    }
+
+    fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
+        alt infer::resolve_deep(self, typ, false) {
+          result::ok(new_type) { ret new_type; }
+          result::err(_) { ret typ; }
+        }
     }
 }
 
@@ -1579,6 +1593,67 @@ impl of combine for sub {
         }
     }
 
+    fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
+        // Rather than checking the subtype relationship between `a` and `b`
+        // as-is, we need to do some extra work here in order to make sure
+        // that function subtyping works correctly with respect to regions
+        // (issue #2263).
+
+        // First, we instantiate each bound region in the subtype with a fresh
+        // region variable.
+        let a_isr =
+            collect_bound_regions_in_tys(self.tcx,
+                                         @nil,
+                                         tys_in_fn_ty(a)) {
+            |br|
+            let rvar = self.infcx().next_region_var();
+            #debug["Bound region %s maps to %s",
+                   bound_region_to_str(self.tcx, br),
+                   region_to_str(self.tcx, rvar)];
+            rvar
+        };
+
+        let a_ty = replace_bound_regions(self.tcx,
+                                         ast_util::dummy_sp(),
+                                         a_isr,
+                                         mk_fn(self.tcx, a));
+        #debug["a_ty: %s", self.infcx().ty_to_str(a_ty)];
+
+        // Second, we instantiate each bound region in the supertype with a
+        // fresh concrete region.
+        let b_isr =
+            collect_bound_regions_in_tys(self.tcx,
+                                         @nil,
+                                         tys_in_fn_ty(b)) {
+            |br| ty::re_bound(br) };
+            // FIXME: or maybe re_skolemized? What would that look like?
+            // (issue #2263)
+
+        let b_ty = replace_bound_regions(self.tcx,
+                                         ast_util::dummy_sp(),
+                                         b_isr,
+                                         mk_fn(self.tcx, b));
+        #debug["b_ty: %s", self.infcx().ty_to_str(b_ty)];
+
+        // Turn back into ty::fn_ty.
+        alt (ty::get(a_ty).struct, ty::get(b_ty).struct) {
+          (ty::ty_fn(a_fn_ty), ty::ty_fn(b_fn_ty)) {
+            // Try to compare the supertype and subtype now that they've been
+            // instantiated.
+            super_fns(self, a_fn_ty, b_fn_ty)
+
+          }
+          _ {
+            // Shouldn't happen.
+            self.infcx().tcx.sess.bug(
+                #fmt["%s: at least one of %s and %s isn't a fn_ty",
+                     self.tag(),
+                     self.infcx().ty_to_str(a_ty),
+                     self.infcx().ty_to_str(b_ty)]);
+          }
+        }
+    }
+
     // Traits please:
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
@@ -1596,10 +1671,6 @@ impl of combine for sub {
 
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg> {
         super_args(self, a, b)
-    }
-
-    fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
-        super_fns(self, a, b)
     }
 
     fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs> {

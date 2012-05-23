@@ -81,7 +81,7 @@ export ty_opaque_box, mk_opaque_box;
 export ty_constr_arg;
 export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, fn_ty, mk_fn;
-export ty_fn_proto, ty_fn_ret, ty_fn_ret_style;
+export ty_fn_proto, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export ty_str, mk_str, type_is_str;
 export ty_vec, mk_vec, type_is_vec;
@@ -2088,6 +2088,11 @@ fn is_fn_ty(fty: t) -> bool {
       ty_fn(_) { ret true; }
       _ { ret false; }
     }
+}
+
+// Returns a vec of all the input and output types of fty.
+fn tys_in_fn_ty(fty: fn_ty) -> [t] {
+    fty.inputs.map({|a| a.ty}) + [fty.output]
 }
 
 // Just checks whether it's a fn that returns bool,

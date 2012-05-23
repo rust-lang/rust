@@ -69,7 +69,8 @@ type parameter).
 import astconv::{ast_conv, ast_ty_to_ty};
 import collect::{methods}; // ccx.to_ty()
 import method::{methods};  // methods for method::lookup
-import regionmanip::{universally_quantify_regions_before_call,
+import middle::ty::tys_in_fn_ty;
+import regionmanip::{universally_quantify_from_sty,
                      region_of, replace_bound_regions,
                      collect_bound_regions_in_tys};
 import rscope::*;
@@ -718,7 +719,31 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         let mut bot = false;
 
-        let fty = universally_quantify_regions_before_call(fcx, sp, fty);
+        // Replace all region parameters in the arguments and return
+        // type with fresh region variables.
+
+        #debug["check_call_or_bind: before universal quant., fty=%s",
+               fcx.ty_to_str(fty)];
+
+        // This is subtle: we expect `fty` to be a function type, which
+        // normally introduce a level of binding.  In this case, we want to
+        // process the types bound by the function but not by any nested
+        // functions.  Therefore, we match one level of structure.
+        let fty =
+            alt structure_of(fcx, sp, fty) {
+              sty @ ty::ty_fn(inner_fty) {
+                let all_tys = tys_in_fn_ty(inner_fty);
+                universally_quantify_from_sty(fcx, sp, all_tys, sty)
+              }
+              sty {
+                #debug["not a fn ty: %?", sty];
+
+                // if not a function type, we're gonna' report an error at
+                // some point, since the user is trying to call this thing
+                fty
+              }
+            };
+
         #debug["check_call_or_bind: after universal quant., fty=%s",
                fcx.ty_to_str(fty)];
 

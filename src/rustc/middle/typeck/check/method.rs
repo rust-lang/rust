@@ -1,7 +1,7 @@
 /* Code to handle method lookups (which can be quite complex) */
 
 import syntax::ast_map;
-import regionmanip::universally_quantify_regions;
+import regionmanip::universally_quantify_from_sty;
 import middle::typeck::infer::{ty_and_region_var_methods};
 
 enum lookup = {
@@ -188,13 +188,12 @@ impl methods for lookup {
 
                     // Here "self" refers to the callee side...
                     let self_ty =
-                        universally_quantify_regions(
-                            self.fcx, self.expr.span, self_ty);
+                        universally_quantify_from_sty(
+                            self.fcx, self.expr.span, [self_ty],
+                            ty::get(self_ty).struct);
 
                     // ... and "ty" refers to the caller side.
-                    let ty =
-                        universally_quantify_regions(
-                            self.fcx, self.expr.span, self.self_ty);
+                    let ty = self.self_ty;
 
                     // if we can assign the caller to the callee, that's a
                     // potential match.  Collect those in the vector.

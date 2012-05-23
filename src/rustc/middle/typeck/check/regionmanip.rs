@@ -1,11 +1,11 @@
-import middle::typeck::infer::{ty_and_region_var_methods};
 import syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
 
-// Helper for the other universally_quantify_*() routines.  Extracts the bound
-// regions from bound_tys and then replaces those same regions with fresh
-// variables in `sty`, returning the resulting type.
+// Extracts the bound regions from bound_tys and then replaces those same
+// regions in `sty` with fresh region variables, returning the resulting type.
+// Does not descend into fn types.  This is used when deciding whether an impl
+// applies at a given call site.  See also universally_quantify_before_call().
 fn universally_quantify_from_sty(fcx: @fn_ctxt,
                                  span: span,
                                  bound_tys: [ty::t],
@@ -27,44 +27,6 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
         };
         #debug["Result of universal quant. is %s", fcx.ty_to_str(t_res)];
         t_res
-    }
-}
-
-// Replaces all region parameters in the given type with region variables.
-// Does not descend into fn types.  This is used when deciding whether an impl
-// applies at a given call site.  See also universally_quantify_before_call().
-fn universally_quantify_regions(fcx: @fn_ctxt,
-                                span: span,
-                                ty: ty::t) -> ty::t {
-    universally_quantify_from_sty(fcx, span, [ty], ty::get(ty).struct)
-}
-
-// Expects a function type.  Replaces all region parameters in the arguments
-// and return type with fresh region variables. This is used when typechecking
-// function calls, bind expressions, and method calls.
-fn universally_quantify_regions_before_call(fcx: @fn_ctxt,
-                                            span: span,
-                                            ty: ty::t) -> ty::t {
-
-    #debug["universally_quantify_before_call(ty=%s)",
-           fcx.ty_to_str(ty)];
-
-    // This is subtle: we expect `ty` to be a function type, which normally
-    // introduce a level of binding.  In this case, we want to process the
-    // types bound by the function but not by any nested functions.
-    // Therefore, we match one level of structure.
-    alt structure_of(fcx, span, ty) {
-      sty @ ty::ty_fn(fty) {
-        let all_tys = fty.inputs.map({|a| a.ty}) + [fty.output];
-        universally_quantify_from_sty(fcx, span, all_tys, sty)
-      }
-      sty {
-        #debug["not a fn ty: %?", sty];
-
-        // if not a function type, we're gonna' report an error
-        // at some point, since the user is trying to call this thing
-        ty
-      }
     }
 }
 
