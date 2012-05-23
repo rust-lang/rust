@@ -171,7 +171,7 @@ fn default_seq_fold_item<T>(
     doc
 }
 
-fn default_any_fold_mod<T:send>(
+fn default_any_fold_mod<T:send copy>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
@@ -197,7 +197,7 @@ fn default_seq_fold_mod<T>(
     }
 }
 
-fn default_par_fold_mod<T:send>(
+fn default_par_fold_mod<T:send copy>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
@@ -210,7 +210,7 @@ fn default_par_fold_mod<T:send>(
     }
 }
 
-fn default_any_fold_nmod<T:send>(
+fn default_any_fold_nmod<T:send copy>(
     fold: fold<T>,
     doc: doc::nmoddoc
 ) -> doc::nmoddoc {
@@ -236,7 +236,7 @@ fn default_seq_fold_nmod<T>(
     }
 }
 
-fn default_par_fold_nmod<T:send>(
+fn default_par_fold_nmod<T:send copy>(
     fold: fold<T>,
     doc: doc::nmoddoc
 ) -> doc::nmoddoc {

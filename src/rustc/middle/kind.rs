@@ -71,6 +71,9 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         // moved in or copied in
         check_send(cx, var_t, sp);
 
+        // copied in data must be copyable, but moved in data can be anything
+        if !is_move { check_copy(cx, var_t, sp); }
+
         // check that only immutable variables are implicitly copied in
         if !is_move {
             for fv.each { |fv|
