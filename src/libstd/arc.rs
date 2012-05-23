@@ -1,5 +1,5 @@
-#[doc = "An atomically reference counted wrapper that can be used
-hare immutable data between tasks."]
+#[doc = "An atomically reference counted wrapper that can be used to
+share immutable data between tasks."]
 
 export arc, get, clone;
 
@@ -34,6 +34,7 @@ resource arc_destruct<T>(data: *arc_data<T>) {
 
 type arc<T> = arc_destruct<T>;
 
+#[doc="Create an atomically reference counted wrapper."]
 fn arc<T>(-data: T) -> arc<T> {
     let data = ~{mut count: 1, data: data};
     unsafe {
@@ -43,12 +44,19 @@ fn arc<T>(-data: T) -> arc<T> {
     }
 }
 
+#[doc="Access the underlying data in an atomically reference counted
+ wrapper."]
 fn get<T>(rc: &a.arc<T>) -> &a.T {
     unsafe {
         &(***rc).data
     }
 }
 
+#[doc="Duplicate an atomically reference counted wrapper.
+
+The resulting two `arc` objects will point to the same underlying data
+object. However, one of the `arc` objects can be sent to another task,
+allowing them to share the underlying data."]
 fn clone<T>(rc: &arc<T>) -> arc<T> {
     let data = **rc;
     unsafe {
