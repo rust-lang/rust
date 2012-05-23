@@ -151,11 +151,11 @@ mod test {
     }
     crust fn simple_timer_cb(timer_ptr: *ll::uv_timer_t,
                              status: libc::c_int) unsafe {
-        log(debug, "in simple timer cb");
+        log(debug, #fmt("in simple timer cb status %?", status));
         ll::timer_stop(timer_ptr);
         let hl_loop = get_gl();
         hl::interact(hl_loop) {|loop_ptr|
-            log(debug, "closing timer");
+            log(debug, #fmt("closing timer loop %?", loop_ptr));
             ll::close(timer_ptr, simple_timer_close_cb);
             log(debug, "about to deref exit_ch_ptr");
             log(debug, "after msg sent on deref'd exit_ch");
