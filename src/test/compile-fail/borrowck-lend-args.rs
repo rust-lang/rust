@@ -8,8 +8,8 @@ fn borrow_from_arg_imm_ref(&&v: ~int) {
 }
 
 fn borrow_from_arg_mut_ref(&v: ~int) {
-    borrow(v); //! ERROR access to non-pure functions prohibited in a pure context
-    //!^ NOTE pure context is required due to an illegal borrow: unique value in aliasable, mutable location
+    borrow(v); //! ERROR illegal borrow unless pure: unique value in aliasable, mutable location
+    //!^ NOTE impure due to access to non-pure functions
 }
 
 fn borrow_from_arg_move(-v: ~int) {

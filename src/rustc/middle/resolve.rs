@@ -717,7 +717,7 @@ fn follow_import(e: env, &&sc: scopes, path: [ident], sp: span) ->
     let mut dcur = lookup_in_scope_strict(e, sc, sp, path[0], ns_module);
     let mut i = 1u;
     loop {
-       alt dcur {
+       alt copy dcur {
           some(dcur_def) {
             if i == path_len { break; }
             dcur =
@@ -725,7 +725,7 @@ fn follow_import(e: env, &&sc: scopes, path: [ident], sp: span) ->
                                  ns_module, outside);
             i += 1u;
           }
-          _ { break; }
+          none { break; }
        }
     }
     if i == path_len {

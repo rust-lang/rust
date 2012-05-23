@@ -498,6 +498,8 @@ enum check_loan_ctxt = @{
     bccx: borrowck_ctxt,
     req_maps: req_maps,
 
+    reported: hashmap<ast::node_id, ()>,
+
     // Keep track of whether we're inside a ctor, so as to
     // allow mutating immutable fields in the same class if
     // we are in a ctor, we track the self id
@@ -525,6 +527,7 @@ fn check_loans(bccx: borrowck_ctxt,
                crate: @ast::crate) {
     let clcx = check_loan_ctxt(@{bccx: bccx,
                                  req_maps: req_maps,
+                                 reported: int_hash(),
                                  mut in_ctor: false,
                                  mut is_pure: pc_impure});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
@@ -641,11 +644,9 @@ impl methods for check_loan_ctxt {
                 /*ok*/
               }
               ast::impure_fn | ast::unsafe_fn {
-                self.bccx.span_err(
+                self.report_purity_error(
                     expr.span,
-                    "access to non-pure functions \
-                     prohibited in a pure context");
-                self.report_why_pure();
+                    "access to non-pure functions");
               }
             }
           }
@@ -739,11 +740,9 @@ impl methods for check_loan_ctxt {
         // assigned, because it is uniquely tied to this function and
         // is not visible from the outside
         if self.is_pure != pc_impure && cmt.lp.is_none() {
-            self.bccx.span_err(
+            self.report_purity_error(
                 ex.span,
-                #fmt["%s prohibited in a pure context",
-                     at.ing_form(self.bccx.cmt_to_str(cmt))]);
-            self.report_why_pure();
+                at.ing_form(self.bccx.cmt_to_str(cmt)));
         }
 
         // check for a conflicting loan as well, except in the case of
@@ -776,19 +775,26 @@ impl methods for check_loan_ctxt {
         self.bccx.add_to_mutbl_map(cmt);
     }
 
-    fn report_why_pure() {
-        alt self.is_pure {
+    fn report_purity_error(sp: span, msg: str) {
+        alt copy self.is_pure {
           pc_impure {
-            self.tcx().sess.bug("report_why_pure() called when impure");
+            self.tcx().sess.bug("report_purity_error() called when impure");
           }
           pc_declaration {
-            // fn was declared pure; no need to report this, I think
+            self.tcx().sess.span_err(
+                sp,
+                #fmt["%s prohibited in pure context", msg]);
           }
           pc_cmt(e) {
-            self.tcx().sess.span_note(
-                e.cmt.span,
-                #fmt["pure context is required due to an illegal borrow: %s",
-                     self.bccx.bckerr_code_to_str(e.code)]);
+            if self.reported.insert(e.cmt.id, ()) {
+                self.tcx().sess.span_err(
+                    e.cmt.span,
+                    #fmt["illegal borrow unless pure: %s",
+                         self.bccx.bckerr_code_to_str(e.code)]);
+                self.tcx().sess.span_note(
+                    sp,
+                    #fmt["impure due to %s", msg]);
+            }
           }
         }
     }

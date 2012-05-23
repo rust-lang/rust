@@ -235,7 +235,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
 fn check_for_main_fn(ccx: @crate_ctxt, crate: @ast::crate) {
     let tcx = ccx.tcx;
     if !tcx.sess.building_library {
-        alt tcx.sess.main_fn {
+        alt copy tcx.sess.main_fn {
           some((id, sp)) { check_main_fn_ty(ccx, id, sp); }
           none { tcx.sess.span_err(crate.span, "main function not found"); }
         }

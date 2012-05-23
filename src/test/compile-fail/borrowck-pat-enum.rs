@@ -36,8 +36,8 @@ fn match_const_reg_unused(v: &const option<int>) {
 
 fn match_const_reg_impure(v: &const option<int>) {
     alt *v {
-      some(i) {impure(i)} //! ERROR access to non-pure functions prohibited in a pure context
-      //!^ NOTE pure context is required due to an illegal borrow: enum variant in aliasable, mutable location
+      some(i) {impure(i)} //! ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
+      //!^ NOTE impure due to access to non-pure functions
       none {}
     }
 }
