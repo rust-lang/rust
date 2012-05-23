@@ -9,9 +9,9 @@ Aleksander Balicki <balicki.aleksander@gmail.com>
 Alexander Stavonin <a.stavonin@gmail.com>
 Andreas Gal <gal@mozilla.com>
 Austin Seipp <mad.one@gmail.com>
-Benjamin Kircher <benjamin.kircher@gmail.com>
 Ben Striegel <ben.striegel@gmail.com>
 Benjamin Jackman <ben@jackman.biz>
+Benjamin Kircher <benjamin.kircher@gmail.com>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Chris Double <chris.double@double.co.nz>
@@ -28,8 +28,8 @@ Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Erik Rose <erik@mozilla.com>
 Evan McClanahan <evan@evanmcc.com>
 Gareth Daniel Smith <garethdanielsmith@gmail.com>
-Grahame Bowland <grahame@angrygoats.net>
 Graham Fawcett <fawcett@uwindsor.ca>
+Grahame Bowland <grahame@angrygoats.net>
 Haitao Li <lihaitao@gmail.com>
 Ian D. Bollinger <ian.bollinger@gmail.com>
 Jacob Parker <j3parker@csclub.uwaterloo.ca>
@@ -63,8 +63,8 @@ Or Brostovski <tohava@gmail.com>
 Patrick Walton <pwalton@mozilla.com>
 Paul Stansifer <paul.stansifer@gmail.com>
 Peter Hull <peterhull90@gmail.com>
-Ralph Giles <giles@thaumas.net>
 Rafael Ávila de Espíndola <respindola@mozilla.com>
+Ralph Giles <giles@thaumas.net>
 Reuben Morais <reuben.morais@gmail.com>
 Rick Waldron <waldron.rick@gmail.com>
 Rob Arnold <robarnold@cs.cmu.edu>
