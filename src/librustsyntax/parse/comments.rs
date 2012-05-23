@@ -1,4 +1,5 @@
 import io::reader_util;
+import io::println;//XXXXXXXXxxx
 import util::interner;
 import lexer::{ reader, new_reader, next_token, is_whitespace };
 
@@ -28,7 +29,8 @@ fn read_to_eol(rdr: reader) -> str {
 
 fn read_one_line_comment(rdr: reader) -> str {
     let val = read_to_eol(rdr);
-    assert (val[0] == '/' as u8 && val[1] == '/' as u8);
+    assert ((val[0] == '/' as u8 && val[1] == '/' as u8) ||
+            (val[0] == '#' as u8 && val[1] == '!' as u8));
     ret val;
 }
 
@@ -51,6 +53,15 @@ fn consume_whitespace_counting_blank_lines(rdr: reader, &comments: [cmnt]) {
         }
         rdr.bump();
     }
+}
+
+fn read_shebang_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
+    #debug(">>> shebang comment");
+    let p = rdr.chpos;
+    #debug("<<< shebang comment");
+    ret {style: if code_to_the_left { trailing } else { isolated },
+         lines: [read_one_line_comment(rdr)],
+         pos: p};
 }
 
 fn read_line_comments(rdr: reader, code_to_the_left: bool) -> cmnt {
@@ -134,8 +145,9 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
 }
 
 fn peeking_at_comment(rdr: reader) -> bool {
-    ret rdr.curr == '/' && rdr.next() == '/' ||
-            rdr.curr == '/' && rdr.next() == '*';
+    ret ((rdr.curr == '/' && rdr.next() == '/') ||
+         (rdr.curr == '/' && rdr.next() == '*')) ||
+        (rdr.curr == '#' && rdr.next() == '!');
 }
 
 fn consume_comment(rdr: reader, code_to_the_left: bool, &comments: [cmnt]) {
@@ -144,6 +156,8 @@ fn consume_comment(rdr: reader, code_to_the_left: bool, &comments: [cmnt]) {
         comments += [read_line_comments(rdr, code_to_the_left)];
     } else if rdr.curr == '/' && rdr.next() == '*' {
         comments += [read_block_comment(rdr, code_to_the_left)];
+    } else if rdr.curr == '#' && rdr.next() == '!' {
+        comments += [read_shebang_comment(rdr, code_to_the_left)];
     } else { fail; }
     #debug("<<< consume comment");
 }

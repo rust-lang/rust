@@ -12,6 +12,7 @@ export new_filemap;
 export new_filemap_w_substr;
 export mk_substr_filename;
 export lookup_char_pos;
+export lookup_char_pos_adj;
 export adjust_span;
 export span_to_str;
 export span_to_filename;
