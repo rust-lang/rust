@@ -179,8 +179,16 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
 
     alt existing_match(e, metas, hash) {
       none {
-        let cinfo =
-            loader::load_library_crate(e.sess, ident, span, metas, hash);
+        let load_ctxt: loader::ctxt = {
+            sess: e.sess,
+            span: span,
+            ident: ident,
+            metas: metas,
+            hash: hash,
+            os: session::sess_os_to_meta_os(e.sess.targ_cfg.os),
+            static: e.sess.opts.static
+        };
+        let cinfo = loader::load_library_crate(load_ctxt);
 
         let cfilename = cinfo.ident;
         let cdata = cinfo.data;

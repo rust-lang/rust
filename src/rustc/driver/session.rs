@@ -194,6 +194,17 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
     }
 }
 
+fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
+    import metadata::loader;
+
+    alt os {
+      os_win32 { loader::os_win32 }
+      os_linux { loader::os_linux }
+      os_macos { loader::os_macos }
+      os_freebsd { loader::os_freebsd }
+    }
+}
+
 #[cfg(test)]
 mod test {
     import syntax::ast_util;

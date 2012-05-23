@@ -676,7 +676,8 @@ fn early_error(emitter: diagnostic::emitter, msg: str) -> ! {
 }
 
 fn list_metadata(sess: session, path: str, out: io::writer) {
-    metadata::loader::list_file_metadata(sess, path, out);
+    metadata::loader::list_file_metadata(
+        session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
 }
 
 #[cfg(test)]
