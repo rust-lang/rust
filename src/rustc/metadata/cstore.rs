@@ -5,7 +5,6 @@ import std::map;
 import std::map::hashmap;
 import syntax::{ast, attr};
 import syntax::ast_util::new_def_hash;
-import util::common::*;
 
 export cstore::{};
 export cnum_map;

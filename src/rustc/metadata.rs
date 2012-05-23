@@ -17,8 +17,6 @@ mod driver {
 }
 
 mod util {
-    import common = util_::common;
-    export common;
     import ppaux = util_::ppaux;
     export ppaux;
     import filesearch = util_::filesearch;
