@@ -4,22 +4,28 @@ Validates all used crates and native libraries and loads their metadata
 
 "];
 
-import driver::session;
-import session::session;
+import syntax::diagnostic::span_handler;
 import syntax::{ast, ast_util};
 import syntax::attr;
 import syntax::visit;
 import syntax::codemap::span;
 import std::map::{hashmap, int_hash};
 import syntax::print::pprust;
+import util::filesearch::filesearch;
 import common::*;
 
 export read_crates;
 
 // Traverses an AST, reading all the information about use'd crates and native
 // libraries necessary for later resolving, typechecking, linking, etc.
-fn read_crates(sess: session::session, crate: ast::crate) {
-    let e = @{sess: sess,
+fn read_crates(diag: span_handler, crate: ast::crate,
+               cstore: cstore::cstore, filesearch: filesearch,
+               os: loader::os, static: bool) {
+    let e = @{diag: diag,
+              filesearch: filesearch,
+              cstore: cstore,
+              os: os,
+              static: static,
               mut crate_cache: [],
               mut next_crate_num: 1};
     let v =
@@ -29,7 +35,7 @@ fn read_crates(sess: session::session, crate: ast::crate) {
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);
-    warn_if_multiple_versions(sess, copy e.crate_cache);
+    warn_if_multiple_versions(diag, copy e.crate_cache);
 }
 
 type cache_entry = {
@@ -54,7 +60,7 @@ fn dump_crates(crate_cache: [cache_entry]) {
     }
 }
 
-fn warn_if_multiple_versions(sess: session::session,
+fn warn_if_multiple_versions(diag: span_handler,
                              crate_cache: [cache_entry]) {
     import either::*;
 
@@ -73,21 +79,26 @@ fn warn_if_multiple_versions(sess: session::session,
         assert matches.is_not_empty();
 
         if matches.len() != 1u {
-            sess.warn(#fmt("using multiple versions of crate `%s`", name));
+            diag.handler().warn(
+                #fmt("using multiple versions of crate `%s`", name));
             for matches.each {|match|
-                sess.span_note(match.span, "used here");
+                diag.span_note(match.span, "used here");
                 let attrs = [
                     attr::mk_attr(attr::mk_list_item("link", *match.metas))
                 ];
-                loader::note_linkage_attrs(sess, attrs);
+                loader::note_linkage_attrs(diag, attrs);
             }
         }
 
-        warn_if_multiple_versions(sess, non_matches);
+        warn_if_multiple_versions(diag, non_matches);
     }
 }
 
-type env = @{sess: session::session,
+type env = @{diag: span_handler,
+             filesearch: filesearch,
+             cstore: cstore::cstore,
+             os: loader::os,
+             static: bool,
              mut crate_cache: [cache_entry],
              mut next_crate_num: ast::crate_num};
 
@@ -96,7 +107,7 @@ fn visit_view_item(e: env, i: @ast::view_item) {
       ast::view_item_use(ident, meta_items, id) {
         #debug("resolving use stmt. ident: %?, meta: %?", ident, meta_items);
         let cnum = resolve_crate(e, ident, meta_items, "", i.span);
-        cstore::add_use_stmt_cnum(e.sess.cstore, id, cnum);
+        cstore::add_use_stmt_cnum(e.cstore, id, cnum);
       }
       _ { }
     }
@@ -110,15 +121,15 @@ fn visit_item(e: env, i: @ast::item) {
             if abi != ast::native_abi_cdecl &&
                abi != ast::native_abi_stdcall { ret; }
           }
-          either::left(msg) { e.sess.span_fatal(i.span, msg); }
+          either::left(msg) { e.diag.span_fatal(i.span, msg); }
         }
 
-        let cstore = e.sess.cstore;
+        let cstore = e.cstore;
         let native_name =
             alt attr::first_attr_value_str_by_name(i.attrs, "link_name") {
               some(nn) {
                 if nn == "" {
-                    e.sess.span_fatal(
+                    e.diag.span_fatal(
                         i.span,
                         "empty #[link_name] not allowed; use #[nolink].");
                 }
@@ -132,7 +143,7 @@ fn visit_item(e: env, i: @ast::item) {
         }
         let link_args = attr::find_attrs_by_name(i.attrs, "link_args");
         if vec::len(link_args) > 0u && already_added {
-            e.sess.span_fatal(i.span, "library '" + native_name +
+            e.diag.span_fatal(i.span, "library '" + native_name +
                               "' already added: can't specify link_args.");
         }
         for link_args.each {|a|
@@ -180,13 +191,14 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
     alt existing_match(e, metas, hash) {
       none {
         let load_ctxt: loader::ctxt = {
-            sess: e.sess,
+            diag: e.diag,
+            filesearch: e.filesearch,
             span: span,
             ident: ident,
             metas: metas,
             hash: hash,
-            os: session::sess_os_to_meta_os(e.sess.targ_cfg.os),
-            static: e.sess.opts.static
+            os: e.os,
+            static: e.static
         };
         let cinfo = loader::load_library_crate(load_ctxt);
 
@@ -214,7 +226,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
         let cmeta = @{name: cname, data: cdata,
                       cnum_map: cnum_map, cnum: cnum};
 
-        let cstore = e.sess.cstore;
+        let cstore = e.cstore;
         cstore::set_crate_data(cstore, cnum, cmeta);
         cstore::add_used_crate_file(cstore, cfilename);
         ret cnum;

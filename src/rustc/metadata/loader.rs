@@ -4,13 +4,13 @@ Finds crate binaries and loads their metadata
 
 "];
 
-import driver::session;
-import session::session;
+import syntax::diagnostic::span_handler;
 import syntax::{ast, attr};
 import syntax::print::pprust;
 import syntax::codemap::span;
 import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
-import util::{filesearch};
+import util::filesearch;
+import filesearch::filesearch;
 import io::writer_util;
 
 export os;
@@ -30,7 +30,8 @@ enum os {
 }
 
 type ctxt = {
-    sess: session,
+    diag: span_handler,
+    filesearch: filesearch,
     span: span,
     ident: ast::ident,
     metas: [@ast::meta_item],
@@ -43,15 +44,15 @@ fn load_library_crate(cx: ctxt) -> {ident: str, data: @[u8]} {
     alt find_library_crate(cx) {
       some(t) { ret t; }
       none {
-        cx.sess.span_fatal(
+        cx.diag.span_fatal(
             cx.span, #fmt["can't find crate for '%s'", cx.ident]);
       }
     }
 }
 
 fn find_library_crate(cx: ctxt) -> option<{ident: str, data: @[u8]}> {
-    attr::require_unique_names(cx.sess.diagnostic(), cx.metas);
-    find_library_crate_aux(cx, libname(cx), cx.sess.filesearch)
+    attr::require_unique_names(cx.diag, cx.metas);
+    find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
 
 fn libname(cx: ctxt) -> {prefix: str, suffix: str} {
@@ -106,15 +107,15 @@ fn find_library_crate_aux(cx: ctxt,
     } else if matches.len() == 1u {
         some(matches[0])
     } else {
-        cx.sess.span_err(
+        cx.diag.span_err(
             cx.span, #fmt("multiple matching crates for `%s`", crate_name));
-        cx.sess.note("candidates:");
+        cx.diag.handler().note("candidates:");
         for matches.each {|match|
-            cx.sess.note(#fmt("path: %s", match.ident));
+            cx.diag.handler().note(#fmt("path: %s", match.ident));
             let attrs = decoder::get_crate_attributes(match.data);
-            note_linkage_attrs(cx.sess, attrs);
+            note_linkage_attrs(cx.diag, attrs);
         }
-        cx.sess.abort_if_errors();
+        cx.diag.handler().abort_if_errors();
         none
     }
 }
@@ -134,9 +135,9 @@ fn crate_name_from_metas(metas: [@ast::meta_item]) -> str {
     }
 }
 
-fn note_linkage_attrs(sess: session::session, attrs: [ast::attribute]) {
+fn note_linkage_attrs(diag: span_handler, attrs: [ast::attribute]) {
     for attr::find_linkage_attrs(attrs).each {|attr|
-        sess.note(#fmt("meta: %s", pprust::attr_to_str(attr)));
+        diag.handler().note(#fmt("meta: %s", pprust::attr_to_str(attr)));
     }
 }
 

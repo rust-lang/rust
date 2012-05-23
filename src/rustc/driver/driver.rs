@@ -162,7 +162,11 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "ast indexing",
              bind syntax::ast_map::map_crate(sess.diagnostic(), *crate));
     time(time_passes, "external crate/lib resolution",
-         bind creader::read_crates(sess, *crate));
+         bind creader::read_crates(
+             sess.diagnostic(), *crate, sess.cstore,
+             sess.filesearch,
+             session::sess_os_to_meta_os(sess.targ_cfg.os),
+             sess.opts.static));
     let {def_map, exp_map, impl_map} =
         time(time_passes, "resolution",
              bind resolve::resolve_crate(sess, ast_map, crate));

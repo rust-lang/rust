@@ -6,8 +6,8 @@ import syntax::ast_util;
 import syntax::ast_map;
 import middle::ty;
 import option::{some, none};
-import driver::session;
-import driver::session::expect;
+import syntax::diagnostic::span_handler;
+import syntax::diagnostic::expect;
 import common::*;
 import std::map::hashmap;
 
@@ -82,7 +82,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
 }
 
 fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     let path = decoder::get_item_path(cdata, def.node);
 
@@ -103,14 +103,14 @@ enum found_ast {
 fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
                       decode_inlined_item: decoder::decode_inlined_item)
     -> found_ast {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::maybe_get_item_ast(cdata, tcx, def.node,
                                 decode_inlined_item)
 }
 
 fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     ret decoder::get_enum_variants(cdata, def.node, tcx)
 }
@@ -125,35 +125,35 @@ fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
 }
 
 fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method] {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_iface_methods(cdata, def.node, tcx)
 }
 
 fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> [ty::field_ty] {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_class_fields(cdata, def.node)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_type(cdata, def.node, tcx)
 }
 
 fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                   def: ast::def_id) -> ty::ty_param_bounds_and_ty {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, class_id.crate);
     let all_items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     #debug("Looking up %?", class_id);
-    let class_doc = expect(tcx.sess,
+    let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),
                            {|| #fmt("get_field_type: class ID %? not found",
                      class_id)});
     #debug("looking up %? : %?", def, class_doc);
-    let the_field = expect(tcx.sess,
+    let the_field = expect(tcx.diag,
         decoder::maybe_find_item(def.node, class_doc),
         {|| #fmt("get_field_type: in class %?, field ID %? not found",
                  class_id, def)});
@@ -165,7 +165,7 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
 // Given a def_id for an impl or class, return the iface it implements,
 // or none if it's not for an impl or for a class that implements ifaces
 fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id) -> option<ty::t> {
-    let cstore = tcx.sess.cstore;
+    let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_iface(cdata, def.node, tcx)
 }

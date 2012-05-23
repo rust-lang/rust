@@ -14,8 +14,6 @@ mod back {
 }
 
 mod driver {
-    import session = driver_::session;
-    export session;
 }
 
 mod util {
