@@ -1,9 +1,11 @@
 // -*- rust -*-
-// error-pattern: pure function calls function not known to be pure
 
 fn g() { }
 
-pure fn f(q: int) -> bool { g(); ret true; }
+pure fn f(_q: int) -> bool {
+    g(); //! ERROR access to non-pure functions prohibited in a pure context
+    ret true;
+}
 
 fn main() {
     let x = 0;
