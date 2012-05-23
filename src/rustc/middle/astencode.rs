@@ -3,6 +3,7 @@ import util::ppaux::ty_to_str;
 import syntax::ast;
 import syntax::fold;
 import syntax::visit;
+import syntax::ast_map;
 import syntax::ast_util;
 import syntax::ast_util::inlined_item_methods;
 import syntax::codemap::span;
@@ -17,7 +18,7 @@ import std::serialization::serializer_helpers;
 import std::serialization::deserializer_helpers;
 import std::prettyprint::serializer;
 import std::smallintmap::map;
-import middle::{ty, typeck, last_use, ast_map};
+import middle::{ty, typeck, last_use};
 import middle::typeck::{method_origin,
                         serialize_method_origin,
                         deserialize_method_origin,
@@ -115,7 +116,8 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                     to_id_range: to_id_range};
         let raw_ii = decode_ast(ast_doc);
         let ii = renumber_ast(xcx, raw_ii);
-        ast_map::map_decoded_item(tcx.sess, dcx.tcx.items, path, ii);
+        ast_map::map_decoded_item(tcx.sess.diagnostic(),
+                                  dcx.tcx.items, path, ii);
         #debug["Fn named: %s", ii.ident()];
         decode_side_tables(xcx, ast_doc);
         #debug["< Decoded inlined fn: %s::%s",
@@ -401,7 +403,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         fold::noop_fold_block(blk_sans_items, fld)
     }
 
-    let fld = fold::make_fold({
+    let fld = fold::make_fold(@{
         fold_block: fold::wrap(drop_nested_items)
         with *fold::default_ast_fold()
     });
@@ -434,7 +436,7 @@ fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
 
 fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
     -> ast::inlined_item {
-    let fld = fold::make_fold({
+    let fld = fold::make_fold(@{
         new_id: xcx.tr_id(_),
         new_span: xcx.tr_span(_)
         with *fold::default_ast_fold()

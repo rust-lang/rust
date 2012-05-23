@@ -13,7 +13,7 @@ fn make_cycle<A:copy>(a: A) {
     g.rec = some(g);
 }
 
-fn f<A:send,B:send>(a: A, b: B) -> fn@() -> (A, B) {
+fn f<A:send copy, B:send copy>(a: A, b: B) -> fn@() -> (A, B) {
     fn@() -> (A, B) { (a, b) }
 }
 

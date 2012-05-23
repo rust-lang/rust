@@ -1119,9 +1119,8 @@ fn parse_assign_expr(p: parser) -> @expr {
           token::CARET { aop = bitxor; }
           token::AND { aop = bitand; }
           token::OR { aop = bitor; }
-          token::LSL { aop = lsl; }
-          token::LSR { aop = lsr; }
-          token::ASR { aop = asr; }
+          token::SHL { aop = shl; }
+          token::SHR { aop = shr; }
         }
         p.get_id(); // see ast_util::op_expr_callee_id
         ret mk_expr(p, lo, rhs.span.hi, expr_assign_op(aop, lhs, rhs));

@@ -1,7 +1,7 @@
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
-import ty::{kind, kind_copyable, kind_sendable, kind_noncopyable};
+import ty::{kind, kind_sendable, kind_copyable, kind_noncopyable };
 import driver::session::session;
 import std::map::hashmap;
 import util::ppaux::{ty_to_str, tys_to_str};
@@ -24,10 +24,11 @@ import freevars::freevar_entry;
 // types.
 
 fn kind_to_str(k: kind) -> str {
-    alt k {
-      kind_sendable { "sendable" }
-      kind_copyable { "copyable" }
-      kind_noncopyable { "noncopyable" }
+    alt (ty::kind_can_be_copied(k), ty::kind_can_be_sent(k)) {
+      (false, false) { "noncopyable" }
+      (false, true)  { "sendable" }
+      (true,  false) { "copyable" }
+      (true,  true)  { "copy-sendable" }
     }
 }
 

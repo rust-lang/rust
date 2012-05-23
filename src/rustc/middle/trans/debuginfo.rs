@@ -6,7 +6,7 @@ import trans::common::*;
 import trans::base;
 import trans::build::B;
 import middle::ty;
-import syntax::{ast, codemap, ast_util};
+import syntax::{ast, codemap, ast_util, ast_map};
 import codemap::span;
 import ast::ty;
 import pat_util::*;
@@ -648,7 +648,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     }
 
     let name = alt local.node.pat.node {
-      ast::pat_ident(pth, _) { pat_util::path_to_ident(pth) }
+      ast::pat_ident(pth, _) { ast_util::path_to_ident(pth) }
       // FIXME this should be handled
       _ { fail "no single variable name for local"; }
     };

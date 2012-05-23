@@ -3,8 +3,6 @@
 // no dependencies on rustc it can move into its own crate.
 
 mod middle {
-    import ast_map = middle_::ast_map;
-    export ast_map;
     import ty = middle_::ty;
     export ty;
 }
@@ -16,8 +14,6 @@ mod back {
 }
 
 mod driver {
-    import session = driver_::session;
-    export session;
 }
 
 mod util {

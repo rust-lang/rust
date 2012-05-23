@@ -1,7 +1,7 @@
 #[doc ="
 An implementation of the SHA-1 cryptographic hash.
 
-First create a `sha1` object using the `mk_sha1` constructor, then
+First create a `sha1` object using the `sha1` constructor, then
 feed it input using the `input` or `input_str` methods, which may be
 called any number of times.
 

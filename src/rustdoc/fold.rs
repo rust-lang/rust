@@ -85,7 +85,7 @@ fn mk_fold<T:copy>(
     })
 }
 
-fn default_any_fold<T:send>(ctxt: T) -> fold<T> {
+fn default_any_fold<T:send copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
         {|f, d| default_seq_fold_doc(f, d)},
@@ -121,7 +121,7 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
     )
 }
 
-fn default_par_fold<T:send>(ctxt: T) -> fold<T> {
+fn default_par_fold<T:send copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
         {|f, d| default_seq_fold_doc(f, d)},

@@ -1,7 +1,8 @@
-import syntax::{ast, ast_util, codemap};
+import syntax::{ast, ast_util, codemap, ast_map};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::{local_def, def_id_of_def, class_item_ident};
+import syntax::ast_util::{local_def, def_id_of_def,
+                          class_item_ident, path_to_ident};
 import pat_util::*;
 
 import syntax::attr;
@@ -687,7 +688,7 @@ fn visit_local_with_scope(e: @env, loc: @local, &&sc: scopes, v:vt<scopes>) {
     // scope. We disallow this, in order to make alt patterns consisting of a
     // single identifier unambiguous (does the pattern "foo" refer to enum
     // foo, or is it binding a new name foo?)
-    pat_util::walk_pat(loc.node.pat) { |p|
+    ast_util::walk_pat(loc.node.pat) { |p|
         alt p.node {
           pat_ident(path, _) {
             alt lookup_in_scope(*e, sc, loc.span, path_to_ident(path),

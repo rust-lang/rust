@@ -28,7 +28,7 @@ enum future<A> = {
 };
 
 #[doc = "Methods on the `future` type"]
-impl future<A:send> for future<A> {
+impl future<A:copy send> for future<A> {
 
     fn get() -> A {
         #[doc = "Get the value of the future"];

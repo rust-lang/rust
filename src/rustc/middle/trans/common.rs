@@ -6,7 +6,7 @@
 import libc::c_uint;
 import vec::unsafe::to_ptr;
 import std::map::{hashmap,set};
-import syntax::ast;
+import syntax::{ast, ast_map};
 import driver::session;
 import session::session;
 import middle::{resolve, ty};
@@ -19,7 +19,7 @@ import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
 import metadata::{csearch};
 import metadata::common::link_meta;
-import ast_map::path;
+import syntax::ast_map::path;
 import util::ppaux::ty_to_str;
 
 type namegen = fn@(str) -> str;
@@ -388,7 +388,7 @@ fn ty_str(tn: type_names, t: TypeRef) -> str {
     ret lib::llvm::type_to_str(tn, t);
 }
 
-fn val_ty(&&v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
+fn val_ty(v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
 
 fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
 

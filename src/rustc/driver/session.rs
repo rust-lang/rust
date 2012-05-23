@@ -171,10 +171,7 @@ fn basic_options() -> @options {
 
 // Seems out of place, but it uses session, so I'm putting it here
 fn expect<T: copy>(sess: session, opt: option<T>, msg: fn() -> str) -> T {
-    alt opt {
-       some(t) { t }
-       none { sess.bug(msg()); }
-    }
+    diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
 fn building_library(req_crate_type: crate_type, crate: @ast::crate,
@@ -194,6 +191,17 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
             }
         }
       }
+    }
+}
+
+fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
+    import metadata::loader;
+
+    alt os {
+      os_win32 { loader::os_win32 }
+      os_linux { loader::os_linux }
+      os_macos { loader::os_macos }
+      os_freebsd { loader::os_freebsd }
     }
 }
 

@@ -25,6 +25,8 @@ fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
 fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
+fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
+
 fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
 
 pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
@@ -70,9 +72,8 @@ fn binop_to_str(op: binop) -> str {
       bitxor { ret "^"; }
       bitand { ret "&"; }
       bitor { ret "|"; }
-      lsl { ret "<<"; }
-      lsr { ret ">>"; }
-      asr { ret ">>>"; }
+      shl { ret "<<"; }
+      shr { ret ">>"; }
       eq { ret "=="; }
       lt { ret "<"; }
       le { ret "<="; }
@@ -88,9 +89,8 @@ pure fn lazy_binop(b: binop) -> bool {
 
 pure fn is_shift_binop(b: binop) -> bool {
     alt b {
-      lsl { true }
-      lsr { true }
-      asr { true }
+      shl { true }
+      shr { true }
       _ { false }
     }
 }
@@ -351,7 +351,7 @@ fn operator_prec(op: ast::binop) -> uint {
       mul | div | rem   { 12u }
       // 'as' sits between here with 11
       add | subtract    { 10u }
-      lsl | lsr | asr   {  9u }
+      shl | shr         {  9u }
       bitand            {  8u }
       bitxor            {  7u }
       bitor             {  6u }
@@ -525,6 +525,18 @@ pure fn is_item_impl(item: @ast::item) -> bool {
     alt item.node {
        item_impl(*) { true }
        _            { false }
+    }
+}
+
+fn walk_pat(pat: @pat, it: fn(@pat)) {
+    it(pat);
+    alt pat.node {
+      pat_ident(pth, some(p)) { walk_pat(p, it); }
+      pat_rec(fields, _) { for fields.each {|f| walk_pat(f.pat, it); } }
+      pat_enum(_, some(s)) | pat_tup(s) { for s.each {|p| walk_pat(p, it); } }
+      pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
+      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _)
+        | pat_enum(_, _) {}
     }
 }
 

@@ -161,6 +161,24 @@ impl reader_util for reader {
         while !self.eof() { buf += self.read_bytes(2048u); }
         buf
     }
+
+    fn each_byte(it: fn(int) -> bool) {
+        while !self.eof() {
+            if !it(self.read_byte()) { break; }
+        }
+    }
+
+    fn each_char(it: fn(char) -> bool) {
+        while !self.eof() {
+            if !it(self.read_char()) { break; }
+        }
+    }
+
+    fn each_line(it: fn(str) -> bool) {
+        while !self.eof() {
+            if !it(self.read_line()) { break; }
+        }
+    }
 }
 
 // Reader implementations

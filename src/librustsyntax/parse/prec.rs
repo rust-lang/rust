@@ -25,9 +25,8 @@ fn token_to_binop(tok: token) -> option<ast::binop> {
       // 'as' sits between here with 11
       BINOP(PLUS)    { some(add) }
       BINOP(MINUS)   { some(subtract) }
-      BINOP(LSL)     { some(lsl) }
-      BINOP(LSR)     { some(lsr) }
-      BINOP(ASR)     { some(asr) }
+      BINOP(SHL)     { some(shl) }
+      BINOP(SHR)     { some(shr) }
       BINOP(AND)     { some(bitand) }
       BINOP(CARET)   { some(bitxor) }
       BINOP(OR)      { some(bitor) }

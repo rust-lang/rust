@@ -7,7 +7,7 @@ import syntax::print::pprust;
 import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str,
                                mode_to_str};
 import syntax::{ast, ast_util};
-import middle::ast_map;
+import syntax::ast_map;
 import driver::session::session;
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> str {

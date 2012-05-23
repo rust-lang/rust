@@ -114,10 +114,8 @@ fn check_restricted_keywords_(p: parser, w: ast::ident) {
 fn expect_gt(p: parser) {
     if p.token == token::GT {
         p.bump();
-    } else if p.token == token::BINOP(token::LSR) {
+    } else if p.token == token::BINOP(token::SHR) {
         p.swap(token::GT, p.span.lo + 1u, p.span.hi);
-    } else if p.token == token::BINOP(token::ASR) {
-        p.swap(token::BINOP(token::LSR), p.span.lo + 1u, p.span.hi);
     } else {
         let mut s: str = "expecting ";
         s += token_to_str(p.reader, token::GT);
@@ -132,8 +130,7 @@ fn parse_seq_to_before_gt<T: copy>(sep: option<token::token>,
                                   p: parser) -> [T] {
     let mut first = true;
     let mut v = [];
-    while p.token != token::GT && p.token != token::BINOP(token::LSR) &&
-              p.token != token::BINOP(token::ASR) {
+    while p.token != token::GT && p.token != token::BINOP(token::SHR) {
         alt sep {
           some(t) { if first { first = false; } else { expect(p, t); } }
           _ { }

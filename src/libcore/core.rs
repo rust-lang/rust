@@ -11,6 +11,7 @@ import vec_iter::extensions;
 import option::extensions;
 import option_iter::extensions;
 import ptr::extensions;
+import rand::extensions;
 
 export path, option, some, none, unreachable;
 export extensions;

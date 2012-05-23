@@ -189,16 +189,17 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     }
     let afp = default_ast_fold();
     let f_pre =
-        {fold_ident: bind transcribe_ident(cx, b, idx_path, _, _),
-         fold_path: bind transcribe_path(cx, b, idx_path, _, _),
-         fold_expr:
-             bind transcribe_expr(cx, b, idx_path, _, _, _, afp.fold_expr),
-         fold_ty: bind transcribe_type(cx, b, idx_path, _, _, _, afp.fold_ty),
-         fold_block:
-             bind transcribe_block(cx, b, idx_path, _, _, _, afp.fold_block),
-         map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _),
-         new_id: bind new_id(_, cx)
-         with *afp};
+        @{fold_ident: bind transcribe_ident(cx, b, idx_path, _, _),
+          fold_path: bind transcribe_path(cx, b, idx_path, _, _),
+          fold_expr:
+              bind transcribe_expr(cx, b, idx_path, _, _, _, afp.fold_expr),
+          fold_ty: bind transcribe_type(cx, b, idx_path,
+                                        _, _, _, afp.fold_ty),
+          fold_block:
+              bind transcribe_block(cx, b, idx_path, _, _, _, afp.fold_block),
+          map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _),
+          new_id: bind new_id(_, cx)
+          with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
     ret result;
@@ -247,8 +248,8 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
     // using fold is a hack: we want visit, but it doesn't hit idents ) :
     // solve this with macros
     let f_pre =
-        {fold_ident: bind mark_ident(_, _, b, idents)
-            with *default_ast_fold()};
+        @{fold_ident: bind mark_ident(_, _, b, idents)
+          with *default_ast_fold()};
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
     for idents.each_key {|x| it(x); };

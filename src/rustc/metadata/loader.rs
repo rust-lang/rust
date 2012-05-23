@@ -4,70 +4,72 @@ Finds crate binaries and loads their metadata
 
 "];
 
-import driver::session;
-import session::session;
+import syntax::diagnostic::span_handler;
 import syntax::{ast, attr};
 import syntax::print::pprust;
 import syntax::codemap::span;
 import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
-import util::{filesearch};
+import util::filesearch;
+import filesearch::filesearch;
 import io::writer_util;
 
+export os;
+export ctxt;
 export load_library_crate;
 export list_file_metadata;
 export note_linkage_attrs;
 export crate_name_from_metas;
 export metadata_matches;
+export meta_section_name;
 
-fn load_library_crate(sess: session::session, ident: ast::ident, span: span,
-                      metas: [@ast::meta_item], hash: str)
-   -> {ident: str, data: @[u8]} {
+enum os {
+    os_macos,
+    os_win32,
+    os_linux,
+    os_freebsd
+}
 
+type ctxt = {
+    diag: span_handler,
+    filesearch: filesearch,
+    span: span,
+    ident: ast::ident,
+    metas: [@ast::meta_item],
+    hash: str,
+    os: os,
+    static: bool
+};
 
-    alt find_library_crate(sess, span, metas, hash) {
+fn load_library_crate(cx: ctxt) -> {ident: str, data: @[u8]} {
+    alt find_library_crate(cx) {
       some(t) { ret t; }
       none {
-        sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
+        cx.diag.span_fatal(
+            cx.span, #fmt["can't find crate for '%s'", cx.ident]);
       }
     }
 }
 
-fn find_library_crate(sess: session::session, span: span,
-                      metas: [@ast::meta_item], hash: str)
-   -> option<{ident: str, data: @[u8]}> {
-
-    attr::require_unique_names(sess.diagnostic(), metas);
-    let metas = metas;
-
-    let nn = default_native_lib_naming(sess, sess.opts.static);
-    let x =
-        find_library_crate_aux(sess, span, nn,
-                               metas, hash, sess.filesearch);
-    if x != none || sess.opts.static { ret x; }
-    let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(sess, span, nn2, metas, hash,
-                               sess.filesearch);
+fn find_library_crate(cx: ctxt) -> option<{ident: str, data: @[u8]}> {
+    attr::require_unique_names(cx.diag, cx.metas);
+    find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
 
-fn default_native_lib_naming(sess: session::session, static: bool) ->
-   {prefix: str, suffix: str} {
-    if static { ret {prefix: "lib", suffix: ".rlib"}; }
-    alt sess.targ_cfg.os {
-      session::os_win32 { ret {prefix: "", suffix: ".dll"}; }
-      session::os_macos { ret {prefix: "lib", suffix: ".dylib"}; }
-      session::os_linux { ret {prefix: "lib", suffix: ".so"}; }
-      session::os_freebsd { ret {prefix: "lib", suffix: ".so"}; }
+fn libname(cx: ctxt) -> {prefix: str, suffix: str} {
+    if cx.static { ret {prefix: "lib", suffix: ".rlib"}; }
+    alt cx.os {
+      os_win32 { ret {prefix: "", suffix: ".dll"}; }
+      os_macos { ret {prefix: "lib", suffix: ".dylib"}; }
+      os_linux { ret {prefix: "lib", suffix: ".so"}; }
+      os_freebsd { ret {prefix: "lib", suffix: ".so"}; }
     }
 }
 
-fn find_library_crate_aux(sess: session::session,
-                          span: span,
+fn find_library_crate_aux(cx: ctxt,
                           nn: {prefix: str, suffix: str},
-                          metas: [@ast::meta_item],
-                          hash: str,
                           filesearch: filesearch::filesearch) ->
    option<{ident: str, data: @[u8]}> {
-    let crate_name = crate_name_from_metas(metas);
+    let crate_name = crate_name_from_metas(cx.metas);
     let prefix: str = nn.prefix + crate_name + "-";
     let suffix: str = nn.suffix;
 
@@ -81,9 +83,9 @@ fn find_library_crate_aux(sess: session::session,
             option::none::<()>
         } else {
             #debug("%s is a candidate", path);
-            alt get_metadata_section(sess, path) {
+            alt get_metadata_section(cx.os, path) {
               option::some(cvec) {
-                if !crate_matches(cvec, metas, hash) {
+                if !crate_matches(cvec, cx.metas, cx.hash) {
                     #debug("skipping %s, metadata doesn't match", path);
                     option::none::<()>
                 } else {
@@ -105,15 +107,15 @@ fn find_library_crate_aux(sess: session::session,
     } else if matches.len() == 1u {
         some(matches[0])
     } else {
-        sess.span_err(
-            span, #fmt("multiple matching crates for `%s`", crate_name));
-        sess.note("candidates:");
+        cx.diag.span_err(
+            cx.span, #fmt("multiple matching crates for `%s`", crate_name));
+        cx.diag.handler().note("candidates:");
         for matches.each {|match|
-            sess.note(#fmt("path: %s", match.ident));
+            cx.diag.handler().note(#fmt("path: %s", match.ident));
             let attrs = decoder::get_crate_attributes(match.data);
-            note_linkage_attrs(sess, attrs);
+            note_linkage_attrs(cx.diag, attrs);
         }
-        sess.abort_if_errors();
+        cx.diag.handler().abort_if_errors();
         none
     }
 }
@@ -133,9 +135,9 @@ fn crate_name_from_metas(metas: [@ast::meta_item]) -> str {
     }
 }
 
-fn note_linkage_attrs(sess: session::session, attrs: [ast::attribute]) {
+fn note_linkage_attrs(diag: span_handler, attrs: [ast::attribute]) {
     for attr::find_linkage_attrs(attrs).each {|attr|
-        sess.note(#fmt("meta: %s", pprust::attr_to_str(attr)));
+        diag.handler().note(#fmt("meta: %s", pprust::attr_to_str(attr)));
     }
 }
 
@@ -171,7 +173,7 @@ fn metadata_matches(extern_metas: [@ast::meta_item],
     ret true;
 }
 
-fn get_metadata_section(sess: session::session,
+fn get_metadata_section(os: os,
                         filename: str) -> option<@[u8]> unsafe {
     let mb = str::as_c_str(filename, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
@@ -185,7 +187,7 @@ fn get_metadata_section(sess: session::session,
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
         let name = unsafe { str::unsafe::from_c_str(name_buf) };
-        if str::eq(name, sess.targ_cfg.target_strs.meta_sect_name) {
+        if str::eq(name, meta_section_name(os)) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
             unsafe {
@@ -198,9 +200,18 @@ fn get_metadata_section(sess: session::session,
     ret option::none::<@[u8]>;
 }
 
+fn meta_section_name(os: os) -> str {
+    alt os {
+      os_macos { "__DATA,__note.rustc" }
+      os_win32 { ".note.rustc" }
+      os_linux { ".note.rustc" }
+      os_freebsd { ".note.rustc" }
+    }
+}
+
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(sess: session::session, path: str, out: io::writer) {
-    alt get_metadata_section(sess, path) {
+fn list_file_metadata(os: os, path: str, out: io::writer) {
+    alt get_metadata_section(os, path) {
       option::some(bytes) { decoder::list_crate_metadata(bytes, out); }
       option::none {
         out.write_str("could not find metadata in " + path + ".\n");

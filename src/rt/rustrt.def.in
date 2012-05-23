@@ -12,6 +12,7 @@ debug_abi_2
 get_port_id
 get_task_id
 get_time
+rust_tzset
 rust_gmtime
 rust_localtime
 rust_timegm
@@ -25,7 +26,9 @@ rust_port_id_send
 rust_port_select
 rand_free
 rand_new
+rand_new_seeded
 rand_next
+rand_seed
 refcount
 rust_get_sched_id
 rust_new_sched

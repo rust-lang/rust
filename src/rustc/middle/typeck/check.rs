@@ -867,8 +867,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     fn binop_method(op: ast::binop) -> option<str> {
         alt op {
           ast::add | ast::subtract | ast::mul | ast::div | ast::rem |
-          ast::bitxor | ast::bitand | ast::bitor | ast::lsl | ast::lsr |
-          ast::asr { some(ast_util::binop_to_str(op)) }
+          ast::bitxor | ast::bitand | ast::bitor | ast::shl | ast::shr
+          { some(ast_util::binop_to_str(op)) }
           _ { none }
         }
     }

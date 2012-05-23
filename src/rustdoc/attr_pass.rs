@@ -7,7 +7,7 @@
 )];
 
 import syntax::ast;
-import rustc::middle::ast_map;
+import syntax::ast_map;
 import std::map::hashmap;
 
 export mk_pass;

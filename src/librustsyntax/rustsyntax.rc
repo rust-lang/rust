@@ -16,6 +16,7 @@ mod diagnostic;
 mod codemap;
 mod ast;
 mod ast_util;
+mod ast_map;
 mod visit;
 mod fold;
 mod util {

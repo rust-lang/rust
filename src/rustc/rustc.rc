@@ -49,7 +49,6 @@ mod middle {
         mod reachable;
     }
     mod ty;
-    mod ast_map;
     mod resolve;
     mod typeck {
         mod check {

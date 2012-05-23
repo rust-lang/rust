@@ -2,6 +2,7 @@ import syntax::ast;
 import syntax::ast::{m_mutbl, m_imm, m_const};
 import syntax::visit;
 import syntax::ast_util;
+import syntax::ast_map;
 import syntax::codemap::span;
 import util::ppaux::{ty_to_str, region_to_str};
 import driver::session::session;

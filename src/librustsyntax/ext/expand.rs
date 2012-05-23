@@ -130,11 +130,11 @@ fn expand_crate(parse_sess: parse::parse_sess,
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(parse_sess, cfg);
     let f_pre =
-        {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr),
-         fold_mod: bind expand_mod_items(exts, cx, _, _, afp.fold_mod),
-         fold_item: bind expand_item(cx, _, _, afp.fold_item),
-         new_span: bind new_span(cx, _)
-            with *afp};
+        @{fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr),
+          fold_mod: bind expand_mod_items(exts, cx, _, _, afp.fold_mod),
+          fold_item: bind expand_item(cx, _, _, afp.fold_item),
+          new_span: bind new_span(cx, _)
+          with *afp};
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str("<core-macros>",
                                         @core_macros(),

@@ -121,10 +121,10 @@ fn local_rhs_span(l: @ast::local, def: span) -> span {
     alt l.node.init { some(i) { ret i.expr.span; } _ { ret def; } }
 }
 
-fn is_main_name(path: middle::ast_map::path) -> bool {
+fn is_main_name(path: syntax::ast_map::path) -> bool {
     // FIXME: path should be a constrained type, so we know
     // the call to last doesn't fail
-    vec::last(path) == middle::ast_map::path_name("main")
+    vec::last(path) == syntax::ast_map::path_name("main")
 }
 
 //

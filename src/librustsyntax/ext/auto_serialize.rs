@@ -235,7 +235,7 @@ impl helpers for ext_ctxt {
     }
 
     fn clone_folder() -> fold::ast_fold {
-        fold::make_fold({
+        fold::make_fold(@{
             new_id: {|_id| self.next_id()}
             with *fold::default_ast_fold()
         })
@@ -265,7 +265,7 @@ impl helpers for ext_ctxt {
             }
         }
 
-        let fld = fold::make_fold({
+        let fld = fold::make_fold(@{
             new_span: repl_sp(_, ast_util::dummy_sp(), span)
             with *fold::default_ast_fold()
         });
