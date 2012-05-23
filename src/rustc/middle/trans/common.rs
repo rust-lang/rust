@@ -874,7 +874,7 @@ enum mono_param_id {
 }
 type mono_id = @{def: ast::def_id, params: [mono_param_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
-    let mut h = syntax::ast_util::hash_def_id(mi.def);
+    let mut h = syntax::ast_util::hash_def(mi.def);
     for vec::each(mi.params) {|param|
         h = h * alt param {
           mono_precise(ty, vts) {

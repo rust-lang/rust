@@ -242,18 +242,6 @@ fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
     ret std::map::hashmap::<ast::def_id, V>(hasher, eqer);
 }
 
-fn hash_def_id(&&id: def_id) -> uint {
-    (id.crate as uint << 16u) + (id.node as uint)
-}
-
-fn eq_def_id(&&a: def_id, &&b: def_id) -> bool {
-    a == b
-}
-
-fn new_def_id_hash<T: copy>() -> std::map::hashmap<def_id, T> {
-    std::map::hashmap(hash_def_id, eq_def_id)
-}
-
 fn block_from_expr(e: @expr) -> blk {
     let blk_ = default_block([], option::some::<@expr>(e), e.id);
     ret {node: blk_, span: e.span};
