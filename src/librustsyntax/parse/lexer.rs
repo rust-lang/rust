@@ -123,10 +123,9 @@ fn consume_any_line_comment(rdr: reader) {
         if rdr.next() == '!' {
             let cmap = codemap::new_codemap();
             (*cmap).files.push(rdr.filemap);
-            let mut loc = codemap::lookup_char_pos_adj(cmap, rdr.chpos);
+            let loc = codemap::lookup_char_pos_adj(cmap, rdr.chpos);
             if loc.line == 1u && loc.col == 0u {
                 while rdr.curr != '\n' && !rdr.is_eof() { rdr.bump(); }
-                loc = codemap::lookup_char_pos_adj(cmap, rdr.chpos);
                 ret consume_whitespace_and_comments(rdr);
             }
         }
