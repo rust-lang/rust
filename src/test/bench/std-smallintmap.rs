@@ -18,7 +18,7 @@ fn check_sequential(min: uint, max: uint, map: smallintmap<uint>) {
 }
 
 fn main(args: [str]) {
-    let args = if vec::len(args) <= 1u {["", "1000000", "100"]} else {args};
+    let args = if vec::len(args) <= 1u {["", "10000", "50"]} else {args};
     let max = uint::from_str(args[1]).get();
     let rep = uint::from_str(args[2]).get();
 
