@@ -405,8 +405,8 @@ fn validate(edges: [(node_id, node_id)],
 }
 
 fn main() {
-    let scale = 15u;
-    let num_keys = 64u;
+    let scale = 10u;
+    let num_keys = 16u;
     let do_validate = false;
     let do_sequential = true;
 
