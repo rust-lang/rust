@@ -461,11 +461,11 @@ Thus, binary arithmetic is done with `*`, `/`, `%`, `+`, and `-`
 operator (there are no unary postfix operators in Rust) that does
 negation.
 
-Binary shifting is done with `>>` (shift right), `>>>` (arithmetic
-shift right), and `<<` (shift left). Logical bitwise operators are
-`&`, `|`, and `^` (and, or, and exclusive or), and unary `!` for
-bitwise negation (or boolean negation when applied to a boolean
-value).
+Binary shifting is done with `>>` (shift right), and `<<` (shift
+left). Shift right is arithmetic if the value is signed and logical if
+the value is unsigned. Logical bitwise operators are `&`, `|`, and `^`
+(and, or, and exclusive or), and unary `!` for bitwise negation (or
+boolean negation when applied to a boolean value).
 
 The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 `<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
