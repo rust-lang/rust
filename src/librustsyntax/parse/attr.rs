@@ -4,8 +4,6 @@ import common::{parse_seq,
                 seq_sep,
                 expect,
                 parse_ident};
-import parser::{parse_lit,
-                parse_syntax_ext_naked};
 
 export attr_or_ext;
 export parse_outer_attributes;
@@ -31,7 +29,7 @@ fn parse_outer_attrs_or_ext(
                     || p.look_ahead(1u) == token::LBRACKET
                     || expect_item_next) {
             p.bump();
-            ret some(right(parse_syntax_ext_naked(p, lo)));
+            ret some(right(p.parse_syntax_ext_naked(lo)));
         } else { ret none; }
     } else { ret none; }
 }
@@ -97,7 +95,7 @@ fn parse_meta_item(p: parser) -> @ast::meta_item {
     alt p.token {
       token::EQ {
         p.bump();
-        let lit = parse_lit(p);
+        let lit = p.parse_lit();
         let mut hi = p.span.hi;
         ret @spanned(lo, hi, ast::meta_name_value(ident, lit));
       }
@@ -115,7 +113,7 @@ fn parse_meta_item(p: parser) -> @ast::meta_item {
 
 fn parse_meta_seq(p: parser) -> [@ast::meta_item] {
     ret parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
-                  parse_meta_item, p).node;
+                  p, {|p| parse_meta_item(p)}).node;
 }
 
 fn parse_optional_meta(p: parser) -> [@ast::meta_item] {

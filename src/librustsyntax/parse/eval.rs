@@ -1,12 +1,10 @@
-import parser::{parser,
-                parse_mod_items, SOURCE_FILE};
+import parser::{parser, SOURCE_FILE};
 import attr::parse_inner_attrs_and_next;
 
 export eval_crate_directives_to_mod;
 
 type ctx =
-    @{p: parser,
-      sess: parse::parse_sess,
+    @{sess: parse::parse_sess,
       cfg: ast::crate_cfg};
 
 fn eval_crate_directives(cx: ctx, cdirs: [@ast::crate_directive], prefix: str,
@@ -66,11 +64,10 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
     #debug("looking for companion mod %s", modpath);
     if file_exists(modpath) {
         #debug("found companion mod");
-        let p0 = new_parser_from_file(cx.sess, cx.cfg, modpath,
-                                     SOURCE_FILE);
+        let p0 = new_parser_from_file(cx.sess, cx.cfg, modpath, SOURCE_FILE);
         let inner_attrs = parse_inner_attrs_and_next(p0);
         let first_item_outer_attrs = inner_attrs.next;
-        let m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
+        let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         cx.sess.chpos = p0.reader.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;
         ret (m0.view_items, m0.items, inner_attrs.inner);
@@ -103,11 +100,10 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         let inner_attrs = parse_inner_attrs_and_next(p0);
         let mod_attrs = attrs + inner_attrs.inner;
         let first_item_outer_attrs = inner_attrs.next;
-        let m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
+        let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
 
-        let i =
-            parser::mk_item(p0, cdir.span.lo, cdir.span.hi, id,
-                            ast::item_mod(m0), ast::public, mod_attrs);
+        let i = p0.mk_item(cdir.span.lo, cdir.span.hi, id,
+                           ast::item_mod(m0), ast::public, mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = p0.reader.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;

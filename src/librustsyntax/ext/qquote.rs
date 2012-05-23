@@ -49,7 +49,7 @@ impl of qq_helper for @ast::expr {
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ["syntax", "parse", "parser", "parse_expr"])
+        mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_expr"])
     }
     fn get_fold_fn() -> str {"fold_expr"}
 }
@@ -90,7 +90,7 @@ impl of qq_helper for @ast::pat {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_pat(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ["syntax", "parse", "parser", "parse_pat"])
+        mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_pat"])
     }
     fn get_fold_fn() -> str {"fold_pat"}
 }
@@ -154,29 +154,23 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
 
     ret alt what {
       "crate" {finish(ecx, body, parse_crate)}
-      "expr" {finish(ecx, body, parser::parse_expr)}
+      "expr" {finish(ecx, body, parse_expr)}
       "ty" {finish(ecx, body, parse_ty)}
       "item" {finish(ecx, body, parse_item)}
       "stmt" {finish(ecx, body, parse_stmt)}
-      "pat" {finish(ecx, body, parser::parse_pat)}
+      "pat" {finish(ecx, body, parse_pat)}
       _ {ecx.span_fatal(_sp, "unsupported ast type")}
     };
 }
 
-fn parse_crate(p: parser) -> @ast::crate {
-    parser::parse_crate_mod(p, [])
-}
-
-fn parse_ty(p: parser) -> @ast::ty {
-    parser::parse_ty(p, false)
-}
-
-fn parse_stmt(p: parser) -> @ast::stmt {
-    parser::parse_stmt(p, [])
-}
+fn parse_crate(p: parser) -> @ast::crate { p.parse_crate_mod([]) }
+fn parse_ty(p: parser) -> @ast::ty { p.parse_ty(false) }
+fn parse_stmt(p: parser) -> @ast::stmt { p.parse_stmt([]) }
+fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
+fn parse_pat(p: parser) -> @ast::pat { p.parse_pat() }
 
 fn parse_item(p: parser) -> @ast::item {
-    alt parser::parse_item(p, [], ast::public) {
+    alt p.parse_item([], ast::public) {
       some(item) { item }
       none       { fail "parse_item: parsing an item failed"; }
     }
