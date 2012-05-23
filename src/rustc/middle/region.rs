@@ -137,7 +137,7 @@ import middle::ty;
 import syntax::{ast, visit};
 import syntax::codemap::span;
 import syntax::print::pprust;
-import util::common::new_def_hash;
+import syntax::ast_util::new_def_hash;
 
 import std::list;
 import std::list::list;

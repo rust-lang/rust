@@ -5,7 +5,6 @@ import std::map::hashmap;
 import std::list;
 import syntax::ast;
 import syntax::ast_util;
-import rustc::util::common;
 import syntax::ast_map;
 import syntax::visit;
 import syntax::codemap;
@@ -69,7 +68,7 @@ fn from_assoc_list<K:copy, V:copy>(
 fn from_def_assoc_list<V:copy>(
     list: [(ast::def_id, V)]
 ) -> map::hashmap<ast::def_id, V> {
-    from_assoc_list(list, bind common::new_def_hash())
+    from_assoc_list(list, bind ast_util::new_def_hash())
 }
 
 fn from_str_assoc_list<V:copy>(
@@ -80,7 +79,7 @@ fn from_str_assoc_list<V:copy>(
 
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
     let assoc_list = astsrv::exec(srv) {|ctxt|
-        let def_set = common::new_def_hash();
+        let def_set = ast_util::new_def_hash();
         for ctxt.exp_map.each {|_id, defs|
             for defs.each {|def|
                 if def.reexp {
@@ -120,7 +119,7 @@ fn build_reexport_def_map(
     let ctxt = {
         srv: srv,
         def_set: def_set,
-        def_map: common::new_def_hash()
+        def_map: ast_util::new_def_hash()
     };
 
     // FIXME: Do a parallel fold
@@ -289,7 +288,7 @@ fn for_each_reexported_impl(
 }
 
 fn all_impls(m: ast::_mod) -> map::set<ast::def_id> {
-    let all_impls = common::new_def_hash();
+    let all_impls = ast_util::new_def_hash();
     for m.items.each {|item|
         alt item.node {
           ast::item_impl(_, _, _, _, _) {

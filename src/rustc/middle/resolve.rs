@@ -1,7 +1,7 @@
 import syntax::{ast, ast_util, codemap, ast_map};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::{local_def, def_id_of_def,
+import syntax::ast_util::{local_def, def_id_of_def, new_def_hash,
                           class_item_ident, path_to_ident};
 import pat_util::*;
 
@@ -73,10 +73,10 @@ type ext_hash = hashmap<{did: def_id, ident: str, ns: namespace}, def>;
 fn new_ext_hash() -> ext_hash {
     type key = {did: def_id, ident: str, ns: namespace};
     fn hash(v: key) -> uint {
-        str::hash(v.ident) + util::common::hash_def(v.did) + v.ns as uint
+        str::hash(v.ident) + ast_util::hash_def(v.did) + v.ns as uint
     }
     fn eq(v1: key, v2: key) -> bool {
-        ret util::common::def_eq(v1.did, v2.did) &&
+        ret ast_util::def_eq(v1.did, v2.did) &&
             str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
     }
     std::map::hashmap(hash, {|a, b| a == b})

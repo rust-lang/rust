@@ -3,7 +3,6 @@ import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::visit;
-import util::common::new_def_hash;
 import syntax::codemap::span;
 import syntax::ast_util::respan;
 import driver::session::session;

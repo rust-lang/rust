@@ -11,7 +11,7 @@ import back::abi;
 import middle::ty;
 import middle::ty::field;
 import syntax::ast;
-import syntax::ast_util::dummy_sp;
+import syntax::ast_util::{dummy_sp, new_def_hash};
 import syntax::util::interner;
 import util::common;
 import syntax::codemap::span;
@@ -273,7 +273,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
 
     ret {mut next_tag_id: 0u16,
          pad: 0u16,
-         tag_id_to_index: common::new_def_hash(),
+         tag_id_to_index: new_def_hash(),
          tag_order: dvec(),
          resources: interner::mk(hash_res_info, {|a, b| a == b}),
          llshapetablesty: llshapetablesty,

@@ -25,23 +25,6 @@ fn indenter() -> _indenter {
 
 type flag = hashmap<str, ()>;
 
-fn def_eq(a: ast::def_id, b: ast::def_id) -> bool {
-    ret a.crate == b.crate && a.node == b.node;
-}
-
-fn hash_def(d: ast::def_id) -> uint {
-    let mut h = 5381u;
-    h = (h << 5u) + h ^ (d.crate as uint);
-    h = (h << 5u) + h ^ (d.node as uint);
-    ret h;
-}
-
-fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
-    let hasher: std::map::hashfn<ast::def_id> = hash_def;
-    let eqer: std::map::eqfn<ast::def_id> = def_eq;
-    ret std::map::hashmap::<ast::def_id, V>(hasher, eqer);
-}
-
 fn field_expr(f: ast::field) -> @ast::expr { ret f.node.expr; }
 
 fn field_exprs(fields: [ast::field]) -> [@ast::expr] {

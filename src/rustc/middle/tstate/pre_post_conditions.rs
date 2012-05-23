@@ -9,7 +9,7 @@ import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::visit;
-import util::common::{new_def_hash, log_expr, field_exprs,
+import util::common::{log_expr, field_exprs,
                       has_nonlocal_exits, log_stmt};
 import syntax::codemap::span;
 import driver::session::session;

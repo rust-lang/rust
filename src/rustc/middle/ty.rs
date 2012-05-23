@@ -6,7 +6,8 @@ import session::session;
 import syntax::{ast, ast_map};
 import syntax::ast::*;
 import syntax::ast_util;
-import syntax::ast_util::{is_local, local_def, split_class_items};
+import syntax::ast_util::{is_local, local_def, split_class_items,
+                          new_def_hash};
 import syntax::codemap::span;
 import metadata::csearch;
 import util::common::*;
@@ -478,7 +479,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       items: amap,
       intrinsic_ifaces: map::str_hash(),
       freevars: freevars,
-      tcache: new_def_hash(),
+      tcache: ast_util::new_def_hash(),
       rcache: mk_rcache(),
       short_names_cache: new_ty_hash(),
       needs_drop_cache: new_ty_hash(),
@@ -2524,7 +2525,7 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
     let mut i = 0u;
     while i < vec::len::<variant_info>(*variants) {
         let variant = variants[i];
-        if def_eq(variant.id, variant_id) { ret variant; }
+        if ast_util::def_eq(variant.id, variant_id) { ret variant; }
         i += 1u;
     }
     cx.sess.bug("enum_variant_with_id(): no variant exists with that ID");
