@@ -6,6 +6,7 @@ import build::*;
 import driver::session::session;
 import syntax::{ast, ast_map};
 import ast_map::{path, path_mod, path_name, node_id_to_str};
+import driver::session::expect;
 import syntax::ast_util::{local_def, split_class_items};
 import metadata::csearch;
 import back::{link, abi};
@@ -247,7 +248,10 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
                     vtables: typeck::vtable_res) -> ValueRef {
     let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
-    let ifce_id = ty::ty_to_def_id(option::get(ty::impl_iface(tcx, impl_id)));
+    let ifce_id = expect(ccx.sess,
+                         ty::ty_to_def_id(option::get(ty::impl_iface(tcx,
+                                                             impl_id))),
+                         {|| "make_impl_vtable: non-iface-type implemented"});
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
     make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id)) {|im|
         let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));

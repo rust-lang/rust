@@ -698,6 +698,38 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
+fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
+                    class_did: ast::def_id,
+                    substs: ty::substs) -> block {
+  let drop_flag = GEPi(bcx, v0, [0u, 0u]);
+  with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|cx|
+    let mut bcx = cx;
+      // We have to cast v0
+     let classptr = GEPi(bcx, v0, [0u, 1u]);
+     // Find and call the actual destructor
+     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, substs.tps);
+     // The second argument is the "self" argument for drop
+     let params = lib::llvm::fn_ty_param_tys
+         (llvm::LLVMGetElementType
+          (llvm::LLVMTypeOf(dtor_addr)));
+     // Class dtors have no explicit args, so the params should just consist
+     // of the output pointer and the environment (self)
+     assert(params.len() == 2u);
+     let self_arg = PointerCast(bcx, v0, params[1u]);
+     let args = [bcx.fcx.llretptr, self_arg];
+     Call(bcx, dtor_addr, args);
+     // Drop the fields
+     for vec::eachi(ty::class_items_as_fields(bcx.tcx(), class_did, substs))
+     {|i, fld|
+        let llfld_a = GEPi(bcx, classptr, [0u, i]);
+        bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
+     }
+     Store(bcx, C_u8(0u), drop_flag);
+     bcx
+  }
+}
+
+
 fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = bcx.insn_ctxt("make_drop_glue");
@@ -718,37 +750,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         let tcx = bcx.tcx();
         alt ty::ty_dtor(tcx, did) {
           some(dtor) {
-            let drop_flag = GEPi(bcx, v0, [0u, 0u]);
-            with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|cx|
-               let mut bcx = cx;
-                // we have to cast v0
-               let classptr = GEPi(bcx, v0, [0u, 1u]);
-                // Find and call the actual destructor
-                let dtor_addr = get_res_dtor(bcx.ccx(), dtor, substs.tps);
-                // The second argument is the "self" argument for drop
-                let params = lib::llvm::fn_ty_param_tys
-                   (llvm::LLVMGetElementType
-                    (llvm::LLVMTypeOf(dtor_addr)));
-                let self_arg = PointerCast(bcx, v0, params[1u]);
-                let args = [bcx.fcx.llretptr, self_arg];
-                let val_llty = lib::llvm::fn_ty_param_tys
-                    (llvm::LLVMGetElementType
-                     (llvm::LLVMTypeOf(dtor_addr)))[args.len()];
-                let val_cast = BitCast(bcx, classptr, val_llty);
-                #debug("fn_ty: %s", ty_str(bcx.ccx().tn,
-                                           (llvm::LLVMGetElementType
-                                            (llvm::LLVMTypeOf(dtor_addr)))));
-                #debug("self's ty: %s", val_str(bcx.ccx().tn, v0));
-                Call(bcx, dtor_addr, args + [val_cast]);
-                // Drop the fields
-                for vec::eachi(ty::class_items_as_fields(tcx, did, substs))
-                     {|i, fld|
-                         let llfld_a = GEPi(bcx, classptr, [0u, i]);
-                         bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
-                     }
-                Store(bcx, C_u8(0u), drop_flag);
-                bcx
-             }
+            trans_class_drop(bcx, v0, dtor, did, substs)
           }
           none {
             // No dtor? Just the default case
@@ -2063,8 +2065,21 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         ret {val: get_item_val(ccx, fn_id.node),
              must_cast: true};
       }
-      ast_map::node_ctor(nm, _, _, pt) { (pt, nm, ast_util::dummy_sp()) }
-      _ { fail "unexpected node type"; }
+      ast_map::node_ctor(nm, _, ct, pt) { (pt, nm, alt ct {
+                  ast_map::res_ctor(_, _, sp) { sp }
+                  ast_map::class_ctor(ct_, _) { ct_.span }}) }
+      ast_map::node_dtor(_, dtor, _, pt) {(pt, "drop", dtor.span)}
+      ast_map::node_expr(*) { ccx.tcx.sess.bug("Can't monomorphize an expr") }
+      ast_map::node_export(*) {
+          ccx.tcx.sess.bug("Can't monomorphize an export")
+      }
+      ast_map::node_arg(*) { ccx.tcx.sess.bug("Can't monomorphize an arg") }
+      ast_map::node_block(*) {
+          ccx.tcx.sess.bug("Can't monomorphize a block")
+      }
+      ast_map::node_local(*) {
+          ccx.tcx.sess.bug("Can't monomorphize a local")
+      }
     };
     let mono_ty = ty::subst_tps(ccx.tcx, substs, item_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
@@ -2081,55 +2096,97 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
 
     let pt = *pt + [path_name(ccx.names(name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
-    let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, llfty);
-    ccx.monomorphized.insert(hash_id, lldecl);
+
+    let mk_lldecl = {||
+        let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, llfty);
+        ccx.monomorphized.insert(hash_id, lldecl);
+        lldecl
+    };
 
     let psubsts = some({tys: substs, vtables: vtables, bounds: tpt.bounds});
-    alt check map_node {
+    let lldecl = alt map_node {
       ast_map::node_item(i@@{node: ast::item_fn(decl, _, body), _}, _) {
-        set_inline_hint_if_appr(i.attrs, lldecl);
-        trans_fn(ccx, pt, decl, body, lldecl, no_self, psubsts, fn_id.node);
+        let d = mk_lldecl();
+        set_inline_hint_if_appr(i.attrs, d);
+        trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node);
+        d
       }
       ast_map::node_item(
-          @{node: ast::item_res(d, _, body, d_id, _, _), _}, _) {
-        trans_fn(ccx, pt, d, body, lldecl, no_self, psubsts, d_id);
+          @{node: ast::item_res(dt, _, body, d_id, _, _), _}, _) {
+          let d = mk_lldecl();
+          trans_fn(ccx, pt, dt, body, d, no_self, psubsts, d_id);
+          d
+      }
+      ast_map::node_item(*) {
+          ccx.tcx.sess.bug("Can't monomorphize this kind of item")
       }
       ast_map::node_native_item(i, _, _) {
-        native::trans_intrinsic(ccx, lldecl, i, pt, option::get(psubsts),
+          let d = mk_lldecl();
+          native::trans_intrinsic(ccx, d, i, pt, option::get(psubsts),
                                 ref_id);
+          d
       }
       ast_map::node_variant(v, enum_item, _) {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
         let this_tv = option::get(vec::find(*tvs, {|tv|
             tv.id.node == fn_id.node}));
-        set_inline_hint(lldecl);
+        let d = mk_lldecl();
+        set_inline_hint(d);
         trans_enum_variant(ccx, enum_item.id, v, this_tv.disr_val,
-                           (*tvs).len() == 1u, psubsts, lldecl);
+                           (*tvs).len() == 1u, psubsts, d);
+        d
       }
       ast_map::node_method(mth, impl_def_id, _) {
-        set_inline_hint_if_appr(mth.attrs, lldecl);
+        let d = mk_lldecl();
+        set_inline_hint_if_appr(mth.attrs, d);
         let selfty = ty::node_id_to_type(ccx.tcx, mth.self_id);
         let selfty = ty::subst_tps(ccx.tcx, substs, selfty);
-        trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
+        trans_fn(ccx, pt, mth.decl, mth.body, d,
                  impl_self(selfty), psubsts, fn_id.node);
+        d
       }
       ast_map::node_ctor(nm, tps, ct, _) {
+        let d = mk_lldecl();
         alt ct {
           ast_map::res_ctor(decl,_, _) {
-            set_inline_hint(lldecl);
-            trans_res_ctor(ccx, pt, decl, fn_id.node, psubsts, lldecl);
+            set_inline_hint(d);
+            trans_res_ctor(ccx, pt, decl, fn_id.node, psubsts, d);
+            d
           }
           ast_map::class_ctor(ctor, parent_id) {
             // ctors don't have attrs, at least not right now
             let tp_tys: [ty::t] = ty::ty_params_to_tys(ccx.tcx, tps);
-            trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, lldecl,
+            trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, d,
                  option::get_default(psubsts,
                    {tys:tp_tys, vtables: none, bounds: @[]}),
               fn_id.node, parent_id, ctor.span);
+            d
           }
         }
       }
-    }
+      ast_map::node_dtor(_, dtor, _, pt) {
+          let parent_id = alt ty::ty_to_def_id(ty::node_id_to_type(ccx.tcx,
+                                     dtor.node.self_id)) {
+                  some(did) { did }
+                  none      { ccx.sess.span_bug(dtor.span, "Bad self ty in \
+                               dtor"); }
+          };
+          trans_class_dtor(ccx, *pt, dtor.node.body,
+                           dtor.node.id, psubsts, some(hash_id), parent_id, s)
+      }
+      // Ugh -- but this ensures any new variants won't be forgotten
+      ast_map::node_expr(*) { ccx.tcx.sess.bug("Can't monomorphize an expr") }
+      ast_map::node_export(*) {
+          ccx.tcx.sess.bug("Can't monomorphize an export")
+      }
+      ast_map::node_arg(*) { ccx.tcx.sess.bug("Can't monomorphize an arg") }
+      ast_map::node_block(*) {
+          ccx.tcx.sess.bug("Can't monomorphize a block")
+      }
+      ast_map::node_local(*) {
+          ccx.tcx.sess.bug("Can't monomorphize a local")
+      }
+    };
     ccx.monomorphizing.insert(fn_id, depth);
     {val: lldecl, must_cast: must_cast}
 }
@@ -2283,8 +2340,7 @@ fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
 }
 
 fn cast_self(cx: block, slf: val_self_pair) -> ValueRef {
-    let rslt = PointerCast(cx, slf.v, T_ptr(type_of(cx.ccx(), slf.t)));
-    rslt
+    PointerCast(cx, slf.v, T_ptr(type_of(cx.ccx(), slf.t)))
 }
 
 fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
@@ -2310,14 +2366,25 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         assert (cx.fcx.lllocals.contains_key(nid));
         ret take_local(cx.fcx.lllocals, nid);
       }
-      ast::def_self(_) {
+      ast::def_self(sid) {
         let slf = alt copy cx.fcx.llself {
-             some(s) { s }
-             none { cx.sess().bug("trans_local_var: reference to self \
+          some(s) {
+            alt option::map(ty::ty_to_def_id(s.t)) {|did|
+                     ty::ty_dtor(cx.tcx(), did)} {
+              some(some(_)) {
+                  /* self is a class with a dtor, which means we
+                     have to select out the object itself
+                     (If any other code does the same thing, that's
+                     a bug */
+                GEPi(cx, cast_self(cx, s), [0u, 1u])
+            }
+            _ { cast_self(cx, s) }
+           }
+          }
+          none { cx.sess().bug("trans_local_var: reference to self \
                                  out of context"); }
         };
-        let ptr = cast_self(cx, slf);
-        ret {val: ptr, kind: owned};
+        ret {val: slf, kind: owned};
       }
       _ {
         cx.sess().unimpl(#fmt("unsupported def type in trans_local_def: %?",
@@ -2388,13 +2455,9 @@ fn trans_rec_field(bcx: block, base: @ast::expr,
 
 fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
                          field: ast::ident, sp: span) -> lval_result {
-    let mut is_class_with_dtor = false;
     let fields = alt ty::get(ty).struct {
        ty::ty_rec(fs) { fs }
        ty::ty_class(did, substs) {
-         if option::is_some(ty::ty_dtor(bcx.tcx(), did)) {
-            is_class_with_dtor = true;
-         }
          ty::class_items_as_fields(bcx.tcx(), did, substs)
        }
        // Constraint?
@@ -2402,10 +2465,8 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
                  base expr has non-record type"); }
     };
     let ix = field_idx_strict(bcx.tcx(), sp, field, fields);
-    let val = GEPi(bcx, if is_class_with_dtor {
-            GEPi(bcx, val, [0u, 1u])
-        }
-        else { val }, [0u, ix]);
+    let val = GEPi(bcx, val, [0u, ix]);
+
     ret {bcx: bcx, val: val, kind: owned};
 }
 
@@ -4726,12 +4787,39 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
 }
 
 fn trans_class_dtor(ccx: @crate_ctxt, path: path,
-                    body: ast::blk, lldtor_decl: ValueRef,
-                    dtor_id: ast::node_id,
-                    parent_id: ast::def_id) {
-  let class_ty = ty::lookup_item_type(ccx.tcx, parent_id).ty;
+    body: ast::blk,
+    dtor_id: ast::node_id, substs: option<param_substs>,
+                    hash_id: option<mono_id>, parent_id: ast::def_id,
+                    // mangled exported name for dtor
+                    s: str) -> ValueRef {
+  let tcx = ccx.tcx;
+  /* Look up the parent class's def_id */
+  let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
+  /* Substitute in the class type if necessary */
+  option::iter(substs) {|ss|
+    class_ty = ty::subst_tps(tcx, ss.tys, class_ty);
+  }
+
+  /* The dtor takes a (null) output pointer, and a self argument,
+     and returns () */
+  let lldty = T_fn([T_ptr(type_of(ccx, ty::mk_nil(tcx))),
+                    T_ptr(type_of(ccx, class_ty))],
+                   llvm::LLVMVoidType());
+  /* Register the dtor as a function. It has external linkage */
+  let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
+  lib::llvm::SetLinkage(lldecl, lib::llvm::ExternalLinkage);
+
+  /* If we're monomorphizing, register the monomorphized decl
+     for the dtor */
+  option::iter(hash_id) {|h_id|
+    ccx.monomorphized.insert(h_id, lldecl);
+  }
+  /* Register the symbol for the dtor, and generate the code for its
+     body */
+  ccx.item_symbols.insert(dtor_id, s);
   trans_fn(ccx, path, ast_util::dtor_dec(),
-           body, lldtor_decl, impl_self(class_ty), none, dtor_id);
+           body, lldecl, impl_self(class_ty), substs, dtor_id);
+  lldecl
 }
 
 fn trans_item(ccx: @crate_ctxt, item: ast::item) {
@@ -4811,9 +4899,11 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                            get_item_val(ccx, ctor.node.id), psubsts,
                            ctor.node.id, local_def(item.id), ctor.span);
           option::iter(m_dtor) {|dtor|
-            trans_class_dtor(ccx, *path, dtor.node.body,
-                           get_item_val(ccx, dtor.node.id),
-                           dtor.node.id, local_def(item.id));
+             let s = mangle_exported_name(ccx, *path +
+                                         [path_name(ccx.names("dtor"))],
+                                 ty::node_id_to_type(ccx.tcx, dtor.node.id));
+             trans_class_dtor(ccx, *path, dtor.node.body,
+               dtor.node.id, none, none, local_def(item.id), s);
           };
         }
         // If there are ty params, the ctor will get monomorphized
@@ -4976,6 +5066,7 @@ fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
 
 fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
     #debug("get_item_val: %d", id);
+    let tcx = ccx.tcx;
     alt ccx.item_vals.find(id) {
       some(v) { v }
       none {
@@ -5041,9 +5132,27 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             }
           }
           ast_map::node_dtor(tps, dt, parent_id, pt) {
-            let my_path = *pt + [path_name("dtor")];
-            let t = ty::node_id_to_type(ccx.tcx, dt.node.id);
-            register_fn_full(ccx, dt.span, my_path, dt.node.id, t)
+            /*
+                Don't just call register_fn, since we don't want to add
+                the implicit self argument automatically (we want to make sure
+                it has the right type)
+            */
+            // Want parent_id and not id, because id is the dtor's type
+            let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
+            // This code shouldn't be reached if the class is generic
+            assert !ty::type_has_params(class_ty);
+            let lldty = T_fn([T_ptr(type_of(ccx, ty::mk_nil(tcx))),
+                    T_ptr(type_of(ccx, class_ty))],
+                                   llvm::LLVMVoidType());
+            /* The symbol for the dtor should have already been registered */
+            let s: str = alt ccx.item_symbols.find(id) {
+                    some(s) { s }
+                    none { ccx.sess.bug("in get_item_val, dtor is unbound"); }
+            };
+            /* Make the declaration for the dtor */
+            let llfn = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
+            lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
+            llfn
           }
 
           ast_map::node_variant(v, enm, pth) {

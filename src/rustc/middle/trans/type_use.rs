@@ -90,6 +90,10 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_ctor(_, _, ast_map::class_ctor(ctor, _), _){
         handle_body(cx, ctor.node.body);
       }
+      ast_map::node_dtor(_, dtor, _, _){
+        handle_body(cx, dtor.node.body);
+      }
+
     }
     let uses = vec::from_mut(cx.uses);
     ccx.type_use_cache.insert(fn_id, uses);

@@ -423,6 +423,12 @@ impl bcx_cxs for block {
     fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
     fn sess() -> session { self.fcx.ccx.sess }
 
+    fn val_str(val: ValueRef) -> str {
+        val_str(self.ccx().tn, val)
+    }
+    fn ty_to_str(t: ty::t) -> str {
+        ty_to_str(self.tcx(), t)
+    }
     fn to_str() -> str {
         alt self.node_info {
           some(node_info) {

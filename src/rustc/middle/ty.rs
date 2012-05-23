@@ -2375,11 +2375,12 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
     }
 }
 
-fn ty_to_def_id(ty: t) -> ast::def_id {
-    alt check get(ty).struct {
+fn ty_to_def_id(ty: t) -> option<ast::def_id> {
+    alt get(ty).struct {
       ty_iface(id, _) | ty_class(id, _) | ty_res(id, _, _) | ty_enum(id, _) {
-        id
+        some(id)
       }
+      _ { none }
     }
 }
 
@@ -2413,7 +2414,7 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> option<def_id> {
          some(ast_map::node_item(@{node: ast::item_class(_, _, _, _,
                                      some(dtor), _), _}, _))
              { some(local_def(dtor.node.id))  }
-          _  { none }
+         _  { none }
        }
     }
     else {

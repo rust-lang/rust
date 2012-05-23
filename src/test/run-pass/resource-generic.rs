@@ -1,11 +1,15 @@
-resource finish<T>(arg: {val: T, fin: native fn(T)}) {
-    arg.fin(arg.val);
+class finish<T: copy> {
+  let arg: {val: T, fin: native fn(T)};
+  new(arg: {val: T, fin: native fn(T)}) {
+    self.arg = arg;
+  }
+  drop { self.arg.fin(self.arg.val); }
 }
 
 fn main() {
     let box = @mut 10;
     fn dec_box(&&i: @mut int) { *i -= 1; }
 
-    { let i <- finish({val: box, fin: dec_box}); }
+    { let _i <- finish({val: box, fin: dec_box}); }
     assert (*box == 9);
 }
