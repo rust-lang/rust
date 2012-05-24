@@ -47,7 +47,9 @@ impl methods for lookup {
         let bounds = tcx.ty_param_bounds.get(did.node);
         for vec::each(*bounds) {|bound|
             let (iid, bound_substs) = alt bound {
-              ty::bound_copy | ty::bound_send { cont; /* ok */ }
+              ty::bound_copy | ty::bound_send | ty::bound_const {
+                cont; /* ok */
+              }
               ty::bound_iface(bound_t) {
                 alt check ty::get(bound_t).struct {
                   ty::ty_iface(i, substs) { (i, substs) }

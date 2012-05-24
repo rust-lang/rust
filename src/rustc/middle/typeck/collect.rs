@@ -657,6 +657,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
             alt b {
               ast::bound_send { [ty::bound_send] }
               ast::bound_copy { [ty::bound_copy] }
+              ast::bound_const { [ty::bound_const] }
               ast::bound_iface(t) {
                 let ity = ast_ty_to_ty(ccx, empty_rscope, t);
                 alt ty::get(ity).struct {

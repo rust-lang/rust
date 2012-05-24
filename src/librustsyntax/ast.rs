@@ -59,6 +59,7 @@ const crate_node_id: node_id = 0;
 enum ty_param_bound {
     bound_copy,
     bound_send,
+    bound_const,
     bound_iface(@ty),
 }
 

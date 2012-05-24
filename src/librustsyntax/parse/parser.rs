@@ -1676,8 +1676,11 @@ class parser {
         let ident = self.parse_ident();
         if self.eat(token::COLON) {
             while self.token != token::COMMA && self.token != token::GT {
-                if self.eat_keyword("send") { bounds += [bound_send]; }
-                else if self.eat_keyword("copy") { bounds += [bound_copy]; }
+                if self.eat_keyword(self, "send") { bounds += [bound_send]; }
+                else if self.eat_keyword(self, "copy")
+                    { bounds += [bound_copy]; }
+                else if self.eat_keyword(self, "const")
+                    { bounds += [bound_const]; }
                 else { bounds += [bound_iface(self.parse_ty(false))]; }
             }
         }

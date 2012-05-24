@@ -392,6 +392,7 @@ fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {
         alt bound {
           ty::bound_send { w.write_char('S'); }
           ty::bound_copy { w.write_char('C'); }
+          ty::bound_const { w.write_char('K'); }
           ty::bound_iface(tp) {
             w.write_char('I');
             enc_ty(w, cx, tp);

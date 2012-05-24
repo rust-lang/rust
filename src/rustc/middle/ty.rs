@@ -401,6 +401,7 @@ enum type_err {
 enum param_bound {
     bound_copy,
     bound_send,
+    bound_const,
     bound_iface(t),
 }
 

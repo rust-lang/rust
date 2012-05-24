@@ -501,6 +501,7 @@ fn parse_bounds(st: @pstate, conv: conv_did) -> @[ty::param_bound] {
         bounds += [alt check next(st) {
           'S' { ty::bound_send }
           'C' { ty::bound_copy }
+          'K' { ty::bound_const }
           'I' { ty::bound_iface(parse_ty(st, conv)) }
           '.' { break; }
         }];
