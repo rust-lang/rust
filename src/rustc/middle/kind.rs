@@ -39,7 +39,7 @@ import freevars::freevar_entry;
 
 fn kind_to_str(k: kind) -> str {
     let mut kinds = [];
-    if ty::kind_lteq(k, kind_const()) {
+    if ty::kind_lteq(kind_const(), k) {
         kinds += ["const"];
     }
     if ty::kind_can_be_copied(k) {
