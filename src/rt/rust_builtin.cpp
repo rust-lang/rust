@@ -95,10 +95,10 @@ rust_env_pairs() {
         ++envc;
     }
     c = ch;
-    rust_vec *v = (rust_vec *)
-        task->kernel->malloc(vec_size<rust_vec*>(envc),
+    rust_vec_box *v = (rust_vec_box *)
+        task->kernel->malloc(vec_size<rust_vec_box*>(envc),
                        "str vec interior");
-    v->fill = v->alloc = sizeof(rust_vec*) * envc;
+    v->body.fill = v->body.alloc = sizeof(rust_vec*) * envc;
     for (size_t i = 0; i < envc; ++i) {
         size_t n = strlen(c);
         rust_str *str = make_str(task->kernel, c, n, "str");
