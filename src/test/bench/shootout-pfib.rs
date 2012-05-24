@@ -78,36 +78,37 @@ fn stress(num_tasks: int) {
     for results.each {|r| future::get(r); }
 }
 
-fn main(argv: [str]) {
-    if vec::len(argv) == 1u {
-        assert (fib(8) == 21);
-        log(debug, fib(8));
+fn main(args: [str]) {
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "20"]
+    } else if args.len() <= 1u {
+        ["", "8"]
     } else {
-        // Interactive mode! Wooo!!!!
-        let opts = parse_opts(argv);
+        args
+    };
 
+    let opts = parse_opts(args);
 
-        if opts.stress {
-            stress(2);
-        } else {
-            let max = option::get(uint::parse_buf(str::bytes(argv[1]),
-                                                  10u)) as int;
+    if opts.stress {
+        stress(2);
+    } else {
+        let max = option::get(uint::parse_buf(str::bytes(args[1]),
+                                              10u)) as int;
 
-            let num_trials = 10;
+        let num_trials = 10;
 
-            let out = io::stdout();
+        let out = io::stdout();
 
-            range(1, max + 1) {|n|
-                range(0, num_trials) {|i|
-                    let start = time::precise_time_ns();
-                    let fibn = fib(n);
-                    let stop = time::precise_time_ns();
+        range(1, max + 1) {|n|
+            range(0, num_trials) {|i|
+                let start = time::precise_time_ns();
+                let fibn = fib(n);
+                let stop = time::precise_time_ns();
 
-                    let elapsed = stop - start;
+                let elapsed = stop - start;
 
-                    out.write_line(#fmt["%d\t%d\t%s", n, fibn,
-                                        u64::str(elapsed)]);
-                }
+                out.write_line(#fmt["%d\t%d\t%s", n, fibn,
+                                    u64::str(elapsed)]);
             }
         }
     }

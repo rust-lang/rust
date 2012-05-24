@@ -9,10 +9,13 @@ fn fib(n: int) -> int {
 }
 
 fn main(args: [str]) {
-    let n = if vec::len(args) == 2u {
-        option::get(int::from_str(args[1]))
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "40"]
+    } else if args.len() <= 1u {
+        ["", "30"]
     } else {
-        30
+        args
     };
+    let n = int::from_str(args[1]).get();
     io::println(#fmt("%d\n", fib(n)));
 }

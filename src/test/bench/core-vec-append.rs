@@ -21,7 +21,13 @@ fn collect_dvec(num: uint) -> [mut uint] {
 }
 
 fn main(args: [str]) {
-    let args = if vec::len(args) <= 1u {["", "100000"]} else {args};
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "10000000"]
+    } else if args.len() <= 1u {
+        ["", "100000"]
+    } else {
+        args
+    };
     let max = uint::from_str(args[1]).get();
     let start = std::time::precise_time_s();
     let raw_v = collect_raw(max);

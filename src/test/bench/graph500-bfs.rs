@@ -404,9 +404,17 @@ fn validate(edges: [(node_id, node_id)],
     true
 }
 
-fn main() {
-    let scale = 10u;
-    let num_keys = 16u;
+fn main(args: [str]) {
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "12", "48"]
+    } else if args.len() <= 1u {
+        ["", "10", "16"]
+    } else {
+        args
+    };
+
+    let scale = uint::from_str(args[1]).get();
+    let num_keys = uint::from_str(args[2]).get();
     let do_validate = false;
     let do_sequential = true;
 

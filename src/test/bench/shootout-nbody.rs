@@ -14,11 +14,14 @@ native mod libc {
 }
 
 fn main(args: [str]) {
-    let n = if vec::len(args) == 2u {
-        option::get(int::from_str(args[1]))
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "4000000"]
+    } else if args.len() <= 1u {
+        ["", "100000"]
     } else {
-        100000
+        args
     };
+    let n = int::from_str(args[1]).get();
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
     io::println(#fmt("%f", NBodySystem::energy(bodies)));
     let mut i: int = 0;

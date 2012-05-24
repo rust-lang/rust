@@ -58,6 +58,14 @@ else
   CFG_RUN_CTEST=$(call CFG_RUN,$(TLIB$(1)_T_$(3)_H_$(3)),$(2))
 endif
 
+# If we're running perf then set this environment variable
+# to put the benchmarks into 'hard mode'
+ifeq ($(MAKECMDGOALS),perf)
+  RUST_BENCH=1
+  export RUST_BENCH
+endif
+
+
 ######################################################################
 # Main test targets
 ######################################################################

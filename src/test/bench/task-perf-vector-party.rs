@@ -11,7 +11,13 @@ fn f(&&n: uint) {
 }
 
 fn main(args: [str]) {
-    let n = if vec::len(args) < 2u { 100u }
-            else { option::get(uint::from_str(args[1])) };
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "50000"]
+    } else if args.len() <= 1u {
+        ["", "100"]
+    } else {
+        args
+    };
+    let n = uint::from_str(args[1]).get();
     uint::range(0u, 100u) {|i| task::spawn {|| f(n); };}
 }

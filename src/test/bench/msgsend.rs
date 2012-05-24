@@ -59,8 +59,15 @@ fn run(args: [str]) {
 }
 
 fn main(args: [str]) {
-    let args1 = if vec::len(args) <= 1u { ["", "10000", "4"] } else { args };
-    #debug("%?", args1);
-    run(args1);
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "1000000", "10000"]
+    } else if args.len() <= 1u {
+        ["", "10000", "4"]
+    } else {
+        args
+    };        
+
+    #debug("%?", args);
+    run(args);
 }
 

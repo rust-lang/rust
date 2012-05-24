@@ -41,12 +41,15 @@ fn eval_AtA_times_u(u: [const float], AtAu: [mut float]) {
 }
 
 fn main(args: [str]) {
-
-    let N = if vec::len(args) == 2u {
-        option::get(uint::from_str(args[1]))
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "2000"]
+    } else if args.len() <= 1u {
+        ["", "1000"]
     } else {
-        1000u
+        args
     };
+
+    let N = uint::from_str(args[1]).get();
 
     let u = vec::to_mut(vec::from_elem(N, 1.0));
     let v = vec::to_mut(vec::from_elem(N, 0.0));

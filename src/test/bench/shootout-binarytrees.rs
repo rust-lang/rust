@@ -23,11 +23,15 @@ fn bottom_up_tree(arena: &a.arena::arena, item: int, depth: int) -> &a.tree {
 }
 
 fn main(args: [str]) {
-    let n = if vec::len(args) == 2u {
-        option::get(int::from_str(args[1]))
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "15"]
+    } else if args.len() <= 1u {
+        ["", "8"]
     } else {
-        8
+        args
     };
+
+    let n = int::from_str(args[1]).get();
     let min_depth = 4;
     let mut max_depth;
     if min_depth + 2 > n {

@@ -46,11 +46,15 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
 }
 
 fn main(args: [str]) {
-    let children = if vec::len(args) == 2u {
-        option::get(uint::from_str(args[1]))
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "100000"]
+    } else if args.len() <= 1u {
+        ["", "100"]
     } else {
-        100u
+        args
     };
+
+    let children = uint::from_str(args[1]).get();
     let port = comm::port();
     let chan = comm::chan(port);
     task::spawn {||

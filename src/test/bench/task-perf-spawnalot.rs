@@ -9,10 +9,14 @@ fn f(&&n: uint) {
 fn g() { }
 
 fn main(args: [str]) {
-    let n =
-        if vec::len(args) < 2u {
-            10u
-        } else { option::get(uint::parse_buf(str::bytes(args[1]), 10u)) };
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "400"]
+    } else if args.len() <= 1u {
+        ["", "10"]
+    } else {
+        args
+    };
+    let n = uint::from_str(args[1]).get();
     let mut i = 0u;
     while i < n { task::spawn {|| f(n); }; i += 1u; }
 }

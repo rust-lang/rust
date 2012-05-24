@@ -73,7 +73,17 @@ fn make_repeat_fasta(id: str, desc: str, s: str, n: int) unsafe {
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 
-fn main() {
+fn main(args: [str]) {
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ["", "300000"]
+    } else if args.len() <= 1u {
+        ["", "1000"]
+    } else {
+        args
+    };
+
+    let n = int::from_str(args[1]).get();
+
     let iub: [aminoacids] =
         make_cumulative([acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
                          acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
@@ -91,7 +101,6 @@ fn main() {
             "GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG" +
             "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC" +
             "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
-    let n: int = 512;
     make_repeat_fasta("ONE", "Homo sapiens alu", alu, n * 2);
     make_random_fasta("TWO", "IUB ambiguity codes", iub, n * 3);
     make_random_fasta("THREE", "Homo sapiens frequency", homosapiens, n * 5);
