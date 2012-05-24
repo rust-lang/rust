@@ -102,7 +102,7 @@ mod chained {
             let mut e0 = e_root;
             let mut comp = 1u;   // for logging
             loop {
-                alt e0.next {
+                alt copy e0.next {
                   absent {
                     #debug("search_tbl: absent, comp %u, hash %u, idx %u",
                            comp, h, idx);
@@ -110,8 +110,7 @@ mod chained {
                   }
                   present(e1) {
                     comp += 1u;
-                    let e1_key = e1.key; // Satisfy alias checker.
-                    if e1.hash == h && self.eqer(e1_key, k) {
+                    if e1.hash == h && self.eqer(e1.key, k) {
                         #debug("search_tbl: present, comp %u, \
                                 hash %u, idx %u",
                                comp, h, idx);
@@ -126,15 +125,14 @@ mod chained {
 
         fn search_tbl(k: K, h: uint) -> search_result<K,V> {
             let idx = h % vec::len(self.chains);
-            alt self.chains[idx] {
+            alt copy self.chains[idx] {
               absent {
                 #debug("search_tbl: absent, comp %u, hash %u, idx %u",
                        0u, h, idx);
                 ret not_found;
               }
               present(e) {
-                // FIXME: This copy of the key is not good for perf
-                if e.hash == h && self.eqer(copy e.key, k) {
+                if e.hash == h && self.eqer(e.key, k) {
                     #debug("search_tbl: present, comp %u, hash %u, idx %u",
                            1u, h, idx);
                     ret found_first(idx, e);

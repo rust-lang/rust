@@ -10,66 +10,73 @@ import core::option::{some, none};
 import option = core::option;
 
 export treemap;
-export treemap;
 export insert;
 export find;
 export traverse;
 
-type treemap<K, V> = @mut tree_node<K, V>;
+type treemap<K, V> = @mut tree_edge<K, V>;
 
-enum tree_node<K, V> { empty, node(@K, @V, treemap<K, V>, treemap<K, V>) }
+type tree_edge<K, V> = option<@tree_node<K, V>>;
+
+enum tree_node<K, V> = {
+    key: K,
+    mut value: V,
+    mut left: tree_edge<K, V>,
+    mut right: tree_edge<K, V>
+};
 
 #[doc = "Create a treemap"]
-fn treemap<K, V>() -> treemap<K, V> { @mut empty }
+fn treemap<K, V>() -> treemap<K, V> { @mut none }
 
 #[doc = "Insert a value into the map"]
-fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) {
-    alt m {
-      @empty { *m = node(@k, @v, @mut empty, @mut empty); }
-      @node(@kk, _, _, _) {
-
-        // We have to name left and right individually, because
-        // otherwise the alias checker complains.
-        if k < kk {
-            alt check m { @node(_, _, left, _) { insert(left, k, v); } }
+fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
+    alt copy *m {
+      none {
+        *m = some(@tree_node({key: k,
+                              mut value: v,
+                              mut left: none,
+                              mut right: none}));
+        ret;
+      }
+      some(node) {
+        if k == node.key {
+            node.value = v;
+        } else if k < node.key {
+            insert(&mut node.left, k, v);
         } else {
-            alt check m {
-              @node(_, _, _, right) { insert(right, k, v); }
-            }
+            insert(&mut node.right, k, v);
+        }
+      }
+    };
+}
+
+#[doc = "Find a value based on the key"]
+fn find<K: copy, V: copy>(m: &const tree_edge<K, V>, k: K) -> option<V> {
+    alt copy *m {
+      none { none }
+
+      // TODO: was that an optimization?
+      some(node) {
+        if k == node.key {
+            some(node.value)
+        } else if k < node.key {
+            find(&const node.left, k)
+        } else {
+            find(&const node.right, k)
         }
       }
     }
 }
 
-#[doc = "Find a value based on the key"]
-fn find<K: copy, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
-    alt *m {
-      empty { none }
-      // TODO: was that an optimization?
-      node(@kk, @v, left, right) {
-        if k == kk {
-            some(v)
-        } else if k < kk {
-            find(left, k)
-        } else { find(right, k) }
-      }
-    }
-}
-
 #[doc = "Visit all pairs in the map in order."]
-fn traverse<K, V>(m: treemap<K, V>, f: fn(K, V)) {
-    alt *m {
-      empty { }
-      /*
-        Previously, this had what looked like redundant
-        matches to me, so I changed it. but that may be a
-        de-optimization -- tjc
-       */
-      node(k, v, left, right) {
-        let k1 = k, v1 = v;
-        traverse(left, f);
-        f(*k1, *v1);
-        traverse(right, f);
+fn traverse<K, V: copy>(m: &const tree_edge<K, V>, f: fn(K, V)) {
+    alt copy *m {
+      none { }
+      some(node) {
+        traverse(&const node.left, f);
+        // copy of value is req'd as f() requires an immutable ptr
+        f(node.key, copy node.value);
+        traverse(&const node.right, f);
       }
     }
 }
