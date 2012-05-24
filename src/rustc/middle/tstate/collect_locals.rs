@@ -11,13 +11,6 @@ import std::map::hashmap;
 
 type ctxt = {cs: @mut [sp_constr], tcx: ty::ctxt};
 
-fn collect_local(loc: @local, cx: ctxt, v: visit::vt<ctxt>) {
-    pat_bindings(cx.tcx.def_map, loc.node.pat) {|p_id, _s, id|
-       *cx.cs += [respan(loc.span, ninit(p_id, path_to_ident(id)))];
-    };
-    visit::visit_local(loc, cx, v);
-}
-
 fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
     alt e.node {
       expr_check(_, ch) { *cx.cs += [expr_to_constr(cx.tcx, ch)]; }
@@ -48,8 +41,7 @@ fn find_locals(tcx: ty::ctxt,
     let cx: ctxt = {cs: @mut [], tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
     let visitor =
-        @{visit_local: collect_local,
-          visit_expr: collect_pred,
+        @{visit_expr: collect_pred,
           visit_fn: bind do_nothing(_, _, _, _, _, _, _)
           with *visitor};
     visit::visit_fn(fk, f_decl, f_body, sp,
@@ -61,27 +53,17 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
    uint {
     log(debug,
              constraint_to_str(tcx, c) + " |-> " + uint::str(next));
-    alt c.node {
-      ninit(id, i) { tbl.insert(local_def(id), cinit(next, c.span, i)); }
-      npred(p, d_id, args) {
-        alt tbl.find(d_id) {
-          some(ct) {
-            alt ct {
-              cinit(_, _, _) {
-                tcx.sess.bug("add_constraint: same def_id used" +
-                                 " as a variable and a pred");
-              }
-              cpred(_, pds) {
-                *pds += [respan(c.span, {args: args, bit_num: next})];
-              }
-            }
-          }
-          none {
-            let rslt: @mut [pred_args] =
-                @mut [respan(c.span, {args: args, bit_num: next})];
-            tbl.insert(d_id, cpred(p, rslt));
-          }
-        }
+
+    let {path: p, def_id: d_id, args: args} = c.node;
+    alt tbl.find(d_id) {
+      some(ct) {
+        let {path: _, descs: pds} = ct;
+        *pds += [respan(c.span, {args: args, bit_num: next})];
+      }
+      none {
+        let rslt: @mut [pred_args] =
+            @mut [respan(c.span, {args: args, bit_num: next})];
+        tbl.insert(d_id, {path:p, descs:rslt});
       }
     }
     ret next + 1u;
@@ -106,7 +88,7 @@ fn mk_fn_info(ccx: crate_ctxt,
 
     let mut i = 0u, l = vec::len(*cx.cs);
     while i < l {
-        next = add_constraint(cx.tcx, cx.cs[i], next, res_map);
+        next = add_constraint(cx.tcx, copy cx.cs[i], next, res_map);
         i += 1u;
     }
     /* if this function has any constraints, instantiate them to the
@@ -116,38 +98,11 @@ fn mk_fn_info(ccx: crate_ctxt,
         next = add_constraint(cx.tcx, sc, next, res_map);
     }
 
-    /* Need to add constraints for args too, b/c they
-    can be deinitialized */
-    for f_decl.inputs.each {|a|
-        next = add_constraint(
-            cx.tcx,
-            respan(f_sp, ninit(a.id, a.ident)),
-            next,
-            res_map);
-    }
-
-    /* add the special i_diverge and i_return constraints
-    (see the type definition for auxiliary::fn_info for an explanation) */
-
-    // use the function name for the "returns" constraint"
-    let returns_id = ccx.tcx.sess.next_node_id();
-    let returns_constr = ninit(returns_id, name);
-    next =
-        add_constraint(cx.tcx, respan(f_sp, returns_constr), next, res_map);
-    // and the name of the function, with a '!' appended to it, for the
-    // "diverges" constraint
-    let diverges_id = ccx.tcx.sess.next_node_id();
-    let diverges_constr = ninit(diverges_id, name + "!");
-    next = add_constraint(cx.tcx, respan(f_sp, diverges_constr), next,
-                          res_map);
-
     let v: @mut [node_id] = @mut [];
     let rslt =
         {constrs: res_map,
          num_constraints: next,
          cf: f_decl.cf,
-         i_return: returns_constr,
-         i_diverge: diverges_constr,
          used_vars: v};
     ccx.fm.insert(id, rslt);
     #debug("%s has %u constraints", name, num_constraints(rslt));

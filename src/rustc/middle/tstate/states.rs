@@ -55,22 +55,6 @@ fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
     }
 }
 
-fn handle_fail(fcx: fn_ctxt, pres:prestate, post:poststate) {
-    // Remember what the old value of the "I return" trit was, so that
-    // we can avoid changing that (if it was true, there was a return
-    // that dominates this fail and the fail is unreachable)
-    if !promises(fcx, pres, fcx.enclosing.i_return)
-        // (only if we're in a diverging function -- you can fail when
-        // you're supposed to return, but not vice versa).
-        && fcx.enclosing.cf == noreturn {
-          kill_poststate_(fcx, fcx.enclosing.i_return, post);
-    } else {
-        // This code is unreachable (it's dominated by a return),
-        // so doesn't diverge.
-        kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
-    }
-}
-
 fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
    {changed: bool, post: poststate} {
     let mut changed = false;
@@ -90,12 +74,6 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
                   }
                   _ { }
                 }
-                alt d {
-                  local_dest(i) {
-                      set_in_poststate_ident(fcx, i.node, i.ident, post);
-                  }
-                  _ {}
-                }
             }
 
             // Forget the RHS if we just moved it.
@@ -104,15 +82,6 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
             }
           }
           none {
-            for b.lhs.each {|d|
-                // variables w/o an initializer
-                 alt check d {
-                   // would be an error to pass something uninit'd to a call
-                   local_dest(i) {
-                     clear_in_poststate_ident_(fcx, i.node, i.ident, post);
-                   }
-                 }
-            }
           }
         }
     }
@@ -158,16 +127,15 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
         alt ty {
           oper_move {
             if is_path(rhs) { forget_in_poststate(fcx, post, rhs.id); }
-            forget_in_poststate_still_init(fcx, post, lhs.id);
+            forget_in_poststate(fcx, post, lhs.id);
           }
           oper_swap {
-            forget_in_poststate_still_init(fcx, post, lhs.id);
-            forget_in_poststate_still_init(fcx, post, rhs.id);
+            forget_in_poststate(fcx, post, lhs.id);
+            forget_in_poststate(fcx, post, rhs.id);
           }
-          _ { forget_in_poststate_still_init(fcx, post, lhs.id); }
+          _ { forget_in_poststate(fcx, post, lhs.id); }
         }
 
-        gen_if_local(fcx, post, lhs);
         alt rhs.node {
           expr_path(p1) {
             let d = local_node_id_to_local_def_id(fcx, lhs.id);
@@ -222,7 +190,6 @@ fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
     alt cf {
       noreturn {
         let post = false_postcond(num_constraints(fcx.enclosing));
-        handle_fail(fcx, pres, post);
         changed |= set_poststate_ann(fcx.ccx, id, post);
       }
       _ { changed |= set_poststate_ann(fcx.ccx, id, rs.post); }
@@ -240,15 +207,8 @@ fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
         set_prestate_ann(fcx.ccx, id, loop_pres) |
             find_pre_post_state_expr(fcx, pres, index);
 
-    // Make sure the index vars are considered initialized
-    // in the body
     let index_post = tritv_clone(expr_poststate(fcx.ccx, index));
-    pat_bindings(fcx.ccx.tcx.def_map, l.node.pat) {|p_id, _s, n|
-       set_in_poststate_ident(fcx, p_id, path_to_ident(n), index_post);
-    };
-
     changed |= find_pre_post_state_block(fcx, index_post, body);
-
 
     if has_nonlocal_exits(body) {
         // See [Break-unsound]
@@ -258,20 +218,6 @@ fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
             intersect_states(expr_poststate(fcx.ccx, index),
                              block_poststate(fcx.ccx, body));
         ret changed | set_poststate_ann(fcx.ccx, id, res_p);
-    }
-}
-
-fn gen_if_local(fcx: fn_ctxt, p: poststate, e: @expr) -> bool {
-    alt e.node {
-      expr_path(pth) {
-        alt fcx.ccx.tcx.def_map.find(e.id) {
-          some(def_local(nid, _)) {
-            ret set_in_poststate_ident(fcx, nid, path_to_ident(pth), p);
-          }
-          _ { ret false; }
-        }
-      }
-      _ { ret false; }
     }
 }
 
@@ -465,13 +411,10 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       }
       expr_ret(maybe_ret_val) {
         let mut changed = set_prestate_ann(fcx.ccx, e.id, pres);
-        /* normally, everything is true if execution continues after
+        /* everything is true if execution continues after
            a ret expression (since execution never continues locally
            after a ret expression */
-        // FIXME should factor this out
         let post = false_postcond(num_constrs);
-        // except for the "diverges" bit...
-        kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
 
         set_poststate_ann(fcx.ccx, e.id, post);
 
@@ -593,7 +536,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         /* if execution continues after fail, then everything is true!
         woo! */
         let post = false_postcond(num_constrs);
-        handle_fail(fcx, pres, post);
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
                 set_poststate_ann(fcx.ccx, e.id, post) |
                 option::map_default(maybe_fail_val, false, {|fail_val|
@@ -727,36 +669,14 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
     // This ensures that intersect works correctly.
     kill_all_prestate(fcx, f_body.node.id);
 
-    // Arguments start out initialized
-    let block_pre = block_prestate(fcx.ccx, f_body);
-    for f_decl.inputs.each {|a|
-        set_in_prestate_constr(fcx, ninit(a.id, a.ident), block_pre);
-    }
-
     // Instantiate any constraints on the arguments so we can use them
+    let block_pre = block_prestate(fcx.ccx, f_body);
     for f_decl.constraints.each {|c|
         let tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f_decl.inputs, c);
         set_in_prestate_constr(fcx, tsc, block_pre);
     }
 
     let mut changed = find_pre_post_state_block(fcx, block_pre, f_body);
-
-    // Treat the tail expression as a return statement
-    alt f_body.node.expr {
-      some(tailexpr) {
-
-        // We don't want to clear the diverges bit for bottom typed things,
-        // which really do diverge. I feel like there is a cleaner way
-        // to do this than checking the type.
-        if !type_is_bot(expr_ty(fcx.ccx.tcx, tailexpr)) {
-            let post = false_postcond(num_constrs);
-            // except for the "diverges" bit...
-            kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
-            set_poststate_ann(fcx.ccx, f_body.node.id, post);
-        }
-      }
-      none {/* fallthrough */ }
-    }
 
     /*
         #error("find_pre_post_state_fn");

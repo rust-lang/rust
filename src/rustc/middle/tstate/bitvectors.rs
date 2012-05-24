@@ -15,36 +15,19 @@ import driver::session::session;
 import std::map::hashmap;
 
 fn bit_num(fcx: fn_ctxt, c: tsconstr) -> uint {
-    let d = tsconstr_to_def_id(c);
+    let d = c.def_id;
     assert (fcx.enclosing.constrs.contains_key(d));
     let rslt = fcx.enclosing.constrs.get(d);
-    alt c {
-      ninit(_, _) {
-        alt rslt {
-          cinit(n, _, _) { ret n; }
-          _ {
-            fcx.ccx.tcx.sess.bug("bit_num: asked for init constraint," +
-                                     " found a pred constraint");
-          }
-        }
-      }
-      npred(_, _, args) {
-        alt rslt {
-          cpred(_, descs) { ret match_args(fcx, descs, args); }
-          _ {
-            fcx.ccx.tcx.sess.bug("bit_num: asked for pred constraint," +
-                                     " found an init constraint");
-          }
-        }
-      }
-    }
+    match_args(fcx, rslt.descs, c.args)
 }
 
 fn promises(fcx: fn_ctxt, p: poststate, c: tsconstr) -> bool {
     ret promises_(bit_num(fcx, c), p);
 }
 
-fn promises_(n: uint, p: poststate) -> bool { ret tritv_get(p, n) == ttrue; }
+fn promises_(n: uint, p: poststate) -> bool {
+    ret tritv_get(p, n) == ttrue;
+}
 
 // v "happens after" u
 fn seq_trit(u: trit, v: trit) -> trit {
@@ -184,49 +167,13 @@ fn kill_poststate(fcx: fn_ctxt, id: node_id, c: tsconstr) -> bool {
                            node_id_to_ts_ann(fcx.ccx, id).states);
 }
 
-fn clear_in_poststate_expr(fcx: fn_ctxt, e: @expr, t: poststate) {
-    alt e.node {
-      expr_path(p) {
-        alt local_node_id_to_def(fcx, e.id) {
-          some(def_local(nid, _)) {
-            clear_in_poststate_(bit_num(fcx, ninit(nid, vec::last(p.idents))),
-                                t);
-          }
-          some(_) {/* ignore args (for now...) */ }
-          _ { fcx.ccx.tcx.sess.bug("clear_in_poststate_expr: unbound var"); }
-        }
-      }
-      _ {/* do nothing */ }
-    }
-}
-
 fn kill_poststate_(fcx: fn_ctxt, c: tsconstr, post: poststate) -> bool {
     #debug("kill_poststate_");
     ret clear_in_poststate_(bit_num(fcx, c), post);
 }
 
-fn set_in_poststate_ident(fcx: fn_ctxt, id: node_id, ident: ident,
-                          t: poststate) -> bool {
-    ret set_in_poststate_(bit_num(fcx, ninit(id, ident)), t);
-}
-
 fn set_in_prestate_constr(fcx: fn_ctxt, c: tsconstr, t: prestate) -> bool {
     ret set_in_poststate_(bit_num(fcx, c), t);
-}
-
-fn clear_in_poststate_ident(fcx: fn_ctxt, id: node_id, ident: ident,
-                            parent: node_id) -> bool {
-    ret kill_poststate(fcx, parent, ninit(id, ident));
-}
-
-fn clear_in_prestate_ident(fcx: fn_ctxt, id: node_id, ident: ident,
-                           parent: node_id) -> bool {
-    ret kill_prestate(fcx, parent, ninit(id, ident));
-}
-
-fn clear_in_poststate_ident_(fcx: fn_ctxt, id: node_id, ident: ident,
-                             post: poststate) -> bool {
-    ret kill_poststate_(fcx, ninit(id, ident), post);
 }
 
 //

@@ -49,18 +49,10 @@ fn comma_str(args: [@constr_arg_use]) -> str {
 }
 
 fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> str {
-    alt c.node {
-      ninit(id, i) {
-        ret #fmt("init(%s id=%d - arising from %s)",
-                 i, id, codemap::span_to_str(c.span, tcx.sess.codemap));
-      }
-      npred(p, _, args) {
-          ret #fmt("%s(%s) - arising from %s",
-                   path_to_str(p),
-                   comma_str(args),
-                   codemap::span_to_str(c.span, tcx.sess.codemap));
-      }
-    }
+    ret #fmt("%s(%s) - arising from %s",
+             path_to_str(c.node.path),
+             comma_str(c.node.args),
+             codemap::span_to_str(c.span, tcx.sess.codemap));
 }
 
 fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
@@ -167,16 +159,14 @@ fn print_idents(&idents: [ident]) {
 /* Two different data structures represent constraints in different
  contexts: constraint and norm_constraint.
 
-constraint gets used to record constraints in a table keyed by def_ids.
-cinit constraints represent a single constraint, for the initialization
-state of a variable; a cpred constraint, with a single operator and a
-list of possible argument lists, could represent several constraints at
-once.
+constraint gets used to record constraints in a table keyed by def_ids.  Each
+constraint has a single operator but a list of possible argument lists, and
+thus represents several constraints at once, one for each possible argument
+list.
 
-norm_constraint, in contrast, gets used when handling an instance
-of a constraint rather than a definition of a constraint. It can
-also be init or pred (ninit or npred), but the npred case just has
-a single argument list.
+norm_constraint, in contrast, gets used when handling an instance of a
+constraint rather than a definition of a constraint. It has only a single
+argument list.
 
 The representation of constraints, where multiple instances of the
 same predicate are collapsed into one entry in the table, makes it
@@ -198,37 +188,23 @@ type pred_args = spanned<pred_args_>;
 // for this local.
 type constr_arg_use = spanned<constr_arg_general_<inst>>;
 
-/*
-  A constraint is either an init constraint, referring to the initialization
-  state of a variable (not initialized, definitely initialized, or maybe
-  initialized) or a predicate constraint, referring to the truth value of a
-  predicate on variables (definitely false, maybe true, or definitely true).
+/* Predicate constraints refer to the truth value of a predicate on variables
+(definitely false, maybe true, or definitely true).  The <path> field (and the
+<def_id> field in the npred constructor) names a user-defined function that
+may be the operator in a "check" expression in the source.  */
 
-  cinit and ninit represent init constraints, while cpred and npred
-  represent predicate constraints.
-
-  In a predicate constraint, the <path> field (and the <def_id> field
-  in the npred constructor) names a user-defined function that may
-  be the operator in a "check" expression in the source.
- */
-
-enum constraint {
-    cinit(uint, span, ident),
-
+type constraint = {
+    path: @path,
     // FIXME: really only want it to be mut during collect_locals.
     // freeze it after that.
-    cpred(@path, @mut [pred_args]),
-}
+    descs: @mut [pred_args]
+};
 
-// An ninit variant has a node_id because it refers to a local var.
-// An npred has a def_id since the definition of the typestate
-// predicate need not be local.
-// FIXME: would be nice to give both a def_id field,
-// and give ninit a constraint saying it's local.
-enum tsconstr {
-    ninit(node_id, ident),
-    npred(@path, def_id, [@constr_arg_use]),
-}
+type tsconstr = {
+    path: @path,
+    def_id: def_id,
+    args: [@constr_arg_use]
+};
 
 type sp_constr = spanned<tsconstr>;
 
@@ -238,34 +214,8 @@ type constr_map = std::map::hashmap<def_id, constraint>;
 
 /* Contains stuff that has to be computed up front */
 /* For easy access, the fn_info stores two special constraints for each
-function.  i_return holds if all control paths in this function terminate
-in either a return expression, or an appropriate tail expression.
-i_diverge holds if all control paths in this function terminate in a fail
-or diverging call.
-
-It might be tempting to use a single constraint C for both properties,
-where C represents i_return and !C represents i_diverge. This is
-inadvisable, because then the sense of the bit depends on context. If we're
-inside a ! function, that reverses the sense of the bit: C would be
-i_diverge and !C would be i_return.  That's awkward, because we have to
-pass extra context around to functions that shouldn't care.
-
-Okay, suppose C represents i_return and !C represents i_diverge, regardless
-of context. Consider this code:
-
-if (foo) { ret; } else { fail; }
-
-C is true in the consequent and false in the alternative. What's T `join`
-F, then?  ? doesn't work, because this code should definitely-return if the
-context is a returning function (and be definitely-rejected if the context
-is a ! function).  F doesn't work, because then the code gets incorrectly
-rejected if the context is a returning function. T would work, but it
-doesn't make sense for T `join` F to be T (consider init constraints, for
-example).;
-
-So we need context. And so it seems clearer to just have separate
-constraints.
-*/
+function.  So we need context. And so it seems clearer to just have separate
+constraints. */
 type fn_info =
     /* list, accumulated during pre/postcondition
     computation, of all local variables that may be
@@ -274,20 +224,7 @@ type fn_info =
     {constrs: constr_map,
      num_constraints: uint,
      cf: ret_style,
-     i_return: tsconstr,
-     i_diverge: tsconstr,
      used_vars: @mut [node_id]};
-
-fn tsconstr_to_def_id(t: tsconstr) -> def_id {
-    alt t { ninit(id, _) { local_def(id) } npred(_, id, _) { id } }
-}
-
-fn tsconstr_to_node_id(t: tsconstr) -> node_id {
-    alt t {
-      ninit(id, _) { id }
-      npred(_, id, _) { fail "tsconstr_to_node_id called on pred constraint" }
-    }
-}
 
 /* mapping from node ID to typestate annotation */
 type node_ann_table = @mut [mut ts_ann];
@@ -534,20 +471,15 @@ fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> option<def> {
 }
 
 fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint] {
-    alt c {
-      cinit(n, sp, i) {
-        ret [{bit_num: n, c: respan(sp, ninit(id.node, i))}];
-      }
-      cpred(p, descs) {
-        let mut rslt: [norm_constraint] = [];
-        for vec::each(*descs) {|pd|
-            rslt +=
-                [{bit_num: pd.node.bit_num,
-                  c: respan(pd.span, npred(p, id, pd.node.args))}];
-        }
-        ret rslt;
-      }
+    let mut rslt: [norm_constraint] = [];
+    for vec::each(*c.descs) {|pd|
+        rslt +=
+            [{bit_num: pd.node.bit_num,
+              c: respan(pd.span, {path: c.path,
+                                  def_id: id,
+                                  args: pd.node.args})}];
     }
+    ret rslt;
 }
 
 
@@ -630,8 +562,9 @@ fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
         alt operator.node {
           expr_path(p) {
             ret respan(e.span,
-                       npred(p, def_id_for_constr(tcx, operator.id),
-                             exprs_to_constr_args(tcx, args)));
+                       {path: p,
+                        def_id: def_id_for_constr(tcx, operator.id),
+                        args: exprs_to_constr_args(tcx, args)});
           }
           _ {
             tcx.sess.span_bug(operator.span,
@@ -657,7 +590,9 @@ fn substitute_constr_args(cx: ty::ctxt, actuals: [@expr], c: @ty::constr) ->
     for c.node.args.each {|a|
         rslt += [substitute_arg(cx, actuals, a)];
     }
-    ret npred(c.node.path, c.node.id, rslt);
+    ret {path: c.node.path,
+         def_id: c.node.id,
+         args: rslt};
 }
 
 fn substitute_arg(cx: ty::ctxt, actuals: [@expr], a: @constr_arg) ->
@@ -718,31 +653,22 @@ enum dest {
 
 type subst = [{from: inst, to: inst}];
 
-fn find_instances(_fcx: fn_ctxt, subst: subst, c: constraint) ->
-   [{from: uint, to: uint}] {
+fn find_instances(_fcx: fn_ctxt, subst: subst,
+                  c: constraint) -> [{from: uint, to: uint}] {
 
-    let mut rslt = [];
-    if vec::len(subst) == 0u { ret rslt; }
-
-    alt c {
-      cinit(_, _, _) {/* this is dealt with separately */ }
-      cpred(p, descs) {
-        // FIXME (#2280): this temporary shouldn't be
-        // necessary, but seems to be, for borrowing.
-        let ds = copy *descs;
-        for vec::each(ds) {|d|
-            if args_mention(d.node.args, find_in_subst_bool, subst) {
-                let old_bit_num = d.node.bit_num;
-                let newv = replace(subst, d);
-                alt find_instance_(newv, *descs) {
-                  some(d1) { rslt += [{from: old_bit_num, to: d1}]; }
-                  _ { }
-                }
+    if vec::len(subst) == 0u { ret []; }
+    let mut res = [];
+    for (*c.descs).each { |d|
+        if args_mention(d.node.args, find_in_subst_bool, subst) {
+            let old_bit_num = d.node.bit_num;
+            let newv = replace(subst, d);
+            alt find_instance_(newv, *c.descs) {
+              some(d1) {res += [{from: old_bit_num, to: d1}]}
+              _ {}
             }
-        }
-      }
+        } else {}
     }
-    rslt
+    ret res;
 }
 
 fn find_in_subst(id: node_id, s: subst) -> option<inst> {
@@ -912,25 +838,6 @@ fn forget_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dead_v: node_id) {
     }
 }
 
-fn forget_in_postcond_still_init(fcx: fn_ctxt, parent_exp: node_id,
-                                 dead_v: node_id) {
-    // In the postcondition given by parent_exp, clear the bits
-    // for any constraints mentioning dead_v
-    let d = local_node_id_to_local_def_id(fcx, dead_v);
-    alt d {
-      some(d_id) {
-        for constraints(fcx).each {|c|
-            if non_init_constraint_mentions(fcx, c, d_id) {
-                clear_in_postcond(c.bit_num,
-                                  node_id_to_ts_ann(fcx.ccx,
-                                                    parent_exp).conditions);
-            }
-        }
-      }
-      _ { }
-    }
-}
-
 fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
     // In the poststate given by parent_exp, clear the bits
     // for any constraints mentioning dead_v
@@ -949,25 +856,6 @@ fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
     ret changed;
 }
 
-fn forget_in_poststate_still_init(fcx: fn_ctxt, p: poststate, dead_v: node_id)
-   -> bool {
-    // In the poststate given by parent_exp, clear the bits
-    // for any constraints mentioning dead_v
-    let d = local_node_id_to_local_def_id(fcx, dead_v);
-    let mut changed = false;
-    alt d {
-      some(d_id) {
-        for constraints(fcx).each {|c|
-            if non_init_constraint_mentions(fcx, c, d_id) {
-                changed |= clear_in_poststate_(c.bit_num, p);
-            }
-        }
-      }
-      _ { }
-    }
-    ret changed;
-}
-
 fn any_eq(v: [node_id], d: node_id) -> bool {
     for v.each {|i| if i == d { ret true; } }
     false
@@ -975,18 +863,7 @@ fn any_eq(v: [node_id], d: node_id) -> bool {
 
 fn constraint_mentions(_fcx: fn_ctxt, c: norm_constraint, v: node_id) ->
    bool {
-    ret alt c.c.node {
-          ninit(id, _) { v == id }
-          npred(_, _, args) { args_mention(args, any_eq, [v]) }
-        };
-}
-
-fn non_init_constraint_mentions(_fcx: fn_ctxt, c: norm_constraint, v: node_id)
-   -> bool {
-    ret alt c.c.node {
-          ninit(_, _) { false }
-          npred(_, _, args) { args_mention(args, any_eq, [v]) }
-        };
+    ret args_mention(c.c.node.args, any_eq, [v]);
 }
 
 fn args_mention<T>(args: [@constr_arg_use],
@@ -1063,8 +940,9 @@ fn args_to_constr_args(tcx: ty::ctxt, args: [arg],
 fn ast_constr_to_ts_constr(tcx: ty::ctxt, args: [arg], c: @constr) ->
    tsconstr {
     let tconstr = ty::ast_constr_to_constr(tcx, c);
-    ret npred(tconstr.node.path, tconstr.node.id,
-              args_to_constr_args(tcx, args, tconstr.node.args));
+    ret {path: tconstr.node.path,
+         def_id: tconstr.node.id,
+         args: args_to_constr_args(tcx, args, tconstr.node.args)};
 }
 
 fn ast_constr_to_sp_constr(tcx: ty::ctxt, args: [arg], c: @constr) ->

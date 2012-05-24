@@ -1,5 +1,3 @@
-// xfail-test --- tstate incorrectly fails this
-
 fn test() {
     let v;
     loop {

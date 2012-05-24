@@ -88,17 +88,9 @@ fn find_pre_post_exprs(fcx: fn_ctxt, args: [@expr], id: node_id) {
                      seq_postconds(fcx, vec::map(pps, get_post)));
 }
 
-fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,
-                      id: node_id) {
+fn find_pre_post_loop(fcx: fn_ctxt, index: @expr, body: blk, id: node_id) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
-    pat_bindings(fcx.ccx.tcx.def_map, l.node.pat) {|p_id, _s, n|
-        let v_init = ninit(p_id, path_to_ident(n));
-        relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
-        // Hack: for-loop index variables are frequently ignored,
-        // so we pretend they're used
-        use_var(fcx, p_id);
-    };
 
     let loop_precond =
         seq_preconds(fcx, [expr_pp(fcx.ccx, index), block_pp(fcx.ccx, body)]);
@@ -184,8 +176,6 @@ fn gen_if_local(fcx: fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
             let p = expr_pp(fcx.ccx, rhs);
             set_pre_and_post(fcx.ccx, larger_id, p.precondition,
                              p.postcondition);
-            gen(fcx, larger_id,
-                ninit(nid, path_to_ident(pth)));
           }
           _ { find_pre_post_exprs(fcx, [lhs, rhs], larger_id); }
         }
@@ -207,23 +197,13 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
             if is_path(rhs) { forget_in_postcond(fcx, parent.id, rhs.id); }
           }
           oper_swap {
-            forget_in_postcond_still_init(fcx, parent.id, lhs.id);
-            forget_in_postcond_still_init(fcx, parent.id, rhs.id);
+            forget_in_postcond(fcx, parent.id, lhs.id);
+            forget_in_postcond(fcx, parent.id, rhs.id);
           }
           oper_assign {
-            forget_in_postcond_still_init(fcx, parent.id, lhs.id);
+            forget_in_postcond(fcx, parent.id, lhs.id);
           }
-          _ {
-            // pure and assign_op require the lhs to be init'd
-            let df = node_id_to_def_strict(fcx.ccx.tcx, lhs.id);
-            alt df {
-              def_local(nid, _) {
-                let i = bit_num(fcx, ninit(nid, path_to_ident(p)));
-                require_and_preserve(i, expr_pp(fcx.ccx, lhs));
-              }
-              _ { }
-            }
-          }
+          _ { }
         }
 
         gen_if_local(fcx, lhs, rhs, parent.id, lhs.id, p);
@@ -255,22 +235,6 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
     }
 }
 
-fn handle_var(fcx: fn_ctxt, rslt: pre_and_post, id: node_id, name: ident) {
-    handle_var_def(fcx, rslt, node_id_to_def_strict(fcx.ccx.tcx, id), name);
-}
-
-fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
-    log(debug, ("handle_var_def: ", def, name));
-    alt def {
-      def_local(nid, _) | def_arg(nid, _) {
-        use_var(fcx, nid);
-        let i = bit_num(fcx, ninit(nid, name));
-        require_and_preserve(i, rslt);
-      }
-      _ {/* nothing to check */ }
-    }
-}
-
 fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: [mode],
                         operands: [@expr]) {
     vec::iteri(modes) {|i,mode|
@@ -284,10 +248,6 @@ fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: [mode],
 fn find_pre_post_expr_fn_upvars(fcx: fn_ctxt, e: @expr) {
     let rslt = expr_pp(fcx.ccx, e);
     clear_pp(rslt);
-    for vec::each(*freevars::get_freevars(fcx.ccx.tcx, e.id)) {|def|
-        log(debug, ("handle_var_def: def=", def));
-        handle_var_def(fcx, rslt, def.def, "upvar");
-    }
 }
 
 /* Fills in annotations as a side effect. Does not rebuild the expr */
@@ -332,7 +292,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_path(p) {
         let rslt = expr_pp(fcx.ccx, e);
         clear_pp(rslt);
-        handle_var(fcx, rslt, e.id, path_to_ident(p));
       }
       expr_new(p, _, v) {
         find_pre_post_exprs(fcx, [p, v], e.id);
@@ -374,7 +333,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
            already be initialized */
 
         find_pre_post_exprs(fcx, [lhs, rhs], e.id);
-        forget_in_postcond_still_init(fcx, e.id, lhs.id);
+        forget_in_postcond(fcx, e.id, lhs.id);
       }
       expr_lit(_) { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_ret(maybe_val) {
@@ -555,25 +514,16 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                           }
                           none { }
                         }
-                        gen(fcx, id, ninit(p_id, ident));
                     };
-
-                    if an_init.op == init_move && is_path(an_init.expr) {
-                        forget_in_postcond(fcx, id, an_init.expr.id);
-                    }
 
                     /* Clear out anything that the previous initializer
                     guaranteed */
                     let e_pp = expr_pp(fcx.ccx, an_init.expr);
                     tritv_copy(prev_pp.precondition,
                                seq_preconds(fcx, [prev_pp, e_pp]));
+
                     /* Include the LHSs too, since those aren't in the
                      postconds of the RHSs themselves */
-                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
-                        {|pat_id, _s, n|
-                            set_in_postcond(bit_num(fcx,
-                               ninit(pat_id, path_to_ident(n))), prev_pp);
-                          };
                     copy_pre_post_(fcx.ccx, id, prev_pp.precondition,
                                    prev_pp.postcondition);
                   }
@@ -659,10 +609,6 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
 }
 
 fn find_pre_post_fn(fcx: fn_ctxt, body: blk) {
-    // hack
-    use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_return));
-    use_var(fcx, tsconstr_to_node_id(fcx.enclosing.i_diverge));
-
     find_pre_post_block(fcx, body);
 
     // Treat the tail expression as a return statement

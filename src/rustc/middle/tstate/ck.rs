@@ -17,22 +17,6 @@ import states::find_pre_post_state_fn;
 import driver::session::session;
 import std::map::hashmap;
 
-fn check_unused_vars(fcx: fn_ctxt) {
-
-    // FIXME: could be more efficient
-    for constraints(fcx).each {|c|
-        alt c.c.node {
-          ninit(id, v) {
-            if !vec_contains(fcx.enclosing.used_vars, id) && v[0] != '_' as u8
-               {
-                fcx.ccx.tcx.sess.span_warn(c.c.span, "unused variable " + v);
-            }
-          }
-          _ {/* ignore pred constraints */ }
-        }
-    }
-}
-
 fn check_states_expr(e: @expr, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     visit::visit_expr(e, fcx, v);
 
@@ -109,39 +93,6 @@ fn check_states_against_conditions(fcx: fn_ctxt,
           visit_fn: bind do_nothing::<fn_ctxt>(_, _, _, _, _, _, _)
           with *visit::default_visitor::<fn_ctxt>()});
     visit::visit_fn(fk, f_decl, f_body, sp, id, fcx, visitor);
-
-    /* Check that the return value is initialized */
-    let post = aux::block_poststate(fcx.ccx, f_body);
-    let is_ctor = alt fk { visit::fk_ctor(_,_,_,_) { true } _ { false } };
-    if !is_ctor && !promises(fcx, post, fcx.enclosing.i_return) &&
-       !ty::type_is_nil(ty::ty_fn_ret(ty::node_id_to_type(
-           fcx.ccx.tcx, id))) &&
-       f_decl.cf == return_val {
-        let fn_ty = ty::node_id_to_type(fcx.ccx.tcx, id);
-        fcx.ccx.tcx.sess.span_err(f_body.span,
-                    #fmt("in function `%s`, not all control paths \
-                          return a value", fcx.name));
-        fcx.ccx.tcx.sess.span_fatal(f_decl.output.span,
-                                    #fmt("see function return type of `%s`",
-                                         ty_to_str(fcx.ccx.tcx,
-                                           ty::ty_fn_ret(fn_ty))));
-    } else if f_decl.cf == noreturn {
-
-        // check that this really always fails
-        // Note that it's ok for i_diverge and i_return to both be true.
-        // In fact, i_diverge implies i_return. (But not vice versa!)
-
-        if !promises(fcx, post, fcx.enclosing.i_diverge) {
-            fcx.ccx.tcx.sess.span_fatal(f_body.span,
-                                        "in non-returning function " +
-                                        fcx.name +
-                                        ", some control paths may \
-                                         return to the caller");
-        }
-    }
-
-    /* Finally, check for unused variables */
-    check_unused_vars(fcx);
 }
 
 fn check_fn_states(fcx: fn_ctxt,

@@ -1,20 +1,14 @@
 fn f1(x: int) {
     //!^ WARNING unused variable: `x`
-    //!^^ WARNING unused variable x
-    // (the 2nd one is from tstate)
 }
 
 fn f1b(&x: int) {
     //!^ WARNING unused variable: `x`
-    //!^^ WARNING unused variable x
-    // (the 2nd one is from tstate)
 }
 
 fn f2() {
     let x = 3;
     //!^ WARNING unused variable: `x`
-    //!^^ WARNING unused variable x
-    // (the 2nd one is from tstate)
 }
 
 fn f3() {
