@@ -210,19 +210,19 @@ The keywords in [source files](#source-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
 alt assert
-break
+be break
 check claim class const cont copy crust
-do
+drop
 else enum export
 fail false fn for
 if iface impl import
 let log loop
 mod mut
-native
+native new
 pure
 resource ret
-true type
-unsafe use
+true trait type
+unchecked unsafe
 while
 ~~~~~~~~
 
@@ -746,7 +746,7 @@ fn main() {
 ##### Export declarations
 
 ~~~~~~~~ {.ebnf .gram}
-export_decl : "export" ident [ ',' ident ] * 
+export_decl : "export" ident [ ',' ident ] *
             | "export" ident "::{}"
             | "export" ident '{' ident [ ',' ident ] * '}' ;
 ~~~~~~~~
@@ -812,12 +812,12 @@ implicitly exports all of `t`'s constructors. For example:
 ~~~~~~~~
 mod foo {
     export t;
-    
+
     enum t {a, b, c}
 }
 ~~~~~~~~
 
-Here, `foo` imports `t`, `a`, `b`, and `c`. 
+Here, `foo` imports `t`, `a`, `b`, and `c`.
 
 The second and third forms of export declaration can be used to export
 an `enum` item without exporting all of its constructors. These two
@@ -834,7 +834,7 @@ mod foo {
 
     enum abstract {x, y, z}
     enum slightly_abstract {a, b, c, d}
-} 
+}
 ~~~~~~~~
 
 Module `foo` exports the types `abstract` and `slightly_abstract`, as well as
@@ -1078,7 +1078,7 @@ An _enumeration item_ simultaneously declares a new nominal
 [enumerated type](#enumerated-types) as well as a set of *constructors* that
 can be used to create or pattern-match values of the corresponding enumerated
 type. Note that `enum` previously was referred to as a `tag`, however this
-definition has been deprecated. While `tag` is no longer used, the two are 
+definition has been deprecated. While `tag` is no longer used, the two are
 synonymous.
 
 The constructors of an `enum` type may be recursive: that is, each constructor
