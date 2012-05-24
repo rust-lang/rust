@@ -68,7 +68,6 @@ mod middle {
     mod check_loop;
     mod check_alt;
     mod check_const;
-    mod check_self;
     mod lint;
     mod borrowck;
     mod alias;

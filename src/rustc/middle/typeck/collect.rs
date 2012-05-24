@@ -359,8 +359,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
-        tcx.tcache.insert(local_def(it.id), {bounds: tpt.bounds,
-              rp: rp, ty: tpt.ty});
+        tcx.tcache.insert(local_def(it.id), tpt);
         // Write the ctor type
         let t_ctor =
             ty::mk_fn(
@@ -416,13 +415,17 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         for ifaces.each { |ifce|
             check_methods_against_iface(ccx, tps, rp, selfty,
                                         ifce, methods);
-            let t = ty::node_id_to_type(tcx, ifce.id);
 
-            // FIXME: This assumes classes only implement
-            // non-parameterized ifaces. add a test case for
-            // a class implementing a parameterized iface.
-            // -- tjc (#1726)
-            tcx.tcache.insert(local_def(ifce.id), no_params(t));
+            // FIXME #2434---this is somewhat bogus, but it seems that
+            // the id of iface_ref is also the id of the impl, and so
+            // we want to store the "self type" of the impl---in this
+            // case, the class.  The reason I say this is somewhat
+            // bogus (and should be refactored) is that the tcache
+            // stores the class type for ifce.id but the node_type
+            // table stores the iface type. Weird. Probably just
+            // adding a "self type" table rather than overloading the
+            // tcache would be ok, or else adding more than one id.
+            tcx.tcache.insert(local_def(ifce.id), tpt);
         }
       }
       _ {
