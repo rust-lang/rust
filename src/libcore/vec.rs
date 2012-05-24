@@ -199,13 +199,6 @@ fn from_mut<T>(+v: [mut T]) -> [T] unsafe {
     r
 }
 
-// This function only exists to work around bugs in the type checker.
-fn from_const<T>(+v: [const T]) -> [T] unsafe {
-    let r = ::unsafe::reinterpret_cast(v);
-    ::unsafe::forget(v);
-    r
-}
-
 // Accessors
 
 #[doc = "Returns the first element of a vector"]
@@ -534,7 +527,7 @@ Flattens a vector of vectors of T into a single vector of T.
 "]
 fn concat<T: copy>(v: [const [const T]]) -> [T] {
     let mut r = [];
-    for each(v) {|inner| r += from_const(inner); }
+    for each(v) {|inner| r += inner; }
     ret r;
 }
 
@@ -546,7 +539,7 @@ fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
     let mut first = true;
     for each(v) {|inner|
         if first { first = false; } else { push(r, sep); }
-        r += from_const(inner);
+        r += inner;
     }
     ret r;
 }
