@@ -1,5 +1,5 @@
-fn main(s: [str]) {
+fn main(_s: [str]) {
     let a: [int] = [];
-    vec::each(a) { |x| //! ERROR not all control paths return a value
+    vec::each(a) { |_x| //! ERROR not all control paths return a value
     }
 }

@@ -2,9 +2,9 @@
 
 fn main() unsafe {
     fn foo(_a: uint, _b: uint) : uint::le(_a, _b) {}
-    let a: uint = 1u;
-    let b: uint = 4u;
-    let c: uint = 5u;
+    let mut a: uint = 1u;
+    let mut b: uint = 4u;
+    let mut c: uint = 5u;
     // make sure that the constraint le(b, a) exists...
     check (uint::le(b, a));
     // ...invalidate it...

@@ -1,4 +1,4 @@
-fn take(-x: int) {}
+fn take(-_x: int) {}
 
 fn main() {
 

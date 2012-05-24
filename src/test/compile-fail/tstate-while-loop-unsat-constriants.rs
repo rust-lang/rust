@@ -6,8 +6,8 @@ pure fn even(y: int) -> bool { true }
 
 fn main() {
 
-    let y: int = 42;
-    let x: int = 1;
+    let mut y: int = 42;
+    let mut x: int = 1;
     check (even(y));
     loop {
         print_even(y);

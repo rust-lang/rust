@@ -252,7 +252,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     for decl.inputs.each { |arg|
         #debug["adding argument %d", arg.id];
         (*fn_maps).add_variable(arg.id, arg.ident);
-    }
+    };
 
     // gather up the various local variables, significant expressions,
     // and so forth:
@@ -278,7 +278,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 
     // compute liveness
     let lsets = @liveness(fn_maps, specials);
-    let entry_ln = (*lsets).compute(body);
+    let entry_ln = (*lsets).compute(decl, body);
 
     // check for various error conditions
     let check_vt = visit::mk_vt(@{
@@ -290,6 +290,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     check_vt.visit_block(body, lsets, check_vt);
     lsets.check_ret(id, sp, fk, entry_ln);
     lsets.check_fields(sp, entry_ln);
+    lsets.warn_about_unused_args(sp, decl, entry_ln);
 }
 
 fn add_class_fields(self: @ir_maps, did: def_id) {
@@ -384,11 +385,12 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
 
 type users = {
     reader: live_node,
-    writer: live_node
+    writer: live_node,
+    used: bool
 };
 
 fn invalid_users() -> users {
-    {reader: invalid_node(), writer: invalid_node()}
+    {reader: invalid_node(), writer: invalid_node(), used: false}
 }
 
 type specials = {
@@ -400,6 +402,7 @@ type specials = {
 
 const ACC_READ: uint = 1u;
 const ACC_WRITE: uint = 2u;
+const ACC_USE: uint = 4u;
 
 class liveness {
     let tcx: ty::ctxt;
@@ -469,6 +472,15 @@ class liveness {
         }
     }
 
+    fn pat_bindings(pat: @pat, f: fn(live_node, variable, span)) {
+        let def_map = self.tcx.def_map;
+        pat_util::pat_bindings(def_map, pat) {|p_id, sp, _n|
+            let ln = self.live_node(p_id, sp);
+            let var = self.variable(p_id, sp);
+            f(ln, var, sp);
+        }
+    }
+
     fn idx(ln: live_node, var: variable) -> uint {
         *ln * self.ir.num_vars + *var
     }
@@ -485,6 +497,11 @@ class liveness {
         -> option<live_node_kind> {
 
         self.live_on_entry(self.successors[*ln], var)
+    }
+
+    fn used_on_entry(ln: live_node, var: variable) -> bool {
+        assert ln.is_valid();
+        self.users[self.idx(ln, var)].used
     }
 
     fn assigned_on_entry(ln: live_node, var: variable)
@@ -580,6 +597,10 @@ class liveness {
                                        self.users[idx].reader);
             changed |= copy_if_invalid(self.users[succ_idx].writer,
                                        self.users[idx].writer);
+            if self.users[succ_idx].used && !self.users[idx].used {
+                self.users[idx].used = true;
+                changed = true;
+            }
         }
 
         #debug["merge_from_succ(ln=%s, succ=%s, first_merge=%b, changed=%b)",
@@ -609,43 +630,39 @@ class liveness {
                idx, self.ln_str(writer)];
     }
 
-    // Indicates that a new value for the local variable was assigned.
-    fn write(writer: live_node, var: variable) {
-        let idx = self.idx(writer, var);
-        self.users[idx].reader = invalid_node();
-        self.users[idx].writer = writer;
-
-        #debug["%s writes %s (idx=%u): %s", writer.to_str(), var.to_str(),
-               idx, self.ln_str(writer)];
-    }
-
-    // Indicates that the current value of the local variable was used.
-    fn read(reader: live_node, var: variable) {
-        let idx = self.idx(reader, var);
-        self.users[idx].reader = reader;
-
-        #debug["%s reads %s (idx=%u): %s", reader.to_str(), var.to_str(),
-               idx, self.ln_str(reader)];
-    }
-
     // Either read, write, or both depending on the acc bitset
     fn acc(ln: live_node, var: variable, acc: uint) {
-        if (acc & ACC_WRITE) != 0u { self.write(ln, var) }
+        let idx = self.idx(ln, var);
+        let user = &mut self.users[idx];
+
+        if (acc & ACC_WRITE) != 0u {
+            user.reader = invalid_node();
+            user.writer = ln;
+        }
 
         // Important: if we both read/write, must do read second
         // or else the write will override.
-        if (acc & ACC_READ) != 0u { self.read(ln, var) }
+        if (acc & ACC_READ) != 0u {
+            user.reader = ln;
+        }
+
+        if (acc & ACC_USE) != 0u {
+            self.users[idx].used = true;
+        }
+
+        #debug["%s accesses[%x] %s: %s",
+               ln.to_str(), acc, var.to_str(), self.ln_str(ln)];
     }
 
     // _______________________________________________________________________
 
-    fn compute(body: blk) -> live_node {
+    fn compute(decl: fn_decl, body: blk) -> live_node {
         // if there is a `break` or `cont` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
         let entry_ln: live_node =
             self.with_loop_nodes(self.s.exit_ln, self.s.exit_ln) {||
-                self.propagate_through_fn_block(body)
+                self.propagate_through_fn_block(decl, body)
             };
 
         // hack to skip the loop unless #debug is enabled:
@@ -661,14 +678,28 @@ class liveness {
         entry_ln
     }
 
-    fn propagate_through_fn_block(blk: blk) -> live_node {
-        if blk.node.expr.is_none() {
-            self.read(self.s.fallthrough_ln, self.s.no_ret_var)
+    fn propagate_through_fn_block(decl: fn_decl, blk: blk) -> live_node {
+        // inputs passed by & mode should be considered live on exit:
+        for decl.inputs.each { |arg|
+            alt ty::resolved_mode(self.tcx, arg.mode) {
+              by_mutbl_ref {
+                let var = self.variable(arg.id, blk.span);
+                self.acc(self.s.exit_ln, var, ACC_READ);
+              }
+              by_val | by_ref | by_move | by_copy {}
+            }
         }
 
         // in a ctor, there is an implicit use of self.f for all fields f:
         for self.ir.field_map.each_value { |var|
-            self.read(self.s.fallthrough_ln, var);
+            self.acc(self.s.exit_ln, var, ACC_READ|ACC_USE);
+        }
+
+        // the fallthrough exit is only for those cases where we do not
+        // explicitly return:
+        self.init_from_succ(self.s.fallthrough_ln, self.s.exit_ln);
+        if blk.node.expr.is_none() {
+            self.acc(self.s.fallthrough_ln, self.s.no_ret_var, ACC_READ)
         }
 
         self.propagate_through_block(blk, self.s.fallthrough_ln)
@@ -723,10 +754,7 @@ class liveness {
 
         let opt_init = local.node.init.map { |i| i.expr };
         let mut succ = self.propagate_through_opt_expr(opt_init, succ);
-        let def_map = self.tcx.def_map;
-        pat_util::pat_bindings(def_map, local.node.pat) { |p_id, sp, _n|
-            let ln = self.live_node(p_id, sp);
-            let var = self.variable(p_id, sp);
+        self.pat_bindings(local.node.pat) { |ln, var, _sp|
             self.init_from_succ(ln, succ);
             self.define(ln, var);
             succ = ln;
@@ -752,7 +780,7 @@ class liveness {
           // Interesting cases with control flow or which gen/kill
 
           expr_path(_) {
-            self.access_path(expr, succ, ACC_READ)
+            self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
           expr_field(e, nm, _) {
@@ -763,7 +791,7 @@ class liveness {
             alt self.as_self_field(e, nm) {
               some((ln, var)) {
                 self.init_from_succ(ln, succ);
-                self.read(ln, var);
+                self.acc(ln, var, ACC_READ | ACC_USE);
                 ln
               }
               none {
@@ -779,7 +807,7 @@ class liveness {
             (*caps).foldr(succ) { |cap, succ|
                 self.init_from_succ(cap.ln, succ);
                 let var = self.variable_from_rdef(cap.rv, expr.span);
-                self.read(cap.ln, var);
+                self.acc(cap.ln, var, ACC_READ | ACC_USE);
                 cap.ln
             }
           }
@@ -877,8 +905,14 @@ class liveness {
           expr_swap(l, r) {
             // see comment on lvalues in
             // propagate_through_lvalue_components()
-            let succ = self.write_lvalue(r, succ, ACC_WRITE|ACC_READ);
-            let succ = self.write_lvalue(l, succ, ACC_WRITE|ACC_READ);
+
+            // I count swaps as `used` cause it might be something like:
+            //    foo.bar <-> x
+            // and I am too lazy to distinguish this case from
+            //    y <-> x
+            // (where both x, y are unused) just for a warning.
+            let succ = self.write_lvalue(r, succ, ACC_WRITE|ACC_READ|ACC_USE);
+            let succ = self.write_lvalue(l, succ, ACC_WRITE|ACC_READ|ACC_USE);
             let succ = self.propagate_through_lvalue_components(r, succ);
             self.propagate_through_lvalue_components(l, succ)
           }
@@ -1205,28 +1239,35 @@ class liveness {
 
 fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
     alt local.node.init {
-      some({op: init_move, expr: expr}) {
-        // can never be accessed uninitialized, but the move might
-        // be invalid
-        #debug["check_local() with move initializer"];
-        self.check_move_from_expr(expr, vt);
-      }
-      some({op: init_op, expr: _}) {
-        // can never be accessed uninitialized
-        #debug["check_local() with initializer"];
+      some({op: op, expr: expr}) {
+
+        // Initializer:
+
+        alt op {
+          init_move {self.check_move_from_expr(expr, vt)}
+          init_assign {}
+        }
+        self.warn_about_unused_or_dead_vars_in_pat(local.node.pat);
+        if !local.node.is_mutbl {
+            self.check_for_reassignments_in_pat(local.node.pat);
+        }
       }
       none {
+
+        // No initializer: the variable might be unused; if not, it
+        // should not be live at this point.
+
         #debug["check_local() with no initializer"];
-        let def_map = self.tcx.def_map;
-        pat_util::pat_bindings(def_map, local.node.pat) {|p_id, sp, _n|
-            let ln = (*self).live_node(p_id, sp);
-            let var = (*self).variable(p_id, sp);
-            alt (*self).live_on_exit(ln, var) {
-              none { /* not live: good */ }
-              some(lnk) {
-                self.report_illegal_read(
-                    local.span, lnk, var, possibly_uninitialized_variable);
-              }
+        (*self).pat_bindings(local.node.pat) { |ln, var, sp|
+            if !self.warn_about_unused(sp, ln, var) {
+                alt (*self).live_on_exit(ln, var) {
+                  none { /* not live: good */ }
+                  some(lnk) {
+                    self.report_illegal_read(
+                        local.span, lnk, var,
+                        possibly_uninitialized_variable);
+                  }
+                }
             }
         }
       }
@@ -1262,11 +1303,21 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_assign(l, r) {
         self.check_lvalue(l, vt);
         vt.visit_expr(r, self, vt);
+
+        visit::visit_expr(expr, self, vt);
       }
 
       expr_move(l, r) {
         self.check_lvalue(l, vt);
         self.check_move_from_expr(r, vt);
+
+        visit::visit_expr(expr, self, vt);
+      }
+
+      expr_assign_op(_, l, _) {
+        self.check_lvalue(l, vt);
+
+        visit::visit_expr(expr, self, vt);
       }
 
       expr_call(f, args, _) {
@@ -1293,7 +1344,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_assert(*) | expr_check(*) | expr_addr_of(*) | expr_copy(*) |
       expr_loop_body(*) | expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_ret(*) | expr_break | expr_cont | expr_lit(_) |
-      expr_block(*) | expr_swap(*) | expr_assign_op(*) | expr_mac(*) {
+      expr_block(*) | expr_swap(*) | expr_mac(*) {
         visit::visit_expr(expr, self, vt);
       }
     }
@@ -1434,31 +1485,19 @@ impl check_methods for @liveness {
                 // only legal if there is no later assignment.
                 let ln = (*self).live_node(expr.id, expr.span);
                 let var = (*self).variable(nid, expr.span);
-                alt (*self).assigned_on_exit(ln, var) {
-                  some(lnk_expr(span)) {
-                    self.tcx.sess.span_err(
-                        span,
-                        "re-assignment of immutable variable");
-
-                    self.tcx.sess.span_note(
-                        expr.span,
-                        "prior assignment occurs here");
+                self.check_for_reassignment(ln, var, expr.span);
+                self.warn_about_dead_assign(expr.span, ln, var);
+              }
+              def {
+                alt relevant_def(def) {
+                  some(rdef_var(nid)) {
+                    let ln = (*self).live_node(expr.id, expr.span);
+                    let var = (*self).variable(nid, expr.span);
+                    self.warn_about_dead_assign(expr.span, ln, var);
                   }
-                  some(lnk) {
-                    self.tcx.sess.span_bug(
-                        expr.span,
-                        #fmt["illegal writer: %?", lnk]);
-                   }
+                  some(rdef_self) {}
                   none {}
                 }
-              }
-              def_arg(*) | def_local(_, true) {
-                // Assignment to a mutable variable; no conditions
-                // req'd.  In the case of arguments, the mutability is
-                // enforced by borrowck.
-              }
-              _ {
-                // Not a variable, don't care
               }
             }
           }
@@ -1469,6 +1508,33 @@ impl check_methods for @liveness {
             visit::visit_expr(expr, self, vt);
           }
        }
+    }
+
+    fn check_for_reassignments_in_pat(pat: @pat) {
+        (*self).pat_bindings(pat) { |ln, var, sp|
+            self.check_for_reassignment(ln, var, sp);
+        }
+    }
+
+    fn check_for_reassignment(ln: live_node, var: variable,
+                              orig_span: span) {
+        alt (*self).assigned_on_exit(ln, var) {
+          some(lnk_expr(span)) {
+            self.tcx.sess.span_err(
+                span,
+                "re-assignment of immutable variable");
+
+            self.tcx.sess.span_note(
+                orig_span,
+                "prior assignment occurs here");
+          }
+          some(lnk) {
+            self.tcx.sess.span_bug(
+                orig_span,
+                #fmt["illegal writer: %?", lnk]);
+          }
+          none {}
+        }
     }
 
     fn report_illegal_read(chk_span: span,
@@ -1499,4 +1565,62 @@ impl check_methods for @liveness {
           }
         }
     }
-}
+
+    fn should_warn(var: variable) -> option<str> {
+        let name = self.ir.var_infos[*var].name;
+        if name[0] == ('_' as u8) {none} else {some(name)}
+    }
+
+    fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: live_node) {
+        for decl.inputs.each { |arg|
+            let var = (*self).variable(arg.id, arg.ty.span);
+            alt ty::resolved_mode(self.tcx, arg.mode) {
+              by_mutbl_ref {
+                // for mutable reference arguments, something like
+                //    x = 1;
+                // is not worth warning about, as it has visible
+                // side effects outside the fn.
+                alt (*self).assigned_on_entry(entry_ln, var) {
+                  some(_) { /*ok*/ }
+                  none {
+                    // but if it is not written, it ought to be used
+                    self.warn_about_unused(sp, entry_ln, var);
+                  }
+                }
+              }
+              by_val | by_ref | by_move | by_copy {
+                self.warn_about_unused(sp, entry_ln, var);
+              }
+            }
+        }
+    }
+
+    fn warn_about_unused_or_dead_vars_in_pat(pat: @pat) {
+        (*self).pat_bindings(pat) { |ln, var, sp|
+            if !self.warn_about_unused(sp, ln, var) {
+                self.warn_about_dead_assign(sp, ln, var);
+            }
+        }
+    }
+
+    fn warn_about_unused(sp: span, ln: live_node, var: variable) -> bool {
+        if !(*self).used_on_entry(ln, var) {
+            for self.should_warn(var).each { |name|
+                self.tcx.sess.span_warn(
+                    sp, #fmt["unused variable: `%s`", name]);
+            }
+            ret true;
+        }
+        ret false;
+    }
+
+    fn warn_about_dead_assign(sp: span, ln: live_node, var: variable) {
+        if (*self).live_on_exit(ln, var).is_none() {
+            for self.should_warn(var).each { |name|
+                self.tcx.sess.span_warn(
+                    sp,
+                    #fmt["value assigned to `%s` is never read", name]);
+            }
+        }
+    }
+ }

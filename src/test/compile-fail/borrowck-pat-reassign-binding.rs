@@ -11,4 +11,5 @@ fn main() {
         x = some(i+1); //! ERROR assigning to mutable local variable prohibited due to outstanding loan
       }
     }
+    copy x; // just to prevent liveness warnings
 }
