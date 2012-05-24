@@ -162,43 +162,38 @@ type ctxt = {
     def_map: resolve::def_map,
     region_map: region_map,
 
-    // These two fields (parent and closure_parent) specify the parent
-    // scope of the current expression.  The parent scope is the
-    // innermost block, call, or alt expression during the execution
-    // of which the current expression will be evaluated.  Generally
-    // speaking, the innermost parent scope is also the closest
-    // suitable ancestor in the AST tree.
+    // The parent scope is the innermost block, call, or alt
+    // expression during the execution of which the current expression
+    // will be evaluated.  Generally speaking, the innermost parent
+    // scope is also the closest suitable ancestor in the AST tree.
     //
-    // However, there are two subtle cases where the parent scope for
-    // an expression is not strictly derived from the AST. The first
-    // such exception concerns call arguments and the second concerns
-    // closures (which, at least today, are always call arguments).
-    // Consider:
+    // There is a subtle point concerning call arguments.  Imagine
+    // you have a call:
     //
     // { // block a
-    //    foo( // call b
+    //     foo( // call b
     //        x,
-    //        y,
-    //        fn&() {
-    //          // fn body c
-    //        })
+    //        y);
     // }
     //
-    // Here, the parent of the three argument expressions is
-    // actually the block `a`, not the call `b`, because they will
-    // be evaluated before the call conceptually takes place.
-    // However, the body of the closure is parented by the call
-    // `b` (it cannot be invoked except during that call, after
-    // all).
+    // In what lifetime are the expressions `x` and `y` evaluated?  At
+    // first, I imagine the answer was the block `a`, as the arguments
+    // are evaluated before the call takes place.  But this turns out
+    // to be wrong.  The lifetime of the call must encompass the
+    // argument evaluation as well.
     //
-    // To capture these patterns, we use two fields.  The first,
-    // parent, is the parent scope of a normal expression.  The
-    // second, closure_parent, is the parent scope that a closure body
-    // ought to use.  These only differ in the case of calls, where
-    // the closure parent is the call, but the parent is the container
-    // of the call.
-    parent: parent,
-    closure_parent: parent
+    // The reason is that evaluation of an earlier argument could
+    // create a borrow which exists during the evaluation of later
+    // arguments.  Consider this torture test, for example,
+    //
+    // fn test1(x: @mut ~int) {
+    //     foo(&**x, *x = ~5);
+    // }
+    //
+    // Here, the first argument `&**x` will be a borrow of the `~int`,
+    // but the second argument overwrites that very value! Bad.
+    // (This test is borrowck-pure-scope-in-call.rs, btw)
+    parent: parent
 };
 
 // Returns true if `subscope` is equal to or is lexically nested inside
@@ -291,8 +286,7 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, blk.node.id);
 
     // Descend.
-    let new_cx: ctxt = {parent: some(blk.node.id),
-                        closure_parent: some(blk.node.id) with cx};
+    let new_cx: ctxt = {parent: some(blk.node.id) with cx};
     visit::visit_block(blk, new_cx, visitor);
 }
 
@@ -325,14 +319,12 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     alt expr.node {
       ast::expr_call(*) {
         #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
-        let new_cx = {closure_parent: some(expr.id) with cx};
+        let new_cx = {parent: some(expr.id) with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
       ast::expr_alt(subexpr, _, _) {
         #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
-        let new_cx = {parent: some(expr.id),
-                      closure_parent: some(expr.id)
-                      with cx};
+        let new_cx = {parent: some(expr.id) with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
       ast::expr_fn(_, _, _, cap_clause) |
@@ -358,7 +350,7 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx: ctxt = {closure_parent: none, parent: none with cx};
+    let new_cx: ctxt = {parent: none with cx};
     visit::visit_item(item, new_cx, visitor);
 }
 
@@ -370,19 +362,18 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
       visit::fk_item_fn(*) | visit::fk_method(*) | visit::fk_res(*) |
       visit::fk_ctor(*) | visit::fk_dtor(*) {
         // Top-level functions are a root scope.
-        {parent: some(id), closure_parent: some(id) with cx}
+        {parent: some(id) with cx}
       }
 
       visit::fk_anon(*) | visit::fk_fn_block(*) {
-        // Closures use the closure_parent.
-        {parent: cx.closure_parent with cx}
+        // Closures continue with the inherited scope.
+        cx
       }
     };
 
     #debug["visiting fn with body %d. cx.parent: %? \
-            cx.closure_parent: %? fn_cx.parent: %?",
-           body.node.id, cx.parent,
-           cx.closure_parent, fn_cx.parent];
+            fn_cx.parent: %?",
+           body.node.id, cx.parent, fn_cx.parent];
 
     for decl.inputs.each { |input|
         cx.region_map.insert(input.id, body.node.id);
@@ -396,8 +387,7 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
     let cx: ctxt = {sess: sess,
                     def_map: def_map,
                     region_map: map::int_hash(),
-                    parent: none,
-                    closure_parent: none};
+                    parent: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,

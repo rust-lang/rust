@@ -2,7 +2,7 @@ use std;
 
 fn main() {
     unsafe fn f(&&v: *const int) {
-        *v = 1 //! ERROR assigning to dereference of const pointer
+        *v = 1 //! ERROR assigning to dereference of const * pointer
     }
 
     unsafe {
