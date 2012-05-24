@@ -6,7 +6,7 @@ export item_lteq, mk_pass;
 
 type item_lteq = fn~(doc::itemtag, doc::itemtag) -> bool;
 
-fn mk_pass(name: str, lteq: item_lteq) -> pass {
+fn mk_pass(name: str, +lteq: item_lteq) -> pass {
     {
         name: name,
         f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {

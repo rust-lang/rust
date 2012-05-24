@@ -1481,7 +1481,7 @@ fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
     alt inf.index.find(id) {
       none { }
       some(lst) {
-        let found = list_search(lst, bind lookup_in_mie(e, _, ns));
+        let found = list_search(lst, {|x| lookup_in_mie(e, x, ns)});
         if !is_none(found) {
             ret found;
         }
@@ -1511,7 +1511,7 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
         }
     }
     let matches = vec::filter_map(copy globs,
-                                  bind lookup_in_mod_(e, _, sp, id, ns, dr));
+                                  {|x| lookup_in_mod_(e, x, sp, id, ns, dr)});
     if vec::len(matches) == 0u {
         ret none;
         }

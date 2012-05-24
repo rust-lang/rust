@@ -2,7 +2,7 @@
 
 export mk_pass;
 
-fn mk_pass(name: str, op: fn~(str) -> str) -> pass {
+fn mk_pass(name: str, +op: fn~(str) -> str) -> pass {
     {
         name: name,
         f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
@@ -44,7 +44,7 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
 }
 
 fn apply_to_sections(op: op, sections: [doc::section]) -> [doc::section] {
-    par::anymap(sections) {|section|
+    par::anymap(sections) {|section, copy op|
         {
             header: op(section.header),
             body: op(section.body)
@@ -53,13 +53,12 @@ fn apply_to_sections(op: op, sections: [doc::section]) -> [doc::section] {
 }
 
 fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
-    let fold_ctxt = fold.ctxt;
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: par::anymap(doc.variants) {|variant|
+        variants: par::anymap(doc.variants) {|variant, copy fold|
             {
-                desc: maybe_apply_op(fold_ctxt, variant.desc)
+                desc: maybe_apply_op(fold.ctxt, variant.desc)
                 with variant
             }
         }
@@ -77,7 +76,7 @@ fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
 }
 
 fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
-    par::anymap(docs) {|doc|
+    par::anymap(docs) {|doc, copy op|
         {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),

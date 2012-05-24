@@ -24,7 +24,7 @@ task to receive from it.
 unsafe fn chan_from_global_ptr<T: send>(
     global: global_ptr,
     builder: fn() -> task::builder,
-    f: fn~(comm::port<T>)
+    +f: fn~(comm::port<T>)
 ) -> comm::chan<T> {
 
     enum msg {

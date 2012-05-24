@@ -56,7 +56,7 @@ fn from_file<T>(file: str, owner: srv_owner<T>) -> T {
     run(owner, file, parse::from_file_sess)
 }
 
-fn run<T>(owner: srv_owner<T>, source: str, parse: parser) -> T {
+fn run<T>(owner: srv_owner<T>, source: str, +parse: parser) -> T {
 
     let srv_ = srv({
         ch: task::spawn_listener {|po|

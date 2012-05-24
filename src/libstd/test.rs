@@ -58,7 +58,7 @@ fn test_main(args: [str], tests: [test_desc]) {
 }
 
 type test_opts = {filter: option<str>, run_ignored: bool,
-    logfile: option<str>};
+                  logfile: option<str>};
 
 type opt_res = either<test_opts, str>;
 
@@ -81,7 +81,7 @@ fn parse_opts(args: [str]) -> opt_res {
     let logfile = getopts::opt_maybe_str(match, "logfile");
 
     let test_opts = {filter: filter, run_ignored: run_ignored,
-        logfile: logfile};
+                     logfile: logfile};
 
     ret either::left(test_opts);
 }
@@ -126,7 +126,7 @@ fn run_tests_console(opts: test_opts,
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line("");
-                st.failures += [test];
+                st.failures += [copy test];
               }
               tr_ignored {
                 st.ignored += 1u;
@@ -273,7 +273,7 @@ fn run_tests(opts: test_opts, tests: [test_desc],
              callback: fn@(testevent)) {
 
     let mut filtered_tests = filter_tests(opts, tests);
-    callback(te_filtered(filtered_tests));
+    callback(te_filtered(copy filtered_tests));
 
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
@@ -295,7 +295,7 @@ fn run_tests(opts: test_opts, tests: [test_desc],
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                callback(te_wait(test));
+                callback(te_wait(copy test));
             }
             run_test(test, ch);
             wait_idx += 1u;
@@ -304,7 +304,7 @@ fn run_tests(opts: test_opts, tests: [test_desc],
 
         let (test, result) = comm::recv(p);
         if concurrency != 1u {
-            callback(te_wait(test));
+            callback(te_wait(copy test));
         }
         callback(te_result(test, result));
         wait_idx -= 1u;
@@ -329,7 +329,7 @@ fn get_concurrency() -> uint {
 
 fn filter_tests(opts: test_opts,
                 tests: [test_desc]) -> [test_desc] {
-    let mut filtered = tests;
+    let mut filtered = copy tests;
 
     // Remove tests that don't match the test filter
     filtered = if option::is_none(opts.filter) {
@@ -344,7 +344,7 @@ fn filter_tests(opts: test_opts,
         fn filter_fn(test: test_desc, filter_str: str) ->
             option<test_desc> {
             if str::contains(test.name, filter_str) {
-                ret option::some(test);
+                ret option::some(copy test);
             } else { ret option::none; }
         }
 
@@ -360,7 +360,7 @@ fn filter_tests(opts: test_opts,
         fn filter(test: test_desc) -> option<test_desc> {
             if test.ignore {
                 ret option::some({name: test.name,
-                                  fn: test.fn,
+                                  fn: copy test.fn,
                                   ignore: false,
                                   should_fail: test.should_fail});
             } else { ret option::none; }
@@ -385,19 +385,19 @@ type test_future = {test: test_desc, wait: fn@() -> test_result};
 
 fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     if test.ignore {
-        comm::send(monitor_ch, (test, tr_ignored));
+        comm::send(monitor_ch, (copy test, tr_ignored));
         ret;
     }
 
     task::spawn {||
-        let testfn = test.fn;
+        let testfn = copy test.fn;
         let mut builder = task::builder();
         let result_future = task::future_result(builder);
         task::unsupervise(builder);
         task::run(builder, testfn);
         let task_result = future::get(result_future);
         let test_result = calc_result(test, task_result == task::success);
-        comm::send(monitor_ch, (test, test_result));
+        comm::send(monitor_ch, (copy test, test_result));
     };
 }
 

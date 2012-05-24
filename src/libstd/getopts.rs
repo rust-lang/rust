@@ -132,7 +132,7 @@ enum optval { val(str), given, }
 The result of checking command line arguments. Contains a vector
 of matches and a vector of free strings.
 "]
-type match = {opts: [opt], vals: [mut [optval]], free: [str]};
+type match = {opts: [opt], vals: [[optval]], free: [str]};
 
 fn is_arg(arg: str) -> bool {
     ret str::len(arg) > 1u && arg[0] == '-' as u8;
@@ -275,7 +275,7 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
         }
         i += 1u;
     }
-    ret ok({opts: opts, vals: vals, free: free});
+    ret ok({opts: opts, vals: vec::from_mut(vals), free: free});
 }
 
 fn opt_vals(m: match, nm: str) -> [optval] {

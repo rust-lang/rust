@@ -56,7 +56,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     }
 
     if fn_id_loc.crate != local_crate {
-        let uses = vec::from_mut(cx.uses);
+        let uses = vec::from_mut(copy cx.uses);
         ccx.type_use_cache.insert(fn_id, uses);
         ret uses;
     }
@@ -95,7 +95,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       }
 
     }
-    let uses = vec::from_mut(cx.uses);
+    let uses = vec::from_mut(copy cx.uses);
     ccx.type_use_cache.insert(fn_id, uses);
     uses
 }

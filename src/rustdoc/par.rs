@@ -13,7 +13,7 @@ fn parmap<T:send, U:send>(v: [T], f: fn~(T) -> U) -> [U] unsafe {
         let po = comm::port();
         let ch = comm::chan(po);
         let addr = ptr::addr_of(elt);
-        task::spawn {||
+        task::spawn {|copy f|
             comm::send(ch, f(*addr));
         }
         po

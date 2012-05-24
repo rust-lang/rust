@@ -725,7 +725,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
                              ebml_w: ebml::writer,
                              ii: ast::inlined_item) {
     ebml_w.wr_tag(c::tag_table as uint) {||
-        visit_ids(ii, fn@(id: ast::node_id) {
+        visit_ids(ii, fn@(id: ast::node_id, copy ebml_w) {
             // Note: this will cause a copy of ebml_w, which is bad as
             // it has mut fields.  But I believe it's harmless since
             // we generate balanced EBML.

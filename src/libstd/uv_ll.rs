@@ -624,11 +624,10 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                       addr_ptr: *sockaddr_in,
                       ++after_connect_cb: *u8)
 -> libc::c_int {
-    let address = *addr_ptr;
     log(debug, #fmt("b4 native tcp_connect--addr port: %u cb: %u",
-                     address.sin_port as uint, after_connect_cb as uint));
+                    (*addr_ptr).sin_port as uint, after_connect_cb as uint));
     ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
-                                after_connect_cb, addr_ptr);
+                                    after_connect_cb, addr_ptr);
 }
 // FIXME ref #2064
 unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,

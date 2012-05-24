@@ -55,18 +55,18 @@ type t<T> = {
 // initializers, but they do as function arguments
 fn mk_fold<T:copy>(
     ctxt: T,
-    fold_doc: fold_doc<T>,
-    fold_crate: fold_crate<T>,
-    fold_item: fold_item<T>,
-    fold_mod: fold_mod<T>,
-    fold_nmod: fold_nmod<T>,
-    fold_fn: fold_fn<T>,
-    fold_const: fold_const<T>,
-    fold_enum: fold_enum<T>,
-    fold_res: fold_res<T>,
-    fold_iface: fold_iface<T>,
-    fold_impl: fold_impl<T>,
-    fold_type: fold_type<T>
+    +fold_doc: fold_doc<T>,
+    +fold_crate: fold_crate<T>,
+    +fold_item: fold_item<T>,
+    +fold_mod: fold_mod<T>,
+    +fold_nmod: fold_nmod<T>,
+    +fold_fn: fold_fn<T>,
+    +fold_const: fold_const<T>,
+    +fold_enum: fold_enum<T>,
+    +fold_res: fold_res<T>,
+    +fold_iface: fold_iface<T>,
+    +fold_impl: fold_impl<T>,
+    +fold_type: fold_type<T>
 ) -> fold<T> {
     fold({
         ctxt: ctxt,
@@ -177,7 +177,7 @@ fn default_any_fold_mod<T:send copy>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: par::anymap(doc.items) {|itemtag|
+        items: par::anymap(doc.items) {|itemtag, copy fold|
             fold_itemtag(fold, itemtag)
         }
         with doc
@@ -203,7 +203,7 @@ fn default_par_fold_mod<T:send copy>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: par::parmap(doc.items) {|itemtag|
+        items: par::parmap(doc.items) {|itemtag, copy fold|
             fold_itemtag(fold, itemtag)
         }
         with doc
@@ -216,7 +216,7 @@ fn default_any_fold_nmod<T:send copy>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: par::anymap(doc.fns) {|fndoc|
+        fns: par::anymap(doc.fns) {|fndoc, copy fold|
             fold.fold_fn(fold, fndoc)
         }
         with doc
@@ -242,7 +242,7 @@ fn default_par_fold_nmod<T:send copy>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: par::parmap(doc.fns) {|fndoc|
+        fns: par::parmap(doc.fns) {|fndoc, copy fold|
             fold.fold_fn(fold, fndoc)
         }
         with doc

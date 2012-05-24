@@ -200,7 +200,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-fn monitor(f: fn~(diagnostic::emitter)) {
+fn monitor(+f: fn~(diagnostic::emitter)) {
     enum monitor_msg {
         fatal,
         done,

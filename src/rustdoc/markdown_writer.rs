@@ -136,7 +136,7 @@ fn readclose(fd: libc::c_int) -> str {
     ret buf;
 }
 
-fn generic_writer(process: fn~(markdown: str)) -> writer {
+fn generic_writer(+process: fn~(markdown: str)) -> writer {
     let ch = task::spawn_listener {|po: comm::port<writeinstr>|
         let mut markdown = "";
         let mut keep_going = true;

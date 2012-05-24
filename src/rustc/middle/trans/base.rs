@@ -4020,7 +4020,7 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-fn new_block(cx: fn_ctxt, parent: block_parent, kind: block_kind,
+fn new_block(cx: fn_ctxt, parent: block_parent, +kind: block_kind,
              name: str, opt_node_info: option<node_info>) -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {

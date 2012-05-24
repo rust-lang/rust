@@ -476,7 +476,7 @@ once a new connection is recv'd. Its parameter:
     variant
 "]
 fn conn_recv_spawn(server_port: tcp_conn_port,
-                   cb: fn~(result::result<tcp_socket, tcp_err_data>)) {
+                   +cb: fn~(result::result<tcp_socket, tcp_err_data>)) {
     let new_conn_po = (**server_port).new_conn_po;
     let iotask = (**server_port).iotask;
     let new_conn_result = comm::recv(new_conn_po);
@@ -681,8 +681,8 @@ of listen exiting because of an error
 fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
           on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
-          new_connect_cb: fn~(tcp_new_connection,
-                              comm::chan<option<tcp_err_data>>))
+          +new_connect_cb: fn~(tcp_new_connection,
+                               comm::chan<option<tcp_err_data>>))
     -> result::result<(), tcp_err_data> unsafe {
     let stream_closed_po = comm::port::<()>();
     let kill_po = comm::port::<option<tcp_err_data>>();
@@ -773,7 +773,7 @@ Convenience methods extending `net::tcp::tcp_conn_port`
 "]
 impl conn_port_methods for tcp_conn_port {
     fn recv() -> result::result<tcp_socket, tcp_err_data> { conn_recv(self) }
-    fn recv_spawn(cb: fn~(result::result<tcp_socket,tcp_err_data>))
+    fn recv_spawn(+cb: fn~(result::result<tcp_socket,tcp_err_data>))
                   { conn_recv_spawn(self, cb); }
     fn peek() -> bool { conn_peek(self) }
 }

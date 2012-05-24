@@ -7,9 +7,9 @@ import markdown_writer::writer_factory;
 export mk_pass;
 export header_kind, header_name, header_text;
 
-fn mk_pass(writer_factory: writer_factory) -> pass {
+fn mk_pass(+writer_factory: writer_factory) -> pass {
     let f = fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
-        run(srv, doc, writer_factory)
+        run(srv, doc, copy writer_factory)
     };
 
     {
@@ -21,7 +21,7 @@ fn mk_pass(writer_factory: writer_factory) -> pass {
 fn run(
     srv: astsrv::srv,
     doc: doc::doc,
-    writer_factory: writer_factory
+    +writer_factory: writer_factory
 ) -> doc::doc {
 
     fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
@@ -80,7 +80,7 @@ type ctxt = {
 
 fn write_markdown(
     doc: doc::doc,
-    writer_factory: writer_factory
+    +writer_factory: writer_factory
 ) {
     par::anymap(doc.pages) {|page|
         let ctxt = {

@@ -552,7 +552,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                      index: @mut [entry<int>]) {
         *index += [{val: item.id, pos: ebml_w.writer.tell()}];
     }
-    let add_to_index = bind add_to_index_(item, ebml_w, index);
+    let add_to_index = bind add_to_index_(item, copy ebml_w, index);
 
     alt item.node {
       item_const(_, _) {
@@ -796,7 +796,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                         crate_node_id, [], "");
     visit::visit_crate(*crate, (), visit::mk_vt(@{
         visit_expr: {|_e, _cx, _v|},
-        visit_item: {|i, cx, v|
+        visit_item: {|i, cx, v, copy ebml_w|
             visit::visit_item(i, cx, v);
             alt check ecx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) {
@@ -820,7 +820,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
               }
             }
         },
-        visit_native_item: {|ni, cx, v|
+        visit_native_item: {|ni, cx, v, copy ebml_w|
             visit::visit_native_item(ni, cx, v);
             alt check ecx.tcx.items.get(ni.id) {
               ast_map::node_native_item(_, abi, pt) {

@@ -58,7 +58,7 @@ fn sha1() -> sha1 {
          msg_block: [mut u8],
          mut msg_block_idx: uint,
          mut computed: bool,
-         work_buf: [mut u32]};
+         work_buf: @[mut u32]};
 
     fn add_input(st: sha1state, msg: [u8]) {
         /* FIXME: Should be typestate precondition (#2345) */
@@ -71,7 +71,6 @@ fn sha1() -> sha1 {
                 st.len_high += 1u32;
                 if st.len_high == 0u32 {
                     // FIXME: Need better failure mode (#2346)
-
                     fail;
                 }
             }
@@ -81,7 +80,7 @@ fn sha1() -> sha1 {
     fn process_msg_block(st: sha1state) {
         // FIXME: Make precondition (#2345)
         assert (vec::len(st.h) == digest_buf_len);
-        assert (vec::len(st.work_buf) == work_buf_len);
+        assert (vec::len(*st.work_buf) == work_buf_len);
         let mut t: int; // Loop counter
         let w = st.work_buf;
 
@@ -249,7 +248,7 @@ fn sha1() -> sha1 {
         msg_block: vec::to_mut(vec::from_elem(msg_block_len, 0u8)),
         mut msg_block_idx: 0u,
         mut computed: false,
-        work_buf: vec::to_mut(vec::from_elem(work_buf_len, 0u32))
+        work_buf: @vec::to_mut(vec::from_elem(work_buf_len, 0u32))
     };
     let sh = st as sha1;
     sh.reset();

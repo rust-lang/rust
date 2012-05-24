@@ -603,7 +603,7 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
     for_each_package(c, { |s, p|
         info(#fmt["%s ? %s", p.uuid, uuid]);
         if p.uuid == uuid {
-            vec::grow(ps, 1u, (s, p));
+            vec::grow(ps, 1u, (s.name, p));
         }
     });
     if vec::len(ps) == 1u {
@@ -616,8 +616,8 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
     }
     error("Found multiple packages:");
     for ps.each {|elt|
-        let (s,p) = elt;
-        info("  " + s.name + "/" + p.uuid + " (" + p.name + ")");
+        let (sname,p) = elt;
+        info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
     }
 }
 
@@ -625,7 +625,7 @@ fn install_named(c: cargo, wd: str, name: str) {
     let mut ps = [];
     for_each_package(c, { |s, p|
         if p.name == name {
-            vec::grow(ps, 1u, (s, p));
+            vec::grow(ps, 1u, (s.name, p));
         }
     });
     if vec::len(ps) == 1u {
@@ -638,8 +638,8 @@ fn install_named(c: cargo, wd: str, name: str) {
     }
     error("Found multiple packages:");
     for ps.each {|elt|
-        let (s,p) = elt;
-        info("  " + s.name + "/" + p.uuid + " (" + p.name + ")");
+        let (sname,p) = elt;
+        info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
     }
 }
 
