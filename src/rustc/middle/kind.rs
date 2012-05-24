@@ -92,7 +92,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         check_send(cx, var_t, sp);
 
         // copied in data must be copyable, but moved in data can be anything
-        if !is_move { check_copy(cx, var_t, sp); }
+        let is_implicit = fv.is_some();
+        if !is_move { check_copy(cx, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
         if !is_move {
@@ -105,7 +106,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     fn check_for_box(cx: ctx, fv: option<@freevar_entry>, is_move: bool,
                      var_t: ty::t, sp: span) {
         // copied in data must be copyable, but moved in data can be anything
-        if !is_move { check_copy(cx, var_t, sp); }
+        let is_implicit = fv.is_some();
+        if !is_move { check_copy(cx, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
         if !is_move {
@@ -203,12 +205,16 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     #debug["kind::check_expr(%s)", expr_to_str(e)];
     alt e.node {
-      expr_assign(_, ex) | expr_assign_op(_, _, ex) |
+      expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
       expr_ret(some(ex)) | expr_cast(ex, _) { maybe_copy(cx, ex); }
       expr_copy(expr) { check_copy_ex(cx, expr, false); }
-      // Vector add copies.
-      expr_binary(add, ls, rs) { maybe_copy(cx, ls); maybe_copy(cx, rs); }
+      // Vector add copies, but not "implicitly"
+      expr_assign_op(_, _, ex) { check_copy_ex(cx, ex, false) }
+      expr_binary(add, ls, rs) {
+        check_copy_ex(cx, ls, false);
+        check_copy_ex(cx, rs, false);
+      }
       expr_rec(fields, def) {
         for fields.each {|field| maybe_copy(cx, field.node.expr); }
         alt def {
@@ -365,17 +371,12 @@ fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
     }
 }
 
-fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
+fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool) {
     if ty::expr_is_lval(cx.method_map, ex) &&
        !cx.last_use_map.contains_key(ex.id) &&
        !is_nullary_variant(cx, ex) {
         let ty = ty::expr_ty(cx.tcx, ex);
-        check_copy(cx, ty, ex.span);
-        // FIXME turn this on again once vector types are no longer unique.
-        // Right now, it is too annoying to be useful.
-        /* if warn && ty::type_is_unique(ty) {
-            cx.tcx.sess.span_warn(ex.span, "copying a unique value");
-        }*/
+        check_copy(cx, ty, ex.span, implicit_copy);
     }
 }
 
@@ -408,9 +409,14 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
     }
 }
 
-fn check_copy(cx: ctx, ty: ty::t, sp: span) {
-    if !ty::kind_can_be_copied(ty::type_kind(cx.tcx, ty)) {
+fn check_copy(cx: ctx, ty: ty::t, sp: span, implicit_copy: bool) {
+    let k = ty::type_kind(cx.tcx, ty);
+    if !ty::kind_can_be_copied(k) {
         cx.tcx.sess.span_err(sp, "copying a noncopyable value");
+    } else if implicit_copy && !ty::kind_can_be_implicitly_copied(k) {
+        cx.tcx.sess.span_warn(
+            sp,
+            "implicitly copying a non-implicitly-copyable value");
     }
 }
 

@@ -111,7 +111,8 @@ export ty_to_def_id;
 export ty_fn_args;
 export type_constr;
 export kind, kind_sendable, kind_copyable, kind_noncopyable, kind_const;
-export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
+export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
+export proto_kind, kind_lteq, type_kind;
 export operators;
 export type_err, terr_vstore_kind;
 export type_err_to_str;
@@ -1268,9 +1269,11 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
 enum kind { kind_(u32) }
 
-const KIND_MASK_COPY  : u32 = 0b00000000000000000000000000000001u32;
-const KIND_MASK_SEND  : u32 = 0b00000000000000000000000000000010u32;
-const KIND_MASK_CONST : u32 = 0b00000000000000000000000000000100u32;
+// *ALL* implicity copiable things must be copiable
+const KIND_MASK_COPY     : u32 = 0b00000000000000000000000000000001u32;
+const KIND_MASK_SEND     : u32 = 0b00000000000000000000000000000010u32;
+const KIND_MASK_CONST    : u32 = 0b00000000000000000000000000000100u32;
+const KIND_MASK_IMPLICIT : u32 = 0b00000000000000000000000000001000u32;
 
 fn kind_noncopyable() -> kind {
     kind_(0u32)
@@ -1278,6 +1281,14 @@ fn kind_noncopyable() -> kind {
 
 fn kind_copyable() -> kind {
     kind_(KIND_MASK_COPY)
+}
+
+fn kind_implicitly_copyable() -> kind {
+    kind_(KIND_MASK_IMPLICIT | KIND_MASK_COPY)
+}
+
+fn kind_implicitly_sendable() -> kind {
+    kind_(KIND_MASK_IMPLICIT | KIND_MASK_COPY | KIND_MASK_SEND)
 }
 
 fn kind_sendable() -> kind {
@@ -1305,6 +1316,10 @@ fn remove_const(k: kind, tm: mt) -> kind {
     }
 }
 
+fn remove_implicit(k: kind) -> kind {
+    k - kind_(KIND_MASK_IMPLICIT)
+}
+
 impl operators for kind {
     fn &(other: kind) -> kind {
         lower_kind(self, other)
@@ -1319,9 +1334,13 @@ impl operators for kind {
     }
 }
 
-// Using these query functons is preferable to direct comparison or matching
+// Using these query functions is preferable to direct comparison or matching
 // against the kind constants, as we may modify the kind hierarchy in the
 // future.
+pure fn kind_can_be_implicitly_copied(k: kind) -> bool {
+    *k & KIND_MASK_IMPLICIT != 0u32
+}
+
 pure fn kind_can_be_copied(k: kind) -> bool {
     *k & KIND_MASK_COPY != 0u32
 }
@@ -1334,9 +1353,9 @@ fn proto_kind(p: proto) -> kind {
     alt p {
       ast::proto_any { kind_noncopyable() }
       ast::proto_block { kind_noncopyable() }
-      ast::proto_box { kind_copyable() }
+      ast::proto_box { kind_implicitly_copyable() }
       ast::proto_uniq { kind_sendable() }
-      ast::proto_bare { kind_sendable() | kind_const() }
+      ast::proto_bare { kind_implicitly_sendable() | kind_const() }
     }
 }
 
@@ -1354,13 +1373,34 @@ fn raise_kind(a: kind, b: kind) -> kind {
 
 #[test]
 fn test_kinds() {
-    // The kind "lattice" is nocopy <= copy <= send
+    // The kind "lattice" is defined by the subset operation on the
+    // set of permitted operations.
     assert kind_lteq(kind_sendable(), kind_sendable());
     assert kind_lteq(kind_copyable(), kind_sendable());
     assert kind_lteq(kind_copyable(), kind_copyable());
     assert kind_lteq(kind_noncopyable(), kind_sendable());
     assert kind_lteq(kind_noncopyable(), kind_copyable());
     assert kind_lteq(kind_noncopyable(), kind_noncopyable());
+    assert kind_lteq(kind_copyable(), kind_implicitly_copyable());
+    assert kind_lteq(kind_copyable(), kind_implicitly_sendable());
+    assert kind_lteq(kind_sendable(), kind_implicitly_sendable());
+    assert !kind_lteq(kind_sendable(), kind_implicitly_copyable());
+    assert !kind_lteq(kind_copyable(), kind_send_only());
+}
+
+// Return the most permissive kind that a composite object containing a field
+// with the given mutability can have.
+// This is used to prevent objects containing mutable state from being
+// implicitly copied.
+fn mutability_kind(m: mutability) -> kind {
+    alt (m) {
+      m_mutbl | m_const { remove_implicit(kind_top()) }
+      m_imm { kind_top() }
+    }
+}
+
+fn mutable_type_kind(cx: ctxt, ty: mt) -> kind {
+    lower_kind(mutability_kind(ty.mutbl), type_kind(cx, ty.ty))
 }
 
 fn type_kind(cx: ctxt, ty: t) -> kind {
@@ -1370,57 +1410,66 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     }
 
     // Insert a default in case we loop back on self recursively.
-    cx.kind_cache.insert(ty, kind_sendable());
+    cx.kind_cache.insert(ty, kind_top());
 
     let result = alt get(ty).struct {
       // Scalar and unique types are sendable
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_ptr(_) | ty_str { kind_sendable() | kind_const() }
+      ty_ptr(_) { kind_implicitly_sendable() | kind_const() }
+      // FIXME: this *shouldn't* be implicitly copyable (#2450)
+      ty_str { kind_implicitly_sendable() | kind_const() }
       ty_type { kind_copyable() }
       ty_fn(f) { proto_kind(f.proto) }
 
       // Closures have kind determined by capture mode
       ty_opaque_closure_ptr(ck_block) { kind_noncopyable() }
-      ty_opaque_closure_ptr(ck_box) { kind_copyable() }
+      ty_opaque_closure_ptr(ck_box) { kind_implicitly_copyable() }
       ty_opaque_closure_ptr(ck_uniq) { kind_sendable() }
 
       // Those with refcounts raise noncopyable to copyable,
       // lower sendable to copyable. Therefore just set result to copyable.
       ty_box(tm) {
         if tm.mutbl == ast::m_mutbl {
-            kind_copyable()
+            kind_implicitly_copyable()
         }
         else {
             let k = type_kind(cx, tm.ty);
             if kind_lteq(kind_const(), k) {
-                kind_copyable() | kind_const()
+                kind_implicitly_copyable() | kind_const()
             }
-            else { kind_copyable() }
+            else { kind_implicitly_copyable() }
         }
       }
-      ty_iface(_, _) | ty_opaque_box { kind_copyable() }
-      ty_rptr(_, _) { kind_copyable() }
+      ty_iface(_, _) | ty_opaque_box { kind_implicitly_copyable() }
+      ty_rptr(_, _) { kind_implicitly_copyable() }
 
-      // Unique boxes and vecs have the kind of their contained type.
-      ty_vec(tm) | ty_uniq(tm) { remove_const(type_kind(cx, tm.ty), tm) }
+      // Unique boxes and vecs have the kind of their contained type,
+      // but unique boxes can't be implicitly copyable.
+      ty_uniq(tm) {
+        remove_implicit(remove_const(type_kind(cx, tm.ty), tm))
+      }
+      // FIXME: Vectors *shouldn't* be implicitly copyable but are (#2450)
+      ty_vec(tm) { remove_const(mutable_type_kind(cx, tm), tm) }
 
       // Slice and refcounted evecs are copyable; uniques and interiors
-      // depend on the their contained type.
+      // depend on the their contained type, but aren't implicitly copyable.
       ty_evec(tm, vstore_box) |
       ty_evec(tm, vstore_slice(_)) {
         if kind_lteq(kind_const(), type_kind(cx, tm.ty)) {
-            kind_copyable() | kind_const()
+            kind_implicitly_copyable() | kind_const()
         }
         else {
-            kind_const()
+            kind_implicitly_copyable()
         }
       }
       ty_evec(tm, vstore_uniq) |
-      ty_evec(tm, vstore_fixed(_)) { remove_const(type_kind(cx, tm.ty), tm) }
+      ty_evec(tm, vstore_fixed(_)) {
+        remove_implicit(remove_const(type_kind(cx, tm.ty), tm))
+      }
 
       // All estrs are copyable; uniques and interiors are sendable.
       ty_estr(vstore_box) |
-      ty_estr(vstore_slice(_)) { kind_copyable() | kind_const() }
+      ty_estr(vstore_slice(_)) { kind_implicitly_copyable() | kind_const() }
       ty_estr(vstore_uniq) |
       ty_estr(vstore_fixed(_)) { kind_sendable() | kind_const() }
 
@@ -1428,7 +1477,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_rec(flds) {
         let mut lowest = kind_top();
         for flds.each {|f|
-            lowest = lower_kind(lowest, type_kind(cx, f.mt.ty));
+            lowest = lower_kind(lowest, mutable_type_kind(cx, f.mt));
             lowest = remove_const(lowest, f.mt);
         }
         lowest
@@ -1436,13 +1485,13 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // FIXME: (tjc) there are rules about when classes are copyable/
       // sendable, but I'm just treating them like records (#1726)
       ty_class(did, substs) {
-          // also factor out this code, copied from the records case
-          let mut lowest = kind_top();
-          let flds = class_items_as_fields(cx, did, substs);
-          for flds.each {|f|
-            lowest = lower_kind(lowest, type_kind(cx, f.mt.ty));
-          }
-          lowest
+        // also factor out this code, copied from the records case
+        let mut lowest = kind_top();
+        let flds = class_items_as_fields(cx, did, substs);
+        for flds.each {|f|
+            lowest = lower_kind(lowest, mutable_type_kind(cx, f.mt));
+        }
+        lowest
       }
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
@@ -1470,7 +1519,10 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
       ty_res(did, inner, tps) { kind_send_only() }
       ty_param(_, did) {
-          param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
+        // FIXME: type params shouldn't be implicitly copyable (#2449)
+        let k = param_bounds_to_kind(cx.ty_param_bounds.get(did.node));
+        if kind_can_be_copied(k)
+            { raise_kind(k, kind_implicitly_copyable()) } else { k }
       }
       ty_constr(t, _) { type_kind(cx, t) }
       // FIXME: is self ever const?
