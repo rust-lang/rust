@@ -505,14 +505,11 @@ enum check_loan_ctxt = @{
     // we are in a ctor, we track the self id
     mut in_ctor: bool,
 
-    mut is_pure: purity_cause
+    mut declared_purity: ast::purity
 };
 
 // if we are enforcing purity, why are we doing so?
 enum purity_cause {
-    // not enforcing purity:
-    pc_impure,
-
     // enforcing purity because fn was declared pure:
     pc_declaration,
 
@@ -529,7 +526,7 @@ fn check_loans(bccx: borrowck_ctxt,
                                  req_maps: req_maps,
                                  reported: int_hash(),
                                  mut in_ctor: false,
-                                 mut is_pure: pc_impure});
+                                 mut declared_purity: ast::impure_fn});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
                             visit_block: check_loans_in_block,
                             visit_fn: check_loans_in_fn
@@ -555,6 +552,37 @@ impl methods for assignment_type {
 
 impl methods for check_loan_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
+
+    fn purity(scope_id: ast::node_id) -> option<purity_cause> {
+        let default_purity = alt self.declared_purity {
+          // an unsafe declaration overrides all
+          ast::unsafe_fn { ret none; }
+
+          // otherwise, remember what was declared as the
+          // default, but we must scan for requirements
+          // imposed by the borrow check
+          ast::pure_fn { some(pc_declaration) }
+          ast::crust_fn | ast::impure_fn { none }
+        };
+
+        // scan to see if this scope or any enclosing scope requires
+        // purity.  if so, that overrides the declaration.
+
+        let mut scope_id = scope_id;
+        let region_map = self.tcx().region_map;
+        let pure_map = self.req_maps.pure_map;
+        loop {
+            alt pure_map.find(scope_id) {
+              none {}
+              some(e) {ret some(pc_cmt(e));}
+            }
+
+            alt region_map.find(scope_id) {
+              none { ret default_purity; }
+              some(next_scope_id) { scope_id = next_scope_id; }
+            }
+        }
+    }
 
     fn walk_loans(scope_id: ast::node_id,
                   f: fn(loan) -> bool) {
@@ -590,7 +618,7 @@ impl methods for check_loan_ctxt {
 
     // when we are in a pure context, we check each call to ensure
     // that the function which is invoked is itself pure.
-    fn check_pure(expr: @ast::expr) {
+    fn check_pure(pc: purity_cause, expr: @ast::expr) {
         let tcx = self.tcx();
         alt ty::get(tcx.ty(expr)).struct {
           ty::ty_fn(_) {
@@ -645,27 +673,12 @@ impl methods for check_loan_ctxt {
               }
               ast::impure_fn | ast::unsafe_fn {
                 self.report_purity_error(
-                    expr.span,
+                    pc, expr.span,
                     "access to non-pure functions");
               }
             }
           }
           _ { /* not a fn, ok */ }
-        }
-    }
-
-    fn check_for_purity_requirement(scope_id: ast::node_id) {
-        // if we are not already enforcing purity, check whether the
-        // gather pass thought we needed to enforce purity for this
-        // scope.
-        alt self.is_pure {
-          pc_declaration | pc_cmt(*) { }
-          pc_impure {
-            alt self.req_maps.pure_map.find(scope_id) {
-              none {}
-              some(e) {self.is_pure = pc_cmt(e)}
-            }
-          }
         }
     }
 
@@ -739,10 +752,14 @@ impl methods for check_loan_ctxt {
         // if this is a pure function, only loan-able state can be
         // assigned, because it is uniquely tied to this function and
         // is not visible from the outside
-        if self.is_pure != pc_impure && cmt.lp.is_none() {
-            self.report_purity_error(
-                ex.span,
-                at.ing_form(self.bccx.cmt_to_str(cmt)));
+        alt self.purity(ex.id) {
+          none {}
+          some(pc) {
+            if cmt.lp.is_none() {
+                self.report_purity_error(
+                    pc, ex.span, at.ing_form(self.bccx.cmt_to_str(cmt)));
+            }
+          }
         }
 
         // check for a conflicting loan as well, except in the case of
@@ -775,11 +792,8 @@ impl methods for check_loan_ctxt {
         self.bccx.add_to_mutbl_map(cmt);
     }
 
-    fn report_purity_error(sp: span, msg: str) {
-        alt copy self.is_pure {
-          pc_impure {
-            self.tcx().sess.bug("report_purity_error() called when impure");
-          }
+    fn report_purity_error(pc: purity_cause, sp: span, msg: str) {
+        alt pc {
           pc_declaration {
             self.tcx().sess.span_err(
                 sp,
@@ -855,7 +869,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      visitor: visit::vt<check_loan_ctxt>) {
 
     save_and_restore(self.in_ctor) {||
-        save_and_restore(self.is_pure) {||
+        save_and_restore(self.declared_purity) {||
             // In principle, we could consider fk_anon(*) or
             // fk_fn_block(*) to be in a ctor, I suppose, but the
             // purpose of the in_ctor flag is to allow modifications
@@ -870,10 +884,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
             // NDM this doesn't seem algother right, what about fn  items
             // nested in pure fns? etc?
 
-            alt decl.purity {
-              ast::pure_fn { self.is_pure = pc_declaration; }
-              _ { }
-            }
+            self.declared_purity = decl.purity;
 
             visit::visit_fn(fk, decl, body, sp, id, self, visitor);
         }
@@ -884,16 +895,7 @@ fn check_loans_in_expr(expr: @ast::expr,
                        &&self: check_loan_ctxt,
                        vt: visit::vt<check_loan_ctxt>) {
     self.check_for_conflicting_loans(expr.id);
-    save_and_restore(self.is_pure) {||
-        self.check_for_purity_requirement(expr.id);
-        check_loans_in_expr_1(expr, self, vt);
-    }
-}
 
-// avoid rightward drift by breaking this out into its own fn
-fn check_loans_in_expr_1(expr: @ast::expr,
-                         &&self: check_loan_ctxt,
-                         vt: visit::vt<check_loan_ctxt>) {
     alt expr.node {
       ast::expr_swap(l, r) {
         self.check_assignment(at_swap, l);
@@ -936,9 +938,12 @@ fn check_loans_in_expr_1(expr: @ast::expr,
         }
       }
       ast::expr_call(f, args, _) {
-        if self.is_pure != pc_impure {
-            self.check_pure(f);
-            for args.each { |arg| self.check_pure(arg) }
+        alt self.purity(expr.id) {
+          none {}
+          some(pc) {
+            self.check_pure(pc, f);
+            for args.each { |arg| self.check_pure(pc, arg) }
+          }
         }
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         vec::iter2(args, arg_tys) { |arg, arg_ty|
@@ -963,28 +968,17 @@ fn check_loans_in_expr_1(expr: @ast::expr,
 fn check_loans_in_block(blk: ast::blk,
                         &&self: check_loan_ctxt,
                         vt: visit::vt<check_loan_ctxt>) {
-    save_and_restore(self.is_pure) {||
+    save_and_restore(self.declared_purity) {||
         self.check_for_conflicting_loans(blk.node.id);
-        self.check_for_purity_requirement(blk.node.id);
 
         alt blk.node.rules {
           ast::default_blk {
           }
           ast::unchecked_blk {
-            alt self.is_pure {
-              pc_impure | pc_declaration {
-                self.is_pure = pc_impure;
-              }
-              pc_cmt(_) {
-                // unchecked does not override purity requirements due
-                // to borrows; unchecked didn't seem strong enough to
-                // justify potential memory unsafety to me
-              }
-            }
+            self.declared_purity = ast::impure_fn;
           }
           ast::unsafe_blk {
-            // unsafe blocks override everything
-            self.is_pure = pc_impure;
+            self.declared_purity = ast::unsafe_fn;
           }
         }
 
@@ -1472,6 +1466,15 @@ impl categorize_methods for borrowck_ctxt {
              ty_to_str(self.tcx, cmt.ty)]
     }
 
+    fn pk_to_sigil(pk: ptr_kind) -> str {
+        alt pk {
+          uniq_ptr {"~"}
+          gc_ptr {"@"}
+          region_ptr {"&"}
+          unsafe_ptr {"*"}
+        }
+    }
+
     fn cmt_to_str(cmt: cmt) -> str {
         let mut_str = self.mut_to_str(cmt.mutbl);
         alt cmt.cat {
@@ -1482,7 +1485,8 @@ impl categorize_methods for borrowck_ctxt {
           cat_rvalue { "non-lvalue" }
           cat_local(_) { mut_str + " local variable" }
           cat_arg(_) { mut_str + " argument" }
-          cat_deref(*) { "dereference of " + mut_str + " pointer" }
+          cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
+                                     mut_str, self.pk_to_sigil(pk)] }
           cat_stack_upvar(_) { mut_str + " upvar" }
           cat_comp(_, comp_field(_)) { mut_str + " field" }
           cat_comp(_, comp_tuple) { "tuple content" }
