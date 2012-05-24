@@ -1,9 +1,6 @@
 import either::{either, left, right};
 import ast_util::spanned;
-import common::{parse_seq,
-                seq_sep,
-                expect,
-                parse_ident};
+import common::{parser_common, seq_sep};
 
 export attr_or_ext;
 export parse_outer_attributes;
@@ -45,15 +42,15 @@ fn parse_outer_attributes(p: parser) -> [ast::attribute] {
 
 fn parse_attribute(p: parser, style: ast::attr_style) -> ast::attribute {
     let lo = p.span.lo;
-    expect(p, token::POUND);
+    p.expect(token::POUND);
     ret parse_attribute_naked(p, style, lo);
 }
 
 fn parse_attribute_naked(p: parser, style: ast::attr_style, lo: uint) ->
    ast::attribute {
-    expect(p, token::LBRACKET);
+    p.expect(token::LBRACKET);
     let meta_item = parse_meta_item(p);
-    expect(p, token::RBRACKET);
+    p.expect(token::RBRACKET);
     let mut hi = p.span.hi;
     ret spanned(lo, hi, {style: style, value: *meta_item});
 }
@@ -91,7 +88,7 @@ fn parse_inner_attrs_and_next(p: parser) ->
 
 fn parse_meta_item(p: parser) -> @ast::meta_item {
     let lo = p.span.lo;
-    let ident = parse_ident(p);
+    let ident = p.parse_ident();
     alt p.token {
       token::EQ {
         p.bump();
@@ -112,8 +109,8 @@ fn parse_meta_item(p: parser) -> @ast::meta_item {
 }
 
 fn parse_meta_seq(p: parser) -> [@ast::meta_item] {
-    ret parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
-                  p, {|p| parse_meta_item(p)}).node;
+    ret p.parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
+                    {|p| parse_meta_item(p)}).node;
 }
 
 fn parse_optional_meta(p: parser) -> [@ast::meta_item] {

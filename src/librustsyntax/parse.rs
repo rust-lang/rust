@@ -13,6 +13,7 @@ export parse_item_from_source_str;
 export parse_from_source_str;
 
 import parser::parser;
+import common::parser_common;
 import ast::node_id;
 import util::interner;
 import lexer::reader;
@@ -56,7 +57,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     let (m, attrs) = eval::eval_crate_directives_to_mod(
         cx, cdirs, prefix, option::some(companionmod));
     let mut hi = p.span.hi;
-    parser::expect(p, token::EOF);
+    p.expect(token::EOF);
     ret @ast_util::respan(ast_util::mk_sp(lo, hi),
                           {directives: cdirs,
                            module: m,
