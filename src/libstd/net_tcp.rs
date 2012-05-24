@@ -2,6 +2,7 @@
 High-level interface to libuv's TCP functionality
 "];
 
+// FIXME: Fewer import *'s
 import ip = net_ip;
 import comm::*;
 import result::*;
@@ -118,11 +119,11 @@ fn connect(input_ip: ip::ip_addr, port: uint,
     log(debug, #fmt("tcp_connect result_ch %?", conn_data.result_ch));
     // get an unsafe representation of our stream_handle_ptr that
     // we can send into the interact cb to be handled in libuv..
-    log(debug, #fmt("stream_handl_ptr outside interact %?",
+    log(debug, #fmt("stream_handle_ptr outside interact %?",
         stream_handle_ptr));
     uv::hl::interact(hl_loop) {|loop_ptr|
         log(debug, "in interact cb for tcp client connect..");
-        log(debug, #fmt("stream_handl_ptr in interact %?",
+        log(debug, #fmt("stream_handle_ptr in interact %?",
             stream_handle_ptr));
         alt uv::ll::tcp_init( loop_ptr, stream_handle_ptr) {
           0i32 {
@@ -191,7 +192,7 @@ fn connect(input_ip: ip::ip_addr, port: uint,
 }
 
 #[doc="
-Write binary data to a tcp stream; Blocks until operatoin completes
+Write binary data to a tcp stream; Blocks until operation completes
 
 # Arguments
 
@@ -360,6 +361,8 @@ fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint,
     let new_conn_po = comm::port::<result::result<*uv::ll::uv_tcp_t,
                                                   tcp_err_data>>();
     let new_conn_ch = comm::chan(new_conn_po);
+    // FIXME: This shared box should not be captured in the i/o task
+    // Make it a unique pointer.
     let server_data: @tcp_conn_port_data = @{
         server_stream: uv::ll::tcp_t(),
         stream_closed_po: stream_closed_po,
@@ -940,6 +943,10 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
           }
         }
     };
+    // FIXME: Instead of passing unsafe pointers to local data, and waiting
+    // here for the write to complete, we should transfer ownership of
+    // everything to the I/O task and let it deal with the aftermath,
+    // so we don't have to sit here blocking.
     alt comm::recv(result_po) {
       tcp_write_success { result::ok(()) }
       tcp_write_error(err_data) { result::err(err_data.to_tcp_err()) }
@@ -1181,6 +1188,7 @@ crust fn tcp_write_complete_cb(write_req: *uv::ll::uv_write_t,
                               status: libc::c_int) unsafe {
     let write_data_ptr = uv::ll::get_data_for_req(write_req)
         as *write_req_data;
+    // FIXME: if instead of alt
     alt status {
       0i32 {
         log(debug, "successful write complete");

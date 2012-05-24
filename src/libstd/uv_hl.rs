@@ -11,6 +11,7 @@ export run_high_level_loop, interact;
 
 import ll = uv_ll;
 
+// FIXME: Newtype syntax
 #[doc = "
 Used to abstract-away direct interaction with a libuv loop.
 "]
@@ -125,8 +126,10 @@ unsafe fn interact(hl_loop: high_level_loop,
 
 // INTERNAL API
 
+// FIXME: Newtype syntax
 // data that lives for the lifetime of the high-evel oo
 enum hl_loop_data {
+    // FIXME: hl, not gl?
     default_gl_data({
         async_handle: *ll::uv_async_t,
         mut active: bool,
@@ -135,6 +138,7 @@ enum hl_loop_data {
         msg_po_ptr: *comm::port<high_level_msg>})
 }
 
+// FIXME: This function can be much simpler
 unsafe fn send_high_level_msg(hl_loop: high_level_loop,
                               -msg: high_level_msg) {
     let op_chan = alt hl_loop{simple_task_loop({async_handle, op_chan}){
@@ -164,9 +168,12 @@ crust fn high_level_wake_up_cb(async_handle: *ll::uv_async_t,
                      async_handle, status));
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
     let data = ll::get_data_for_uv_handle(async_handle) as *hl_loop_data;
+    // FIXME: What is this checking?
+    // FIXME: Use if not alt
     alt (*data).active {
       true {
         let msg_po = *((*data).msg_po_ptr);
+        // FIXME: Convert to while loop
         alt comm::peek(msg_po) {
           true {
             loop {

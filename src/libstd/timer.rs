@@ -23,6 +23,7 @@ for *at least* that period of time.
 "]
 fn delayed_send<T: copy send>(hl_loop: uv::hl::high_level_loop,
                               msecs: uint, ch: comm::chan<T>, val: T) {
+    // FIME: Looks like we don't need to spawn here
     task::spawn() {||
         unsafe {
             let timer_done_po = comm::port::<()>();
@@ -103,6 +104,7 @@ fn recv_timeout<T: copy send>(hl_loop: uv::hl::high_level_loop,
     let timeout_po = comm::port::<()>();
     let timeout_ch = comm::chan(timeout_po);
     delayed_send(hl_loop, msecs, timeout_ch, ());
+    // FIXME: This could be written clearer
     either::either(
         {|left_val|
             log(debug, #fmt("recv_time .. left_val %?",
