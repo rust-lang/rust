@@ -1,5 +1,5 @@
 import parser::{parser, SOURCE_FILE};
-import attr::parse_inner_attrs_and_next;
+import attr::parser_attr;
 
 export eval_crate_directives_to_mod;
 
@@ -65,7 +65,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
     if file_exists(modpath) {
         #debug("found companion mod");
         let p0 = new_parser_from_file(cx.sess, cx.cfg, modpath, SOURCE_FILE);
-        let inner_attrs = parse_inner_attrs_and_next(p0);
+        let inner_attrs = p0.parse_inner_attrs_and_next();
         let first_item_outer_attrs = inner_attrs.next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         cx.sess.chpos = p0.reader.chpos;
@@ -97,7 +97,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
             } else { prefix + path::path_sep() + file_path };
         let p0 =
             new_parser_from_file(cx.sess, cx.cfg, full_path, SOURCE_FILE);
-        let inner_attrs = parse_inner_attrs_and_next(p0);
+        let inner_attrs = p0.parse_inner_attrs_and_next();
         let mod_attrs = attrs + inner_attrs.inner;
         let first_item_outer_attrs = inner_attrs.next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);

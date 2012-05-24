@@ -23,6 +23,7 @@ mod test {
     fn parse_attributes(source: str) -> [ast::attribute] {
         import syntax::parse;
         import parse::parser;
+        import parse::attr::parser_attr;
         import syntax::codemap;
         import syntax::diagnostic;
 
@@ -38,7 +39,7 @@ mod test {
         let parser = parse::new_parser_from_source_str(
             parse_sess, [], "-", codemap::fss_none, @source);
 
-        parse::attr::parse_outer_attributes(parser)
+        parser.parse_outer_attributes()
     }
 }
 

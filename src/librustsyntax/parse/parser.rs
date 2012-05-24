@@ -8,10 +8,7 @@ import ast_util::{spanned, mk_sp, ident_to_path, operator_prec};
 import ast::*;
 import lexer::reader;
 import prec::{as_prec, token_to_binop};
-import attr::{parse_outer_attrs_or_ext,
-              parse_inner_attrs_and_next,
-              parse_outer_attributes,
-              parse_optional_meta};
+import attr::parser_attr;
 import common::*;
 import dvec::{dvec, extensions};
 
@@ -168,7 +165,7 @@ class parser {
 
     fn parse_ty_methods() -> [ty_method] {
         (self.parse_seq(token::LBRACE, token::RBRACE, seq_sep_none()) { |p|
-            let attrs = parse_outer_attributes(p);
+            let attrs = p.parse_outer_attributes();
             let flo = p.span.lo;
             let pur = p.parse_fn_purity();
             let ident = p.parse_method_name();
@@ -1529,7 +1526,7 @@ class parser {
             ret @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
         } else {
             let mut item_attrs;
-            alt parse_outer_attrs_or_ext(self, first_item_attrs) {
+            alt self.parse_outer_attrs_or_ext(first_item_attrs) {
               none { item_attrs = []; }
               some(left(attrs)) { item_attrs = attrs; }
               some(right(ext)) {
@@ -1575,7 +1572,7 @@ class parser {
         fn maybe_parse_inner_attrs_and_next(p: parser, parse_attrs: bool) ->
             {inner: [attribute], next: [attribute]} {
             if parse_attrs {
-                parse_inner_attrs_and_next(p)
+                p.parse_inner_attrs_and_next()
             } else {
                 {inner: [], next: []}
             }
@@ -1832,7 +1829,7 @@ class parser {
     }
 
     fn parse_method(pr: visibility) -> @method {
-        let attrs = parse_outer_attributes(self);
+        let attrs = self.parse_outer_attributes();
         let lo = self.span.lo, pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
@@ -2072,7 +2069,7 @@ class parser {
         let mut items: [@item] = [];
         let mut first = true;
         while self.token != term {
-            let mut attrs = parse_outer_attributes(self);
+            let mut attrs = self.parse_outer_attributes();
             if first { attrs = attrs_remaining + attrs; first = false; }
             #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
             let vis = self.parse_visibility(private);
@@ -2107,7 +2104,7 @@ class parser {
     fn parse_item_mod() -> item_info {
         let id = self.parse_ident();
         self.expect(token::LBRACE);
-        let inner_attrs = parse_inner_attrs_and_next(self);
+        let inner_attrs = self.parse_inner_attrs_and_next();
         let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
         self.expect(token::RBRACE);
         (id, item_mod(m), some(inner_attrs.inner))
@@ -2152,7 +2149,7 @@ class parser {
         let mut items: [@native_item] = [];
         let mut initial_attrs = attrs_remaining;
         while self.token != token::RBRACE {
-            let attrs = initial_attrs + parse_outer_attributes(self);
+            let attrs = initial_attrs + self.parse_outer_attributes();
             initial_attrs = [];
             items += [self.parse_native_item(attrs)];
         }
@@ -2164,7 +2161,7 @@ class parser {
         self.expect_keyword("mod");
         let id = self.parse_ident();
         self.expect(token::LBRACE);
-        let more_attrs = parse_inner_attrs_and_next(self);
+        let more_attrs = self.parse_inner_attrs_and_next();
         let m = self.parse_native_mod_items(more_attrs.next);
         self.expect(token::RBRACE);
         (id, item_native_mod(m), some(more_attrs.inner))
@@ -2221,7 +2218,7 @@ class parser {
         let mut all_nullary = true, have_disr = false;
 
         while self.token != token::RBRACE {
-            let variant_attrs = parse_outer_attributes(self);
+            let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
             let vis = self.parse_visibility(default_vis);
             let ident = self.parse_value_ident();
@@ -2331,7 +2328,7 @@ class parser {
 
     fn parse_use() -> view_item_ {
         let ident = self.parse_ident();
-        let metadata = parse_optional_meta(self);
+        let metadata = self.parse_optional_meta();
         ret view_item_use(ident, metadata, self.get_id());
     }
 
@@ -2439,12 +2436,12 @@ class parser {
     fn parse_view(+first_item_attrs: [attribute],
                   only_imports: bool) -> {attrs_remaining: [attribute],
                                           view_items: [@view_item]} {
-        let mut attrs = first_item_attrs + parse_outer_attributes(self);
+        let mut attrs = first_item_attrs + self.parse_outer_attributes();
         let mut items = [];
         while if only_imports { self.is_keyword("import") }
         else { self.is_view_item() } {
             items += [self.parse_view_item(attrs)];
-            attrs = parse_outer_attributes(self);
+            attrs = self.parse_outer_attributes();
         }
         {attrs_remaining: attrs, view_items: items}
     }
@@ -2452,7 +2449,7 @@ class parser {
     // Parses a source module as a crate
     fn parse_crate_mod(_cfg: crate_cfg) -> @crate {
         let lo = self.span.lo;
-        let crate_attrs = parse_inner_attrs_and_next(self);
+        let crate_attrs = self.parse_inner_attrs_and_next();
         let first_item_outer_attrs = crate_attrs.next;
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
         ret @spanned(lo, self.span.lo,
@@ -2481,7 +2478,7 @@ class parser {
         crate_directive {
 
         // Collect the next attributes
-        let outer_attrs = first_outer_attr + parse_outer_attributes(self);
+        let outer_attrs = first_outer_attr + self.parse_outer_attributes();
         // In a crate file outer attributes are only going to apply to mods
         let expect_mod = vec::len(outer_attrs) > 0u;
 
@@ -2499,7 +2496,7 @@ class parser {
               // mod x = "foo_dir" { ...directives... }
               token::LBRACE {
                 self.bump();
-                let inner_attrs = parse_inner_attrs_and_next(self);
+                let inner_attrs = self.parse_inner_attrs_and_next();
                 let mod_attrs = outer_attrs + inner_attrs.inner;
                 let next_outer_attr = inner_attrs.next;
                 let cdirs = self.parse_crate_directives(token::RBRACE,

@@ -13,6 +13,7 @@ export parse_item_from_source_str;
 export parse_from_source_str;
 
 import parser::parser;
+import attr::parser_attr;
 import common::parser_common;
 import ast::node_id;
 import util::interner;
@@ -44,7 +45,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     let p = new_parser_from_file(sess, cfg, input, parser::CRATE_FILE);
     let lo = p.span.lo;
     let prefix = path::dirname(p.reader.filemap.name);
-    let leading_attrs = attr::parse_inner_attrs_and_next(p);
+    let leading_attrs = p.parse_inner_attrs_and_next();
     let crate_attrs = leading_attrs.inner;
     let first_cdir_attr = leading_attrs.next;
     let cdirs = p.parse_crate_directives(token::EOF, first_cdir_attr);
