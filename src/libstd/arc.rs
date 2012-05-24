@@ -6,11 +6,11 @@ export arc, get, clone;
 #[abi = "cdecl"]
 native mod rustrt {
     #[rust_stack]
-    fn rust_atomic_increment(p: *mut libc::intptr_t)
+    fn rust_atomic_increment(p: &mut libc::intptr_t)
         -> libc::intptr_t;
 
     #[rust_stack]
-    fn rust_atomic_decrement(p: *mut libc::intptr_t)
+    fn rust_atomic_decrement(p: &mut libc::intptr_t)
         -> libc::intptr_t;
 }
 
@@ -21,7 +21,7 @@ type arc_data<T> = {
 
 resource arc_destruct<T>(data: *arc_data<T>) {
     unsafe {
-        let ptr = ptr::mut_addr_of((*data).count);
+        let ptr = &mut (*data).count;
 
         let new_count = rustrt::rust_atomic_decrement(ptr);
         assert new_count >= 0;
@@ -52,8 +52,7 @@ fn get<T>(rc: &a.arc<T>) -> &a.T {
 fn clone<T>(rc: &arc<T>) -> arc<T> {
     let data = **rc;
     unsafe {
-        rustrt::rust_atomic_increment(
-            ptr::mut_addr_of((*data).count));
+        rustrt::rust_atomic_increment(&mut (*data).count);
     }
     arc_destruct(**rc)
 }
