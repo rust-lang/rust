@@ -110,8 +110,9 @@ export ty_var_id;
 export ty_to_def_id;
 export ty_fn_args;
 export type_constr;
-export kind, kind_sendable, kind_copyable, kind_noncopyable;
+export kind, kind_sendable, kind_copyable, kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
+export operators;
 export type_err, terr_vstore_kind;
 export type_err_to_str;
 export type_needs_drop;
@@ -431,7 +432,8 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
             kind = raise_kind(kind, kind_copyable());
           }
           bound_send { kind = raise_kind(kind, kind_send_only()); }
-          _ {}
+          bound_const { kind = raise_kind(kind, kind_const()); }
+          bound_iface(_) {}
         }
     }
     kind
@@ -1266,8 +1268,9 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
 enum kind { kind_(u32) }
 
-const KIND_MASK_COPY : u32 = 0b00000000000000000000000000000001u32;
-const KIND_MASK_SEND : u32 = 0b00000000000000000000000000000010u32;
+const KIND_MASK_COPY  : u32 = 0b00000000000000000000000000000001u32;
+const KIND_MASK_SEND  : u32 = 0b00000000000000000000000000000010u32;
+const KIND_MASK_CONST : u32 = 0b00000000000000000000000000000100u32;
 
 fn kind_noncopyable() -> kind {
     kind_(0u32)
@@ -1285,8 +1288,35 @@ fn kind_send_only() -> kind {
     kind_(KIND_MASK_SEND)
 }
 
+fn kind_const() -> kind {
+    kind_(KIND_MASK_CONST)
+}
+
 fn kind_top() -> kind {
     kind_(0xffffffffu32)
+}
+
+fn remove_const(k: kind, tm: mt) -> kind {
+    if tm.mutbl == ast::m_mutbl {
+        k - kind_const()
+    }
+    else {
+        k
+    }
+}
+
+impl operators for kind {
+    fn &(other: kind) -> kind {
+        lower_kind(self, other)
+    }
+
+    fn |(other: kind) -> kind {
+        raise_kind(self, other)
+    }
+
+    fn -(other: kind) -> kind {
+        kind_(*self & !*other)
+    }
 }
 
 // Using these query functons is preferable to direct comparison or matching
@@ -1306,7 +1336,7 @@ fn proto_kind(p: proto) -> kind {
       ast::proto_block { kind_noncopyable() }
       ast::proto_box { kind_copyable() }
       ast::proto_uniq { kind_sendable() }
-      ast::proto_bare { kind_sendable() }
+      ast::proto_bare { kind_sendable() | kind_const() }
     }
 }
 
@@ -1345,7 +1375,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     let result = alt get(ty).struct {
       // Scalar and unique types are sendable
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_ptr(_) | ty_str { kind_sendable() }
+      ty_ptr(_) | ty_str { kind_sendable() | kind_const() }
       ty_type { kind_copyable() }
       ty_fn(f) { proto_kind(f.proto) }
 
@@ -1356,30 +1386,50 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
 
       // Those with refcounts raise noncopyable to copyable,
       // lower sendable to copyable. Therefore just set result to copyable.
-      ty_box(_) | ty_iface(_, _) | ty_opaque_box { kind_copyable() }
+      ty_box(tm) {
+        if tm.mutbl == ast::m_mutbl {
+            kind_copyable()
+        }
+        else {
+            let k = type_kind(cx, tm.ty);
+            if kind_lteq(kind_const(), k) {
+                kind_copyable() | kind_const()
+            }
+            else { kind_copyable() }
+        }
+      }
+      ty_iface(_, _) | ty_opaque_box { kind_copyable() }
       ty_rptr(_, _) { kind_copyable() }
 
       // Unique boxes and vecs have the kind of their contained type.
-      ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
+      ty_vec(tm) | ty_uniq(tm) { remove_const(type_kind(cx, tm.ty), tm) }
 
       // Slice and refcounted evecs are copyable; uniques and interiors
       // depend on the their contained type.
-      ty_evec(_, vstore_box) |
-      ty_evec(_, vstore_slice(_)) { kind_copyable() }
+      ty_evec(tm, vstore_box) |
+      ty_evec(tm, vstore_slice(_)) {
+        if kind_lteq(kind_const(), type_kind(cx, tm.ty)) {
+            kind_copyable() | kind_const()
+        }
+        else {
+            kind_const()
+        }
+      }
       ty_evec(tm, vstore_uniq) |
-      ty_evec(tm, vstore_fixed(_)) { type_kind(cx, tm.ty)  }
+      ty_evec(tm, vstore_fixed(_)) { remove_const(type_kind(cx, tm.ty), tm) }
 
       // All estrs are copyable; uniques and interiors are sendable.
       ty_estr(vstore_box) |
-      ty_estr(vstore_slice(_)) { kind_copyable() }
+      ty_estr(vstore_slice(_)) { kind_copyable() | kind_const() }
       ty_estr(vstore_uniq) |
-      ty_estr(vstore_fixed(_)) { kind_sendable()  }
+      ty_estr(vstore_fixed(_)) { kind_sendable() | kind_const() }
 
       // Records lower to the lowest of their members.
       ty_rec(flds) {
-        let mut lowest = kind_sendable();
+        let mut lowest = kind_top();
         for flds.each {|f|
             lowest = lower_kind(lowest, type_kind(cx, f.mt.ty));
+            lowest = remove_const(lowest, f.mt);
         }
         lowest
       }
@@ -1387,7 +1437,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // sendable, but I'm just treating them like records (#1726)
       ty_class(did, substs) {
           // also factor out this code, copied from the records case
-          let mut lowest = kind_sendable();
+          let mut lowest = kind_top();
           let flds = class_items_as_fields(cx, did, substs);
           for flds.each {|f|
             lowest = lower_kind(lowest, type_kind(cx, f.mt.ty));
@@ -1396,13 +1446,13 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
-        let mut lowest = kind_sendable();
+        let mut lowest = kind_top();
         for tys.each {|ty| lowest = lower_kind(lowest, type_kind(cx, ty)); }
         lowest
       }
       // Enums lower to the lowest of their variants.
       ty_enum(did, substs) {
-        let mut lowest = kind_sendable();
+        let mut lowest = kind_top();
         let variants = enum_variants(cx, did);
         if vec::len(*variants) == 0u {
             lowest = kind_noncopyable();
@@ -1423,6 +1473,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
           param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
+      // FIXME: is self ever const?
       ty_self { kind_noncopyable() }
 
       ty_var(_) { cx.sess.bug("Asked to compute kind of a type variable"); }

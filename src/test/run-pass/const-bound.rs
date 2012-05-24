@@ -10,4 +10,6 @@ fn main() {
     foo([1, 2, 3]);
     foo({field: 42});
     foo((1, 2u));
+    foo(@1);
+    foo(~1);
 }

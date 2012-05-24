@@ -1,6 +1,5 @@
-// error-pattern:instantiating a copyable type parameter with a noncopyable
 fn foo<T>() {
-    1u.bar::<T>();
+    1u.bar::<T>(); //! ERROR: missing `copy`
 }
 
 impl methods for uint {

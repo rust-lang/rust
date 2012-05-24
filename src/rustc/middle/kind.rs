@@ -1,7 +1,8 @@
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
-import ty::{kind, kind_sendable, kind_copyable, kind_noncopyable };
+import ty::{kind, kind_sendable, kind_copyable, kind_noncopyable, kind_const,
+           operators};
 import driver::session::session;
 import std::map::hashmap;
 import util::ppaux::{ty_to_str, tys_to_str};
@@ -24,12 +25,17 @@ import freevars::freevar_entry;
 // types.
 
 fn kind_to_str(k: kind) -> str {
-    alt (ty::kind_can_be_copied(k), ty::kind_can_be_sent(k)) {
-      (false, false) { "noncopyable" }
-      (false, true)  { "sendable" }
-      (true,  false) { "copyable" }
-      (true,  true)  { "copy-sendable" }
+    let mut kinds = [];
+    if ty::kind_lteq(k, kind_const()) {
+        kinds += ["const"];
     }
+    if ty::kind_can_be_copied(k) {
+        kinds += ["copy"];
+    }
+    if ty::kind_can_be_sent(k) {
+        kinds += ["send"];
+    }
+    str::connect(kinds, " ")
 }
 
 type rval_map = std::map::hashmap<node_id, ()>;
@@ -320,10 +326,11 @@ fn check_bounds(cx: ctx, sp: span, ty: ty::t, bounds: ty::param_bounds) {
     let kind = ty::type_kind(cx.tcx, ty);
     let p_kind = ty::param_bounds_to_kind(bounds);
     if !ty::kind_lteq(p_kind, kind) {
-        cx.tcx.sess.span_err(sp, "instantiating a " +
-                             kind_to_str(p_kind) +
-                             " type parameter with a "
-                             + kind_to_str(kind) + " type");
+        cx.tcx.sess.span_err(
+            sp, "instantiating a type parameter with an incompatible type " +
+            "(needs `" + kind_to_str(p_kind) +
+            "`, got `" + kind_to_str(kind) +
+            "`, missing `" + kind_to_str(p_kind - kind) + "`)");
     }
 }
 
