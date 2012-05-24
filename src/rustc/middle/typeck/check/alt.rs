@@ -5,7 +5,7 @@ fn check_alt(fcx: @fn_ctxt,
              discrim: @ast::expr,
              arms: [ast::arm]) -> bool {
     let tcx = fcx.ccx.tcx;
-    let mut bot = false;
+    let mut bot;
 
     let pattern_ty = fcx.infcx.next_ty_var();
     bot = check_expr_with(fcx, discrim, pattern_ty);

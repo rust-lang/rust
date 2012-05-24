@@ -3855,7 +3855,7 @@ fn trans_break_cont(bcx: block, to_end: bool)
     let _icx = bcx.insn_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
-    let mut target = bcx;
+    let mut target = bcx; // FIXME---not necc. but tstate thinks it is
     loop {
         alt unwind.kind {
           block_scope({loop_break: some(brk), _}) {

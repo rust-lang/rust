@@ -1481,7 +1481,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
           some(bexpr) {
             let bexpr_t = fcx.expr_ty(bexpr);
-            let mut base_fields: [field] = [];
+            let mut base_fields; // FIXME remove mut after snapshot
             alt structure_of(fcx, expr.span, bexpr_t) {
               ty::ty_rec(flds) { base_fields = flds; }
               _ {

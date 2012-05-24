@@ -472,7 +472,8 @@ fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> option<def> {
 
 fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint] {
     let mut rslt: [norm_constraint] = [];
-    for vec::each(*c.descs) {|pd|
+    let descs = *c.descs;
+    for vec::each(descs) {|pd|
         rslt +=
             [{bit_num: pd.node.bit_num,
               c: respan(pd.span, {path: c.path,

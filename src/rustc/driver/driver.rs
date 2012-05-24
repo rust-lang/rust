@@ -587,8 +587,8 @@ fn build_output_filenames(input: input,
                           ofile: option<str>,
                           sess: session)
         -> output_filenames {
-    let mut obj_path = "";
-    let mut out_path: str = "";
+    let mut obj_path; // FIXME remove mut after snapshot
+    let mut out_path; // FIXME remove mut after snapshot
     let sopts = sess.opts;
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||

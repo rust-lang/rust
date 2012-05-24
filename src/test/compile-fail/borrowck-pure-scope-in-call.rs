@@ -18,6 +18,8 @@ fn test2() {
 
     pure_borrow(x, x = ~5);  //! ERROR assigning to mutable local variable prohibited due to outstanding loan
     //!^ NOTE loan of mutable local variable granted here
+
+    copy x;
 }
 
 fn main() {

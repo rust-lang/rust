@@ -90,7 +90,7 @@ class parser {
         self.span = span0;
         self.last_span = span0;
         self.buffer = dvec::dvec();
-        self.restriction == UNRESTRICTED;
+        self.restriction = UNRESTRICTED;
         self.reader = rdr;
         self.keywords = token::keyword_table();
         self.restricted_keywords = token::restricted_keyword_table();
@@ -949,7 +949,7 @@ class parser {
     fn parse_dot_or_call_expr_with(e0: pexpr) -> pexpr {
         let mut e = e0;
         let lo = e.span.lo;
-        let mut hi = e.span.hi;
+        let mut hi;
         loop {
             // expr.f
             if eat(self, token::DOT) {
@@ -1025,7 +1025,7 @@ class parser {
 
     fn parse_prefix_expr() -> pexpr {
         let lo = self.span.lo;
-        let mut hi = self.span.hi;
+        let mut hi;
 
         let mut ex;
         alt self.token {

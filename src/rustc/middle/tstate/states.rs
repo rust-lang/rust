@@ -197,30 +197,6 @@ fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
     ret changed;
 }
 
-fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
-                            index: @expr, body: blk, id: node_id) -> bool {
-    // I'm confused about this -- how does the poststate for the body
-    // ever grow larger? It seems like it can't?
-    let loop_pres = intersect_states(pres, block_poststate(fcx.ccx, body));
-
-    let mut changed =
-        set_prestate_ann(fcx.ccx, id, loop_pres) |
-            find_pre_post_state_expr(fcx, pres, index);
-
-    let index_post = tritv_clone(expr_poststate(fcx.ccx, index));
-    changed |= find_pre_post_state_block(fcx, index_post, body);
-
-    if has_nonlocal_exits(body) {
-        // See [Break-unsound]
-        ret changed | set_poststate_ann(fcx.ccx, id, pres);
-    } else {
-        let res_p =
-            intersect_states(expr_poststate(fcx.ccx, index),
-                             block_poststate(fcx.ccx, body));
-        ret changed | set_poststate_ann(fcx.ccx, id, res_p);
-    }
-}
-
 fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
                   maybe_alt: option<@expr>, id: node_id, chk: if_ty,
                   pres: prestate) -> bool {
@@ -664,7 +640,6 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
 fn find_pre_post_state_fn(fcx: fn_ctxt,
                           f_decl: fn_decl,
                           f_body: blk) -> bool {
-    let num_constrs = num_constraints(fcx.enclosing);
     // All constraints are considered false until proven otherwise.
     // This ensures that intersect works correctly.
     kill_all_prestate(fcx, f_body.node.id);

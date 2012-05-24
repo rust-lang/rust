@@ -199,7 +199,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
     }
     num_str = scan_digits(rdr, base);
     c = rdr.curr;
-    n = rdr.next();
+    rdr.next();
     if c == 'u' || c == 'i' {
         let signed = c == 'i';
         let mut tp = {

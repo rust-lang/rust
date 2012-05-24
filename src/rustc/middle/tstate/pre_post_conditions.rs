@@ -167,7 +167,7 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
 }
 
 fn gen_if_local(fcx: fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
-                new_var: node_id, pth: @path) {
+                new_var: node_id) {
     alt node_id_to_def(fcx.ccx, new_var) {
       some(d) {
         alt d {
@@ -206,7 +206,7 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
           _ { }
         }
 
-        gen_if_local(fcx, lhs, rhs, parent.id, lhs.id, p);
+        gen_if_local(fcx, lhs, rhs, parent.id, lhs.id);
         alt rhs.node {
           expr_path(p1) {
             let d = local_node_id_to_local_def_id(fcx, lhs.id);

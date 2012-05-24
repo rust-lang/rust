@@ -112,7 +112,7 @@ mod ct {
                 }
             } else { buf += curr; i += 1u; }
         }
-        buf = flush_buf(buf, pieces);
+        flush_buf(buf, pieces);
         ret pieces;
     }
     fn peek_num(s: str, i: uint, lim: uint) ->

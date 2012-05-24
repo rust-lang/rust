@@ -429,15 +429,14 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t,
 }
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
-    let mut hash = "";
     alt ccx.type_sha1s.find(t) {
-      some(h) { hash = h; }
+      some(h) { ret h; }
       none {
-        hash = symbol_hash(ccx.tcx, ccx.sha, t, ccx.link_meta);
+        let hash = symbol_hash(ccx.tcx, ccx.sha, t, ccx.link_meta);
         ccx.type_sha1s.insert(t, hash);
+        ret hash;
       }
     }
-    ret hash;
 }
 
 

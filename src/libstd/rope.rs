@@ -753,7 +753,7 @@ mod node {
                execution and should be discarded as meaningless afterwards.
     "]
     fn tree_from_forest_destructive(forest: [mut @node]) -> @node {
-        let mut i = 0u;
+        let mut i;
         let mut len = vec::len(forest);
         while len > 1u {
             i = 0u;
@@ -1020,7 +1020,6 @@ mod node {
         let ita = char_iterator::start(a);
         let itb = char_iterator::start(b);
         let mut result = 0;
-        let mut pos = 0u;
         while result == 0 {
             alt((char_iterator::next(ita), char_iterator::next(itb))) {
               (option::none, option::none) {
@@ -1036,7 +1035,6 @@ mod node {
                 result = -1;
               }
             }
-            pos += 1u;
         }
         ret result;
     }

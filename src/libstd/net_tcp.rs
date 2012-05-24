@@ -734,7 +734,6 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
           }
         }
     };
-    let mut kill_result: option<tcp_err_data> = none;
     alt comm::recv(setup_po) {
       some(err_data) {
         // we failed to bind/list w/ libuv
@@ -742,7 +741,7 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
       }
       none {
         on_establish_cb(kill_ch);
-        kill_result = comm::recv(kill_po);
+        let kill_result = comm::recv(kill_po);
         uv::hl::interact(hl_loop) {|loop_ptr|
             log(debug, #fmt("tcp::listen post-kill recv hl interact %?",
                             loop_ptr));
