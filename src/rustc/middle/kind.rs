@@ -9,15 +9,28 @@ import util::ppaux::{ty_to_str, tys_to_str};
 import syntax::print::pprust::expr_to_str;
 import freevars::freevar_entry;
 
-// Kind analysis pass. There are three kinds:
+// Kind analysis pass.
 //
-//  sendable: scalar types, and unique types containing only sendable types
-//  copyable: boxes, closures, and uniques containing copyable types
-//  noncopyable: resources, or unique types containing resources
+// There are several kinds defined by various operations. The most restrictive
+// kind is noncopyable. The noncopyable kind can be extended with any number
+// of the following attributes.
+//
+//  send: Things that can be sent on channels or included in spawned closures.
+//  copy: Things that can be copied.
+//  const: Things thare are deeply immutable. They are guaranteed never to
+//    change, and can be safely shared without copying between tasks.
+//
+// Send includes scalar types, resources and unique types containing only
+// sendable types.
+//
+// Copy includes boxes, closure and unique types containing copyable types.
+//
+// Const include scalar types, things without non-const fields, and pointers
+// to const things.
 //
 // This pass ensures that type parameters are only instantiated with types
 // whose kinds are equal or less general than the way the type parameter was
-// annotated (with the `send` or `copy` keyword).
+// annotated (with the `send`, `copy` or `const` keyword).
 //
 // It also verifies that noncopyable kinds are not copied. Sendability is not
 // applied, since none of our language primitives send. Instead, the sending
