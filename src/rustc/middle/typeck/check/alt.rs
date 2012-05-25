@@ -128,37 +128,37 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, expected);
       }
       ast::pat_lit(lt) {
-        check_expr_with(pcx.fcx, lt, expected);
+        check_expr_with(fcx, lt, expected);
         fcx.write_ty(pat.id, fcx.expr_ty(lt));
       }
       ast::pat_range(begin, end) {
-        check_expr_with(pcx.fcx, begin, expected);
-        check_expr_with(pcx.fcx, end, expected);
-        let b_ty = resolve_type_vars_if_possible(pcx.fcx,
+        check_expr_with(fcx, begin, expected);
+        check_expr_with(fcx, end, expected);
+        let b_ty = resolve_type_vars_if_possible(fcx,
                                                  fcx.expr_ty(begin));
         if !require_same_types(
             tcx, pat.span, b_ty,
             resolve_type_vars_if_possible(
-                pcx.fcx, fcx.expr_ty(end)),
+                fcx, fcx.expr_ty(end)),
             {|| "mismatched types in range" }) {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
-        } else if !valid_range_bounds(pcx.fcx.ccx, begin, end) {
+        } else if !valid_range_bounds(fcx.ccx, begin, end) {
             tcx.sess.span_err(begin.span, "lower range bound must be less \
                                            than upper");
         }
         fcx.write_ty(pat.id, b_ty);
       }
       ast::pat_ident(name, sub) if !pat_is_variant(tcx.def_map, pat) {
-        let vid = lookup_local(pcx.fcx, pat.span, pat.id);
+        let vid = lookup_local(fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
-        demand::suptype(pcx.fcx, pat.span, expected, typ);
+        demand::suptype(fcx, pat.span, expected, typ);
         let canon_id = pcx.map.get(ast_util::path_to_ident(name));
         if canon_id != pat.id {
-            let tv_id = lookup_local(pcx.fcx, pat.span, canon_id);
+            let tv_id = lookup_local(fcx, pat.span, canon_id);
             let ct = ty::mk_var(tcx, tv_id);
-            demand::suptype(pcx.fcx, pat.span, ct, typ);
+            demand::suptype(fcx, pat.span, ct, typ);
         }
         fcx.write_ty(pat.id, typ);
         alt sub {
@@ -173,7 +173,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
       ast::pat_rec(fields, etc) {
-        let ex_fields = alt structure_of(pcx.fcx, pat.span, expected) {
+        let ex_fields = alt structure_of(fcx, pat.span, expected) {
           ty::ty_rec(fields) { fields }
           _ {
             tcx.sess.span_fatal
@@ -210,7 +210,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, expected);
       }
       ast::pat_tup(elts) {
-        let ex_elts = alt structure_of(pcx.fcx, pat.span, expected) {
+        let ex_elts = alt structure_of(fcx, pat.span, expected) {
           ty::ty_tup(elts) { elts }
           _ {
             tcx.sess.span_fatal
@@ -235,7 +235,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, expected);
       }
       ast::pat_box(inner) {
-        alt structure_of(pcx.fcx, pat.span, expected) {
+        alt structure_of(fcx, pat.span, expected) {
           ty::ty_box(e_inner) {
             check_pat(pcx, inner, e_inner.ty);
             fcx.write_ty(pat.id, expected);
@@ -244,13 +244,13 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             tcx.sess.span_fatal(
                 pat.span,
                 "mismatched types: expected `" +
-                pcx.fcx.ty_to_str(expected) +
+                fcx.ty_to_str(expected) +
                 "` found box");
           }
         }
       }
       ast::pat_uniq(inner) {
-        alt structure_of(pcx.fcx, pat.span, expected) {
+        alt structure_of(fcx, pat.span, expected) {
           ty::ty_uniq(e_inner) {
             check_pat(pcx, inner, e_inner.ty);
             fcx.write_ty(pat.id, expected);
@@ -259,7 +259,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             tcx.sess.span_fatal(
                 pat.span,
                 "mismatched types: expected `" +
-                pcx.fcx.ty_to_str(expected) +
+                fcx.ty_to_str(expected) +
                 "` found uniq");
           }
         }
