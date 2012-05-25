@@ -58,7 +58,19 @@ import capture::{cap_move, cap_drop, cap_copy, cap_ref};
 export check_crate;
 export last_use_map;
 
+// Maps from an expr id to a list of variable ids for which this expr
+// is the last use.  Typically, the expr is a path and the node id is
+// the local/argument/etc that the path refers to.  However, it also
+// possible for the expr to be a closure, in which case the list is a
+// list of closed over variables that can be moved into the closure.
 type last_use_map = hashmap<node_id, @dvec<node_id>>;
+
+// A set of variable ids which must be spilled (stored on the stack).
+// We add in any variables or arguments where:
+// (1) the variables are moved;
+// (2) the address of the variable/argument is taken;
+// or (3) we find a last use (as they may be moved).
+type spill_map = hashmap<node_id, ()>;
 
 enum variable = uint;
 enum live_node = uint;
@@ -81,7 +93,9 @@ fn check_crate(tcx: ty::ctxt,
     });
 
     let last_use_map = int_hash();
-    let initial_maps = @ir_maps(tcx, method_map, last_use_map);
+    let spill_map = int_hash();
+    let initial_maps = @ir_maps(tcx, method_map,
+                                last_use_map, spill_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     ret last_use_map;
@@ -141,6 +155,7 @@ class ir_maps {
     let tcx: ty::ctxt;
     let method_map: typeck::method_map;
     let last_use_map: last_use_map;
+    let spill_map: spill_map;
 
     let mut num_live_nodes: uint;
     let mut num_vars: uint;
@@ -152,10 +167,11 @@ class ir_maps {
     let mut lnks: [live_node_kind];
 
     new(tcx: ty::ctxt, method_map: typeck::method_map,
-        last_use_map: hashmap<node_id, @dvec<node_id>>) {
+        last_use_map: last_use_map, spill_map: spill_map) {
         self.tcx = tcx;
         self.method_map = method_map;
         self.last_use_map = last_use_map;
+        self.spill_map = spill_map;
 
         self.num_live_nodes = 0u;
         self.num_vars = 0u;
@@ -236,6 +252,11 @@ class ir_maps {
                expr_id, id, name];
         (*v).push(id);
     }
+
+    fn add_spill(var: variable) {
+        let id = self.var_infos[*var].id;
+        if id != 0 { self.spill_map.insert(id, ()); }
+    }
 }
 
 fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
@@ -245,7 +266,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 
     // swap in a new set of IR maps for this function body:
     let fn_maps = @ir_maps(self.tcx, self.method_map,
-                           self.last_use_map);
+                           self.last_use_map, self.spill_map);
 
     #debug["creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint];
 
@@ -450,6 +471,18 @@ class liveness {
         alt rv {
           rdef_self {self.s.self_var}
           rdef_var(nid) {self.variable(nid, span)}
+        }
+    }
+
+    fn variable_from_path(expr: @expr) -> option<variable> {
+        alt expr.node {
+          expr_path(_) {
+            let def = self.tcx.def_map.get(expr.id);
+            relevant_def(def).map { |rdef|
+                self.variable_from_rdef(rdef, expr.span)
+            }
+          }
+          _ {none}
         }
     }
 
@@ -682,11 +715,18 @@ class liveness {
         // inputs passed by & mode should be considered live on exit:
         for decl.inputs.each { |arg|
             alt ty::resolved_mode(self.tcx, arg.mode) {
-              by_mutbl_ref {
+              by_mutbl_ref | by_ref | by_val {
+                // These are "non-owned" modes, so register a read at
+                // the end.  This will prevent us from moving out of
+                // such variables but also prevent us from registering
+                // last uses and so forth.
                 let var = self.variable(arg.id, blk.span);
                 self.acc(self.s.exit_ln, var, ACC_READ);
               }
-              by_val | by_ref | by_move | by_copy {}
+              by_move | by_copy {
+                // These are owned modes.  If we don't use the
+                // variable, nobody will.
+              }
             }
         }
 
@@ -1325,7 +1365,11 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
         vt.visit_expr(f, self, vt);
         vec::iter2(args, targs) { |arg_expr, arg_ty|
             alt ty::resolved_mode(self.tcx, arg_ty.mode) {
-              by_val | by_ref | by_mutbl_ref | by_copy {
+              by_val | by_copy {
+                vt.visit_expr(arg_expr, self, vt);
+              }
+              by_ref | by_mutbl_ref {
+                self.spill_expr(arg_expr);
                 vt.visit_expr(arg_expr, self, vt);
               }
               by_move {
@@ -1335,13 +1379,17 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
         }
       }
 
+      expr_addr_of(_, arg_expr) {
+        self.spill_expr(arg_expr);
+      }
+
       // no correctness conditions related to liveness
       expr_if_check(*) | expr_if(*) | expr_alt(*) |
       expr_while(*) | expr_loop(*) |
       expr_index(*) | expr_field(*) | expr_vstore(*) |
       expr_vec(*) | expr_rec(*) | expr_tup(*) |
       expr_bind(*) | expr_new(*) | expr_log(*) | expr_binary(*) |
-      expr_assert(*) | expr_check(*) | expr_addr_of(*) | expr_copy(*) |
+      expr_assert(*) | expr_check(*) | expr_copy(*) |
       expr_loop_body(*) | expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_ret(*) | expr_break | expr_cont | expr_lit(_) |
       expr_block(*) | expr_swap(*) | expr_mac(*) {
@@ -1411,7 +1459,10 @@ impl check_methods for @liveness {
                ln.to_str(), var.to_str()];
 
         alt (*self).live_on_exit(ln, var) {
-          none {}
+          none {
+            // update spill map to include this variable, as it is moved:
+            (*self.ir).add_spill(var);
+          }
           some(lnk) {
             self.report_illegal_read(span, lnk, var, moved_variable);
             self.tcx.sess.span_note(
@@ -1426,8 +1477,18 @@ impl check_methods for @liveness {
           some(_) {}
           none {
             (*self.ir).add_last_use(expr.id, var);
+
+            // update spill map to include this variable, as it may be moved:
+            (*self.ir).add_spill(var);
           }
        }
+    }
+
+    fn spill_expr(expr: @expr) {
+        alt (*self).variable_from_path(expr) {
+          some(var) {(*self.ir).add_spill(var)}
+          none {}
+        }
     }
 
     fn check_move_from_expr(expr: @expr, vt: vt<@liveness>) {
@@ -1441,12 +1502,9 @@ impl check_methods for @liveness {
 
         alt expr.node {
           expr_path(_) {
-            let def = self.tcx.def_map.get(expr.id);
-            alt relevant_def(def) {
-              some(rdef) {
-                // Moving from a variable is allowed if is is not live.
+            alt (*self).variable_from_path(expr) {
+              some(var) {
                 let ln = (*self).live_node(expr.id, expr.span);
-                let var = (*self).variable_from_rdef(rdef, expr.span);
                 self.check_move_from_var(expr.span, ln, var);
               }
               none {}
@@ -1606,8 +1664,24 @@ impl check_methods for @liveness {
     fn warn_about_unused(sp: span, ln: live_node, var: variable) -> bool {
         if !(*self).used_on_entry(ln, var) {
             for self.should_warn(var).each { |name|
-                self.tcx.sess.span_warn(
-                    sp, #fmt["unused variable: `%s`", name]);
+
+                // annoying: for parameters in funcs like `fn(x: int)
+                // {ret}`, there is only one node, so asking about
+                // assigned_on_exit() is not meaningful.
+                let is_assigned = if ln == self.s.exit_ln {
+                    false
+                } else {
+                    (*self).assigned_on_exit(ln, var).is_some()
+                };
+
+                if is_assigned {
+                    self.tcx.sess.span_warn(
+                        sp, #fmt["variable `%s` is assigned to, \
+                                  but never used", name]);
+                } else {
+                    self.tcx.sess.span_warn(
+                        sp, #fmt["unused variable: `%s`", name]);
+                }
             }
             ret true;
         }

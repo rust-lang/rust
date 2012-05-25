@@ -13,14 +13,14 @@ fn f2() {
 
 fn f3() {
     let mut x = 3;
-    //!^ WARNING unused variable: `x`
+    //!^ WARNING variable `x` is assigned to, but never used
     x += 4;
     //!^ WARNING value assigned to `x` is never read
 }
 
 fn f3b() {
     let mut z = 3;
-    //!^ WARNING unused variable: `z`
+    //!^ WARNING variable `z` is assigned to, but never used
     loop {
         z += 4;
     }
