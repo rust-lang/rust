@@ -5,7 +5,7 @@ import metadata::encoder;
 import syntax::codemap;
 import syntax::print::pprust;
 import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str,
-                               mode_to_str};
+                               mode_to_str, purity_to_str};
 import syntax::{ast, ast_util};
 import syntax::ast_map;
 import driver::session::session;
@@ -107,10 +107,17 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         };
         modestr + ty_to_str(cx, ty)
     }
-    fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option<ast::ident>,
+    fn fn_to_str(cx: ctxt, purity: ast::purity, proto: ast::proto,
+                 ident: option<ast::ident>,
                  inputs: [arg], output: t, cf: ast::ret_style,
                  constrs: [@constr]) -> str {
-        let mut s = proto_to_str(proto);
+        let mut s;
+
+        s = alt purity {
+          ast::impure_fn {""}
+          _ {purity_to_str(purity) + " "}
+        };
+        s += proto_to_str(proto);
         alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
         let mut strs = [];
@@ -128,8 +135,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         ret s;
     }
     fn method_to_str(cx: ctxt, m: method) -> str {
-        ret fn_to_str(cx, m.fty.proto, some(m.ident), m.fty.inputs,
-                      m.fty.output, m.fty.ret_style, m.fty.constraints) + ";";
+        ret fn_to_str(
+            cx, m.fty.purity, m.fty.proto, some(m.ident), m.fty.inputs,
+            m.fty.output, m.fty.ret_style, m.fty.constraints) + ";";
     }
     fn field_to_str(cx: ctxt, f: field) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
@@ -178,8 +186,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         "(" + str::connect(strs, ",") + ")"
       }
       ty_fn(f) {
-        fn_to_str(cx, f.proto, none, f.inputs, f.output, f.ret_style,
-                  f.constraints)
+        fn_to_str(cx, f.purity, f.proto, none, f.inputs,
+                  f.output, f.ret_style, f.constraints)
       }
       ty_var(v) { v.to_str() }
       ty_param(id, _) {

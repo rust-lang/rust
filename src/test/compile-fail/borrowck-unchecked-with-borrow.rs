@@ -9,7 +9,7 @@ fn foo(v: &const option<int>) {
       some(i) {
         //!^ ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
         unchecked {
-            impure(i); //! NOTE impure due to access to non-pure functions
+            impure(i); //! NOTE impure due to access to impure function
         }
       }
       none {

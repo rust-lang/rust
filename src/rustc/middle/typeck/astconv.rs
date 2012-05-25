@@ -429,7 +429,8 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
         let out_constrs = vec::map(decl.constraints) {|constr|
             ty::ast_constr_to_constr(self.tcx(), constr)
         };
-        {proto: proto, inputs: input_tys,
+
+        {purity: decl.purity, proto: proto, inputs: input_tys,
          output: output_ty, ret_style: decl.cf, constraints: out_constrs}
     }
 }

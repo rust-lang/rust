@@ -1379,7 +1379,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             i += 1u;
         }
 
-        let ft = ty::mk_fn(tcx, {proto: proto,
+        let ft = ty::mk_fn(tcx, {purity: ast::impure_fn, proto: proto,
                                  inputs: out_args, output: rt,
                                  ret_style: cf, constraints: constrs});
         fcx.write_ty(id, ft);
@@ -1625,7 +1625,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 let ty_nilp = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx),
                                               mutbl: ast::m_imm});
                 let m = ast::expl(ty::default_arg_mode_for_ty(ty_uint));
-                ty::mk_fn(tcx, {proto: ast::proto_any,
+                ty::mk_fn(tcx, {purity: ast::impure_fn,
+                                proto: ast::proto_any,
                                 inputs: [{mode: m, ty: ty_uint},
                                          {mode: m, ty: ty_uint}],
                                 output: ty_nilp,

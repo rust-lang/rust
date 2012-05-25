@@ -1029,6 +1029,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
+        print_purity(s, decl.purity);
         word(s.s, proto_to_str(proto));
         print_fn_args_and_ret(s, decl, *cap_clause);
         space(s.s);
@@ -1322,10 +1323,8 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
 fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
             typarams: [ast::ty_param]) {
     alt decl.purity {
-      ast::impure_fn { head(s, "fn"); }
-      ast::unsafe_fn { head(s, "unsafe fn"); }
-      ast::pure_fn { head(s, "pure fn"); }
-      ast::crust_fn { head(s, "crust fn"); }
+      ast::impure_fn { head(s, "fn") }
+      _ { head(s, purity_to_str(decl.purity) + " fn") }
     }
     word(s.s, name);
     print_type_params(s, typarams);
@@ -1822,6 +1821,22 @@ fn opt_proto_to_str(opt_p: option<ast::proto>) -> str {
     alt opt_p {
       none { "fn" }
       some(p) { proto_to_str(p) }
+    }
+}
+
+fn purity_to_str(p: ast::purity) -> str {
+    alt p {
+      ast::impure_fn {"impure"}
+      ast::unsafe_fn {"unsafe"}
+      ast::pure_fn {"pure"}
+      ast::crust_fn {"crust"}
+    }
+}
+
+fn print_purity(s: ps, p: ast::purity) {
+    alt p {
+      ast::impure_fn {}
+      _ { word_nbsp(s, purity_to_str(p)) }
     }
 }
 

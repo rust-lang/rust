@@ -13,6 +13,7 @@ import result::{result, ok, err, extensions};
 import syntax::print::pprust;
 import util::common::indenter;
 import ast_util::op_expr_callee_id;
+import ty::to_str;
 
 export check_crate, root_map, mutbl_map;
 
@@ -504,14 +505,14 @@ enum check_loan_ctxt = @{
     // allow mutating immutable fields in the same class if
     // we are in a ctor, we track the self id
     mut in_ctor: bool,
-
-    mut declared_purity: ast::purity
+    mut declared_purity: ast::purity,
+    mut fn_args: [ast::node_id]
 };
 
 // if we are enforcing purity, why are we doing so?
 enum purity_cause {
     // enforcing purity because fn was declared pure:
-    pc_declaration,
+    pc_pure_fn,
 
     // enforce purity because we need to guarantee the
     // validity of some alias; `bckerr` describes the
@@ -526,7 +527,8 @@ fn check_loans(bccx: borrowck_ctxt,
                                  req_maps: req_maps,
                                  reported: int_hash(),
                                  mut in_ctor: false,
-                                 mut declared_purity: ast::impure_fn});
+                                 mut declared_purity: ast::impure_fn,
+                                 mut fn_args: []});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
                             visit_block: check_loans_in_block,
                             visit_fn: check_loans_in_fn
@@ -570,7 +572,7 @@ impl methods for check_loan_ctxt {
           // otherwise, remember what was declared as the
           // default, but we must scan for requirements
           // imposed by the borrow check
-          ast::pure_fn { some(pc_declaration) }
+          ast::pure_fn { some(pc_pure_fn) }
           ast::crust_fn | ast::impure_fn { none }
         };
 
@@ -627,68 +629,77 @@ impl methods for check_loan_ctxt {
 
     // when we are in a pure context, we check each call to ensure
     // that the function which is invoked is itself pure.
-    fn check_pure(pc: purity_cause, expr: @ast::expr) {
+    fn check_pure_callee_or_arg(pc: purity_cause, expr: @ast::expr) {
         let tcx = self.tcx();
-        alt ty::get(tcx.ty(expr)).struct {
-          ty::ty_fn(_) {
-            // Extract purity or unsafety based on what kind of callee
-            // we've got.  This would be cleaner if we just admitted
-            // that we have an effect system and carried the purity
-            // etc around in the type.
 
-            // First, check the def_map---if expr.id is present then
-            // expr must be a path (at least I think that's the idea---NDM)
-            let callee_purity = alt tcx.def_map.find(expr.id) {
-              some(ast::def_fn(_, p)) { p }
-              some(ast::def_variant(_, _)) { ast::pure_fn }
-              _ {
-                // otherwise it may be a method call that we can trace
-                // to the def'n site:
-                alt self.bccx.method_map.find(expr.id) {
-                  some(typeck::method_static(did)) {
-                    if did.crate == ast::local_crate {
-                        alt tcx.items.get(did.node) {
-                          ast_map::node_method(m, _, _) { m.decl.purity }
-                          _ { tcx.sess.span_bug(expr.span,
-                                                "Node not bound \
-                                                 to a method") }
-                        }
-                    } else {
-                        metadata::csearch::lookup_method_purity(
-                            tcx.sess.cstore,
-                            did)
-                    }
-                  }
-                  some(typeck::method_param(iid, n_m, _, _)) |
-                  some(typeck::method_iface(iid, n_m)) {
-                    ty::iface_methods(tcx, iid)[n_m].purity
-                  }
-                  none {
-                    // otherwise it's just some dang thing.  We know
-                    // it cannot be unsafe because we do not allow
-                    // unsafe functions to be used as values (or,
-                    // rather, we only allow that inside an unsafe
-                    // block, and then it's up to the user to keep
-                    // things confined).
-                    ast::impure_fn
-                  }
-                }
-              }
-            };
+        #debug["check_pure_callee_or_arg(pc=%?, expr=%s, ty=%s)",
+               pc, pprust::expr_to_str(expr),
+               ty_to_str(self.tcx(), tcx.ty(expr))];
 
-            alt callee_purity {
-              ast::crust_fn | ast::pure_fn {
-                /*ok*/
-              }
-              ast::impure_fn | ast::unsafe_fn {
+        // Purity rules: an expr B is a legal callee or argument to a
+        // call within a pure function A if at least one of the
+        // following holds:
+        //
+        // (a) A was declared pure and B is one of its arguments;
+        // (b) B is a stack closure;
+        // (c) B is a pure fn;
+        // (d) B is not a fn.
+
+        alt expr.node {
+          ast::expr_path(_) if pc == pc_pure_fn {
+            let def = self.tcx().def_map.get(expr.id);
+            let did = ast_util::def_id_of_def(def);
+            let is_fn_arg =
+                did.crate == ast::local_crate &&
+                self.fn_args.contains(did.node);
+            if is_fn_arg { ret; } // case (a) above
+          }
+          ast::expr_fn_block(*) | ast::expr_fn(*) {
+            if self.is_stack_closure(expr.id) { ret; } // case (b) above
+          }
+          _ {}
+        }
+
+        let expr_ty = tcx.ty(expr);
+        alt ty::get(expr_ty).struct {
+          ty::ty_fn(fn_ty) {
+            alt fn_ty.purity {
+              ast::pure_fn { ret; } // case (c) above
+              ast::impure_fn | ast::unsafe_fn | ast::crust_fn {
                 self.report_purity_error(
                     pc, expr.span,
-                    "access to non-pure functions");
+                    #fmt["access to %s function",
+                         pprust::purity_to_str(fn_ty.purity)]);
               }
             }
           }
-          _ { /* not a fn, ok */ }
+          _ { ret; } // case (d) above
         }
+    }
+
+    // True if the expression with the given `id` is a stack closure.
+    // The expression must be an expr_fn(*) or expr_fn_block(*)
+    fn is_stack_closure(id: ast::node_id) -> bool {
+        let fn_ty = ty::node_id_to_type(self.tcx(), id);
+        let proto = ty::ty_fn_proto(fn_ty);
+        alt proto {
+          ast::proto_block | ast::proto_any {true}
+          ast::proto_bare | ast::proto_uniq | ast::proto_box {false}
+        }
+    }
+
+    fn is_allowed_pure_arg(expr: @ast::expr) -> bool {
+        ret alt expr.node {
+          ast::expr_path(_) {
+            let def = self.tcx().def_map.get(expr.id);
+            let did = ast_util::def_id_of_def(def);
+            did.crate == ast::local_crate && self.fn_args.contains(did.node)
+          }
+          ast::expr_fn_block(*) | ast::expr_fn(*) {
+            self.is_stack_closure(expr.id)
+          }
+          _ {false}
+        };
     }
 
     fn check_for_conflicting_loans(scope_id: ast::node_id) {
@@ -814,7 +825,7 @@ impl methods for check_loan_ctxt {
 
     fn report_purity_error(pc: purity_cause, sp: span, msg: str) {
         alt pc {
-          pc_declaration {
+          pc_pure_fn {
             self.tcx().sess.span_err(
                 sp,
                 #fmt["%s prohibited in pure context", msg]);
@@ -888,23 +899,37 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     #debug["purity on entry=%?", self.declared_purity];
     save_and_restore(self.in_ctor) {||
         save_and_restore(self.declared_purity) {||
-            // In principle, we could consider fk_anon(*) or
-            // fk_fn_block(*) to be in a ctor, I suppose, but the
-            // purpose of the in_ctor flag is to allow modifications
-            // of otherwise immutable fields and typestate wouldn't be
-            // able to "see" into those functions anyway, so it
-            // wouldn't be very helpful.
-            alt fk {
-              visit::fk_ctor(*) { self.in_ctor = true; }
-              _ { self.in_ctor = false; }
-            };
+            save_and_restore(self.fn_args) {||
+                let is_stack_closure = self.is_stack_closure(id);
 
-            // NDM this doesn't seem algother right, what about fn  items
-            // nested in pure fns? etc?
+                // In principle, we could consider fk_anon(*) or
+                // fk_fn_block(*) to be in a ctor, I suppose, but the
+                // purpose of the in_ctor flag is to allow modifications
+                // of otherwise immutable fields and typestate wouldn't be
+                // able to "see" into those functions anyway, so it
+                // wouldn't be very helpful.
+                alt fk {
+                  visit::fk_ctor(*) {
+                    self.in_ctor = true;
+                    self.declared_purity = decl.purity;
+                    self.fn_args = decl.inputs.map({|i| i.id});
+                  }
+                  visit::fk_anon(*) |
+                  visit::fk_fn_block(*) if is_stack_closure {
+                    self.in_ctor = false;
+                    // inherits the purity/fn_args from enclosing ctxt
+                  }
+                  visit::fk_anon(*) | visit::fk_fn_block(*) |
+                  visit::fk_method(*) | visit::fk_item_fn(*) |
+                  visit::fk_res(*) | visit::fk_dtor(*) {
+                    self.in_ctor = false;
+                    self.declared_purity = decl.purity;
+                    self.fn_args = decl.inputs.map({|i| i.id});
+                  }
+                }
 
-            self.declared_purity = decl.purity;
-
-            visit::visit_fn(fk, decl, body, sp, id, self, visitor);
+                visit::visit_fn(fk, decl, body, sp, id, self, visitor);
+            }
         }
     }
     #debug["purity on exit=%?", self.declared_purity];
@@ -960,8 +985,8 @@ fn check_loans_in_expr(expr: @ast::expr,
         alt self.purity(expr.id) {
           none {}
           some(pc) {
-            self.check_pure(pc, f);
-            for args.each { |arg| self.check_pure(pc, arg) }
+            self.check_pure_callee_or_arg(pc, f);
+            for args.each { |arg| self.check_pure_callee_or_arg(pc, arg) }
           }
         }
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));

@@ -157,6 +157,7 @@ export atttce_unresolved, atttce_resolved;
 export mach_sty;
 export ty_sort_str;
 export normalize_ty;
+export to_str;
 
 // Data types
 
@@ -290,7 +291,8 @@ enum closure_kind {
     ck_uniq,
 }
 
-type fn_ty = {proto: ast::proto,
+type fn_ty = {purity: ast::purity,
+              proto: ast::proto,
               inputs: [arg],
               output: t,
               ret_style: ret_style,
@@ -378,6 +380,7 @@ enum terr_vstore_kind {
 enum type_err {
     terr_mismatch,
     terr_ret_style_mismatch(ast::ret_style, ast::ret_style),
+    terr_purity_mismatch(purity, purity),
     terr_mutability,
     terr_proto_mismatch(ast::proto, ast::proto),
     terr_box_mutability,
@@ -423,6 +426,12 @@ impl of vid for ty_vid {
 impl of vid for region_vid {
     fn to_uint() -> uint { *self }
     fn to_str() -> str { #fmt["<R%u>", self.to_uint()] }
+}
+
+impl of to_str::to_str for purity {
+    fn to_str() -> str {
+        purity_to_str(self)
+    }
 }
 
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
@@ -2374,6 +2383,9 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
         }
         ret to_str(actual) + " function found where " + to_str(expect) +
             " function was expected";
+      }
+      terr_purity_mismatch(f1, f2) {
+        ret #fmt["expected %s fn but found %s fn", f1.to_str(), f2.to_str()];
       }
       terr_proto_mismatch(e, a) {
         ret #fmt["closure protocol mismatch (%s vs %s)",

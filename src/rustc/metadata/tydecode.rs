@@ -159,8 +159,8 @@ fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
     ret @respan(sp, {path: pth, args: args, id: def});
 }
 
-fn parse_ty_rust_fn(st: @pstate, conv: conv_did, p: ast::proto) -> ty::t {
-    ret ty::mk_fn(st.tcx, {proto: p with parse_ty_fn(st, conv)});
+fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
+    ret ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
 }
 
 fn parse_proto(c: char) -> ast::proto {
@@ -335,8 +335,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret ty::mk_tup(st.tcx, params);
       }
       'f' {
-        let proto = parse_proto(next(st));
-        parse_ty_rust_fn(st, conv, proto)
+        parse_ty_rust_fn(st, conv)
       }
       'r' {
         assert next(st) == '[';
@@ -441,7 +440,18 @@ fn parse_hex(st: @pstate) -> uint {
     };
 }
 
+fn parse_purity(c: char) -> purity {
+    alt check c {
+      'u' {unsafe_fn}
+      'p' {pure_fn}
+      'i' {impure_fn}
+      'c' {crust_fn}
+    }
+}
+
 fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
+    let proto = parse_proto(next(st));
+    let purity = parse_purity(next(st));
     assert (next(st) == '[');
     let mut inputs: [ty::arg] = [];
     while peek(st) != ']' {
@@ -458,7 +468,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     st.pos += 1u; // eat the ']'
     let cs = parse_constrs(st, conv);
     let (ret_style, ret_ty) = parse_ret_ty(st, conv);
-    ret {proto: ast::proto_bare, inputs: inputs, output: ret_ty,
+    ret {purity: purity, proto: proto, inputs: inputs, output: ret_ty,
          ret_style: ret_style, constraints: cs};
 }
 

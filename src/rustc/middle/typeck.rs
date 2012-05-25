@@ -197,8 +197,8 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     alt ty::get(main_t).struct {
-      ty::ty_fn({proto: ast::proto_bare, inputs, output,
-                 ret_style: ast::return_val, constraints}) {
+      ty::ty_fn({purity: ast::impure_fn, proto: ast::proto_bare,
+                 inputs, output, ret_style: ast::return_val, constraints}) {
         alt tcx.items.find(main_id) {
          some(ast_map::node_item(it,_)) {
              alt it.node {

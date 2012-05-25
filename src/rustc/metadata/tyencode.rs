@@ -262,7 +262,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char(']');
       }
       ty::ty_fn(f) {
-        enc_proto(w, f.proto);
         enc_ty_fn(w, cx, f);
       }
       ty::ty_res(def, ty, substs) {
@@ -331,7 +330,18 @@ fn enc_mode(w: io::writer, cx: @ctxt, m: mode) {
     }
 }
 
+fn enc_purity(w: io::writer, p: purity) {
+    alt p {
+      pure_fn { w.write_char('p'); }
+      impure_fn { w.write_char('i'); }
+      unsafe_fn { w.write_char('u'); }
+      crust_fn { w.write_char('c'); }
+    }
+}
+
 fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
+    enc_proto(w, ft.proto);
+    enc_purity(w, ft.purity);
     w.write_char('[');
     for ft.inputs.each {|arg|
         enc_mode(w, cx, arg.mode);

@@ -31,7 +31,7 @@ fn process(_i: int) {}
 fn match_const_box_and_do_bad_things(v: &const @const option<int>) {
     alt *v {
       @some(i) { //! ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
-        process(i) //! NOTE impure due to access to non-pure functions
+        process(i) //! NOTE impure due to access to impure function
       }
       @none {}
     }

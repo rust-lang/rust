@@ -149,13 +149,14 @@ import std::map::hashmap;
 import middle::ty;
 import middle::ty::{ty_vid, tys_in_fn_ty, region_vid, vid};
 import syntax::{ast, ast_util};
-import syntax::ast::{ret_style};
+import syntax::ast::{ret_style, purity};
 import util::ppaux::{ty_to_str, mt_to_str};
 import result::{result, extensions, ok, err, map_vec, map_vec2, iter_vec2};
 import ty::{mk_fn, type_is_bot};
 import check::regionmanip::{replace_bound_regions_in_fn_ty};
 import driver::session::session;
 import util::common::{indent, indenter};
+import ast::{unsafe_fn, impure_fn, pure_fn, crust_fn};
 
 export infer_ctxt;
 export new_infer_ctxt;
@@ -1179,6 +1180,7 @@ iface combine {
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
     fn protos(p1: ast::proto, p2: ast::proto) -> cres<ast::proto>;
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style>;
+    fn purities(f1: purity, f2: purity) -> cres<purity>;
     fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region>;
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region>;
     fn vstores(vk: ty::terr_vstore_kind,
@@ -1342,14 +1344,17 @@ fn super_fns<C:combine>(
         self.ret_styles(a_f.ret_style, b_f.ret_style).chain {|rs|
             argvecs(self, a_f.inputs, b_f.inputs).chain {|inputs|
                 self.tys(a_f.output, b_f.output).chain {|output|
+                    self.purities(a_f.purity, b_f.purity).chain {|purity|
                     //FIXME self.infcx().constrvecs(a_f.constraints,
                     //FIXME                         b_f.constraints).then {||
-                        ok({proto: p,
+                        ok({purity: purity,
+                            proto: p,
                             inputs: inputs,
                             output: output,
                             ret_style: rs,
                             constraints: a_f.constraints})
                     //FIXME }
+                    }
                 }
             }
         }
@@ -1579,6 +1584,12 @@ impl of combine for sub {
         }
     }
 
+    fn purities(f1: purity, f2: purity) -> cres<purity> {
+        self.lub().purities(f1, f2).compare(f2) {||
+            ty::terr_purity_mismatch(f2, f1)
+        }
+    }
+
     fn ret_styles(a: ret_style, b: ret_style) -> cres<ret_style> {
         self.lub().ret_styles(a, b).compare(b) {||
             ty::terr_ret_style_mismatch(b, a)
@@ -1736,6 +1747,15 @@ impl of combine for lub {
             ok(p1)
         } else {
             ok(ast::proto_any)
+        }
+    }
+
+    fn purities(f1: purity, f2: purity) -> cres<purity> {
+        alt (f1, f2) {
+          (unsafe_fn, _) | (_, unsafe_fn) {ok(unsafe_fn)}
+          (impure_fn, _) | (_, impure_fn) {ok(impure_fn)}
+          (crust_fn, _) | (_, crust_fn) {ok(crust_fn)}
+          (pure_fn, pure_fn) {ok(pure_fn)}
         }
     }
 
@@ -1928,6 +1948,15 @@ impl of combine for glb {
             ok(p1)
         } else {
             ok(ast::proto_bare)
+        }
+    }
+
+    fn purities(f1: purity, f2: purity) -> cres<purity> {
+        alt (f1, f2) {
+          (pure_fn, _) | (_, pure_fn) {ok(pure_fn)}
+          (crust_fn, _) | (_, crust_fn) {ok(crust_fn)}
+          (impure_fn, _) | (_, impure_fn) {ok(impure_fn)}
+          (unsafe_fn, unsafe_fn) {ok(unsafe_fn)}
         }
     }
 

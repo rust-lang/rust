@@ -113,7 +113,8 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                 let arg_ty = ccx.to_ty(rs, va.ty);
                 {mode: ast::expl(ast::by_copy), ty: arg_ty}
             };
-            ty::mk_fn(tcx, {proto: ast::proto_box,
+            ty::mk_fn(tcx, {purity: ast::pure_fn,
+                            proto: ast::proto_box,
                             inputs: args,
                             output: enum_ty,
                             ret_style: ast::return_val,
@@ -344,12 +345,14 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let t_res = ty::mk_res(tcx, def_id, t_arg.ty, substs);
 
         let t_ctor = ty::mk_fn(tcx, {
+            purity: ast::pure_fn,
             proto: ast::proto_box,
             inputs: [{mode: ast::expl(ast::by_copy), ty: t_arg.ty}],
             output: t_res,
             ret_style: ast::return_val, constraints: []
         });
         let t_dtor = ty::mk_fn(tcx, {
+            purity: ast::impure_fn,
             proto: ast::proto_box,
             inputs: [t_arg], output: ty::mk_nil(tcx),
             ret_style: ast::return_val, constraints: []
@@ -521,7 +524,8 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
         ret;
       }
     };
-    let fty = ty::mk_fn(tcx, {proto: ast::proto_bare,
+    let fty = ty::mk_fn(tcx, {purity: ast::impure_fn,
+                              proto: ast::proto_bare,
                               inputs: inputs, output: output,
                               ret_style: ast::return_val,
                               constraints: []});
@@ -594,6 +598,8 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         let tpt = {bounds: bounds,
                    rp: ast::rp_none, // functions do not have a self
                    ty: ty::mk_fn(ccx.tcx, tofd)};
+        #debug["type of %s (id %d) is %s",
+               it.ident, it.id, ty_to_str(tcx, tpt.ty)];
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
@@ -715,7 +721,8 @@ fn ty_of_native_fn_decl(ccx: @crate_ctxt,
     let input_tys = decl.inputs.map { |a| ty_of_arg(ccx, rb, a, none) };
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
-    let t_fn = ty::mk_fn(ccx.tcx, {proto: ast::proto_bare,
+    let t_fn = ty::mk_fn(ccx.tcx, {purity: decl.purity,
+                                   proto: ast::proto_bare,
                                    inputs: input_tys,
                                    output: output_ty,
                                    ret_style: ast::return_val,

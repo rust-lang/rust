@@ -136,7 +136,18 @@ class parser {
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 
-    fn parse_ty_fn() -> fn_decl {
+    fn parse_ty_fn(purity: ast::purity) -> ty_ {
+        let proto = if self.eat_keyword("native") {
+            self.expect_keyword("fn");
+            ast::proto_bare
+        } else {
+            self.expect_keyword("fn");
+            self.parse_fn_ty_proto()
+        };
+        ty_fn(proto, self.parse_ty_fn_decl(purity))
+    }
+
+    fn parse_ty_fn_decl(purity: ast::purity) -> fn_decl {
         let inputs =
             self.parse_seq(token::LPAREN, token::RPAREN,
                            seq_sep(token::COMMA)) { |p|
@@ -159,7 +170,7 @@ class parser {
         let constrs: [@constr] = [];
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ret {inputs: inputs.node, output: ret_ty,
-             purity: impure_fn, cf: ret_style,
+             purity: purity, cf: ret_style,
              constraints: constrs};
     }
 
@@ -170,7 +181,7 @@ class parser {
             let pur = p.parse_fn_purity();
             let ident = p.parse_method_name();
             let tps = p.parse_ty_params();
-            let d = p.parse_ty_fn(), fhi = p.last_span.hi;
+            let d = p.parse_ty_fn_decl(pur), fhi = p.last_span.hi;
             self.expect(token::SEMI);
             {ident: ident, attrs: attrs, decl: {purity: pur with d}, tps: tps,
              span: mk_sp(flo, fhi)}
@@ -384,16 +395,15 @@ class parser {
             let region = self.parse_region_dot();
             let mt = self.parse_mt();
             ty_rptr(region, mt)
-        } else if self.eat_keyword("fn") {
-            let proto = self.parse_fn_ty_proto();
-            alt proto {
-              proto_bare { self.warn("fn is deprecated, use native fn"); }
-              _ { /* fallthrough */ }
-            }
-            ty_fn(proto, self.parse_ty_fn())
+        } else if self.eat_keyword("pure") {
+            self.parse_ty_fn(ast::pure_fn)
+        } else if self.eat_keyword("unsafe") {
+            self.parse_ty_fn(ast::unsafe_fn)
+        } else if self.is_keyword("fn") {
+            self.parse_ty_fn(ast::impure_fn)
         } else if self.eat_keyword("native") {
             self.expect_keyword("fn");
-            ty_fn(proto_bare, self.parse_ty_fn())
+            ty_fn(proto_bare, self.parse_ty_fn_decl(ast::impure_fn))
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())

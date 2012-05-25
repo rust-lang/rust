@@ -791,7 +791,8 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
     } else if did.crate == ast::local_crate {
         get_item_val(ccx, did.node)
     } else {
-        let fty = ty::mk_fn(ccx.tcx, {proto: ast::proto_bare,
+        let fty = ty::mk_fn(ccx.tcx, {purity: ast::impure_fn,
+                                      proto: ast::proto_bare,
                                       inputs: [{mode: ast::expl(ast::by_ref),
                                                 ty: ty::mk_nil_ptr(ccx.tcx)}],
                                       output: ty::mk_nil(ccx.tcx),
@@ -1949,12 +1950,14 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
     // FIXME[mono] could do this recursively. is that worthwhile?
     alt ty::get(ty).struct {
       ty::ty_box(mt) { some(ty::mk_opaque_box(tcx)) }
-      ty::ty_fn(fty) { some(ty::mk_fn(tcx, {proto: fty.proto,
+      ty::ty_fn(fty) { some(ty::mk_fn(tcx, {purity: ast::impure_fn,
+                                            proto: fty.proto,
                                             inputs: [],
                                             output: ty::mk_nil(tcx),
                                             ret_style: ast::return_val,
                                             constraints: []})) }
-      ty::ty_iface(_, _) { some(ty::mk_fn(tcx, {proto: ast::proto_box,
+      ty::ty_iface(_, _) { some(ty::mk_fn(tcx, {purity: ast::impure_fn,
+                                                proto: ast::proto_box,
                                                 inputs: [],
                                                 output: ty::mk_nil(tcx),
                                                 ret_style: ast::return_val,
