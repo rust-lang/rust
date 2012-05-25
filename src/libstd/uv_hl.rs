@@ -7,7 +7,7 @@ libuv functionality.
 "];
 
 export high_level_loop, high_level_msg;
-export run_high_level_loop, interact;
+export run_high_level_loop, interact, exit;
 
 import libc::c_void;
 import ptr::addr_of;
@@ -117,6 +117,10 @@ via ports/chans.
 unsafe fn interact(hl_loop: high_level_loop,
                    -cb: fn~(*c_void)) {
     send_high_level_msg(hl_loop, interaction(cb));
+}
+
+fn exit(hl_loop: high_level_loop) unsafe {
+    send_high_level_msg(hl_loop, teardown_loop);
 }
 
 // INTERNAL API

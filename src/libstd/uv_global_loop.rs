@@ -2,11 +2,15 @@
 A process-wide libuv event loop for library use.
 "];
 
+export get, get_monitor_task_gl;
+
 import ll = uv_ll;
 import hl = uv_hl;
 import get_gl = get;
-
-export get, get_monitor_task_gl;
+import task::{spawn_sched, single_threaded};
+import priv::{chan_from_global_ptr, weaken_task};
+import comm::{port, chan, methods, select2, listen};
+import either::{left, right};
 
 native mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
@@ -29,114 +33,108 @@ fn get() -> hl::high_level_loop {
 }
 
 #[doc(hidden)]
-fn get_monitor_task_gl() -> hl::high_level_loop {
-    let monitor_loop_chan_ptr =
-        rustrt::rust_uv_get_kernel_global_chan_ptr();
-    log(debug, #fmt("ENTERING global_loop::get() loop chan: %?",
-       monitor_loop_chan_ptr));
+fn get_monitor_task_gl() -> hl::high_level_loop unsafe {
+
+    let monitor_loop_chan_ptr = rustrt::rust_uv_get_kernel_global_chan_ptr();
+
+    #debug("ENTERING global_loop::get() loop chan: %?",
+           monitor_loop_chan_ptr);
+
     let builder_fn = {||
         let builder = task::builder();
-        let opts = {
+        task::set_opts(builder, {
             supervise: false,
-            notify_chan: none,
-            sched:
-                some({mode: task::manual_threads(1u),
-                      native_stack_size: none })
-        };
-        task::set_opts(builder, opts);
+            sched: some({
+                mode: single_threaded,
+                native_stack_size: none
+            })
+            with task::get_opts(builder)
+        });
         builder
     };
-    unsafe {
-        log(debug, "before priv::chan_from_global_ptr");
-        type hl_loop_req_ch = comm::chan<hl::high_level_loop>;
-        let msg_ch = priv::chan_from_global_ptr::<hl_loop_req_ch>(
-            monitor_loop_chan_ptr,
-            builder_fn) {|msg_po|
-            log(debug, "global monitor task starting");
-            priv::weaken_task() {|weak_exit_po|
-                log(debug, "global monitor task is now weak");
-                let hl_loop_data = spawn_high_level_loop();
-                let hl_loop = alt hl_loop_data {
-                  (async, msg_ch) {
-                    hl::high_level_loop({async_handle:async, op_chan:msg_ch})
+
+    #debug("before priv::chan_from_global_ptr");
+    type monchan = chan<hl::high_level_loop>;
+
+    let monitor_ch = chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
+                                                     builder_fn) {|msg_po|
+        #debug("global monitor task starting");
+
+        // As a weak task the runtime will notify us when to exit
+        weaken_task() {|weak_exit_po|
+            #debug("global monitor task is now weak");
+            let hl_loop = spawn_high_level_loop();
+            loop {
+                #debug("in outer_loop...");
+                alt select2(weak_exit_po, msg_po) {
+                  left(weak_exit) {
+                    // all normal tasks have ended, tell the
+                    // libuv loop to tear_down, then exit
+                    #debug("weak_exit_po recv'd msg: %?", weak_exit);
+                    hl::exit(hl_loop);
+                    break;
                   }
-                };
-                loop {
-                    log(debug, "in outer_loop...");
-                    let continue = either::either(
-                        {|weak_exit|
-                            // all normal tasks have ended, tell the
-                            // libuv loop to tear_down, then exit
-                            log(debug, #fmt("weak_exit_po recv'd msg: %?",
-                                           weak_exit));
-                            let ( a, loop_msg_ch )= hl_loop_data;
-                            comm::send(loop_msg_ch, hl::teardown_loop);
-                            ll::async_send(a);
-                            false
-                        }, {|fetch_ch|
-                            log(debug, #fmt("hl_loop req recv'd: %?",
-                                           fetch_ch));
-                            comm::send(fetch_ch, copy(hl_loop));
-                            true
-                        }, comm::select2(weak_exit_po, msg_po));
-                    if !continue { break; }
+                  right(fetch_ch) {
+                    #debug("hl_loop req recv'd: %?", fetch_ch);
+                    fetch_ch.send(hl_loop);
+                  }
                 }
-                log(debug, "global monitor task is leaving weakend state");
-            };
-            log(debug, "global monitor task exiting");
+            }
+            #debug("global monitor task is leaving weakend state");
         };
-        // once we have a chan to the monitor loop, we ask it for
-        // the libuv loop's async handle
-        let fetch_po = comm::port::<hl::high_level_loop>();
-        let fetch_ch = comm::chan(fetch_po);
-        comm::send(msg_ch, fetch_ch);
-        comm::recv(fetch_po)
+        #debug("global monitor task exiting");
+    };
+
+    // once we have a chan to the monitor loop, we ask it for
+    // the libuv loop's async handle
+    listen { |fetch_ch|
+        monitor_ch.send(fetch_ch);
+        fetch_ch.recv()
     }
 }
 
-unsafe fn spawn_high_level_loop() -> (*ll::uv_async_t,
-                                      comm::chan<hl::high_level_msg>){
-    let exit_po = comm::port::<(*ll::uv_async_t,
-                              comm::chan<hl::high_level_msg>)>();
-    let exit_ch = comm::chan(exit_po);
+fn spawn_high_level_loop() -> hl::high_level_loop unsafe {
+    let exit_po = port::<hl::high_level_loop>();
+    let exit_ch = exit_po.chan();
 
-    task::spawn_sched(task::manual_threads(1u)) {||
-        log(debug, "entering global libuv task");
-        let loop_ptr = ll::loop_new();
-        priv::weaken_task() {|weak_exit_po|
-            log(debug, #fmt("global libuv task is now weak %?",
-                            weak_exit_po));
-            let loop_msg_po = comm::port::<hl::high_level_msg>();
-            let loop_msg_ch = comm::chan(loop_msg_po);
+    spawn_sched(single_threaded) {||
+        #debug("entering global libuv task");
+        weaken_task() {|weak_exit_po|
+            #debug("global libuv task is now weak %?", weak_exit_po);
+            let loop_ptr = ll::loop_new();
+            let loop_msg_po = port::<hl::high_level_msg>();
+            let loop_msg_ch = loop_msg_po.chan();
             hl::run_high_level_loop(
                 loop_ptr,
                 loop_msg_po,
                 // before_run
                 {|async_handle|
-                    log(debug,#fmt("global libuv: before_run %?",
-                                  async_handle));
-                    let out_data = (async_handle, loop_msg_ch);
-                    comm::send(exit_ch, out_data);
+                    #debug("global libuv: before_run %?", async_handle);
+                    let hll = hl::high_level_loop({
+                        async_handle: async_handle,
+                        op_chan: loop_msg_ch
+                    });
+                    exit_ch.send(hll);
                 },
                 // before_msg_process
                 {|async_handle, loop_active|
-                    log(debug,#fmt("global libuv: before_msg_drain %? %?",
-                                  async_handle, loop_active));
+                    #debug("global libuv: before_msg_drain %? %?",
+                           async_handle, loop_active);
                     true
                 },
                 // before_tear_down
                 {|async_handle|
-                    log(debug,#fmt("libuv task: before_tear_down %?",
-                                  async_handle));
+                    #debug("libuv task: before_tear_down %?",
+                           async_handle);
                 }
             );
-            log(debug, "global libuv task is leaving weakened state");
+            ll::loop_delete(loop_ptr);
+            #debug("global libuv task is leaving weakened state");
         };
-        ll::loop_delete(loop_ptr);
-        log(debug, "global libuv task exiting");
+        #debug("global libuv task exiting");
     };
 
-    comm::recv(exit_po)
+    exit_po.recv()
 }
 
 #[cfg(test)]
