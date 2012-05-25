@@ -19,15 +19,17 @@ type arc_data<T> = {
     data: T
 };
 
-resource arc_destruct<T>(data: *arc_data<T>) {
+resource arc_destruct<T>(data: *libc::c_void) {
     unsafe {
-        let ptr = &mut (*data).count;
+        let data: ~arc_data<T> = unsafe::reinterpret_cast(data);
+        let ref_ptr = &mut data.count;
 
-        let new_count = rustrt::rust_atomic_decrement(ptr);
+        let new_count = rustrt::rust_atomic_decrement(ref_ptr);
         assert new_count >= 0;
         if new_count == 0 {
-            let _ptr : ~arc_data<T> = unsafe::reinterpret_cast(data);
             // drop glue takes over.
+        } else {
+            unsafe::forget(data);
         }
     }
 }
@@ -48,7 +50,11 @@ fn arc<T>(-data: T) -> arc<T> {
  wrapper."]
 fn get<T>(rc: &a.arc<T>) -> &a.T {
     unsafe {
-        &(***rc).data
+        let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
+        // Cast us back into the correct region
+        let r = unsafe::reinterpret_cast(&ptr.data);
+        unsafe::forget(ptr);
+        ret r;
     }
 }
 
@@ -58,9 +64,10 @@ The resulting two `arc` objects will point to the same underlying data
 object. However, one of the `arc` objects can be sent to another task,
 allowing them to share the underlying data."]
 fn clone<T>(rc: &arc<T>) -> arc<T> {
-    let data = **rc;
     unsafe {
-        rustrt::rust_atomic_increment(&mut (*data).count);
+        let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
+        rustrt::rust_atomic_increment(&mut ptr.count);
+        unsafe::forget(ptr);
     }
     arc_destruct(**rc)
 }
