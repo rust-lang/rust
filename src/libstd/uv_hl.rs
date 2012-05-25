@@ -61,10 +61,7 @@ the loop's msg port
 provided `async_handle`. `uv_run` should return shortly after
 "]
 unsafe fn run_high_level_loop(msg_po: port<high_level_msg>,
-                              before_run: fn~(*ll::uv_async_t),
-                              before_msg_process:
-                                fn~(*ll::uv_async_t, bool) -> bool,
-                              before_tear_down: fn~(*ll::uv_async_t)) {
+                              before_run: fn~(*ll::uv_async_t)) {
     let loop_ptr = ll::loop_new();
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
@@ -77,8 +74,6 @@ unsafe fn run_high_level_loop(msg_po: port<high_level_msg>,
     let data: hl_loop_data = {
         async_handle: async_handle,
         mut active: true,
-        before_msg_process: before_msg_process,
-        before_tear_down: before_tear_down,
         msg_po_ptr: addr_of(msg_po)
     };
     ll::set_data_for_uv_handle(async_handle, addr_of(data));
@@ -130,8 +125,6 @@ fn exit(hl_loop: high_level_loop) unsafe {
 type hl_loop_data = {
     async_handle: *ll::uv_async_t,
     mut active: bool,
-    before_msg_process: fn~(*ll::uv_async_t, bool) -> bool,
-    before_tear_down: fn~(*ll::uv_async_t),
     msg_po_ptr: *port<high_level_msg>
 };
 
@@ -160,8 +153,6 @@ crust fn high_level_wake_up_cb(async_handle: *ll::uv_async_t,
             if (*data).active {
                 alt msg {
                   interaction(cb) {
-                    (*data).before_msg_process(async_handle,
-                                               (*data).active);
                     cb(loop_ptr);
                   }
                   teardown_loop {
@@ -189,7 +180,6 @@ fn begin_teardown(data: *hl_loop_data) unsafe {
     log(debug, "high_level_tear_down() called, close async_handle");
     // call user-suppled before_tear_down cb
     let async_handle = (*data).async_handle;
-    (*data).before_tear_down(async_handle);
     ll::close(async_handle as *c_void, tear_down_close_cb);
 }
 
@@ -236,30 +226,16 @@ mod test {
         task::spawn_sched(task::manual_threads(1u)) {||
             let msg_po = comm::port::<high_level_msg>();
             let msg_ch = comm::chan(msg_po);
-            run_high_level_loop(
-                msg_po,
-                // before_run
-                {|async_handle|
-                    log(debug,#fmt("hltest before_run: async_handle %?",
-                                  async_handle));
-                    // do an async_send with it
-                    ll::async_send(async_handle);
-                    comm::send(hl_loop_ch, high_level_loop({
-                       async_handle: async_handle,
-                       op_chan: msg_ch
-                    }));
-                },
-                // before_msg_drain
-                {|async_handle, status|
-                    log(debug,#fmt("hltest before_msg_drain: handle %? %?",
-                                  async_handle, status));
-                    true
-                },
-                // before_tear_down
-                {|async_handle|
-                    log(debug,#fmt("hl test_loop b4_tear_down: async %?",
-                                  async_handle));
-            });
+            run_high_level_loop(msg_po) {|async_handle|
+                log(debug,#fmt("hltest before_run: async_handle %?",
+                               async_handle));
+                // do an async_send with it
+                ll::async_send(async_handle);
+                comm::send(hl_loop_ch, high_level_loop({
+                    async_handle: async_handle,
+                    op_chan: msg_ch
+                }));
+            }
             comm::send(exit_ch, ());
         };
         ret comm::recv(hl_loop_port);

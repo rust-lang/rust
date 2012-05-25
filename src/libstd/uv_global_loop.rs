@@ -103,29 +103,14 @@ fn spawn_high_level_loop() -> hl::high_level_loop unsafe {
             #debug("global libuv task is now weak %?", weak_exit_po);
             let loop_msg_po = port::<hl::high_level_msg>();
             let loop_msg_ch = loop_msg_po.chan();
-            hl::run_high_level_loop(
-                loop_msg_po,
-                // before_run
-                {|async_handle|
-                    #debug("global libuv: before_run %?", async_handle);
-                    let hll = hl::high_level_loop({
-                        async_handle: async_handle,
-                        op_chan: loop_msg_ch
-                    });
-                    exit_ch.send(hll);
-                },
-                // before_msg_process
-                {|async_handle, loop_active|
-                    #debug("global libuv: before_msg_drain %? %?",
-                           async_handle, loop_active);
-                    true
-                },
-                // before_tear_down
-                {|async_handle|
-                    #debug("libuv task: before_tear_down %?",
-                           async_handle);
-                }
-            );
+            hl::run_high_level_loop(loop_msg_po) {|async_handle|
+                #debug("global libuv: before_run %?", async_handle);
+                let hll = hl::high_level_loop({
+                    async_handle: async_handle,
+                    op_chan: loop_msg_ch
+                });
+                exit_ch.send(hll);
+            }
             #debug("global libuv task is leaving weakened state");
         };
         #debug("global libuv task exiting");
