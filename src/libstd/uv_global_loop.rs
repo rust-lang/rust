@@ -55,7 +55,7 @@ fn get_monitor_task_gl() -> hl::high_level_loop {
             log(debug, "global monitor task starting");
             priv::weaken_task() {|weak_exit_po|
                 log(debug, "global monitor task is now weak");
-                let hl_loop_data = spawn_libuv_weak_task();
+                let hl_loop_data = spawn_high_level_loop();
                 let hl_loop = alt hl_loop_data {
                   (async, msg_ch) {
                     hl::high_level_loop({async_handle:async, op_chan:msg_ch})
@@ -94,7 +94,7 @@ fn get_monitor_task_gl() -> hl::high_level_loop {
     }
 }
 
-unsafe fn spawn_libuv_weak_task() -> (*ll::uv_async_t,
+unsafe fn spawn_high_level_loop() -> (*ll::uv_async_t,
                                       comm::chan<hl::high_level_msg>){
     let exit_po = comm::port::<(*ll::uv_async_t,
                               comm::chan<hl::high_level_msg>)>();
