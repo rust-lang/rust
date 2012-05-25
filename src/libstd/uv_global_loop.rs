@@ -2,7 +2,7 @@
 A process-wide libuv event loop for library use.
 "];
 
-export get, get_monitor_task_gl;
+export get;
 
 import ll = uv_ll;
 import iotask = uv_iotask;
