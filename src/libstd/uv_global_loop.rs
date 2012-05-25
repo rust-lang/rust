@@ -7,7 +7,7 @@ export get, get_monitor_task_gl;
 import ll = uv_ll;
 import hl = uv_hl;
 import get_gl = get;
-import task::{spawn_sched, single_threaded};
+import task::{run, single_threaded};
 import priv::{chan_from_global_ptr, weaken_task};
 import comm::{port, chan, methods, select2, listen};
 import either::{left, right};
@@ -63,7 +63,7 @@ fn get_monitor_task_gl() -> hl::high_level_loop unsafe {
         // As a weak task the runtime will notify us when to exit
         weaken_task() {|weak_exit_po|
             #debug("global monitor task is now weak");
-            let hl_loop = spawn_high_level_loop();
+            let hl_loop = spawn_loop();
             loop {
                 #debug("in outer_loop...");
                 alt select2(weak_exit_po, msg_po) {
@@ -93,18 +93,45 @@ fn get_monitor_task_gl() -> hl::high_level_loop unsafe {
     }
 }
 
-fn spawn_high_level_loop() -> hl::high_level_loop unsafe {
+fn spawn_loop() -> hl::high_level_loop unsafe {
+    let builder = task::builder();
+    task::add_wrapper(builder) {|task_body|
+        fn~(move task_body) {
+            // The I/O loop task also needs to be weak so it doesn't keep
+            // the runtime alive
+            weaken_task {|weak_exit_po|
+                #debug("global libuv task is now weak %?", weak_exit_po);
+                task_body();
+
+                // We don't wait for the exit message on weak_exit_po
+                // because the monitor task will tell the uv loop when to
+                // exit
+
+                #debug("global libuv task is leaving weakened state");
+            }
+        }
+    }
+    spawn_high_level_loop(builder)
+}
+
+fn spawn_high_level_loop(-builder: task::builder
+                        ) -> hl::high_level_loop unsafe {
+
     let hll_po = port::<hl::high_level_loop>();
     let hll_ch = hll_po.chan();
 
-    spawn_sched(single_threaded) {||
-        #debug("entering global libuv task");
-        weaken_task() {|weak_exit_po|
-            #debug("global libuv task is now weak %?", weak_exit_po);
-            hl::run_high_level_loop(hll_ch);
-            #debug("global libuv task is leaving weakened state");
-        };
-        #debug("global libuv task exiting");
+    task::set_opts(builder, {
+        sched: some({
+            mode: single_threaded,
+            native_stack_size: none
+        })
+        with task::get_opts(builder)
+    });
+
+    run(builder) {||
+        #debug("entering libuv task");
+        hl::run_high_level_loop(hll_ch);
+        #debug("libuv task exiting");
     };
 
     hll_po.recv()
