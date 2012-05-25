@@ -41,27 +41,9 @@ closed, causing a failure otherwise. This should not be sent/used from
 
 #[doc = "
 Useful for anyone who wants to roll their own `high_level_loop`.
-
-# Arguments
-
-* loop_ptr - a pointer to a currently unused libuv loop. Its `data` field
-will be overwritten before the loop begins
-* msg_po - an active port that receives `high_level_msg`s. You can distribute
-a paired channel to users, along with the `async_handle` returned in the
-following callback (combine them to make a `hl::simpler_task_loop` varient
-of `hl::high_level_loop`)
-* before_run - a unique closure that is invoked before `uv_run()` is called
-on the provided `loop_ptr`. An `async_handle` is passed in which will be
-live for the duration of the loop. You can distribute this to users so that
-they can interact with the loop safely.
-* before_msg_process - a unique closure that is invoked at least once when
-the loop is woken up, and once more for every message that is drained from
-the loop's msg port
-* before_tear_down - called just before the loop invokes `uv_close()` on the
-provided `async_handle`. `uv_run` should return shortly after
 "]
-unsafe fn run_high_level_loop(msg_po: port<high_level_msg>,
-                              before_run: fn~(*ll::uv_async_t)) {
+unsafe fn run_high_level_loop(hll_ch: chan<high_level_loop>) {
+    let msg_po = port::<high_level_msg>();
     let loop_ptr = ll::loop_new();
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
@@ -78,8 +60,13 @@ unsafe fn run_high_level_loop(msg_po: port<high_level_msg>,
     };
     ll::set_data_for_uv_handle(async_handle, addr_of(data));
 
-    // call before_run
-    before_run(async_handle);
+    // Send out a handle through which folks can talk to us
+    // while we dwell in the I/O loop
+    let hll = high_level_loop({
+        async_handle: async_handle,
+        op_chan: msg_po.chan()
+    });
+    hll_ch.send(hll);
 
     log(debug, "about to run high level loop");
     // enter the loop... this blocks until the loop is done..
@@ -224,19 +211,8 @@ mod test {
         let hl_loop_port = comm::port::<high_level_loop>();
         let hl_loop_ch = comm::chan(hl_loop_port);
         task::spawn_sched(task::manual_threads(1u)) {||
-            let msg_po = comm::port::<high_level_msg>();
-            let msg_ch = comm::chan(msg_po);
-            run_high_level_loop(msg_po) {|async_handle|
-                log(debug,#fmt("hltest before_run: async_handle %?",
-                               async_handle));
-                // do an async_send with it
-                ll::async_send(async_handle);
-                comm::send(hl_loop_ch, high_level_loop({
-                    async_handle: async_handle,
-                    op_chan: msg_ch
-                }));
-            }
-            comm::send(exit_ch, ());
+            run_high_level_loop(hl_loop_ch);
+            exit_ch.send(());
         };
         ret comm::recv(hl_loop_port);
     }

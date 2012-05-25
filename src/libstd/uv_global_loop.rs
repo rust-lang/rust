@@ -94,29 +94,20 @@ fn get_monitor_task_gl() -> hl::high_level_loop unsafe {
 }
 
 fn spawn_high_level_loop() -> hl::high_level_loop unsafe {
-    let exit_po = port::<hl::high_level_loop>();
-    let exit_ch = exit_po.chan();
+    let hll_po = port::<hl::high_level_loop>();
+    let hll_ch = hll_po.chan();
 
     spawn_sched(single_threaded) {||
         #debug("entering global libuv task");
         weaken_task() {|weak_exit_po|
             #debug("global libuv task is now weak %?", weak_exit_po);
-            let loop_msg_po = port::<hl::high_level_msg>();
-            let loop_msg_ch = loop_msg_po.chan();
-            hl::run_high_level_loop(loop_msg_po) {|async_handle|
-                #debug("global libuv: before_run %?", async_handle);
-                let hll = hl::high_level_loop({
-                    async_handle: async_handle,
-                    op_chan: loop_msg_ch
-                });
-                exit_ch.send(hll);
-            }
+            hl::run_high_level_loop(hll_ch);
             #debug("global libuv task is leaving weakened state");
         };
         #debug("global libuv task exiting");
     };
 
-    exit_po.recv()
+    hll_po.recv()
 }
 
 #[cfg(test)]
