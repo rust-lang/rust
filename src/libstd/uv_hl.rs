@@ -60,12 +60,12 @@ the loop's msg port
 * before_tear_down - called just before the loop invokes `uv_close()` on the
 provided `async_handle`. `uv_run` should return shortly after
 "]
-unsafe fn run_high_level_loop(loop_ptr: *c_void,
-                              msg_po: port<high_level_msg>,
+unsafe fn run_high_level_loop(msg_po: port<high_level_msg>,
                               before_run: fn~(*ll::uv_async_t),
                               before_msg_process:
                                 fn~(*ll::uv_async_t, bool) -> bool,
                               before_tear_down: fn~(*ll::uv_async_t)) {
+    let loop_ptr = ll::loop_new();
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
     let async = ll::async_t();
@@ -90,6 +90,7 @@ unsafe fn run_high_level_loop(loop_ptr: *c_void,
     // enter the loop... this blocks until the loop is done..
     ll::run(loop_ptr);
     log(debug, "high-level loop ended");
+    ll::loop_delete(loop_ptr);
 }
 
 #[doc = "
@@ -233,11 +234,9 @@ mod test {
         let hl_loop_port = comm::port::<high_level_loop>();
         let hl_loop_ch = comm::chan(hl_loop_port);
         task::spawn_sched(task::manual_threads(1u)) {||
-            let loop_ptr = ll::loop_new();
             let msg_po = comm::port::<high_level_msg>();
             let msg_ch = comm::chan(msg_po);
             run_high_level_loop(
-                loop_ptr,
                 msg_po,
                 // before_run
                 {|async_handle|
@@ -261,7 +260,6 @@ mod test {
                     log(debug,#fmt("hl test_loop b4_tear_down: async %?",
                                   async_handle));
             });
-            ll::loop_delete(loop_ptr);
             comm::send(exit_ch, ());
         };
         ret comm::recv(hl_loop_port);
