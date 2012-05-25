@@ -114,7 +114,6 @@ fn run_loop(iotask_ch: chan<iotask>) unsafe {
     // initialize our loop data and store it in the loop
     let data: iotask_loop_data = {
         async_handle: async_handle,
-        mut active: true,
         msg_po_ptr: addr_of(msg_po)
     };
     ll::set_data_for_uv_handle(async_handle, addr_of(data));
@@ -137,7 +136,6 @@ fn run_loop(iotask_ch: chan<iotask>) unsafe {
 // data that lives for the lifetime of the high-evel oo
 type iotask_loop_data = {
     async_handle: *ll::uv_async_t,
-    mut active: bool,
     msg_po_ptr: *port<iotask_msg>
 };
 
@@ -158,27 +156,25 @@ crust fn wake_up_cb(async_handle: *ll::uv_async_t,
                      async_handle, status));
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
     let data = ll::get_data_for_uv_handle(async_handle) as *iotask_loop_data;
-    // FIXME: What is this checking?
-    if (*data).active {
-        let msg_po = *((*data).msg_po_ptr);
-        while msg_po.peek() {
-            let msg = msg_po.recv();
-            if (*data).active {
-                alt msg {
-                  interaction(cb) {
-                    cb(loop_ptr);
-                  }
-                  teardown_loop {
-                    begin_teardown(data);
-                  }
-                }
-            } else {
-                // FIXME: drop msg ?
-            }
+    let msg_po = *((*data).msg_po_ptr);
+    while msg_po.peek() {
+        let msg = msg_po.recv();
+        alt msg {
+          interaction(cb) {
+            cb(loop_ptr);
+          }
+          teardown_loop {
+            begin_teardown(data);
+          }
         }
-    } else {
-        // loop not active
     }
+}
+
+fn begin_teardown(data: *iotask_loop_data) unsafe {
+    log(debug, "iotask begin_teardown() called, close async_handle");
+    // call user-suppled before_tear_down cb
+    let async_handle = (*data).async_handle;
+    ll::close(async_handle as *c_void, tear_down_close_cb);
 }
 
 crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
@@ -187,13 +183,6 @@ crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
     log(debug, #fmt("tear_down_close_cb called, closing handle at %? refs %?",
                     handle, loop_refs));
     assert loop_refs == 1i32;
-}
-
-fn begin_teardown(data: *iotask_loop_data) unsafe {
-    log(debug, "iotask begin_teardown() called, close async_handle");
-    // call user-suppled before_tear_down cb
-    let async_handle = (*data).async_handle;
-    ll::close(async_handle as *c_void, tear_down_close_cb);
 }
 
 #[cfg(test)]
