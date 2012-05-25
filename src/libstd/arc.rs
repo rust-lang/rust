@@ -1,7 +1,9 @@
 #[doc = "An atomically reference counted wrapper that can be used to
 share immutable data between tasks."]
 
-export arc, get, clone;
+import comm::{port, chan, methods};
+
+export arc, get, clone, shared_arc, get_arc;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -14,12 +16,12 @@ native mod rustrt {
         -> libc::intptr_t;
 }
 
-type arc_data<T> = {
+type arc_data<T: const> = {
     mut count: libc::intptr_t,
     data: T
 };
 
-resource arc_destruct<T>(data: *libc::c_void) {
+resource arc_destruct<T: const>(data: *libc::c_void) {
     unsafe {
         let data: ~arc_data<T> = unsafe::reinterpret_cast(data);
         let ref_ptr = &mut data.count;
@@ -34,10 +36,10 @@ resource arc_destruct<T>(data: *libc::c_void) {
     }
 }
 
-type arc<T> = arc_destruct<T>;
+type arc<T: const> = arc_destruct<T>;
 
 #[doc="Create an atomically reference counted wrapper."]
-fn arc<T>(-data: T) -> arc<T> {
+fn arc<T: const>(-data: T) -> arc<T> {
     let data = ~{mut count: 1, data: data};
     unsafe {
         let ptr = unsafe::reinterpret_cast(data);
@@ -48,7 +50,7 @@ fn arc<T>(-data: T) -> arc<T> {
 
 #[doc="Access the underlying data in an atomically reference counted
  wrapper."]
-fn get<T>(rc: &a.arc<T>) -> &a.T {
+fn get<T: const>(rc: &a.arc<T>) -> &a.T {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
         // Cast us back into the correct region
@@ -63,11 +65,44 @@ fn get<T>(rc: &a.arc<T>) -> &a.T {
 The resulting two `arc` objects will point to the same underlying data
 object. However, one of the `arc` objects can be sent to another task,
 allowing them to share the underlying data."]
-fn clone<T>(rc: &arc<T>) -> arc<T> {
+fn clone<T: const>(rc: &arc<T>) -> arc<T> {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
         rustrt::rust_atomic_increment(&mut ptr.count);
         unsafe::forget(ptr);
     }
     arc_destruct(**rc)
+}
+
+// Convenience code for sharing arcs between tasks
+
+enum proto<T: send const> {
+    terminate,
+    shared_get(comm::chan<arc::arc<T>>)
+}
+
+resource shared_arc_res<T: send const>(c: comm::chan<proto<T>>) {
+    c.send(terminate);
+}
+
+fn shared_arc<T: send const>(-data: T) -> shared_arc_res<T> {
+    let a = arc::arc(data);
+    let c = task::spawn_listener::<proto<T>>() {|p, move a|
+        let mut live = true;
+        while live {
+            alt p.recv() {
+              terminate { live = false; }
+              shared_get(cc) {
+                cc.send(arc::clone(&a));
+              }
+            }
+        }
+    };
+    shared_arc_res(c)
+}
+
+fn get_arc<T: send const>(c: comm::chan<proto<T>>) -> arc::arc<T> {
+    let p = port();
+    c.send(shared_get(chan(p)));
+    p.recv()
 }

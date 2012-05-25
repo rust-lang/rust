@@ -2028,6 +2028,14 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         }
     });
 
+    #debug["monomorphic_fn(fn_id=%? (%s), real_substs=%?, substs=%?",
+           fn_id, ty::item_path_str(ccx.tcx, fn_id),
+           real_substs.map({|s| ty_to_str(ccx.tcx, s)}),
+           substs.map({|s| ty_to_str(ccx.tcx, s)})];
+
+    for real_substs.each() {|s| assert !ty::type_has_params(s); };
+    for substs.each() {|s| assert !ty::type_has_params(s); };
+
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, some(param_uses));
     if vec::any(hash_id.params,
@@ -4231,6 +4239,7 @@ fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
     let _icx = bcx.insn_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let llty = type_of(ccx, t);
+    if ty::type_has_params(t) { log(error, ty_to_str(ccx.tcx, t)); }
     assert !ty::type_has_params(t);
     let val = alloca(bcx, llty);
     ret val;

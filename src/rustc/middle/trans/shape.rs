@@ -14,6 +14,7 @@ import syntax::ast;
 import syntax::ast_util::{dummy_sp, new_def_hash};
 import syntax::util::interner;
 import util::common;
+import util::ppaux::ty_to_str;
 import syntax::codemap::span;
 import dvec::{dvec, extensions};
 
@@ -445,6 +446,11 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         s
       }
       ty::ty_res(did, raw_subt, substs) {
+        #debug["ty_res(%?, %?, %?)",
+               did,
+               ty_to_str(ccx.tcx, raw_subt),
+               substs.tps.map({|t| ty_to_str(ccx.tcx, t) })];
+        for substs.tps.each() {|t| assert !ty::type_has_params(t); }
         let subt = ty::subst(ccx.tcx, substs, raw_subt);
         let tps = substs.tps;
         let ri = {did: did, tps: tps};
@@ -589,8 +595,9 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut dtors = [];
     let len = interner::len(ccx.shape_cx.resources);
     for uint::range(0u, len) {|i|
-      let ri = interner::get(ccx.shape_cx.resources, i);
-      dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.tps)];
+        let ri = interner::get(ccx.shape_cx.resources, i);
+        for ri.tps.each() {|s| assert !ty::type_has_params(s); }
+        dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.tps)];
     }
     ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
