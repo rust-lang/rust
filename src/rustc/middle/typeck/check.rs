@@ -527,6 +527,10 @@ impl methods for @fn_ctxt {
         infer::mk_subty(self.infcx, sub, sup)
     }
 
+    fn can_mk_subty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+        infer::can_mk_subty(self.infcx, sub, sup)
+    }
+
     fn mk_eqty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
         infer::mk_eqty(self.infcx, sub, sup)
     }

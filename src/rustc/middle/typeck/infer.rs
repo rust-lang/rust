@@ -160,7 +160,7 @@ import util::common::{indent, indenter};
 
 export infer_ctxt;
 export new_infer_ctxt;
-export mk_subty;
+export mk_subty, can_mk_subty;
 export mk_subr;
 export mk_eqty;
 export mk_assignty;
@@ -233,6 +233,11 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
     indent {|| cx.commit {|| sub(cx).tys(a, b) } }.to_ures()
+}
+
+fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
+    #debug["can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    indent {|| cx.probe {|| sub(cx).tys(a, b) } }.to_ures()
 }
 
 fn mk_subr(cx: infer_ctxt, a: ty::region, b: ty::region) -> ures {
@@ -388,7 +393,17 @@ fn uok() -> ures {
     ok(())
 }
 
+fn rollback_to<V:copy vid, T:copy>(
+    vb: vals_and_bindings<V, T>, len: uint) {
+
+    while vb.bindings.len() != len {
+        let (vid, old_v) = vec::pop(vb.bindings);
+        vb.vals.insert(vid.to_uint(), old_v);
+    }
+}
+
 impl transaction_methods for infer_ctxt {
+    #[doc = "Execute `f` and commit the bindings if successful"]
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
         assert self.vb.bindings.len() == 0u;
@@ -404,16 +419,8 @@ impl transaction_methods for infer_ctxt {
         ret r;
     }
 
+    #[doc = "Execute `f`, unroll bindings on failure"]
     fn try<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
-
-        fn rollback_to<V:copy vid, T:copy>(
-            vb: vals_and_bindings<V, T>, len: uint) {
-
-            while vb.bindings.len() != len {
-                let (vid, old_v) = vec::pop(vb.bindings);
-                vb.vals.insert(vid.to_uint(), old_v);
-            }
-        }
 
         let vbl = self.vb.bindings.len();
         let rbl = self.rb.bindings.len();
@@ -427,6 +434,16 @@ impl transaction_methods for infer_ctxt {
             rollback_to(self.rb, rbl);
           }
         }
+        ret r;
+    }
+
+    #[doc = "Execute `f` then unroll any bindings it creates"]
+    fn probe<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
+        assert self.vb.bindings.len() == 0u;
+        assert self.rb.bindings.len() == 0u;
+        let r <- f();
+        rollback_to(self.vb, 0u);
+        rollback_to(self.rb, 0u);
         ret r;
     }
 }

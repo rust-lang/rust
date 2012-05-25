@@ -45,6 +45,7 @@ impl methods for lookup {
         let tcx = self.tcx();
         let mut iface_bnd_idx = 0u; // count only iface bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
+        let mut candidates = [];
         for vec::each(*bounds) {|bound|
             let (iid, bound_substs) = alt bound {
               ty::bound_copy | ty::bound_send | ty::bound_const {
@@ -74,14 +75,33 @@ impl methods for lookup {
                 // permitted).
                 let substs = {self_ty: some(self.self_ty)
                               with bound_substs};
-
-                ret some(self.write_mty_from_m(
-                    substs, ifce_methods[pos],
-                    method_param(iid, pos, n, iface_bnd_idx)));
+                candidates += [(substs, ifce_methods[pos],
+                                iid, pos, n, iface_bnd_idx)];
               }
             }
         }
-        ret none;
+
+        if candidates.len() == 0u {
+            ret none;
+        }
+
+        if candidates.len() > 1u {
+            self.tcx().sess.span_err(
+                self.expr.span,
+                "multiple applicable methods in scope");
+
+            for candidates.eachi { |i, candidate|
+                let (_, _, iid, _, _, _) = candidate;
+                self.tcx().sess.span_note(
+                    self.expr.span,
+                    #fmt["candidate #%u derives from the bound `%s`",
+                         (i+1u), ty::item_path_str(self.tcx(), iid)]);
+            }
+        }
+
+        let (substs, mty, iid, pos, n, iface_bnd_idx) = candidates[0u];
+        ret some(self.write_mty_from_m(
+            substs, mty, method_param(iid, pos, n, iface_bnd_idx)));
     }
 
     fn method_from_iface(
@@ -197,10 +217,11 @@ impl methods for lookup {
 
                     // if we can assign the caller to the callee, that's a
                     // potential match.  Collect those in the vector.
-                    alt self.fcx.mk_subty(ty, self_ty) {
+                    alt self.fcx.can_mk_subty(ty, self_ty) {
                       result::err(_) { /* keep looking */ }
                       result::ok(_) {
-                        results += [(self_substs, m.n_tps, m.did)];
+                        results += [(ty, self_ty, self_substs,
+                                     m.n_tps, m.did)];
                       }
                     }
                 }
@@ -216,7 +237,7 @@ impl methods for lookup {
                     // but I cannot for the life of me figure out how to
                     // annotate resolve to preserve this information.
                     for results.eachi { |i, result|
-                        let (_, _, did) = result;
+                        let (_, _, _, _, did) = result;
                         let span = if did.crate == ast::local_crate {
                             alt check self.tcx().items.get(did.node) {
                               ast_map::node_method(m, _, _) { m.span }
@@ -226,13 +247,21 @@ impl methods for lookup {
                         };
                         self.tcx().sess.span_note(
                             span,
-                            #fmt["candidate #%u is %s",
+                            #fmt["candidate #%u is `%s`",
                                  (i+1u),
                                  ty::item_path_str(self.tcx(), did)]);
                     }
                 }
 
-                let (self_substs, n_tps, did) = results[0];
+                let (ty, self_ty, self_substs, n_tps, did) = results[0];
+                alt self.fcx.mk_subty(ty, self_ty) {
+                  result::ok(_) {}
+                  result::err(_) {
+                    self.tcx().sess.span_bug(
+                        self.expr.span,
+                        "what was a subtype now is not?");
+                  }
+                }
                 let fty = self.ty_from_did(did);
                 ret some(self.write_mty_from_fty(
                     self_substs, n_tps, fty,
