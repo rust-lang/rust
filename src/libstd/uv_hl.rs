@@ -6,8 +6,10 @@ provide a high-level, abstracted interface to some set of
 libuv functionality.
 "];
 
-export high_level_loop, high_level_msg;
-export run_high_level_loop, interact, exit;
+export high_level_loop;
+export spawn_high_level_loop;
+export interact;
+export exit;
 
 import libc::c_void;
 import ptr::addr_of;
@@ -21,6 +23,31 @@ enum high_level_loop = {
     async_handle: *ll::uv_async_t,
     op_chan: chan<high_level_msg>
 };
+
+fn spawn_high_level_loop(-builder: task::builder
+                        ) -> high_level_loop unsafe {
+
+    import task::{set_opts, get_opts, single_threaded, run};
+
+    let hll_po = port::<high_level_loop>();
+    let hll_ch = hll_po.chan();
+
+    set_opts(builder, {
+        sched: some({
+            mode: single_threaded,
+            native_stack_size: none
+        })
+        with get_opts(builder)
+    });
+
+    run(builder) {||
+        #debug("entering libuv task");
+        run_high_level_loop(hll_ch);
+        #debug("libuv task exiting");
+    };
+
+    hll_po.recv()
+}
 
 #[doc="
 Represents the range of interactions with a `high_level_loop`

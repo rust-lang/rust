@@ -7,7 +7,6 @@ export get, get_monitor_task_gl;
 import ll = uv_ll;
 import hl = uv_hl;
 import get_gl = get;
-import task::{run, single_threaded};
 import priv::{chan_from_global_ptr, weaken_task};
 import comm::{port, chan, methods, select2, listen};
 import either::{left, right};
@@ -45,7 +44,7 @@ fn get_monitor_task_gl() -> hl::high_level_loop unsafe {
         task::set_opts(builder, {
             supervise: false,
             sched: some({
-                mode: single_threaded,
+                mode: task::single_threaded,
                 native_stack_size: none
             })
             with task::get_opts(builder)
@@ -111,30 +110,7 @@ fn spawn_loop() -> hl::high_level_loop unsafe {
             }
         }
     }
-    spawn_high_level_loop(builder)
-}
-
-fn spawn_high_level_loop(-builder: task::builder
-                        ) -> hl::high_level_loop unsafe {
-
-    let hll_po = port::<hl::high_level_loop>();
-    let hll_ch = hll_po.chan();
-
-    task::set_opts(builder, {
-        sched: some({
-            mode: single_threaded,
-            native_stack_size: none
-        })
-        with task::get_opts(builder)
-    });
-
-    run(builder) {||
-        #debug("entering libuv task");
-        hl::run_high_level_loop(hll_ch);
-        #debug("libuv task exiting");
-    };
-
-    hll_po.recv()
+    hl::spawn_high_level_loop(builder)
 }
 
 #[cfg(test)]
