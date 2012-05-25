@@ -53,7 +53,7 @@ import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
                     ty_param_bounds_and_ty, lookup_public_fields};
 import middle::ty::{ty_vid, region_vid, vid};
-import middle::typeck::infer::{ty_and_region_var_methods};
+import middle::typeck::infer::methods;
 import util::ppaux::{ty_to_str, tys_to_str, region_to_str,
                      bound_region_to_str, vstore_to_str};
 import std::smallintmap;

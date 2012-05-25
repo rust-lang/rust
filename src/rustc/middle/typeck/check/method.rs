@@ -2,7 +2,7 @@
 
 import syntax::ast_map;
 import regionmanip::universally_quantify_from_sty;
-import middle::typeck::infer::{ty_and_region_var_methods};
+import middle::typeck::infer::methods; // next_ty_vars
 
 enum lookup = {
     fcx: @fn_ctxt,

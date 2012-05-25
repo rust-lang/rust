@@ -54,7 +54,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
     -> vtable_origin {
 
     #debug["lookup_vtable(ty=%s, iface_ty=%s)",
-           fcx.ty_to_str(ty), fcx.ty_to_str(iface_ty)];
+           fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(iface_ty)];
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;

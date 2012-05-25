@@ -167,7 +167,7 @@ export mk_assignty;
 export resolve_shallow;
 export resolve_deep;
 export resolve_deep_var;
-export ty_and_region_var_methods;
+export methods; // for infer_ctxt
 export compare_tys;
 export fixup_err, fixup_err_to_str;
 
@@ -388,7 +388,7 @@ fn uok() -> ures {
     ok(())
 }
 
-impl methods for infer_ctxt {
+impl transaction_methods for infer_ctxt {
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
         assert self.vb.bindings.len() == 0u;
@@ -431,7 +431,7 @@ impl methods for infer_ctxt {
     }
 }
 
-impl ty_and_region_var_methods for infer_ctxt {
+impl methods for infer_ctxt {
     fn next_ty_var_id() -> ty_vid {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;

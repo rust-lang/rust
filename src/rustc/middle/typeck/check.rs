@@ -445,9 +445,6 @@ impl of region_scope for @fn_ctxt {
 
 impl methods for @fn_ctxt {
     fn tag() -> str { #fmt["%x", ptr::addr_of(*self) as uint] }
-    fn ty_to_str(t: ty::t) -> str {
-        ty_to_str(self.ccx.tcx, resolve_type_vars_if_possible(self, t))
-    }
     fn block_region() -> result<ty::region, str> {
         alt vec::last_opt(self.blocks) {
           some(bid) { result::ok(ty::re_scope(bid)) }
@@ -521,8 +518,8 @@ impl methods for @fn_ctxt {
         self.ccx.tcx.sess.span_err(
             sp,
             #fmt["mismatched types: expected `%s` but found `%s` (%s)",
-                 self.ty_to_str(e),
-                 self.ty_to_str(a),
+                 self.infcx.ty_to_str(e),
+                 self.infcx.ty_to_str(a),
                  ty::type_err_to_str(self.ccx.tcx, err)]);
     }
 
@@ -587,13 +584,6 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
           some(mt) { t1 = mt.ty; }
         }
     };
-}
-
-fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
-    alt infer::resolve_deep(fcx.infcx, typ, false) {
-      result::ok(new_type) { ret new_type; }
-      result::err(_) { ret typ; }
-    }
 }
 
 // Returns true if the two types unify and false if they don't.
@@ -723,7 +713,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // type with fresh region variables.
 
         #debug["check_call_or_bind: before universal quant., fty=%s",
-               fcx.ty_to_str(fty)];
+               fcx.infcx.ty_to_str(fty)];
 
         // This is subtle: we expect `fty` to be a function type, which
         // normally introduce a level of binding.  In this case, we want to
@@ -745,7 +735,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             };
 
         #debug["check_call_or_bind: after universal quant., fty=%s",
-               fcx.ty_to_str(fty)];
+               fcx.infcx.ty_to_str(fty)];
 
         let supplied_arg_count = vec::len(args);
 
@@ -780,7 +770,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
                                              expected function or native \
                                              function but found "
-                                        + fcx.ty_to_str(fty));
+                                        + fcx.infcx.ty_to_str(fty));
           }
         };
 
@@ -1002,7 +992,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         tcx.sess.span_err(
             ex.span, "binary operation " + ast_util::binop_to_str(op) +
             " cannot be applied to type `" +
-            fcx.ty_to_str(lhs_resolved_t) +
+            fcx.infcx.ty_to_str(lhs_resolved_t) +
             "`");
         (lhs_resolved_t, false)
     }
@@ -1013,7 +1003,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ {
             fcx.ccx.tcx.sess.span_err(
                 ex.span, #fmt["cannot apply unary operator `%s` to type `%s`",
-                              op_str, fcx.ty_to_str(rhs_t)]);
+                              op_str, fcx.infcx.ty_to_str(rhs_t)]);
             rhs_t
           }
         }
@@ -1060,7 +1050,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                                    expected_tys));
 
         #debug("check_expr_fn_with_unifier %s fty=%s",
-               expr_to_str(expr), fcx.ty_to_str(fty));
+               expr_to_str(expr), fcx.infcx.ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);
 
@@ -1185,7 +1175,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     tcx.sess.span_fatal(
                         expr.span,
                         #fmt["type %s cannot be dereferenced",
-                             fcx.ty_to_str(oper_t)]);
+                             fcx.infcx.ty_to_str(oper_t)]);
                   }
                 }
               }
@@ -1428,8 +1418,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);
 
-        #debug["t_1=%s", fcx.ty_to_str(t_1)];
-        #debug["t_e=%s", fcx.ty_to_str(t_e)];
+        #debug["t_1=%s", fcx.infcx.ty_to_str(t_1)];
+        #debug["t_e=%s", fcx.infcx.ty_to_str(t_e)];
 
         alt ty::get(t_1).struct {
           // This will be looked up later on
@@ -1600,7 +1590,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 fcx.ccx.method_map.insert(id, origin);
               }
               none {
-                let t_err = resolve_type_vars_if_possible(fcx, expr_t);
+                let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
                 let msg = #fmt["attempted access of field %s on type %s, but \
                           no public field or method with that name was found",
                                field, ty_to_str(tcx, t_err)];
@@ -1674,7 +1664,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
 
           none {
-            let t_err = resolve_type_vars_if_possible(fcx, p_ty);
+            let t_err = fcx.infcx.resolve_type_vars_if_possible(p_ty);
             let msg = #fmt["no `alloc()` method found for type `%s`",
                            ty_to_str(tcx, t_err)];
             tcx.sess.span_err(expr.span, msg);
@@ -1710,7 +1700,7 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
     if !type_is_integral(fcx, sp, t) {
         fcx.ccx.tcx.sess.span_err(sp, "mismatched types: expected \
                                        integral type but found `"
-                                  + fcx.ty_to_str(t) + "`");
+                                  + fcx.infcx.ty_to_str(t) + "`");
     }
 }
 

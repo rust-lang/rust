@@ -12,7 +12,7 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
                                  sty: ty::sty) -> ty::t {
 
     #debug["universally_quantify_from_sty(bound_tys=%?)",
-           bound_tys.map {|x| fcx.ty_to_str(x) }];
+           bound_tys.map {|x| fcx.infcx.ty_to_str(x) }];
     indent {||
         let tcx = fcx.tcx();
         let isr = collect_bound_regions_in_tys(tcx, @nil, bound_tys) { |br|
@@ -25,7 +25,8 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
         let t_res = ty::fold_sty_to_ty(fcx.ccx.tcx, sty) { |t|
             replace_bound_regions(tcx, span, isr, t)
         };
-        #debug["Result of universal quant. is %s", fcx.ty_to_str(t_res)];
+        #debug["Result of universal quant. is %s",
+               fcx.infcx.ty_to_str(t_res)];
         t_res
     }
 }

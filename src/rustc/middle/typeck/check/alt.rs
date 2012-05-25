@@ -1,4 +1,5 @@
-import middle::typeck::infer::{ty_and_region_var_methods};
+import middle::typeck::infer::methods; // next_ty_var,
+                                       // resolve_type_vars_if_possible
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
@@ -113,7 +114,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
         tcx.sess.span_fatal
             (pat.span,
              #fmt["mismatched types: expected enum but found `%s`",
-                  fcx.ty_to_str(expected)]);
+                  fcx.infcx.ty_to_str(expected)]);
       }
     }
 }
@@ -134,12 +135,11 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       ast::pat_range(begin, end) {
         check_expr_with(fcx, begin, expected);
         check_expr_with(fcx, end, expected);
-        let b_ty = resolve_type_vars_if_possible(fcx,
-                                                 fcx.expr_ty(begin));
+        let b_ty =
+            fcx.infcx.resolve_type_vars_if_possible(fcx.expr_ty(begin));
         if !require_same_types(
             tcx, pat.span, b_ty,
-            resolve_type_vars_if_possible(
-                fcx, fcx.expr_ty(end)),
+            fcx.infcx.resolve_type_vars_if_possible(fcx.expr_ty(end)),
             {|| "mismatched types in range" }) {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
@@ -179,7 +179,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             tcx.sess.span_fatal
                 (pat.span,
                 #fmt["mismatched types: expected `%s` but found record",
-                     fcx.ty_to_str(expected)]);
+                     fcx.infcx.ty_to_str(expected)]);
           }
         };
         let f_count = vec::len(fields);
@@ -216,7 +216,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             tcx.sess.span_fatal
                 (pat.span,
                  #fmt["mismatched types: expected `%s`, found tuple",
-                      fcx.ty_to_str(expected)]);
+                      fcx.infcx.ty_to_str(expected)]);
           }
         };
         let e_count = vec::len(elts);
@@ -244,7 +244,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             tcx.sess.span_fatal(
                 pat.span,
                 "mismatched types: expected `" +
-                fcx.ty_to_str(expected) +
+                fcx.infcx.ty_to_str(expected) +
                 "` found box");
           }
         }
@@ -259,7 +259,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             tcx.sess.span_fatal(
                 pat.span,
                 "mismatched types: expected `" +
-                fcx.ty_to_str(expected) +
+                fcx.infcx.ty_to_str(expected) +
                 "` found uniq");
           }
         }
