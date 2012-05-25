@@ -58,7 +58,7 @@ fn get_monitor_task_gl() -> hl::high_level_loop {
                 let hl_loop_data = spawn_libuv_weak_task();
                 let hl_loop = alt hl_loop_data {
                   (async, msg_ch) {
-                    hl::simple_task_loop({async_handle:async, op_chan:msg_ch})
+                    hl::high_level_loop({async_handle:async, op_chan:msg_ch})
                   }
                 };
                 loop {

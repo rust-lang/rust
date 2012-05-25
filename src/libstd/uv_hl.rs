@@ -9,22 +9,18 @@ libuv functionality.
 export high_level_loop, high_level_msg;
 export run_high_level_loop, interact;
 
+import libc::c_void;
+import ptr::addr_of;
+import comm::{port, chan, methods};
 import ll = uv_ll;
 
-// FIXME: Newtype syntax
 #[doc = "
 Used to abstract-away direct interaction with a libuv loop.
 "]
-enum high_level_loop {
-    #[doc="
-    `high_level_loop` variant that carries a `comm::chan` and
-    a `*ll::uv_async_t`.
-    "]
-    simple_task_loop({
-        async_handle: *ll::uv_async_t,
-        op_chan: comm::chan<high_level_msg>
-    })
-}
+enum high_level_loop = {
+    async_handle: *ll::uv_async_t,
+    op_chan: chan<high_level_msg>
+};
 
 #[doc="
 Represents the range of interactions with a `high_level_loop`
@@ -64,8 +60,8 @@ the loop's msg port
 * before_tear_down - called just before the loop invokes `uv_close()` on the
 provided `async_handle`. `uv_run` should return shortly after
 "]
-unsafe fn run_high_level_loop(loop_ptr: *libc::c_void,
-                              msg_po: comm::port<high_level_msg>,
+unsafe fn run_high_level_loop(loop_ptr: *c_void,
+                              msg_po: port<high_level_msg>,
                               before_run: fn~(*ll::uv_async_t),
                               before_msg_process:
                                 fn~(*ll::uv_async_t, bool) -> bool,
@@ -73,20 +69,19 @@ unsafe fn run_high_level_loop(loop_ptr: *libc::c_void,
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
     let async = ll::async_t();
-    let async_handle = ptr::addr_of(async);
+    let async_handle = addr_of(async);
     // associate the async handle with the loop
     ll::async_init(loop_ptr, async_handle, high_level_wake_up_cb);
 
     // initialize our loop data and store it in the loop
-    let data: hl_loop_data = default_gl_data({
+    let data: hl_loop_data = {
         async_handle: async_handle,
         mut active: true,
         before_msg_process: before_msg_process,
         before_tear_down: before_tear_down,
-        msg_po_ptr: ptr::addr_of(msg_po)
-    });
-    let data_ptr = ptr::addr_of(data);
-    ll::set_data_for_uv_handle(async_handle, data_ptr);
+        msg_po_ptr: addr_of(msg_po)
+    };
+    ll::set_data_for_uv_handle(async_handle, addr_of(data));
 
     // call before_run
     before_run(async_handle);
@@ -120,41 +115,25 @@ module. It is not safe to send the `loop_ptr` param to this callback out
 via ports/chans.
 "]
 unsafe fn interact(hl_loop: high_level_loop,
-                      -cb: fn~(*libc::c_void)) {
+                   -cb: fn~(*c_void)) {
     send_high_level_msg(hl_loop, interaction(cb));
 }
 
 // INTERNAL API
 
-// FIXME: Newtype syntax
 // data that lives for the lifetime of the high-evel oo
-enum hl_loop_data {
-    // FIXME: hl, not gl?
-    default_gl_data({
-        async_handle: *ll::uv_async_t,
-        mut active: bool,
-        before_msg_process: fn~(*ll::uv_async_t, bool) -> bool,
-        before_tear_down: fn~(*ll::uv_async_t),
-        msg_po_ptr: *comm::port<high_level_msg>})
-}
+type hl_loop_data = {
+    async_handle: *ll::uv_async_t,
+    mut active: bool,
+    before_msg_process: fn~(*ll::uv_async_t, bool) -> bool,
+    before_tear_down: fn~(*ll::uv_async_t),
+    msg_po_ptr: *port<high_level_msg>
+};
 
-// FIXME: This function can be much simpler
 unsafe fn send_high_level_msg(hl_loop: high_level_loop,
                               -msg: high_level_msg) {
-    let op_chan = alt hl_loop{simple_task_loop({async_handle, op_chan}){
-      op_chan}};
-    comm::send(op_chan, msg);
-
-    // if the global async handle == 0, then that means
-    // the loop isn't active, so we don't need to wake it up,
-    // (the loop's enclosing task should be blocking on a message
-    // receive on this port)
-    alt hl_loop {
-      simple_task_loop({async_handle, op_chan}) {
-        log(debug,"simple async handle != 0, waking up loop..");
-        ll::async_send((async_handle));
-      }
-    }
+    comm::send(hl_loop.op_chan, msg);
+    ll::async_send(hl_loop.async_handle);
 }
 
 // this will be invoked by a call to uv::hl::interact() with
@@ -169,43 +148,27 @@ crust fn high_level_wake_up_cb(async_handle: *ll::uv_async_t,
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
     let data = ll::get_data_for_uv_handle(async_handle) as *hl_loop_data;
     // FIXME: What is this checking?
-    // FIXME: Use if not alt
-    alt (*data).active {
-      true {
+    if (*data).active {
         let msg_po = *((*data).msg_po_ptr);
-        // FIXME: Convert to while loop
-        alt comm::peek(msg_po) {
-          true {
-            loop {
-                let msg = comm::recv(msg_po);
-                alt (*data).active {
-                  true {
-                    alt msg {
-                      interaction(cb) {
-                        (*data).before_msg_process(async_handle,
-                                                   (*data).active);
-                        cb(loop_ptr);
-                      }
-                      teardown_loop {
-                        begin_teardown(data);
-                      }
-                    }
+        while msg_po.peek() {
+            let msg = msg_po.recv();
+            if (*data).active {
+                alt msg {
+                  interaction(cb) {
+                    (*data).before_msg_process(async_handle,
+                                               (*data).active);
+                    cb(loop_ptr);
                   }
-                  false {
-                    // drop msg ?
+                  teardown_loop {
+                    begin_teardown(data);
                   }
                 }
-                if !comm::peek(msg_po) { break; }
+            } else {
+                // FIXME: drop msg ?
             }
-          }
-          false {
-            // no pending msgs
-          }
         }
-      }
-      false {
+    } else {
         // loop not active
-      }
     }
 }
 
@@ -222,7 +185,7 @@ fn begin_teardown(data: *hl_loop_data) unsafe {
     // call user-suppled before_tear_down cb
     let async_handle = (*data).async_handle;
     (*data).before_tear_down(async_handle);
-    ll::close(async_handle as *libc::c_void, tear_down_close_cb);
+    ll::close(async_handle as *c_void, tear_down_close_cb);
 }
 
 #[cfg(test)]
@@ -278,7 +241,7 @@ mod test {
                                   async_handle));
                     // do an async_send with it
                     ll::async_send(async_handle);
-                    comm::send(hl_loop_ch, simple_task_loop({
+                    comm::send(hl_loop_ch, high_level_loop({
                        async_handle: async_handle,
                        op_chan: msg_ch
                     }));
@@ -339,12 +302,8 @@ mod test {
         // anyone rolling their own high_level_loop can decide when to
         // send the msg. it's assert and barf, though, if all of your
         // handles aren't uv_close'd first
-        alt hl_loop {
-          simple_task_loop({async_handle, op_chan}) {
-            comm::send(op_chan, teardown_loop);
-            ll::async_send(async_handle);
-          }
-        }
+        comm::send(hl_loop.op_chan, teardown_loop);
+        ll::async_send(hl_loop.async_handle);
         comm::recv(exit_po);
         log(debug, "after recv on exit_po.. exiting..");
     }
