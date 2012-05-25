@@ -1290,7 +1290,6 @@ mod tests {
         let string_len  = str::len(*sample);
         let rope_iter   = iterator::char::start(r);
         let mut equal   = true;
-        let mut pos     = 0u;
         while equal {
             alt(node::char_iterator::next(rope_iter)) {
               option::none {
@@ -1303,7 +1302,6 @@ mod tests {
                 if ch != c { equal = false; break; }
               }
             }
-            pos += 1u;
         }
 
         assert equal;

@@ -236,8 +236,6 @@ mod test {
     crust fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int)
         unsafe {
         log(debug, #fmt("async_handle_cb handle %? status %?",handle,status));
-        let hl_loop = (*(ll::get_data_for_uv_handle(handle)
-                        as *ah_data)).hl_loop;
         ll::close(handle, async_close_cb);
     }
     type ah_data = {

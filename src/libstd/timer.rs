@@ -241,7 +241,7 @@ mod test {
                 delayed_send(hl_loop, 1000u, test_ch, expected);
             };
 
-            let actual = alt recv_timeout(hl_loop, 1u, test_po) {
+            alt recv_timeout(hl_loop, 1u, test_po) {
               none { successes += 1; }
               _ { failures += 1; }
             };
