@@ -25,13 +25,13 @@ pure fn get<T: copy>(opt: option<T>) -> T {
     alt opt { some(x) { ret x; } none { fail "option none"; } }
 }
 
-fn map<T, U: copy>(opt: option<T>, f: fn(T) -> U) -> option<U> {
+pure fn map<T, U: copy>(opt: option<T>, f: fn(T) -> U) -> option<U> {
     #[doc = "Maps a `some` value from one type to another"];
 
     alt opt { some(x) { some(f(x)) } none { none } }
 }
 
-fn chain<T, U>(opt: option<T>, f: fn(T) -> option<U>) -> option<U> {
+pure fn chain<T, U>(opt: option<T>, f: fn(T) -> option<U>) -> option<U> {
     #[doc = "
     Update an optional value by optionally running its content through a
     function that returns an option.
@@ -58,19 +58,19 @@ pure fn get_default<T: copy>(opt: option<T>, def: T) -> T {
     alt opt { some(x) { x } none { def } }
 }
 
-fn map_default<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
+pure fn map_default<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
     #[doc = "Applies a function to the contained value or returns a default"];
 
     alt opt { none { def } some(t) { f(t) } }
 }
 
-fn iter<T>(opt: option<T>, f: fn(T)) {
+pure fn iter<T>(opt: option<T>, f: fn(T)) {
     #[doc = "Performs an operation on the contained value or does nothing"];
 
     alt opt { none { } some(t) { f(t); } }
 }
 
-fn unwrap<T>(-opt: option<T>) -> T unsafe {
+pure fn unwrap<T>(-opt: option<T>) -> T unsafe {
     #[doc = "
     Moves a value out of an option type and returns it.
 

@@ -1619,7 +1619,7 @@ fn reserve_at_least(&s: str, n: uint) unsafe {
 Returns the number of single-byte characters the string can hold without
 reallocating
 "]
-fn capacity(&&s: str) -> uint unsafe {
+pure fn capacity(&&s: str) -> uint unsafe {
     as_bytes(s) {|buf|
         let vcap = vec::capacity(buf);
         assert vcap > 0u;
