@@ -26,8 +26,8 @@ facilities.
 import ll = uv_ll;
 export ll;
 
-import hl = uv_hl;
-export hl;
+import iotask = uv_iotask;
+export iotask;
 
 import global_loop = uv_global_loop;
 export global_loop;

@@ -4,6 +4,8 @@ High-level interface to libuv's TCP functionality
 
 // FIXME: Fewer import *'s
 import ip = net_ip;
+import uv::iotask;
+import uv::iotask::iotask;
 import comm::*;
 import result::*;
 import str::*;
@@ -44,7 +46,7 @@ resource tcp_socket(socket_data: @tcp_socket_data)
     };
     let close_data_ptr = ptr::addr_of(close_data);
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
-    uv::hl::interact((*socket_data).hl_loop) {|loop_ptr|
+    iotask::interact((*socket_data).iotask) {|loop_ptr|
         log(debug, #fmt("interact dtor for tcp_socket stream %? loop %?",
             stream_handle_ptr, loop_ptr));
         uv::ll::set_data_for_uv_handle(stream_handle_ptr,
@@ -62,8 +64,8 @@ resource tcp_conn_port(conn_data: @tcp_conn_port_data) unsafe {
     let conn_data_ptr = ptr::addr_of(*conn_data);
     let server_stream_ptr = ptr::addr_of((*conn_data_ptr).server_stream);
     let stream_closed_po = (*conn_data).stream_closed_po;
-    let hl_loop = (*conn_data_ptr).hl_loop;
-    uv::hl::interact(hl_loop) {|loop_ptr|
+    let iotask = (*conn_data_ptr).iotask;
+    iotask::interact(iotask) {|loop_ptr|
         log(debug, #fmt("dtor for tcp_conn_port loop: %?",
                        loop_ptr));
         uv::ll::close(server_stream_ptr, tcp_nl_close_cb);
@@ -86,7 +88,7 @@ Initiate a client connection over TCP/IP
 
 * `ip` - The IP address (versions 4 or 6) of the remote host
 * `port` - the unsigned integer of the desired remote host port
-* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
+* `iotask` - a `uv::iotask` that the tcp request will run on
 
 # Returns
 
@@ -95,7 +97,7 @@ can be used to send and receive data to/from the remote host. In the event
 of failure, a `tcp_err_data` will be returned
 "]
 fn connect(input_ip: ip::ip_addr, port: uint,
-           hl_loop: uv::hl::high_level_loop)
+           iotask: iotask)
     -> result::result<tcp_socket, tcp_err_data> unsafe {
     let result_po = comm::port::<conn_attempt>();
     let closed_signal_po = comm::port::<()>();
@@ -113,7 +115,7 @@ fn connect(input_ip: ip::ip_addr, port: uint,
         stream_handle_ptr: stream_handle_ptr,
         connect_req: uv::ll::connect_t(),
         write_req: uv::ll::write_t(),
-        hl_loop: hl_loop
+        iotask: iotask
     };
     let socket_data_ptr = ptr::addr_of(*socket_data);
     log(debug, #fmt("tcp_connect result_ch %?", conn_data.result_ch));
@@ -121,7 +123,7 @@ fn connect(input_ip: ip::ip_addr, port: uint,
     // we can send into the interact cb to be handled in libuv..
     log(debug, #fmt("stream_handle_ptr outside interact %?",
         stream_handle_ptr));
-    uv::hl::interact(hl_loop) {|loop_ptr|
+    iotask::interact(iotask) {|loop_ptr|
         log(debug, "in interact cb for tcp client connect..");
         log(debug, #fmt("stream_handle_ptr in interact %?",
             stream_handle_ptr));
@@ -354,7 +356,7 @@ to listen for, and accept, new connections, or a `tcp_err_data` if
 failure to create the tcp listener occurs
 "]
 fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint,
-                hl_loop: uv::hl::high_level_loop)
+                iotask: iotask)
     -> result::result<tcp_conn_port, tcp_err_data> unsafe {
     let stream_closed_po = comm::port::<()>();
     let stream_closed_ch = comm::chan(stream_closed_po);
@@ -367,7 +369,7 @@ fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint,
         server_stream: uv::ll::tcp_t(),
         stream_closed_po: stream_closed_po,
         stream_closed_ch: stream_closed_ch,
-        hl_loop: hl_loop,
+        iotask: iotask,
         new_conn_po: new_conn_po,
         new_conn_ch: new_conn_ch
     };
@@ -377,7 +379,7 @@ fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint,
 
     let setup_po = comm::port::<option<tcp_err_data>>();
     let setup_ch = comm::chan(setup_po);
-    uv::hl::interact(hl_loop) {|loop_ptr|
+    iotask::interact(iotask) {|loop_ptr|
         let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
                                                    port);
         alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
@@ -445,11 +447,11 @@ variant
 fn conn_recv(server_port: tcp_conn_port)
     -> result::result<tcp_socket, tcp_err_data> {
     let new_conn_po = (**server_port).new_conn_po;
-    let hl_loop = (**server_port).hl_loop;
+    let iotask = (**server_port).iotask;
     let new_conn_result = comm::recv(new_conn_po);
     alt new_conn_result {
       ok(client_stream_ptr) {
-        conn_port_new_tcp_socket(client_stream_ptr, hl_loop)
+        conn_port_new_tcp_socket(client_stream_ptr, iotask)
       }
       err(err_data) {
         result::err(err_data)
@@ -476,12 +478,12 @@ once a new connection is recv'd. Its parameter:
 fn conn_recv_spawn(server_port: tcp_conn_port,
                    cb: fn~(result::result<tcp_socket, tcp_err_data>)) {
     let new_conn_po = (**server_port).new_conn_po;
-    let hl_loop = (**server_port).hl_loop;
+    let iotask = (**server_port).iotask;
     let new_conn_result = comm::recv(new_conn_po);
     task::spawn {||
         let sock_create_result = alt new_conn_result {
           ok(client_stream_ptr) {
-            conn_port_new_tcp_socket(client_stream_ptr, hl_loop)
+            conn_port_new_tcp_socket(client_stream_ptr, iotask)
           }
           err(err_data) {
             result::err(err_data)
@@ -582,7 +584,7 @@ fn accept(new_conn: tcp_new_connection)
         let server_data_ptr = uv::ll::get_data_for_uv_handle(
             server_handle_ptr) as *tcp_listen_fc_data;
         let reader_po = comm::port::<result::result<[u8], tcp_err_data>>();
-        let hl_loop = (*server_data_ptr).hl_loop;
+        let iotask = (*server_data_ptr).iotask;
         let stream_handle_ptr = malloc_uv_tcp_t();
         *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
         let client_socket_data = @{
@@ -591,7 +593,7 @@ fn accept(new_conn: tcp_new_connection)
             stream_handle_ptr : stream_handle_ptr,
             connect_req : uv::ll::connect_t(),
             write_req : uv::ll::write_t(),
-            hl_loop: hl_loop
+            iotask : iotask
         };
         let client_socket_data_ptr = ptr::addr_of(*client_socket_data);
         let client_stream_handle_ptr =
@@ -677,7 +679,7 @@ successful/normal shutdown, and a `tcp_err_data` record in the event
 of listen exiting because of an error
 "]
 fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
-          hl_loop: uv::hl::high_level_loop,
+          iotask: iotask,
           on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
           new_connect_cb: fn~(tcp_new_connection,
                               comm::chan<option<tcp_err_data>>))
@@ -692,14 +694,14 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
         stream_closed_ch: comm::chan(stream_closed_po),
         kill_ch: kill_ch,
         new_connect_cb: new_connect_cb,
-        hl_loop: hl_loop,
+        iotask: iotask,
         mut active: true
     };
     let server_data_ptr = ptr::addr_of(server_data);
 
     let setup_po = comm::port::<option<tcp_err_data>>();
     let setup_ch = comm::chan(setup_po);
-    uv::hl::interact(hl_loop) {|loop_ptr|
+    iotask::interact(iotask) {|loop_ptr|
         let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
                                                    port);
         alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
@@ -745,7 +747,7 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
       none {
         on_establish_cb(kill_ch);
         let kill_result = comm::recv(kill_po);
-        uv::hl::interact(hl_loop) {|loop_ptr|
+        iotask::interact(iotask) {|loop_ptr|
             log(debug, #fmt("tcp::listen post-kill recv hl interact %?",
                             loop_ptr));
             (*server_data_ptr).active = false;
@@ -811,7 +813,7 @@ impl sock_methods for tcp_socket {
 fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
     -> result::result<[u8],tcp_err_data> unsafe {
     log(debug, "starting tcp::read");
-    let hl_loop = (*socket_data).hl_loop;
+    let iotask = (*socket_data).iotask;
     let rs_result = read_start_common_impl(socket_data);
     if result::is_failure(rs_result) {
         let err_data = result::get_err(rs_result);
@@ -821,7 +823,7 @@ fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
         log(debug, "tcp::read before recv_timeout");
         let read_result = if timeout_msecs > 0u {
             timer::recv_timeout(
-                hl_loop, timeout_msecs, result::get(rs_result))
+               iotask, timeout_msecs, result::get(rs_result))
         } else {
             some(comm::recv(result::get(rs_result)))
         };
@@ -851,7 +853,7 @@ fn read_stop_common_impl(socket_data: *tcp_socket_data) ->
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let stop_po = comm::port::<option<tcp_err_data>>();
     let stop_ch = comm::chan(stop_po);
-    uv::hl::interact((*socket_data).hl_loop) {|loop_ptr|
+    iotask::interact((*socket_data).iotask) {|loop_ptr|
         log(debug, "in interact cb for tcp::read_stop");
         alt uv::ll::read_stop(stream_handle_ptr as *uv::ll::uv_stream_t) {
           0i32 {
@@ -883,7 +885,7 @@ fn read_start_common_impl(socket_data: *tcp_socket_data)
     let start_po = comm::port::<option<uv::ll::uv_err_data>>();
     let start_ch = comm::chan(start_po);
     log(debug, "in tcp::read_start before interact loop");
-    uv::hl::interact((*socket_data).hl_loop) {|loop_ptr|
+    iotask::interact((*socket_data).iotask) {|loop_ptr|
         log(debug, #fmt("in tcp::read_start interact cb %?", loop_ptr));
         alt uv::ll::read_start(stream_handle_ptr as *uv::ll::uv_stream_t,
                                on_alloc_cb,
@@ -925,7 +927,7 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
         result_ch: comm::chan(result_po)
     };
     let write_data_ptr = ptr::addr_of(write_data);
-    uv::hl::interact((*socket_data_ptr).hl_loop) {|loop_ptr|
+    iotask::interact((*socket_data_ptr).iotask) {|loop_ptr|
         log(debug, #fmt("in interact cb for tcp::write %?", loop_ptr));
         alt uv::ll::write(write_req_ptr,
                           stream_handle_ptr,
@@ -956,7 +958,7 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
 // various recv_* can use a tcp_conn_port can re-use this..
 fn conn_port_new_tcp_socket(
     stream_handle_ptr: *uv::ll::uv_tcp_t,
-    hl_loop: uv::hl::high_level_loop)
+    iotask: iotask)
     -> result::result<tcp_socket,tcp_err_data> unsafe {
     // tcp_nl_on_connection_cb
     let reader_po = comm::port::<result::result<[u8], tcp_err_data>>();
@@ -966,11 +968,11 @@ fn conn_port_new_tcp_socket(
         stream_handle_ptr : stream_handle_ptr,
         connect_req : uv::ll::connect_t(),
         write_req : uv::ll::write_t(),
-        hl_loop : hl_loop
+        iotask : iotask
     };
     let client_socket_data_ptr = ptr::addr_of(*client_socket_data);
     comm::listen {|cont_ch|
-        uv::hl::interact(hl_loop) {|loop_ptr|
+        iotask::interact(iotask) {|loop_ptr|
             log(debug, #fmt("in interact cb 4 conn_port_new_tcp.. loop %?",
                 loop_ptr));
             uv::ll::set_data_for_uv_handle(stream_handle_ptr,
@@ -990,7 +992,7 @@ type tcp_conn_port_data = {
     server_stream: uv::ll::uv_tcp_t,
     stream_closed_po: comm::port<()>,
     stream_closed_ch: comm::chan<()>,
-    hl_loop: uv::hl::high_level_loop,
+    iotask: iotask,
     new_conn_po: comm::port<result::result<*uv::ll::uv_tcp_t,
                                             tcp_err_data>>,
     new_conn_ch: comm::chan<result::result<*uv::ll::uv_tcp_t,
@@ -1003,7 +1005,7 @@ type tcp_listen_fc_data = {
     kill_ch: comm::chan<option<tcp_err_data>>,
     new_connect_cb: fn~(tcp_new_connection,
                         comm::chan<option<tcp_err_data>>),
-    hl_loop: uv::hl::high_level_loop,
+    iotask: iotask,
     mut active: bool
 };
 
@@ -1264,7 +1266,7 @@ type tcp_socket_data = {
     stream_handle_ptr: *uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
-    hl_loop: uv::hl::high_level_loop
+    iotask: iotask
 };
 
 // convert rust ip_addr to libuv's native representation
@@ -1405,13 +1407,13 @@ mod test {
     fn run_tcp_test_server(server_ip: str, server_port: uint, resp: str,
                           server_ch: comm::chan<str>,
                           cont_ch: comm::chan<()>,
-                          hl_loop: uv::hl::high_level_loop) -> str {
+                          iotask: iotask) -> str {
 
         task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let listen_result =
                 listen_for_conn(server_ip_addr, server_port, 128u,
-                hl_loop,
+                iotask,
                 // on_establish_cb -- called when listener is set up
                 {|kill_ch|
                     log(debug, #fmt("establish_cb %?",
@@ -1484,12 +1486,12 @@ mod test {
                                     server_port: uint, resp: str,
                                     server_ch: comm::chan<str>,
                                     cont_ch: comm::chan<()>,
-                                    hl_loop: uv::hl::high_level_loop) -> str {
+                                    iotask: iotask) -> str {
 
         task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let new_listener_result =
-                new_listener(server_ip_addr, server_port, 128u, hl_loop);
+                new_listener(server_ip_addr, server_port, 128u, iotask);
             if result::is_failure(new_listener_result) {
                 let err_data = result::get_err(new_listener_result);
                 log(debug, #fmt("SERVER: exited abnormally name %s msg %s",
@@ -1533,12 +1535,12 @@ mod test {
 
     fn run_tcp_test_client(server_ip: str, server_port: uint, resp: str,
                           client_ch: comm::chan<str>,
-                          hl_loop: uv::hl::high_level_loop) -> str {
+                          iotask: iotask) -> str {
 
         let server_ip_addr = ip::v4::parse_addr(server_ip);
 
         log(debug, "CLIENT: starting..");
-        let connect_result = connect(server_ip_addr, server_port, hl_loop);
+        let connect_result = connect(server_ip_addr, server_port, iotask);
         if result::is_failure(connect_result) {
             log(debug, "CLIENT: failed to connect");
             let err_data = result::get_err(connect_result);

@@ -14,7 +14,7 @@ use core(vers = "0.2");
 import core::*;
 
 export net, net_tcp;
-export uv, uv_ll, uv_hl, uv_global_loop;
+export uv, uv_ll, uv_iotask, uv_global_loop;
 export c_vec, util, timer;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap;
 export rope, arena, arc;
@@ -30,7 +30,7 @@ mod net_tcp;
 // libuv modules
 mod uv;
 mod uv_ll;
-mod uv_hl;
+mod uv_iotask;
 mod uv_global_loop;
 
 

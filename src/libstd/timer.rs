@@ -3,6 +3,8 @@ Utilities that leverage libuv's `uv_timer_*` API
 "];
 
 import uv = uv;
+import uv::iotask;
+import iotask::iotask;
 export delayed_send, sleep, recv_timeout;
 
 #[doc = "
@@ -21,7 +23,7 @@ for *at least* that period of time.
 * ch - a channel of type T to send a `val` on
 * val - a value of type T to send over the provided `ch`
 "]
-fn delayed_send<T: copy send>(hl_loop: uv::hl::high_level_loop,
+fn delayed_send<T: copy send>(iotask: iotask,
                               msecs: uint, ch: comm::chan<T>, val: T) {
     // FIME: Looks like we don't need to spawn here
     task::spawn() {||
@@ -31,7 +33,7 @@ fn delayed_send<T: copy send>(hl_loop: uv::hl::high_level_loop,
             let timer_done_ch_ptr = ptr::addr_of(timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(timer);
-            uv::hl::interact(hl_loop) {|loop_ptr|
+            iotask::interact(iotask) {|loop_ptr|
                 let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
                 if (init_result == 0i32) {
                     let start_result = uv::ll::timer_start(
@@ -69,13 +71,13 @@ for *at least* that period of time.
 
 # Arguments
 
-* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
+* `iotask` - a `uv::iotask` that the tcp request will run on
 * msecs - an amount of time, in milliseconds, for the current task to block
 "]
-fn sleep(hl_loop: uv::hl::high_level_loop, msecs: uint) {
+fn sleep(iotask: iotask, msecs: uint) {
     let exit_po = comm::port::<()>();
     let exit_ch = comm::chan(exit_po);
-    delayed_send(hl_loop, msecs, exit_ch, ());
+    delayed_send(iotask, msecs, exit_ch, ());
     comm::recv(exit_po);
 }
 
@@ -88,7 +90,7 @@ timeout. Depending on whether the provided port receives in that time period,
 
 # Arguments
 
-* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
+* `iotask' - `uv::iotask` that the tcp request will run on
 * msecs - an mount of time, in milliseconds, to wait to receive
 * wait_port - a `comm::port<T>` to receive on
 
@@ -98,12 +100,12 @@ An `option<T>` representing the outcome of the call. If the call `recv`'d on
 the provided port in the allotted timeout period, then the result will be a
 `some(T)`. If not, then `none` will be returned.
 "]
-fn recv_timeout<T: copy send>(hl_loop: uv::hl::high_level_loop,
+fn recv_timeout<T: copy send>(iotask: iotask,
                               msecs: uint,
                               wait_po: comm::port<T>) -> option<T> {
     let timeout_po = comm::port::<()>();
     let timeout_ch = comm::chan(timeout_po);
-    delayed_send(hl_loop, msecs, timeout_ch, ());
+    delayed_send(iotask, msecs, timeout_ch, ());
     // FIXME: This could be written clearer
     either::either(
         {|left_val|
