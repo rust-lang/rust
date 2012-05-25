@@ -384,7 +384,7 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
         };
         // Likewise, the parent has both a 'po' and 'ch'
 
-    This function is equivalent to `run_listener(new_builder(), f)`.
+    This function is equivalent to `run_listener(builder(), f)`.
     "];
 
     run_listener(builder(), f)
