@@ -14,7 +14,7 @@ export exit;
 
 import libc::c_void;
 import ptr::addr_of;
-import comm::{port, chan, methods};
+import comm::{port, chan, methods, listen};
 import ll = uv_ll;
 
 #[doc = "
@@ -31,9 +31,6 @@ fn spawn_iotask(-builder: task::builder) -> iotask {
 
     import task::{set_opts, get_opts, single_threaded, run};
 
-    let iotask_po = port::<iotask>();
-    let iotask_ch = iotask_po.chan();
-
     set_opts(builder, {
         sched: some({
             mode: single_threaded,
@@ -42,13 +39,16 @@ fn spawn_iotask(-builder: task::builder) -> iotask {
         with get_opts(builder)
     });
 
-    run(builder) {||
-        #debug("entering libuv task");
-        run_loop(iotask_ch);
-        #debug("libuv task exiting");
-    };
+    listen {|iotask_ch|
 
-    iotask_po.recv()
+        run(copy(builder)) {||
+            #debug("entering libuv task");
+            run_loop(iotask_ch);
+            #debug("libuv task exiting");
+        };
+
+        iotask_ch.recv()
+    }
 }
 
 
@@ -102,19 +102,21 @@ enum iotask_msg {
 Run the loop and begin handling messages
 "]
 fn run_loop(iotask_ch: chan<iotask>) unsafe {
-    let msg_po = port::<iotask_msg>();
+
     let loop_ptr = ll::loop_new();
+
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
     let async = ll::async_t();
     let async_handle = addr_of(async);
+
     // associate the async handle with the loop
     ll::async_init(loop_ptr, async_handle, wake_up_cb);
 
     // initialize our loop data and store it in the loop
     let data: iotask_loop_data = {
         async_handle: async_handle,
-        msg_po_ptr: addr_of(msg_po)
+        msg_po: port()
     };
     ll::set_data_for_uv_handle(async_handle, addr_of(data));
 
@@ -122,7 +124,7 @@ fn run_loop(iotask_ch: chan<iotask>) unsafe {
     // while we dwell in the I/O loop
     let iotask = iotask_({
         async_handle: async_handle,
-        op_chan: msg_po.chan()
+        op_chan: data.msg_po.chan()
     });
     iotask_ch.send(iotask);
 
@@ -136,7 +138,7 @@ fn run_loop(iotask_ch: chan<iotask>) unsafe {
 // data that lives for the lifetime of the high-evel oo
 type iotask_loop_data = {
     async_handle: *ll::uv_async_t,
-    msg_po_ptr: *port<iotask_msg>
+    msg_po: port<iotask_msg>
 };
 
 fn send_msg(iotask: iotask,
@@ -145,21 +147,19 @@ fn send_msg(iotask: iotask,
     ll::async_send(iotask.async_handle);
 }
 
-// this will be invoked by a call to uv::hl::interact() with
-// the high_level_loop corresponding to this async_handle. We
-// simply check if the loop is active and, if so, invoke the
-// user-supplied on_wake callback that is stored in the loop's
-// data member
+#[doc ="Dispatch all pending messages"]
 crust fn wake_up_cb(async_handle: *ll::uv_async_t,
                     status: int) unsafe {
+
     log(debug, #fmt("wake_up_cb crust.. handle: %? status: %?",
                      async_handle, status));
+
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
     let data = ll::get_data_for_uv_handle(async_handle) as *iotask_loop_data;
-    let msg_po = *((*data).msg_po_ptr);
+    let msg_po = (*data).msg_po;
+
     while msg_po.peek() {
-        let msg = msg_po.recv();
-        alt msg {
+        alt msg_po.recv() {
           interaction(cb) {
             cb(loop_ptr);
           }
@@ -172,7 +172,6 @@ crust fn wake_up_cb(async_handle: *ll::uv_async_t,
 
 fn begin_teardown(data: *iotask_loop_data) unsafe {
     log(debug, "iotask begin_teardown() called, close async_handle");
-    // call user-suppled before_tear_down cb
     let async_handle = (*data).async_handle;
     ll::close(async_handle as *c_void, tear_down_close_cb);
 }
