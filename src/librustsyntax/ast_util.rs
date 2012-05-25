@@ -1,25 +1,25 @@
 import codemap::span;
 import ast::*;
 
-fn spanned<T: copy>(lo: uint, hi: uint, t: T) -> spanned<T> {
+pure fn spanned<T: copy>(lo: uint, hi: uint, t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), t)
 }
 
-fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
+pure fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
     {node: t, span: sp}
 }
 
-fn dummy_spanned<T: copy>(t: T) -> spanned<T> {
+pure fn dummy_spanned<T: copy>(t: T) -> spanned<T> {
     respan(dummy_sp(), t)
 }
 
 /* assuming that we're not in macro expansion */
-fn mk_sp(lo: uint, hi: uint) -> span {
+pure fn mk_sp(lo: uint, hi: uint) -> span {
     {lo: lo, hi: hi, expn_info: none}
 }
 
 // make this a const, once the compiler supports it
-fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
+pure fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
 fn path_name(p: @path) -> str { path_name_i(p.idents) }
 

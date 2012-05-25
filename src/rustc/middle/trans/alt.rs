@@ -13,6 +13,7 @@ import syntax::print::pprust::pat_to_str;
 import back::abi;
 import resolve::def_map;
 import std::map::hashmap;
+import dvec::{dvec, extensions};
 
 import common::*;
 
@@ -236,12 +237,12 @@ fn enter_uniq(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
 }
 
 fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
-    fn add_to_set(tcx: ty::ctxt, &set: [opt], val: opt) {
-        for vec::each(set) {|l| if opt_eq(tcx, l, val) { ret; } }
-        set += [val];
+    fn add_to_set(tcx: ty::ctxt, &&set: dvec<opt>, val: opt) {
+        if set.any({|l| opt_eq(tcx, l, val)}) {ret;}
+        set.push(val);
     }
 
-    let mut found = [];
+    let found = dvec();
     for vec::each(m) {|br|
         let cur = br.pats[col];
         if pat_is_variant(ccx.tcx.def_map, cur) {
@@ -256,7 +257,7 @@ fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
             }
         }
     }
-    ret found;
+    ret vec::from_mut(dvec::unwrap(found));
 }
 
 fn extract_variant_args(bcx: block, pat_id: ast::node_id,
