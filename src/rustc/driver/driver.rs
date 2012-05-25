@@ -4,8 +4,7 @@ import session::session;
 import syntax::parse;
 import syntax::{ast, codemap};
 import syntax::attr;
-import middle::{trans, resolve, freevars, kind, ty, typeck,
-                last_use, lint};
+import middle::{trans, resolve, freevars, kind, ty, typeck, lint};
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
@@ -192,7 +191,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
          bind middle::check_loop::check_crate(ty_cx, crate));
     time(time_passes, "alt checking",
          bind middle::check_alt::check_crate(ty_cx, crate));
-    let _last_use_map =
+    let (last_use_map, spill_map) =
         time(time_passes, "liveness checking",
              bind middle::liveness::check_crate(ty_cx, method_map, crate));
     time(time_passes, "typestate checking",
@@ -200,13 +199,11 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
         bind middle::borrowck::check_crate(ty_cx, method_map, crate));
-    let (copy_map, ref_map) =
+    let (copy_map, _ref_map) =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
-    let (last_uses, spill_map) = time(time_passes, "last use finding",
-        bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
-         bind kind::check_crate(ty_cx, method_map, last_uses, crate));
+         bind kind::check_crate(ty_cx, method_map, last_use_map, crate));
 
     lint::check_crate(ty_cx, crate, sess.opts.lint_opts, time_passes);
 
@@ -214,7 +211,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let outputs = option::get(outputs);
 
     let maps = {mutbl_map: mutbl_map, root_map: root_map,
-                copy_map: copy_map, last_uses: last_uses,
+                copy_map: copy_map, last_use_map: last_use_map,
                 impl_map: impl_map, method_map: method_map,
                 vtable_map: vtable_map, spill_map: spill_map};
 

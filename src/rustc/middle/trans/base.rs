@@ -2832,7 +2832,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     } else if arg_mode == ast::by_copy || arg_mode == ast::by_move {
         let alloc = alloc_ty(bcx, arg.ty);
         let move_out = arg_mode == ast::by_move ||
-            ccx.maps.last_uses.contains_key(e.id);
+            ccx.maps.last_use_map.contains_key(e.id);
         if lv.kind == temporary { revoke_clean(bcx, val); }
         if lv.kind == owned || !ty::type_is_immediate(arg.ty) {
             memmove_ty(bcx, alloc, val, arg.ty);
@@ -3561,7 +3561,8 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             let src_r = trans_temp_lval(bcx, src);
             let {bcx, val: addr, kind} = trans_lval(src_r.bcx, dst);
             assert kind == owned;
-            let is_last_use = bcx.ccx().maps.last_uses.contains_key(src.id);
+            let is_last_use =
+                bcx.ccx().maps.last_use_map.contains_key(src.id);
             ret store_temp_expr(bcx, DROP_EXISTING, addr, src_r,
                                 expr_ty(bcx, src), is_last_use);
           }
@@ -3639,10 +3640,10 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
 }
 
 fn lval_to_dps(bcx: block, e: @ast::expr, dest: dest) -> block {
-    let last_uses = bcx.ccx().maps.last_uses;
+    let last_use_map = bcx.ccx().maps.last_use_map;
     let ty = expr_ty(bcx, e);
     let lv = trans_lval(bcx, e);
-    let last_use = (lv.kind == owned && last_uses.contains_key(e.id));
+    let last_use = (lv.kind == owned && last_use_map.contains_key(e.id));
     lval_result_to_dps(lv, ty, last_use, dest)
 }
 

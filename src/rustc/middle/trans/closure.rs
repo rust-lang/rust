@@ -18,6 +18,7 @@ import util::ppaux::ty_to_str;
 import syntax::ast_map::{path, path_mod, path_name};
 import driver::session::session;
 import std::map::hashmap;
+import dvec::extensions;
 
 // ___Good to know (tm)__________________________________________________
 //
@@ -307,9 +308,9 @@ fn build_closure(bcx0: block,
             env_vals += [env_ref(lv.val, ty, lv.kind)];
           }
           capture::cap_copy {
-            let mv = alt check ccx.maps.last_uses.find(id) {
+            let mv = alt check ccx.maps.last_use_map.find(id) {
               none { false }
-              some(last_use::closes_over(vars)) { vec::contains(vars, nid) }
+              some(vars) { (*vars).contains(nid) }
             };
             if mv { env_vals += [env_move(lv.val, ty, lv.kind)]; }
             else { env_vals += [env_copy(lv.val, ty, lv.kind)]; }

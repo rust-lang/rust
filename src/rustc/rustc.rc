@@ -71,7 +71,6 @@ mod middle {
     mod lint;
     mod borrowck;
     mod alias;
-    mod last_use;
     mod liveness;
     mod block_use;
     mod kind;

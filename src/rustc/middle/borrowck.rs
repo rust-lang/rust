@@ -138,10 +138,10 @@ enum loan_path {
 // a complete record of a loan that was granted
 type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
 
-fn save_and_restore<T:copy,U>(&t: T, f: fn() -> U) -> U {
-    let old_t = t;
+fn save_and_restore<T:copy,U>(&save_and_restore_t: T, f: fn() -> U) -> U {
+    let old_save_and_restore_t = save_and_restore_t;
     let u <- f();
-    t = old_t;
+    save_and_restore_t = old_save_and_restore_t;
     ret u;
 }
 
@@ -888,6 +888,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      sp: span, id: ast::node_id, &&self: check_loan_ctxt,
                      visitor: visit::vt<check_loan_ctxt>) {
 
+    #debug["purity on entry=%?", self.declared_purity];
     save_and_restore(self.in_ctor) {||
         save_and_restore(self.declared_purity) {||
             // In principle, we could consider fk_anon(*) or
@@ -909,6 +910,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
             visit::visit_fn(fk, decl, body, sp, id, self, visitor);
         }
     }
+    #debug["purity on exit=%?", self.declared_purity];
 }
 
 fn check_loans_in_expr(expr: @ast::expr,

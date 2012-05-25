@@ -1,5 +1,6 @@
 import util::ppaux::ty_to_str;
 
+import dvec::extensions;
 import syntax::ast;
 import syntax::fold;
 import syntax::visit;
@@ -18,7 +19,7 @@ import std::serialization::serializer_helpers;
 import std::serialization::deserializer_helpers;
 import std::prettyprint::serializer;
 import std::smallintmap::map;
-import middle::{ty, typeck, last_use};
+import middle::{ty, typeck};
 import middle::typeck::{method_origin,
                         serialize_method_origin,
                         deserialize_method_origin,
@@ -52,11 +53,11 @@ type maps = {
     mutbl_map: middle::borrowck::mutbl_map,
     root_map: middle::borrowck::root_map,
     copy_map: middle::alias::copy_map,
-    last_uses: middle::last_use::last_uses,
+    last_use_map: middle::liveness::last_use_map,
     impl_map: middle::resolve::impl_map,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
-    spill_map: middle::last_use::spill_map
+    spill_map: middle::liveness::spill_map
 };
 
 type decode_ctxt = @{
@@ -539,10 +540,6 @@ impl helper for ebml::ebml_deserializer {
         let fv = deserialize_method_origin(self);
         fv.tr(xcx)
     }
-    fn read_is_last_use(xcx: extended_decode_ctxt) -> last_use::is_last_use {
-        let lu = last_use::deserialize_is_last_use(self);
-        lu.tr(xcx)
-    }
 }
 
 impl of tr for method_origin {
@@ -556,17 +553,6 @@ impl of tr for method_origin {
           }
           typeck::method_iface(did, m) {
             typeck::method_iface(did.tr(xcx), m)
-          }
-        }
-    }
-}
-
-impl of tr for last_use::is_last_use {
-    fn tr(xcx: extended_decode_ctxt) -> last_use::is_last_use {
-        alt self {
-          last_use::is_last_use { self }
-          last_use::closes_over(ids) {
-            last_use::closes_over(vec::map(ids, {|id| xcx.tr_id(id)}))
           }
         }
     }
@@ -844,11 +830,13 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::iter(maps.last_uses.find(id)) {|m|
+    option::iter(maps.last_use_map.find(id)) {|m|
         ebml_w.tag(c::tag_table_last_use) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
-                last_use::serialize_is_last_use(ebml_w, m)
+                ebml_w.emit_from_vec((*m).get()) {|id|
+                    ebml_w.emit_int(id);
+                }
             }
         }
     }
@@ -975,7 +963,11 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 let bounds = val_dsr.read_bounds(xcx);
                 dcx.tcx.ty_param_bounds.insert(id, bounds);
             } else if tag == (c::tag_table_last_use as uint) {
-                dcx.maps.last_uses.insert(id, val_dsr.read_is_last_use(xcx));
+                let ids = val_dsr.read_to_vec {||
+                    xcx.tr_id(val_dsr.read_int())
+                };
+                let dvec = @dvec::from_vec(vec::to_mut(ids));
+                dcx.maps.last_use_map.insert(id, dvec);
             } else if tag == (c::tag_table_method_map as uint) {
                 dcx.maps.method_map.insert(id,
                                            val_dsr.read_method_origin(xcx));

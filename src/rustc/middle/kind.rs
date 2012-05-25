@@ -8,6 +8,7 @@ import std::map::hashmap;
 import util::ppaux::{ty_to_str, tys_to_str};
 import syntax::print::pprust::expr_to_str;
 import freevars::freevar_entry;
+import dvec::extensions;
 
 // Kind analysis pass.
 //
@@ -56,15 +57,15 @@ type rval_map = std::map::hashmap<node_id, ()>;
 type ctx = {tcx: ty::ctxt,
             rval_map: rval_map,
             method_map: typeck::method_map,
-            last_uses: last_use::last_uses};
+            last_use_map: liveness::last_use_map};
 
 fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
-               last_uses: last_use::last_uses, crate: @crate)
+               last_use_map: liveness::last_use_map, crate: @crate)
     -> rval_map {
     let ctx = {tcx: tcx,
                rval_map: std::map::int_hash(),
                method_map: method_map,
-               last_uses: last_uses};
+               last_use_map: last_use_map};
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
         visit_stmt: check_stmt,
@@ -177,11 +178,10 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             // if this is the last use of the variable, then it will be
             // a move and not a copy
             let is_move = {
-                let last_uses = alt check cx.last_uses.find(fn_id) {
-                  some(last_use::closes_over(vars)) { vars }
-                  none { [] }
-                };
-                last_uses.contains(id)
+                alt check cx.last_use_map.find(fn_id) {
+                  some(vars) {(*vars).contains(id)}
+                  none {false}
+                }
             };
 
             let ty = ty::node_id_to_type(cx.tcx, id);
@@ -367,7 +367,7 @@ fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
 
 fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
     if ty::expr_is_lval(cx.method_map, ex) &&
-       !cx.last_uses.contains_key(ex.id) &&
+       !cx.last_use_map.contains_key(ex.id) &&
        !is_nullary_variant(cx, ex) {
         let ty = ty::expr_ty(cx.tcx, ex);
         check_copy(cx, ty, ex.span);

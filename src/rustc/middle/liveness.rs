@@ -57,6 +57,7 @@ import capture::{cap_move, cap_drop, cap_copy, cap_ref};
 
 export check_crate;
 export last_use_map;
+export spill_map;
 
 // Maps from an expr id to a list of variable ids for which this expr
 // is the last use.  Typically, the expr is a path and the node id is
@@ -84,7 +85,7 @@ enum live_node_kind {
 
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
-               crate: @crate) -> last_use_map {
+               crate: @crate) -> (last_use_map, spill_map) {
     let visitor = visit::mk_vt(@{
         visit_fn: visit_fn,
         visit_local: visit_local,
@@ -98,7 +99,7 @@ fn check_crate(tcx: ty::ctxt,
                                 last_use_map, spill_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
-    ret last_use_map;
+    ret (last_use_map, spill_map);
 }
 
 impl of to_str::to_str for live_node {
@@ -141,7 +142,13 @@ enum relevant_def { rdef_var(node_id), rdef_self }
 
 type capture_info = {ln: live_node, is_move: bool, rv: relevant_def};
 
-type var_info = {id: node_id, name: str};
+enum var_kind {
+    vk_arg(node_id, str, rmode),
+    vk_local(node_id, str),
+    vk_field(str),
+    vk_self,
+    vk_implicit_ret
+}
 
 fn relevant_def(def: def) -> option<relevant_def> {
     alt def {
@@ -163,7 +170,7 @@ class ir_maps {
     let variable_map: hashmap<node_id, variable>;
     let field_map: hashmap<str, variable>;
     let capture_map: hashmap<node_id, @[capture_info]>;
-    let mut var_infos: [var_info];
+    let mut var_kinds: [var_kind];
     let mut lnks: [live_node_kind];
 
     new(tcx: ty::ctxt, method_map: typeck::method_map,
@@ -179,7 +186,7 @@ class ir_maps {
         self.variable_map = int_hash();
         self.capture_map = int_hash();
         self.field_map = str_hash();
-        self.var_infos = [];
+        self.var_kinds = [];
         self.lnks = [];
     }
 
@@ -200,13 +207,23 @@ class ir_maps {
         #debug["%s is node %d", ln.to_str(), node_id];
     }
 
-    fn add_variable(node_id: node_id, name: str) -> variable {
+    fn add_variable(vk: var_kind) -> variable {
         let v = variable(self.num_vars);
-        self.variable_map.insert(node_id, v);
-        self.var_infos += [{id:node_id, name:name}];
+        self.var_kinds += [vk];
         self.num_vars += 1u;
 
-        #debug["%s is node %d", v.to_str(), node_id];
+        alt vk {
+          vk_local(node_id, _) | vk_arg(node_id, _, _) {
+            self.variable_map.insert(node_id, v);
+          }
+          vk_field(name) {
+            self.field_map.insert(name, v);
+          }
+          vk_self | vk_implicit_ret {
+          }
+        }
+
+        #debug["%s is %?", v.to_str(), vk];
 
         v
     }
@@ -218,6 +235,15 @@ class ir_maps {
             self.tcx.sess.span_bug(
                 span, "No variable registered for this id");
           }
+        }
+    }
+
+    fn variable_name(var: variable) -> str {
+        alt self.var_kinds[*var] {
+          vk_local(_, name) | vk_arg(_, name, _) {name}
+          vk_field(name) {"self." + name}
+          vk_self {"self"}
+          vk_implicit_ret {"<implicit-ret>"}
         }
     }
 
@@ -238,24 +264,40 @@ class ir_maps {
         self.lnks[*ln]
     }
 
-    fn add_last_use(expr_id: node_id, var: variable) {
-        let v = alt self.last_use_map.find(expr_id) {
-          some(v) { v }
-          none {
-            let v = @dvec();
-            self.last_use_map.insert(expr_id, v);
-            v
+    fn add_spill(var: variable) {
+        let vk = self.var_kinds[*var];
+        alt vk {
+          vk_local(id, _) | vk_arg(id, _, by_val) {
+            #debug["adding spill for %?", vk];
+            self.spill_map.insert(id, ());
           }
-        };
-        let {id, name} = self.var_infos[*var];
-        #debug["Node %d is a last use of variable %d / %s",
-               expr_id, id, name];
-        (*v).push(id);
+          vk_arg(*) | vk_field(_) | vk_self | vk_implicit_ret {}
+        }
     }
 
-    fn add_spill(var: variable) {
-        let id = self.var_infos[*var].id;
-        if id != 0 { self.spill_map.insert(id, ()); }
+    fn add_last_use(expr_id: node_id, var: variable) {
+        let vk = self.var_kinds[*var];
+        #debug["Node %d is a last use of variable %?", expr_id, vk];
+        alt vk {
+          vk_arg(id, name, by_move) |
+          vk_arg(id, name, by_copy) |
+          vk_local(id, name) {
+            let v = alt self.last_use_map.find(expr_id) {
+              some(v) { v }
+              none {
+                let v = @dvec();
+                self.last_use_map.insert(expr_id, v);
+                v
+              }
+            };
+
+            (*v).push(id);
+          }
+          vk_arg(_, _, by_ref) | vk_arg(_, _, by_mutbl_ref) |
+          vk_arg(_, _, by_val) | vk_self | vk_field(_) | vk_implicit_ret {
+            #debug["--but it is not owned"];
+          }
+        }
     }
 }
 
@@ -272,7 +314,8 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 
     for decl.inputs.each { |arg|
         #debug["adding argument %d", arg.id];
-        (*fn_maps).add_variable(arg.id, arg.ident);
+        let mode = ty::resolved_mode(self.tcx, arg.mode);
+        (*fn_maps).add_variable(vk_arg(arg.id, arg.ident, mode));
     };
 
     // gather up the various local variables, significant expressions,
@@ -293,8 +336,8 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let specials = {
         exit_ln: (*fn_maps).add_live_node(lnk_exit),
         fallthrough_ln: (*fn_maps).add_live_node(lnk_exit),
-        no_ret_var: (*fn_maps).add_variable(0, "<no_ret>"),
-        self_var: (*fn_maps).add_variable(0, "self")
+        no_ret_var: (*fn_maps).add_variable(vk_implicit_ret),
+        self_var: (*fn_maps).add_variable(vk_self)
     };
 
     // compute liveness
@@ -317,8 +360,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 fn add_class_fields(self: @ir_maps, did: def_id) {
     for ty::lookup_class_fields(self.tcx, did).each { |field_ty|
         assert field_ty.id.crate == local_crate;
-        let var = (*self).add_variable(
-            field_ty.id.node, #fmt["self.%s", field_ty.ident]);
+        let var = (*self).add_variable(vk_field(field_ty.ident));
         self.field_map.insert(field_ty.ident, var);
     }
 }
@@ -329,7 +371,7 @@ fn visit_local(local: @local, &&self: @ir_maps, vt: vt<@ir_maps>) {
         #debug["adding local variable %d", p_id];
         let name = ast_util::path_to_ident(path);
         (*self).add_live_node_for_node(p_id, lnk_vdef(sp));
-        (*self).add_variable(p_id, name);
+        (*self).add_variable(vk_local(p_id, name));
     }
     visit::visit_local(local, self, vt);
 }
@@ -730,6 +772,9 @@ class liveness {
             }
         }
 
+        // as above, the "self" variable is a non-owned variable
+        self.acc(self.s.exit_ln, self.s.self_var, ACC_READ);
+
         // in a ctor, there is an implicit use of self.f for all fields f:
         for self.ir.field_map.each_value { |var|
             self.acc(self.s.exit_ln, var, ACC_READ|ACC_USE);
@@ -938,8 +983,8 @@ class liveness {
             // see comment on lvalues in
             // propagate_through_lvalue_components()
             let succ = self.write_lvalue(l, succ, ACC_WRITE);
-            let succ = self.propagate_through_expr(r, succ);
-            self.propagate_through_lvalue_components(l, succ)
+            let succ = self.propagate_through_lvalue_components(l, succ);
+            self.propagate_through_expr(r, succ)
           }
 
           expr_swap(l, r) {
@@ -1063,14 +1108,11 @@ class liveness {
         // ----------------------++-----------------------
         //                       ||
         //         |             ||           |
-        //         |             ||           v
-        //         |             ||   (lvalue components)
-        //         |             ||           |
         //         v             ||           v
         //     (rvalue)          ||       (rvalue)
         //         |             ||           |
-        //         v             ||           |
-        // (write of lvalue)     ||           |
+        //         v             ||           v
+        // (write of lvalue)     ||   (lvalue components)
         //         |             ||           |
         //         v             ||           v
         //      (succ)           ||        (succ)
@@ -1604,7 +1646,7 @@ impl check_methods for @liveness {
           possibly_uninitialized_field {"possibly uninitialized field"}
           moved_variable {"moved variable"}
         };
-        let name = self.ir.var_infos[*var].name;
+        let name = (*self.ir).variable_name(var);
         alt lnk {
           lnk_freevar(span) {
             self.tcx.sess.span_err(
@@ -1625,7 +1667,7 @@ impl check_methods for @liveness {
     }
 
     fn should_warn(var: variable) -> option<str> {
-        let name = self.ir.var_infos[*var].name;
+        let name = (*self.ir).variable_name(var);
         if name[0] == ('_' as u8) {none} else {some(name)}
     }
 
