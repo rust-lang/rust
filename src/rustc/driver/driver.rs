@@ -13,6 +13,7 @@ import std::getopts;
 import io::{reader_util, writer_util};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
+import std::map::hashmap;
 
 enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
               ppm_expanded_identified }
@@ -399,9 +400,22 @@ fn build_session_options(match: getopts::match,
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
 
-    let lint_flags = (getopts::opt_strs(match, "W")
-                      + getopts::opt_strs(match, "warn"));
+    let mut lint_flags = (getopts::opt_strs(match, "W")
+                          + getopts::opt_strs(match, "warn"));
     let lint_dict = lint::get_lint_dict();
+    #info("Given lint flags: %?", lint_flags);
+    let exhaustive_flags = ["all", "no-all", "err-all"];
+    alt lint_flags.find({|elt| exhaustive_flags.contains(elt)}) {
+        some(all_flag) {
+            lint_flags = [];
+            let lint_prefix = str::replace(all_flag, "all", "");
+            for lint_dict.each_key {|key|
+                lint_flags += [lint_prefix + key];
+            }
+        }
+        none {}
+     }
+    #info("Processed lint flags: %?", lint_flags);
     let lint_opts = vec::map(lint_flags) {|flag|
         alt lint::lookup_lint(lint_dict, flag) {
           none { early_error(demitter, #fmt("unknown warning: %s", flag)) }
