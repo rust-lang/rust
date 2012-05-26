@@ -6,7 +6,7 @@ fn foo(src: uint) {
 
     alt some(src) {
       some(src_id) {
-        uint::range(0u, 10u) {|i|
+        for uint::range(0u, 10u) {|i|
             let yyy = src_id;
             assert (yyy == 0u);
         }

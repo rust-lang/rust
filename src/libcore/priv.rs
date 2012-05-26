@@ -127,12 +127,12 @@ fn test_from_global_chan2() unsafe {
 
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
-        uint::range(0u, 10u) {|i|
+        for uint::range(0u, 10u) {|i|
             task::spawn() {||
                 let ch = chan_from_global_ptr(
                     globchanp, task::builder) {|po|
 
-                    uint::range(0u, 10u) {|_j|
+                    for uint::range(0u, 10u) {|_j|
                         let ch = comm::recv(po);
                         comm::send(ch, {i});
                     }
@@ -147,7 +147,7 @@ fn test_from_global_chan2() unsafe {
         }
         // There should be only one winner
         let mut winners = 0u;
-        uint::range(0u, 10u) {|_i|
+        for uint::range(0u, 10u) {|_i|
             let res = comm::recv(resultpo);
             if res { winners += 1u };
         }

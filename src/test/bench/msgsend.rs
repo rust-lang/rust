@@ -38,11 +38,11 @@ fn run(args: [str]) {
     let start = std::time::precise_time_s();
     let to_child = to_child;
     let mut worker_results = [];
-    uint::range(0u, workers) {|_i|
+    for uint::range(0u, workers) {|_i|
         let builder = task::builder();
         worker_results += [task::future_result(builder)];
         task::run(builder) {||
-            uint::range(0u, size / workers) {|_i|
+            for uint::range(0u, size / workers) {|_i|
                 comm::send(to_child, bytes(100u));
             }
         };

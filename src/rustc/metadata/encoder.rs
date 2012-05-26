@@ -840,7 +840,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
 fn create_index<T: copy>(index: [entry<T>], hash_fn: fn@(T) -> uint) ->
    [@[entry<T>]] {
     let mut buckets: [@mut [entry<T>]] = [];
-    uint::range(0u, 256u) {|_i| buckets += [@mut []]; };
+    for uint::range(0u, 256u) {|_i| buckets += [@mut []]; };
     for index.each {|elt|
         let h = hash_fn(elt.val);
         *buckets[h % 256u] += [elt];

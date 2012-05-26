@@ -1,7 +1,7 @@
 class cat {
   priv {
     let mut meows : uint;
-    fn nap() { uint::range(1u, 10u) {|_i|}}
+    fn nap() { for uint::range(1u, 10u) {|_i|}}
   }
 
   let how_hungry : int;

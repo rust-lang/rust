@@ -46,7 +46,7 @@ fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     log(debug, ">" + id + " " + desc);
     let rng = @{mut last: std::rand::rng().next()};
     let mut op: str = "";
-    uint::range(0u, n as uint) {|_i|
+    for uint::range(0u, n as uint) {|_i|
         str::push_char(op, select_random(myrandom_next(rng, 100u32),
                                          genelist));
         if str::len(op) >= LINE_LENGTH() {
@@ -61,7 +61,7 @@ fn make_repeat_fasta(id: str, desc: str, s: str, n: int) unsafe {
     log(debug, ">" + id + " " + desc);
     let mut op: str = "";
     let sl: uint = str::len(s);
-    uint::range(0u, n as uint) {|i|
+    for uint::range(0u, n as uint) {|i|
         str::unsafe::push_byte(op, s[i % sl]);
         if str::len(op) >= LINE_LENGTH() {
             log(debug, op);

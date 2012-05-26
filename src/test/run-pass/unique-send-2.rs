@@ -12,13 +12,13 @@ fn main() {
     let ch = comm::chan(p);
     let n = 100u;
     let mut expected = 0u;
-    uint::range(0u, n) {|i|
+    for uint::range(0u, n) {|i|
         task::spawn {|| child(ch, i); };
         expected += i;
     }
 
     let mut actual = 0u;
-    uint::range(0u, n) {|_i|
+    for uint::range(0u, n) {|_i|
         let j = comm::recv(p);
         actual += *j;
     }

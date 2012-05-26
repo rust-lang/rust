@@ -46,7 +46,7 @@ fn process(v0: bitv, v1: bitv, op: fn(uint, uint) -> uint) -> bool {
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
     let mut changed = false;
-    uint::range(0u, len) {|i|
+    for uint::range(0u, len) {|i|
         let w0 = v0.storage[i];
         let w1 = v1.storage[i];
         let w = op(w0, w1);
@@ -90,7 +90,7 @@ fn assign(v0: bitv, v1: bitv) -> bool {
 fn clone(v: bitv) -> bitv {
     let storage = vec::to_mut(vec::from_elem(v.nbits / uint_bits + 1u, 0u));
     let len = vec::len(v.storage);
-    uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
+    for uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
     ret @{storage: storage, nbits: v.nbits};
 }
 
@@ -121,17 +121,17 @@ fn equal(v0: bitv, v1: bitv) -> bool {
 
 #[doc = "Set all bits to 0"]
 fn clear(v: bitv) {
-    uint::range(0u, vec::len(v.storage)) {|i| v.storage[i] = 0u; };
+    for uint::range(0u, vec::len(v.storage)) {|i| v.storage[i] = 0u; };
 }
 
 #[doc = "Set all bits to 1"]
 fn set_all(v: bitv) {
-    uint::range(0u, v.nbits) {|i| set(v, i, true); };
+    for uint::range(0u, v.nbits) {|i| set(v, i, true); };
 }
 
 #[doc = "Invert all bits"]
 fn invert(v: bitv) {
-    uint::range(0u, vec::len(v.storage)) {|i|
+    for uint::range(0u, vec::len(v.storage)) {|i|
         v.storage[i] = !v.storage[i];
     };
 }

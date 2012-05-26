@@ -28,8 +28,16 @@ fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     ret b;
 }
 
+fn range(lo: uint, hi: uint, it: fn(uint)) {
+    let mut i = lo;
+    while i < hi {
+        it(i);
+        i += 1u;
+    }
+}
+
 fn main() {
-    let range = bind uint::range(0u, 1000u, _);
+    let range = bind range(0u, 1000u, _);
     let filt = bind filter(
         range,
         {|&&n: uint| n % 3u != 0u && n % 5u != 0u },

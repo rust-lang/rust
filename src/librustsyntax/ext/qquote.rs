@@ -193,7 +193,7 @@ fn finish<T: qq_helper>
     let qcx = gather_anti_quotes(sp.lo, node);
     let cx = qcx;
 
-    uint::range(1u, cx.gather.len()) {|i|
+    for uint::range(1u, cx.gather.len()) {|i|
         assert cx.gather[i-1u].lo < cx.gather[i].lo;
         // ^^ check that the vector is sorted
         assert cx.gather[i-1u].hi <= cx.gather[i].lo;

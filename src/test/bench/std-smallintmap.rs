@@ -6,13 +6,13 @@ import std::smallintmap::{smallintmap, map};
 import io::writer_util;
 
 fn append_sequential(min: uint, max: uint, map: smallintmap<uint>) {
-    uint::range(min, max) { |i|
+    for uint::range(min, max) { |i|
         map.insert(i, i + 22u);
     }
 }
 
 fn check_sequential(min: uint, max: uint, map: smallintmap<uint>) {
-    uint::range(min, max) { |i|
+    for uint::range(min, max) { |i|
         assert map.get(i) == i + 22u;
     }
 }
@@ -31,7 +31,7 @@ fn main(args: [str]) {
     let mut checkf = 0.0;
     let mut appendf = 0.0;
 
-    uint::range(0u, rep) {|_r|
+    for uint::range(0u, rep) {|_r|
         let map = smallintmap::mk();
         let start = std::time::precise_time_s();
         append_sequential(0u, max, map);

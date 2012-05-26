@@ -595,7 +595,7 @@ class liveness {
 
     fn indices(ln: live_node, op: fn(uint)) {
         let node_base_idx = self.idx(ln, variable(0u));
-        uint::range(0u, self.ir.num_vars) { |var_idx|
+        for uint::range(0u, self.ir.num_vars) { |var_idx|
             op(node_base_idx + var_idx)
         }
     }
@@ -604,7 +604,7 @@ class liveness {
                 op: fn(uint, uint)) {
         let node_base_idx = self.idx(ln, variable(0u));
         let succ_base_idx = self.idx(succ_ln, variable(0u));
-        uint::range(0u, self.ir.num_vars) { |var_idx|
+        for uint::range(0u, self.ir.num_vars) { |var_idx|
             op(node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
@@ -613,7 +613,7 @@ class liveness {
                   ln: live_node,
                   test: fn(uint) -> live_node) {
         let node_base_idx = self.idx(ln, variable(0u));
-        uint::range(0u, self.ir.num_vars) { |var_idx|
+        for uint::range(0u, self.ir.num_vars) { |var_idx|
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 wr.write_str(" ");
@@ -743,7 +743,7 @@ class liveness {
         // hack to skip the loop unless #debug is enabled:
         #debug["^^ liveness computation results for body %d (entry=%s)",
                {
-                   uint::range(0u, self.ir.num_live_nodes) { |ln_idx|
+                   for uint::range(0u, self.ir.num_live_nodes) { |ln_idx|
                        #debug["%s", self.ln_str(live_node(ln_idx))];
                    }
                    body.node.id

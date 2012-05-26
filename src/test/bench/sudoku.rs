@@ -51,7 +51,7 @@ fn solve_grid(g: grid_t) {
         if start_color < 10u8 {
             // colors not yet used
             let avail = bitv::bitv(10u, false);
-            u8::range(start_color, 10u8) { |color|
+            for u8::range(start_color, 10u8) { |color|
                 bitv::set(avail, color as uint, true);
             }
 
@@ -81,7 +81,7 @@ fn solve_grid(g: grid_t) {
 
         let it = bind drop_color(g, avail, _, _);
 
-        u8::range(0u8, 9u8) { |idx|
+        for u8::range(0u8, 9u8) { |idx|
             it(idx, col); /* check same column fields */
             it(row, idx); /* check same row fields */
         }
@@ -89,14 +89,14 @@ fn solve_grid(g: grid_t) {
         // check same block fields
         let row0 = (row / 3u8) * 3u8;
         let col0 = (col / 3u8) * 3u8;
-        u8::range(row0, row0 + 3u8) { |alt_row|
-            u8::range(col0, col0 + 3u8) { |alt_col| it(alt_row, alt_col); }
+        for u8::range(row0, row0 + 3u8) { |alt_row|
+            for u8::range(col0, col0 + 3u8) { |alt_col| it(alt_row, alt_col); }
         }
     }
 
     let mut work: [(u8, u8)] = []; /* queue of uncolored fields */
-    u8::range(0u8, 9u8) { |row|
-        u8::range(0u8, 9u8) { |col|
+    for u8::range(0u8, 9u8) { |row|
+        for u8::range(0u8, 9u8) { |col|
             let color = (*g)[row][col];
             if color == 0u8 { work += [(row, col)]; }
         }
@@ -119,9 +119,9 @@ fn solve_grid(g: grid_t) {
 }
 
 fn write_grid(f: io::writer, g: grid_t) {
-    u8::range(0u8, 9u8) { |row|
+    for u8::range(0u8, 9u8) { |row|
         f.write_str(#fmt("%u", (*g)[row][0] as uint));
-        u8::range(1u8, 9u8) { |col|
+        for u8::range(1u8, 9u8) { |col|
             f.write_str(#fmt(" %u", (*g)[row][col] as uint));
         }
         f.write_char('\n');

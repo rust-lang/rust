@@ -277,7 +277,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
         }
     }
 
-    uint::range(0u, vec::len(found_flags)) {|i|
+    for uint::range(0u, vec::len(found_flags)) {|i|
         if !found_flags[i] {
             let ee = expected_errors[i];
             fatal_procres(#fmt["expected %s on line %u not found: %s",

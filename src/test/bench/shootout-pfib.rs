@@ -70,7 +70,7 @@ fn stress_task(&&id: int) {
 
 fn stress(num_tasks: int) {
     let mut results = [];
-    range(0, num_tasks) {|i|
+    for range(0, num_tasks) {|i|
         let builder = task::builder();
         results += [task::future_result(builder)];
         task::run(builder) {|| stress_task(i); }
@@ -99,8 +99,8 @@ fn main(args: [str]) {
 
         let out = io::stdout();
 
-        range(1, max + 1) {|n|
-            range(0, num_trials) {|i|
+        for range(1, max + 1) {|n|
+            for range(0, num_trials) {|i|
                 let start = time::precise_time_ns();
                 let fibn = fib(n);
                 let stop = time::precise_time_ns();

@@ -51,7 +51,7 @@ class cat implements noisy {
 }
 
 fn annoy_neighbors<T: noisy>(critter: T) {
-  uint::range(0u, 10u) {|i| critter.speak(); }
+  for uint::range(0u, 10u) {|i| critter.speak(); }
 }
 
 fn main() {

@@ -7,13 +7,13 @@ import task;
 // results in the string not being freed
 
 fn starship(&&ch: comm::chan<str>) {
-    int::range(0, 10) { |_i|
+    for int::range(0, 10) { |_i|
         comm::send(ch, "pew pew");
     }
 }
 
 fn starbase() {
-    int::range(0, 10) { |_i|
+    for int::range(0, 10) { |_i|
         let p = comm::port();
         let c = comm::chan(p);
         task::spawn {|| starship(c);};
@@ -22,7 +22,7 @@ fn starbase() {
 }
 
 fn main() {
-    int::range(0, 10) { |_i|
+    for int::range(0, 10) { |_i|
         task::spawn {|| starbase();};
     }
 }

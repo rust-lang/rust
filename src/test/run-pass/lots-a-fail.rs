@@ -13,7 +13,7 @@ fn iloop() {
 }
 
 fn main() {
-    uint::range(0u, 100u) {|_i|
+    for uint::range(0u, 100u) {|_i|
         let builder = task::builder();
         task::unsupervise(builder);
         task::run(builder) {|| iloop(); };

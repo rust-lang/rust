@@ -202,7 +202,7 @@ impl extensions for rng {
     fn weighted_vec<T:copy>(v: [weighted<T>]) -> [T] {
         let mut r = [];
         for v.each {|item|
-            uint::range(0u, item.weight) {|_i|
+            for uint::range(0u, item.weight) {|_i|
                 r += [item.item];
             }
         }

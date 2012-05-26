@@ -4,7 +4,7 @@
 // allocating and freeing vectors.
 
 fn f(&&n: uint) {
-    uint::range(0u, n) {|i|
+    for uint::range(0u, n) {|i|
         let mut v: [u8] = [];
         vec::reserve(v, 1000u);
     }
@@ -19,5 +19,5 @@ fn main(args: [str]) {
         args
     };
     let n = uint::from_str(args[1]).get();
-    uint::range(0u, 100u) {|i| task::spawn {|| f(n); };}
+    for uint::range(0u, 100u) {|i| task::spawn {|| f(n); };}
 }

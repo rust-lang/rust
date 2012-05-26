@@ -588,7 +588,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut dtors = [];
     let len = interner::len(ccx.shape_cx.resources);
-    uint::range(0u, len) {|i|
+    for uint::range(0u, len) {|i|
       let ri = interner::get(ccx.shape_cx.resources, i);
       dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.tps)];
     }

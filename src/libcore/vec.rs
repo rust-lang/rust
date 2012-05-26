@@ -892,7 +892,7 @@ Both vectors must have the same length
 #[inline]
 fn iter2<U, T>(v1: [const U], v2: [const T], f: fn(U, T)) {
     assert len(v1) == len(v2);
-    uint::range(0u, len(v1)) {|i|
+    for uint::range(0u, len(v1)) {|i|
         f(v1[i], v2[i])
     }
 }

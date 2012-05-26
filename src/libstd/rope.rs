@@ -158,13 +158,13 @@ fn concat(v: [rope]) -> rope {
     let mut len = vec::len(v);
     if len == 0u { ret node::empty; }
     let ropes = vec::to_mut(vec::from_elem(len, v[0]));
-    uint::range(1u, len) {|i|
+    for uint::range(1u, len) {|i|
        ropes[i] = v[i];
     }
 
     //Merge progresively
     while len > 1u {
-        uint::range(0u, len/2u) {|i|
+        for uint::range(0u, len/2u) {|i|
             ropes[i] = append_rope(ropes[2u*i], ropes[2u*i+1u]);
         }
         if len%2u != 0u {
@@ -1352,19 +1352,19 @@ mod tests {
     fn char_at1() {
         //Generate a large rope
         let mut r = of_str(@ "123456789");
-        uint::range(0u, 10u){|_i|
+        for uint::range(0u, 10u){|_i|
             r = append_rope(r, r);
         }
 
         //Copy it in the slowest possible way
         let mut r2 = empty();
-        uint::range(0u, char_len(r)){|i|
+        for uint::range(0u, char_len(r)){|i|
             r2 = append_char(r2, char_at(r, i));
         }
         assert eq(r, r2);
 
         let mut r3 = empty();
-        uint::range(0u, char_len(r)){|i|
+        for uint::range(0u, char_len(r)){|i|
             r3 = prepend_char(r3, char_at(r, char_len(r) - i - 1u));
         }
         assert eq(r, r3);
@@ -1385,7 +1385,7 @@ mod tests {
         //Generate a reasonable rope
         let chunk = of_str(@ "123456789");
         let mut r = empty();
-        uint::range(0u, 10u){|_i|
+        for uint::range(0u, 10u){|_i|
             r = append_rope(r, chunk);
         }
 

@@ -183,7 +183,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
     let mut lines = [];
-    uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
+    for uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
     ret @{file: lo.file, lines: lines};
 }
 

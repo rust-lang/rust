@@ -84,7 +84,7 @@ class cat implements noisy, scratchy, bitey {
 }
 
 fn annoy_neighbors<T: noisy>(critter: T) {
-  uint::range(0u, 10u) {|i|
+  for uint::range(0u, 10u) {|i|
       let what = critter.speak();
       #debug("%u %d", i, what);
   }

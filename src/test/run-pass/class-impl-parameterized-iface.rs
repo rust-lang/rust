@@ -61,7 +61,7 @@ class cat implements map<int, bool> {
 
 fn main() {
   let nyan : cat = cat(0, 2, "nyan");
-  uint::range(1u, 5u) {|_i| nyan.speak(); }
+  for uint::range(1u, 5u) {|_i| nyan.speak(); }
   // cat returns true if uint input is greater than
   // the number of meows so far
   assert(nyan.get(1));

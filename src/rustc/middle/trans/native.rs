@@ -945,7 +945,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                 _ {
                     let llretptr = alloca(bcx, tys.ret_ty);
                     let n = vec::len(tys.arg_tys);
-                    uint::range(0u, n) {|i|
+                    for uint::range(0u, n) {|i|
                         let llargval = get_param(llwrapfn, i);
                         store_inbounds(bcx, llargval, llargbundle,
                                                       [0u, i]);
