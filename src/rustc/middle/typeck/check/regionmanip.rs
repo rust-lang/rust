@@ -5,7 +5,7 @@ import syntax::print::pprust::{expr_to_str};
 // Extracts the bound regions from bound_tys and then replaces those same
 // regions in `sty` with fresh region variables, returning the resulting type.
 // Does not descend into fn types.  This is used when deciding whether an impl
-// applies at a given call site.  See also universally_quantify_before_call().
+// applies at a given call site.
 fn universally_quantify_from_sty(fcx: @fn_ctxt,
                                  span: span,
                                  bound_tys: [ty::t],
@@ -31,6 +31,11 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
     }
 }
 
+// Takes `isr`, a mapping from in-scope region names ("isr"s) to their
+// corresponding regions (possibly produced by a call to
+// collect_bound_regions_in_tys; and `ty`, a type.  Returns an updated
+// version of `ty`, in which bound regions in `ty` have been replaced
+// with the corresponding bindings in `isr`.
 fn replace_bound_regions(
     tcx: ty::ctxt,
     span: span,
@@ -140,23 +145,29 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
     }
 }
 
+// Takes `isr`, a (possibly empty) mapping from in-scope region names ("isr"s)
+// to their corresponding regions; `tys`, a list of types, and `to_r`, a
+// closure that takes a bound_region and returns a region.  Returns an updated
+// version of `isr`, extended with the in-scope region names from all of the
+// bound regions appearing in the types in the `tys` list (if they're not in
+// `isr` already), with each of those in-scope region names mapped to a region
+// that's the result of applying `to_r` to itself.
+
+// "collect" is something of a misnomer -- we're not merely collecting
+// a list of the bound regions, but also doing the work of applying
+// `to_r` to them!
 fn collect_bound_regions_in_tys(
     tcx: ty::ctxt,
     isr: isr_alist,
     tys: [ty::t],
     to_r: fn(ty::bound_region) -> ty::region) -> isr_alist {
 
-    tys.foldl(isr) { |isr, t|
-        collect_bound_regions_in_ty(tcx, isr, t, to_r)
-    }
-}
-
-fn collect_bound_regions_in_ty(
-    tcx: ty::ctxt,
-    isr: isr_alist,
-    ty: ty::t,
-    to_r: fn(ty::bound_region) -> ty::region) -> isr_alist {
-
+    // Takes `isr` (described above), `to_r` (described above), and `r`, a
+    // region.  If `r` is anything other than a bound region, or if it's a
+    // bound region that already appears in `isr`, then we return `isr`
+    // unchanged.  If `r` is a bound region that doesn't already appear in
+    // `isr`, we return an updated isr_alist that now contains a mapping from
+    // `r` to the result of calling `to_r` on it.
     fn append_isr(isr: isr_alist,
                   to_r: fn(ty::bound_region) -> ty::region,
                   r: ty::region) -> isr_alist {
@@ -174,16 +185,30 @@ fn collect_bound_regions_in_ty(
         }
     }
 
-    let mut isr = isr;
+    // For each region in `t`, apply the `append_isr` function to that
+    // region, accumulating and returning the results in an isr_alist.
+    fn fold_over_regions_in_type(
+        tcx: ty::ctxt,
+        isr: isr_alist,
+        ty: ty::t,
+        to_r: fn(ty::bound_region) -> ty::region) -> isr_alist {
 
-    // Using fold_regions is inefficient, because it constructs new types, but
-    // it avoids code duplication in terms of locating all the regions within
-    // the various kinds of types.  This had already caused me several bugs
-    // so I decided to switch over.
-    ty::fold_regions(tcx, ty) { |r, in_fn|
-        if !in_fn { isr = append_isr(isr, to_r, r); }
-        r
-    };
+        let mut isr = isr;
 
-    ret isr;
+        // Using fold_regions is inefficient, because it constructs new types,
+        // but it avoids code duplication in terms of locating all the regions
+        // within the various kinds of types.  This had already caused me
+        // several bugs so I decided to switch over.
+        ty::fold_regions(tcx, ty) { |r, in_fn|
+            if !in_fn { isr = append_isr(isr, to_r, r); }
+            r
+        };
+
+        ret isr;
+    }
+
+    // For each type `t` in `tys`...
+    tys.foldl(isr) { |isr, t|
+        fold_over_regions_in_type(tcx, isr, t, to_r)
+    }
 }

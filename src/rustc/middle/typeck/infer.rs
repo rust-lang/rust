@@ -1618,11 +1618,23 @@ impl of combine for sub {
 
         // First, we instantiate each bound region in the subtype with a fresh
         // region variable.
+
+        // FIXME: This code is kinda redundant with
+        // regionmanip::universally_quantify_from_sty, except for the
+        // `sty` part.  Fix somehow?
+
+        // a_isr is a mapping from all the bound regions in `a` to
+        // freshly created region variables for them.
         let a_isr =
             collect_bound_regions_in_tys(self.tcx,
                                          @nil,
                                          tys_in_fn_ty(a)) {
             |br|
+
+            // N.B.: The name of the bound region doesn't have
+            // anything to do with the region variable that's created
+            // for it.  The only thing we're doing with `br` here is
+            // using it in the debug message.
             let rvar = self.infcx().next_region_var();
             #debug["Bound region %s maps to %s",
                    bound_region_to_str(self.tcx, br),
@@ -1638,6 +1650,9 @@ impl of combine for sub {
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
+
+        // a_isr is a mapping from all the bound regions in `b` to
+        // the result of calling re_bound on them.
         let b_isr =
             collect_bound_regions_in_tys(self.tcx,
                                          @nil,
