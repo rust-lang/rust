@@ -554,8 +554,8 @@ fn make_opaque_cbox_take_glue(
         let sz = Add(bcx, sz, shape::llsize_of(ccx, T_box_header(ccx)));
 
         // Allocate memory, update original ptr, and copy existing data
-        let malloc = ccx.upcalls.shared_malloc;
-        let cbox_out = Call(bcx, malloc, [sz]);
+        let malloc = ccx.upcalls.exchange_malloc;
+        let cbox_out = Call(bcx, malloc, [tydesc]);
         let cbox_out = PointerCast(bcx, cbox_out, llopaquecboxty);
         call_memmove(bcx, cbox_out, cbox_in, sz);
         Store(bcx, cbox_out, cboxptr);
