@@ -1,116 +1,114 @@
-.TH RUSTC "1" "January 2012" "Rust" "User Commands"
-
+.TH RUSTC "1" "May 2012" "rustc 0.2 (23fcab9)" "User Commands"
 .SH NAME
 rustc \- rust compiler
-
 .SH SYNOPSIS
-rustc [\fB-h\fR] [\fB-v\fR] [\fB-o\fR \fIoutfile\fR]
-      [\fB--lib\fR] [\fB--static\fR] [\fB-L\fR \fIpath\fR]
-      [\fB-g\fR] [\fB-S\fR] [\fB-c\fR] <\fIinput\fR>
-.PP
-Only the most commonly-used options are listed here. All options are listed and
-described below.
+.B rustc
+[\fIoptions\fR] \fI<input>\fR
 
 .SH DESCRIPTION
 This program is a compiler for the Rust language, available at
 <\fBhttps://www.rust-lang.org\fR>.
 
 .SH OPTIONS
+
 .TP
-\fB--bin\fR
+\fB\-\-bin\fR
 Compile an executable crate (default)
 .TP
-\fB-c\fR
+\fB\-c\fR
 Compile and assemble, but do not link
 .TP
-\fB--cfg <cfgspec>\fR
+\fB\-\-cfg\fR <cfgspec>
 Configure the compilation environment
 .TP
-\fB--emit-llvm\fR
+\fB\-\-emit\-llvm\fR
 Produce an LLVM bitcode file
 .TP
-\fB-g\fR
+\fB\-g\fR
 Produce debug info
 .TP
-\fB--gc\fR
+\fB\-\-gc\fR
 Garbage collect shared data (experimental/temporary)
 .TP
-\fB-h --help\fR
+\fB\-h\fR \fB\-\-help\fR
 Display this message
 .TP
-\fB-L <path>\fR
+\fB\-L\fR <path>
 Add a directory to the library search path
 .TP
-\fB--lib\fR
+\fB\-\-lib\fR
 Compile a library crate
 .TP
-\fB--ls\fR
-List the symbols defined by a compiled librar crate
+\fB\-\-ls\fR
+List the symbols defined by a compiled library crate
 .TP
-\fB--no-asm-comments\fR
-Do not add comments into the assembly source
-.TP
-\fB--no-lint-ctypes\fR
-Suppress warnings for possibly incorrect ctype usage
-.TP
-\fB--no-trans\fR
+\fB\-\-no\-trans\fR
 Run all passes except translation; no output
 .TP
-\fB--no-verify\fR
-Suppress LLVM verification step (slight speedup)
-(see http://llvm.org/docs/Passes.html for detail)
+\fB\-O\fR
+Equivalent to \fB\-\-opt\-level\fR=\fI2\fR
 .TP
-\fB-O\fR
-Equivalent to --opt-level=2
-.TP
-\fB-o <filename>\fR
+\fB\-o\fR <filename>
 Write output to <filename>
 .TP
-\fB--opt-level <lvl>\fR
-Optimize with possible levels 0-3
+\fB\-\-opt\-level\fR <lvl>
+Optimize with possible levels 0\-3
 .TP
-\fB--out-dir <dir>\fR
-Write output to compiler-chosen filename in <dir>
+\fB\-\-out\-dir\fR <dir>
+Write output to compiler\-chosen filename in <dir>
 .TP
-\fB--parse-only\fR
+\fB\-\-parse\-only\fR
 Parse only; do not compile, assemble, or link
 .TP
-\fB--pretty [type]\fR
-Pretty-print the input instead of compiling; valid types are: \fBnormal\fR (un-annotated source), \fBexpanded\fR (crates expanded), \fBtyped\fR (crates expanded, with type annotations), or \fBidentified\fR (fully parenthesized, AST nodes and blocks with IDs)
+\fB\-\-pretty\fR [type]
+Pretty\-print the input instead of compiling;
+valid types are: \fBnormal\fR (un\-annotated source),
+\fBexpanded\fR (crates expanded), \fBtyped\fR (crates expanded,
+with type annotations), or \fBidentified\fR (fully
+parenthesized, AST nodes and blocks with IDs)
 .TP
-\fB-S\fR
+\fB\-S\fR
 Compile only; do not assemble or link
 .TP
-\fB--save-temps\fR
-Write intermediate files (.bc, .opt.bc, .o) in addition to normal output
+\fB\-\-save\-temps\fR
+Write intermediate files (.bc, .opt.bc, .o)
+in addition to normal output
 .TP
-\fB--static\fR
+\fB\-\-static\fR
 Use or produce static libraries or binaries
 .TP
-\fB--stats\fR
+\fB\-\-stats\fR
 Print compilation statistics
 .TP
-\fB--sysroot <path>\fR
+\fB\-\-sysroot\fR <path>
 Override the system root
 .TP
-\fB--test\fR
-Build test harness
+\fB\-\-test\fR
+Build a test harness
 .TP
-\fB--target <triple>\fR
-Target cpu-manufacturer-kernel[-os] to compile for (default: host triple)
-(see http://sources.redhat.com/autobook/autobook/autobook_17.html for detail)
+\fB\-\-target\fR <triple>
+Target cpu\-manufacturer\-kernel[\-os] to compile for
+(default: host triple)
+(see http://sources.redhat.com/autobook/autobook/
+autobook_17.html for detail)
 .TP
-\fB--time-passes\fR
-Time the individual phases of the compiler
+\fB\-W\fR <foo>
+enable warning <foo>
 .TP
-\fB--time-llvm-passes\fR
-Time the individual phases of the LLVM backend
+\fB\-W\fR no\-<foo>
+disable warning <foo>
 .TP
-\fB-v --version\fR
+\fB\-W\fR err\-<foo>
+enable warning <foo> as an error
+.TP
+\fB\-W\fR help
+Print available warnings and default settings
+.TP
+\fB\-Z\fR help
+list internal options for debugging rustc
+.TP
+\fB\-v\fR \fB\-\-version\fR
 Print version info and exit
-.TP
-\fB--warn-unused-imports\fR
-Warn about unnecessary imports
 
 .SH "EXAMPLES"
 To build an executable from a source file with a main function:
@@ -131,4 +129,3 @@ See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare
 
 .SH "COPYRIGHT"
 See \fBLICENSE.txt\fR in the rust source distribution.
-
