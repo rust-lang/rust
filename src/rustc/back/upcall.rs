@@ -16,9 +16,6 @@ type upcalls =
      exchange_malloc_dyn: ValueRef,
      exchange_free: ValueRef,
      validate_box: ValueRef,
-     shared_malloc: ValueRef,
-     shared_free: ValueRef,
-     shared_realloc: ValueRef,
      mark: ValueRef,
      vec_grow: ValueRef,
      str_new_uniq: ValueRef,
@@ -75,13 +72,6 @@ fn declare_upcalls(targ_cfg: @session::config,
               nothrow(dv("exchange_free", [T_ptr(T_i8())])),
           validate_box:
               nothrow(dv("validate_box", [T_ptr(T_i8())])),
-          shared_malloc:
-              nothrow(d("shared_malloc", [size_t], T_ptr(T_i8()))),
-          shared_free:
-              nothrow(dv("shared_free", [T_ptr(T_i8())])),
-          shared_realloc:
-              nothrow(d("shared_realloc", [T_ptr(T_i8()), size_t],
-                        T_ptr(T_i8()))),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
           vec_grow:

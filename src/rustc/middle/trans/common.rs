@@ -271,7 +271,7 @@ fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     }
 }
 fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
-    let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
+    let free_fn = if shared { bind base::trans_unique_free(_, ptr) }
                   else { bind base::trans_free(_, ptr) };
     in_scope_cx(cx) {|info|
         info.cleanups += [clean_temp(ptr, free_fn,

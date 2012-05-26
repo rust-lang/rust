@@ -236,13 +236,6 @@ fn trans_free(cx: block, v: ValueRef) -> block {
     cx
 }
 
-fn trans_shared_free(cx: block, v: ValueRef) -> block {
-    let _icx = cx.insn_ctxt("trans_shared_free");
-    Call(cx, cx.ccx().upcalls.shared_free,
-         [PointerCast(cx, v, T_ptr(T_i8()))]);
-    ret cx;
-}
-
 fn trans_unique_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_shared_free");
     Call(cx, cx.ccx().upcalls.exchange_free,
@@ -331,15 +324,6 @@ fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
     let typed_blobptr = PointerCast(bcx, llblobptr,
                                     T_ptr(T_struct(arg_lltys)));
     GEPi(bcx, typed_blobptr, [0u, ix])
-}
-
-// trans_shared_malloc: expects a type indicating which pointer type we want
-// and a size indicating how much space we want malloc'd.
-fn shared_malloc(cx: block, llptr_ty: TypeRef, llsize: ValueRef)
-   -> ValueRef {
-    let _icx = cx.insn_ctxt("opaque_shared_malloc");
-    let rval = Call(cx, cx.ccx().upcalls.shared_malloc, [llsize]);
-    PointerCast(cx, rval, llptr_ty)
 }
 
 // Returns a pointer to the body for the box. The box may be an opaque

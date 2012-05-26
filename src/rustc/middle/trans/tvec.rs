@@ -2,7 +2,7 @@ import syntax::ast;
 import driver::session::session;
 import lib::llvm::{ValueRef, TypeRef};
 import back::abi;
-import base::{call_memmove, shared_malloc,
+import base::{call_memmove,
                INIT, copy_val, load_if_immediate, get_tydesc,
                sub_block, do_spill_noroot,
                dest, bcx_icx};
@@ -115,7 +115,7 @@ fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
         let bcx = if ty::type_needs_drop(tcx, unit_ty) {
             iter_vec(bcx, vptr, vec_ty, base::drop_ty)
         } else { bcx };
-        base::trans_shared_free(bcx, vptr)
+        base::trans_unique_free(bcx, vptr)
     }
 }
 

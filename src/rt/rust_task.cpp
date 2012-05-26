@@ -7,7 +7,6 @@
 
 #include "rust_task.h"
 #include "rust_cc.h"
-#include "rust_upcall.h"
 #include "rust_env.h"
 #include "rust_port.h"
 
@@ -130,6 +129,8 @@ cleanup_task(cleanup_args *args) {
     }
 }
 
+extern "C" CDECL void upcall_exchange_free(void *ptr);
+
 // This runs on the Rust stack
 void task_start_wrapper(spawn_args *a)
 {
@@ -161,7 +162,7 @@ void task_start_wrapper(spawn_args *a)
         // free the environment (which should be a unique closure).
         const type_desc *td = env->td;
         td->drop_glue(NULL, NULL, td->first_param, box_body(env));
-        upcall_shared_free(env);
+        upcall_exchange_free(env);
     }
 
     // The cleanup work needs lots of stack
