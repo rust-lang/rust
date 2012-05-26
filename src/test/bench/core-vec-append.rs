@@ -22,7 +22,7 @@ fn collect_dvec(num: uint) -> [mut uint] {
 
 fn main(args: [str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "10000000"]
+        ["", "50000000"]
     } else if args.len() <= 1u {
         ["", "100000"]
     } else {
