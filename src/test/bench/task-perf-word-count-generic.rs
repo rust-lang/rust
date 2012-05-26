@@ -46,26 +46,26 @@ fn join(t: joinable_task) {
     t.recv()
 }
 
-fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
-    let f = alt io::file_reader(str::from_bytes(filename)) {
+fn map(&&filename: str, emit: map_reduce::putter<str, int>) {
+    let f = alt io::file_reader(filename) {
       result::ok(f) { f }
       result::err(e) { fail #fmt("%?", e) }
     };
 
     loop {
         alt read_word(f) {
-          some(w) { emit(str::bytes(w), 1); }
+          some(w) { emit(w, 1); }
           none { break; }
         }
     }
 }
 
-fn reduce(&&word: [u8], get: map_reduce::getter<int>) {
+fn reduce(&&word: str, get: map_reduce::getter<int>) {
     let mut count = 0;
 
     loop { alt get() { some(_) { count += 1; } none { break; } } }
     
-    io::println(#fmt("%?\t%?", word, count));
+    io::println(#fmt("%s\t%?", word, count));
 }
 
 mod map_reduce {
@@ -243,14 +243,9 @@ fn main(argv: [str]) {
         ret;
     }
 
-    let mut iargs = [];
-    vec::iter_between(argv, 1u, vec::len(argv)) {|a|
-        iargs += [str::bytes(a)];
-    }
-
     let start = time::precise_time_ns();
 
-    map_reduce::map_reduce(map, reduce, iargs);
+    map_reduce::map_reduce(map, reduce, vec::slice(argv, 1u, argv.len()));
     let stop = time::precise_time_ns();
 
     let elapsed = (stop - start) / 1000000u64;
@@ -271,87 +266,5 @@ fn read_word(r: io::reader) -> option<str> {
     }
     ret none;
 }
-
-fn is_digit(c: char) -> bool {
-    alt c {
-      '0' { true }
-      '1' { true }
-      '2' { true }
-      '3' { true }
-      '4' { true }
-      '5' { true }
-      '6' { true }
-      '7' { true }
-      '8' { true }
-      '9' { true }
-      _ { false }
-    }
-}
-
-fn is_alpha_lower(c: char) -> bool {
-    alt c {
-      'a' { true }
-      'b' { true }
-      'c' { true }
-      'd' { true }
-      'e' { true }
-      'f' { true }
-      'g' { true }
-      'h' { true }
-      'i' { true }
-      'j' { true }
-      'k' { true }
-      'l' { true }
-      'm' { true }
-      'n' { true }
-      'o' { true }
-      'p' { true }
-      'q' { true }
-      'r' { true }
-      's' { true }
-      't' { true }
-      'u' { true }
-      'v' { true }
-      'w' { true }
-      'x' { true }
-      'y' { true }
-      'z' { true }
-      _ { false }
-    }
-}
-
-fn is_alpha_upper(c: char) -> bool {
-    alt c {
-      'A' { true }
-      'B' { true }
-      'C' { true }
-      'D' { true }
-      'E' { true }
-      'F' { true }
-      'G' { true }
-      'H' { true }
-      'I' { true }
-      'J' { true }
-      'K' { true }
-      'L' { true }
-      'M' { true }
-      'N' { true }
-      'O' { true }
-      'P' { true }
-      'Q' { true }
-      'R' { true }
-      'S' { true }
-      'T' { true }
-      'U' { true }
-      'V' { true }
-      'W' { true }
-      'X' { true }
-      'Y' { true }
-      'Z' { true }
-      _ { false }
-    }
-}
-
-fn is_alpha(c: char) -> bool { is_alpha_upper(c) || is_alpha_lower(c) }
-
-fn is_word_char(c: char) -> bool { is_alpha(c) || is_digit(c) || c == '_' }
+fn is_word_char(c: char) -> bool {
+    char::is_alphabetic(c) || char::is_digit(c) || c == '_' }
