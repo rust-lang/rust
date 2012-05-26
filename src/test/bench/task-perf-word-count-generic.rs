@@ -1,5 +1,3 @@
-// xfail-test - #1038 - Can't do this safely with bare functions
-
 /**
    A parallel word-frequency counting program.
 
@@ -18,21 +16,41 @@ import option::none;
 import str;
 import std::treemap;
 import vec;
-import std::io;
+import io;
+import io::{reader_util, writer_util};
 
 import std::time;
 import u64;
 
 import task;
-import task::joinable_task;
 import comm;
 import comm::chan;
 import comm::port;
 import comm::recv;
 import comm::send;
+import comm::methods;
+
+// These used to be in task, but they disappeard.
+type joinable_task = port<()>;
+fn spawn_joinable(f: fn~()) -> joinable_task {
+    let p = port();
+    let c = chan(p);
+    task::spawn() {||
+        f();
+        c.send(());
+    }
+    p
+}
+
+fn join(t: joinable_task) {
+    t.recv()
+}
 
 fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
-    let f = io::file_reader(str::from_bytes(filename));
+    let f = alt io::file_reader(str::from_bytes(filename)) {
+      result::ok(f) { f }
+      result::err(e) { fail #fmt("%?", e) }
+    };
 
     loop {
         alt read_word(f) {
@@ -42,10 +60,12 @@ fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
     }
 }
 
-fn reduce(&&_word: [u8], get: map_reduce::getter<int>) {
-    let count = 0;
+fn reduce(&&word: [u8], get: map_reduce::getter<int>) {
+    let mut count = 0;
 
     loop { alt get() { some(_) { count += 1; } none { break; } } }
+    
+    io::println(#fmt("%?\t%?", word, count));
 }
 
 mod map_reduce {
@@ -59,41 +79,43 @@ mod map_reduce {
 
     // FIXME: the first K1 parameter should probably be a -, but that
     // doesn't parse at the moment.
-    type mapper<K1: send, K2: send, V: send> = fn(K1, putter<K2, V>);
+    type mapper<K1: send, K2: send, V: send> = fn~(K1, putter<K2, V>);
 
     type getter<V: send> = fn() -> option<V>;
 
-    type reducer<K: send, V: send> = fn(K, getter<V>);
+    type reducer<K: copy send, V: copy send> = fn~(K, getter<V>);
 
-    enum ctrl_proto<K: send, V: send> {
-        find_reducer(K, chan<chan<reduce_proto<V>>>);
-        mapper_done;
+    enum ctrl_proto<K: copy send, V: copy send> {
+        find_reducer(K, chan<chan<reduce_proto<V>>>),
+        mapper_done
     }
 
-    enum reduce_proto<V: send> { emit_val(V); done; ref; release; }
+    enum reduce_proto<V: copy send> { emit_val(V), done, ref, release }
 
-    fn start_mappers<K1: send, K2: send,
-                     V: send>(map: mapper<K1, K2, V>,
-                         ctrl: chan<ctrl_proto<K2, V>>, inputs: [K1]) ->
-       [joinable_task] {
-        let tasks = [];
+    fn start_mappers<K1: copy send, K2: copy send, V: copy send>(
+        map: mapper<K1, K2, V>,
+        ctrl: chan<ctrl_proto<K2, V>>, inputs: [K1])
+        -> [joinable_task]
+    {
+        let mut tasks = [];
         for inputs.each {|i|
-            let m = map, c = ctrl, ii = i;
-            tasks += [task::spawn_joinable {|| map_task(m, c, ii)}];
+            tasks += [spawn_joinable {|| map_task(map, ctrl, i)}];
         }
         ret tasks;
     }
 
-    fn map_task<K: send1, K: send2,
-                V: send>(-map: mapper<K1, K2, V>,
-                          -ctrl: chan<ctrl_proto<K2, V>>,
-                    -input: K1) {
+    fn map_task<K1: copy send, K2: copy send, V: copy send>(
+        map: mapper<K1, K2, V>,
+        ctrl: chan<ctrl_proto<K2, V>>,
+        input: K1)
+    {
         // log(error, "map_task " + input);
-        let intermediates = treemap::init();
+        let intermediates = treemap::treemap();
 
-        fn emit<K: send2,
-                V: send>(im: treemap::treemap<K2, chan<reduce_proto<V>>>,
-                    ctrl: chan<ctrl_proto<K2, V>>, key: K2, val: V) {
+        fn emit<K2: copy send, V: copy send>(
+            im: treemap::treemap<K2, chan<reduce_proto<V>>>,
+            ctrl: chan<ctrl_proto<K2, V>>, key: K2, val: V)
+        {
             let c;
             alt treemap::find(im, key) {
               some(_c) { c = _c; }
@@ -110,16 +132,19 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        fn finish<K: send, V: send>(_k: K, v: chan<reduce_proto<V>>) {
+        fn finish<K: copy send, V: copy send>(_k: K, v: chan<reduce_proto<V>>)
+        {
             send(v, release);
         }
         treemap::traverse(intermediates, finish);
         send(ctrl, mapper_done);
     }
 
-    fn reduce_task<K: send,
-                   V: send>(-reduce: reducer<K, V>, -key: K,
-                       -out: chan<chan<reduce_proto<V>>>) {
+    fn reduce_task<K: copy send, V: copy send>(
+        reduce: reducer<K, V>, 
+        key: K,
+        out: chan<chan<reduce_proto<V>>>)
+    {
         let p = port();
 
         send(out, chan(p));
@@ -127,8 +152,8 @@ mod map_reduce {
         let ref_count = 0;
         let is_done = false;
 
-        fn get<V: send>(p: port<reduce_proto<V>>,
-                         &ref_count: int, &is_done: bool)
+        fn get<V: copy send>(p: port<reduce_proto<V>>,
+                             &ref_count: int, &is_done: bool)
            -> option<V> {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
@@ -140,8 +165,8 @@ mod map_reduce {
                     // #error("all done");
                     is_done = true;
                   }
-                  ref. { ref_count += 1; }
-                  release. { ref_count -= 1; }
+                  ref { ref_count += 1; }
+                  release { ref_count -= 1; }
                 }
             }
             ret none;
@@ -150,19 +175,19 @@ mod map_reduce {
         reduce(key, bind get(p, ref_count, is_done));
     }
 
-    fn map_reduce<K: send1, K: send2,
-                  V: send>(map: mapper<K1, K2, V>, reduce: reducer<K2, V>,
-                      inputs: [K1]) {
+    fn map_reduce<K1: copy send, K2: copy send, V: copy send>(
+        map: mapper<K1, K2, V>,
+        reduce: reducer<K2, V>,
+        inputs: [K1])
+    {
         let ctrl = port();
 
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers = treemap::init();
-
-        let tasks = start_mappers(map, chan(ctrl), inputs);
-
-        let num_mappers = vec::len(inputs) as int;
+        let reducers = treemap::treemap();
+        let mut tasks = start_mappers(map, chan(ctrl), inputs);
+        let mut num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
             alt recv(ctrl) {
@@ -185,7 +210,7 @@ mod map_reduce {
                     let ch = chan(p);
                     let r = reduce, kk = k;
                     tasks += [
-                        task::spawn_joinable {|| reduce_task(r, kk, ch) }
+                        spawn_joinable {|| reduce_task(r, kk, ch) }
                     ];
                     c = recv(p);
                     treemap::insert(reducers, k, c);
@@ -196,12 +221,13 @@ mod map_reduce {
             }
         }
 
-        fn finish<K: send, V: send>(_k: K, v: chan<reduce_proto<V>>) {
+        fn finish<K: copy send, V: copy send>(_k: K, v: chan<reduce_proto<V>>)
+        {
             send(v, done);
         }
         treemap::traverse(reducers, finish);
 
-        for tasks.each {|t| task::join(t); }
+        for tasks.each {|t| join(t); }
     }
 }
 
@@ -217,7 +243,7 @@ fn main(argv: [str]) {
         ret;
     }
 
-    let iargs = [];
+    let mut iargs = [];
     vec::iter_between(argv, 1u, vec::len(argv)) {|a|
         iargs += [str::bytes(a)];
     }
@@ -227,19 +253,17 @@ fn main(argv: [str]) {
     map_reduce::map_reduce(map, reduce, iargs);
     let stop = time::precise_time_ns();
 
-    let elapsed = stop - start;
-    elapsed /= 1000000u64;
+    let elapsed = (stop - start) / 1000000u64;
 
     log(error, "MapReduce completed in "
              + u64::str(elapsed) + "ms");
 }
 
 fn read_word(r: io::reader) -> option<str> {
-    let w = "";
+    let mut w = "";
 
     while !r.eof() {
         let c = r.read_char();
-
 
         if is_word_char(c) {
             w += str::from_char(c);
