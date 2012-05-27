@@ -7,8 +7,10 @@ import uv::iotask;
 import uv::iotask::iotask;
 import comm::methods;
 import future_spawn = future::spawn;
-import future::future;
-import result::{result,err,ok,extensions};
+// FIXME: should be able to replace w/ result::{result, extensions};
+import result::*;
+import libc::size_t;
+import str::extensions;
 
 // data
 export tcp_socket, tcp_conn_port, tcp_err_data;
@@ -20,7 +22,7 @@ export new_listener, conn_recv, conn_recv_spawn, conn_peek;
 // tcp client stuff
 export connect;
 // helper methods
-export conn_port_methods, sock_methods;
+export methods;
 
 #[nolink]
 native mod rustrt {
@@ -775,44 +777,46 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
       }
     }
 }
+mod methods {
+    #[doc="
+    Convenience methods extending `net::tcp::tcp_conn_port`
+    "]
+    impl methods_tcp_conn_port for tcp_conn_port {
+        fn recv() -> result::result<tcp_socket, tcp_err_data> {
+            conn_recv(self) }
+        fn recv_spawn(cb: fn~(result::result<tcp_socket,tcp_err_data>))
+                      { conn_recv_spawn(self, cb); }
+        fn peek() -> bool { conn_peek(self) }
+    }
 
-#[doc="
-Convenience methods extending `net::tcp::tcp_conn_port`
-"]
-impl conn_port_methods for tcp_conn_port {
-    fn recv() -> result::result<tcp_socket, tcp_err_data> { conn_recv(self) }
-    fn recv_spawn(+cb: fn~(result::result<tcp_socket,tcp_err_data>))
-                  { conn_recv_spawn(self, cb); }
-    fn peek() -> bool { conn_peek(self) }
-}
-
-#[doc="
-Convenience methods extending `net::tcp::tcp_socket`
-"]
-impl sock_methods for tcp_socket {
-    fn read_start() -> result::result<comm::port<
-        result::result<[u8]/~, tcp_err_data>>, tcp_err_data> {
-        read_start(self)
-    }
-    fn read_stop() ->
-        result::result<(), tcp_err_data> {
-        read_stop(self)
-    }
-    fn read(timeout_msecs: uint) ->
-        result::result<[u8]/~, tcp_err_data> {
-        read(self, timeout_msecs)
-    }
-    fn read_future(timeout_msecs: uint) ->
-        future<result::result<[u8]/~, tcp_err_data>> {
-        read_future(self, timeout_msecs)
-    }
-    fn write(raw_write_data: [u8]/~)
-        -> result::result<(), tcp_err_data> {
-        write(self, raw_write_data)
-    }
-    fn write_future(raw_write_data: [u8]/~)
-        -> future<result::result<(), tcp_err_data>> {
-        write_future(self, raw_write_data)
+    #[doc="
+    Convenience methods extending `net::tcp::tcp_socket`
+    "]
+    impl methods_tcp_socket for tcp_socket {
+        fn read_start() -> result::result<comm::port<
+            result::result<[u8]/~, tcp_err_data>>, tcp_err_data> {
+            read_start(self)
+        }
+        fn read_stop() ->
+            result::result<(), tcp_err_data> {
+            read_stop(self)
+        }
+        fn read(timeout_msecs: uint) ->
+            result::result<[u8]/~, tcp_err_data> {
+            read(self, timeout_msecs)
+        }
+        fn read_future(timeout_msecs: uint) ->
+            future::future<result::result<[u8]/~, tcp_err_data>> {
+            read_future(self, timeout_msecs)
+        }
+        fn write(raw_write_data: [u8]/~)
+            -> result::result<(), tcp_err_data> {
+            write(self, raw_write_data)
+        }
+        fn write_future(raw_write_data: [u8]/~)
+            -> future::future<result::result<(), tcp_err_data>> {
+            write_future(self, raw_write_data)
+        }
     }
 }
 // INTERNAL API
@@ -1171,7 +1175,7 @@ crust fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
 }
 
 crust fn on_alloc_cb(handle: *libc::c_void,
-                     ++suggested_size: libc::size_t)
+                     ++suggested_size: size_t)
     -> uv::ll::uv_buf_t unsafe {
     log(debug, "tcp read on_alloc_cb!");
     let char_ptr = uv::ll::malloc_buf_base_of(suggested_size);
