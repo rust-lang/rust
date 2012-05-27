@@ -197,6 +197,7 @@ fn each(v: bitv, f: fn(bool) -> bool) {
     let mut i = 0u;
     while i < v.nbits {
         if !f(get(v, i)) { break; }
+        i = i + 1u;
     }
 }
 
@@ -233,6 +234,15 @@ fn eq_vec(v0: bitv, v1: [uint]) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_to_str() {
+        let zerolen = bitv(0u, false);
+        assert to_str(zerolen) == "";
+
+        let eightbits = bitv(8u, false);
+        assert to_str(eightbits) == "00000000";
+    }
+
     #[test]
     fn test_0_elements() {
         let mut act;
