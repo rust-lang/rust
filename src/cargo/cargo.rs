@@ -863,7 +863,7 @@ fn install_to_dir(srcfile: str, destdir: str) {
     let newfile = path::connect(destdir, path::basename(srcfile));
     info(#fmt["Installing '%s'...", newfile]);
 
-    copy_warn(srcfile, newfile);
+    run::run_program("cp", [srcfile, newfile]);
 }
 
 fn copy_warn(srcfile: str, destfile: str) {
