@@ -142,7 +142,7 @@ checking for overflow:
         assert incd == [2u, 3u, 4u];
     }
 "]
-fn map<T,U:copy,V:copy>(
+fn map_vec<T,U:copy,V:copy>(
     ts: [T], op: fn(T) -> result<V,U>) -> result<[V],U> {
 
     let mut vs: [V] = [];
@@ -177,7 +177,7 @@ length.  While we do not often use preconditions in the standard
 library, a precondition is used here because result::t is generally
 used in 'careful' code contexts where it is both appropriate and easy
 to accommodate an error like the vectors being of different lengths."]
-fn map2<S,T,U:copy,V:copy>(ss: [S], ts: [T], op: fn(S,T) -> result<V,U>)
+fn map_vec2<S,T,U:copy,V:copy>(ss: [S], ts: [T], op: fn(S,T) -> result<V,U>)
     : vec::same_length(ss, ts) -> result<[V],U> {
 
     let n = vec::len(ts);
@@ -199,8 +199,8 @@ Applies op to the pairwise elements from `ss` and `ts`, aborting on
 error.  This could be implemented using `map2()` but it is more efficient
 on its own as no result vector is built.
 "]
-fn iter2<S,T,U:copy>(ss: [S], ts: [T],
-                     op: fn(S,T) -> result<(),U>)
+fn iter_vec2<S,T,U:copy>(ss: [S], ts: [T],
+                         op: fn(S,T) -> result<(),U>)
     : vec::same_length(ss, ts)
     -> result<(),U> {
 

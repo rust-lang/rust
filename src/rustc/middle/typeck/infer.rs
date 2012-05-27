@@ -151,7 +151,7 @@ import middle::ty::{ty_vid, tys_in_fn_ty, region_vid, vid};
 import syntax::{ast, ast_util};
 import syntax::ast::{ret_style};
 import util::ppaux::{ty_to_str, mt_to_str};
-import result::{result, extensions, ok, err, map, map2, iter2};
+import result::{result, extensions, ok, err, map_vec, map_vec2, iter_vec2};
 import ty::{mk_fn, type_is_bot};
 import check::regionmanip::{collect_bound_regions_in_tys,
                             replace_bound_regions};
@@ -753,7 +753,7 @@ impl unify_methods for infer_ctxt {
         as: [@ty::type_constr], bs: [@ty::type_constr]) -> ures {
 
         if check vec::same_length(as, bs) {
-            iter2(as, bs) {|a,b|
+            iter_vec2(as, bs) {|a,b|
                 self.constrs(a, b)
             }
         } else {
@@ -1237,7 +1237,9 @@ fn super_tps<C:combine>(
     // variance.
 
     if check vec::same_length(as, bs) {
-        iter2(as, bs) {|a, b| self.infcx().eq_tys(a, b) }.then {||
+        iter_vec2(as, bs) {|a, b|
+            self.infcx().eq_tys(a, b)
+        }.then {||
             ok(as)
         }
     } else {
@@ -1331,7 +1333,7 @@ fn super_fns<C:combine>(
         self: C, a_args: [ty::arg], b_args: [ty::arg]) -> cres<[ty::arg]> {
 
         if check vec::same_length(a_args, b_args) {
-            map2(a_args, b_args) {|a, b| self.args(a, b) }
+            map_vec2(a_args, b_args) {|a, b| self.args(a, b) }
         } else {
             err(ty::terr_arg_count)
         }
@@ -1469,7 +1471,9 @@ fn super_tys<C:combine>(
 
       (ty::ty_rec(as), ty::ty_rec(bs)) {
         if check vec::same_length(as, bs) {
-            map2(as, bs) {|a,b| self.flds(a, b) }.chain {|flds|
+            map_vec2(as, bs) {|a,b|
+                self.flds(a, b)
+            }.chain {|flds|
                 ok(ty::mk_rec(tcx, flds))
             }
         } else {
@@ -1479,7 +1483,7 @@ fn super_tys<C:combine>(
 
       (ty::ty_tup(as), ty::ty_tup(bs)) {
         if check vec::same_length(as, bs) {
-            map2(as, bs) {|a, b| self.tys(a, b) }.chain {|ts|
+            map_vec2(as, bs) {|a, b| self.tys(a, b) }.chain {|ts|
                 ok(ty::mk_tup(tcx, ts))
             }
         } else {
