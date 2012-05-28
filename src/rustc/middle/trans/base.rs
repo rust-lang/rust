@@ -644,7 +644,7 @@ fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     assert bcx.ccx().tcx.intrinsic_ifaces.contains_key("ty_visitor");
     let (iid, ty) = bcx.ccx().tcx.intrinsic_ifaces.get("ty_visitor");
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
-    bcx = reflect::emit_calls_to_iface_visit_ty(bcx, t, Load(bcx, v), iid);
+    bcx = reflect::emit_calls_to_iface_visit_ty(bcx, t, v, iid);
     build_return(bcx);
 }
 

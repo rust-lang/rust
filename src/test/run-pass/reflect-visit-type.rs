@@ -1,9 +1,3 @@
-// xfail-test
-//
-// This doesn't work quite yet. There's something wrong with the callback
-// type when dispatching through the visit_glue. Get a GEP crash on the
-// callee.
-
 enum my_visitor = @{ mut types: [str] };
 
 impl of intrinsic::ty_visitor for my_visitor {
