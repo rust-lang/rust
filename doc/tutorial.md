@@ -274,7 +274,7 @@ characters. This is a bug that will eventually be fixed.
 
 The double-colon (`::`) is used as a module separator, so
 `io::println` means 'the thing named `println` in the module
-named `io`.
+named `io`'.
 
 Rust will normally emit warnings about unused variables. These can be
 suppressed by using a variable name that starts with an underscore.
@@ -1114,9 +1114,9 @@ enum direction {
 This will define `north`, `east`, `south`, and `west` as constants,
 all of which have type `direction`.
 
-When the enum is C like, that is none of the variants have parameters,
-it is possible to explicitly set the discriminator values to an integer
-value:
+When an enum is C-like, that is, when none of the variants have
+parameters, it is possible to explicitly set the discriminator values
+to an integer value:
 
 ~~~~
 enum color {
@@ -1372,7 +1372,7 @@ destructors. Resources might go away in the future.
 Rust datatypes are not trivial to copy (the way, for example,
 JavaScript values can be copied by simply taking one or two machine
 words and plunking them somewhere else). Shared boxes require
-reference count updates, big records, enums, or unique pointers require
+reference count updates, and big records, enums, or unique pointers require
 an arbitrary amount of data to be copied (plus updating the reference
 counts of shared boxes hanging off them).
 
@@ -1492,7 +1492,7 @@ simply pick the most efficient passing style. There is one exception,
 which will be described in the section on [generics](#generics).
 
 To explicitly set the passing-style for a parameter, you prefix the
-argument name with a sigil. There are two special passing styles that
+argument name with a sigil. There are three special passing styles that
 are often useful. The first is by-mutable-pointer, written with a
 single `&`:
 
@@ -1532,10 +1532,11 @@ non-copyable types.
 
 ## Generic functions
 
-Throughout this tutorial, I've been defining functions like `for_rev`
-that act only on integers. It is 2012, and we no longer expect to be
-defining such functions again and again for every type they apply to.
-Thus, Rust allows functions and datatypes to have type parameters.
+Throughout this tutorial, we've been defining functions like `for_rev`
+that act only on single data types. It is 2012, and we no longer
+expect to be defining such functions again and again for every type
+they apply to.  Thus, Rust allows functions and datatypes to have type
+parameters.
 
 ~~~~
 fn for_rev<T>(v: [T], act: fn(T)) {
@@ -1877,7 +1878,7 @@ just fine, but it does not have access to `enc::super_secret_number`.
 
 ## Namespaces
 
-Rust uses three different namespaces. One for modules, one for types,
+Rust uses three different namespaces: one for modules, one for types,
 and one for values. This means that this code is valid:
 
 ~~~~
@@ -1901,10 +1902,10 @@ though `str` is a built-in type name.
 The resolution process in Rust simply goes up the chain of contexts,
 looking for the name in each context. Nested functions and modules
 create new contexts inside their parent function or module. A file
-that's part of a bigger crate will have that crate's context as parent
-context.
+that's part of a bigger crate will have that crate's context as its
+parent context.
 
-Identifiers can shadow each others. In this program, `x` is of type
+Identifiers can shadow each other. In this program, `x` is of type
 `int`:
 
 ~~~~
