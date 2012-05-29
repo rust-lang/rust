@@ -67,6 +67,9 @@ fn compute_capture_vars(tcx: ty::ctxt,
     // first add entries for anything explicitly named in the cap clause
 
     for (*cap_clause).each { |cap_item|
+        #debug("Doing capture var: %s (%?)",
+               cap_item.name, cap_item.id);
+
         let cap_def = tcx.def_map.get(cap_item.id);
         let cap_def_id = ast_util::def_id_of_def(cap_def).node;
         if cap_item.is_move {

@@ -427,12 +427,17 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm), mode)
           }
           expr_fn(proto, decl, body, captures) {
-              expr_fn(proto, fold_fn_decl(decl, fld),
-                      fld.fold_block(body), captures)
+            expr_fn(proto, fold_fn_decl(decl, fld),
+                    fld.fold_block(body),
+                    @((*captures).map({|cap_item|
+                        @({id: fld.new_id((*cap_item).id)
+                           with *cap_item})})))
           }
           expr_fn_block(decl, body, captures) {
             expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block(body),
-                          captures)
+                          @((*captures).map({|cap_item|
+                              @({id: fld.new_id((*cap_item).id)
+                                 with *cap_item})})))
           }
           expr_block(blk) { expr_block(fld.fold_block(blk)) }
           expr_move(el, er) {

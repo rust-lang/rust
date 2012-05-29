@@ -1,5 +1,3 @@
-// xfail-test :(
-
 /**
 
 An implementation of the Graph500 Bread First Search problem in Rust.
@@ -267,8 +265,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         }
     }
 
-    let graph_arc = arc::shared_arc(copy graph);
-    let graph = *graph_arc;
+    let (res, graph) = arc::shared_arc(copy graph);
 
     let mut i = 0u;
     while par::any(colors, is_gray) {
@@ -277,8 +274,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         i += 1u;
         let old_len = colors.len();
 
-        let colors_arc = arc::shared_arc(copy colors);
-        let color = *colors_arc;
+        let (res, color) = arc::shared_arc(copy colors);
 
         colors = par::mapi(colors) {|i, c|
             let c : color = c;

@@ -252,7 +252,11 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
                 vfn(m.self_id);
                 vec::iter(tps) {|tp| vfn(tp.id)}
               }
-              visit::fk_anon(*) | visit::fk_fn_block(*) {
+              visit::fk_anon(_, capture_clause)
+              | visit::fk_fn_block(capture_clause) {
+                for vec::each(*capture_clause) {|clause|
+                    vfn(clause.id);
+                }
               }
             }
 
