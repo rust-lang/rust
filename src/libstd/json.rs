@@ -16,6 +16,7 @@ export to_str;
 export from_reader;
 export from_str;
 export eq;
+export to_json;
 
 export num;
 export string;
@@ -496,6 +497,110 @@ fn eq(value0: json, value1: json) -> bool {
       (null, null) { true }
       _ { false }
     }
+}
+
+iface to_json { fn to_json() -> json; }
+
+impl of to_json for json {
+    fn to_json() -> json { self }
+}
+
+impl of to_json for i8 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for i16 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for i32 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for i64 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for u8 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for u16 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for u32 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for u64 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for float {
+    fn to_json() -> json { num(self) }
+}
+
+impl of to_json for f32 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for f64 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for () {
+    fn to_json() -> json { null }
+}
+
+impl of to_json for bool {
+    fn to_json() -> json { boolean(self) }
+}
+
+impl of to_json for str {
+    fn to_json() -> json { string(self) }
+}
+
+impl <A: to_json copy, B: to_json copy> of to_json for (A, B) {
+    fn to_json() -> json {
+        let (a, b) = self;
+        list([a.to_json(), b.to_json()])
+    }
+}
+
+impl <A: to_json copy, B: to_json copy, C: to_json copy>
+  of to_json for (A, B, C) {
+    fn to_json() -> json {
+        let (a, b, c) = self;
+        list([a.to_json(), b.to_json(), c.to_json()])
+    }
+}
+
+impl <A: to_json> of to_json for [A] {
+    fn to_json() -> json { list(self.map { |elt| elt.to_json() }) }
+}
+
+impl <A: to_json copy> of to_json for hashmap<str, A> {
+    fn to_json() -> json {
+        let d = map::str_hash();
+        for self.each() { |key, value|
+            d.insert(key, value.to_json());
+        }
+        dict(d)
+    }
+}
+
+impl <A: to_json> of to_json for option<A> {
+    fn to_json() -> json {
+        alt self {
+          none { null }
+          some(value) { value.to_json() }
+        }
+    }
+}
+
+impl of to_str::to_str for json {
+    fn to_str() -> str { to_str(self) }
 }
 
 #[cfg(test)]
