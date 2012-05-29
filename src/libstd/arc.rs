@@ -76,34 +76,42 @@ fn clone<T: const>(rc: &arc<T>) -> arc<T> {
 
 // Convenience code for sharing arcs between tasks
 
-enum proto<T: send const> {
-    terminate,
-    shared_get(comm::chan<arc::arc<T>>)
+type get_chan<T: const send> = chan<chan<arc<T>>>;
+
+// (terminate, get)
+type shared_arc<T: const send> = (shared_arc_res, get_chan<T>);
+
+resource shared_arc_res(c: comm::chan<()>) {
+    c.send(());
 }
 
-resource shared_arc_res<T: send const>(c: comm::chan<proto<T>>) {
-    c.send(terminate);
-}
-
-fn shared_arc<T: send const>(-data: T) -> shared_arc_res<T> {
+fn shared_arc<T: send const>(-data: T) -> shared_arc<T> {
     let a = arc::arc(data);
-    let c = task::spawn_listener::<proto<T>>() {|p, move a|
+    let p = port();
+    let c = chan(p);
+    task::spawn() {|move a|
         let mut live = true;
+        let terminate = port();
+        let get = port();
+
+        c.send((chan(terminate), chan(get)));
+
         while live {
-            alt p.recv() {
-              terminate { live = false; }
-              shared_get(cc) {
-                cc.send(arc::clone(&a));
+            alt comm::select2(terminate, get) {
+              either::left(()) { live = false; }
+              either::right(cc) {
+                comm::send(cc, arc::clone(&a));
               }
             }
         }
     };
-    shared_arc_res(c)
+    let (terminate, get) = p.recv();
+    (shared_arc_res(terminate), get)
 }
 
-fn get_arc<T: send const>(c: comm::chan<proto<T>>) -> arc::arc<T> {
+fn get_arc<T: send const>(c: get_chan<T>) -> arc::arc<T> {
     let p = port();
-    c.send(shared_get(chan(p)));
+    c.send(chan(p));
     p.recv()
 }
 
@@ -135,5 +143,24 @@ mod tests {
         assert (*arc::get(&arc_v))[2] == 3;
 
         log(info, arc_v);
+    }
+
+    #[test]
+    fn auto_share_arc() {
+        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let (res, arc_c) = shared_arc(v);
+
+        let p = port();
+        let c = chan(p);
+
+        task::spawn() {||
+            let arc_v = get_arc(arc_c);
+            let v = *get(&arc_v);
+            assert v[2] == 3;
+
+            c.send(());
+        };
+
+        assert p.recv() == ();
     }
 }
