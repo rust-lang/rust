@@ -19,7 +19,7 @@ export tcp_err_data, tcp_connect_err_data;
 // operations on a tcp_socket
 export write, write_future, read_start, read_stop;
 // tcp server stuff
-export listen_for_conn, accept;
+export listen, accept;
 // tcp client stuff
 export connect;
 // helper methods
@@ -676,7 +676,7 @@ a `result` instance containing empty data of type `()` on a
 successful/normal shutdown, and a `tcp_err_data` record in the event
 of listen exiting because of an error
 "]
-fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
+fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
           on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
           +new_connect_cb: fn~(tcp_new_connection,
@@ -697,47 +697,48 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
     };
     let server_data_ptr = ptr::addr_of(server_data);
 
-    let setup_po = comm::port::<option<tcp_err_data>>();
-    let setup_ch = comm::chan(setup_po);
-    iotask::interact(iotask) {|loop_ptr|
-        let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
-                                                   port);
-        alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
-          0i32 {
-            alt uv::ll::tcp_bind(server_stream_ptr,
-                                 ptr::addr_of(tcp_addr)) {
+    let setup_result = comm::listen {|setup_ch|
+        iotask::interact(iotask) {|loop_ptr|
+            let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
+                                                       port);
+            alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
               0i32 {
-                alt uv::ll::listen(server_stream_ptr,
-                                   backlog as libc::c_int,
-                                   tcp_lfc_on_connection_cb) {
+                alt uv::ll::tcp_bind(server_stream_ptr,
+                                     ptr::addr_of(tcp_addr)) {
                   0i32 {
-                    uv::ll::set_data_for_uv_handle(
-                        server_stream_ptr,
-                        server_data_ptr);
-                    comm::send(setup_ch, none);
+                    alt uv::ll::listen(server_stream_ptr,
+                                       backlog as libc::c_int,
+                                       tcp_lfc_on_connection_cb) {
+                      0i32 {
+                        uv::ll::set_data_for_uv_handle(
+                            server_stream_ptr,
+                            server_data_ptr);
+                        comm::send(setup_ch, none);
+                      }
+                      _ {
+                        log(debug, "failure to uv_listen()");
+                        let err_data = uv::ll::get_last_err_data(loop_ptr);
+                        comm::send(setup_ch, some(err_data));
+                      }
+                    }
                   }
                   _ {
-                    log(debug, "failure to uv_listen()");
+                    log(debug, "failure to uv_tcp_bind");
                     let err_data = uv::ll::get_last_err_data(loop_ptr);
                     comm::send(setup_ch, some(err_data));
                   }
                 }
               }
               _ {
-                log(debug, "failure to uv_tcp_bind");
+                log(debug, "failure to uv_tcp_init");
                 let err_data = uv::ll::get_last_err_data(loop_ptr);
                 comm::send(setup_ch, some(err_data));
               }
             }
-          }
-          _ {
-            log(debug, "failure to uv_tcp_init");
-            let err_data = uv::ll::get_last_err_data(loop_ptr);
-            comm::send(setup_ch, some(err_data));
-          }
-        }
+        };
+        setup_ch.recv()
     };
-    alt comm::recv(setup_po) {
+    alt setup_result {
       some(err_data) {
         // we failed to bind/list w/ libuv
         result::err(err_data.to_tcp_err())
@@ -1338,7 +1339,7 @@ mod test {
         task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let listen_result =
-                listen_for_conn(server_ip_addr, server_port, 128u,
+                listen(server_ip_addr, server_port, 128u,
                 iotask,
                 // on_establish_cb -- called when listener is set up
                 {|kill_ch|
