@@ -4,9 +4,10 @@
 fn ok(f: fn@(x: &uint)) {
     // Here, g is a function that can accept a uint pointer with
     // lifetime r, and f is a function that can accept a uint pointer
-    // with any lifetime.  The assignment g = f should be OK (i.e., f
-    // should be a subtype of g), because f can be used in any context
-    // that expects g's type.  But this currently fails.
+    // with any lifetime.  The assignment g = f should be OK (i.e.,
+    // f's type should be a subtype of g's type), because f can be
+    // used in any context that expects g's type.  But this currently
+    // fails.
     let mut g: fn@(y: &r.uint) = fn@(x: &r.uint) { };
     g = f;
 }
