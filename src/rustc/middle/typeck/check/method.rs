@@ -201,27 +201,17 @@ impl methods for lookup {
                 // Check whether this impl has a method with the right name.
                 for im.methods.find({|m| m.ident == self.m_name}).each {|m|
 
-                    // determine the `self` with fresh variables for
-                    // each parameter:
-                    let {substs: self_substs, ty: self_ty} =
+                    // determine the `self` of the impl with fresh
+                    // variables for each parameter:
+                    let {substs: impl_substs, ty: impl_ty} =
                         impl_self_ty(self.fcx, im.did);
-
-                    // Here "self" refers to the callee side...
-                    let self_ty =
-                        universally_quantify_from_sty(
-                            self.fcx, self.expr.span, [self_ty],
-                            ty::get(self_ty).struct);
-
-                    // ... and "ty" refers to the caller side.
-                    let ty = self.self_ty;
 
                     // if we can assign the caller to the callee, that's a
                     // potential match.  Collect those in the vector.
-                    alt self.fcx.can_mk_subty(ty, self_ty) {
+                    alt self.fcx.can_mk_subty(self.self_ty, impl_ty) {
                       result::err(_) { /* keep looking */ }
                       result::ok(_) {
-                        results += [(ty, self_ty, self_substs,
-                                     m.n_tps, m.did)];
+                        results += [(impl_ty, impl_substs, m.n_tps, m.did)];
                       }
                     }
                 }
@@ -237,7 +227,7 @@ impl methods for lookup {
                     // but I cannot for the life of me figure out how to
                     // annotate resolve to preserve this information.
                     for results.eachi { |i, result|
-                        let (_, _, _, _, did) = result;
+                        let (_, _, _, did) = result;
                         let span = if did.crate == ast::local_crate {
                             alt check self.tcx().items.get(did.node) {
                               ast_map::node_method(m, _, _) { m.span }
@@ -253,8 +243,8 @@ impl methods for lookup {
                     }
                 }
 
-                let (ty, self_ty, self_substs, n_tps, did) = results[0];
-                alt self.fcx.mk_subty(ty, self_ty) {
+                let (impl_ty, impl_substs, n_tps, did) = results[0];
+                alt self.fcx.mk_subty(self.self_ty, impl_ty) {
                   result::ok(_) {}
                   result::err(_) {
                     self.tcx().sess.span_bug(
@@ -264,7 +254,7 @@ impl methods for lookup {
                 }
                 let fty = self.ty_from_did(did);
                 ret some(self.write_mty_from_fty(
-                    self_substs, n_tps, fty,
+                    impl_substs, n_tps, fty,
                     method_static(did)));
             }
         }
