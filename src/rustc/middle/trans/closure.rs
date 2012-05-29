@@ -321,7 +321,7 @@ fn build_closure(bcx0: block,
           capture::cap_drop {
             assert lv.kind == owned;
             bcx = drop_ty(bcx, lv.val, ty);
-            bcx = zero_alloca(bcx, lv.val, ty);
+            bcx = zero_mem(bcx, lv.val, ty);
           }
         }
     }

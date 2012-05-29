@@ -256,9 +256,29 @@ fn umin(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
 }
 
 fn alloca(cx: block, t: TypeRef) -> ValueRef {
+    alloca_maybe_zeroed(cx, t, false)
+}
+
+fn alloca_zeroed(cx: block, t: TypeRef) -> ValueRef {
+    alloca_maybe_zeroed(cx, t, true)
+}
+
+fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     let _icx = cx.insn_ctxt("alloca");
     if cx.unreachable { ret llvm::LLVMGetUndef(t); }
-    ret Alloca(raw_block(cx.fcx, cx.fcx.llstaticallocas), t);
+    let initcx = raw_block(cx.fcx, cx.fcx.llstaticallocas);
+    let p = Alloca(initcx, t);
+    if zero { Store(initcx, C_null(t), p); }
+    ret p;
+}
+
+fn zero_mem(cx: block, llptr: ValueRef, t: ty::t) -> block {
+    let _icx = cx.insn_ctxt("zero_mem");
+    let bcx = cx;
+    let ccx = cx.ccx();
+    let llty = type_of(ccx, t);
+    Store(bcx, C_null(llty), llptr);
+    ret bcx;
 }
 
 fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
@@ -1386,14 +1406,14 @@ fn move_val(cx: block, action: copy_action, dst: ValueRef,
         if src.kind == owned { src_val = Load(cx, src_val); }
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         Store(cx, src_val, dst);
-        if src.kind == owned { ret zero_alloca(cx, src.val, t); }
+        if src.kind == owned { ret zero_mem(cx, src.val, t); }
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
         ret cx;
     } else if type_is_structural_or_param(t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         memmove_ty(cx, dst, src_val, t);
-        if src.kind == owned { ret zero_alloca(cx, src_val, t); }
+        if src.kind == owned { ret zero_mem(cx, src_val, t); }
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
         ret cx;
@@ -1695,7 +1715,7 @@ fn root_value(bcx: block, val: ValueRef, ty: ty::t,
             #fmt["preserving until end of scope %d", scope_id]);
     }
 
-    let root_loc = alloca(bcx, type_of(bcx.ccx(), ty));
+    let root_loc = alloca_zeroed(bcx, type_of(bcx.ccx(), ty));
     copy_val(bcx, INIT, root_loc, val, ty);
     add_root_cleanup(bcx, scope_id, root_loc, ty);
 }
@@ -2585,7 +2605,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
         }
 
         let ty = expr_ty(lv.bcx, e);
-        let root_loc = alloca(lv.bcx, type_of(cx.ccx(), ty));
+        let root_loc = alloca_zeroed(lv.bcx, type_of(cx.ccx(), ty));
         let bcx = store_temp_expr(lv.bcx, INIT, root_loc, lv, ty, false);
         add_root_cleanup(bcx, scope_id, root_loc, ty);
         {bcx: bcx with lv}
@@ -2852,7 +2872,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         if lv.kind == owned || !ty::type_is_immediate(arg.ty) {
             memmove_ty(bcx, alloc, val, arg.ty);
             if move_out && ty::type_needs_drop(ccx.tcx, arg.ty) {
-                bcx = zero_alloca(bcx, val, arg.ty);
+                bcx = zero_mem(bcx, val, arg.ty);
             }
         } else { Store(bcx, val, alloc); }
         val = alloc;
@@ -3422,7 +3442,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
                e.id, scope_id];
 
         let ty = expr_ty(bcx, e);
-        let root_loc = alloca(bcx, type_of(bcx.ccx(), ty));
+        let root_loc = alloca_zeroed(bcx, type_of(bcx.ccx(), ty));
         let bcx = unrooted(bcx, e, save_in(root_loc));
 
         if !bcx.sess().no_asm_comments() {
@@ -3674,7 +3694,7 @@ fn lval_result_to_dps(lv: lval_result, ty: ty::t,
         } else if last_use {
             *cell = Load(bcx, val);
             if ty::type_needs_drop(ccx.tcx, ty) {
-                bcx = zero_alloca(bcx, val, ty);
+                bcx = zero_mem(bcx, val, ty);
             }
         } else {
             if kind == owned { val = Load(bcx, val); }
@@ -3982,21 +4002,11 @@ fn init_local(bcx: block, local: @ast::local) -> block {
             bcx = move_val(sub.bcx, INIT, llptr, sub, ty);
         }
       }
-      _ { bcx = zero_alloca(bcx, llptr, ty); }
+      _ { bcx = zero_mem(bcx, llptr, ty); }
     }
     // Make a note to drop this slot on the way out.
     add_clean(bcx, llptr, ty);
     ret alt::bind_irrefutable_pat(bcx, local.node.pat, llptr, false);
-}
-
-fn zero_alloca(cx: block, llptr: ValueRef, t: ty::t)
-    -> block {
-    let _icx = cx.insn_ctxt("zero_alloca");
-    let bcx = cx;
-    let ccx = cx.ccx();
-    let llty = type_of(ccx, t);
-    Store(bcx, C_null(llty), llptr);
-    ret bcx;
 }
 
 fn trans_stmt(cx: block, s: ast::stmt) -> block {
@@ -4785,8 +4795,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   // drop their LHS
   for fields.each {|field|
      let ix = field_idx_strict(bcx.tcx(), sp, field.ident, fields);
-     bcx = zero_alloca(bcx, GEPi(bcx, valptr, [0u, ix]),
-                       field.mt.ty);
+     bcx = zero_mem(bcx, GEPi(bcx, valptr, [0u, ix]), field.mt.ty);
   }
 
   // note we don't want to take *or* drop self.
