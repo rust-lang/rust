@@ -44,6 +44,7 @@ enum lint {
     path_statement,
     old_vecs,
     unrecognized_warning,
+    non_implicitly_copyable_typarams,
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -56,6 +57,7 @@ fn int_to_lint(i: int) -> lint {
       3 { path_statement }
       4 { old_vecs }
       5 { unrecognized_warning }
+      6 { non_implicitly_copyable_typarams }
     }
 }
 
@@ -103,6 +105,11 @@ fn get_lint_dict() -> lint_dict {
         ("unrecognized_warning",
          @{lint: unrecognized_warning,
            desc: "unrecognized warning attribute",
+           default: warn}),
+
+        ("non_implicitly_copyable_typarams",
+         @{lint: non_implicitly_copyable_typarams,
+           desc: "passing non implicitly copyable types as copy type params",
            default: warn})
 
     ];

@@ -112,7 +112,8 @@ export ty_var_id;
 export ty_to_def_id;
 export ty_fn_args;
 export type_constr;
-export kind, kind_sendable, kind_copyable, kind_noncopyable, kind_const;
+export kind, kind_implicitly_copyable, kind_sendable, kind_copyable;
+export kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
 export proto_kind, kind_lteq, type_kind;
 export operators;
@@ -455,7 +456,7 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     for vec::each(*bounds) {|bound|
         alt bound {
           bound_copy {
-            kind = raise_kind(kind, kind_copyable());
+            kind = raise_kind(kind, kind_implicitly_copyable());
           }
           bound_send { kind = raise_kind(kind, kind_send_only()); }
           bound_const { kind = raise_kind(kind, kind_const()); }

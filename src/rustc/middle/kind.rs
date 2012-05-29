@@ -9,6 +9,7 @@ import util::ppaux::{ty_to_str, tys_to_str};
 import syntax::print::pprust::expr_to_str;
 import freevars::freevar_entry;
 import dvec::extensions;
+import lint::non_implicitly_copyable_typarams;
 
 // Kind analysis pass.
 //
@@ -56,19 +57,26 @@ type rval_map = std::map::hashmap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
             method_map: typeck::method_map,
-            last_use_map: liveness::last_use_map};
+            last_use_map: liveness::last_use_map,
+            current_item: node_id};
 
-fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
-               last_use_map: liveness::last_use_map, crate: @crate) {
+fn check_crate(tcx: ty::ctxt,
+               method_map: typeck::method_map,
+               last_use_map: liveness::last_use_map,
+               crate: @crate) {
     let ctx = {tcx: tcx,
                method_map: method_map,
-               last_use_map: last_use_map};
+               last_use_map: last_use_map,
+               current_item: -1};
     let visit = visit::mk_vt(@{
         visit_expr: check_expr,
         visit_stmt: check_stmt,
         visit_block: check_block,
         visit_fn: check_fn,
-        visit_ty: check_ty
+        visit_ty: check_ty,
+        visit_item: fn@(i: @item, cx: ctx, v: visit::vt<ctx>) {
+            visit::visit_item(i, {current_item: i.id with cx}, v);
+        }
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
@@ -280,7 +288,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                   tys_to_str(cx.tcx, ts), ts.len(), *bounds, (*bounds).len());
             }
             vec::iter2(ts, *bounds) {|ty, bound|
-                check_bounds(cx, e.span, ty, bound)
+                check_bounds(cx, e.id, e.span, ty, bound)
             }
         }
       }
@@ -311,7 +319,7 @@ fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             vec::iter2(ts, *bounds) {|ty, bound|
-                check_bounds(cx, aty.span, ty, bound)
+                check_bounds(cx, aty.id, aty.span, ty, bound)
             }
         }
       }
@@ -320,15 +328,29 @@ fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_ty(aty, cx, v);
 }
 
-fn check_bounds(cx: ctx, sp: span, ty: ty::t, bounds: ty::param_bounds) {
+fn check_bounds(cx: ctx, id: node_id, sp: span,
+                ty: ty::t, bounds: ty::param_bounds) {
     let kind = ty::type_kind(cx.tcx, ty);
     let p_kind = ty::param_bounds_to_kind(bounds);
     if !ty::kind_lteq(p_kind, kind) {
-        cx.tcx.sess.span_err(
-            sp, "instantiating a type parameter with an incompatible type " +
-            "(needs `" + kind_to_str(p_kind) +
-            "`, got `" + kind_to_str(kind) +
-            "`, missing `" + kind_to_str(p_kind - kind) + "`)");
+        // If the only reason the kind check fails is because the
+        // argument type isn't implicitly copyable, consult the warning
+        // settings to figure out what to do.
+        let implicit = ty::kind_implicitly_copyable() - ty::kind_copyable();
+        if ty::kind_lteq(p_kind, kind | implicit) {
+            cx.tcx.sess.span_lint(
+                non_implicitly_copyable_typarams,
+                id, cx.current_item, sp,
+                "instantiating copy type parameter with a \
+                 not implicitly copyable type");
+        } else {
+            cx.tcx.sess.span_err(
+                sp,
+                "instantiating a type parameter with an incompatible type " +
+                "(needs `" + kind_to_str(p_kind) +
+                "`, got `" + kind_to_str(kind) +
+                "`, missing `" + kind_to_str(p_kind - kind) + "`)");
+        }
     }
 }
 
