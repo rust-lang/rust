@@ -61,12 +61,14 @@ type options = {
     test: bool,
     mode: mode,
     free: [str],
+    help: bool,
 };
 
 enum mode { system_mode, user_mode, local_mode }
 
 fn opts() -> [getopts::opt] {
-    [optflag("g"), optflag("G"), optopt("mode"), optflag("test")]
+    [optflag("g"), optflag("G"), optopt("mode"), optflag("test"),
+     optflag("h"), optflag("help")]
 }
 
 fn info(msg: str) {
@@ -172,7 +174,7 @@ fn rest(s: str, start: uint) -> str {
 
 fn need_dir(s: str) {
     if os::path_is_dir(s) { ret; }
-    if !os::make_dir(s, 0x1c0i32) {
+    if !os::make_dir(s, 493_i32 /* oct: 755 */) {
         fail #fmt["can't make_dir %s", s];
     }
 }
@@ -337,49 +339,55 @@ fn build_cargo_options(argv: [str]) -> options {
     };
 
     let test = opt_present(match, "test");
-    let G = opt_present(match, "G");
-    let g = opt_present(match, "g");
-    let m = opt_present(match, "mode");
+    let G    = opt_present(match, "G");
+    let g    = opt_present(match, "g");
+    let m    = opt_present(match, "mode");
+    let help = opt_present(match, "h") || opt_present(match, "help");
+
     let is_install = vec::len(match.free) > 1u && match.free[1] == "install";
 
     if G && g { fail "-G and -g both provided"; }
     if g && m { fail "--mode and -g both provided"; }
     if G && m { fail "--mode and -G both provided"; }
 
-    let mode = if is_install {
-        if G { system_mode }
-        else if g { user_mode }
-        else if m {
+    if !is_install && (g || G || m) {
+        fail "-g, -G, --mode are only valid for `install`";
+    }
+
+    let mode =
+        if !is_install || G { system_mode }
+        else if  g { user_mode }
+        else if !m { local_mode }
+        else {
             alt getopts::opt_str(match, "mode") {
                 "system" { system_mode }
-                "user" { user_mode }
-                "local" { local_mode }
-                _ { fail "argument to `mode` must be one of `system`" +
-                    ", `user`, or `local`";
-                }
-            }
-        } else { local_mode }
-    } else { system_mode };
+                "user"   { user_mode }
+                "local"  { local_mode }
+                _        { fail "argument to `mode` must be" +
+                                "one of `system`, `user`, or `local`"; }}
+        };
 
-    {test: test, mode: mode, free: match.free}
+    {test: test, mode: mode, free: match.free, help: help}
 }
 
 fn configure(opts: options) -> cargo {
+    // NOTE: to make init and sync save into non-root level directories
+    // simply get rid of syscargo, below
+
     let syscargo = result::get(get_cargo_sysroot());
+
     let get_cargo_dir = alt opts.mode {
         system_mode { get_cargo_sysroot }
         user_mode { get_cargo_root }
         local_mode { get_cargo_root_nearest }
     };
 
-    let p = alt get_cargo_dir() {
-        result::ok(p) { p }
-        result::err(e) { fail e }
-    };
+    let p = result::get(get_cargo_dir());
 
     let sources = map::str_hash::<source>();
     try_parse_sources(path::connect(syscargo, "sources.json"), sources);
     try_parse_sources(path::connect(syscargo, "local-sources.json"), sources);
+
     let mut c = {
         pgp: pgp::supported(),
         root: p,
@@ -467,17 +475,20 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
     let newv = os::list_dir_path(buildpath);
     let exec_suffix = os::exe_suffix();
     for newv.each {|ct|
+        // FIXME: What's up with the dual installation?  Both `install_to_dir`
+        // and `install_one_crate_to_sysroot` install the binary files...
+
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {
             #debug("  bin: %s", ct);
-            copy_warn(ct, c.bindir);
+            install_to_dir(ct, c.bindir);
             if c.opts.mode == system_mode {
                 install_one_crate_to_sysroot(ct, "bin");
             }
         } else {
             #debug("  lib: %s", ct);
-            copy_warn(ct, c.bindir);
+            install_to_dir(ct, c.libdir);
             if c.opts.mode == system_mode {
                 install_one_crate_to_sysroot(ct, libdir());
             }
@@ -491,7 +502,7 @@ fn install_one_crate_to_sysroot(ct: str, target: str) {
             let path = [_path, "..", target];
             check vec::is_not_empty(path);
             let target_dir = path::normalize(path::connect_many(path));
-            copy_warn(ct, target_dir);
+            install_to_dir(ct, target_dir);
         }
         none { }
     }
@@ -684,9 +695,10 @@ fn cmd_install(c: cargo) unsafe {
 
     let target = c.opts.free[2];
 
-    let wd = alt tempfile::mkdtemp(c.workdir + path::path_sep(), "") {
+    let wd_base = c.workdir + path::path_sep();
+    let wd = alt tempfile::mkdtemp(wd_base, "") {
         some(_wd) { _wd }
-        none { fail "needed temp dir"; }
+        none { fail #fmt("needed temp dir: %s", wd_base); }
     };
 
     if str::starts_with(target, "uuid:") {
@@ -802,9 +814,9 @@ fn cmd_init(c: cargo) {
 
     let r = pgp::verify(c.root, srcfile, sigfile, pgp::signing_key_fp());
     if !r {
-        warn(#fmt["signature verification failed for sources.json"]);
+        warn(#fmt["signature verification failed for '%s'", srcfile]);
     } else {
-        info(#fmt["signature ok for sources.json"]);
+        info(#fmt["signature ok for '%s'", srcfile]);
     }
     copy_warn(srcfile, destsrcfile);
 
@@ -847,44 +859,56 @@ fn cmd_search(c: cargo) {
     info(#fmt["Found %d packages.", n]);
 }
 
-fn copy_warn(src: str, dest: str) {
-  if !os::copy_file(src, dest) {
-      warn(#fmt["Copying %s to %s failed", src, dest]);
+fn install_to_dir(srcfile: str, destdir: str) {
+    let newfile = path::connect(destdir, path::basename(srcfile));
+    info(#fmt["Installing '%s'...", newfile]);
+
+    run::run_program("cp", [srcfile, newfile]);
+}
+
+fn copy_warn(srcfile: str, destfile: str) {
+  if !os::copy_file(srcfile, destfile) {
+      warn(#fmt["Copying %s to %s failed", srcfile, destfile]);
   }
 }
 
+// FIXME: decide on either [-g | -G] or [--mode=...] and remove the other
 fn cmd_usage() {
-    print("Usage: cargo <verb> [options] [args...]" +
-          "
+    print("Usage: cargo <verb> [options] [args...]\n" +
+          " e.g.: cargo [init | sync]\n" +
+          " e.g.: cargo install [-g | -G | --mode=MODE] ] [PACKAGE...]
 
-    init                                          Set up .cargo
-    install [options] [source/]package-name       Install by name
-    install [options] uuid:[source/]package-uuid  Install by uuid
-    list [source]                                 List packages
-    search <name | '*'> [tags...]                 Search packages
-    sync                                          Sync all sources
-    usage                                         This
+Initialization:
+    init           Set up the cargo system near this binary,
+                   for example, at  /usr/local/lib/cargo/
+    sync           Sync all package sources
 
-Options:
+Querying:
+    list [source]                        List packages
+    search <name | '*'> [tags...]        Search packages
+    usage                                Display this message
 
-  cargo install
+Package installation:
+    [options] [source/]PKGNAME           Install a package by name
+    [options] uuid:[source/]PKGUUID      Install a package by uuid
 
-    --mode=[system,user,local]   change mode as (system/user/local)
-    --test                       run crate tests before installing
-    -g                           equivalent to --mode=user
-    -G                           equivalent to --mode=system
+Package installation options:
+    --mode=MODE    Install to one of the following locations:
+                   local (./.cargo/bin/, which is the default),
+                   user (~/.cargo/bin/), or system (/usr/local/lib/cargo/bin/)
+    --test         Run crate tests before installing
+    -g             Equivalent to --mode=user
+    -G             Equivalent to --mode=system
 
-NOTE:
-\"cargo install\" installs bin/libs to local-level .cargo by default.
-To install them into user-level .cargo,  use option -g/--mode=user.
-To install them into bin/lib on sysroot, use option -G/--mode=system.
+Other:
+    -h, --help     Display this message
 ");
 }
 
 fn main(argv: [str]) {
     let o = build_cargo_options(argv);
 
-    if vec::len(o.free) < 2u {
+    if vec::len(o.free) < 2u || o.help {
         cmd_usage();
         ret;
     }
