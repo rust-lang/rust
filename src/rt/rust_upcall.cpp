@@ -164,13 +164,15 @@ exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
     size_t header_size = sizeof(rust_opaque_box);
     size_t body_size = size;
     size_t body_align = td->align;
+    // FIXME: This alignment calculation is suspicious. Is it right?
     size_t total_size = align_to(header_size, body_align) + body_size;
 
     void *p = task->kernel->malloc(total_size, "exchange malloc");
-    memset(p, '\0', total_size);
 
     rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
     header->td = td;
+
+    memset(&header[1], '\0', body_size);
 
     return (uintptr_t)header;
 }
