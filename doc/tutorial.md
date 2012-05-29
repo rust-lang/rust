@@ -1014,11 +1014,11 @@ let my_shape = circle({x: 0.0, y: 0.0}, 10.0);
 
 ## Records
 
-Rust record types are written `{field1: TYPE, field2: TYPE [, ...]}`,
-and record literals are written in the same way, but with expressions
-instead of types. They are quite similar to C structs, and even laid
-out the same way in memory (so you can read from a Rust struct in C,
-and vice-versa).
+Rust record types are written `{field1: T1, field2: T2 [, ...]}`,
+where `T1`, `T2`, ... denote types.  Record literals are written in
+the same way, but with expressions instead of types. They are quite
+similar to C structs, and even laid out the same way in memory (so you
+can read from a Rust struct in C, and vice-versa).
 
 The dot operator is used to access record fields (`mypoint.x`).
 
@@ -1220,10 +1220,10 @@ records with mutable fields, it can be useful to have a single copy on
 the heap, and refer to that through a pointer.
 
 Rust supports several types of pointers. The simplest is the unsafe
-pointer, written `*TYPE`, which is a completely unchecked pointer
-type only used in unsafe code (and thus, in typical Rust code, very
-rarely). The safe pointer types are `@TYPE` for shared,
-reference-counted boxes, and `~TYPE`, for uniquely-owned pointers.
+pointer, written `*T`, which is a completely unchecked pointer type
+only used in unsafe code (and thus, in typical Rust code, very
+rarely). The safe pointer types are `@T` for shared, reference-counted
+boxes, and `~T`, for uniquely-owned pointers.
 
 All pointer types can be dereferenced with the `*` unary operator.
 
@@ -1272,9 +1272,9 @@ become the sole owner of the box.
 
 ### Mutability
 
-All pointer types have a mutable variant, written `@mut TYPE` or
-`~mut TYPE`. Given such a pointer, you can write to its contents
-by combining the dereference operator with a mutating action.
+All pointer types have a mutable variant, written `@mut T` or `~mut
+T`. Given such a pointer, you can write to its contents by combining
+the dereference operator with a mutating action.
 
 ~~~~
 fn increase_contents(pt: @mut int) {
@@ -1285,8 +1285,8 @@ fn increase_contents(pt: @mut int) {
 ## Vectors
 
 Rust vectors are always heap-allocated and unique. A value of type
-`[TYPE]` is represented by a pointer to a section of heap memory
-containing any number of `TYPE` values.
+`[T]` is represented by a pointer to a section of heap memory
+containing any number of values of type `T`.
 
 NOTE: This uniqueness is turning out to be quite awkward in practice,
 and might change in the future.
@@ -1300,9 +1300,9 @@ if myvec[1] { io::println("boom"); }
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
-The type written as `[mut TYPE]` is a vector with mutable
-elements. Mutable vector literals are written `[mut]` (empty) or
-`[mut 1, 2, 3]` (with elements).
+The type written as `[mut T]` is a vector with mutable
+elements. Mutable vector literals are written `[mut]` (empty) or `[mut
+1, 2, 3]` (with elements).
 
 The `+` operator means concatenation when applied to vector types.
 Growing a vector in Rust is not as inefficient as it looks :
