@@ -131,12 +131,15 @@ impl extensions<A> for dvec<A> {
 impl extensions<A:copy> for dvec<A> {
     #[doc = "Append a single item to the end of the list"]
     fn push(t: A) {
-        self.swap { |v| v += [t]; v } // more efficient than v + [t]
+        self.swap { |v|
+            let mut v <- v; v += [t]; v // more efficient than v + [t]
+        }
     }
 
     #[doc = "Remove and return the last element"]
     fn pop() -> A {
         self.borrow { |v|
+            let mut v <- v;
             let result = vec::pop(v);
             self.return(v);
             result
@@ -157,6 +160,7 @@ impl extensions<A:copy> for dvec<A> {
     "]
     fn push_slice(ts: [const A]/&, from_idx: uint, to_idx: uint) {
         self.swap { |v|
+            let mut v <- v;
             let new_len = vec::len(v) + to_idx - from_idx;
             vec::reserve(v, new_len);
             let mut i = from_idx;
@@ -232,6 +236,10 @@ impl extensions<A:copy> for dvec<A> {
 
     #[doc = "Overwrites the contents of the element at `idx` with `a`"]
     fn grow_set_elt(idx: uint, initval: A, val: A) {
-        self.swap { |v| vec::grow_set(v, idx, initval, val); v }
+        self.swap { |v|
+            let mut v <- v;
+            vec::grow_set(v, idx, initval, val);
+            v
+        }
     }
 }

@@ -843,11 +843,8 @@ impl methods for check_loan_ctxt {
                self.bccx.cmt_to_repr(cmt)];
 
         alt cmt.cat {
-          // Rvalues and locals can be moved:
-          cat_rvalue | cat_local(_) { }
-
-          // Owned arguments can be moved:
-          cat_arg(_) if cmt.mutbl == m_mutbl { }
+          // Rvalues, locals, and arguments can be moved:
+          cat_rvalue | cat_local(_) | cat_arg(_) { }
 
           // We allow moving out of static items because the old code
           // did.  This seems consistent with permitting moves out of
@@ -1348,7 +1345,7 @@ impl categorize_methods for borrowck_ctxt {
                  lp: none}
               }
               ast::by_move | ast::by_copy {
-                {m: m_mutbl,
+                {m: m_imm,
                  lp: some(@lp_arg(vid))}
               }
               ast::by_ref {
@@ -1506,7 +1503,7 @@ impl categorize_methods for borrowck_ctxt {
           cat_special(sk_heap_upvar) { "upvar" }
           cat_rvalue { "non-lvalue" }
           cat_local(_) { mut_str + " local variable" }
-          cat_arg(_) { mut_str + " argument" }
+          cat_arg(_) { "argument" }
           cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
                                      mut_str, self.pk_to_sigil(pk)] }
           cat_stack_upvar(_) { mut_str + " upvar" }

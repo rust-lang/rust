@@ -1506,10 +1506,7 @@ impl check_methods for @liveness {
             (*self.ir).add_spill(var);
           }
           some(lnk) {
-            self.report_illegal_read(span, lnk, var, moved_variable);
-            self.tcx.sess.span_note(
-                span,
-                "move of variable occurred here");
+            self.report_illegal_move(span, lnk, var);
           }
         }
     }
@@ -1637,6 +1634,44 @@ impl check_methods for @liveness {
         }
     }
 
+    fn report_illegal_move(move_span: span,
+                           lnk: live_node_kind,
+                           var: variable) {
+
+        // the only time that it is possible to have a moved variable
+        // used by lnk_exit would be arguments or fields in a ctor.
+        // we give a slightly different error message in those cases.
+        if lnk == lnk_exit {
+            let vk = self.ir.var_kinds[*var];
+            alt vk {
+              vk_arg(_, name, _) {
+                self.tcx.sess.span_err(
+                    move_span,
+                    #fmt["illegal move from argument `%s`, which is not \
+                          copy or move mode", name]);
+                ret;
+              }
+              vk_field(name) {
+                self.tcx.sess.span_err(
+                    move_span,
+                    #fmt["illegal move from field `%s`", name]);
+                ret;
+              }
+              vk_local(*) | vk_self | vk_implicit_ret {
+                self.tcx.sess.span_bug(
+                    move_span,
+                    #fmt["illegal reader (%?) for `%?`",
+                         lnk, vk]);
+              }
+            }
+        }
+
+        self.report_illegal_read(move_span, lnk, var, moved_variable);
+        self.tcx.sess.span_note(
+            move_span, "move of variable occurred here");
+
+    }
+
     fn report_illegal_read(chk_span: span,
                            lnk: live_node_kind,
                            var: variable,
@@ -1658,7 +1693,8 @@ impl check_methods for @liveness {
                 span,
                 #fmt["use of %s: `%s`", msg, name]);
           }
-          lnk_exit | lnk_vdef(_) {
+          lnk_exit |
+          lnk_vdef(_) {
             self.tcx.sess.span_bug(
                 chk_span,
                 #fmt["illegal reader: %?", lnk]);
