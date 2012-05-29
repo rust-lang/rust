@@ -1,4 +1,4 @@
-// error-pattern: block type can only appear
+// error-pattern: stack closure type can only appear
 
 fn lol(f: fn()) -> fn() { ret f; }
 fn main() {

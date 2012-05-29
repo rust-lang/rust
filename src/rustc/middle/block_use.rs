@@ -15,7 +15,8 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     if !cx.allow_block {
         alt ty::get(ty::expr_ty(cx.tcx, ex)).struct {
           ty::ty_fn({proto: p, _}) if is_blockish(p) {
-            cx.tcx.sess.span_err(ex.span, "expressions with block type \
+            cx.tcx.sess.span_err(ex.span,
+               "expressions with stack closure type \
                 can only appear in callee or (by-ref) argument position");
           }
           _ {}
