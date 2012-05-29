@@ -713,6 +713,24 @@ fn cmd_install(c: cargo) unsafe {
                install_uuid(c, wd, uuid);
             }
         }
+    } else if str::starts_with(target, "git:") {
+        let ref = if c.opts.free.len() >= 4u {
+            some(c.opts.free[3u])
+        } else {
+            none
+        };
+        install_git(c, wd, target, ref)
+    } else if target == "git" {
+        if c.opts.free.len() < 4u {
+            fail #fmt("needed git url");
+        }
+        let url = c.opts.free[3u];
+        let ref = if c.opts.free.len() >= 5u {
+            some(c.opts.free[4u])
+        } else {
+            none
+        };
+        install_git(c, wd, url, ref)
     } else {
         let mut name = target;
         alt str::find_char(name, '/') {
@@ -891,6 +909,8 @@ Querying:
 Package installation:
     [options] [source/]PKGNAME           Install a package by name
     [options] uuid:[source/]PKGUUID      Install a package by uuid
+    [options] git [url] [ref]            Install a package by git
+    [options] git://[url] [ref]          Install a package by git
 
 Package installation options:
     --mode=MODE    Install to one of the following locations:
