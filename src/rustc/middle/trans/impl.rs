@@ -258,8 +258,13 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             C_null(T_ptr(T_nil()))
         } else {
-            let m_id = method_with_name(ccx, impl_id, im.ident);
+            let mut m_id = method_with_name(ccx, impl_id, im.ident);
             if has_tps {
+                // If the method is in another crate, need to make an inlined
+                // copy first
+                if m_id.crate != ast::local_crate {
+                    m_id = maybe_instantiate_inline(ccx, m_id);
+                }
                 monomorphic_fn(ccx, m_id, substs, some(vtables), none).val
             } else if m_id.crate == ast::local_crate {
                 get_item_val(ccx, m_id.node)

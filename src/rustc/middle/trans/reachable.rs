@@ -98,6 +98,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
         for vec::each(ms) {|m|
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
+                cx.rmap.insert(m.id, ());
                 traverse_inline_body(cx, m.body);
             }
         }
@@ -141,9 +142,13 @@ fn traverse_inline_body(cx: ctx, body: blk) {
         }
         visit::visit_expr(e, cx, v);
     }
-    // Ignore nested items
-    fn traverse_item(_i: @item, _cx: ctx, _v: visit::vt<ctx>) {}
-    visit::visit_block(body, cx, visit::mk_vt(@{
+    // Don't ignore nested items: for example if a generic fn contains a
+    // generic impl (as in deque::create), we need to monomorphize the
+    // impl as well
+    fn traverse_item(i: @item, cx: ctx, _v: visit::vt<ctx>) {
+      traverse_public_item(cx, i);
+    }
+     visit::visit_block(body, cx, visit::mk_vt(@{
         visit_expr: traverse_expr,
         visit_item: traverse_item
         with *visit::default_visitor()

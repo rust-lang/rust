@@ -40,6 +40,7 @@ import link::{mangle_internal_name_by_type_only,
 import metadata::{csearch, cstore, encoder};
 import metadata::common::link_meta;
 import util::ppaux::{ty_to_str, ty_to_short_str};
+import syntax::diagnostic::expect;
 
 import common::*;
 import build::*;
@@ -2052,7 +2053,10 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let mut item_ty = tpt.ty;
 
-    let map_node = ccx.tcx.items.get(fn_id.node);
+    let map_node = session::expect(ccx.sess, ccx.tcx.items.find(fn_id.node),
+     {|| #fmt("While monomorphizing %?, couldn't find it in the item map \
+        (may have attempted to monomorphize an item defined in a different \
+        crate?)", fn_id)});
     // Get the path so that we can create a symbol
     let (pt, name, span) = alt map_node {
       ast_map::node_item(i, pt) {
