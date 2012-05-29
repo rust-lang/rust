@@ -106,7 +106,7 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]) {
             });
           }
           none {
-            alt current_section {
+            alt copy current_section {
               some(section) {
                 current_section = some({
                     body: section.body + "\n" + line
@@ -114,14 +114,14 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]) {
                 });
               }
               none {
-                alt new_desc {
+                new_desc = alt new_desc {
                   some(desc) {
-                    new_desc = some(desc + "\n" + line);
+                    some(desc + "\n" + line)
                   }
                   none {
-                    new_desc = some(line);
+                    some(line)
                   }
-                }
+                };
               }
             }
           }
