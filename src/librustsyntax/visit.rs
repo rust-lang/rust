@@ -160,6 +160,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         v.visit_ty_params(tps, e, v);
         for methods.each {|m|
             for m.decl.inputs.each {|a| v.visit_ty(a.ty, e, v); }
+            v.visit_ty_params(m.tps, e, v);
             v.visit_ty(m.decl.output, e, v);
         }
       }

@@ -549,7 +549,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
     let sc = @cons(scope_item(i), sc);
     alt i.node {
       ast::item_impl(tps, _, ifce, sty, methods) {
-        visit::visit_ty_params(tps, sc, v);
+        v.visit_ty_params(tps, sc, v);
         option::iter(ifce) {|p| visit::visit_path(p.path, sc, v)};
         v.visit_ty(sty, sc, v);
         for methods.each {|m|
@@ -560,15 +560,17 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
         }
       }
       ast::item_iface(tps, _, methods) {
-        visit::visit_ty_params(tps, sc, v);
+        v.visit_ty_params(tps, sc, v);
+        let isc = @cons(scope_method(i.id, tps), sc);
         for methods.each {|m|
+            v.visit_ty_params(m.tps, isc, v);
             let msc = @cons(scope_method(i.id, tps + m.tps), sc);
             for m.decl.inputs.each {|a| v.visit_ty(a.ty, msc, v); }
             v.visit_ty(m.decl.output, msc, v);
         }
       }
       ast::item_class(tps, ifaces, members, ctor, m_dtor, _) {
-        visit::visit_ty_params(tps, sc, v);
+        v.visit_ty_params(tps, sc, v);
         // Can maybe skip this now that we require self on class fields
         let class_scope = @cons(scope_item(i), sc);
         /* visit the constructor... */
