@@ -682,6 +682,22 @@ fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
           +new_connect_cb: fn~(tcp_new_connection,
                                comm::chan<option<tcp_err_data>>))
     -> result::result<(), tcp_err_data> unsafe {
+    listen_common(host_ip, port, backlog, iotask, on_establish_cb)
+        // on_connect_cb
+        {|handle|
+            let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
+                as *tcp_listen_fc_data;
+            let new_conn = new_tcp_conn(handle);
+            let kill_ch = (*server_data_ptr).kill_ch;
+            new_connect_cb(new_conn, kill_ch);
+    }
+}
+
+fn listen_common(host_ip: ip::ip_addr, port: uint, backlog: uint,
+          iotask: iotask,
+          on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
+          -on_connect_cb: fn~(*uv::ll::uv_tcp_t))
+    -> result::result<(), tcp_err_data> unsafe {
     let stream_closed_po = comm::port::<()>();
     let kill_po = comm::port::<option<tcp_err_data>>();
     let kill_ch = comm::chan(kill_po);
@@ -691,7 +707,7 @@ fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
         server_stream_ptr: server_stream_ptr,
         stream_closed_ch: comm::chan(stream_closed_po),
         kill_ch: kill_ch,
-        new_connect_cb: new_connect_cb,
+        on_connect_cb: on_connect_cb,
         iotask: iotask,
         mut active: true
     };
@@ -1008,8 +1024,7 @@ type tcp_listen_fc_data = {
     server_stream_ptr: *uv::ll::uv_tcp_t,
     stream_closed_ch: comm::chan<()>,
     kill_ch: comm::chan<option<tcp_err_data>>,
-    new_connect_cb: fn~(tcp_new_connection,
-                        comm::chan<option<tcp_err_data>>),
+    on_connect_cb: fn~(*uv::ll::uv_tcp_t),
     iotask: iotask,
     mut active: bool
 };
@@ -1028,8 +1043,7 @@ crust fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
     if (*server_data_ptr).active {
         alt status {
           0i32 {
-            let new_conn = new_tcp_conn(handle);
-            (*server_data_ptr).new_connect_cb(new_conn, kill_ch);
+            (*server_data_ptr).on_connect_cb(handle);
           }
           _ {
             let loop_ptr = uv::ll::get_loop_for_uv_handle(handle);
