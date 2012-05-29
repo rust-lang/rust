@@ -120,7 +120,7 @@ fn int_ty_to_str(t: int_ty) -> str {
 fn int_ty_max(t: int_ty) -> u64 {
     alt t {
       ty_i8 { 0x80u64 }
-      ty_i16 { 0x800u64 }
+      ty_i16 { 0x8000u64 }
       ty_i | ty_char | ty_i32 { 0x80000000u64 } // actually ni about ty_i
       ty_i64 { 0x8000000000000000u64 }
     }
