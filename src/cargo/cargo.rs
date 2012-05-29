@@ -488,7 +488,7 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
             }
         } else {
             #debug("  lib: %s", ct);
-            install_to_dir(ct, c.bindir);
+            install_to_dir(ct, c.libdir);
             if c.opts.mode == system_mode {
                 install_one_crate_to_sysroot(ct, libdir());
             }
