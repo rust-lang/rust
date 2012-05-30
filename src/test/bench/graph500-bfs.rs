@@ -227,7 +227,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         }
     }
 
-    let (_res, graph) = arc::shared_arc(copy graph);
+    let graph = arc::arc(copy graph);
 
     let mut i = 0u;
     while par::any(colors, is_gray) {
@@ -236,33 +236,35 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         i += 1u;
         let old_len = colors.len();
 
-        let (_res, color) = arc::shared_arc(copy colors);
+        let color = arc::arc(colors);
 
-        colors = par::mapi(colors) {|i, c|
-            let c : color = c;
-            let colors = &arc::get_arc(color);
-            let colors = arc::get(colors);
-            let graph = &arc::get_arc(graph);
-            let graph = arc::get(graph);
-            alt c {
-              white {
-                let i = i as node_id;
-                
-                let neighbors = (*graph)[i];
-                
-                let mut color = white;
-                
-                neighbors.each() {|k|
-                    if is_gray((*colors)[k]) {
-                        color = gray(k);
-                        false
-                    }
-                    else { true }
+        colors = par::mapi_factory(*arc::get(&color)) {||
+            let colors = arc::clone(&color);
+            let graph = arc::clone(&graph);
+            fn~(i: uint, c: color) -> color {
+                let c : color = c;
+                let colors = arc::get(&colors);
+                let graph = arc::get(&graph);
+                alt c {
+                  white {
+                    let i = i as node_id;
+                    
+                    let neighbors = (*graph)[i];
+                    
+                    let mut color = white;
+                    
+                    neighbors.each() {|k|
+                        if is_gray((*colors)[k]) {
+                            color = gray(k);
+                            false
+                        }
+                        else { true }
                     };
-                color
-              }
-              gray(parent) { black(parent) }
-              black(parent) { black(parent) }
+                    color
+                  }
+                  gray(parent) { black(parent) }
+                  black(parent) { black(parent) }
+                }
             }
         };
         assert(colors.len() == old_len);

@@ -4,7 +4,7 @@ import comm::send;
 import comm::recv;
 import future::future;
 
-export map, mapi, alli, any;
+export map, mapi, alli, any, mapi_factory;
 
 #[doc="The maximum number of tasks this module will spawn for a single
 operationg."]
@@ -18,15 +18,16 @@ return the intermediate results.
 
 This is used to build most of the other parallel vector functions,
 like map or alli."]
-fn map_slices<A: copy send, B: copy send>(xs: [A],
-                                          f: fn~(uint, [const A]/&) -> B)
+fn map_slices<A: copy send, B: copy send>(
+    xs: [A],
+    f: fn() -> fn~(uint, [const A]/&) -> B)
     -> [B] {
 
     let len = xs.len();
     if len < min_granularity {
         log(info, "small slice");
         // This is a small vector, fall back on the normal map.
-        [f(0u, xs)]
+        [f()(0u, xs)]
     }
     else {
         let num_tasks = uint::min(max_tasks, len / min_granularity);
@@ -40,7 +41,7 @@ fn map_slices<A: copy send, B: copy send>(xs: [A],
             let end = uint::min(len, base + items_per_task);
             // FIXME: why is the ::<A, ()> annotation required here?
             vec::unpack_slice::<A, ()>(xs) {|p, _len|
-                let f = ptr::addr_of(f);
+                let f = f();
                 futures += [future::spawn() {|copy base|
                     unsafe {
                         let len = end - base;
@@ -52,7 +53,7 @@ fn map_slices<A: copy send, B: copy send>(xs: [A],
                         log(info, #fmt("slice: %?",
                                        (base, vec::len(slice), end - base)));
                         assert(vec::len(slice) == end - base);
-                        (*f)(base, slice)
+                        f(base, slice)
                     }
                 }];
             };
@@ -73,16 +74,40 @@ fn map_slices<A: copy send, B: copy send>(xs: [A],
 
 #[doc="A parallel version of map."]
 fn map<A: copy send, B: copy send>(xs: [A], f: fn~(A) -> B) -> [B] {
-    vec::concat(map_slices(xs) {|_base, slice|
-        vec::map(slice, f)
+    vec::concat(map_slices(xs) {||
+        fn~(_base: uint, slice : [const A]/&) -> [B] {
+            vec::map(slice, f)
+        }
     })
 }
 
 #[doc="A parallel version of mapi."]
 fn mapi<A: copy send, B: copy send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
-    let slices = map_slices(xs) {|base, slice|
-        vec::mapi(slice) {|i, x|
-            f(i + base, x)
+    let slices = map_slices(xs) {||
+        fn~(base: uint, slice : [const A]/&) -> [B] {
+            vec::mapi(slice) {|i, x|
+                f(i + base, x)
+            }
+        }
+    };
+    let r = vec::concat(slices);
+    log(info, (r.len(), xs.len()));
+    assert(r.len() == xs.len());
+    r
+}
+
+#[doc="A parallel version of mapi.
+
+In this case, f is a function that creates functions to run over the
+inner elements. This is to skirt the need for copy constructors."]
+fn mapi_factory<A: copy send, B: copy send>(
+    xs: [A], f: fn() -> fn~(uint, A) -> B) -> [B] {
+    let slices = map_slices(xs) {||
+        let f = f();
+        fn~(base: uint, slice : [const A]/&) -> [B] {
+            vec::mapi(slice) {|i, x|
+                f(i + base, x)
+            }
         }
     };
     let r = vec::concat(slices);
@@ -93,16 +118,16 @@ fn mapi<A: copy send, B: copy send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
 
 #[doc="Returns true if the function holds for all elements in the vector."]
 fn alli<A: copy send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
-    vec::all(map_slices(xs) {|base, slice|
+    vec::all(map_slices(xs) {|| fn~(base: uint, slice : [const A]/&) -> bool {
         vec::alli(slice) {|i, x|
             f(i + base, x)
         }
-    }) {|x| x }
+    }}) {|x| x }
 }
 
 #[doc="Returns true if the function holds for any elements in the vector."]
 fn any<A: copy send>(xs: [A], f: fn~(A) -> bool) -> bool {
-    vec::any(map_slices(xs) {|_base, slice|
+    vec::any(map_slices(xs) {|| fn~(_base : uint, slice: [const A]/&) -> bool {
         vec::any(slice, f)
-    }) {|x| x }
+    }}) {|x| x }
 }
