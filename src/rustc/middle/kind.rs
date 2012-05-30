@@ -96,10 +96,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         if !is_move { check_copy(cx, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
-        if !is_move {
-            for fv.each { |fv|
-                check_imm_free_var(cx, fv.def, fv.span);
-            }
+        for fv.each { |fv|
+            check_imm_free_var(cx, fv.def, fv.span);
         }
     }
 
@@ -110,10 +108,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         if !is_move { check_copy(cx, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
-        if !is_move {
-            for fv.each { |fv|
-                check_imm_free_var(cx, fv.def, fv.span);
-            }
+        for fv.each { |fv|
+            check_imm_free_var(cx, fv.def, fv.span);
         }
     }
 
@@ -391,8 +387,8 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
       }
       def_arg(_, mode) {
         alt ty::resolved_mode(cx.tcx, mode) {
-          by_ref | by_val { /* ok */ }
-          by_mutbl_ref | by_move | by_copy {
+          by_ref | by_val | by_move | by_copy { /* ok */ }
+          by_mutbl_ref {
             cx.tcx.sess.span_err(sp, msg);
           }
         }
