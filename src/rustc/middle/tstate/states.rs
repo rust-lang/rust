@@ -2,6 +2,7 @@ import ann::*;
 import aux::*;
 import tritv::{tritv_clone, tritv_set, ttrue};
 
+import syntax::print::pprust::block_to_str;
 import bitvectors::*;
 import pat_util::*;
 import syntax::ast::*;
@@ -13,9 +14,6 @@ import driver::session::session;
 import std::map::hashmap;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
-    //            fcx.ccx.tcx.sess.span_note(sp,
-    //              #fmt("forbid_upvar: checking. %?", t));
-
     alt t {
       oper_move {
         alt local_node_id_to_def(fcx, rhs_id) {
@@ -457,12 +455,18 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let mut changed = set_prestate_ann(fcx.ccx, e.id, loop_pres)
               | find_pre_post_state_block(fcx, loop_pres, body);
         /* conservative approximation: if a loop contains a break
-           or cont, we assume nothing about the poststate */
+           or cont, we assume nothing about the poststate (so, we
+           set all predicates to "don't know" */
         /* which is still unsound -- see [Break-unsound] */
         if may_break(body) {
                 /* Only do this if there are *breaks* not conts.
-                 An infinite loop with conts is still an infinite loop. */
-            ret changed | set_poststate_ann(fcx.ccx, e.id, pres);
+                 An infinite loop with conts is still an infinite loop.
+                We assume all preds are FALSE, not '?' -- because in the
+                worst case, the body could invalidate all preds and
+                deinitialize everything before breaking */
+            let post = empty_poststate(num_constrs);
+            tritv::tritv_kill(post);
+            ret changed | set_poststate_ann(fcx.ccx, e.id, post);
         } else {
             ret changed | set_poststate_ann(fcx.ccx, e.id,
                                             false_postcond(num_constrs));

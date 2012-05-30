@@ -109,27 +109,14 @@ fn trit_or(a: trit, b: trit) -> trit {
 fn trit_and(a: trit, b: trit) -> trit {
     alt a {
       dont_care { b }
-
-
-
-
       // also seems wrong for case b = ttrue
       ttrue {
         alt b {
           dont_care { ttrue }
-
-
-
-
           // ??? Seems wrong
           ttrue {
             ttrue
           }
-
-
-
-
-
           // false wins, since if something is uninit
           // on one path, we care
           // (Rationale: it's always safe to assume that
@@ -140,11 +127,6 @@ fn trit_and(a: trit, b: trit) -> trit {
           }
         }
       }
-
-
-
-
-
       // Rationale: if it's uninit on one path,
       // we can consider it as uninit on all paths
       tfalse {

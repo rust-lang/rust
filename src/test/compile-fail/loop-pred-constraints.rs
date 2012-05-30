@@ -1,4 +1,3 @@
-// xfail-test
 // https://github.com/mozilla/rust/issues/2374
 // error-pattern:unsatisfied precondition constraint (for example, even(y
 
