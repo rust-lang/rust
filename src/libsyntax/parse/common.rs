@@ -18,7 +18,7 @@ fn seq_sep_none() -> seq_sep {
 }
 
 fn token_to_str(reader: reader, ++token: token::token) -> str {
-    token::to_str(*reader.interner, token)
+    token::to_str(*reader.interner(), token)
 }
 
 // This should be done with traits, once traits work

@@ -374,13 +374,10 @@ enum blk_sort {
 */
 
 #[auto_serialize]
-type token_tree = spanned<token_tree_>;
-
-#[auto_serialize]
-enum token_tree_ {
+enum token_tree {
     /* for macro invocations; parsing is the macro's job */
-    tt_delim(token::token, [token_tree]),
-    tt_flat(token::token)
+    tt_delim([token_tree]),
+    tt_flat(uint, token::token)
 }
 
 #[auto_serialize]

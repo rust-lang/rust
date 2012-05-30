@@ -71,10 +71,11 @@ class parser {
     let keywords: hashmap<str, ()>;
     let restricted_keywords: hashmap<str, ()>;
 
-    new(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
-        ftype: file_type) {
-        let tok0 = lexer::next_token(rdr);
-        let span0 = ast_util::mk_sp(tok0.chpos, rdr.chpos);
+    new(sess: parse_sess, cfg: ast::crate_cfg, +rdr: reader, ftype: file_type)
+    {
+        self.reader <- rdr;
+        let tok0 = self.reader.next_token();
+        let span0 = ast_util::mk_sp(tok0.chpos, self.reader.chpos());
         self.sess = sess;
         self.cfg = cfg;
         self.file_type = ftype;
@@ -90,7 +91,6 @@ class parser {
         self.buffer_start = 0;
         self.buffer_end = 0;
         self.restriction = UNRESTRICTED;
-        self.reader = rdr;
         self.keywords = token::keyword_table();
         self.restricted_keywords = token::restricted_keyword_table();
     }
@@ -101,9 +101,9 @@ class parser {
     fn bump() {
         self.last_span = self.span;
         if self.buffer_start == self.buffer_end {
-            let next = lexer::next_token(self.reader);
+            let next = self.reader.next_token();
             self.token = next.tok;
-            self.span = mk_sp(next.chpos, self.reader.chpos);
+            self.span = mk_sp(next.chpos, self.reader.chpos());
         } else {
             let next = self.buffer[self.buffer_start];
             self.buffer_start = (self.buffer_start + 1) & 3;
@@ -124,8 +124,8 @@ class parser {
     fn look_ahead(distance: uint) -> token::token {
         let dist = distance as int;
         while self.buffer_length() < dist {
-            let next = lexer::next_token(self.reader);
-            let sp = mk_sp(next.chpos, self.reader.chpos);
+            let next = self.reader.next_token();
+            let sp = mk_sp(next.chpos, self.reader.chpos());
             self.buffer[self.buffer_end] = {tok: next.tok, span: sp};
             self.buffer_end = (self.buffer_end + 1) & 3;
         }
@@ -144,7 +144,7 @@ class parser {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
     fn get_str(i: token::str_num) -> @str {
-        interner::get(*self.reader.interner, i)
+        interner::get(*self.reader.interner(), i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 
@@ -1060,7 +1060,7 @@ class parser {
 
     fn parse_token_tree() -> token_tree {
         #[doc="what's the opposite delimiter?"]
-        fn flip(t: token::token) -> token::token {
+        fn flip(&t: token::token) -> token::token {
             alt t {
               token::LPAREN { token::RPAREN }
               token::LBRACE { token::RBRACE }

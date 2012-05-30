@@ -64,11 +64,12 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
     #debug("looking for companion mod %s", modpath);
     if file_exists(modpath) {
         #debug("found companion mod");
-        let p0 = new_parser_from_file(cx.sess, cx.cfg, modpath, SOURCE_FILE);
+        let (p0, r0) = new_parser_etc_from_file(cx.sess, cx.cfg,
+                                                modpath, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
-        cx.sess.chpos = p0.reader.chpos;
-        cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;
+        cx.sess.chpos = p0.reader.chpos();
+        cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         ret (m0.view_items, m0.items, inner_attrs.inner);
     } else {
         ret ([], [], []);
@@ -94,8 +95,8 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
             if path::path_is_absolute(*file_path) {
                 *file_path
             } else { prefix + path::path_sep() + *file_path };
-        let p0 =
-            new_parser_from_file(cx.sess, cx.cfg, full_path, SOURCE_FILE);
+        let (p0, r0) =
+            new_parser_etc_from_file(cx.sess, cx.cfg, full_path, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let mod_attrs = attrs + inner_attrs.inner;
         let first_item_outer_attrs = inner_attrs.next;
@@ -105,8 +106,8 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
                            /* FIXME: bad */ copy id,
                            ast::item_mod(m0), ast::public, mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
-        cx.sess.chpos = p0.reader.chpos;
-        cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;
+        cx.sess.chpos = p0.reader.chpos();
+        cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         items += [i];
       }
       ast::cdir_dir_mod(id, cdirs, attrs) {
