@@ -115,14 +115,18 @@ fn check_fn_states(fcx: fn_ctxt,
 fn fn_states(fk: visit::fn_kind, f_decl: ast::fn_decl, f_body: ast::blk,
              sp: span, id: node_id,
              ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn(fk, f_decl, f_body, sp, id, ccx, v);
-    /* Look up the var-to-bit-num map for this function */
 
-    assert (ccx.fm.contains_key(id));
-    let f_info = ccx.fm.get(id);
-    let name = visit::name_of_fn(fk);
-    let fcx = {enclosing: f_info, id: id, name: name, ccx: ccx};
-    check_fn_states(fcx, fk, f_decl, f_body, sp, id)
+    // We may not care about typestate for this function if it contains
+    // no constrained calls
+    if ccx.fm.contains_key(id) {
+        visit::visit_fn(fk, f_decl, f_body, sp, id, ccx, v);
+        /* Look up the var-to-bit-num map for this function */
+
+        let f_info = ccx.fm.get(id);
+        let name = visit::name_of_fn(fk);
+        let fcx = {enclosing: f_info, id: id, name: name, ccx: ccx};
+        check_fn_states(fcx, fk, f_decl, f_body, sp, id)
+    }
 }
 
 fn check_crate(cx: ty::ctxt, crate: @crate) {

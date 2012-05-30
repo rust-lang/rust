@@ -618,17 +618,49 @@ fn find_pre_post_fn(fcx: fn_ctxt, body: blk) {
     }
 }
 
+fn contains_constrained_calls(tcx: ty::ctxt, body: blk) -> bool {
+    type cx = @{
+        tcx: ty::ctxt,
+        mut has: bool
+    };
+    let cx = @{
+        tcx: tcx,
+        mut has: false
+    };
+    let vtor = visit::default_visitor::<cx>();
+    let vtor = @{visit_expr: visit_expr with *vtor};
+    visit::visit_block(body, cx, visit::mk_vt(vtor));
+    ret cx.has;
+
+    fn visit_expr(e: @expr, &&cx: cx, v: visit::vt<cx>) {
+        import syntax::print::pprust;
+        #debug("visiting %?", pprust::expr_to_str(e));
+
+        visit::visit_expr(e, cx, v);
+
+        if constraints_expr(cx.tcx, e).is_not_empty() {
+            #debug("has constraints");
+            cx.has = true;
+        } else {
+            #debug("has not constraints");
+        }
+    }
+}
+
 fn fn_pre_post(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
                id: node_id,
                ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
-    visit::visit_fn(fk, decl, body, sp, id, ccx, v);
-    assert (ccx.fm.contains_key(id));
-    let fcx =
-        {enclosing: ccx.fm.get(id),
-         id: id,
-         name: visit::name_of_fn(fk),
-         ccx: ccx};
-    find_pre_post_fn(fcx, body);
+
+    if contains_constrained_calls(ccx.tcx, body) {
+        visit::visit_fn(fk, decl, body, sp, id, ccx, v);
+        assert (ccx.fm.contains_key(id));
+        let fcx =
+            {enclosing: ccx.fm.get(id),
+             id: id,
+             name: visit::name_of_fn(fk),
+             ccx: ccx};
+        find_pre_post_fn(fcx, body);
+    }
 }
 
 //
