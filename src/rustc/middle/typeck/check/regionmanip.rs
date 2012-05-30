@@ -2,33 +2,40 @@ import syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
 
-// Extracts the bound regions from bound_tys and then replaces those same
-// regions in `sty` with fresh region variables, returning the resulting type.
-// Does not descend into fn types.  This is used when deciding whether an impl
-// applies at a given call site.
-fn universally_quantify_from_sty(fcx: @fn_ctxt,
-                                 span: span,
-                                 bound_tys: [ty::t],
-                                 sty: ty::sty) -> ty::t {
+fn replace_bound_regions_in_fn_ty(
+    tcx: ty::ctxt,
+    isr: isr_alist,
+    self_ty: option<ty::t>,
+    fn_ty: ty::fn_ty,
+    mapf: fn(ty::bound_region) -> ty::region) -> {isr: isr_alist,
+                                                  self_ty: option<ty::t>,
+                                                  fn_ty: ty::fn_ty} {
 
-    #debug["universally_quantify_from_sty(bound_tys=%?)",
-           bound_tys.map {|x| fcx.infcx.ty_to_str(x) }];
-    indent {||
-        let tcx = fcx.tcx();
-        let isr = collect_bound_regions_in_tys(tcx, @nil, bound_tys) { |br|
-            let rvar = fcx.infcx.next_region_var();
-            #debug["Bound region %s maps to %s",
-                   bound_region_to_str(fcx.ccx.tcx, br),
-                   region_to_str(fcx.ccx.tcx, rvar)];
-            rvar
-        };
-        let t_res = ty::fold_sty_to_ty(fcx.ccx.tcx, sty) { |t|
-            replace_bound_regions(tcx, span, isr, t)
-        };
-        #debug["Result of universal quant. is %s",
-               fcx.infcx.ty_to_str(t_res)];
-        t_res
-    }
+    let mut all_tys = ty::tys_in_fn_ty(fn_ty);
+    for self_ty.each { |t| all_tys += [t] }
+
+    #debug["replace_bound_regions_in_fn_ty(self_ty=%?, fn_ty=%s, all_tys=%?)",
+           self_ty.map { |t| ty_to_str(tcx, t) },
+           ty_to_str(tcx, ty::mk_fn(tcx, fn_ty)),
+           all_tys.map { |t| ty_to_str(tcx, t) }];
+    let _i = indenter();
+
+    let isr = collect_bound_regions_in_tys(tcx, isr, all_tys) { |br|
+        #debug["br=%?", br];
+        mapf(br)
+    };
+    let t_fn = ty::fold_sty_to_ty(tcx, ty::ty_fn(fn_ty)) { |t|
+        replace_bound_regions(tcx, isr, t)
+    };
+    let t_self = self_ty.map { |t| replace_bound_regions(tcx, isr, t) };
+
+    #debug["result of replace_bound_regions_in_fn_ty: self_ty=%?, fn_ty=%s",
+           t_self.map { |t| ty_to_str(tcx, t) },
+           ty_to_str(tcx, t_fn)];
+
+    ret {isr: isr,
+         self_ty: t_self,
+         fn_ty: alt check ty::get(t_fn).struct { ty::ty_fn(o) {o} }};
 }
 
 // Takes `isr`, a mapping from in-scope region names ("isr"s) to their
@@ -38,7 +45,6 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
 // with the corresponding bindings in `isr`.
 fn replace_bound_regions(
     tcx: ty::ctxt,
-    span: span,
     isr: isr_alist,
     ty: ty::t) -> ty::t {
 
@@ -58,8 +64,7 @@ fn replace_bound_regions(
               // within that remain bound:
               none if in_fn { r }
               none {
-                tcx.sess.span_bug(
-                    span,
+                tcx.sess.bug(
                     #fmt["Bound region not found in \
                           in_scope_regions list: %s",
                          region_to_str(tcx, r)]);

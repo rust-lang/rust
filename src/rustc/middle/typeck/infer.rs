@@ -153,8 +153,7 @@ import syntax::ast::{ret_style};
 import util::ppaux::{ty_to_str, mt_to_str};
 import result::{result, extensions, ok, err, map_vec, map_vec2, iter_vec2};
 import ty::{mk_fn, type_is_bot};
-import check::regionmanip::{collect_bound_regions_in_tys,
-                            replace_bound_regions};
+import check::regionmanip::{replace_bound_regions_in_fn_ty};
 import driver::session::session;
 import util::common::{indent, indenter};
 
@@ -1622,72 +1621,32 @@ impl of combine for sub {
 
         // First, we instantiate each bound region in the subtype with a fresh
         // region variable.
-
-        // FIXME: This code is kinda redundant with
-        // regionmanip::universally_quantify_from_sty, except for the
-        // `sty` part.  Fix somehow?
-
-        // a_isr is a mapping from all the bound regions in `a` to
-        // freshly created region variables for them.
-        let a_isr =
-            collect_bound_regions_in_tys(self.tcx,
-                                         @nil,
-                                         tys_in_fn_ty(a)) {
-            |br|
-
-            // N.B.: The name of the bound region doesn't have
-            // anything to do with the region variable that's created
-            // for it.  The only thing we're doing with `br` here is
-            // using it in the debug message.
-            let rvar = self.infcx().next_region_var();
-            #debug["Bound region %s maps to %s",
-                   bound_region_to_str(self.tcx, br),
-                   region_to_str(self.tcx, rvar)];
-            rvar
+        let {fn_ty: a_fn_ty, _} = {
+            replace_bound_regions_in_fn_ty(self.tcx, @nil, none, a) { |br|
+                // N.B.: The name of the bound region doesn't have
+                // anything to do with the region variable that's created
+                // for it.  The only thing we're doing with `br` here is
+                // using it in the debug message.
+                let rvar = self.infcx().next_region_var();
+                #debug["Bound region %s maps to %s",
+                       bound_region_to_str(self.tcx, br),
+                       region_to_str(self.tcx, rvar)];
+                rvar
+            }
         };
-
-        let a_ty = replace_bound_regions(self.tcx,
-                                         ast_util::dummy_sp(),
-                                         a_isr,
-                                         mk_fn(self.tcx, a));
-        #debug["a_ty: %s", self.infcx().ty_to_str(a_ty)];
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
+        let {fn_ty: b_fn_ty, _} = {
+            replace_bound_regions_in_fn_ty(self.tcx, @nil, none, b) { |br|
+                // FIXME: eventually re_skolemized (issue #2263)
+                ty::re_bound(br)
+            }
+        };
 
-        // a_isr is a mapping from all the bound regions in `b` to
-        // the result of calling re_bound on them.
-        let b_isr =
-            collect_bound_regions_in_tys(self.tcx,
-                                         @nil,
-                                         tys_in_fn_ty(b)) {
-            |br| ty::re_bound(br) };
-            // FIXME: or maybe re_skolemized? What would that look like?
-            // (issue #2263)
-
-        let b_ty = replace_bound_regions(self.tcx,
-                                         ast_util::dummy_sp(),
-                                         b_isr,
-                                         mk_fn(self.tcx, b));
-        #debug["b_ty: %s", self.infcx().ty_to_str(b_ty)];
-
-        // Turn back into ty::fn_ty.
-        alt (ty::get(a_ty).struct, ty::get(b_ty).struct) {
-          (ty::ty_fn(a_fn_ty), ty::ty_fn(b_fn_ty)) {
-            // Try to compare the supertype and subtype now that they've been
-            // instantiated.
-            super_fns(self, a_fn_ty, b_fn_ty)
-
-          }
-          _ {
-            // Shouldn't happen.
-            self.infcx().tcx.sess.bug(
-                #fmt["%s: at least one of %s and %s isn't a fn_ty",
-                     self.tag(),
-                     self.infcx().ty_to_str(a_ty),
-                     self.infcx().ty_to_str(b_ty)]);
-          }
-        }
+        // Try to compare the supertype and subtype now that they've been
+        // instantiated.
+        super_fns(self, a_fn_ty, b_fn_ty)
     }
 
     // Traits please:

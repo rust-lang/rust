@@ -1,7 +1,6 @@
 /* Code to handle method lookups (which can be quite complex) */
 
 import syntax::ast_map;
-import regionmanip::universally_quantify_from_sty;
 import middle::typeck::infer::methods; // next_ty_vars
 
 enum lookup = {

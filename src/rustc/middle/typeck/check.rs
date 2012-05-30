@@ -70,7 +70,7 @@ import astconv::{ast_conv, ast_ty_to_ty};
 import collect::{methods}; // ccx.to_ty()
 import method::{methods};  // methods for method::lookup
 import middle::ty::tys_in_fn_ty;
-import regionmanip::{universally_quantify_from_sty,
+import regionmanip::{replace_bound_regions_in_fn_ty,
                      region_of, replace_bound_regions,
                      collect_bound_regions_in_tys};
 import rscope::*;
@@ -84,7 +84,6 @@ type fn_ctxt =
      // Used by loop bodies that return from the outer function
      indirect_ret_ty: option<ty::t>,
      purity: ast::purity,
-     proto: ast::proto,
      infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, ty_vid>,
 
@@ -128,55 +127,41 @@ fn check_bare_fn(ccx: @crate_ctxt,
                  id: ast::node_id,
                  self_ty: option<ty::t>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
-    let ret_ty = ty::ty_fn_ret(fty);
-    let arg_tys = vec::map(ty::ty_fn_args(fty)) {|a| a.ty };
-    check_fn(ccx, ast::proto_bare, decl, body,
-             ret_ty, arg_tys, false, none, self_ty);
+    let fn_ty = alt check ty::get(fty).struct { ty::ty_fn(f) {f} };
+    check_fn(ccx, self_ty, fn_ty, decl, body, false, none);
 }
 
 fn check_fn(ccx: @crate_ctxt,
-            proto: ast::proto,
+            self_ty: option<ty::t>,
+            fn_ty: ty::fn_ty,
             decl: ast::fn_decl,
             body: ast::blk,
-            ret_ty: ty::t,
-            arg_tys: [ty::t],
             indirect_ret: bool,
-            old_fcx: option<@fn_ctxt>,
-            self_ty: option<ty::t>) {
+            old_fcx: option<@fn_ctxt>) {
 
     let tcx = ccx.tcx;
 
-    let isr = {
-        // Find the list of in-scope regions.  These are derived from the
-        // various regions that are bound in the argument, return, and self
-        // types.  For each of those bound regions, we will create a mapping
-        // to a free region tied to the node_id of this function.  For an
-        // in-depth discussion of why we must distinguish bound/free regions,
-        // see the big comment in region.rs.
-        let all_tys = arg_tys + [ret_ty] + self_ty.to_vec();
-        let old_isr = option::map_default(old_fcx, @nil) {
-            |fcx| fcx.in_scope_regions };
-        collect_bound_regions_in_tys(tcx, old_isr, all_tys) {
-            |br| ty::re_free(body.node.id, br) }
+    // ______________________________________________________________________
+    // First, we have to replace any bound regions in the fn and self
+    // types with free ones.  The free region references will be bound
+    // the node_id of the body block.
+
+    let {isr, self_ty, fn_ty} = {
+        let old_isr = option::map_default(old_fcx, @nil,
+                                         { |fcx| fcx.in_scope_regions });
+        replace_bound_regions_in_fn_ty(tcx, old_isr, self_ty, fn_ty,
+                                       { |br| ty::re_free(body.node.id, br) })
     };
 
-    // Replace the bound regions that appear in the arg tys, ret ty, etc with
-    // the free versions we just collected.
-    let arg_tys = arg_tys.map {
-        |arg_ty| replace_bound_regions(tcx, body.span, isr, arg_ty)
-    };
-    let ret_ty = {
-        replace_bound_regions(tcx, body.span, isr, ret_ty)
-    };
-    let self_ty = option::map(self_ty) {
-        |self_ty| replace_bound_regions(tcx, body.span, isr, self_ty)
-    };
+    let arg_tys = fn_ty.inputs.map { |a| a.ty };
+    let ret_ty = fn_ty.output;
 
     #debug["check_fn(arg_tys=%?, ret_ty=%?, self_ty=%?)",
            arg_tys.map {|a| ty_to_str(tcx, a) },
            ty_to_str(tcx, ret_ty),
            option::map(self_ty) {|st| ty_to_str(tcx, st) }];
 
+    // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
     let fcx: @fn_ctxt = {
@@ -211,7 +196,6 @@ fn check_fn(ccx: @crate_ctxt,
           ret_ty: ret_ty,
           indirect_ret_ty: indirect_ret_ty,
           purity: purity,
-          proto: proto,
           infcx: infcx,
           locals: locals,
           mut blocks: [],
@@ -708,7 +692,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(
-        fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id, fty: ty::t,
+        fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id, in_fty: ty::t,
         args: [option<@ast::expr>]) -> {fty: ty::t, bot: bool} {
 
         let mut bot = false;
@@ -716,66 +700,58 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Replace all region parameters in the arguments and return
         // type with fresh region variables.
 
-        #debug["check_call_or_bind: before universal quant., fty=%s",
-               fcx.infcx.ty_to_str(fty)];
+        #debug["check_call_or_bind: before universal quant., in_fty=%s",
+               fcx.infcx.ty_to_str(in_fty)];
 
         // This is subtle: we expect `fty` to be a function type, which
         // normally introduce a level of binding.  In this case, we want to
         // process the types bound by the function but not by any nested
         // functions.  Therefore, we match one level of structure.
-        let fty =
-            alt structure_of(fcx, sp, fty) {
-              sty @ ty::ty_fn(inner_fty) {
-                let all_tys = tys_in_fn_ty(inner_fty);
-                universally_quantify_from_sty(fcx, sp, all_tys, sty)
+        let fn_ty =
+            alt structure_of(fcx, sp, in_fty) {
+              sty @ ty::ty_fn(fn_ty) {
+                replace_bound_regions_in_fn_ty(
+                    fcx.ccx.tcx, @nil, none, fn_ty,
+                    { |_br| fcx.infcx.next_region_var() }).fn_ty
               }
               sty {
-                #debug["not a fn ty: %?", sty];
-
-                // if not a function type, we're gonna' report an error at
-                // some point, since the user is trying to call this thing
-                fty
+                // I would like to make this span_err, but it's
+                // really hard due to the way that expr_bind() is
+                // written.
+                fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
+                                                 expected function or native \
+                                                 function but found "
+                                            + fcx.infcx.ty_to_str(in_fty));
               }
             };
 
+        let fty = ty::mk_fn(fcx.tcx(), fn_ty);
         #debug["check_call_or_bind: after universal quant., fty=%s",
                fcx.infcx.ty_to_str(fty)];
 
         let supplied_arg_count = vec::len(args);
 
-        // Grab the argument types
-        let arg_tys = alt structure_of(fcx, sp, fty) {
-          ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) {
-            let expected_arg_count = vec::len(arg_tys);
-            if expected_arg_count == supplied_arg_count {
-                arg_tys.map { |a| a.ty }
-            } else {
-                fcx.ccx.tcx.sess.span_err(
-                    sp, #fmt["this function takes %u parameter%s but %u \
-                              parameter%s supplied", expected_arg_count,
-                             if expected_arg_count == 1u {
-                                 ""
-                             } else {
-                                 "s"
-                             },
-                             supplied_arg_count,
-                             if supplied_arg_count == 1u {
-                                 " was"
-                             } else {
-                                 "s were"
-                             }]);
-                fcx.infcx.next_ty_vars(supplied_arg_count)
-            }
-          }
-
-          _ {
-            // I would like to make this span_err, but it's really hard due to
-            // the way that expr_bind() is written.
-            fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
-                                             expected function or native \
-                                             function but found "
-                                        + fcx.infcx.ty_to_str(fty));
-          }
+        // Grab the argument types, supplying fresh type variables
+        // if the wrong number of arguments were supplied
+        let expected_arg_count = vec::len(fn_ty.inputs);
+        let arg_tys = if expected_arg_count == supplied_arg_count {
+            fn_ty.inputs.map { |a| a.ty }
+        } else {
+            fcx.ccx.tcx.sess.span_err(
+                sp, #fmt["this function takes %u parameter%s but %u \
+                          parameter%s supplied", expected_arg_count,
+                         if expected_arg_count == 1u {
+                             ""
+                         } else {
+                             "s"
+                         },
+                         supplied_arg_count,
+                         if supplied_arg_count == 1u {
+                             " was"
+                         } else {
+                             "s were"
+                         }]);
+            fcx.infcx.next_ty_vars(supplied_arg_count)
         };
 
         // Check the arguments.
@@ -1049,21 +1025,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
 
         // construct the function type
-        let fty = ty::mk_fn(tcx,
-                            astconv::ty_of_fn_decl(fcx, fcx, proto, decl,
-                                                   expected_tys));
+        let fn_ty = astconv::ty_of_fn_decl(fcx, fcx, proto,
+                                           decl, expected_tys);
+        let fty = ty::mk_fn(tcx, fn_ty);
 
         #debug("check_expr_fn_with_unifier %s fty=%s",
                expr_to_str(expr), fcx.infcx.ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);
 
-        let ret_ty = ty::ty_fn_ret(fty);
-        let arg_tys = vec::map(ty::ty_fn_args(fty)) {|a| a.ty };
-
-        check_fn(fcx.ccx, proto, decl, body,
-                 ret_ty, arg_tys, is_loop_body, some(fcx),
-                 fcx.self_ty);
+        check_fn(fcx.ccx, fcx.self_ty, fn_ty, decl, body,
+                 is_loop_body, some(fcx));
     }
 
 
@@ -1825,7 +1797,6 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           ret_ty: rty,
           indirect_ret_ty: none,
           purity: ast::pure_fn,
-          proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash(),
           mut blocks: [],
@@ -1865,7 +1836,6 @@ fn check_enum_variants(ccx: @crate_ctxt,
           ret_ty: rty,
           indirect_ret_ty: none,
           purity: ast::pure_fn,
-          proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash(),
           mut blocks: [],
