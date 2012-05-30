@@ -43,7 +43,7 @@ install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTSYNTAX_GLOB))
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBSYNTAX_GLOB))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 
 endef
@@ -77,7 +77,7 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTC_GLOB))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTSYNTAX_GLOB))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBSYNTAX_GLOB))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))
 	$(Q)$(call INSTALL,$(S)/man, \
 	     $(PREFIX_ROOT)/share/man/man1,rustc.1)
@@ -98,7 +98,7 @@ uninstall:
           $(call HOST_LIB_FROM_HL_GLOB,$(CORELIB_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB)) \
-          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTSYNTAX_GLOB)) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB)) \
         ; \
         do rm -f $$i ; \
         done

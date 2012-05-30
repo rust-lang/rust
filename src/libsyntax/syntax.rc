@@ -1,6 +1,8 @@
-#[link(name = "rustsyntax",
+#[link(name = "syntax",
        vers = "0.2",
-       uuid = "c2b79dd0-a437-4ec7-95f9-858d77808c2f")];
+       uuid = "9311401b-d6ea-4cd9-a1d9-61f89499c645")];
+
+
 
 #[crate_type = "lib"];
 

@@ -107,7 +107,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         alt ii {
           ast::ii_item(i) {
             #debug(">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
-                   rustsyntax::print::pprust::item_to_str(i));
+                   syntax::print::pprust::item_to_str(i));
           }
           _ { }
         }

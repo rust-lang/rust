@@ -179,7 +179,7 @@ define TEST_STAGEN
 TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/compiletest$$(X) \
 	$$(HSREQ$(1)_$(2)_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTSYNTAX)
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)
 
 
 check-stage$(1)-T-$(2)-H-$(3): tidy				\
