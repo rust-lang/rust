@@ -21,7 +21,7 @@ type graph = [[node_id]];
 type bfs_result = [node_id];
 
 fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)] {
-    let r = rand::rng();
+    let r = rand::xorshift();
 
     fn choose_edge(i: node_id, j: node_id, scale: uint, r: rand::rng)
         -> (node_id, node_id) {
@@ -247,12 +247,12 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
                   white {
                     let i = i as node_id;
                     
-                    let neighbors = (*graph)[i];
+                    let neighbors = graph[i];
                     
                     let mut color = white;
                     
                     neighbors.each() {|k|
-                        if is_gray((*colors)[k]) {
+                        if is_gray(colors[k]) {
                             color = gray(k);
                             false
                         }

@@ -1,6 +1,7 @@
 #[doc = "Random number generation"];
 
 export rng, seed, seeded_rng, weighted, extensions;
+export xorshift, seeded_xorshift;
 
 enum rctx {}
 
@@ -251,6 +252,35 @@ fn rng() -> rng {
          same seed. The seed may be any length."]
 fn seeded_rng(seed: [u8]) -> rng {
     @rand_res(rustrt::rand_new_seeded(seed)) as rng
+}
+
+type xorshift_state = {
+    mut x: u32,
+    mut y: u32,
+    mut z: u32,
+    mut w: u32
+};
+
+impl of rng for xorshift_state {
+    fn next() -> u32 {
+        let x = self.x;
+        let mut t = x ^ (x << 11);
+        self.x = self.y;
+        self.y = self.z;
+        self.z = self.w;
+        let w = self.w;
+        self.w = w ^ (w >> 19) ^ (t ^ (t >> 8));
+        self.w
+    }
+}
+
+fn xorshift() -> rng {
+    // constants taken from http://en.wikipedia.org/wiki/Xorshift
+    seeded_xorshift(123456789u32, 362436069u32, 521288629u32, 88675123u32)
+}
+
+fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> rng {
+    {mut x: x, mut y: y, mut z: z, mut w: w} as rng
 }
 
 #[cfg(test)]

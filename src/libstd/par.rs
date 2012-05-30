@@ -129,7 +129,7 @@ fn alli<A: copy send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
 
 #[doc="Returns true if the function holds for any elements in the vector."]
 fn any<A: copy send>(xs: [A], f: fn~(A) -> bool) -> bool {
-    vec::any(map_slices(xs) {|| 
+    vec::any(map_slices(xs) {||
         fn~(_base : uint, slice: [const A]/&, copy f) -> bool {
             vec::any(slice, f)
         }
