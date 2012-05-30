@@ -13,7 +13,7 @@ import syntax::ast;
 import syntax::print::pprust;
 import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
         FileType};
-import util::filesearch;
+import metadata::filesearch;
 import syntax::ast_map::{path, path_mod, path_name};
 
 enum output_type {

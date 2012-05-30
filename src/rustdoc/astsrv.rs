@@ -17,7 +17,7 @@ import syntax::ast;
 import syntax::codemap;
 import syntax::ast_map;
 import rustc::back::link;
-import rustc::util::filesearch;
+import rustc::metadata::filesearch;
 import rustc::front;
 import rustc::middle::resolve;
 

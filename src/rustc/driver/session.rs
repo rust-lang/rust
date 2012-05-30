@@ -4,7 +4,7 @@ import syntax::ast::node_id;
 import codemap::span;
 import syntax::ast::{int_ty, uint_ty, float_ty};
 import syntax::parse::parse_sess;
-import util::filesearch;
+import metadata::filesearch;
 import back::target_strs;
 import back::link;
 import middle::lint;

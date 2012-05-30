@@ -2,8 +2,8 @@
 
 import syntax::{ast, codemap};
 import syntax::parse;
-import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
-                                 get_cargo_sysroot, libdir};
+import rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
+                                     get_cargo_sysroot, libdir};
 import syntax::diagnostic;
 
 import result::{ok, err};

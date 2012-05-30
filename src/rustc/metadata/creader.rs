@@ -11,7 +11,7 @@ import syntax::visit;
 import syntax::codemap::span;
 import std::map::{hashmap, int_hash};
 import syntax::print::pprust;
-import util::filesearch::filesearch;
+import filesearch::filesearch;
 import common::*;
 
 export read_crates;

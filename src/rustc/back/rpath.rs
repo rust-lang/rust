@@ -2,7 +2,7 @@ import std::map;
 import std::map::hashmap;
 import metadata::cstore;
 import driver::session;
-import util::filesearch;
+import metadata::filesearch;
 
 export get_rpath_flags;
 

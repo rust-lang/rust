@@ -9,7 +9,6 @@ import syntax::{ast, attr};
 import syntax::print::pprust;
 import syntax::codemap::span;
 import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
-import util::filesearch;
 import filesearch::filesearch;
 import io::writer_util;
 

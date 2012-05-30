@@ -1,12 +1,12 @@
 // -*- rust -*-
-import metadata::{creader, cstore};
+import metadata::{creader, cstore, filesearch};
 import session::session;
 import syntax::parse;
 import syntax::{ast, codemap};
 import syntax::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck, lint};
 import syntax::print::{pp, pprust};
-import util::{ppaux, filesearch};
+import util::ppaux;
 import back::link;
 import result::{ok, err};
 import std::getopts;
