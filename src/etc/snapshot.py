@@ -22,34 +22,33 @@ download_url_base = "http://dl.rust-lang.org/stage0-snapshots"
 download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
-# FIXME: s/librustsyntax/libsyntax/ once the snapshots exist with it
 snapshot_files = {
     "linux": ["bin/rustc",
               "lib/libcore-*.so",
               "lib/libstd-*.so",
               "lib/librustc-*.so",
-              "lib/librustsyntax-*.so",
+              "lib/libsyntax-*.so",
               "lib/librustrt.so",
               "lib/librustllvm.so"],
     "macos": ["bin/rustc",
               "lib/libcore-*.dylib",
               "lib/libstd-*.dylib",
               "lib/librustc-*.dylib",
-              "lib/librustsyntax-*.dylib",
+              "lib/libsyntax-*.dylib",
               "lib/librustrt.dylib",
               "lib/librustllvm.dylib"],
     "winnt": ["bin/rustc.exe",
               "bin/core-*.dll",
               "bin/std-*.dll",
               "bin/rustc-*.dll",
-              "bin/rustsyntax-*.dll",
+              "bin/syntax-*.dll",
               "bin/rustrt.dll",
               "bin/rustllvm.dll"],
     "freebsd": ["bin/rustc",
                 "lib/libcore-*.so",
                 "lib/libstd-*.so",
                 "lib/librustc-*.so",
-                "lib/librustsyntax-*.so",
+                "lib/libsyntax-*.so",
                 "lib/librustrt.so",
                 "lib/librustllvm.so"]
     }
