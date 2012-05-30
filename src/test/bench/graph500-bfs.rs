@@ -20,45 +20,6 @@ type node_id = i64;
 type graph = [[node_id]];
 type bfs_result = [node_id];
 
-iface queue<T: send> {
-    fn add_back(T);
-    fn pop_front() -> T;
-    fn size() -> uint;
-}
-
-#[doc="Creates a queue based on ports and channels.
-
-This is admittedly not ideal, but it will help us work around the deque
-bugs for the time being."]
-fn create_queue<T: send>() -> queue<T> {
-    type repr<T: send> = {
-        p : port<T>,
-        c : chan<T>,
-        mut s : uint,
-    };
-
-    let p = port();
-    let c = chan(p);
-
-    impl<T: copy send> of queue<T> for repr<T> {
-        fn add_back(x : T) {
-            let x = x;
-            send(self.c, x);
-            self.s += 1u;
-        }
-
-        fn pop_front() -> T {
-            self.s -= 1u;
-            recv(self.p)
-        }
-
-        fn size() -> uint { self.s }
-    }
-
-    let Q : repr<T> = { p : p, c : c, mut s : 0u };
-    Q as queue::<T>
-}
-
 fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)] {
     let r = rand::rng();
 
@@ -145,7 +106,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     let marks : [mut node_id] 
         = vec::to_mut(vec::from_elem(vec::len(graph), -1i64));
 
-    let Q = create_queue();
+    let Q = deque::create();
 
     Q.add_back(key);
     marks[key] = key;
@@ -266,7 +227,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         }
     }
 
-    let (res, graph) = arc::shared_arc(copy graph);
+    let (_res, graph) = arc::shared_arc(copy graph);
 
     let mut i = 0u;
     while par::any(colors, is_gray) {
@@ -275,24 +236,24 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         i += 1u;
         let old_len = colors.len();
 
-        let (res, color) = arc::shared_arc(copy colors);
+        let (_res, color) = arc::shared_arc(copy colors);
 
         colors = par::mapi(colors) {|i, c|
             let c : color = c;
             let colors = &arc::get_arc(color);
-            let colors : [color] = *arc::get(colors);
+            let colors = arc::get(colors);
             let graph = &arc::get_arc(graph);
-            let graph : graph = *arc::get(graph);
+            let graph = arc::get(graph);
             alt c {
               white {
                 let i = i as node_id;
                 
-                let neighbors = graph[i];
+                let neighbors = (*graph)[i];
                 
                 let mut color = white;
                 
                 neighbors.each() {|k|
-                    if is_gray(colors[k]) {
+                    if is_gray((*colors)[k]) {
                         color = gray(k);
                         false
                     }
