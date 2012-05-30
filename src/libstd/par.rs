@@ -75,7 +75,7 @@ fn map_slices<A: copy send, B: copy send>(
 #[doc="A parallel version of map."]
 fn map<A: copy send, B: copy send>(xs: [A], f: fn~(A) -> B) -> [B] {
     vec::concat(map_slices(xs) {||
-        fn~(_base: uint, slice : [const A]/&) -> [B] {
+        fn~(_base: uint, slice : [const A]/&, copy f) -> [B] {
             vec::map(slice, f)
         }
     })
@@ -84,7 +84,7 @@ fn map<A: copy send, B: copy send>(xs: [A], f: fn~(A) -> B) -> [B] {
 #[doc="A parallel version of mapi."]
 fn mapi<A: copy send, B: copy send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
     let slices = map_slices(xs) {||
-        fn~(base: uint, slice : [const A]/&) -> [B] {
+        fn~(base: uint, slice : [const A]/&, copy f) -> [B] {
             vec::mapi(slice) {|i, x|
                 f(i + base, x)
             }
@@ -104,7 +104,7 @@ fn mapi_factory<A: copy send, B: copy send>(
     xs: [A], f: fn() -> fn~(uint, A) -> B) -> [B] {
     let slices = map_slices(xs) {||
         let f = f();
-        fn~(base: uint, slice : [const A]/&) -> [B] {
+        fn~(base: uint, slice : [const A]/&, move f) -> [B] {
             vec::mapi(slice) {|i, x|
                 f(i + base, x)
             }
@@ -118,16 +118,20 @@ fn mapi_factory<A: copy send, B: copy send>(
 
 #[doc="Returns true if the function holds for all elements in the vector."]
 fn alli<A: copy send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
-    vec::all(map_slices(xs) {|| fn~(base: uint, slice : [const A]/&) -> bool {
-        vec::alli(slice) {|i, x|
-            f(i + base, x)
+    vec::all(map_slices(xs) {||
+        fn~(base: uint, slice : [const A]/&, copy f) -> bool {
+            vec::alli(slice) {|i, x|
+                f(i + base, x)
+            }
         }
-    }}) {|x| x }
+    }) {|x| x }
 }
 
 #[doc="Returns true if the function holds for any elements in the vector."]
 fn any<A: copy send>(xs: [A], f: fn~(A) -> bool) -> bool {
-    vec::any(map_slices(xs) {|| fn~(_base : uint, slice: [const A]/&) -> bool {
-        vec::any(slice, f)
-    }}) {|x| x }
+    vec::any(map_slices(xs) {|| 
+        fn~(_base : uint, slice: [const A]/&, copy f) -> bool {
+            vec::any(slice, f)
+        }
+    }) {|x| x }
 }

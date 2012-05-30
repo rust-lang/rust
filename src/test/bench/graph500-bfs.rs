@@ -384,7 +384,7 @@ fn main(args: [str]) {
     let scale = uint::from_str(args[1]).get();
     let num_keys = uint::from_str(args[2]).get();
     let do_validate = false;
-    let do_sequential = false;
+    let do_sequential = true;
 
     let start = time::precise_time_s();
     let edges = make_edges(scale, 16u);
