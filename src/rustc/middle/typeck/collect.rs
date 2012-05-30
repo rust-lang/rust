@@ -151,48 +151,74 @@ fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
     }
 }
 
-fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
-                       impl_tps: uint, if_m: ty::method, substs: ty::substs,
-                       self_ty: ty::t) -> ty::t {
+#[doc = "
+Checks that a method from an impl/class conforms to the signature of
+the same method as declared in the iface.
+
+# Parameters
+
+- impl_m: the method in the impl
+- impl_tps: the type params declared on the impl itself (not the method!)
+- if_m: the method in the iface
+- if_substs: the substitutions used on the type of the iface
+- self_ty: the self type of the impl
+"]
+fn compare_impl_method(tcx: ty::ctxt, sp: span,
+                       impl_m: ty::method, impl_tps: uint,
+                       if_m: ty::method, if_substs: ty::substs,
+                       self_ty: ty::t) {
 
     if impl_m.tps != if_m.tps {
         tcx.sess.span_err(sp, "method `" + if_m.ident +
                           "` has an incompatible set of type parameters");
-        ty::mk_fn(tcx, impl_m.fty)
-    } else if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
+        ret;
+    }
+
+    if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
         tcx.sess.span_err(sp,#fmt["method `%s` has %u parameters \
                                    but the iface has %u",
                                   if_m.ident,
                                   vec::len(impl_m.fty.inputs),
                                   vec::len(if_m.fty.inputs)]);
-        ty::mk_fn(tcx, impl_m.fty)
-    } else {
-        let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
-            alt ty::get(f.ty).struct {
-              ty::ty_param(*) | ty::ty_self
-              if alt i.mode { ast::infer(_) { true } _ { false } } {
-                {mode: ast::expl(ast::by_ref) with i}
-              }
-              _ { i }
-            }
-        });
-        let impl_fty = ty::mk_fn(tcx, {inputs: auto_modes with impl_m.fty});
+        ret;
+    }
 
-        // Add dummy substs for the parameters of the impl method
-        let substs = {
-            self_r: substs.self_r,
-            self_ty: some(self_ty),
-            tps: substs.tps + vec::from_fn(vec::len(*if_m.tps), {|i|
-                ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
-            })
+    // Perform substitutions so that the iface/impl methods are expressed
+    // in terms of the same set of type/region parameters:
+    // - replace iface type parameters with those from `if_substs`
+    // - replace method parameters on the iface with fresh, dummy parameters
+    //   that correspond to the parameters we will find on the impl
+    // - replace self region with a fresh, dummy region
+    let dummy_self_r = ty::re_free(0, ty::br_self);
+    let impl_fty = {
+        let impl_fty = ty::mk_fn(tcx, impl_m.fty);
+        replace_bound_self(tcx, impl_fty, dummy_self_r)
+    };
+    let if_fty = {
+        let dummy_tps = vec::from_fn((*if_m.tps).len()) { |i|
+            // hack: we don't know the def id of the impl tp, but it
+            // is not important for unification
+            ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
         };
-        let mut if_fty = ty::mk_fn(tcx, if_m.fty);
-        if_fty = ty::subst(tcx, substs, if_fty);
-        require_same_types(
-            tcx, sp, impl_fty, if_fty,
-            {|| "method `" + if_m.ident +
-                 "` has an incompatible type"});
-        ret impl_fty;
+        let substs = {
+            self_r: some(dummy_self_r),
+            self_ty: some(self_ty),
+            tps: if_substs.tps + dummy_tps
+        };
+        let if_fty = ty::mk_fn(tcx, if_m.fty);
+        ty::subst(tcx, substs, if_fty)
+    };
+    require_same_types(
+        tcx, sp, impl_fty, if_fty,
+        {|| "method `" + if_m.ident + "` has an incompatible type"});
+    ret;
+
+    // Replaces bound references to the self region with `with_r`.
+    fn replace_bound_self(tcx: ty::ctxt, ty: ty::t,
+                          with_r: ty::region) -> ty::t {
+        ty::fold_regions(tcx, ty) { |r, _in_fn|
+            if r == ty::re_bound(ty::br_self) {with_r} else {r}
+        }
     }
 }
 
@@ -219,18 +245,9 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
                                 not match the iface method's \
                                 purity", m.ident]);
             }
-            let mt = compare_impl_method(
+            compare_impl_method(
                 ccx.tcx, span, m, vec::len(tps),
                 if_m, tpt.substs, selfty);
-            let old = tcx.tcache.get(local_def(id));
-            if old.ty != mt {
-                tcx.tcache.insert(
-                    local_def(id),
-                    {bounds: old.bounds,
-                     rp: old.rp,
-                     ty: mt});
-                write_ty_to_tcx(tcx, id, mt);
-            }
           }
           none {
             tcx.sess.span_err(

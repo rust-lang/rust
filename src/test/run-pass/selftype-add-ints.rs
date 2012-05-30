@@ -1,5 +1,5 @@
 iface add {
-    fn +(x: self) -> self;
+    fn +(++x: self) -> self;
 }
 
 impl of add for int {

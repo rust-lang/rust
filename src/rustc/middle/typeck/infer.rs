@@ -361,29 +361,29 @@ iface st {
 }
 
 impl of st for ty::t {
-    fn sub(infcx: infer_ctxt, b: ty::t) -> ures {
+    fn sub(infcx: infer_ctxt, &&b: ty::t) -> ures {
         sub(infcx).tys(self, b).to_ures()
     }
 
-    fn lub(infcx: infer_ctxt, b: ty::t) -> cres<ty::t> {
+    fn lub(infcx: infer_ctxt, &&b: ty::t) -> cres<ty::t> {
         lub(infcx).tys(self, b)
     }
 
-    fn glb(infcx: infer_ctxt, b: ty::t) -> cres<ty::t> {
+    fn glb(infcx: infer_ctxt, &&b: ty::t) -> cres<ty::t> {
         glb(infcx).tys(self, b)
     }
 }
 
 impl of st for ty::region {
-    fn sub(infcx: infer_ctxt, b: ty::region) -> ures {
+    fn sub(infcx: infer_ctxt, &&b: ty::region) -> ures {
         sub(infcx).regions(self, b).chain {|_r| ok(()) }
     }
 
-    fn lub(infcx: infer_ctxt, b: ty::region) -> cres<ty::region> {
+    fn lub(infcx: infer_ctxt, &&b: ty::region) -> cres<ty::region> {
         lub(infcx).regions(self, b)
     }
 
-    fn glb(infcx: infer_ctxt, b: ty::region) -> cres<ty::region> {
+    fn glb(infcx: infer_ctxt, &&b: ty::region) -> cres<ty::region> {
         glb(infcx).regions(self, b)
     }
 }

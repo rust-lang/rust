@@ -70,9 +70,7 @@ import astconv::{ast_conv, ast_ty_to_ty};
 import collect::{methods}; // ccx.to_ty()
 import method::{methods};  // methods for method::lookup
 import middle::ty::tys_in_fn_ty;
-import regionmanip::{replace_bound_regions_in_fn_ty,
-                     region_of, replace_bound_regions,
-                     collect_bound_regions_in_tys};
+import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
 import rscope::*;
 
 type fn_ctxt =
