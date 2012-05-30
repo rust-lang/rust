@@ -571,9 +571,7 @@ fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
     // the caller has no idea if it's dealing with something that can be
     // passed by value.
 
-    #error("%?", ty::get(t));
     let llty = T_ptr(type_of(ccx, t));
-    #error("%?", ty_str(ccx.tn, llty));
 
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
