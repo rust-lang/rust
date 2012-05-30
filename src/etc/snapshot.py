@@ -22,6 +22,7 @@ download_url_base = "http://dl.rust-lang.org/stage0-snapshots"
 download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
+# FIXME: s/librustsyntax/libsyntax/ once the snapshots exist with it
 snapshot_files = {
     "linux": ["bin/rustc",
               "lib/libcore-*.so",
