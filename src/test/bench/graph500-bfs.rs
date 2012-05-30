@@ -199,7 +199,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 }
 
 #[doc="A parallel version of the bfs function."]
-fn pbfs(graph: graph, key: node_id) -> bfs_result {
+fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
 
     enum color {
@@ -210,7 +210,7 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
         black(node_id)
     };
 
-    let mut colors = vec::from_fn(graph.len()) {|i|
+    let mut colors = vec::from_fn((*arc::get(&graph)).len()) {|i|
         if i as node_id == key {
             gray(key)
         }
@@ -226,8 +226,6 @@ fn pbfs(graph: graph, key: node_id) -> bfs_result {
           _ { false }
         }
     }
-
-    let graph = arc::arc(copy graph);
 
     let mut i = 0u;
     while par::any(colors, is_gray) {
@@ -386,7 +384,7 @@ fn main(args: [str]) {
     let scale = uint::from_str(args[1]).get();
     let num_keys = uint::from_str(args[2]).get();
     let do_validate = false;
-    let do_sequential = true;
+    let do_sequential = false;
 
     let start = time::precise_time_s();
     let edges = make_edges(scale, 16u);
@@ -408,6 +406,8 @@ fn main(args: [str]) {
 
     let mut total_seq = 0.0;
     let mut total_par = 0.0;
+
+    let graph_arc = arc::arc(copy graph);
 
     gen_search_keys(graph, num_keys).map() {|root|
         io::stdout().write_line("");
@@ -456,7 +456,7 @@ fn main(args: [str]) {
         }
         
         let start = time::precise_time_s();
-        let bfs_tree = pbfs(graph, root);
+        let bfs_tree = pbfs(graph_arc, root);
         let stop = time::precise_time_s();
 
         total_par += stop - start;
