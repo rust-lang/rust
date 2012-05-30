@@ -1,7 +1,7 @@
 // xfail-pretty
 
 use std;
-use syntax(name = "rustsyntax");
+use syntax;
 
 import std::io::*;
 

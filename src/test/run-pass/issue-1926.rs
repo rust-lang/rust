@@ -1,6 +1,6 @@
 // xfail-test
 // fails pretty printing for some reason
-use syntax(name = "rustsyntax");
+use syntax;
 import syntax::diagnostic;
 import syntax;
 import syntax::ast;
