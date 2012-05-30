@@ -1,5 +1,3 @@
-//xfail-test
-
 // Issue #2263.
 
 // Should pass region checking.
