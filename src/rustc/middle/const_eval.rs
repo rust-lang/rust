@@ -49,7 +49,6 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
               le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
             }
-
           }
           (const_uint(a), const_uint(b)) {
             alt check op {
@@ -61,6 +60,17 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
               eq { fromb(a == b) } lt { fromb(a < b) }
               le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
+            }
+          }
+          // shifts can have any integral type as their rhs
+          (const_int(a), const_uint(b)) {
+            alt check op {
+              shl { const_int(a << b) } shr { const_int(a >> b) }
+            }
+          }
+          (const_uint(a), const_int(b)) {
+            alt check op {
+              shl { const_uint(a << b) } shr { const_uint(a >> b) }
             }
           }
         }
