@@ -3,8 +3,8 @@ import driver::session;
 import middle::trans::base;
 import middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
                                T_int, T_nil,
-                               T_opaque_vec, T_ptr,
-                               T_size_t, T_void};
+                               T_opaque_vec, T_ptr, T_unique_ptr,
+                               T_size_t, T_void, T_vec2};
 import lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
 
 type upcalls =
@@ -12,10 +12,10 @@ type upcalls =
      trace: ValueRef,
      malloc: ValueRef,
      free: ValueRef,
+     exchange_malloc: ValueRef,
+     exchange_malloc_dyn: ValueRef,
+     exchange_free: ValueRef,
      validate_box: ValueRef,
-     shared_malloc: ValueRef,
-     shared_free: ValueRef,
-     shared_realloc: ValueRef,
      mark: ValueRef,
      vec_grow: ValueRef,
      str_new_uniq: ValueRef,
@@ -49,7 +49,6 @@ fn declare_upcalls(targ_cfg: @session::config,
 
     let int_t = T_int(targ_cfg);
     let size_t = T_size_t(targ_cfg);
-    let opaque_vec_t = T_opaque_vec(targ_cfg);
 
     ret @{_fail: dv("fail", [T_ptr(T_i8()),
                              T_ptr(T_i8()),
@@ -62,29 +61,31 @@ fn declare_upcalls(targ_cfg: @session::config,
                         T_ptr(T_i8()))),
           free:
               nothrow(dv("free", [T_ptr(T_i8())])),
+          exchange_malloc:
+              nothrow(d("exchange_malloc", [T_ptr(tydesc_type)],
+                        T_ptr(T_i8()))),
+          exchange_malloc_dyn:
+              nothrow(d("exchange_malloc_dyn",
+                        [T_ptr(tydesc_type), int_t],
+                        T_ptr(T_i8()))),
+          exchange_free:
+              nothrow(dv("exchange_free", [T_ptr(T_i8())])),
           validate_box:
               nothrow(dv("validate_box", [T_ptr(T_i8())])),
-          shared_malloc:
-              nothrow(d("shared_malloc", [size_t], T_ptr(T_i8()))),
-          shared_free:
-              nothrow(dv("shared_free", [T_ptr(T_i8())])),
-          shared_realloc:
-              nothrow(d("shared_realloc", [T_ptr(T_i8()), size_t],
-                        T_ptr(T_i8()))),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
           vec_grow:
-              nothrow(dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t])),
+              nothrow(dv("vec_grow", [T_ptr(T_ptr(T_i8())), int_t])),
           str_new_uniq:
               nothrow(d("str_new_uniq", [T_ptr(T_i8()), int_t],
-                        T_ptr(opaque_vec_t))),
+                        T_ptr(T_i8()))),
           str_new_shared:
               nothrow(d("str_new_shared", [T_ptr(T_i8()), int_t],
                         T_ptr(T_i8()))),
           str_concat:
-              nothrow(d("str_concat", [T_ptr(opaque_vec_t),
-                                       T_ptr(opaque_vec_t)],
-                        T_ptr(opaque_vec_t))),
+              nothrow(d("str_concat", [T_ptr(T_i8()),
+                                       T_ptr(T_i8())],
+                        T_ptr(T_i8()))),
           cmp_type:
               dv("cmp_type",
                  [T_ptr(T_i1()), T_ptr(tydesc_type),

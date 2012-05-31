@@ -117,7 +117,9 @@ class irc : public shape::data<irc,shape::ptr> {
     }
 
     void walk_uniq2() {
-        shape::data<irc,shape::ptr>::walk_uniq_contents1();
+        rust_opaque_box *box = *(rust_opaque_box**)dp;
+        if (box)
+            shape::data<irc,shape::ptr>::walk_uniq_contents1();
     }
 
     void walk_rptr2() {
@@ -373,7 +375,9 @@ class mark : public shape::data<mark,shape::ptr> {
     }
 
     void walk_uniq2() {
-        shape::data<mark,shape::ptr>::walk_uniq_contents1();
+        rust_opaque_box *box = *(rust_opaque_box**)dp;
+        if (box)
+            shape::data<mark,shape::ptr>::walk_uniq_contents1();
     }
 
     void walk_rptr2() {

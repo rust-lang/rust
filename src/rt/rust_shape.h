@@ -783,6 +783,11 @@ public:
         return box->td;
     }
 
+    inline const type_desc *uniq_body_td() const {
+        rust_opaque_box *box = *reinterpret_cast<rust_opaque_box**>(p);
+        return box->td;
+    }
+
     inline ptr box_body() const {
         rust_opaque_box *box = *reinterpret_cast<rust_opaque_box**>(p);
         return make((uint8_t*)::box_body(box));
@@ -878,6 +883,11 @@ public:
         // position to make this determination.
         rust_opaque_box *box_fst = *reinterpret_cast<rust_opaque_box**>(fst);
         assert(box_fst->ref_count >= 1);
+        return box_fst->td;
+    }
+
+    inline const type_desc *uniq_body_td() const {
+        rust_opaque_box *box_fst = *reinterpret_cast<rust_opaque_box**>(fst);
         return box_fst->td;
     }
 
@@ -1067,10 +1077,16 @@ data<T,U>::walk_box_contents1() {
 template<typename T,typename U>
 void
 data<T,U>::walk_uniq_contents1() {
-    typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
-    U data_ptr(box_ptr);
-    T sub(*static_cast<T *>(this), data_ptr);
-    static_cast<T *>(this)->walk_uniq_contents2(sub);
+    const type_desc *body_td = dp.uniq_body_td();
+    if (body_td) {
+        U body_dp(dp.box_body());
+        arena arena;
+        type_param *params = type_param::from_tydesc(body_td, arena);
+        T sub(*static_cast<T *>(this), body_td->shape, params,
+              body_td->shape_tables, body_dp);
+        sub.align = true;
+        static_cast<T *>(this)->walk_uniq_contents2(sub);
+    }
 }
 
 template<typename T,typename U>
@@ -1094,9 +1110,9 @@ data<T,U>::walk_variant1(tag_info &tinfo, tag_variant_t variant_id) {
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
 data<T,U>::get_vec_data_range(ptr dp) {
-    rust_vec* ptr = bump_dp<rust_vec*>(dp);
-    uint8_t* data = &ptr->data[0];
-    return std::make_pair(data, data + ptr->fill);
+    rust_vec_box* ptr = bump_dp<rust_vec_box*>(dp);
+    uint8_t* data = &ptr->body.data[0];
+    return std::make_pair(data, data + ptr->body.fill);
 }
 
 template<typename T,typename U>

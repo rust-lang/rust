@@ -471,7 +471,8 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
     }
 
     if any_uniq_pat(m, col) {
-        let unboxed = Load(bcx, val);
+        let box = Load(bcx, val);
+        let unboxed = GEPi(bcx, box, [0u, abi::box_field_body]);
         compile_submatch(bcx, enter_uniq(dm, m, col, val),
                          [unboxed] + vals_left, chk, exits);
         ret;
@@ -762,8 +763,10 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_uniq(inner) {
-        let val = Load(bcx, val);
-        bcx = bind_irrefutable_pat(bcx, inner, val, true);
+        let box = Load(bcx, val);
+        let unboxed =
+            GEPi(bcx, box, [0u, abi::box_field_body]);
+        bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) { }
     }

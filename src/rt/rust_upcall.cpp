@@ -152,6 +152,92 @@ upcall_trace(char const *msg,
 }
 
 /**********************************************************************
+ * Allocate an object in the exchange heap
+ */
+
+extern "C" CDECL uintptr_t
+exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
+
+    LOG(task, mem, "upcall exchange malloc(0x%" PRIxPTR ")", td);
+
+    // Copied from boxed_region
+    size_t header_size = sizeof(rust_opaque_box);
+    size_t body_size = size;
+    size_t body_align = td->align;
+    // FIXME: This alignment calculation is suspicious. Is it right?
+    size_t total_size = align_to(header_size, body_align) + body_size;
+
+    void *p = task->kernel->malloc(total_size, "exchange malloc");
+
+    rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
+    header->td = td;
+
+    memset(&header[1], '\0', body_size);
+
+    return (uintptr_t)header;
+}
+
+struct s_exchange_malloc_args {
+    uintptr_t retval;
+    type_desc *td;
+};
+
+extern "C" CDECL void
+upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+
+    uintptr_t retval = exchange_malloc(task, args->td, args->td->size);
+    args->retval = retval;
+}
+
+extern "C" CDECL uintptr_t
+upcall_exchange_malloc(type_desc *td) {
+    s_exchange_malloc_args args = {0, td};
+    UPCALL_SWITCH_STACK(&args, upcall_s_exchange_malloc);
+    return args.retval;
+}
+
+struct s_exchange_malloc_dyn_args {
+    uintptr_t retval;
+    type_desc *td;
+    uintptr_t size;
+};
+
+extern "C" CDECL void
+upcall_s_exchange_malloc_dyn(s_exchange_malloc_dyn_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+
+    uintptr_t retval = exchange_malloc(task, args->td, args->size);
+    args->retval = retval;
+}
+
+extern "C" CDECL uintptr_t
+upcall_exchange_malloc_dyn(type_desc *td, uintptr_t size) {
+    s_exchange_malloc_dyn_args args = {0, td, size};
+    UPCALL_SWITCH_STACK(&args, upcall_s_exchange_malloc_dyn);
+    return args.retval;
+}
+
+struct s_exchange_free_args {
+    void *ptr;
+};
+
+extern "C" CDECL void
+upcall_s_exchange_free(s_exchange_free_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+    task->kernel->free(args->ptr);
+}
+
+extern "C" CDECL void
+upcall_exchange_free(void *ptr) {
+    s_exchange_free_args args = {ptr};
+    UPCALL_SWITCH_STACK(&args, upcall_s_exchange_free);
+}
+
+/**********************************************************************
  * Allocate an object in the task-local heap.
  */
 
@@ -234,81 +320,6 @@ upcall_validate_box(rust_opaque_box* ptr) {
     }
 }
 
-/**********************************************************************
- * Allocate an object in the exchange heap.
- */
-
-struct s_shared_malloc_args {
-    uintptr_t retval;
-    size_t nbytes;
-};
-
-extern "C" CDECL void
-upcall_s_shared_malloc(s_shared_malloc_args *args) {
-    rust_task *task = rust_get_current_task();
-    LOG_UPCALL_ENTRY(task);
-
-    LOG(task, mem, "upcall shared_malloc(%" PRIdPTR ")", args->nbytes);
-    void *p = task->kernel->malloc(args->nbytes, "shared malloc");
-    memset(p, '\0', args->nbytes);
-    LOG(task, mem, "upcall shared_malloc(%" PRIdPTR ") = 0x%" PRIxPTR,
-        args->nbytes, (uintptr_t)p);
-    args->retval = (uintptr_t) p;
-}
-
-extern "C" CDECL uintptr_t
-upcall_shared_malloc(size_t nbytes) {
-    s_shared_malloc_args args = {0, nbytes};
-    UPCALL_SWITCH_STACK(&args, upcall_s_shared_malloc);
-    return args.retval;
-}
-
-/**********************************************************************
- * Called whenever an object in the exchange heap is freed.
- */
-
-struct s_shared_free_args {
-    void *ptr;
-};
-
-extern "C" CDECL void
-upcall_s_shared_free(s_shared_free_args *args) {
-    rust_task *task = rust_get_current_task();
-    LOG_UPCALL_ENTRY(task);
-
-    rust_sched_loop *sched_loop = task->sched_loop;
-    DLOG(sched_loop, mem,
-             "upcall shared_free(0x%" PRIxPTR")",
-             (uintptr_t)args->ptr);
-    task->kernel->free(args->ptr);
-}
-
-extern "C" CDECL void
-upcall_shared_free(void* ptr) {
-    s_shared_free_args args = {ptr};
-    UPCALL_SWITCH_STACK(&args, upcall_s_shared_free);
-}
-
-struct s_shared_realloc_args {
-    void *retval;
-    void *ptr;
-    size_t size;
-};
-
-extern "C" CDECL void
-upcall_s_shared_realloc(s_shared_realloc_args *args) {
-    rust_task *task = rust_get_current_task();
-    LOG_UPCALL_ENTRY(task);
-    args->retval = task->kernel->realloc(args->ptr, args->size);
-}
-
-extern "C" CDECL void *
-upcall_shared_realloc(void *ptr, size_t size) {
-    s_shared_realloc_args args = {NULL, ptr, size};
-    UPCALL_SWITCH_STACK(&args, upcall_s_shared_realloc);
-    return args.retval;
-}
-
 /**********************************************************************/
 
 struct s_str_new_uniq_args {
@@ -361,10 +372,10 @@ upcall_s_str_new_shared(s_str_new_shared_args *args) {
                              vec_size<char>(str_fill),
                              "str_new_shared");
     rust_str *str = (rust_str *)box_body(args->retval);
-    str->fill = str_fill;
-    str->alloc = str_alloc;
-    memcpy(&str->data, args->cstr, args->len);
-    str->data[args->len] = '\0';
+    str->body.fill = str_fill;
+    str->body.alloc = str_alloc;
+    memcpy(&str->body.data, args->cstr, args->len);
+    str->body.data[args->len] = '\0';
 }
 
 extern "C" CDECL rust_opaque_box*
@@ -376,7 +387,7 @@ upcall_str_new_shared(const char *cstr, size_t len) {
 
 
 struct s_vec_grow_args {
-    rust_vec** vp;
+    rust_vec_box** vp;
     size_t new_sz;
 };
 
@@ -385,37 +396,38 @@ upcall_s_vec_grow(s_vec_grow_args *args) {
     rust_task *task = rust_get_current_task();
     LOG_UPCALL_ENTRY(task);
     reserve_vec(task, args->vp, args->new_sz);
-    (*args->vp)->fill = args->new_sz;
+    (*args->vp)->body.fill = args->new_sz;
 }
 
 extern "C" CDECL void
-upcall_vec_grow(rust_vec** vp, size_t new_sz) {
+upcall_vec_grow(rust_vec_box** vp, size_t new_sz) {
     s_vec_grow_args args = {vp, new_sz};
     UPCALL_SWITCH_STACK(&args, upcall_s_vec_grow);
 }
 
 struct s_str_concat_args {
-    rust_vec* lhs;
-    rust_vec* rhs;
-    rust_vec* retval;
+    rust_vec_box* lhs;
+    rust_vec_box* rhs;
+    rust_vec_box* retval;
 };
 
 extern "C" CDECL void
 upcall_s_str_concat(s_str_concat_args *args) {
-    rust_vec *lhs = args->lhs;
-    rust_vec *rhs = args->rhs;
+    rust_vec *lhs = &args->lhs->body;
+    rust_vec *rhs = &args->rhs->body;
     rust_task *task = rust_get_current_task();
     size_t fill = lhs->fill + rhs->fill - 1;
-    rust_vec* v = (rust_vec*)task->kernel->malloc(fill + sizeof(rust_vec),
-                                                  "str_concat");
-    v->fill = v->alloc = fill;
-    memmove(&v->data[0], &lhs->data[0], lhs->fill - 1);
-    memmove(&v->data[lhs->fill - 1], &rhs->data[0], rhs->fill);
+    rust_vec_box* v = (rust_vec_box*)
+        task->kernel->malloc(fill + sizeof(rust_vec_box),
+                             "str_concat");
+    v->body.fill = v->body.alloc = fill;
+    memmove(&v->body.data[0], &lhs->data[0], lhs->fill - 1);
+    memmove(&v->body.data[lhs->fill - 1], &rhs->data[0], rhs->fill);
     args->retval = v;
 }
 
-extern "C" CDECL rust_vec*
-upcall_str_concat(rust_vec* lhs, rust_vec* rhs) {
+extern "C" CDECL rust_vec_box*
+upcall_str_concat(rust_vec_box* lhs, rust_vec_box* rhs) {
     s_str_concat_args args = {lhs, rhs, 0};
     UPCALL_SWITCH_STACK(&args, upcall_s_str_concat);
     return args.retval;

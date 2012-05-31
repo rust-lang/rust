@@ -13,7 +13,7 @@ command_line_args : public kernel_owned<command_line_args>
     char **argv;
 
     // [str] passed to rust_task::start.
-    rust_vec *args;
+    rust_vec_box *args;
 
     command_line_args(rust_task *task,
                       int sys_argc,
@@ -47,7 +47,7 @@ command_line_args : public kernel_owned<command_line_args>
 
     ~command_line_args() {
         for (int i = 0; i < argc; ++i) {
-            rust_vec *s = ((rust_vec**)&args->data)[i];
+            rust_vec *s = ((rust_vec**)&args->body.data)[i];
             kernel->free(s);
         }
         kernel->free(args);

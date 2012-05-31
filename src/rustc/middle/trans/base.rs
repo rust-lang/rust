@@ -236,9 +236,9 @@ fn trans_free(cx: block, v: ValueRef) -> block {
     cx
 }
 
-fn trans_shared_free(cx: block, v: ValueRef) -> block {
+fn trans_unique_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_shared_free");
-    Call(cx, cx.ccx().upcalls.shared_free,
+    Call(cx, cx.ccx().upcalls.exchange_free,
          [PointerCast(cx, v, T_ptr(T_i8()))]);
     ret cx;
 }
@@ -326,15 +326,6 @@ fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
     GEPi(bcx, typed_blobptr, [0u, ix])
 }
 
-// trans_shared_malloc: expects a type indicating which pointer type we want
-// and a size indicating how much space we want malloc'd.
-fn shared_malloc(cx: block, llptr_ty: TypeRef, llsize: ValueRef)
-   -> ValueRef {
-    let _icx = cx.insn_ctxt("opaque_shared_malloc");
-    let rval = Call(cx, cx.ccx().upcalls.shared_malloc, [llsize]);
-    PointerCast(cx, rval, llptr_ty)
-}
-
 // Returns a pointer to the body for the box. The box may be an opaque
 // box. The result will be casted to the type of body_t, if it is statically
 // known.
@@ -381,6 +372,59 @@ fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
     let box_no_addrspace = non_gc_box_cast(
         bcx, box, ty::mk_imm_box(bcx.tcx(), t));
     let body = GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
+    ret {box: box, body: body};
+}
+
+fn malloc_unique_raw(bcx: block, t: ty::t) -> ValueRef {
+    let _icx = bcx.insn_ctxt("malloc_unique_box_raw");
+    let ccx = bcx.ccx();
+
+    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
+    // wants.
+    let box_ptr = ty::mk_imm_uniq(ccx.tcx, t);
+    let llty = type_of(ccx, box_ptr);
+
+    // Get the tydesc for the body:
+    let mut static_ti = none;
+    let lltydesc = get_tydesc(ccx, t, static_ti);
+    lazily_emit_all_tydesc_glue(ccx, static_ti);
+
+    // Allocate space:
+    let rval = Call(bcx, ccx.upcalls.exchange_malloc, [lltydesc]);
+    ret PointerCast(bcx, rval, llty);
+}
+
+fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
+    let _icx = bcx.insn_ctxt("malloc_unique_box");
+    let box = malloc_unique_raw(bcx, t);
+    let body = GEPi(bcx, box, [0u, abi::box_field_body]);
+    ret {box: box, body: body};
+}
+
+fn malloc_unique_dyn_raw(bcx: block, t: ty::t, size: ValueRef) -> ValueRef {
+    let _icx = bcx.insn_ctxt("malloc_unique_box_raw");
+    let ccx = bcx.ccx();
+
+    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
+    // wants.
+    let box_ptr = ty::mk_imm_uniq(ccx.tcx, t);
+    let llty = type_of(ccx, box_ptr);
+
+    // Get the tydesc for the body:
+    let mut static_ti = none;
+    let lltydesc = get_tydesc(ccx, t, static_ti);
+    lazily_emit_all_tydesc_glue(ccx, static_ti);
+
+    // Allocate space:
+    let rval = Call(bcx, ccx.upcalls.exchange_malloc_dyn, [lltydesc, size]);
+    ret PointerCast(bcx, rval, llty);
+}
+
+fn malloc_unique_dyn(bcx: block, t: ty::t, size: ValueRef
+                    ) -> {box: ValueRef, body: ValueRef} {
+    let _icx = bcx.insn_ctxt("malloc_unique_box");
+    let box = malloc_unique_dyn_raw(bcx, t, size);
+    let body = GEPi(bcx, box, [0u, abi::box_field_body]);
     ret {box: box, body: body};
 }
 
@@ -1754,7 +1798,7 @@ fn autoderef(cx: block, e_id: ast::node_id,
             v1 = PointerCast(cx, body, T_ptr(llty));
           }
           ty::ty_uniq(_) {
-            let derefed = uniq::autoderef(v1, t1);
+            let derefed = uniq::autoderef(cx, v1, t1);
             t1 = derefed.t;
             v1 = derefed.v;
           }
@@ -2636,6 +2680,9 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
                 let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
+              ty::ty_uniq(_) {
+                GEPi(sub.bcx, sub.val, [0u, abi::box_field_body])
+              }
               ty::ty_res(_, _, _) {
                 GEPi(sub.bcx, sub.val, [0u, 1u])
               }
@@ -2644,7 +2691,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
                 let ellty = T_ptr(type_of(ccx, ety));
                 PointerCast(sub.bcx, sub.val, ellty)
               }
-              ty::ty_ptr(_) | ty::ty_uniq(_) | ty::ty_rptr(_,_) { sub.val }
+              ty::ty_ptr(_) | ty::ty_rptr(_,_) { sub.val }
             };
             ret lval_owned(sub.bcx, val);
           }
@@ -2920,7 +2967,15 @@ fn adapt_borrowed_value(lv: lval_result, _arg: ty::arg,
       }
 
       ty::ty_uniq(_) {
-        ret lv; // no change needed at runtime (I think)
+        let box_ptr = {
+            alt lv.kind {
+              temporary { lv.val }
+              owned { Load(bcx, lv.val) }
+              owned_imm { lv.val }
+            }
+        };
+        let body_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_body]);
+        ret lval_temp(bcx, body_ptr);
       }
 
       ty::ty_str | ty::ty_vec(_) |
@@ -3817,9 +3872,11 @@ fn trans_fail_expr(bcx: block, sp_opt: option<span>,
         bcx = expr_res.bcx;
 
         if ty::type_is_str(e_ty) {
-            let data = tvec::get_dataptr(
-                bcx, expr_res.val, type_of(
-                    ccx, ty::mk_mach_uint(tcx, ast::ty_u8)));
+            let unit_ty = ty::mk_mach_uint(tcx, ast::ty_u8);
+            let vec_ty = ty::mk_vec(tcx, {ty: unit_ty, mutbl: ast::m_imm});
+            let unit_llty = type_of(ccx, unit_ty);
+            let body = tvec::get_bodyptr(bcx, expr_res.val, vec_ty);
+            let data = tvec::get_dataptr(bcx, body, unit_llty);
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable || ty::type_is_bot(e_ty) {
             ret bcx;

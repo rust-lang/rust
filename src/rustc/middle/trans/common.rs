@@ -271,7 +271,7 @@ fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     }
 }
 fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
-    let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
+    let free_fn = if shared { bind base::trans_unique_free(_, ptr) }
                   else { bind base::trans_free(_, ptr) };
     in_scope_cx(cx) {|info|
         info.cleanups += [clean_temp(ptr, free_fn,
@@ -654,15 +654,8 @@ fn T_opaque_vec(targ_cfg: @session::config) -> TypeRef {
 // representation of @T as a tuple (i.e., the ty::t version of what T_box()
 // returns).
 fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
-    ret tuplify_cbox_ty(tcx, t, ty::mk_type(tcx));
-}
-
-// As tuplify_box_ty(), but allows the caller to specify what type of type
-// descr is embedded in the box (ty::type vs ty::send_type).  This is useful
-// for unique closure boxes, hence the name "cbox_ty" (closure box type).
-fn tuplify_cbox_ty(tcx: ty::ctxt, t: ty::t, tydesc_t: ty::t) -> ty::t {
     let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm});
-    ret ty::mk_tup(tcx, [ty::mk_uint(tcx), tydesc_t,
+    ret ty::mk_tup(tcx, [ty::mk_uint(tcx), ty::mk_type(tcx),
                          ptr, ptr,
                          t]);
 }
@@ -691,6 +684,15 @@ fn T_opaque_box(cx: @crate_ctxt) -> TypeRef {
 
 fn T_opaque_box_ptr(cx: @crate_ctxt) -> TypeRef {
     ret T_box_ptr(T_opaque_box(cx));
+}
+
+fn T_unique(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
+    ret T_struct(T_box_header_fields(cx) + [t]);
+}
+
+fn T_unique_ptr(t: TypeRef) -> TypeRef {
+    const unique_addrspace: uint = 0u;
+    ret llvm::LLVMPointerType(t, unique_addrspace as c_uint);
 }
 
 fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
