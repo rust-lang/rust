@@ -80,8 +80,8 @@ fn seq_preconds(fcx: fn_ctxt, pps: [pre_and_post]) -> precond {
                 let next_first_post = clone(first.postcondition);
                 seq_tritv(next_first_post, second.postcondition);
                 idx += 1u;
-                first = @{precondition: next_first,
-                          postcondition: next_first_post};
+                first = {precondition: next_first,
+                         postcondition: next_first_post};
             } else { ret first.precondition; }
         }
     }

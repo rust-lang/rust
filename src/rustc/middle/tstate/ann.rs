@@ -31,7 +31,7 @@ type poststate = t;
  */
 
 /* named thus so as not to confuse with prestate and poststate */
-type pre_and_post = @{precondition: precond, postcondition: postcond};
+type pre_and_post = {precondition: precond, postcondition: postcond};
 
 
 /* FIXME: once it's implemented: */
@@ -39,7 +39,7 @@ type pre_and_post = @{precondition: precond, postcondition: postcond};
 //  : ((*.precondition).nbits == (*.postcondition).nbits);
 type pre_and_post_state = {prestate: prestate, poststate: poststate};
 
-type ts_ann = @{conditions: pre_and_post, states: pre_and_post_state};
+type ts_ann = {conditions: pre_and_post, states: pre_and_post_state};
 
 fn true_precond(num_vars: uint) -> precond { ret create_tritv(num_vars); }
 
@@ -58,8 +58,8 @@ fn false_postcond(num_vars: uint) -> postcond {
 }
 
 fn empty_pre_post(num_vars: uint) -> pre_and_post {
-    ret @{precondition: empty_prestate(num_vars),
-          postcondition: empty_poststate(num_vars)};
+    ret {precondition: empty_prestate(num_vars),
+         postcondition: empty_poststate(num_vars)};
 }
 
 fn empty_states(num_vars: uint) -> pre_and_post_state {
@@ -68,8 +68,8 @@ fn empty_states(num_vars: uint) -> pre_and_post_state {
 }
 
 fn empty_ann(num_vars: uint) -> ts_ann {
-    ret @{conditions: empty_pre_post(num_vars),
-          states: empty_states(num_vars)};
+    ret {conditions: empty_pre_post(num_vars),
+         states: empty_states(num_vars)};
 }
 
 fn get_pre(&&p: pre_and_post) -> precond { ret p.precondition; }
@@ -224,8 +224,8 @@ fn ann_prestate(a: ts_ann) -> prestate { ret a.states.prestate; }
 fn ann_poststate(a: ts_ann) -> poststate { ret a.states.poststate; }
 
 fn pp_clone(p: pre_and_post) -> pre_and_post {
-    ret @{precondition: clone(p.precondition),
-          postcondition: clone(p.postcondition)};
+    ret {precondition: clone(p.precondition),
+         postcondition: clone(p.postcondition)};
 }
 
 fn clone(p: prestate) -> prestate { ret tritv_clone(p); }

@@ -413,8 +413,8 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         }
         let antec_pp = pp_clone(expr_pp(fcx.ccx, ex));
         let e_pp =
-            @{precondition: empty_prestate(num_local_vars),
-              postcondition: false_postcond(num_local_vars)};
+            {precondition: empty_prestate(num_local_vars),
+             postcondition: false_postcond(num_local_vars)};
         let g = bind combine_pp(antec_pp, fcx, _, _);
         let alts_overall_pp =
             vec::foldl(e_pp, alt_pps, g);
