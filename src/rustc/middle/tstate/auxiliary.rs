@@ -224,7 +224,8 @@ type fn_info =
     {constrs: constr_map,
      num_constraints: uint,
      cf: ret_style,
-     used_vars: @mut [node_id]};
+     used_vars: @mut [node_id],
+     ignore: bool};
 
 /* mapping from node ID to typestate annotation */
 type node_ann_table = @mut [mut ts_ann];

@@ -69,6 +69,34 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
     ret next + 1u;
 }
 
+fn contains_constrained_calls(tcx: ty::ctxt, body: blk) -> bool {
+    type cx = @{
+        tcx: ty::ctxt,
+        mut has: bool
+    };
+    let cx = @{
+        tcx: tcx,
+        mut has: false
+    };
+    let vtor = visit::default_visitor::<cx>();
+    let vtor = @{visit_expr: visit_expr with *vtor};
+    visit::visit_block(body, cx, visit::mk_vt(vtor));
+    ret cx.has;
+
+    fn visit_expr(e: @expr, &&cx: cx, v: visit::vt<cx>) {
+        import syntax::print::pprust;
+        #debug("visiting %?", pprust::expr_to_str(e));
+
+        visit::visit_expr(e, cx, v);
+
+        if constraints_expr(cx.tcx, e).is_not_empty() {
+            #debug("has constraints");
+            cx.has = true;
+        } else {
+            #debug("has not constraints");
+        }
+    }
+}
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
@@ -86,16 +114,20 @@ fn mk_fn_info(ccx: crate_ctxt,
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
-    let mut i = 0u, l = vec::len(*cx.cs);
-    while i < l {
-        next = add_constraint(cx.tcx, copy cx.cs[i], next, res_map);
-        i += 1u;
-    }
-    /* if this function has any constraints, instantiate them to the
-       argument names and add them */
-    for f_decl.constraints.each {|c|
-        let sc = ast_constr_to_sp_constr(cx.tcx, f_decl.inputs, c);
-        next = add_constraint(cx.tcx, sc, next, res_map);
+    let ignore = !contains_constrained_calls(ccx.tcx, f_body);
+
+    if !ignore {
+        let mut i = 0u, l = vec::len(*cx.cs);
+        while i < l {
+            next = add_constraint(cx.tcx, copy cx.cs[i], next, res_map);
+            i += 1u;
+        }
+        /* if this function has any constraints, instantiate them to the
+        argument names and add them */
+        for f_decl.constraints.each {|c|
+            let sc = ast_constr_to_sp_constr(cx.tcx, f_decl.inputs, c);
+            next = add_constraint(cx.tcx, sc, next, res_map);
+        }
     }
 
     let v: @mut [node_id] = @mut [];
@@ -103,7 +135,8 @@ fn mk_fn_info(ccx: crate_ctxt,
         {constrs: res_map,
          num_constraints: next,
          cf: f_decl.cf,
-         used_vars: v};
+         used_vars: v,
+         ignore: ignore};
     ccx.fm.insert(id, rslt);
     #debug("%s has %u constraints", name, num_constraints(rslt));
 }

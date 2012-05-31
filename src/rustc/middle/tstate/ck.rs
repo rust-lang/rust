@@ -116,10 +116,11 @@ fn fn_states(fk: visit::fn_kind, f_decl: ast::fn_decl, f_body: ast::blk,
              sp: span, id: node_id,
              ccx: crate_ctxt, v: visit::vt<crate_ctxt>) {
 
+    visit::visit_fn(fk, f_decl, f_body, sp, id, ccx, v);
+
     // We may not care about typestate for this function if it contains
     // no constrained calls
-    if ccx.fm.contains_key(id) {
-        visit::visit_fn(fk, f_decl, f_body, sp, id, ccx, v);
+    if !ccx.fm.get(id).ignore {
         /* Look up the var-to-bit-num map for this function */
 
         let f_info = ccx.fm.get(id);
