@@ -1526,7 +1526,10 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
-      ty_res(did, inner, tps) { kind_send_only() }
+      ty_res(did, inner, tps) {
+        let inner = subst(cx, tps, inner);
+        (kind_const() & type_kind(cx, inner)) | kind_send_only()
+      }
       ty_param(_, did) {
         // FIXME: type params shouldn't be implicitly copyable (#2449)
         let k = param_bounds_to_kind(cx.ty_param_bounds.get(did.node));
