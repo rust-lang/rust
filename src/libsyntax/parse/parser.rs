@@ -639,8 +639,6 @@ class parser {
     fn parse_mutability() -> mutability {
         if self.eat_keyword("mut") {
             m_mutbl
-        } else if self.eat_keyword("mut") {
-            m_mutbl
         } else if self.eat_keyword("const") {
             m_const
         } else {
