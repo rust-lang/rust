@@ -1,4 +1,4 @@
-
+// error-pattern:bounds check
 fn main() {
     let v = vec::from_fn(1024u) {|n| n};
     // this should trip a bounds check
