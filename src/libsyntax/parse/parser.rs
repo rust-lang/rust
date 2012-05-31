@@ -724,6 +724,12 @@ class parser {
                 let mut fields = [self.parse_field(token::COLON)];
                 let mut base = none;
                 while self.token != token::RBRACE {
+                    // optional comma before "with"
+                    if self.token == token::COMMA
+                        && self.token_is_keyword("with",
+                                                 self.look_ahead(1u)) {
+                        self.bump();
+                    }
                     if self.eat_keyword("with") {
                         base = some(self.parse_expr()); break;
                     }
