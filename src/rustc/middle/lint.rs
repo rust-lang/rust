@@ -4,6 +4,7 @@ import syntax::{ast, visit};
 import syntax::attr;
 import syntax::codemap::span;
 import std::map::{map,hashmap,int_hash,hash_from_strs};
+import std::smallintmap::{map,smallintmap};
 import io::writer_util;
 import syntax::print::pprust::expr_to_str;
 
@@ -27,6 +28,18 @@ enum lint {
     while_true,
     path_statement,
     old_vecs,
+}
+
+// This is pretty unfortunate. We really want some sort of "deriving Enum"
+// type of thing.
+fn int_to_lint(i: int) -> lint {
+    alt check i {
+      0 { ctypes }
+      1 { unused_imports }
+      2 { while_true }
+      3 { path_statement }
+      4 { old_vecs }
+    }
 }
 
 enum level {
@@ -75,12 +88,12 @@ fn get_lint_dict() -> lint_dict {
 }
 
 type ctxt = @{dict: lint_dict,
-              curr: hashmap<lint, level>,
+              curr: smallintmap<level>,
               tcx: ty::ctxt};
 
 impl methods for ctxt {
     fn get_level(lint: lint) -> level {
-        alt self.curr.find(lint) {
+        alt self.curr.find(lint as uint) {
           some(c) { c }
           none { ignore }
         }
@@ -88,9 +101,9 @@ impl methods for ctxt {
 
     fn set_level(lint: lint, level: level) {
         if level == ignore {
-            self.curr.remove(lint);
+            self.curr.remove(lint as uint);
         } else {
-            self.curr.insert(lint, level);
+            self.curr.insert(lint as uint, level);
         }
     }
 
@@ -186,7 +199,7 @@ fn time(do_it: bool, what: str, thunk: fn()) {
 fn check_item(cx: ctxt, i: @ast::item) {
     cx.with_warn_attrs(i.attrs) {|cx|
         for cx.curr.each {|lint, level|
-            alt lint {
+            alt int_to_lint(lint as int) {
               ctypes { check_item_ctypes(cx, level, i); }
               unused_imports { check_item_unused_imports(cx, level, i); }
               while_true { check_item_while_true(cx, level, i); }
@@ -338,7 +351,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
     fn eq_lint(&&a: lint, &&b: lint) -> bool { a == b }
 
     let cx = @{dict: get_lint_dict(),
-               curr: hashmap(hash_lint, eq_lint),
+               curr: std::smallintmap::mk(),
                tcx: tcx};
 
     // Install defaults.
