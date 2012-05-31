@@ -157,6 +157,7 @@ import check::regionmanip::{replace_bound_regions_in_fn_ty};
 import driver::session::session;
 import util::common::{indent, indenter};
 import ast::{unsafe_fn, impure_fn, pure_fn, crust_fn};
+import ast::{m_const, m_imm, m_mutbl};
 
 export infer_ctxt;
 export new_infer_ctxt;
@@ -961,24 +962,27 @@ impl methods for resolve_state {
 // we just fall back to requiring that a <: b.
 //
 // Assuming we have a bound from both sides, we will then examine
-// these bounds and see if they have the form (@MT_a, &rb.MT_b)
-// (resp. ~MT_a).  If they do not, we fall back to subtyping.
+// these bounds and see if they have the form (@M_a T_a, &rb.M_b T_b)
+// (resp. ~M_a T_a, [M_a T_a], etc).  If they do not, we fall back to
+// subtyping.
 //
 // If they *do*, then we know that the two types could never be
-// subtypes of one another.  We will then construct a type @MT_b and
-// ensure that type a is a subtype of that.  This allows for the
+// subtypes of one another.  We will then construct a type @const T_b
+// and ensure that type a is a subtype of that.  This allows for the
 // possibility of assigning from a type like (say) @[mut T1] to a type
-// &[const T2] where T1 <: T2.  Basically we would require that @[mut
-// T1] <: @[const T2].  Next we require that the region for the
-// enclosing scope be a superregion of the region r.  These two checks
-// together guarantee that the type A would be a subtype of the type B
-// if the @ were converted to a region r.
+// &[T2] where T1 <: T2.  This might seem surprising, since the `@`
+// points at mutable memory but the `&` points at immutable memory.
+// This would in fact be unsound, except for the borrowck, which comes
+// later and guarantees that such mutability conversions are safe.
+// See borrowck for more details.  Next we require that the region for
+// the enclosing scope be a superregion of the region r.
 //
-// You might wonder why we don't just make the type &e.MT_a where e is
-// the enclosing region and check that &e.MT_a <: B.  The reason is
-// that the type @MT_a is (generally) just a *lower-bound*, so this
-// would be imposing @MT_a also as the upper-bound on type A.  But
-// this upper-bound might be stricter than what is truly needed.
+// You might wonder why we don't make the type &e.const T_a where e is
+// the enclosing region and check that &e.const T_a <: B.  The reason
+// is that the type of A is (generally) just a *lower-bound*, so this
+// would be imposing that lower-bound also as the upper-bound on type
+// A.  But this upper-bound might be stricter than what is truly
+// needed.
 
 impl assignment for infer_ctxt {
     fn assign_tys(anmnt: assignment, a: ty::t, b: ty::t) -> ures {
@@ -1051,35 +1055,39 @@ impl assignment for infer_ctxt {
           (some(a_bnd), some(b_bnd)) {
             alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
               (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) {
-                let nr_b = ty::mk_box(self.tcx, mt_b);
-                self.crosspollinate(anmnt, a, nr_b, r_b)
+                let nr_b = ty::mk_box(self.tcx, {ty: mt_b.ty,
+                                                 mutbl: m_const});
+                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
               (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) {
-                let nr_b = ty::mk_uniq(self.tcx, mt_b);
-                self.crosspollinate(anmnt, a, nr_b, r_b)
+                let nr_b = ty::mk_uniq(self.tcx, {ty: mt_b.ty,
+                                                  mutbl: m_const});
+                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
               (ty::ty_estr(vs_a),
                ty::ty_estr(ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_estr(self.tcx, vs_a);
-                self.crosspollinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, m_imm, r_b)
               }
               (ty::ty_str,
                ty::ty_estr(ty::vstore_slice(r_b))) {
                 let nr_b = ty::mk_str(self.tcx);
-                self.crosspollinate(anmnt, a, nr_b, r_b)
+                self.crosspollinate(anmnt, a, nr_b, m_imm, r_b)
               }
 
               (ty::ty_evec(mt_a, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
-                let nr_b = ty::mk_evec(self.tcx, mt_b, vs_a);
-                self.crosspollinate(anmnt, a, nr_b, r_b)
+                let nr_b = ty::mk_evec(self.tcx, {ty: mt_b.ty,
+                                                  mutbl: m_const}, vs_a);
+                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
               (ty::ty_vec(mt_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b))) {
-                let nr_b = ty::mk_vec(self.tcx, mt_b);
-                self.crosspollinate(anmnt, a, nr_b, r_b)
+                let nr_b = ty::mk_vec(self.tcx, {ty: mt_b.ty,
+                                                 mutbl: m_const});
+                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
               _ {
                 self.sub_tys(a, b)
@@ -1093,9 +1101,10 @@ impl assignment for infer_ctxt {
     }
 
     fn crosspollinate(anmnt: assignment,
-                     a: ty::t,
-                     nr_b: ty::t,
-                     r_b: ty::region) -> ures {
+                      a: ty::t,
+                      nr_b: ty::t,
+                      m: ast::mutability,
+                      r_b: ty::region) -> ures {
 
         #debug["crosspollinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
                anmnt, a.to_str(self), nr_b.to_str(self),
@@ -1109,8 +1118,9 @@ impl assignment for infer_ctxt {
                     // if successful, add an entry indicating that
                     // borrowing occurred
                     #debug["borrowing expression #%?", anmnt];
-                    self.tcx.borrowings.insert(anmnt.expr_id,
-                                               anmnt.borrow_scope);
+                    let borrow = {scope_id: anmnt.borrow_scope,
+                                  mutbl: m};
+                    self.tcx.borrowings.insert(anmnt.expr_id, borrow);
                     uok()
                 }
             }
@@ -1561,17 +1571,17 @@ impl of combine for sub {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         #debug("mts(%s <: %s)", a.to_str(*self), b.to_str(*self));
 
-        if a.mutbl != b.mutbl && b.mutbl != ast::m_const {
+        if a.mutbl != b.mutbl && b.mutbl != m_const {
             ret err(ty::terr_mutability);
         }
 
         alt b.mutbl {
-          ast::m_mutbl {
+          m_mutbl {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
             self.infcx().eq_tys(a.ty, b.ty).then {|| ok(a) }
           }
-          ast::m_imm | ast::m_const {
+          m_imm | m_const {
             // Otherwise we can be covariant:
             self.tys(a.ty, b.ty).chain {|_t| ok(a) }
           }
@@ -1710,24 +1720,24 @@ impl of combine for lub {
         let m = if a.mutbl == b.mutbl {
             a.mutbl
         } else {
-            ast::m_const
+            m_const
         };
 
         alt m {
-          ast::m_imm | ast::m_const {
+          m_imm | m_const {
             self.tys(a.ty, b.ty).chain {|t|
                 ok({ty: t, mutbl: m})
             }
           }
 
-          ast::m_mutbl {
+          m_mutbl {
             self.infcx().try {||
                 self.infcx().eq_tys(a.ty, b.ty).then {||
                     ok({ty: a.ty, mutbl: m})
                 }
             }.chain_err {|_e|
                 self.tys(a.ty, b.ty).chain {|t|
-                    ok({ty: t, mutbl: ast::m_const})
+                    ok({ty: t, mutbl: m_const})
                 }
             }
           }
@@ -1893,43 +1903,43 @@ impl of combine for glb {
         alt (a.mutbl, b.mutbl) {
           // If one side or both is mut, then the GLB must use
           // the precise type from the mut side.
-          (ast::m_mutbl, ast::m_const) {
+          (m_mutbl, m_const) {
             sub(*self).tys(a.ty, b.ty).chain {|_t|
-                ok({ty: a.ty, mutbl: ast::m_mutbl})
+                ok({ty: a.ty, mutbl: m_mutbl})
             }
           }
-          (ast::m_const, ast::m_mutbl) {
+          (m_const, m_mutbl) {
             sub(*self).tys(b.ty, a.ty).chain {|_t|
-                ok({ty: b.ty, mutbl: ast::m_mutbl})
+                ok({ty: b.ty, mutbl: m_mutbl})
             }
           }
-          (ast::m_mutbl, ast::m_mutbl) {
+          (m_mutbl, m_mutbl) {
             self.infcx().eq_tys(a.ty, b.ty).then {||
-                ok({ty: a.ty, mutbl: ast::m_mutbl})
+                ok({ty: a.ty, mutbl: m_mutbl})
             }
           }
 
           // If one side or both is immutable, we can use the GLB of
           // both sides but mutbl must be `m_imm`.
-          (ast::m_imm, ast::m_const) |
-          (ast::m_const, ast::m_imm) |
-          (ast::m_imm, ast::m_imm) {
+          (m_imm, m_const) |
+          (m_const, m_imm) |
+          (m_imm, m_imm) {
             self.tys(a.ty, b.ty).chain {|t|
-                ok({ty: t, mutbl: ast::m_imm})
+                ok({ty: t, mutbl: m_imm})
             }
           }
 
           // If both sides are const, then we can use GLB of both
           // sides and mutbl of only `m_const`.
-          (ast::m_const, ast::m_const) {
+          (m_const, m_const) {
             self.tys(a.ty, b.ty).chain {|t|
-                ok({ty: t, mutbl: ast::m_const})
+                ok({ty: t, mutbl: m_const})
             }
           }
 
           // There is no mutual subtype of these combinations.
-          (ast::m_mutbl, ast::m_imm) |
-          (ast::m_imm, ast::m_mutbl) {
+          (m_mutbl, m_imm) |
+          (m_imm, m_mutbl) {
               err(ty::terr_mutability)
           }
         }

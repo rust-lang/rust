@@ -190,10 +190,10 @@ fn req_loans_in_expr(ex: @ast::expr,
     let tcx = bccx.tcx;
 
     // If this expression is borrowed, have to ensure it remains valid:
-    for tcx.borrowings.find(ex.id).each { |scope_id|
+    for tcx.borrowings.find(ex.id).each { |borrow|
         let cmt = self.bccx.cat_borrow_of_expr(ex);
-        let scope_r = ty::re_scope(scope_id);
-        self.guarantee_valid(cmt, m_const, scope_r);
+        let scope_r = ty::re_scope(borrow.scope_id);
+        self.guarantee_valid(cmt, borrow.mutbl, scope_r);
     }
 
     // Special checks for various kinds of expressions:

@@ -158,6 +158,7 @@ export mach_sty;
 export ty_sort_str;
 export normalize_ty;
 export to_str;
+export borrow, serialize_borrow, deserialize_borrow;
 
 // Data types
 
@@ -204,6 +205,12 @@ enum ast_ty_to_ty_cache_entry {
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
 
+#[auto_serialize]
+type borrow = {
+    scope_id: ast::node_id,
+    mutbl: ast::mutability
+};
+
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: hashmap<intern_key, t_box>,
@@ -239,7 +246,7 @@ type ctxt =
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
       inferred_modes: hashmap<ast::node_id, ast::mode>,
       // maps the id of borrowed expr to scope of borrowed ptr
-      borrowings: hashmap<ast::node_id, ast::node_id>,
+      borrowings: hashmap<ast::node_id, borrow>,
       normalized_cache: hashmap<t, t>};
 
 enum tbox_flag {

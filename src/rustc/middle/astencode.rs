@@ -563,6 +563,17 @@ impl of tr for method_origin {
 }
 
 // ______________________________________________________________________
+// Encoding and decoding of borrow
+
+impl helper for ebml::ebml_deserializer {
+    fn read_borrow(xcx: extended_decode_ctxt) -> ty::borrow {
+        let borrow = ty::deserialize_borrow(self);
+        {scope_id: xcx.tr_id(borrow.scope_id),
+         mutbl: borrow.mutbl}
+    }
+}
+
+// ______________________________________________________________________
 // Encoding and decoding vtable_res
 
 fn encode_vtable_res(ecx: @e::encode_ctxt,
@@ -866,10 +877,12 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::iter(tcx.borrowings.find(id)) {|s|
+    option::iter(tcx.borrowings.find(id)) {|borrow|
         ebml_w.tag(c::tag_table_borrowings) {||
             ebml_w.id(id);
-            ebml_w.wr_tagged_i64(c::tag_table_val as uint, s as i64);
+            ebml_w.tag(c::tag_table_val) {||
+                ty::serialize_borrow(ebml_w, borrow)
+            }
         }
     }
 }
@@ -979,8 +992,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.maps.vtable_map.insert(id,
                                            val_dsr.read_vtable_res(xcx));
             } else if tag == (c::tag_table_borrowings as uint) {
-                let scope_id = ebml::doc_as_i64(val_doc) as int;
-                dcx.tcx.borrowings.insert(id, scope_id);
+                let borrow = val_dsr.read_borrow(xcx);
+                dcx.tcx.borrowings.insert(id, borrow);
             } else {
                 xcx.dcx.tcx.sess.bug(
                     #fmt["unknown tag found in side tables: %x", tag]);
