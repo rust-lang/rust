@@ -95,6 +95,7 @@ fn clone(v: bitv) -> bitv {
 }
 
 #[doc = "Retreive the value at index `i`"]
+#[inline(always)]
 pure fn get(v: bitv, i: uint) -> bool {
     assert (i < v.nbits);
     let bits = uint_bits;
@@ -104,8 +105,6 @@ pure fn get(v: bitv, i: uint) -> bool {
     ret x == 1u;
 }
 
-// FIXME: This doesn't account for the actual size of the vectors,
-// so it could end up comparing garbage bits (#2342)
 #[doc = "
 Compares two bitvectors
 
@@ -113,6 +112,7 @@ Both bitvectors must be the same length. Returns `true` if both bitvectors
 contain identical elements.
 "]
 fn equal(v0: bitv, v1: bitv) -> bool {
+    if v0.nbits != v1.nbits { ret false; }
     let len = vec::len(v1.storage);
     for uint::iterate(0u, len) {|i|
         if v0.storage[i] != v1.storage[i] { ret false; }
@@ -120,21 +120,16 @@ fn equal(v0: bitv, v1: bitv) -> bool {
 }
 
 #[doc = "Set all bits to 0"]
-fn clear(v: bitv) {
-    for uint::range(0u, vec::len(v.storage)) {|i| v.storage[i] = 0u; };
-}
+#[inline(always)]
+fn clear(v: bitv) { for each_storage(v) {|w| w = 0u } }
 
 #[doc = "Set all bits to 1"]
-fn set_all(v: bitv) {
-    for uint::range(0u, v.nbits) {|i| set(v, i, true); };
-}
+#[inline(always)]
+fn set_all(v: bitv) { for each_storage(v) {|w| w = !0u } }
 
 #[doc = "Invert all bits"]
-fn invert(v: bitv) {
-    for uint::range(0u, vec::len(v.storage)) {|i|
-        v.storage[i] = !v.storage[i];
-    };
-}
+#[inline(always)]
+fn invert(v: bitv) { for each_storage(v) {|w| w = !w } }
 
 #[doc = "
 Calculate the difference between two bitvectors
@@ -156,6 +151,7 @@ Set the value of a bit at a given index
 
 `i` must be less than the length of the bitvector.
 "]
+#[inline(always)]
 fn set(v: bitv, i: uint, x: bool) {
     assert (i < v.nbits);
     let bits = uint_bits;
@@ -193,11 +189,22 @@ fn to_vec(v: bitv) -> [uint] {
     ret vec::from_fn::<uint>(v.nbits, sub);
 }
 
+#[inline(always)]
 fn each(v: bitv, f: fn(bool) -> bool) {
     let mut i = 0u;
     while i < v.nbits {
         if !f(get(v, i)) { break; }
         i = i + 1u;
+    }
+}
+
+#[inline(always)]
+fn each_storage(v: bitv, op: fn(&uint) -> bool) {
+    for uint::range(0u, vec::len(v.storage)) {|i|
+        let mut w = v.storage[i];
+        let b = !op(w);
+        v.storage[i] = w;
+        if !b { break; }
     }
 }
 
@@ -522,6 +529,20 @@ mod tests {
                        [0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 1u, 1u, 1u]));
+    }
+
+    #[test]
+    fn test_equal_differing_sizes() {
+        let v0 = bitv(10u, false);
+        let v1 = bitv(11u, false);
+        assert !equal(v0, v1);
+    }
+
+    #[test]
+    fn test_equal_greatly_differing_sizes() {
+        let v0 = bitv(10u, false);
+        let v1 = bitv(110u, false);
+        assert !equal(v0, v1);
     }
 
 }
