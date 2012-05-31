@@ -55,15 +55,12 @@ fn kind_to_str(k: kind) -> str {
 type rval_map = std::map::hashmap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
-            rval_map: rval_map,
             method_map: typeck::method_map,
             last_use_map: liveness::last_use_map};
 
 fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
-               last_use_map: liveness::last_use_map, crate: @crate)
-    -> rval_map {
+               last_use_map: liveness::last_use_map, crate: @crate) {
     let ctx = {tcx: tcx,
-               rval_map: std::map::int_hash(),
                method_map: method_map,
                last_use_map: last_use_map};
     let visit = visit::mk_vt(@{
@@ -76,7 +73,6 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
     });
     visit::visit_crate(*crate, ctx, visit);
     tcx.sess.abort_if_errors();
-    ret ctx.rval_map;
 }
 
 type check_fn = fn@(ctx, option<@freevar_entry>, bool, ty::t, sp: span);
