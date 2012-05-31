@@ -2521,7 +2521,9 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     let ix_size = llsize_of_real(cx.ccx(), val_ty(ix.val));
     let int_size = llsize_of_real(cx.ccx(), ccx.int_type);
     let ix_val = if ix_size < int_size {
-        ZExt(bcx, ix.val, ccx.int_type)
+        if ty::type_is_signed(expr_ty(cx, idx)) {
+            SExt(bcx, ix.val, ccx.int_type)
+        } else { ZExt(bcx, ix.val, ccx.int_type) }
     } else if ix_size > int_size {
         Trunc(bcx, ix.val, ccx.int_type)
     } else {
