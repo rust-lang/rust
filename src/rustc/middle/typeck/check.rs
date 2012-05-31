@@ -588,14 +588,43 @@ type gather_result =
      ty_var_counter: @mut uint};
 
 // AST fragment checking
-fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
+fn check_lit(fcx: @fn_ctxt, lit: @ast::lit,
+             expected: option<ty::t>) -> ty::t {
     alt lit.node {
-      ast::lit_str(_) { ty::mk_str(ccx.tcx) }
-      ast::lit_int(_, t) { ty::mk_mach_int(ccx.tcx, t) }
-      ast::lit_uint(_, t) { ty::mk_mach_uint(ccx.tcx, t) }
-      ast::lit_float(_, t) { ty::mk_mach_float(ccx.tcx, t) }
-      ast::lit_nil { ty::mk_nil(ccx.tcx) }
-      ast::lit_bool(_) { ty::mk_bool(ccx.tcx) }
+      ast::lit_str(_) { ty::mk_str(fcx.ccx.tcx) }
+      ast::lit_int(_, t) {
+        // This is a quick hack to allow some relaxation of when one
+        // needs a "u" suffix on integer literals.
+
+        // Leaving off "u" suffixes means that something that's parsed
+        // as an int might in fact be a uint.  Check to see what its
+        // expected type is; if it's expected to be a uint, then we
+        // can treat it like one.  Otherwise, treat it like an int.
+
+        alt t {
+          // First make sure we never treat chars like uints.
+          syntax::ast::ty_char { ty::mk_mach_int(fcx.ccx.tcx, t) }
+          // Then handle all the other int variants.
+          _ {
+            let expected = unpack_expected(fcx, expected) { |sty|
+                alt sty {
+                  ty::ty_uint(t) {
+                    some(ty::mk_mach_uint(fcx.ccx.tcx, t))
+                  }
+                  _ { none }
+                }
+            };
+            alt expected {
+              some(t) { t }
+              none { ty::mk_mach_int(fcx.ccx.tcx, t)  }
+            }
+          }
+        }
+      }
+      ast::lit_uint(_, t) { ty::mk_mach_uint(fcx.ccx.tcx, t) }
+      ast::lit_float(_, t) { ty::mk_mach_float(fcx.ccx.tcx, t) }
+      ast::lit_nil { ty::mk_nil(fcx.ccx.tcx) }
+      ast::lit_bool(_) { ty::mk_bool(fcx.ccx.tcx) }
     }
 }
 
@@ -987,24 +1016,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
     }
 
-    // Resolves `expected` by a single level if it is a variable and passes it
-    // through the `unpack` function.  It there is no expected type or
-    // resolution is not possible (e.g., no constraints yet present), just
-    // returns `none`.
-    fn unpack_expected<O: copy>(fcx: @fn_ctxt, expected: option<ty::t>,
-                                unpack: fn(ty::sty) -> option<O>)
-        -> option<O> {
-        alt expected {
-          some(t) {
-            alt infer::resolve_shallow(fcx.infcx, t, false) {
-              result::ok(t) { unpack(ty::get(t).struct) }
-              _ { none }
-            }
-          }
-          _ { none }
-        }
-    }
-
     fn check_expr_fn(fcx: @fn_ctxt,
                      expr: @ast::expr,
                      proto: ast::proto,
@@ -1062,7 +1073,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
 
       ast::expr_lit(lit) {
-        let typ = check_lit(fcx.ccx, lit);
+        #debug["checking expr_lit %s",
+               syntax::print::pprust::expr_to_str(expr)];
+
+        let typ = check_lit(fcx, lit, expected);
         fcx.write_ty(id, typ);
       }
 
@@ -1669,6 +1683,24 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     #debug("<< bot=%b", bot);
     ret bot;
+}
+
+// Resolves `expected` by a single level if it is a variable and
+// passes it through the `unpack` function.  It there is no expected
+// type or resolution is not possible (e.g., no constraints yet
+// present), just returns `none`.
+fn unpack_expected<O: copy>(fcx: @fn_ctxt, expected: option<ty::t>,
+                            unpack: fn(ty::sty) -> option<O>)
+    -> option<O> {
+    alt expected {
+      some(t) {
+        alt infer::resolve_shallow(fcx.infcx, t, false) {
+          result::ok(t) { unpack(ty::get(t).struct) }
+          _ { none }
+        }
+      }
+      _ { none }
+    }
 }
 
 fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
