@@ -95,7 +95,7 @@ class parser {
         self.restricted_keywords = token::restricted_keyword_table();
     }
 
-    //TODO: uncomment when destructors workd
+    //TODO: uncomment when destructors work
     //drop {} /* do not copy the parser; its state is tied to outside state */
 
     fn bump() {
@@ -995,7 +995,7 @@ class parser {
                     let tys = if self.eat(token::MOD_SEP) {
                         self.expect(token::LT);
                         self.parse_seq_to_gt(some(token::COMMA),
-                                        {|p| p.parse_ty(false)})
+                                             {|p| p.parse_ty(false)})
                     } else { [] };
                     e = self.mk_pexpr(lo, hi, expr_field(self.to_expr(e),
                                                          self.get_str(i),
@@ -1018,45 +1018,46 @@ class parser {
                 let nd =
                     if vec::any(es_opt, {|e| option::is_none(e) }) {
                     expr_bind(self.to_expr(e), es_opt)
-            } else {
-                let es = vec::map(es_opt) {|e| option::get(e) };
-                expr_call(self.to_expr(e), es, false)
-            };
-            e = self.mk_pexpr(lo, hi, nd);
-          }
+                } else {
+                    let es = vec::map(es_opt) {|e| option::get(e) };
+                    expr_call(self.to_expr(e), es, false)
+                };
+                e = self.mk_pexpr(lo, hi, nd);
+              }
 
-          // expr {|| ... }
-          token::LBRACE if (token::is_bar(self.look_ahead(1u))
-                            && self.permits_call()) {
-            self.bump();
-            let blk = self.parse_fn_block_expr();
-            alt e.node {
-              expr_call(f, args, false) {
-                e = pexpr(@{node: expr_call(f, args + [blk], true)
-                            with *self.to_expr(e)});
+              // expr {|| ... }
+              token::LBRACE if (token::is_bar(self.look_ahead(1u))
+                                && self.permits_call()) {
+                self.bump();
+                let blk = self.parse_fn_block_expr();
+                alt e.node {
+                  expr_call(f, args, false) {
+                    e = pexpr(@{node: expr_call(f, args + [blk], true)
+                                with *self.to_expr(e)});
+                  }
+                  _ {
+                    e = self.mk_pexpr(lo, self.last_span.hi,
+                                      expr_call(self.to_expr(e),
+                                                [blk], true));
+                  }
+                }
               }
-              _ {
-                e = self.mk_pexpr(lo, self.last_span.hi,
-                                  expr_call(self.to_expr(e), [blk], true));
+
+              // expr[...]
+              token::LBRACKET {
+                self.bump();
+                let ix = self.parse_expr();
+                hi = ix.span.hi;
+                self.expect(token::RBRACKET);
+                self.get_id(); // see ast_util::op_expr_callee_id
+                e = self.mk_pexpr(lo, hi, expr_index(self.to_expr(e), ix));
               }
+
+              _ { ret e; }
             }
-          }
-
-          // expr[...]
-          token::LBRACKET {
-            self.bump();
-            let ix = self.parse_expr();
-            hi = ix.span.hi;
-            self.expect(token::RBRACKET);
-            self.get_id(); // see ast_util::op_expr_callee_id
-            e = self.mk_pexpr(lo, hi, expr_index(self.to_expr(e), ix));
-          }
-
-          _ { ret e; }
         }
+        ret e;
     }
-    ret e;
-}
 
     fn parse_token_tree() -> token_tree {
         #[doc="what's the opposite delimiter?"]
@@ -2072,18 +2073,18 @@ class parser {
         }
         else if self.eat_keyword("priv") {
             self.expect(token::LBRACE);
-        let mut results = [];
-        while self.token != token::RBRACE {
-            results += [self.parse_single_class_item(private)];
+            let mut results = [];
+            while self.token != token::RBRACE {
+                results += [self.parse_single_class_item(private)];
+            }
+            self.bump();
+            ret members(results);
         }
-        self.bump();
-        ret members(results);
+        else {
+            // Probably need to parse attrs
+            ret members([self.parse_single_class_item(public)]);
+        }
     }
-    else {
-        // Probably need to parse attrs
-        ret members([self.parse_single_class_item(public)]);
-    }
-}
 
     fn parse_visibility(def: visibility) -> visibility {
         if self.eat_keyword("pub") { public }
