@@ -122,11 +122,7 @@ fn to_str(in: interner<str>, t: token) -> str {
 
       /* Literals */
       LIT_INT(c, ast::ty_char) {
-        // FIXME: escape.
-        let mut tmp = "'";
-        str::push_char(tmp, c as char);
-        str::push_char(tmp, '\'');
-        ret tmp;
+        ret "'" + char::escape_default(c as char) + "'";
       }
       LIT_INT(i, t) {
         ret int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t);
@@ -138,10 +134,11 @@ fn to_str(in: interner<str>, t: token) -> str {
         ret interner::get::<str>(in, s) +
             ast_util::float_ty_to_str(t);
       }
-      LIT_STR(s) { // FIXME: escape.
-        ret "\"" + interner::get::<str>(in, s) + "\"";
+      LIT_STR(s) {
+        ret "\""
+            + str::escape_default(interner::get::<str>(in, s))
+            + "\"";
       }
-
       /* Name components */
       IDENT(s, _) {
         ret interner::get::<str>(in, s);

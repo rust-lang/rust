@@ -97,6 +97,8 @@ export
    reserve,
    reserve_at_least,
    capacity,
+   escape_default,
+   escape_unicode,
 
    unsafe,
    extensions;
@@ -1625,6 +1627,22 @@ fn capacity(&&s: str) -> uint unsafe {
     }
 }
 
+#[doc = "Escape each char in `s` with char::escape_default."]
+fn escape_default(s: str) -> str {
+    let mut out: str = "";
+    reserve_at_least(out, str::len(s));
+    chars_iter(s) {|c| out += char::escape_default(c); }
+    ret out;
+}
+
+#[doc = "Escape each char in `s` with char::escape_unicode."]
+fn escape_unicode(s: str) -> str {
+    let mut out: str = "";
+    reserve_at_least(out, str::len(s));
+    chars_iter(s) {|c| out += char::escape_unicode(c); }
+    ret out;
+}
+
 #[doc = "Unsafe operations"]
 mod unsafe {
    export
@@ -1866,6 +1884,12 @@ impl extensions for str {
     #[doc = "Returns a string with trailing whitespace removed"]
     #[inline]
     fn trim_right() -> str { trim_right(self) }
+    #[doc = "Escape each char in `s` with char::escape_default."]
+    #[inline]
+    fn escape_default() -> str { escape_default(self) }
+    #[doc = "Escape each char in `s` with char::escape_unicode."]
+    #[inline]
+    fn escape_unicode() -> str { escape_unicode(self) }
 }
 
 #[cfg(test)]
@@ -2748,4 +2772,32 @@ mod tests {
             assert *ptr::offset(buf,5u) == 0u8;
         }
     }
+
+    #[test]
+    fn test_escape_unicode() {
+        assert escape_unicode("abc") == "\\x61\\x62\\x63";
+        assert escape_unicode("a c") == "\\x61\\x20\\x63";
+        assert escape_unicode("\r\n\t") == "\\x0d\\x0a\\x09";
+        assert escape_unicode("'\"\\") == "\\x27\\x22\\x5c";
+        assert escape_unicode("\x00\x01\xfe\xff") == "\\x00\\x01\\xfe\\xff";
+        assert escape_unicode("\u0100\uffff") == "\\u0100\\uffff";
+        assert escape_unicode("\U00010000\U0010ffff") ==
+            "\\U00010000\\U0010ffff";
+        assert escape_unicode("ab\ufb00") == "\\x61\\x62\\ufb00";
+        assert escape_unicode("\U0001d4ea\r") == "\\U0001d4ea\\x0d";
+    }
+
+    #[test]
+    fn test_escape_default() {
+        assert escape_default("abc") == "abc";
+        assert escape_default("a c") == "a c";
+        assert escape_default("\r\n\t") == "\\r\\n\\t";
+        assert escape_default("'\"\\") == "\\'\\\"\\\\";
+        assert escape_default("\u0100\uffff") == "\\u0100\\uffff";
+        assert escape_default("\U00010000\U0010ffff") ==
+            "\\U00010000\\U0010ffff";
+        assert escape_default("ab\ufb00") == "ab\\ufb00";
+        assert escape_default("\U0001d4ea\r") == "\\U0001d4ea\\r";
+    }
+
 }

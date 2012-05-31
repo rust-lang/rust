@@ -434,6 +434,7 @@ fn next_token_inner(rdr: reader) -> token::token {
               't' { c2 = '\t'; }
               '\\' { c2 = '\\'; }
               '\'' { c2 = '\''; }
+              '"' { c2 = '"'; }
               'x' { c2 = scan_numeric_escape(rdr, 2u); }
               'u' { c2 = scan_numeric_escape(rdr, 4u); }
               'U' { c2 = scan_numeric_escape(rdr, 8u); }

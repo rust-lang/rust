@@ -1609,7 +1609,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
     alt lit.node {
       ast::lit_str(st) { print_string(s, st); }
       ast::lit_int(ch, ast::ty_char) {
-        word(s.s, "'" + escape_str(str::from_char(ch as char), '\'') + "'");
+        word(s.s, "'" + char::escape_default(ch as char) + "'");
       }
       ast::lit_int(i, t) {
         if i < 0_i64 {
@@ -1714,30 +1714,8 @@ fn print_comment(s: ps, cmnt: comments::cmnt) {
 
 fn print_string(s: ps, st: str) {
     word(s.s, "\"");
-    word(s.s, escape_str(st, '"'));
+    word(s.s, str::escape_default(st));
     word(s.s, "\"");
-}
-
-fn escape_str(st: str, to_escape: char) -> str {
-    let mut out: str = "";
-    let len = str::len(st);
-    let mut i = 0u;
-    while i < len {
-        alt st[i] as char {
-          '\n' { out += "\\n"; }
-          '\t' { out += "\\t"; }
-          '\r' { out += "\\r"; }
-          '\\' { out += "\\\\"; }
-          cur {
-            if cur == to_escape { out += "\\"; }
-            // FIXME some (or all?) non-ascii things should be escaped
-            // (See #2306)
-            str::push_char(out, cur);
-          }
-        }
-        i += 1u;
-    }
-    ret out;
 }
 
 fn to_str<T>(t: T, f: fn@(ps, T)) -> str {
