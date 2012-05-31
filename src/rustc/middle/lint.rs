@@ -87,9 +87,25 @@ fn get_lint_dict() -> lint_dict {
     hash_from_strs(v)
 }
 
-type ctxt = @{dict: lint_dict,
-              curr: smallintmap<level>,
-              tcx: ty::ctxt};
+// This is a highly not-optimal set of data structure decisions.
+type lint_modes = smallintmap<level>;
+type lint_mode_map = hashmap<ast::node_id, lint_modes>;
+
+type warning_settings = {
+    default_settings: lint_modes,
+    settings_map: lint_mode_map
+};
+
+// This is kind of unfortunate. It should be somewhere else, or we should use
+// a persistent data structure...
+fn clone_lint_modes(modes: lint_modes) -> lint_modes {
+    @{v: copy modes.v}
+}
+
+type ctxt = {dict: lint_dict,
+             curr: lint_modes,
+             tcx: ty::ctxt};
+
 
 impl methods for ctxt {
     fn get_level(lint: lint) -> level {
@@ -122,7 +138,7 @@ impl methods for ctxt {
     "]
     fn with_warn_attrs(attrs: [ast::attribute], f: fn(ctxt)) {
 
-        let mut undo = [];
+        let mut new_ctxt = self;
 
         let metas = attr::attr_metas(attr::find_attrs_by_name(attrs, "warn"));
         for metas.each {|meta|
@@ -138,9 +154,12 @@ impl methods for ctxt {
                                 #fmt("unknown warning: '%s'", lintname));
                           }
                           some((lint, new_level)) {
-                            let old_level = self.get_level(lint);
-                            self.set_level(lint, new_level);
-                            undo += [(lint, old_level)]
+                            // we do multiple unneeded copies of the map
+                            // if many attributes are set, but this shouldn't
+                            // actually be a problem...
+                            new_ctxt = {curr: clone_lint_modes(self.curr)
+                                        with new_ctxt};
+                            new_ctxt.set_level(lint, new_level);
                           }
                         }
                       }
@@ -159,12 +178,7 @@ impl methods for ctxt {
             }
         }
 
-        f(self);
-
-        for undo.each {|pair|
-            let (lint,old_level) = pair;
-            self.set_level(lint, old_level);
-        }
+        f(new_ctxt);
     }
 }
 
@@ -350,9 +364,9 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
     fn hash_lint(&&lint: lint) -> uint { lint as uint }
     fn eq_lint(&&a: lint, &&b: lint) -> bool { a == b }
 
-    let cx = @{dict: get_lint_dict(),
-               curr: std::smallintmap::mk(),
-               tcx: tcx};
+    let cx = {dict: get_lint_dict(),
+              curr: std::smallintmap::mk(),
+              tcx: tcx};
 
     // Install defaults.
     for cx.dict.each {|_k, spec| cx.set_level(spec.lint, spec.default); }
