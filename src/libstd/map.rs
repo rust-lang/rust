@@ -282,7 +282,7 @@ Parameters:
 hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
-fn hashmap<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
+fn hashmap<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
         -> hashmap<K, V> {
     chained::mk(hasher, eqer)
 }
@@ -316,7 +316,9 @@ fn uint_hash<V: copy>() -> hashmap<uint, V> {
 #[doc = "
 Convenience function for adding keys to a hashmap with nil type keys
 "]
-fn set_add<K: copy>(set: set<K>, key: K) -> bool { ret set.insert(key, ()); }
+fn set_add<K: const copy>(set: set<K>, key: K) -> bool {
+    ret set.insert(key, ());
+}
 
 #[doc = "
 Convert a set into a vector.
@@ -331,7 +333,7 @@ fn vec_from_set<T: copy>(s: set<T>) -> [T] {
 }
 
 #[doc = "Construct a hashmap from a vector"]
-fn hash_from_vec<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
+fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
                                    items: [(K, V)]) -> hashmap<K, V> {
     let map = hashmap(hasher, eqer);
     vec::iter(items) { |item|
