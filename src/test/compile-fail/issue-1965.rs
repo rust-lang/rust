@@ -1,4 +1,4 @@
-// error-pattern:tried to deinitialize a variable declared in a different
+// error-pattern:moving out of immutable upvar
 fn test(-x: uint) {}
 
 fn main() {
