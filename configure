@@ -493,6 +493,7 @@ do
     done
 
     make_dir $h/test/run-pass
+    make_dir $h/test/run-pass-fulldeps
     make_dir $h/test/run-fail
     make_dir $h/test/compile-fail
     make_dir $h/test/bench

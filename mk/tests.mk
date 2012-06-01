@@ -4,6 +4,8 @@
 
 RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
 RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs)
+RPASS_FULL_RC := $(wildcard $(S)src/test/run-pass-fulldeps/*.rc)
+RPASS_FULL_RS := $(wildcard $(S)src/test/run-pass-fulldeps/*.rs)
 RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
 RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
 CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
@@ -16,6 +18,7 @@ PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 PERF_RS := $(wildcard $(S)src/test/bench/*.rs)
 
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
+RPASS_FULL_TESTS := $(RPASS_FULL_RC) $(RPASS_FULL_RS)
 RFAIL_TESTS := $(RFAIL_RC) $(RFAIL_RS)
 CFAIL_TESTS := $(CFAIL_RC) $(CFAIL_RS)
 BENCH_TESTS := $(BENCH_RS)
@@ -183,15 +186,20 @@ define TEST_STAGEN
 # Prerequisites for compiletest tests
 TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/compiletest$$(X) \
-	$$(HSREQ$(1)_$(2)_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)
+	$$(HSREQ$(1)_$(2)_$(3)) 
 
+# Prerequisites for compiletest tests that have deps on librustc, etc
+FULL_TEST_SREQ$(1)_T_$(2)_H_$(3) = \
+	$$(HBIN$(1)_H_$(3))/compiletest$$(X) \
+	$$(HSREQ$(1)_$(2)_$(3)) \
+	$$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
 
 check-stage$(1)-T-$(2)-H-$(3): tidy				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
 	check-stage$(1)-T-$(2)-H-$(3)-core          \
 	check-stage$(1)-T-$(2)-H-$(3)-std			\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass			\
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-full			\
 	check-stage$(1)-T-$(2)-H-$(3)-rfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-cfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
@@ -218,6 +226,9 @@ check-stage$(1)-T-$(2)-H-$(3)-rfail:				\
 check-stage$(1)-T-$(2)-H-$(3)-rpass:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy
 
+check-stage$(1)-T-$(2)-H-$(3)-rpass-full:				\
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-dummy
+
 check-stage$(1)-T-$(2)-H-$(3)-bench:				\
 	check-stage$(1)-T-$(2)-H-$(3)-bench-dummy
 
@@ -226,12 +237,16 @@ check-stage$(1)-T-$(2)-H-$(3)-perf:				\
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty:			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass	\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full	\
     check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail	\
     check-stage$(1)-T-$(2)-H-$(3)-pretty-bench	\
     check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass:			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy
+
+check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full:			\
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail:			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy
@@ -343,6 +358,13 @@ RPASS_ARGS$(1)-T-$(2)-H-$(3) :=				\
         --mode run-pass					\
         $$(CTEST_RUNTOOL)
 
+RPASS_FULL_ARGS$(1)-T-$(2)-H-$(3) :=				\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/run-pass-fulldeps/		\
+        --build-base $(3)/test/run-pass-fulldeps/		\
+        --mode run-pass					\
+        $$(CTEST_RUNTOOL)
+
 BENCH_ARGS$(1)-T-$(2)-H-$(3) :=				\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/bench/			\
@@ -361,6 +383,12 @@ PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3) :=			\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $$(S)src/test/run-pass/		\
         --build-base $(3)/test/run-pass/		\
+        --mode pretty
+
+PRETTY_RPASS_FULL_ARGS$(1)-T-$(2)-H-$(3) :=			\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $$(S)src/test/run-pass-fulldeps/		\
+        --build-base $(3)/test/run-pass-fulldeps/		\
         --mode pretty
 
 PRETTY_RFAIL_ARGS$(1)-T-$(2)-H-$(3) :=			\
@@ -412,10 +440,18 @@ check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy:		\
 check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy:		\
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(RPASS_TESTS)
-	@$$(call E, run rpass: $$<)
+	@$$(call E, run rpass-full: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(RPASS_ARGS$(1)-T-$(2)-H-$(3)) \
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rpass.log
+
+check-stage$(1)-T-$(2)-H-$(3)-rpass-full-dummy:		\
+		$$(FULL_TEST_SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(RPASS_FULL_TESTS)
+	@$$(call E, run rpass: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+		$$(RPASS_FULL_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rpass-full.log
 
 check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:		\
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
@@ -440,6 +476,14 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy:	\
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3)) \
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass.log
+
+check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full-dummy:	\
+	        $$(FULL_TEST_SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(RPASS_FULL_TESTS)
+	@$$(call E, run pretty-rpass-full: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+		$$(PRETTY_RPASS_FULL_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy:	\
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
@@ -562,6 +606,9 @@ check-stage$(1)-H-$(2)-std:					\
 check-stage$(1)-H-$(2)-rpass:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rpass)
+check-stage$(1)-H-$(2)-rpass-full:					\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-rpass-full)
 check-stage$(1)-H-$(2)-rfail:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rfail)
@@ -577,6 +624,9 @@ check-stage$(1)-H-$(2)-pretty:					\
 check-stage$(1)-H-$(2)-pretty-rpass:				\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-rpass)
+check-stage$(1)-H-$(2)-pretty-rpass-full:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-rpass-full)
 check-stage$(1)-H-$(2)-pretty-rfail:				\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-rfail)
@@ -631,6 +681,9 @@ check-stage$(1)-H-all-std: \
 check-stage$(1)-H-all-rpass: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rpass)
+check-stage$(1)-H-all-rpass-full: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-rpass-full)
 check-stage$(1)-H-all-rfail: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rfail)
@@ -646,6 +699,9 @@ check-stage$(1)-H-all-pretty: \
 check-stage$(1)-H-all-pretty-rpass: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-pretty-rpass)
+check-stage$(1)-H-all-pretty-rpass-full: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-pretty-rpass-full)
 check-stage$(1)-H-all-pretty-rfail: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-pretty-rfail)
@@ -678,11 +734,13 @@ check-stage$(1)-rustc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustc
 check-stage$(1)-core: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-core
 check-stage$(1)-std: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-std
 check-stage$(1)-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rpass
+check-stage$(1)-rpass-full: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rpass-full
 check-stage$(1)-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rfail
 check-stage$(1)-cfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-cfail
 check-stage$(1)-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-bench
 check-stage$(1)-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty
 check-stage$(1)-pretty-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rpass
+check-stage$(1)-pretty-rpass-full: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rpass-full
 check-stage$(1)-pretty-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rfail
 check-stage$(1)-pretty-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-bench
 check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pretty
