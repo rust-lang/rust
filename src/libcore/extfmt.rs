@@ -339,7 +339,7 @@ mod rt {
                 s = " " + s;
             }
         }
-        ret pad(cv, s, pad_signed);
+        ret pad(cv, s, pad_float);
     }
     fn conv_poly<T>(cv: conv, v: T) -> str {
         let s = sys::log_str(v);
@@ -376,7 +376,7 @@ mod rt {
               count_implied { 1u }
             };
     }
-    enum pad_mode { pad_signed, pad_unsigned, pad_nozero, }
+    enum pad_mode { pad_signed, pad_unsigned, pad_nozero, pad_float }
     fn pad(cv: conv, &s: str, mode: pad_mode) -> str unsafe {
         let uwidth : uint = alt cv.width {
           count_implied { ret s; }
@@ -396,6 +396,7 @@ mod rt {
         let {might_zero_pad, signed} = alt mode {
           pad_nozero {   {might_zero_pad:false, signed:false} }
           pad_signed {   {might_zero_pad:true,  signed:true } }
+          pad_float {   {might_zero_pad:true,  signed:true } }
           pad_unsigned { {might_zero_pad:true,  signed:false} }
         };
         fn have_precision(cv: conv) -> bool {
@@ -403,7 +404,7 @@ mod rt {
         }
         let zero_padding = {
             if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&
-                !have_precision(cv) {
+                (!have_precision(cv) || mode == pad_float) {
                 padchar = '0';
                 true
             } else {

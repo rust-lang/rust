@@ -199,6 +199,7 @@ fn part5() {
 }
 fn part6() {
     // Precision overrides 0-padding
+    // FIXME #2481: Recent gcc's report some of these as warnings
 
     test(#fmt["%06.5d", 0], " 00000");
     test(#fmt["%06.5u", 0u], " 00000");
@@ -211,7 +212,10 @@ fn part6() {
     test(#fmt["%06.5x", 127u], " 0007f");
     test(#fmt["%06.5X", 127u], " 0007F");
     test(#fmt["%06.5o", 10u], " 00012");
-    test(#fmt["%08.5f", 5.82], " 5.82000");
+
+    // Precision does not override zero-padding for floats
+    test(#fmt["%08.5f", 5.82], "05.82000");
+
     // Signed combinations
 
     test(#fmt["% 5d", 1], "    1");
