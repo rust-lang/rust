@@ -199,17 +199,6 @@ fn lookup_lint(dict: lint_dict, s: str)
     }
 }
 
-
-// FIXME: Copied from driver.rs, to work around a bug(#1566)
-fn time(do_it: bool, what: str, thunk: fn()) {
-    if !do_it{ ret thunk(); }
-    let start = std::time::precise_time_s();
-    thunk();
-    let end = std::time::precise_time_s();
-    io::stdout().write_str(#fmt("time: %3.3f s\t%s\n",
-                                end - start, what));
-}
-
 fn check_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
     cx.with_warn_attrs(i.attrs) {|cx|
         for cx.curr.each {|lint, level|
@@ -368,7 +357,7 @@ fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
 
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
-               lint_opts: [(lint, level)], time_pass: bool) {
+               lint_opts: [(lint, level)]) {
 
     fn hash_lint(&&lint: lint) -> uint { lint as uint }
     fn eq_lint(&&a: lint, &&b: lint) -> bool { a == b }
@@ -386,14 +375,12 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
         cx.set_level(lint, level);
     }
 
-    time(time_pass, "lint checking") {||
-        cx.with_warn_attrs(crate.node.attrs) {|cx|
-            let visit = visit::mk_vt(@{
-                visit_item: check_item
-                with *visit::default_visitor()
-            });
-            visit::visit_crate(*crate, cx, visit);
-        }
+    cx.with_warn_attrs(crate.node.attrs) {|cx|
+        let visit = visit::mk_vt(@{
+            visit_item: check_item
+            with *visit::default_visitor()
+        });
+        visit::visit_crate(*crate, cx, visit);
     }
 
     tcx.sess.abort_if_errors();

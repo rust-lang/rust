@@ -205,7 +205,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_use_map, crate));
 
-    lint::check_crate(ty_cx, crate, sess.opts.lint_opts, time_passes);
+    time(time_passes, "lint checking",
+         bind lint::check_crate(ty_cx, crate, sess.opts.lint_opts));
 
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
