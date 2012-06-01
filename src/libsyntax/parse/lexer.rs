@@ -1,6 +1,7 @@
 import util::interner;
 import util::interner::intern;
 import diagnostic;
+import ast::{tt_delim,tt_flat};
 
 export reader, string_reader, new_string_reader, is_whitespace;
 export nextch, is_eof, bump, get_str_from;
@@ -13,6 +14,26 @@ iface reader {
     fn chpos() -> uint;
     fn interner() -> @interner::interner<@str>;
 }
+
+enum tt_frame_up { /* to break a circularity */
+    tt_frame_up(option<tt_frame>)
+}
+
+type tt_frame = @{
+    /* invariant: readme[idx] is always a tt_flat */
+    readme: [ast::token_tree],
+    mut idx: uint,
+    up: tt_frame_up
+};
+
+type tt_reader = @{
+    mut cur: tt_frame,
+    interner: @interner::interner<@str>,
+    span_diagnostic: diagnostic::span_handler,
+    /* cached: */
+    mut cur_tok: token::token,
+    mut cur_chpos: uint
+};
 
 type string_reader = @{
     span_diagnostic: diagnostic::span_handler,
@@ -39,10 +60,53 @@ impl string_reader_as_reader of reader for string_reader {
     }
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(
-            ast_util::mk_sp(self.chpos, self.chpos),
-            m)
+            ast_util::mk_sp(self.chpos, self.chpos), m)
     }
     fn chpos() -> uint { self.chpos }
+    fn interner() -> @interner::interner<@str> { self.interner }
+}
+
+impl tt_reader_as_reader of reader for tt_reader {
+    fn is_eof() -> bool { self.cur_tok == token::EOF }
+    fn next_token() -> {tok: token::token, chpos: uint} {
+        let ret_val = { tok: self.cur_tok, chpos: self.cur_chpos };
+        self.cur.idx += 1u;
+        if self.cur.idx >= vec::len(self.cur.readme) {
+            /* done with this set; pop */
+            alt self.cur.up {
+              tt_frame_up(option::none) {
+                self.cur_tok = token::EOF;
+                ret ret_val;
+              }
+              tt_frame_up(option::some(tt_f)) {
+                self.cur = tt_f;
+                /* the above `if` would need to be a `while` if we didn't know
+                that the last thing in a `tt_delim` is always a `tt_flat` */
+                self.cur.idx += 1u;
+              }
+            }
+        }
+        /* if `tt_delim`s could be 0-length, we'd need to be able to switch
+        between popping and pushing until we got to an actual `tt_flat` */
+        loop { /* because it's easiest, this handles `tt_delim` not starting
+                  with a `tt_flat`, even though it won't happen */
+            alt self.cur.readme[self.cur.idx] {
+              tt_delim(tts) {
+                self.cur = @{readme: tts, mut idx: 0u,
+                             up: tt_frame_up(option::some(self.cur)) };
+              }
+              tt_flat(chpos, tok) {
+                self.cur_chpos = chpos; self.cur_tok = tok;
+                ret ret_val;
+              }
+          }
+        }
+    }
+    fn fatal(m: str) -> ! {
+        self.span_diagnostic.span_fatal(
+            ast_util::mk_sp(self.chpos(), self.chpos()), m);
+    }
+    fn chpos() -> uint { self.cur_chpos }
     fn interner() -> @interner::interner<@str> { self.interner }
 }
 
