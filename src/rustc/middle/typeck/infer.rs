@@ -198,8 +198,9 @@ type vals_and_bindings<V:copy, T:copy> = {
 
 enum infer_ctxt = @{
     tcx: ty::ctxt,
-    vb: vals_and_bindings<ty::ty_vid, ty::t>,
-    rb: vals_and_bindings<ty::region_vid, ty::region>,
+    tvb: vals_and_bindings<ty::ty_vid, ty::t>, // for type variables
+    tvib: vals_and_bindings<ty::ty_vid, ty::t>, // for integral type variables
+    rb: vals_and_bindings<ty::region_vid, ty::region>, // for region variables
 
     // For keeping track of existing type/region variables.
     ty_var_counter: @mut uint,
@@ -227,7 +228,8 @@ type fres<T> = result::result<T, fixup_err>;
 
 fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
     infer_ctxt(@{tcx: tcx,
-                 vb: {vals: smallintmap::mk(), mut bindings: []},
+                 tvb: {vals: smallintmap::mk(), mut bindings: []},
+                 tvib: {vals: smallintmap::mk(), mut bindings: []},
                  rb: {vals: smallintmap::mk(), mut bindings: []},
                  ty_var_counter: @mut 0u,
                  region_var_counter: @mut 0u})}
@@ -423,14 +425,14 @@ impl transaction_methods for infer_ctxt {
     #[doc = "Execute `f` and commit the bindings if successful"]
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
-        assert self.vb.bindings.len() == 0u;
+        assert self.tvb.bindings.len() == 0u;
         assert self.rb.bindings.len() == 0u;
 
         let r <- self.try(f);
 
         // TODO---could use a vec::clear() that ran destructors but kept
         // the vec at its currently allocated length
-        self.vb.bindings = [];
+        self.tvb.bindings = [];
         self.rb.bindings = [];
 
         ret r;
@@ -439,15 +441,15 @@ impl transaction_methods for infer_ctxt {
     #[doc = "Execute `f`, unroll bindings on failure"]
     fn try<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
-        let vbl = self.vb.bindings.len();
+        let tvbl = self.tvb.bindings.len();
         let rbl = self.rb.bindings.len();
-        #debug["try(vbl=%u, rbl=%u)", vbl, rbl];
+        #debug["try(tvbl=%u, rbl=%u)", tvbl, rbl];
         let r <- f();
         alt r {
           result::ok(_) { #debug["try--ok"]; }
           result::err(_) {
             #debug["try--rollback"];
-            rollback_to(self.vb, vbl);
+            rollback_to(self.tvb, tvbl);
             rollback_to(self.rb, rbl);
           }
         }
@@ -456,10 +458,10 @@ impl transaction_methods for infer_ctxt {
 
     #[doc = "Execute `f` then unroll any bindings it creates"]
     fn probe<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
-        assert self.vb.bindings.len() == 0u;
+        assert self.tvb.bindings.len() == 0u;
         assert self.rb.bindings.len() == 0u;
         let r <- f();
-        rollback_to(self.vb, 0u);
+        rollback_to(self.tvb, 0u);
         rollback_to(self.rb, 0u);
         ret r;
     }
@@ -932,7 +934,7 @@ impl methods for resolve_state {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let {root:_, bounds} = self.infcx.get(self.infcx.vb, vid);
+            let {root:_, bounds} = self.infcx.get(self.infcx.tvb, vid);
             let t1 = alt bounds {
               { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve1(t) }
               { ub:some(t), lb:_ } { self.resolve1(t) }
@@ -1025,21 +1027,21 @@ impl assignment for infer_ctxt {
           }
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) {
-            let {root:_, bounds: a_bounds} = self.get(self.vb, a_id);
-            let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
+            let {root:_, bounds: a_bounds} = self.get(self.tvb, a_id);
+            let {root:_, bounds: b_bounds} = self.get(self.tvb, b_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, b_bnd)
           }
 
           (ty::ty_var(a_id), _) {
-            let {root:_, bounds:a_bounds} = self.get(self.vb, a_id);
+            let {root:_, bounds:a_bounds} = self.get(self.tvb, a_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, some(b))
           }
 
           (_, ty::ty_var(b_id)) {
-            let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
+            let {root:_, bounds: b_bounds} = self.get(self.tvb, b_id);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
             self.assign_tys_or_sub(anmnt, a, b, some(a), b_bnd)
           }
@@ -1632,13 +1634,13 @@ impl of combine for sub {
                 ok(a)
               }
               (ty::ty_var(a_id), ty::ty_var(b_id)) {
-                self.infcx().vars(self.vb, a_id, b_id).then {|| ok(a) }
+                self.infcx().vars(self.tvb, a_id, b_id).then {|| ok(a) }
               }
               (ty::ty_var(a_id), _) {
-                self.infcx().vart(self.vb, a_id, b).then {|| ok(a) }
+                self.infcx().vart(self.tvb, a_id, b).then {|| ok(a) }
               }
               (_, ty::ty_var(b_id)) {
-                self.infcx().tvar(self.vb, a, b_id).then {|| ok(a) }
+                self.infcx().tvar(self.tvb, a, b_id).then {|| ok(a) }
               }
               (_, ty::ty_bot) {
                 err(ty::terr_sorts(b, a))
@@ -2148,18 +2150,18 @@ fn lattice_tys<L:lattice_ops combine>(
           (_, ty::ty_bot) { self.ty_bot(a) }
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) {
-            lattice_vars(self, self.infcx().vb,
+            lattice_vars(self, self.infcx().tvb,
                          a, a_id, b_id,
                          {|x, y| self.tys(x, y) })
           }
 
           (ty::ty_var(a_id), _) {
-            lattice_var_t(self, self.infcx().vb, a_id, b,
+            lattice_var_t(self, self.infcx().tvb, a_id, b,
                           {|x, y| self.tys(x, y) })
           }
 
           (_, ty::ty_var(b_id)) {
-            lattice_var_t(self, self.infcx().vb, b_id, a,
+            lattice_var_t(self, self.infcx().tvb, b_id, a,
                           {|x, y| self.tys(x, y) })
           }
 

@@ -194,6 +194,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
                   f.output, f.ret_style, f.constraints)
       }
       ty_var(v) { v.to_str() }
+      ty_var_integral(v) { v.to_str() }
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }

@@ -161,6 +161,9 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           }
           ty::ty_self { cx.tcx.sess.unimpl("type_of: ty_self"); }
           ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }
+          ty::ty_var_integral(_) {
+            cx.tcx.sess.bug("type_of shouldn't see a ty_var_integral");
+          }
         }
     };
     cx.lltypes.insert(t, llty);

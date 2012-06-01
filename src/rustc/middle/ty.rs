@@ -102,6 +102,7 @@ export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var, type_is_var;
+export ty_var_integral, mk_var_integral, type_is_var_integral;
 export ty_self, mk_self, type_has_self;
 export region, bound_region, encl_region;
 export get, type_has_params, type_needs_infer, type_has_regions;
@@ -299,6 +300,11 @@ enum closure_kind {
     ck_uniq,
 }
 
+enum ty_var_kind {
+    tvk_regular,
+    tvk_integral,
+}
+
 type fn_ty = {purity: ast::purity,
               proto: ast::proto,
               inputs: [arg],
@@ -365,6 +371,8 @@ enum sty {
     ty_tup([t]),
 
     ty_var(ty_vid), // type variable during typechecking
+    ty_var_integral(ty_vid), // type variable during typechecking, for
+                             // integral types only
     ty_param(uint, def_id), // type parameter
     ty_self, // special, implicit `self` type parameter
 
@@ -555,7 +563,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_str | ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box {}
       ty_param(_, _) { flags |= has_params as uint; }
-      ty_var(_) { flags |= needs_infer as uint; }
+      ty_var(_) | ty_var_integral(_) { flags |= needs_infer as uint; }
       ty_self { flags |= has_self as uint; }
       ty_enum(_, substs) | ty_class(_, substs) | ty_iface(_, substs) {
         flags |= sflags(substs);
@@ -680,6 +688,8 @@ fn mk_res(cx: ctxt, did: ast::def_id,
 
 fn mk_var(cx: ctxt, v: ty_vid) -> t { mk_t(cx, ty_var(v)) }
 
+fn mk_var_integral(cx: ctxt, v: ty_vid) -> t { mk_t(cx, ty_var_integral(v)) }
+
 fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
 fn mk_param(cx: ctxt, n: uint, k: def_id) -> t { mk_t(cx, ty_param(n, k)) }
@@ -729,7 +739,8 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     alt get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_estr(_) | ty_type | ty_opaque_box | ty_self |
-      ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {
+      ty_opaque_closure_ptr(_) | ty_var(_) | ty_var_integral(_) |
+      ty_param(_, _) {
       }
       ty_box(tm) | ty_vec(tm) | ty_evec(tm, _) |
       ty_ptr(tm) | ty_rptr(_, tm) {
@@ -824,7 +835,7 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box | ty_var(_) | ty_param(*) | ty_self {
+      ty_opaque_box | ty_var(_) | ty_var_integral(_) | ty_param(*) | ty_self {
         sty
       }
     }
@@ -1034,6 +1045,13 @@ fn type_is_bot(ty: t) -> bool { get(ty).struct == ty_bot }
 fn type_is_var(ty: t) -> bool {
     alt get(ty).struct {
       ty_var(_) { true }
+      _ { false }
+    }
+}
+
+fn type_is_var_integral(ty: t) -> bool {
+    alt get(ty).struct {
+      ty_var_integral(_) { true }
       _ { false }
     }
 }
@@ -1553,8 +1571,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_constr(t, _) { type_kind(cx, t) }
       // FIXME: is self ever const?
       ty_self { kind_noncopyable() }
-
-      ty_var(_) { cx.sess.bug("Asked to compute kind of a type variable"); }
+      ty_var(_) | ty_var_integral(_) {
+        cx.sess.bug("Asked to compute kind of a type variable");
+      }
       ty_type | ty_opaque_closure_ptr(_) | ty_opaque_box {
         cx.sess.bug("Asked to compute kind of fictitious type");
       }
@@ -1602,6 +1621,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_estr(_) |
           ty_fn(_) |
           ty_var(_) |
+          ty_var_integral(_) |
           ty_param(_, _) |
           ty_self |
           ty_type |
@@ -1878,12 +1898,25 @@ fn type_param(ty: t) -> option<uint> {
     ret none;
 }
 
-// Returns a vec of all the type variables
-// occurring in t. It may contain duplicates.
-fn vars_in_type(ty: t) -> [ty_vid] {
+// Returns a vec of all the type variables of kind `tvk` occurring in `ty`. It
+// may contain duplicates.
+fn vars_in_type(ty: t, tvk: ty_var_kind) -> [ty_vid] {
     let mut rslt = [];
     walk_ty(ty) {|ty|
-        alt get(ty).struct { ty_var(v) { rslt += [v]; } _ { } }
+        alt get(ty).struct {
+          ty_var(v) {
+            alt tvk {
+              tvk_regular { rslt += [v]; }
+              _ { }
+            }
+          }
+          ty_var_integral(v) {
+            alt tvk {
+              tvk_integral { rslt += [v]; }
+              _ { }
+            }
+          }
+          _ { } }
     }
     rslt
 }
@@ -2037,7 +2070,8 @@ fn hash_type_structure(st: sty) -> uint {
         for f.inputs.each {|a| h = hash_subty(h, a.ty); }
         hash_subty(h, f.output)
       }
-      ty_var(v) { hash_uint(30u, v.to_uint()) }
+      ty_var(v) { hash_uint(29u, v.to_uint()) }
+      ty_var_integral(v) { hash_uint(30u, v.to_uint()) }
       ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
       ty_self { 28u }
       ty_type { 32u }
@@ -2184,7 +2218,7 @@ fn is_pred_ty(fty: t) -> bool {
 
 fn ty_var_id(typ: t) -> ty_vid {
     alt get(typ).struct {
-      ty_var(vid) { ret vid; }
+      ty_var(vid) | ty_var_integral(vid) { ret vid; }
       _ { #error("ty_var_id called on non-var ty"); fail; }
     }
 }
@@ -2276,7 +2310,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: ty_vid, rt: t) {
     if !type_needs_infer(rt) { ret; }
 
     // Occurs check!
-    if vec::contains(vars_in_type(rt), vid) {
+    if vec::contains(vars_in_type(rt, tvk_regular), vid) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
@@ -2381,6 +2415,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> str {
       ty_res(id, _, _) { #fmt["resource %s", item_path_str(cx, id)] }
       ty_tup(_) { "tuple" }
       ty_var(_) { "variable" }
+      ty_var_integral(_) { "integral variable" }
       ty_param(_, _) { "type parameter" }
       ty_self { "self" }
       ty_constr(t, _) { ty_sort_str(cx, t) }
