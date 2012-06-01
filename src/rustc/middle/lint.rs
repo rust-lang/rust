@@ -37,6 +37,7 @@ enum lint {
     while_true,
     path_statement,
     old_vecs,
+    unrecognized_warning,
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -48,6 +49,7 @@ fn int_to_lint(i: int) -> lint {
       2 { while_true }
       3 { path_statement }
       4 { old_vecs }
+      5 { unrecognized_warning }
     }
 }
 
@@ -90,7 +92,12 @@ fn get_lint_dict() -> lint_dict {
         ("old_vecs",
          @{lint: old_vecs,
            desc: "old (deprecated) vectors and strings",
-           default: ignore})
+           default: ignore}),
+
+        ("unrecognized_warning",
+         @{lint: unrecognized_warning,
+           desc: "unrecognized warning attribute",
+           default: warn})
 
     ];
     hash_from_strs(v)
@@ -188,12 +195,13 @@ impl methods for ctxt {
                     alt meta.node {
                       ast::meta_word(lintname) {
                         alt lookup_lint(self.dict, lintname) {
-                          none {
-                            self.tcx.sess.span_err(
+                          (name, none) {
+                            self.span_lint(
+                                self.get_level(unrecognized_warning),
                                 meta.span,
-                                #fmt("unknown warning: '%s'", lintname));
+                                #fmt("unknown warning: '%s'", name));
                           }
-                          some((lint, new_level)) {
+                          (_, some((lint, new_level))) {
                             // we do multiple unneeded copies of the map
                             // if many attributes are set, but this shouldn't
                             // actually be a problem...
@@ -225,7 +233,7 @@ impl methods for ctxt {
 
 
 fn lookup_lint(dict: lint_dict, s: str)
-    -> option<(lint, level)> {
+    -> (str, option<(lint, level)>) {
     let s = str::replace(s, "-", "_");
     let (name, level) = if s.starts_with("no_") {
         (s.substr(3u, s.len() - 3u), ignore)
@@ -234,10 +242,11 @@ fn lookup_lint(dict: lint_dict, s: str)
     } else {
         (s, warn)
     };
-    alt dict.find(name) {
-      none { none }
-      some(spec) { some((spec.lint, level)) }
-    }
+    (name,
+     alt dict.find(name) {
+         none { none }
+         some(spec) { some((spec.lint, level)) }
+     })
 }
 
 fn check_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
@@ -249,6 +258,7 @@ fn check_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
               while_true { check_item_while_true(cx, level, i); }
               path_statement { check_item_path_statement(cx, level, i); }
               old_vecs { check_item_old_vecs(cx, level, i); }
+              unrecognized_warning { /* this is checked elsewhere */ }
             }
         }
         if !cx.is_default {

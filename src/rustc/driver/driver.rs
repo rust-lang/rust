@@ -406,8 +406,10 @@ fn build_session_options(match: getopts::match,
     let lint_dict = lint::get_lint_dict();
     let lint_opts = vec::map(lint_flags) {|flag|
         alt lint::lookup_lint(lint_dict, flag) {
-          none { early_error(demitter, #fmt("unknown warning: %s", flag)) }
-          some(x) { x }
+          (flag, none) {
+            early_error(demitter, #fmt("unknown warning: %s", flag))
+          }
+          (_, some(x)) { x }
         }
     };
 
