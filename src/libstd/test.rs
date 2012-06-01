@@ -529,7 +529,7 @@ mod tests {
         let testfn = fn~() { };
         let mut tests = [];
         for vec::each(names) {|name|
-            let test = {name: name, fn: testfn, ignore: false,
+            let test = {name: name, fn: copy testfn, ignore: false,
                         should_fail: false};
             tests += [test];
         }
@@ -546,7 +546,7 @@ mod tests {
 
     let pairs = vec::zip(expected, filtered);
 
-    for vec::each(pairs) {|p| let (a, b) = p; assert (a == b.name); }
+    for vec::each(pairs) {|p| let (a, b) = copy p; assert (a == b.name); }
 }
 }
 

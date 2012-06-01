@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn auto_share_arc() {
         let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let (res, arc_c) = shared_arc(v);
+        let (_res, arc_c) = shared_arc(v);
 
         let p = port();
         let c = chan(p);
