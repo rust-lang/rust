@@ -1,5 +1,3 @@
-// Issue #2263.
-
 // Here, `f` is a function that takes a pointer `x` and a function
 // `g`, where `g` requires its argument `y` to be in the same region
 // that `x` is in.
@@ -13,6 +11,11 @@ fn has_same_region(f: fn(x: &a.int, g: fn(y: &a.int))) {
 }
 
 fn wants_two_regions(_f: fn(x: &int, g: fn(y: &int))) {
+    // Suppose we were to write code here that passed some arbitrary
+    // &int and some arbitrary fn(&int) to whatever's passed in as _f.
+    // This would be fine as far as the type annotation on the formal
+    // parameter _f goes, but if _f were `f` we'd be in trouble since
+    // `f` can't handle those arguments.
 }
 
 fn main() {
