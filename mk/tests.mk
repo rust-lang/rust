@@ -99,6 +99,11 @@ check-full: cleantestlibs cleantmptestlogs tidy \
 check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 	$(Q)$(S)src/etc/check-summary.py tmp/*.log
 
+check-lite: cleantestlibs cleantmptestlogs rustc-stage2 \
+	check-stage2-core check-stage2-std check-stage2-rpass \
+	check-stage2-rfail check-stage2-cfail
+	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
 ifdef CFG_NOTIDY
 tidy:
