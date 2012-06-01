@@ -3,7 +3,10 @@ use std;
 import task;
 import comm;
 
-resource complainer(c: @int) {
+class complainer {
+  let c: @int;
+  new(c: @int) { self.c = c; }
+  drop {}
 }
 
 fn f() {

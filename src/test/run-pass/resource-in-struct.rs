@@ -1,9 +1,14 @@
-// Ensures that putting resources inside structual types keeps
-// working.
+// Ensures that class dtors run if the object is inside an enum
+// variant
 
 type closable = @mut bool;
 
-resource close_res(i: closable) { *i = false; }
+class close_res {
+  let i: closable;
+ 
+  new(i: closable) { self.i = i; }
+  drop { *(self.i) = false; }
+}
 
 enum option<T> { none, some(T), }
 

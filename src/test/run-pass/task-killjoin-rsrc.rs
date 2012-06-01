@@ -1,21 +1,22 @@
-// xfail-test
 
-// A port of task-killjoin to use a resource to manage
+// A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
 use std;
 import task;
 
 fn joinable(f: fn()) -> (task::task, comm::port<bool>) {
-    resource notify(data: (comm::chan<bool>,
-                           @mut bool)) {
-        let (c, v) = data;
-        #error["notify: task=%d v=%x unwinding=%b b=%b",
+    class notify {
+        let ch: comm::chan<bool>; let v: @mut bool;
+        new(ch: comm::chan<bool>, v: @mut bool) { self.ch = ch; self.v = v; }
+        drop {
+            #error["notify: task=%d v=%x unwinding=%b b=%b",
                task::get_task(),
-               ptr::addr_of(*v) as uint,
-               task::currently_unwinding(),
-               *v];
-        comm::send(c, *v);
+               ptr::addr_of(*(self.v)) as uint,
+               task::failing(),
+               *(self.v)];
+            comm::send(self.ch, *(self.v));
+        }
     }
     fn wrapper(pair: (comm::chan<bool>, fn())) {
         let (c, f) = pair;
@@ -23,7 +24,7 @@ fn joinable(f: fn()) -> (task::task, comm::port<bool>) {
         #error["wrapper: task=%d allocated v=%x",
                task::get_task(),
                ptr::addr_of(*b) as uint];
-        let _r = notify((c, b));
+        let _r = notify(c, b);
         f();
         *b = true;
     }

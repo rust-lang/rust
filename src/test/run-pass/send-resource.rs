@@ -1,8 +1,10 @@
 import task::*;
 import comm::*;
 
-resource test(_f: int) {
-    // Do nothing
+class test {
+  let f: int;
+  new(f: int) { self.f = f; }
+  drop {}
 }
 
 fn main() {

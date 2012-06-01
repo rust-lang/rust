@@ -3,12 +3,18 @@ use std;
 import task;
 import comm;
 
-resource complainer(c: comm::chan<bool>) {
-    comm::send(c, true);
+class complainer {
+  let c: comm::chan<bool>;
+  new(c: comm::chan<bool>) {
+    #error("Hello!");
+    self.c = c; }
+  drop { #error("About to send!");
+    comm::send(self.c, true);
+    #error("Sent!"); }
 }
 
 fn f(c: comm::chan<bool>) {
-    let c <- complainer(c);
+    let _c <- complainer(c);
     fail;
 }
 
@@ -18,5 +24,6 @@ fn main() {
     let builder = task::builder();
     task::unsupervise(builder);
     task::run(builder) {|| f(c); }
+    #error("hiiiiiiiii");
     assert comm::recv(p);
 }
