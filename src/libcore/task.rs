@@ -350,7 +350,7 @@ fn run_listener<A:send>(-builder: builder,
 
 fn spawn(+f: fn~()) {
     #[doc = "
-    Creates and exucutes a new child task
+    Creates and executes a new child task
 
     Sets up a new task with its own call stack and schedules it to run
     the provided unique closure.
