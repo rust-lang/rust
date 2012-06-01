@@ -77,7 +77,9 @@ export match;
 export fail_;
 export fail_str;
 export opt_present;
+export opts_present;
 export opt_str;
+export opts_str;
 export opt_strs;
 export opt_maybe_str;
 export opt_default;
@@ -292,6 +294,18 @@ fn opt_present(m: match, nm: str) -> bool {
     ret vec::len::<optval>(opt_vals(m, nm)) > 0u;
 }
 
+#[doc = "Returns true if any of several options were matched"]
+fn opts_present(m: match, names: [str]) -> bool {
+    for vec::each(names) {|nm|
+        alt find_opt(m.opts, mkname(nm)) {
+          some(_) { ret true; }
+          _ { }
+        }
+    }
+    ret false;
+}
+
+
 #[doc = "
 Returns the string argument supplied to a matching option
 
@@ -300,6 +314,23 @@ Fails if the option was not matched or if the match did not take an argument
 fn opt_str(m: match, nm: str) -> str {
     ret alt opt_val(m, nm) { val(s) { s } _ { fail } };
 }
+
+#[doc = "
+Returns the string argument supplied to one of several matching options
+
+Fails if the no option was provided from the given list, or if the no such
+option took an argument
+"]
+fn opts_str(m: match, names: [str]) -> str {
+    for vec::each(names) {|nm|
+        alt opt_val(m, nm) {
+          val(s) { ret s }
+          _ {  }
+        }
+    }
+    fail;
+}
+
 
 #[doc = "
 Returns a vector of the arguments provided to all matches of the given option.
@@ -805,6 +836,26 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_multi() {
+        let args = ["-e", "foo", "--encrypt", "foo"];
+        let opts = [optopt("e"), optopt("encrypt")];
+        let match = alt getopts(args, opts) {
+          result::ok(m) { m }
+          result::err(f) { fail; }
+        };
+        assert opts_present(match, ["e"]);
+        assert opts_present(match, ["encrypt"]);
+        assert opts_present(match, ["encrypt", "e"]);
+        assert opts_present(match, ["e", "encrypt"]);
+        assert !opts_present(match, ["thing"]);
+        assert !opts_present(match, []);
+
+        assert opts_str(match, ["e"]) == "foo";
+        assert opts_str(match, ["encrypt"]) == "foo";
+        assert opts_str(match, ["e", "encrypt"]) == "foo";
+        assert opts_str(match, ["encrypt", "e"]) == "foo";
+    }
 }
 
 // Local Variables:
