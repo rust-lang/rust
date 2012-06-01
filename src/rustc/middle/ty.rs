@@ -1174,10 +1174,13 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         accum
       }
       ty_class(did, substs) {
-        for vec::each(ty::class_items_as_fields(cx, did, substs)) {|f|
-            if type_needs_drop(cx, f.mt.ty) { accum = true; }
-        }
-        accum
+         // Any class with a dtor needs a drop
+         option::is_some(ty_dtor(cx, did)) || {
+           for vec::each(ty::class_items_as_fields(cx, did, substs)) {|f|
+             if type_needs_drop(cx, f.mt.ty) { accum = true; }
+           }
+           accum
+         }
       }
 
       ty_tup(elts) {
