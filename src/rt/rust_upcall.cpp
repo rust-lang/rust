@@ -116,9 +116,7 @@ extern "C" CDECL void
 upcall_s_fail(s_fail_args *args) {
     rust_task *task = rust_get_current_task();
     LOG_UPCALL_ENTRY(task);
-    LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR,
-            args->expr, args->file, args->line);
-    task->fail();
+    task->fail(args->expr, args->file, args->line);
 }
 
 extern "C" CDECL void

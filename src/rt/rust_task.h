@@ -97,6 +97,12 @@ struct task_notification {
     task_result result; // task_result
 };
 
+extern "C" void
+rust_task_fail(rust_task *task,
+               char const *expr,
+               char const *file,
+               size_t line);
+
 struct
 rust_task : public kernel_owned<rust_task>, rust_cond
 {
@@ -181,11 +187,19 @@ private:
                     rust_cond *cond, const char* cond_name);
 
     bool must_fail_from_being_killed_unlocked();
+    // Called by rust_task_fail to unwind on failure
+    void begin_failure(char const *expr,
+                       char const *file,
+                       size_t line);
 
     friend void task_start_wrapper(spawn_args *a);
     friend void cleanup_task(cleanup_args *a);
     friend void reset_stack_limit_on_c_stack(reset_args *a);
     friend void new_stack_slow(new_stack_args *a);
+    friend void rust_task_fail(rust_task *task,
+                               char const *expr,
+                               char const *file,
+                               size_t line);
 
 public:
 
@@ -231,6 +245,7 @@ public:
 
     // Fail self, assuming caller-on-stack is this task.
     void fail();
+    void fail(char const *expr, char const *file, size_t line);
     void conclude_failure();
     void fail_parent();
 

@@ -75,6 +75,16 @@ rust_task::delete_this()
     sched_loop->release_task(this);
 }
 
+// All failure goes through me. Put your breakpoints here!
+extern "C" void
+rust_task_fail(rust_task *task,
+               char const *expr,
+               char const *file,
+               size_t line) {
+    assert(task != NULL);
+    task->begin_failure(expr, file, line);
+}
+
 struct spawn_args {
     rust_task *task;
     spawn_fn f;
@@ -264,6 +274,25 @@ bool rust_task_is_unwinding(rust_task *rt) {
 void
 rust_task::fail() {
     // See note in ::kill() regarding who should call this.
+    fail(NULL, NULL, 0);
+}
+
+void
+rust_task::fail(char const *expr, char const *file, size_t line) {
+    rust_task_fail(this, expr, file, line);
+}
+
+// Called only by rust_task_fail
+void
+rust_task::begin_failure(char const *expr, char const *file, size_t line) {
+
+    if (expr) {
+        // FIXME: Change this message to be
+        // 'task failed at ...'
+        LOG_ERR(this, task, "upcall fail '%s', %s:%" PRIdPTR,
+                expr, file, line);
+    }
+
     DLOG(sched_loop, task, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
     unwinding = true;
