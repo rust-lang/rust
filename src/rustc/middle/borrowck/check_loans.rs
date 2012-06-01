@@ -262,7 +262,7 @@ impl methods for check_loan_ctxt {
 
     fn is_self_field(cmt: cmt) -> bool {
         alt cmt.cat {
-          cat_comp(cmt_base, comp_field(_)) {
+          cat_comp(cmt_base, comp_field(*)) {
             alt cmt_base.cat {
               cat_special(sk_self) { true }
               _ { false }
@@ -314,29 +314,52 @@ impl methods for check_loan_ctxt {
         // which will be checked for compat separately in
         // check_for_conflicting_loans()
         if at != at_mutbl_ref {
-            let lp = alt cmt.lp {
-              none { ret; }
-              some(lp) { lp }
-            };
-            for self.walk_loans_of(ex.id, lp) { |loan|
-                alt loan.mutbl {
-                  m_mutbl | m_const { /*ok*/ }
-                  m_imm {
-                    self.bccx.span_err(
-                        ex.span,
-                        #fmt["%s prohibited due to outstanding loan",
-                             at.ing_form(self.bccx.cmt_to_str(cmt))]);
-                    self.bccx.span_note(
-                        loan.cmt.span,
-                        #fmt["loan of %s granted here",
-                             self.bccx.cmt_to_str(loan.cmt)]);
-                    ret;
-                  }
-                }
+            for cmt.lp.each { |lp|
+                self.check_for_loan_conflicting_with_assignment(
+                    at, ex, cmt, lp);
             }
         }
 
         self.bccx.add_to_mutbl_map(cmt);
+    }
+
+    fn check_for_loan_conflicting_with_assignment(
+        at: assignment_type,
+        ex: @ast::expr,
+        cmt: cmt,
+        lp: @loan_path) {
+
+        for self.walk_loans_of(ex.id, lp) { |loan|
+            alt loan.mutbl {
+              m_mutbl | m_const { /*ok*/ }
+              m_imm {
+                self.bccx.span_err(
+                    ex.span,
+                    #fmt["%s prohibited due to outstanding loan",
+                         at.ing_form(self.bccx.cmt_to_str(cmt))]);
+                self.bccx.span_note(
+                    loan.cmt.span,
+                    #fmt["loan of %s granted here",
+                         self.bccx.cmt_to_str(loan.cmt)]);
+                ret;
+              }
+            }
+        }
+
+        // Subtle: if the mutability of the component being assigned
+        // is inherited from the thing that the component is embedded
+        // within, then we have to check whether that thing has been
+        // loaned out as immutable!  An example:
+        //    let mut x = {f: some(3)};
+        //    let y = &x; // x loaned out as immutable
+        //    x.f = none; // changes type of y.f, which appears to be imm
+        alt *lp {
+          lp_comp(lp_base, ck) if inherent_mutability(ck) != m_mutbl {
+            self.check_for_loan_conflicting_with_assignment(
+                at, ex, cmt, lp_base);
+          }
+          lp_comp(*) | lp_local(*) | lp_arg(*) | lp_deref(*) {}
+        }
     }
 
     fn report_purity_error(pc: purity_cause, sp: span, msg: str) {

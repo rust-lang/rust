@@ -6,7 +6,7 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-import categorization::public_methods;
+import categorization::{public_methods, opt_deref_kind};
 import loan::public_methods;
 import preserve::public_methods;
 
@@ -29,6 +29,8 @@ fn req_loans_in_expr(ex: @ast::expr,
                      vt: visit::vt<gather_loan_ctxt>) {
     let bccx = self.bccx;
     let tcx = bccx.tcx;
+
+    #debug["req_loans_in_expr(ex=%s)", pprust::expr_to_str(ex)];
 
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.borrowings.find(ex.id).each { |borrow|
@@ -64,7 +66,39 @@ fn req_loans_in_expr(ex: @ast::expr,
                 let arg_cmt = self.bccx.cat_expr(arg);
                 self.guarantee_valid(arg_cmt, m_imm,  scope_r);
               }
-              ast::by_move | ast::by_copy | ast::by_val {}
+              ast::by_val {
+                // Rust's by-val does not actually give ownership to
+                // the callee.  This means that if a pointer type is
+                // passed, it is effectively a borrow, and so the
+                // caller must guarantee that the data remains valid.
+                //
+                // Subtle: we only guarantee that the pointer is valid
+                // and const.  Technically, we ought to pass in the
+                // mutability that the caller expects (e.g., if the
+                // formal argument has type @mut, we should guarantee
+                // validity and mutability, not validity and const).
+                // However, the type system already guarantees that
+                // the caller's mutability is compatible with the
+                // callee, so this is not necessary.  (Note that with
+                // actual borrows, typeck is more liberal and allows
+                // the pointer to be borrowed as immutable even if it
+                // is mutable in the caller's frame, thus effectively
+                // passing the buck onto us to enforce this)
+
+                alt opt_deref_kind(arg_ty.ty) {
+                  some(deref_ptr(region_ptr)) {
+                    /* region pointers are (by induction) guaranteed */
+                  }
+                  none {
+                    /* not a pointer, no worries */
+                  }
+                  some(_) {
+                    let arg_cmt = self.bccx.cat_borrow_of_expr(arg);
+                    self.guarantee_valid(arg_cmt, m_const, scope_r);
+                  }
+                }
+              }
+              ast::by_move | ast::by_copy {}
             }
         }
       }
@@ -76,6 +110,24 @@ fn req_loans_in_expr(ex: @ast::expr,
                 self.gather_pat(cmt, pat, arm.body.node.id, ex.id);
             }
         }
+      }
+
+      ast::expr_field(rcvr, _, _) |
+      ast::expr_binary(_, rcvr, _) |
+      ast::expr_unary(_, rcvr) if self.bccx.method_map.contains_key(ex.id) {
+        // Receivers in method calls are always passed by ref.
+        //
+        // FIXME--this scope is both too large and too small.  We make
+        // the scope the enclosing block, which surely includes any
+        // immediate call (a.b()) but which is too big.  OTOH, in the
+        // case of a naked field `a.b`, the value is copied
+        // anyhow. This is probably best fixed if we address the
+        // syntactic ambiguity.
+
+        // let scope_r = ty::re_scope(ex.id);
+        let scope_r = ty::re_scope(self.tcx().region_map.get(ex.id));
+        let rcvr_cmt = self.bccx.cat_expr(rcvr);
+        self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
       }
 
       _ { /*ok*/ }

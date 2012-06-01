@@ -149,7 +149,7 @@ Borrowck results in two maps.
 "];
 
 import syntax::ast;
-import syntax::ast::{m_mutbl, m_imm, m_const};
+import syntax::ast::{mutability, m_mutbl, m_imm, m_const};
 import syntax::visit;
 import syntax::ast_util;
 import syntax::ast_map;
@@ -254,7 +254,8 @@ enum ptr_kind {uniq_ptr, gc_ptr, region_ptr, unsafe_ptr}
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
 enum comp_kind {comp_tuple, comp_res, comp_variant,
-                comp_field(str), comp_index(ty::t)}
+                comp_field(str, ast::mutability),
+                comp_index(ty::t, ast::mutability)}
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
@@ -422,8 +423,8 @@ impl to_str_methods for borrowck_ctxt {
 
     fn comp_to_repr(comp: comp_kind) -> str {
         alt comp {
-          comp_field(fld) { fld }
-          comp_index(_) { "[]" }
+          comp_field(fld, _) { fld }
+          comp_index(*) { "[]" }
           comp_tuple { "()" }
           comp_res { "<res>" }
           comp_variant { "<enum>" }
@@ -480,11 +481,11 @@ impl to_str_methods for borrowck_ctxt {
           cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
                                      mut_str, self.pk_to_sigil(pk)] }
           cat_stack_upvar(_) { mut_str + " upvar" }
-          cat_comp(_, comp_field(_)) { mut_str + " field" }
+          cat_comp(_, comp_field(*)) { mut_str + " field" }
           cat_comp(_, comp_tuple) { "tuple content" }
           cat_comp(_, comp_res) { "resource content" }
           cat_comp(_, comp_variant) { "enum content" }
-          cat_comp(_, comp_index(t)) {
+          cat_comp(_, comp_index(t, _)) {
             alt ty::get(t).struct {
               ty::ty_vec(*) | ty::ty_evec(*) {
                 mut_str + " vec content"
@@ -520,5 +521,16 @@ impl to_str_methods for borrowck_ctxt {
                  than the scope of the function"
           }
         }
+    }
+}
+
+// The inherent mutability of a component is its default mutability
+// assuming it is embedded in an immutable context.  In general, the
+// mutability can be "overridden" if the component is embedded in a
+// mutable structure.
+fn inherent_mutability(ck: comp_kind) -> mutability {
+    alt ck {
+      comp_tuple | comp_res | comp_variant {m_imm}
+      comp_field(_, m) | comp_index(_, m) {m}
     }
 }

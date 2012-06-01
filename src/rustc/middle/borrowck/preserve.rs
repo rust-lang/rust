@@ -29,8 +29,8 @@ impl public_methods for borrowck_ctxt {
             // This is basically a deref of a region ptr.
             ok(())
           }
-          cat_comp(cmt_base, comp_field(_)) |
-          cat_comp(cmt_base, comp_index(_)) |
+          cat_comp(cmt_base, comp_field(*)) |
+          cat_comp(cmt_base, comp_index(*)) |
           cat_comp(cmt_base, comp_tuple) |
           cat_comp(cmt_base, comp_res) {
             // Most embedded components: if the base is stable, the

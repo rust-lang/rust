@@ -30,43 +30,53 @@ then an index to jump forward to the relevant item.
 "];
 
 export public_methods;
+export opt_deref_kind;
 
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
-fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
+fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
     alt ty::get(t).struct {
       ty::ty_uniq(*) | ty::ty_vec(*) | ty::ty_str |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) {
-        deref_ptr(uniq_ptr)
+        some(deref_ptr(uniq_ptr))
       }
 
       ty::ty_rptr(*) |
       ty::ty_evec(_, ty::vstore_slice(_)) |
       ty::ty_estr(ty::vstore_slice(_)) {
-        deref_ptr(region_ptr)
+        some(deref_ptr(region_ptr))
       }
 
       ty::ty_box(*) |
       ty::ty_evec(_, ty::vstore_box) |
       ty::ty_estr(ty::vstore_box) {
-        deref_ptr(gc_ptr)
+        some(deref_ptr(gc_ptr))
       }
 
       ty::ty_ptr(*) {
-        deref_ptr(unsafe_ptr)
+        some(deref_ptr(unsafe_ptr))
       }
 
       ty::ty_enum(*) {
-        deref_comp(comp_variant)
+        some(deref_comp(comp_variant))
       }
 
       ty::ty_res(*) {
-        deref_comp(comp_res)
+        some(deref_comp(comp_res))
       }
 
       _ {
+        none
+      }
+    }
+}
+
+fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
+    alt opt_deref_kind(t) {
+      some(k) {k}
+      none {
         tcx.sess.bug(
             #fmt["deref_cat() invoked on non-derefable type %s",
                  ty_to_str(tcx, t)]);
@@ -281,11 +291,12 @@ impl public_methods for borrowck_ctxt {
           m_imm { base_cmt.mutbl } // imm: as mutable as the container
           m_mutbl | m_const { f_mutbl }
         };
+        let f_comp = comp_field(f_name, f_mutbl);
         let lp = base_cmt.lp.map { |lp|
-            @lp_comp(lp, comp_field(f_name))
+            @lp_comp(lp, f_comp)
         };
         @{id: node.id(), span: node.span(),
-          cat: cat_comp(base_cmt, comp_field(f_name)), lp:lp,
+          cat: cat_comp(base_cmt, f_comp), lp:lp,
           mutbl: m, ty: self.tcx.ty(node)}
     }
 
@@ -347,8 +358,8 @@ impl public_methods for borrowck_ctxt {
         let deref_lp = base_cmt.lp.map { |lp| @lp_deref(lp, ptr) };
         let deref_cmt = @{id:expr.id, span:expr.span,
                           cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
-                          mutbl:mt.mutbl, ty:mt.ty};
-        let comp = comp_index(base_cmt.ty);
+                          mutbl:m_imm, ty:mt.ty};
+        let comp = comp_index(base_cmt.ty, mt.mutbl);
         let index_lp = deref_lp.map { |lp| @lp_comp(lp, comp) };
         @{id:expr.id, span:expr.span,
           cat:cat_comp(deref_cmt, comp), lp:index_lp,

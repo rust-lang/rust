@@ -27,12 +27,16 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> str {
       }
       ast_map::node_expr(expr) {
         alt expr.node {
-          ast::expr_call(_, _, _) {
+          ast::expr_call(*) {
             #fmt("<call at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap))
           }
-          ast::expr_alt(_, _, _) {
+          ast::expr_alt(*) {
             #fmt("<alt at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
+          }
+          ast::expr_field(*) | ast::expr_unary(*) | ast::expr_binary(*) {
+            #fmt("<method at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap))
           }
           _ { cx.sess.bug(

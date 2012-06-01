@@ -55,8 +55,8 @@ impl loan_methods for loan_ctxt {
           cat_discr(base, _) {
             self.loan(base, req_mutbl)
           }
-          cat_comp(cmt_base, comp_field(_)) |
-          cat_comp(cmt_base, comp_index(_)) |
+          cat_comp(cmt_base, comp_field(*)) |
+          cat_comp(cmt_base, comp_index(*)) |
           cat_comp(cmt_base, comp_tuple) |
           cat_comp(cmt_base, comp_res) {
             // For most components, the type of the embedded data is
