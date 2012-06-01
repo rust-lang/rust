@@ -11,7 +11,7 @@ import syntax::print::pprust::expr_to_str;
 export lint, ctypes, unused_imports;
 export level, ignore, warn, error;
 export lookup_lint, lint_dict, get_lint_dict, check_crate;
-export warning_settings;
+export warning_settings, warning_methods;
 
 #[doc="
 
@@ -20,6 +20,14 @@ to enforce, but might reasonably want to permit as well, on a module-by-module
 basis. They contrast with static constraints enforced by other phases of the
 compiler, which are generally required to hold in order to compile the program
 at all.
+
+We also build up a table containing information about lint settings, in order
+to allow other passes to take advantage of the warning attribute
+infrastructure. To save space, the table is keyed by the id of /items/, not of
+every expression. When an item has the default settings, the entry will be
+omitted. If we start allowing warn attributes on expressions, we will start
+having entries for expressions that do not share their enclosing items
+settings.
 
 "]
 
@@ -100,6 +108,39 @@ type warning_settings = {
     settings_map: lint_mode_map
 };
 
+fn get_warning_level(modes: lint_modes, lint: lint) -> level {
+    alt modes.find(lint as uint) {
+      some(c) { c }
+      none { ignore }
+    }
+}
+
+fn span_lint(tcx: ty::ctxt, level: level, span: span, msg: str) {
+    alt level {
+      ignore { }
+      warn { tcx.sess.span_warn(span, msg); }
+      error { tcx.sess.span_err(span, msg); }
+    }
+}
+
+impl warning_methods for warning_settings {
+    fn get_level(lint_mode: lint,
+                 _expr_id: ast::node_id, item_id: ast::node_id) -> level {
+        alt self.settings_map.find(item_id) {
+          some(modes) { get_warning_level(modes, lint_mode) }
+          none { get_warning_level(self.default_settings, lint_mode) }
+        }
+    }
+
+    fn span_lint(tcx: ty::ctxt, lint_mode: lint,
+                 expr_id: ast::node_id, item_id: ast::node_id,
+                 span: span, msg: str) {
+        let level = self.get_level(lint_mode, expr_id, item_id);
+        span_lint(tcx, level, span, msg);
+    }
+
+}
+
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: lint_modes) -> lint_modes {
@@ -115,10 +156,7 @@ type ctxt = {dict: lint_dict,
 
 impl methods for ctxt {
     fn get_level(lint: lint) -> level {
-        alt self.curr.find(lint as uint) {
-          some(c) { c }
-          none { ignore }
-        }
+        get_warning_level(self.curr, lint)
     }
 
     fn set_level(lint: lint, level: level) {
@@ -130,11 +168,7 @@ impl methods for ctxt {
     }
 
     fn span_lint(level: level, span: span, msg: str) {
-        alt level {
-          ignore { }
-          warn { self.tcx.sess.span_warn(span, msg); }
-          error { self.tcx.sess.span_err(span, msg); }
-        }
+        span_lint(self.tcx, level, span, msg);
     }
 
     #[doc="
