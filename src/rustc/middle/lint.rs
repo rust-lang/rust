@@ -11,6 +11,7 @@ import syntax::print::pprust::expr_to_str;
 export lint, ctypes, unused_imports;
 export level, ignore, warn, error;
 export lookup_lint, lint_dict, get_lint_dict, check_crate;
+export warning_settings;
 
 #[doc="
 
@@ -91,6 +92,9 @@ fn get_lint_dict() -> lint_dict {
 type lint_modes = smallintmap<level>;
 type lint_mode_map = hashmap<ast::node_id, lint_modes>;
 
+// settings_map maps node ids of items with non-default warning settings
+// to their settings; default_settings contains the settings for everything
+// not in the map.
 type warning_settings = {
     default_settings: lint_modes,
     settings_map: lint_mode_map
@@ -104,6 +108,8 @@ fn clone_lint_modes(modes: lint_modes) -> lint_modes {
 
 type ctxt = {dict: lint_dict,
              curr: lint_modes,
+             is_default: bool,
+             lint_mode_map: lint_mode_map,
              tcx: ty::ctxt};
 
 
@@ -157,7 +163,8 @@ impl methods for ctxt {
                             // we do multiple unneeded copies of the map
                             // if many attributes are set, but this shouldn't
                             // actually be a problem...
-                            new_ctxt = {curr: clone_lint_modes(self.curr)
+                            new_ctxt = {is_default: false,
+                                        curr: clone_lint_modes(self.curr)
                                         with new_ctxt};
                             new_ctxt.set_level(lint, new_level);
                           }
@@ -209,6 +216,9 @@ fn check_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
               path_statement { check_item_path_statement(cx, level, i); }
               old_vecs { check_item_old_vecs(cx, level, i); }
             }
+        }
+        if !cx.is_default {
+            cx.lint_mode_map.insert(i.id, cx.curr);
         }
         visit::visit_item(i, cx, v);
     }
@@ -357,14 +367,18 @@ fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
 
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
-               lint_opts: [(lint, level)]) {
+               lint_opts: [(lint, level)]) -> warning_settings {
 
     fn hash_lint(&&lint: lint) -> uint { lint as uint }
     fn eq_lint(&&a: lint, &&b: lint) -> bool { a == b }
 
     let cx = {dict: get_lint_dict(),
               curr: std::smallintmap::mk(),
+              is_default: true,
+              lint_mode_map: int_hash(),
               tcx: tcx};
+
+    let mut default_settings = cx.curr; // dummy value
 
     // Install defaults.
     for cx.dict.each {|_k, spec| cx.set_level(spec.lint, spec.default); }
@@ -376,6 +390,9 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
     }
 
     cx.with_warn_attrs(crate.node.attrs) {|cx|
+        default_settings = cx.curr;
+        let cx = {is_default: true with cx};
+
         let visit = visit::mk_vt(@{
             visit_item: check_item
             with *visit::default_visitor()
@@ -384,6 +401,9 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
     }
 
     tcx.sess.abort_if_errors();
+
+    ret {default_settings: default_settings,
+         settings_map: cx.lint_mode_map};
 }
 
 //
