@@ -210,7 +210,7 @@ fn time(do_it: bool, what: str, thunk: fn()) {
                                 end - start, what));
 }
 
-fn check_item(cx: ctxt, i: @ast::item) {
+fn check_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
     cx.with_warn_attrs(i.attrs) {|cx|
         for cx.curr.each {|lint, level|
             alt int_to_lint(lint as int) {
@@ -221,11 +221,20 @@ fn check_item(cx: ctxt, i: @ast::item) {
               old_vecs { check_item_old_vecs(cx, level, i); }
             }
         }
+        visit::visit_item(i, cx, v);
     }
 }
 
+// Take a visitor, and modify it so that it will not proceed past subitems.
+// This is used to make the simple visitors used for the lint passes
+// not traverse into subitems, since that is handled by the outer
+// lint visitor.
+fn item_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
+    visit::mk_vt(@{visit_item: {|_i, _e, _v| } with **v})
+}
+
 fn check_item_while_true(cx: ctxt, level: level, it: @ast::item) {
-    let visit = visit::mk_simple_visitor(@{
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_expr: fn@(e: @ast::expr) {
            alt e.node {
              ast::expr_while(cond, _) {
@@ -242,7 +251,7 @@ fn check_item_while_true(cx: ctxt, level: level, it: @ast::item) {
           }
         }
         with *visit::default_simple_visitor()
-    });
+    }));
     visit::visit_item(it, (), visit);
 }
 
@@ -295,7 +304,7 @@ fn check_item_ctypes(cx: ctxt, level: level, it: @ast::item) {
 }
 
 fn check_item_path_statement(cx: ctxt, level: level, it: @ast::item) {
-    let visit = visit::mk_simple_visitor(@{
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_stmt: fn@(s: @ast::stmt) {
             alt s.node {
               ast::stmt_semi(@{id: _,
@@ -309,14 +318,14 @@ fn check_item_path_statement(cx: ctxt, level: level, it: @ast::item) {
             }
         }
         with *visit::default_simple_visitor()
-    });
+    }));
     visit::visit_item(it, (), visit);
 }
 
 fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
     let uses_vstore = int_hash();
 
-    let visit = visit::mk_simple_visitor(@{
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
 
         visit_expr:fn@(e: @ast::expr) {
             alt e.node {
@@ -353,7 +362,7 @@ fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
         }
 
         with *visit::default_simple_visitor()
-    });
+    }));
     visit::visit_item(it, (), visit);
 }
 
@@ -379,11 +388,11 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
 
     time(time_pass, "lint checking") {||
         cx.with_warn_attrs(crate.node.attrs) {|cx|
-            let visit = visit::mk_simple_visitor(@{
-                visit_item: fn@(i: @ast::item) { check_item(cx, i); }
-                with *visit::default_simple_visitor()
+            let visit = visit::mk_vt(@{
+                visit_item: check_item
+                with *visit::default_visitor()
             });
-            visit::visit_crate(*crate, (), visit);
+            visit::visit_crate(*crate, cx, visit);
         }
     }
 
