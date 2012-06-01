@@ -9,6 +9,7 @@ export debug_tag;
 export debug_fn;
 export ptr_cast;
 export refcount;
+export breakpoint;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -18,6 +19,7 @@ native mod rustrt {
     fn debug_tag(td: *sys::type_desc, x: *());
     fn debug_fn(td: *sys::type_desc, x: *());
     fn debug_ptrcast(td: *sys::type_desc, x: *()) -> *();
+    fn rust_dbg_breakpoint();
 }
 
 fn debug_tydesc<T>() {
@@ -49,6 +51,18 @@ unsafe fn ptr_cast<T, U>(x: @T) -> @U {
 fn refcount<T>(a: @T) -> uint unsafe {
     let p: *uint = unsafe::reinterpret_cast(a);
     ret *p;
+}
+
+#[doc = "Triggers a debugger breakpoint"]
+fn breakpoint() {
+    rustrt::rust_dbg_breakpoint();
+}
+
+#[test]
+fn test_breakpoint_should_not_abort_process_when_not_under_gdb() {
+    // Triggering a breakpoint involves raising SIGTRAP, which terminates
+    // the process under normal circumstances
+    breakpoint();
 }
 
 // Local Variables:

@@ -805,6 +805,11 @@ rust_dbg_call(dbg_callback cb, void *data) {
     return cb(data);
 }
 
+extern "C" CDECL void
+rust_dbg_breakpoint() {
+    BREAKPOINT_AWESOME;
+}
+
 extern "C" CDECL rust_sched_id
 rust_osmain_sched_id() {
     rust_task *task = rust_get_current_task();

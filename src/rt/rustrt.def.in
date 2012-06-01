@@ -151,6 +151,7 @@ rust_dbg_lock_unlock
 rust_dbg_lock_wait
 rust_dbg_lock_signal
 rust_dbg_call
+rust_dbg_breakpoint
 rust_osmain_sched_id
 rust_compare_and_swap_ptr
 rust_atomic_increment
