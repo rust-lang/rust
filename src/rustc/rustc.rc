@@ -69,7 +69,13 @@ mod middle {
     mod check_alt;
     mod check_const;
     mod lint;
-    mod borrowck;
+    mod borrowck {
+        mod check_loans;
+        mod gather_loans;
+        mod categorization;
+        mod loan;
+        mod preserve;
+    }
     mod alias;
     mod liveness;
     mod block_use;
