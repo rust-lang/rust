@@ -386,6 +386,8 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           };
           // typecheck the members
           for members.each {|m| check_class_member(class_ccx, class_t, m); }
+          // Check that the class is instantiable
+          check_instantiable(ccx.tcx, it.span, it.id);
       }
       ast::item_ty(t, tps, rp) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
