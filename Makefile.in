@@ -325,12 +325,12 @@ HSREQ$(1)_H_$(3) = \
 # Prerequisites for using the stageN compiler to build target artifacts
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 
 # Prerequisites for complete stageN targets
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
