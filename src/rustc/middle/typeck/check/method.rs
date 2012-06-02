@@ -6,6 +6,8 @@ import middle::typeck::infer::methods; // next_ty_vars
 enum lookup = {
     fcx: @fn_ctxt,
     expr: @ast::expr, // expr for a.b in a.b()
+    self_expr: @ast::expr, // a in a.b(...)
+    borrow_scope: ast::node_id, // if we have to borrow the expr, what scope?
     node_id: ast::node_id, // node id of call (not always expr.id)
     m_name: ast::ident, // b in a.b(...)
     self_ty: ty::t, // type of a in a.b(...)
@@ -207,7 +209,9 @@ impl methods for lookup {
 
                     // if we can assign the caller to the callee, that's a
                     // potential match.  Collect those in the vector.
-                    alt self.fcx.can_mk_subty(self.self_ty, impl_ty) {
+                    alt self.fcx.can_mk_assignty(
+                        self.self_expr, self.borrow_scope,
+                        self.self_ty, impl_ty) {
                       result::err(_) { /* keep looking */ }
                       result::ok(_) {
                         results += [(impl_ty, impl_substs, m.n_tps, m.did)];
@@ -243,12 +247,15 @@ impl methods for lookup {
                 }
 
                 let (impl_ty, impl_substs, n_tps, did) = results[0];
-                alt self.fcx.mk_subty(self.self_ty, impl_ty) {
+                alt self.fcx.mk_assignty(self.self_expr, self.borrow_scope,
+                                         self.self_ty, impl_ty) {
                   result::ok(_) {}
                   result::err(_) {
                     self.tcx().sess.span_bug(
                         self.expr.span,
-                        "what was a subtype now is not?");
+                        #fmt["%s was assignable to %s but now is not?",
+                             self.fcx.infcx.ty_to_str(self.self_ty),
+                             self.fcx.infcx.ty_to_str(impl_ty)]);
                   }
                 }
                 let fty = self.ty_from_did(did);

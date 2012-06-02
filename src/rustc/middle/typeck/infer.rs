@@ -164,13 +164,14 @@ export new_infer_ctxt;
 export mk_subty, can_mk_subty;
 export mk_subr;
 export mk_eqty;
-export mk_assignty;
+export mk_assignty, can_mk_assignty;
 export resolve_shallow;
 export resolve_deep;
 export resolve_deep_var;
 export methods; // for infer_ctxt
 export compare_tys;
 export fixup_err, fixup_err_to_str;
+export assignment;
 
 // Extra information needed to perform an assignment that may borrow.
 // The `expr_id` is the is of the expression whose type is being
@@ -256,6 +257,21 @@ fn mk_assignty(cx: infer_ctxt, anmnt: assignment,
     #debug["mk_assignty(%? / %s <: %s)",
            anmnt, a.to_str(cx), b.to_str(cx)];
     indent {|| cx.commit {||
+        cx.assign_tys(anmnt, a, b)
+    } }.to_ures()
+}
+
+fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
+                a: ty::t, b: ty::t) -> ures {
+    #debug["can_mk_assignty(%? / %s <: %s)",
+           anmnt, a.to_str(cx), b.to_str(cx)];
+
+    // FIXME---this will not unroll any entries we make in the
+    // borrowings table.  But this is OK for the moment because this
+    // is only used in method lookup, and there must be exactly one
+    // match or an error is reported. Still, it should be fixed.
+
+    indent {|| cx.probe {||
         cx.assign_tys(anmnt, a, b)
     } }.to_ures()
 }

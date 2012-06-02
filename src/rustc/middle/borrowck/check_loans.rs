@@ -145,12 +145,22 @@ impl methods for check_loan_ctxt {
 
     // when we are in a pure context, we check each call to ensure
     // that the function which is invoked is itself pure.
-    fn check_pure_callee_or_arg(pc: purity_cause, expr: @ast::expr) {
+    //
+    // note: we take opt_expr and expr_id separately because for
+    // overloaded operators the callee has an id but no expr.
+    // annoying.
+    fn check_pure_callee_or_arg(pc: purity_cause,
+                                opt_expr: option<@ast::expr>,
+                                callee_id: ast::node_id,
+                                callee_span: span) {
         let tcx = self.tcx();
 
-        #debug["check_pure_callee_or_arg(pc=%?, expr=%s, ty=%s)",
-               pc, pprust::expr_to_str(expr),
-               ty_to_str(self.tcx(), tcx.ty(expr))];
+        #debug["check_pure_callee_or_arg(pc=%?, expr=%?, \
+                callee_id=%d, ty=%s)",
+               pc,
+               opt_expr.map({|e| pprust::expr_to_str(e)}),
+               callee_id,
+               ty_to_str(self.tcx(), ty::node_id_to_type(tcx, callee_id))];
 
         // Purity rules: an expr B is a legal callee or argument to a
         // call within a pure function A if at least one of the
@@ -161,29 +171,35 @@ impl methods for check_loan_ctxt {
         // (c) B is a pure fn;
         // (d) B is not a fn.
 
-        alt expr.node {
-          ast::expr_path(_) if pc == pc_pure_fn {
-            let def = self.tcx().def_map.get(expr.id);
-            let did = ast_util::def_id_of_def(def);
-            let is_fn_arg =
-                did.crate == ast::local_crate &&
-                self.fn_args.contains(did.node);
-            if is_fn_arg { ret; } // case (a) above
+        alt opt_expr {
+          some(expr) {
+            alt expr.node {
+              ast::expr_path(_) if pc == pc_pure_fn {
+                let def = self.tcx().def_map.get(expr.id);
+                let did = ast_util::def_id_of_def(def);
+                let is_fn_arg =
+                    did.crate == ast::local_crate &&
+                    self.fn_args.contains(did.node);
+                if is_fn_arg { ret; } // case (a) above
+              }
+              ast::expr_fn_block(*) | ast::expr_fn(*) |
+              ast::expr_loop_body(*) {
+                if self.is_stack_closure(expr.id) { ret; } // case (b) above
+              }
+              _ {}
+            }
           }
-          ast::expr_fn_block(*) | ast::expr_fn(*) | ast::expr_loop_body(*) {
-            if self.is_stack_closure(expr.id) { ret; } // case (b) above
-          }
-          _ {}
+          none {}
         }
 
-        let expr_ty = tcx.ty(expr);
-        alt ty::get(expr_ty).struct {
+        let callee_ty = ty::node_id_to_type(tcx, callee_id);
+        alt ty::get(callee_ty).struct {
           ty::ty_fn(fn_ty) {
             alt fn_ty.purity {
               ast::pure_fn { ret; } // case (c) above
               ast::impure_fn | ast::unsafe_fn | ast::crust_fn {
                 self.report_purity_error(
-                    pc, expr.span,
+                    pc, callee_span,
                     #fmt["access to %s function",
                          pprust::purity_to_str(fn_ty.purity)]);
               }
@@ -429,6 +445,39 @@ impl methods for check_loan_ctxt {
             ret;
         }
     }
+
+    fn check_call(expr: @ast::expr,
+                  callee: option<@ast::expr>,
+                  callee_id: ast::node_id,
+                  callee_span: span,
+                  args: [@ast::expr]) {
+        alt self.purity(expr.id) {
+          none {}
+          some(pc) {
+            self.check_pure_callee_or_arg(
+                pc, callee, callee_id, callee_span);
+            for args.each { |arg|
+                self.check_pure_callee_or_arg(
+                    pc, some(arg), arg.id, arg.span);
+            }
+          }
+        }
+        let arg_tys =
+            ty::ty_fn_args(
+                ty::node_id_to_type(self.tcx(), callee_id));
+        vec::iter2(args, arg_tys) { |arg, arg_ty|
+            alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
+              ast::by_move {
+                self.check_move_out(arg);
+              }
+              ast::by_mutbl_ref {
+                self.check_assignment(at_mutbl_ref, arg);
+              }
+              ast::by_ref | ast::by_copy | ast::by_val {
+              }
+            }
+        }
+    }
 }
 
 fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
@@ -521,26 +570,24 @@ fn check_loans_in_expr(expr: @ast::expr,
         }
       }
       ast::expr_call(f, args, _) {
-        alt self.purity(expr.id) {
-          none {}
-          some(pc) {
-            self.check_pure_callee_or_arg(pc, f);
-            for args.each { |arg| self.check_pure_callee_or_arg(pc, arg) }
-          }
-        }
-        let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
-        vec::iter2(args, arg_tys) { |arg, arg_ty|
-            alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
-              ast::by_move {
-                self.check_move_out(arg);
-              }
-              ast::by_mutbl_ref {
-                self.check_assignment(at_mutbl_ref, arg);
-              }
-              ast::by_ref | ast::by_copy | ast::by_val {
-              }
-            }
-        }
+        self.check_call(expr, some(f), f.id, f.span, args);
+      }
+      ast::expr_index(_, rval) |
+      ast::expr_binary(_, _, rval)
+      if self.bccx.method_map.contains_key(expr.id) {
+        self.check_call(expr,
+                        none,
+                        ast_util::op_expr_callee_id(expr),
+                        expr.span,
+                        [rval]);
+      }
+      ast::expr_unary(_, _)
+      if self.bccx.method_map.contains_key(expr.id) {
+        self.check_call(expr,
+                        none,
+                        ast_util::op_expr_callee_id(expr),
+                        expr.span,
+                        []);
       }
       _ { }
     }

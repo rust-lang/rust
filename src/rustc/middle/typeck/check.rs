@@ -515,6 +515,18 @@ impl methods for @fn_ctxt {
         infer::can_mk_subty(self.infcx, sub, sup)
     }
 
+    fn mk_assignty(expr: @ast::expr, borrow_scope: ast::node_id,
+                   sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+        let anmnt = {expr_id: expr.id, borrow_scope: borrow_scope};
+        infer::mk_assignty(self.infcx, anmnt, sub, sup)
+    }
+
+    fn can_mk_assignty(expr: @ast::expr, borrow_scope: ast::node_id,
+                      sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+        let anmnt = {expr_id: expr.id, borrow_scope: borrow_scope};
+        infer::can_mk_assignty(self.infcx, anmnt, sub, sup)
+    }
+
     fn mk_eqty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
         infer::mk_eqty(self.infcx, sub, sup)
     }
@@ -867,12 +879,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ { none }
         }
     }
-    fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr, self_t: ty::t,
+    fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
+                        self_ex: @ast::expr, self_t: ty::t,
                         opname: str, args: [option<@ast::expr>])
         -> option<(ty::t, bool)> {
         let callee_id = ast_util::op_expr_callee_id(op_ex);
         let lkup = method::lookup({fcx: fcx,
                                    expr: op_ex,
+                                   self_expr: self_ex,
+                                   borrow_scope: op_ex.id,
                                    node_id: callee_id,
                                    m_name: opname,
                                    self_ty: self_t,
@@ -950,18 +965,21 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
           (_, _) {
             let (result, rhs_bot) =
-                check_user_binop(fcx, expr, lhs_t, op, rhs);
+                check_user_binop(fcx, expr, lhs, lhs_t, op, rhs);
             fcx.write_ty(expr.id, result);
             lhs_bot | rhs_bot
           }
         };
     }
-    fn check_user_binop(fcx: @fn_ctxt, ex: @ast::expr, lhs_resolved_t: ty::t,
+    fn check_user_binop(fcx: @fn_ctxt, ex: @ast::expr,
+                        lhs_expr: @ast::expr, lhs_resolved_t: ty::t,
                         op: ast::binop, rhs: @ast::expr) -> (ty::t, bool) {
         let tcx = fcx.ccx.tcx;
         alt binop_method(op) {
           some(name) {
-            alt lookup_op_method(fcx, ex, lhs_resolved_t, name, [some(rhs)]) {
+            alt lookup_op_method(fcx, ex,
+                                 lhs_expr, lhs_resolved_t,
+                                 name, [some(rhs)]) {
               some(pair) { ret pair; }
               _ {}
             }
@@ -977,8 +995,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         (lhs_resolved_t, false)
     }
     fn check_user_unop(fcx: @fn_ctxt, op_str: str, mname: str,
-                       ex: @ast::expr, rhs_t: ty::t) -> ty::t {
-        alt lookup_op_method(fcx, ex, rhs_t, mname, []) {
+                       ex: @ast::expr,
+                       rhs_expr: @ast::expr, rhs_t: ty::t) -> ty::t {
+        alt lookup_op_method(fcx, ex, rhs_expr, rhs_t, mname, []) {
           some((ret_ty, _)) { ret_ty }
           _ {
             fcx.ccx.tcx.sess.span_err(
@@ -1161,14 +1180,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(oper_t) ||
                  ty::get(oper_t).struct == ty::ty_bool) {
-                oper_t = check_user_unop(fcx, "!", "!", expr, oper_t);
+                oper_t = check_user_unop(fcx, "!", "!", expr,
+                                         oper, oper_t);
             }
           }
           ast::neg {
             oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(oper_t) ||
                  ty::type_is_fp(oper_t)) {
-                oper_t = check_user_unop(fcx, "-", "unary-", expr, oper_t);
+                oper_t = check_user_unop(fcx, "-", "unary-", expr,
+                                         oper, oper_t);
             }
           }
         }
@@ -1554,13 +1575,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         if !handled {
             let tps = vec::map(tys) { |ty| fcx.to_ty(ty) };
             let is_self_ref = self_ref(fcx, base.id);
+
+            // this will be the call or block that immediately
+            // encloses the method call
+            let borrow_scope = fcx.tcx().region_map.get(expr.id);
+
             let lkup = method::lookup({fcx: fcx,
-                                      expr: expr,
-                                      node_id: expr.id,
-                                      m_name: field,
-                                      self_ty: expr_t,
-                                      supplied_tps: tps,
-                                      include_private: is_self_ref});
+                                       expr: expr,
+                                       self_expr: base,
+                                       borrow_scope: borrow_scope,
+                                       node_id: expr.id,
+                                       m_name: field,
+                                       self_ty: expr_t,
+                                       supplied_tps: tps,
+                                       include_private: is_self_ref});
             alt lkup.method() {
               some(origin) {
                 fcx.ccx.method_map.insert(id, origin);
@@ -1591,7 +1619,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           none {
             let resolved = structurally_resolved_type(fcx, expr.span,
                                                       raw_base_t);
-            alt lookup_op_method(fcx, expr, resolved, "[]",
+            alt lookup_op_method(fcx, expr, base, resolved, "[]",
                                  [some(idx)]) {
               some((ret_ty, _)) { fcx.write_ty(id, ret_ty); }
               _ {
@@ -1611,6 +1639,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         let lkup = method::lookup({fcx: fcx,
                                    expr: p,
+                                   self_expr: p,
+                                   borrow_scope: expr.id,
                                    node_id: alloc_id,
                                    m_name: "alloc",
                                    self_ty: p_ty,

@@ -2883,7 +2883,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
       none { trans_temp_lval(cx, e) }
     };
     #debug("   pre-adaptation value: %s", val_str(lv.bcx.ccx().tn, lv.val));
-    let lv = adapt_borrowed_value(lv, arg, e);
+    let {lv, arg} = adapt_borrowed_value(lv, arg, e);
     let mut bcx = lv.bcx;
     let mut val = lv.val;
     #debug("   adapted value: %s", val_str(bcx.ccx().tn, val));
@@ -2897,6 +2897,8 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     } else if arg_mode == ast::by_ref || arg_mode == ast::by_val {
         let mut copied = false;
         let imm = ty::type_is_immediate(arg.ty);
+        #debug["   arg.ty=%s, imm=%b, arg_mode=%?, lv.kind=%?",
+               ty_to_str(bcx.tcx(), arg.ty), imm, arg_mode, lv.kind];
         if arg_mode == ast::by_ref && lv.kind != owned && imm {
             val = do_spill_noroot(bcx, val);
             copied = true;
@@ -2953,29 +2955,29 @@ fn load_value_from_lval_result(lv: lval_result) -> ValueRef {
     }
 }
 
-fn adapt_borrowed_value(lv: lval_result, _arg: ty::arg,
-                        e: @ast::expr) -> lval_result {
+// when invoking a method, an argument of type @T or ~T can be implicltly
+// converted to an argument of type &T. Similarly, [T] can be converted to
+// [T]/& and so on.  If such a conversion (called borrowing) is necessary,
+// then the borrowings table will have an appropriate entry inserted.  This
+// routine consults this table and performs these adaptations.  It returns a
+// new location for the borrowed result as well as a new type for the argument
+// that reflects the borrowed value and not the original.
+fn adapt_borrowed_value(lv: lval_result, arg: ty::arg,
+                        e: @ast::expr) -> {lv: lval_result,
+                                           arg: ty::arg} {
     let bcx = lv.bcx;
-    if !expr_is_borrowed(bcx, e) { ret lv; }
+    if !expr_is_borrowed(bcx, e) {
+        ret {lv:lv, arg:arg};
+    }
 
     let e_ty = expr_ty(bcx, e);
     alt ty::get(e_ty).struct {
-      ty::ty_box(mt) {
+      ty::ty_uniq(mt) | ty::ty_box(mt) {
         let box_ptr = load_value_from_lval_result(lv);
         let body_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_body]);
-        ret lval_temp(bcx, body_ptr);
-      }
-
-      ty::ty_uniq(_) {
-        let box_ptr = {
-            alt lv.kind {
-              temporary { lv.val }
-              owned { Load(bcx, lv.val) }
-              owned_imm { lv.val }
-            }
-        };
-        let body_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_body]);
-        ret lval_temp(bcx, body_ptr);
+        let rptr_ty = ty::mk_rptr(bcx.tcx(), ty::re_static, mt);
+        ret {lv: lval_temp(bcx, body_ptr),
+             arg: {ty: rptr_ty with arg}};
       }
 
       ty::ty_str | ty::ty_vec(_) |
@@ -2999,7 +3001,16 @@ fn adapt_borrowed_value(lv: lval_result, _arg: ty::arg,
 
         Store(bcx, base, GEPi(bcx, p, [0u, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, p, [0u, abi::slice_elt_len]));
-        ret lval_temp(bcx, p);
+
+        // this isn't necessarily the type that rust would assign but it's
+        // close enough for trans purposes, as it will have the same runtime
+        // representation
+        let slice_ty = ty::mk_evec(bcx.tcx(),
+                                   {ty: unit_ty, mutbl: ast::m_imm},
+                                   ty::vstore_slice(ty::re_static));
+
+        ret {lv: lval_temp(bcx, p),
+             arg: {ty: slice_ty with arg}};
       }
 
       _ {

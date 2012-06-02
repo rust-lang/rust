@@ -112,19 +112,33 @@ fn req_loans_in_expr(ex: @ast::expr,
         }
       }
 
-      ast::expr_field(rcvr, _, _) |
+      ast::expr_index(rcvr, _) |
       ast::expr_binary(_, rcvr, _) |
       ast::expr_unary(_, rcvr) if self.bccx.method_map.contains_key(ex.id) {
         // Receivers in method calls are always passed by ref.
         //
-        // FIXME--this scope is both too large and too small.  We make
-        // the scope the enclosing block, which surely includes any
-        // immediate call (a.b()) but which is too big.  OTOH, in the
-        // case of a naked field `a.b`, the value is copied
-        // anyhow. This is probably best fixed if we address the
-        // syntactic ambiguity.
+        // Here, in an overloaded operator, the call is this expression,
+        // and hence the scope of the borrow is this call.
+        //
+        // FIXME/NOT REALLY---technically we should check the other
+        // argument and consider the argument mode.  But how annoying.
+        // And this problem when goes away when argument modes are
+        // phased out.  So I elect to leave this undone.
+        let scope_r = ty::re_scope(ex.id);
+        let rcvr_cmt = self.bccx.cat_expr(rcvr);
+        self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
+      }
 
-        // let scope_r = ty::re_scope(ex.id);
+      ast::expr_field(rcvr, _, _)
+      if self.bccx.method_map.contains_key(ex.id) {
+        // Receivers in method calls are always passed by ref.
+        //
+        // Here, the field a.b is in fact a closure.  Eventually, this
+        // should be an fn&, but for now it's an fn@.  In any case,
+        // the enclosing scope is either the call where it is a rcvr
+        // (if used like `a.b(...)`), the call where it's an argument
+        // (if used like `x(a.b)`), or the block (if used like `let x
+        // = a.b`).
         let scope_r = ty::re_scope(self.tcx().region_map.get(ex.id));
         let rcvr_cmt = self.bccx.cat_expr(rcvr);
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
