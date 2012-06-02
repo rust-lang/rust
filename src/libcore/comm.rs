@@ -156,7 +156,8 @@ whereupon the caller loses access to it.
 "]
 fn send<T: send>(ch: chan<T>, -data: T) {
     let chan_t(p) = ch;
-    let res = rustrt::rust_port_id_send(p, data);
+    let data_ptr = ptr::addr_of(data) as *();
+    let res = rustrt::rust_port_id_send(p, data_ptr);
     if res != 0u unsafe {
         // Data sent successfully
         unsafe::forget(data);
@@ -250,8 +251,7 @@ type port_id = int;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_port_id_send<T: send>(target_port: port_id,
-                                  data: T) -> libc::uintptr_t;
+    fn rust_port_id_send(target_port: port_id, data: *()) -> libc::uintptr_t;
 
     fn new_port(unit_sz: libc::size_t) -> *rust_port;
     fn del_port(po: *rust_port);

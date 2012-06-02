@@ -17,9 +17,9 @@ enum type_desc = {
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn refcount<T>(t: @T) -> libc::intptr_t;
+    fn refcount(t: *()) -> libc::intptr_t;
     fn unsupervise();
-    fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
+    fn shape_log_str(t: *sys::type_desc, data: *()) -> str;
 }
 
 #[abi = "rust-intrinsic"]
@@ -62,11 +62,16 @@ fn pref_align_of<T>() -> uint unsafe {
 
 #[doc = "Returns the refcount of a shared box"]
 fn refcount<T>(t: @T) -> uint {
-    ret rustrt::refcount::<T>(t) as uint;
+    unsafe {
+        ret rustrt::refcount(unsafe::reinterpret_cast(t)) as uint;
+    }
 }
 
 fn log_str<T>(t: T) -> str {
-    rustrt::shape_log_str(get_type_desc::<T>(), t)
+    unsafe {
+        let data_ptr: *() = unsafe::reinterpret_cast(ptr::addr_of(t));
+        rustrt::shape_log_str(get_type_desc::<T>(), data_ptr)
+    }
 }
 
 #[cfg(test)]

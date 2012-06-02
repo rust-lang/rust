@@ -82,12 +82,12 @@ export extensions;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn vec_reserve_shared<T>(t: *sys::type_desc,
-                             &v: [const T],
-                             n: libc::size_t);
-    fn vec_from_buf_shared<T>(t: *sys::type_desc,
-                              ptr: *T,
-                              count: libc::size_t) -> [T];
+    fn vec_reserve_shared(++t: *sys::type_desc,
+                          ++v: **unsafe::vec_repr,
+                          ++n: libc::size_t);
+    fn vec_from_buf_shared(++t: *sys::type_desc,
+                           ++ptr: *(),
+                           ++count: libc::size_t) -> *unsafe::vec_repr;
 }
 
 #[doc = "A function used to initialize the elements of a vector"]
@@ -122,7 +122,8 @@ capacity, then no action is taken.
 fn reserve<T>(&v: [const T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     if capacity(v) < n {
-        rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), v, n);
+        let ptr = ptr::addr_of(v) as **unsafe::vec_repr;
+        rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), ptr, n);
     }
 }
 
@@ -1209,8 +1210,10 @@ mod unsafe {
     "]
     #[inline(always)]
     unsafe fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
-        ret rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
-                                        ptr, elts);
+        ret ::unsafe::reinterpret_cast(
+            rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
+                                        ptr as *(),
+                                        elts));
     }
 
     #[doc = "

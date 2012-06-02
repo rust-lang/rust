@@ -393,6 +393,23 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, tps, rp, tpt_ty);
       }
+      ast::item_native_mod(m) {
+        if syntax::attr::native_abi(it.attrs) ==
+            either::right(ast::native_abi_rust_intrinsic) {
+            for m.items.each { |item|
+                check_intrinsic_type(ccx, item);
+            }
+        } else {
+            for m.items.each { |item|
+                let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
+                if (*tpt.bounds).is_not_empty() {
+                    ccx.tcx.sess.span_err(
+                        item.span,
+                        #fmt["native items may not have type parameters"]);
+                }
+            }
+        }
+      }
       _ {/* nothing to do */ }
     }
 }
@@ -2266,4 +2283,58 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
         }
     }
 }
+
+fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
+    fn param(ccx: @crate_ctxt, n: uint) -> ty::t {
+        ty::mk_param(ccx.tcx, n, local_def(0))
+    }
+    fn arg(m: ast::rmode, ty: ty::t) -> ty::arg {
+        {mode: ast::expl(m), ty: ty}
+    }
+    let tcx = ccx.tcx;
+    let (n_tps, inputs, output) = alt it.ident {
+      "size_of" |
+      "pref_align_of" | "min_align_of" { (1u, [], ty::mk_uint(ccx.tcx)) }
+      "get_tydesc" { (1u, [], ty::mk_nil_ptr(tcx)) }
+      "init" { (1u, [], param(ccx, 0u)) }
+      "forget" { (1u, [arg(ast::by_move, param(ccx, 0u))],
+                  ty::mk_nil(tcx)) }
+      "reinterpret_cast" { (2u, [arg(ast::by_ref, param(ccx, 0u))],
+                            param(ccx, 1u)) }
+      "addr_of" { (1u, [arg(ast::by_ref, param(ccx, 0u))],
+                   ty::mk_imm_ptr(tcx, param(ccx, 0u))) }
+      "needs_drop" { (1u, [], ty::mk_bool(tcx)) }
+
+      "visit_ty" {
+        assert ccx.tcx.intrinsic_ifaces.contains_key("ty_visitor");
+        let (_, visitor_iface) = ccx.tcx.intrinsic_ifaces.get("ty_visitor");
+        (1u, [arg(ast::by_ref, visitor_iface)], ty::mk_nil(tcx))
+      }
+
+      other {
+        tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +
+                          other + "`");
+        ret;
+      }
+    };
+    let fty = ty::mk_fn(tcx, {purity: ast::impure_fn,
+                              proto: ast::proto_bare,
+                              inputs: inputs, output: output,
+                              ret_style: ast::return_val,
+                              constraints: []});
+    let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
+    let i_n_tps = (*i_ty.bounds).len();
+    if i_n_tps != n_tps {
+        tcx.sess.span_err(it.span, #fmt("intrinsic has wrong number \
+                                         of type parameters. found %u, \
+                                         expected %u", i_n_tps, n_tps));
+    } else {
+        require_same_types(
+            tcx, it.span, i_ty.ty, fty,
+            {|| #fmt["intrinsic has wrong type. \
+                      expected %s",
+                     ty_to_str(ccx.tcx, fty)]});
+    }
+}
+
 

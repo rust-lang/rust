@@ -81,7 +81,7 @@ mod test_native_items {
     #[abi = "cdecl"]
     native mod rustrt {
         #[cfg(bogus)]
-        fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
-        fn vec_from_buf_shared<T>(ptr: *T, count: uint) -> [T];
+        fn vec_from_buf_shared();
+        fn vec_from_buf_shared();
     }
 }

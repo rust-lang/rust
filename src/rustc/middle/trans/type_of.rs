@@ -62,8 +62,6 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 }
 
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
-    assert !ty::type_needs_infer(t);
-
     #debug("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
@@ -133,7 +131,6 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             let sub1 = ty::subst(cx.tcx, substs, sub);
             ret T_struct([T_i8(), type_of(cx, sub1)]);
           }
-          ty::ty_param(_, _) { T_typaram(cx.tn) }
           ty::ty_type { T_ptr(cx.tydesc_type) }
           ty::ty_tup(elts) {
             let mut tys = [];
@@ -161,6 +158,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           }
           ty::ty_self { cx.tcx.sess.unimpl("type_of: ty_self"); }
           ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }
+          ty::ty_param(*) { cx.tcx.sess.bug("type_of with ty_param"); }
           ty::ty_var_integral(_) {
             cx.tcx.sess.bug("type_of shouldn't see a ty_var_integral");
           }

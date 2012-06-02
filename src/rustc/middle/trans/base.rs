@@ -2850,7 +2850,7 @@ fn trans_loop_body(bcx: block, e: @ast::expr, ret_flag: option<ValueRef>,
       ast::expr_loop_body(b@@{node: ast::expr_fn_block(decl, body, cap), _}) {
         alt check ty::get(expr_ty(bcx, e)).struct {
           ty::ty_fn({proto, _}) {
-            closure::trans_expr_fn(bcx, proto, decl, body, e.span, b.id,
+            closure::trans_expr_fn(bcx, proto, decl, body, b.id,
                                    cap, some(ret_flag),
                                    dest)
           }
@@ -3556,7 +3556,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
           ast::expr_addr_of(_, x) { ret trans_addr_of(bcx, x, dest); }
           ast::expr_fn(proto, decl, body, cap_clause) {
-            ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, e.id,
+            ret closure::trans_expr_fn(bcx, proto, decl, body, e.id,
                                        cap_clause, none, dest);
           }
           ast::expr_fn_block(decl, body, cap_clause) {
@@ -3564,7 +3564,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
               ty::ty_fn({proto, _}) {
                 #debug("translating fn_block %s with type %s",
                        expr_to_str(e), ty_to_str(tcx, expr_ty(bcx, e)));
-                ret closure::trans_expr_fn(bcx, proto, decl, body, e.span,
+                ret closure::trans_expr_fn(bcx, proto, decl, body,
                                            e.id, cap_clause, none, dest);
               }
             }
