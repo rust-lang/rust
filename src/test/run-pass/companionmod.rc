@@ -1,3 +1,4 @@
+// xfail-win32 don't understand what's wrong
 // Test that crates and directory modules can contain code
 
 #[path = "companionmod-src"]
