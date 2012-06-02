@@ -2,7 +2,7 @@
 
 The region check is a final pass that runs over the AST after we have
 inferred the type constraints but before we have actually finalized
-the types.  It's purpose is to embed some final region constraints.
+the types.  Its purpose is to embed some final region constraints.
 The reason that this is not done earlier is that sometimes we don't
 know whether a given type will be a region pointer or not until this
 phase.
