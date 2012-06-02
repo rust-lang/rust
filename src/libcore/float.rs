@@ -44,24 +44,77 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if is_NaN(num) { ret "NaN"; }
     if num == infinity { ret "inf"; }
     if num == neg_infinity { ret "-inf"; }
-    let mut (num, accum) = if num < 0.0 { (-num, "-") } else { (num, "") };
-    let trunc = num as uint;
-    let mut frac = num - (trunc as float);
-    accum += uint::str(trunc);
-    if (frac < epsilon && !exact) || digits == 0u { ret accum; }
-    accum += ".";
-    let mut i = digits;
-    let mut epsilon_prime = 1. / pow_with_uint(10u, i);
-    while i > 0u && (frac >= epsilon_prime || exact) {
-        frac *= 10.0;
-        epsilon_prime *= 10.0;
-        let digit = frac as uint;
-        accum += uint::str(digit);
-        frac -= digit as float;
-        i -= 1u;
-    }
-    ret accum;
 
+    let mut (num, sign) = if num < 0.0 { (-num, "-") } else { (num, "") };
+
+    // truncated integer
+    let trunc = num as uint;
+
+    // decimal remainder
+    let mut frac = num - (trunc as float);
+
+    // stack of digits
+    let mut fractionalParts = [];
+
+    // FIXME:
+    // This used to return right away without rounding, as "[-]num",
+    // but given epsilon like in f64.rs, I don't see how the comparison
+    // to epsilon did much when only used there.
+    //    if (frac < epsilon && !exact) || digits == 0u { ret accum; }
+    //
+    // With something better, possibly weird results like this can be avoided:
+    //     assert "3.14158999999999988262" == my_to_str_exact(3.14159, 20u);
+
+    let mut ii = digits;
+    let mut epsilon_prime = 1.0 / pow_with_uint(10u, ii);
+
+    // while we still need digits
+    // build stack of digits
+    while ii > 0u && (frac >= epsilon_prime || exact) {
+        // store the next digit
+        frac *= 10.0;
+        let digit = frac as uint;
+        vec::push(fractionalParts, digit);
+
+        // calculate the next frac
+        frac -= digit as float;
+        epsilon_prime *= 10.0;
+        ii -= 1u;
+    }
+
+    let mut acc;
+    let mut racc = "";
+    let mut carry = if frac * 10.0 as uint >= 5u { 1u } else { 0u };
+
+    // turn digits into string
+    // using stack of digits
+    while vec::len(fractionalParts) > 0u {
+        let mut adjusted_digit = carry + vec::pop(fractionalParts);
+
+        if adjusted_digit == 10u {
+            carry = 1u;
+            adjusted_digit %= 10u
+        } else {
+            carry = 0u
+        };
+
+        racc = uint::str(adjusted_digit) + racc;
+    }
+
+    // pad decimals with trailing zeroes
+    while str::len(racc) < digits && exact {
+        racc += "0"
+    }
+
+    // combine ints and decimals
+    let mut ones = uint::str(trunc + carry);
+    if racc == "" {
+        acc = sign + ones;
+    } else {
+        acc = sign + ones + "." + racc;
+    }
+
+    ret acc;
 }
 
 #[doc = "

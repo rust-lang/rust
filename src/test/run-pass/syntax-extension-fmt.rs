@@ -94,7 +94,7 @@ fn part3() {
     test(#fmt["%.o", 10u], "12");
     test(#fmt["%.t", 3u], "11");
     test(#fmt["%.c", 'A'], "A");
-    test(#fmt["%.f", 5.82], "5");
+    test(#fmt["%.f", 5.82], "6");
     test(#fmt["%.0d", 0], "");
     test(#fmt["%.0u", 0u], "");
     test(#fmt["%.0x", 0u], "");
@@ -107,7 +107,7 @@ fn part3() {
     test(#fmt["%.0o", 10u], "12");
     test(#fmt["%.0t", 3u], "11");
     test(#fmt["%.0c", 'A'], "A");
-    test(#fmt["%.0f", 5.892], "5");
+    test(#fmt["%.0f", 5.892], "6");
     test(#fmt["%.1d", 0], "0");
     test(#fmt["%.1u", 0u], "0");
     test(#fmt["%.1x", 0u], "0");
