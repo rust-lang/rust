@@ -1340,6 +1340,10 @@ fn remove_implicit(k: kind) -> kind {
     k - kind_(KIND_MASK_IMPLICIT)
 }
 
+fn remove_copyable(k: kind) -> kind {
+    k - kind_(KIND_MASK_COPY)
+}
+
 impl operators for kind {
     fn &(other: kind) -> kind {
         lower_kind(self, other)
@@ -1508,7 +1512,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         // ...but classes with dtors are never copyable (they can be
         // sendable)
         if ty::has_dtor(cx, did) {
-           lowest = lower_kind(lowest, kind_noncopyable());
+           lowest = remove_copyable(lowest);
         }
         lowest
       }
