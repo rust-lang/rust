@@ -1073,8 +1073,8 @@ Packages:
     install [options] [source/]<name>       Install a package by name
     install [options] [source/]<uuid>       Install a package by uuid
     install [options] <url>                 Install a package via curl (HTTP,
-                                            FTP, etc.) from an .tar[.gz|bz2|xy]
-                                            file
+                                            FTP, etc.) from an
+                                            .tar[.gz|bz2|xy] file
     install [options] <url> [ref]           Install a package via git
     install [options] <file>                Install a package directly from an
                                             .tar[.gz|bz2|xy] file
