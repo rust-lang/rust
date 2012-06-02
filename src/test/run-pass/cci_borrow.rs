@@ -1,4 +1,3 @@
-// xfail-win32 - not sure why this is busted
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_borrow_lib.rs
 
