@@ -137,15 +137,10 @@ fn is_uuid(id: str) -> bool {
 // FIXME: implement URI/URL parsing so we don't have to resort to weak checks
 
 fn is_archive_uri(uri: str) -> bool {
-    let (_, ext) = path::splitext(uri);
-
-    alt ext {
-        ".tar" { ret true; }
-        ".tar.gz" { ret true; }
-        ".tar.xy" { ret true; }
-        ".tar.bz2" { ret true; }
-        _ { ret false; }
-    }
+    str::ends_with(uri, ".tar")
+    || str::ends_with(uri, ".tar.gz")
+    || str::ends_with(uri, ".tar.xz")
+    || str::ends_with(uri, ".tar.bz2")
 }
 
 fn is_archive_url(url: str) -> bool {
@@ -156,7 +151,7 @@ fn is_archive_url(url: str) -> bool {
         option::some(idx) {
             str::ends_with(url, ".tar")
             || str::ends_with(url, ".tar.gz")
-            || str::ends_with(url, ".tar.xy")
+            || str::ends_with(url, ".tar.xz")
             || str::ends_with(url, ".tar.bz2")
         }
         option::none { false }
@@ -641,7 +636,7 @@ fn install_curl(c: cargo, wd: str, url: str) {
 }
 
 fn install_file(c: cargo, wd: str, path: str) {
-    info("installing with file from " + path + "...");
+    info("installing with tar from " + path + "...");
     run::run_program("tar", ["-x", "--strip-components=1",
                              "-C", wd, "-f", path]);
     install_source(c, wd);
@@ -687,7 +682,9 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, false, { || error("no packages match uuid"); });
+        cargo_suggestion(c, false, { ||
+            error("can't find package: " + uuid);
+        });
         ret;
     }
     error("found multiple packages:");
@@ -709,7 +706,9 @@ fn install_named(c: cargo, wd: str, name: str) {
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, false, { || error("no packages match name"); });
+        cargo_suggestion(c, false, { ||
+            error("can't find package: " + name);
+        });
         ret;
     }
     error("found multiple packages:");
@@ -732,7 +731,7 @@ fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
       }
       _ { }
     }
-    error("can't find package " + src + "/" + uuid);
+    error("can't find package: " + src + "/" + uuid);
 }
 
 fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
@@ -748,7 +747,7 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
         }
         _ { }
     }
-    error("can't find package " + src + "/" + name);
+    error("can't find package: " + src + "/" + name);
 }
 
 fn cmd_uninstall(c: cargo) {
@@ -1074,10 +1073,10 @@ Packages:
     install [options] [source/]<uuid>       Install a package by uuid
     install [options] <url>                 Install a package via curl (HTTP,
                                             FTP, etc.) from an
-                                            .tar[.gz|bz2|xy] file
+                                            .tar[.gz|bz2|xz] file
     install [options] <url> [ref]           Install a package via git
     install [options] <file>                Install a package directly from an
-                                            .tar[.gz|bz2|xy] file
+                                            .tar[.gz|bz2|xz] file
     uninstall [options] <name>              Remove a package by (meta) name
     uninstall [options] <uuid>              Remove a package by (meta) uuid
 
