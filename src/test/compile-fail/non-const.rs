@@ -2,8 +2,17 @@
 
 fn foo<T: const>(_x: T) { }
 
-resource r(_x: int) {}
-resource r2(_x: @mut int) {}
+class r {
+  let x:int;
+  new(x:int) { self.x = x; }
+  drop {}
+}
+
+class r2 {
+  let x:@mut int;
+  new(x:@mut int) { self.x = x; }
+  drop {}
+}
 
 fn main() {
     foo({f: 3});

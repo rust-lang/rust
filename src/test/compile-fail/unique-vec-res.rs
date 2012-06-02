@@ -1,7 +1,9 @@
 // error-pattern: copying a noncopyable value
 
-resource r(i: @mut int) {
-    *i = *i + 1;
+class r {
+  let i: @mut int;
+  new(i: @mut int) { self.i = i; }
+  drop { *(self.i) = *(self.i) + 1; }
 }
 
 fn f<T>(+i: [T], +j: [T]) {

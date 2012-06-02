@@ -1,7 +1,9 @@
 // error-pattern: copying a noncopyable value
 
-resource my_resource(x: int) {
-    log(error, x);
+class my_resource {
+  let x: int;
+  new(x: int) { self.x = x; }
+  drop { log(error, self.x); }
 }
 
 fn main() {

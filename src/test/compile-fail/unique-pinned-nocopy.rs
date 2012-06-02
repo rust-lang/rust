@@ -1,6 +1,9 @@
 // error-pattern: copying a noncopyable value
 
-resource r(b: bool) {
+class r {
+  let b:bool;
+  new(b: bool) { self.b = b; }
+  drop {}
 }
 
 fn main() {

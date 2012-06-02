@@ -1,9 +1,12 @@
 // error-pattern: copying a noncopyable value
 
-resource r(_i: int) { }
+class r {
+  new(_i:int) {}
+  drop {}
+}
 
 fn main() {
-    // This can't make sense as it would copy the resources
+    // This can't make sense as it would copy the classes
     let i <- [r(0)];
     let j <- [r(1)];
     let k = i + j;
