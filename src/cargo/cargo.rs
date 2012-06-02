@@ -8,14 +8,11 @@ import syntax::diagnostic;
 
 import result::{ok, err};
 import io::writer_util;
-import std::json;
 import result;
-import std::map;
-import std::map::hashmap;
+import std::{map, json, tempfile, term, sort, getopts};
+import map::hashmap;
 import str;
-import std::tempfile;
 import vec;
-import std::getopts;
 import getopts::{optflag, optopt, opt_present};
 
 type package = {
@@ -40,6 +37,7 @@ type source = {
 type cargo = {
     pgp: bool,
     root: str,
+    installdir: str,
     bindir: str,
     libdir: str,
     workdir: str,
@@ -67,20 +65,109 @@ type options = {
 enum mode { system_mode, user_mode, local_mode }
 
 fn opts() -> [getopts::opt] {
-    [optflag("g"), optflag("G"), optopt("mode"), optflag("test"),
+    [optflag("g"), optflag("G"), optflag("test"),
      optflag("h"), optflag("help")]
 }
 
 fn info(msg: str) {
-    io::stdout().write_line("info: " + msg);
+    let out = io::stdout();
+
+    if term::color_supported() {
+        term::fg(out, term::color_green);
+        out.write_str("info: ");
+        term::reset(out);
+        out.write_line(msg);
+    } else { out.write_line("info: " + msg); }
 }
 
 fn warn(msg: str) {
-    io::stdout().write_line("warning: " + msg);
+    let out = io::stdout();
+
+    if term::color_supported() {
+        term::fg(out, term::color_yellow);
+        out.write_str("warning: ");
+        term::reset(out);
+        out.write_line(msg);
+    }else { out.write_line("warning: " + msg); }
 }
 
 fn error(msg: str) {
-    io::stdout().write_line("error: " + msg);
+    let out = io::stdout();
+
+    if term::color_supported() {
+        term::fg(out, term::color_red);
+        out.write_str("error: ");
+        term::reset(out);
+        out.write_line(msg);
+    }
+    else { out.write_line("error: " + msg); }
+}
+
+fn is_uuid(id: str) -> bool {
+    let parts = str::split_str(id, "-");
+    if vec::len(parts) == 5u {
+        let mut correct = 0u;
+        vec::iteri(parts) { |i, part|
+            alt i {
+                0u {
+                    if str::len(part) == 8u {
+                        correct += 1u;
+                    }
+                }
+                1u | 2u | 3u {
+                    if str::len(part) == 4u {
+                        correct += 1u;
+                    }
+                }
+                4u {
+                    if str::len(part) == 12u {
+                        correct += 1u;
+                    }
+                }
+                _ { }
+            }
+        }
+        if correct >= 5u {
+            ret true;
+        }
+    }
+    false
+}
+
+// FIXME: implement URI/URL parsing so we don't have to resort to weak checks
+
+fn is_archive_uri(uri: str) -> bool {
+    let (_, ext) = path::splitext(uri);
+
+    alt ext {
+        ".tar" { ret true; }
+        ".tar.gz" { ret true; }
+        ".tar.xy" { ret true; }
+        ".tar.bz2" { ret true; }
+        _ { ret false; }
+    }
+}
+
+fn is_archive_url(url: str) -> bool {
+    // FIXME: this requires the protocol bit - if we had proper URI parsing,
+    // we wouldn't need it
+
+    alt str::find_str(url, "://") {
+        option::some(idx) {
+            str::ends_with(url, ".tar")
+            || str::ends_with(url, ".tar.gz")
+            || str::ends_with(url, ".tar.xy")
+            || str::ends_with(url, ".tar.bz2")
+        }
+        option::none { false }
+    }
+}
+
+fn is_git_url(url: str) -> bool {
+    if str::ends_with(url, "/") { str::ends_with(url, ".git/") }
+    else {
+        str::starts_with(url, "git://") || str::ends_with(url, ".git")
+    }
 }
 
 fn load_link(mis: [@ast::meta_item]) -> (option<str>,
@@ -186,7 +273,7 @@ fn parse_source(name: str, j: json::json) -> source {
                 some(json::string(u)) {
                     u
                 }
-                _ { fail "Needed 'url' field in source."; }
+                _ { fail "needed 'url' field in source"; }
             };
             let sig = alt _j.find("sig") {
                 some(json::string(u)) {
@@ -209,7 +296,7 @@ fn parse_source(name: str, j: json::json) -> source {
             ret { name: name, url: url, sig: sig, key: key, keyfp: keyfp,
                   mut packages: [] };
         }
-        _ { fail "Needed dict value in source."; }
+        _ { fail "needed dict value in source"; }
     };
 }
 
@@ -232,7 +319,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let name = alt p.find("name") {
         some(json::string(_n)) { _n }
         _ {
-            warn("Malformed source json: " + src.name + " (missing name)");
+            warn("malformed source json: " + src.name + " (missing name)");
             ret;
         }
     };
@@ -240,7 +327,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let uuid = alt p.find("uuid") {
         some(json::string(_n)) { _n }
         _ {
-            warn("Malformed source json: " + src.name + " (missing uuid)");
+            warn("malformed source json: " + src.name + " (missing uuid)");
             ret;
         }
     };
@@ -248,7 +335,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let url = alt p.find("url") {
         some(json::string(_n)) { _n }
         _ {
-            warn("Malformed source json: " + src.name + " (missing url)");
+            warn("malformed source json: " + src.name + " (missing url)");
             ret;
         }
     };
@@ -256,7 +343,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let method = alt p.find("method") {
         some(json::string(_n)) { _n }
         _ {
-            warn("Malformed source json: " + src.name + " (missing method)");
+            warn("malformed source json: " + src.name + " (missing method)");
             ret;
         }
     };
@@ -282,7 +369,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let description = alt p.find("description") {
         some(json::string(_n)) { _n }
         _ {
-            warn("Malformed source json: " + src.name
+            warn("malformed source json: " + src.name
                  + " (missing description)");
             ret;
         }
@@ -297,11 +384,11 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         ref: ref,
         tags: tags
     });
-    log(debug, "  Loaded package: " + src.name + "/" + name);
+    log(debug, "  loaded package: " + src.name + "/" + name);
 }
 
 fn load_source_packages(&c: cargo, &src: source) {
-    log(debug, "Loading source: " + src.name);
+    log(debug, "loading source: " + src.name);
     let dir = path::connect(c.sourcedir, src.name);
     let pkgfile = path::connect(dir, "packages.json");
     if !os::path_exists(pkgfile) { ret; }
@@ -314,14 +401,14 @@ fn load_source_packages(&c: cargo, &src: source) {
                         load_one_source_package(src, _p);
                     }
                     _ {
-                        warn("Malformed source json: " + src.name +
+                        warn("malformed source json: " + src.name +
                              " (non-dict pkg)");
                     }
                 }
             }
         }
         ok(_) {
-            warn("Malformed source json: " + src.name +
+            warn("malformed source json: " + src.name +
                  "(packages is not a list)");
         }
         err(e) {
@@ -341,40 +428,31 @@ fn build_cargo_options(argv: [str]) -> options {
     let test = opt_present(match, "test");
     let G    = opt_present(match, "G");
     let g    = opt_present(match, "g");
-    let m    = opt_present(match, "mode");
     let help = opt_present(match, "h") || opt_present(match, "help");
+    let len  = vec::len(match.free);
 
-    let is_install = vec::len(match.free) > 1u && match.free[1] == "install";
+    let is_install = len > 1u && match.free[1] == "install";
+    let is_uninstall = len > 1u && match.free[1] == "uninstall";
 
     if G && g { fail "-G and -g both provided"; }
-    if g && m { fail "--mode and -g both provided"; }
-    if G && m { fail "--mode and -G both provided"; }
 
-    if !is_install && (g || G || m) {
-        fail "-g, -G, --mode are only valid for `install`";
+    if !is_install && !is_uninstall && (g || G) {
+        fail "-g and -G are only valid for `install` and `uninstall|rm`";
     }
 
     let mode =
-        if !is_install || G { system_mode }
-        else if  g { user_mode }
-        else if !m { local_mode }
-        else {
-            alt getopts::opt_str(match, "mode") {
-                "system" { system_mode }
-                "user"   { user_mode }
-                "local"  { local_mode }
-                _        { fail "argument to `mode` must be" +
-                                "one of `system`, `user`, or `local`"; }}
-        };
+        if (!is_install && !is_uninstall) || g { user_mode }
+        else if G { system_mode }
+        else { local_mode };
 
     {test: test, mode: mode, free: match.free, help: help}
 }
 
 fn configure(opts: options) -> cargo {
-    // NOTE: to make init and sync save into non-root level directories
-    // simply get rid of syscargo, below
-
-    let syscargo = result::get(get_cargo_sysroot());
+    let home = alt get_cargo_root() {
+        ok(_home) { _home }
+        err(_err) { result::get(get_cargo_sysroot()) }
+    };
 
     let get_cargo_dir = alt opts.mode {
         system_mode { get_cargo_sysroot }
@@ -385,16 +463,17 @@ fn configure(opts: options) -> cargo {
     let p = result::get(get_cargo_dir());
 
     let sources = map::str_hash::<source>();
-    try_parse_sources(path::connect(syscargo, "sources.json"), sources);
-    try_parse_sources(path::connect(syscargo, "local-sources.json"), sources);
+    try_parse_sources(path::connect(home, "sources.json"), sources);
+    try_parse_sources(path::connect(home, "local-sources.json"), sources);
 
     let mut c = {
         pgp: pgp::supported(),
-        root: p,
+        root: home,
+        installdir: p,
         bindir: path::connect(p, "bin"),
         libdir: path::connect(p, "lib"),
-        workdir: path::connect(p, "work"),
-        sourcedir: path::connect(syscargo, "sources"),
+        workdir: path::connect(home, "work"),
+        sourcedir: path::connect(home, "sources"),
         sources: sources,
         opts: opts
     };
@@ -402,6 +481,7 @@ fn configure(opts: options) -> cargo {
     need_dir(c.root);
     need_dir(c.sourcedir);
     need_dir(c.workdir);
+    need_dir(c.installdir);
     need_dir(c.libdir);
     need_dir(c.bindir);
 
@@ -414,8 +494,8 @@ fn configure(opts: options) -> cargo {
     if c.pgp {
         pgp::init(c.root);
     } else {
-        warn("command \"gpg\" is not found");
-        warn("you have to install \"gpg\" from source " +
+        warn("command `gpg` was not found");
+        warn("you have to install gpg from source " +
              " or package manager to get it to work correctly");
     }
 
@@ -458,7 +538,7 @@ fn run_in_buildpath(what: str, path: str, subdir: str, cf: str,
 }
 
 fn test_one_crate(_c: cargo, path: str, cf: str) {
-  let buildpath = alt run_in_buildpath("Testing", path, "/test", cf,
+  let buildpath = alt run_in_buildpath("testing", path, "/test", cf,
                                        [ "--test"]) {
       none { ret; }
       some(bp) { bp }
@@ -467,7 +547,7 @@ fn test_one_crate(_c: cargo, path: str, cf: str) {
 }
 
 fn install_one_crate(c: cargo, path: str, cf: str) {
-    let buildpath = alt run_in_buildpath("Installing", path,
+    let buildpath = alt run_in_buildpath("installing", path,
                                          "/build", cf, []) {
       none { ret; }
       some(bp) { bp }
@@ -475,38 +555,23 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
     let newv = os::list_dir_path(buildpath);
     let exec_suffix = os::exe_suffix();
     for newv.each {|ct|
-        // FIXME: What's up with the dual installation?  Both `install_to_dir`
-        // and `install_one_crate_to_sysroot` install the binary files...
-
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {
             #debug("  bin: %s", ct);
             install_to_dir(ct, c.bindir);
             if c.opts.mode == system_mode {
-                install_one_crate_to_sysroot(ct, "bin");
+                // TODO: Put this file in PATH / symlink it so it can be
+                // used as a generic executable
+                // `cargo install -G rustray` and `rustray file.obj`
             }
         } else {
             #debug("  lib: %s", ct);
             install_to_dir(ct, c.libdir);
-            if c.opts.mode == system_mode {
-                install_one_crate_to_sysroot(ct, libdir());
-            }
         }
     }
 }
 
-fn install_one_crate_to_sysroot(ct: str, target: str) {
-    alt os::self_exe_path() {
-        some(_path) {
-            let path = [_path, "..", target];
-            check vec::is_not_empty(path);
-            let target_dir = path::normalize(path::connect_many(path));
-            install_to_dir(ct, target_dir);
-        }
-        none { }
-    }
-}
 
 fn rustc_sysroot() -> str {
     alt os::self_exe_path() {
@@ -533,7 +598,7 @@ fn install_source(c: cargo, path: str) {
     }
 
     if vec::is_empty(cratefiles) {
-        fail "This doesn't look like a rust package (no .rc files).";
+        fail "this doesn't look like a rust package (no .rc files)";
     }
 
     for cratefiles.each {|cf|
@@ -551,6 +616,7 @@ fn install_source(c: cargo, path: str) {
 }
 
 fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
+    info("installing with git from " + url + "...");
     run::run_program("git", ["clone", url, wd]);
     if option::is_some::<str>(ref) {
         let r = option::get::<str>(ref);
@@ -562,11 +628,12 @@ fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
 }
 
 fn install_curl(c: cargo, wd: str, url: str) {
+    info("installing with curl from " + url + "...");
     let tarpath = path::connect(wd, "pkg.tar");
     let p = run::program_output("curl", ["-f", "-s", "-o",
                                          tarpath, url]);
     if p.status != 0 {
-        fail #fmt["Fetch of %s failed: %s", url, p.err];
+        fail #fmt["fetch of %s failed: %s", url, p.err];
     }
     run::run_program("tar", ["-x", "--strip-components=1",
                              "-C", wd, "-f", tarpath]);
@@ -574,35 +641,34 @@ fn install_curl(c: cargo, wd: str, url: str) {
 }
 
 fn install_file(c: cargo, wd: str, path: str) {
+    info("installing with file from " + path + "...");
     run::run_program("tar", ["-x", "--strip-components=1",
                              "-C", wd, "-f", path]);
     install_source(c, wd);
 }
 
 fn install_package(c: cargo, wd: str, pkg: package) {
-    info("Installing with " + pkg.method + " from " + pkg.url + "...");
-    if pkg.method == "git" {
-        install_git(c, wd, pkg.url, pkg.ref);
-    } else if pkg.method == "http" {
-        install_curl(c, wd, pkg.url);
-    } else if pkg.method == "file" {
-        install_file(c, wd, pkg.url);
+    alt pkg.method {
+        "git" { install_git(c, wd, pkg.url, pkg.ref); }
+        "http" | "ftp" | "curl" { install_curl(c, wd, pkg.url); }
+        "file" { install_file(c, wd, pkg.url); }
+        _ { fail #fmt("don't know how to install with: %s", pkg.method) }
     }
 }
 
 fn cargo_suggestion(c: cargo, syncing: bool, fallback: fn())
 {
     if c.sources.size() == 0u {
-        error("No sources defined. You may wish to run " +
-              "\"cargo init\" then \"cargo sync\".");
+        error("no sources defined - you may wish to run " +
+              "`cargo init` then `cargo sync`");
         ret;
     }
     if !syncing {
         let mut npkg = 0u;
         for c.sources.each_value { |v| npkg += vec::len(v.packages) }
         if npkg == 0u {
-            error("No packages known. You may wish to run " +
-                  "\"cargo sync\".");
+            error("no packages synced - you may wish to run " +
+                  "`cargo sync`");
             ret;
         }
     }
@@ -612,7 +678,6 @@ fn cargo_suggestion(c: cargo, syncing: bool, fallback: fn())
 fn install_uuid(c: cargo, wd: str, uuid: str) {
     let mut ps = [];
     for_each_package(c, { |s, p|
-        info(#fmt["%s ? %s", p.uuid, uuid]);
         if p.uuid == uuid {
             vec::grow(ps, 1u, (s.name, p));
         }
@@ -622,10 +687,10 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, false, { || error("No packages match uuid."); });
+        cargo_suggestion(c, false, { || error("no packages match uuid"); });
         ret;
     }
-    error("Found multiple packages:");
+    error("found multiple packages:");
     for ps.each {|elt|
         let (sname,p) = elt;
         info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
@@ -644,10 +709,10 @@ fn install_named(c: cargo, wd: str, name: str) {
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, false, { || error("No packages match name."); });
+        cargo_suggestion(c, false, { || error("no packages match name"); });
         ret;
     }
-    error("Found multiple packages:");
+    error("found multiple packages:");
     for ps.each {|elt|
         let (sname,p) = elt;
         info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
@@ -667,7 +732,7 @@ fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
       }
       _ { }
     }
-    error("Can't find package " + src + "/" + uuid);
+    error("can't find package " + src + "/" + uuid);
 }
 
 fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
@@ -683,17 +748,61 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
         }
         _ { }
     }
-    error("Can't find package " + src + "/" + name);
+    error("can't find package " + src + "/" + name);
 }
 
-fn cmd_install(c: cargo) unsafe {
-    // cargo install <pkg>
+fn cmd_uninstall(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
     }
 
-    let target = c.opts.free[2];
+    let target = c.opts.free[2u];
+
+    // FIXME: needs stronger pattern matching
+    if is_uuid(target) {
+        for os::list_dir(c.libdir).each { |file|
+            alt str::find_str(file, "-" + target + "-") {
+                some(idx) {
+                    let full = path::normalize(path::connect(c.libdir, file));
+                    if os::remove_file(full) {
+                        info("uninstalled: '" + full + "'");
+                    } else {
+                        error("could not uninstall: '" + full + "'");
+                    }
+                    ret;
+                }
+                none { cont; }
+            }
+        }
+
+        error("can't find package with uuid: " + target);
+    } else {
+        for os::list_dir(c.libdir).each { |file|
+            alt str::find_str(file, "lib" + target + "-") {
+                some(idx) {
+                    let full = path::normalize(path::connect(c.libdir, file));
+                    if os::remove_file(full) {
+                        info("uninstalled: '" + full + "'");
+                    } else {
+                        error("could not uninstall: '" + full + "'");
+                    }
+                    ret;
+                }
+                none { cont; }
+            }
+        }
+
+        error("can't find package with name: " + target);
+    }
+}
+
+fn cmd_install(c: cargo) unsafe {
+    // cargo install [pkg]
+    if vec::len(c.opts.free) < 2u {
+        cmd_usage();
+        ret;
+    }
 
     let wd_base = c.workdir + path::path_sep();
     let wd = alt tempfile::mkdtemp(wd_base, "") {
@@ -701,46 +810,51 @@ fn cmd_install(c: cargo) unsafe {
         none { fail #fmt("needed temp dir: %s", wd_base); }
     };
 
-    if str::starts_with(target, "uuid:") {
-        let mut uuid = rest(target, 5u);
-        alt str::find_char(uuid, '/') {
-            option::some(idx) {
-               let source = str::slice(uuid, 0u, idx);
-               uuid = str::slice(uuid, idx + 1u, str::len(uuid));
-               install_uuid_specific(c, wd, source, uuid);
-            }
-            option::none {
-               install_uuid(c, wd, uuid);
-            }
+    if vec::len(c.opts.free) == 2u {
+        let cwd = os::getcwd();
+        let status = run::run_program("cp", ["-R", cwd, wd]);
+
+        if status != 0 {
+            fail #fmt("could not copy directory: %s", cwd);
         }
-    } else if str::starts_with(target, "git:") {
+
+        install_source(c, wd);
+        ret;
+    }
+
+    let target = c.opts.free[2];
+
+    if is_archive_url(target) {
+        install_curl(c, wd, target);
+    } else if is_git_url(target) {
         let ref = if c.opts.free.len() >= 4u {
             some(c.opts.free[3u])
         } else {
             none
         };
         install_git(c, wd, target, ref)
-    } else if target == "git" {
-        if c.opts.free.len() < 4u {
-            fail #fmt("needed git url");
-        }
-        let url = c.opts.free[3u];
-        let ref = if c.opts.free.len() >= 5u {
-            some(c.opts.free[4u])
-        } else {
-            none
-        };
-        install_git(c, wd, url, ref)
+    } else if is_archive_uri(target) {
+        install_file(c, wd, target);
+        ret;
     } else {
-        let mut name = target;
-        alt str::find_char(name, '/') {
+        let mut ps = copy target;
+
+        alt str::find_char(ps, '/') {
             option::some(idx) {
-               let source = str::slice(name, 0u, idx);
-               name = str::slice(name, idx + 1u, str::len(name));
-               install_named_specific(c, wd, source, name);
+                let source = str::slice(ps, 0u, idx);
+                ps = str::slice(ps, idx + 1u, str::len(ps));
+                if is_uuid(ps) {
+                    install_uuid_specific(c, wd, source, ps);
+                } else {
+                    install_named_specific(c, wd, source, ps);
+                }
             }
             option::none {
-               install_named(c, wd, name);
+                if is_uuid(ps) {
+                    install_uuid(c, wd, ps);
+                } else {
+                    install_named(c, wd, ps);
+                }
             }
         }
     }
@@ -800,12 +914,21 @@ fn sync_one(c: cargo, name: str, src: source) {
 }
 
 fn cmd_sync(c: cargo) {
-    if vec::len(c.opts.free) == 3u {
-        sync_one(c, c.opts.free[2], c.sources.get(c.opts.free[2]));
+    if vec::len(c.opts.free) >= 3u {
+        vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) { |name|
+            alt c.sources.find(name) {
+                some(source) {
+                    sync_one(c, name, source);
+                }
+                none {
+                    error(#fmt("no such source: %s", name));
+                }
+            }
+        }
     } else {
         cargo_suggestion(c, true, { || } );
-        for c.sources.each { |k, v|
-            sync_one(c, k, v);
+        for c.sources.each_value { |v|
+            sync_one(c, v.name, v);
         }
     }
 }
@@ -838,7 +961,7 @@ fn cmd_init(c: cargo) {
     }
     copy_warn(srcfile, destsrcfile);
 
-    info(#fmt["Initialized .cargo in %s", c.root]);
+    info(#fmt["initialized .cargo in %s", c.root]);
 }
 
 fn print_pkg(s: source, p: package) {
@@ -851,12 +974,47 @@ fn print_pkg(s: source, p: package) {
         print("   >> " + p.description + "\n")
     }
 }
-fn cmd_list(c: cargo) {
-    for_each_package(c, { |s, p|
-        if vec::len(c.opts.free) <= 2u || c.opts.free[2] == s.name {
-            print_pkg(s, p);
+
+fn print_source(s: source) {
+    info(s.name + " (" + s.url + ")");
+
+    let pks = sort::merge_sort({ |a, b|
+        a < b
+    }, copy s.packages);
+    let l = vec::len(pks);
+
+    print(io::with_str_writer() { |writer|
+        let mut list = "   >> ";
+
+        vec::iteri(pks) { |i, pk|
+            if str::len(list) > 78u {
+                writer.write_line(list);
+                list = "   >> ";
+            }
+            list += pk.name + (if l - 1u == i { "" } else { ", " });
         }
+
+        writer.write_line(list);
     });
+}
+
+fn cmd_list(c: cargo) {
+    if vec::len(c.opts.free) >= 3u {
+        vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) { |name|
+            alt c.sources.find(name) {
+                some(source) {
+                    print_source(source);
+                }
+                none {
+                    error(#fmt("no such source: %s", name));
+                }
+            }
+        }
+    } else {
+        for c.sources.each_value { |v|
+            print_source(v);
+        }
+    }
 }
 
 fn cmd_search(c: cargo) {
@@ -874,51 +1032,62 @@ fn cmd_search(c: cargo) {
             n += 1;
         }
     });
-    info(#fmt["Found %d packages.", n]);
+    info(#fmt["found %d packages", n]);
 }
 
 fn install_to_dir(srcfile: str, destdir: str) {
     let newfile = path::connect(destdir, path::basename(srcfile));
-    info(#fmt["Installing '%s'...", newfile]);
 
-    run::run_program("cp", [srcfile, newfile]);
+    let status = run::run_program("cp", [srcfile, newfile]);
+    if status == 0 {
+        info(#fmt["installed: '%s'", newfile]);
+    } else {
+        error(#fmt["could not install: '%s'", newfile]);
+    }
 }
 
 fn copy_warn(srcfile: str, destfile: str) {
   if !os::copy_file(srcfile, destfile) {
-      warn(#fmt["Copying %s to %s failed", srcfile, destfile]);
+      warn(#fmt["copying %s to %s failed", srcfile, destfile]);
   }
 }
 
-// FIXME: decide on either [-g | -G] or [--mode=...] and remove the other
 fn cmd_usage() {
-    print("Usage: cargo <verb> [options] [args...]\n" +
+    print("Usage: cargo <verb> [options] [args..]\n" +
           " e.g.: cargo [init | sync]\n" +
-          " e.g.: cargo install [-g | -G | --mode=MODE] ] [PACKAGE...]
+          " e.g.: cargo install [-g | -G] <package>
 
-Initialization:
-    init           Set up the cargo system near this binary,
-                   for example, at  /usr/local/lib/cargo/
-    sync           Sync all package sources
+General:
+    init                    Reinitialize cargo in ~/.cargo
+    usage                   Display this message
+    sync [sources..]        Sync all sources (or specific sources)
 
 Querying:
-    list [source]                        List packages
-    search <name | '*'> [tags...]        Search packages
-    usage                                Display this message
+    list [sources..]                        List sources and their packages
+                                            or a single source
+    search <name | '*'> [tags...]           Search packages
 
-Package installation:
-    [options] [source/]PKGNAME           Install a package by name
-    [options] uuid:[source/]PKGUUID      Install a package by uuid
-    [options] git [url] [ref]            Install a package by git
-    [options] git://[url] [ref]          Install a package by git
+Packages:
+    install [options]                       Install a package from source
+                                            code in the current directory
+    install [options] [source/]<name>       Install a package by name
+    install [options] [source/]<uuid>       Install a package by uuid
+    install [options] <url>                 Install a package via curl (HTTP,
+                                            FTP, etc.) from an .tar[.gz|bz2|xy]
+                                            file
+    install [options] <url> [ref]           Install a package via git
+    install [options] <file>                Install a package directly from an
+                                            .tar[.gz|bz2|xy] file
+    uninstall [options] <name>              Remove a package by (meta) name
+    uninstall [options] <uuid>              Remove a package by (meta) uuid
 
 Package installation options:
-    --mode=MODE    Install to one of the following locations:
-                   local (./.cargo/bin/, which is the default),
-                   user (~/.cargo/bin/), or system (/usr/local/lib/cargo/bin/)
-    --test         Run crate tests before installing
-    -g             Equivalent to --mode=user
-    -G             Equivalent to --mode=system
+    --tests         Run crate tests before installing
+
+Package [un]installation options:
+    -g              Work at the user level (~/.cargo/bin/ instead of
+                    locally in ./.cargo/bin/ by default)
+    -G              Work at the system level (/usr/local/lib/cargo/bin/)
 
 Other:
     -h, --help     Display this message
@@ -933,11 +1102,27 @@ fn main(argv: [str]) {
         ret;
     }
 
-    let c = configure(o);
+    let mut c = configure(o);
+    let mut sources = c.sources;
+    let home = c.root;
+
+    if !os::path_exists(path::connect(home, "sources.json")) {
+        cmd_init(c);
+        try_parse_sources(path::connect(home, "sources.json"), sources);
+        try_parse_sources(path::connect(home, "local-sources.json"), sources);
+
+        for sources.each_value { |v|
+            sync_one(c, v.name, v);
+        }
+
+        // FIXME: shouldn't need to reconfigure
+        c = configure(o);
+    }
 
     alt o.free[1] {
         "init" { cmd_init(c); }
         "install" { cmd_install(c); }
+        "uninstall" { cmd_uninstall(c); }
         "list" { cmd_list(c); }
         "search" { cmd_search(c); }
         "sync" { cmd_sync(c); }
