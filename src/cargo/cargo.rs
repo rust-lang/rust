@@ -756,14 +756,18 @@ fn cmd_uninstall(c: cargo) {
         ret;
     }
 
+    let lib = c.libdir;
+    let bin = c.bindir;
     let target = c.opts.free[2u];
 
     // FIXME: needs stronger pattern matching
+    // FIXME: needs to uninstall from a specified location in a cache instead
+    // of looking for it (binaries can be uninstalled by name only)
     if is_uuid(target) {
-        for os::list_dir(c.libdir).each { |file|
+        for os::list_dir(lib).each { |file|
             alt str::find_str(file, "-" + target + "-") {
                 some(idx) {
-                    let full = path::normalize(path::connect(c.libdir, file));
+                    let full = path::normalize(path::connect(lib, file));
                     if os::remove_file(full) {
                         info("uninstalled: '" + full + "'");
                     } else {
@@ -777,10 +781,25 @@ fn cmd_uninstall(c: cargo) {
 
         error("can't find package with uuid: " + target);
     } else {
-        for os::list_dir(c.libdir).each { |file|
+        for os::list_dir(lib).each { |file|
             alt str::find_str(file, "lib" + target + "-") {
                 some(idx) {
-                    let full = path::normalize(path::connect(c.libdir, file));
+                    let full = path::normalize(path::connect(lib,
+                               file));
+                    if os::remove_file(full) {
+                        info("uninstalled: '" + full + "'");
+                    } else {
+                        error("could not uninstall: '" + full + "'");
+                    }
+                    ret;
+                }
+                none { cont; }
+            }
+        }
+        for os::list_dir(bin).each { |file|
+            alt str::find_str(file, target) {
+                some(idx) {
+                    let full = path::normalize(path::connect(bin, file));
                     if os::remove_file(full) {
                         info("uninstalled: '" + full + "'");
                     } else {
