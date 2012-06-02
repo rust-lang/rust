@@ -45,6 +45,7 @@ export field_idx;
 export get_field;
 export get_fields;
 export get_element_type;
+export has_dtor;
 export is_binopable;
 export is_pred_ty;
 export lookup_class_field, lookup_class_fields;
@@ -1288,7 +1289,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
 enum kind { kind_(u32) }
 
-// *ALL* implicity copiable things must be copiable
+// *ALL* implicitly copiable things must be copiable
 const KIND_MASK_COPY     : u32 = 0b00000000000000000000000000000001u32;
 const KIND_MASK_SEND     : u32 = 0b00000000000000000000000000000010u32;
 const KIND_MASK_CONST    : u32 = 0b00000000000000000000000000000100u32;
@@ -1495,14 +1496,19 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
-      // FIXME: (tjc) there are rules about when classes are copyable/
-      // sendable, but I'm just treating them like records (#1726)
       ty_class(did, substs) {
+        // Classes are sendable if all their fields are sendable,
+        // likewise for copyable...
         // also factor out this code, copied from the records case
         let mut lowest = kind_top();
         let flds = class_items_as_fields(cx, did, substs);
         for flds.each {|f|
             lowest = lower_kind(lowest, mutable_type_kind(cx, f.mt));
+        }
+        // ...but classes with dtors are never copyable (they can be
+        // sendable)
+        if ty::has_dtor(cx, did) {
+           lowest = lower_kind(lowest, kind_noncopyable());
         }
         lowest
       }
@@ -2560,6 +2566,10 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> option<def_id> {
     else {
       csearch::class_dtor(cx.sess.cstore, class_id)
     }
+}
+
+fn has_dtor(cx: ctxt, class_id: def_id) -> bool {
+    option::is_some(ty_dtor(cx, class_id))
 }
 
 fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
