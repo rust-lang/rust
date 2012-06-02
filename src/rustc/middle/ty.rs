@@ -1434,13 +1434,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_ptr(_) { kind_implicitly_sendable() | kind_const() }
       // FIXME: this *shouldn't* be implicitly copyable (#2450)
       ty_str { kind_implicitly_sendable() | kind_const() }
-      ty_type { kind_copyable() }
       ty_fn(f) { proto_kind(f.proto) }
-
-      // Closures have kind determined by capture mode
-      ty_opaque_closure_ptr(ck_block) { kind_noncopyable() }
-      ty_opaque_closure_ptr(ck_box) { kind_implicitly_copyable() }
-      ty_opaque_closure_ptr(ck_uniq) { kind_sendable() }
 
       // Those with refcounts raise noncopyable to copyable,
       // lower sendable to copyable. Therefore just set result to copyable.
@@ -1456,7 +1450,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
             else { kind_implicitly_copyable() }
         }
       }
-      ty_iface(_, _) | ty_opaque_box { kind_implicitly_copyable() }
+      ty_iface(_, _) { kind_implicitly_copyable() }
       ty_rptr(_, _) { kind_implicitly_copyable() }
 
       // Unique boxes and vecs have the kind of their contained type,
@@ -1548,6 +1542,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_self { kind_noncopyable() }
 
       ty_var(_) { cx.sess.bug("Asked to compute kind of a type variable"); }
+      ty_type | ty_opaque_closure_ptr(_) | ty_opaque_box {
+        cx.sess.bug("Asked to compute kind of fictitious type");
+      }
     };
 
     cx.kind_cache.insert(ty, result);
