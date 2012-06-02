@@ -186,12 +186,12 @@ define TEST_STAGEN
 # Prerequisites for compiletest tests
 TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/compiletest$$(X) \
-	$$(HSREQ$(1)_$(2)_$(3)) 
+	$$(SREQ$(1)_T_$(2)_H_$(3))
 
 # Prerequisites for compiletest tests that have deps on librustc, etc
 FULL_TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/compiletest$$(X) \
-	$$(HSREQ$(1)_$(2)_$(3)) \
+	$$(SREQ$(1)_T_$(2)_H_$(3)) \
 	$$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
 
 check-stage$(1)-T-$(2)-H-$(3): tidy				\
