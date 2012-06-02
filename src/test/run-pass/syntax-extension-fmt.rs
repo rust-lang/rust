@@ -22,6 +22,7 @@ fn main() {
     part5();
     part6();
     percent();
+    more_floats();
 }
 
 fn part1() {
@@ -239,4 +240,12 @@ fn part6() {
 fn percent() {
     let s = #fmt["ab%%cd"];
     assert(s == "ab%cd");
+}
+
+fn more_floats() {
+    assert "3.1416"      == #fmt["%.4f", 3.14159];
+    assert "3"           == #fmt["%.0f", 3.14159];
+    assert "99"          == #fmt["%.0f", 98.5];
+    assert "7.0000"      == #fmt["%.4f", 6.999999999];
+    assert "3.141590000" == #fmt["%.9f", 3.14159];
 }
