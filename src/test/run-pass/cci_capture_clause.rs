@@ -1,5 +1,6 @@
 // aux-build:cci_capture_clause.rs
 // xfail-fast
+// xfail-win32
 
 // This test makes sure we can do cross-crate inlining on functions
 // that use capture clauses.
