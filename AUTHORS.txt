@@ -8,6 +8,7 @@ Adam Bozanich <adam.boz@gmail.com>
 Aleksander Balicki <balicki.aleksander@gmail.com>
 Alexander Stavonin <a.stavonin@gmail.com>
 Andreas Gal <gal@mozilla.com>
+Arkaitz Jimenez <arkaitzj@gmail.com>
 Austin Seipp <mad.one@gmail.com>
 Ben Striegel <ben.striegel@gmail.com>
 Benjamin Jackman <ben@jackman.biz>
