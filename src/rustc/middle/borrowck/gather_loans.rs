@@ -86,8 +86,10 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // passing the buck onto us to enforce this)
 
                 alt opt_deref_kind(arg_ty.ty) {
-                  some(deref_ptr(region_ptr)) {
+                  some(deref_ptr(region_ptr)) |
+                  some(deref_ptr(unsafe_ptr)) {
                     /* region pointers are (by induction) guaranteed */
+                    /* unsafe pointers are the user's problem */
                   }
                   none {
                     /* not a pointer, no worries */
