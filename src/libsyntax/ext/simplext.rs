@@ -1,5 +1,6 @@
 import codemap::span;
 import std::map::{hashmap, str_hash};
+import dvec::{dvec, extensions};
 
 import base::*;
 
@@ -134,7 +135,7 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 type binders =
     {real_binders: hashmap<ident, selector>,
-     mut literal_ast_matchers: [selector]};
+     literal_ast_matchers: dvec<selector>};
 type bindings = hashmap<ident, arb_depth<matchable>>;
 
 fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
@@ -146,7 +147,7 @@ fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
     let res: binders =
         {real_binders: str_hash::<selector>(),
-         mut literal_ast_matchers: []};
+         literal_ast_matchers: dvec()};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
     fn trivial_selector(m: matchable) -> match_result { ret some(leaf(m)); }
@@ -474,7 +475,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                       _ { cx.bug("broken traversal in p_t_s_r") }
                     }
             }
-            b.literal_ast_matchers += [bind select(cx, _, e)];
+            b.literal_ast_matchers.push(bind select(cx, _, e));
           }
         }
       }
@@ -640,8 +641,8 @@ fn p_t_s_r_length(cx: ext_ctxt, len: uint, at_least: bool, s: selector,
               _ { none }
             }
     }
-    b.literal_ast_matchers +=
-        [compose_sels(s, bind len_select(cx, _, at_least, len))];
+    b.literal_ast_matchers.push(
+        compose_sels(s, bind len_select(cx, _, at_least, len)));
 }
 
 fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,

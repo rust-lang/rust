@@ -121,16 +121,16 @@ class parser {
         ret self.buffer[distance - 1u].tok;
     }
     fn fatal(m: str) -> ! {
-        self.sess.span_diagnostic.span_fatal(self.span, m)
+        self.sess.span_diagnostic.span_fatal(copy self.span, m)
     }
     fn span_fatal(sp: span, m: str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
     fn bug(m: str) -> ! {
-        self.sess.span_diagnostic.span_bug(self.span, m)
+        self.sess.span_diagnostic.span_bug(copy self.span, m)
     }
     fn warn(m: str) {
-        self.sess.span_diagnostic.span_warn(self.span, m)
+        self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
     fn get_str(i: token::str_num) -> str {
         interner::get(*self.reader.interner, i)
@@ -307,7 +307,7 @@ class parser {
     // Parses something like "&x"
     fn parse_region() -> @region {
         self.expect(token::BINOP(token::AND));
-        alt self.token {
+        alt copy self.token {
           token::IDENT(sid, _) {
             self.bump();
             let n = self.get_str(sid);
@@ -322,7 +322,7 @@ class parser {
     // Parses something like "&x." (note the trailing dot)
     fn parse_region_dot() -> @region {
         let name =
-            alt self.token {
+            alt copy self.token {
               token::IDENT(sid, _) if self.look_ahead(1u) == token::DOT {
                 self.bump(); self.bump();
                 some(self.get_str(sid))
@@ -483,11 +483,11 @@ class parser {
     }
 
     fn maybe_parse_dollar_mac() -> option<mac_> {
-        alt self.token {
+        alt copy self.token {
           token::DOLLAR {
             let lo = self.span.lo;
             self.bump();
-            alt self.token {
+            alt copy self.token {
               token::LIT_INT(num, ty_i) {
                 self.bump();
                 some(mac_var(num as uint))
@@ -511,7 +511,7 @@ class parser {
     fn maybe_parse_vstore() -> option<vstore> {
         if self.token == token::BINOP(token::SLASH) {
             self.bump();
-            alt self.token {
+            alt copy self.token {
               token::AT {
                 self.bump(); some(vstore_box)
               }
@@ -968,7 +968,7 @@ class parser {
         loop {
             // expr.f
             if self.eat(token::DOT) {
-                alt self.token {
+                alt copy self.token {
                   token::IDENT(i, _) {
                     hi = self.span.hi;
                     self.bump();
@@ -986,7 +986,7 @@ class parser {
                 cont;
             }
             if self.expr_is_complete(e) { break; }
-            alt self.token {
+            alt copy self.token {
               // expr(...)
               token::LPAREN if self.permits_call() {
                 let es_opt = self.parse_seq(token::LPAREN, token::RPAREN,
@@ -1042,7 +1042,7 @@ class parser {
         let mut hi;
 
         let mut ex;
-        alt self.token {
+        alt copy self.token {
           token::NOT {
             self.bump();
             let e = self.to_expr(self.parse_prefix_expr());
@@ -1134,7 +1134,7 @@ class parser {
     fn parse_assign_expr() -> @expr {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
-        alt self.token {
+        alt copy self.token {
           token::EQ {
             self.bump();
             let rhs = self.parse_expr();
@@ -1831,7 +1831,7 @@ class parser {
     }
 
     fn parse_method_name() -> ident {
-        alt self.token {
+        alt copy self.token {
           token::BINOP(op) { self.bump(); token::binop_to_str(op) }
           token::NOT { self.bump(); "!" }
           token::LBRACKET { self.bump(); self.expect(token::RBRACKET); "[]" }
@@ -2375,7 +2375,7 @@ class parser {
             while self.token == token::MOD_SEP {
                 self.bump();
 
-                alt self.token {
+                alt copy self.token {
 
                   token::IDENT(i, _) {
                     self.bump();
@@ -2477,7 +2477,7 @@ class parser {
     }
 
     fn parse_str() -> str {
-        alt self.token {
+        alt copy self.token {
           token::LIT_STR(s) { self.bump(); self.get_str(s) }
           _ {
             self.fatal("expected string literal")
