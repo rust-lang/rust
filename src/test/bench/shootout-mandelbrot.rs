@@ -141,19 +141,20 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
 }
 
 fn main(args: [str]) {
-    let path = if vec::len(args) < 4_u { "" }
-    else { args[3] };
-
     let args = if os::getenv("RUST_BENCH").is_some() {
         ["", "4000", "10"]
-    } else if args.len() <= 1u {
-        ["", "80", "10"]
     } else {
         args
     };
 
-    let size = uint::from_str(args[1]).get();
-    let yieldevery = uint::from_str(args[2]).get();
+    let path = if vec::len(args) < 4_u { "" }
+    else { args[3] };
+
+    let yieldevery = if vec::len(args) < 3_u { 10_u }
+    else { uint::from_str(args[2]).get() };
+
+    let size = if vec::len(args) < 2_u { 80_u }
+    else { uint::from_str(args[1]).get() };
 
     let writep = comm::port();
     let writech = comm::chan(writep);
