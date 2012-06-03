@@ -107,7 +107,18 @@ fn is_uuid(id: str) -> bool {
     let parts = str::split_str(id, "-");
     if vec::len(parts) == 5u {
         let mut correct = 0u;
-        vec::iteri(parts) { |i, part|
+        for vec::eachi(parts) { |i, part|
+
+            if !part.all(is_hex_digit) {
+                ret false;
+            }
+
+            fn is_hex_digit(ch: char) -> bool {
+                ('0' <= ch && ch <= '9') ||
+                    ('a' <= ch && ch <= 'f') ||
+                    ('A' <= ch && ch <= 'F')
+            }
+
             alt i {
                 0u {
                     if str::len(part) == 8u {
@@ -131,17 +142,18 @@ fn is_uuid(id: str) -> bool {
             ret true;
         }
     }
-    false
+    ret false;
 }
 
 #[test]
 fn test_is_uuid() {
-    assert is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-    assert is_uuid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
-    assert is_uuid("0AAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAA0");
-    assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa");
+    assert is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaafAF09");
     assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaaa-aaaaaaaaaaaa");
     assert !is_uuid("");
+    assert !is_uuid("aaaaaaaa-aaa -aaaa-aaaa-aaaaaaaaaaaa");
+    assert !is_uuid("aaaaaaaa-aaa!-aaaa-aaaa-aaaaaaaaaaaa");
+    assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa-a");
+    assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaป");
 }
 
 // FIXME: implement URI/URL parsing so we don't have to resort to weak checks
