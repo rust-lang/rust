@@ -1170,6 +1170,15 @@ fn is_whitespace(s: str) -> bool {
 }
 
 #[doc = "
+Returns true if the string contains only alphanumerics
+
+Alphanumeric characters are determined by `char::is_alphanumeric`
+"]
+fn is_alphanumeric(s: str) -> bool {
+    ret all(s, char::is_alphanumeric);
+}
+
+#[doc = "
 Returns the string length/size in bytes not counting the null terminator
 "]
 pure fn len(s: str) -> uint unsafe {
@@ -1833,6 +1842,13 @@ impl extensions for str {
     "]
     #[inline]
     fn is_whitespace() -> bool { is_whitespace(self) }
+    #[doc = "
+    Returns true if the string contains only alphanumerics
+
+    Alphanumeric characters are determined by `char::is_alphanumeric`
+    "]
+    #[inlune]
+    fn is_alphanumeric() -> bool { is_alphanumeric(self) }
     #[inline]
     #[doc ="Returns the size in bytes not counting the null terminator"]
     fn len() -> uint { len(self) }
