@@ -54,7 +54,13 @@ rust_sched_loop::log(rust_task* task, uint32_t level, char const *fmt, ...) {
     char buf[BUF_BYTES];
     va_list args;
     va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
+    int formattedbytes = vsnprintf(buf, sizeof(buf), fmt, args);
+    if( formattedbytes and (unsigned)formattedbytes > BUF_BYTES ){
+        const char truncatedstr[] = "[...]";
+        memcpy( &buf[BUF_BYTES-sizeof(truncatedstr)],
+                truncatedstr,
+                sizeof(truncatedstr));
+    }
     _log.trace_ln(task, level, buf);
     va_end(args);
 }
