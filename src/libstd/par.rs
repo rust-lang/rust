@@ -20,7 +20,7 @@ This is used to build most of the other parallel vector functions,
 like map or alli."]
 fn map_slices<A: copy send, B: copy send>(
     xs: [A],
-    f: fn() -> fn~(uint, [const A]/&) -> B)
+    f: fn() -> fn~(uint, [A]/&) -> B)
     -> [B] {
 
     let len = xs.len();
@@ -48,7 +48,7 @@ fn map_slices<A: copy send, B: copy send>(
                         let slice = (ptr::offset(p, base),
                                      len * sys::size_of::<A>());
                         log(info, #fmt("pre-slice: %?", (base, slice)));
-                        let slice : [const A]/& =
+                        let slice : [A]/& =
                             unsafe::reinterpret_cast(slice);
                         log(info, #fmt("slice: %?",
                                        (base, vec::len(slice), end - base)));
@@ -75,7 +75,7 @@ fn map_slices<A: copy send, B: copy send>(
 #[doc="A parallel version of map."]
 fn map<A: copy send, B: copy send>(xs: [A], f: fn~(A) -> B) -> [B] {
     vec::concat(map_slices(xs) {||
-        fn~(_base: uint, slice : [const A]/&, copy f) -> [B] {
+        fn~(_base: uint, slice : [A]/&, copy f) -> [B] {
             vec::map(slice, f)
         }
     })
@@ -84,7 +84,7 @@ fn map<A: copy send, B: copy send>(xs: [A], f: fn~(A) -> B) -> [B] {
 #[doc="A parallel version of mapi."]
 fn mapi<A: copy send, B: copy send>(xs: [A], f: fn~(uint, A) -> B) -> [B] {
     let slices = map_slices(xs) {||
-        fn~(base: uint, slice : [const A]/&, copy f) -> [B] {
+        fn~(base: uint, slice : [A]/&, copy f) -> [B] {
             vec::mapi(slice) {|i, x|
                 f(i + base, x)
             }
@@ -104,7 +104,7 @@ fn mapi_factory<A: copy send, B: copy send>(
     xs: [A], f: fn() -> fn~(uint, A) -> B) -> [B] {
     let slices = map_slices(xs) {||
         let f = f();
-        fn~(base: uint, slice : [const A]/&, move f) -> [B] {
+        fn~(base: uint, slice : [A]/&, move f) -> [B] {
             vec::mapi(slice) {|i, x|
                 f(i + base, x)
             }
@@ -119,7 +119,7 @@ fn mapi_factory<A: copy send, B: copy send>(
 #[doc="Returns true if the function holds for all elements in the vector."]
 fn alli<A: copy send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
     vec::all(map_slices(xs) {||
-        fn~(base: uint, slice : [const A]/&, copy f) -> bool {
+        fn~(base: uint, slice : [A]/&, copy f) -> bool {
             vec::alli(slice) {|i, x|
                 f(i + base, x)
             }
@@ -130,7 +130,7 @@ fn alli<A: copy send>(xs: [A], f: fn~(uint, A) -> bool) -> bool {
 #[doc="Returns true if the function holds for any elements in the vector."]
 fn any<A: copy send>(xs: [A], f: fn~(A) -> bool) -> bool {
     vec::any(map_slices(xs) {||
-        fn~(_base : uint, slice: [const A]/&, copy f) -> bool {
+        fn~(_base : uint, slice: [A]/&, copy f) -> bool {
             vec::any(slice, f)
         }
     }) {|x| x }

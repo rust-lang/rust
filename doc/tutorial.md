@@ -908,14 +908,13 @@ for the parameter list, as in `{|| ...}`.
 Partial application is done using the `bind` keyword in Rust.
 
 ~~~~
-let daynum = bind vec::position_elem(["mo", "tu", "we", "th",
-                                      "fr", "sa", "su"], _);
+let findx = bind str::find_char(_, 'x');
 ~~~~
 
 Binding a function produces a boxed closure (`fn@` type) in which some
 of the arguments to the bound function have already been provided.
-`daynum` will be a function taking a single string argument, and
-returning the day of the week that string corresponds to (if any).
+`findx` will be a function taking a single string argument, and
+returning the position where the letter `x` occurs.
 
 ## Iteration
 

@@ -10,7 +10,7 @@ enum list<T> {
 }
 
 #[doc = "Create a list from a vector"]
-fn from_vec<T: copy>(v: [const T]) -> @list<T> {
+fn from_vec<T: copy>(v: [T]) -> @list<T> {
     vec::foldr(v, @nil::<T>, { |h, t| @cons(h, t) })
 }
 
@@ -165,19 +165,6 @@ mod tests {
     fn test_from_vec_empty() {
         let empty : @list::list<int> = from_vec([]);
         assert (empty == @list::nil::<int>);
-    }
-
-    #[test]
-    fn test_from_vec_mut() {
-        let l = from_vec([mut 0, 1, 2]);
-
-        assert (head(l) == 0);
-
-        let tail_l = tail(l);
-        assert (head(tail_l) == 1);
-
-        let tail_tail_l = tail(tail_l);
-        assert (head(tail_tail_l) == 2);
     }
 
     #[test]

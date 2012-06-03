@@ -1512,7 +1512,8 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
           none { none }
         }
     }
-    let matches = vec::filter_map(copy globs,
+    let g = copy globs; // FIXME #2405
+    let matches = vec::filter_map(g,
                                   {|x| lookup_in_mod_(e, x, sp, id, ns, dr)});
     if vec::len(matches) == 0u {
         ret none;

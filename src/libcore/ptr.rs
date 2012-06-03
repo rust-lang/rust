@@ -3,6 +3,7 @@
 export addr_of;
 export mut_addr_of;
 export offset;
+export const_offset;
 export mut_offset;
 export null;
 export is_null;
@@ -42,6 +43,12 @@ fn mut_addr_of<T>(val: T) -> *mut T unsafe {
 #[doc = "Calculate the offset from a pointer"]
 #[inline(always)]
 fn offset<T>(ptr: *T, count: uint) -> *T unsafe {
+    (ptr as uint + count * sys::size_of::<T>()) as *T
+}
+
+#[doc = "Calculate the offset from a const pointer"]
+#[inline(always)]
+fn const_offset<T>(ptr: *const T, count: uint) -> *const T unsafe {
     (ptr as uint + count * sys::size_of::<T>()) as *T
 }
 

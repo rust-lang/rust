@@ -331,7 +331,7 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
 
 impl of writer for *libc::FILE {
     fn write(v: [const u8]/&) unsafe {
-        vec::unpack_slice(v) {|vbuf, len|
+        vec::unpack_const_slice(v) {|vbuf, len|
             let nout = libc::fwrite(vbuf as *c_void, len, 1u, self);
             if nout < 1 as size_t {
                 #error("error writing buffer");
@@ -359,9 +359,9 @@ fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
 impl of writer for fd_t {
     fn write(v: [const u8]/&) unsafe {
         let mut count = 0u;
-        vec::unpack_slice(v) {|vbuf, len|
+        vec::unpack_const_slice(v) {|vbuf, len|
             while count < len {
-                let vb = ptr::offset(vbuf, count) as *c_void;
+                let vb = ptr::const_offset(vbuf, count) as *c_void;
                 let nout = libc::write(self, vb, len);
                 if nout < 0 as ssize_t {
                     #error("error writing buffer");

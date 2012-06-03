@@ -120,7 +120,7 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
     }
 
     fn all_mem(cls: [mut x86_64_reg_class]) {
-        vec::iteri(cls) {|i, _c|
+        for uint::range(0u, cls.len()) { |i|
             cls[i] = memory_class;
         }
     }

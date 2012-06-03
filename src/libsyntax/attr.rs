@@ -272,14 +272,9 @@ fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v: [mut @ast::meta_item] = [mut];
-    for items.each {|mi| v += [mut mi]; }
-
+    let v: [mut @ast::meta_item] = vec::to_mut(items);
     std::sort::quick_sort(lteq, v);
-
-    let mut v2: [@ast::meta_item] = [];
-    for v.each {|mi| v2 += [mi]; }
-    ret v2;
+    ret vec::from_mut(v);
 }
 
 fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
