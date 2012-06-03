@@ -798,7 +798,7 @@ Swaps two elements in a vector
 * a - The index of the first element
 * b - The index of the second element
 "]
-fn swap<T>(v: [mut T], a: uint, b: uint) {
+fn swap<T>(&&v: [mut T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
@@ -1221,12 +1221,12 @@ mod unsafe {
     #[doc = "
     Sets the length of a vector
 
-    This well explicitly set the size of the vector, without actually
+    This will explicitly set the size of the vector, without actually
     modifing its buffers, so it is up to the caller to ensure that
     the vector is actually the specified size.
     "]
     #[inline(always)]
-    unsafe fn set_len<T>(&v: [const T], new_len: uint) {
+    unsafe fn set_len<T>(&&v: [const T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
