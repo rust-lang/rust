@@ -134,6 +134,16 @@ fn is_uuid(id: str) -> bool {
     false
 }
 
+#[test]
+fn test_is_uuid() {
+    assert is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    assert is_uuid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
+    assert is_uuid("0AAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAA0");
+    assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa");
+    assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaaa-aaaaaaaaaaaa");
+    assert !is_uuid("");
+}
+
 // FIXME: implement URI/URL parsing so we don't have to resort to weak checks
 
 fn is_archive_uri(uri: str) -> bool {
