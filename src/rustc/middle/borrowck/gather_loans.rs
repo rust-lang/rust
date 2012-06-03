@@ -84,6 +84,12 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // the pointer to be borrowed as immutable even if it
                 // is mutable in the caller's frame, thus effectively
                 // passing the buck onto us to enforce this)
+                //
+                // FIXME---this handling is not really adequate.  For
+                // example, if there is a type like, {f: [int]}, we
+                // will ignore it, but we ought to be requiring it to
+                // be immutable (whereas something like {f:int} would
+                // be fine).
 
                 alt opt_deref_kind(arg_ty.ty) {
                   some(deref_ptr(region_ptr)) |
@@ -91,10 +97,11 @@ fn req_loans_in_expr(ex: @ast::expr,
                     /* region pointers are (by induction) guaranteed */
                     /* unsafe pointers are the user's problem */
                   }
+                  some(deref_comp(_)) |
                   none {
                     /* not a pointer, no worries */
                   }
-                  some(_) {
+                  some(deref_ptr(_)) {
                     let arg_cmt = self.bccx.cat_borrow_of_expr(arg);
                     self.guarantee_valid(arg_cmt, m_const, scope_r);
                   }
