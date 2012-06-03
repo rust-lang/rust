@@ -613,7 +613,7 @@ impl of writer for mem_buffer {
         // FIXME #2004--use memcpy here?
         let mut pos = self.pos, vpos = 0u;
         while vpos < vlen && pos < buf_len {
-            self.buf.set_elt(pos, v[vpos]);
+            self.buf.set_elt(pos, copy v[vpos]);
             pos += 1u;
             vpos += 1u;
         }

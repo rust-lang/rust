@@ -184,16 +184,16 @@ fn is_lit(t: token::token) -> bool {
         }
 }
 
-fn is_ident(t: token::token) -> bool {
+pure fn is_ident(t: token::token) -> bool {
     alt t { token::IDENT(_, _) { ret true; } _ { } }
     ret false;
 }
 
-fn is_plain_ident(t: token::token) -> bool {
+pure fn is_plain_ident(t: token::token) -> bool {
     ret alt t { token::IDENT(_, false) { true } _ { false } };
 }
 
-fn is_bar(t: token::token) -> bool {
+pure fn is_bar(t: token::token) -> bool {
     alt t { token::BINOP(token::OR) | token::OROR { true } _ { false } }
 }
 

@@ -212,7 +212,7 @@ fn finish<T: qq_helper>
             state = skip(str::char_len(repl));
             str2 += repl;
         }
-        alt state {
+        alt copy state {
           active {str::push_char(str2, ch);}
           skip(1u) {state = blank;}
           skip(sk) {state = skip (sk-1u);}

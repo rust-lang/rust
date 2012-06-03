@@ -108,7 +108,7 @@ fn get<A:copy>(future: future<A>) -> A {
 fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
     #[doc = "Work with the value without copying it"];
 
-    let v = alt future.v {
+    let v = alt copy future.v {
       either::left(v) { v }
       either::right(f) {
         let v = @f();
