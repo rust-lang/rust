@@ -49,6 +49,7 @@ rust_sched_loop::activate(rust_task *task) {
     DLOG(this, task, "task has returned");
 }
 
+// FIXME #2495: This logging code doesn't belong in the scheduler
 void
 rust_sched_loop::log(rust_task* task, uint32_t level, char const *fmt, ...) {
     char buf[BUF_BYTES];
