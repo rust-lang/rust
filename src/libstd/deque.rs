@@ -1,6 +1,7 @@
 #[doc = "A deque. Untested as of yet. Likely buggy"];
 
 import option::{some, none};
+import dvec::{dvec, extensions};
 
 iface t<T> {
     fn size() -> uint;
@@ -23,7 +24,7 @@ fn create<T: copy>() -> t<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: copy>(nelts: uint, lo: uint, elts: [mut cell<T>]) ->
+    fn grow<T: copy>(nelts: uint, lo: uint, -elts: [mut cell<T>]) ->
        [mut cell<T>] {
         assert (nelts == vec::len(elts));
         let mut rv = [mut];
@@ -39,38 +40,38 @@ fn create<T: copy>() -> t<T> {
 
         ret rv;
     }
-    fn get<T: copy>(elts: [mut cell<T>], i: uint) -> T {
-        ret alt elts[i] { some(t) { t } _ { fail } };
+    fn get<T: copy>(elts: dvec<cell<T>>, i: uint) -> T {
+        alt elts.get_elt(i) { some(t) { t } _ { fail } }
     }
 
     type repr<T> = {mut nelts: uint,
                     mut lo: uint,
                     mut hi: uint,
-                    mut elts: [mut cell<T>]};
+                    elts: dvec<cell<T>>};
 
     impl <T: copy> of t<T> for repr<T> {
         fn size() -> uint { ret self.nelts; }
         fn add_front(t: T) {
             let oldlo: uint = self.lo;
             if self.lo == 0u {
-                self.lo = vec::len(self.elts) - 1u;
+                self.lo = self.elts.len() - 1u;
             } else { self.lo -= 1u; }
             if self.lo == self.hi {
-                self.elts = grow(self.nelts, oldlo, self.elts);
-                self.lo = vec::len(self.elts) - 1u;
+                self.elts.swap({ |v| grow(self.nelts, oldlo, v) });
+                self.lo = self.elts.len() - 1u;
                 self.hi = self.nelts;
             }
-            self.elts[self.lo] = some(t);
+            self.elts.set_elt(self.lo, some(t));
             self.nelts += 1u;
         }
         fn add_back(t: T) {
             if self.lo == self.hi && self.nelts != 0u {
-                self.elts = grow(self.nelts, self.lo, self.elts);
+                self.elts.swap({ |v| grow(self.nelts, self.lo, v) });
                 self.lo = 0u;
                 self.hi = self.nelts;
             }
-            self.elts[self.hi] = some(t);
-            self.hi = (self.hi + 1u) % vec::len(self.elts);
+            self.elts.set_elt(self.hi, some(t));
+            self.hi = (self.hi + 1u) % self.elts.len();
             self.nelts += 1u;
         }
         /**
@@ -79,24 +80,24 @@ fn create<T: copy>() -> t<T> {
          */
         fn pop_front() -> T {
             let t: T = get(self.elts, self.lo);
-            self.elts[self.lo] = none;
-            self.lo = (self.lo + 1u) % vec::len(self.elts);
+            self.elts.set_elt(self.lo, none);
+            self.lo = (self.lo + 1u) % self.elts.len();
             self.nelts -= 1u;
             ret t;
         }
         fn pop_back() -> T {
             if self.hi == 0u {
-                self.hi = vec::len(self.elts) - 1u;
+                self.hi = self.elts.len() - 1u;
             } else { self.hi -= 1u; }
             let t: T = get(self.elts, self.hi);
-            self.elts[self.hi] = none;
+            self.elts.set_elt(self.hi, none);
             self.nelts -= 1u;
             ret t;
         }
         fn peek_front() -> T { ret get(self.elts, self.lo); }
         fn peek_back() -> T { ret get(self.elts, self.hi - 1u); }
         fn get(i: int) -> T {
-            let idx = (self.lo + (i as uint)) % vec::len(self.elts);
+            let idx = (self.lo + (i as uint)) % self.elts.len();
             ret get(self.elts, idx);
         }
     }
@@ -105,7 +106,10 @@ fn create<T: copy>() -> t<T> {
         mut nelts: 0u,
         mut lo: 0u,
         mut hi: 0u,
-        mut elts: vec::to_mut(vec::from_elem(initial_capacity, none))
+        elts:
+            dvec::from_vec(
+                vec::to_mut(
+                    vec::from_elem(initial_capacity, none)))
     };
     repr as t::<T>
 }
