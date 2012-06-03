@@ -17,9 +17,9 @@ enum type_desc = {
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn refcount(t: *()) -> libc::intptr_t;
+    pure fn refcount(t: *()) -> libc::intptr_t;
     fn unsupervise();
-    fn shape_log_str(t: *sys::type_desc, data: *()) -> str;
+    pure fn shape_log_str(t: *sys::type_desc, data: *()) -> str;
 }
 
 #[abi = "rust-intrinsic"]
@@ -36,13 +36,13 @@ Returns a pointer to a type descriptor.
 Useful for calling certain function in the Rust runtime or otherwise
 performing dark magick.
 "]
-fn get_type_desc<T>() -> *type_desc {
-    rusti::get_tydesc::<T>() as *type_desc
+pure fn get_type_desc<T>() -> *type_desc {
+    unchecked { rusti::get_tydesc::<T>() as *type_desc }
 }
 
 #[doc = "Returns the size of a type"]
-fn size_of<T>() -> uint unsafe {
-    rusti::size_of::<T>()
+pure fn size_of<T>() -> uint unsafe {
+    unchecked { rusti::size_of::<T>() }
 }
 
 #[doc = "
@@ -51,23 +51,23 @@ Returns the ABI-required minimum alignment of a type
 This is the alignment used for struct fields. It may be smaller
 than the preferred alignment.
 "]
-fn min_align_of<T>() -> uint unsafe {
-    rusti::min_align_of::<T>()
+pure fn min_align_of<T>() -> uint unsafe {
+    unchecked { rusti::min_align_of::<T>() }
 }
 
 #[doc = "Returns the preferred alignment of a type"]
-fn pref_align_of<T>() -> uint unsafe {
-    rusti::pref_align_of::<T>()
+pure fn pref_align_of<T>() -> uint unsafe {
+    unchecked { rusti::pref_align_of::<T>() }
 }
 
 #[doc = "Returns the refcount of a shared box"]
-fn refcount<T>(t: @T) -> uint {
+pure fn refcount<T>(t: @T) -> uint {
     unsafe {
         ret rustrt::refcount(unsafe::reinterpret_cast(t)) as uint;
     }
 }
 
-fn log_str<T>(t: T) -> str {
+pure fn log_str<T>(t: T) -> str {
     unsafe {
         let data_ptr: *() = unsafe::reinterpret_cast(ptr::addr_of(t));
         rustrt::shape_log_str(get_type_desc::<T>(), data_ptr)
