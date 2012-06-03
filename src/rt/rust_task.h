@@ -1,3 +1,28 @@
+/**
+   The rust task is a cooperatively-scheduled green thread that executes
+   Rust code on a segmented stack.
+
+   This class has too many responsibilities:
+
+   * Working with the scheduler loop to signal and respond to state changes,
+   and dealing with all the thread synchronization issues involved
+
+   * Managing the dynamically resizing list of Rust stack segments
+
+   * Switching between running Rust code on the Rust segmented stack and
+   native C code on large stacks owned by the scheduler
+
+   The lifetime of a rust_task object closely mirrors that of a running Rust
+   task object, but they are not identical. In particular, the rust_task is an
+   atomically reference counted object that might be accessed from arbitrary
+   threads at any time. This may keep the task from being destroyed even after
+   the task is dead from a Rust task lifecycle perspective.
+
+   FIXME: The task and the scheduler have an over-complicated, undocumented
+   protocol for shutting down the task, hopefully without races. It would be
+   easier to reason about if other runtime objects could not access the task
+   from arbitrary threads, and didn't need to be atomically refcounted.
+ */
 
 #ifndef RUST_TASK_H
 #define RUST_TASK_H
@@ -17,7 +42,8 @@
 
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
-// FIXME: We want this to be 128 but need to slim the red zone calls down
+// FIXME: We want this to be 128 but need to slim the red zone calls down,
+// disable lazy symbol relocation, and other things we haven't discovered yet
 #define RZ_LINUX_32 (1024*2)
 #define RZ_LINUX_64 (1024*2)
 #define RZ_MAC_32   (1024*20)
@@ -58,18 +84,6 @@
 #define RED_ZONE_SIZE RZ_BSD_64
 #endif
 #endif
-
-extern "C" CDECL void
-record_sp_limit(void *limit);
-extern "C" CDECL uintptr_t
-get_sp_limit();
-
-// The function prolog compares the amount of stack needed to the end of
-// the stack. As an optimization, when the frame size is less than 256
-// bytes, it will simply compare %esp to to the stack limit instead of
-// subtracting the frame size. As a result we need our stack limit to
-// account for those 256 bytes.
-const unsigned LIMIT_OFFSET = 256;
 
 struct rust_box;
 
@@ -323,14 +337,19 @@ template <typename T> struct task_owned {
 
 // This stuff is on the stack-switching fast path
 
-// Get a rough approximation of the current stack pointer
-extern "C" uintptr_t get_sp();
+// Records the pointer to the end of the Rust stack in a platform-
+// specific location in the thread control block
+extern "C" CDECL void      record_sp_limit(void *limit);
+extern "C" CDECL uintptr_t get_sp_limit();
+// Gets a pointer to the vicinity of the current stack pointer
+extern "C" uintptr_t       get_sp();
 
-// This is the function that switches stacks by calling another function with
-// a single void* argument while changing the stack pointer. It has a funny
-// name because gdb doesn't normally like to backtrace through split stacks
-// (thinks it indicates a bug), but has a special case to allow functions
-// named __morestack to move the stack pointer around.
+// This is the function that switches between the C and the Rust stack by
+// calling another function with a single void* argument while changing the
+// stack pointer. It has a funny name because gdb doesn't normally like to
+// backtrace through split stacks (thinks it indicates a bug), but has a
+// special case to allow functions named __morestack to move the stack pointer
+// around.
 extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
 
 inline static uintptr_t
@@ -489,6 +508,14 @@ rust_task::prev_stack() {
 
 extern "C" CDECL void
 record_sp_limit(void *limit);
+
+// The LLVM-generated segmented-stack function prolog compares the amount of
+// stack needed for each frame to the end-of-stack pointer stored in the
+// TCB. As an optimization, when the frame size is less than 256 bytes, it
+// will simply compare %esp to to the stack limit instead of subtracting the
+// frame size. As a result we need our stack limit to account for those 256
+// bytes.
+const unsigned LIMIT_OFFSET = 256;
 
 inline void
 rust_task::record_stack_limit() {

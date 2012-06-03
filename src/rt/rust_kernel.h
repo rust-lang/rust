@@ -1,4 +1,34 @@
 // -*- c++ -*-
+
+/**
+   A single runtime instance.
+
+   The kernel is primarily responsible for managing the lifetime of
+   schedulers, which in turn run rust tasks. It provides a memory
+   allocator and logging service for use by other runtime components,
+   it creates unique task and port ids and provides global access
+   to ports by id.
+
+   The kernel runs until there are no live schedulers.
+
+   The kernel internally runs an additional, special scheduler called
+   the 'osmain' (or platform) scheduler, which schedules tasks on the
+   thread that is running the kernel (normally the thread on which the
+   C main function was called). This scheduler may be used by Rust
+   code for interacting with platform APIs that insist on being called
+   from the main thread.
+
+   The requirements of the osmain scheduler has resulted in a complex
+   process for creating and running scheduler loops that involves
+   a thing called a 'rust_sched_launcher_factory' whose function I've
+   already forgotten. rust_scheduler is the main scheduler class,
+   and tasks are scheduled on individual threads by rust_sched_loop.
+
+   Ideally all the in-memory Rust state is encapsulated by a kernel
+   instance, but there is still some truly global data in the runtime
+   (like the check claims flag).
+ */
+
 #ifndef RUST_KERNEL_H
 #define RUST_KERNEL_H
 
@@ -12,24 +42,20 @@
 #include "rust_sched_reaper.h"
 #include "util/hash_map.h"
 
-struct rust_task_thread;
 class rust_scheduler;
+class rust_sched_driver;
+class rust_sched_launcher_factory;
+struct rust_task_thread;
 class rust_port;
 
+// Scheduler, task, and port handles. These uniquely identify within a
+// single kernel instance the objects they represent.
 typedef intptr_t rust_sched_id;
 typedef intptr_t rust_task_id;
 typedef intptr_t rust_port_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 
-class rust_sched_driver;
-class rust_sched_launcher_factory;
-
-/**
- * A global object shared by all thread domains. Most of the data structures
- * in this class are synchronized since they are accessed from multiple
- * threads.
- */
 class rust_kernel {
     memory_region _region;
     rust_log _log;

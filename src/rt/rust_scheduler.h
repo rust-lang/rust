@@ -1,3 +1,10 @@
+/**
+   The rust scheduler. Schedulers may be added to the kernel
+   dynamically and they run until there are no more tasks to
+   schedule. Most of the scheduler work is carried out in worker
+   threads by rust_sched_loop.
+ */
+
 #ifndef RUST_SCHEDULER_H
 #define RUST_SCHEDULER_H
 
