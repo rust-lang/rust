@@ -95,9 +95,15 @@ fn from_str_radix(buf: str, radix: u64) -> option<u64> {
     };
 }
 
-#[doc = "Convert to a string in a given base"]
+#[doc = "
+Convert to a string in a given base
+
+# Failure
+
+Fails if `radix` < 2 or `radix` > 16
+"]
 fn to_str(num: T, radix: uint) -> str {
-    assert (0u < radix && radix <= 16u);
+    assert (1u < radix && radix <= 16u);
     let mut n = num;
     let radix = radix as T;
     fn digit(n: T) -> u8 {
@@ -166,4 +172,18 @@ fn test_parse_buf() {
 
     assert parse_buf(str::bytes("Z"), 10u) == none;
     assert parse_buf(str::bytes("_"), 2u) == none;
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn to_str_radix1() {
+    uint::to_str(100u, 1u);
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn to_str_radix17() {
+    uint::to_str(100u, 17u);
 }
