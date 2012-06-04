@@ -273,13 +273,14 @@ impl methods for gather_loan_ctxt {
         }
     }
 
-    fn add_loans(scope_id: ast::node_id, loans: @const [loan]) {
+    fn add_loans(scope_id: ast::node_id, loans: @dvec<loan>) {
         alt self.req_maps.req_loan_map.find(scope_id) {
           some(l) {
-            *l += [loans];
+            (*l).push(loans);
           }
           none {
-            self.req_maps.req_loan_map.insert(scope_id, @mut [loans]);
+            self.req_maps.req_loan_map.insert(
+                scope_id, @dvec::from_vec([mut loans]));
           }
         }
     }

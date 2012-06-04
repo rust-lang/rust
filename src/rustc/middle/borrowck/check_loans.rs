@@ -7,6 +7,7 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves to dnot affect things loaned out in any way
 
+import dvec::{dvec, extensions};
 import categorization::public_methods;
 
 export check_loans;
@@ -22,7 +23,7 @@ enum check_loan_ctxt = @{
     // we are in a ctor, we track the self id
     mut in_ctor: bool,
     mut declared_purity: ast::purity,
-    mut fn_args: [ast::node_id]
+    mut fn_args: @[ast::node_id]
 };
 
 // if we are enforcing purity, why are we doing so?
@@ -44,7 +45,7 @@ fn check_loans(bccx: borrowck_ctxt,
                                  reported: int_hash(),
                                  mut in_ctor: false,
                                  mut declared_purity: ast::impure_fn,
-                                 mut fn_args: []});
+                                 mut fn_args: @[]});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
                             visit_block: check_loans_in_block,
                             visit_fn: check_loans_in_fn
@@ -179,7 +180,7 @@ impl methods for check_loan_ctxt {
                 let did = ast_util::def_id_of_def(def);
                 let is_fn_arg =
                     did.crate == ast::local_crate &&
-                    self.fn_args.contains(did.node);
+                    (*self.fn_args).contains(did.node);
                 if is_fn_arg { ret; } // case (a) above
               }
               ast::expr_fn_block(*) | ast::expr_fn(*) |
@@ -225,7 +226,8 @@ impl methods for check_loan_ctxt {
           ast::expr_path(_) {
             let def = self.tcx().def_map.get(expr.id);
             let did = ast_util::def_id_of_def(def);
-            did.crate == ast::local_crate && self.fn_args.contains(did.node)
+            did.crate == ast::local_crate &&
+                (*self.fn_args).contains(did.node)
           }
           ast::expr_fn_block(*) | ast::expr_fn(*) {
             self.is_stack_closure(expr.id)
@@ -484,7 +486,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      sp: span, id: ast::node_id, &&self: check_loan_ctxt,
                      visitor: visit::vt<check_loan_ctxt>) {
 
-    #debug["purity on entry=%?", self.declared_purity];
+    #debug["purity on entry=%?", copy self.declared_purity];
     save_and_restore(self.in_ctor) {||
         save_and_restore(self.declared_purity) {||
             save_and_restore(self.fn_args) {||
@@ -500,7 +502,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                   visit::fk_ctor(*) {
                     self.in_ctor = true;
                     self.declared_purity = decl.purity;
-                    self.fn_args = decl.inputs.map({|i| i.id});
+                    self.fn_args = @decl.inputs.map({|i| i.id});
                   }
                   visit::fk_anon(*) |
                   visit::fk_fn_block(*) if is_stack_closure {
@@ -512,7 +514,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                   visit::fk_res(*) | visit::fk_dtor(*) {
                     self.in_ctor = false;
                     self.declared_purity = decl.purity;
-                    self.fn_args = decl.inputs.map({|i| i.id});
+                    self.fn_args = @decl.inputs.map({|i| i.id});
                   }
                 }
 
@@ -520,7 +522,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
             }
         }
     }
-    #debug["purity on exit=%?", self.declared_purity];
+    #debug["purity on exit=%?", copy self.declared_purity];
 }
 
 fn check_loans_in_expr(expr: @ast::expr,

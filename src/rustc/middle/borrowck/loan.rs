@@ -5,8 +5,8 @@
 export public_methods;
 
 impl public_methods for borrowck_ctxt {
-    fn loan(cmt: cmt, mutbl: ast::mutability) -> @const [loan] {
-        let lc = @{bccx: self, loans: @mut []};
+    fn loan(cmt: cmt, mutbl: ast::mutability) -> @dvec<loan> {
+        let lc = @{bccx: self, loans: @dvec()};
         lc.loan(cmt, mutbl);
         ret lc.loans;
     }
@@ -14,7 +14,7 @@ impl public_methods for borrowck_ctxt {
 
 type loan_ctxt = @{
     bccx: borrowck_ctxt,
-    loans: @mut [loan]
+    loans: @dvec<loan>
 };
 
 impl loan_methods for loan_ctxt {
@@ -23,9 +23,9 @@ impl loan_methods for loan_ctxt {
         // Note: all cmt's that we deal with will have a non-none lp, because
         // the entry point into this routine, `borrowck_ctxt::loan()`, rejects
         // any cmt with a none-lp.
-        *self.loans += [{lp:option::get(cmt.lp),
-                         cmt:cmt,
-                         mutbl:mutbl}];
+        (*self.loans).push({lp:option::get(cmt.lp),
+                            cmt:cmt,
+                            mutbl:mutbl});
     }
 
     fn loan(cmt: cmt, req_mutbl: ast::mutability) {

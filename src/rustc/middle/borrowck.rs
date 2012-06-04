@@ -164,6 +164,7 @@ import util::common::indenter;
 import ast_util::op_expr_callee_id;
 import ty::to_str;
 import driver::session::session;
+import dvec::{dvec, extensions};
 
 export check_crate, root_map, mutbl_map;
 
@@ -298,7 +299,7 @@ type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
 
 // maps computed by `gather_loans` that are then used by `check_loans`
 type req_maps = {
-    req_loan_map: hashmap<ast::node_id, @mut [@const [loan]]>,
+    req_loan_map: hashmap<ast::node_id, @dvec<@dvec<loan>>>,
     pure_map: hashmap<ast::node_id, bckerr>
 };
 
