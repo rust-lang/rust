@@ -25,8 +25,10 @@ fn foo(s: @int) {
 fn main() {
     let s: @int = @0; // ref up
 
+    let count = dbg::refcount(s);
+
     foo(s); // ref up then down
 
     log(debug, dbg::refcount(s));
-    assert (dbg::refcount(s) == 1u);
+    assert (dbg::refcount(s) == count);
 }

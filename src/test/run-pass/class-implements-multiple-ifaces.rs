@@ -1,6 +1,7 @@
 use std;
 import std::map::*;
 import vec::*;
+import dvec::{dvec, extensions};
 
 enum furniture { chair, couch, bed }
 enum body_part { finger, toe, nose, ear }
@@ -26,7 +27,7 @@ fn vec_includes<T>(xs: [T], x: T) -> bool {
 class cat implements noisy, scratchy, bitey {
   priv {
     let meows : @mut uint;
-    let scratched : @mut [furniture];
+    let scratched : dvec<furniture>;
     let bite_counts : hashmap<body_part, uint>;
 
     fn meow() -> uint {
@@ -44,7 +45,7 @@ class cat implements noisy, scratchy, bitey {
 
   new(in_x : uint, in_y : int, in_name: str)
     { self.meows = @mut in_x; self.how_hungry = @mut in_y;
-      self.name = in_name; self.scratched = @mut [];
+      self.name = in_name; self.scratched = dvec();
       let hsher: hashfn<body_part> =
         fn@(p: body_part) -> uint { int::hash(p as int) };
       let eqer : eqfn<body_part> =
@@ -61,10 +62,10 @@ class cat implements noisy, scratchy, bitey {
   fn meow_count() -> uint { *self.meows }
   fn scratch() -> option<furniture> {
     let all = [chair, couch, bed];
-    log(error, *(self.scratched));
+    log(error, self.scratched);
     let mut rslt = none;
-    for each(all) {|thing| if !vec_includes(*(self.scratched), thing) {
-          *self.scratched += [thing];
+    for each(all) {|thing| if !self.scratched.contains(thing) {
+          self.scratched.push(thing);
           ret some(thing); }}
     rslt
   }
