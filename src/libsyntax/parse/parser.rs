@@ -9,7 +9,8 @@ import ast::*;
 import lexer::reader;
 import prec::{as_prec, token_to_binop};
 import attr::parser_attr;
-import common::*;
+import common::{seq_sep, seq_sep_opt, seq_sep_none, token_to_str};
+import common::{parser_common};
 import dvec::{dvec, extensions};
 
 export file_type;
