@@ -133,7 +133,7 @@ impl of to_str::to_str for variable {
 // assignment.  And so forth.
 
 impl methods for live_node {
-    fn is_valid() -> bool { *self != uint::max_value }
+    pure fn is_valid() -> bool { *self != uint::max_value }
 }
 
 fn invalid_node() -> live_node { live_node(uint::max_value) }
@@ -571,7 +571,7 @@ class liveness {
     fn live_on_exit(ln: live_node, var: variable)
         -> option<live_node_kind> {
 
-        self.live_on_entry(self.successors[*ln], var)
+        self.live_on_entry(copy self.successors[*ln], var)
     }
 
     fn used_on_entry(ln: live_node, var: variable) -> bool {
@@ -590,7 +590,7 @@ class liveness {
     fn assigned_on_exit(ln: live_node, var: variable)
         -> option<live_node_kind> {
 
-        self.assigned_on_entry(self.successors[*ln], var)
+        self.assigned_on_entry(copy self.successors[*ln], var)
     }
 
     fn indices(ln: live_node, op: fn(uint)) {
@@ -627,14 +627,14 @@ class liveness {
             wr.write_str("[ln(");
             wr.write_uint(*ln);
             wr.write_str(") of kind ");
-            wr.write_str(#fmt["%?", self.ir.lnks[*ln]]);
+            wr.write_str(#fmt["%?", copy self.ir.lnks[*ln]]);
             wr.write_str(" reads");
             self.write_vars(wr, ln, {|idx| self.users[idx].reader});
             wr.write_str("  writes");
             self.write_vars(wr, ln, {|idx| self.users[idx].writer});
             wr.write_str(" ");
             wr.write_str(" precedes ");
-            wr.write_str(self.successors[*ln].to_str());
+            wr.write_str((copy self.successors[*ln]).to_str());
             wr.write_str("]");
         }
     }
@@ -668,9 +668,9 @@ class liveness {
 
         let mut changed = false;
         self.indices2(ln, succ_ln) { |idx, succ_idx|
-            changed |= copy_if_invalid(self.users[succ_idx].reader,
+            changed |= copy_if_invalid(copy self.users[succ_idx].reader,
                                        self.users[idx].reader);
-            changed |= copy_if_invalid(self.users[succ_idx].writer,
+            changed |= copy_if_invalid(copy self.users[succ_idx].writer,
                                        self.users[idx].writer);
             if self.users[succ_idx].used && !self.users[idx].used {
                 self.users[idx].used = true;
