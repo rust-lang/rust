@@ -253,9 +253,13 @@ enum ptr_kind {uniq_ptr, gc_ptr, region_ptr, unsafe_ptr}
 
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
-enum comp_kind {comp_tuple, comp_res, comp_variant,
-                comp_field(str, ast::mutability),
-                comp_index(ty::t, ast::mutability)}
+enum comp_kind {
+    comp_tuple, comp_res, comp_variant,
+    comp_field(str, // name of field
+               ast::mutability), // declared mutability of field
+    comp_index(ty::t, // type of vec/str/etc being deref'd
+               ast::mutability) // mutability of vec content
+}
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:

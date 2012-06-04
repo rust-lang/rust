@@ -67,6 +67,14 @@ fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
         some(deref_comp(comp_res))
       }
 
+      ty::ty_evec(mt, ty::vstore_fixed(_)) {
+        some(deref_comp(comp_index(t, mt.mutbl)))
+      }
+
+      ty::ty_estr(ty::vstore_fixed(_)) {
+        some(deref_comp(comp_index(t, m_imm)))
+      }
+
       _ {
         none
       }
@@ -344,26 +352,31 @@ impl public_methods for borrowck_ctxt {
           }
         };
 
-        let ptr = alt deref_kind(self.tcx, base_cmt.ty) {
-          deref_ptr(ptr) { ptr }
+        ret alt deref_kind(self.tcx, base_cmt.ty) {
+          deref_ptr(ptr) {
+            // make deref of vectors explicit, as explained in the comment at
+            // the head of this section
+            let deref_lp = base_cmt.lp.map { |lp| @lp_deref(lp, ptr) };
+            let deref_cmt = @{id:expr.id, span:expr.span,
+                              cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
+                              mutbl:m_imm, ty:mt.ty};
+            comp(expr, deref_cmt, base_cmt.ty, mt)
+          }
+
           deref_comp(_) {
-            self.tcx.sess.span_bug(
-                expr.span,
-                "Deref of indexable type yielded comp kind");
+            // fixed-length vectors have no deref
+            comp(expr, base_cmt, base_cmt.ty, mt)
           }
         };
 
-        // make deref of vectors explicit, as explained in the comment at
-        // the head of this section
-        let deref_lp = base_cmt.lp.map { |lp| @lp_deref(lp, ptr) };
-        let deref_cmt = @{id:expr.id, span:expr.span,
-                          cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
-                          mutbl:m_imm, ty:mt.ty};
-        let comp = comp_index(base_cmt.ty, mt.mutbl);
-        let index_lp = deref_lp.map { |lp| @lp_comp(lp, comp) };
-        @{id:expr.id, span:expr.span,
-          cat:cat_comp(deref_cmt, comp), lp:index_lp,
-          mutbl:mt.mutbl, ty:mt.ty}
+        fn comp(expr: @ast::expr, of_cmt: cmt,
+                vect: ty::t, mt: ty::mt) -> cmt {
+            let comp = comp_index(vect, mt.mutbl);
+            let index_lp = of_cmt.lp.map { |lp| @lp_comp(lp, comp) };
+            @{id:expr.id, span:expr.span,
+              cat:cat_comp(of_cmt, comp), lp:index_lp,
+              mutbl:mt.mutbl, ty:mt.ty}
+        }
     }
 
     fn cat_tuple_elt<N: ast_node>(elt: N, cmt: cmt) -> cmt {
