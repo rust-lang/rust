@@ -13,6 +13,7 @@ fn mk_pass(name: str, +op: fn~(str) -> str) -> pass {
 
 type op = fn~(str) -> str;
 
+#[warn(no_non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::srv,
     doc: doc::doc,

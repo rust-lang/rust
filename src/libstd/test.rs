@@ -290,7 +290,7 @@ fn run_tests(opts: test_opts, tests: [test_desc],
 
     while done_idx < total {
         while wait_idx < concurrency && run_idx < total {
-            let test = vec::shift(filtered_tests);
+            let test = copy filtered_tests[run_idx];
             if concurrency == 1u {
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
@@ -327,6 +327,7 @@ fn get_concurrency() -> uint {
     else { threads * sched_overcommit }
 }
 
+#[warn(no_non_implicitly_copyable_typarams)]
 fn filter_tests(opts: test_opts,
                 tests: [test_desc]) -> [test_desc] {
     let mut filtered = copy tests;

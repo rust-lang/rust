@@ -15,6 +15,7 @@ fn mk_pass(name: str, +lteq: item_lteq) -> pass {
     }
 }
 
+#[warn(no_non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::srv,
     doc: doc::doc,
@@ -27,6 +28,7 @@ fn run(
     fold.fold_doc(fold, doc)
 }
 
+#[warn(no_non_implicitly_copyable_typarams)]
 fn fold_mod(
     fold: fold::fold<item_lteq>,
     doc: doc::moddoc

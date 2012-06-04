@@ -323,6 +323,7 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
     }
 }
 
+#[warn(no_non_implicitly_copyable_typarams)]
 fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
              v: vt<scope>) {
     v.visit_expr(input, sc, v);
