@@ -254,29 +254,16 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
               expr_field(base, _, _) {
                 alt cx.method_map.get(e.id) {
                   typeck::method_static(did) {
-                   /*
-                        If this is a class method, we want to use the
-                        class bounds plus the method bounds -- otherwise the
-                        indices come out wrong. So we check base's type...
-                   */
-                   let mut bounds = ty::lookup_item_type(cx.tcx, did).bounds;
-                   alt ty::get(ty::node_id_to_type(cx.tcx, base.id)).struct {
-                        ty::ty_class(parent_id, ts) {
-                            /* ...and if it has a class type, prepend the
-                               class bounds onto the method bounds */
-                            /* n.b. this code is very likely sketchy --
-                             currently, class-impl-very-parameterized-iface
-                             fails here and is thus xfailed */
-                            bounds =
-                             @(*ty::lookup_item_type(cx.tcx, parent_id).bounds
-                               + *bounds);
-                        }
-                        _ { }
-                      }
-                      bounds
+                    // n.b.: When we encode class/impl methods, the bounds
+                    // that we encode include both the class/impl bounds
+                    // and then the method bounds themselves...
+                    ty::lookup_item_type(cx.tcx, did).bounds
                   }
                   typeck::method_param(ifce_id, n_mth, _, _) |
                   typeck::method_iface(ifce_id, n_mth) {
+                    // ...iface methods bounds, in contrast, include only the
+                    // method bounds, so we must preprend the tps from the
+                    // iface itself.  This ought to be harmonized.
                     let ifce_bounds =
                         ty::lookup_item_type(cx.tcx, ifce_id).bounds;
                     let mth = ty::iface_methods(cx.tcx, ifce_id)[n_mth];

@@ -664,7 +664,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 ebml_w.start_tag(tag_item_iface_method);
                 encode_family(ebml_w, purity_fn_family(m.decl.purity));
                 encode_name(ebml_w, m.ident);
-                encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
+                encode_type_param_bounds(ebml_w, ecx, m.tps);
                 encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
                 encode_def_id(ebml_w, local_def(m.id));
                 ebml_w.end_tag();

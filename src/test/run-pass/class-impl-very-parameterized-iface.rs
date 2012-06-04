@@ -1,5 +1,3 @@
-// xfail-test
-// xfail-fast
 use std;
 import std::map::*;
 
@@ -59,7 +57,7 @@ class cat<T: copy> implements map<int, T> {
      }
      else { none }
   }
-  
+
   fn remove(&&k:int) -> option<T> {
     alt self.find(k) {
       some(x) {
@@ -76,7 +74,7 @@ class cat<T: copy> implements map<int, T> {
         n -= 1;
     }
   }
-  
+
   fn each_key(&&f: fn(&&int) -> bool) {
     for self.each {|k, _v| if !f(k) { break; } cont;};
   }
@@ -88,11 +86,11 @@ class cat<T: copy> implements map<int, T> {
 
 fn main() {
   let nyan : cat<str> = cat(0, 2, "nyan");
-  uint::range(1u, 5u) {|_i| nyan.speak(); }
+  for uint::range(1u, 5u) {|_i| nyan.speak(); }
   assert(nyan.find(1) == some("nyan"));
   assert(nyan.find(10) == none);
   let spotty : cat<cat_type> = cat(2, 57, tuxedo);
-  uint::range(0u, 6u) {|_i| spotty.speak(); }
+  for uint::range(0u, 6u) {|_i| spotty.speak(); }
   assert(spotty.size() == 8u);
   assert(spotty.contains_key(2));
   assert(spotty.get(3) == tuxedo);

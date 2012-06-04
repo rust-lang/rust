@@ -18,6 +18,9 @@ enum lookup = {
 impl methods for lookup {
     // Entrypoint:
     fn method() -> option<method_origin> {
+        #debug["method lookup(m_name=%s, self_ty=%s)",
+               self.m_name, self.fcx.infcx.ty_to_str(self.self_ty)];
+
         // First, see whether this is an interface-bounded parameter
         let pass1 = alt ty::get(self.self_ty).struct {
           ty::ty_param(n, did) {
@@ -287,6 +290,11 @@ impl methods for lookup {
                           origin: method_origin) -> method_origin {
 
         let tcx = self.fcx.ccx.tcx;
+
+        #debug["write_mty_from_fty(n_tps_m=%u, fty=%s, origin=%?)",
+               n_tps_m,
+               self.fcx.infcx.ty_to_str(fty),
+               origin];
 
         // Here I will use the "c_" prefix to refer to the method's
         // owner.  You can read it as class, but it may also be an iface.

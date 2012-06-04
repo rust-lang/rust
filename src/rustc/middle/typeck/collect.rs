@@ -228,17 +228,15 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
                                rp: ast::region_param,
                                selfty: ty::t,
                                a_ifacety: @ast::iface_ref,
-                               ms: [@ast::method]) {
+                               ms: [converted_method]) {
 
     let tcx = ccx.tcx;
-    let i_bounds = ty_param_bounds(ccx, tps);
-    let my_methods = convert_methods(ccx, ms, rp, i_bounds, selfty);
     let (did, tpt) = instantiate_iface_ref(ccx, a_ifacety, rp);
     if did.crate == ast::local_crate {
         ensure_iface_methods(ccx, did.node);
     }
     for vec::each(*ty::iface_methods(tcx, did)) {|if_m|
-        alt vec::find(my_methods, {|m| if_m.ident == m.mty.ident}) {
+        alt vec::find(ms, {|m| if_m.ident == m.mty.ident}) {
           some({mty: m, id, span}) {
             if m.purity != if_m.purity {
                 ccx.tcx.sess.span_err(
@@ -274,12 +272,13 @@ fn convert_class_item(ccx: @crate_ctxt,
     ccx.tcx.tcache.insert(local_def(v.id), {bounds: bounds, rp: rp, ty: tt});
 }
 
+type converted_method = {mty: ty::method, id: ast::node_id, span: span};
+
 fn convert_methods(ccx: @crate_ctxt,
                    ms: [@ast::method],
                    rp: ast::region_param,
-                   i_bounds: @[ty::param_bounds],
-                   self_ty: ty::t)
-    -> [{mty: ty::method, id: ast::node_id, span: span}] {
+                   rcvr_bounds: @[ty::param_bounds],
+                   self_ty: ty::t) -> [converted_method] {
 
     let tcx = ccx.tcx;
     vec::map(ms) { |m|
@@ -289,9 +288,10 @@ fn convert_methods(ccx: @crate_ctxt,
         let fty = ty::mk_fn(tcx, mty.fty);
         tcx.tcache.insert(
             local_def(m.id),
-            // n.b. This code is kind of sketchy (concat'ing i_bounds
-            // with bounds), but removing *i_bounds breaks other stuff
-            {bounds: @(*i_bounds + *bounds), rp: rp, ty: fty});
+
+            // n.b.: the type of a method is parameterized by both
+            // the tps on the receiver and those on the method itself
+            {bounds: @(*rcvr_bounds + *bounds), rp: rp, ty: fty});
         write_ty_to_tcx(tcx, m.id, fty);
         {mty: mty, id: m.id, span: m.span}
     }
@@ -316,19 +316,10 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                           {bounds: i_bounds,
                            rp: rp,
                            ty: selfty});
-        alt ifce {
-          some(t) {
-            check_methods_against_iface(
-                ccx, tps, rp,
-                selfty, t, ms);
-          }
-          _ {
-            // Still have to do this to write method types
-            // into the table
-            convert_methods(
-                ccx, ms, rp,
-                i_bounds, selfty);
-          }
+
+        let cms = convert_methods(ccx, ms, rp, i_bounds, selfty);
+        for ifce.each { |t|
+            check_methods_against_iface(ccx, tps, rp, selfty, t, cms);
         }
       }
       ast::item_res(decl, tps, _, dtor_id, ctor_id, rp) {
@@ -412,23 +403,11 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         for fields.each {|f|
            convert_class_item(ccx, rp, tpt.bounds, f);
         }
-        // The selfty is just the class type
-        let {bounds:_, substs} = mk_substs(ccx, tps, rp);
+        let {bounds, substs} = mk_substs(ccx, tps, rp);
         let selfty = ty::mk_class(tcx, local_def(it.id), substs);
-        // Need to convert all methods so we can check internal
-        // references to private methods
-
-        // NDM to TJC---I think we ought to be using bounds here, not @[].
-        // But doing so causes errors later on.
-        convert_methods(ccx, methods, rp, @[], selfty);
-
-        /*
-        Finally, check that the class really implements the ifaces
-        that it claims to implement.
-        */
+        let cms = convert_methods(ccx, methods, rp, bounds, selfty);
         for ifaces.each { |ifce|
-            check_methods_against_iface(ccx, tps, rp, selfty,
-                                        ifce, methods);
+            check_methods_against_iface(ccx, tps, rp, selfty, ifce, cms);
 
             // FIXME #2434---this is somewhat bogus, but it seems that
             // the id of iface_ref is also the id of the impl, and so
