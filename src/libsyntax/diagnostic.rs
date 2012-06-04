@@ -87,7 +87,9 @@ impl codemap_handler of handler for handler_t {
     fn has_errors() -> bool { self.err_count > 0u }
     fn abort_if_errors() {
         if self.err_count > 0u {
-            self.fatal("aborting due to previous errors");
+            let s = #fmt["aborting due to %u previous errors",
+                         self.err_count];
+            self.fatal(s);
         }
     }
     fn warn(msg: str) {

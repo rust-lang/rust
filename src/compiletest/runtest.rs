@@ -266,7 +266,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(line, "aborting due to previous errors") {
+        if str::contains(line, "aborting due to") {
             was_expected = true;
         }
 
