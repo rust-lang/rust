@@ -1,13 +1,13 @@
 import ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
-import fold::*;
-import visit::*;
-import ext::base::*;
-import ext::build::*;
 import parse::parser;
 import parse::parser::parse_from_source_str;
 import dvec::{dvec, extensions};
 
+import fold::*;
+import visit::*;
+import ext::base::*;
+import ext::build::*;
 import print::*;
 import io::*;
 
