@@ -100,37 +100,40 @@ fn to_str(num: T, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
     let mut n = num;
     let radix = radix as T;
-    fn digit(n: T) -> char {
-        ret alt n {
-              0u as T { '0' }
-              1u as T { '1' }
-              2u as T { '2' }
-              3u as T { '3' }
-              4u as T { '4' }
-              5u as T { '5' }
-              6u as T { '6' }
-              7u as T { '7' }
-              8u as T { '8' }
-              9u as T { '9' }
-              10u as T { 'a' }
-              11u as T { 'b' }
-              12u as T { 'c' }
-              13u as T { 'd' }
-              14u as T { 'e' }
-              15u as T { 'f' }
-              _ { fail }
-            };
+    fn digit(n: T) -> u8 {
+        if n <= 9u as T {
+            n as u8 + '0' as u8
+        } else if n <= 15u as T {
+            (n - 10 as T) as u8 + 'a' as u8
+        } else {
+            fail;
+        }
     }
     if n == 0u as T { ret "0"; }
-    let mut s: str = "";
+
+    let mut buf: [mut u8] = [mut];
+    vec::reserve(buf, 20u); // Enough room to hold any number
+
     while n != 0u as T {
-        s += str::from_byte(digit(n % radix) as u8);
+        buf += [digit(n % radix)];
         n /= radix;
     }
-    let mut s1: str = "";
-    let mut len: uint = str::len(s);
-    while len != 0u { len -= 1u; s1 += str::from_byte(s[len]); }
-    ret s1;
+
+    buf += [0u8];
+
+    let mut start_idx = 0u;
+    let mut end_idx = buf.len() - 2u;
+    while start_idx < end_idx {
+        vec::swap(buf, start_idx, end_idx);
+        start_idx += 1u;
+        end_idx -= 1u;
+    }
+
+    unsafe {
+        let s = unsafe::reinterpret_cast(buf);
+        unsafe::forget(buf);
+        ret s;
+    }
 }
 
 #[doc = "Convert to a string"]
