@@ -9,6 +9,7 @@ import back::target_strs;
 import back::link;
 import middle::lint;
 
+
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
 
 enum arch { arch_x86, arch_x86_64, arch_arm, }
@@ -82,7 +83,8 @@ type session = @{targ_cfg: @config,
                  span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::filesearch,
                  mut building_library: bool,
-                 working_dir: str};
+                 working_dir: str,
+                 warning_settings: lint::warning_settings};
 
 impl session for session {
     fn span_fatal(sp: span, msg: str) -> ! {
@@ -126,6 +128,21 @@ impl session for session {
     }
     fn unimpl(msg: str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
+    }
+    fn span_lint_level(level: lint::level,
+                       sp: span, msg: str) {
+        alt level {
+          lint::ignore { }
+          lint::warn { self.span_warn(sp, msg); }
+          lint::error { self.span_err(sp, msg); }
+        }
+    }
+    fn span_lint(lint_mode: lint::lint,
+                 expr_id: ast::node_id, item_id: ast::node_id,
+                 span: span, msg: str) {
+        let level = lint::get_warning_settings_level(
+            self.warning_settings, lint_mode, expr_id, item_id);
+        self.span_lint_level(level, span, msg);
     }
     fn next_node_id() -> ast::node_id {
         ret syntax::parse::next_node_id(self.parse_sess);

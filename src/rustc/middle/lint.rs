@@ -1,3 +1,4 @@
+import driver::session;
 import driver::session::session;
 import middle::ty;
 import syntax::{ast, visit};
@@ -10,8 +11,9 @@ import syntax::print::pprust::expr_to_str;
 
 export lint, ctypes, unused_imports;
 export level, ignore, warn, error;
-export lookup_lint, lint_dict, get_lint_dict, check_crate;
-export warning_settings, warning_methods;
+export lookup_lint, lint_dict, get_lint_dict, get_warning_settings_level;
+export check_crate, build_settings_crate, mk_warning_settings;
+export warning_settings;
 
 #[doc="
 
@@ -28,6 +30,10 @@ every expression. When an item has the default settings, the entry will be
 omitted. If we start allowing warn attributes on expressions, we will start
 having entries for expressions that do not share their enclosing items
 settings.
+
+This module then, exports two passes: one that populates the warning settings
+table in the session and is run early in the compile process, and one that
+does a variety of lint checks, and is run late in the compile process.
 
 "]
 
@@ -115,6 +121,11 @@ type warning_settings = {
     settings_map: lint_mode_map
 };
 
+fn mk_warning_settings() -> warning_settings {
+    {default_settings: std::smallintmap::mk(),
+     settings_map: int_hash()}
+}
+
 fn get_warning_level(modes: lint_modes, lint: lint) -> level {
     alt modes.find(lint as uint) {
       some(c) { c }
@@ -122,30 +133,14 @@ fn get_warning_level(modes: lint_modes, lint: lint) -> level {
     }
 }
 
-fn span_lint(tcx: ty::ctxt, level: level, span: span, msg: str) {
-    alt level {
-      ignore { }
-      warn { tcx.sess.span_warn(span, msg); }
-      error { tcx.sess.span_err(span, msg); }
+fn get_warning_settings_level(settings: warning_settings,
+                              lint_mode: lint,
+                              _expr_id: ast::node_id,
+                              item_id: ast::node_id) -> level {
+    alt settings.settings_map.find(item_id) {
+      some(modes) { get_warning_level(modes, lint_mode) }
+      none { get_warning_level(settings.default_settings, lint_mode) }
     }
-}
-
-impl warning_methods for warning_settings {
-    fn get_level(lint_mode: lint,
-                 _expr_id: ast::node_id, item_id: ast::node_id) -> level {
-        alt self.settings_map.find(item_id) {
-          some(modes) { get_warning_level(modes, lint_mode) }
-          none { get_warning_level(self.default_settings, lint_mode) }
-        }
-    }
-
-    fn span_lint(tcx: ty::ctxt, lint_mode: lint,
-                 expr_id: ast::node_id, item_id: ast::node_id,
-                 span: span, msg: str) {
-        let level = self.get_level(lint_mode, expr_id, item_id);
-        span_lint(tcx, level, span, msg);
-    }
-
 }
 
 // This is kind of unfortunate. It should be somewhere else, or we should use
@@ -157,8 +152,7 @@ fn clone_lint_modes(modes: lint_modes) -> lint_modes {
 type ctxt = {dict: lint_dict,
              curr: lint_modes,
              is_default: bool,
-             lint_mode_map: lint_mode_map,
-             tcx: ty::ctxt};
+             sess: session};
 
 
 impl methods for ctxt {
@@ -175,7 +169,7 @@ impl methods for ctxt {
     }
 
     fn span_lint(level: level, span: span, msg: str) {
-        span_lint(self.tcx, level, span, msg);
+        self.sess.span_lint_level(level, span, msg);
     }
 
     #[doc="
@@ -213,7 +207,7 @@ impl methods for ctxt {
                         }
                       }
                       _ {
-                        self.tcx.sess.span_err(
+                        self.sess.span_err(
                             meta.span,
                             "malformed warning attribute");
                       }
@@ -221,8 +215,8 @@ impl methods for ctxt {
                 }
               }
               _ {
-                self.tcx.sess.span_err(meta.span,
-                                       "malformed warning attribute");
+                self.sess.span_err(meta.span,
+                                   "malformed warning attribute");
               }
             }
         }
@@ -249,23 +243,54 @@ fn lookup_lint(dict: lint_dict, s: str)
      })
 }
 
-fn check_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
+fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
     cx.with_warn_attrs(i.attrs) {|cx|
-        for cx.curr.each {|lint, level|
-            alt int_to_lint(lint as int) {
-              ctypes { check_item_ctypes(cx, level, i); }
-              unused_imports { check_item_unused_imports(cx, level, i); }
-              while_true { check_item_while_true(cx, level, i); }
-              path_statement { check_item_path_statement(cx, level, i); }
-              old_vecs { check_item_old_vecs(cx, level, i); }
-              unrecognized_warning { /* this is checked elsewhere */ }
-            }
-        }
         if !cx.is_default {
-            cx.lint_mode_map.insert(i.id, cx.curr);
+            cx.sess.warning_settings.settings_map.insert(i.id, cx.curr);
         }
         visit::visit_item(i, cx, v);
     }
+}
+
+fn build_settings_crate(sess: session::session, crate: @ast::crate) {
+
+    let cx = {dict: get_lint_dict(),
+              curr: std::smallintmap::mk(),
+              is_default: true,
+              sess: sess};
+
+    // Install defaults.
+    for cx.dict.each {|_k, spec| cx.set_level(spec.lint, spec.default); }
+
+    // Install command-line options, overriding defaults.
+    for sess.opts.lint_opts.each {|pair|
+        let (lint,level) = pair;
+        cx.set_level(lint, level);
+    }
+
+    cx.with_warn_attrs(crate.node.attrs) {|cx|
+        // Copy out the default settings
+        for cx.curr.each {|k, v|
+            sess.warning_settings.default_settings.insert(k, v);
+        }
+
+        let cx = {is_default: true with cx};
+
+        let visit = visit::mk_vt(@{
+            visit_item: build_settings_item
+            with *visit::default_visitor()
+        });
+        visit::visit_crate(*crate, cx, visit);
+    }
+
+    sess.abort_if_errors();
+}
+
+fn check_item(i: @ast::item, cx: ty::ctxt) {
+    check_item_ctypes(cx, i);
+    check_item_while_true(cx, i);
+    check_item_path_statement(cx, i);
+    check_item_old_vecs(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -276,16 +301,17 @@ fn item_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
     visit::mk_vt(@{visit_item: {|_i, _e, _v| } with **v})
 }
 
-fn check_item_while_true(cx: ctxt, level: level, it: @ast::item) {
+fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_expr: fn@(e: @ast::expr) {
            alt e.node {
              ast::expr_while(cond, _) {
                 alt cond.node {
                     ast::expr_lit(@{node: ast::lit_bool(true),_}) {
-                            cx.span_lint(
-                              level, e.span,
-                              "denote infinite loops with loop { ... }");
+                            cx.sess.span_lint(
+                                while_true, it.id, e.id,
+                                e.span,
+                                "denote infinite loops with loop { ... }");
                     }
                     _ {}
                 }
@@ -298,28 +324,26 @@ fn check_item_while_true(cx: ctxt, level: level, it: @ast::item) {
     visit::visit_item(it, (), visit);
 }
 
-fn check_item_unused_imports(_cx: ctxt, _level: level, _it: @ast::item) {
-    // FIXME: Don't know how to check this in lint yet, it's currently being
-    // done over in resolve. When resolve is rewritten, do it here instead.
-}
+fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
-fn check_item_ctypes(cx: ctxt, level: level, it: @ast::item) {
-
-    fn check_native_fn(cx: ctxt, level: level, decl: ast::fn_decl) {
+    fn check_native_fn(cx: ty::ctxt, fn_id: ast::node_id,
+                       decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs) {|a| a.ty };
         for vec::each(tys + [decl.output]) {|ty|
             alt ty.node {
               ast::ty_path(_, id) {
-                alt cx.tcx.def_map.get(id) {
+                alt cx.def_map.get(id) {
                   ast::def_prim_ty(ast::ty_int(ast::ty_i)) {
-                    cx.span_lint(
-                        level, ty.span,
+                    cx.sess.span_lint(
+                        ctypes, fn_id, id,
+                        ty.span,
                         "found rust type `int` in native module, while \
                          libc::c_int or libc::c_long should be used");
                   }
                   ast::def_prim_ty(ast::ty_uint(ast::ty_u)) {
-                    cx.span_lint(
-                        level, ty.span,
+                    cx.sess.span_lint(
+                        ctypes, fn_id, id,
+                        ty.span,
                         "found rust type `uint` in native module, while \
                          libc::c_uint or libc::c_ulong should be used");
                   }
@@ -337,7 +361,7 @@ fn check_item_ctypes(cx: ctxt, level: level, it: @ast::item) {
         for nmod.items.each {|ni|
             alt ni.node {
               ast::native_item_fn(decl, tps) {
-                check_native_fn(cx, level, decl);
+                check_native_fn(cx, it.id, decl);
               }
             }
         }
@@ -346,15 +370,16 @@ fn check_item_ctypes(cx: ctxt, level: level, it: @ast::item) {
     }
 }
 
-fn check_item_path_statement(cx: ctxt, level: level, it: @ast::item) {
+fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_stmt: fn@(s: @ast::stmt) {
             alt s.node {
-              ast::stmt_semi(@{id: _,
+              ast::stmt_semi(@{id: id,
                                node: ast::expr_path(@path),
                                span: _}, _) {
-                cx.span_lint(
-                    level, s.span,
+                cx.sess.span_lint(
+                    path_statement, it.id, id,
+                    s.span,
                     "path statement with no effect");
               }
               _ {}
@@ -365,7 +390,7 @@ fn check_item_path_statement(cx: ctxt, level: level, it: @ast::item) {
     visit::visit_item(it, (), visit);
 }
 
-fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
+fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
     let uses_vstore = int_hash();
 
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
@@ -375,7 +400,9 @@ fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
               ast::expr_vec(_, _) |
               ast::expr_lit(@{node: ast::lit_str(_), span:_})
               if ! uses_vstore.contains_key(e.id) {
-                cx.span_lint(level, e.span, "deprecated vec/str expr");
+                cx.sess.span_lint(
+                    old_vecs, it.id, e.id,
+                    e.span, "deprecated vec/str expr");
               }
               ast::expr_vstore(@inner, _) {
                 uses_vstore.insert(inner.id, true);
@@ -388,13 +415,17 @@ fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
             alt t.node {
               ast::ty_vec(_)
               if ! uses_vstore.contains_key(t.id) {
-                cx.span_lint(level, t.span, "deprecated vec type");
+                cx.sess.span_lint(
+                    old_vecs, it.id, t.id,
+                    t.span, "deprecated vec type");
               }
 
               ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
               if ids == ["str"] && (! uses_vstore.contains_key(t.id)) {
-                cx.span_lint(level, t.span, "deprecated str type");
+                cx.sess.span_lint(
+                    old_vecs, it.id, t.id,
+                    t.span, "deprecated str type");
               }
 
               ast::ty_vstore(inner, _) {
@@ -409,45 +440,15 @@ fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
     visit::visit_item(it, (), visit);
 }
 
+fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
-fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
-               lint_opts: [(lint, level)]) -> warning_settings {
-
-    fn hash_lint(&&lint: lint) -> uint { lint as uint }
-    fn eq_lint(&&a: lint, &&b: lint) -> bool { a == b }
-
-    let cx = {dict: get_lint_dict(),
-              curr: std::smallintmap::mk(),
-              is_default: true,
-              lint_mode_map: int_hash(),
-              tcx: tcx};
-
-    let mut default_settings = cx.curr; // dummy value
-
-    // Install defaults.
-    for cx.dict.each {|_k, spec| cx.set_level(spec.lint, spec.default); }
-
-    // Install command-line options, overriding defaults.
-    for lint_opts.each {|pair|
-        let (lint,level) = pair;
-        cx.set_level(lint, level);
-    }
-
-    cx.with_warn_attrs(crate.node.attrs) {|cx|
-        default_settings = cx.curr;
-        let cx = {is_default: true with cx};
-
-        let visit = visit::mk_vt(@{
-            visit_item: check_item
-            with *visit::default_visitor()
-        });
-        visit::visit_crate(*crate, cx, visit);
-    }
+    let v = visit::mk_simple_visitor(@{
+        visit_item: fn@(it: @ast::item) { check_item(it, tcx); }
+        with *visit::default_simple_visitor()
+    });
+    visit::visit_crate(*crate, (), v);
 
     tcx.sess.abort_if_errors();
-
-    ret {default_settings: default_settings,
-         settings_map: cx.lint_mode_map};
 }
 
 //

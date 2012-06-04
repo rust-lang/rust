@@ -157,6 +157,9 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "core injection",
              bind front::core_inject::maybe_inject_libcore_ref(sess, crate));
 
+    time(time_passes, "building warning settings table",
+         bind lint::build_settings_crate(sess, crate));
+
     let ast_map =
         time(time_passes, "ast indexing",
              bind syntax::ast_map::map_crate(sess.diagnostic(), *crate));
@@ -204,10 +207,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
              bind middle::alias::check_crate(ty_cx, crate));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_use_map, crate));
-
-    let _warning_settings =
-        time(time_passes, "lint checking",
-             bind lint::check_crate(ty_cx, crate, sess.opts.lint_opts));
+    time(time_passes, "lint checking",
+         bind lint::check_crate(ty_cx, crate));
 
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
@@ -528,6 +529,7 @@ fn build_session_(
         sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
+    let warning_settings = lint::mk_warning_settings();
     @{targ_cfg: target_cfg,
       opts: sopts,
       cstore: cstore,
@@ -544,7 +546,8 @@ fn build_session_(
       span_diagnostic: span_diagnostic_handler,
       filesearch: filesearch,
       mut building_library: false,
-      working_dir: os::getcwd()}
+      working_dir: os::getcwd(),
+      warning_settings: warning_settings}
 }
 
 fn parse_pretty(sess: session, &&name: str) -> pp_mode {
