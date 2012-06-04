@@ -624,6 +624,6 @@ shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
 
     log.walk();
 
-    task->sched_loop->log(task, level, "%s", ss.str().c_str());
+    task->sched_loop->get_log().log(task, level, "%s", ss.str().c_str());
 }
 

@@ -96,7 +96,6 @@ public:
     // domain.
     rust_sched_loop(rust_scheduler *sched, int id);
     void activate(rust_task *task);
-    void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
     void fail();
 

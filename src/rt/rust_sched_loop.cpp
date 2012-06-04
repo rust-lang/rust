@@ -49,26 +49,10 @@ rust_sched_loop::activate(rust_task *task) {
     DLOG(this, task, "task has returned");
 }
 
-// FIXME #2495: This logging code doesn't belong in the scheduler
-void
-rust_sched_loop::log(rust_task* task, uint32_t level, char const *fmt, ...) {
-    char buf[BUF_BYTES];
-    va_list args;
-    va_start(args, fmt);
-    int formattedbytes = vsnprintf(buf, sizeof(buf), fmt, args);
-    if( formattedbytes and (unsigned)formattedbytes > BUF_BYTES ){
-        const char truncatedstr[] = "[...]";
-        memcpy( &buf[BUF_BYTES-sizeof(truncatedstr)],
-                truncatedstr,
-                sizeof(truncatedstr));
-    }
-    _log.trace_ln(task, level, buf);
-    va_end(args);
-}
 
 void
 rust_sched_loop::fail() {
-    log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
+    _log.log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
         name, this);
     kernel->fail();
 }
@@ -168,18 +152,18 @@ rust_sched_loop::log_state() {
     if (log_rt_task < log_debug) return;
 
     if (!running_tasks.is_empty()) {
-        log(NULL, log_debug, "running tasks:");
+        _log.log(NULL, log_debug, "running tasks:");
         for (size_t i = 0; i < running_tasks.length(); i++) {
-            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR,
+            _log.log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR,
                 running_tasks[i]->name,
                 running_tasks[i]);
         }
     }
 
     if (!blocked_tasks.is_empty()) {
-        log(NULL, log_debug, "blocked tasks:");
+        _log.log(NULL, log_debug, "blocked tasks:");
         for (size_t i = 0; i < blocked_tasks.length(); i++) {
-            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR
+            _log.log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR
                 ", blocked on: 0x%" PRIxPTR " '%s'",
                 blocked_tasks[i]->name, blocked_tasks[i],
                 blocked_tasks[i]->get_cond(),

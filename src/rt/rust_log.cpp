@@ -90,6 +90,22 @@ append_string(char *buffer, const char *format, ...) {
 }
 
 void
+rust_log::log(rust_task* task, uint32_t level, char const *fmt, ...) {
+    char buf[BUF_BYTES];
+    va_list args;
+    va_start(args, fmt);
+    int formattedbytes = vsnprintf(buf, sizeof(buf), fmt, args);
+    if( formattedbytes and (unsigned)formattedbytes > BUF_BYTES ){
+        const char truncatedstr[] = "[...]";
+        memcpy( &buf[BUF_BYTES-sizeof(truncatedstr)],
+                truncatedstr,
+                sizeof(truncatedstr));
+    }
+    trace_ln(task, level, buf);
+    va_end(args);
+}
+
+void
 rust_log::trace_ln(char *prefix, char *message) {
     char buffer[BUF_BYTES] = "";
     _log_lock.lock();
@@ -301,6 +317,7 @@ void update_log_settings(void* crate_map, char* settings) {
 
     free(buffer);
 }
+
 
 //
 // Local Variables:

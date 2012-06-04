@@ -23,7 +23,7 @@ const uint32_t log_debug = 3;
     do {                                                        \
         rust_sched_loop* _d_ = sched_loop;                      \
         if (log_rt_##field >= lvl && _d_->log_lvl >= lvl) {     \
-            _d_->log(task, lvl, __VA_ARGS__);                   \
+            _d_->get_log().log(task, lvl, __VA_ARGS__);         \
         }                                                       \
     } while (0)
 
@@ -45,6 +45,7 @@ public:
     rust_log(rust_sched_loop *sched_loop);
     virtual ~rust_log();
 
+    void log(rust_task* task, uint32_t level, char const *fmt, ...);
     void trace_ln(rust_task *task, uint32_t level, char *message);
     void trace_ln(char *prefix, char *message);
     bool is_tracing(uint32_t type_bits);
