@@ -63,7 +63,9 @@ type cstore_private =
 type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
 
 // Internal method to retrieve the data from the cstore
-fn p(cstore: cstore) -> cstore_private { alt cstore { private(p) { p } } }
+pure fn p(cstore: cstore) -> cstore_private {
+    alt cstore { private(p) { p } }
+}
 
 fn mk_cstore() -> cstore {
     let meta_cache = map::int_hash::<crate_metadata>();

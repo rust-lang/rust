@@ -13,6 +13,7 @@ import std::map::{hashmap, int_hash};
 import syntax::print::pprust;
 import filesearch::filesearch;
 import common::*;
+import dvec::{dvec, extensions};
 
 export read_crates;
 
@@ -26,7 +27,7 @@ fn read_crates(diag: span_handler, crate: ast::crate,
               cstore: cstore,
               os: os,
               static: static,
-              mut crate_cache: [],
+              crate_cache: dvec(),
               mut next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
@@ -35,7 +36,7 @@ fn read_crates(diag: span_handler, crate: ast::crate,
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);
-    warn_if_multiple_versions(diag, copy e.crate_cache);
+    warn_if_multiple_versions(diag, e.crate_cache.get());
 }
 
 type cache_entry = {
@@ -45,7 +46,7 @@ type cache_entry = {
     metas: @[@ast::meta_item]
 };
 
-fn dump_crates(crate_cache: [cache_entry]) {
+fn dump_crates(crate_cache: dvec<cache_entry>) {
     #debug("resolved crates:");
     for crate_cache.each {|entry|
         #debug("cnum: %?", entry.cnum);
@@ -64,10 +65,10 @@ fn warn_if_multiple_versions(diag: span_handler,
                              crate_cache: [cache_entry]) {
     import either::*;
 
-    if crate_cache.is_not_empty() {
+    if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(*crate_cache.last().metas);
         let {lefts: matches, rights: non_matches} =
-            partition(crate_cache.map {|entry|
+            partition(crate_cache.map_to_vec {|entry|
                 let othername = loader::crate_name_from_metas(*entry.metas);
                 if name == othername {
                     left(entry)
@@ -99,7 +100,7 @@ type env = @{diag: span_handler,
              cstore: cstore::cstore,
              os: loader::os,
              static: bool,
-             mut crate_cache: [cache_entry],
+             crate_cache: dvec<cache_entry>,
              mut next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
@@ -176,12 +177,14 @@ fn metas_with_ident(ident: ast::ident,
 
 fn existing_match(e: env, metas: [@ast::meta_item], hash: str) ->
     option<int> {
-    let maybe_entry = e.crate_cache.find {|c|
-        loader::metadata_matches(*c.metas, metas) &&
-            (hash.is_empty() || c.hash == hash)
-    };
 
-    maybe_entry.map {|c| c.cnum }
+    for e.crate_cache.each {|c|
+        if loader::metadata_matches(*c.metas, metas)
+            && (hash.is_empty() || c.hash == hash) {
+            ret some(c.cnum);
+        }
+    }
+    ret none;
 }
 
 fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
@@ -211,8 +214,8 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache += [{cnum: cnum, span: span,
-                           hash: hash, metas: @linkage_metas}];
+        e.crate_cache.push({cnum: cnum, span: span,
+                            hash: hash, metas: @linkage_metas});
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
