@@ -389,7 +389,12 @@ fn next_token_inner(rdr: reader) -> token::token {
         if rdr.curr == '=' {
             rdr.bump();
             ret token::EQEQ;
-        } else { ret token::EQ; }
+        } else if rdr.curr == '>' {
+            rdr.bump();
+            ret token::FAT_ARROW;
+        } else {
+            ret token::EQ;
+        }
       }
       '!' {
         rdr.bump();

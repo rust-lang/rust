@@ -1281,6 +1281,7 @@ class parser {
             let pats = self.parse_pats();
             let mut guard = none;
             if self.eat_keyword("if") { guard = some(self.parse_expr()); }
+            if self.token == token::FAT_ARROW { self.bump(); }
             let blk = self.parse_block();
             arms += [{pats: pats, guard: guard, body: blk}];
         }

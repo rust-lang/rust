@@ -45,6 +45,7 @@ enum token {
     RARROW,
     LARROW,
     DARROW,
+    FAT_ARROW,
     LPAREN,
     RPAREN,
     LBRACKET,
@@ -111,6 +112,7 @@ fn to_str(in: interner<str>, t: token) -> str {
       RARROW { ret "->"; }
       LARROW { ret "<-"; }
       DARROW { ret "<->"; }
+      FAT_ARROW { ret "=>"; }
       LPAREN { ret "("; }
       RPAREN { ret ")"; }
       LBRACKET { ret "["; }
