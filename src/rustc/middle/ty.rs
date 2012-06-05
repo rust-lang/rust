@@ -1678,11 +1678,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
           ty_class(did, substs) {
             vec::push(*seen, did);
-            let r = vec::any(lookup_class_fields(cx, did)) {|f|
-                let fty = ty::lookup_item_type(cx, f.id);
-                let sty = subst(cx, substs, fty.ty);
-                type_requires(cx, seen, r_ty, sty)
-            };
+            let r = vec::any(class_items_as_fields(cx, did, substs)) {|f|
+                      type_requires(cx, seen, r_ty, f.mt.ty)};
             vec::pop(*seen);
             r
           }
