@@ -207,7 +207,7 @@ impl methods for ctxt {
                             // if many attributes are set, but this shouldn't
                             // actually be a problem...
                             new_ctxt = {is_default: false,
-                                        curr: clone_lint_modes(self.curr)
+                                        curr: clone_lint_modes(new_ctxt.curr)
                                         with new_ctxt};
                             new_ctxt.set_level(lint, new_level);
                           }
