@@ -43,7 +43,6 @@ export comm, task, future;
 export extfmt;
 export tuple;
 export to_str;
-export swappable;
 export dvec, dvec_iter;
 
 // NDM seems to be necessary for resolve to work
@@ -164,7 +163,6 @@ mod option_iter {
 }
 mod result;
 mod to_str;
-mod swappable;
 mod dvec;
 #[path="iter-trait"]
 mod dvec_iter {
