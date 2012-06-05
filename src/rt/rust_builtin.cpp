@@ -204,7 +204,7 @@ rand_new() {
 }
 
 extern "C" CDECL void *
-rand_new_seeded(rust_vec* seed) {
+rand_new_seeded(rust_vec_box* seed) {
     rust_task *task = rust_get_current_task();
     rust_sched_loop *thread = task->sched_loop;
     randctx *rctx = (randctx *) task->malloc(sizeof(randctx),

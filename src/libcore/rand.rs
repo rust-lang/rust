@@ -304,6 +304,17 @@ mod tests {
     }
 
     #[test]
+    fn rng_seeded_custom_seed2() {
+        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
+        let ra = rand::seeded_rng(seed);
+        // Regression test that isaac is actually using the above vector
+        let r = ra.next();
+        #error("%?", r);
+        assert r == 890007737u32 // on x86_64
+            || r == 2935188040u32; // on x86
+    }
+
+    #[test]
     fn gen_int_range() {
         let r = rand::rng();
         let a = r.gen_int_range(-3, 42);

@@ -128,16 +128,16 @@ inline void isaac_seed(rust_kernel* kernel, uint8_t* dest)
 }
 
 inline void
-isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec* user_seed)
+isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed)
 {
     memset(rctx, 0, sizeof(randctx));
 
     char *env_seed = kernel->env->rust_seed;
     if (user_seed != NULL) {
         // ignore bytes after the required length
-        size_t seed_len = user_seed->fill < sizeof(rctx->randrsl)
-            ? user_seed->fill : sizeof(rctx->randrsl);
-        memcpy(&rctx->randrsl, user_seed->data, seed_len);
+        size_t seed_len = user_seed->body.fill < sizeof(rctx->randrsl)
+            ? user_seed->body.fill : sizeof(rctx->randrsl);
+        memcpy(&rctx->randrsl, user_seed->body.data, seed_len);
     } else if (env_seed != NULL) {
         ub4 seed = (ub4) atoi(env_seed);
         for (size_t i = 0; i < RANDSIZ; i ++) {
