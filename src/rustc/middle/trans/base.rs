@@ -397,7 +397,8 @@ fn malloc_unique_raw(bcx: block, t: ty::t) -> ValueRef {
 fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
     let _icx = bcx.insn_ctxt("malloc_unique_box");
     let box = malloc_unique_raw(bcx, t);
-    let body = GEPi(bcx, box, [0u, abi::box_field_body]);
+    let non_gc_box = non_gc_box_cast(bcx, box, ty::mk_imm_uniq(bcx.tcx(), t));
+    let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
     ret {box: box, body: body};
 }
 
@@ -2681,7 +2682,8 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_uniq(_) {
-                GEPi(sub.bcx, sub.val, [0u, abi::box_field_body])
+                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
+                GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_res(_, _, _) {
                 GEPi(sub.bcx, sub.val, [0u, 1u])

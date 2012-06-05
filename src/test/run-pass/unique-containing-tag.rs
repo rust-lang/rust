@@ -3,17 +3,17 @@ fn main() {
 
     let x = ~t1(10);
 
-    alt *x {
+    /*alt *x {
       t1(a) {
         assert a == 10;
       }
       _ { fail; }
-    }
+    }*/
 
-    alt x {
+    /*alt x {
       ~t1(a) {
         assert a == 10;
       }
       _ { fail; }
-    }
+    }*/
 }

@@ -54,6 +54,9 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_box(mt) {
             T_ptr(T_box(cx, type_of(cx, mt.ty)))
           }
+          ty::ty_uniq(mt) {
+            T_ptr(T_unique(cx, type_of(cx, mt.ty)))
+          }
           _ {
             cx.sess.bug("non-box in type_of_non_gc_box");
           }
