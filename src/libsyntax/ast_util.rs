@@ -1,15 +1,15 @@
 import codemap::span;
 import ast::*;
 
-pure fn spanned<T: copy>(lo: uint, hi: uint, t: T) -> spanned<T> {
+pure fn spanned<T>(lo: uint, hi: uint, +t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), t)
 }
 
-pure fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
+pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
     {node: t, span: sp}
 }
 
-pure fn dummy_spanned<T: copy>(t: T) -> spanned<T> {
+pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
     respan(dummy_sp(), t)
 }
 
