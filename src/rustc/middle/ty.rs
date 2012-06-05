@@ -4,19 +4,19 @@ import std::map::hashmap;
 import driver::session;
 import session::session;
 import syntax::{ast, ast_map};
-import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::{is_local, local_def, split_class_items,
                           new_def_hash};
 import syntax::codemap::span;
 import metadata::csearch;
-import util::common::*;
 import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
 import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
-import syntax::print::pprust::*;
 import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
                       ignore};
+import syntax::ast::*;
+import syntax::print::pprust::*;
+
 export ty_vid, region_vid, vid;
 export br_hashmap;
 export is_instantiable;
