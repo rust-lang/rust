@@ -14,7 +14,7 @@ export buf_len;
 export position;
 export extensions;
 
-import libc::c_void;
+import libc::{c_void, size_t};
 
 #[nolink]
 #[abi = "cdecl"]
@@ -93,7 +93,7 @@ and destination may not overlap.
 #[inline(always)]
 unsafe fn memcpy<T>(dst: *T, src: *T, count: uint) {
     let n = count * sys::size_of::<T>();
-    libc_::memcpy(dst as *c_void, src as *c_void, n);
+    libc_::memcpy(dst as *c_void, src as *c_void, n as size_t);
 }
 
 #[doc = "
@@ -105,7 +105,7 @@ and destination may overlap.
 #[inline(always)]
 unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
     let n = count * sys::size_of::<T>();
-    libc_::memmove(dst as *c_void, src as *c_void, n);
+    libc_::memmove(dst as *c_void, src as *c_void, n as size_t);
 }
 
 #[doc = "Extension methods for pointers"]

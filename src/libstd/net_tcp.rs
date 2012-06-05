@@ -10,6 +10,7 @@ import comm::*;
 import result::*;
 import str::*;
 import future::*;
+import libc::size_t;
 
 // data
 export tcp_socket, tcp_conn_port, tcp_err_data;
@@ -1136,7 +1137,7 @@ crust fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
     let loop_ptr = uv::ll::get_loop_for_uv_handle(stream);
     let socket_data_ptr = uv::ll::get_data_for_uv_handle(stream)
         as *tcp_socket_data;
-    alt nread {
+    alt nread as int {
       // incoming err.. probably eof
       -1 {
         let err_data = uv::ll::get_last_err_data(loop_ptr).to_tcp_err();
@@ -1150,11 +1151,11 @@ crust fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
       // have data
       _ {
         // we have data
-        log(debug, #fmt("tcp on_read_cb nread: %d", nread));
+        log(debug, #fmt("tcp on_read_cb nread: %d", nread as int));
         let reader_ch = (*socket_data_ptr).reader_ch;
         let buf_base = uv::ll::get_base_from_buf(buf);
         let buf_len = uv::ll::get_len_from_buf(buf);
-        let new_bytes = vec::unsafe::from_buf(buf_base, buf_len);
+        let new_bytes = vec::unsafe::from_buf(buf_base, buf_len as uint);
         comm::send(reader_ch, result::ok(new_bytes));
       }
     }
@@ -1171,7 +1172,7 @@ crust fn on_alloc_cb(handle: *libc::c_void,
                      handle,
                      char_ptr as uint,
                      suggested_size as uint));
-    uv::ll::buf_init(char_ptr, suggested_size)
+    uv::ll::buf_init(char_ptr, suggested_size as uint)
 }
 
 type tcp_socket_close_data = {

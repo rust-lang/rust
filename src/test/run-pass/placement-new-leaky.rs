@@ -5,7 +5,7 @@ enum malloc_pool = ();
 impl methods for malloc_pool {
     fn alloc(sz: uint, align: uint) -> *() {
         unsafe {
-            unsafe::reinterpret_cast(libc::malloc(sz))
+            unsafe::reinterpret_cast(libc::malloc(sz as libc::size_t))
         }
     }
 }

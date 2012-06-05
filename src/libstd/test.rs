@@ -8,6 +8,7 @@
 import either::either;
 import result::{ok, err};
 import io::writer_util;
+import libc::size_t;
 
 export test_name;
 export test_fn;
@@ -322,7 +323,7 @@ const sched_overcommit : uint = 1u;
 const sched_overcommit : uint = 4u;
 
 fn get_concurrency() -> uint {
-    let threads = rustrt::sched_threads();
+    let threads = rustrt::sched_threads() as uint;
     if threads == 1u { 1u }
     else { threads * sched_overcommit }
 }

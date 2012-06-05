@@ -1406,11 +1406,20 @@ fn super_tys<C:combine>(
                  b.to_str(self.infcx())]);
       }
 
-      (ty::ty_nil, _) |
-      (ty::ty_bool, _) |
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
-      (ty::ty_float(_), _) |
+      (ty::ty_float(_), _) {
+        let as = ty::get(a).struct;
+        let bs = ty::get(b).struct;
+        if as == bs {
+            ok(a)
+        } else {
+            err(ty::terr_sorts(b, a))
+        }
+      }
+
+      (ty::ty_nil, _) |
+      (ty::ty_bool, _) |
       (ty::ty_str, _) {
         let cfg = tcx.sess.targ_cfg;
         if ty::mach_sty(cfg, a) == ty::mach_sty(cfg, b) {

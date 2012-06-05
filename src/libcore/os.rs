@@ -90,11 +90,11 @@ mod win32 {
         import libc::funcs::extra::kernel32::*;
         import libc::consts::os::extra::*;
 
-        let mut n = tmpbuf_sz;
+        let mut n = tmpbuf_sz as dword;
         let mut res = none;
         let mut done = false;
         while !done {
-            let buf = vec::to_mut(vec::from_elem(n, 0u16));
+            let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
             vec::as_mut_buf(buf) {|b|
                 let k : dword = f(b, tmpbuf_sz as dword);
                 if k == (0 as dword) {
@@ -412,7 +412,7 @@ fn self_exe_path() -> option<path> {
         import libc::funcs::extra::kernel32::*;
         import win32::*;
         fill_utf16_buf_and_decode() {|buf, sz|
-            GetModuleFileNameW(0u, buf, sz)
+            GetModuleFileNameW(0u as dword, buf, sz)
         }
     }
 
@@ -692,16 +692,19 @@ fn copy_file(from: path, to: path) -> bool {
         let mut ok = true;
         while !done {
           vec::as_mut_buf(buf) {|b|
-            let nread = libc::fread(b as *mut c_void, 1u, bufsize, istream);
+              let nread = libc::fread(b as *mut c_void, 1u as size_t,
+                                      bufsize as size_t,
+                                      istream);
               if nread > 0 as size_t {
-                 if libc::fwrite(b as *c_void, 1u, nread, ostream) != nread {
-                    ok = false;
-                    done = true;
-                 }
+                  if libc::fwrite(b as *c_void, 1u as size_t, nread,
+                                  ostream) != nread {
+                      ok = false;
+                      done = true;
+                  }
               } else {
-                    done = true;
+                  done = true;
               }
-           }
+          }
         }
         fclose(istream);
         fclose(ostream);
@@ -988,8 +991,9 @@ mod tests {
       let s = "hello";
       let mut buf = vec::to_mut(str::bytes(s) + [0 as u8]);
       vec::as_mut_buf(buf) {|b|
-         assert (libc::fwrite(b as *c_void, 1u, str::len(s) + 1u, ostream) ==
-                 buf.len())};
+          assert (libc::fwrite(b as *c_void, 1u as size_t,
+                               (str::len(s) + 1u) as size_t, ostream)
+                  == buf.len() as size_t)};
       assert (libc::fclose(ostream) == (0u as c_int));
       let rs = os::copy_file(in, out);
       if (!os::path_exists(in)) {

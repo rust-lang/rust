@@ -32,9 +32,9 @@ fn test2() {
     #error("a: %f", ff.a as float);
     #error("b: %u", ff.b as uint);
     #error("c: %f", ff.c as float);
-    assert ff.a == f.c + 1.0;
+    assert ff.a == f.c + 1.0f64;
     assert ff.b == 0xff_u8;
-    assert ff.c == f.a - 1.0;
+    assert ff.c == f.a - 1.0f64;
 }
 
 #[cfg(target_arch = "x86")]

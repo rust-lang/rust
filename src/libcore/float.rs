@@ -27,6 +27,57 @@ export j0, j1, jn, y0, y1, yn;
 import m_float = f64;
 import f64::*;
 
+const NaN: float = 0.0/0.0;
+
+const infinity: float = 1.0/0.0;
+
+const neg_infinity: float = -1.0/0.0;
+
+/* Module: consts */
+mod consts {
+
+    // FIXME replace with mathematical constants from cmath
+    // (requires Issue #1433 to fix)
+    #[doc = "Archimedes' constant"]
+    const pi: float = 3.14159265358979323846264338327950288;
+
+    #[doc = "pi/2.0"]
+    const frac_pi_2: float = 1.57079632679489661923132169163975144;
+
+    #[doc = "pi/4.0"]
+    const frac_pi_4: float = 0.785398163397448309615660845819875721;
+
+    #[doc = "1.0/pi"]
+    const frac_1_pi: float = 0.318309886183790671537767526745028724;
+
+    #[doc = "2.0/pi"]
+    const frac_2_pi: float = 0.636619772367581343075535053490057448;
+
+    #[doc = "2.0/sqrt(pi)"]
+    const frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
+
+    #[doc = "sqrt(2.0)"]
+    const sqrt2: float = 1.41421356237309504880168872420969808;
+
+    #[doc = "1.0/sqrt(2.0)"]
+    const frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
+
+    #[doc = "Euler's number"]
+    const e: float = 2.71828182845904523536028747135266250;
+
+    #[doc = "log2(e)"]
+    const log2_e: float = 1.44269504088896340735992468100189214;
+
+    #[doc = "log10(e)"]
+    const log10_e: float = 0.434294481903251827651128918916605082;
+
+    #[doc = "ln(2.0)"]
+    const ln_2: float = 0.693147180559945309417232121458176568;
+
+    #[doc = "ln(10.0)"]
+    const ln_10: float = 2.30258509299404568401799145468436421;
+}
+
 /**
  * Section: String Conversions
  */
@@ -178,11 +229,11 @@ where `n` is the floating-point number represented by `[num]`.
 "]
 fn from_str(num: str) -> option<float> {
    if num == "inf" {
-       ret some(infinity);
+       ret some(infinity as float);
    } else if num == "-inf" {
-       ret some(neg_infinity);
+       ret some(neg_infinity as float);
    } else if num == "NaN" {
-       ret some(NaN);
+       ret some(NaN as float);
    }
 
    let mut pos = 0u;               //Current byte position in the string.
@@ -322,25 +373,40 @@ Compute the exponentiation of an integer by another integer as a float
 `NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
 "]
 fn pow_with_uint(base: uint, pow: uint) -> float {
-   if base == 0u {
-      if pow == 0u {
-        ret NaN;
-      }
-       ret 0.;
-   }
-   let mut my_pow     = pow;
-   let mut total      = 1f;
-   let mut multiplier = base as float;
-   while (my_pow > 0u) {
-     if my_pow % 2u == 1u {
-       total = total * multiplier;
-     }
-     my_pow     /= 2u;
-     multiplier *= multiplier;
-   }
-   ret total;
+    if base == 0u {
+        if pow == 0u {
+            ret NaN as float;
+        }
+        ret 0.;
+    }
+    let mut my_pow     = pow;
+    let mut total      = 1f;
+    let mut multiplier = base as float;
+    while (my_pow > 0u) {
+        if my_pow % 2u == 1u {
+            total = total * multiplier;
+        }
+        my_pow     /= 2u;
+        multiplier *= multiplier;
+    }
+    ret total;
 }
 
+fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
+fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
+fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
+fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
+fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
+fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
+fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
+fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
+
+fn abs(x: float) -> float { f64::abs(x as f64) as float }
+fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
+fn atan(x: float) -> float { f64::atan(x as f64) as float }
+fn sin(x: float) -> float { f64::sin(x as f64) as float }
+fn cos(x: float) -> float { f64::cos(x as f64) as float }
+fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
 #[test]
 fn test_from_str() {

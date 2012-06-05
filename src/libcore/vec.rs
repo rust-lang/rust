@@ -2,6 +2,7 @@
 
 import option::{some, none};
 import ptr::addr_of;
+import libc::size_t;
 
 export init_op;
 export is_empty;
@@ -123,7 +124,8 @@ fn reserve<T>(&v: [const T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     if capacity(v) < n {
         let ptr = ptr::addr_of(v) as **unsafe::vec_repr;
-        rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), ptr, n);
+        rustrt::vec_reserve_shared(sys::get_type_desc::<T>(),
+                                   ptr, n as size_t);
     }
 }
 
@@ -1213,7 +1215,7 @@ mod unsafe {
         ret ::unsafe::reinterpret_cast(
             rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
                                         ptr as *(),
-                                        elts));
+                                        elts as size_t));
     }
 
     #[doc = "

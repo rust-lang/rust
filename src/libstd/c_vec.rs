@@ -135,13 +135,13 @@ mod tests {
 
         assert mem as int != 0;
 
-        ret unsafe { c_vec_with_dtor(mem as *mut u8, n,
+        ret unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
                                      bind free(mem)) };
     }
 
     #[test]
     fn test_basic() {
-        let cv = malloc(16u);
+        let cv = malloc(16u as size_t);
 
         set(cv, 3u, 8u8);
         set(cv, 4u, 9u8);
@@ -154,7 +154,7 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     fn test_overrun_get() {
-        let cv = malloc(16u);
+        let cv = malloc(16u as size_t);
 
         get(cv, 17u);
     }
@@ -163,14 +163,14 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     fn test_overrun_set() {
-        let cv = malloc(16u);
+        let cv = malloc(16u as size_t);
 
         set(cv, 17u, 0u8);
     }
 
     #[test]
     fn test_and_I_mean_it() {
-        let cv = malloc(16u);
+        let cv = malloc(16u as size_t);
         let p = unsafe { ptr(cv) };
 
         set(cv, 0u, 32u8);

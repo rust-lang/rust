@@ -36,12 +36,12 @@ pure fn cabs(x: cmplx) -> f64
 
 fn mb(x: cmplx) -> bool
 {
-    let mut z = {re: 0., im: 0.};
+    let mut z = {re: 0f64, im: 0f64};
     let mut i = 0;
     let mut in = true;
     while i < 50 {
         z = z*z + x;
-        if cabs(z) >= 4. {
+        if cabs(z) >= 4f64 {
             in = false;
             break;
         }
@@ -66,12 +66,12 @@ fn fillbyte(x: cmplx, incr: f64) -> u8 {
 fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 {
     let mut crv = [];
-    let incr = 2./(size as f64);
-    let y = incr*(i as f64) - 1.;
-    let xincr = 8.*incr;
+    let incr = 2f64/(size as f64);
+    let y = incr*(i as f64) - 1f64;
+    let xincr = 8f64*incr;
     for uint::range(0_u, size/8_u) {
         |j|
-        let x = {re: xincr*(j as f64) - 1.5, im: y};
+        let x = {re: xincr*(j as f64) - 1.5f64, im: y};
         crv += [fillbyte(x, incr)];
     };
     comm::send(ch, {i:i, b:crv});

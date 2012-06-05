@@ -20,6 +20,8 @@ This module's implementation will hopefully be, eventually, replaced
 with per-platform, generated source files from rust-bindgen.
 "];
 
+import libc::size_t;
+
 // libuv struct mappings
 type uv_ip4_addr = {
     ip: [u8],
@@ -695,8 +697,8 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
                      len as uint,
                      out_buf_ptr as uint));
     // yuck :/
-    rustrt::rust_uv_buf_init(out_buf_ptr, input, len);
-    //let result = rustrt::rust_uv_buf_init_2(input, len);
+    rustrt::rust_uv_buf_init(out_buf_ptr, input, len as size_t);
+    //let result = rustrt::rust_uv_buf_init_2(input, len as size_t);
     log(debug, "after rust_uv_buf_init");
     let res_base = get_base_from_buf(out_buf);
     let res_len = get_len_from_buf(out_buf);
@@ -851,13 +853,15 @@ mod test {
                          handle,
                          char_ptr as uint,
                          suggested_size as uint));
-        ret buf_init(char_ptr, suggested_size);
+        ret buf_init(char_ptr, suggested_size as uint);
     }
 
     crust fn on_read_cb(stream: *uv_stream_t,
                         nread: libc::ssize_t,
                         ++buf: uv_buf_t) unsafe {
-        log(debug, #fmt("CLIENT entering on_read_cb nred: %d", nread));
+        let nread = nread as int;
+        log(debug, #fmt("CLIENT entering on_read_cb nred: %d",
+                        nread));
         if (nread > 0) {
             // we have data
             log(debug, #fmt("CLIENT read: data! nread: %d", nread));
@@ -867,7 +871,7 @@ mod test {
                   as *request_wrapper;
             let buf_base = get_base_from_buf(buf);
             let buf_len = get_len_from_buf(buf);
-            let bytes = vec::unsafe::from_buf(buf_base, buf_len);
+            let bytes = vec::unsafe::from_buf(buf_base, buf_len as uint);
             let read_chan = *((*client_data).read_chan);
             let msg_from_server = str::from_bytes(bytes);
             comm::send(read_chan, msg_from_server);
@@ -1029,17 +1033,18 @@ mod test {
     crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
                                nread: libc::ssize_t,
                                ++buf: uv_buf_t) unsafe {
+        let nread = nread as int;
         if (nread > 0) {
             // we have data
             log(debug, #fmt("SERVER read: data! nread: %d", nread));
 
             // pull out the contents of the write from the client
             let buf_base = get_base_from_buf(buf);
-            let buf_len = get_len_from_buf(buf);
+            let buf_len = get_len_from_buf(buf) as uint;
             log(debug, #fmt("SERVER buf base: %u, len: %u, nread: %d",
-                             buf_base as uint,
-                             buf_len as uint,
-                             nread));
+                            buf_base as uint,
+                            buf_len as uint,
+                            nread));
             let bytes = vec::unsafe::from_buf(buf_base, buf_len);
             let request_str = str::from_bytes(bytes);
 

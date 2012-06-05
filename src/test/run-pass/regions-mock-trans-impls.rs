@@ -17,7 +17,7 @@ type ccx = {
 
 impl arena for arena {
     fn alloc(sz: uint, _align: uint) -> *() unsafe {
-        ret unsafe::reinterpret_cast(libc::malloc(sz));
+        ret unsafe::reinterpret_cast(libc::malloc(sz as libc::size_t));
     }
 }
 

@@ -7,6 +7,8 @@ for efficiency, but UTF-8 unsafe operations should be avoided.  For
 some heavy-duty uses, try std::rope.
 "];
 
+import libc::size_t;
+
 export
    // Creating a string
    from_bytes,
@@ -1596,7 +1598,7 @@ capacity, then no action is taken.
 "]
 fn reserve(&s: str, n: uint) {
     if capacity(s) < n {
-        rustrt::str_reserve_shared(s, n);
+        rustrt::str_reserve_shared(s, n as size_t);
     }
 }
 

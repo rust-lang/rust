@@ -25,6 +25,7 @@ io::println(comm::recv(p));
 "];
 
 import either::either;
+import libc::size_t;
 
 export port::{};
 export chan::{};
@@ -66,7 +67,7 @@ enum chan<T: send> {
 
 #[doc = "Constructs a port"]
 fn port<T: send>() -> port<T> {
-    port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>())))
+    port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
 
 impl methods<T: send> for port<T> {
@@ -109,7 +110,7 @@ resource port_ptr<T: send>(po: *rust_port) unsafe {
         rustrt::rust_port_end_detach(po);
 
         // Drain the port so that all the still-enqueued items get dropped
-        while rustrt::rust_port_size(po) > 0u {
+        while rustrt::rust_port_size(po) > 0u as size_t {
             recv_::<T>(po);
         }
         rustrt::del_port(po);

@@ -3,7 +3,7 @@ import syntax::ast::*;
 // FIXME this doesn't handle big integer/float literals correctly (nor does
 // the rest of our literal handling)
 enum const_val {
-    const_float(float),
+    const_float(f64),
     const_int(i64),
     const_uint(u64),
     const_str(str),
@@ -111,7 +111,7 @@ fn lit_to_const(lit: @lit) -> const_val {
       lit_str(s) { const_str(s) }
       lit_int(n, _) { const_int(n) }
       lit_uint(n, _) { const_uint(n) }
-      lit_float(n, _) { const_float(option::get(float::from_str(n))) }
+      lit_float(n, _) { const_float(option::get(float::from_str(n)) as f64) }
       lit_nil { const_int(0i64) }
       lit_bool(b) { const_int(b as i64) }
     }

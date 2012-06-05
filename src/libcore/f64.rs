@@ -76,6 +76,10 @@ pure fn ge(x: f64, y: f64) -> bool { ret x >= y; }
 
 pure fn gt(x: f64, y: f64) -> bool { ret x > y; }
 
+pure fn sqrt(x: f64) -> f64 {
+    cmath::c_double::sqrt(x as libc::c_double) as f64
+}
+
 #[doc = "
 Returns true if `x` is a positive number, including +0.0f640 and +Infinity.
 "]

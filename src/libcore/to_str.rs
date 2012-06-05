@@ -1,5 +1,8 @@
 iface to_str { fn to_str() -> str; }
 
+impl of to_str for int {
+    fn to_str() -> str { int::str(self) }
+}
 impl of to_str for i8 {
     fn to_str() -> str { i8::str(self) }
 }
@@ -11,6 +14,9 @@ impl of to_str for i32 {
 }
 impl of to_str for i64 {
     fn to_str() -> str { i64::str(self) }
+}
+impl of to_str for uint {
+    fn to_str() -> str { uint::str(self) }
 }
 impl of to_str for u8 {
     fn to_str() -> str { u8::str(self) }

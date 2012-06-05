@@ -7,7 +7,7 @@ Basic input/output
 import result::result;
 
 import dvec::{dvec, extensions};
-import libc::{c_int, c_uint, c_void, size_t, ssize_t};
+import libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
 import libc::consts::os::extra::*;
 
@@ -196,9 +196,9 @@ impl of reader for *libc::FILE {
         let mut buf : [mut u8] = [mut];
         vec::reserve(buf, len);
         vec::as_mut_buf(buf) {|b|
-            let read = libc::fread(b as *mut c_void, 1u,
-                                   len, self);
-            vec::unsafe::set_len(buf, read);
+            let read = libc::fread(b as *mut c_void, 1u as size_t,
+                                   len as size_t, self);
+            vec::unsafe::set_len(buf, read as uint);
         }
         ret vec::from_mut(buf);
     }
@@ -206,7 +206,7 @@ impl of reader for *libc::FILE {
     fn unread_byte(byte: int) { libc::ungetc(byte as c_int, self); }
     fn eof() -> bool { ret libc::feof(self) != 0 as c_int; }
     fn seek(offset: int, whence: seek_style) {
-        assert libc::fseek(self, offset, convert_whence(whence))
+        assert libc::fseek(self, offset as c_long, convert_whence(whence))
             == 0 as c_int;
     }
     fn tell() -> uint { ret libc::ftell(self) as uint; }
@@ -332,7 +332,8 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
 impl of writer for *libc::FILE {
     fn write(v: [const u8]/&) unsafe {
         vec::unpack_const_slice(v) {|vbuf, len|
-            let nout = libc::fwrite(vbuf as *c_void, len, 1u, self);
+            let nout = libc::fwrite(vbuf as *c_void, len as size_t,
+                                    1u as size_t, self);
             if nout < 1 as size_t {
                 #error("error writing buffer");
                 log(error, os::last_os_error());
@@ -341,7 +342,7 @@ impl of writer for *libc::FILE {
         }
     }
     fn seek(offset: int, whence: seek_style) {
-        assert libc::fseek(self, offset, convert_whence(whence))
+        assert libc::fseek(self, offset as c_long, convert_whence(whence))
             == 0 as c_int;
     }
     fn tell() -> uint { libc::ftell(self) as uint }
@@ -362,7 +363,7 @@ impl of writer for fd_t {
         vec::unpack_const_slice(v) {|vbuf, len|
             while count < len {
                 let vb = ptr::const_offset(vbuf, count) as *c_void;
-                let nout = libc::write(self, vb, len);
+                let nout = libc::write(self, vb, len as size_t);
                 if nout < 0 as ssize_t {
                     #error("error writing buffer");
                     log(error, os::last_os_error());

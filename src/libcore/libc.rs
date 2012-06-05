@@ -185,8 +185,8 @@ mod types {
             mod c99 {
                 type c_longlong = i64;
                 type c_ulonglong = u64;
-                type intptr_t = i32;
-                type uintptr_t = u32;
+                type intptr_t = int;
+                type uintptr_t = uint;
             }
             mod posix88 {
                 type off_t = i32;
@@ -229,8 +229,8 @@ mod types {
             mod c99 {
                 type c_longlong = i64;
                 type c_ulonglong = u64;
-                type intptr_t = i64;
-                type uintptr_t = u64;
+                type intptr_t = int;
+                type uintptr_t = uint;
             }
             mod posix88 {
                 type off_t = i64;
@@ -276,8 +276,8 @@ mod types {
             mod c99 {
                 type c_longlong = i64;
                 type c_ulonglong = u64;
-                type intptr_t = i64;
-                type uintptr_t = u64;
+                type intptr_t = int;
+                type uintptr_t = uint;
             }
             mod posix88 {
                 type off_t = i64;
@@ -323,8 +323,8 @@ mod types {
             mod c99 {
                 type c_longlong = i64;
                 type c_ulonglong = u64;
-                type intptr_t = i32;
-                type uintptr_t = u32;
+                type intptr_t = int;
+                type uintptr_t = uint;
             }
             mod posix88 {
                 type off_t = i32;
@@ -397,8 +397,8 @@ mod types {
             mod c99 {
                 type c_longlong = i64;
                 type c_ulonglong = u64;
-                type intptr_t = i32;
-                type uintptr_t = u32;
+                type intptr_t = int;
+                type uintptr_t = uint;
             }
             mod posix88 {
                 type off_t = i64;
@@ -441,8 +441,8 @@ mod types {
             mod c99 {
                 type c_longlong = i64;
                 type c_ulonglong = u64;
-                type intptr_t = i64;
-                type uintptr_t = u64;
+                type intptr_t = int;
+                type uintptr_t = uint;
             }
             mod posix88 {
                 type off_t = i64;
