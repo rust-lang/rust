@@ -2252,7 +2252,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
                                dtor"); }
           };
           trans_class_dtor(ccx, *pt, dtor.node.body,
-                           dtor.node.id, psubsts, some(hash_id), parent_id, s)
+                           dtor.node.id, psubsts, some(hash_id), parent_id)
       }
       // Ugh -- but this ensures any new variants won't be forgotten
       ast_map::node_expr(*) { ccx.tcx.sess.bug("Can't monomorphize an expr") }
@@ -4887,9 +4887,8 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
 fn trans_class_dtor(ccx: @crate_ctxt, path: path,
     body: ast::blk,
     dtor_id: ast::node_id, substs: option<param_substs>,
-                    hash_id: option<mono_id>, parent_id: ast::def_id,
-                    // mangled exported name for dtor
-                    s: str) -> ValueRef {
+                    hash_id: option<mono_id>, parent_id: ast::def_id)
+    -> ValueRef {
   let tcx = ccx.tcx;
   /* Look up the parent class's def_id */
   let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
@@ -4903,6 +4902,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   let lldty = T_fn([T_ptr(type_of(ccx, ty::mk_nil(tcx))),
                     T_ptr(type_of(ccx, class_ty))],
                    llvm::LLVMVoidType());
+  let s = get_dtor_symbol(ccx, path, dtor_id);
   /* Register the dtor as a function. It has external linkage */
   let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
   lib::llvm::SetLinkage(lldecl, lib::llvm::ExternalLinkage);
@@ -4912,9 +4912,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   option::iter(hash_id) {|h_id|
     ccx.monomorphized.insert(h_id, lldecl);
   }
-  /* Register the symbol for the dtor, and generate the code for its
-     body */
-  ccx.item_symbols.insert(dtor_id, s);
+  /* Translate the dtor body */
   trans_fn(ccx, path, ast_util::dtor_dec(),
            body, lldecl, impl_self(class_ty), substs, dtor_id);
   lldecl
@@ -4997,11 +4995,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                            get_item_val(ccx, ctor.node.id), psubsts,
                            ctor.node.id, local_def(item.id), ctor.span);
           option::iter(m_dtor) {|dtor|
-             let s = mangle_exported_name(ccx, *path +
-                                         [path_name(ccx.names("dtor"))],
-                                 ty::node_id_to_type(ccx.tcx, dtor.node.id));
              trans_class_dtor(ccx, *path, dtor.node.body,
-               dtor.node.id, none, none, local_def(item.id), s);
+               dtor.node.id, none, none, local_def(item.id));
           };
         }
         // If there are ty params, the ctor will get monomorphized
@@ -5162,8 +5157,21 @@ fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
     } + [path_name(i.ident)]
 }
 
+/* If there's already a symbol for the dtor with <id>, return it;
+   otherwise, create one and register it, returning it as well */
+fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id) -> str {
+  alt ccx.item_symbols.find(id) {
+     some(s) { s }
+     none    {
+         let s = mangle_exported_name(ccx, path +
+           [path_name(ccx.names("dtor"))], ty::node_id_to_type(ccx.tcx, id));
+         ccx.item_symbols.insert(id, s);
+         s
+     }
+  }
+}
+
 fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
-    #debug("get_item_val: %d", id);
     let tcx = ccx.tcx;
     alt ccx.item_vals.find(id) {
       some(v) { v }
@@ -5242,11 +5250,8 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             let lldty = T_fn([T_ptr(type_of(ccx, ty::mk_nil(tcx))),
                     T_ptr(type_of(ccx, class_ty))],
                                    llvm::LLVMVoidType());
-            /* The symbol for the dtor should have already been registered */
-            let s: str = alt ccx.item_symbols.find(id) {
-                    some(s) { s }
-                    none { ccx.sess.bug("in get_item_val, dtor is unbound"); }
-            };
+            let s = get_dtor_symbol(ccx, *pt, dt.node.id);
+
             /* Make the declaration for the dtor */
             let llfn = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
             lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
