@@ -168,7 +168,10 @@ exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
     void *p = task->kernel->malloc(total_size, "exchange malloc");
 
     rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
+    header->ref_count = -1; // This is not ref counted
     header->td = td;
+    header->prev = 0;
+    header->next = 0;
 
     memset(&header[1], '\0', body_size);
 
