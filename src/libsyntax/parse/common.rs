@@ -94,8 +94,11 @@ impl parser_common for parser {
 
     fn eat_keyword(word: str) -> bool {
         self.require_keyword(word);
-        alt copy self.token {
-          token::IDENT(sid, false) {
+
+        // FIXME: this gratuitous use of @ is to
+        // workaround LLVM bug #13042
+        alt @self.token {
+          @token::IDENT(sid, false) {
             if str::eq(word, self.get_str(sid)) {
                 self.bump();
                 ret true;
