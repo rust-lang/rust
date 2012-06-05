@@ -4,8 +4,12 @@ fn failfn() {
     fail;
 }
 
-resource r(v: *int) unsafe {
-    let v2: ~int = unsafe::reinterpret_cast(v);
+class r {
+  let v: *int;
+  new(v: *int) { self.v = v; }
+  drop unsafe {
+    let _v2: ~int = unsafe::reinterpret_cast(self.v);
+  }
 }
 
 fn main() unsafe {

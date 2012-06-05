@@ -9,11 +9,15 @@ fn recurse() {
     recurse();
 }
 
-resource r(recursed: *mut bool) unsafe {
+class r {
+  let recursed: *mut bool;
+  new(recursed: *mut bool) unsafe { self.recursed = recursed; }
+  drop unsafe { 
     if !*recursed {
         *recursed = true;
         recurse();
     }
+  }
 }
 
 fn main() {

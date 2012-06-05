@@ -1,15 +1,19 @@
 // error-pattern:whatever
 
-fn main() {
-    log(error, "whatever");
-    task::spawn {||
-        resource r(_i: ()) {
+class r {
             // Setting the exit status after the runtime has already
             // failed has no effect and the process exits with the
             // runtime's exit code
-            os::set_exit_status(50);
-        }
-        let i = r(());
+  drop {
+    os::set_exit_status(50);
+  }
+  new() {}
+}
+
+fn main() {
+    log(error, "whatever");
+    task::spawn {||
+      let i = r();
     };
     fail;
 }

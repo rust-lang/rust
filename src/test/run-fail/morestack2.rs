@@ -20,18 +20,21 @@ fn getbig_call_c_and_fail(i: int) {
     }
 }
 
-resource and_then_get_big_again(_i: ()) {
+class and_then_get_big_again {
+  new() {}
+  drop {
     fn getbig(i: int) {
         if i != 0 {
             getbig(i - 1);
         }
     }
     getbig(10000);
+  }
 }
 
 fn main() {
     task::spawn {||
-        let r = and_then_get_big_again(());
+        let r = and_then_get_big_again();
         getbig_call_c_and_fail(10000);
     };
 }

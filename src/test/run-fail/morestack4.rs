@@ -5,7 +5,7 @@
 use std;
 
 fn getbig_and_fail(&&i: int) {
-    let r = and_then_get_big_again(@0);
+    let r = and_then_get_big_again();
     if i != 0 {
         getbig_and_fail(i - 1);
     } else {
@@ -13,7 +13,9 @@ fn getbig_and_fail(&&i: int) {
     }
 }
 
-resource and_then_get_big_again(_i: @int) {
+class and_then_get_big_again {
+  new() {}
+  drop {}
 }
 
 fn main() {

@@ -1,9 +1,9 @@
 // error-pattern:fail
 // xfail-test
 
-resource r(i: int) {
-    // What happens when destructors throw?
-    fail;
+class r {
+  new(i:int) {}
+  drop { fail; }
 }
 
 fn main() {
