@@ -9,7 +9,7 @@ export is_nonpositive, is_nonnegative;
 export range;
 export compl;
 export abs;
-export parse_buf, from_str, to_str, str;
+export parse_buf, from_str, to_str, to_str_bytes, str;
 
 const min_value: T = -1 as T << (inst::bits - 1 as T);
 const max_value: T = min_value - 1 as T;
@@ -94,6 +94,14 @@ fn to_str(n: T, radix: uint) -> str {
     ret if n < 0 as T {
             "-" + uint::to_str(-n as uint, radix)
         } else { uint::to_str(n as uint, radix) };
+}
+
+fn to_str_bytes<U>(n: T, radix: uint, f: fn([u8]/&) -> U) -> U {
+    if n < 0 as T {
+        uint::to_str_bytes(true, -n as uint, radix, f)
+    } else {
+        uint::to_str_bytes(false, n as uint, radix, f)
+    }
 }
 
 #[doc = "Convert to a string"]

@@ -503,7 +503,7 @@ fn u64_from_be_bytes(data: [u8], start: uint, size: uint) -> u64 {
 impl writer_util for writer {
     fn write_char(ch: char) {
         if ch as uint < 128u {
-            self.write([ch as u8]);
+            self.write([ch as u8]/&);
         } else {
             self.write_str(str::from_char(ch));
         }
@@ -513,9 +513,12 @@ impl writer_util for writer {
         self.write_str(s);
         self.write_str("\n"/&);
     }
-    fn write_int(n: int) { self.write_str(int::to_str(n, 10u)); }
-    fn write_uint(n: uint) { self.write_str(uint::to_str(n, 10u)); }
-
+    fn write_int(n: int) {
+        int::to_str_bytes(n, 10u) {|buf| self.write(buf) }
+    }
+    fn write_uint(n: uint) {
+        uint::to_str_bytes(false, n, 10u) {|buf| self.write(buf) }
+    }
     fn write_le_uint(n: uint, size: uint) {
         u64_to_le_bytes(n as u64, size) {|v| self.write(v); }
     }

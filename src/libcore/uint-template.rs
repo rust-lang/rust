@@ -8,7 +8,8 @@ export is_positive, is_negative;
 export is_nonpositive, is_nonnegative;
 export range;
 export compl;
-export to_str, from_str, from_str_radix, str, parse_buf;
+export to_str, to_str_bytes;
+export from_str, from_str_radix, str, parse_buf;
 
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
@@ -102,10 +103,19 @@ Convert to a string in a given base
 
 Fails if `radix` < 2 or `radix` > 16
 "]
-fn to_str(num: T, radix: uint) -> str {
-    assert (1u < radix && radix <= 16u);
-    let mut n = num;
-    let radix = radix as T;
+fn to_str(num: T, radix: uint) -> str unsafe {
+    to_str_bytes(false, num, radix) {|slice|
+        vec::unpack_slice(slice) {|p, len|
+            str::unsafe::from_buf_len(p, len)
+        }
+    }
+}
+
+#[doc = "Low-level helper routine for string conversion."]
+fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
+                   f: fn([u8]/&) -> U) -> U unsafe {
+
+    #[inline(always)]
     fn digit(n: T) -> u8 {
         if n <= 9u as T {
             n as u8 + '0' as u8
@@ -115,35 +125,69 @@ fn to_str(num: T, radix: uint) -> str {
             fail;
         }
     }
-    if n == 0u as T { ret "0"; }
 
-    let mut buf: [mut u8] = [mut];
-    vec::reserve(buf, 20u); // Enough room to hold any number
+    assert (1u < radix && radix <= 16u);
 
-    while n != 0u as T {
-        buf += [digit(n % radix)];
-        n /= radix;
-    }
+    // Enough room to hold any number in any radix.
+    // Worst case: 64-bit number, binary-radix, with
+    // a leading negative sign = 65 bytes.
+    let buf : [mut u8]/65 =
+        [mut
+         0u8,0u8,0u8,0u8,0u8, 0u8,0u8,0u8,0u8,0u8,
+         0u8,0u8,0u8,0u8,0u8, 0u8,0u8,0u8,0u8,0u8,
 
-    buf += [0u8];
+         0u8,0u8,0u8,0u8,0u8, 0u8,0u8,0u8,0u8,0u8,
+         0u8,0u8,0u8,0u8,0u8, 0u8,0u8,0u8,0u8,0u8,
 
-    let mut start_idx = 0u;
-    let mut end_idx = buf.len() - 2u;
-    while start_idx < end_idx {
-        vec::swap(buf, start_idx, end_idx);
-        start_idx += 1u;
-        end_idx -= 1u;
-    }
+         0u8,0u8,0u8,0u8,0u8, 0u8,0u8,0u8,0u8,0u8,
+         0u8,0u8,0u8,0u8,0u8, 0u8,0u8,0u8,0u8,0u8,
 
-    unsafe {
-        let s = unsafe::reinterpret_cast(buf);
-        unsafe::forget(buf);
-        ret s;
+         0u8,0u8,0u8,0u8,0u8
+         ]/65;
+
+    // FIXME: post-snapshot, you can do this without
+    // the raw pointers and unsafe bits, and the
+    // codegen will prove it's all in-bounds, no
+    // extra cost.
+
+    vec::unpack_slice(buf) {|p, len|
+        let mp = p as *mut u8;
+        let mut i = len;
+        let mut n = num;
+        let radix = radix as T;
+        loop {
+            i -= 1u;
+            assert 0u < i && i < len;
+            *ptr::mut_offset(mp, i) = digit(n % radix);
+            n /= radix;
+            if n == 0 as T { break; }
+        }
+
+        assert 0u < i && i < len;
+
+        if neg {
+            i -= 1u;
+            *ptr::mut_offset(mp, i) = '-' as u8;
+        }
+
+        vec::unsafe::form_slice(ptr::offset(p, i),
+                                len - i, f)
     }
 }
 
 #[doc = "Convert to a string"]
 fn str(i: T) -> str { ret to_str(i, 10u); }
+
+#[test]
+fn test_to_str() {
+    assert to_str(0 as T, 10u) == "0";
+    assert to_str(1 as T, 10u) == "1";
+    assert to_str(2 as T, 10u) == "2";
+    assert to_str(11 as T, 10u) == "11";
+    assert to_str(11 as T, 16u) == "b";
+    assert to_str(255 as T, 16u) == "ff";
+    assert to_str(0xff as T, 10u) == "255";
+}
 
 #[test]
 #[ignore]
