@@ -46,6 +46,7 @@ enum lint {
     unrecognized_warning,
     non_implicitly_copyable_typarams,
     vecs_not_implicitly_copyable,
+    implicit_copies,
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -60,6 +61,7 @@ fn int_to_lint(i: int) -> lint {
       5 { unrecognized_warning }
       6 { non_implicitly_copyable_typarams }
       7 { vecs_not_implicitly_copyable }
+      8 { implicit_copies }
     }
 }
 
@@ -118,6 +120,11 @@ fn get_lint_dict() -> lint_dict {
          @{lint: vecs_not_implicitly_copyable,
            desc: "make vecs and strs not implicitly copyable\
                   ('err' is ignored; only checked at top level",
+           default: warn}),
+
+        ("implicit_copies",
+         @{lint: implicit_copies,
+           desc: "implicit copies of non implicitly copyable data",
            default: warn})
 
     ];

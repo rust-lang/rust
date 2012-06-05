@@ -9,7 +9,7 @@ import util::ppaux::{ty_to_str, tys_to_str};
 import syntax::print::pprust::expr_to_str;
 import freevars::freevar_entry;
 import dvec::extensions;
-import lint::non_implicitly_copyable_typarams;
+import lint::{non_implicitly_copyable_typarams,implicit_copies};
 
 // Kind analysis pass.
 //
@@ -83,21 +83,22 @@ fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-type check_fn = fn@(ctx, option<@freevar_entry>, bool, ty::t, sp: span);
+type check_fn = fn@(ctx, node_id, option<@freevar_entry>,
+                    bool, ty::t, sp: span);
 
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
 fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
-    fn check_for_uniq(cx: ctx, fv: option<@freevar_entry>, is_move: bool,
-                      var_t: ty::t, sp: span) {
+    fn check_for_uniq(cx: ctx, id: node_id, fv: option<@freevar_entry>,
+                      is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be sendable, regardless of whether it is
         // moved in or copied in
         check_send(cx, var_t, sp);
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
-        if !is_move { check_copy(cx, var_t, sp, is_implicit); }
+        if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
         for fv.each { |fv|
@@ -105,11 +106,11 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         }
     }
 
-    fn check_for_box(cx: ctx, fv: option<@freevar_entry>, is_move: bool,
-                     var_t: ty::t, sp: span) {
+    fn check_for_box(cx: ctx, id: node_id, fv: option<@freevar_entry>,
+                     is_move: bool, var_t: ty::t, sp: span) {
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
-        if !is_move { check_copy(cx, var_t, sp, is_implicit); }
+        if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
         for fv.each { |fv|
@@ -117,8 +118,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         }
     }
 
-    fn check_for_block(cx: ctx, fv: option<@freevar_entry>, _is_move: bool,
-                       _var_t: ty::t, sp: span) {
+    fn check_for_block(cx: ctx, _id: node_id, fv: option<@freevar_entry>,
+                       _is_move: bool, _var_t: ty::t, sp: span) {
         // only restriction: no capture clauses (we would have to take
         // ownership of the moved/copied in data).
         if fv.is_none() {
@@ -128,8 +129,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         }
     }
 
-    fn check_for_bare(cx: ctx, _fv: option<@freevar_entry>, _is_move: bool,
-                      _var_t: ty::t, sp: span) {
+    fn check_for_bare(cx: ctx, _id: node_id, _fv: option<@freevar_entry>,
+                      _is_move: bool,_var_t: ty::t, sp: span) {
         cx.tcx.sess.span_err(sp, "attempted dynamic environment capture");
     }
 
@@ -165,7 +166,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
-            chk(cx, none, cap_item.is_move, ty, cap_item.span);
+            chk(cx, fn_id, none, cap_item.is_move, ty, cap_item.span);
             cap_def_id
         };
 
@@ -187,7 +188,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             };
 
             let ty = ty::node_id_to_type(cx.tcx, id);
-            chk(cx, some(fv), is_move, ty, fv.span);
+            chk(cx, fn_id, some(fv), is_move, ty, fv.span);
         }
     }
 
@@ -377,7 +378,7 @@ fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool) {
        !cx.last_use_map.contains_key(ex.id) &&
        !is_nullary_variant(cx, ex) {
         let ty = ty::expr_ty(cx.tcx, ex);
-        check_copy(cx, ty, ex.span, implicit_copy);
+        check_copy(cx, ex.id, ty, ex.span, implicit_copy);
     }
 }
 
@@ -410,12 +411,14 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
     }
 }
 
-fn check_copy(cx: ctx, ty: ty::t, sp: span, implicit_copy: bool) {
+fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
+              implicit_copy: bool) {
     let k = ty::type_kind(cx.tcx, ty);
     if !ty::kind_can_be_copied(k) {
         cx.tcx.sess.span_err(sp, "copying a noncopyable value");
     } else if implicit_copy && !ty::kind_can_be_implicitly_copied(k) {
-        cx.tcx.sess.span_warn(
+        cx.tcx.sess.span_lint(
+            implicit_copies, id, cx.current_item,
             sp,
             "implicitly copying a non-implicitly-copyable value");
     }
