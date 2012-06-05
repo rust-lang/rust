@@ -15,7 +15,8 @@ import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
 import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
 import syntax::print::pprust::*;
-
+import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
+                      ignore};
 export ty_vid, region_vid, vid;
 export br_hashmap;
 export is_instantiable;
@@ -218,6 +219,7 @@ type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: hashmap<intern_key, t_box>,
       mut next_id: uint,
+      vecs_implicitly_copyable: bool,
       cstore: metadata::cstore::cstore,
       sess: session::session,
       def_map: resolve::def_map,
@@ -497,9 +499,13 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
         hash_type_structure(k.struct) +
             option::map_default(k.o_def_id, 0u, ast_util::hash_def)
     }, {|&&a, &&b| a == b});
+    let vecs_implicitly_copyable =
+        get_warning_level(s.warning_settings.default_settings,
+                          vecs_not_implicitly_copyable) == ignore;
     @{diag: s.diagnostic(),
       interner: interner,
       mut next_id: 0u,
+      vecs_implicitly_copyable: vecs_implicitly_copyable,
       cstore: s.cstore,
       sess: s,
       def_map: dm,
@@ -1459,8 +1465,12 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Scalar and unique types are sendable
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) { kind_implicitly_sendable() | kind_const() }
-      // FIXME: this *shouldn't* be implicitly copyable (#2450)
-      ty_str { kind_implicitly_sendable() | kind_const() }
+      // Implicit copyability of strs is configurable
+      ty_str {
+        if cx.vecs_implicitly_copyable {
+            kind_implicitly_sendable() | kind_const()
+        } else { kind_sendable() | kind_const() }
+      }
       ty_fn(f) { proto_kind(f.proto) }
 
       // Those with refcounts raise noncopyable to copyable,
@@ -1485,8 +1495,13 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_uniq(tm) {
         remove_implicit(remove_const(type_kind(cx, tm.ty), tm))
       }
-      // FIXME: Vectors *shouldn't* be implicitly copyable but are (#2450)
-      ty_vec(tm) { remove_const(mutable_type_kind(cx, tm), tm) }
+      // Implicit copyability of vecs is configurable
+      ty_vec(tm) {
+          let k = if cx.vecs_implicitly_copyable {
+              mutable_type_kind(cx, tm)
+          } else { remove_implicit(type_kind(cx, tm.ty)) };
+          remove_const(k, tm)
+      }
 
       // Slice and refcounted evecs are copyable; uniques and interiors
       // depend on the their contained type, but aren't implicitly copyable.

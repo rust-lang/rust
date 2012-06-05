@@ -8,10 +8,10 @@ import std::map::{map,hashmap,int_hash,hash_from_strs};
 import std::smallintmap::{map,smallintmap};
 import io::writer_util;
 import syntax::print::pprust::expr_to_str;
-
 export lint, ctypes, unused_imports;
 export level, ignore, warn, error;
-export lookup_lint, lint_dict, get_lint_dict, get_warning_settings_level;
+export lookup_lint, lint_dict, get_lint_dict;
+export get_warning_level, get_warning_settings_level;
 export check_crate, build_settings_crate, mk_warning_settings;
 export warning_settings;
 
@@ -45,6 +45,7 @@ enum lint {
     old_vecs,
     unrecognized_warning,
     non_implicitly_copyable_typarams,
+    vecs_not_implicitly_copyable,
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -58,6 +59,7 @@ fn int_to_lint(i: int) -> lint {
       4 { old_vecs }
       5 { unrecognized_warning }
       6 { non_implicitly_copyable_typarams }
+      7 { vecs_not_implicitly_copyable }
     }
 }
 
@@ -110,6 +112,12 @@ fn get_lint_dict() -> lint_dict {
         ("non_implicitly_copyable_typarams",
          @{lint: non_implicitly_copyable_typarams,
            desc: "passing non implicitly copyable types as copy type params",
+           default: warn}),
+
+        ("vecs_not_implicitly_copyable",
+         @{lint: vecs_not_implicitly_copyable,
+           desc: "make vecs and strs not implicitly copyable\
+                  ('err' is ignored; only checked at top level",
            default: warn})
 
     ];
