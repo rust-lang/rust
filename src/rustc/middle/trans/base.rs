@@ -2448,19 +2448,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
       }
       ast::def_self(sid) {
         let slf = alt copy cx.fcx.llself {
-          some(s) {
-            alt option::map(ty::ty_to_def_id(s.t)) {|did|
-                     ty::ty_dtor(cx.tcx(), did)} {
-              some(some(_)) {
-                  /* self is a class with a dtor, which means we
-                     have to select out the object itself
-                     (If any other code does the same thing, that's
-                     a bug */
-                GEPi(cx, cast_self(cx, s), [0u, 1u])
-            }
-            _ { cast_self(cx, s) }
-           }
-          }
+          some(s) { cast_self(cx, s) }
           none { cx.sess().bug("trans_local_var: reference to self \
                                  out of context"); }
         };
@@ -2535,9 +2523,13 @@ fn trans_rec_field(bcx: block, base: @ast::expr,
 
 fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
                          field: ast::ident, sp: span) -> lval_result {
+    let mut deref = false;
     let fields = alt ty::get(ty).struct {
        ty::ty_rec(fs) { fs }
        ty::ty_class(did, substs) {
+         if option::is_some(ty::ty_dtor(bcx.tcx(), did)) {
+           deref = true;
+         }
          ty::class_items_as_fields(bcx.tcx(), did, substs)
        }
        // Constraint?
@@ -2545,7 +2537,15 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
                  base expr has non-record type"); }
     };
     let ix = field_idx_strict(bcx.tcx(), sp, field, fields);
-    let val = GEPi(bcx, val, [0u, ix]);
+
+    /* self is a class with a dtor, which means we
+       have to select out the object itself
+       (If any other code does the same thing, that's
+       a bug */
+    let val = if deref {
+        GEPi(bcx, GEPi(bcx, val, [0u, 1u]), [0u, ix])
+    }
+    else { GEPi(bcx, val, [0u, ix]) };
 
     ret {bcx: bcx, val: val, kind: owned};
 }
