@@ -105,15 +105,16 @@ Initiate a client connection over TCP/IP
 
 # Arguments
 
-* `ip` - The IP address (versions 4 or 6) of the remote host
+* `input_ip` - The IP address (versions 4 or 6) of the remote host
 * `port` - the unsigned integer of the desired remote host port
 * `iotask` - a `uv::iotask` that the tcp request will run on
 
 # Returns
 
-A `result` that, if the operation succeeds, contains a `tcp_socket` that
-can be used to send and receive data to/from the remote host. In the event
-of failure, a `tcp_err_data` will be returned
+A `result` that, if the operation succeeds, contains a `net::net::tcp_socket`
+that can be used to send and receive data to/from the remote host. In the
+event of failure, a `net::tcp::tcp_connect_err_data` instance will be
+returned
 "]
 fn connect(input_ip: ip::ip_addr, port: uint,
            iotask: iotask)
@@ -244,9 +245,12 @@ Write binary data to tcp stream; Returns a `future::future` value immediately
 
 # Safety
 
-This function can produce unsafe results if the call to `write_future` is
-made, the `future::future` value returned is never resolved via
-`future::get`, and then the `tcp_socket` passed in to `write_future` leaves
+This function can produce unsafe results if:
+
+1. the call to `write_future` is made
+2. the `future::future` value returned is never resolved via
+`future::get`
+3. and then the `tcp_socket` passed in to `write_future` leaves
 scope and is destructed before the task that runs the libuv write
 operation completes.
 
@@ -270,7 +274,8 @@ fn write_future(sock: tcp_socket, raw_write_data: [u8]/~)
     -> future<result::result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     future_spawn {||
-        write_common_impl(socket_data_ptr, raw_write_data)
+        let data_copy = copy(raw_write_data);
+        write_common_impl(socket_data_ptr, data_copy)
     }
 }
 
@@ -301,9 +306,11 @@ Stop reading from an open TCP connection; used with `read_start`
 
 * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
 "]
-fn read_stop(sock: tcp_socket) ->
+fn read_stop(sock: tcp_socket,
+             -read_port: comm::port<result::result<[u8], tcp_err_data>>) ->
     result::result<(), tcp_err_data> unsafe {
-    let socket_data = ptr::addr_of(*(sock.socket_data));
+    log(debug, #fmt("taking the read_port out of commission %?", read_port));
+    let socket_data = ptr::addr_of(**sock);
     read_stop_common_impl(socket_data)
 }
 
@@ -388,7 +395,15 @@ Here, the `new_conn` is used in conjunction with `accept` from within
 a task spawned by the `new_connect_cb` passed into `listen`
 
 ~~~~~~~~~~~
-net::tcp::listen(remote_ip, remote_port, backlog) {|new_conn, kill_ch|
+net::tcp::listen(remote_ip, remote_port, backlog)
+    // this callback is ran once after the connection is successfully
+    // set up
+    {|kill_ch|
+      // pass the kill_ch to your main loop or wherever you want
+      // to be able to externally kill the server from
+    }
+    // this callback is ran when a new connection arrives
+    {|new_conn, kill_ch|
     let cont_po = comm::port::<option<tcp_err_data>>();
     let cont_ch = comm::chan(cont_po);
     task::spawn {||
@@ -418,13 +433,11 @@ net::tcp::listen(remote_ip, remote_port, backlog) {|new_conn, kill_ch|
 
 # Returns
 
-* Success
-  * On success, this function will return a `net::tcp::tcp_socket` as the
-  `ok` variant of a `result`. The `net::tcp::tcp_socket` is anchored within
-  the task that `accept` was called within for its lifetime.
-* Failure
-  * On failure, this function will return a `net::tcp::tcp_err_data` record
-  as the `err` variant of a `result`.
+On success, this function will return a `net::tcp::tcp_socket` as the
+`ok` variant of a `result`. The `net::tcp::tcp_socket` is anchored within
+the task that `accept` was called within for its lifetime. On failure,
+this function will return a `net::tcp::tcp_err_data` record
+as the `err` variant of a `result`.
 "]
 fn accept(new_conn: tcp_new_connection)
     -> result::result<tcp_socket, tcp_err_data> unsafe {
@@ -525,7 +538,7 @@ callback's arguments are:
 # returns
 
 a `result` instance containing empty data of type `()` on a
-successful/normal shutdown, and a `tcp_err_data` record in the event
+successful/normal shutdown, and a `tcp_listen_err_data` enum in the event
 of listen exiting because of an error
 "]
 fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
@@ -665,9 +678,10 @@ impl methods_tcp_socket for tcp_socket {
         result::result<[u8]/~, tcp_err_data>>, tcp_err_data> {
         read_start(self)
     }
-    fn read_stop() ->
+    fn read_stop(-read_port:
+                 comm::port<result::result<[u8], tcp_err_data>>) ->
         result::result<(), tcp_err_data> {
-        read_stop(self)
+        read_stop(self, read_port)
     }
     fn read(timeout_msecs: uint) ->
         result::result<[u8]/~, tcp_err_data> {
