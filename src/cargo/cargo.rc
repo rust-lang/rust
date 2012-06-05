@@ -19,6 +19,8 @@
 
 #[no_core];
 
+#[warn(no_non_implicitly_copyable_typarams,no_vecs_not_implicitly_copyable)];
+
 use core(vers = "0.2");
 use std(vers = "0.2");
 use rustc(vers = "0.2");

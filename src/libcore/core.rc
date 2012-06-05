@@ -31,6 +31,8 @@ This behavior can be disabled with the `#[no_core]` crate attribute.
 // Don't link to core. We are core.
 #[no_core];
 
+#[warn(no_vecs_not_implicitly_copyable)];
+
 export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;
 export float, f32, f64;

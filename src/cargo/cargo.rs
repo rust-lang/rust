@@ -1,7 +1,5 @@
 // cargo.rs - Rust package manager
 
-#[warn(no_non_implicitly_copyable_typarams)];
-
 import syntax::{ast, codemap};
 import syntax::parse;
 import rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
