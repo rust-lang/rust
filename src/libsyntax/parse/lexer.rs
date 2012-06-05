@@ -4,8 +4,9 @@ import diagnostic;
 import ast::{tt_delim,tt_flat};
 
 export reader, string_reader, new_string_reader, is_whitespace;
+export tt_reader, new_tt_reader;
 export nextch, is_eof, bump, get_str_from;
-export string_reader_as_reader;
+export string_reader_as_reader, tt_reader_as_reader;
 
 iface reader {
     fn is_eof() -> bool;
@@ -27,13 +28,26 @@ type tt_frame = @{
 };
 
 type tt_reader = @{
-    mut cur: tt_frame,
-    interner: @interner::interner<@str>,
     span_diagnostic: diagnostic::span_handler,
+    interner: @interner::interner<@str>,
+    mut cur: tt_frame,
     /* cached: */
     mut cur_tok: token::token,
     mut cur_chpos: uint
 };
+
+fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
+                 itr: @interner::interner<@str>, src: ast::token_tree)
+    -> tt_reader {
+    let r = @{span_diagnostic: span_diagnostic, interner: itr,
+              mut cur: @{readme: [src], mut idx: 0u,
+                         up: tt_frame_up(option::none)},
+              mut cur_tok: token::EOF, /* dummy value, never read */
+              mut cur_chpos: 0u /* dummy value, never read */
+             };
+    (r as reader).next_token(); /* get cur_tok and cur_chpos set up */
+    ret r;
+}
 
 type string_reader = @{
     span_diagnostic: diagnostic::span_handler,
@@ -45,6 +59,21 @@ type string_reader = @{
     filemap: codemap::filemap,
     interner: @interner::interner<@str>
 };
+
+fn new_string_reader(span_diagnostic: diagnostic::span_handler,
+                     filemap: codemap::filemap,
+                     itr: @interner::interner<@str>) -> string_reader {
+    let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
+              mut col: 0u, mut pos: 0u, mut curr: -1 as char,
+              mut chpos: filemap.start_pos.ch,
+              filemap: filemap, interner: itr};
+    if r.pos < (*filemap.src).len() {
+        let next = str::char_range_at(*r.src, r.pos);
+        r.pos = next.next;
+        r.curr = next.ch;
+    }
+    ret r;
+}
 
 impl string_reader_as_reader of reader for string_reader {
     fn is_eof() -> bool { is_eof(self) }
@@ -70,7 +99,6 @@ impl tt_reader_as_reader of reader for tt_reader {
     fn is_eof() -> bool { self.cur_tok == token::EOF }
     fn next_token() -> {tok: token::token, chpos: uint} {
         let ret_val = { tok: self.cur_tok, chpos: self.cur_chpos };
-        self.cur.idx += 1u;
         if self.cur.idx >= vec::len(self.cur.readme) {
             /* done with this set; pop */
             alt self.cur.up {
@@ -97,6 +125,7 @@ impl tt_reader_as_reader of reader for tt_reader {
               }
               tt_flat(chpos, tok) {
                 self.cur_chpos = chpos; self.cur_tok = tok;
+                self.cur.idx += 1u;
                 ret ret_val;
               }
           }
@@ -142,21 +171,6 @@ fn nextch(rdr: string_reader) -> char {
     if rdr.pos < (*rdr.src).len() {
         ret str::char_at(*rdr.src, rdr.pos);
     } else { ret -1 as char; }
-}
-
-fn new_string_reader(span_diagnostic: diagnostic::span_handler,
-                     filemap: codemap::filemap,
-                     itr: @interner::interner<@str>) -> string_reader {
-    let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
-              mut col: 0u, mut pos: 0u, mut curr: -1 as char,
-              mut chpos: filemap.start_pos.ch,
-              filemap: filemap, interner: itr};
-    if r.pos < (*filemap.src).len() {
-        let next = str::char_range_at(*r.src, r.pos);
-        r.pos = next.next;
-        r.curr = next.ch;
-    }
-    ret r;
 }
 
 fn dec_digit_val(c: char) -> int { ret (c as int) - ('0' as int); }

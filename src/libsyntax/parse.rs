@@ -18,7 +18,8 @@ import attr::parser_attr;
 import common::parser_common;
 import ast::node_id;
 import util::interner;
-import lexer::{string_reader_as_reader, reader, string_reader};
+import lexer::{string_reader_as_reader, tt_reader_as_reader,
+               reader, string_reader, tt_reader};
 
 type parse_sess = @{
     cm: codemap::codemap,
@@ -177,4 +178,11 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
                         ftype: parser::file_type) -> parser {
     let (p, _) = new_parser_etc_from_file(sess, cfg, path, ftype);
     ret p;
+}
+
+fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
+                      itr: @interner::interner<@str>, tt: ast::token_tree)
+    -> parser {
+    let trdr = lexer::new_tt_reader(sess.span_diagnostic, itr, tt);
+    ret parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }
