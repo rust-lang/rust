@@ -26,11 +26,13 @@ enum tg { bar, }
 
 #[cfg(bogus)]
 class r {
-  new(i:int) {}
+  let i: int;
+  new(i:int) { self.i = i; }
 }
 
 class r {
-  new(i:int) {}
+  let i: int;
+  new(i:int) { self.i = i; }
 }
 
 #[cfg(bogus)]
