@@ -5301,6 +5301,7 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
     let T_memset64_args: [TypeRef] =
         [T_ptr(T_i8()), T_i8(), T_i64(), T_i32(), T_i1()];
     let T_trap_args: [TypeRef] = [];
+    let T_frameaddress_args: [TypeRef] = [T_i32()];
     let gcroot =
         decl_cdecl_fn(llmod, "llvm.gcroot",
                       T_fn([T_ptr(T_ptr(T_i8())), T_ptr(T_i8())], T_void()));
@@ -5320,6 +5321,9 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
         decl_cdecl_fn(llmod, "llvm.memset.p0i8.i64",
                       T_fn(T_memset64_args, T_void()));
     let trap = decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
+    let frameaddress = decl_cdecl_fn(llmod, "llvm.frameaddress",
+                                     T_fn(T_frameaddress_args,
+                                          T_ptr(T_i8())));
     let intrinsics = str_hash::<ValueRef>();
     intrinsics.insert("llvm.gcroot", gcroot);
     intrinsics.insert("llvm.gcread", gcread);
@@ -5328,6 +5332,7 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
     intrinsics.insert("llvm.memset.p0i8.i32", memset32);
     intrinsics.insert("llvm.memset.p0i8.i64", memset64);
     intrinsics.insert("llvm.trap", trap);
+    intrinsics.insert("llvm.frameaddress", frameaddress);
     ret intrinsics;
 }
 

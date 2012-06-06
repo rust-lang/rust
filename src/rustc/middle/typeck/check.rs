@@ -2317,7 +2317,9 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
         let (_, visitor_iface) = ccx.tcx.intrinsic_ifaces.get("ty_visitor");
         (1u, [arg(ast::by_ref, visitor_iface)], ty::mk_nil(tcx))
       }
-
+      "frame_address" {
+        (0u, [], ty::mk_imm_ptr(tcx, ty::mk_mach_uint(tcx, ast::ty_u8)))
+      }
       other {
         tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +
                           other + "`");

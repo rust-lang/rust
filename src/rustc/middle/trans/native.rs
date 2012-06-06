@@ -755,22 +755,44 @@ fn trans_native_mod(ccx: @crate_ctxt,
     }
 
     let mut cc = alt abi {
-      ast::native_abi_rust_intrinsic { ret; }
+      ast::native_abi_rust_intrinsic |
       ast::native_abi_cdecl { lib::llvm::CCallConv }
       ast::native_abi_stdcall { lib::llvm::X86StdcallCallConv }
     };
 
     for vec::each(native_mod.items) {|native_item|
       alt native_item.node {
-        ast::native_item_fn(fn_decl, _) {
+        ast::native_item_fn(fn_decl, typarams) {
           let id = native_item.id;
-          let llwrapfn = get_item_val(ccx, id);
-          let tys = c_stack_tys(ccx, id);
-          if attr::attrs_contains_name(native_item.attrs, "rust_stack") {
-              build_direct_fn(ccx, llwrapfn, native_item, tys, cc);
+          if abi != ast::native_abi_rust_intrinsic {
+              let llwrapfn = get_item_val(ccx, id);
+              let tys = c_stack_tys(ccx, id);
+              if attr::attrs_contains_name(native_item.attrs, "rust_stack") {
+                  build_direct_fn(ccx, llwrapfn, native_item, tys, cc);
+              } else {
+                  let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
+                  build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
+              }
           } else {
-              let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
-              build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
+              // Intrinsics with type parameters are emitted by
+              // monomorphic_fn, but ones without are emitted here
+              if typarams.is_empty() {
+                  let llwrapfn = get_item_val(ccx, id);
+                  let path = alt ccx.tcx.items.find(id) {
+                      some(ast_map::node_native_item(_, _, pt)) { pt }
+                      _ {
+                          ccx.sess.span_bug(native_item.span,
+                                            "can't find intrinsic path")
+                      }
+                  };
+                  let psubsts = {
+                      tys: [],
+                      vtables: none,
+                      bounds: @[]
+                  };
+                  trans_intrinsic(ccx, llwrapfn, native_item,
+                                  *path, psubsts, none);
+              }
           }
         }
       }
@@ -783,31 +805,41 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
                                some(substs), some(item.span));
     let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
-    let tp_ty = substs.tys[0], lltp_ty = type_of::type_of(ccx, tp_ty);
     alt check item.ident {
       "size_of" {
+        let tp_ty = substs.tys[0];
+        let lltp_ty = type_of::type_of(ccx, tp_ty);
         Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
               fcx.llretptr);
       }
       "min_align_of" {
+        let tp_ty = substs.tys[0];
+        let lltp_ty = type_of::type_of(ccx, tp_ty);
         Store(bcx, C_uint(ccx, shape::llalign_of_min(ccx, lltp_ty)),
               fcx.llretptr);
       }
       "pref_align_of" {
+        let tp_ty = substs.tys[0];
+        let lltp_ty = type_of::type_of(ccx, tp_ty);
         Store(bcx, C_uint(ccx, shape::llalign_of_pref(ccx, lltp_ty)),
               fcx.llretptr);
       }
       "get_tydesc" {
+        let tp_ty = substs.tys[0];
         let td = get_tydesc_simple(ccx, tp_ty);
         Store(bcx, PointerCast(bcx, td, T_ptr(T_nil())), fcx.llretptr);
       }
       "init" {
+        let tp_ty = substs.tys[0];
+        let lltp_ty = type_of::type_of(ccx, tp_ty);
         if !ty::type_is_nil(tp_ty) {
             Store(bcx, C_null(lltp_ty), fcx.llretptr);
         }
       }
       "forget" {}
       "reinterpret_cast" {
+        let tp_ty = substs.tys[0];
+        let lltp_ty = type_of::type_of(ccx, tp_ty);
         let llout_ty = type_of::type_of(ccx, substs.tys[1]);
         let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
             out_sz = shape::llsize_of_real(ccx, llout_ty);
@@ -831,6 +863,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
         Store(bcx, get_param(decl, first_real_arg), fcx.llretptr);
       }
       "needs_drop" {
+        let tp_ty = substs.tys[0];
         Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
               fcx.llretptr);
       }
@@ -838,6 +871,11 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
         let tp_ty = substs.tys[0];
         let visitor = get_param(decl, first_real_arg);
         call_tydesc_glue(bcx, visitor, tp_ty, abi::tydesc_field_visit_glue);
+      }
+      "frame_address" {
+        let frameaddress = ccx.intrinsics.get("llvm.frameaddress");
+        let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)]);
+        Store(bcx, frameaddress_val, fcx.llretptr);
       }
     }
     build_return(bcx);
