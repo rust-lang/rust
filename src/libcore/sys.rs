@@ -7,6 +7,7 @@ export min_align_of;
 export pref_align_of;
 export refcount;
 export log_str;
+export lock_and_signal, condition, methods;
 
 enum type_desc = {
     first_param: **libc::c_int,
@@ -15,11 +16,20 @@ enum type_desc = {
     // Remaining fields not listed
 };
 
+type rust_cond_lock = *libc::c_void;
+
 #[abi = "cdecl"]
 native mod rustrt {
     pure fn refcount(t: *()) -> libc::intptr_t;
     fn unsupervise();
     pure fn shape_log_str(t: *sys::type_desc, data: *()) -> str;
+
+    fn rust_create_cond_lock() -> rust_cond_lock;
+    fn rust_destroy_cond_lock(lock: rust_cond_lock);
+    fn rust_lock_cond_lock(lock: rust_cond_lock);
+    fn rust_unlock_cond_lock(lock: rust_cond_lock);
+    fn rust_wait_cond_lock(lock: rust_cond_lock);
+    fn rust_signal_cond_lock(lock: rust_cond_lock) -> bool;
 }
 
 #[abi = "rust-intrinsic"]
@@ -74,8 +84,50 @@ pure fn log_str<T>(t: T) -> str {
     }
 }
 
+resource lock_and_signal(lock: rust_cond_lock) {
+    rustrt::rust_destroy_cond_lock(lock);
+}
+
+enum condition {
+    condition_(rust_cond_lock)
+}
+
+resource unlock(lock: rust_cond_lock) {
+    rustrt::rust_unlock_cond_lock(lock);
+}
+
+fn create_lock() -> lock_and_signal {
+    lock_and_signal(rustrt::rust_create_cond_lock())
+}
+
+impl methods for lock_and_signal {
+    fn lock<T>(f: fn() -> T) -> T {
+        rustrt::rust_lock_cond_lock(*self);
+        let _r = unlock(*self);
+        f()
+    }
+
+    fn lock_cond<T>(f: fn(condition) -> T) -> T {
+        rustrt::rust_lock_cond_lock(*self);
+        let _r = unlock(*self);
+        f(condition_(*self))
+    }
+}
+
+impl methods for condition {
+    fn wait() {
+        rustrt::rust_wait_cond_lock(*self);
+    }
+
+    fn signal() -> bool {
+        rustrt::rust_signal_cond_lock(*self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std;
+    import std::arc;
 
     #[test]
     fn size_of_basic() {
@@ -120,6 +172,26 @@ mod tests {
     fn align_of_64() {
         assert pref_align_of::<uint>() == 8u;
         assert pref_align_of::<*uint>() == 8u;
+    }
+
+    #[test]
+    fn condition_variable() {
+        let lock = arc::arc(create_lock());
+        let lock2 = arc::clone(&lock);
+
+        task::spawn {|move lock2|
+            let lock = arc::get(&lock2);
+            (*lock).lock_cond {|c|
+                c.wait();
+            }
+        }
+
+        let mut signaled = false;
+        while !signaled {
+            (*arc::get(&lock)).lock_cond {|c|
+                signaled = c.signal()
+            }
+        }
     }
 }
 
