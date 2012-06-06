@@ -15,7 +15,8 @@ import std::map::hashmap;
 import getopts::{opt_present};
 import rustc::driver::driver::*;
 import syntax::codemap;
-import rustc::driver::{diagnostic, session};
+import syntax::diagnostic;
+import rustc::driver::session;
 import rustc::middle::lint;
 import io::reader_util;
 

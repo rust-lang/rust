@@ -1,6 +1,14 @@
 import std::map::hashmap;
 import middle::ty;
-import middle::ty::*;
+import middle::ty::{arg, bound_region, br_anon, br_named, canon_mode};
+import middle::ty::{ck_block, ck_box, ck_uniq, constr, ctxt, field, method};
+import middle::ty::{mt, re_bound, re_free, re_scope, re_var, region, t};
+import middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_constr, ty_enum};
+import middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_iface, ty_int};
+import middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
+import middle::ty::{ty_ptr, ty_rec, ty_res, ty_rptr, ty_self, ty_str, ty_tup};
+import middle::ty::{ty_type, ty_uniq, ty_uint, ty_var, ty_var_integral};
+import middle::ty::{ty_vec, vid};
 import metadata::encoder;
 import syntax::codemap;
 import syntax::print::pprust;
