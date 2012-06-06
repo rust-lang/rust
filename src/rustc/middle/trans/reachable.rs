@@ -63,6 +63,10 @@ fn traverse_def_id(cx: ctx, did: def_id) {
       ast_map::node_method(_, impl_id, _) { traverse_def_id(cx, impl_id); }
       ast_map::node_native_item(item, _, _) { cx.rmap.insert(item.id, ()); }
       ast_map::node_variant(v, _, _) { cx.rmap.insert(v.node.id, ()); }
+      // If it's a class ctor, consider the parent reachable
+      ast_map::node_ctor(_, _, ast_map::class_ctor(_, parent_id), _) {
+        traverse_def_id(cx, parent_id);
+      }
       _ {}
     }
 }
