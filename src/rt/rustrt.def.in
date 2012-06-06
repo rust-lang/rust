@@ -163,3 +163,9 @@ rust_port_drop
 rust_port_task
 rust_task_inhibit_kill
 rust_task_allow_kill
+rust_create_cond_lock
+rust_destroy_cond_lock
+rust_lock_cond_lock
+rust_unlock_cond_lock
+rust_wait_cond_lock
+rust_signal_cond_lock
