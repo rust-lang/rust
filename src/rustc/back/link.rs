@@ -636,7 +636,12 @@ fn link_binary(sess: session,
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        cc_args += ["-lrt", "-ldl", "-lm"];
+        cc_args += ["-lrt", "-ldl"];
+
+        // LLVM implements the `frem` instruction as a call to `fmod`,
+        // which lives in libm. Similar to above, on some linuxes we
+        // have to be explicit about linking to it. See #2510
+        cc_args += ["-lm"];
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
