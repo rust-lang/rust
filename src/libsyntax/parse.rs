@@ -2,6 +2,8 @@
 import dvec::extensions;
 
 export parse_sess;
+export new_parse_sess;
+export new_parse_sess_special_handler;
 export next_node_id;
 export new_parser_from_file;
 export new_parser_etc_from_file;
@@ -20,15 +22,37 @@ import ast::node_id;
 import util::interner;
 import lexer::{string_reader_as_reader, tt_reader_as_reader,
                reader, string_reader, tt_reader};
+import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 
 type parse_sess = @{
     cm: codemap::codemap,
     mut next_id: node_id,
-    span_diagnostic: diagnostic::span_handler,
+    span_diagnostic: span_handler,
+    interner: @interner::interner<@str>,
     // these two must be kept up to date
     mut chpos: uint,
     mut byte_pos: uint
 };
+
+fn new_parse_sess(demitter: option<emitter>) -> parse_sess {
+    let cm = codemap::new_codemap();
+    ret @{cm: cm,
+          mut next_id: 1,
+          span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+          interner: @interner::mk::<@str>({|x|str::hash(*x)},
+                                          {|x,y|str::eq(*x, *y)}),
+          mut chpos: 0u, mut byte_pos: 0u};
+}
+
+fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
+    -> parse_sess {
+    ret @{cm: cm,
+          mut next_id: 1,
+          span_diagnostic: sh,
+          interner: @interner::mk::<@str>({|x|str::hash(*x)},
+                                          {|x,y|str::eq(*x, *y)}),
+          mut chpos: 0u, mut byte_pos: 0u};
+}
 
 fn parse_crate_from_file(input: str, cfg: ast::crate_cfg, sess: parse_sess) ->
    @ast::crate {
@@ -139,11 +163,8 @@ fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
     let filemap = codemap::new_filemap_w_substr
         (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
-    let itr = @interner::mk::<@str>(
-        {|x|str::hash(*x)},
-        {|x,y|str::eq(*x, *y)}
-    );
-    let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap, itr);
+    let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
+                                        sess.interner);
     ret (parser(sess, cfg, srdr as reader, ftype), srdr);
 }
 
@@ -166,11 +187,8 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
     let src = @result::unwrap(res);
     let filemap = codemap::new_filemap(path, src, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
-    let itr = @interner::mk::<@str>(
-        {|x|str::hash(*x)},
-        {|x,y|str::eq(*x, *y)}
-    );
-    let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap, itr);
+    let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
+                                        sess.interner);
     ret (parser(sess, cfg, srdr as reader, ftype), srdr);
 }
 
@@ -181,8 +199,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
 }
 
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
-                      itr: @interner::interner<@str>, tt: ast::token_tree)
-    -> parser {
-    let trdr = lexer::new_tt_reader(sess.span_diagnostic, itr, tt);
+                      tt: ast::token_tree) -> parser {
+    let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner, tt);
     ret parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }

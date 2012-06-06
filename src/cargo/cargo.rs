@@ -238,15 +238,7 @@ fn load_link(mis: [@ast::meta_item]) -> (option<str>,
 }
 
 fn load_crate(filename: str) -> option<crate> {
-    let cm = codemap::new_codemap();
-    let handler = diagnostic::mk_handler(none);
-    let sess = @{
-        cm: cm,
-        mut next_id: 1,
-        span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mut chpos: 0u,
-        mut byte_pos: 0u
-    };
+    let sess = parse::new_parse_sess(none);
     let c = parse::parse_crate_from_crate_file(filename, [], sess);
 
     let mut name = none;

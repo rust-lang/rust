@@ -27,15 +27,7 @@ mod test {
         import syntax::codemap;
         import syntax::diagnostic;
 
-        let cm = codemap::new_codemap();
-        let handler = diagnostic::mk_handler(none);
-        let parse_sess = @{
-            cm: cm,
-            mut next_id: 0,
-            span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-            mut chpos: 0u,
-            mut byte_pos: 0u
-        };
+        let parse_sess = syntax::parse::new_parse_sess(none);
         let parser = parse::new_parser_from_source_str(
             parse_sess, [], "-", codemap::fss_none, @source);
 

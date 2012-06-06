@@ -49,6 +49,10 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   }
                 }
               }
+              /*
+              mac_invoc_tt(path, body) {
+                let p = new_parser_from_tt(cx.sess, cx.cfg, )
+              }*/
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }

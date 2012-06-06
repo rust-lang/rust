@@ -508,8 +508,7 @@ fn build_session(sopts: @session::options,
 }
 
 fn build_session_(
-    sopts: @session::options,
-    codemap: codemap::codemap,
+    sopts: @session::options, cm: codemap::codemap,
     demitter: diagnostic::emitter,
     span_diagnostic_handler: diagnostic::span_handler
 ) -> session {
@@ -523,14 +522,9 @@ fn build_session_(
     @{targ_cfg: target_cfg,
       opts: sopts,
       cstore: cstore,
-      parse_sess: @{
-          cm: codemap,
-          mut next_id: 1,
-          span_diagnostic: span_diagnostic_handler,
-          mut chpos: 0u,
-          mut byte_pos: 0u
-      },
-      codemap: codemap,
+      parse_sess:
+          parse::new_parse_sess_special_handler(span_diagnostic_handler, cm),
+      codemap: cm,
       // For a library crate, this is always none
       mut main_fn: none,
       span_diagnostic: span_diagnostic_handler,

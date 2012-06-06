@@ -416,15 +416,7 @@ fn check_compiling(filename: str) -> happiness {
 
 fn parse_and_print(code: @str) -> str {
     let filename = "tmp.rs";
-    let cm = codemap::new_codemap();
-    let handler = diagnostic::mk_handler(none);
-    let sess = @{
-        cm: cm,
-        mut next_id: 1,
-        span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mut chpos: 0u,
-        mut byte_pos: 0u
-    };
+    let sess = parse::new_parse_sess(option::none);
     write_file(filename, *code);
     let crate = parse::parse_crate_from_source_str(
         filename, code, [], sess);
@@ -566,15 +558,7 @@ fn check_variants(files: [str], cx: context) {
         }
 
         log(error, "check_variants: " + file);
-        let cm = codemap::new_codemap();
-        let handler = diagnostic::mk_handler(none);
-        let sess = @{
-            cm: cm,
-            mut next_id: 1,
-            span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-            mut chpos: 0u,
-            mut byte_pos: 0u
-        };
+        let sess = parse::new_parse_sess(option::none);
         let crate =
             parse::parse_crate_from_source_str(
                 file,

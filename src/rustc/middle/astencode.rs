@@ -1019,20 +1019,6 @@ fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
 }
 
 #[cfg(test)]
-fn new_parse_sess() -> parse::parse_sess {
-    let cm = codemap::new_codemap();
-    let handler = diagnostic::mk_handler(option::none);
-    let sess = @{
-        cm: cm,
-        mut next_id: 1,
-        span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mut chpos: 0u,
-        mut byte_pos: 0u
-    };
-    ret sess;
-}
-
-#[cfg(test)]
 iface fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg;
     fn parse_sess() -> parse::parse_sess;
@@ -1044,7 +1030,7 @@ type fake_session = ();
 #[cfg(test)]
 impl of fake_ext_ctxt for fake_session {
     fn cfg() -> ast::crate_cfg { [] }
-    fn parse_sess() -> parse::parse_sess { new_parse_sess() }
+    fn parse_sess() -> parse::parse_sess { parse::new_parse_sess(none) }
 }
 
 #[cfg(test)]
