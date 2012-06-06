@@ -1,5 +1,4 @@
 import T = inst::T;
-import cmp::{eq, ord};
 
 export min_value, max_value;
 export min, max;
@@ -11,7 +10,6 @@ export range;
 export compl;
 export abs;
 export parse_buf, from_str, to_str, to_str_bytes, str;
-export ord, eq;
 
 const min_value: T = -1 as T << (inst::bits - 1 as T);
 const max_value: T = min_value - 1 as T;
@@ -109,18 +107,6 @@ fn to_str_bytes<U>(n: T, radix: uint, f: fn([u8]/&) -> U) -> U {
 
 #[doc = "Convert to a string"]
 fn str(i: T) -> str { ret to_str(i, 10u); }
-
-impl ord of ord for T {
-    fn lt(&&other: T) -> bool {
-        ret self < other;
-    }
-}
-
-impl eq of eq for T {
-    fn eq(&&other: T) -> bool {
-        ret self == other;
-    }
-}
 
 
 // FIXME: Has alignment issues on windows and 32-bit linux

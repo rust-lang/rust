@@ -7,6 +7,7 @@ import syntax::{ast, ast_util};
 import syntax::attr;
 import middle::ty;
 import syntax::ast_map;
+import common::*;
 import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
         parse_ident};
 import syntax::print::pprust;
@@ -14,7 +15,6 @@ import cmd=cstore::crate_metadata;
 import util::ppaux::ty_to_str;
 import ebml::deserializer;
 import syntax::diagnostic::span_handler;
-import common::*;
 
 export class_dtor;
 export get_class_fields;

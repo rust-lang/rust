@@ -3749,8 +3749,6 @@ fn lval_to_dps(bcx: block, e: @ast::expr, dest: dest) -> block {
     let ty = expr_ty(bcx, e);
     let lv = trans_lval(bcx, e);
     let last_use = (lv.kind == owned && last_use_map.contains_key(e.id));
-    #debug["is last use (%s) = %b, %d", expr_to_str(e), last_use,
-           lv.kind as int];
     lval_result_to_dps(lv, ty, last_use, dest)
 }
 
@@ -4041,10 +4039,29 @@ fn init_local(bcx: block, local: @ast::local) -> block {
     let ty = node_id_type(bcx, local.node.id);
     let llptr = alt bcx.fcx.lllocals.find(local.node.id) {
       some(local_mem(v)) { v }
-      _ { bcx.tcx().sess.span_bug(local.span,
+      some(_) { bcx.tcx().sess.span_bug(local.span,
                         "init_local: Someone forgot to document why it's\
                          safe to assume local.node.init must be local_mem!");
+      }
+      // This is a local that is kept immediate
+      none {
+        let initexpr = alt local.node.init {
+                some({expr, _}) { expr }
+                none { bcx.tcx().sess.span_bug(local.span,
+                        "init_local: late-initialized var appears to \
+                 be an immediate -- possibly init_local was called \
+                 without calling alloc_local"); }
+            };
+        let mut {bcx, val, kind} = trans_temp_lval(bcx, initexpr);
+        if kind != temporary {
+            if kind == owned { val = Load(bcx, val); }
+            let rs = take_ty_immediate(bcx, val, ty);
+            bcx = rs.bcx; val = rs.val;
+            add_clean_temp(bcx, val, ty);
         }
+        bcx.fcx.lllocals.insert(local.node.pat.id, local_imm(val));
+        ret bcx;
+      }
     };
 
     let mut bcx = bcx;
@@ -4324,6 +4341,17 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
       ast::pat_ident(pth, none) { some(path_to_ident(pth)) }
       _ { none }
     };
+    // Do not allocate space for locals that can be kept immediate.
+    let ccx = cx.ccx();
+    if option::is_some(simple_name) &&
+       !ccx.maps.mutbl_map.contains_key(local.node.pat.id) &&
+       !ccx.maps.spill_map.contains_key(local.node.pat.id) &&
+       ty::type_is_immediate(t) {
+        alt local.node.init {
+          some({op: ast::init_assign, _}) { ret cx; }
+          _ {}
+        }
+    }
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         option::iter(simple_name) {|name|

@@ -57,6 +57,7 @@ import capture::{cap_move, cap_drop, cap_copy, cap_ref};
 
 export check_crate;
 export last_use_map;
+export spill_map;
 
 // Maps from an expr id to a list of variable ids for which this expr
 // is the last use.  Typically, the expr is a path and the node id is
@@ -64,6 +65,13 @@ export last_use_map;
 // possible for the expr to be a closure, in which case the list is a
 // list of closed over variables that can be moved into the closure.
 type last_use_map = hashmap<node_id, @dvec<node_id>>;
+
+// A set of variable ids which must be spilled (stored on the stack).
+// We add in any variables or arguments where:
+// (1) the variables are moved;
+// (2) the address of the variable/argument is taken;
+// or (3) we find a last use (as they may be moved).
+type spill_map = hashmap<node_id, ()>;
 
 enum variable = uint;
 enum live_node = uint;
@@ -77,7 +85,7 @@ enum live_node_kind {
 
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
-               crate: @crate) -> last_use_map {
+               crate: @crate) -> (last_use_map, spill_map) {
     let visitor = visit::mk_vt(@{
         visit_fn: visit_fn,
         visit_local: visit_local,
@@ -86,11 +94,12 @@ fn check_crate(tcx: ty::ctxt,
     });
 
     let last_use_map = int_hash();
+    let spill_map = int_hash();
     let initial_maps = @ir_maps(tcx, method_map,
-                                last_use_map);
+                                last_use_map, spill_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
-    ret last_use_map;
+    ret (last_use_map, spill_map);
 }
 
 impl of to_str::to_str for live_node {
@@ -153,6 +162,7 @@ class ir_maps {
     let tcx: ty::ctxt;
     let method_map: typeck::method_map;
     let last_use_map: last_use_map;
+    let spill_map: spill_map;
 
     let mut num_live_nodes: uint;
     let mut num_vars: uint;
@@ -164,10 +174,11 @@ class ir_maps {
     let mut lnks: [live_node_kind];
 
     new(tcx: ty::ctxt, method_map: typeck::method_map,
-        last_use_map: last_use_map) {
+        last_use_map: last_use_map, spill_map: spill_map) {
         self.tcx = tcx;
         self.method_map = method_map;
         self.last_use_map = last_use_map;
+        self.spill_map = spill_map;
 
         self.num_live_nodes = 0u;
         self.num_vars = 0u;
@@ -253,6 +264,17 @@ class ir_maps {
         self.lnks[*ln]
     }
 
+    fn add_spill(var: variable) {
+        let vk = self.var_kinds[*var];
+        alt vk {
+          vk_local(id, _) | vk_arg(id, _, by_val) {
+            #debug["adding spill for %?", vk];
+            self.spill_map.insert(id, ());
+          }
+          vk_arg(*) | vk_field(_) | vk_self | vk_implicit_ret {}
+        }
+    }
+
     fn add_last_use(expr_id: node_id, var: variable) {
         let vk = self.var_kinds[*var];
         #debug["Node %d is a last use of variable %?", expr_id, vk];
@@ -286,7 +308,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 
     // swap in a new set of IR maps for this function body:
     let fn_maps = @ir_maps(self.tcx, self.method_map,
-                           self.last_use_map);
+                           self.last_use_map, self.spill_map);
 
     #debug["creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint];
 
@@ -1385,7 +1407,11 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
         vt.visit_expr(f, self, vt);
         vec::iter2(args, targs) { |arg_expr, arg_ty|
             alt ty::resolved_mode(self.tcx, arg_ty.mode) {
-              by_val | by_copy | by_ref | by_mutbl_ref{
+              by_val | by_copy {
+                vt.visit_expr(arg_expr, self, vt);
+              }
+              by_ref | by_mutbl_ref {
+                self.spill_expr(arg_expr);
                 vt.visit_expr(arg_expr, self, vt);
               }
               by_move {
@@ -1393,6 +1419,10 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
               }
             }
         }
+      }
+
+      expr_addr_of(_, arg_expr) {
+        self.spill_expr(arg_expr);
       }
 
       // no correctness conditions related to liveness
@@ -1404,7 +1434,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_assert(*) | expr_check(*) | expr_copy(*) |
       expr_loop_body(*) | expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_ret(*) | expr_break | expr_cont | expr_lit(_) |
-      expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) {
+      expr_block(*) | expr_swap(*) | expr_mac(*) {
         visit::visit_expr(expr, self, vt);
       }
     }
@@ -1471,7 +1501,10 @@ impl check_methods for @liveness {
                ln.to_str(), var.to_str()];
 
         alt (*self).live_on_exit(ln, var) {
-          none { }
+          none {
+            // update spill map to include this variable, as it is moved:
+            (*self.ir).add_spill(var);
+          }
           some(lnk) {
             self.report_illegal_move(span, lnk, var);
           }
@@ -1483,8 +1516,18 @@ impl check_methods for @liveness {
           some(_) {}
           none {
             (*self.ir).add_last_use(expr.id, var);
+
+            // update spill map to include this variable, as it may be moved:
+            (*self.ir).add_spill(var);
           }
        }
+    }
+
+    fn spill_expr(expr: @expr) {
+        alt (*self).variable_from_path(expr) {
+          some(var) {(*self.ir).add_spill(var)}
+          none {}
+        }
     }
 
     fn check_move_from_expr(expr: @expr, vt: vt<@liveness>) {

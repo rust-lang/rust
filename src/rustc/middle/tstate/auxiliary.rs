@@ -13,8 +13,9 @@ import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      set_postcondition, ts_ann,
                      clear_in_postcond,
                      clear_in_poststate_};
+import tritv::*;
+import bitvectors::promises_;
 import driver::session::session;
-import tritv::{dont_care, tfalse, tritv_get, ttrue};
 
 import syntax::print::pprust::{constr_args_to_str, lit_to_str};
 
@@ -810,7 +811,7 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
         // dest def_id
         let insts = find_instances(fcx, subst, val);
         for insts.each {|p|
-            if bitvectors::promises_(p.from, src_post) {
+            if promises_(p.from, src_post) {
                 set_in_poststate_(p.to, target_post);
             }
         }

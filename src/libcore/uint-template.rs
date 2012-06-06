@@ -1,5 +1,4 @@
 import T = inst::T;
-import cmp::{eq, ord};
 
 export min_value, max_value;
 export min, max;
@@ -11,7 +10,6 @@ export range;
 export compl;
 export to_str, to_str_bytes;
 export from_str, from_str_radix, str, parse_buf;
-export ord, eq;
 
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
@@ -49,18 +47,6 @@ fn range(lo: T, hi: T, it: fn(T) -> bool) {
 #[doc = "Computes the bitwise complement"]
 pure fn compl(i: T) -> T {
     max_value ^ i
-}
-
-impl ord of ord for T {
-    fn lt(&&other: T) -> bool {
-        ret self < other;
-    }
-}
-
-impl eq of eq for T {
-    fn eq(&&other: T) -> bool {
-        ret self == other;
-    }
 }
 
 #[doc = "

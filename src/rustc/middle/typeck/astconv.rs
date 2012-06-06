@@ -45,8 +45,7 @@ an rptr (`&r.T`) use the region `r` that appears in the rptr.
 "];
 
 import check::fn_ctxt;
-import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
-import rscope::{in_binding_rscope, region_scope, type_rscope};
+import rscope::*;
 
 iface ast_conv {
     fn tcx() -> ty::ctxt;
