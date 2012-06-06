@@ -636,7 +636,7 @@ fn link_binary(sess: session,
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        cc_args += ["-lrt", "-ldl"];
+        cc_args += ["-lrt", "-ldl", "-lm"];
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
