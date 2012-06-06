@@ -387,6 +387,12 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           };
           // typecheck the members
           for members.each {|m| check_class_member(class_ccx, class_t, m); }
+          // Check that there's at least one field
+          let (fields,_) = split_class_items(members);
+          if fields.len() < 1u {
+              ccx.tcx.sess.span_err(it.span, "A class must have at least one \
+                field");
+          }
           // Check that the class is instantiable
           check_instantiable(ccx.tcx, it.span, it.id);
       }
