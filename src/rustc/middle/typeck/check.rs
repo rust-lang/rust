@@ -2318,7 +2318,20 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
         (1u, [arg(ast::by_ref, visitor_iface)], ty::mk_nil(tcx))
       }
       "frame_address" {
-        (0u, [], ty::mk_imm_ptr(tcx, ty::mk_mach_uint(tcx, ast::ty_u8)))
+        let fty = ty::mk_fn(ccx.tcx, {
+            purity: ast::impure_fn,
+            proto: ast::proto_any,
+            inputs: [{
+                mode: ast::expl(ast::by_val),
+                ty: ty::mk_imm_ptr(
+                    ccx.tcx,
+                    ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
+            }],
+            output: ty::mk_nil(ccx.tcx),
+            ret_style: ast::return_val,
+            constraints: []
+        });
+        (0u, [arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }
       other {
         tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +

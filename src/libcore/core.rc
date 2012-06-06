@@ -201,7 +201,7 @@ mod extfmt;
 mod unicode;
 mod priv;
 mod cmath;
-
+mod stackwalk;
 
 // Local Variables:
 // mode: rust;

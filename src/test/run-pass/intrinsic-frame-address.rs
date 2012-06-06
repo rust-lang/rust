@@ -1,8 +1,10 @@
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    fn frame_address() -> *u8;
+    fn frame_address(f: fn(*u8));
 }
 
 fn main() {
-    assert rusti::frame_address().is_not_null();
+    rusti::frame_address {|addr|
+        assert addr.is_not_null();
+    }
 }
