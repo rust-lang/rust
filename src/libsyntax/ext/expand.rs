@@ -1,11 +1,11 @@
 import std::map::hashmap;
 
-import ast::{crate, expr_, expr_mac, mac_invoc};
+import ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
+             tt_delim, tt_flat};
 import fold::*;
 import ext::base::*;
 import ext::qquote::{qq_helper};
-import parse::parser;
-import parse::parse_expr_from_source_str;
+import parse::{parser, parse_expr_from_source_str, new_parser_from_tt};
 
 
 import codemap::{span, expanded_from};
@@ -49,10 +49,6 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   }
                 }
               }
-              /*
-              mac_invoc_tt(path, body) {
-                let p = new_parser_from_tt(cx.sess, cx.cfg, )
-              }*/
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }

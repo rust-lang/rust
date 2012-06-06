@@ -2,17 +2,14 @@
 import dvec::extensions;
 
 export parse_sess;
-export new_parse_sess;
-export new_parse_sess_special_handler;
+export new_parse_sess, new_parse_sess_special_handler;
 export next_node_id;
-export new_parser_from_file;
-export new_parser_etc_from_file;
+export new_parser_from_file, new_parser_etc_from_file;
 export new_parser_from_source_str;
-export parse_crate_from_file;
-export parse_crate_from_crate_file;
+export new_parser_from_tt;
+export parse_crate_from_file, parse_crate_from_crate_file;
 export parse_crate_from_source_str;
-export parse_expr_from_source_str;
-export parse_item_from_source_str;
+export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_from_source_str;
 
 import parser::parser;
@@ -199,7 +196,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
 }
 
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
-                      tt: ast::token_tree) -> parser {
+                      tt: [ast::token_tree]) -> parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner, tt);
     ret parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }

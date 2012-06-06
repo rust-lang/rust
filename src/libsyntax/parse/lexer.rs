@@ -4,7 +4,7 @@ import diagnostic;
 import ast::{tt_delim,tt_flat};
 
 export reader, string_reader, new_string_reader, is_whitespace;
-export tt_reader, new_tt_reader;
+export tt_reader,  new_tt_reader;
 export nextch, is_eof, bump, get_str_from;
 export string_reader_as_reader, tt_reader_as_reader;
 
@@ -20,8 +20,8 @@ enum tt_frame_up { /* to break a circularity */
     tt_frame_up(option<tt_frame>)
 }
 
+#[doc = "an unzipping of `token_tree`s"]
 type tt_frame = @{
-    /* invariant: readme[idx] is always a tt_flat */
     readme: [ast::token_tree],
     mut idx: uint,
     up: tt_frame_up
@@ -37,10 +37,10 @@ type tt_reader = @{
 };
 
 fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
-                 itr: @interner::interner<@str>, src: ast::token_tree)
+                 itr: @interner::interner<@str>, src: [ast::token_tree])
     -> tt_reader {
     let r = @{span_diagnostic: span_diagnostic, interner: itr,
-              mut cur: @{readme: [src], mut idx: 0u,
+              mut cur: @{readme: src, mut idx: 0u,
                          up: tt_frame_up(option::none)},
               mut cur_tok: token::EOF, /* dummy value, never read */
               mut cur_chpos: 0u /* dummy value, never read */
