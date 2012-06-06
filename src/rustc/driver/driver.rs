@@ -194,7 +194,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
          bind middle::check_loop::check_crate(ty_cx, crate));
     time(time_passes, "alt checking",
          bind middle::check_alt::check_crate(ty_cx, crate));
-    let (last_use_map, spill_map) =
+    let last_use_map =
         time(time_passes, "liveness checking",
              bind middle::liveness::check_crate(ty_cx, method_map, crate));
     time(time_passes, "typestate checking",
@@ -216,7 +216,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let maps = {mutbl_map: mutbl_map, root_map: root_map,
                 copy_map: copy_map, last_use_map: last_use_map,
                 impl_map: impl_map, method_map: method_map,
-                vtable_map: vtable_map, spill_map: spill_map};
+                vtable_map: vtable_map};
 
     let (llmod, link_meta) =
         time(time_passes, "translation",
