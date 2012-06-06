@@ -421,9 +421,9 @@ else
 TSREQS :=											\
 	$(foreach target,$(CFG_TARGET_TRIPLES),			\
 		$(SREQ3_T_$(target)_H_$(CFG_HOST_TRIPLE)))
-FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
-CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
-RUSTDOC := $(HBIN3_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
+FUZZ := $(HBIN2_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
+CARGO := $(HBIN2_H_$(CFG_HOST_TRIPLE))/cargo$(X)
+RUSTDOC := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
 
 all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC)
 
