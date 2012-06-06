@@ -86,11 +86,14 @@ impl codemap_handler of handler for handler_t {
     }
     fn has_errors() -> bool { self.err_count > 0u }
     fn abort_if_errors() {
-        if self.err_count > 0u {
-            let s = #fmt["aborting due to %u previous errors",
-                         self.err_count];
-            self.fatal(s);
+        let s;
+        alt self.err_count {
+          0u { ret; }
+          1u { s = "aborting due to previous error"; }
+          _  { s = #fmt["aborting due to %u previous errors",
+                        self.err_count]; }
         }
+        self.fatal(s);
     }
     fn warn(msg: str) {
         self.emit(none, msg, warning);
