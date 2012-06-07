@@ -1,7 +1,8 @@
 // cargo.rs - Rust package manager
 
-import syntax::{ast, codemap};
-import syntax::parse;
+import syntax::{ast, codemap, parse, visit, attr};
+import syntax::diagnostic::span_handler;
+import codemap::span;
 import rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
                                      get_cargo_sysroot, libdir};
 import syntax::diagnostic;
@@ -22,7 +23,15 @@ type package = {
     mut method: str,
     mut description: str,
     mut ref: option<str>,
-    mut tags: [str]
+    mut tags: [str],
+    mut versions: [(str, str)]
+};
+
+type local_package = {
+    mut name: str,
+    mut metaname: str,
+    mut version: str,
+    mut files: [str]
 };
 
 type source = {
@@ -43,16 +52,19 @@ type cargo = {
     workdir: str,
     sourcedir: str,
     sources: map::hashmap<str, source>,
+    mut current_install: str,
+    dep_cache: map::hashmap<str, bool>,
     opts: options
 };
 
-type pkg = {
+type crate = {
     mut name: str,
     mut vers: str,
     mut uuid: str,
     mut desc: option<str>,
     mut sigs: option<str>,
-    mut crate_type: option<str>
+    mut crate_type: option<str>,
+    mut deps: [str]
 };
 
 type options = {
@@ -160,8 +172,17 @@ fn test_is_uuid() {
 fn has_archive_extension(p: str) -> bool {
     str::ends_with(p, ".tar") ||
     str::ends_with(p, ".tar.gz") ||
+    str::ends_with(p, ".tar.bz2") ||
+    str::ends_with(p, ".tar.Z") ||
+    str::ends_with(p, ".tar.lz") ||
     str::ends_with(p, ".tar.xz") ||
-    str::ends_with(p, ".tar.bz2")
+    str::ends_with(p, ".tgz") ||
+    str::ends_with(p, ".tbz") ||
+    str::ends_with(p, ".tbz2") ||
+    str::ends_with(p, ".tb2") ||
+    str::ends_with(p, ".taz") ||
+    str::ends_with(p, ".tlz") ||
+    str::ends_with(p, ".txz")
 }
 
 fn is_archive_path(u: str) -> bool {
@@ -186,7 +207,9 @@ fn is_git_url(url: str) -> bool {
 }
 
 fn assume_source_method(url: str) -> str {
-    if is_git_url(url) { ret "git"; }
+    if is_git_url(url) {
+        ret "git";
+    }
     if str::starts_with(url, "file://") || os::path_exists(url) {
         ret "file";
     }
@@ -216,7 +239,7 @@ fn load_link(mis: [@ast::meta_item]) -> (option<str>,
     (name, vers, uuid)
 }
 
-fn load_pkg(filename: str) -> option<pkg> {
+fn load_crate(filename: str) -> option<crate> {
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(none);
     let sess = @{
@@ -253,9 +276,76 @@ fn load_pkg(filename: str) -> option<pkg> {
                     uuid = u;
                 }
             }
-            _ { fail "load_pkg: pkg attributes may not contain meta_words"; }
+            _ {
+                fail "crate attributes may not contain " +
+                     "meta_words";
+            }
         }
     }
+
+    type env = @{
+        mut deps: [str]
+    };
+
+    fn goto_view_item(e: env, i: @ast::view_item) {
+        alt i.node {
+            ast::view_item_use(ident, metas, id) {
+                let name_items = attr::find_meta_items_by_name(metas, "name");
+                let m = if name_items.is_empty() {
+                    metas + [attr::mk_name_value_item_str("name", ident)]
+                } else {
+                    metas
+                };
+                let mut attr_name = ident;
+                let mut attr_vers = "";
+                let mut attr_from = "";
+
+                for m.each { |item|
+                    alt attr::get_meta_item_value_str(item) {
+                        some(value) {
+                            let name = attr::get_meta_item_name(item);
+
+                            alt name {
+                                "vers" { attr_vers = value; }
+                                "from" { attr_from = value; }
+                                _ {}
+                            }
+                        }
+                        none {}
+                    }
+                }
+
+                let query = if !str::is_empty(attr_from) {
+                    attr_from
+                } else {
+                    if !str::is_empty(attr_vers) {
+                        attr_name + "@" + attr_vers
+                    } else { attr_name }
+                };
+
+                alt attr_name {
+                    "std" | "core" { }
+                    _ { e.deps += [query]; }
+                }
+            }
+            _ { }
+        }
+    }
+    fn goto_item(_e: env, _i: @ast::item) {
+    }
+
+    let e = @{
+        mut deps: []
+    };
+    let v = visit::mk_simple_visitor(@{
+        visit_view_item: bind goto_view_item(e, _),
+        visit_item: bind goto_item(e, _),
+        with *visit::default_simple_visitor()
+    });
+
+    visit::visit_crate(*c, (), v);
+
+    let deps = copy e.deps;
 
     alt (name, vers, uuid) {
         (some(name0), some(vers0), some(uuid0)) {
@@ -265,7 +355,8 @@ fn load_pkg(filename: str) -> option<pkg> {
                 mut uuid: uuid0,
                 mut desc: desc,
                 mut sigs: sigs,
-                mut crate_type: crate_type})
+                mut crate_type: crate_type,
+                mut deps: deps })
         }
         _ { ret none; }
     }
@@ -444,7 +535,8 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         mut method: method,
         mut description: description,
         mut ref: ref,
-        mut tags: tags
+        mut tags: tags,
+        mut versions: []
     };
 
     for src.packages.each { |pkg|
@@ -456,6 +548,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
             pkg.description = newpkg.description;
             pkg.ref = newpkg.ref;
             pkg.tags = newpkg.tags;
+            pkg.versions = newpkg.versions;
             log(debug, "  updated package: " + src.name + "/" + name);
             ret;
         }
@@ -565,6 +658,8 @@ fn configure(opts: options) -> cargo {
     try_parse_sources(path::connect(home, "sources.json"), sources);
     try_parse_sources(path::connect(home, "local-sources.json"), sources);
 
+    let dep_cache = map::str_hash::<bool>();
+
     let mut c = {
         pgp: pgp::supported(),
         root: home,
@@ -574,6 +669,8 @@ fn configure(opts: options) -> cargo {
         workdir: path::connect(home, "work"),
         sourcedir: path::connect(home, "sources"),
         sources: sources,
+        mut current_install: "",
+        dep_cache: dep_cache,
         opts: opts
     };
 
@@ -701,10 +798,23 @@ fn install_source(&c: cargo, path: str) {
     }
 
     for cratefiles.each {|cf|
-        let p = load_pkg(cf);
-        alt p {
+        alt load_crate(cf) {
             none { cont; }
-            some(_) {
+            some(crate) {
+                for crate.deps.each { |query|
+                    // TODO: handle cyclic dependencies
+
+                    let wd_base = c.workdir + path::path_sep();
+                    let wd = alt tempfile::mkdtemp(wd_base, "") {
+                        some(_wd) { _wd }
+                        none { fail #fmt("needed temp dir: %s", wd_base); }
+                    };
+
+                    install_query(c, wd, query);
+                }
+
+                os::change_dir(path);
+
                 if c.opts.test {
                     test_one_crate(c, path, cf);
                 }
@@ -916,28 +1026,17 @@ fn cmd_uninstall(&c: cargo) {
     }
 }
 
-fn cmd_install(&c: cargo) unsafe {
-    let wd_base = c.workdir + path::path_sep();
-    let wd = alt tempfile::mkdtemp(wd_base, "") {
-        some(_wd) { _wd }
-        none { fail #fmt("needed temp dir: %s", wd_base); }
-    };
-
-    if vec::len(c.opts.free) == 2u {
-        let cwd = os::getcwd();
-        let status = run::run_program("cp", ["-R", cwd, wd]);
-
-        if status != 0 {
-            fail #fmt("could not copy directory: %s", cwd);
+fn install_query(&c: cargo, wd: str, target: str) {
+    alt c.dep_cache.find(target) {
+        some(_inst) {
+            if _inst {
+                ret;
+            }
         }
-
-        install_source(c, wd);
-        ret;
+        none {}
     }
 
-    sync(c);
-
-    let target = c.opts.free[2];
+    c.dep_cache.insert(target, true);
 
     if is_archive_path(target) {
         install_file(c, wd, target);
@@ -948,7 +1047,7 @@ fn cmd_install(&c: cargo) unsafe {
         } else {
             none
         };
-        install_git(c, wd, target, ref)
+        install_git(c, wd, target, ref);
     } else if !valid_pkg_name(target) && has_archive_extension(target) {
         install_curl(c, wd, target);
         ret;
@@ -974,14 +1073,50 @@ fn cmd_install(&c: cargo) unsafe {
             }
         }
     }
+
+    // FIXME: This whole dep_cache and current_install
+    // thing is a bit of a hack. It should be cleaned up in the future.
+
+    if target == c.current_install {
+        for c.dep_cache.each { |k, _v|
+            c.dep_cache.remove(k);
+        }
+
+        c.current_install = "";
+    }
+}
+
+fn cmd_install(&c: cargo) unsafe {
+    let wd_base = c.workdir + path::path_sep();
+    let wd = alt tempfile::mkdtemp(wd_base, "") {
+        some(_wd) { _wd }
+        none { fail #fmt("needed temp dir: %s", wd_base); }
+    };
+
+    if vec::len(c.opts.free) == 2u {
+        let cwd = os::getcwd();
+        let status = run::run_program("cp", ["-R", cwd, wd]);
+
+        if status != 0 {
+            fail #fmt("could not copy directory: %s", cwd);
+        }
+
+        install_source(c, wd);
+        ret;
+    }
+
+    sync(c);
+
+    let query = c.opts.free[2];
+    c.current_install = copy query;
+
+    install_query(c, wd, copy query);
 }
 
 fn sync(&c: cargo) {
     for c.sources.each_key { |k|
         let mut s = c.sources.get(k);
-
         sync_one(c, s);
-        // FIXME: mutability hack
         c.sources.insert(k, s);
     }
 }
@@ -1302,13 +1437,13 @@ fn cmd_init(&c: cargo) {
 
     let p = run::program_output("curl", ["-f", "-s", "-o", srcfile, srcurl]);
     if p.status != 0 {
-        warn(#fmt["fetch of sources.json failed: %s", p.out]);
+        error(#fmt["fetch of sources.json failed: %s", p.out]);
         ret;
     }
 
     let p = run::program_output("curl", ["-f", "-s", "-o", sigfile, sigurl]);
     if p.status != 0 {
-        warn(#fmt["fetch of sources.json.sig failed: %s", p.out]);
+        error(#fmt["fetch of sources.json.sig failed: %s", p.out]);
         ret;
     }
 
@@ -1416,17 +1551,21 @@ fn install_to_dir(srcfile: str, destdir: str) {
     }
 }
 
-fn dump_cache(c: cargo) {
+fn dump_cache(&c: cargo) {
     need_dir(c.root);
 
     let out = path::connect(c.root, "cache.json");
-    let root = json::dict(map::str_hash());
+    let _root = json::dict(map::str_hash());
 
     if os::path_exists(out) {
         copy_warn(out, path::connect(c.root, "cache.json.old"));
     }
 }
-fn dump_sources(c: cargo) {
+fn dump_sources(&c: cargo) {
+    if c.sources.size() < 1u {
+        ret;
+    }
+
     need_dir(c.root);
 
     let out = path::connect(c.root, "sources.json");
@@ -1566,12 +1705,12 @@ fn cmd_sources(&c: cargo) {
             alt c.sources.find(name) {
                 some(source) {
                     let old = copy source.url;
+                    let method = assume_source_method(url);
 
-                    source.url = if source.method == "file" {
-                        os::make_absolute(url)
-                    } else {
-                        url
-                    };
+                    source.url = url;
+                    source.method = method;
+
+                    c.sources.insert(name, source);
 
                     info(#fmt("changed source url: '%s' to '%s'", old, url));
                 }
@@ -1603,6 +1742,8 @@ fn cmd_sources(&c: cargo) {
                         "file" { "file" }
                         _ { "curl" }
                     };
+
+                    c.sources.insert(name, source);
 
                     info(#fmt("changed source method: '%s' to '%s'", old,
                          method));
@@ -1646,61 +1787,116 @@ fn cmd_sources(&c: cargo) {
 }
 
 fn cmd_usage() {
-    print("Usage: cargo <verb> [options] [args..]\n" +
-          " e.g.: cargo [init | sync]\n" +
-          " e.g.: cargo install [-g | -G] <package>
+    print("Usage: cargo <cmd> [options] [args..]
+e.g. cargo install <name>
 
-General:
-    init                    Reinitialize cargo in ~/.cargo
-    usage                   Display this message
+Where <cmd> is one of:
+    init, install, list, search, sources,
+    uninstall, usage
 
-Querying:
-    list [sources..]                        List the packages in sources
-    search <name | '*'> [tags...]           Search packages
+Options:
 
-Sources:
-    sources                                 List sources
-    sources add <name> <url>                Add a source
-    sources remove <name>                   Remove a source
-    sources rename <name> <new>             Rename a source
-    sources set-url <name> <url>            Change the source URL
-    sources set-method <name> <method>      Change the method (guesses from
-                                            the URL by default) can be ;git',
-                                            'file' or 'curl'
-    sources clear                           Remove all sources
-
-Packages:
-    install [options]                       Install a package from source
-                                            code in the current directory
-    install [options] [source/]<name>       Install a package by name
-    install [options] [source/]<uuid>       Install a package by uuid
-    install [options] <url>                 Install a package via curl (HTTP,
-                                            FTP, etc.) from an
-                                            .tar[.gz|bz2|xz] file
-    install [options] <url> [ref]           Install a package via read-only
-                                            git
-    install [options] <file>                Install a package directly from an
-                                            .tar[.gz|bz2|xz] file
-    uninstall [options] [source/]<name>     Remove a package by [meta]name
-    uninstall [options] [source/]<uuid>     Remove a package by [meta]uuid
-
-Package installation options:
-    --test         Run crate tests before installing
-
-Package [un]installation options:
-    -g              Work at the user level (~/.cargo/bin/ instead of
-                    locally in ./.cargo/bin/ by default)
-    -G              Work at the system level (/usr/local/lib/cargo/bin/)
-
-Other:
-    -h, --help     Display this message
+    -h, --help                  Display this message
+    <cmd> -h, <cmd> --help      Display help for <cmd>
 ");
+}
+
+fn cmd_usage_init() {
+    print("cargo init
+
+Re-initialize cargo in ~/.cargo. Clears all sources and then adds the
+default sources from <www.rust-lang.org/sources.json>.");
+}
+
+fn cmd_usage_install() {
+    print("cargo install
+cargo install [source/]<name>[@version]
+cargo install [source/]<uuid>[@version]
+cargo install <git url> [ref]
+cargo install <tarball url>
+cargo install <tarball file>
+
+Options:
+    --test      Run crate tests before installing
+    -g          Install to the user level (~/.cargo/bin/ instead of
+                locally in ./.cargo/bin/ by default)
+    -G          Install to the system level (/usr/local/lib/cargo/bin/)
+
+Install a crate. If no arguments are supplied, it installs from
+the current working directory. If a source is provided, only install
+from that source, otherwise it installs from any source.");
+}
+
+fn cmd_usage_uninstall() {
+    print("cargo uninstall [source/]<name>[@version]
+cargo uninstall [source/]<uuid>[@version]
+cargo uninstall <meta-name>[@version]
+cargo uninstall <meta-uuid>[@version]
+
+Options:
+    -g          Remove from the user level (~/.cargo/bin/ instead of
+                locally in ./.cargo/bin/ by default)
+    -G          Remove from the system level (/usr/local/lib/cargo/bin/)
+
+Remove a crate. If a source is provided, only remove
+from that source, otherwise it removes from any source.
+If a crate was installed directly (git, tarball, etc.), you can remove
+it by metadata.");
+}
+
+fn cmd_usage_list() {
+    print("cargo list [sources..]
+
+If no arguments are provided, list all sources and their packages.
+If source names are provided, list those sources and their packages.
+");
+}
+
+fn cmd_usage_search() {
+    print("cargo search <query | '*'> [tags..]
+
+Search packages.");
+}
+
+fn cmd_usage_sources() {
+    print("cargo sources
+cargo sources add <name> <url>
+cargo sources remove <name>
+cargo sources rename <name> <new>
+cargo sources set-url <name> <url>
+cargo sources set-method <name> <method>
+
+If no arguments are supplied, list all sources (but not their packages).
+
+Commands:
+    add             Add a source. The source method will be guessed
+                    from the URL.
+    remove          Remove a source.
+    rename          Rename a source.
+    set-url         Change the URL for a source.
+    set-method      Change the method for a source.");
 }
 
 fn main(argv: [str]) {
     let o = build_cargo_options(argv);
 
-    if vec::len(o.free) < 2u || o.help {
+    if vec::len(o.free) < 2u {
+        cmd_usage();
+        ret;
+    }
+    if o.help {
+        alt o.free[1] {
+            "init" { cmd_usage_init(); }
+            "install" { cmd_usage_install(); }
+            "uninstall" { cmd_usage_uninstall(); }
+            "list" { cmd_usage_list(); }
+            "search" { cmd_usage_search(); }
+            "sources" { cmd_usage_sources(); }
+            _ { cmd_usage(); }
+        }
+        ret;
+    }
+    if o.free[1] == "usage" {
         cmd_usage();
         ret;
     }
