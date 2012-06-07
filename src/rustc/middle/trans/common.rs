@@ -633,8 +633,6 @@ fn T_array(t: TypeRef, n: uint) -> TypeRef {
 }
 
 // Interior vector.
-//
-// FIXME: Support user-defined vector sizes.
 fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
     ret T_struct([T_int(targ_cfg), // fill
                   T_int(targ_cfg), // alloc
