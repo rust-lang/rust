@@ -94,7 +94,7 @@ fn clone(v: bitv) -> bitv {
     ret @{storage: storage, nbits: v.nbits};
 }
 
-#[doc = "Retreive the value at index `i`"]
+#[doc = "Retrieve the value at index `i`"]
 #[inline(always)]
 pure fn get(v: bitv, i: uint) -> bool {
     assert (i < v.nbits);
