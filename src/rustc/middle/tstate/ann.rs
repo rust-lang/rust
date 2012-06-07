@@ -34,7 +34,7 @@ type poststate = t;
 type pre_and_post = {precondition: precond, postcondition: postcond};
 
 
-/* FIXME: once it's implemented: */
+/* FIXME: once it's implemented: (Issue #34) */
 
 //  : ((*.precondition).nbits == (*.postcondition).nbits);
 type pre_and_post_state = {prestate: prestate, poststate: poststate};
@@ -196,7 +196,6 @@ fn extend_poststate(p: poststate, newv: poststate) -> bool {
 }
 
 // Sets the given bit in p to "don't care"
-// FIXME: is this correct?
 fn relax_prestate(i: uint, p: prestate) -> bool {
     let was_set = tritv_get(p, i);
     tritv_set(i, p, dont_care);
@@ -234,7 +233,6 @@ fn clone(p: prestate) -> prestate { ret tritv_clone(p); }
 // returns true if a implies b
 // that is, returns true except if for some bits c and d,
 // c = 1 and d = either 0 or "don't know"
-// FIXME: is this correct?
 fn implies(a: t, b: t) -> bool {
     let tmp = tritv_clone(b);
     tritv_difference(tmp, a);
@@ -244,6 +242,10 @@ fn implies(a: t, b: t) -> bool {
 fn trit_str(t: trit) -> str {
     alt t { dont_care { "?" } ttrue { "1" } tfalse { "0" } }
 }
+
+// FIXME: Would be nice to have unit tests for some of these operations, as
+// a step towards formalizing them more rigorously. #2538
+
 //
 // Local Variables:
 // mode: rust

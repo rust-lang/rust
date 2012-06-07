@@ -196,7 +196,7 @@ may be the operator in a "check" expression in the source.  */
 type constraint = {
     path: @path,
     // FIXME: really only want it to be mut during collect_locals.
-    // freeze it after that.
+    // freeze it after that. (#2539)
     descs: @dvec<pred_args>
 };
 
@@ -496,7 +496,7 @@ fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
 
 // FIXME
 // Would rather take an immutable vec as an argument,
-// should freeze it at some earlier point.
+// should freeze it at some earlier point. (#2539)
 fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
               occ: [@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",
@@ -715,27 +715,22 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
             }
           }
           _ {
-            //  #error("##");
             rslt += [c.node];
           }
         }
     }
 
-    /*
-    for (constr_arg_general_<tup(ident, def_id)> p in rslt) {
-        alt (p) {
-            case (carg_ident(?p)) {
-                log(error, p._0);
-            }
-            case (_) {}
-        }
-    }
-    */
-
     ret rslt;
 }
 
 enum if_ty { if_check, plain_if, }
+
+fn for_constraints_mentioning(fcx: fn_ctxt, id: node_id,
+                              f: fn(norm_constraint)) {
+    for constraints(fcx).each {|c|
+        if constraint_mentions(fcx, c, id) { f(c); }
+    };
+}
 
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
    def_id {
@@ -787,7 +782,6 @@ fn copy_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dest: inst, src: inst,
     copy_in_poststate_two(fcx, post, post, dest, src, ty);
 }
 
-// FIXME refactor
 fn copy_in_poststate(fcx: fn_ctxt, post: poststate, dest: inst, src: inst,
                      ty: oper_type) {
     copy_in_poststate_two(fcx, post, post, dest, src, ty);
@@ -823,26 +817,20 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
     };
 }
 
-/* FIXME should refactor this better */
 fn forget_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dead_v: node_id) {
     // In the postcondition given by parent_exp, clear the bits
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
-    alt d {
-      some(d_id) {
-        for constraints(fcx).each {|c|
-            if constraint_mentions(fcx, c, d_id) {
+    option::iter(d) {|d_id|
+        for_constraints_mentioning(fcx, d_id) {|c|
                 #debug("clearing constraint %u %s",
                        c.bit_num,
                        constraint_to_str(fcx.ccx.tcx, c.c));
                 clear_in_postcond(c.bit_num,
                                   node_id_to_ts_ann(fcx.ccx,
                                                     parent_exp).conditions);
-            }
         }
-      }
-      _ { }
-    }
+    };
 }
 
 fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
@@ -850,15 +838,10 @@ fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
     let mut changed = false;
-    alt d {
-      some(d_id) {
-        for constraints(fcx).each {|c|
-            if constraint_mentions(fcx, c, d_id) {
+    option::iter(d) {|d_id|
+        for_constraints_mentioning(fcx, d_id) {|c|
                 changed |= clear_in_poststate_(c.bit_num, p);
-            }
         }
-      }
-      _ { }
     }
     ret changed;
 }
@@ -876,23 +859,6 @@ fn constraint_mentions(_fcx: fn_ctxt, c: norm_constraint, v: node_id) ->
 fn args_mention<T>(args: [@constr_arg_use],
                    q: fn([T], node_id) -> bool,
                    s: [T]) -> bool {
-    /*
-      FIXME
-      The following version causes an assertion in trans to fail
-      (something about type_is_tup_like)
-    fn mentions<T>(&[T] s, &fn(&[T], def_id) -> bool q,
-                            &@constr_arg_use a) -> bool {
-        alt (a.node) {
-            case (carg_ident(?p1)) {
-                auto res = q(s, p1._1);
-                log(error, (res));
-                res
-                    }
-            case (_)               { false }
-        }
-    }
-    ret vec::any(bind mentions(s,q,_), args);
-    */
 
     for args.each {|a|
         alt a.node { carg_ident(p1) { if q(s, p1.node) { ret true; } } _ { } }
