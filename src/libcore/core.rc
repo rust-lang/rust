@@ -46,6 +46,7 @@ export to_str;
 export swappable;
 export dvec, dvec_iter;
 export cmp;
+export num;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
@@ -155,6 +156,7 @@ mod tuple;
 // Ubiquitous-utility-type modules
 
 mod cmp;
+mod num;
 mod either;
 mod iter;
 mod logging;
