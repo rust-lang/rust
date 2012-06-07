@@ -28,24 +28,10 @@
         (task)->name, (task));
 #endif
 
-// This is called to ensure we've set up our rust stacks
-// correctly. Strategically placed at entry to upcalls because they begin on
-// the rust stack and happen frequently enough to catch most stack changes,
-// including at the beginning of all landing pads.
-// FIXME: Enable this for windows
-#if (defined __linux__ || defined __APPLE__ || defined __FreeBSD__) \
-    && (defined(GCC_VERSION) && GCC_VERSION > 40300)
-extern "C" void
-check_stack_alignment() __attribute__ ((aligned (16)));
-#else
-static void check_stack_alignment() { }
-#endif
-
 #define UPCALL_SWITCH_STACK(A, F) call_upcall_on_c_stack((void*)A, (void*)F)
 
 inline void
 call_upcall_on_c_stack(void *args, void *fn_ptr) {
-    check_stack_alignment();
     rust_task *task = rust_get_current_task();
     task->call_on_c_stack(args, fn_ptr);
 }
