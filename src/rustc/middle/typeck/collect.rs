@@ -369,31 +369,23 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let t_ctor =
             ty::mk_fn(
                 tcx,
-                ty_of_fn_decl(ccx,
-                                       empty_rscope,
-                                       ast::proto_any,
-                                       ctor.node.dec,
-                                       none));
+                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_any,
+                              ctor.node.dec, none));
         write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
         tcx.tcache.insert(local_def(ctor.node.id),
                           {bounds: tpt.bounds,
-                           rp: ast::rp_none,
+                           rp: rp,
                            ty: t_ctor});
         option::iter(m_dtor) {|dtor|
             // Write the dtor type
             let t_dtor = ty::mk_fn(
                 tcx,
-                // not sure about empty_rscope
-                // FIXME
-                ty_of_fn_decl(ccx,
-                                       empty_rscope,
-                                       ast::proto_any,
-                                       ast_util::dtor_dec(),
-                                       none));
+                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_any,
+                              ast_util::dtor_dec(), none));
             write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
             tcx.tcache.insert(local_def(dtor.node.id),
                               {bounds: tpt.bounds,
-                               rp: ast::rp_none,
+                               rp: rp,
                                ty: t_dtor});
         };
         ensure_iface_methods(ccx, it.id);
