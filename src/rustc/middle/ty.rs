@@ -4,19 +4,19 @@ import std::map::hashmap;
 import driver::session;
 import session::session;
 import syntax::{ast, ast_map};
-import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::{is_local, local_def, split_class_items,
                           new_def_hash};
 import syntax::codemap::span;
 import metadata::csearch;
-import util::common::*;
 import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
 import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
-import syntax::print::pprust::*;
 import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
                       ignore};
+import syntax::ast::*;
+import syntax::print::pprust::*;
+
 export ty_vid, region_vid, vid;
 export br_hashmap;
 export is_instantiable;
@@ -1678,11 +1678,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
           ty_class(did, substs) {
             vec::push(*seen, did);
-            let r = vec::any(lookup_class_fields(cx, did)) {|f|
-                let fty = ty::lookup_item_type(cx, f.id);
-                let sty = subst(cx, substs, fty.ty);
-                type_requires(cx, seen, r_ty, sty)
-            };
+            let r = vec::any(class_items_as_fields(cx, did, substs)) {|f|
+                      type_requires(cx, seen, r_ty, f.mt.ty)};
             vec::pop(*seen);
             r
           }

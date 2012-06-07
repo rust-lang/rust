@@ -1,5 +1,6 @@
 #[doc = "Sorting methods"];
 import vec::len;
+import int::{eq, ord};
 
 export le;
 export merge_sort;
@@ -141,7 +142,6 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
     qsort3::<T>(compare_func_lt, compare_func_eq, arr, i, right);
 }
 
-// FIXME: This should take lt and eq types (#2348)
 #[doc = "
 Fancy quicksort. Sorts a mut vector in place.
 
@@ -152,10 +152,9 @@ According to these slides this is the algorithm of choice for
 
 This is an unstable sort.
 "]
-fn quick_sort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
-                       arr: [mut T]) {
+fn quick_sort3<T: copy ord eq>(arr: [mut T]) {
     if len::<T>(arr) == 0u { ret; }
-    qsort3::<T>(compare_func_lt, compare_func_eq, arr, 0,
+    qsort3::<T>({ |x, y| x.lt(y) }, { |x, y| x.eq(y) }, arr, 0,
                 (len::<T>(arr) as int) - 1);
 }
 
@@ -163,11 +162,7 @@ fn quick_sort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
 mod test_qsort3 {
     fn check_sort(v1: [mut int], v2: [mut int]) {
         let len = vec::len::<int>(v1);
-        fn lt(&&a: int, &&b: int) -> bool { ret a < b; }
-        fn equal(&&a: int, &&b: int) -> bool { ret a == b; }
-        let f1 = lt;
-        let f2 = equal;
-        quick_sort3::<int>(f1, f2, v1);
+        quick_sort3::<int>(v1);
         let mut i = 0u;
         while i < len {
             log(debug, v2[i]);
