@@ -30,20 +30,30 @@ mod intrinsic {
         fn visit_char() -> bool;
         fn visit_str() -> bool;
 
-        // FIXME: possibly pair these as enter/leave calls
-        // not just enter with implicit number of subsequent
-        // calls. (#2402)
-        fn visit_vec_of(mutbl: uint) -> bool;
-        fn visit_box_of(mutbl: uint) -> bool;
-        fn visit_uniq_of(mutbl: uint) -> bool;
-        fn visit_ptr_of(mutbl: uint) -> bool;
-        fn visit_rptr_of(mutbl: uint) -> bool;
-        fn visit_rec_of(n_fields: uint) -> bool;
-        fn visit_rec_field(name: str/&, mutbl: uint) -> bool;
-        fn visit_tup_of(n_fields: uint) -> bool;
-        fn visit_tup_field(mutbl: uint) -> bool;
-        fn visit_enum_of(n_variants: uint) -> bool;
-        fn visit_enum_variant(name: str/&) -> bool;
+        fn visit_estr_box() -> bool;
+        fn visit_estr_uniq() -> bool;
+        fn visit_estr_slice() -> bool;
+        fn visit_estr_fixed(sz: uint) -> bool;
+
+        fn visit_enter_box(mtbl: uint) -> bool;
+        fn visit_leave_box(mtbl: uint) -> bool;
+        fn visit_enter_uniq(mtbl: uint) -> bool;
+        fn visit_leave_uniq(mtbl: uint) -> bool;
+        fn visit_enter_ptr(mtbl: uint) -> bool;
+        fn visit_leave_ptr(mtbl: uint) -> bool;
+        fn visit_enter_rptr(mtbl: uint) -> bool;
+        fn visit_leave_rptr(mtbl: uint) -> bool;
+
+        fn visit_enter_vec(mtbl: uint) -> bool;
+        fn visit_leave_vec(mtbl: uint) -> bool;
+        fn visit_enter_evec_box(mtbl: uint) -> bool;
+        fn visit_leave_evec_box(mtbl: uint) -> bool;
+        fn visit_enter_evec_uniq(mtbl: uint) -> bool;
+        fn visit_leave_evec_uniq(mtbl: uint) -> bool;
+        fn visit_enter_evec_slice(mtbl: uint) -> bool;
+        fn visit_leave_evec_slice(mtbl: uint) -> bool;
+        fn visit_enter_evec_fixed(mtbl: uint, sz: uint) -> bool;
+        fn visit_leave_evec_fixed(mtbl: uint, sz: uint) -> bool;
     }
 
     #[abi = "rust-intrinsic"]

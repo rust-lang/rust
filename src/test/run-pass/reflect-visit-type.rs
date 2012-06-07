@@ -47,17 +47,38 @@ impl of intrinsic::ty_visitor for my_visitor {
     fn visit_char() -> bool { true }
     fn visit_str() -> bool { true }
 
-    fn visit_vec_of(_mutbl: uint) -> bool { true }
-    fn visit_box_of(_mutbl: uint) -> bool { true }
-    fn visit_uniq_of(_mutbl: uint) -> bool { true }
-    fn visit_ptr_of(_mutbl: uint) -> bool { true }
-    fn visit_rptr_of(_mutbl: uint) -> bool { true }
-    fn visit_rec_of(_n_fields: uint) -> bool { true }
-    fn visit_rec_field(_name: str/&, _mutbl: uint) -> bool { true }
-    fn visit_tup_of(_n_fields: uint) -> bool { true }
-    fn visit_tup_field(_mutbl: uint) -> bool { true }
-    fn visit_enum_of(_n_variants: uint) -> bool { true }
-    fn visit_enum_variant(_name: str/&) -> bool { true }
+    fn visit_estr_box() -> bool { true }
+    fn visit_estr_uniq() -> bool { true }
+    fn visit_estr_slice() -> bool { true }
+    fn visit_estr_fixed(_sz: uint) -> bool { true }
+
+    fn visit_enter_box(_mtbl: uint) -> bool { true }
+    fn visit_leave_box(_mtbl: uint) -> bool { true }
+    fn visit_enter_uniq(_mtbl: uint) -> bool { true }
+    fn visit_leave_uniq(_mtbl: uint) -> bool { true }
+    fn visit_enter_ptr(_mtbl: uint) -> bool { true }
+    fn visit_leave_ptr(_mtbl: uint) -> bool { true }
+    fn visit_enter_rptr(_mtbl: uint) -> bool { true }
+    fn visit_leave_rptr(_mtbl: uint) -> bool { true }
+
+    fn visit_enter_vec(_mtbl: uint) -> bool {
+        self.types += ["["];
+        #error("visited enter-vec");
+        true
+    }
+    fn visit_leave_vec(_mtbl: uint) -> bool {
+        self.types += ["]"];
+        #error("visited leave-vec");
+        true
+    }
+    fn visit_enter_evec_box(_mtbl: uint) -> bool { true }
+    fn visit_leave_evec_box(_mtbl: uint) -> bool { true }
+    fn visit_enter_evec_uniq(_mtbl: uint) -> bool { true }
+    fn visit_leave_evec_uniq(_mtbl: uint) -> bool { true }
+    fn visit_enter_evec_slice(_mtbl: uint) -> bool { true }
+    fn visit_leave_evec_slice(_mtbl: uint) -> bool { true }
+    fn visit_enter_evec_fixed(_mtbl: uint, _sz: uint) -> bool { true }
+    fn visit_leave_evec_fixed(_mtbl: uint, _sz: uint) -> bool { true }
 }
 
 fn main() {
@@ -68,9 +89,11 @@ fn main() {
     intrinsic::visit_ty::<int>(vv);
     intrinsic::visit_ty::<i8>(vv);
     intrinsic::visit_ty::<i16>(vv);
+    intrinsic::visit_ty::<[int]>(vv);
 
     for v.types.each {|s|
         io::println(#fmt("type: %s", s));
     }
-    assert v.types == ["bool", "int", "i8", "i16"];
+    assert v.types == ["bool", "int", "i8", "i16",
+                       "[", "int", "]"];
 }

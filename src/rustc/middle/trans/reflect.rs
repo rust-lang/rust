@@ -10,45 +10,102 @@ import type_of::*;
 import ast::def_id;
 import util::ppaux::ty_to_str;
 
-fn visit_ty_steps(bcx: block, t: ty::t,
-                  step: fn(bcx: block,
-                           tyname: str,
-                           args: [ValueRef]) -> block,
-                  sub: fn(bcx: block, t: ty::t) -> block) -> block {
+enum reflector = {
+    visitor_val: ValueRef,
+    visitor_methods: @[ty::method],
+    mut bcx: block
+};
 
-    let ccx = bcx.ccx();
+impl methods for reflector {
 
-    alt ty::get(t).struct {
-      ty::ty_bot { step(bcx, "visit_bot", []) }
-      ty::ty_nil { step(bcx, "visit_nil", []) }
-      ty::ty_bool { step(bcx, "visit_bool", []) }
-      ty::ty_int(ast::ty_i) { step(bcx, "visit_int", []) }
-      ty::ty_int(ast::ty_char) { step(bcx, "visit_char", []) }
-      ty::ty_int(ast::ty_i8) { step(bcx, "visit_i8", []) }
-      ty::ty_int(ast::ty_i16) { step(bcx, "visit_i16", []) }
-      ty::ty_int(ast::ty_i32) { step(bcx, "visit_i32", []) }
-      ty::ty_int(ast::ty_i64) { step(bcx, "visit_i64", []) }
-      ty::ty_uint(ast::ty_u) { step(bcx, "visit_uint", []) }
-      ty::ty_uint(ast::ty_u8) { step(bcx, "visit_u8", []) }
-      ty::ty_uint(ast::ty_u16) { step(bcx, "visit_u16", []) }
-      ty::ty_uint(ast::ty_u32) { step(bcx, "visit_u32", []) }
-      ty::ty_uint(ast::ty_u64) { step(bcx, "visit_u64", []) }
-      ty::ty_float(ast::ty_f) { step(bcx, "visit_float", []) }
-      ty::ty_float(ast::ty_f32) { step(bcx, "visit_f32", []) }
-      ty::ty_float(ast::ty_f64) { step(bcx, "visit_f64", []) }
-      ty::ty_str { step(bcx, "visit_str", []) }
+    fn c_uint(u: uint) -> ValueRef {
+        C_uint(self.bcx.ccx(), u)
+    }
 
-      ty::ty_vec(mt) {
-        let bcx = step(bcx, "visit_vec_of",
-                       [C_uint(ccx, mt.mutbl as uint)]);
-        sub(bcx, mt.ty)
-      }
+    fn visit(ty_name: str, args: [ValueRef]) {
+        let tcx = self.bcx.tcx();
+        let mth_idx = option::get(ty::method_idx("visit_" + ty_name,
+                                                 *self.visitor_methods));
+        let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
+        let v = self.visitor_val;
+        let get_lval = {|bcx|
+            impl::trans_iface_callee(bcx, v, mth_ty, mth_idx)
+        };
+        self.bcx =
+            trans_call_inner(self.bcx, none, mth_ty, ty::mk_bool(tcx),
+                             get_lval, arg_vals(args), ignore);
+    }
 
-      _ {
-        // Ideally this would be an unimpl, but sadly we have
-        // to pretend we can visit everything at this point.
-        step(bcx, "visit_bot", [])
-      }
+    fn visit_tydesc(t: ty::t) {
+        self.bcx =
+            call_tydesc_glue(self.bcx, self.visitor_val, t,
+                             abi::tydesc_field_visit_glue);
+    }
+
+    fn bracketed_mt(bracket_name: str, mt: ty::mt, extra: [ValueRef]) {
+        self.visit("enter_" + bracket_name,
+                   [self.c_uint(mt.mutbl as uint)] + extra);
+        self.visit_tydesc(mt.ty);
+        self.visit("leave_" + bracket_name,
+                   [self.c_uint(mt.mutbl as uint)] + extra);
+    }
+
+    fn vstore_name_and_extra(vstore: ty::vstore,
+                             f: fn(str,[ValueRef])) {
+        alt vstore {
+          ty::vstore_fixed(n) { f("fixed", [self.c_uint(n)]) }
+          ty::vstore_slice(_) { f("slice", []) }
+          ty::vstore_uniq { f("uniq", []);}
+          ty::vstore_box { f("box", []); }
+        }
+    }
+
+    fn leaf(name: str) {
+        self.visit(name, []);
+    }
+
+    // Entrypoint
+    fn visit_ty(t: ty::t) {
+
+        alt ty::get(t).struct {
+          ty::ty_bot { self.leaf("bot") }
+          ty::ty_nil { self.leaf("nil") }
+          ty::ty_bool { self.leaf("bool") }
+          ty::ty_int(ast::ty_i) { self.leaf("int") }
+          ty::ty_int(ast::ty_char) { self.leaf("char") }
+          ty::ty_int(ast::ty_i8) { self.leaf("i8") }
+          ty::ty_int(ast::ty_i16) { self.leaf("i16") }
+          ty::ty_int(ast::ty_i32) { self.leaf("i32") }
+          ty::ty_int(ast::ty_i64) { self.leaf("i64") }
+          ty::ty_uint(ast::ty_u) { self.leaf("uint") }
+          ty::ty_uint(ast::ty_u8) { self.leaf("u8") }
+          ty::ty_uint(ast::ty_u16) { self.leaf("u16") }
+          ty::ty_uint(ast::ty_u32) { self.leaf("u32") }
+          ty::ty_uint(ast::ty_u64) { self.leaf("u64") }
+          ty::ty_float(ast::ty_f) { self.leaf("float") }
+          ty::ty_float(ast::ty_f32) { self.leaf("f32") }
+          ty::ty_float(ast::ty_f64) { self.leaf("f64") }
+          ty::ty_str { self.leaf("str") }
+
+          ty::ty_vec(mt) { self.bracketed_mt("vec", mt, []) }
+          ty::ty_estr(vst) {
+            self.vstore_name_and_extra(vst) {|name, extra|
+                self.visit("estr_" + name, extra)
+            }
+          }
+          ty::ty_evec(mt, vst) {
+            self.vstore_name_and_extra(vst) {|name, extra|
+                self.bracketed_mt("evec_" + name, mt, extra)
+            }
+          }
+          ty::ty_box(mt) { self.bracketed_mt("box", mt, []) }
+          ty::ty_uniq(mt) { self.bracketed_mt("uniq", mt, []) }
+          ty::ty_ptr(mt) { self.bracketed_mt("ptr", mt, []) }
+          ty::ty_rptr(_, mt) { self.bracketed_mt("rptr", mt, []) }
+
+          // FIXME: finish these.
+          _ { self.visit("bot", []) }
+        }
     }
 }
 
@@ -56,21 +113,13 @@ fn visit_ty_steps(bcx: block, t: ty::t,
 fn emit_calls_to_iface_visit_ty(bcx: block, t: ty::t,
                                 visitor_val: ValueRef,
                                 visitor_iid: def_id) -> block {
-    let tcx = bcx.tcx();
-    let methods = ty::iface_methods(tcx, visitor_iid);
-    visit_ty_steps(bcx, t,
-                   {|bcx, mth_name, args|
-                       let mth_idx = option::get(ty::method_idx(mth_name,
-                                                                *methods));
-                       let mth_ty = ty::mk_fn(tcx, methods[mth_idx].fty);
-                       let get_lval = {|bcx|
-                           impl::trans_iface_callee(bcx, visitor_val,
-                                                    mth_ty, mth_idx)
-                       };
-                       trans_call_inner(bcx, none, mth_ty, ty::mk_bool(tcx),
-                                        get_lval, arg_vals(args), ignore)
-                   },
-                   {|bcx, t_sub|
-                       call_tydesc_glue(bcx, visitor_val, t_sub,
-                                        abi::tydesc_field_visit_glue)})
+
+    let r = reflector({
+        visitor_val: visitor_val,
+        visitor_methods: ty::iface_methods(bcx.tcx(), visitor_iid),
+        mut bcx: bcx
+    });
+
+    r.visit_ty(t);
+    ret r.bcx;
 }
