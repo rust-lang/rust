@@ -91,7 +91,7 @@ fn main() {
     intrinsic::visit_ty::<i16>(vv);
     intrinsic::visit_ty::<[int]>(vv);
 
-    for v.types.each {|s|
+    for (copy v.types).each {|s|
         io::println(#fmt("type: %s", s));
     }
     assert v.types == ["bool", "int", "i8", "i16",

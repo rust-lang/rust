@@ -204,9 +204,6 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
         bind middle::borrowck::check_crate(ty_cx, method_map, crate));
-    let (copy_map, _ref_map) =
-        time(time_passes, "alias checking",
-             bind middle::alias::check_crate(ty_cx, crate));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_use_map, crate));
     time(time_passes, "lint checking",
@@ -216,7 +213,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let outputs = option::get(outputs);
 
     let maps = {mutbl_map: mutbl_map, root_map: root_map,
-                copy_map: copy_map, last_use_map: last_use_map,
+                last_use_map: last_use_map,
                 impl_map: impl_map, method_map: method_map,
                 vtable_map: vtable_map};
 
@@ -448,14 +445,6 @@ fn build_session_options(match: getopts::match,
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
     let target_opt = getopts::opt_maybe_str(match, "target");
     let save_temps = getopts::opt_present(match, "save-temps");
-    let borrowck = alt getopts::opt_maybe_str(match, "borrowck") {
-      none { 0u }
-      some("warn") { 1u }
-      some("err") { 2u }
-      some(_) {
-        early_error(demitter, "borrowck may be warn or err")
-      }
-    };
     alt output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
       link::output_type_llvm_assembly | link::output_type_assembly {}
@@ -504,8 +493,7 @@ fn build_session_options(match: getopts::match,
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
-          debugging_opts: debugging_opts,
-          borrowck: borrowck};
+          debugging_opts: debugging_opts};
     ret sopts;
 }
 
@@ -582,8 +570,7 @@ fn opts() -> [getopts::opt] {
          optmulti("Z"),
 
          optmulti("cfg"), optflag("test"),
-         optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
-         optopt("borrowck")];
+         optflag("lib"), optflag("bin"), optflag("static"), optflag("gc")];
 }
 
 type output_filenames = @{out_filename: str, obj_filename:str};

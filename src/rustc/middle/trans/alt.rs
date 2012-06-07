@@ -614,25 +614,7 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
             bcx.fcx.lllocals.insert(node_id, local_mem(local));
         } else { success = false; }
     };
-    if success {
-        // Copy references that the alias analysis considered unsafe
-        for ids.each_value {|node_id|
-            if bcx.ccx().maps.copy_map.contains_key(node_id) {
-                let local = alt bcx.fcx.lllocals.find(node_id) {
-                  some(local_mem(x)) { x }
-                  _ { bcx.tcx().sess.bug("someone \
-                        forgot to document an invariant in \
-                        make_phi_bindings"); }
-                };
-                let e_ty = node_id_type(bcx, node_id);
-                let alloc = alloc_ty(bcx, e_ty);
-                bcx = copy_val(bcx, INIT, alloc,
-                               load_if_immediate(bcx, local, e_ty), e_ty);
-                add_clean(bcx, alloc, e_ty);
-                bcx.fcx.lllocals.insert(node_id, local_mem(alloc));
-            }
-        };
-    } else {
+    if !success {
         Unreachable(bcx);
     }
     ret success;
@@ -719,7 +701,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
     alt pat.node {
       ast::pat_ident(_,inner) {
         if pat_is_variant(bcx.tcx().def_map, pat) { ret bcx; }
-        if make_copy || ccx.maps.copy_map.contains_key(pat.id) {
+        if make_copy {
             let ty = node_id_type(bcx, pat.id);
             let llty = type_of::type_of(ccx, ty);
             let alloc = alloca(bcx, llty);

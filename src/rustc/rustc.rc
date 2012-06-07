@@ -78,7 +78,6 @@ mod middle {
         mod loan;
         mod preserve;
     }
-    mod alias;
     mod liveness;
     mod block_use;
     mod kind;

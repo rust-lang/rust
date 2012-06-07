@@ -2888,22 +2888,11 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         // to have type lldestty (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty);
     } else if arg_mode == ast::by_ref || arg_mode == ast::by_val {
-        let mut copied = false;
         let imm = ty::type_is_immediate(arg.ty);
         #debug["   arg.ty=%s, imm=%b, arg_mode=%?, lv.kind=%?",
                ty_to_str(bcx.tcx(), arg.ty), imm, arg_mode, lv.kind];
         if arg_mode == ast::by_ref && lv.kind != owned && imm {
             val = do_spill_noroot(bcx, val);
-            copied = true;
-        }
-        if ccx.maps.copy_map.contains_key(e.id) && lv.kind != temporary {
-            if !copied {
-                let alloc = alloc_ty(bcx, arg.ty);
-                bcx = copy_val(bcx, INIT, alloc,
-                               load_if_immediate(bcx, val, arg.ty), arg.ty);
-                val = alloc;
-            } else { bcx = take_ty(bcx, val, arg.ty); }
-            add_clean(bcx, val, arg.ty);
         }
         if arg_mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
