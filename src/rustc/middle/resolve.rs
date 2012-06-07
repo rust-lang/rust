@@ -157,7 +157,7 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     // don't complain if a pattern uses the same nullary enum twice
     check_for_collisions(e, *crate);
 
-    // FIXME: move this to the lint pass when rewriting resolve.
+    // FIXME: move this to the lint pass when rewriting resolve. (#1634)
     for sess.opts.lint_opts.each {|pair|
         let (lint,level) = pair;
         if lint == lint::unused_imports && level != lint::ignore {
@@ -217,7 +217,7 @@ fn iter_effective_import_paths(vi: ast::view_item,
           ast::view_path_simple(_, _, _) { }
           // FIXME: support uniform ident-list exports eventually;
           // at the moment they have half a meaning as reaching into
-          // tags.
+          // tags. (but also see #1893)
           ast::view_path_list(_, _, _) {}
           ast::view_path_glob(_,_) {
             f(vp);
@@ -580,8 +580,8 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
         for ifaces.each {|p|
             visit::visit_path(p.path, class_scope, v);
         }
-        // FIXME: should be fk_ctor?
-        visit_fn_with_scope(e, visit::fk_item_fn(i.ident, tps), ctor.node.dec,
+        visit_fn_with_scope(e, visit::fk_ctor(i.ident, tps, ctor.node.self_id,
+                                             local_def(i.id)), ctor.node.dec,
                             ctor.node.body, ctor.span, ctor.node.id,
                             ctor_scope, v);
         option::iter(m_dtor) {|dtor|
@@ -1065,8 +1065,6 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
                       ret some(ast::def_fn(local_def(ctor.node.id),
                                            ast::impure_fn));
                   }
-                  // FIXME: AST allows other items to appear in a class,
-                  // but that might not be wise
               }
               _ { }
             }
@@ -1940,7 +1938,7 @@ fn check_exports(e: @env) {
         let defid = def_id_of_def(m);
 
         if defid.crate != ast::local_crate {
-            // FIXME: ought to support external export-globs eventually.
+            // FIXME: ought to support external export-globs eventually. #2527
             e.sess.span_unimpl(sp, "glob-export of items in external crate");
         } else {
 
