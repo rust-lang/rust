@@ -1,7 +1,7 @@
 import syntax::ast::*;
 
 // FIXME this doesn't handle big integer/float literals correctly (nor does
-// the rest of our literal handling)
+// the rest of our literal handling - issue #33)
 enum const_val {
     const_float(f64),
     const_int(i64),

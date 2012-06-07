@@ -90,6 +90,7 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // will ignore it, but we ought to be requiring it to
                 // be immutable (whereas something like {f:int} would
                 // be fine).
+                // (See #2493)
 
                 alt opt_deref_kind(arg_ty.ty) {
                   some(deref_ptr(region_ptr)) |
