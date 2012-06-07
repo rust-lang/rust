@@ -1186,7 +1186,7 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
               }
             }
         } else if field == abi::tydesc_field_visit_glue {
-            alt ti.free_glue {
+            alt ti.visit_glue {
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue VISIT %s",
@@ -1222,6 +1222,8 @@ fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
             static_glue_fn = sti.drop_glue;
         } else if field == abi::tydesc_field_free_glue {
             static_glue_fn = sti.free_glue;
+        } else if field == abi::tydesc_field_visit_glue {
+            static_glue_fn = sti.visit_glue;
         }
       }
     }
