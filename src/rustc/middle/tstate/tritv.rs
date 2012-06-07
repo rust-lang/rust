@@ -27,6 +27,8 @@ export to_str;
    11 should never appear
  FIXME: typestate precondition (uncertain and val must
  have the same length; 11 should never appear in a given position)
+ (except we're not putting typestate constraints in the compiler, as
+ per discussion at #2178).
 */
 
 type t = {uncertain: bitv::bitv, val: bitv::bitv, nbits: uint};
@@ -88,11 +90,9 @@ fn trit_or(a: trit, b: trit) -> trit {
       tfalse {
         alt b {
           ttrue { dont_care }
-
-
-
-
-          /* FIXME: ?????? */
+          /* FIXME: ??????
+             Again, unit tests would help here -- #2538
+           */
           _ {
             tfalse
           }
@@ -106,6 +106,7 @@ fn trit_or(a: trit, b: trit) -> trit {
 // all variables start out in a 0 state. Probably I need
 // to make it so that all constraints start out in a 0 state
 // (we consider a constraint false until proven true), too.
+// #2538 would help.
 fn trit_and(a: trit, b: trit) -> trit {
     alt a {
       dont_care { b }
