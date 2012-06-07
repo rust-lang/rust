@@ -1,5 +1,6 @@
 import T = inst::T;
 import cmp::{eq, ord};
+import num::num;
 
 export min_value, max_value;
 export min, max;
