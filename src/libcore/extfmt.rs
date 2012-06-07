@@ -94,7 +94,8 @@ mod ct {
         }
         let mut i = 0u;
         while i < lim {
-            let curr = str::slice(s, i, i+1u);
+            let size = str::utf8_char_width(s[i]);
+            let curr = str::slice(s, i, i+size);
             if str::eq(curr, "%") {
                 i += 1u;
                 if i >= lim {
@@ -110,7 +111,7 @@ mod ct {
                     pieces += [rs.piece];
                     i = rs.next;
                 }
-            } else { buf += curr; i += 1u; }
+            } else { buf += curr; i += size; }
         }
         flush_buf(buf, pieces);
         ret pieces;
