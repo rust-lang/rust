@@ -100,7 +100,7 @@ type glob_imp_def = {def: def, path: @ast::view_path};
 type indexed_mod = {
     m: option<ast::_mod>,
     index: mod_index,
-    mut glob_imports: [glob_imp_def],
+    glob_imports: dvec<glob_imp_def>,
     mut globbed_exports: [ident],
     glob_imported_names: hashmap<str, glob_import_state>,
     path: str
@@ -123,7 +123,7 @@ type env =
      def_map: def_map,
      ast_map: ast_map::map,
      imports: hashmap<node_id, import_state>,
-     mut exp_map: exp_map,
+     exp_map: exp_map,
      mod_map: hashmap<node_id, @indexed_mod>,
      block_map: hashmap<node_id, [glob_imp_def]>,
      ext_map: ext_map,
@@ -132,7 +132,7 @@ type env =
      ext_cache: ext_hash,
      used_imports: {mut track: bool,
                     mut data: [node_id]},
-     mut reported: [{ident: str, sc: scope}],
+     reported: dvec<{ident: str, sc: scope}>,
      mut ignored_imports: [node_id],
      mut current_tp: option<uint>,
      mut resolve_unexported: bool,
@@ -174,7 +174,7 @@ fn create_env(sess: session, amap: ast_map::map) -> @env {
       def_map: int_hash(),
       ast_map: amap,
       imports: int_hash(),
-      mut exp_map: int_hash(),
+      exp_map: int_hash(),
       mod_map: int_hash(),
       block_map: int_hash(),
       ext_map: new_def_hash(),
@@ -182,7 +182,7 @@ fn create_env(sess: session, amap: ast_map::map) -> @env {
       impl_cache: new_def_hash(),
       ext_cache: new_ext_hash(),
       used_imports: {mut track: false, mut data:  []},
-      mut reported: [],
+      reported: dvec(),
       mut ignored_imports: [],
       mut current_tp: none,
       mut resolve_unexported: false,
@@ -270,7 +270,7 @@ fn map_crate(e: @env, c: @ast::crate) {
             e.mod_map.insert(i.id,
                              @{m: some(md),
                                index: index_mod(md),
-                               mut glob_imports: [],
+                               glob_imports: dvec(),
                                mut globbed_exports: [],
                                glob_imported_names: str_hash(),
                                path: path_from_scope(sc, i.ident)});
@@ -279,7 +279,7 @@ fn map_crate(e: @env, c: @ast::crate) {
             e.mod_map.insert(i.id,
                              @{m: none::<ast::_mod>,
                                index: index_nmod(nmd),
-                               mut glob_imports: [],
+                               glob_imports: dvec(),
                                mut globbed_exports: [],
                                glob_imported_names: str_hash(),
                                path: path_from_scope(sc, i.ident)});
@@ -301,7 +301,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                     let glob = {def: imp, path: vp};
                     alt list::head(sc) {
                       scope_item(i) {
-                        e.mod_map.get(i.id).glob_imports += [glob];
+                        e.mod_map.get(i.id).glob_imports.push(glob);
                       }
                       scope_block(b, _, _) {
                         let globs = alt e.block_map.find(b.node.id) {
@@ -311,8 +311,8 @@ fn map_crate(e: @env, c: @ast::crate) {
                         e.block_map.insert(b.node.id, globs);
                       }
                       scope_crate {
-                        e.mod_map.get(ast::crate_node_id).glob_imports
-                            += [glob];
+                        e.mod_map.get(ast::crate_node_id).
+                            glob_imports.push(glob);
                       }
                       _ { e.sess.span_bug(vi.span, "unexpected scope in a \
                                                     glob import"); }
@@ -338,7 +338,7 @@ fn map_crate(e: @env, c: @ast::crate) {
     e.mod_map.insert(ast::crate_node_id,
                      @{m: some(c.node.module),
                        index: index_mod(c.node.module),
-                       mut glob_imports: [],
+                       glob_imports: dvec(),
                        mut globbed_exports: [],
                        glob_imported_names: str_hash(),
                        path: ""});
@@ -899,7 +899,7 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
             for e.reported.each {|rs|
                 if str::eq(rs.ident, name) && err_scope == rs.sc { ret; }
             }
-            e.reported += [{ident: name, sc: err_scope}];
+            e.reported.push({ident: name, sc: err_scope});
           }
           _ {}
         }
@@ -1536,7 +1536,7 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
     // absence takes the place of todo()
     if !info.glob_imported_names.contains_key(id) {
         info.glob_imported_names.insert(id, glob_resolving(sp));
-        let globs = info.glob_imports;
+        let globs = info.glob_imports.get();
         let val = lookup_in_globs(e, globs, sp, id, ns_val, dr);
         let typ = lookup_in_globs(e, globs, sp, id, ns_type, dr);
         let md = lookup_in_globs(e, globs, sp, id, ns_module, dr);

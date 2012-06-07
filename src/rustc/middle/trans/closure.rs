@@ -175,11 +175,12 @@ fn allocate_cbox(bcx: block,
     let mut temp_cleanups = [];
     let (bcx, box) = alt ck {
       ty::ck_box {
-        let box = malloc_boxed_raw(bcx, cdata_ty, ti);
+        get_tydesc(ccx, cdata_ty, ti);
+        let box = malloc_raw(bcx, cdata_ty, heap_shared);
         (bcx, box)
       }
       ty::ck_uniq {
-        let box = malloc_unique_raw(bcx, cdata_ty);
+        let box = malloc_raw(bcx, cdata_ty, heap_exchange);
         (bcx, box)
       }
       ty::ck_block {

@@ -77,7 +77,7 @@ fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
     file.lines += [{ch: chpos, byte: byte_pos + file.start_pos.byte}];
 }
 
-type lookup_fn = fn@(file_pos) -> uint;
+type lookup_fn = pure fn(file_pos) -> uint;
 
 fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
     -> {fm: filemap, line: uint}
@@ -108,12 +108,12 @@ fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
 }
 
 fn lookup_char_pos(map: codemap, pos: uint) -> loc {
-    fn lookup(pos: file_pos) -> uint { ret pos.ch; }
+    pure fn lookup(pos: file_pos) -> uint { ret pos.ch; }
     ret lookup_pos(map, pos, lookup);
 }
 
 fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
-    fn lookup(pos: file_pos) -> uint { ret pos.byte; }
+    pure fn lookup(pos: file_pos) -> uint { ret pos.byte; }
     ret lookup_pos(map, pos, lookup);
 }
 
@@ -139,7 +139,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
 }
 
 fn adjust_span(map: codemap, sp: span) -> span {
-    fn lookup(pos: file_pos) -> uint { ret pos.ch; }
+    pure fn lookup(pos: file_pos) -> uint { ret pos.ch; }
     let line = lookup_line(map, sp.lo, lookup);
     alt (line.fm.substr) {
       fss_none {sp}
@@ -198,7 +198,8 @@ fn get_line(fm: filemap, line: int) -> str unsafe {
 
 fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
     -> {fm: filemap, pos: uint} {
-    let {fm, line} = lookup_line(cm, chpos, {|pos| pos.ch});
+    pure fn lookup(pos: file_pos) -> uint { ret pos.ch; }
+    let {fm, line} = lookup_line(cm, chpos, lookup);
     let line_offset = fm.lines[line].byte - fm.start_pos.byte;
     let col = chpos - fm.lines[line].ch;
     let col_offset = str::count_bytes(*fm.src, line_offset, col);

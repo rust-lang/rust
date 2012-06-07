@@ -13,9 +13,9 @@ import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      set_postcondition, ts_ann,
                      clear_in_postcond,
                      clear_in_poststate_};
-import tritv::*;
-import bitvectors::promises_;
 import driver::session::session;
+import dvec::{dvec, extensions};
+import tritv::{dont_care, tfalse, tritv_get, ttrue};
 
 import syntax::print::pprust::{constr_args_to_str, lit_to_str};
 
@@ -197,7 +197,7 @@ type constraint = {
     path: @path,
     // FIXME: really only want it to be mut during collect_locals.
     // freeze it after that.
-    descs: @mut [pred_args]
+    descs: @dvec<pred_args>
 };
 
 type tsconstr = {
@@ -473,8 +473,7 @@ fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> option<def> {
 
 fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint] {
     let mut rslt: [norm_constraint] = [];
-    let descs = *c.descs;
-    for vec::each(descs) {|pd|
+    for (*c.descs).each {|pd|
         rslt +=
             [{bit_num: pd.node.bit_num,
               c: respan(pd.span, {path: c.path,
@@ -498,11 +497,11 @@ fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
 // FIXME
 // Would rather take an immutable vec as an argument,
 // should freeze it at some earlier point.
-fn match_args(fcx: fn_ctxt, occs: @mut [pred_args],
+fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
               occ: [@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",
            constr_args_to_str(fn@(i: inst) -> str { ret i.ident; }, occ));
-    for vec::each(*occs) {|pd|
+    for (*occs).each {|pd|
         log(debug,
                  "match_args: candidate " + pred_args_to_str(pd));
         fn eq(p: inst, q: inst) -> bool { ret p.node == q.node; }
@@ -613,7 +612,8 @@ fn substitute_arg(cx: ty::ctxt, actuals: [@expr], a: @constr_arg) ->
     }
 }
 
-fn pred_args_matches(pattern: [constr_arg_general_<inst>], desc: pred_args) ->
+fn pred_args_matches(pattern: [constr_arg_general_<inst>],
+                     desc: pred_args) ->
    bool {
     let mut i = 0u;
     for desc.node.args.each {|c|
@@ -638,7 +638,8 @@ fn pred_args_matches(pattern: [constr_arg_general_<inst>], desc: pred_args) ->
     ret true;
 }
 
-fn find_instance_(pattern: [constr_arg_general_<inst>], descs: [pred_args]) ->
+fn find_instance_(pattern: [constr_arg_general_<inst>],
+                  descs: [pred_args]) ->
    option<uint> {
     for descs.each {|d|
         if pred_args_matches(pattern, d) { ret some(d.node.bit_num); }
@@ -660,15 +661,19 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
 
     if vec::len(subst) == 0u { ret []; }
     let mut res = [];
-    for (*c.descs).each { |d|
-        if args_mention(d.node.args, find_in_subst_bool, subst) {
-            let old_bit_num = d.node.bit_num;
-            let newv = replace(subst, d);
-            alt find_instance_(newv, *c.descs) {
-              some(d1) {res += [{from: old_bit_num, to: d1}]}
-              _ {}
-            }
-        } else {}
+    (*c.descs).swap { |v|
+        let v <- vec::from_mut(v);
+        for v.each { |d|
+            if args_mention(d.node.args, find_in_subst_bool, subst) {
+                let old_bit_num = d.node.bit_num;
+                let newv = replace(subst, d);
+                alt find_instance_(newv, v) {
+                  some(d1) {res += [{from: old_bit_num, to: d1}]}
+                  _ {}
+                }
+            } else {}
+        }
+        vec::to_mut(v)
     }
     ret res;
 }
@@ -811,7 +816,7 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
         // dest def_id
         let insts = find_instances(fcx, subst, val);
         for insts.each {|p|
-            if promises_(p.from, src_post) {
+            if bitvectors::promises_(p.from, src_post) {
                 set_in_poststate_(p.to, target_post);
             }
         }
@@ -896,12 +901,6 @@ fn args_mention<T>(args: [@constr_arg_use],
 }
 
 fn use_var(fcx: fn_ctxt, v: node_id) { *fcx.enclosing.used_vars += [v]; }
-
-// FIXME: This should be a function in vec::.
-fn vec_contains(v: @mut [node_id], i: node_id) -> bool {
-    for vec::each(*v) {|d| if d == i { ret true; } }
-    ret false;
-}
 
 fn op_to_oper_ty(io: init_op) -> oper_type {
     alt io { init_move { oper_move } _ { oper_assign } }

@@ -21,17 +21,17 @@ pure fn mk_sp(lo: uint, hi: uint) -> span {
 // make this a const, once the compiler supports it
 pure fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
-fn path_name(p: @path) -> str { path_name_i(p.idents) }
+pure fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
-fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
+pure fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
-fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
+pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
 
-fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
+pure fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
 
 pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
-fn stmt_id(s: stmt) -> node_id {
+pure fn stmt_id(s: stmt) -> node_id {
     alt s.node {
       stmt_decl(_, id) { id }
       stmt_expr(_, id) { id }
@@ -45,7 +45,7 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
         _ { fail "non-variant in variant_def_ids"; } }
 }
 
-fn def_id_of_def(d: def) -> def_id {
+pure fn def_id_of_def(d: def) -> def_id {
     alt d {
       def_fn(id, _) | def_mod(id) |
       def_native_mod(id) | def_const(id) |
@@ -60,7 +60,7 @@ fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-fn binop_to_str(op: binop) -> str {
+pure fn binop_to_str(op: binop) -> str {
     alt op {
       add { ret "+"; }
       subtract { ret "-"; }
@@ -95,7 +95,7 @@ pure fn is_shift_binop(b: binop) -> bool {
     }
 }
 
-fn unop_to_str(op: unop) -> str {
+pure fn unop_to_str(op: unop) -> str {
     alt op {
       box(mt) { if mt == m_mutbl { ret "@mut "; } ret "@"; }
       uniq(mt) { if mt == m_mutbl { ret "~mut "; } ret "~"; }
@@ -105,11 +105,11 @@ fn unop_to_str(op: unop) -> str {
     }
 }
 
-fn is_path(e: @expr) -> bool {
+pure fn is_path(e: @expr) -> bool {
     ret alt e.node { expr_path(_) { true } _ { false } };
 }
 
-fn int_ty_to_str(t: int_ty) -> str {
+pure fn int_ty_to_str(t: int_ty) -> str {
     alt t {
       ty_char { "u8" } // ???
       ty_i { "" } ty_i8 { "i8" } ty_i16 { "i16" }
@@ -117,7 +117,7 @@ fn int_ty_to_str(t: int_ty) -> str {
     }
 }
 
-fn int_ty_max(t: int_ty) -> u64 {
+pure fn int_ty_max(t: int_ty) -> u64 {
     alt t {
       ty_i8 { 0x80u64 }
       ty_i16 { 0x8000u64 }
@@ -126,14 +126,14 @@ fn int_ty_max(t: int_ty) -> u64 {
     }
 }
 
-fn uint_ty_to_str(t: uint_ty) -> str {
+pure fn uint_ty_to_str(t: uint_ty) -> str {
     alt t {
       ty_u { "u" } ty_u8 { "u8" } ty_u16 { "u16" }
       ty_u32 { "u32" } ty_u64 { "u64" }
     }
 }
 
-fn uint_ty_max(t: uint_ty) -> u64 {
+pure fn uint_ty_max(t: uint_ty) -> u64 {
     alt t {
       ty_u8 { 0xffu64 }
       ty_u16 { 0xffffu64 }
@@ -142,7 +142,7 @@ fn uint_ty_max(t: uint_ty) -> u64 {
     }
 }
 
-fn float_ty_to_str(t: float_ty) -> str {
+pure fn float_ty_to_str(t: float_ty) -> str {
     alt t { ty_f { "" } ty_f32 { "f32" } ty_f64 { "f64" } }
 }
 

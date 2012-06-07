@@ -59,11 +59,11 @@ type break_t = {offset: int, blank_space: int};
 
 type begin_t = {offset: int, breaks: breaks};
 
-enum token { STRING(str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
+enum token { STRING(@str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
 
-fn tok_str(t: token) -> str {
+fn tok_str(++t: token) -> str {
     alt t {
-      STRING(s, len) { ret #fmt["STR(%s,%d)", s, len]; }
+      STRING(s, len) { ret #fmt["STR(%s,%d)", *s, len]; }
       BREAK(_) { ret "BREAK"; }
       BEGIN(_) { ret "BEGIN"; }
       END { ret "END"; }
@@ -109,8 +109,8 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
       mut space: linewidth as int,
       mut left: 0u,
       mut right: 0u,
-      mut token: token,
-      mut size: size,
+      token: token,
+      size: size,
       mut left_total: 0,
       mut right_total: 0,
       mut scan_stack: scan_stack,
@@ -206,8 +206,8 @@ type printer = @{
     mut space: int, // number of spaces left on line
     mut left: uint, // index of left side of input stream
     mut right: uint, // index of right side of input stream
-    mut token: [mut token], // ring-buffr stream goes through
-    mut size: [mut int], // ring-buffer of calculated sizes
+    token: [mut token], // ring-buffr stream goes through
+    size: [mut int], // ring-buffer of calculated sizes
     mut left_total: int, // running size of stream "...left"
     mut right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
@@ -346,7 +346,7 @@ impl printer for printer {
         self.right %= self.buf_len;
         assert (self.right != self.left);
     }
-    fn advance_left(x: token, L: int) {
+    fn advance_left(++x: token, L: int) {
         #debug("advnce_left [%u,%u], sizeof(%u)=%d", self.left, self.right,
                self.left, L);
         if L >= 0 {
@@ -367,7 +367,7 @@ impl printer for printer {
     fn check_stack(k: int) {
         if !self.scan_stack_empty {
             let x = self.scan_top();
-            alt self.token[x] {
+            alt copy self.token[x] {
               BEGIN(b) {
                 if k > 0 {
                     self.size[self.scan_pop()] = self.size[x] +
@@ -465,7 +465,7 @@ impl printer for printer {
             assert (L == len);
             // assert L <= space;
             self.space -= len;
-            self.write_str(s);
+            self.write_str(*s);
           }
           EOF {
             // EOF should never get here.
@@ -493,14 +493,14 @@ fn end(p: printer) { p.pretty_print(END); }
 fn eof(p: printer) { p.pretty_print(EOF); }
 
 fn word(p: printer, wrd: str) {
-    p.pretty_print(STRING(wrd, str::len(wrd) as int));
+    p.pretty_print(STRING(@wrd, str::len(wrd) as int));
 }
 
 fn huge_word(p: printer, wrd: str) {
-    p.pretty_print(STRING(wrd, size_infinity));
+    p.pretty_print(STRING(@wrd, size_infinity));
 }
 
-fn zero_word(p: printer, wrd: str) { p.pretty_print(STRING(wrd, 0)); }
+fn zero_word(p: printer, wrd: str) { p.pretty_print(STRING(@wrd, 0)); }
 
 fn spaces(p: printer, n: uint) { break_offset(p, n, 0); }
 

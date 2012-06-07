@@ -9,6 +9,7 @@ import syntax::codemap::span;
 import driver::session;
 import session::session;
 import syntax::attr;
+import dvec::{dvec, extensions};
 
 export modify_for_testing;
 
@@ -20,7 +21,7 @@ type test_ctxt =
     @{sess: session::session,
       crate: @ast::crate,
       mut path: [ast::ident],
-      mut testfns: [test]};
+      testfns: dvec<test>};
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
@@ -40,7 +41,7 @@ fn generate_test_harness(sess: session::session,
         @{sess: sess,
           crate: crate,
           mut path: [],
-          mut testfns: []};
+          testfns: dvec()};
 
     let precursor =
         @{fold_crate: fold::wrap(bind fold_crate(cx, _, _)),
@@ -110,8 +111,8 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
             let test = {span: i.span,
                         path: cx.path, ignore: is_ignored(cx, i),
                         should_fail: should_fail(i)};
-            cx.testfns += [test];
-            #debug("have %u test functions", vec::len(cx.testfns));
+            cx.testfns.push(test);
+            #debug("have %u test functions", cx.testfns.len());
           }
         }
     }
@@ -269,11 +270,10 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
 }
 
 fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
-    #debug("building test vector from %u tests", vec::len(cx.testfns));
+    #debug("building test vector from %u tests", cx.testfns.len());
     let mut descs = [];
     for cx.testfns.each {|test|
-        let test_ = test; // Satisfy alias analysis
-        descs += [mk_test_desc_rec(cx, test_)];
+        descs += [mk_test_desc_rec(cx, test)];
     }
 
     ret @{id: cx.sess.next_node_id(),

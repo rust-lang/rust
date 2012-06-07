@@ -24,9 +24,7 @@ type arc_data<T: const> = {
 resource arc_destruct<T: const>(data: *libc::c_void) {
     unsafe {
         let data: ~arc_data<T> = unsafe::reinterpret_cast(data);
-        let ref_ptr = &mut data.count;
-
-        let new_count = rustrt::rust_atomic_decrement(ref_ptr);
+        let new_count = rustrt::rust_atomic_decrement(&mut data.count);
         assert new_count >= 0;
         if new_count == 0 {
             // drop glue takes over.

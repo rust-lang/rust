@@ -2,6 +2,7 @@ import syntax::ast::*;
 import syntax::{visit, ast_util, ast_map};
 import driver::session::session;
 import std::map::hashmap;
+import dvec::{dvec, extensions};
 
 fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve::def_map,
@@ -130,7 +131,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
         sess: session,
         ast_map: ast_map::map,
         def_map: resolve::def_map,
-        idstack: @mut [node_id],
+        idstack: @dvec<node_id>,
     };
 
     let env = {
@@ -138,7 +139,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: @mut []
+        idstack: @dvec()
     };
 
     let visitor = visit::mk_vt(@{
@@ -152,9 +153,9 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
         if (*env.idstack).contains(it.id) {
             env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
-        vec::push(*env.idstack, it.id);
+        (*env.idstack).push(it.id);
         visit::visit_item(it, env, v);
-        vec::pop(*env.idstack);
+        (*env.idstack).pop();
     }
 
     fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {

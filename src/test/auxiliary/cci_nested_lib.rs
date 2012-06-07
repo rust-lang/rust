@@ -1,14 +1,16 @@
-type alist<A,B> = { eq_fn: fn@(A,A) -> bool, mut data: [(A,B)] };
+import dvec::{dvec,extensions};
+
+type entry<A,B> = {key: A, value: B};
+type alist<A,B> = { eq_fn: fn@(A,A) -> bool, data: dvec<entry<A,B>> };
 
 fn alist_add<A: copy, B: copy>(lst: alist<A,B>, k: A, v: B) {
-    lst.data += [(k, v)];
+    lst.data.push({key:k, value:v});
 }
 
 fn alist_get<A: copy, B: copy>(lst: alist<A,B>, k: A) -> B {
     let eq_fn = lst.eq_fn;
-    for lst.data.each {|pair|
-        let (ki, vi) = pair; // copy req'd for alias analysis
-        if eq_fn(k, ki) { ret vi; }
+    for lst.data.each {|entry|
+        if eq_fn(entry.key, k) { ret entry.value; }
     }
     fail;
 }
@@ -16,14 +18,12 @@ fn alist_get<A: copy, B: copy>(lst: alist<A,B>, k: A) -> B {
 #[inline]
 fn new_int_alist<B: copy>() -> alist<int, B> {
     fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-    ret {eq_fn: eq_int,
-         mut data: []};
+    ret {eq_fn: eq_int, data: dvec()};
 }
 
 #[inline]
 fn new_int_alist_2<B: copy>() -> alist<int, B> {
     #[inline]
     fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-    ret {eq_fn: eq_int,
-         mut data: []};
+    ret {eq_fn: eq_int, data: dvec()};
 }

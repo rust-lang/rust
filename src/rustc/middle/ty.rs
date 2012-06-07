@@ -4,19 +4,19 @@ import std::map::hashmap;
 import driver::session;
 import session::session;
 import syntax::{ast, ast_map};
-import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::{is_local, local_def, split_class_items,
                           new_def_hash};
 import syntax::codemap::span;
 import metadata::csearch;
-import util::common::*;
 import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
 import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
-import syntax::print::pprust::*;
 import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
                       ignore};
+import syntax::ast::*;
+import syntax::print::pprust::*;
+
 export ty_vid, region_vid, vid;
 export br_hashmap;
 export is_instantiable;
@@ -63,7 +63,6 @@ export mt;
 export node_type_table;
 export pat_ty;
 export sequence_element_type;
-export sort_methods;
 export stmt_node_id;
 export sty;
 export subst, subst_tps, substs_is_noop, substs_to_str, substs;
@@ -2309,13 +2308,6 @@ fn method_idx(id: ast::ident, meths: [method]) -> option<uint> {
     let mut i = 0u;
     for meths.each {|m| if m.ident == id { ret some(i); } i += 1u; }
     ret none;
-}
-
-fn sort_methods(meths: [method]) -> [method] {
-    fn method_lteq(a: method, b: method) -> bool {
-        ret str::le(a.ident, b.ident);
-    }
-    ret std::sort::merge_sort(bind method_lteq(_, _), meths);
 }
 
 fn occurs_check(tcx: ctxt, sp: span, vid: ty_vid, rt: t) {

@@ -539,6 +539,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_block(s, ctor.node.body);
           option::iter(m_dtor) {|dtor|
             hardbreak_if_not_bol(s);
+            maybe_print_comment(s, dtor.span.lo);
             head(s, "drop");
             print_block(s, dtor.node.body);
           }
@@ -1703,7 +1704,7 @@ fn print_comment(s: ps, cmnt: comments::cmnt) {
         // We need to do at least one, possibly two hardbreaks.
         let is_semi =
             alt s.s.last_token() {
-              pp::STRING(s, _) { s == ";" }
+              pp::STRING(s, _) { *s == ";" }
               _ { false }
             };
         if is_semi || is_begin(s) || is_end(s) { hardbreak(s.s); }

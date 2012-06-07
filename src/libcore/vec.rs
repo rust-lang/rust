@@ -211,18 +211,18 @@ fn from_mut<T>(+v: [mut T]) -> [T] unsafe {
 pure fn head<T: copy>(v: [const T]/&) -> T { v[0] }
 
 #[doc = "Returns a vector containing all but the first element of a slice"]
-fn tail<T: copy>(v: [const T]/&) -> [T] {
+pure fn tail<T: copy>(v: [const T]/&) -> [T] {
     ret slice(v, 1u, len(v));
 }
 
 #[doc = "Returns a vector containing all but the first `n` \
          elements of a slice"]
-fn tailn<T: copy>(v: [const T]/&, n: uint) -> [T] {
+pure fn tailn<T: copy>(v: [const T]/&, n: uint) -> [T] {
     slice(v, n, len(v))
 }
 
 #[doc = "Returns a vector containing all but the last element of a slice"]
-fn init<T: copy>(v: [const T]/&) -> [T] {
+pure fn init<T: copy>(v: [const T]/&) -> [T] {
     assert len(v) != 0u;
     slice(v, 0u, len(v) - 1u)
 }
@@ -798,7 +798,7 @@ Swaps two elements in a vector
 * a - The index of the first element
 * b - The index of the second element
 "]
-fn swap<T>(v: [mut T], a: uint, b: uint) {
+fn swap<T>(&&v: [mut T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
@@ -1033,10 +1033,10 @@ pure fn unpack_mut_slice<T,U>(s: [mut T]/&,
 impl extensions/&<T> for [const T]/& {
     #[doc = "Returns true if a vector contains no elements"]
     #[inline]
-    fn is_empty() -> bool { is_empty(self) }
+    pure fn is_empty() -> bool { is_empty(self) }
     #[doc = "Returns true if a vector contains some elements"]
     #[inline]
-    fn is_not_empty() -> bool { is_not_empty(self) }
+    pure fn is_not_empty() -> bool { is_not_empty(self) }
     #[doc = "Returns the length of a vector"]
     #[inline]
     pure fn len() -> uint { len(self) }
@@ -1046,28 +1046,28 @@ impl extensions/&<T> for [const T]/& {
 impl extensions/&<T: copy> for [const T]/& {
     #[doc = "Returns the first element of a vector"]
     #[inline]
-    fn head() -> T { head(self) }
+    pure fn head() -> T { head(self) }
     #[doc = "Returns all but the last elemnt of a vector"]
     #[inline]
-    fn init() -> [T] { init(self) }
+    pure fn init() -> [T] { init(self) }
     #[doc = "
     Returns the last element of a `v`, failing if the vector is empty.
     "]
     #[inline]
-    fn last() -> T { last(self) }
+    pure fn last() -> T { last(self) }
     #[doc = "Returns a copy of the elements from [`start`..`end`) from `v`."]
     #[inline]
-    fn slice(start: uint, end: uint) -> [T] { slice(self, start, end) }
+    pure fn slice(start: uint, end: uint) -> [T] { slice(self, start, end) }
     #[doc = "Returns all but the first element of a vector"]
     #[inline]
-    fn tail() -> [T] { tail(self) }
+    pure fn tail() -> [T] { tail(self) }
 }
 
 #[doc = "Extension methods for vectors"]
 impl extensions/&<T> for [T]/& {
     #[doc = "Reduce a vector from right to left"]
     #[inline]
-    fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
+    pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
     #[doc = "
     Iterates over a vector
 
@@ -1075,7 +1075,7 @@ impl extensions/&<T> for [T]/& {
     the element's value.
     "]
     #[inline]
-    fn iter(f: fn(T)) { iter(self, f) }
+    pure fn iter(f: fn(T)) { iter(self, f) }
     #[doc = "
     Iterates over a vector's elements and indexes
 
@@ -1083,7 +1083,7 @@ impl extensions/&<T> for [T]/& {
     the element's value and index.
     "]
     #[inline]
-    fn iteri(f: fn(uint, T)) { iteri(self, f) }
+    pure fn iteri(f: fn(uint, T)) { iteri(self, f) }
     #[doc = "
     Find the first index matching some predicate
 
@@ -1092,10 +1092,10 @@ impl extensions/&<T> for [T]/& {
     elements then none is returned.
     "]
     #[inline]
-    fn position(f: fn(T) -> bool) -> option<uint> { position(self, f) }
+    pure fn position(f: fn(T) -> bool) -> option<uint> { position(self, f) }
     #[doc = "Find the first index containing a matching value"]
     #[inline]
-    fn position_elem(x: T) -> option<uint> { position_elem(self, x) }
+    pure fn position_elem(x: T) -> option<uint> { position_elem(self, x) }
     #[doc = "
     Iterates over a vector in reverse
 
@@ -1103,7 +1103,7 @@ impl extensions/&<T> for [T]/& {
     the element's value.
     "]
     #[inline]
-    fn riter(f: fn(T)) { riter(self, f) }
+    pure fn riter(f: fn(T)) { riter(self, f) }
     #[doc ="
     Iterates over a vector's elements and indexes in reverse
 
@@ -1111,7 +1111,7 @@ impl extensions/&<T> for [T]/& {
     the element's value and index.
     "]
     #[inline]
-    fn riteri(f: fn(uint, T)) { riteri(self, f) }
+    pure fn riteri(f: fn(uint, T)) { riteri(self, f) }
     #[doc = "
     Find the last index matching some predicate
 
@@ -1120,20 +1120,20 @@ impl extensions/&<T> for [T]/& {
     matches no elements then none is returned.
     "]
     #[inline]
-    fn rposition(f: fn(T) -> bool) -> option<uint> { rposition(self, f) }
+    pure fn rposition(f: fn(T) -> bool) -> option<uint> { rposition(self, f) }
     #[doc = "Find the last index containing a matching value"]
     #[inline]
-    fn rposition_elem(x: T) -> option<uint> { rposition_elem(self, x) }
+    pure fn rposition_elem(x: T) -> option<uint> { rposition_elem(self, x) }
     #[doc = "
     Apply a function to each element of a vector and return the results
     "]
     #[inline]
-    fn map<U>(f: fn(T) -> U) -> [U] { map(self, f) }
+    pure fn map<U>(f: fn(T) -> U) -> [U] { map(self, f) }
     #[doc = "
     Apply a function to the index and value of each element in the vector
     and return the results
     "]
-    fn mapi<U>(f: fn(uint, T) -> U) -> [U] {
+    pure fn mapi<U>(f: fn(uint, T) -> U) -> [U] {
         mapi(self, f)
     }
     #[doc = "Returns true if the function returns true for all elements.
@@ -1147,7 +1147,7 @@ impl extensions/&<T> for [T]/& {
     of each result vector
     "]
     #[inline]
-    fn flat_map<U>(f: fn(T) -> [U]) -> [U] { flat_map(self, f) }
+    pure fn flat_map<U>(f: fn(T) -> [U]) -> [U] { flat_map(self, f) }
     #[doc = "
     Apply a function to each element of a vector and return the results
 
@@ -1155,7 +1155,7 @@ impl extensions/&<T> for [T]/& {
     the resulting vector.
     "]
     #[inline]
-    fn filter_map<U: copy>(f: fn(T) -> option<U>) -> [U] {
+    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> [U] {
         filter_map(self, f)
     }
 }
@@ -1170,7 +1170,7 @@ impl extensions/&<T: copy> for [T]/& {
     only those elements for which `f` returned true.
     "]
     #[inline]
-    fn filter(f: fn(T) -> bool) -> [T] { filter(self, f) }
+    pure fn filter(f: fn(T) -> bool) -> [T] { filter(self, f) }
     #[doc = "
     Search for the first element that matches a given predicate
 
@@ -1179,7 +1179,7 @@ impl extensions/&<T: copy> for [T]/& {
     is returned. If `f` matches no elements then none is returned.
     "]
     #[inline]
-    fn find(f: fn(T) -> bool) -> option<T> { find(self, f) }
+    pure fn find(f: fn(T) -> bool) -> option<T> { find(self, f) }
     #[doc = "
     Search for the last element that matches a given predicate
 
@@ -1188,7 +1188,7 @@ impl extensions/&<T: copy> for [T]/& {
     matches no elements then none is returned.
     "]
     #[inline]
-    fn rfind(f: fn(T) -> bool) -> option<T> { rfind(self, f) }
+    pure fn rfind(f: fn(T) -> bool) -> option<T> { rfind(self, f) }
 }
 
 #[doc = "Unsafe operations"]
@@ -1221,12 +1221,12 @@ mod unsafe {
     #[doc = "
     Sets the length of a vector
 
-    This well explicitly set the size of the vector, without actually
+    This will explicitly set the size of the vector, without actually
     modifing its buffers, so it is up to the caller to ensure that
     the vector is actually the specified size.
     "]
     #[inline(always)]
-    unsafe fn set_len<T>(&v: [const T], new_len: uint) {
+    unsafe fn set_len<T>(&&v: [const T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }

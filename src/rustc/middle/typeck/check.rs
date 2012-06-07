@@ -71,7 +71,8 @@ import collect::{methods}; // ccx.to_ty()
 import method::{methods};  // methods for method::lookup
 import middle::ty::tys_in_fn_ty;
 import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
-import rscope::*;
+import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
+import rscope::{in_binding_rscope, region_scope, type_rscope};
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -386,6 +387,12 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           };
           // typecheck the members
           for members.each {|m| check_class_member(class_ccx, class_t, m); }
+          // Check that there's at least one field
+          let (fields,_) = split_class_items(members);
+          if fields.len() < 1u {
+              ccx.tcx.sess.span_err(it.span, "A class must have at least one \
+                field");
+          }
           // Check that the class is instantiable
           check_instantiable(ccx.tcx, it.span, it.id);
       }

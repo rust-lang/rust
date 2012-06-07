@@ -18,7 +18,7 @@ fn seq_sep_none() -> seq_sep {
 }
 
 
-fn token_to_str(reader: reader, token: token::token) -> str {
+fn token_to_str(reader: reader, ++token: token::token) -> str {
     token::to_str(*reader.interner, token)
 }
 
@@ -27,8 +27,9 @@ fn token_to_str(reader: reader, token: token::token) -> str {
 impl parser_common for parser {
 
     fn unexpected_last(t: token::token) -> ! {
-        self.span_fatal(self.last_span, "unexpected token: '"
-                        + token_to_str(self.reader, t) + "'");
+        self.span_fatal(
+            copy self.last_span,
+            "unexpected token: '" + token_to_str(self.reader, t) + "'");
     }
 
     fn unexpected() -> ! {
@@ -49,7 +50,7 @@ impl parser_common for parser {
     }
 
     fn parse_ident() -> ast::ident {
-        alt self.token {
+        alt copy self.token {
           token::IDENT(i, _) { self.bump(); ret self.get_str(i); }
           _ { self.fatal("expecting ident, found "
                       + token_to_str(self.reader, self.token)); }
@@ -79,7 +80,7 @@ impl parser_common for parser {
         }
     }
 
-    fn token_is_keyword(word: str, tok: token::token) -> bool {
+    fn token_is_keyword(word: str, ++tok: token::token) -> bool {
         self.require_keyword(word);
         alt tok {
           token::IDENT(sid, false) { str::eq(word, self.get_str(sid)) }
@@ -93,8 +94,11 @@ impl parser_common for parser {
 
     fn eat_keyword(word: str) -> bool {
         self.require_keyword(word);
-        alt self.token {
-          token::IDENT(sid, false) {
+
+        // FIXME: this gratuitous use of @ is to
+        // workaround LLVM bug #13042
+        alt @self.token {
+          @token::IDENT(sid, false) {
             if str::eq(word, self.get_str(sid)) {
                 self.bump();
                 ret true;

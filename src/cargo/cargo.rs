@@ -332,7 +332,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     }
 }
 
-fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
+fn load_one_source_package(&&src: source, p: map::hashmap<str, json::json>) {
     let name = alt p.find("name") {
         some(json::string(_n)) { _n }
         _ {
@@ -404,8 +404,8 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     log(debug, "  loaded package: " + src.name + "/" + name);
 }
 
-fn load_source_packages(&c: cargo, &src: source) {
-    log(debug, "loading source: " + src.name);
+fn load_source_packages(&&c: cargo, &&src: source) {
+    log(debug, "Loading source: " + src.name);
     let dir = path::connect(c.sourcedir, src.name);
     let pkgfile = path::connect(dir, "packages.json");
     if !os::path_exists(pkgfile) { ret; }

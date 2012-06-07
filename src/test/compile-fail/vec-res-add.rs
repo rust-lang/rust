@@ -1,7 +1,8 @@
 // error-pattern: copying a noncopyable value
 
 class r {
-  new(_i:int) {}
+  let i:int;
+  new(i:int) {self.i = i;}
   drop {}
 }
 

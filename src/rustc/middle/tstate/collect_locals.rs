@@ -8,6 +8,7 @@ import syntax::ast_util::respan;
 import driver::session::session;
 import aux::*;
 import std::map::hashmap;
+import dvec::{dvec, extensions};
 
 type ctxt = {cs: @mut [sp_constr], tcx: ty::ctxt};
 
@@ -57,12 +58,11 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
     let {path: p, def_id: d_id, args: args} = c.node;
     alt tbl.find(d_id) {
       some(ct) {
-        let {path: _, descs: pds} = ct;
-        *pds += [respan(c.span, {args: args, bit_num: next})];
+        (*ct.descs).push(respan(c.span, {args: args, bit_num: next}));
       }
       none {
-        let rslt: @mut [pred_args] =
-            @mut [respan(c.span, {args: args, bit_num: next})];
+        let rslt = @dvec();
+        (*rslt).push(respan(c.span, {args: args, bit_num: next}));
         tbl.insert(d_id, {path:p, descs:rslt});
       }
     }

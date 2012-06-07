@@ -21,7 +21,8 @@ fn getbig_call_c_and_fail(i: int) {
 }
 
 class and_then_get_big_again {
-  new() {}
+  let x:int;
+  new(x:int) {self.x = x;}
   drop {
     fn getbig(i: int) {
         if i != 0 {
@@ -34,7 +35,7 @@ class and_then_get_big_again {
 
 fn main() {
     task::spawn {||
-        let r = and_then_get_big_again();
+        let r = and_then_get_big_again(4);
         getbig_call_c_and_fail(10000);
     };
 }

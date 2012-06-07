@@ -4,7 +4,7 @@
 
 enum an_enum/& { }
 iface an_iface/& { }
-class a_class/& { new() { } }
+class a_class/& { let x:int; new(x:int) { self.x = x; } }
 
 fn a_fn1(e: an_enum/&a) -> an_enum/&b {
     ret e; //! ERROR mismatched types: expected `an_enum/&b` but found `an_enum/&a`

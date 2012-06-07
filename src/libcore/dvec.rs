@@ -57,6 +57,11 @@ fn dvec<A>() -> dvec<A> {
     {mut data: [mut]}
 }
 
+#[doc = "Creates a new dvec with a single element"]
+fn from_elt<A>(+e: A) -> dvec<A> {
+    {mut data: [mut e]}
+}
+
 #[doc = "Creates a new dvec with the contents of a vector"]
 fn from_vec<A>(+v: [mut A]) -> dvec<A> {
     {mut data: v}
@@ -234,12 +239,19 @@ impl extensions<A:copy> for dvec<A> {
         self.data[idx] = a;
     }
 
-    #[doc = "Overwrites the contents of the element at `idx` with `a`"]
+    #[doc = "Overwrites the contents of the element at `idx` with `a`,
+    growing the vector if necessary.  New elements will be initialized
+    with `initval`"]
     fn grow_set_elt(idx: uint, initval: A, val: A) {
         self.swap { |v|
             let mut v <- v;
             vec::grow_set(v, idx, initval, val);
             v
         }
+    }
+
+    #[doc = "Returns the last element, failing if the vector is empty"]
+    fn last() -> A {
+        self.get_elt(self.len() - 1u)
     }
 }

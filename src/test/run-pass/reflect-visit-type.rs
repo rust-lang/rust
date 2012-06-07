@@ -1,7 +1,3 @@
-// xfail-test
-//
-// This doesn't work quite yet in check-fast mode. Not sure why. Crashes.
-
 enum my_visitor = @{ mut types: [str] };
 
 impl of intrinsic::ty_visitor for my_visitor {
