@@ -20,9 +20,9 @@ import std::serialization::deserializer_helpers;
 import std::prettyprint::serializer;
 import std::smallintmap::map;
 import middle::{ty, typeck};
-import middle::typeck::{method_origin,
-                        serialize_method_origin,
-                        deserialize_method_origin,
+import middle::typeck::{method_origin, method_map_entry,
+                        serialize_method_map_entry,
+                        deserialize_method_map_entry,
                         vtable_res,
                         vtable_origin};
 import driver::session::session;
@@ -546,16 +546,12 @@ impl of tr for freevar_entry {
 }
 
 // ______________________________________________________________________
-// Encoding and decoding of method_origin
-
-fn encode_method_origin(ebml_w: ebml::writer, mo: method_origin) {
-    serialize_method_origin(ebml_w, mo)
-}
+// Encoding and decoding of method_map_entry
 
 impl helper for ebml::ebml_deserializer {
-    fn read_method_origin(xcx: extended_decode_ctxt) -> method_origin {
-        let fv = deserialize_method_origin(self);
-        fv.tr(xcx)
+    fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry {
+        let mme = deserialize_method_map_entry(self);
+        {derefs: mme.derefs, origin: mme.origin.tr(xcx)}
     }
 }
 
@@ -565,8 +561,8 @@ impl of tr for method_origin {
           typeck::method_static(did) {
             typeck::method_static(did.tr(xcx))
           }
-          typeck::method_param(did, m, p, b) {
-            typeck::method_param(did.tr(xcx), m, p, b)
+          typeck::method_param(mp) {
+            typeck::method_param({iface_id:mp.iface_id.tr(xcx) with mp})
           }
           typeck::method_iface(did, m) {
             typeck::method_iface(did.tr(xcx), m)
@@ -860,11 +856,11 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     // impl_map is not used except when emitting metadata,
     // don't need to keep it.
 
-    option::iter(maps.method_map.find(id)) {|mo|
+    option::iter(maps.method_map.find(id)) {|mme|
         ebml_w.tag(c::tag_table_method_map) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
-                serialize_method_origin(ebml_w, mo)
+                serialize_method_map_entry(ebml_w, mme)
             }
         }
     }
@@ -983,8 +979,9 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 let dvec = @dvec::from_vec(vec::to_mut(ids));
                 dcx.maps.last_use_map.insert(id, dvec);
             } else if tag == (c::tag_table_method_map as uint) {
-                dcx.maps.method_map.insert(id,
-                                           val_dsr.read_method_origin(xcx));
+                dcx.maps.method_map.insert(
+                    id,
+                    val_dsr.read_method_map_entry(xcx));
             } else if tag == (c::tag_table_vtable_map as uint) {
                 dcx.maps.vtable_map.insert(id,
                                            val_dsr.read_vtable_res(xcx));

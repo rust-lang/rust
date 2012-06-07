@@ -1517,13 +1517,13 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
     let _icx = bcx.insn_ctxt("trans_unary");
     // Check for user-defined method call
     alt bcx.ccx().maps.method_map.find(un_expr.id) {
-      some(origin) {
+      some(mentry) {
         let callee_id = ast_util::op_expr_callee_id(un_expr);
         let fty = node_id_type(bcx, callee_id);
         ret trans_call_inner(
             bcx, un_expr.info(), fty,
             expr_ty(bcx, un_expr),
-            {|bcx| impl::trans_method_callee(bcx, callee_id, e, origin) },
+            {|bcx| impl::trans_method_callee(bcx, callee_id, e, mentry) },
             arg_exprs([]), dest);
       }
       _ {}
@@ -1814,14 +1814,17 @@ fn root_value(bcx: block, val: ValueRef, ty: ty::t,
     add_root_cleanup(bcx, scope_id, root_loc, ty);
 }
 
+// autoderefs the value `v`, either as many times as we can (if `max ==
+// uint::max_value`) or `max` times.
 fn autoderef(cx: block, e_id: ast::node_id,
-             v: ValueRef, t: ty::t) -> result_t {
+             v: ValueRef, t: ty::t,
+             max: uint) -> result_t {
     let _icx = cx.insn_ctxt("autoderef");
     let mut v1: ValueRef = v;
     let mut t1: ty::t = t;
     let ccx = cx.ccx();
     let mut derefs = 0u;
-    loop {
+    while derefs < max {
         #debug["autoderef(e_id=%d, v1=%s, t1=%s, derefs=%u)",
                e_id, val_str(ccx.tn, v1), ty_to_str(ccx.tcx, t1),
                derefs];
@@ -1872,6 +1875,11 @@ fn autoderef(cx: block, e_id: ast::node_id,
         }
         v1 = load_if_immediate(cx, v1, t1);
     }
+
+    // either we were asked to deref a specific number of times, in which case
+    // we should have, or we asked to deref as many times as we can
+    assert derefs == max || max == uint::max_value;
+
     ret {bcx: cx, val: v1, ty: t1};
 }
 
@@ -2572,7 +2580,9 @@ fn trans_rec_field(bcx: block, base: @ast::expr,
                    field: ast::ident) -> lval_result {
     let _icx = bcx.insn_ctxt("trans_rec_field");
     let {bcx, val} = trans_temp_expr(bcx, base);
-    let {bcx, val, ty} = autoderef(bcx, base.id, val, expr_ty(bcx, base));
+    let {bcx, val, ty} =
+        autoderef(bcx, base.id, val, expr_ty(bcx, base),
+                  uint::max_value);
     trans_rec_field_inner(bcx, val, ty, field, base.span)
 }
 
@@ -2611,7 +2621,7 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     let _icx = cx.insn_ctxt("trans_index");
     let base_ty = expr_ty(cx, base);
     let exp = trans_temp_expr(cx, base);
-    let lv = autoderef(exp.bcx, base.id, exp.val, base_ty);
+    let lv = autoderef(exp.bcx, base.id, exp.val, base_ty, uint::max_value);
     let ix = trans_temp_expr(lv.bcx, idx);
     let v = lv.val;
     let bcx = ix.bcx;
@@ -2921,13 +2931,16 @@ fn trans_loop_body(bcx: block, e: @ast::expr, ret_flag: option<ValueRef>,
 // temp_cleanups: cleanups that should run only if failure occurs before the
 // call takes place:
 fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
-                  &temp_cleanups: [ValueRef], ret_flag: option<ValueRef>)
+                  &temp_cleanups: [ValueRef], ret_flag: option<ValueRef>,
+                  derefs: uint)
     -> result {
     #debug("+++ trans_arg_expr on %s", expr_to_str(e));
     let _icx = cx.insn_ctxt("trans_arg_expr");
     let ccx = cx.ccx();
     let e_ty = expr_ty(cx, e);
     let is_bot = ty::type_is_bot(e_ty);
+
+    // translate the arg expr as an lvalue
     let lv = alt ret_flag {
       // If there is a ret_flag, this *must* be a loop body
       some(ptr) {
@@ -2939,13 +2952,32 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
           }
         }
       }
-      none { trans_temp_lval(cx, e) }
+      none {
+        trans_temp_lval(cx, e)
+      }
     };
+
+    // auto-deref value as required (this only applies to method
+    // call receivers) of method
+    #debug("   pre-deref value: %s", val_str(lv.bcx.ccx().tn, lv.val));
+    let {lv, e_ty} = if derefs == 0u {
+      {lv: lv, e_ty: e_ty}
+    } else {
+      let {bcx, val} = lval_result_to_result(lv, e_ty);
+      let {bcx, val, ty: e_ty} =
+          autoderef(bcx, e.id, val, e_ty, derefs);
+      {lv: {bcx: bcx, val: val, kind: temporary},
+       e_ty: e_ty}
+    };
+
+    // borrow value (convert from @T to &T and so forth)
     #debug("   pre-adaptation value: %s", val_str(lv.bcx.ccx().tn, lv.val));
-    let {lv, arg} = adapt_borrowed_value(lv, arg, e);
+    let {lv, ty: e_ty} = adapt_borrowed_value(lv, e, e_ty);
     let mut bcx = lv.bcx;
     let mut val = lv.val;
     #debug("   adapted value: %s", val_str(bcx.ccx().tn, val));
+
+    // finally, deal with the various modes
     let arg_mode = ty::resolved_mode(ccx.tcx, arg.mode);
     if is_bot {
         // For values of type _|_, we generate an
@@ -2953,54 +2985,54 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         // be inspected. It's important for the value
         // to have type lldestty (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty);
-    } else if arg_mode == ast::by_ref || arg_mode == ast::by_val {
-        let imm = ty::type_is_immediate(arg.ty);
-        #debug["   arg.ty=%s, imm=%b, arg_mode=%?, lv.kind=%?",
-               ty_to_str(bcx.tcx(), arg.ty), imm, arg_mode, lv.kind];
-        if arg_mode == ast::by_ref && lv.kind != owned && imm {
-            val = do_spill_noroot(bcx, val);
-        }
-        if arg_mode == ast::by_val && (lv.kind == owned || !imm) {
-            val = Load(bcx, val);
-        }
-    } else if arg_mode == ast::by_copy || arg_mode == ast::by_move {
-        let alloc = alloc_ty(bcx, arg.ty);
-        let move_out = arg_mode == ast::by_move ||
-            ccx.maps.last_use_map.contains_key(e.id);
-        if lv.kind == temporary { revoke_clean(bcx, val); }
-        if lv.kind == owned || !ty::type_is_immediate(arg.ty) {
-            memmove_ty(bcx, alloc, val, arg.ty);
-            if move_out && ty::type_needs_drop(ccx.tcx, arg.ty) {
-                bcx = zero_mem(bcx, val, arg.ty);
+    } else {
+        alt arg_mode {
+          ast::by_ref | ast::by_mutbl_ref {
+            // Ensure that the value is spilled into memory:
+            if lv.kind != owned && ty::type_is_immediate(e_ty) {
+                val = do_spill_noroot(bcx, val);
             }
-        } else { Store(bcx, val, alloc); }
-        val = alloc;
-        if lv.kind != temporary && !move_out {
-            bcx = take_ty(bcx, val, arg.ty);
-        }
+          }
 
-        // In the event that failure occurs before the call actually
-        // happens, have to cleanup this copy:
-        add_clean_temp_mem(bcx, val, arg.ty);
-        temp_cleanups += [val];
-    } else if ty::type_is_immediate(arg.ty) && lv.kind != owned {
-        val = do_spill(bcx, val, arg.ty);
+          ast::by_val {
+            // Ensure that the value is not spilled into memory:
+            if lv.kind == owned || !ty::type_is_immediate(e_ty) {
+                val = Load(bcx, val);
+            }
+          }
+
+          ast::by_copy | ast::by_move {
+            // Ensure that an owned copy of the value is in memory:
+            let alloc = alloc_ty(bcx, arg.ty);
+            let move_out = arg_mode == ast::by_move ||
+                ccx.maps.last_use_map.contains_key(e.id);
+            if lv.kind == temporary { revoke_clean(bcx, val); }
+            if lv.kind == owned || !ty::type_is_immediate(arg.ty) {
+                memmove_ty(bcx, alloc, val, arg.ty);
+                if move_out && ty::type_needs_drop(ccx.tcx, arg.ty) {
+                    bcx = zero_mem(bcx, val, arg.ty);
+                }
+            } else { Store(bcx, val, alloc); }
+            val = alloc;
+            if lv.kind != temporary && !move_out {
+                bcx = take_ty(bcx, val, arg.ty);
+            }
+
+            // In the event that failure occurs before the call actually
+            // happens, have to cleanup this copy:
+            add_clean_temp_mem(bcx, val, arg.ty);
+            temp_cleanups += [val];
+          }
+        }
     }
 
     if !is_bot && arg.ty != e_ty || ty::type_has_params(arg.ty) {
         #debug("   casting from %s", val_str(bcx.ccx().tn, val));
         val = PointerCast(bcx, val, lldestty);
     }
+
     #debug("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
     ret rslt(bcx, val);
-}
-
-fn load_value_from_lval_result(lv: lval_result) -> ValueRef {
-    alt lv.kind {
-      temporary { lv.val }
-      owned { Load(lv.bcx, lv.val) }
-      owned_imm { lv.val }
-    }
 }
 
 // when invoking a method, an argument of type @T or ~T can be implicltly
@@ -3010,22 +3042,21 @@ fn load_value_from_lval_result(lv: lval_result) -> ValueRef {
 // routine consults this table and performs these adaptations.  It returns a
 // new location for the borrowed result as well as a new type for the argument
 // that reflects the borrowed value and not the original.
-fn adapt_borrowed_value(lv: lval_result, arg: ty::arg,
-                        e: @ast::expr) -> {lv: lval_result,
-                                           arg: ty::arg} {
+fn adapt_borrowed_value(lv: lval_result,
+                        e: @ast::expr,
+                        e_ty: ty::t) -> {lv: lval_result,
+                                         ty: ty::t} {
     let bcx = lv.bcx;
     if !expr_is_borrowed(bcx, e) {
-        ret {lv:lv, arg:arg};
+        ret {lv:lv, ty:e_ty};
     }
 
-    let e_ty = expr_ty(bcx, e);
     alt ty::get(e_ty).struct {
       ty::ty_uniq(mt) | ty::ty_box(mt) {
-        let box_ptr = load_value_from_lval_result(lv);
+        let box_ptr = load_value_from_lval_result(lv, e_ty);
         let body_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_body]);
         let rptr_ty = ty::mk_rptr(bcx.tcx(), ty::re_static, mt);
-        ret {lv: lval_temp(bcx, body_ptr),
-             arg: {ty: rptr_ty with arg}};
+        ret {lv: lval_temp(bcx, body_ptr), ty: rptr_ty};
       }
 
       ty::ty_str | ty::ty_vec(_) |
@@ -3057,8 +3088,7 @@ fn adapt_borrowed_value(lv: lval_result, arg: ty::arg,
                                    {ty: unit_ty, mutbl: ast::m_imm},
                                    ty::vstore_slice(ty::re_static));
 
-        ret {lv: lval_temp(bcx, p),
-             arg: {ty: slice_ty with arg}};
+        ret {lv: lval_temp(bcx, p), ty: slice_ty};
       }
 
       _ {
@@ -3120,7 +3150,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
         vec::iteri(es) {|i, e|
             let r = trans_arg_expr(bcx, arg_tys[i], llarg_tys[i],
                                    e, temp_cleanups, if i == last { ret_flag }
-                                   else { none });
+                                   else { none }, 0u);
             bcx = r.bcx;
             llargs += [r.val];
         }
@@ -3494,11 +3524,20 @@ fn trans_temp_lval(bcx: block, e: @ast::expr) -> lval_result {
 // expressions that must 'end up somewhere' (or get ignored).
 fn trans_temp_expr(bcx: block, e: @ast::expr) -> result {
     let _icx = bcx.insn_ctxt("trans_temp_expr");
-    let mut {bcx, val, kind} = trans_temp_lval(bcx, e);
-    if kind == owned {
-        val = load_if_immediate(bcx, val, expr_ty(bcx, e));
+    lval_result_to_result(trans_temp_lval(bcx, e), expr_ty(bcx, e))
+}
+
+fn load_value_from_lval_result(lv: lval_result, ty: ty::t) -> ValueRef {
+    alt lv.kind {
+      temporary { lv.val }
+      owned { load_if_immediate(lv.bcx, lv.val, ty) }
+      owned_imm { lv.val }
     }
-    ret {bcx: bcx, val: val};
+}
+
+fn lval_result_to_result(lv: lval_result, ty: ty::t) -> result {
+    let val = load_value_from_lval_result(lv, ty);
+    {bcx: lv.bcx, val: val}
 }
 
 // Arranges for the value found in `*root_loc` to be dropped once the scope

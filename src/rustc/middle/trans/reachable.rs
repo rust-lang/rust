@@ -180,7 +180,9 @@ fn traverse_inline_body(cx: ctx, body: blk) {
           }
           expr_field(_, _, _) {
             alt cx.method_map.find(e.id) {
-              some(typeck::method_static(did)) { traverse_def_id(cx, did); }
+              some({origin: typeck::method_static(did), _}) {
+                traverse_def_id(cx, did);
+              }
               _ {}
             }
           }

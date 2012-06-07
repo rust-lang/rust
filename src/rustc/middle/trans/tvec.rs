@@ -3,10 +3,10 @@ import driver::session::session;
 import lib::llvm::{ValueRef, TypeRef};
 import back::abi;
 import base::{call_memmove,
-               INIT, copy_val, load_if_immediate, get_tydesc,
-               sub_block, do_spill_noroot,
-               dest, bcx_icx, non_gc_box_cast,
-               heap, heap_exchange, heap_shared};
+              INIT, copy_val, load_if_immediate, get_tydesc,
+              sub_block, do_spill_noroot,
+              dest, bcx_icx, non_gc_box_cast,
+              heap, heap_exchange, heap_shared};
 import syntax::codemap::span;
 import shape::llsize_of;
 import build::*;

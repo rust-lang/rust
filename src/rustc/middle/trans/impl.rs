@@ -30,14 +30,14 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     }
 }
 
-fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
+fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
     let _icx = bcx.insn_ctxt("impl::trans_self_arg");
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
     let mut temp_cleanups = [];
     let result = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
                                 T_ptr(type_of::type_of(bcx.ccx(), basety)),
-                                base, temp_cleanups, none);
+                                base, temp_cleanups, none, derefs);
 
     // by-ref self argument should not require cleanup in the case of
     // other arguments failing:
@@ -47,19 +47,20 @@ fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
 }
 
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,
-                       self: @ast::expr, origin: typeck::method_origin)
+                       self: @ast::expr, mentry: typeck::method_map_entry)
     -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("impl::trans_method_callee");
-    alt origin {
+    alt mentry.origin {
       typeck::method_static(did) {
-        let {bcx, val} = trans_self_arg(bcx, self);
+        let {bcx, val} = trans_self_arg(bcx, self, mentry.derefs);
         {env: self_env(val, node_id_type(bcx, self.id), none)
          with lval_static_fn(bcx, did, callee_id)}
       }
-      typeck::method_param(iid, off, p, b) {
+      typeck::method_param({iface_id:iid, method_num:off,
+                            param_num:p, bound_num:b}) {
         alt check bcx.fcx.param_substs {
           some(substs) {
-            trans_monomorphized_callee(bcx, callee_id, self,
+            trans_monomorphized_callee(bcx, callee_id, self, mentry.derefs,
                                        iid, off, p, b, substs)
           }
         }
@@ -107,8 +108,9 @@ fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
 }
 
 fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
-                              base: @ast::expr, iface_id: ast::def_id,
-                              n_method: uint, n_param: uint, n_bound: uint,
+                              base: @ast::expr, derefs: uint,
+                              iface_id: ast::def_id, n_method: uint,
+                              n_param: uint, n_bound: uint,
                               substs: param_substs) -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
     alt find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
@@ -120,7 +122,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         let node_substs = node_id_type_params(bcx, callee_id);
         let ty_substs = impl_substs +
             vec::tailn(node_substs, node_substs.len() - n_m_tps);
-        let {bcx, val} = trans_self_arg(bcx, base);
+        let {bcx, val} = trans_self_arg(bcx, base, derefs);
         let lval = lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
                                         some(sub_origins));
         {env: self_env(val, node_id_type(bcx, base.id), none),

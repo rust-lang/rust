@@ -17,7 +17,7 @@ enum lookup = {
 
 impl methods for lookup {
     // Entrypoint:
-    fn method() -> option<method_origin> {
+    fn method() -> option<method_map_entry> {
         #debug["method lookup(m_name=%s, self_ty=%s)",
                *self.m_name, self.fcx.infcx.ty_to_str(self.self_ty)];
 
@@ -45,7 +45,9 @@ impl methods for lookup {
 
     fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
 
-    fn method_from_param(n: uint, did: ast::def_id) -> option<method_origin> {
+    fn method_from_param(n: uint, did: ast::def_id)
+        -> option<method_map_entry> {
+
         let tcx = self.tcx();
         let mut iface_bnd_idx = 0u; // count only iface bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
@@ -105,11 +107,15 @@ impl methods for lookup {
 
         let (substs, mty, iid, pos, n, iface_bnd_idx) = candidates[0u];
         ret some(self.write_mty_from_m(
-            substs, mty, method_param(iid, pos, n, iface_bnd_idx)));
+            substs, mty, method_param({iface_id:iid,
+                                       method_num:pos,
+                                       param_num:n,
+                                       bound_num:iface_bnd_idx})));
     }
 
     fn method_from_iface(
-        did: ast::def_id, iface_substs: ty::substs) -> option<method_origin> {
+        did: ast::def_id, iface_substs: ty::substs)
+        -> option<method_map_entry> {
 
         let ms = *ty::iface_methods(self.tcx(), did);
         for ms.eachi {|i, m|
@@ -145,7 +151,7 @@ impl methods for lookup {
     }
 
     fn method_from_class(did: ast::def_id, class_substs: ty::substs)
-        -> option<method_origin> {
+        -> option<method_map_entry> {
 
         let ms = *ty::iface_methods(self.tcx(), did);
 
@@ -196,7 +202,7 @@ impl methods for lookup {
         */
     }
 
-    fn method_from_scope() -> option<method_origin> {
+    fn method_from_scope() -> option<method_map_entry> {
         let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
 
         for list::each(impls_vecs) {|impls|
@@ -273,7 +279,7 @@ impl methods for lookup {
 
     fn write_mty_from_m(self_substs: ty::substs,
                         m: ty::method,
-                        origin: method_origin) -> method_origin {
+                        origin: method_origin) -> method_map_entry {
         let tcx = self.fcx.ccx.tcx;
 
         // a bit hokey, but the method unbound has a bare protocol, whereas
@@ -287,7 +293,7 @@ impl methods for lookup {
     fn write_mty_from_fty(self_substs: ty::substs,
                           n_tps_m: uint,
                           fty: ty::t,
-                          origin: method_origin) -> method_origin {
+                          origin: method_origin) -> method_map_entry {
 
         let tcx = self.fcx.ccx.tcx;
 
@@ -324,7 +330,7 @@ impl methods for lookup {
 
         self.fcx.write_ty_substs(self.node_id, fty, all_substs);
 
-        ret origin;
+        ret {derefs:0u, origin:origin};
     }
 }
 

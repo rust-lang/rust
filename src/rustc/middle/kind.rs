@@ -261,14 +261,15 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                 ty::lookup_item_type(cx.tcx, did).bounds
               }
               expr_field(base, _, _) {
-                alt cx.method_map.get(e.id) {
+                alt cx.method_map.get(e.id).origin {
                   typeck::method_static(did) {
                     // n.b.: When we encode class/impl methods, the bounds
                     // that we encode include both the class/impl bounds
                     // and then the method bounds themselves...
                     ty::lookup_item_type(cx.tcx, did).bounds
                   }
-                  typeck::method_param(ifce_id, n_mth, _, _) |
+                  typeck::method_param({iface_id:ifce_id,
+                                        method_num:n_mth, _}) |
                   typeck::method_iface(ifce_id, n_mth) {
                     // ...iface methods bounds, in contrast, include only the
                     // method bounds, so we must preprend the tps from the

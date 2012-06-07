@@ -216,7 +216,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
       ast::expr_unary(*) | ast::expr_assign_op(*) |
       ast::expr_index(*) {
         alt cx.method_map.find(ex.id) {
-          some(method_static(did)) {
+          some({origin: method_static(did), _}) {
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             if has_iface_bounds(*bounds) {
                 let callee_id = alt ex.node {

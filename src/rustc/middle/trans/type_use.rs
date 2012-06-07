@@ -189,14 +189,14 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
         option::iter(cx.ccx.maps.method_map.find(e.id)) {|mth|
-            alt mth {
+            alt mth.origin {
               typeck::method_static(did) {
                 option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
                     vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
                         {|uses, subst| type_needs(cx, uses, subst)}
                 }
               }
-              typeck::method_param(_, _, param, _) {
+              typeck::method_param({param_num: param, _}) {
                 cx.uses[param] |= use_tydesc;
               }
               typeck::method_iface(_, _) {}

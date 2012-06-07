@@ -1642,8 +1642,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                        supplied_tps: tps,
                                        include_private: is_self_ref});
             alt lkup.method() {
-              some(origin) {
-                fcx.ccx.method_map.insert(id, origin);
+              some(entry) {
+                fcx.ccx.method_map.insert(id, entry);
               }
               none {
                 let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
@@ -1699,8 +1699,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                    supplied_tps: [],
                                    include_private: false});
         alt lkup.method() {
-          some(origin) {
-            fcx.ccx.method_map.insert(alloc_id, origin);
+          some(entry) {
+            fcx.ccx.method_map.insert(alloc_id, entry);
 
             // Check that the alloc() method has the expected type, which
             // should be fn(sz: uint, align: uint) -> *().

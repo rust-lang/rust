@@ -70,18 +70,54 @@ export check_crate;
 export infer;
 export method_map;
 export method_origin, serialize_method_origin, deserialize_method_origin;
+export method_map_entry, serialize_method_map_entry;
+export deserialize_method_map_entry;
 export vtable_map;
 export vtable_res;
 export vtable_origin;
 
 #[auto_serialize]
 enum method_origin {
+    // fully statically resolved method
     method_static(ast::def_id),
-    // iface id, method num, param num, bound num
-    method_param(ast::def_id, uint, uint, uint),
+
+    // method invoked on a type parameter with a bounded iface
+    method_param(method_param),
+
+    // method invoked on a boxed iface
     method_iface(ast::def_id, uint),
 }
-type method_map = hashmap<ast::node_id, method_origin>;
+
+// details for a method invoked with a receiver whose type is a type parameter
+// with a bounded iface.
+#[auto_serialize]
+type method_param = {
+    // the iface containing the method to be invoked
+    iface_id: ast::def_id,
+
+    // index of the method to be invoked amongst the iface's methods
+    method_num: uint,
+
+    // index of the type parameter (from those that are in scope) that is
+    // the type of the receiver
+    param_num: uint,
+
+    // index of the bound for this type parameter which specifies the iface
+    bound_num: uint
+};
+
+#[auto_serialize]
+type method_map_entry = {
+    // number of derefs that are required on the receiver
+    derefs: uint,
+
+    // method details being invoked
+    origin: method_origin
+};
+
+// maps from an expression id that corresponds to a method call to the details
+// of the method to be invoked
+type method_map = hashmap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 type vtable_res = @[vtable_origin];
