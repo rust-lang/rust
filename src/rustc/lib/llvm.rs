@@ -491,9 +491,11 @@ native mod llvm {
     fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
     fn LLVMGetGC(Fn: ValueRef) -> *c_char;
     fn LLVMSetGC(Fn: ValueRef, Name: *c_char);
-    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: c_uint, HighPA: c_uint);
-    fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_uint;
-    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: c_uint, HighPA: c_uint);
+    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: c_ulonglong, HighPA:
+                           c_ulonglong);
+    fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
+    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: c_ulonglong, HighPA:
+                              c_ulonglong);
 
     /* Operations on parameters */
     fn LLVMCountParams(Fn: ValueRef) -> c_uint;

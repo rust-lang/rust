@@ -13,7 +13,7 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-import libc::c_uint;
+import libc::{c_uint, c_ulonglong};
 import std::{map, time, list};
 import std::map::hashmap;
 import std::map::{int_hash, str_hash};
@@ -450,25 +450,25 @@ fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
 }
 
 fn set_no_inline(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoInlineAttribute as c_uint,
-                              0u as c_uint);
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoInlineAttribute as c_ulonglong,
+                              0u as c_ulonglong);
 }
 
 fn set_no_unwind(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoUnwindAttribute as c_uint,
-                              0u as c_uint);
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoUnwindAttribute as c_ulonglong,
+                              0u as c_ulonglong);
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 fn set_uwtable(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::UWTableAttribute as c_uint,
-                              0u as c_uint);
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::UWTableAttribute as c_ulonglong,
+                              0u as c_ulonglong);
 }
 
 fn set_inline_hint(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::InlineHintAttribute as c_uint,
-                              0u as c_uint);
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::InlineHintAttribute
+                              as c_ulonglong, 0u as c_ulonglong);
 }
 
 fn set_inline_hint_if_appr(attrs: [ast::attribute],
@@ -481,13 +481,12 @@ fn set_inline_hint_if_appr(attrs: [ast::attribute],
 }
 
 fn set_always_inline(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute as c_uint,
-                              0u as c_uint);
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute
+                              as c_ulonglong, 0u as c_ulonglong);
 }
 
 fn set_custom_stack_growth_fn(f: ValueRef) {
-    // FIXME: Remove this hack to work around the lack of u64 in the FFI.
-    llvm::LLVMAddFunctionAttr(f, 0u as c_uint, 1u as c_uint);
+    llvm::LLVMAddFunctionAttr(f, 0u as c_ulonglong, 1u as c_ulonglong);
 }
 
 fn set_glue_inlining(f: ValueRef, t: ty::t) {
@@ -1343,7 +1342,7 @@ fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
     // FIXME: Provide LLVM with better alignment information when the
     // alignment is statically known (it must be nothing more than a constant
     // int, or LLVM complains -- not even a constant element of a tydesc
-    // works).
+    // works). (Related to #1645, I think?)
     let _icx = cx.insn_ctxt("call_memmove");
     let ccx = cx.ccx();
     let key = alt ccx.sess.targ_cfg.arch {
@@ -1428,7 +1427,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
 // Since it needs to zero out the source, src also needs to be an lval.
 // FIXME: We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
-// doesn't need to be dropped.
+// doesn't need to be dropped. (Issue #839)
 fn move_val(cx: block, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> block {
     let _icx = cx.insn_ctxt("move_val");
@@ -1623,7 +1622,7 @@ fn cast_shift_rhs(op: ast::binop,
             trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
             // FIXME: If shifting by negative values becomes not undefined
-            // then this is wrong.
+            // then this is wrong. (See discussion at #1570)
             zext(rhs, lhs_llty)
         } else {
             rhs
@@ -1713,6 +1712,7 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
             expr_ty(bcx, ex),
             {|bcx|
                 // FIXME provide the already-computed address, not the expr
+                // #2528
                 impl::trans_method_callee(bcx, callee_id, dst, origin)
             },
             arg_exprs([src]), save_in(lhs_res.val));
@@ -2006,7 +2006,7 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
 }
 
 fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
-    // FIXME[mono] could do this recursively. is that worthwhile?
+    // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
     alt ty::get(ty).struct {
       ty::ty_box(mt) { some(ty::mk_opaque_box(tcx)) }
       ty::ty_fn(fty) { some(ty::mk_fn(tcx, {purity: ast::impure_fn,
@@ -2379,7 +2379,7 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
             ccx, node_id_type(bcx, id))));
     }
 
-    // FIXME: Need to support external crust functions
+    // FIXME: Need to support external crust functions (#1840)
     if fn_id.crate == ast::local_crate {
         alt bcx.tcx().def_map.find(id) {
           some(ast::def_fn(_, ast::crust_fn)) {
@@ -2480,10 +2480,7 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id)-> lval_maybe_callee {
         } else {
             // Nullary variant.
             let enum_ty = node_id_type(cx, id);
-            let llenumblob = alloc_ty(cx, enum_ty);
-            // FIXME: This pointer cast probably isn't necessary
-            let llenumty = type_of(ccx, enum_ty);
-            let llenumptr = PointerCast(cx, llenumblob, T_ptr(llenumty));
+            let llenumptr = alloc_ty(cx, enum_ty);
             let lldiscrimptr = GEPi(cx, llenumptr, [0u, 0u]);
             let lldiscrim_gv = lookup_discriminant(ccx, vid);
             let lldiscrim = Load(cx, lldiscrim_gv);
@@ -3666,7 +3663,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
                                 expr_ty(bcx, src), is_last_use);
           }
           ast::expr_move(dst, src) {
-            // FIXME: calculate copy init-ness in typestate.
+            // FIXME: calculate copy init-ness in typestate. (#839)
             assert dest == ignore;
             let src_r = trans_temp_lval(bcx, src);
             let {bcx, val: addr, kind} = trans_lval(src_r.bcx, dst);
@@ -4650,7 +4647,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
 
 // FIXME: this should do some structural hash-consing to avoid
 // duplicate constants. I think. Maybe LLVM has a magical mode
-// that does so later on?
+// that does so later on? (#2530)
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt("trans_const_expr");
     alt e.node {
@@ -4754,7 +4751,7 @@ fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               }, _) {
                 // FIXME: Instead of recursing here to regenerate the values
                 // for other constants, we should just look up the
-                // already-defined value
+                // already-defined value (#2530)
                 trans_const_expr(cx, subexpr)
               }
               _ {
@@ -4800,7 +4797,6 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   // Make the fn context
   let fcx = new_fn_ctxt_w_id(ccx, path, llctor_decl, ctor_id,
                                    some(psubsts), some(sp));
-  // FIXME: need to substitute into the fn arg types too?
   create_llargs_for_fn_args(fcx, no_self, decl.inputs);
   let mut bcx_top = top_scope_block(fcx, body.info());
   let lltop = bcx_top.llbb;
@@ -4953,8 +4949,6 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_class(tps, _ifaces, items, ctor, m_dtor, _) {
         if tps.len() == 0u {
           let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
-                         // FIXME: vtables have to get filled in depending
-                         // on ifaces
                          vtables: none,
                          bounds: @[]};
           trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
