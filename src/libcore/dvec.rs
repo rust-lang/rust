@@ -132,14 +132,6 @@ impl extensions<A> for dvec<A> {
         self.check_not_borrowed();
         self.data <- w;
     }
-}
-
-impl extensions<A:copy> for dvec<A> {
-    #[doc = "Append a single item to the end of the list"]
-    fn push(t: A) {
-        self.check_not_borrowed();
-        vec::push(self.data, t);
-    }
 
     #[doc = "Remove and return the last element"]
     fn pop() -> A {
@@ -151,6 +143,38 @@ impl extensions<A:copy> for dvec<A> {
         }
     }
 
+    #[doc = "Insert a single item at the front of the list"]
+    fn unshift(-t: A) {
+        unsafe {
+            let mut data = unsafe::reinterpret_cast(null::<()>());
+            data <-> self.data;
+            let data_ptr: *() = unsafe::reinterpret_cast(data);
+            if data_ptr.is_null() { fail "Recursive use of dvec"; }
+            log(error, "a");
+            self.data <- [mut t] + data;
+            log(error, "b");
+        }
+    }
+
+    #[doc = "Append a single item to the end of the list"]
+    fn push(+t: A) {
+        self.check_not_borrowed();
+        vec::push(self.data, t);
+    }
+
+
+    #[doc = "Remove and return the first element"]
+    fn shift() -> A {
+        self.borrow { |v|
+            let mut v = vec::from_mut(v);
+            let result = vec::shift(v);
+            self.return(vec::to_mut(v));
+            result
+        }
+    }
+}
+
+impl extensions<A:copy> for dvec<A> {
     #[doc = "
         Append all elements of a vector to the end of the list
 
@@ -210,16 +234,6 @@ impl extensions<A:copy> for dvec<A> {
             let w = vec::from_mut(copy v);
             self.return(v);
             w
-        }
-    }
-
-    #[doc = "Remove and return the first element"]
-    fn shift() -> A {
-        self.borrow { |v|
-            let mut v = vec::from_mut(v);
-            let result = vec::shift(v);
-            self.return(vec::to_mut(v));
-            result
         }
     }
 

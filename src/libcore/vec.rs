@@ -371,17 +371,25 @@ fn rsplitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]] {
 // Mutators
 
 #[doc = "Removes the first element from a vector and return it"]
-fn shift<T: copy>(&v: [T]) -> T {
+fn shift<T>(&v: [T]) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
-    let e = v[0];
-    v = slice::<T>(v, 1u, ln);
-    ret e;
-}
 
-#[doc = "Prepend an element to a vector"]
-fn unshift<T: copy>(&v: [T], +t: T) {
-    v = [t] + v;
+    let mut vv = [];
+    v <-> vv;
+
+    unsafe {
+        let vv = unsafe::to_ptr(vv);
+        let r <- *vv;
+
+        for uint::range(1u, ln) {|i|
+            // FIXME: this isn't legal, per se...
+            let r <- *ptr::offset(vv, i);
+            push(v, r);
+        }
+
+        r
+    }
 }
 
 #[doc = "Remove the last element from a vector and return it"]
