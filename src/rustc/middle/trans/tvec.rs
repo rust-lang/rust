@@ -60,7 +60,7 @@ fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
     let llunitty = type_of::type_of(ccx, unit_ty);
     let llvecty = T_vec(ccx, llunitty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
-    let vecbodyty = unit_ty; // FIXME: This is not the correct type
+    let vecbodyty = unit_ty; // FIXME: This is not the correct type (#2536)
     let {box, body} = base::malloc_unique_dyn(bcx, vecbodyty, vecsize);
     let boxptr = PointerCast(bcx, box,
                              T_unique_ptr(T_unique(bcx.ccx(), llvecty)));
@@ -93,7 +93,7 @@ fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunitty = type_of::type_of(ccx, unit_ty);
     let llvecty = T_vec(ccx, llunitty);
-    let vecbodyty = unit_ty; // FIXME: This is not the correct type
+    let vecbodyty = unit_ty; // FIXME: This is not the correct type (#2536)
     let {box: newptr, body: new_body_ptr} =
         base::malloc_unique_dyn(bcx, vecbodyty, size);
     let newptr = PointerCast(bcx, newptr,
@@ -428,7 +428,7 @@ fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
 
     // Calculate the last pointer address we want to handle.
     // FIXME: Optimize this when the size of the unit type is statically
-    // known to not use pointer casts, which tend to confuse LLVM.
+    // known to not use pointer casts, which tend to confuse LLVM. (#2536)
     let data_end_ptr = pointer_add(bcx, data_ptr, fill);
 
     // Now perform the iteration.

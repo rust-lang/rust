@@ -374,7 +374,7 @@ type block = @{
 const first_real_arg: uint = 2u;
 
 // FIXME move blocks to a class once those are finished, and simply use
-// option<block> for this.
+// option<block> for this. (#2532)
 enum block_parent { parent_none, parent_some(block), }
 
 type result = {bcx: block, val: ValueRef};

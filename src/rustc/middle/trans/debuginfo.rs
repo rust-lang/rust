@@ -533,6 +533,8 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
      * needed. It is only done to track spans, but you will not get the
      * right spans anyway -- types tend to refer to stuff defined
      * elsewhere, not be self-contained.
+     *
+     * See Issue #2012
      */
 
     fail;
@@ -649,7 +651,7 @@ fn create_local_var(bcx: block, local: @ast::local)
 
     let name = alt local.node.pat.node {
       ast::pat_ident(pth, _) { ast_util::path_to_ident(pth) }
-      // FIXME this should be handled
+      // FIXME this should be handled (#2533)
       _ { fail "no single variable name for local"; }
     };
     let loc = codemap::lookup_char_pos(cx.sess.codemap,

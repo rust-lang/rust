@@ -495,6 +495,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
     ret mk_global(ccx, "tag_shapes", C_bytes(header), true);
 
+/* tjc: Not annotating FIXMEs in this module because of #1498 */
     fn largest_variants(ccx: @crate_ctxt,
                         variants: @[ty::variant_info]) -> [uint] {
         // Compute the minimum and maximum size and alignment for each
