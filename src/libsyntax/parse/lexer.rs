@@ -4,7 +4,7 @@ import diagnostic;
 import ast::{tt_delim,tt_flat};
 
 export reader, string_reader, new_string_reader, is_whitespace;
-export tt_reader,  new_tt_reader;
+export tt_reader,  new_tt_reader, dup_tt_reader;
 export nextch, is_eof, bump, get_str_from;
 export string_reader_as_reader, tt_reader_as_reader;
 
@@ -47,6 +47,22 @@ fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
              };
     (r as reader).next_token(); /* get cur_tok and cur_chpos set up */
     ret r;
+}
+
+pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
+    @{readme: f.readme, mut idx: f.idx,
+      up: alt f.up {
+        tt_frame_up(o_f) {
+          tt_frame_up(option::map(o_f, dup_tt_frame))
+        }
+      }
+     }
+}
+
+pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
+    @{span_diagnostic: r.span_diagnostic, interner: r.interner,
+      mut cur: dup_tt_frame(r.cur),
+      mut cur_tok: r.cur_tok, mut cur_chpos: r.cur_chpos}
 }
 
 type string_reader = @{
