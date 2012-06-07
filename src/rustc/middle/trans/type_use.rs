@@ -26,7 +26,6 @@ import syntax::ast::*, syntax::ast_util, syntax::visit;
 import syntax::ast_map;
 import common::*;
 
-// FIXME distinguish between size/alignment and take/drop dependencies
 type type_uses = uint; // Bitmask
 const use_repr: uint = 1u; // Dependency on size/alignment and take/drop glue
 const use_tydesc: uint = 2u; // Takes the tydesc, or compares
