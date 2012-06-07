@@ -645,12 +645,13 @@ fn link_binary(sess: session,
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
-        cc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo",
-                     "-L/usr/local/lib/gcc46",
-                     "-L/usr/local/lib/gcc44", "-lstdc++",
-                     "-Wl,-z,origin",
-                     "-Wl,-rpath,/usr/local/lib/gcc46",
-                     "-Wl,-rpath,/usr/local/lib/gcc44"];
+        cc_args += ["-pthread", "-lrt",
+                    "-L/usr/local/lib", "-lexecinfo",
+                    "-L/usr/local/lib/gcc46",
+                    "-L/usr/local/lib/gcc44", "-lstdc++",
+                    "-Wl,-z,origin",
+                    "-Wl,-rpath,/usr/local/lib/gcc46",
+                    "-Wl,-rpath,/usr/local/lib/gcc44"];
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the
