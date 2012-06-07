@@ -18,6 +18,8 @@ export tcp_socket;
 export tcp_err_data, tcp_connect_err_data;
 // operations on a tcp_socket
 export write, write_future, read_start, read_stop;
+// buffered socket
+export socket_buf;
 // tcp server stuff
 export listen, accept;
 // tcp client stuff
@@ -47,6 +49,16 @@ class tcp_socket {
         tear_down_socket_data(socket_data)
     }
   }
+}
+
+#[doc="
+A buffered wrapper for `net::tcp::tcp_socket`
+
+It is created with a call to `net::tcp::socket_buf()` and has impls that
+satisfy both the `io::reader` and `io::writer` ifaces.
+"]
+resource tcp_socket_buf(data: @tcp_buffered_socket_data) {
+    log(debug, #fmt("dtor for tcp_socket_buf.. %?", data));
 }
 
 #[doc="
@@ -671,6 +683,25 @@ fn listen_common(host_ip: ip::ip_addr, port: uint, backlog: uint,
 }
 
 #[doc="
+Convert a `net::tcp::tcp_socket` to a `net::tcp::tcp_socket_buf`.
+
+This function takes ownership of a `net::tcp::tcp_socket`, returning it
+stored within a buffered wrapper, which can be converted to a `io::reader`
+or `io::writer`
+
+# Arguments
+
+* `sock` -- a `net::tcp::tcp_socket` that you want to buffer
+
+# Returns
+
+A buffered wrapper that you can cast as an `io::reader` or `io::writer`
+"]
+fn socket_buf(-sock: tcp_socket) -> tcp_socket_buf {
+    tcp_socket_buf(@{ sock: sock, mut buf: [] })
+}
+
+#[doc="
 Convenience methods extending `net::tcp::tcp_socket`
 "]
 impl methods_tcp_socket for tcp_socket {
@@ -700,6 +731,74 @@ impl methods_tcp_socket for tcp_socket {
         write_future(self, raw_write_data)
     }
 }
+
+#[doc="
+Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
+"]
+impl tcp_socket_buf of io::reader for tcp_socket_buf {
+    fn read_bytes(amt: uint) -> [u8] {
+        let has_amt_available =
+            vec::len((*self).buf) >= amt;
+        if has_amt_available {
+            // no arbitrary-length shift in vec::?
+            let mut ret_buf = [];
+            while vec::len(ret_buf) < amt {
+                ret_buf += [vec::shift((*self).buf)];
+            }
+            ret_buf
+        }
+        else {
+            let read_result = read((*self).sock, 0u);
+            if read_result.is_failure() {
+                // failure case.. no good answer, yet.
+                []
+            }
+            else {
+                let new_chunk = result::unwrap(read_result);
+                (*self).buf += new_chunk;
+                self.read_bytes(amt)
+            }
+        }
+    }
+    fn read_byte() -> int {
+        self.read_bytes(1u)[0] as int
+    }
+    fn unread_byte(amt: int) {
+        vec::unshift((*self).buf, amt as u8);
+    }
+    fn eof() -> bool {
+        false // noop
+    }
+    fn seek(dist: int, seek: io::seek_style) {
+        log(debug, #fmt("tcp_socket_buf seek stub %? %?", dist, seek));
+        // noop
+    }
+    fn tell() -> uint {
+        0u // noop
+    }
+}
+
+/*
+#[doc="
+Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
+"]
+impl tcp_socket_buf of io::writer for tcp_socket_buf {
+    fn write(data: [const u8]/&) {
+        (*self).sock.write(iter::to_vec(data as [u8]/&));
+    }
+    fn seek(dist: int, seek: io::seek_style) {
+      log(debug, #fmt("tcp_socket_buf seek stub %? %?", dist, seek));
+        // noop
+    }
+    fn tell() -> uint {
+        0u
+    }
+    fn flush() -> int {
+        0
+    }
+}
+*/
+
 // INTERNAL API
 
 fn tear_down_socket_data(socket_data: @tcp_socket_data) unsafe {
@@ -825,6 +924,8 @@ fn read_start_common_impl(socket_data: *tcp_socket_data)
       }
     }
 }
+
+// helper to convert a "class" vector of [u8] to a *[uv::ll::uv_buf_t]
 
 // shared implementation used by write and write_future
 fn write_common_impl(socket_data_ptr: *tcp_socket_data,
@@ -1081,6 +1182,11 @@ type tcp_socket_data = {
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
     iotask: iotask
+};
+
+type tcp_buffered_socket_data = {
+    sock: tcp_socket,
+    mut buf: [u8]
 };
 
 // convert rust ip_addr to libuv's native representation
