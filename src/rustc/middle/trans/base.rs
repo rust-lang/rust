@@ -62,6 +62,12 @@ enum dest {
     ignore,
 }
 
+// Heap selectors. Indicate which heap something should go on.
+enum heap {
+    heap_shared,
+    heap_exchange,
+}
+
 fn dest_str(ccx: @crate_ctxt, d: dest) -> str {
     alt d {
       by_val(v) { #fmt["by_val(%s)", val_str(ccx.tn, *v)] }
@@ -341,75 +347,61 @@ fn opaque_box_body(bcx: block,
     PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
 }
 
-// trans_malloc_boxed_raw: expects an unboxed type and returns a pointer to
+// malloc_raw: expects an unboxed type and returns a pointer to
 // enough space for a box of that type.  This includes a rust_opaque_box
 // header.
-fn malloc_boxed_raw(bcx: block, t: ty::t,
-                    &static_ti: option<@tydesc_info>) -> ValueRef {
-    let _icx = bcx.insn_ctxt("trans_malloc_boxed_raw");
+fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> ValueRef {
+    let _icx = bcx.insn_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
-    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
-    // wants.
-    let box_ptr = ty::mk_imm_box(ccx.tcx, t);
-    let llty = type_of(ccx, box_ptr);
+    let (mk_fn, upcall) = alt heap {
+      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc) }
+      heap_exchange {
+        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc )
+      }
+    };
 
-    // Get the tydesc for the body:
-    let lltydesc = get_tydesc(ccx, t, static_ti);
-    lazily_emit_all_tydesc_glue(ccx, copy static_ti);
-
-    // Allocate space:
-    let rval = Call(bcx, ccx.upcalls.malloc, [lltydesc]);
-    ret PointerCast(bcx, rval, llty);
-}
-
-// trans_malloc_boxed: usefully wraps trans_malloc_box_raw; allocates a box,
-// initializes the reference count to 1, and pulls out the body and rc
-fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
-    let _icx = bcx.insn_ctxt("trans_malloc_boxed");
-    let mut ti = none;
-    let box = malloc_boxed_raw(bcx, t, ti);
-    let box_no_addrspace = non_gc_box_cast(
-        bcx, box, ty::mk_imm_box(bcx.tcx(), t));
-    let body = GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
-    ret {box: box, body: body};
-}
-
-fn malloc_unique_raw(bcx: block, t: ty::t) -> ValueRef {
-    let _icx = bcx.insn_ctxt("malloc_unique_box_raw");
-    let ccx = bcx.ccx();
-
-    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
-    // wants.
-    let box_ptr = ty::mk_imm_uniq(ccx.tcx, t);
-    let llty = type_of(ccx, box_ptr);
+    // Grab the TypeRef type of box_ptr_ty.
+    let box_ptr_ty = mk_fn(bcx.tcx(), t);
+    let llty = type_of(ccx, box_ptr_ty);
 
     // Get the tydesc for the body:
     let mut static_ti = none;
     let lltydesc = get_tydesc(ccx, t, static_ti);
-    lazily_emit_all_tydesc_glue(ccx, static_ti);
+    lazily_emit_all_tydesc_glue(ccx, copy static_ti);
 
     // Allocate space:
-    let rval = Call(bcx, ccx.upcalls.exchange_malloc, [lltydesc]);
+    let rval = Call(bcx, upcall, [lltydesc]);
     ret PointerCast(bcx, rval, llty);
 }
 
-fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
-    let _icx = bcx.insn_ctxt("malloc_unique_box");
-    let box = malloc_unique_raw(bcx, t);
-    let non_gc_box = non_gc_box_cast(bcx, box, ty::mk_imm_uniq(bcx.tcx(), t));
+// malloc_general: usefully wraps malloc_raw; allocates a box,
+// and pulls out the body
+fn malloc_general(bcx: block, t: ty::t, heap: heap) ->
+    {box: ValueRef, body: ValueRef} {
+    let _icx = bcx.insn_ctxt("malloc_general");
+    let mk_ty = alt heap { heap_shared { ty::mk_imm_box }
+                           heap_exchange { ty::mk_imm_uniq } };
+    let box = malloc_raw(bcx, t, heap);
+    let non_gc_box = non_gc_box_cast(bcx, box, mk_ty(bcx.tcx(), t));
     let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
     ret {box: box, body: body};
 }
 
+fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
+    malloc_general(bcx, t, heap_shared)
+}
+fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
+    malloc_general(bcx, t, heap_exchange)
+}
+
 fn malloc_unique_dyn_raw(bcx: block, t: ty::t, size: ValueRef) -> ValueRef {
-    let _icx = bcx.insn_ctxt("malloc_unique_box_raw");
+    let _icx = bcx.insn_ctxt("malloc_unique_dyn_raw");
     let ccx = bcx.ccx();
 
-    // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
-    // wants.
-    let box_ptr = ty::mk_imm_uniq(ccx.tcx, t);
-    let llty = type_of(ccx, box_ptr);
+    // Grab the TypeRef type of box_ptr_ty.
+    let box_ptr_ty = ty::mk_imm_uniq(ccx.tcx, t);
+    let llty = type_of(ccx, box_ptr_ty);
 
     // Get the tydesc for the body:
     let mut static_ti = none;
@@ -423,7 +415,7 @@ fn malloc_unique_dyn_raw(bcx: block, t: ty::t, size: ValueRef) -> ValueRef {
 
 fn malloc_unique_dyn(bcx: block, t: ty::t, size: ValueRef
                     ) -> {box: ValueRef, body: ValueRef} {
-    let _icx = bcx.insn_ctxt("malloc_unique_box");
+    let _icx = bcx.insn_ctxt("malloc_unique_dyn");
     let box = malloc_unique_dyn_raw(bcx, t, size);
     let body = GEPi(bcx, box, [0u, abi::box_field_body]);
     ret {box: box, body: body};
