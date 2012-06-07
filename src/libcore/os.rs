@@ -28,7 +28,7 @@ import consts::*;
 export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
-export exe_suffix, dll_suffix, sysname, arch;
+export exe_suffix, dll_suffix, sysname, arch, family;
 export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
        make_absolute, make_dir, remove_dir, change_dir, remove_file,
        copy_file;
@@ -754,6 +754,14 @@ the process exits with the default failure status
 fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as libc::intptr_t);
 }
+
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "freebsd")]
+fn family() -> str { "unix" }
+
+#[cfg(target_os = "win32")]
+fn family() -> str { "windows" }
 
 #[cfg(target_os = "macos")]
 mod consts {
