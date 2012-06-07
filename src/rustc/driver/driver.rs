@@ -49,6 +49,7 @@ fn default_configuration(sess: session, argv0: str, input: input) ->
     };
 
     ret [ // Target bindings.
+         attr::mk_word_item(os::family()),
          mk("target_os", os::sysname()),
          mk("target_family", os::family()),
          mk("target_arch", arch),
