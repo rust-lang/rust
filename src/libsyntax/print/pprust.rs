@@ -539,6 +539,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_block(s, ctor.node.body);
           option::iter(m_dtor) {|dtor|
             hardbreak_if_not_bol(s);
+            maybe_print_comment(s, dtor.span.lo);
             head(s, "drop");
             print_block(s, dtor.node.body);
           }
