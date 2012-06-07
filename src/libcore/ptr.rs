@@ -32,11 +32,11 @@ native mod rusti {
 
 #[doc = "Get an unsafe pointer to a value"]
 #[inline(always)]
-fn addr_of<T>(val: T) -> *T { rusti::addr_of(val) }
+pure fn addr_of<T>(val: T) -> *T { unchecked { rusti::addr_of(val) } }
 
 #[doc = "Get an unsafe mut pointer to a value"]
 #[inline(always)]
-fn mut_addr_of<T>(val: T) -> *mut T unsafe {
+pure fn mut_addr_of<T>(val: T) -> *mut T unsafe {
     unsafe::reinterpret_cast(rusti::addr_of(val))
 }
 
