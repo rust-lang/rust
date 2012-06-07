@@ -7,7 +7,7 @@ export min_align_of;
 export pref_align_of;
 export refcount;
 export log_str;
-export lock_and_signal, condition, methods;
+export create_lock, lock_and_signal, condition, methods;
 
 enum type_desc = {
     first_param: **libc::c_int,
@@ -126,8 +126,6 @@ impl methods for condition {
 
 #[cfg(test)]
 mod tests {
-    use std;
-    import std::arc;
 
     #[test]
     fn size_of_basic() {
