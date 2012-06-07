@@ -7,7 +7,7 @@
 
 import arc::methods;
 import dvec::dvec;
-import dvec::{extensions};
+import dvec::extensions;
 import sys::methods;
 
 export port;
