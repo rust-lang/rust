@@ -8,9 +8,9 @@ import tritv::*;
 import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
+import syntax::print::pprust::{expr_to_str, stmt_to_str};
 import syntax::visit;
-import util::common::{log_expr, field_exprs,
-                      has_nonlocal_exits, log_stmt};
+import util::common::{field_exprs, has_nonlocal_exits};
 import syntax::codemap::span;
 import driver::session::session;
 import std::map::hashmap;
@@ -73,8 +73,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
    be the union of all postconditions for <args> */
 fn find_pre_post_exprs(fcx: fn_ctxt, args: [@expr], id: node_id) {
     if vec::len::<@expr>(args) > 0u {
-        #debug("find_pre_post_exprs: oper =");
-        log_expr(*args[0]);
+        #debug["find_pre_post_exprs: oper = %s", expr_to_str(args[0])];
     }
     fn do_one(fcx: fn_ctxt, e: @expr) { find_pre_post_expr(fcx, e); }
     for args.each {|e| do_one(fcx, e); }
@@ -473,8 +472,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 }
 
 fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
-    #debug("stmt =");
-    log_stmt(s);
+    #debug["stmt = %s", stmt_to_str(s)];
     alt s.node {
       stmt_decl(adecl, id) {
         alt adecl.node {
@@ -571,12 +569,6 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     let nv = num_constraints(fcx.enclosing);
     fn do_one_(fcx: fn_ctxt, s: @stmt) {
         find_pre_post_stmt(fcx, *s);
-        /*
-                #error("pre_post for stmt:");
-                log_stmt_err(*s);
-                #error("is:");
-                log_pp_err(stmt_pp(fcx.ccx, *s));
-        */
     }
     for b.node.stmts.each {|s| do_one_(fcx, s); }
     fn do_inner_(fcx: fn_ctxt, &&e: @expr) { find_pre_post_expr(fcx, e); }

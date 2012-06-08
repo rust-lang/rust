@@ -7,9 +7,10 @@ import bitvectors::*;
 import pat_util::*;
 import syntax::ast::*;
 import syntax::ast_util::*;
+import syntax::print::pprust::{expr_to_str, stmt_to_str};
 import syntax::codemap::span;
 import middle::ty::{expr_ty, type_is_bot};
-import util::common::*;
+import util::common::{field_exprs, has_nonlocal_exits, may_break};
 import driver::session::session;
 import std::map::hashmap;
 
@@ -204,21 +205,6 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
         set_prestate_ann(fcx.ccx, id, pres) |
             find_pre_post_state_expr(fcx, pres, antec);
 
-    /*
-    log_err("join_then_else:");
-    log_expr_err(*antec);
-    log_bitv_err(fcx, expr_prestate(fcx.ccx, antec));
-    log_bitv_err(fcx, expr_poststate(fcx.ccx, antec));
-    log_block_err(conseq);
-    log_bitv_err(fcx, block_prestate(fcx.ccx, conseq));
-    log_bitv_err(fcx, block_poststate(fcx.ccx, conseq));
-    log_err("****");
-    log_bitv_err(fcx, expr_precond(fcx.ccx, antec));
-    log_bitv_err(fcx, expr_postcond(fcx.ccx, antec));
-    log_bitv_err(fcx, block_precond(fcx.ccx, conseq));
-    log_bitv_err(fcx, block_postcond(fcx.ccx, conseq));
-    */
-
     alt maybe_alt {
       none {
         alt chk {
@@ -313,8 +299,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                       return_val);
       }
       expr_call(operator, operands, _) {
-          #debug("hey it's a call");
-          log_expr(*e);
+        #debug["hey it's a call: %s", expr_to_str(e)];
         ret find_pre_post_state_call(fcx, pres, operator, e.id,
                                      callee_arg_init_ops(fcx, operator.id),
                                      operands,
@@ -423,12 +408,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                     oper_assign_op);
       }
       expr_while(test, body) {
-        /*
-        #error("in a while loop:");
-        log_expr_err(*e);
-        aux::log_tritv_err(fcx, block_poststate(fcx.ccx, body));
-        aux::log_tritv_err(fcx, pres);
-        */
         let loop_pres =
             intersect_states(block_poststate(fcx.ccx, body), pres);
 
@@ -537,13 +516,10 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
-    log(debug, "[" + fcx.name + "]");
-    #debug("*At beginning: stmt = ");
-    log_stmt(*s);
-    #debug("*prestate = ");
-    log(debug, tritv::to_str(stmt_ann.states.prestate));
-    #debug("*poststate =");
-    log(debug, tritv::to_str(stmt_ann.states.prestate));
+    #debug["[ %s ]", fcx.name];
+    #debug["*At beginning: stmt = %s", stmt_to_str(*s)];
+    #debug["*prestate = %s", tritv::to_str(stmt_ann.states.prestate)];
+    #debug["*poststate = %s", tritv::to_str(stmt_ann.states.prestate)];
 
     alt s.node {
       stmt_decl(adecl, id) {
@@ -559,14 +535,10 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
             let mut changed =
                 set_poststate(stmt_ann, c_and_p.post) | c_and_p.changed;
 
-            #debug("Summary: stmt = ");
-            log_stmt(*s);
-            #debug("prestate = ");
-            log(debug, tritv::to_str(stmt_ann.states.prestate));
-            #debug("poststate =");
-            log(debug, tritv::to_str(stmt_ann.states.prestate));
-            #debug("changed =");
-            log(debug, changed);
+            #debug["Summary: stmt = %s", stmt_to_str(*s)];
+            #debug["prestate = %s", tritv::to_str(stmt_ann.states.prestate)];
+            #debug["poststate = %s",tritv::to_str(stmt_ann.states.poststate)];
+            #debug["changed = %s", bool::to_str(changed)];
 
             ret changed;
           }
@@ -583,13 +555,10 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
                 set_poststate(stmt_ann, expr_poststate(fcx.ccx, ex));
 
 
-        #debug("Finally:");
-        log_stmt(*s);
-        log(debug, "prestate = ");
-        log(debug, tritv::to_str(stmt_ann.states.prestate));
-        #debug("poststate =");
-        log(debug, (tritv::to_str(stmt_ann.states.poststate)));
-        #debug("changed =");
+        #debug["Finally: %s", stmt_to_str(*s)];
+        #debug["prestate = %s", tritv::to_str(stmt_ann.states.prestate)];
+        #debug["poststate = %s", tritv::to_str(stmt_ann.states.poststate)];
+        #debug["changed = %s", bool::to_str(changed)];
 
         ret changed;
       }
@@ -623,20 +592,6 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
 
     set_prestate_ann(fcx.ccx, b.node.id, pres0);
     set_poststate_ann(fcx.ccx, b.node.id, post);
-
-
-    /*
-        #error("For block:");
-        log_block_err(b);
-        #error("poststate = ");
-        log_states_err(block_states(fcx.ccx, b));
-        #error("pres0:");
-        log_tritv_err(fcx, pres0);
-        #error("post:");
-        log_tritv_err(fcx, post);
-        #error("changed = ");
-        log(error, changed);
-    */
 
     ret changed;
 }

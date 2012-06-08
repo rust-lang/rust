@@ -2,6 +2,7 @@ import syntax::{ast, ast_util, ast_map};
 import ast_util::path_to_ident;
 import ast::{ident, fn_ident, node_id};
 import syntax::codemap::span;
+import syntax::print::pprust::expr_to_str;
 import syntax::visit;
 import visit::vt;
 import std::list;
@@ -703,7 +704,7 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
                     }
                   }
                   ty::ty_class(did, _) {
-                    util::common::log_expr(*base);
+                    #debug["base: %s", expr_to_str(base)];
                     let in_self = alt ctor_self {
                       some(selfid) {
                         alt tcx.def_map.find(base.id) {

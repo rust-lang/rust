@@ -10,7 +10,6 @@ import tstate::ann::{pre_and_post, precond, postcond, prestate, poststate,
                      clear_in_poststate, clear_in_prestate,
                      clear_in_poststate_};
 import tritv::*;
-import util::common::*;
 import driver::session::session;
 import std::map::hashmap;
 

@@ -2,7 +2,7 @@
 import syntax::ast::*;
 import syntax::visit;
 import syntax::codemap::span;
-import util::common::{log_stmt};
+import syntax::print::pprust::stmt_to_str;
 import aux::{num_constraints, get_fn_info, crate_ctxt, add_node};
 import ann::empty_ann;
 import pat_util::pat_binding_ids;
@@ -14,8 +14,8 @@ fn collect_ids_block(b: blk, rs: @mut [node_id]) { *rs += [b.node.id]; }
 fn collect_ids_stmt(s: @stmt, rs: @mut [node_id]) {
     alt s.node {
       stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
-        log(debug, "node_id " + int::str(id));
-        log_stmt(*s);
+        #debug["node_id %s", int::str(id)];
+        #debug["%s", stmt_to_str(*s)];
         *rs += [id];
       }
     }

@@ -14,6 +14,7 @@ import annotate::annotate_crate;
 import collect_locals::mk_f_to_fn_info;
 import pre_post_conditions::fn_pre_post;
 import states::find_pre_post_state_fn;
+import syntax::print::pprust::expr_to_str;
 import driver::session::session;
 import std::map::hashmap;
 
@@ -22,16 +23,6 @@ fn check_states_expr(e: @expr, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
 
     let prec: precond = expr_precond(fcx.ccx, e);
     let pres: prestate = expr_prestate(fcx.ccx, e);
-
-
-    /*
-    log_err("check_states_expr:");
-      util::common::log_expr_err(*e);
-      log_err("prec = ");
-      log_tritv_err(fcx, prec);
-      log_err("pres = ");
-      log_tritv_err(fcx, pres);
-    */
 
     if !implies(pres, prec) {
         let mut s = "";
@@ -54,7 +45,6 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     let a = stmt_to_ann(fcx.ccx, *s);
     let prec: precond = ann_precond(a);
     let pres: prestate = ann_prestate(a);
-
 
     #debug("check_states_stmt:");
     log(debug, print::pprust::stmt_to_str(*s));

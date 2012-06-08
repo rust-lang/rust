@@ -8,7 +8,7 @@ import pat_util::*;
 import syntax::attr;
 import metadata::{csearch, cstore};
 import driver::session::session;
-import util::common::*;
+import util::common::is_main_name;
 import std::map::{int_hash, str_hash, hashmap};
 import vec::each;
 import syntax::codemap::span;

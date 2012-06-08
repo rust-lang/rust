@@ -28,7 +28,7 @@ import syntax::codemap::span;
 import syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
 import pat_util::*;
 import visit::vt;
-import util::common::*;
+import util::common::is_main_name;
 import lib::llvm::{llvm, mk_target_data, mk_type_names};
 import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
 import lib::llvm::{True, False};
@@ -1696,7 +1696,7 @@ fn trans_eager_binop(cx: block, op: ast::binop, lhs: ValueRef,
 
 fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
                    dst: @ast::expr, src: @ast::expr) -> block {
-    log_expr(*ex);
+    #debug["%s", expr_to_str(ex)];
     let _icx = bcx.insn_ctxt("trans_assign_op");
     let t = expr_ty(bcx, src);
     let lhs_res = trans_lval(bcx, dst);

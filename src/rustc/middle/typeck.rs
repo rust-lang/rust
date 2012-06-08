@@ -46,7 +46,7 @@ import syntax::ast_util::{local_def, respan, split_class_items};
 import syntax::visit;
 import metadata::csearch;
 import driver::session::session;
-import util::common::*;
+import util::common::may_break;
 import syntax::codemap::span;
 import pat_util::{pat_is_variant, pat_id_map};
 import middle::ty;

@@ -33,41 +33,6 @@ fn field_exprs(fields: [ast::field]) -> [@ast::expr] {
     ret es;
 }
 
-fn log_expr(e: ast::expr) {
-    log(debug, print::pprust::expr_to_str(@e));
-}
-
-fn log_expr_err(e: ast::expr) {
-    log(error, print::pprust::expr_to_str(@e));
-}
-
-fn log_ty_err(t: @ty) {
-    log(error, print::pprust::ty_to_str(t));
-}
-
-fn log_pat_err(p: @pat) {
-    log(error, print::pprust::pat_to_str(p));
-}
-
-fn log_block(b: ast::blk) {
-    log(debug, print::pprust::block_to_str(b));
-}
-
-fn log_block_err(b: ast::blk) {
-    log(error, print::pprust::block_to_str(b));
-}
-
-fn log_item_err(i: @ast::item) {
-    log(error, print::pprust::item_to_str(i));
-}
-fn log_stmt(st: ast::stmt) {
-    log(debug, print::pprust::stmt_to_str(st));
-}
-
-fn log_stmt_err(st: ast::stmt) {
-    log(error, print::pprust::stmt_to_str(st));
-}
-
 fn has_nonlocal_exits(b: ast::blk) -> bool {
     let has_exits = @mut false;
     fn visit_expr(flag: @mut bool, e: @ast::expr) {

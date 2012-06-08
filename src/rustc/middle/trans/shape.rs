@@ -13,7 +13,6 @@ import middle::ty::field;
 import syntax::ast;
 import syntax::ast_util::{dummy_sp, new_def_hash};
 import syntax::util::interner;
-import util::common;
 import util::ppaux::ty_to_str;
 import syntax::codemap::span;
 import dvec::{dvec, extensions};

@@ -11,7 +11,6 @@ import driver::session;
 import session::session;
 import middle::{resolve, ty};
 import back::{link, abi, upcall};
-import util::common::*;
 import syntax::codemap::span;
 import lib::llvm::{llvm, target_data, type_names, associate_type,
                    name_has_type};
