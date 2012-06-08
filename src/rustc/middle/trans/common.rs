@@ -418,9 +418,9 @@ fn block_parent(cx: block) -> block {
 // Accessors
 
 impl bcx_cxs for block {
-    fn ccx() -> @crate_ctxt { self.fcx.ccx }
-    fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
-    fn sess() -> session { self.fcx.ccx.sess }
+    pure fn ccx() -> @crate_ctxt { self.fcx.ccx }
+    pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
+    pure fn sess() -> session { self.fcx.ccx.sess }
 
     fn val_str(val: ValueRef) -> str {
         val_str(self.ccx().tn, val)
