@@ -14,18 +14,16 @@ import str::extensions;
 
 // tcp interfaces
 export tcp_socket;
+// buffered socket
+export tcp_socket_buf, socket_buf;
 // errors
 export tcp_err_data, tcp_connect_err_data;
 // operations on a tcp_socket
 export write, write_future, read_start, read_stop;
-// buffered socket
-export socket_buf;
 // tcp server stuff
 export listen, accept;
 // tcp client stuff
 export connect;
-// helper methods
-export methods_tcp_socket;
 
 #[nolink]
 native mod rustrt {
@@ -704,7 +702,7 @@ fn socket_buf(-sock: tcp_socket) -> tcp_socket_buf {
 #[doc="
 Convenience methods extending `net::tcp::tcp_socket`
 "]
-impl methods_tcp_socket for tcp_socket {
+impl tcp_socket for tcp_socket {
     fn read_start() -> result::result<comm::port<
         result::result<[u8]/~, tcp_err_data>>, tcp_err_data> {
         read_start(self)
