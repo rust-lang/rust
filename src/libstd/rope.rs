@@ -817,9 +817,7 @@ mod node {
               }
             }
         }
-        let str : str = unsafe::reinterpret_cast(buf);
-        unsafe::forget(buf);//TODO: Check if this is correct
-        ret str;
+        ret unsafe::transmute(buf);
     }
 
     #[doc ="

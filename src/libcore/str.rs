@@ -137,9 +137,7 @@ Fails if invalid UTF-8
 pure fn from_byte(b: u8) -> str unsafe {
     assert b < 128u8;
     let mut v = [b, 0u8];
-    let s: str = ::unsafe::reinterpret_cast(v);
-    ::unsafe::forget(v);
-    s
+    ::unsafe::transmute(v)
 }
 
 #[doc = "Appends a character at the end of a string"]
@@ -324,8 +322,7 @@ The result vector is not null-terminated.
 "]
 pure fn bytes(s: str) -> [u8] unsafe {
     let mut s_copy = s;
-    let mut v: [u8] = ::unsafe::reinterpret_cast(s_copy);
-    ::unsafe::forget(s_copy);
+    let mut v: [u8] = ::unsafe::transmute(s_copy);
     vec::unsafe::set_len(v, len(s));
     ret v;
 }
@@ -1708,9 +1705,7 @@ mod unsafe {
         v += [0u8];
 
         assert is_utf8(v);
-        let s: str = ::unsafe::reinterpret_cast(v);
-        ::unsafe::forget(v);
-        ret s;
+        ret ::unsafe::transmute(v);
     }
 
     #[doc = "Create a Rust string from a null-terminated C string"]
@@ -1732,9 +1727,7 @@ mod unsafe {
    "]
    unsafe fn from_bytes(v: [const u8]) -> str unsafe {
        let vcopy = v + [0u8];
-       let scopy: str = ::unsafe::reinterpret_cast(vcopy);
-       ::unsafe::forget(vcopy);
-       ret scopy;
+       ret ::unsafe::transmute(vcopy);
    }
 
    #[doc = "
@@ -1769,9 +1762,7 @@ mod unsafe {
            v
        };
        v += [0u8];
-       let s: str = ::unsafe::reinterpret_cast(v);
-       ::unsafe::forget(v);
-       ret s;
+       ret ::unsafe::transmute(v);
    }
 
    #[doc = "Appends a byte to a string. (Not UTF-8 safe)."]

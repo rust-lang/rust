@@ -979,13 +979,12 @@ fn test_unkillable() unsafe {
 
     unkillable {||
         let p = ~0;
-        let pp: *uint = unsafe::reinterpret_cast(p);
-        unsafe::forget(p);
+        let pp: *uint = unsafe::transmute(p);
 
         // If we are killed here then the box will leak
         po.recv();
 
-        let _p: ~int = unsafe::reinterpret_cast(pp);
+        let _p: ~int = unsafe::transmute(pp);
     }
 
     // Now we can be killed

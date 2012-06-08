@@ -40,8 +40,7 @@ type arc<T: const> = arc_destruct<T>;
 fn arc<T: const>(-data: T) -> arc<T> {
     let data = ~{mut count: 1, data: data};
     unsafe {
-        let ptr = unsafe::reinterpret_cast(data);
-        unsafe::forget(data);
+        let ptr = unsafe::transmute(data);
         arc_destruct(ptr)
     }
 }

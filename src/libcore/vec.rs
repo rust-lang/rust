@@ -193,16 +193,12 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
 
 #[doc = "Produces a mut vector from an immutable vector."]
 fn to_mut<T>(+v: [T]) -> [mut T] unsafe {
-    let r = ::unsafe::reinterpret_cast(v);
-    ::unsafe::forget(v);
-    r
+    ::unsafe::transmute(v)
 }
 
 #[doc = "Produces an immutable vector from a mut vector."]
 fn from_mut<T>(+v: [mut T]) -> [T] unsafe {
-    let r = ::unsafe::reinterpret_cast(v);
-    ::unsafe::forget(v);
-    r
+    ::unsafe::transmute(v)
 }
 
 // Accessors
