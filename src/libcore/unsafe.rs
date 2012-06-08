@@ -1,6 +1,6 @@
 #[doc = "Unsafe operations"];
 
-export reinterpret_cast, forget;
+export reinterpret_cast, forget, transmute;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
@@ -27,11 +27,38 @@ reinterpret_cast on managed pointer types.
 #[inline(always)]
 unsafe fn forget<T>(-thing: T) { rusti::forget(thing); }
 
+#[doc = "
+Transform a value of one type into a value of another type.
+Both types must have the same size and alignment.
+
+# Example
+
+    assert transmute(\"L\") == [76u8, 0u8];
+"]
+unsafe fn transmute<L, G>(-thing: L) -> G {
+    let newthing = reinterpret_cast(thing);
+    forget(thing);
+    ret newthing;
+}
+
 #[cfg(test)]
 mod tests {
 
     #[test]
     fn test_reinterpret_cast() unsafe {
         assert reinterpret_cast(1) == 1u;
+    }
+
+    #[test]
+    fn test_transmute() unsafe {
+        let x = @1;
+        let x: *int = transmute(x);
+        assert *x == 1;
+        let _x: @int = transmute(x);
+    }
+
+    #[test]
+    fn test_transmute2() unsafe {
+        assert transmute("L") == [76u8, 0u8];
     }
 }
