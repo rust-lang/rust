@@ -147,7 +147,7 @@ import std::smallintmap::smallintmap;
 import std::smallintmap::map;
 import std::map::hashmap;
 import middle::ty;
-import middle::ty::{ty_vid, tys_in_fn_ty, region_vid, vid};
+import middle::ty::{tv_vid, tvi_vid, region_vid, vid};
 import syntax::{ast, ast_util};
 import syntax::ast::{ret_style, purity};
 import util::ppaux::{ty_to_str, mt_to_str};
@@ -169,9 +169,57 @@ export resolve_shallow;
 export resolve_deep;
 export resolve_deep_var;
 export methods; // for infer_ctxt
+export unify_methods; // for infer_ctxt
 export compare_tys;
 export fixup_err, fixup_err_to_str;
 export assignment;
+export root, to_str;
+export min_8bit_tys, min_16bit_tys, min_32bit_tys, min_64bit_tys;
+
+// Bitvector to represent sets of integral types
+enum int_ty_set = uint;
+
+// Constants representing singleton sets containing each of the
+// integral types
+const INT_TY_SET_EMPTY : uint = 0b00_0000_0000u;
+const INT_TY_SET_i8    : uint = 0b00_0000_0001u;
+const INT_TY_SET_u8    : uint = 0b00_0000_0010u;
+const INT_TY_SET_i16   : uint = 0b00_0000_0100u;
+const INT_TY_SET_u16   : uint = 0b00_0000_1000u;
+const INT_TY_SET_i32   : uint = 0b00_0001_0000u;
+const INT_TY_SET_u32   : uint = 0b00_0010_0000u;
+const INT_TY_SET_i64   : uint = 0b00_0100_0000u;
+const INT_TY_SET_u64   : uint = 0b00_1000_0000u;
+const INT_TY_SET_i     : uint = 0b01_0000_0000u;
+const INT_TY_SET_u     : uint = 0b10_0000_0000u;
+
+fn mk_int_ty_set() -> int_ty_set { int_ty_set(INT_TY_SET_EMPTY) }
+
+fn min_8bit_tys()  -> int_ty_set {
+    int_ty_set(INT_TY_SET_i8  | INT_TY_SET_u8 |
+               INT_TY_SET_i16 | INT_TY_SET_u16 |
+               INT_TY_SET_i32 | INT_TY_SET_u32 |
+               INT_TY_SET_i64 | INT_TY_SET_u64 |
+               INT_TY_SET_i   | INT_TY_SET_u)
+}
+
+fn min_16bit_tys() -> int_ty_set {
+    int_ty_set(INT_TY_SET_i16 | INT_TY_SET_u16 |
+               INT_TY_SET_i32 | INT_TY_SET_u32 |
+               INT_TY_SET_i64 | INT_TY_SET_u64 |
+               INT_TY_SET_i   | INT_TY_SET_u)
+}
+
+fn min_32bit_tys() -> int_ty_set {
+    int_ty_set(INT_TY_SET_i32 | INT_TY_SET_u32 |
+               INT_TY_SET_i64 | INT_TY_SET_u64 |
+               // uh, can we count on ty_i and ty_u being 32 bits?
+               INT_TY_SET_i   | INT_TY_SET_u)
+}
+
+fn min_64bit_tys() -> int_ty_set {
+    int_ty_set(INT_TY_SET_i64 | INT_TY_SET_u64)
+}
 
 // Extra information needed to perform an assignment that may borrow.
 // The `expr_id` is the is of the expression whose type is being
@@ -183,12 +231,11 @@ type assignment = {
 };
 
 type bound<T:copy> = option<T>;
-
 type bounds<T:copy> = {lb: bound<T>, ub: bound<T>};
 
 enum var_value<V:copy, T:copy> {
     redirect(V),
-    bounded(bounds<T>)
+    root(T)
 }
 
 type vals_and_bindings<V:copy, T:copy> = {
@@ -198,18 +245,28 @@ type vals_and_bindings<V:copy, T:copy> = {
 
 enum infer_ctxt = @{
     tcx: ty::ctxt,
-    tvb: vals_and_bindings<ty::ty_vid, ty::t>, // for type variables
-    tvib: vals_and_bindings<ty::ty_vid, ty::t>, // for integral type variables
-    rb: vals_and_bindings<ty::region_vid, ty::region>, // for region variables
 
-    // For keeping track of existing type/region variables.
+    // We instantiate vals_and_bindings with bounds<ty::t> because the
+    // types that might instantiate a general type variable have an
+    // order, represented by its upper and lower bounds.
+    tvb: vals_and_bindings<ty::tv_vid, bounds<ty::t>>,
+
+    // The types that might instantiate an integral type variable are
+    // represented by an int_ty_set.
+    tvib: vals_and_bindings<ty::tvi_vid, int_ty_set>,
+
+    // For region variables.
+    rb: vals_and_bindings<ty::region_vid, bounds<ty::region>>,
+
+    // For keeping track of existing type and region variables.
     ty_var_counter: @mut uint,
+    ty_var_integral_counter: @mut uint,
     region_var_counter: @mut uint,
 };
 
 enum fixup_err {
-    unresolved_ty(ty_vid),
-    cyclic_ty(ty_vid),
+    unresolved_ty(tv_vid),
+    cyclic_ty(tv_vid),
     unresolved_region(region_vid),
     cyclic_region(region_vid)
 }
@@ -232,6 +289,7 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
                  tvib: {vals: smallintmap::mk(), mut bindings: []},
                  rb: {vals: smallintmap::mk(), mut bindings: []},
                  ty_var_counter: @mut 0u,
+                 ty_var_integral_counter: @mut 0u,
                  region_var_counter: @mut 0u})}
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
@@ -290,7 +348,7 @@ fn resolve_shallow(cx: infer_ctxt, a: ty::t,
 }
 
 // See comment on the type `resolve_state` below
-fn resolve_deep_var(cx: infer_ctxt, vid: ty_vid,
+fn resolve_deep_var(cx: infer_ctxt, vid: tv_vid,
                     force_vars: bool) -> fres<ty::t> {
     resolver(cx, true, force_vars).resolve(ty::mk_var(cx.tcx, vid))
 }
@@ -365,11 +423,19 @@ impl<T:copy to_str> of to_str for bounds<T> {
     }
 }
 
+impl of to_str for int_ty_set {
+    fn to_str(_cx: infer_ctxt) -> str {
+        alt self {
+          int_ty_set(v) { uint::to_str(v, 10u) }
+        }
+    }
+}
+
 impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
     fn to_str(cx: infer_ctxt) -> str {
         alt self {
           redirect(vid) { #fmt("redirect(%s)", vid.to_str()) }
-          bounded(bnds) { #fmt("bounded(%s)", bnds.to_str(cx)) }
+          root(pt) { #fmt("root(%s)", pt.to_str(cx)) }
         }
     }
 }
@@ -468,10 +534,12 @@ impl transaction_methods for infer_ctxt {
 }
 
 impl methods for infer_ctxt {
-    fn next_ty_var_id() -> ty_vid {
+    fn next_ty_var_id() -> tv_vid {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;
-        ret ty_vid(id);
+        self.tvb.vals.insert(id,
+                             root({lb: none, ub: none}));
+        ret tv_vid(id);
     }
 
     fn next_ty_var() -> ty::t {
@@ -482,14 +550,29 @@ impl methods for infer_ctxt {
         vec::from_fn(n) {|_i| self.next_ty_var() }
     }
 
+    fn next_ty_var_integral_id() -> tvi_vid {
+        let id = *self.ty_var_integral_counter;
+        *self.ty_var_integral_counter += 1u;
+
+        self.tvib.vals.insert(id,
+                              root(mk_int_ty_set()));
+        ret tvi_vid(id);
+    }
+
+    fn next_ty_var_integral() -> ty::t {
+        ty::mk_var_integral(self.tcx, self.next_ty_var_integral_id())
+    }
+
     fn next_region_var_id() -> region_vid {
         let id = *self.region_var_counter;
         *self.region_var_counter += 1u;
+        self.rb.vals.insert(id,
+                            root({lb: none, ub: none}));
         ret region_vid(id);
     }
 
     fn next_region_var() -> ty::region {
-        ret ty::re_var(self.next_region_var_id());
+        ty::re_var(self.next_region_var_id())
     }
 
     fn ty_to_str(t: ty::t) -> str {
@@ -521,23 +604,27 @@ impl unify_methods for infer_ctxt {
 
     fn get<V:copy vid, T:copy>(
         vb: vals_and_bindings<V, T>, vid: V)
-        -> {root: V, bounds:bounds<T>} {
+        -> {root: V, possible_types: T} {
 
         alt vb.vals.find(vid.to_uint()) {
           none {
-            let bnds = {lb: none, ub: none};
-            vb.vals.insert(vid.to_uint(), bounded(bnds));
-            {root: vid, bounds: bnds}
+            #error["failed lookup in infcx.get()"];
+            fail;
           }
-          some(redirect(vid)) {
-            let {root, bounds} = self.get(vb, vid);
-            if root != vid {
-                vb.vals.insert(vid.to_uint(), redirect(root));
+          some(var_val) {
+            alt var_val {
+              redirect(vid) {
+                let {root: rt, possible_types: pt} = self.get(vb, vid);
+                if rt != vid {
+                    // Path compression
+                    vb.vals.insert(vid.to_uint(), redirect(rt));
+                }
+                {root: rt, possible_types: pt}
+              }
+              root(pt) {
+                {root: vid, possible_types: pt}
+              }
             }
-            {root: root, bounds: bounds}
-          }
-          some(bounded(bounds)) {
-            {root: vid, bounds: bounds}
           }
         }
     }
@@ -596,7 +683,7 @@ impl unify_methods for infer_ctxt {
     //    b.lb <: c.lb
     // If this cannot be achieved, the result is failure.
     fn set_var_to_merged_bounds<V:copy vid, T:copy to_str st>(
-        vb: vals_and_bindings<V, T>,
+        vb: vals_and_bindings<V, bounds<T>>,
         v_id: V, a: bounds<T>, b: bounds<T>) -> ures {
 
         // Think of the two diamonds, we want to find the
@@ -638,19 +725,19 @@ impl unify_methods for infer_ctxt {
             // the new bounds must themselves
             // be relatable:
             self.bnds(bnds.lb, bnds.ub).then {||
-                self.set(vb, v_id, bounded(bnds));
+                self.set(vb, v_id, root(bnds));
                 uok()
-            }
+        }
         }}}}}
     }
 
     fn vars<V:copy vid, T:copy to_str st>(
-        vb: vals_and_bindings<V, T>,
+        vb: vals_and_bindings<V, bounds<T>>,
         a_id: V, b_id: V) -> ures {
 
         // Need to make sub_id a subtype of sup_id.
-        let {root: a_id, bounds: a_bounds} = self.get(vb, a_id);
-        let {root: b_id, bounds: b_bounds} = self.get(vb, b_id);
+        let {root: a_id, possible_types: a_bounds} = self.get(vb, a_id);
+        let {root: b_id, possible_types: b_bounds} = self.get(vb, b_id);
 
         #debug["vars(%s=%s <: %s=%s)",
                a_id.to_str(), a_bounds.to_str(self),
@@ -683,11 +770,18 @@ impl unify_methods for infer_ctxt {
         }
     }
 
+    fn vars_integral<V:copy vid>(
+        _vb: vals_and_bindings<V, int_ty_set>,
+        _a_id: V, _b_id: V) -> ures {
+        // FIXME (#1425): do something real here.
+        uok()
+    }
+
     fn vart<V: copy vid, T: copy to_str st>(
-        vb: vals_and_bindings<V, T>,
+        vb: vals_and_bindings<V, bounds<T>>,
         a_id: V, b: T) -> ures {
 
-        let {root: a_id, bounds: a_bounds} = self.get(vb, a_id);
+        let {root: a_id, possible_types: a_bounds} = self.get(vb, a_id);
         #debug["vart(%s=%s <: %s)",
                a_id.to_str(), a_bounds.to_str(self),
                b.to_str(self)];
@@ -695,16 +789,31 @@ impl unify_methods for infer_ctxt {
         self.set_var_to_merged_bounds(vb, a_id, a_bounds, b_bounds)
     }
 
+    // FIXME (#1425): this is a terrible name.
+    fn vart_integral<V: copy vid, T: copy to_str st>(
+        _vb: vals_and_bindings<V, int_ty_set>,
+        _a_id: V, _b: T) -> ures {
+        // FIXME (#1425): do something real here.
+        uok()
+    }
+
     fn tvar<V: copy vid, T: copy to_str st>(
-        vb: vals_and_bindings<V, T>,
+        vb: vals_and_bindings<V, bounds<T>>,
         a: T, b_id: V) -> ures {
 
         let a_bounds = {lb: some(a), ub: none};
-        let {root: b_id, bounds: b_bounds} = self.get(vb, b_id);
+        let {root: b_id, possible_types: b_bounds} = self.get(vb, b_id);
         #debug["tvar(%s <: %s=%s)",
                a.to_str(self),
                b_id.to_str(), b_bounds.to_str(self)];
         self.set_var_to_merged_bounds(vb, b_id, a_bounds, b_bounds)
+    }
+
+    fn tvar_integral<V: copy vid, T: copy to_str st>(
+        _vb: vals_and_bindings<V, int_ty_set>,
+        _a: T, _b_id: V) -> ures {
+        // FIXME (#1425): do something real here.
+        uok()
     }
 
     fn constrs(
@@ -823,7 +932,7 @@ type resolve_state = @{
     force_vars: bool,
     mut err: option<fixup_err>,
     mut r_seen: [region_vid],
-    mut v_seen: [ty_vid]
+    mut v_seen: [tv_vid]
 };
 
 fn resolver(infcx: infer_ctxt, deep: bool, fvars: bool) -> resolve_state {
@@ -871,6 +980,9 @@ impl methods for resolve_state {
               ty::ty_var(vid) {
                 self.resolve_ty_var(vid)
               }
+              ty::ty_var_integral(vid) {
+                self.resolve_ty_var_integral(vid)
+              }
               _ if !ty::type_has_regions(typ) && !self.deep {
                 typ
               }
@@ -904,7 +1016,8 @@ impl methods for resolve_state {
             ret ty::re_var(rid);
         } else {
             vec::push(self.r_seen, rid);
-            let {root:_, bounds} = self.infcx.get(self.infcx.rb, rid);
+            let {root:_, possible_types: bounds} =
+                self.infcx.get(self.infcx.rb, rid);
             let r1 = alt bounds {
               { ub:_, lb:some(t) } { self.resolve_region(t) }
               { ub:some(t), lb:_ } { self.resolve_region(t) }
@@ -920,7 +1033,7 @@ impl methods for resolve_state {
         }
     }
 
-    fn resolve_ty_var(vid: ty_vid) -> ty::t {
+    fn resolve_ty_var(vid: tv_vid) -> ty::t {
         if vec::contains(self.v_seen, vid) {
             self.err = some(cyclic_ty(vid));
             ret ty::mk_var(self.infcx.tcx, vid);
@@ -934,7 +1047,8 @@ impl methods for resolve_state {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let {root:_, bounds} = self.infcx.get(self.infcx.tvb, vid);
+            let {root:_, possible_types: bounds} =
+                self.infcx.get(self.infcx.tvb, vid);
             let t1 = alt bounds {
               { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve1(t) }
               { ub:some(t), lb:_ } { self.resolve1(t) }
@@ -950,6 +1064,17 @@ impl methods for resolve_state {
             ret t1;
         }
     }
+
+    fn resolve_ty_var_integral(vid: tvi_vid) -> ty::t {
+        let {root:_, possible_types: its} =
+            self.infcx.get(self.infcx.tvib, vid);
+        let t1 = alt its {
+          // FIXME (#1425): do something real here.
+          int_ty_set(_) { ty::mk_int(self.infcx.tcx) }
+        };
+        ret t1;
+    }
+
 }
 
 // ______________________________________________________________________
@@ -1027,21 +1152,21 @@ impl assignment for infer_ctxt {
           }
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) {
-            let {root:_, bounds: a_bounds} = self.get(self.tvb, a_id);
-            let {root:_, bounds: b_bounds} = self.get(self.tvb, b_id);
+            let {root:_, possible_types: a_bounds} = self.get(self.tvb, a_id);
+            let {root:_, possible_types: b_bounds} = self.get(self.tvb, b_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, b_bnd)
           }
 
           (ty::ty_var(a_id), _) {
-            let {root:_, bounds:a_bounds} = self.get(self.tvb, a_id);
+            let {root:_, possible_types:a_bounds} = self.get(self.tvb, a_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, some(b))
           }
 
           (_, ty::ty_var(b_id)) {
-            let {root:_, bounds: b_bounds} = self.get(self.tvb, b_id);
+            let {root:_, possible_types: b_bounds} = self.get(self.tvb, b_id);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
             self.assign_tys_or_sub(anmnt, a, b, some(a), b_bnd)
           }
@@ -1199,6 +1324,7 @@ iface combine {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
+    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]>;
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>>;
     fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs>;
@@ -1387,6 +1513,12 @@ fn super_fns<C:combine>(
             }
         }
     }
+}
+
+fn super_int_tys<C:combine>(
+    self: C, _a: ty::t, _b: ty::t) -> cres<ty::t> {
+    // FIXME (#1425): do something real here?
+    ok(ty::mk_int(self.infcx().tcx))
 }
 
 fn super_tys<C:combine>(
@@ -1654,6 +1786,21 @@ impl of combine for sub {
               (_, ty::ty_bot) {
                 err(ty::terr_sorts(b, a))
               }
+
+              // FIXME (#1425): I'm not sure if these three cases
+              // belong here or if they belong in super_tys.
+              (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) {
+                self.infcx().vars_integral(self.tvib, a_id, b_id).then {||
+                    ok(a) }
+              }
+              (ty::ty_var_integral(a_id), _) {
+                self.infcx().vart_integral(self.tvib, a_id, b).then {||
+                    ok(a) }
+              }
+              (_, ty::ty_var_integral(b_id)) {
+                self.infcx().tvar_integral(self.tvib, a, b_id).then {||
+                    ok(a) }
+              }
               _ {
                 super_tys(self, a, b)
               }
@@ -1698,6 +1845,10 @@ impl of combine for sub {
     }
 
     // Traits please:
+
+    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t> {
+        super_int_tys(self, a, b)
+    }
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(self, a, b)
@@ -1876,6 +2027,10 @@ impl of combine for lub {
     }
 
     // Traits please:
+
+    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t> {
+        super_int_tys(self, a, b)
+    }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         lattice_tys(self, a, b)
@@ -2080,6 +2235,10 @@ impl of combine for glb {
 
     // Traits please:
 
+    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t> {
+        super_int_tys(self, a, b)
+    }
+
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(self, a, b)
     }
@@ -2173,6 +2332,20 @@ fn lattice_tys<L:lattice_ops combine>(
             lattice_var_t(self, self.infcx().tvb, b_id, a,
                           {|x, y| self.tys(x, y) })
           }
+          (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) {
+            // FIXME (#1425): do something real here?
+            ok(a)
+          }
+
+          (ty::ty_var_integral(a_id), _) {
+            // FIXME (#1425): do something real here?
+            ok(a)
+          }
+
+          (_, ty::ty_var_integral(b_id)) {
+            // FIXME (#1425): do something real here?
+            ok(a)
+          }
 
           _ {
             super_tys(self, a, b)
@@ -2210,7 +2383,7 @@ fn lattice_rvars<L:lattice_ops combine>(
 }
 
 fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
-    self: L, vb: vals_and_bindings<V, T>,
+    self: L, vb: vals_and_bindings<V, bounds<T>>,
     a_t: T, a_vid: V, b_vid: V,
     c_ts: fn(T, T) -> cres<T>) -> cres<T> {
 
@@ -2219,8 +2392,8 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     // upper/lower/sub/super/etc.
 
     // Need to find a type that is a supertype of both a and b:
-    let {root: a_vid, bounds: a_bounds} = self.infcx().get(vb, a_vid);
-    let {root: b_vid, bounds: b_bounds} = self.infcx().get(vb, b_vid);
+    let {root: a_vid, possible_types: a_bounds} = self.infcx().get(vb, a_vid);
+    let {root: b_vid, possible_types: b_bounds} = self.infcx().get(vb, b_vid);
 
     #debug["%s.lattice_vars(%s=%s <: %s=%s)",
            self.tag(),
@@ -2252,11 +2425,11 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
 }
 
 fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
-    self: L, vb: vals_and_bindings<V, T>,
+    self: L, vb: vals_and_bindings<V, bounds<T>>,
     a_id: V, b: T,
     c_ts: fn(T, T) -> cres<T>) -> cres<T> {
 
-    let {root: a_id, bounds: a_bounds} = self.infcx().get(vb, a_id);
+    let {root: a_id, possible_types: a_bounds} = self.infcx().get(vb, a_id);
 
     // The comments in this function are written for LUB, but they
     // apply equally well to GLB if you inverse upper/lower/sub/super/etc.
@@ -2268,7 +2441,7 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
 
     alt self.bnd(a_bounds) {
       some(a_bnd) {
-        // If a has an upper bound, return it.
+        // If a has an upper bound, return the LUB(a.ub, b)
         #debug["bnd=some(%s)", a_bnd.to_str(self.infcx())];
         ret c_ts(a_bnd, b);
       }
@@ -2278,7 +2451,7 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
         #debug["bnd=none"];
         let a_bounds = self.with_bnd(a_bounds, b);
         self.infcx().bnds(a_bounds.lb, a_bounds.ub).then {||
-            self.infcx().set(vb, a_id, bounded(a_bounds));
+            self.infcx().set(vb, a_id, root(a_bounds));
             ok(b)
         }
       }

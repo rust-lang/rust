@@ -69,10 +69,15 @@ type parameter).
 import astconv::{ast_conv, ast_ty_to_ty};
 import collect::{methods}; // ccx.to_ty()
 import method::{methods};  // methods for method::lookup
-import middle::ty::tys_in_fn_ty;
+import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
+import syntax::ast::{ty_char, ty_i8, ty_i16, ty_i32, ty_i64, ty_i};
+import typeck::infer::{root, to_str};
+import typeck::infer::{unify_methods}; // infcx.set()
+import typeck::infer::{min_8bit_tys, min_16bit_tys, min_32bit_tys,
+                       min_64bit_tys};
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -84,7 +89,7 @@ type fn_ctxt =
      indirect_ret_ty: option<ty::t>,
      purity: ast::purity,
      infcx: infer::infer_ctxt,
-     locals: hashmap<ast::node_id, ty_vid>,
+     locals: hashmap<ast::node_id, tv_vid>,
 
      mut blocks: [ast::node_id], // stack of blocks in scope, may be empty
      in_scope_regions: isr_alist,
@@ -618,22 +623,49 @@ fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
     }
 }
 
-// Local variable gathering. We gather up all locals and create variable IDs
-// for them before typechecking the function.
-type gather_result =
-    {infcx: infer::infer_ctxt,
-     locals: hashmap<ast::node_id, ty_vid>,
-     ty_var_counter: @mut uint};
-
 // AST fragment checking
-fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
+fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
+    let tcx = fcx.ccx.tcx;
+
     alt lit.node {
-      ast::lit_str(_) { ty::mk_str(ccx.tcx) }
-      ast::lit_int(_, t) { ty::mk_mach_int(ccx.tcx, t) }
-      ast::lit_uint(_, t) { ty::mk_mach_uint(ccx.tcx, t) }
-      ast::lit_float(_, t) { ty::mk_mach_float(ccx.tcx, t) }
-      ast::lit_nil { ty::mk_nil(ccx.tcx) }
-      ast::lit_bool(_) { ty::mk_bool(ccx.tcx) }
+      ast::lit_str(_) { ty::mk_str(tcx) }
+      ast::lit_int(v, t) {
+        alt t {
+          ty_char | ty_i8 | ty_i16 | ty_i32 | ty_i64 {
+            // If it's a char or has an explicit suffix, give it the
+            // appropriate integral type.
+            ty::mk_mach_int(tcx, t)
+          }
+          ty_i {
+            // Otherwise, an unsuffixed integer literal parses to a
+            // `ty_i`.  In that case, it could have any integral type,
+            // so create an integral type variable for it.
+            let vid = fcx.infcx.next_ty_var_integral_id();
+
+            // We need to sniff at the value `v` provided and figure
+            // out how big of an int it is; that determines the set of
+            // possibly types it could take on.
+            let possible_types = alt v {
+              0i64 to 127i64 { min_8bit_tys() }
+              128i64 to 65535i64 { min_16bit_tys() }
+              65536i64 to 4294967295i64 { min_32bit_tys() }
+              _ { min_64bit_tys() }
+          };
+
+            // Store the set of possible types
+            fcx.infcx.set(fcx.infcx.tvib, vid,
+                          root(possible_types));
+            ty::mk_var_integral(tcx, vid);
+
+            // FIXME: remove me when #1425 is finished.
+            ty::mk_mach_int(tcx, t)
+          }
+        }
+      }
+      ast::lit_uint(_, t) { ty::mk_mach_uint(tcx, t) }
+      ast::lit_float(_, t) { ty::mk_mach_float(tcx, t) }
+      ast::lit_nil { ty::mk_nil(tcx) }
+      ast::lit_bool(_) { ty::mk_bool(tcx) }
     }
 }
 
@@ -1107,7 +1139,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
 
       ast::expr_lit(lit) {
-        let typ = check_lit(fcx.ccx, lit);
+        let typ = check_lit(fcx, lit);
         fcx.write_ty(id, typ);
       }
 
@@ -2067,7 +2099,7 @@ fn self_ref(fcx: @fn_ctxt, id: ast::node_id) -> bool {
                         ast_util::is_self)
 }
 
-fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ty_vid {
+fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> tv_vid {
     alt fcx.locals.find(id) {
       some(x) { x }
       _ {

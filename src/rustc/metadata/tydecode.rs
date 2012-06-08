@@ -346,7 +346,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret ty::mk_res(st.tcx, def, inner, substs);
       }
       'X' {
-        ret ty::mk_var(st.tcx, ty::ty_vid(parse_int(st) as uint));
+        ret ty::mk_var(st.tcx, ty::tv_vid(parse_int(st) as uint));
       }
       'Y' { ret ty::mk_type(st.tcx); }
       'C' {

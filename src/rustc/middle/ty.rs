@@ -17,7 +17,7 @@ import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
 import syntax::ast::*;
 import syntax::print::pprust::*;
 
-export ty_vid, region_vid, vid;
+export tv_vid, tvi_vid, region_vid, vid;
 export br_hashmap;
 export is_instantiable;
 export node_id_to_type;
@@ -302,11 +302,6 @@ enum closure_kind {
     ck_uniq,
 }
 
-enum ty_var_kind {
-    tvk_regular,
-    tvk_integral,
-}
-
 type fn_ty = {purity: ast::purity,
               proto: ast::proto,
               inputs: [arg],
@@ -372,9 +367,9 @@ enum sty {
     ty_res(def_id, t, substs),
     ty_tup([t]),
 
-    ty_var(ty_vid), // type variable during typechecking
-    ty_var_integral(ty_vid), // type variable during typechecking, for
-                             // integral types only
+    ty_var(tv_vid), // type variable during typechecking
+    ty_var_integral(tvi_vid), // type variable during typechecking, for
+                              // integral types only
     ty_param(uint, def_id), // type parameter
     ty_self, // special, implicit `self` type parameter
     ty_constr(t, [@type_constr]),
@@ -429,7 +424,8 @@ enum param_bound {
     bound_iface(t),
 }
 
-enum ty_vid = uint;
+enum tv_vid = uint;
+enum tvi_vid = uint;
 enum region_vid = uint;
 
 iface vid {
@@ -437,9 +433,14 @@ iface vid {
     fn to_str() -> str;
 }
 
-impl of vid for ty_vid {
+impl of vid for tv_vid {
     fn to_uint() -> uint { *self }
     fn to_str() -> str { #fmt["<V%u>", self.to_uint()] }
+}
+
+impl of vid for tvi_vid {
+    fn to_uint() -> uint { *self }
+    fn to_str() -> str { #fmt["<V (integral) %u>", self.to_uint()] }
 }
 
 impl of vid for region_vid {
@@ -693,9 +694,11 @@ fn mk_res(cx: ctxt, did: ast::def_id,
     mk_t(cx, ty_res(did, inner, substs))
 }
 
-fn mk_var(cx: ctxt, v: ty_vid) -> t { mk_t(cx, ty_var(v)) }
+fn mk_var(cx: ctxt, v: tv_vid) -> t { mk_t(cx, ty_var(v)) }
 
-fn mk_var_integral(cx: ctxt, v: ty_vid) -> t { mk_t(cx, ty_var_integral(v)) }
+fn mk_var_integral(cx: ctxt, v: tvi_vid) -> t {
+    mk_t(cx, ty_var_integral(v))
+}
 
 fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
@@ -1911,29 +1914,6 @@ fn type_param(ty: t) -> option<uint> {
     ret none;
 }
 
-// Returns a vec of all the type variables of kind `tvk` occurring in `ty`. It
-// may contain duplicates.
-fn vars_in_type(ty: t, tvk: ty_var_kind) -> [ty_vid] {
-    let mut rslt = [];
-    walk_ty(ty) {|ty|
-        alt get(ty).struct {
-          ty_var(v) {
-            alt tvk {
-              tvk_regular { rslt += [v]; }
-              _ { }
-            }
-          }
-          ty_var_integral(v) {
-            alt tvk {
-              tvk_integral { rslt += [v]; }
-              _ { }
-            }
-          }
-          _ { } }
-    }
-    rslt
-}
-
 // Returns the type and mutability of *t.
 //
 // The parameter `expl` indicates if this is an *explicit* dereference.  Some
@@ -2229,13 +2209,21 @@ fn is_pred_ty(fty: t) -> bool {
     is_fn_ty(fty) && type_is_bool(ty_fn_ret(fty))
 }
 
-fn ty_var_id(typ: t) -> ty_vid {
+fn ty_var_id(typ: t) -> tv_vid {
     alt get(typ).struct {
-      ty_var(vid) | ty_var_integral(vid) { ret vid; }
+      ty_var(vid) { ret vid; }
       _ { #error("ty_var_id called on non-var ty"); fail; }
     }
 }
 
+fn ty_var_integral_id(typ: t) -> tvi_vid {
+    alt get(typ).struct {
+      ty_var_integral(vid) { ret vid; }
+      _ { #error("ty_var_integral_id called on ty other than \
+                  ty_var_integral");
+         fail; }
+    }
+}
 
 // Type accessors for AST nodes
 fn block_ty(cx: ctxt, b: ast::blk) -> t {
@@ -2311,12 +2299,23 @@ fn method_idx(id: ast::ident, meths: [method]) -> option<uint> {
     ret none;
 }
 
-fn occurs_check(tcx: ctxt, sp: span, vid: ty_vid, rt: t) {
+fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
+
+    // Returns a vec of all the type variables occurring in `ty`. It may
+    // contain duplicates.  (Integral type vars aren't counted.)
+    fn vars_in_type(ty: t) -> [tv_vid] {
+        let mut rslt = [];
+        walk_ty(ty) {|ty|
+            alt get(ty).struct { ty_var(v) { rslt += [v]; } _ { } }
+        }
+        rslt
+    }
+
     // Fast path
     if !type_needs_infer(rt) { ret; }
 
     // Occurs check!
-    if vec::contains(vars_in_type(rt, tvk_regular), vid) {
+    if vec::contains(vars_in_type(rt), vid) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
