@@ -287,7 +287,7 @@ fn write_future(sock: tcp_socket, raw_write_data: [u8]/~)
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     future_spawn {||
         let data_copy = copy(raw_write_data);
-        write_common_impl(socket_data_ptr, data_copy)
+        write_common_impl(socket_data_ptr, data_copy);
     }
 }
 
