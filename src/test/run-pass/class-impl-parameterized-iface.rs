@@ -36,7 +36,7 @@ class cat implements map<int, bool> {
   }
 
   fn size() -> uint { self.meows as uint }
-  fn insert(&&k: int, &&v: bool) -> bool { 
+  fn insert(+k: int, +v: bool) -> bool { 
     if v { self.meows += k; } else { self.meows -= k; };
     true
   }

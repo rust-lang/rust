@@ -62,7 +62,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         }
         sz
     }
-    fn insert(&&key: uint, value: V) -> bool {
+    fn insert(+key: uint, +value: V) -> bool {
         let exists = contains_key(self, key);
         insert(self, key, value);
         ret !exists;

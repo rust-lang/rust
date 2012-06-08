@@ -41,7 +41,7 @@ class cat<T: copy> implements map<int, T> {
   }
 
   fn size() -> uint { self.meows as uint }
-  fn insert(&&k: int, &&_v: T) -> bool {
+  fn insert(+k: int, +_v: T) -> bool {
     self.meows += k;
     true
   }

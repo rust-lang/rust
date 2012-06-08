@@ -21,7 +21,7 @@ type set<K> = hashmap<K, ()>;
 
 type hashmap<K, V> = chained::t<K, V>;
 
-iface map<K: copy, V: copy> {
+iface map<K, V: copy> {
     #[doc = "Return the number of elements in the map"]
     fn size() -> uint;
 
@@ -33,7 +33,7 @@ iface map<K: copy, V: copy> {
 
     Returns true if the key did not already exist in the map
     "]
-    fn insert(K, V) -> bool;
+    fn insert(+K, +V) -> bool;
 
     #[doc = "Returns true if the map contains a value for the specified key"]
     fn contains_key(K) -> bool;
@@ -96,7 +96,7 @@ mod chained {
         found_after(@entry<K,V>, @entry<K,V>)
     }
 
-    impl private_methods<K: copy, V: copy> for t<K, V> {
+    impl private_methods<K, V: copy> for t<K, V> {
         fn search_rem(k: K, h: uint, idx: uint,
                       e_root: @entry<K,V>) -> search_result<K,V> {
             let mut e0 = e_root;
@@ -174,7 +174,7 @@ mod chained {
         }
     }
 
-    impl hashmap<K: copy, V: copy> of map<K, V> for t<K, V> {
+    impl hashmap<K, V: copy> of map<K, V> for t<K, V> {
         fn size() -> uint { self.count }
 
         fn contains_key(k: K) -> bool {
@@ -185,7 +185,7 @@ mod chained {
             }
         }
 
-        fn insert(k: K, v: V) -> bool {
+        fn insert(+k: K, +v: V) -> bool {
             let hash = self.hasher(k);
             alt self.search_tbl(k, hash) {
               not_found {
@@ -249,7 +249,7 @@ mod chained {
 
         fn each(blk: fn(K,V) -> bool) {
             for self.each_entry { |entry|
-                if !blk(copy entry.key, copy entry.value) { break; }
+                if !blk(entry.key, copy entry.value) { break; }
             }
         }
 
