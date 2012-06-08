@@ -16,12 +16,18 @@ impl public_methods for borrowck_ctxt {
             self.preserve(cmt, opt_scope_id)
           }
           cat_local(_) {
-            // This should never happen.  Local variables are always lendable,
-            // so either `loan()` should be called or there must be some
-            // intermediate @ or &---they are not lendable but do not recurse.
-            self.tcx.sess.span_bug(
-                cmt.span,
-                "preserve() called with local");
+            // Normally, local variables are lendable, and so this
+            // case should never trigged.  However, if we are
+            // preserving an expression like a.b where the field `b`
+            // has @ type, then it will recurse to ensure that the `a`
+            // is stable to try and avoid rooting the value `a.b`.  In
+            // this case, opt_scope_id will be none.
+            if opt_scope_id.is_some() {
+                self.tcx.sess.span_bug(
+                    cmt.span,
+                    "preserve() called with local and non-none opt_scope_id");
+            }
+            ok(())
           }
           cat_arg(_) {
             // This can happen as not all args are lendable (e.g., &&
@@ -37,11 +43,11 @@ impl public_methods for borrowck_ctxt {
             // type never changes.
             self.preserve(cmt_base, opt_scope_id)
           }
-          cat_comp(cmt1, comp_variant) {
-            self.require_imm(cmt, cmt1, opt_scope_id, err_mut_variant)
+          cat_comp(cmt_base, comp_variant) {
+            self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_variant)
           }
-          cat_deref(cmt1, _, uniq_ptr) {
-            self.require_imm(cmt, cmt1, opt_scope_id, err_mut_uniq)
+          cat_deref(cmt_base, _, uniq_ptr) {
+            self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_uniq)
           }
           cat_deref(_, _, region_ptr) {
             // References are always "stable" by induction (when the
@@ -54,23 +60,18 @@ impl public_methods for borrowck_ctxt {
             ok(())
           }
           cat_deref(base, derefs, gc_ptr) {
-            // GC'd pointers of type @MT: always stable because we can
-            // inc the ref count or keep a GC root as necessary.  We
-            // need to insert this id into the root_map, however.
-            alt opt_scope_id {
-              some(scope_id) {
-                #debug["Inserting root map entry for %s: \
-                        node %d:%u -> scope %d",
-                       self.cmt_to_repr(cmt), base.id,
-                       derefs, scope_id];
-
-                let rk = {id: base.id, derefs: derefs};
-                self.root_map.insert(rk, scope_id);
-                ok(())
-              }
-              none {
-                err({cmt:cmt, code:err_preserve_gc})
-              }
+            // GC'd pointers of type @MT: if this pointer lives in
+            // immutable, stable memory, then everything is fine.  But
+            // otherwise we have no guarantee the pointer will stay
+            // live, so we must root the pointer (i.e., inc the ref
+            // count) for the duration of the loan.
+            if base.mutbl == m_imm {
+                alt self.preserve(base, none) {
+                  ok(()) {ok(())}
+                  err(_) {self.attempt_root(cmt, opt_scope_id, base, derefs)}
+                }
+            } else {
+                self.attempt_root(cmt, opt_scope_id, base, derefs)
             }
           }
           cat_discr(base, alt_id) {
@@ -138,14 +139,33 @@ impl public_methods for borrowck_ctxt {
 
 impl private_methods for borrowck_ctxt {
     fn require_imm(cmt: cmt,
-                   cmt1: cmt,
+                   cmt_base: cmt,
                    opt_scope_id: option<ast::node_id>,
                    code: bckerr_code) -> bckres<()> {
         // Variant contents and unique pointers: must be immutably
         // rooted to a preserved address.
-        alt cmt1.mutbl {
+        alt cmt_base.mutbl {
           m_mutbl | m_const { err({cmt:cmt, code:code}) }
-          m_imm { self.preserve(cmt1, opt_scope_id) }
+          m_imm { self.preserve(cmt_base, opt_scope_id) }
+        }
+    }
+
+    fn attempt_root(cmt: cmt, opt_scope_id: option<ast::node_id>,
+                    base: cmt, derefs: uint) -> bckres<()> {
+        alt opt_scope_id {
+          some(scope_id) {
+            #debug["Inserting root map entry for %s: \
+                    node %d:%u -> scope %d",
+                   self.cmt_to_repr(cmt), base.id,
+                   derefs, scope_id];
+
+            let rk = {id: base.id, derefs: derefs};
+            self.root_map.insert(rk, scope_id);
+            ok(())
+          }
+          none {
+            err({cmt:cmt, code:err_preserve_gc})
+          }
         }
     }
 }
