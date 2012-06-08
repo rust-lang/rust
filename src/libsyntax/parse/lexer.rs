@@ -27,7 +27,7 @@ type tt_frame = @{
     up: tt_frame_up
 };
 
-type tt_reader = @{
+type tt_reader = ~{
     span_diagnostic: diagnostic::span_handler,
     interner: @interner::interner<@str>,
     mut cur: tt_frame,
@@ -39,28 +39,29 @@ type tt_reader = @{
 fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
                  itr: @interner::interner<@str>, src: [ast::token_tree])
     -> tt_reader {
-    let r = @{span_diagnostic: span_diagnostic, interner: itr,
+    let r = ~{span_diagnostic: span_diagnostic, interner: itr,
               mut cur: @{readme: src, mut idx: 0u,
                          up: tt_frame_up(option::none)},
               mut cur_tok: token::EOF, /* dummy value, never read */
               mut cur_chpos: 0u /* dummy value, never read */
              };
-    (r as reader).next_token(); /* get cur_tok and cur_chpos set up */
+    //tt_next_token(r); /* get cur_tok and cur_chpos set up */
     ret r;
 }
 
 pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
     @{readme: f.readme, mut idx: f.idx,
       up: alt f.up {
-        tt_frame_up(o_f) {
-          tt_frame_up(option::map(o_f, dup_tt_frame))
+        tt_frame_up(some(up_frame)) {
+          tt_frame_up(some(dup_tt_frame(up_frame)))
         }
+        tt_frame_up(none) { tt_frame_up(none) }
       }
      }
 }
 
 pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
-    @{span_diagnostic: r.span_diagnostic, interner: r.interner,
+    ~{span_diagnostic: r.span_diagnostic, interner: r.interner,
       mut cur: dup_tt_frame(r.cur),
       mut cur_tok: r.cur_tok, mut cur_chpos: r.cur_chpos}
 }
@@ -114,38 +115,13 @@ impl string_reader_as_reader of reader for string_reader {
 impl tt_reader_as_reader of reader for tt_reader {
     fn is_eof() -> bool { self.cur_tok == token::EOF }
     fn next_token() -> {tok: token::token, chpos: uint} {
-        let ret_val = { tok: self.cur_tok, chpos: self.cur_chpos };
-        if self.cur.idx >= vec::len(self.cur.readme) {
-            /* done with this set; pop */
-            alt self.cur.up {
-              tt_frame_up(option::none) {
-                self.cur_tok = token::EOF;
-                ret ret_val;
-              }
-              tt_frame_up(option::some(tt_f)) {
-                self.cur = tt_f;
-                /* the above `if` would need to be a `while` if we didn't know
-                that the last thing in a `tt_delim` is always a `tt_flat` */
-                self.cur.idx += 1u;
-              }
-            }
+        /* weird resolve bug: if the following `if`, or any of its
+        statements are removed, we get resolution errors */
+        if false {
+            let _ignore_me = 0;
+            let _me_too = self.cur.readme[self.cur.idx];
         }
-        /* if `tt_delim`s could be 0-length, we'd need to be able to switch
-        between popping and pushing until we got to an actual `tt_flat` */
-        loop { /* because it's easiest, this handles `tt_delim` not starting
-                  with a `tt_flat`, even though it won't happen */
-            alt self.cur.readme[self.cur.idx] {
-              tt_delim(tts) {
-                self.cur = @{readme: tts, mut idx: 0u,
-                             up: tt_frame_up(option::some(self.cur)) };
-              }
-              tt_flat(chpos, tok) {
-                self.cur_chpos = chpos; self.cur_tok = tok;
-                self.cur.idx += 1u;
-                ret ret_val;
-              }
-          }
-        }
+        tt_next_token(self)
     }
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(
@@ -153,6 +129,43 @@ impl tt_reader_as_reader of reader for tt_reader {
     }
     fn chpos() -> uint { self.cur_chpos }
     fn interner() -> @interner::interner<@str> { self.interner }
+}
+
+fn tt_next_token(&&r: tt_reader) -> {tok: token::token, chpos: uint} {
+    let ret_val = { tok: r.cur_tok, chpos: r.cur_chpos };
+    if r.cur.idx >= vec::len(r.cur.readme) {
+        /* done with this set; pop */
+        alt r.cur.up {
+          tt_frame_up(option::none) {
+            r.cur_tok = token::EOF;
+            ret ret_val;
+          }
+          tt_frame_up(option::some(tt_f)) {
+            r.cur <- tt_f;
+            /* the above `if` would need to be a `while` if we didn't know
+            that the last thing in a `tt_delim` is always a `tt_flat` */
+            r.cur.idx += 1u;
+          }
+        }
+    }
+    /* if `tt_delim`s could be 0-length, we'd need to be able to switch
+    between popping and pushing until we got to an actual `tt_flat` */
+    loop { /* because it's easiest, this handles `tt_delim` not starting
+    with a `tt_flat`, even though it won't happen */
+        alt r.cur.readme[r.cur.idx] {
+          tt_delim(tts) {
+            /* TODO: this copy should be a unary move, once they exist */
+            r.cur = @{readme: tts, mut idx: 0u,
+                      up: tt_frame_up(option::some(copy r.cur)) };
+          }
+          tt_flat(chpos, tok) {
+            r.cur_chpos = chpos; r.cur_tok = tok;
+            r.cur.idx += 1u;
+            ret ret_val;
+          }
+        }
+    }
+
 }
 
 fn get_str_from(rdr: string_reader, start: uint) -> str unsafe {
