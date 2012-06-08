@@ -45,14 +45,12 @@ const uint8_t SHAPE_F64 = 9u;
 const uint8_t SHAPE_BOX = 10u;
 const uint8_t SHAPE_VEC = 11u;
 const uint8_t SHAPE_TAG = 12u;
-const uint8_t SHAPE_BOX_OLD = 13u; // remove after snapshot
 const uint8_t SHAPE_STRUCT = 17u;
 const uint8_t SHAPE_BOX_FN = 18u;
 const uint8_t SHAPE_OBJ = 19u;
 const uint8_t SHAPE_RES = 20u;
 const uint8_t SHAPE_VAR = 21u;
 const uint8_t SHAPE_UNIQ = 22u;
-const uint8_t SHAPE_IFACE_OLD = 24u;
 const uint8_t SHAPE_UNIQ_FN = 25u;
 const uint8_t SHAPE_STACK_FN = 26u;
 const uint8_t SHAPE_BARE_FN = 27u;
@@ -372,12 +370,10 @@ ctxt<T>::walk() {
     case SHAPE_VEC:      walk_vec0();             break;
     case SHAPE_TAG:      walk_tag0();             break;
     case SHAPE_BOX:      walk_box0();             break;
-    case SHAPE_BOX_OLD:  walk_box_old0();         break;
     case SHAPE_STRUCT:   walk_struct0();          break;
     case SHAPE_RES:      walk_res0();             break;
     case SHAPE_VAR:      walk_var0();             break;
     case SHAPE_UNIQ:     walk_uniq0();            break;
-    case SHAPE_IFACE_OLD: WALK_SIMPLE(walk_iface1);    break;
     case SHAPE_BOX_FN:
     case SHAPE_UNIQ_FN:
     case SHAPE_STACK_FN:
@@ -485,18 +481,6 @@ template<typename T>
 void
 ctxt<T>::walk_box0() {
     static_cast<T *>(this)->walk_box1();
-}
-
-template<typename T>
-void
-ctxt<T>::walk_box_old0() {
-    // remove after snapshot
-    uint16_t sp_size = get_u16_bump(sp);
-    const uint8_t *end_sp = sp + sp_size;
-
-    static_cast<T *>(this)->walk_box1();
-
-    sp = end_sp;
 }
 
 template<typename T>

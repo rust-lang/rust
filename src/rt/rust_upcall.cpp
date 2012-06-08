@@ -330,8 +330,6 @@ upcall_str_new_uniq(const char *cstr, size_t len) {
     return args.retval;
 }
 
-// FIXME: this is an old compatibility-name for upcall_str_new_uniq
-// can remove after next snapshot.
 extern "C" CDECL rust_str*
 upcall_str_new(const char *cstr, size_t len) {
     s_str_new_uniq_args args = { cstr, len, 0 };
