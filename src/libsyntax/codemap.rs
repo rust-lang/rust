@@ -51,7 +51,7 @@ type loc = {file: filemap, line: uint, col: uint};
 
 fn new_codemap() -> codemap { @{files: dvec()} }
 
-fn new_filemap_w_substr(filename: filename, substr: file_substr,
+fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
                         src: @str,
                         start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
@@ -60,7 +60,7 @@ fn new_filemap_w_substr(filename: filename, substr: file_substr,
           mut lines: [{ch: start_pos_ch, byte: start_pos_byte}]};
 }
 
-fn new_filemap(filename: filename, src: @str,
+fn new_filemap(+filename: filename, src: @str,
                start_pos_ch: uint, start_pos_byte: uint)
     -> filemap {
     ret new_filemap_w_substr(filename, fss_none, src,
@@ -123,14 +123,16 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
     let loc = lookup_char_pos(map, pos);
     alt (loc.file.substr) {
       fss_none {
-        {filename: loc.file.name, line: loc.line, col: loc.col,
+        {filename: /* FIXME bad */ copy loc.file.name,
+         line: loc.line,
+         col: loc.col,
          file: some(loc.file)}
       }
       fss_internal(sp) {
         lookup_char_pos_adj(map, sp.lo + (pos - loc.file.start_pos.ch))
       }
       fss_external(eloc) {
-        {filename: eloc.filename,
+        {filename: /* FIXME bad */ copy eloc.filename,
          line: eloc.line + loc.line - 1u,
          col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
          file: none}
@@ -176,7 +178,7 @@ type file_lines = {file: filemap, lines: [uint]};
 
 fn span_to_filename(sp: span, cm: codemap::codemap) -> filename {
     let lo = lookup_char_pos(cm, sp.lo);
-    ret lo.file.name;
+    ret /* FIXME bad */ copy lo.file.name;
 }
 
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {

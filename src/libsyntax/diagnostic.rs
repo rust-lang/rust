@@ -201,7 +201,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     // arbitrarily only print up to six lines of the error
     let max_lines = 6u;
     let mut elided = false;
-    let mut display_lines = lines.lines;
+    let mut display_lines = /* FIXME bad */ copy lines.lines;
     if vec::len(display_lines) > max_lines {
         display_lines = vec::slice(display_lines, 0u, max_lines);
         elided = true;
@@ -250,9 +250,11 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
 
 fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
     option::iter (sp.expn_info) {|ei|
-        let ss = option::map_default(ei.callie.span, "",
-                               bind codemap::span_to_str(_, cm));
-        print_diagnostic(ss, note,
+        let ss = option::map_default(ei.callie.span, @"", {
+            |span|
+            @codemap::span_to_str(span, cm)
+        });
+        print_diagnostic(*ss, note,
                          #fmt("in expansion of #%s", ei.callie.name));
         let ss = codemap::span_to_str(ei.call_site, cm);
         print_diagnostic(ss, note, "expansion site");
