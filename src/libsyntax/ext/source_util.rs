@@ -34,8 +34,9 @@ fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
-    let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret make_new_lit(cx, sp, ast::lit_str(loc.file.name));
+    let { file: @{ name: filename, _ }, _ } =
+        codemap::lookup_char_pos(cx.codemap(), sp.lo);
+    ret make_new_lit(cx, sp, ast::lit_str(filename));
 }
 
 fn expand_stringify(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
@@ -66,12 +67,15 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     let file = expr_to_str(cx, args[0], "#include_str requires a string");
 
-    alt io::read_whole_file_str(res_rel_file(cx, sp, file)) {
-      result::ok(src) { ret make_new_lit(cx, sp, ast::lit_str(src)); }
+    let res = io::read_whole_file_str(res_rel_file(cx, sp, file));
+    alt res {
+      result::ok(_) { /* Continue. */ }
       result::err(e) {
-        cx.parse_sess().span_diagnostic.handler().fatal(e)
+        cx.parse_sess().span_diagnostic.handler().fatal(e);
       }
     }
+
+    ret make_new_lit(cx, sp, ast::lit_str(result::unwrap(res)));
 }
 
 fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
@@ -93,7 +97,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     }
 }
 
-fn res_rel_file(cx: ext_ctxt, sp: codemap::span, arg: path) -> path {
+fn res_rel_file(cx: ext_ctxt, sp: codemap::span, +arg: path) -> path {
     // NB: relative paths are resolved relative to the compilation unit
     if !path::path_is_absolute(arg) {
         let cu = codemap::span_to_filename(sp, cx.codemap());

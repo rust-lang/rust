@@ -209,6 +209,16 @@ impl parser_common for parser {
         ret v;
     }
 
+    fn parse_unspanned_seq<T: copy>(bra: token::token, ket: token::token,
+                                    sep: seq_sep, f: fn(parser) -> T) -> [T] {
+        self.expect(bra);
+        let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
+        self.bump();
+        ret result;
+    }
+
+    // NB: Do not use this function unless you actually plan to place the
+    // spanned list in the AST.
     fn parse_seq<T: copy>(bra: token::token, ket: token::token, sep: seq_sep,
                           f: fn(parser) -> T) -> spanned<[T]> {
         let lo = self.span.lo;
