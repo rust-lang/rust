@@ -79,6 +79,43 @@ impl of intrinsic::ty_visitor for my_visitor {
     fn visit_leave_evec_slice(_mtbl: uint) -> bool { true }
     fn visit_enter_evec_fixed(_mtbl: uint, _sz: uint) -> bool { true }
     fn visit_leave_evec_fixed(_mtbl: uint, _sz: uint) -> bool { true }
+
+    fn visit_enter_rec(_n_fields: uint) -> bool { true }
+    fn visit_enter_rec_field(_mtbl: uint, _i: uint
+                             /*,name: str/&*/) -> bool { true }
+    fn visit_leave_rec_field(_mtbl: uint, _i: uint
+                             /*,name: str/&*/) -> bool { true }
+    fn visit_leave_rec(_n_fields: uint) -> bool { true }
+
+    fn visit_enter_tup(_n_fields: uint) -> bool { true }
+    fn visit_enter_tup_field(_i: uint) -> bool { true }
+    fn visit_leave_tup_field(_i: uint) -> bool { true }
+    fn visit_leave_tup(_n_fields: uint) -> bool { true }
+
+    fn visit_enter_fn(_purity: uint, _proto: uint,
+                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+    fn visit_enter_fn_input(_i: uint, _mode: uint) -> bool { true }
+    fn visit_leave_fn_input(_i: uint, _mode: uint) -> bool { true }
+    fn visit_enter_fn_output(_retstyle: uint) -> bool { true }
+    fn visit_leave_fn_output(_retstyle: uint) -> bool { true }
+    fn visit_leave_fn(_purity: uint, _proto: uint,
+                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+
+    fn visit_class() -> bool { true }
+    fn visit_enum() -> bool { true }
+
+    fn visit_iface() -> bool { true }
+    fn visit_enter_res() -> bool { true }
+    fn visit_leave_res() -> bool { true }
+    fn visit_var() -> bool { true }
+    fn visit_var_integral() -> bool { true }
+    fn visit_param(_i: uint) -> bool { true }
+    fn visit_self() -> bool { true }
+    fn visit_type() -> bool { true }
+    fn visit_opaque_box() -> bool { true }
+    fn visit_enter_constr() -> bool { true }
+    fn visit_leave_constr() -> bool { true }
+    fn visit_closure_ptr(_ck: uint) -> bool { true }
 }
 
 fn main() {

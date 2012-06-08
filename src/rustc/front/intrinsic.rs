@@ -54,6 +54,43 @@ mod intrinsic {
         fn visit_leave_evec_slice(mtbl: uint) -> bool;
         fn visit_enter_evec_fixed(mtbl: uint, sz: uint) -> bool;
         fn visit_leave_evec_fixed(mtbl: uint, sz: uint) -> bool;
+
+        fn visit_enter_rec(n_fields: uint) -> bool;
+        fn visit_enter_rec_field(mtbl: uint, i: uint
+                                 /*, name: str/& */) -> bool;
+        fn visit_leave_rec_field(mtbl: uint, i: uint
+                                 /*, name: str/& */) -> bool;
+        fn visit_leave_rec(n_fields: uint) -> bool;
+
+        fn visit_enter_tup(n_fields: uint) -> bool;
+        fn visit_enter_tup_field(i: uint) -> bool;
+        fn visit_leave_tup_field(i: uint) -> bool;
+        fn visit_leave_tup(n_fields: uint) -> bool;
+
+        fn visit_enter_fn(purity: uint, proto: uint,
+                          n_inputs: uint, retstyle: uint) -> bool;
+        fn visit_enter_fn_input(i: uint, mode: uint) -> bool;
+        fn visit_leave_fn_input(i: uint, mode: uint) -> bool;
+        fn visit_enter_fn_output(retstyle: uint) -> bool;
+        fn visit_leave_fn_output(retstyle: uint) -> bool;
+        fn visit_leave_fn(purity: uint, proto: uint,
+                          n_inputs: uint, retstyle: uint) -> bool;
+
+        fn visit_class() -> bool;
+        fn visit_enum() -> bool;
+
+        fn visit_iface() -> bool;
+        fn visit_enter_res() -> bool;
+        fn visit_leave_res() -> bool;
+        fn visit_var() -> bool;
+        fn visit_var_integral() -> bool;
+        fn visit_param(i: uint) -> bool;
+        fn visit_self() -> bool;
+        fn visit_type() -> bool;
+        fn visit_opaque_box() -> bool;
+        fn visit_enter_constr() -> bool;
+        fn visit_leave_constr() -> bool;
+        fn visit_closure_ptr(ck: uint) -> bool;
     }
 
     #[abi = "rust-intrinsic"]

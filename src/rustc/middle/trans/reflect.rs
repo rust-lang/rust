@@ -42,12 +42,15 @@ impl methods for reflector {
                              abi::tydesc_field_visit_glue);
     }
 
+    fn bracketed_t(bracket_name: str, t: ty::t, extra: [ValueRef]) {
+        self.visit("enter_" + bracket_name, extra);
+        self.visit_tydesc(t);
+        self.visit("leave_" + bracket_name, extra);
+    }
+
     fn bracketed_mt(bracket_name: str, mt: ty::mt, extra: [ValueRef]) {
-        self.visit("enter_" + bracket_name,
-                   [self.c_uint(mt.mutbl as uint)] + extra);
-        self.visit_tydesc(mt.ty);
-        self.visit("leave_" + bracket_name,
-                   [self.c_uint(mt.mutbl as uint)] + extra);
+        self.bracketed_t(bracket_name, mt.ty,
+                         [self.c_uint(mt.mutbl as uint)] + extra);
     }
 
     fn vstore_name_and_extra(vstore: ty::vstore,
@@ -66,6 +69,10 @@ impl methods for reflector {
 
     // Entrypoint
     fn visit_ty(t: ty::t) {
+
+        let bcx = self.bcx;
+        #debug("reflect::visit_ty %s",
+               ty_to_str(bcx.ccx().tcx, t));
 
         alt ty::get(t).struct {
           ty::ty_bot { self.leaf("bot") }
@@ -103,8 +110,97 @@ impl methods for reflector {
           ty::ty_ptr(mt) { self.bracketed_mt("ptr", mt, []) }
           ty::ty_rptr(_, mt) { self.bracketed_mt("rptr", mt, []) }
 
-          // FIXME: finish these.
-          _ { self.visit("bot", []) }
+          ty::ty_rec(fields) {
+            self.visit("enter_rec", [self.c_uint(vec::len(fields))]);
+            for fields.eachi {|i, field|
+                self.bracketed_mt("rec_field", field.mt,
+                                  [self.c_uint(i)
+                                   /*
+                                   FIXME: doesn't work presently.
+                                   C_estr_slice(self.bcx.ccx(),
+                                                field.ident)
+                                   */
+                                  ]);
+            }
+            self.visit("leave_rec", [self.c_uint(vec::len(fields))]);
+          }
+
+          ty::ty_tup(tys) {
+            self.visit("enter_tup", [self.c_uint(vec::len(tys))]);
+            for tys.eachi {|i, t|
+                self.bracketed_t("tup_field", t, [self.c_uint(i)]);
+            }
+            self.visit("leave_tup", [self.c_uint(vec::len(tys))]);
+          }
+
+          // FIXME: fetch constants out of intrinsic:: for the numbers.
+          ty::ty_fn(fty) {
+            let pureval = alt fty.purity {
+              ast::pure_fn { 0u }
+              ast::unsafe_fn { 1u }
+              ast::impure_fn { 2u }
+              ast::crust_fn { 3u }
+            };
+            let protoval = alt fty.proto {
+              ast::proto_bare { 0u }
+              ast::proto_any { 1u }
+              ast::proto_uniq { 2u }
+              ast::proto_box { 3u }
+              ast::proto_block { 4u }
+            };
+            let retval = alt fty.ret_style {
+              ast::noreturn { 0u }
+              ast::return_val { 1u }
+            };
+            let extra = [self.c_uint(pureval),
+                         self.c_uint(protoval),
+                         self.c_uint(vec::len(fty.inputs)),
+                         self.c_uint(retval)];
+            self.visit("enter_fn", extra);
+            for fty.inputs.eachi {|i, arg|
+                let modeval = alt arg.mode {
+                  ast::infer(_) { 0u }
+                  ast::expl(e) {
+                    alt e {
+                      ast::by_ref { 1u }
+                      ast::by_val { 2u }
+                      ast::by_mutbl_ref { 3u }
+                      ast::by_move { 4u }
+                      ast::by_copy { 5u }
+                    }
+                  }
+                };
+                self.bracketed_t("fn_input", arg.ty,
+                                 [self.c_uint(i),
+                                  self.c_uint(modeval)]);
+            }
+            self.bracketed_t("fn_output", fty.output,
+                             [self.c_uint(retval)]);
+            self.visit("leave_fn", extra);
+          }
+
+          // FIXME: these need substructure-walks
+          ty::ty_class(_, _) { self.leaf("class") }
+          ty::ty_enum(_, _) { self.leaf("enum") }
+
+          // Miscallaneous extra types
+          ty::ty_iface(_, _) { self.leaf("iface") }
+          ty::ty_res(_, t, _) { self.bracketed_t("res", t, []) }
+          ty::ty_var(_) { self.leaf("var") }
+          ty::ty_var_integral(_) { self.leaf("var_integral") }
+          ty::ty_param(n, _) { self.visit("param", [self.c_uint(n)]) }
+          ty::ty_self { self.leaf("self") }
+          ty::ty_type { self.leaf("type") }
+          ty::ty_opaque_box { self.leaf("opaque_box") }
+          ty::ty_constr(t, _) { self.bracketed_t("constr", t, []) }
+          ty::ty_opaque_closure_ptr(ck) {
+            let ckval = alt ck {
+              ty::ck_block { 0u }
+              ty::ck_box { 1u }
+              ty::ck_uniq { 2u }
+            };
+            self.visit("closure_ptr", [self.c_uint(ckval)])
+          }
         }
     }
 }

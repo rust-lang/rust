@@ -276,8 +276,7 @@ fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
       ast::vstore_slice(_) {
         // "hello"  =>  (*i8, 6u) in llvm
         #debug("trans_estr: slice '%s'", s);
-        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
-        C_struct([cs, C_uint(ccx, str::len(s) + 1u /* +1 for null */)])
+        C_estr_slice(ccx, s)
       }
 
       ast::vstore_uniq {

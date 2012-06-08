@@ -815,6 +815,11 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
     ret g;
 }
 
+fn C_estr_slice(cx: @crate_ctxt, s: str) -> ValueRef {
+    let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
+    C_struct([cs, C_uint(cx, str::len(s) + 1u /* +1 for null */)])
+}
+
 // Returns a Plain Old LLVM String:
 fn C_postr(s: str) -> ValueRef {
     ret str::as_c_str(s) {|buf|
