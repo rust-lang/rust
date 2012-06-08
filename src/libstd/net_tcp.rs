@@ -778,13 +778,17 @@ impl tcp_socket_buf of io::reader for tcp_socket_buf {
     }
 }
 
-/*
 #[doc="
 Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 "]
 impl tcp_socket_buf of io::writer for tcp_socket_buf {
-    fn write(data: [const u8]/&) {
-        (*self).sock.write(iter::to_vec(data as [u8]/&));
+    fn write(data: [const u8]/&) unsafe {
+        let socket_data_ptr = ptr::addr_of(**((*self).sock));
+        let write_buf_vec = vec::unpack_const_slice(data) {|ptr, len|
+            [ uv::ll::buf_init(ptr as *u8, len) ]
+        };
+        let write_buf_vec_ptr = ptr::addr_of(write_buf_vec);
+        write_common_impl(socket_data_ptr, write_buf_vec_ptr);
     }
     fn seek(dist: int, seek: io::seek_style) {
       log(debug, #fmt("tcp_socket_buf seek stub %? %?", dist, seek));
@@ -797,7 +801,6 @@ impl tcp_socket_buf of io::writer for tcp_socket_buf {
         0
     }
 }
-*/
 
 // INTERNAL API
 
