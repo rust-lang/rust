@@ -1,5 +1,6 @@
 import T = inst::T;
 import cmp::{eq, ord};
+import num::num;
 
 export min_value, max_value;
 export min, max;
@@ -11,7 +12,7 @@ export range;
 export compl;
 export abs;
 export parse_buf, from_str, to_str, to_str_bytes, str;
-export ord, eq;
+export ord, eq, num;
 
 const min_value: T = -1 as T << (inst::bits - 1 as T);
 const max_value: T = min_value - 1 as T;
@@ -122,6 +123,18 @@ impl eq of eq for T {
     }
 }
 
+impl num of num for T {
+    fn add(&&other: T)    -> T { ret self + other; }
+    fn sub(&&other: T)    -> T { ret self - other; }
+    fn mul(&&other: T)    -> T { ret self * other; }
+    fn div(&&other: T)    -> T { ret self / other; }
+    fn modulo(&&other: T) -> T { ret self % other; }
+    fn neg()              -> T { ret -self;        }
+
+    fn to_int()         -> int { ret self as int; }
+    fn from_int(n: int) -> T   { ret n as T;      }
+}
+
 
 // FIXME: Has alignment issues on windows and 32-bit linux
 #[test]
@@ -179,3 +192,22 @@ fn test_to_str() {
     assert (eq(to_str(127 as T, 16u), "7f"));
     assert (eq(to_str(100 as T, 10u), "100"));
 }
+
+#[test]
+fn test_ifaces() {
+    fn test<U:num>(ten: U) {
+        assert (ten.to_int() == 10);
+
+        let two = ten.from_int(2);
+        assert (two.to_int() == 2);
+
+        assert (ten.add(two) == ten.from_int(12));
+        assert (ten.sub(two) == ten.from_int(8));
+        assert (ten.mul(two) == ten.from_int(20));
+        assert (ten.div(two) == ten.from_int(5));
+        assert (ten.modulo(two) == ten.from_int(0));
+    }
+
+    test(10 as T);
+}
+

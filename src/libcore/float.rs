@@ -17,6 +17,7 @@ export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
 export pow_with_uint;
+export num;
 
 // export when m_float == c_double
 
@@ -26,6 +27,7 @@ export j0, j1, jn, y0, y1, yn;
 
 import m_float = f64;
 import f64::*;
+import num::num;
 
 const NaN: float = 0.0/0.0;
 
@@ -408,6 +410,18 @@ fn sin(x: float) -> float { f64::sin(x as f64) as float }
 fn cos(x: float) -> float { f64::cos(x as f64) as float }
 fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
+impl num of num for float {
+    fn add(&&other: float)    -> float { ret self + other; }
+    fn sub(&&other: float)    -> float { ret self - other; }
+    fn mul(&&other: float)    -> float { ret self * other; }
+    fn div(&&other: float)    -> float { ret self / other; }
+    fn modulo(&&other: float) -> float { ret self % other; }
+    fn neg()                  -> float { ret -self;        }
+
+    fn to_int()         -> int   { ret self as int; }
+    fn from_int(n: int) -> float { ret n as float;  }
+}
+
 #[test]
 fn test_from_str() {
    assert from_str("3") == some(3.);
@@ -500,6 +514,25 @@ fn test_to_str_inf() {
     assert to_str(infinity, 10u) == "inf";
     assert to_str(-infinity, 10u) == "-inf";
 }
+
+#[test]
+fn test_ifaces() {
+    fn test<U:num>(ten: U) {
+        assert (ten.to_int() == 10);
+
+        let two = ten.from_int(2);
+        assert (two.to_int() == 2);
+
+        assert (ten.add(two) == ten.from_int(12));
+        assert (ten.sub(two) == ten.from_int(8));
+        assert (ten.mul(two) == ten.from_int(20));
+        assert (ten.div(two) == ten.from_int(5));
+        assert (ten.modulo(two) == ten.from_int(0));
+    }
+
+    test(10.0);
+}
+
 
 //
 // Local Variables:

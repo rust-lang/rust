@@ -1,5 +1,6 @@
 import T = inst::T;
 import cmp::{eq, ord};
+import num::num;
 
 export min_value, max_value;
 export min, max;
@@ -11,7 +12,7 @@ export range;
 export compl;
 export to_str, to_str_bytes;
 export from_str, from_str_radix, str, parse_buf;
-export ord, eq;
+export ord, eq, num;
 
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
@@ -61,6 +62,18 @@ impl eq of eq for T {
     fn eq(&&other: T) -> bool {
         ret self == other;
     }
+}
+
+impl num of num for T {
+    fn add(&&other: T)    -> T { ret self + other; }
+    fn sub(&&other: T)    -> T { ret self - other; }
+    fn mul(&&other: T)    -> T { ret self * other; }
+    fn div(&&other: T)    -> T { ret self / other; }
+    fn modulo(&&other: T) -> T { ret self % other; }
+    fn neg()              -> T { ret -self;        }
+
+    fn to_int()         -> int { ret self as int; }
+    fn from_int(n: int) -> T   { ret n as T;      }
 }
 
 #[doc = "

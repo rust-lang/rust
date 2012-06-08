@@ -22,6 +22,7 @@ export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap;
 export rope, arena, arc, par;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
+export cmp;
 
 // General io and system-services modules
 
@@ -70,6 +71,7 @@ mod prettyprint;
 mod arena;
 mod arc;
 mod par;
+mod cmp;
 
 #[cfg(unicode)]
 mod unicode;
