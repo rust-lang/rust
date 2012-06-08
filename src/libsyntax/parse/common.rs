@@ -209,6 +209,9 @@ impl parser_common for parser {
         ret v;
     }
 
+    // FIXME: A lot of callers go through here, only to copy out the T and
+    // discard the spanned<> wrapper. I feel as though there should be a
+    // version of this that does not return a spanned result.
     fn parse_seq<T: copy>(bra: token::token, ket: token::token, sep: seq_sep,
                           f: fn(parser) -> T) -> spanned<[T]> {
         let lo = self.span.lo;

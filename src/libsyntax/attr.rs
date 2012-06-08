@@ -51,7 +51,8 @@ fn mk_name_value_item_str(+name: ast::ident, +value: str) -> @ast::meta_item {
     ret mk_name_value_item(name, value_lit);
 }
 
-fn mk_name_value_item(+name: ast::ident, +value: ast::lit) -> @ast::meta_item {
+fn mk_name_value_item(+name: ast::ident, +value: ast::lit)
+        -> @ast::meta_item {
     ret @dummy_spanned(ast::meta_name_value(name, value));
 }
 

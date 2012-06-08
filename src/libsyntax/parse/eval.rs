@@ -44,7 +44,7 @@ optional suffix then adding the .rs extension.
 fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
     -> ([@ast::view_item], [@ast::item], [ast::attribute]) {
 
-    fn companion_file(prefix: str, suffix: option<str>) -> str {
+    fn companion_file(+prefix: str, suffix: option<str>) -> str {
         ret alt suffix {
           option::some(s) { path::connect(prefix, s) }
           option::none { prefix }
@@ -66,8 +66,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
         #debug("found companion mod");
         let p0 = new_parser_from_file(cx.sess, cx.cfg, modpath, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
-        let first_item_outer_attrs = inner_attrs.next;
-        let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
+        let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
         cx.sess.chpos = p0.reader.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;
         ret (m0.view_items, m0.items, inner_attrs.inner);
@@ -102,7 +101,8 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         let first_item_outer_attrs = inner_attrs.next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
 
-        let i = p0.mk_item(cdir.span.lo, cdir.span.hi, id,
+        let i = p0.mk_item(cdir.span.lo, cdir.span.hi,
+                           /* FIXME: bad */ copy id,
                            ast::item_mod(m0), ast::public, mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = p0.reader.chpos;
@@ -118,7 +118,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         let (m0, a0) = eval_crate_directives_to_mod(
             cx, cdirs, full_path, none);
         let i =
-            @{ident: id,
+            @{ident: /* FIXME: bad */ copy id,
               attrs: attrs + a0,
               id: cx.sess.next_id,
               node: ast::item_mod(m0),
