@@ -156,7 +156,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
             for variants.each {|v|
                 if v.node.name == i {
                    local = true;
-                   parent_enum = some(it.ident);
+                   parent_enum = some(/* FIXME: bad */ copy it.ident);
                 }
             }
           }
@@ -247,12 +247,12 @@ fn block_from_expr(e: @expr) -> blk {
     ret {node: blk_, span: e.span};
 }
 
-fn default_block(stmts1: [@stmt], expr1: option<@expr>, id1: node_id) ->
+fn default_block(+stmts1: [@stmt], expr1: option<@expr>, id1: node_id) ->
    blk_ {
     {view_items: [], stmts: stmts1, expr: expr1, id: id1, rules: default_blk}
 }
 
-fn ident_to_path(s: span, i: ident) -> @path {
+fn ident_to_path(s: span, +i: ident) -> @path {
     @{span: s, global: false, idents: [i],
       rp: none, types: []}
 }
@@ -265,7 +265,7 @@ pure fn is_unguarded(&&a: arm) -> bool {
 }
 
 pure fn unguarded_pat(a: arm) -> option<[@pat]> {
-    if is_unguarded(a) { some(a.pats) } else { none }
+    if is_unguarded(a) { some(/* FIXME: bad */ copy a.pats) } else { none }
 }
 
 // Provides an extra node_id to hang callee information on, in case the
@@ -275,8 +275,8 @@ fn op_expr_callee_id(e: @expr) -> node_id { e.id - 1 }
 
 pure fn class_item_ident(ci: @class_member) -> ident {
     alt ci.node {
-      instance_var(i,_,_,_,_) { i }
-      class_method(it) { it.ident }
+      instance_var(i,_,_,_,_) { /* FIXME: bad */ copy i }
+      class_method(it) { /* FIXME: bad */ copy it.ident }
     }
 }
 
@@ -294,7 +294,11 @@ fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
     for cs.each {|c|
       alt c.node {
         instance_var(i, t, cm, id, vis) {
-          vs += [{ident: i, ty: t, cm: cm, id: id, vis: vis}];
+          vs += [{ident: /* FIXME: bad */ copy i,
+                  ty: t,
+                  cm: cm,
+                  id: id,
+                  vis: vis}];
         }
         class_method(m) { ms += [m]; }
       }
@@ -312,10 +316,10 @@ pure fn class_member_visibility(ci: @class_member) -> visibility {
 impl inlined_item_methods for inlined_item {
     fn ident() -> ident {
         alt self {
-          ii_item(i) { i.ident }
-          ii_native(i) { i.ident }
-          ii_method(_, m) { m.ident }
-          ii_ctor(_, nm, _, _) { nm }
+          ii_item(i) { /* FIXME: bad */ copy i.ident }
+          ii_native(i) { /* FIXME: bad */ copy i.ident }
+          ii_method(_, m) { /* FIXME: bad */ copy m.ident }
+          ii_ctor(_, nm, _, _) { /* FIXME: bad */ copy nm }
         }
     }
 
