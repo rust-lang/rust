@@ -34,30 +34,26 @@ class irc : public shape::data<irc,shape::ptr> {
 
     irc(const irc &other, const shape::ptr &in_dp)
     : shape::data<irc,shape::ptr>(other.task, other.align, other.sp,
-                                  other.params, other.tables, in_dp),
+                                  other.tables, in_dp),
       ircs(other.ircs) {}
 
     irc(const irc &other,
         const uint8_t *in_sp,
-        const shape::type_param *in_params,
         const rust_shape_tables *in_tables = NULL)
     : shape::data<irc,shape::ptr>(other.task,
                                   other.align,
                                   in_sp,
-                                  in_params,
                                   in_tables ? in_tables : other.tables,
                                   other.dp),
       ircs(other.ircs) {}
 
     irc(const irc &other,
         const uint8_t *in_sp,
-        const shape::type_param *in_params,
         const rust_shape_tables *in_tables,
         shape::ptr in_dp)
     : shape::data<irc,shape::ptr>(other.task,
                                   other.align,
                                   in_sp,
-                                  in_params,
                                   in_tables,
                                   in_dp),
       ircs(other.ircs) {}
@@ -65,13 +61,12 @@ class irc : public shape::data<irc,shape::ptr> {
     irc(rust_task *in_task,
         bool in_align,
         const uint8_t *in_sp,
-        const shape::type_param *in_params,
         const rust_shape_tables *in_tables,
         uint8_t *in_data,
         irc_map &in_ircs)
-    : shape::data<irc,shape::ptr>(in_task, in_align, in_sp, in_params,
-                                  in_tables, in_data),
-      ircs(in_ircs) {}
+        : shape::data<irc,shape::ptr>(in_task, in_align, in_sp,
+                                      in_tables, shape::ptr(in_data)),
+          ircs(in_ircs) {}
 
 
     void walk_vec2(bool is_pod, std::pair<uint8_t *,uint8_t *> data_range) {
@@ -80,8 +75,8 @@ class irc : public shape::data<irc,shape::ptr> {
         if (is_pod)
             return;
 
-        irc sub(*this, data_range.first);
-        shape::ptr data_end = sub.end_dp = data_range.second;
+        irc sub(*this, shape::ptr(data_range.first));
+        shape::ptr data_end = sub.end_dp = shape::ptr(data_range.second);
         while (sub.dp < data_end) {
             sub.walk_reset();
             // FIXME: shouldn't this be 'sub.align = true;'?
@@ -148,8 +143,7 @@ class irc : public shape::data<irc,shape::ptr> {
     void walk_tydesc2(char) {
     }
 
-    void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
-                   const shape::type_param *params, const uint8_t *end_sp,
+    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp,
                    bool live) {
         while (this->sp != end_sp) {
             this->walk();
@@ -214,7 +208,7 @@ void
 irc::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                    const std::pair<const uint8_t *,const uint8_t *>
                    variant_ptr_and_end) {
-    irc sub(*this, variant_ptr_and_end.first, tinfo.params);
+    irc sub(*this, variant_ptr_and_end.first);
 
     assert(variant_id < 256);   // FIXME: Temporary sanity check.
 
@@ -240,10 +234,8 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
             box, tydesc, body);
 
         shape::arena arena;
-        shape::type_param *params =
-            shape::type_param::from_tydesc_and_data(tydesc, body, arena);
 
-        irc irc(task, true, tydesc->shape, params, tydesc->shape_tables,
+        irc irc(task, true, tydesc->shape, tydesc->shape_tables,
                 body, ircs);
         irc.walk();
     }
@@ -292,30 +284,26 @@ class mark : public shape::data<mark,shape::ptr> {
 
     mark(const mark &other, const shape::ptr &in_dp)
     : shape::data<mark,shape::ptr>(other.task, other.align, other.sp,
-                                   other.params, other.tables, in_dp),
+                                    other.tables, in_dp),
       marked(other.marked) {}
 
     mark(const mark &other,
          const uint8_t *in_sp,
-         const shape::type_param *in_params,
          const rust_shape_tables *in_tables = NULL)
     : shape::data<mark,shape::ptr>(other.task,
                                    other.align,
                                    in_sp,
-                                   in_params,
                                    in_tables ? in_tables : other.tables,
                                    other.dp),
       marked(other.marked) {}
 
     mark(const mark &other,
          const uint8_t *in_sp,
-         const shape::type_param *in_params,
          const rust_shape_tables *in_tables,
          shape::ptr in_dp)
     : shape::data<mark,shape::ptr>(other.task,
                                    other.align,
                                    in_sp,
-                                   in_params,
                                    in_tables,
                                    in_dp),
       marked(other.marked) {}
@@ -323,12 +311,11 @@ class mark : public shape::data<mark,shape::ptr> {
     mark(rust_task *in_task,
          bool in_align,
          const uint8_t *in_sp,
-         const shape::type_param *in_params,
          const rust_shape_tables *in_tables,
          uint8_t *in_data,
          std::set<rust_opaque_box*> &in_marked)
-    : shape::data<mark,shape::ptr>(in_task, in_align, in_sp, in_params,
-                                   in_tables, in_data),
+        : shape::data<mark,shape::ptr>(in_task, in_align, in_sp,
+                                       in_tables, shape::ptr(in_data)),
       marked(in_marked) {}
 
     void walk_vec2(bool is_pod, std::pair<uint8_t *,uint8_t *> data_range) {
@@ -340,8 +327,8 @@ class mark : public shape::data<mark,shape::ptr> {
         if (data_range.second - data_range.first > 100000)
             abort();    // FIXME: Temporary sanity check.
 
-        mark sub(*this, data_range.first);
-        shape::ptr data_end = sub.end_dp = data_range.second;
+        mark sub(*this, shape::ptr(data_range.first));
+        shape::ptr data_end = sub.end_dp = shape::ptr(data_range.second);
         while (sub.dp < data_end) {
             sub.walk_reset();
             align = true;
@@ -399,9 +386,8 @@ class mark : public shape::data<mark,shape::ptr> {
         }
     }
 
-    void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
-                  const shape::type_param *params, const uint8_t *end_sp,
-                  bool live) {
+    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp,
+                   bool live) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
@@ -458,7 +444,7 @@ void
 mark::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                    const std::pair<const uint8_t *,const uint8_t *>
                    variant_ptr_and_end) {
-    mark sub(*this, variant_ptr_and_end.first, tinfo.params);
+    mark sub(*this, variant_ptr_and_end.first);
 
     assert(variant_id < 256);   // FIXME: Temporary sanity check.
 
@@ -487,10 +473,8 @@ mark::do_mark(rust_task *task,
 
             uint8_t *p = (uint8_t*) box_body(box);
             shape::arena arena;
-            shape::type_param *params =
-                shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
-            mark mark(task, true, tydesc->shape, params, tydesc->shape_tables,
+            mark mark(task, true, tydesc->shape, tydesc->shape_tables,
                       p, marked);
             mark.walk();
         }
@@ -543,8 +527,7 @@ do_final_cc(rust_task *task) {
         cerr << "Unreclaimed object found at " << (void*) box << ": ";
         const type_desc *td = box->td;
         shape::arena arena;
-        shape::type_param *params = shape::type_param::from_tydesc(td, arena);
-        shape::log log(task, true, td->shape, params, td->shape_tables,
+        shape::log log(task, true, td->shape, td->shape_tables,
                        (uint8_t*)box_body(box), cerr);
         log.walk();
         cerr << "\n";

@@ -49,7 +49,6 @@ const uint8_t SHAPE_STRUCT = 17u;
 const uint8_t SHAPE_BOX_FN = 18u;
 const uint8_t SHAPE_OBJ = 19u;
 const uint8_t SHAPE_RES = 20u;
-const uint8_t SHAPE_VAR = 21u;
 const uint8_t SHAPE_UNIQ = 22u;
 const uint8_t SHAPE_UNIQ_FN = 25u;
 const uint8_t SHAPE_STACK_FN = 26u;
@@ -72,7 +71,6 @@ const uint8_t SHAPE_PTR = SHAPE_U32;
 struct rust_obj;
 struct size_align;
 class ptr;
-class type_param;
 
 
 // Arenas; these functions must execute very quickly, so we use an arena
@@ -183,8 +181,6 @@ struct tag_info {
     uint16_t variant_count;                 // Number of variants in the tag.
     const uint8_t *largest_variants_ptr;    // Ptr to largest variants table.
     size_align tag_sa;                      // Size and align of this tag.
-    uint16_t n_params;                      // Number of type parameters.
-    const type_param *params;               // Array of type parameters.
 };
 
 
@@ -229,7 +225,6 @@ template<typename T>
 class ctxt {
 public:
     const uint8_t *sp;                  // shape pointer
-    const type_param *params;           // shapes of type parameters
     const rust_shape_tables *tables;
     rust_task *task;
     bool align;
@@ -237,10 +232,8 @@ public:
     ctxt(rust_task *in_task,
          bool in_align,
          const uint8_t *in_sp,
-         const type_param *in_params,
          const rust_shape_tables *in_tables)
     : sp(in_sp),
-      params(in_params),
       tables(in_tables),
       task(in_task),
       align(in_align) {}
@@ -248,10 +241,8 @@ public:
     template<typename U>
     ctxt(const ctxt<U> &other,
          const uint8_t *in_sp = NULL,
-         const type_param *in_params = NULL,
          const rust_shape_tables *in_tables = NULL)
     : sp(in_sp ? in_sp : other.sp),
-      params(in_params ? in_params : other.params),
       tables(in_tables ? in_tables : other.tables),
       task(other.task),
       align(other.align) {}
@@ -278,7 +269,6 @@ private:
     void walk_uniq0();
     void walk_struct0();
     void walk_res0();
-    void walk_var0();
     void walk_rptr0();
     void walk_fixedvec0();
     void walk_slice0();
@@ -291,60 +281,6 @@ struct rust_fn {
     void (*code)(uint8_t *rv, rust_task *task, void *env, ...);
     void *env;
 };
-
-// Type parameters
-
-class type_param {
-private:
-    static type_param *make(const type_desc **tydescs, unsigned n_tydescs,
-                            arena &arena);
-
-public:
-    const uint8_t *shape;
-    const rust_shape_tables *tables;
-    const type_param *params;   // subparameters
-
-    // Creates type parameters from an object shape description.
-    static type_param *from_obj_shape(const uint8_t *sp, ptr dp,
-                                      arena &arena);
-
-    template<typename T>
-    inline void set(ctxt<T> *cx) {
-        shape = cx->sp;
-        tables = cx->tables;
-        params = cx->params;
-    }
-
-    // Creates type parameters from a type descriptor.
-    static inline type_param *from_tydesc(const type_desc *tydesc,
-                                          arena &arena) {
-        // In order to find the type parameters of objects and functions, we
-        // have to actually have the data pointer, since we don't statically
-        // know from the type of an object or function which type parameters
-        // it closes over.
-        assert(!tydesc->n_obj_params && "Type-parametric objects "
-               "must go through from_tydesc_and_data() instead!");
-
-        return make(tydesc->first_param, tydesc->n_params, arena);
-    }
-
-    static type_param *from_tydesc_and_data(const type_desc *tydesc,
-                                            uint8_t *dp, arena &arena) {
-        if (tydesc->n_obj_params) {
-            uintptr_t n_obj_params = tydesc->n_obj_params;
-            const type_desc **first_param;
-            // Object closure.
-            DPRINT("n_obj_params OBJ %lu, tydesc %p, starting at %p\n",
-                   (unsigned long)n_obj_params, tydesc,
-                   dp + sizeof(uintptr_t) * 2);
-            first_param = (const type_desc **)(dp + sizeof(uintptr_t) * 2);
-            return make(first_param, n_obj_params, arena);
-        }
-
-        return make(tydesc->first_param, tydesc->n_params, arena);
-    }
-};
-
 
 // Traversals
 
@@ -372,7 +308,6 @@ ctxt<T>::walk() {
     case SHAPE_BOX:      walk_box0();             break;
     case SHAPE_STRUCT:   walk_struct0();          break;
     case SHAPE_RES:      walk_res0();             break;
-    case SHAPE_VAR:      walk_var0();             break;
     case SHAPE_UNIQ:     walk_uniq0();            break;
     case SHAPE_BOX_FN:
     case SHAPE_UNIQ_FN:
@@ -460,18 +395,9 @@ ctxt<T>::walk_tag0() {
     // Determine the size and alignment.
     tinfo.tag_sa = get_size_align(tinfo.info_ptr);
 
-    // Determine the number of parameters.
-    tinfo.n_params = get_u16_bump(sp);
-
-    // Read in the tag type parameters.
-    type_param params[tinfo.n_params];
-    for (uint16_t i = 0; i < tinfo.n_params; i++) {
-        uint16_t len = get_u16_bump(sp);
-        params[i].set(this);
-        sp += len;
-    }
-
-    tinfo.params = params;
+    // Read in a dummy value; this used to be the number of parameters
+    uint16_t number_of_params = get_u16_bump(sp);
+    assert(number_of_params == 0 && "tag has type parameters on it");
 
     // Call to the implementation.
     static_cast<T *>(this)->walk_tag1(tinfo);
@@ -551,30 +477,20 @@ ctxt<T>::walk_res0() {
         reinterpret_cast<const rust_fn **>(tables->resources);
     const rust_fn *dtor = resources[dtor_offset];
 
+    // Read in the resource type parameters, but ignore them.
+    // TODO: remove after snapshot
     uint16_t n_ty_params = get_u16_bump(sp);
-
-    // Read in the tag type parameters.
-    type_param params[n_ty_params];
     for (uint16_t i = 0; i < n_ty_params; i++) {
         uint16_t ty_param_len = get_u16_bump(sp);
-        const uint8_t *next_sp = sp + ty_param_len;
-        params[i].set(this);
-        sp = next_sp;
+        sp += ty_param_len;
     }
 
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_res1(dtor, n_ty_params, params, end_sp);
+    static_cast<T *>(this)->walk_res1(dtor, end_sp);
 
     sp = end_sp;
-}
-
-template<typename T>
-void
-ctxt<T>::walk_var0() {
-    uint8_t param = *sp++;
-    static_cast<T *>(this)->walk_var1(param);
 }
 
 // A shape printer, useful for debugging
@@ -584,22 +500,18 @@ public:
     template<typename T>
     print(const ctxt<T> &other,
           const uint8_t *in_sp = NULL,
-          const type_param *in_params = NULL,
           const rust_shape_tables *in_tables = NULL)
-    : ctxt<print>(other, in_sp, in_params, in_tables) {}
+    : ctxt<print>(other, in_sp, in_tables) {}
 
     print(rust_task *in_task,
           bool in_align,
           const uint8_t *in_sp,
-          const type_param *in_params,
           const rust_shape_tables *in_tables)
-    : ctxt<print>(in_task, in_align, in_sp, in_params, in_tables) {}
+    : ctxt<print>(in_task, in_align, in_sp, in_tables) {}
 
     void walk_tag1(tag_info &tinfo);
     void walk_struct1(const uint8_t *end_sp);
-    void walk_res1(const rust_fn *dtor, unsigned n_params,
-                   const type_param *params, const uint8_t *end_sp);
-    void walk_var1(uint8_t param);
+    void walk_res1(const rust_fn *dtor, const uint8_t *end_sp);
 
     void walk_vec1(bool is_pod) {
         DPRINT("vec<"); walk(); DPRINT(">");
@@ -665,16 +577,14 @@ private:
 public:
     size_of(const size_of &other,
             const uint8_t *in_sp = NULL,
-            const type_param *in_params = NULL,
             const rust_shape_tables *in_tables = NULL)
-    : ctxt<size_of>(other, in_sp, in_params, in_tables) {}
+    : ctxt<size_of>(other, in_sp, in_tables) {}
 
     template<typename T>
     size_of(const ctxt<T> &other,
             const uint8_t *in_sp = NULL,
-            const type_param *in_params = NULL,
             const rust_shape_tables *in_tables = NULL)
-    : ctxt<size_of>(other, in_sp, in_params, in_tables) {}
+    : ctxt<size_of>(other, in_sp, in_tables) {}
 
     void walk_tag1(tag_info &tinfo);
     void walk_struct1(const uint8_t *end_sp);
@@ -693,15 +603,7 @@ public:
         sa.set(sizeof(void *), sizeof(void *));
     }
 
-    void walk_var1(uint8_t param_index) {
-        const type_param *param = &params[param_index];
-        size_of sub(*this, param->shape, param->params, param->tables);
-        sub.walk();
-        sa = sub.sa;
-    }
-
-    void walk_res1(const rust_fn *dtor, unsigned n_params,
-                   const type_param *params, const uint8_t *end_sp) {
+    void walk_res1(const rust_fn *dtor, const uint8_t *end_sp) {
         abort();    // TODO
     }
 
@@ -744,8 +646,8 @@ public:
     struct data { typedef T t; };
 
     ptr() : p(NULL) {}
-    ptr(uint8_t *in_p) : p(in_p) {}
-    ptr(uintptr_t in_p) : p((uint8_t *)in_p) {}
+    explicit ptr(uint8_t *in_p) : p(in_p) {}
+    explicit ptr(uintptr_t in_p) : p((uint8_t *)in_p) {}
 
     inline ptr operator+(const size_t amount) const {
         return make(p + amount);
@@ -961,10 +863,9 @@ public:
     data(rust_task *in_task,
          bool in_align,
          const uint8_t *in_sp,
-         const type_param *in_params,
          const rust_shape_tables *in_tables,
          U const &in_dp)
-    : ctxt< data<T,U> >(in_task, in_align, in_sp, in_params, in_tables),
+    : ctxt< data<T,U> >(in_task, in_align, in_sp, in_tables),
       dp(in_dp),
       end_dp() {}
 
@@ -1016,20 +917,10 @@ public:
         dp = next_dp;
     }
 
-    void walk_res1(const rust_fn *dtor, unsigned n_params,
-                   const type_param *params, const uint8_t *end_sp) {
+    void walk_res1(const rust_fn *dtor, const uint8_t *end_sp) {
         typename U::template data<uintptr_t>::t live = bump_dp<uintptr_t>(dp);
         // Delegate to the implementation.
-        static_cast<T *>(this)->walk_res2(dtor, n_params, params, end_sp,
-                                         live);
-    }
-
-    void walk_var1(uint8_t param_index) {
-        const type_param *param = &this->params[param_index];
-        T sub(*static_cast<T *>(this), param->shape, param->params,
-              param->tables);
-        static_cast<T *>(this)->walk_subcontext2(sub);
-        dp = sub.dp;
+        static_cast<T *>(this)->walk_res2(dtor, end_sp, live);
     }
 
     template<typename WN>
@@ -1050,8 +941,7 @@ data<T,U>::walk_box_contents1() {
     if (body_td) {
         U body_dp(dp.box_body());
         arena arena;
-        type_param *params = type_param::from_tydesc(body_td, arena);
-        T sub(*static_cast<T *>(this), body_td->shape, params,
+        T sub(*static_cast<T *>(this), body_td->shape,
               body_td->shape_tables, body_dp);
         sub.align = true;
         static_cast<T *>(this)->walk_box_contents2(sub);
@@ -1065,8 +955,7 @@ data<T,U>::walk_uniq_contents1() {
     if (body_td) {
         U body_dp(dp.box_body());
         arena arena;
-        type_param *params = type_param::from_tydesc(body_td, arena);
-        T sub(*static_cast<T *>(this), body_td->shape, params,
+        T sub(*static_cast<T *>(this), body_td->shape,
               body_td->shape_tables, body_dp);
         sub.align = true;
         static_cast<T *>(this)->walk_uniq_contents2(sub);
@@ -1102,8 +991,10 @@ data<T,U>::get_vec_data_range(ptr dp) {
 template<typename T,typename U>
 std::pair<ptr_pair,ptr_pair>
 data<T,U>::get_vec_data_range(ptr_pair &dp) {
-    std::pair<uint8_t *,uint8_t *> fst = get_vec_data_range(dp.fst);
-    std::pair<uint8_t *,uint8_t *> snd = get_vec_data_range(dp.snd);
+    std::pair<uint8_t *,uint8_t *> fst =
+        get_vec_data_range(shape::ptr(dp.fst));
+    std::pair<uint8_t *,uint8_t *> snd =
+        get_vec_data_range(shape::ptr(dp.snd));
     ptr_pair start(fst.first, snd.first);
     ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
@@ -1122,9 +1013,9 @@ template<typename T,typename U>
 std::pair<ptr_pair,ptr_pair>
 data<T,U>::get_slice_data_range(bool is_str, ptr_pair &dp) {
     std::pair<uint8_t *,uint8_t *> fst =
-        get_slice_data_range(is_str, dp.fst);
+        get_slice_data_range(is_str, shape::ptr(dp.fst));
     std::pair<uint8_t *,uint8_t *> snd =
-        get_slice_data_range(is_str, dp.snd);
+        get_slice_data_range(is_str, shape::ptr(dp.snd));
     ptr_pair start(fst.first, snd.first);
     ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
@@ -1142,9 +1033,9 @@ std::pair<ptr_pair,ptr_pair>
 data<T,U>::get_fixedvec_data_range(uint16_t n_elts, size_t elt_sz,
                                    ptr_pair &dp) {
     std::pair<uint8_t *,uint8_t *> fst =
-        get_fixedvec_data_range(n_elts, elt_sz, dp.fst);
+        get_fixedvec_data_range(n_elts, elt_sz, shape::ptr(dp.fst));
     std::pair<uint8_t *,uint8_t *> snd =
-        get_fixedvec_data_range(n_elts, elt_sz, dp.snd);
+        get_fixedvec_data_range(n_elts, elt_sz, shape::ptr(dp.snd));
     ptr_pair start(fst.first, snd.first);
     ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
@@ -1181,9 +1072,8 @@ void
 
     arena arena;
     const type_desc *closure_td = pair.env->td;
-    type_param *params = type_param::from_tydesc(closure_td, arena);
     ptr closure_dp((uintptr_t)box_body(pair.env));
-    T sub(*static_cast<T *>(this), closure_td->shape, params,
+    T sub(*static_cast<T *>(this), closure_td->shape,
           closure_td->shape_tables, closure_dp);
     sub.align = true;
 
@@ -1208,12 +1098,10 @@ private:
 
     log(log &other,
         const uint8_t *in_sp,
-        const type_param *in_params,
         const rust_shape_tables *in_tables = NULL)
     : data<log,ptr>(other.task,
                     other.align,
                     in_sp,
-                    in_params,
                     in_tables ? in_tables : other.tables,
                     other.dp),
       out(other.out),
@@ -1221,13 +1109,11 @@ private:
 
     log(log &other,
         const uint8_t *in_sp,
-        const type_param *in_params,
         const rust_shape_tables *in_tables,
         ptr in_dp)
     : data<log,ptr>(other.task,
                     other.align,
                     in_sp,
-                    in_params,
                     in_tables,
                     in_dp),
       out(other.out),
@@ -1237,7 +1123,6 @@ private:
     : data<log,ptr>(other.task,
                     other.align,
                     other.sp,
-                    other.params,
                     other.tables,
                     in_dp),
       out(other.out),
@@ -1334,9 +1219,7 @@ private:
                        const std::pair<const uint8_t *,const uint8_t *>
                        variant_ptr_and_end);
     void walk_string2(const std::pair<ptr,ptr> &data);
-    void walk_res2(const rust_fn *dtor, unsigned n_params,
-                   const type_param *params, const uint8_t *end_sp,
-                   bool live);
+    void walk_res2(const rust_fn *dtor, const uint8_t *end_sp, bool live);
 
     template<typename T>
     inline void walk_number2() {
@@ -1348,11 +1231,11 @@ public:
     log(rust_task *in_task,
         bool in_align,
         const uint8_t *in_sp,
-        const type_param *in_params,
         const rust_shape_tables *in_tables,
         uint8_t *in_data,
         std::ostream &in_out)
-    : data<log,ptr>(in_task, in_align, in_sp, in_params, in_tables, in_data),
+        : data<log,ptr>(in_task, in_align, in_sp, in_tables,
+                        ptr(in_data)),
       out(in_out),
       prefix("") {}
 };

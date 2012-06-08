@@ -83,7 +83,6 @@ const shape_enum: u8 = 12u8;
 const shape_struct: u8 = 17u8;
 const shape_box_fn: u8 = 18u8;
 const shape_res: u8 = 20u8;
-const shape_var: u8 = 21u8;
 const shape_uniq: u8 = 22u8;
 const shape_opaque_closure_ptr: u8 = 23u8; // the closure itself.
 const shape_uniq_fn: u8 = 25u8;

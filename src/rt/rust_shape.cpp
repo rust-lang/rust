@@ -21,66 +21,11 @@ const uint8_t CMP_EQ = 0u;
 const uint8_t CMP_LT = 1u;
 const uint8_t CMP_LE = 2u;
 
-// Type parameters
-
-type_param *
-type_param::make(const type_desc **tydescs, unsigned n_tydescs,
-                 arena &arena) {
-    if (!n_tydescs)
-        return NULL;
-
-    type_param *ptrs = arena.alloc<type_param>(n_tydescs);
-    for (uint32_t i = 0; i < n_tydescs; i++) {
-        const type_desc *subtydesc = tydescs[i];
-        ptrs[i].shape = subtydesc->shape;
-        ptrs[i].tables = subtydesc->shape_tables;
-
-        // FIXME: Doesn't handle a type-parametric object closing over a
-        // type-parametric object type properly.
-        ptrs[i].params = from_tydesc(subtydesc, arena);
-    }
-    return ptrs;
-}
-
-// Constructs type parameters from an object shape. This is a bit messy,
-// because it requires that the object shape have a specific format.
-type_param *
-type_param::from_obj_shape(const uint8_t *sp, ptr dp, arena &arena) {
-    uint8_t shape = *sp++; assert(shape == SHAPE_STRUCT);
-    get_u16_bump(sp);   // Skip over the size.
-    shape = *sp++; assert(shape == SHAPE_PTR);
-    shape = *sp++; assert(shape == SHAPE_STRUCT);
-
-    unsigned n_tydescs = get_u16_bump(sp);
-
-    // Type descriptors start right after the reference count.
-    const type_desc **descs = (const type_desc **)(dp + sizeof(uintptr_t));
-
-    return make(descs, n_tydescs, arena);
-}
-
-
 // A shape printer, useful for debugging
 
 void
 print::walk_tag1(tag_info &tinfo) {
     DPRINT("tag%u", tinfo.tag_id);
-    if (!tinfo.n_params)
-        return;
-
-    DPRINT("<");
-
-    bool first = true;
-    for (uint16_t i = 0; i < tinfo.n_params; i++) {
-        if (!first)
-            DPRINT(",");
-        first = false;
-
-        ctxt<print> sub(*this, tinfo.params[i].shape);
-        sub.walk();
-    }
-
-    DPRINT(">");
 }
 
 void
@@ -100,26 +45,8 @@ print::walk_struct1(const uint8_t *end_sp) {
 }
 
 void
-print::walk_res1(const rust_fn *dtor, unsigned n_params,
-                 const type_param *params, const uint8_t *end_sp) {
+print::walk_res1(const rust_fn *dtor, const uint8_t *end_sp) {
     DPRINT("res@%p", dtor);
-
-    // Print type parameters.
-    if (n_params) {
-        DPRINT("<");
-
-        bool first = true;
-        for (uint16_t i = 0; i < n_params; i++) {
-            if (!first)
-                DPRINT(",");
-            first = false;
-
-            ctxt<print> sub(*this, params[i].shape);
-            sub.walk();
-        }
-
-        DPRINT(">");
-    }
 
     // Print arguments.
 
@@ -138,15 +65,6 @@ print::walk_res1(const rust_fn *dtor, unsigned n_params,
     }
 
     DPRINT(")");
-}
-
-void
-print::walk_var1(uint8_t param_index) {
-    DPRINT("%c=", 'T' + param_index);
-
-    const type_param *param = &params[param_index];
-    print sub(*this, param->shape, param->params, param->tables);
-    sub.walk();
 }
 
 template<>
@@ -186,7 +104,7 @@ size_of::compute_tag_size(tag_info &tinfo) {
         const uint8_t *variant_ptr = variant_ptr_and_end.first;
         const uint8_t *variant_end = variant_ptr_and_end.second;
 
-        size_of sub(*this, variant_ptr, tinfo.params, NULL);
+        size_of sub(*this, variant_ptr, NULL);
         sub.align = false;
 
         // Compute the size of this variant.
@@ -308,31 +226,27 @@ public:
     cmp(rust_task *in_task,
         bool in_align,
         const uint8_t *in_sp,
-        const type_param *in_params,
         const rust_shape_tables *in_tables,
         uint8_t *in_data_0,
         uint8_t *in_data_1)
-    : data<cmp,ptr_pair>(in_task, in_align, in_sp, in_params, in_tables,
+    : data<cmp,ptr_pair>(in_task, in_align, in_sp, in_tables,
                          ptr_pair::make(in_data_0, in_data_1)),
       result(0) {}
 
     cmp(const cmp &other,
         const uint8_t *in_sp,
-        const type_param *in_params,
         const rust_shape_tables *in_tables,
         ptr_pair &in_dp)
-    : data<cmp,ptr_pair>(other.task, other.align, in_sp, in_params, in_tables,
+    : data<cmp,ptr_pair>(other.task, other.align, in_sp, in_tables,
                          in_dp),
       result(0) {}
 
     cmp(const cmp &other,
         const uint8_t *in_sp = NULL,
-        const type_param *in_params = NULL,
         const rust_shape_tables *in_tables = NULL)
     : data<cmp,ptr_pair>(other.task,
                          other.align,
                          in_sp ? in_sp : other.sp,
-                         in_params ? in_params : other.params,
                          in_tables ? in_tables : other.tables,
                          other.dp),
       result(0) {}
@@ -341,7 +255,6 @@ public:
     : data<cmp,ptr_pair>(other.task,
                          other.align,
                          other.sp,
-                         other.params,
                          other.tables,
                          in_dp),
       result(0) {}
@@ -386,8 +299,7 @@ public:
     void walk_tag2(tag_info &tinfo,
                    const data_pair<tag_variant_t> &tag_variants);
     void walk_struct2(const uint8_t *end_sp);
-    void walk_res2(const rust_fn *dtor, uint16_t n_ty_params,
-                   const type_param *ty_params_sp, const uint8_t *end_sp,
+    void walk_res2(const rust_fn *dtor, const uint8_t *end_sp,
                    const data_pair<uintptr_t> &live);
     void walk_variant2(tag_info &tinfo,
                        tag_variant_t variant_id,
@@ -439,8 +351,7 @@ cmp::walk_struct2(const uint8_t *end_sp) {
 }
 
 void
-cmp::walk_res2(const rust_fn *dtor, uint16_t n_ty_params,
-              const type_param *ty_params_sp, const uint8_t *end_sp,
+cmp::walk_res2(const rust_fn *dtor, const uint8_t *end_sp,
               const data_pair<uintptr_t> &live) {
     abort();    // TODO
 }
@@ -450,7 +361,7 @@ cmp::walk_variant2(tag_info &tinfo,
                    tag_variant_t variant_id,
                    const std::pair<const uint8_t *,const uint8_t *>
                    variant_ptr_and_end) {
-    cmp sub(*this, variant_ptr_and_end.first, tinfo.params);
+    cmp sub(*this, variant_ptr_and_end.first);
 
     const uint8_t *variant_end = variant_ptr_and_end.second;
     while (!result && sub.sp < variant_end) {
@@ -532,7 +443,7 @@ log::walk_variant2(tag_info &tinfo,
                    tag_variant_t variant_id,
                    const std::pair<const uint8_t *,const uint8_t *>
                    variant_ptr_and_end) {
-    log sub(*this, variant_ptr_and_end.first, tinfo.params);
+    log sub(*this, variant_ptr_and_end.first);
     const uint8_t *variant_end = variant_ptr_and_end.second;
 
     bool first = true;
@@ -547,8 +458,7 @@ log::walk_variant2(tag_info &tinfo,
 }
 
 void
-log::walk_res2(const rust_fn *dtor, unsigned n_params,
-               const type_param *params, const uint8_t *end_sp, bool live) {
+log::walk_res2(const rust_fn *dtor, const uint8_t *end_sp, bool live) {
     out << prefix << "res";
 
     if (this->sp == end_sp)
@@ -576,12 +486,7 @@ shape_cmp_type(int8_t *result, const type_desc *tydesc,
     rust_task *task = rust_get_current_task();
     shape::arena arena;
 
-    // FIXME: This may well be broken when comparing two closures or objects
-    // that close over different sets of type parameters.
-    shape::type_param *params =
-        shape::type_param::from_tydesc_and_data(tydesc, data_0, arena);
-
-    shape::cmp cmp(task, true, tydesc->shape, params, tydesc->shape_tables,
+    shape::cmp cmp(task, true, tydesc->shape, tydesc->shape_tables,
                    data_0, data_1);
     cmp.walk();
 
@@ -597,11 +502,9 @@ shape_log_str(const type_desc *tydesc, uint8_t *data) {
     rust_task *task = rust_get_current_task();
 
     shape::arena arena;
-    shape::type_param *params =
-        shape::type_param::from_tydesc_and_data(tydesc, data, arena);
 
     std::stringstream ss;
-    shape::log log(task, true, tydesc->shape, params, tydesc->shape_tables,
+    shape::log log(task, true, tydesc->shape, tydesc->shape_tables,
                    data, ss);
 
     log.walk();
@@ -615,11 +518,9 @@ shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
     rust_task *task = rust_get_current_task();
 
     shape::arena arena;
-    shape::type_param *params =
-        shape::type_param::from_tydesc_and_data(tydesc, data, arena);
 
     std::stringstream ss;
-    shape::log log(task, true, tydesc->shape, params, tydesc->shape_tables,
+    shape::log log(task, true, tydesc->shape, tydesc->shape_tables,
                    data, ss);
 
     log.walk();

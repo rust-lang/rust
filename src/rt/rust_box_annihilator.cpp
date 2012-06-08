@@ -8,40 +8,36 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
 
     annihilator(const annihilator &other, const shape::ptr &in_dp)
         : shape::data<annihilator,shape::ptr>(other.task, other.align,
-                                        other.sp, other.params,
+                                        other.sp,
                                         other.tables, in_dp) {}
 
     annihilator(const annihilator &other,
           const uint8_t *in_sp,
-          const shape::type_param *in_params,
           const rust_shape_tables *in_tables = NULL)
         : shape::data<annihilator,shape::ptr>(other.task,
                                         other.align,
                                         in_sp,
-                                        in_params,
                                         in_tables ? in_tables : other.tables,
                                         other.dp) {}
 
     annihilator(const annihilator &other,
           const uint8_t *in_sp,
-          const shape::type_param *in_params,
           const rust_shape_tables *in_tables,
           shape::ptr in_dp)
         : shape::data<annihilator,shape::ptr>(other.task,
                                         other.align,
                                         in_sp,
-                                        in_params,
                                         in_tables,
                                         in_dp) {}
 
     annihilator(rust_task *in_task,
           bool in_align,
           const uint8_t *in_sp,
-          const shape::type_param *in_params,
           const rust_shape_tables *in_tables,
           uint8_t *in_data)
         : shape::data<annihilator,shape::ptr>(in_task, in_align, in_sp,
-                                        in_params, in_tables, in_data) {}
+                                              in_tables,
+                                              shape::ptr(in_data)) {}
 
     void walk_vec2(bool is_pod) {
         void *vec = shape::get_dp<void *>(dp);
@@ -145,8 +141,7 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
         f(NULL, args->dtor->env, args->data);
     }
 
-    void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
-                   const shape::type_param *params, const uint8_t *end_sp,
+    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp,
                    bool live) {
         void *data = (void*)(uintptr_t)dp;
         // Switch back to the Rust stack to run the destructor
@@ -173,7 +168,7 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
     void walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                       const std::pair<const uint8_t *,const uint8_t *>
                       variant_ptr_and_end) {
-        annihilator sub(*this, variant_ptr_and_end.first, tinfo.params);
+        annihilator sub(*this, variant_ptr_and_end.first);
 
         const uint8_t *variant_end = variant_ptr_and_end.second;
         while (sub.sp < variant_end) {
@@ -194,11 +189,9 @@ annihilator::do_annihilate(rust_task *task, rust_opaque_box *box) {
     const type_desc *tydesc = box->td;
     uint8_t *p = (uint8_t*) box_body(box);
     shape::arena arena;
-    shape::type_param *params =
-        shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
     annihilator annihilator(task, true, tydesc->shape,
-                            params, tydesc->shape_tables, p);
+                            tydesc->shape_tables, p);
     annihilator.walk();
     task->boxed.free(box);
 }
