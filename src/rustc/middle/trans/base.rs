@@ -1748,6 +1748,8 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
 
 fn root_value(bcx: block, val: ValueRef, ty: ty::t,
               scope_id: ast::node_id) {
+    let _icx = bcx.insn_ctxt("root_value");
+
     if bcx.sess().trace() {
         trans_trace(
             bcx, none,
@@ -2642,6 +2644,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
                                  scope_id]);
         }
 
+        let _icx = lv.bcx.insn_ctxt("root_value_lval");
         let ty = expr_ty(lv.bcx, e);
         let root_loc = alloca_zeroed(lv.bcx, type_of(cx.ccx(), ty));
         let bcx = store_temp_expr(lv.bcx, INIT, root_loc, lv, ty, false);
@@ -3511,6 +3514,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
                                   scope_id]);
         }
 
+        let _icx = bcx.insn_ctxt("root_value_expr");
         add_root_cleanup(bcx, scope_id, root_loc, ty);
         let lv = {bcx: bcx, val: root_loc, kind: owned};
         lval_result_to_dps(lv, ty, false, dest)
