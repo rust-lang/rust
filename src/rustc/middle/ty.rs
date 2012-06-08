@@ -26,7 +26,7 @@ export arg;
 export args_eq;
 export ast_constr_to_constr;
 export block_ty;
-export class_items_as_fields;
+export class_items_as_fields, class_items_as_mutable_fields;
 export constr;
 export constr_general;
 export constr_table;
@@ -2864,15 +2864,34 @@ fn class_field_tys(items: [@class_member]) -> [field_ty] {
 // Return a list of fields corresponding to the class's items
 // (as if the class was a record). trans uses this
 // Takes a list of substs with which to instantiate field types
+// Keep in mind that this function reports that all fields are
+// mutable, regardless of how they were declared. It's meant to
+// be used in trans.
+fn class_items_as_mutable_fields(cx:ctxt, did: ast::def_id,
+                         substs: substs) -> [field] {
+    class_item_fields(cx, did, substs, {|_mt| m_mutbl})
+}
+
+// Same as class_items_as_mutable_fields, but doesn't change
+// mutability.
 fn class_items_as_fields(cx:ctxt, did: ast::def_id,
                          substs: substs) -> [field] {
+    class_item_fields(cx, did, substs, {|mt| alt mt {
+      class_mutable { m_mutbl }
+      class_immutable { m_imm }}})
+}
+
+
+fn class_item_fields(cx:ctxt, did: ast::def_id,
+  substs: substs, frob_mutability: fn(class_mutability) -> mutability)
+    -> [field] {
     let mut rslt = [];
     for lookup_class_fields(cx, did).each {|f|
        // consider all instance vars mut, because the
        // constructor may mutate all vars
        rslt += [{ident: f.ident, mt:
                {ty: lookup_field_type(cx, did, f.id, substs),
-                    mutbl: m_mutbl}}];
+                    mutbl: frob_mutability(f.mutability)}}];
     }
     rslt
 }

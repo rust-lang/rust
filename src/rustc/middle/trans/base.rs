@@ -776,7 +776,8 @@ fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
      let args = [bcx.fcx.llretptr, self_arg];
      Call(bcx, dtor_addr, args);
      // Drop the fields
-     for vec::eachi(ty::class_items_as_fields(bcx.tcx(), class_did, substs))
+     for vec::eachi(ty::class_items_as_mutable_fields(bcx.tcx(), class_did,
+                                                      substs))
      {|i, fld|
         let llfld_a = GEPi(bcx, classptr, [0u, i]);
         bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
@@ -1114,7 +1115,8 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         ret next_cx;
       }
       ty::ty_class(did, substs) {
-        for vec::eachi(ty::class_items_as_fields(cx.tcx(), did, substs))
+        for vec::eachi(ty::class_items_as_mutable_fields(cx.tcx(), did,
+                                                         substs))
            {|i, fld|
                let llfld_a = GEPi(cx, av, [0u, i]);
                cx = f(cx, llfld_a, fld.mt.ty);
@@ -2523,7 +2525,7 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
          if option::is_some(ty::ty_dtor(bcx.tcx(), did)) {
            deref = true;
          }
-         ty::class_items_as_fields(bcx.tcx(), did, substs)
+         ty::class_items_as_mutable_fields(bcx.tcx(), did, substs)
        }
        // Constraint?
        _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
@@ -4815,7 +4817,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   else { selfptr };
 
   // initialize fields to zero
-  let fields = ty::class_items_as_fields(bcx_top.tcx(), parent_id,
+  let fields = ty::class_items_as_mutable_fields(bcx_top.tcx(), parent_id,
                                          dummy_substs(psubsts.tys));
   let mut bcx = bcx_top;
   // Initialize fields to zero so init assignments can validly

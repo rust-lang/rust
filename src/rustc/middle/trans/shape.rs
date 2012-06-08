@@ -351,7 +351,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
              add_substr(s, shape_of(ccx, tp));
           }
         };
-        for ty::class_items_as_fields(ccx.tcx, did, substs).each {|f|
+        for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each {|f|
             sub += shape_of(ccx, f.mt.ty);
         }
         add_substr(s, sub);
