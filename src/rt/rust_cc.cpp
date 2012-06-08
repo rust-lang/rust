@@ -570,3 +570,12 @@ maybe_cc(rust_task *task) {
 
 }   // end namespace cc
 
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
+//

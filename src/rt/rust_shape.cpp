@@ -627,3 +627,12 @@ shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
     task->sched_loop->get_log().log(task, level, "%s", ss.str().c_str());
 }
 
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
+//
