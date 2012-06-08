@@ -377,10 +377,11 @@ enum sty {
                              // integral types only
     ty_param(uint, def_id), // type parameter
     ty_self, // special, implicit `self` type parameter
+    ty_constr(t, [@type_constr]),
 
+    // "Fake" types, used for trans purposes
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_constr(t, [@type_constr]),
     ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
 }
 
