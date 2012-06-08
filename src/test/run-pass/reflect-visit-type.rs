@@ -87,6 +87,13 @@ impl of intrinsic::ty_visitor for my_visitor {
                              /*,name: str/&*/) -> bool { true }
     fn visit_leave_rec(_n_fields: uint) -> bool { true }
 
+    fn visit_enter_class(_n_fields: uint) -> bool { true }
+    fn visit_enter_class_field(_mtbl: uint, _i: uint
+                             /*,name: str/&*/) -> bool { true }
+    fn visit_leave_class_field(_mtbl: uint, _i: uint
+                             /*,name: str/&*/) -> bool { true }
+    fn visit_leave_class(_n_fields: uint) -> bool { true }
+
     fn visit_enter_tup(_n_fields: uint) -> bool { true }
     fn visit_enter_tup_field(_i: uint) -> bool { true }
     fn visit_leave_tup_field(_i: uint) -> bool { true }
@@ -101,8 +108,16 @@ impl of intrinsic::ty_visitor for my_visitor {
     fn visit_leave_fn(_purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
-    fn visit_class() -> bool { true }
-    fn visit_enum() -> bool { true }
+    fn visit_enter_enum(_n_variants: uint) -> bool { true }
+    fn visit_enter_enum_variant(_variant: uint,
+                                _disr_val: int,
+                                _n_fields: uint) -> bool { true }
+    fn visit_enter_enum_variant_field(_i: uint) -> bool { true }
+    fn visit_leave_enum_variant_field(_i: uint) -> bool { true }
+    fn visit_leave_enum_variant(_variant: uint,
+                                _disr_val: int,
+                                _n_fields: uint) -> bool { true }
+    fn visit_leave_enum(_n_variants: uint) -> bool { true }
 
     fn visit_iface() -> bool { true }
     fn visit_enter_res() -> bool { true }

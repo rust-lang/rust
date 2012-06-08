@@ -22,6 +22,10 @@ impl methods for reflector {
         C_uint(self.bcx.ccx(), u)
     }
 
+    fn c_int(i: int) -> ValueRef {
+        C_int(self.bcx.ccx(), i)
+    }
+
     fn visit(ty_name: str, args: [ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = option::get(ty::method_idx("visit_" + ty_name,
@@ -179,9 +183,52 @@ impl methods for reflector {
             self.visit("leave_fn", extra);
           }
 
-          // FIXME: these need substructure-walks
-          ty::ty_class(_, _) { self.leaf("class") }
-          ty::ty_enum(_, _) { self.leaf("enum") }
+          ty::ty_class(did, substs) {
+            let bcx = self.bcx;
+            let tcx = bcx.ccx().tcx;
+            let fields = ty::class_items_as_fields(tcx, did, substs);
+            self.visit("enter_class", [self.c_uint(vec::len(fields))]);
+            for fields.eachi {|i, field|
+                self.bracketed_mt("class_field", field.mt,
+                                  [self.c_uint(i)
+                                   /*
+                                   FIXME: doesn't work presently.
+                                   C_estr_slice(self.bcx.ccx(),
+                                                field.ident)
+                                   */
+                                  ]);
+            }
+            self.visit("leave_class", [self.c_uint(vec::len(fields))]);
+          }
+
+          // FIXME: visiting all the variants in turn is probably
+          // not ideal. It'll work but will get costly on big enums.
+          // Maybe let the visitor tell us if it wants to visit only
+          // a particular variant?
+          ty::ty_enum(did, substs) {
+            let bcx = self.bcx;
+            let tcx = bcx.ccx().tcx;
+            let variants = ty::substd_enum_variants(tcx, did, substs);
+
+            self.visit("enter_enum", [self.c_uint(vec::len(variants))]);
+            for variants.eachi {|i, v|
+                let extra = [self.c_uint(i),
+                             self.c_int(v.disr_val),
+                             self.c_uint(vec::len(v.args))
+                             /*
+                             FIXME: doesn't work presently.
+                             C_estr_slice(self.bcx.ccx(),
+                             v.name)
+                             */];
+                self.visit("enter_enum_variant", extra);
+                for v.args.eachi {|j, a|
+                    self.bracketed_t("enum_variant_field", a,
+                                     [self.c_uint(j)]);
+                }
+                self.visit("leave_enum_variant", extra);
+            }
+            self.visit("leave_enum", [self.c_uint(vec::len(variants))]);
+          }
 
           // Miscallaneous extra types
           ty::ty_iface(_, _) { self.leaf("iface") }

@@ -62,10 +62,28 @@ mod intrinsic {
                                  /*, name: str/& */) -> bool;
         fn visit_leave_rec(n_fields: uint) -> bool;
 
+        fn visit_enter_class(n_fields: uint) -> bool;
+        fn visit_enter_class_field(mtbl: uint, i: uint
+                                   /*, name: str/& */) -> bool;
+        fn visit_leave_class_field(mtbl: uint, i: uint
+                                   /*, name: str/& */) -> bool;
+        fn visit_leave_class(n_fields: uint) -> bool;
+
         fn visit_enter_tup(n_fields: uint) -> bool;
         fn visit_enter_tup_field(i: uint) -> bool;
         fn visit_leave_tup_field(i: uint) -> bool;
         fn visit_leave_tup(n_fields: uint) -> bool;
+
+        fn visit_enter_enum(n_variants: uint) -> bool;
+        fn visit_enter_enum_variant(variant: uint,
+                                    disr_val: int,
+                                    n_fields: uint) -> bool;
+        fn visit_enter_enum_variant_field(i: uint) -> bool;
+        fn visit_leave_enum_variant_field(i: uint) -> bool;
+        fn visit_leave_enum_variant(variant: uint,
+                                    disr_val: int,
+                                    n_fields: uint) -> bool;
+        fn visit_leave_enum(n_variants: uint) -> bool;
 
         fn visit_enter_fn(purity: uint, proto: uint,
                           n_inputs: uint, retstyle: uint) -> bool;
@@ -75,9 +93,6 @@ mod intrinsic {
         fn visit_leave_fn_output(retstyle: uint) -> bool;
         fn visit_leave_fn(purity: uint, proto: uint,
                           n_inputs: uint, retstyle: uint) -> bool;
-
-        fn visit_class() -> bool;
-        fn visit_enum() -> bool;
 
         fn visit_iface() -> bool;
         fn visit_enter_res() -> bool;
