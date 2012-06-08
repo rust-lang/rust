@@ -184,6 +184,7 @@ impl num of num for f32 {
     fn mul(&&other: f32)    -> f32 { ret self * other; }
     fn div(&&other: f32)    -> f32 { ret self / other; }
     fn modulo(&&other: f32) -> f32 { ret self % other; }
+    fn neg()                -> f32 { ret -self;        }
 
     fn to_int()         -> int { ret self as int; }
     fn from_int(n: int) -> f32 { ret n as f32;    }

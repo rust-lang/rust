@@ -70,6 +70,7 @@ impl num of num for T {
     fn mul(&&other: T)    -> T { ret self * other; }
     fn div(&&other: T)    -> T { ret self / other; }
     fn modulo(&&other: T) -> T { ret self % other; }
+    fn neg()              -> T { ret -self;        }
 
     fn to_int()         -> int { ret self as int; }
     fn from_int(n: int) -> T   { ret n as T;      }

@@ -205,6 +205,7 @@ impl num of num for f64 {
     fn mul(&&other: f64)    -> f64 { ret self * other; }
     fn div(&&other: f64)    -> f64 { ret self / other; }
     fn modulo(&&other: f64) -> f64 { ret self % other; }
+    fn neg()                -> f64 { ret -self;        }
 
     fn to_int()         -> int { ret self as int; }
     fn from_int(n: int) -> f64 { ret n as f64;    }

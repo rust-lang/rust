@@ -416,6 +416,7 @@ impl num of num for float {
     fn mul(&&other: float)    -> float { ret self * other; }
     fn div(&&other: float)    -> float { ret self / other; }
     fn modulo(&&other: float) -> float { ret self % other; }
+    fn neg()                  -> float { ret -self;        }
 
     fn to_int()         -> int   { ret self as int; }
     fn from_int(n: int) -> float { ret n as float;  }

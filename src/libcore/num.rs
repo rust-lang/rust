@@ -8,6 +8,7 @@ iface num {
     fn mul(&&other: self) -> self;
     fn div(&&other: self) -> self;
     fn modulo(&&other: self) -> self;
+    fn neg() -> self;
 
     fn to_int() -> int;
     fn from_int(n: int) -> self;    // TODO: Static functions.
