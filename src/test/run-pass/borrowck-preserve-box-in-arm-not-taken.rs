@@ -1,3 +1,5 @@
+// xfail-fast   (compile-flags unsupported on windows)
+// compile-flags:--borrowck=err
 // exec-env:RUST_POISON_ON_FREE=1
 
 fn main() {

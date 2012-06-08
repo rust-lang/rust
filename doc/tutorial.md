@@ -1382,7 +1382,83 @@ gets access to them.
 
 ## Safe references
 
-*This system has recently changed.  An explanantion is forthcoming.*
+There is one catch with this approach: sometimes the compiler can
+*not* statically guarantee that the argument value at the caller side
+will survive to the end of the call. Another argument might indirectly
+refer to it and be used to overwrite it, or a closure might assign a
+new value to it.
+
+Fortunately, Rust tasks are single-threaded worlds, which share no
+data with other tasks, and most data is immutable. This allows most
+argument-passing situations to be proved safe without further
+difficulty.
+
+Take the following program:
+
+~~~~
+# fn get_really_big_record() -> int { 1 }
+# fn myfunc(a: int) {}
+fn main() {
+    let x = get_really_big_record();
+    myfunc(x);
+}
+~~~~
+
+Here we know for sure that no one else has access to the `x` variable
+in `main`, so we're good. But the call could also look like this:
+
+~~~~
+# fn myfunc(a: int, b: fn()) {}
+# fn get_another_record() -> int { 1 }
+# let mut x = 1;
+myfunc(x, {|| x = get_another_record(); });
+~~~~
+
+Now, if `myfunc` first calls its second argument and then accesses its
+first argument, it will see a different value from the one that was
+passed to it.
+
+In such a case, the compiler will insert an implicit copy of `x`,
+*except* if `x` contains something mutable, in which case a copy would
+result in code that behaves differently. If copying `x` might be
+expensive (for example, if it holds a vector), the compiler will emit
+a warning.
+
+There are even more tricky cases, in which the Rust compiler is forced
+to pessimistically assume a value will get mutated, even though it is
+not sure.
+
+~~~~
+fn for_each(v: [mut @int], iter: fn(@int)) {
+   for v.each {|elt| iter(elt); }
+}
+~~~~
+
+For all this function knows, calling `iter` (which is a closure that
+might have access to the vector that's passed as `v`) could cause the
+elements in the vector to be mutated, with the effect that it can not
+guarantee that the boxes will live for the duration of the call. So it
+has to copy them. In this case, this will happen implicitly (bumping a
+reference count is considered cheap enough to not warn about it).
+
+## The copy operator
+
+If the `for_each` function given above were to take a vector of
+`{mut a: int}` instead of `@int`, it would not be able to
+implicitly copy, since if the `iter` function changes a copy of a
+mutable record, the changes won't be visible in the record itself. If
+we *do* want to allow copies there, we have to explicitly allow it
+with the `copy` operator:
+
+~~~~
+type mutrec = {mut x: int};
+fn for_each(v: [mut mutrec], iter: fn(mutrec)) {
+   for v.each {|elt| iter(copy elt); }
+}
+~~~~
+
+Adding a `copy` operator is also the way to muffle warnings about
+implicit copies.
 
 ## Other uses of safe references
 

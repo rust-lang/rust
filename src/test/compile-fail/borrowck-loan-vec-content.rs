@@ -1,3 +1,6 @@
+// xfail-fast  (compile-flags unsupported on windows)
+// compile-flags:--borrowck=err
+
 // Here we check that it is allowed to lend out an element of a
 // (locally rooted) mutable, unique vector, and that we then prevent
 // modifications to the contents.

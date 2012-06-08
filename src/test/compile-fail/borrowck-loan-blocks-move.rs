@@ -1,3 +1,6 @@
+// xfail-fast  (compile-flags unsupported on windows)
+// compile-flags:--borrowck=err
+
 fn take(-_v: ~int) {
 }
 

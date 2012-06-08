@@ -116,6 +116,7 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_param_bounds,
     tag_table_inferred_modes,
     tag_table_mutbl,
+    tag_table_copy,
     tag_table_last_use,
     tag_table_spill,
     tag_table_method_map,

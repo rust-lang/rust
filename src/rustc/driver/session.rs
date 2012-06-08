@@ -66,6 +66,9 @@ type options =
      no_trans: bool,
 
      debugging_opts: uint,
+
+     // temporary hack: 0=off,1=warn,2=err --> if 2, alias is disabled
+     borrowck: uint,
     };
 
 type crate_metadata = {name: str, data: [u8]};
@@ -178,7 +181,8 @@ fn basic_options() -> @options {
         test: false,
         parse_only: false,
         no_trans: false,
-        debugging_opts: 0u
+        debugging_opts: 0u,
+        borrowck: 0u,
     }
 }
 

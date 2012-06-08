@@ -19,13 +19,11 @@ enum reflector = {
 impl methods for reflector {
 
     fn c_uint(u: uint) -> ValueRef {
-        let bcx = self.bcx;
-        C_uint(bcx.ccx(), u)
+        C_uint(self.bcx.ccx(), u)
     }
 
     fn visit(ty_name: str, args: [ValueRef]) {
-        let bcx = self.bcx;
-        let tcx = bcx.tcx();
+        let tcx = self.bcx.tcx();
         let mth_idx = option::get(ty::method_idx("visit_" + ty_name,
                                                  *self.visitor_methods));
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);

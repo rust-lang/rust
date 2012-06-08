@@ -171,12 +171,28 @@ export check_crate, root_map, mutbl_map;
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
                crate: @ast::crate) -> (root_map, mutbl_map) {
+
+    // big hack to keep this off except when I want it on
+    let msg_level = if tcx.sess.opts.borrowck != 0u {
+        tcx.sess.opts.borrowck
+    } else {
+        os::getenv("RUST_BORROWCK").map_default(0u) { |v|
+            option::get(uint::from_str(v))
+        }
+    };
+
     let bccx = @{tcx: tcx,
                  method_map: method_map,
+                 msg_level: msg_level,
                  root_map: root_map(),
                  mutbl_map: int_hash()};
 
-    let req_maps = gather_loans::gather_loans(bccx, crate);
+    let req_maps = if msg_level > 0u {
+        gather_loans::gather_loans(bccx, crate)
+    } else {
+        {req_loan_map: int_hash(),
+         pure_map: int_hash()}
+    };
     check_loans::check_loans(bccx, req_maps, crate);
     ret (bccx.root_map, bccx.mutbl_map);
 }
@@ -186,6 +202,7 @@ fn check_crate(tcx: ty::ctxt,
 
 type borrowck_ctxt = @{tcx: ty::ctxt,
                        method_map: typeck::method_map,
+                       msg_level: uint,
                        root_map: root_map,
                        mutbl_map: mutbl_map};
 
@@ -346,7 +363,11 @@ impl error_methods for borrowck_ctxt {
     }
 
     fn span_err(s: span, m: str) {
-        self.tcx.sess.span_err(s, m);
+        if self.msg_level == 1u {
+            self.tcx.sess.span_warn(s, m);
+        } else {
+            self.tcx.sess.span_err(s, m);
+        }
     }
 
     fn span_note(s: span, m: str) {

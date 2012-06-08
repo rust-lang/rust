@@ -1,3 +1,6 @@
+// xfail-fast  (compile-flags unsupported on windows)
+// compile-flags:--borrowck=err
+
 fn main() {
     let mut x = none;
     alt x {

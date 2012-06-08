@@ -1,3 +1,6 @@
+// xfail-fast  (compile-flags unsupported on windows)
+// compile-flags:--borrowck=err
+
 type point = { x: int, y: int };
 
 impl foo for point {
