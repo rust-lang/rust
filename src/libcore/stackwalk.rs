@@ -37,18 +37,7 @@ native mod rustrt {
     fn rust_dbg_breakpoint();
 }
 
-// FIXME: Unconditionalize after snapshot
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn frame_address(f: fn(*u8));
-}
-
-#[cfg(stage0)]
-mod rusti {
-    fn frame_address(_f: fn(*u8)) {
-        fail;
-    }
 }
