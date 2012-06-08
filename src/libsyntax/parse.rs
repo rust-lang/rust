@@ -46,14 +46,11 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     let lo = p.span.lo;
     let prefix = path::dirname(p.reader.filemap.name);
     let leading_attrs = p.parse_inner_attrs_and_next();
-    let crate_attrs = leading_attrs.inner;
-    let first_cdir_attr = leading_attrs.next;
+    let { inner: crate_attrs, next: first_cdir_attr } = leading_attrs;
     let cdirs = p.parse_crate_directives(token::EOF, first_cdir_attr);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
-    let cx =
-        @{sess: sess,
-          cfg: p.cfg};
+    let cx = @{sess: sess, cfg: /* FIXME: bad */ copy p.cfg};
     let (companionmod, _) = path::splitext(path::basename(input));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
         cx, cdirs, prefix, option::some(companionmod));
@@ -63,7 +60,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
                           {directives: cdirs,
                            module: m,
                            attrs: crate_attrs + attrs,
-                           config: p.cfg});
+                           config: /* FIXME: bad */ copy p.cfg});
 }
 
 fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
@@ -131,7 +128,7 @@ fn next_node_id(sess: parse_sess) -> node_id {
 }
 
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
-                              name: str, ss: codemap::file_substr,
+                              +name: str, +ss: codemap::file_substr,
                               source: @str) -> parser {
     let ftype = parser::SOURCE_FILE;
     let filemap = codemap::new_filemap_w_substr
@@ -143,20 +140,17 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
     ret parser(sess, cfg, rdr, ftype);
 }
 
-fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
+fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
                         ftype: parser::file_type) ->
    parser {
-    let src = alt io::read_whole_file_str(path) {
-      result::ok(src) {
-        // FIXME: This copy is unfortunate (#2319)
-        @src
-      }
-      result::err(e) {
-        sess.span_diagnostic.handler().fatal(e)
-      }
-    };
-    let filemap = codemap::new_filemap(path, src,
-                                       sess.chpos, sess.byte_pos);
+    let res = io::read_whole_file_str(path);
+    alt res {
+      result::ok(_) { /* Continue. */ }
+      result::err(e) { sess.span_diagnostic.handler().fatal(e); }
+    }
+    // FIXME: This copy is unfortunate (#2319).
+    let src = @copy result::unwrap(res);
+    let filemap = codemap::new_filemap(path, src, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
     let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.span_diagnostic, filemap, itr);
