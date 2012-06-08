@@ -314,12 +314,10 @@ fn run_tests(opts: test_opts, tests: [test_desc],
 }
 
 // Windows tends to dislike being overloaded with threads.
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 const sched_overcommit : uint = 1u;
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
 const sched_overcommit : uint = 4u;
 
 fn get_concurrency() -> uint {
@@ -449,7 +447,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_should_fail() {
         fn f() { fail; }
         let desc = {

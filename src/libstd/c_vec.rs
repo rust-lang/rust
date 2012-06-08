@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_overrun_get() {
         let cv = malloc(16u as size_t);
 
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_overrun_set() {
         let cv = malloc(16u as size_t);
 

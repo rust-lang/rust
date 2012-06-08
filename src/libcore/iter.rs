@@ -229,7 +229,7 @@ fn test_min() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_min_empty() {
     min::<int, [int]>([]);
 }
@@ -241,7 +241,7 @@ fn test_max() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_max_empty() {
     max::<int, [int]>([]);
 }

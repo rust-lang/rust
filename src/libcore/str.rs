@@ -1998,7 +1998,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_pop_char_fail() {
         let mut data = "";
         let _cc3 = pop_char(data);
@@ -2419,7 +2419,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_slice_fail() {
         slice("中华Việt Nam", 0u, 2u);
     }
@@ -2512,7 +2512,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_from_bytes_fail() {
         let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
@@ -2537,7 +2537,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_bytes_fail() {
         // Don't double free

@@ -247,14 +247,14 @@ fn test_parse_buf() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn to_str_radix1() {
     uint::to_str(100u, 1u);
 }
 
 #[test]
 #[should_fail]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn to_str_radix17() {
     uint::to_str(100u, 17u);
 }

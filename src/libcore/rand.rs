@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn gen_int_from_fail() {
         rand::rng().gen_int_range(5, -2);
     }
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn gen_uint_range_fail() {
         rand::rng().gen_uint_range(5u, 2u);
     }

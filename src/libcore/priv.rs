@@ -225,7 +225,7 @@ fn test_weaken_task_stress() unsafe {
 }
 
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_weaken_task_fail() unsafe {
     let res = task::try {||
         weaken_task {|_po|

@@ -420,7 +420,7 @@ fn test_recv_chan() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_recv_chan_dead() {
     let ch = chan(port());
     send(ch, "flower");
@@ -428,7 +428,7 @@ fn test_recv_chan_dead() {
 }
 
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_recv_chan_wrong_task() {
     let po = port();
     let ch = chan(po);
@@ -464,7 +464,7 @@ fn test_listen() {
 }
 
 #[test]
-#[ignore(cfg(target_os="win32"))]
+#[ignore(cfg(windows))]
 fn test_port_detach_fail() {
     iter::repeat(100u) {||
         let builder = task::builder();

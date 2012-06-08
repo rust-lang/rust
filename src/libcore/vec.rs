@@ -2040,7 +2040,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_init_empty() {
         init::<int>([]);
     }
@@ -2070,7 +2070,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
+    #[ignore(cfg(windows))]
     fn test_windowed_() {
         let _x = windowed (0u, [1u,2u,3u,4u,5u,6u]);
     }

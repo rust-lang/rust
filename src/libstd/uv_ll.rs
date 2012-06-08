@@ -67,18 +67,12 @@ type uv_err_t = {
 // in other types as a pointer to be used in other
 // operations (so mostly treat it as opaque, once you
 // have it in this form..)
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "win32")]
 type uv_stream_t = {
     fields: uv_handle_fields
 };
 
 // 64bit unix size: 272
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
+#[cfg(unix)]
 type uv_tcp_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -104,7 +98,7 @@ type uv_tcp_t_32bit_unix_riders = {
 };
 
 // 32bit win32 size: 240 (120)
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 type uv_tcp_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -117,15 +111,13 @@ type uv_tcp_t = {
 };
 
 // unix size: 48
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
+#[cfg(unix)]
 type uv_connect_t = {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8
 };
 // win32 size: 88 (44)
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 type uv_connect_t = {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -133,10 +125,6 @@ type uv_connect_t = {
 };
 
 // unix size: 16
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "win32")]
 type uv_buf_t = {
     base: *u8,
     len: libc::size_t
@@ -145,9 +133,7 @@ type uv_buf_t = {
 // it via uv::direct::buf_init()
 
 // unix size: 144
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
+#[cfg(unix)]
 type uv_write_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -165,7 +151,7 @@ type uv_write_t_32bit_unix_riders = {
     a13: *u8, a14: *u8
 };
 // win32 size: 136 (68)
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 type uv_write_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -175,9 +161,7 @@ type uv_write_t = {
 };
 // 64bit unix size: 120
 // 32bit unix size: 152 (76)
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
+#[cfg(unix)]
 type uv_async_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -194,7 +178,7 @@ type uv_async_t_32bit_unix_riders = {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8
 };
 // win32 size 132 (68)
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 type uv_async_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -205,9 +189,7 @@ type uv_async_t = {
 
 // 64bit unix size: 128
 // 32bit unix size: 84
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
+#[cfg(unix)]
 type uv_timer_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -225,7 +207,7 @@ type uv_timer_t_32bit_unix_riders = {
     a14: *u8, a15: *u8, a16: *u8
 };
 // win32 size: 64
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 type uv_timer_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -234,10 +216,6 @@ type uv_timer_t = {
 };
 
 // unix size: 16
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "win32")]
 type sockaddr_in = {
     mut sin_family: u16,
     mut sin_port: u16,
@@ -246,10 +224,6 @@ type sockaddr_in = {
 };
 
 // unix size: 28 .. make due w/ 32
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "win32")]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: (u8, u8, u8, u8)
@@ -316,7 +290,7 @@ mod uv_ll_struct_stubgen {
                 };
             }
         }
-        #[cfg(target_os = "win32")]
+        #[cfg(windows)]
         fn gen_stub_os() -> uv_tcp_t {
             ret { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
@@ -337,9 +311,7 @@ mod uv_ll_struct_stubgen {
             };
         }
     }
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn gen_stub_uv_connect_t() -> uv_connect_t {
         ret {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -347,7 +319,7 @@ mod uv_ll_struct_stubgen {
             a04: 0 as *u8, a05: 0 as *u8
         };
     }
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn gen_stub_uv_connect_t() -> uv_connect_t {
         ret {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -357,9 +329,7 @@ mod uv_ll_struct_stubgen {
             a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8
         };
     }
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn gen_stub_uv_async_t() -> uv_async_t {
         ret gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
@@ -394,7 +364,7 @@ mod uv_ll_struct_stubgen {
             };
         }
     }
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn gen_stub_uv_async_t() -> uv_async_t {
         ret { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
@@ -408,9 +378,7 @@ mod uv_ll_struct_stubgen {
             a12: 0 as *u8
         };
     }
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn gen_stub_uv_timer_t() -> uv_timer_t {
         ret gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
@@ -447,7 +415,7 @@ mod uv_ll_struct_stubgen {
             };
         }
     }
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn gen_stub_uv_timer_t() -> uv_timer_t {
         ret { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
@@ -460,9 +428,7 @@ mod uv_ll_struct_stubgen {
             a11: 0 as *u8
         };
     }
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn gen_stub_uv_write_t() -> uv_write_t {
         ret gen_stub_arch();
         #[cfg(target_arch="x86_64")]
@@ -494,7 +460,7 @@ mod uv_ll_struct_stubgen {
             };
         }
     }
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn gen_stub_uv_write_t() -> uv_write_t {
         ret { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),

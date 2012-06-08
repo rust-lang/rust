@@ -5061,13 +5061,9 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
     }
 
     fn create_entry_fn(ccx: @crate_ctxt, rust_main: ValueRef) {
-        #[cfg(target_os = "win32")]
+        #[cfg(windows)]
         fn main_name() -> str { ret "WinMain@16"; }
-        #[cfg(target_os = "macos")]
-        fn main_name() -> str { ret "main"; }
-        #[cfg(target_os = "linux")]
-        fn main_name() -> str { ret "main"; }
-        #[cfg(target_os = "freebsd")]
+        #[cfg(unix)]
         fn main_name() -> str { ret "main"; }
         let llfty = T_fn([ccx.int_type, ccx.int_type], ccx.int_type);
         let llfn = decl_cdecl_fn(ccx.llmod, main_name(), llfty);

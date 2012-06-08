@@ -90,9 +90,7 @@ fn with_argv<T>(prog: str, args: [str],
     vec::as_buf(argptrs, cb)
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "freebsd")]
+#[cfg(unix)]
 fn with_envp<T>(env: option<[(str,str)]>,
                 cb: fn(*c_void) -> T) -> T unsafe {
     // On posixy systems we can pass a char** for envp, which is
@@ -117,7 +115,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
     }
 }
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 fn with_envp<T>(env: option<[(str,str)]>,
                 cb: fn(*c_void) -> T) -> T unsafe {
     // On win32 we pass an "environment block" which is not a char**, but
@@ -278,14 +276,12 @@ fn program_output(prog: str, args: [str]) ->
 fn waitpid(pid: pid_t) -> int {
     ret waitpid_os(pid);
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
         os::waitpid(pid) as int
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
         #[cfg(target_os = "linux")]
         fn WIFEXITED(status: i32) -> bool {
@@ -324,7 +320,7 @@ mod tests {
     import io::writer_util;
 
     // Regression test for memory leaks
-    #[ignore(cfg(target_os = "win32"))] // FIXME
+    #[ignore(cfg(windows))] // FIXME
     fn test_leaks() {
         run::run_program("echo", []);
         run::start_program("echo", []);

@@ -398,12 +398,10 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
 fn mk_file_writer(path: str, flags: [fileflag])
     -> result<writer, str> {
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn wb() -> c_int { (O_WRONLY | O_BINARY) as c_int }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();

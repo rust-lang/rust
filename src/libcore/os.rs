@@ -79,7 +79,7 @@ fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     }
 }
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 mod win32 {
     import dword = libc::types::os::arch::extra::DWORD;
 
@@ -200,9 +200,7 @@ mod global_env {
 
     mod impl {
 
-        #[cfg(target_os = "linux")]
-        #[cfg(target_os = "macos")]
-        #[cfg(target_os = "freebsd")]
+        #[cfg(unix)]
         fn getenv(n: str) -> option<str> unsafe {
             let s = str::as_c_str(n, libc::getenv);
             ret if unsafe::reinterpret_cast(s) == 0 {
@@ -213,7 +211,7 @@ mod global_env {
             };
         }
 
-        #[cfg(target_os = "win32")]
+        #[cfg(windows)]
         fn getenv(n: str) -> option<str> unsafe {
             import libc::types::os::arch::extra::*;
             import libc::funcs::extra::kernel32::*;
@@ -226,9 +224,7 @@ mod global_env {
         }
 
 
-        #[cfg(target_os = "linux")]
-        #[cfg(target_os = "macos")]
-        #[cfg(target_os = "freebsd")]
+        #[cfg(unix)]
         fn setenv(n: str, v: str) {
 
             // FIXME: remove this when export globs work properly.
@@ -241,7 +237,7 @@ mod global_env {
         }
 
 
-        #[cfg(target_os = "win32")]
+        #[cfg(windows)]
         fn setenv(n: str, v: str) {
             // FIXME: remove imports when export globs work properly.
             import libc::funcs::extra::kernel32::*;
@@ -265,7 +261,7 @@ fn fdopen(fd: c_int) -> *FILE {
 
 // fsync related
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 fn fsync_fd(fd: c_int, _level: io::fsync::level) -> c_int {
     import libc::funcs::extra::msvcrt::*;
     ret commit(fd);
@@ -305,14 +301,12 @@ fn fsync_fd(fd: c_int, _l: io::fsync::level) -> c_int {
 }
 
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 fn waitpid(pid: pid_t) -> c_int {
     ret rustrt::rust_process_wait(pid);
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
 fn waitpid(pid: pid_t) -> c_int {
     import libc::funcs::posix01::wait::*;
     let status = 0 as c_int;
@@ -323,9 +317,7 @@ fn waitpid(pid: pid_t) -> c_int {
 }
 
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "macos")]
+#[cfg(unix)]
 fn pipe() -> {in: c_int, out: c_int} {
     let fds = {mut in: 0 as c_int,
                mut out: 0 as c_int };
@@ -335,7 +327,7 @@ fn pipe() -> {in: c_int, out: c_int} {
 
 
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 fn pipe() -> {in: c_int, out: c_int} {
     // FIXME: remove this when export globs work properly.
     import libc::consts::os::extra::*;
@@ -359,12 +351,10 @@ fn pipe() -> {in: c_int, out: c_int} {
 fn dll_filename(base: str) -> str {
     ret pre() + base + dll_suffix();
 
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn pre() -> str { "lib" }
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn pre() -> str { "" }
 }
 
@@ -405,7 +395,7 @@ fn self_exe_path() -> option<path> {
         }
     }
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn load_self() -> option<path> unsafe {
         // FIXME: remove imports when export globs work properly.
         import libc::types::os::arch::extra::*;
@@ -449,14 +439,12 @@ fn homedir() -> option<path> {
         }
     };
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn secondary() -> option<path> {
         none
     }
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn secondary() -> option<path> {
         option::chain(getenv("USERPROFILE")) {|p|
             if !str::is_empty(p) {
@@ -536,7 +524,7 @@ fn make_absolute(p: path) -> path {
 fn make_dir(p: path, mode: c_int) -> bool {
     ret mkdir(p, mode);
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn mkdir(p: path, _mode: c_int) -> bool unsafe {
         // FIXME: remove imports when export globs work properly.
         import libc::types::os::arch::extra::*;
@@ -549,9 +537,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
         }
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn mkdir(p: path, mode: c_int) -> bool {
         as_c_charp(p) {|c|
             libc::mkdir(c, mode as mode_t) == (0 as c_int)
@@ -562,12 +548,10 @@ fn make_dir(p: path, mode: c_int) -> bool {
 #[doc = "Lists the contents of a directory"]
 fn list_dir(p: path) -> [str] {
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn star(p: str) -> str { p }
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn star(p: str) -> str {
         let pl = str::len(p);
         if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
@@ -602,7 +586,7 @@ fn list_dir_path(p: path) -> [str] {
 fn remove_dir(p: path) -> bool {
    ret rmdir(p);
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn rmdir(p: path) -> bool {
         // FIXME: remove imports when export globs work properly.
         import libc::funcs::extra::kernel32::*;
@@ -613,9 +597,7 @@ fn remove_dir(p: path) -> bool {
         };
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn rmdir(p: path) -> bool {
         ret as_c_charp(p) {|buf|
             libc::rmdir(buf) == (0 as c_int)
@@ -626,7 +608,7 @@ fn remove_dir(p: path) -> bool {
 fn change_dir(p: path) -> bool {
     ret chdir(p);
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn chdir(p: path) -> bool {
         // FIXME: remove imports when export globs work properly.
         import libc::funcs::extra::kernel32::*;
@@ -637,9 +619,7 @@ fn change_dir(p: path) -> bool {
         };
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn chdir(p: path) -> bool {
         ret as_c_charp(p) {|buf|
             libc::chdir(buf) == (0 as c_int)
@@ -651,7 +631,7 @@ fn change_dir(p: path) -> bool {
 fn copy_file(from: path, to: path) -> bool {
     ret do_copy_file(from, to);
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn do_copy_file(from: path, to: path) -> bool {
         // FIXME: remove imports when export globs work properly.
         import libc::funcs::extra::kernel32::*;
@@ -664,9 +644,7 @@ fn copy_file(from: path, to: path) -> bool {
         }
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn do_copy_file(from: path, to: path) -> bool unsafe {
         let istream = as_c_charp(from) {|fromp|
             as_c_charp("rb") {|modebuf|
@@ -716,7 +694,7 @@ fn copy_file(from: path, to: path) -> bool {
 fn remove_file(p: path) -> bool {
     ret unlink(p);
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn unlink(p: path) -> bool {
         // FIXME: remove imports when export globs work properly.
         // (similar to Issue #2006)
@@ -728,9 +706,7 @@ fn remove_file(p: path) -> bool {
         };
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn unlink(p: path) -> bool {
         ret as_c_charp(p) {|buf|
             libc::unlink(buf) == (0 as c_int)
@@ -755,12 +731,10 @@ fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as libc::intptr_t);
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "freebsd")]
+#[cfg(unix)]
 fn family() -> str { "unix" }
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 fn family() -> str { "windows" }
 
 #[cfg(target_os = "macos")]
@@ -824,7 +798,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cgf(target_os = "win32"))]
+    #[ignore(cfg(windows))]
+    #[ignore]
     fn test_setenv_overwrite() {
         let n = make_rand_name();
         setenv(n, "1");
@@ -837,7 +812,8 @@ mod tests {
     // Windows GetEnvironmentVariable requires some extra work to make sure
     // the buffer the variable is copied into is the right size
     #[test]
-    #[ignore(cgf(target_os = "win32"))]
+    #[ignore(cfg(windows))]
+    #[ignore]
     fn test_getenv_big() {
         let mut s = "";
         let mut i = 0;
@@ -902,9 +878,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn homedir() {
         let oldhome = getenv("HOME");
 
@@ -918,7 +892,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn homedir() {
 
         let oldhome = getenv("HOME");

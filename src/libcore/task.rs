@@ -605,7 +605,7 @@ fn test_spawn_raw_simple() {
 }
 
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_spawn_raw_unsupervise() {
     let opts = {
         supervise: false
@@ -617,7 +617,7 @@ fn test_spawn_raw_unsupervise() {
 }
 
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_spawn_raw_notify() {
     let task_po = comm::port();
     let task_ch = comm::chan(task_po);
@@ -674,7 +674,7 @@ fn test_add_wrapper() {
 }
 
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_future_result() {
     let buildr = builder();
     let result = future_result(buildr);
@@ -726,7 +726,7 @@ fn test_try_success() {
 }
 
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_try_fail() {
     alt try {||
         fail
@@ -738,7 +738,7 @@ fn test_try_fail() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 fn test_spawn_sched_no_threads() {
     spawn_sched(manual_threads(0u)) {|| };
 }
@@ -957,7 +957,7 @@ fn test_osmain() {
 }
 
 #[test]
-#[ignore(cfg(target_os = "win32"))]
+#[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable() unsafe {
     import comm::methods;

@@ -48,12 +48,10 @@ native mod c_double {
     pure fn frexp(n: c_double, &value: c_int) -> c_double;
     pure fn hypot(x: c_double, y: c_double) -> c_double;
     pure fn ldexp(x: c_double, n: c_int) -> c_double;
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     #[link_name="lgamma_r"] pure fn lgamma(n: c_double,
                                            &sign: c_int) -> c_double;
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     #[link_name="__lgamma_r"] pure fn lgamma(n: c_double,
                                              &sign: c_int) -> c_double;
     // renamed: log is a reserved keyword; ln seems more natural, too
@@ -131,13 +129,11 @@ native mod c_float {
     #[link_name="hypotf"] pure fn hypot(x: c_float, y: c_float) -> c_float;
     #[link_name="ldexpf"] pure fn ldexp(x: c_float, n: c_int) -> c_float;
 
-    #[cfg(target_os="linux")]
-    #[cfg(target_os="macos")]
-    #[cfg(target_os="freebsd")]
+    #[cfg(unix)]
     #[link_name="lgammaf_r"] pure fn lgamma(n: c_float,
                                             &sign: c_int) -> c_float;
 
-    #[cfg(target_os="win32")]
+    #[cfg(windows)]
     #[link_name="__lgammaf_r"] pure fn lgamma(n: c_float,
                                               &sign: c_int) -> c_float;
 

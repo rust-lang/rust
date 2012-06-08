@@ -16,9 +16,7 @@ export normalize;
 #[doc = "A path or fragment of a filesystem path"]
 type path = str;
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 mod consts {
     #[doc = "
     The primary path seperator character for the platform
@@ -34,7 +32,7 @@ mod consts {
     const alt_path_sep: char = '/';
 }
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 mod consts {
     const path_sep: char = '/';
     const alt_path_sep: char = '\\';
@@ -46,14 +44,12 @@ Indicates whether a path is absolute.
 A path is considered absolute if it begins at the filesystem root (\"/\") or,
 on Windows, begins with a drive letter.
 "]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 fn path_is_absolute(p: path) -> bool {
     str::char_at(p, 0u) == '/'
 }
 
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 fn path_is_absolute(p: str) -> bool {
     ret str::char_at(p, 0u) == '/' ||
         str::char_at(p, 1u) == ':'
@@ -271,9 +267,7 @@ fn normalize(p: path) -> path {
         ret t;
     }
 
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
+    #[cfg(unix)]
     fn reabsolute(orig: path, n: path) -> path {
         if path_is_absolute(orig) {
             path_sep() + n
@@ -282,7 +276,7 @@ fn normalize(p: path) -> path {
         }
     }
 
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn reabsolute(orig: path, newp: path) -> path {
        if path_is_absolute(orig) && orig[0] == consts::path_sep as u8 {
            str::from_char(consts::path_sep) + newp
@@ -427,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn normalize12() {
         let actual = normalize("C:/whatever");
         let expected = "C:/whatever";
@@ -436,7 +430,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "win32")]
+    #[cfg(windows)]
     fn path_is_absolute_win32() {
         assert path_is_absolute("C:/whatever");
     }
