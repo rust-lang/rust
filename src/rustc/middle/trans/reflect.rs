@@ -26,6 +26,11 @@ impl methods for reflector {
         C_int(self.bcx.ccx(), i)
     }
 
+    fn c_slice(s: str) -> ValueRef {
+        let ss = C_estr_slice(self.bcx.ccx(), s);
+        do_spill_noroot(self.bcx, ss)
+    }
+
     fn visit(ty_name: str, args: [ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = option::get(ty::method_idx("visit_" + ty_name,
@@ -33,8 +38,18 @@ impl methods for reflector {
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
         let get_lval = {|bcx|
-            impl::trans_iface_callee(bcx, v, mth_ty, mth_idx)
+            let callee =
+                impl::trans_iface_callee(bcx, v, mth_ty, mth_idx);
+            #debug("calling mth ty %s, lltype %s",
+                   ty_to_str(bcx.ccx().tcx, mth_ty),
+                   val_str(bcx.ccx().tn, callee.val));
+            callee
         };
+        #debug("passing %u args:", vec::len(args));
+        let bcx = self.bcx;
+        for args.eachi {|i, a|
+            #debug("arg %u: %s", i, val_str(bcx.ccx().tn, a));
+        }
         self.bcx =
             trans_call_inner(self.bcx, none, mth_ty, ty::mk_bool(tcx),
                              get_lval, arg_vals(args), ignore);
@@ -118,13 +133,8 @@ impl methods for reflector {
             self.visit("enter_rec", [self.c_uint(vec::len(fields))]);
             for fields.eachi {|i, field|
                 self.bracketed_mt("rec_field", field.mt,
-                                  [self.c_uint(i)
-                                   /*
-                                   FIXME: doesn't work presently.
-                                   C_estr_slice(self.bcx.ccx(),
-                                                field.ident)
-                                   */
-                                  ]);
+                                  [self.c_uint(i),
+                                   self.c_slice(field.ident)]);
             }
             self.visit("leave_rec", [self.c_uint(vec::len(fields))]);
           }
@@ -190,13 +200,8 @@ impl methods for reflector {
             self.visit("enter_class", [self.c_uint(vec::len(fields))]);
             for fields.eachi {|i, field|
                 self.bracketed_mt("class_field", field.mt,
-                                  [self.c_uint(i)
-                                   /*
-                                   FIXME: doesn't work presently.
-                                   C_estr_slice(self.bcx.ccx(),
-                                                field.ident)
-                                   */
-                                  ]);
+                                  [self.c_uint(i),
+                                   self.c_slice(field.ident)]);
             }
             self.visit("leave_class", [self.c_uint(vec::len(fields))]);
           }
@@ -214,12 +219,8 @@ impl methods for reflector {
             for variants.eachi {|i, v|
                 let extra = [self.c_uint(i),
                              self.c_int(v.disr_val),
-                             self.c_uint(vec::len(v.args))
-                             /*
-                             FIXME: doesn't work presently.
-                             C_estr_slice(self.bcx.ccx(),
-                             v.name)
-                             */];
+                             self.c_uint(vec::len(v.args)),
+                             self.c_slice(v.name)];
                 self.visit("enter_enum_variant", extra);
                 for v.args.eachi {|j, a|
                     self.bracketed_t("enum_variant_field", a,

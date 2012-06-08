@@ -81,17 +81,17 @@ impl of intrinsic::ty_visitor for my_visitor {
     fn visit_leave_evec_fixed(_mtbl: uint, _sz: uint) -> bool { true }
 
     fn visit_enter_rec(_n_fields: uint) -> bool { true }
-    fn visit_enter_rec_field(_mtbl: uint, _i: uint
-                             /*,name: str/&*/) -> bool { true }
-    fn visit_leave_rec_field(_mtbl: uint, _i: uint
-                             /*,name: str/&*/) -> bool { true }
+    fn visit_enter_rec_field(_mtbl: uint, _i: uint,
+                             _name: str/&) -> bool { true }
+    fn visit_leave_rec_field(_mtbl: uint, _i: uint,
+                             _name: str/&) -> bool { true }
     fn visit_leave_rec(_n_fields: uint) -> bool { true }
 
     fn visit_enter_class(_n_fields: uint) -> bool { true }
-    fn visit_enter_class_field(_mtbl: uint, _i: uint
-                             /*,name: str/&*/) -> bool { true }
-    fn visit_leave_class_field(_mtbl: uint, _i: uint
-                             /*,name: str/&*/) -> bool { true }
+    fn visit_enter_class_field(_mtbl: uint, _i: uint,
+                               _name: str/&) -> bool { true }
+    fn visit_leave_class_field(_mtbl: uint, _i: uint,
+                               _name: str/&) -> bool { true }
     fn visit_leave_class(_n_fields: uint) -> bool { true }
 
     fn visit_enter_tup(_n_fields: uint) -> bool { true }
@@ -111,12 +111,14 @@ impl of intrinsic::ty_visitor for my_visitor {
     fn visit_enter_enum(_n_variants: uint) -> bool { true }
     fn visit_enter_enum_variant(_variant: uint,
                                 _disr_val: int,
-                                _n_fields: uint) -> bool { true }
+                                _n_fields: uint,
+                                _name: str/&) -> bool { true }
     fn visit_enter_enum_variant_field(_i: uint) -> bool { true }
     fn visit_leave_enum_variant_field(_i: uint) -> bool { true }
     fn visit_leave_enum_variant(_variant: uint,
                                 _disr_val: int,
-                                _n_fields: uint) -> bool { true }
+                                _n_fields: uint,
+                                _name: str/&) -> bool { true }
     fn visit_leave_enum(_n_variants: uint) -> bool { true }
 
     fn visit_iface() -> bool { true }

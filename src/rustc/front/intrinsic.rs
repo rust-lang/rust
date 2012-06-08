@@ -56,17 +56,17 @@ mod intrinsic {
         fn visit_leave_evec_fixed(mtbl: uint, sz: uint) -> bool;
 
         fn visit_enter_rec(n_fields: uint) -> bool;
-        fn visit_enter_rec_field(mtbl: uint, i: uint
-                                 /*, name: str/& */) -> bool;
-        fn visit_leave_rec_field(mtbl: uint, i: uint
-                                 /*, name: str/& */) -> bool;
+        fn visit_enter_rec_field(mtbl: uint, i: uint,
+                                 name: str/&) -> bool;
+        fn visit_leave_rec_field(mtbl: uint, i: uint,
+                                 name: str/&) -> bool;
         fn visit_leave_rec(n_fields: uint) -> bool;
 
         fn visit_enter_class(n_fields: uint) -> bool;
-        fn visit_enter_class_field(mtbl: uint, i: uint
-                                   /*, name: str/& */) -> bool;
-        fn visit_leave_class_field(mtbl: uint, i: uint
-                                   /*, name: str/& */) -> bool;
+        fn visit_enter_class_field(mtbl: uint, i: uint,
+                                   name: str/&) -> bool;
+        fn visit_leave_class_field(mtbl: uint, i: uint,
+                                   name: str/&) -> bool;
         fn visit_leave_class(n_fields: uint) -> bool;
 
         fn visit_enter_tup(n_fields: uint) -> bool;
@@ -77,12 +77,14 @@ mod intrinsic {
         fn visit_enter_enum(n_variants: uint) -> bool;
         fn visit_enter_enum_variant(variant: uint,
                                     disr_val: int,
-                                    n_fields: uint) -> bool;
+                                    n_fields: uint,
+                                    name: str/&) -> bool;
         fn visit_enter_enum_variant_field(i: uint) -> bool;
         fn visit_leave_enum_variant_field(i: uint) -> bool;
         fn visit_leave_enum_variant(variant: uint,
                                     disr_val: int,
-                                    n_fields: uint) -> bool;
+                                    n_fields: uint,
+                                    name: str/&) -> bool;
         fn visit_leave_enum(n_variants: uint) -> bool;
 
         fn visit_enter_fn(purity: uint, proto: uint,
