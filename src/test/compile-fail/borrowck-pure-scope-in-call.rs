@@ -1,6 +1,3 @@
-// xfail-fast  (compile-flags unsupported on windows)
-// compile-flags:--borrowck=err
-
 pure fn pure_borrow(_x: &int, _y: ()) {}
 
 fn test1(x: @mut ~int) {

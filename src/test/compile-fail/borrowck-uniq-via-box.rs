@@ -1,6 +1,3 @@
-// xfail-fast  (compile-flags unsupported on windows)
-// compile-flags:--borrowck=err
-
 fn borrow(_v: &int) {}
 
 fn box_mut(v: @mut ~int) {

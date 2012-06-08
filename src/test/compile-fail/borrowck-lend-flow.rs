@@ -1,6 +1,3 @@
-// xfail-fast  (compile-flags unsupported on windows)
-// compile-flags:--borrowck=err
-
 // Note: the borrowck analysis is currently flow-insensitive.
 // Therefore, some of these errors are marked as spurious and could be
 // corrected by a simple change to the analysis.  The others are

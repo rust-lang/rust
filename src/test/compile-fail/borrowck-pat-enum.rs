@@ -1,6 +1,3 @@
-// xfail-fast  (compile-flags unsupported on windows)
-// compile-flags:--borrowck=err
-
 fn match_ref(&&v: option<int>) -> int {
     alt v {
       some(i) {

@@ -1,6 +1,3 @@
-// xfail-fast  (compile-flags unsupported on windows)
-// compile-flags:--borrowck=err
-
 fn want_slice(v: [int]/&) -> int {
     let mut sum = 0;
     for vec::each(v) { |i| sum += i; }

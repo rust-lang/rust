@@ -1,6 +1,3 @@
-// xfail-fast  (compile-flags unsupported on windows)
-// compile-flags:--borrowck=err
-
 fn impure(_i: int) {}
 
 // check that unchecked alone does not override borrowck:

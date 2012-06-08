@@ -52,7 +52,6 @@ export decode_inlined_item;
 type maps = {
     mutbl_map: middle::borrowck::mutbl_map,
     root_map: middle::borrowck::root_map,
-    copy_map: middle::alias::copy_map,
     last_use_map: middle::liveness::last_use_map,
     impl_map: middle::resolve::impl_map,
     method_map: middle::typeck::method_map,
@@ -831,12 +830,6 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::iter(maps.copy_map.find(id)) {|_m|
-        ebml_w.tag(c::tag_table_copy) {||
-            ebml_w.id(id);
-        }
-    }
-
     option::iter(maps.last_use_map.find(id)) {|m|
         ebml_w.tag(c::tag_table_last_use) {||
             ebml_w.id(id);
@@ -943,8 +936,6 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
 
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
-        } else if tag == (c::tag_table_copy as uint) {
-            dcx.maps.copy_map.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val];
             let val_dsr = ebml::ebml_deserializer(val_doc);
