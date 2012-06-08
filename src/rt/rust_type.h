@@ -42,29 +42,24 @@ static inline void *box_body(rust_opaque_box *box) {
     return (void*)(box + 1);
 }
 
+// N.B. If you want to add a field to tydesc, please use one of the
+// unused fields!
 struct type_desc {
-    // First part of type_desc is known to compiler.
-    // first_param = &descs[1] if dynamic, null if static.
     const type_desc **first_param;
     size_t size;
     size_t align;
     glue_fn *take_glue;
     glue_fn *drop_glue;
     glue_fn *free_glue;
-    void *UNUSED;
-    glue_fn *sever_glue;    // For GC.
-    glue_fn *mark_glue;     // For GC.
-    uintptr_t unused2;
-    void *UNUSED_2;
+    glue_fn *visit_glue;
+    uintptr_t UNUSED_1;
+    uintptr_t UNUSED_2;
+    uintptr_t UNUSED_3;
+    uintptr_t UNUSED_4;
     const uint8_t *shape;
     const rust_shape_tables *shape_tables;
-    uintptr_t n_params;
-    uintptr_t n_obj_params;
-
-    // Residual fields past here are known only to runtime.
-    UT_hash_handle hh;
-    size_t n_descs;
-    const type_desc *descs[];
+    uintptr_t UNUSED_5;
+    uintptr_t UNUSED_6;
 };
 
 extern "C" type_desc *rust_clone_type_desc(type_desc*);

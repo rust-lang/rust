@@ -630,14 +630,14 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                             drop_glue, // drop_glue
                             free_glue, // free_glue
                             visit_glue, // visit_glue
-                            C_null(glue_fn_ty), // sever_glue
-                            C_null(glue_fn_ty), // mark_glue
-                            C_null(glue_fn_ty), // unused
-                            C_null(T_ptr(T_i8())), // cmp_glue
+                            C_int(ccx, 0), // ununsed
+                            C_int(ccx, 0), // ununsed
+                            C_int(ccx, 0), // ununsed
+                            C_int(ccx, 0), // ununsed
                             C_shape(ccx, shape), // shape
                             shape_tables, // shape_tables
-                            C_int(ccx, 0), // n_params
-                            C_int(ccx, 0)]); // n_obj_params
+                            C_int(ccx, 0), // ununsed
+                            C_int(ccx, 0)]); // unused
 
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
