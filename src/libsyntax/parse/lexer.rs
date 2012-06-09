@@ -12,7 +12,7 @@ type reader = @{
     mut curr: char,
     mut chpos: uint,
     filemap: codemap::filemap,
-    interner: @interner::interner<str>
+    interner: @interner::interner<@str>
 };
 
 impl reader for reader {
@@ -55,7 +55,7 @@ impl reader for reader {
 
 fn new_reader(span_diagnostic: diagnostic::span_handler,
               filemap: codemap::filemap,
-              itr: @interner::interner<str>) -> reader {
+              itr: @interner::interner<@str>) -> reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
               mut chpos: filemap.start_pos.ch,
@@ -260,12 +260,12 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         if c == '3' && n == '2' {
             rdr.bump();
             rdr.bump();
-            ret token::LIT_FLOAT(intern(*rdr.interner, num_str),
+            ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
                                  ast::ty_f32);
         } else if c == '6' && n == '4' {
             rdr.bump();
             rdr.bump();
-            ret token::LIT_FLOAT(intern(*rdr.interner, num_str),
+            ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
                                  ast::ty_f64);
             /* FIXME: if this is out of range for either a 32-bit or
             64-bit float, it won't be noticed till the back-end (Issue #2252)
@@ -275,7 +275,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         }
     }
     if is_float {
-        ret token::LIT_FLOAT(interner::intern(*rdr.interner, num_str),
+        ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
                              ast::ty_f);
     } else {
         if str::len(num_str) == 0u {
@@ -329,8 +329,8 @@ fn next_token_inner(rdr: reader) -> token::token {
         let is_mod_name = c == ':' && rdr.next() == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
-        ret token::IDENT(interner::intern::<str>(*rdr.interner,
-                                                 accum_str), is_mod_name);
+        ret token::IDENT(interner::intern(*rdr.interner,
+                                          @accum_str), is_mod_name);
     }
     if is_dec_digit(c) {
         ret scan_number(c, rdr);
@@ -494,8 +494,8 @@ fn next_token_inner(rdr: reader) -> token::token {
             }
         }
         rdr.bump();
-        ret token::LIT_STR(interner::intern::<str>(*rdr.interner,
-                                                   accum_str));
+        ret token::LIT_STR(interner::intern(*rdr.interner,
+                                            @accum_str));
       }
       '-' {
         if rdr.next() == '>' {

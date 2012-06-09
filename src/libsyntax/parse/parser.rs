@@ -10,7 +10,7 @@ import lexer::reader;
 import prec::{as_prec, token_to_binop};
 import attr::parser_attr;
 import common::{seq_sep, seq_sep_opt, seq_sep_none, token_to_str};
-import common::{parser_common};
+import common::*;//{parser_common};
 import dvec::{dvec, extensions};
 
 export file_type;
@@ -151,7 +151,7 @@ class parser {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
     fn get_str(i: token::str_num) -> str {
-        interner::get(*self.reader.interner, i)
+        *interner::get(*self.reader.interner, i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 

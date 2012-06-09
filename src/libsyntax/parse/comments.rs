@@ -169,7 +169,10 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
                                 srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
     let src = @str::from_bytes(srdr.read_whole_stream());
-    let itr = @interner::mk::<str>(str::hash, str::eq);
+    let itr = @interner::mk::<@str>(
+        {|x|str::hash(*x)},
+        {|x,y|str::eq(*x, *y)}
+    );
     let rdr = new_reader(span_diagnostic,
                          codemap::new_filemap(path, src, 0u, 0u), itr);
     let mut comments: [cmnt] = [];

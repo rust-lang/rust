@@ -83,7 +83,7 @@ fn binop_to_str(o: binop) -> str {
     }
 }
 
-fn to_str(in: interner<str>, t: token) -> str {
+fn to_str(in: interner<@str>, t: token) -> str {
     alt t {
       EQ { ret "="; }
       LT { ret "<"; }
@@ -133,17 +133,17 @@ fn to_str(in: interner<str>, t: token) -> str {
         ret uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t);
       }
       LIT_FLOAT(s, t) {
-        ret interner::get::<str>(in, s) +
+        ret *interner::get(in, s) +
             ast_util::float_ty_to_str(t);
       }
       LIT_STR(s) {
         ret "\""
-            + str::escape_default(interner::get::<str>(in, s))
+            + str::escape_default(*interner::get(in, s))
             + "\"";
       }
       /* Name components */
       IDENT(s, _) {
-        ret interner::get::<str>(in, s);
+        ret *interner::get(in, s);
       }
       UNDERSCORE { ret "_"; }
       EOF { ret "<eof>"; }

@@ -134,7 +134,7 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
     let filemap = codemap::new_filemap_w_substr
         (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
-    let itr = @interner::mk(str::hash, str::eq);
+    let itr = @interner::mk::<@str>({|x|str::hash(*x)}, {|x,y|str::eq(*x, *y)});
     let rdr = lexer::new_reader(sess.span_diagnostic,
                                 filemap, itr);
     ret parser(sess, cfg, rdr, ftype);
@@ -152,7 +152,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
     let src = @copy result::unwrap(res);
     let filemap = codemap::new_filemap(path, src, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
-    let itr = @interner::mk(str::hash, str::eq);
+       let itr = @interner::mk::<@str>({|x|str::hash(*x)}, {|x,y|str::eq(*x, *y)});
     let rdr = lexer::new_reader(sess.span_diagnostic, filemap, itr);
     ret parser(sess, cfg, rdr, ftype);
 }
