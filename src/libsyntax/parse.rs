@@ -148,8 +148,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
       result::ok(_) { /* Continue. */ }
       result::err(e) { sess.span_diagnostic.handler().fatal(e); }
     }
-    // FIXME: This copy is unfortunate (#2319).
-    let src = @copy result::unwrap(res);
+    let src = @result::unwrap(res);
     let filemap = codemap::new_filemap(path, src, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
        let itr = @interner::mk::<@str>({|x|str::hash(*x)}, {|x,y|str::eq(*x, *y)});
