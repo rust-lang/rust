@@ -265,11 +265,78 @@ the contents of stdout and the contents of stderr.
 "]
 fn program_output(prog: str, args: [str]) ->
    {status: int, out: str, err: str} {
-    let pr = start_program(prog, args);
-    pr.close_input();
-    let out = read_all(pr.output());
-    let err = read_all(pr.err());
-    ret {status: pr.finish(), out: out, err: err};
+
+    let pipe_in = os::pipe();
+    let pipe_out = os::pipe();
+    let pipe_err = os::pipe();
+    let pid = spawn_process(prog, args, none, none,
+                            pipe_in.in, pipe_out.out, pipe_err.out);
+
+    os::close(pipe_in.in);
+    os::close(pipe_out.out);
+    os::close(pipe_err.out);
+    if pid == -1i32 {
+        os::close(pipe_in.out);
+        os::close(pipe_out.in);
+        os::close(pipe_err.in);
+        fail;
+    }
+
+    os::close(pipe_in.out);
+
+    // Spawn two entire schedulers to read both stdout and sterr
+    // in parallel so we don't deadlock while blocking on one
+    // or the other. FIXME: Surely there's a much more clever way
+    // to do this.
+    let p = comm::port();
+    let ch = comm::chan(p);
+    task::spawn_sched(task::single_threaded) {||
+        let errput = readclose(pipe_err.in);
+        comm::send(ch, (2, errput));
+    };
+    task::spawn_sched(task::single_threaded) {||
+        let output = readclose(pipe_out.in);
+        comm::send(ch, (1, output));
+    };
+    let status = run::waitpid(pid);
+    let mut errs = "";
+    let mut outs = "";
+    let mut count = 2;
+    while count > 0 {
+        let stream = comm::recv(p);
+        alt check stream {
+            (1, s) {
+                outs = s;
+            }
+            (2, s) {
+                errs = s;
+            }
+        };
+        count -= 1;
+    };
+    ret {status: status, out: outs, err: errs};
+}
+
+fn writeclose(fd: c_int, s: str) {
+    import io::writer_util;
+
+    #error("writeclose %d, %s", fd as int, s);
+    let writer = io::fd_writer(fd, false);
+    writer.write_str(s);
+
+    os::close(fd);
+}
+
+fn readclose(fd: c_int) -> str {
+    let file = os::fdopen(fd);
+    let reader = io::FILE_reader(file, false);
+    let mut buf = "";
+    while !reader.eof() {
+        let bytes = reader.read_bytes(4096u);
+        buf += str::from_bytes(bytes);
+    }
+    os::fclose(file);
+    ret buf;
 }
 
 #[doc ="Waits for a process to exit and returns the exit code"]
@@ -351,27 +418,6 @@ mod tests {
         log(debug, expected);
         log(debug, actual);
         assert (expected == actual);
-
-        fn writeclose(fd: c_int, s: str) {
-            #error("writeclose %d, %s", fd as int, s);
-            let writer = io::fd_writer(fd, false);
-            writer.write_str(s);
-
-            os::close(fd);
-        }
-
-        fn readclose(fd: c_int) -> str {
-            // Copied from run::program_output
-            let file = os::fdopen(fd);
-            let reader = io::FILE_reader(file, false);
-            let mut buf = "";
-            while !reader.eof() {
-                let bytes = reader.read_bytes(4096u);
-                buf += str::from_bytes(bytes);
-            }
-            os::fclose(file);
-            ret buf;
-        }
     }
 
     #[test]
