@@ -295,7 +295,7 @@ fn main() {
     let vv = v as intrinsic::ty_visitor;
     intrinsic::visit_ty::<(int,int,int,bool,bool)>(vv);
 
-    for u.vals.each {|s|
+    for (copy u.vals).each {|s|
         io::println(#fmt("val: %s", s));
     }
     assert u.vals == ["1", "2", "3", "true", "false"];
