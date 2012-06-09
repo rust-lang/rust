@@ -31,9 +31,9 @@ lib/      - bindings to LLVM
 
 The files concerned purely with syntax -- that is, the AST, parser,
 pretty-printer, lexer, macro expander, and utilities for traversing
-ASTs -- are in a separate crate called "rustsyntax", whose files are
-in ./../librustsyntax if the parent directory of front/, middle/,
-back/, and so on is . .
+ASTs -- are in a separate crate called "syntax", whose files are in
+./../libsyntax if the parent directory of front/, middle/, back/, and
+so on is . .
 
 The entry-point for the compiler is main() in driver/rustc.rs, and
 this file sequences the various parts together.
@@ -42,7 +42,7 @@ this file sequences the various parts together.
 The 3 central data structures:
 ------------------------------
 
-#1: ../librustsyntax/ast.rs defines the AST. The AST is treated as immutable
+#1: ../libsyntax/ast.rs defines the AST. The AST is treated as immutable
     after parsing, but it depends on mutable context data structures
     (mainly hash maps) to give it meaning.
 
@@ -78,8 +78,8 @@ Control and information flow within the compiler:
 - main() in driver/rustc.rs assumes control on startup. Options are
   parsed, platform is detected, etc.
 
-- librustsyntax/parse/parser.rs parses the input files and produces an
-  AST that represents the input crate.
+- libsyntax/parse/parser.rs parses the input files and produces an AST
+  that represents the input crate.
 
 - Multiple middle-end passes (middle/resolve.rs, middle/typeck.rs)
   analyze the semantics of the resulting AST. Each pass generates new

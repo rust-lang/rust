@@ -6,7 +6,7 @@ rustc/             The self-hosted compiler
 
 libcore/           The core library (imported and linked by default)
 libstd/            The standard library (slightly more peripheral code)
-librustsyntax/     The Rust parser and pretty-printer
+libsyntax/         The Rust parser and pretty-printer
 
 rt/                The runtime system
 rt/rust_*.cpp      - The majority of the runtime services

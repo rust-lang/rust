@@ -343,7 +343,7 @@ type substs = {
 };
 
 // NB: If you change this, you'll probably want to change the corresponding
-// AST structure in front/ast::rs as well.
+// AST structure in libsyntax/ast.rs as well.
 enum sty {
     ty_nil,
     ty_bot,
