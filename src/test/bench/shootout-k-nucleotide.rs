@@ -119,7 +119,13 @@ fn make_sequence_processor(sz: uint, from_parent: comm::port<[u8]>, to_parent: c
 // given a FASTA file on stdin, process sequence THREE
 fn main(args: [str]) {
    let rdr = if os::getenv("RUST_BENCH").is_some() {
-      result::get(io::file_reader("./shootout-fasta.data"))
+       // FIXME: Using this compile-time env variable is a crummy way to
+       // get to this massive data set, but #include_bin chokes on it
+       let path = path::connect(
+           #env("CFG_SRC_DIR"),
+           "src/test/bench/shootout-k-nucleotide.data"
+           );
+       result::get(io::file_reader(path))
    } else {
       io::stdin()
    };
