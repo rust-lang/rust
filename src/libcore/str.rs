@@ -1885,7 +1885,7 @@ impl extensions for str {
 
     Alphanumeric characters are determined by `char::is_alphanumeric`
     "]
-    #[inlune]
+    #[inline]
     fn is_alphanumeric() -> bool { is_alphanumeric(self) }
     #[inline]
     #[doc ="Returns the size in bytes not counting the null terminator"]
