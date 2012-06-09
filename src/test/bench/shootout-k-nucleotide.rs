@@ -1,3 +1,5 @@
+// xfail-pretty
+
 // multi tasking k-nucleotide
 
 import io::reader_util;
