@@ -58,7 +58,7 @@ install: all install-host install-targets
 
 # Shorthand for build/stageN/bin
 HB = $(HBIN$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
-HB3 = $(HBIN3_H_$(CFG_HOST_TRIPLE))
+HB3 = $(HBIN2_H_$(CFG_HOST_TRIPLE))
 # Shorthand for build/stageN/lib
 HL = $(HLIB$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
 # Shorthand for the prefix bin directory
