@@ -10,6 +10,7 @@ import vec;
 import uint;
 import int;
 import str;
+import io::writer_util;
 
 fn LINE_LENGTH() -> uint { ret 60u; }
 
@@ -42,44 +43,51 @@ fn select_random(r: u32, genelist: [aminoacids]) -> char {
     ret bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);
 }
 
-fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
-    log(debug, ">" + id + " " + desc);
+fn make_random_fasta(wr: io::writer, id: str, desc: str, genelist: [aminoacids], n: int) {
+    wr.write_line(">" + id + " " + desc);
     let rng = @{mut last: std::rand::rng().next()};
     let mut op: str = "";
     for uint::range(0u, n as uint) {|_i|
         str::push_char(op, select_random(myrandom_next(rng, 100u32),
                                          genelist));
         if str::len(op) >= LINE_LENGTH() {
-            log(debug, op);
+            wr.write_line(op);
             op = "";
         }
     }
-    if str::len(op) > 0u { log(debug, op); }
+    if str::len(op) > 0u { wr.write_line(op); }
 }
 
-fn make_repeat_fasta(id: str, desc: str, s: str, n: int) unsafe {
-    log(debug, ">" + id + " " + desc);
+fn make_repeat_fasta(wr: io::writer, id: str, desc: str, s: str, n: int) unsafe {
+    wr.write_line(">" + id + " " + desc);
     let mut op: str = "";
     let sl: uint = str::len(s);
     for uint::range(0u, n as uint) {|i|
         str::unsafe::push_byte(op, s[i % sl]);
         if str::len(op) >= LINE_LENGTH() {
-            log(debug, op);
+            wr.write_line(op);
             op = "";
         }
     }
-    if str::len(op) > 0u { log(debug, op); }
+    if str::len(op) > 0u { wr.write_line(op); }
 }
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 
 fn main(args: [str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
+        // alioth tests k-nucleotide with this data at 25,000,000
         ["", "300000"]
     } else if args.len() <= 1u {
         ["", "1000"]
     } else {
         args
+    };
+
+    let writer = if os::getenv("RUST_BENCH").is_some() {
+        result::get(io::file_writer("./shootout-fasta.data", [io::truncate, io::create]))
+    } else {
+        io::stdout()
     };
 
     let n = int::from_str(args[1]).get();
@@ -101,7 +109,8 @@ fn main(args: [str]) {
             "GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG" +
             "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC" +
             "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
-    make_repeat_fasta("ONE", "Homo sapiens alu", alu, n * 2);
-    make_random_fasta("TWO", "IUB ambiguity codes", iub, n * 3);
-    make_random_fasta("THREE", "Homo sapiens frequency", homosapiens, n * 5);
+    make_repeat_fasta(writer, "ONE", "Homo sapiens alu", alu, n * 2);
+    make_random_fasta(writer, "TWO", "IUB ambiguity codes", iub, n * 3);
+    make_random_fasta(writer, "THREE",
+                      "Homo sapiens frequency", homosapiens, n * 5);
 }
