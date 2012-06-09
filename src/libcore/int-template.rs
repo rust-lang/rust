@@ -38,6 +38,7 @@ pure fn is_negative(x: T) -> bool { x < 0 as T }
 pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
+#[inline(always)]
 #[doc = "Iterate over the range [`lo`..`hi`)"]
 fn range(lo: T, hi: T, it: fn(T) -> bool) {
     let mut i = lo;
