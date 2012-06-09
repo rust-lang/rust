@@ -592,7 +592,22 @@ Section: Comparing strings
 */
 
 #[doc = "Bytewise string equality"]
-pure fn eq(&&a: str, &&b: str) -> bool { a == b }
+pure fn eq(&&a: str, &&b: str) -> bool {
+    // FIXME: This should just be "a == b" but that calls into the shape code
+    // :(
+    let a_len = a.len();
+    let b_len = b.len();
+    if a_len != b_len { ret false; }
+    let mut end = uint::min(a_len, b_len);
+
+    let mut i = 0u;
+    while i < end {
+        if a[i] != b[i] { ret false; }
+        i += 1u;
+    }
+
+    ret true;
+}
 
 #[doc = "Bytewise less than or equal"]
 pure fn le(&&a: str, &&b: str) -> bool { a <= b }
@@ -1861,11 +1876,11 @@ impl extensions for str {
 
     Alphanumeric characters are determined by `char::is_alphanumeric`
     "]
-    #[inlune]
+    #[inline]
     fn is_alphanumeric() -> bool { is_alphanumeric(self) }
     #[inline]
     #[doc ="Returns the size in bytes not counting the null terminator"]
-    fn len() -> uint { len(self) }
+    pure fn len() -> uint { len(self) }
     #[doc = "
     Returns a slice of the given string from the byte range [`begin`..`end`)
 
