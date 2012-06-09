@@ -70,7 +70,9 @@ class parser {
     let mut token: token::token;
     let mut span: span;
     let mut last_span: span;
-    let buffer: dvec<{tok: token::token, span: span}>;
+    let mut buffer: [mut {tok: token::token, span: span}]/4;
+    let mut buffer_start: int;
+    let mut buffer_end: int;
     let mut restriction: restriction;
     let reader: reader;
     let keywords: hashmap<str, ()>;
@@ -86,7 +88,14 @@ class parser {
         self.token = tok0.tok;
         self.span = span0;
         self.last_span = span0;
-        self.buffer = dvec::dvec();
+        self.buffer = [mut
+            {tok: tok0.tok, span: span0},
+            {tok: tok0.tok, span: span0},
+            {tok: tok0.tok, span: span0},
+            {tok: tok0.tok, span: span0}
+        ]/4;
+        self.buffer_start = 0;
+        self.buffer_end = 0;
         self.restriction = UNRESTRICTED;
         self.reader = rdr;
         self.keywords = token::keyword_table();
@@ -98,12 +107,13 @@ class parser {
 
     fn bump() {
         self.last_span = self.span;
-        if self.buffer.len() == 0u {
+        if self.buffer_start == self.buffer_end {
             let next = lexer::next_token(self.reader);
             self.token = next.tok;
             self.span = mk_sp(next.chpos, self.reader.chpos);
         } else {
-            let next = self.buffer.shift();
+            let next = self.buffer[self.buffer_start];
+            self.buffer_start = (self.buffer_start + 1) & 3;
             self.token = next.tok;
             self.span = next.span;
         }
@@ -112,13 +122,21 @@ class parser {
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
+    fn buffer_length() -> int {
+        if self.buffer_start <= self.buffer_end {
+            ret self.buffer_end - self.buffer_start;
+        }
+        ret (4 - self.buffer_start) + self.buffer_end;
+    }
     fn look_ahead(distance: uint) -> token::token {
-        while self.buffer.len() < distance {
+        let dist = distance as int;
+        while self.buffer_length() < dist {
             let next = lexer::next_token(self.reader);
             let sp = mk_sp(next.chpos, self.reader.chpos);
-            self.buffer.push({tok: next.tok, span: sp});
+            self.buffer[self.buffer_end] = {tok: next.tok, span: sp};
+            self.buffer_end = (self.buffer_end + 1) & 3;
         }
-        ret self.buffer[distance - 1u].tok;
+        ret copy self.buffer[(self.buffer_start + dist - 1) & 3].tok;
     }
     fn fatal(m: str) -> ! {
         self.sess.span_diagnostic.span_fatal(copy self.span, m)
