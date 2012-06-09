@@ -1,6 +1,5 @@
 import T = inst::T;
 import cmp::{eq, ord};
-import num::num;
 
 export min_value, max_value;
 export min, max;
@@ -124,7 +123,7 @@ impl eq of eq for T {
     }
 }
 
-impl num of num for T {
+impl num of num::num for T {
     fn add(&&other: T)    -> T { ret self + other; }
     fn sub(&&other: T)    -> T { ret self - other; }
     fn mul(&&other: T)    -> T { ret self * other; }
@@ -196,7 +195,7 @@ fn test_to_str() {
 
 #[test]
 fn test_ifaces() {
-    fn test<U:num>(ten: U) {
+    fn test<U:num::num>(ten: U) {
         assert (ten.to_int() == 10);
 
         let two = ten.from_int(2);
