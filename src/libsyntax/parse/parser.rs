@@ -679,7 +679,7 @@ class parser {
         ret @{id: self.get_id(), node: node, span: mk_sp(lo, hi)};
     }
 
-    fn mk_mac_expr(lo: uint, hi: uint, +m: mac_) -> @expr {
+    fn mk_mac_expr(lo: uint, hi: uint, m: mac_) -> @expr {
         ret @{id: self.get_id(),
               node: expr_mac({node: m, span: mk_sp(lo, hi)}),
               span: mk_sp(lo, hi)};
@@ -693,7 +693,7 @@ class parser {
         ret @{id: self.get_id(), node: expr_lit(lv_lit), span: span};
     }
 
-    fn mk_pexpr(lo: uint, hi: uint, +node: expr_) -> pexpr {
+    fn mk_pexpr(lo: uint, hi: uint, node: expr_) -> pexpr {
         ret pexpr(self.mk_expr(lo, hi, node));
     }
 
