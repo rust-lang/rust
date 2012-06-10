@@ -1,7 +1,8 @@
 // cargo.rs - Rust package manager
 
-import syntax::{ast, codemap};
-import syntax::parse;
+import syntax::{ast, codemap, parse, visit, attr};
+import syntax::diagnostic::span_handler;
+import codemap::span;
 import rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
                                      get_cargo_sysroot, libdir};
 import syntax::diagnostic;
@@ -16,21 +17,29 @@ import vec;
 import getopts::{optflag, optopt, opt_present};
 
 type package = {
-    name: str,
-    uuid: str,
-    url: str,
-    method: str,
-    description: str,
-    ref: option<str>,
-    tags: [str]
+    mut name: str,
+    mut uuid: str,
+    mut url: str,
+    mut method: str,
+    mut description: str,
+    mut ref: option<str>,
+    mut tags: [str],
+    mut versions: [(str, str)]
+};
+
+type local_package = {
+    mut name: str,
+    mut metaname: str,
+    mut version: str,
+    mut files: [str]
 };
 
 type source = {
-    name: str,
-    url: str,
-    sig: option<str>,
-    key: option<str>,
-    keyfp: option<str>,
+    mut name: str,
+    mut url: str,
+    mut method: str,
+    mut key: option<str>,
+    mut keyfp: option<str>,
     mut packages: [package]
 };
 
@@ -43,16 +52,19 @@ type cargo = {
     workdir: str,
     sourcedir: str,
     sources: map::hashmap<str, source>,
+    mut current_install: str,
+    dep_cache: map::hashmap<str, bool>,
     opts: options
 };
 
-type pkg = {
-    name: str,
-    vers: str,
-    uuid: str,
-    desc: option<str>,
-    sigs: option<str>,
-    crate_type: option<str>
+type crate = {
+    mut name: str,
+    mut vers: str,
+    mut uuid: str,
+    mut desc: option<str>,
+    mut sigs: option<str>,
+    mut crate_type: option<str>,
+    mut deps: [str]
 };
 
 type options = {
@@ -108,15 +120,14 @@ fn is_uuid(id: str) -> bool {
     if vec::len(parts) == 5u {
         let mut correct = 0u;
         for vec::eachi(parts) { |i, part|
+            fn is_hex_digit(ch: char) -> bool {
+                ('0' <= ch && ch <= '9') ||
+                ('a' <= ch && ch <= 'f') ||
+                ('A' <= ch && ch <= 'F')
+            }
 
             if !part.all(is_hex_digit) {
                 ret false;
-            }
-
-            fn is_hex_digit(ch: char) -> bool {
-                ('0' <= ch && ch <= '9') ||
-                    ('a' <= ch && ch <= 'f') ||
-                    ('A' <= ch && ch <= 'F')
             }
 
             alt i {
@@ -156,27 +167,35 @@ fn test_is_uuid() {
     assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaป");
 }
 
-// FIXME: implement URI/URL parsing so we don't have to resort to weak checks
+// FIXME: implement url/URL parsing so we don't have to resort to weak checks
 
-fn is_archive_uri(uri: str) -> bool {
-    str::ends_with(uri, ".tar")
-    || str::ends_with(uri, ".tar.gz")
-    || str::ends_with(uri, ".tar.xz")
-    || str::ends_with(uri, ".tar.bz2")
+fn has_archive_extension(p: str) -> bool {
+    str::ends_with(p, ".tar") ||
+    str::ends_with(p, ".tar.gz") ||
+    str::ends_with(p, ".tar.bz2") ||
+    str::ends_with(p, ".tar.Z") ||
+    str::ends_with(p, ".tar.lz") ||
+    str::ends_with(p, ".tar.xz") ||
+    str::ends_with(p, ".tgz") ||
+    str::ends_with(p, ".tbz") ||
+    str::ends_with(p, ".tbz2") ||
+    str::ends_with(p, ".tb2") ||
+    str::ends_with(p, ".taz") ||
+    str::ends_with(p, ".tlz") ||
+    str::ends_with(p, ".txz")
 }
 
-fn is_archive_url(url: str) -> bool {
-    // FIXME: this requires the protocol bit - if we had proper URI parsing,
+fn is_archive_path(u: str) -> bool {
+    has_archive_extension(u) && os::path_exists(u)
+}
+
+fn is_archive_url(u: str) -> bool {
+    // FIXME: this requires the protocol bit - if we had proper url parsing,
     // we wouldn't need it
 
-    alt str::find_str(url, "://") {
-        option::some(idx) {
-            str::ends_with(url, ".tar")
-            || str::ends_with(url, ".tar.gz")
-            || str::ends_with(url, ".tar.xz")
-            || str::ends_with(url, ".tar.bz2")
-        }
-        option::none { false }
+    alt str::find_str(u, "://") {
+        option::some(i) { has_archive_extension(u) }
+        _ { false }
     }
 }
 
@@ -185,6 +204,17 @@ fn is_git_url(url: str) -> bool {
     else {
         str::starts_with(url, "git://") || str::ends_with(url, ".git")
     }
+}
+
+fn assume_source_method(url: str) -> str {
+    if is_git_url(url) {
+        ret "git";
+    }
+    if str::starts_with(url, "file://") || os::path_exists(url) {
+        ret "file";
+    }
+
+    "curl"
 }
 
 fn load_link(mis: [@ast::meta_item]) -> (option<str>,
@@ -209,7 +239,7 @@ fn load_link(mis: [@ast::meta_item]) -> (option<str>,
     (name, vers, uuid)
 }
 
-fn load_pkg(filename: str) -> option<pkg> {
+fn load_crate(filename: str) -> option<crate> {
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(none);
     let sess = @{
@@ -246,19 +276,87 @@ fn load_pkg(filename: str) -> option<pkg> {
                     uuid = u;
                 }
             }
-            _ { fail "load_pkg: pkg attributes may not contain meta_words"; }
+            _ {
+                fail "crate attributes may not contain " +
+                     "meta_words";
+            }
         }
     }
+
+    type env = @{
+        mut deps: [str]
+    };
+
+    fn goto_view_item(e: env, i: @ast::view_item) {
+        alt i.node {
+            ast::view_item_use(ident, metas, id) {
+                let name_items = attr::find_meta_items_by_name(metas, "name");
+                let m = if name_items.is_empty() {
+                    metas + [attr::mk_name_value_item_str("name", ident)]
+                } else {
+                    metas
+                };
+                let mut attr_name = ident;
+                let mut attr_vers = "";
+                let mut attr_from = "";
+
+                for m.each { |item|
+                    alt attr::get_meta_item_value_str(item) {
+                        some(value) {
+                            let name = attr::get_meta_item_name(item);
+
+                            alt name {
+                                "vers" { attr_vers = value; }
+                                "from" { attr_from = value; }
+                                _ {}
+                            }
+                        }
+                        none {}
+                    }
+                }
+
+                let query = if !str::is_empty(attr_from) {
+                    attr_from
+                } else {
+                    if !str::is_empty(attr_vers) {
+                        attr_name + "@" + attr_vers
+                    } else { attr_name }
+                };
+
+                alt attr_name {
+                    "std" | "core" { }
+                    _ { e.deps += [query]; }
+                }
+            }
+            _ { }
+        }
+    }
+    fn goto_item(_e: env, _i: @ast::item) {
+    }
+
+    let e = @{
+        mut deps: []
+    };
+    let v = visit::mk_simple_visitor(@{
+        visit_view_item: bind goto_view_item(e, _),
+        visit_item: bind goto_item(e, _),
+        with *visit::default_simple_visitor()
+    });
+
+    visit::visit_crate(*c, (), v);
+
+    let deps = copy e.deps;
 
     alt (name, vers, uuid) {
         (some(name0), some(vers0), some(uuid0)) {
             some({
-                name: name0,
-                vers: vers0,
-                uuid: uuid0,
-                desc: desc,
-                sigs: sigs,
-                crate_type: crate_type})
+                mut name: name0,
+                mut vers: vers0,
+                mut uuid: uuid0,
+                mut desc: desc,
+                mut sigs: sigs,
+                mut crate_type: crate_type,
+                mut deps: deps })
         }
         _ { ret none; }
     }
@@ -283,20 +381,36 @@ fn need_dir(s: str) {
     }
 }
 
+fn valid_pkg_name(s: str) -> bool {
+    fn is_valid_digit(c: char) -> bool {
+        ('0' <= c && c <= '9') ||
+        ('a' <= c && c <= 'z') ||
+        ('A' <= c && c <= 'Z') ||
+        c == '-' ||
+        c == '_'
+    }
+
+    s.all(is_valid_digit)
+}
+
 fn parse_source(name: str, j: json::json) -> source {
+    if !valid_pkg_name(name) {
+        fail #fmt("'%s' is an invalid source name", name);
+    }
+
     alt j {
         json::dict(_j) {
-            let url = alt _j.find("url") {
+            let mut url = alt _j.find("url") {
                 some(json::string(u)) {
                     u
                 }
                 _ { fail "needed 'url' field in source"; }
             };
-            let sig = alt _j.find("sig") {
+            let method = alt _j.find("method") {
                 some(json::string(u)) {
-                    some(u)
+                    u
                 }
-                _ { none }
+                _ { assume_source_method(url) }
             };
             let key = alt _j.find("key") {
                 some(json::string(u)) {
@@ -310,7 +424,14 @@ fn parse_source(name: str, j: json::json) -> source {
                 }
                 _ { none }
             };
-            ret { name: name, url: url, sig: sig, key: key, keyfp: keyfp,
+            if method == "file" {
+                url = os::make_absolute(url);
+            }
+            ret { mut name: name,
+                  mut url: url,
+                  mut method: method,
+                  mut key: key,
+                  mut keyfp: keyfp,
                   mut packages: [] };
         }
         _ { fail "needed dict value in source"; }
@@ -334,7 +455,15 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
 
 fn load_one_source_package(&&src: source, p: map::hashmap<str, json::json>) {
     let name = alt p.find("name") {
-        some(json::string(_n)) { _n }
+        some(json::string(_n)) {
+            if !valid_pkg_name(_n) {
+                warn("malformed source json: " + src.name + ", '" + _n + "'"+
+                     " is an invalid name (alphanumeric, underscores and" +
+                     " dashes only)");
+                ret;
+            }
+            _n
+        }
         _ {
             warn("malformed source json: " + src.name + " (missing name)");
             ret;
@@ -342,7 +471,14 @@ fn load_one_source_package(&&src: source, p: map::hashmap<str, json::json>) {
     };
 
     let uuid = alt p.find("uuid") {
-        some(json::string(_n)) { _n }
+        some(json::string(_n)) {
+            if !is_uuid(_n) {
+                warn("malformed source json: " + src.name + ", '" + _n + "'"+
+                     " is an invalid uuid");
+                ret;
+            }
+            _n
+        }
         _ {
             warn("malformed source json: " + src.name + " (missing uuid)");
             ret;
@@ -392,20 +528,59 @@ fn load_one_source_package(&&src: source, p: map::hashmap<str, json::json>) {
         }
     };
 
-    vec::grow(src.packages, 1u, {
-        name: name,
-        uuid: uuid,
-        url: url,
-        method: method,
-        description: description,
-        ref: ref,
-        tags: tags
-    });
+    let newpkg = {
+        mut name: name,
+        mut uuid: uuid,
+        mut url: url,
+        mut method: method,
+        mut description: description,
+        mut ref: ref,
+        mut tags: tags,
+        mut versions: []
+    };
+
+    for src.packages.each { |pkg|
+        if pkg.uuid == uuid {
+            pkg.name = newpkg.name;
+            pkg.uuid = newpkg.uuid;
+            pkg.url = newpkg.url;
+            pkg.method = newpkg.method;
+            pkg.description = newpkg.description;
+            pkg.ref = newpkg.ref;
+            pkg.tags = newpkg.tags;
+            pkg.versions = newpkg.versions;
+            log(debug, "  updated package: " + src.name + "/" + name);
+            ret;
+        }
+    }
+
+    vec::grow(src.packages, 1u, newpkg);
     log(debug, "  loaded package: " + src.name + "/" + name);
 }
 
-fn load_source_packages(&&c: cargo, &&src: source) {
-    log(debug, "Loading source: " + src.name);
+fn load_source_info(&c: cargo, &src: source) {
+    let dir = path::connect(c.sourcedir, src.name);
+    let srcfile = path::connect(dir, "source.json");
+    if !os::path_exists(srcfile) { ret; }
+    let srcstr = io::read_whole_file_str(srcfile);
+    alt json::from_str(result::get(srcstr)) {
+        ok(json::dict(_s)) {
+            let o = parse_source(src.name, json::dict(_s));
+
+            src.key = o.key;
+            src.keyfp = o.keyfp;
+        }
+        ok(_) {
+            warn("malformed source.json: " + src.name +
+                 "(source info is not a dict)");
+        }
+        err(e) {
+            warn(#fmt("%s:%u:%u: %s", src.name, e.line, e.col, e.msg));
+        }
+    };
+}
+fn load_source_packages(&&c: cargo, &src: source) {
+    log(debug, "loading source: " + src.name);
     let dir = path::connect(c.sourcedir, src.name);
     let pkgfile = path::connect(dir, "packages.json");
     if !os::path_exists(pkgfile) { ret; }
@@ -425,7 +600,7 @@ fn load_source_packages(&&c: cargo, &&src: source) {
             }
         }
         ok(_) {
-            warn("malformed source json: " + src.name +
+            warn("malformed packages.json: " + src.name +
                  "(packages is not a list)");
         }
         err(e) {
@@ -483,6 +658,8 @@ fn configure(opts: options) -> cargo {
     try_parse_sources(path::connect(home, "sources.json"), sources);
     try_parse_sources(path::connect(home, "local-sources.json"), sources);
 
+    let dep_cache = map::str_hash::<bool>();
+
     let mut c = {
         pgp: pgp::supported(),
         root: home,
@@ -492,6 +669,8 @@ fn configure(opts: options) -> cargo {
         workdir: path::connect(home, "work"),
         sourcedir: path::connect(home, "sources"),
         sources: sources,
+        mut current_install: "",
+        dep_cache: dep_cache,
         opts: opts
     };
 
@@ -519,7 +698,7 @@ fn configure(opts: options) -> cargo {
     c
 }
 
-fn for_each_package(c: cargo, b: fn(source, package)) {
+fn for_each_package(&c: cargo, b: fn(source, package)) {
     for c.sources.each_value {|v|
         // FIXME (#2280): this temporary shouldn't be
         // necessary, but seems to be, for borrowing.
@@ -563,7 +742,7 @@ fn test_one_crate(_c: cargo, path: str, cf: str) {
   run_programs(buildpath);
 }
 
-fn install_one_crate(c: cargo, path: str, cf: str) {
+fn install_one_crate(&c: cargo, path: str, cf: str) {
     let buildpath = alt run_in_buildpath("installing", path,
                                          "/build", cf, []) {
       none { ret; }
@@ -603,7 +782,7 @@ fn rustc_sysroot() -> str {
     }
 }
 
-fn install_source(c: cargo, path: str) {
+fn install_source(&c: cargo, path: str) {
     #debug("source: %s", path);
     os::change_dir(path);
 
@@ -619,10 +798,23 @@ fn install_source(c: cargo, path: str) {
     }
 
     for cratefiles.each {|cf|
-        let p = load_pkg(cf);
-        alt p {
+        alt load_crate(cf) {
             none { cont; }
-            some(_) {
+            some(crate) {
+                for crate.deps.each { |query|
+                    // TODO: handle cyclic dependencies
+
+                    let wd_base = c.workdir + path::path_sep();
+                    let wd = alt tempfile::mkdtemp(wd_base, "") {
+                        some(_wd) { _wd }
+                        none { fail #fmt("needed temp dir: %s", wd_base); }
+                    };
+
+                    install_query(c, wd, query);
+                }
+
+                os::change_dir(path);
+
                 if c.opts.test {
                     test_one_crate(c, path, cf);
                 }
@@ -632,9 +824,8 @@ fn install_source(c: cargo, path: str) {
     }
 }
 
-fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
-    info("installing with git from " + url + "...");
-    run::run_program("git", ["clone", url, wd]);
+fn install_git(&c: cargo, wd: str, url: str, ref: option<str>) {
+    run::program_output("git", ["clone", url, wd]);
     if option::is_some::<str>(ref) {
         let r = option::get::<str>(ref);
         os::change_dir(wd);
@@ -644,8 +835,7 @@ fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
     install_source(c, wd);
 }
 
-fn install_curl(c: cargo, wd: str, url: str) {
-    info("installing with curl from " + url + "...");
+fn install_curl(&c: cargo, wd: str, url: str) {
     let tarpath = path::connect(wd, "pkg.tar");
     let p = run::program_output("curl", ["-f", "-s", "-o",
                                          tarpath, url]);
@@ -657,96 +847,95 @@ fn install_curl(c: cargo, wd: str, url: str) {
     install_source(c, wd);
 }
 
-fn install_file(c: cargo, wd: str, path: str) {
-    info("installing with tar from " + path + "...");
-    run::run_program("tar", ["-x", "--strip-components=1",
+fn install_file(&c: cargo, wd: str, path: str) {
+    run::program_output("tar", ["-x", "--strip-components=1",
                              "-C", wd, "-f", path]);
     install_source(c, wd);
 }
 
-fn install_package(c: cargo, wd: str, pkg: package) {
-    alt pkg.method {
-        "git" { install_git(c, wd, pkg.url, pkg.ref); }
-        "http" | "ftp" | "curl" { install_curl(c, wd, pkg.url); }
-        "file" { install_file(c, wd, pkg.url); }
-        _ { fail #fmt("don't know how to install with: %s", pkg.method) }
+fn install_package(&c: cargo, src: str, wd: str, pkg: package) {
+    let url = copy pkg.url;
+    let method = alt pkg.method {
+        "git" { "git" }
+        "file" { "file" }
+        _ { "curl" }
+    };
+
+    info(#fmt["installing %s/%s via %s...", src, pkg.name, method]);
+
+    alt method {
+        "git" { install_git(c, wd, url, copy pkg.ref); }
+        "file" { install_file(c, wd, url); }
+        "curl" { install_curl(c, wd, copy url); }
+        _ {}
     }
 }
 
-fn cargo_suggestion(c: cargo, syncing: bool, fallback: fn())
+fn cargo_suggestion(&c: cargo, fallback: fn())
 {
     if c.sources.size() == 0u {
         error("no sources defined - you may wish to run " +
-              "`cargo init` then `cargo sync`");
+              "`cargo init`");
         ret;
-    }
-    if !syncing {
-        let mut npkg = 0u;
-        for c.sources.each_value { |v| npkg += vec::len(v.packages) }
-        if npkg == 0u {
-            error("no packages synced - you may wish to run " +
-                  "`cargo sync`");
-            ret;
-        }
     }
     fallback();
 }
 
-fn install_uuid(c: cargo, wd: str, uuid: str) {
+fn install_uuid(&c: cargo, wd: str, uuid: str) {
     let mut ps = [];
     for_each_package(c, { |s, p|
         if p.uuid == uuid {
-            vec::grow(ps, 1u, (s.name, p));
+            vec::grow(ps, 1u, (s.name, copy p));
         }
     });
     if vec::len(ps) == 1u {
-        let (_, p) = ps[0];
-        install_package(c, wd, p);
+        let (sname, p) = copy ps[0];
+        install_package(c, sname, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, false, { ||
+        cargo_suggestion(c, { ||
             error("can't find package: " + uuid);
         });
         ret;
     }
     error("found multiple packages:");
     for ps.each {|elt|
-        let (sname,p) = elt;
+        let (sname,p) = copy elt;
         info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
     }
 }
 
-fn install_named(c: cargo, wd: str, name: str) {
+fn install_named(&c: cargo, wd: str, name: str) {
     let mut ps = [];
     for_each_package(c, { |s, p|
         if p.name == name {
-            vec::grow(ps, 1u, (s.name, p));
+            vec::grow(ps, 1u, (s.name, copy p));
         }
     });
     if vec::len(ps) == 1u {
-        let (_, p) = ps[0];
-        install_package(c, wd, p);
+        let (sname, p) = copy ps[0];
+        install_package(c, sname, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, false, { ||
+        cargo_suggestion(c, { ||
             error("can't find package: " + name);
         });
         ret;
     }
     error("found multiple packages:");
     for ps.each {|elt|
-        let (sname,p) = elt;
+        let (sname,p) = copy elt;
         info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
     }
 }
 
-fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
+fn install_uuid_specific(&c: cargo, wd: str, src: str, uuid: str) {
     alt c.sources.find(src) {
       some(s) {
         let packages = copy s.packages;
         if vec::any(packages, { |p|
             if p.uuid == uuid {
-                install_package(c, wd, p);
+                install_package(c, src, wd, p);
                 true
             } else { false }
         }) { ret; }
@@ -756,13 +945,13 @@ fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
     error("can't find package: " + src + "/" + uuid);
 }
 
-fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
+fn install_named_specific(&c: cargo, wd: str, src: str, name: str) {
     alt c.sources.find(src) {
         some(s) {
           let packages = copy s.packages;
           if vec::any(packages, { |p|
                 if p.name == name {
-                    install_package(c, wd, p);
+                    install_package(c, src, wd, p);
                     true
                 } else { false }
             }) { ret; }
@@ -772,7 +961,7 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     error("can't find package: " + src + "/" + name);
 }
 
-fn cmd_uninstall(c: cargo) {
+fn cmd_uninstall(&c: cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
@@ -837,44 +1026,30 @@ fn cmd_uninstall(c: cargo) {
     }
 }
 
-fn cmd_install(c: cargo) unsafe {
-    // cargo install [pkg]
-    if vec::len(c.opts.free) < 2u {
-        cmd_usage();
-        ret;
-    }
-
-    let wd_base = c.workdir + path::path_sep();
-    let wd = alt tempfile::mkdtemp(wd_base, "") {
-        some(_wd) { _wd }
-        none { fail #fmt("needed temp dir: %s", wd_base); }
-    };
-
-    if vec::len(c.opts.free) == 2u {
-        let cwd = os::getcwd();
-        let status = run::run_program("cp", ["-R", cwd, wd]);
-
-        if status != 0 {
-            fail #fmt("could not copy directory: %s", cwd);
+fn install_query(&c: cargo, wd: str, target: str) {
+    alt c.dep_cache.find(target) {
+        some(_inst) {
+            if _inst {
+                ret;
+            }
         }
-
-        install_source(c, wd);
-        ret;
+        none {}
     }
 
-    let target = c.opts.free[2];
+    c.dep_cache.insert(target, true);
 
-    if is_archive_url(target) {
-        install_curl(c, wd, target);
+    if is_archive_path(target) {
+        install_file(c, wd, target);
+        ret;
     } else if is_git_url(target) {
         let ref = if c.opts.free.len() >= 4u {
             some(c.opts.free[3u])
         } else {
             none
         };
-        install_git(c, wd, target, ref)
-    } else if is_archive_uri(target) {
-        install_file(c, wd, target);
+        install_git(c, wd, target, ref);
+    } else if !valid_pkg_name(target) && has_archive_extension(target) {
+        install_curl(c, wd, target);
         ret;
     } else {
         let mut ps = copy target;
@@ -898,82 +1073,361 @@ fn cmd_install(c: cargo) unsafe {
             }
         }
     }
+
+    // FIXME: This whole dep_cache and current_install
+    // thing is a bit of a hack. It should be cleaned up in the future.
+
+    if target == c.current_install {
+        for c.dep_cache.each { |k, _v|
+            c.dep_cache.remove(k);
+        }
+
+        c.current_install = "";
+    }
 }
 
-fn sync_one(c: cargo, name: str, src: source) {
-    let dir = path::connect(c.sourcedir, name);
+fn cmd_install(&c: cargo) unsafe {
+    let wd_base = c.workdir + path::path_sep();
+    let wd = alt tempfile::mkdtemp(wd_base, "") {
+        some(_wd) { _wd }
+        none { fail #fmt("needed temp dir: %s", wd_base); }
+    };
+
+    if vec::len(c.opts.free) == 2u {
+        let cwd = os::getcwd();
+        let status = run::run_program("cp", ["-R", cwd, wd]);
+
+        if status != 0 {
+            fail #fmt("could not copy directory: %s", cwd);
+        }
+
+        install_source(c, wd);
+        ret;
+    }
+
+    sync(c);
+
+    let query = c.opts.free[2];
+    c.current_install = copy query;
+
+    install_query(c, wd, copy query);
+}
+
+fn sync(&c: cargo) {
+    for c.sources.each_key { |k|
+        let mut s = c.sources.get(k);
+        sync_one(c, s);
+        c.sources.insert(k, s);
+    }
+}
+
+fn sync_one_file(&c: cargo, dir: str, &src: source) -> bool {
+    let name = src.name;
+    let srcfile = path::connect(dir, "source.json.new");
+    let destsrcfile = path::connect(dir, "source.json");
     let pkgfile = path::connect(dir, "packages.json.new");
     let destpkgfile = path::connect(dir, "packages.json");
-    let sigfile = path::connect(dir, "packages.json.sig");
     let keyfile = path::connect(dir, "key.gpg");
+    let srcsigfile = path::connect(dir, "source.json.sig");
+    let sigfile = path::connect(dir, "packages.json.sig");
     let url = src.url;
-    need_dir(dir);
-    info(#fmt["fetching source %s...", name]);
-    let p = run::program_output("curl", ["-f", "-s", "-o", pkgfile, url]);
-    if p.status != 0 {
-        warn(#fmt["fetch for source %s (url %s) failed", name, url]);
-    } else {
-        info(#fmt["fetched source: %s", name]);
+    let mut has_src_file = false;
+
+    if !os::copy_file(path::connect(url, "packages.json"), pkgfile) {
+        error(#fmt["fetch for source %s (url %s) failed", name, url]);
+        ret false;
     }
-    alt src.sig {
-        some(u) {
-            let p = run::program_output("curl", ["-f", "-s", "-o", sigfile,
-                                                 u]);
-            if p.status != 0 {
-                warn(#fmt["fetch for source %s (sig %s) failed", name, u]);
-            }
-        }
-        _ { }
+
+    if os::copy_file(path::connect(url, "source.json"), srcfile) {
+        has_src_file = false;
     }
+
+    os::copy_file(path::connect(url, "source.json.sig"), srcsigfile);
+    os::copy_file(path::connect(url, "packages.json.sig"), sigfile);
+
     alt src.key {
         some(u) {
             let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
                                                   u]);
             if p.status != 0 {
-                warn(#fmt["fetch for source %s (key %s) failed", name, u]);
+                error(#fmt["fetch for source %s (key %s) failed", name, u]);
+                ret false;
             }
             pgp::add(c.root, keyfile);
         }
         _ { }
     }
-    alt (src.sig, src.key, src.keyfp) {
-        (some(_), some(_), some(f)) {
+    alt (src.key, src.keyfp) {
+        (some(_), some(f)) {
             let r = pgp::verify(c.root, pkgfile, sigfile, f);
+
             if !r {
-                warn(#fmt["signature verification failed for source %s",
+                error(#fmt["signature verification failed for source %s",
                           name]);
-            } else {
-                info(#fmt["signature ok for source %s", name]);
+                ret false;
+            }
+
+            if has_src_file {
+                let e = pgp::verify(c.root, srcfile, srcsigfile, f);
+
+                if !e {
+                    error(#fmt["signature verification failed for source %s",
+                              name]);
+                    ret false;
+                }
             }
         }
-        _ {
-            info(#fmt["no signature for source %s", name]);
-        }
+        _ {}
     }
+
     copy_warn(pkgfile, destpkgfile);
+
+    if has_src_file {
+        copy_warn(srcfile, destsrcfile);
+    }
+
+    os::remove_file(keyfile);
+    os::remove_file(srcfile);
+    os::remove_file(srcsigfile);
+    os::remove_file(pkgfile);
+    os::remove_file(sigfile);
+
+    info(#fmt["synced source: %s", name]);
+
+    ret true;
 }
 
-fn cmd_sync(c: cargo) {
-    if vec::len(c.opts.free) >= 3u {
-        vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) { |name|
-            alt c.sources.find(name) {
-                some(source) {
-                    sync_one(c, name, source);
-                }
-                none {
-                    error(#fmt("no such source: %s", name));
+fn sync_one_git(&c: cargo, dir: str, &src: source) -> bool {
+    let name = src.name;
+    let srcfile = path::connect(dir, "source.json");
+    let pkgfile = path::connect(dir, "packages.json");
+    let keyfile = path::connect(dir, "key.gpg");
+    let srcsigfile = path::connect(dir, "source.json.sig");
+    let sigfile = path::connect(dir, "packages.json.sig");
+    let url = src.url;
+
+    fn rollback(name: str, dir: str, insecure: bool) {
+        fn msg(name: str, insecure: bool) {
+            error(#fmt["could not rollback source: %s", name]);
+
+            if insecure {
+                warn("a past security check failed on source " +
+                     name + " and rolling back the source failed -"
+                     + " this source may be compromised");
+            }
+        }
+
+        if !os::change_dir(dir) {
+            msg(name, insecure);
+        }
+        else {
+            let p = run::program_output("git", ["reset", "--hard",
+                                                "HEAD@{1}"]);
+
+            if p.status != 0 {
+                msg(name, insecure);
+            }
+        }
+    }
+
+    if !os::path_exists(path::connect(dir, ".git")) {
+        let p = run::program_output("git", ["clone", url, dir]);
+
+        if p.status != 0 {
+            error(#fmt["fetch for source %s (url %s) failed", name, url]);
+            ret false;
+        }
+    }
+    else {
+        if !os::change_dir(dir) {
+            error(#fmt["fetch for source %s (url %s) failed", name, url]);
+            ret false;
+        }
+
+        let p = run::program_output("git", ["pull"]);
+
+        if p.status != 0 {
+            error(#fmt["fetch for source %s (url %s) failed", name, url]);
+            ret false;
+        }
+    }
+
+    let has_src_file = os::path_exists(srcfile);
+
+    alt src.key {
+        some(u) {
+            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
+                                                  u]);
+            if p.status != 0 {
+                error(#fmt["fetch for source %s (key %s) failed", name, u]);
+                rollback(name, dir, false);
+                ret false;
+            }
+            pgp::add(c.root, keyfile);
+        }
+        _ { }
+    }
+    alt (src.key, src.keyfp) {
+        (some(_), some(f)) {
+            let r = pgp::verify(c.root, pkgfile, sigfile, f);
+
+            if !r {
+                error(#fmt["signature verification failed for source %s",
+                          name]);
+                rollback(name, dir, false);
+                ret false;
+            }
+
+            if has_src_file {
+                let e = pgp::verify(c.root, srcfile, srcsigfile, f);
+
+                if !e {
+                    error(#fmt["signature verification failed for source %s",
+                              name]);
+                    rollback(name, dir, false);
+                    ret false;
                 }
             }
         }
-    } else {
-        cargo_suggestion(c, true, { || } );
-        for c.sources.each_value { |v|
-            sync_one(c, v.name, v);
+        _ {}
+    }
+
+    os::remove_file(keyfile);
+
+    info(#fmt["synced source: %s", name]);
+
+    ret true;
+}
+
+fn sync_one_curl(&c: cargo, dir: str, &src: source) -> bool {
+    let name = src.name;
+    let srcfile = path::connect(dir, "source.json.new");
+    let destsrcfile = path::connect(dir, "source.json");
+    let pkgfile = path::connect(dir, "packages.json.new");
+    let destpkgfile = path::connect(dir, "packages.json");
+    let keyfile = path::connect(dir, "key.gpg");
+    let srcsigfile = path::connect(dir, "source.json.sig");
+    let sigfile = path::connect(dir, "packages.json.sig");
+    let mut url = src.url;
+    let smart = !str::ends_with(src.url, "packages.json");
+    let mut has_src_file = false;
+
+    if smart {
+        url += "/packages.json";
+    }
+
+    let p = run::program_output("curl", ["-f", "-s", "-o", pkgfile, url]);
+
+    if p.status != 0 {
+        error(#fmt["fetch for source %s (url %s) failed", name, url]);
+        ret false;
+    }
+    if smart {
+        url = src.url + "/source.json";
+        let p = run::program_output("curl", ["-f", "-s", "-o", srcfile, url]);
+
+        if p.status == 0 {
+            has_src_file = true;
         }
+    }
+
+    alt src.key {
+        some(u) {
+            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
+                                                  u]);
+            if p.status != 0 {
+                error(#fmt["fetch for source %s (key %s) failed", name, u]);
+                ret false;
+            }
+            pgp::add(c.root, keyfile);
+        }
+        _ { }
+    }
+    alt (src.key, src.keyfp) {
+        (some(_), some(f)) {
+            if smart {
+                url = src.url + "/packages.json.sig";
+            }
+            else {
+                url = src.url + ".sig";
+            }
+
+            let mut p = run::program_output("curl", ["-f", "-s", "-o",
+                        sigfile, url]);
+            if p.status != 0 {
+                error(#fmt["fetch for source %s (sig %s) failed", name, url]);
+                ret false;
+            }
+
+            let r = pgp::verify(c.root, pkgfile, sigfile, f);
+
+            if !r {
+                error(#fmt["signature verification failed for source %s",
+                          name]);
+                ret false;
+            }
+
+            if smart && has_src_file {
+                url = src.url + "/source.json.sig";
+
+                p = run::program_output("curl", ["-f", "-s", "-o", srcsigfile,
+                                                     url]);
+                if p.status != 0 {
+                    error(#fmt["fetch for source %s (sig %s) failed",
+                          name, url]);
+                    ret false;
+                }
+
+                let e = pgp::verify(c.root, srcfile, srcsigfile, f);
+
+                if !e {
+                    error("signature verification failed for " +
+                          "source " + name);
+                    ret false;
+                }
+            }
+        }
+        _ {}
+    }
+
+    copy_warn(pkgfile, destpkgfile);
+
+    if smart && has_src_file {
+        copy_warn(srcfile, destsrcfile);
+    }
+
+    os::remove_file(keyfile);
+    os::remove_file(srcfile);
+    os::remove_file(srcsigfile);
+    os::remove_file(pkgfile);
+    os::remove_file(sigfile);
+
+    info(#fmt["synced source: %s", name]);
+
+    ret true;
+}
+
+fn sync_one(&c: cargo, &src: source) {
+    let name = src.name;
+    let dir = path::connect(c.sourcedir, name);
+
+    info(#fmt["syncing source: %s...", name]);
+
+    need_dir(dir);
+
+    let result = alt src.method {
+        "git" { sync_one_git(c, dir, src) }
+        "file" { sync_one_file(c, dir, src) }
+        _ { sync_one_curl(c, dir, src) }
+    };
+
+    if result {
+        load_source_info(c, src);
+        load_source_packages(c, src);
     }
 }
 
-fn cmd_init(c: cargo) {
+fn cmd_init(&c: cargo) {
     let srcurl = "http://www.rust-lang.org/cargo/sources.json";
     let sigurl = "http://www.rust-lang.org/cargo/sources.json.sig";
 
@@ -983,23 +1437,25 @@ fn cmd_init(c: cargo) {
 
     let p = run::program_output("curl", ["-f", "-s", "-o", srcfile, srcurl]);
     if p.status != 0 {
-        warn(#fmt["fetch of sources.json failed: %s", p.out]);
+        error(#fmt["fetch of sources.json failed: %s", p.out]);
         ret;
     }
 
     let p = run::program_output("curl", ["-f", "-s", "-o", sigfile, sigurl]);
     if p.status != 0 {
-        warn(#fmt["fetch of sources.json.sig failed: %s", p.out]);
+        error(#fmt["fetch of sources.json.sig failed: %s", p.out]);
         ret;
     }
 
     let r = pgp::verify(c.root, srcfile, sigfile, pgp::signing_key_fp());
     if !r {
-        warn(#fmt["signature verification failed for '%s'", srcfile]);
-    } else {
-        info(#fmt["signature ok for '%s'", srcfile]);
+        error(#fmt["signature verification failed for '%s'", srcfile]);
+        ret;
     }
+
     copy_warn(srcfile, destsrcfile);
+    os::remove_file(srcfile);
+    os::remove_file(sigfile);
 
     info(#fmt["initialized .cargo in %s", c.root]);
 }
@@ -1038,15 +1494,21 @@ fn print_source(s: source) {
     });
 }
 
-fn cmd_list(c: cargo) {
+fn cmd_list(&c: cargo) {
+    sync(c);
+
     if vec::len(c.opts.free) >= 3u {
         vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) { |name|
-            alt c.sources.find(name) {
-                some(source) {
-                    print_source(source);
-                }
-                none {
-                    error(#fmt("no such source: %s", name));
+            if !valid_pkg_name(name) {
+                error(#fmt("'%s' is an invalid source name", name));
+            } else {
+                alt c.sources.find(name) {
+                    some(source) {
+                        print_source(source);
+                    }
+                    none {
+                        error(#fmt("no such source: %s", name));
+                    }
                 }
             }
         }
@@ -1057,11 +1519,14 @@ fn cmd_list(c: cargo) {
     }
 }
 
-fn cmd_search(c: cargo) {
+fn cmd_search(&c: cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
     }
+
+    sync(c);
+
     let mut n = 0;
     let name = c.opts.free[2];
     let tags = vec::slice(c.opts.free, 3u, vec::len(c.opts.free));
@@ -1086,74 +1551,362 @@ fn install_to_dir(srcfile: str, destdir: str) {
     }
 }
 
+fn dump_cache(&c: cargo) {
+    need_dir(c.root);
+
+    let out = path::connect(c.root, "cache.json");
+    let _root = json::dict(map::str_hash());
+
+    if os::path_exists(out) {
+        copy_warn(out, path::connect(c.root, "cache.json.old"));
+    }
+}
+fn dump_sources(&c: cargo) {
+    if c.sources.size() < 1u {
+        ret;
+    }
+
+    need_dir(c.root);
+
+    let out = path::connect(c.root, "sources.json");
+
+    if os::path_exists(out) {
+        copy_warn(out, path::connect(c.root, "sources.json.old"));
+    }
+
+    alt io::buffered_file_writer(out) {
+        result::ok(writer) {
+            let hash = map::str_hash();
+            let root = json::dict(hash);
+
+            for c.sources.each { |k, v|
+                let chash = map::str_hash();
+                let child = json::dict(chash);
+
+                chash.insert("url", json::string(v.url));
+                chash.insert("method", json::string(v.method));
+
+                alt v.key {
+                    some(key) {
+                        chash.insert("key", json::string(key));
+                    }
+                    _ {}
+                }
+                alt v.keyfp {
+                    some(keyfp) {
+                        chash.insert("keyfp", json::string(keyfp));
+                    }
+                    _ {}
+                }
+
+                hash.insert(k, child);
+            }
+
+            writer.write_str(json::to_str(root));
+        }
+        result::err(e) {
+            error(#fmt("could not dump sources: %s", e));
+        }
+    }
+}
+
 fn copy_warn(srcfile: str, destfile: str) {
-  if !os::copy_file(srcfile, destfile) {
-      warn(#fmt["copying %s to %s failed", srcfile, destfile]);
-  }
+    if !os::copy_file(srcfile, destfile) {
+        warn(#fmt["copying %s to %s failed", srcfile, destfile]);
+    }
+}
+
+fn cmd_sources(&c: cargo) {
+    if vec::len(c.opts.free) < 3u {
+        for c.sources.each_value { |v|
+            info(#fmt("%s (%s) via %s", v.name, v.url, v.method));
+        }
+        ret;
+    }
+
+    let action = c.opts.free[2u];
+
+    alt action {
+        "clear" {
+            for c.sources.each_key { |k|
+                c.sources.remove(k);
+            }
+
+            info("cleared sources");
+        }
+        "add" {
+            if vec::len(c.opts.free) < 5u {
+                cmd_usage();
+                ret;
+            }
+
+            let name = c.opts.free[3u];
+            let url = c.opts.free[4u];
+
+            if !valid_pkg_name(name) {
+                error(#fmt("'%s' is an invalid source name", name));
+                ret;
+            }
+
+            alt c.sources.find(name) {
+                some(source) {
+                    error(#fmt("source already exists: %s", name));
+                }
+                none {
+                    c.sources.insert(name, {
+                        mut name: name,
+                        mut url: url,
+                        mut method: assume_source_method(url),
+                        mut key: none,
+                        mut keyfp: none,
+                        mut packages: []
+                    });
+                    info(#fmt("added source: %s", name));
+                }
+            }
+        }
+        "remove" {
+            if vec::len(c.opts.free) < 4u {
+                cmd_usage();
+                ret;
+            }
+
+            let name = c.opts.free[3u];
+
+            if !valid_pkg_name(name) {
+                error(#fmt("'%s' is an invalid source name", name));
+                ret;
+            }
+
+            alt c.sources.find(name) {
+                some(source) {
+                    c.sources.remove(name);
+                    info(#fmt("removed source: %s", name));
+                }
+                none {
+                    error(#fmt("no such source: %s", name));
+                }
+            }
+        }
+        "set-url" {
+            if vec::len(c.opts.free) < 5u {
+                cmd_usage();
+                ret;
+            }
+
+            let name = c.opts.free[3u];
+            let url = c.opts.free[4u];
+
+            if !valid_pkg_name(name) {
+                error(#fmt("'%s' is an invalid source name", name));
+                ret;
+            }
+
+            alt c.sources.find(name) {
+                some(source) {
+                    let old = copy source.url;
+                    let method = assume_source_method(url);
+
+                    source.url = url;
+                    source.method = method;
+
+                    c.sources.insert(name, source);
+
+                    info(#fmt("changed source url: '%s' to '%s'", old, url));
+                }
+                none {
+                    error(#fmt("no such source: %s", name));
+                }
+            }
+        }
+        "set-method" {
+            if vec::len(c.opts.free) < 5u {
+                cmd_usage();
+                ret;
+            }
+
+            let name = c.opts.free[3u];
+            let method = c.opts.free[4u];
+
+            if !valid_pkg_name(name) {
+                error(#fmt("'%s' is an invalid source name", name));
+                ret;
+            }
+
+            alt c.sources.find(name) {
+                some(source) {
+                    let old = copy source.method;
+
+                    source.method = alt method {
+                        "git" { "git" }
+                        "file" { "file" }
+                        _ { "curl" }
+                    };
+
+                    c.sources.insert(name, source);
+
+                    info(#fmt("changed source method: '%s' to '%s'", old,
+                         method));
+                }
+                none {
+                    error(#fmt("no such source: %s", name));
+                }
+            }
+        }
+        "rename" {
+            if vec::len(c.opts.free) < 5u {
+                cmd_usage();
+                ret;
+            }
+
+            let name = c.opts.free[3u];
+            let newn = c.opts.free[4u];
+
+            if !valid_pkg_name(name) {
+                error(#fmt("'%s' is an invalid source name", name));
+                ret;
+            }
+            if !valid_pkg_name(newn) {
+                error(#fmt("'%s' is an invalid source name", newn));
+                ret;
+            }
+
+            alt c.sources.find(name) {
+                some(source) {
+                    c.sources.remove(name);
+                    c.sources.insert(newn, source);
+                    info(#fmt("renamed source: %s to %s", name, newn));
+                }
+                none {
+                    error(#fmt("no such source: %s", name));
+                }
+            }
+        }
+        _ { cmd_usage(); }
+    }
 }
 
 fn cmd_usage() {
-    print("Usage: cargo <verb> [options] [args..]\n" +
-          " e.g.: cargo [init | sync]\n" +
-          " e.g.: cargo install [-g | -G] <package>
+    print("Usage: cargo <cmd> [options] [args..]
+e.g. cargo install <name>
 
-General:
-    init                    Reinitialize cargo in ~/.cargo
-    usage                   Display this message
-    sync [sources..]        Sync all sources (or specific sources)
+Where <cmd> is one of:
+    init, install, list, search, sources,
+    uninstall, usage
 
-Querying:
-    list [sources..]                        List sources and their packages
-                                            or a single source
-    search <name | '*'> [tags...]           Search packages
+Options:
 
-Packages:
-    install [options]                       Install a package from source
-                                            code in the current directory
-    install [options] [source/]<name>       Install a package by name
-    install [options] [source/]<uuid>       Install a package by uuid
-    install [options] <url>                 Install a package via curl (HTTP,
-                                            FTP, etc.) from an
-                                            .tar[.gz|bz2|xz] file
-    install [options] <url> [ref]           Install a package via git
-    install [options] <file>                Install a package directly from an
-                                            .tar[.gz|bz2|xz] file
-    uninstall [options] <name>              Remove a package by (meta) name
-    uninstall [options] <uuid>              Remove a package by (meta) uuid
-
-Package installation options:
-    --tests         Run crate tests before installing
-
-Package [un]installation options:
-    -g              Work at the user level (~/.cargo/bin/ instead of
-                    locally in ./.cargo/bin/ by default)
-    -G              Work at the system level (/usr/local/lib/cargo/bin/)
-
-Other:
-    -h, --help     Display this message
+    -h, --help                  Display this message
+    <cmd> -h, <cmd> --help      Display help for <cmd>
 ");
+}
+
+fn cmd_usage_init() {
+    print("cargo init
+
+Re-initialize cargo in ~/.cargo. Clears all sources and then adds the
+default sources from <www.rust-lang.org/sources.json>.");
+}
+
+fn cmd_usage_install() {
+    print("cargo install
+cargo install [source/]<name>[@version]
+cargo install [source/]<uuid>[@version]
+cargo install <git url> [ref]
+cargo install <tarball url>
+cargo install <tarball file>
+
+Options:
+    --test      Run crate tests before installing
+    -g          Install to the user level (~/.cargo/bin/ instead of
+                locally in ./.cargo/bin/ by default)
+    -G          Install to the system level (/usr/local/lib/cargo/bin/)
+
+Install a crate. If no arguments are supplied, it installs from
+the current working directory. If a source is provided, only install
+from that source, otherwise it installs from any source.");
+}
+
+fn cmd_usage_uninstall() {
+    print("cargo uninstall [source/]<name>[@version]
+cargo uninstall [source/]<uuid>[@version]
+cargo uninstall <meta-name>[@version]
+cargo uninstall <meta-uuid>[@version]
+
+Options:
+    -g          Remove from the user level (~/.cargo/bin/ instead of
+                locally in ./.cargo/bin/ by default)
+    -G          Remove from the system level (/usr/local/lib/cargo/bin/)
+
+Remove a crate. If a source is provided, only remove
+from that source, otherwise it removes from any source.
+If a crate was installed directly (git, tarball, etc.), you can remove
+it by metadata.");
+}
+
+fn cmd_usage_list() {
+    print("cargo list [sources..]
+
+If no arguments are provided, list all sources and their packages.
+If source names are provided, list those sources and their packages.
+");
+}
+
+fn cmd_usage_search() {
+    print("cargo search <query | '*'> [tags..]
+
+Search packages.");
+}
+
+fn cmd_usage_sources() {
+    print("cargo sources
+cargo sources add <name> <url>
+cargo sources remove <name>
+cargo sources rename <name> <new>
+cargo sources set-url <name> <url>
+cargo sources set-method <name> <method>
+
+If no arguments are supplied, list all sources (but not their packages).
+
+Commands:
+    add             Add a source. The source method will be guessed
+                    from the URL.
+    remove          Remove a source.
+    rename          Rename a source.
+    set-url         Change the URL for a source.
+    set-method      Change the method for a source.");
 }
 
 fn main(argv: [str]) {
     let o = build_cargo_options(argv);
 
-    if vec::len(o.free) < 2u || o.help {
+    if vec::len(o.free) < 2u {
+        cmd_usage();
+        ret;
+    }
+    if o.help {
+        alt o.free[1] {
+            "init" { cmd_usage_init(); }
+            "install" { cmd_usage_install(); }
+            "uninstall" { cmd_usage_uninstall(); }
+            "list" { cmd_usage_list(); }
+            "search" { cmd_usage_search(); }
+            "sources" { cmd_usage_sources(); }
+            _ { cmd_usage(); }
+        }
+        ret;
+    }
+    if o.free[1] == "usage" {
         cmd_usage();
         ret;
     }
 
     let mut c = configure(o);
-    let mut sources = c.sources;
     let home = c.root;
+    let first_time = os::path_exists(path::connect(home, "sources.json"));
 
-    if !os::path_exists(path::connect(home, "sources.json")) {
+    if !first_time && o.free[1] != "init" {
         cmd_init(c);
-        try_parse_sources(path::connect(home, "sources.json"), sources);
-        try_parse_sources(path::connect(home, "local-sources.json"), sources);
-
-        for sources.each_value { |v|
-            sync_one(c, v.name, v);
-        }
 
         // FIXME: shouldn't need to reconfigure
         c = configure(o);
@@ -1165,8 +1918,10 @@ fn main(argv: [str]) {
         "uninstall" { cmd_uninstall(c); }
         "list" { cmd_list(c); }
         "search" { cmd_search(c); }
-        "sync" { cmd_sync(c); }
-        "usage" { cmd_usage(); }
+        "sources" { cmd_sources(c); }
         _ { cmd_usage(); }
     }
+
+    dump_cache(c);
+    dump_sources(c);
 }
