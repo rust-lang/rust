@@ -661,7 +661,7 @@ fn configure(opts: options) -> cargo {
         installdir: p,
         bindir: path::connect(p, "bin"),
         libdir: path::connect(p, "lib"),
-        workdir: path::connect(home, "work"),
+        workdir: path::connect(p, "work"),
         sourcedir: path::connect(home, "sources"),
         sources: sources,
         mut current_install: "",
