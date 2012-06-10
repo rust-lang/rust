@@ -1456,7 +1456,7 @@ mod test {
             buf_read(sock_buf as io::reader,
                      vec::len(resp_buf))
         };
-        
+
         let actual_req = comm::recv(server_result_po);
         log(debug, #fmt("REQ: expected: '%s' actual: '%s'",
                        expected_req, actual_req));
@@ -1468,12 +1468,10 @@ mod test {
 
     fn buf_write(+w: io::writer, val: str) {
         log(debug, #fmt("BUF_WRITE: val len %?", str::len(val)));
-        str::as_slice(val, 0u, str::len(val) -1u) {|val_slice|
-            str::byte_slice(val_slice) {|b_slice|
-                log(debug, #fmt("BUF_WRITE: b_slice len %?",
-                                vec::len(b_slice)));
-                w.write(b_slice)
-            }
+        str::byte_slice(val) {|b_slice|
+            log(debug, #fmt("BUF_WRITE: b_slice len %?",
+                            vec::len(b_slice)));
+            w.write(b_slice)
         }
     }
 
