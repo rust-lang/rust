@@ -46,7 +46,7 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
     while !is_last(peek(st)) {
         rslt += str::from_byte(next_byte(st));
     }
-    ret rslt;
+    ret @rslt;
 }
 
 
@@ -210,7 +210,7 @@ fn parse_bound_region(st: @pstate) -> ty::bound_region {
     alt check next(st) {
       's' { ty::br_self }
       'a' { ty::br_anon }
-      '[' { ty::br_named(parse_str(st, ']')) }
+      '[' { ty::br_named(@parse_str(st, ']')) }
     }
 }
 
@@ -322,7 +322,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) == '[');
         let mut fields: [ty::field] = [];
         while peek(st) != ']' {
-            let name = parse_str(st, '=');
+            let name = @parse_str(st, '=');
             fields += [{ident: name, mt: parse_mt(st, conv)}];
         }
         st.pos = st.pos + 1u;

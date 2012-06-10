@@ -45,7 +45,7 @@ of `f`.
 */
 
 import dvec::{dvec, extensions};
-import std::map::{hashmap, int_hash, str_hash};
+import std::map::{hashmap, int_hash, str_hash, box_str_hash};
 import syntax::{visit, ast_util};
 import syntax::print::pprust::{expr_to_str};
 import visit::vt;
@@ -134,9 +134,9 @@ enum relevant_def { rdef_var(node_id), rdef_self }
 type capture_info = {ln: live_node, is_move: bool, rv: relevant_def};
 
 enum var_kind {
-    vk_arg(node_id, str, rmode),
-    vk_local(node_id, str),
-    vk_field(str),
+    vk_arg(node_id, ident, rmode),
+    vk_local(node_id, ident),
+    vk_field(ident),
     vk_self,
     vk_implicit_ret
 }
@@ -158,7 +158,7 @@ class ir_maps {
     let mut num_vars: uint;
     let live_node_map: hashmap<node_id, live_node>;
     let variable_map: hashmap<node_id, variable>;
-    let field_map: hashmap<str, variable>;
+    let field_map: hashmap<ident, variable>;
     let capture_map: hashmap<node_id, @[capture_info]>;
     let mut var_kinds: [var_kind];
     let mut lnks: [live_node_kind];
@@ -174,7 +174,7 @@ class ir_maps {
         self.live_node_map = int_hash();
         self.variable_map = int_hash();
         self.capture_map = int_hash();
-        self.field_map = str_hash();
+        self.field_map = box_str_hash();
         self.var_kinds = [];
         self.lnks = [];
     }
@@ -227,12 +227,12 @@ class ir_maps {
         }
     }
 
-    fn variable_name(var: variable) -> str {
+    fn variable_name(var: variable) -> ident {
         alt self.var_kinds[*var] {
           vk_local(_, name) | vk_arg(_, name, _) {name}
-          vk_field(name) {"self." + name}
-          vk_self {"self"}
-          vk_implicit_ret {"<implicit-ret>"}
+          vk_field(name) {@("self." + *name)}
+          vk_self {@"self"}
+          vk_implicit_ret {@"<implicit-ret>"}
         }
     }
 
@@ -1208,7 +1208,8 @@ class liveness {
         }
     }
 
-    fn as_self_field(expr: @expr, fld: str) -> option<(live_node,variable)> {
+    fn as_self_field(expr: @expr,
+                     fld: ident) -> option<(live_node,variable)> {
         // If we checking a constructor, then we treat self.f as a
         // variable.  we use the live_node id that will be assigned to
         // the reference to self but the variable id for `f`.
@@ -1429,7 +1430,7 @@ impl check_methods for @liveness {
               none { /* ok */ }
               some(lnk_exit) {
                 self.tcx.sess.span_err(
-                    sp, #fmt["field `self.%s` is never initialized", nm]);
+                    sp, #fmt["field `self.%s` is never initialized", *nm]);
               }
               some(lnk) {
                 self.report_illegal_read(
@@ -1605,13 +1606,13 @@ impl check_methods for @liveness {
                 self.tcx.sess.span_err(
                     move_span,
                     #fmt["illegal move from argument `%s`, which is not \
-                          copy or move mode", name]);
+                          copy or move mode", *name]);
                 ret;
               }
               vk_field(name) {
                 self.tcx.sess.span_err(
                     move_span,
-                    #fmt["illegal move from field `%s`", name]);
+                    #fmt["illegal move from field `%s`", *name]);
                 ret;
               }
               vk_local(*) | vk_self | vk_implicit_ret {
@@ -1643,12 +1644,12 @@ impl check_methods for @liveness {
           lnk_freevar(span) {
             self.tcx.sess.span_err(
                 span,
-                #fmt["capture of %s: `%s`", msg, name]);
+                #fmt["capture of %s: `%s`", msg, *name]);
           }
           lnk_expr(span) {
             self.tcx.sess.span_err(
                 span,
-                #fmt["use of %s: `%s`", msg, name]);
+                #fmt["use of %s: `%s`", msg, *name]);
           }
           lnk_exit |
           lnk_vdef(_) {
@@ -1659,9 +1660,9 @@ impl check_methods for @liveness {
         }
     }
 
-    fn should_warn(var: variable) -> option<str> {
+    fn should_warn(var: variable) -> option<ident> {
         let name = (*self.ir).variable_name(var);
-        if name[0] == ('_' as u8) {none} else {some(name)}
+        if (*name)[0] == ('_' as u8) {none} else {some(name)}
     }
 
     fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: live_node) {
@@ -1712,10 +1713,10 @@ impl check_methods for @liveness {
                 if is_assigned {
                     self.tcx.sess.span_warn(
                         sp, #fmt["variable `%s` is assigned to, \
-                                  but never used", name]);
+                                  but never used", *name]);
                 } else {
                     self.tcx.sess.span_warn(
-                        sp, #fmt["unused variable: `%s`", name]);
+                        sp, #fmt["unused variable: `%s`", *name]);
                 }
             }
             ret true;
@@ -1728,7 +1729,7 @@ impl check_methods for @liveness {
             for self.should_warn(var).each { |name|
                 self.tcx.sess.span_warn(
                     sp,
-                    #fmt["value assigned to `%s` is never read", name]);
+                    #fmt["value assigned to `%s` is never read", *name]);
             }
         }
     }

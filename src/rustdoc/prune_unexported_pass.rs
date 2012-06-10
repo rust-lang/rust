@@ -114,7 +114,7 @@ fn is_exported_from_mod(
           ast_map::node_item(item, _) {
             alt item.node {
               ast::item_mod(m) {
-                ast_util::is_exported(item_name, m)
+                ast_util::is_exported(@item_name, m)
               }
               _ {
                 fail "is_exported_from_mod: not a mod";
@@ -131,7 +131,7 @@ fn is_exported_from_crate(
     item_name: str
 ) -> bool {
     astsrv::exec(srv) {|ctxt|
-        ast_util::is_exported(item_name, ctxt.ast.node.module)
+        ast_util::is_exported(@item_name, ctxt.ast.node.module)
     }
 }
 

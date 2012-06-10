@@ -291,24 +291,24 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                    sha: sha1) -> link_meta {
 
     type provided_metas =
-        {name: option<str>,
-         vers: option<str>,
+        {name: option<@str>,
+         vers: option<@str>,
          cmh_items: [@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let mut name: option<str> = none;
-        let mut vers: option<str> = none;
+        let mut name: option<@str> = none;
+        let mut vers: option<@str> = none;
         let mut cmh_items: [@ast::meta_item] = [];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each {|meta|
-            if attr::get_meta_item_name(meta) == "name" {
+            if *attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
                   none { cmh_items += [meta]; }
                 }
-            } else if attr::get_meta_item_name(meta) == "vers" {
+            } else if *attr::get_meta_item_name(meta) == "vers" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { vers = some(v); }
                   none { cmh_items += [meta]; }
@@ -321,7 +321,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: ast::crate,
                               metas: provided_metas,
-                              dep_hashes: [str]) -> str {
+                              dep_hashes: [@str]) -> str {
         fn len_and_str(s: str) -> str {
             ret #fmt["%u_%s", str::len(s), s];
         }
@@ -337,10 +337,10 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
             let m = m_;
             alt m.node {
               ast::meta_name_value(key, value) {
-                sha.input_str(len_and_str(key));
+                sha.input_str(len_and_str(*key));
                 sha.input_str(len_and_str_lit(value));
               }
-              ast::meta_word(name) { sha.input_str(len_and_str(name)); }
+              ast::meta_word(name) { sha.input_str(len_and_str(*name)); }
               ast::meta_list(_, _) {
                 // FIXME (#607): Implement this
                 fail "unimplemented meta_item variant";
@@ -349,7 +349,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
         }
 
         for dep_hashes.each {|dh|
-            sha.input_str(len_and_str(dh));
+            sha.input_str(len_and_str(*dh));
         }
 
         ret truncated_sha1_result(sha);
@@ -362,7 +362,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
-                       output: str, metas: provided_metas) -> str {
+                       output: str, metas: provided_metas) -> @str {
         ret alt metas.name {
               some(v) { v }
               none {
@@ -378,19 +378,19 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                         str::connect(os, ".")
                     };
                 warn_missing(sess, "name", name);
-                name
+                @name
               }
             };
     }
 
     fn crate_meta_vers(sess: session, _crate: ast::crate,
-                       metas: provided_metas) -> str {
+                       metas: provided_metas) -> @str {
         ret alt metas.vers {
               some(v) { v }
               none {
                 let vers = "0.0";
                 warn_missing(sess, "vers", vers);
-                vers
+                @vers
               }
             };
     }
@@ -417,7 +417,7 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t,
     // to be independent of one another in the crate.
 
     sha.reset();
-    sha.input_str(link_meta.name);
+    sha.input_str(*link_meta.name);
     sha.input_str("-");
     sha.input_str(link_meta.extras_hash);
     sha.input_str("-");
@@ -482,7 +482,7 @@ fn mangle(ss: path) -> str {
 
     for ss.each {|s|
         alt s { path_name(s) | path_mod(s) {
-          let sani = sanitize(s);
+          let sani = sanitize(*s);
           n += #fmt["%u%s", str::len(sani), sani];
         } }
     }
@@ -490,33 +490,34 @@ fn mangle(ss: path) -> str {
     n
 }
 
-fn exported_name(path: path, hash: str, vers: str) -> str {
+fn exported_name(path: path, hash: @str, vers: @str) -> str {
     ret mangle(path + [path_name(hash)] + [path_name(vers)]);
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
     let hash = get_symbol_hash(ccx, t);
-    ret exported_name(path, hash, ccx.link_meta.vers);
+    ret exported_name(path, @hash, ccx.link_meta.vers);
 }
 
-fn mangle_internal_name_by_type_only(ccx: @crate_ctxt, t: ty::t, name: str) ->
+fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
+                                     t: ty::t, name: @str) ->
    str {
-    let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
+    let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    ret mangle([path_name(name), path_name(s), path_name(hash)]);
+    ret mangle([path_name(name), path_name(s), path_name(@hash)]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
-                                        flav: str) -> str {
-    ret mangle(path + [path_name(ccx.names(flav))]);
+                                        flav: @str) -> str {
+    ret mangle(path + [path_name(@ccx.names(*flav))]);
 }
 
 fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
     ret mangle(path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
-    ret ccx.names(flav);
+fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @str) -> str {
+    ret ccx.names(*flav);
 }
 
 // If the user wants an exe generated we need to invoke
@@ -552,8 +553,8 @@ fn link_binary(sess: session,
     let output = if sess.building_library {
         let long_libname =
             os::dll_filename(#fmt("%s-%s-%s",
-                                  lm.name, lm.extras_hash, lm.vers));
-        #debug("link_meta.name:  %s", lm.name);
+                                  *lm.name, lm.extras_hash, *lm.vers));
+        #debug("link_meta.name:  %s", *lm.name);
         #debug("long_libname: %s", long_libname);
         #debug("out_filename: %s", out_filename);
         #debug("dirname(out_filename): %s", path::dirname(out_filename));

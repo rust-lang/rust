@@ -187,7 +187,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
                 if !def.reexp { cont; }
                 alt def_map.find(def.id) {
                   some(itemtag) {
-                    reexportdocs += [(name, itemtag)];
+                    reexportdocs += [(*name, itemtag)];
                   }
                   _ {}
                 }
@@ -231,9 +231,9 @@ fn find_reexport_impl_docs(
           some(ast_map::node_item(item, path)) {
             let path = ast_map::path_to_str(*path);
             if str::is_empty(path) {
-                item.ident
+                *item.ident
             } else {
-                path + "::" + item.ident
+                path + "::" + *item.ident
             }
           }
           _ {
@@ -241,7 +241,7 @@ fn find_reexport_impl_docs(
             ""
           }
         };
-        let ident = i.ident;
+        let ident = *i.ident;
         let doc = alt check def_map.find(i.did) {
           some(doc) { doc }
         };

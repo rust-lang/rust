@@ -1,5 +1,5 @@
 import codemap::span;
-import std::map::{hashmap, str_hash};
+import std::map::{hashmap, str_hash, box_str_hash};
 import dvec::{dvec, extensions};
 
 import base::*;
@@ -146,7 +146,7 @@ fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 
 fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
     let res: binders =
-        {real_binders: str_hash::<selector>(),
+        {real_binders: box_str_hash::<selector>(),
          literal_ast_matchers: dvec()};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
@@ -162,7 +162,7 @@ bindings. Most of the work is done in p_t_s, which generates the
 selectors. */
 
 fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
-    let res = str_hash::<arb_depth<matchable>>();
+    let res = box_str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
     for b.literal_ast_matchers.each {|sel|
         alt sel(match_expr(e)) { none { ret none; } _ { } }
@@ -240,7 +240,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: option<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
-    let idents: hashmap<ident, ()> = str_hash::<()>();
+    let idents: hashmap<ident, ()> = box_str_hash::<()>();
     fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
                   idents: hashmap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }
@@ -282,8 +282,8 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                         let len = vec::len(*ms);
                         if old_len != len {
                             let msg =
-                                #fmt["'%s' occurs %u times, but ", fv, len] +
-                                    #fmt["'%s' occurs %u times", old_name,
+                                #fmt["'%s' occurs %u times, but ", *fv, len] +
+                                    #fmt["'%s' occurs %u times", *old_name,
                                          old_len];
                             cx.span_fatal(repeat_me.span, msg);
                         }
@@ -672,7 +672,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> base::macro_def {
     let args = get_mac_args_no_max(cx, sp, arg, 0u, "macro");
 
-    let mut macro_name: option<str> = none;
+    let mut macro_name: option<@str> = none;
     let mut clauses: [@clause] = [];
     for args.each {|arg|
         alt arg.node {

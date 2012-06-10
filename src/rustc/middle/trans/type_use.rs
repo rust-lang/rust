@@ -76,7 +76,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       }
       ast_map::node_native_item(i@@{node: native_item_fn(_, _), _}, abi, _) {
         if abi == native_abi_rust_intrinsic {
-            let flags = alt check i.ident {
+            let flags = alt check *i.ident {
               "visit_ty" { 3u }
               "size_of" |  "pref_align_of" | "min_align_of" |
               "init" |  "reinterpret_cast" { use_repr }

@@ -9,12 +9,12 @@ import std::map::hashmap;
 export pat_binding_ids, pat_bindings, pat_id_map;
 export pat_is_variant;
 
-type pat_id_map = std::map::hashmap<str, node_id>;
+type pat_id_map = std::map::hashmap<ident, node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(dm: resolve::def_map, pat: @pat) -> pat_id_map {
-    let map = std::map::str_hash();
+    let map = std::map::box_str_hash();
     pat_bindings(dm, pat) {|p_id, _s, n|
       map.insert(path_to_ident(n), p_id);
     };

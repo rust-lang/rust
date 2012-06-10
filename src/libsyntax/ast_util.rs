@@ -23,7 +23,10 @@ pure fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
 pure fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
-pure fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
+pure fn path_name_i(idents: [ident]) -> str {
+    // FIXME: Bad copies
+    str::connect(idents.map({|i|*i}), "::")
+}
 
 pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
 
@@ -380,7 +383,7 @@ fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
     // dtor has one argument, of type ()
     {inputs: [{mode: ast::expl(ast::by_ref),
-               ty: nil_t, ident: "_", id: 0}],
+               ty: nil_t, ident: @"_", id: 0}],
      output: nil_t, purity: impure_fn, cf: return_val, constraints: []}
 }
 

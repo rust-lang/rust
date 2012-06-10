@@ -210,7 +210,7 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     fn eq_item(data: [u8], s: str) -> bool {
         ret str::eq(str::from_bytes(data), s);
     }
-    let s = str::connect(path, "::");
+    let s = ast_util::path_name_i(path);
     let md = ebml::doc(data);
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
@@ -235,10 +235,10 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
     ebml::docs(path_doc) {|tag, elt_doc|
         if tag == tag_path_elt_mod {
             let str = ebml::doc_as_str(elt_doc);
-            result += [ast_map::path_mod(str)];
+            result += [ast_map::path_mod(@str)];
         } else if tag == tag_path_elt_name {
             let str = ebml::doc_as_str(elt_doc);
-            result += [ast_map::path_name(str)];
+            result += [ast_map::path_name(@str)];
         } else {
             // ignore tag_path_len element
         }
@@ -249,7 +249,7 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
 
 fn item_name(item: ebml::doc) -> ast::ident {
     let name = ebml::get_doc(item, tag_paths_data_name);
-    str::from_bytes(ebml::doc_data(name))
+    @str::from_bytes(ebml::doc_data(name))
 }
 
 fn lookup_item_name(data: @[u8], id: ast::node_id) -> ast::ident {
@@ -302,7 +302,8 @@ fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     item_impl_iface(lookup_item(id, cdata.data), tcx, cdata)
 }
 
-fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
+fn get_impl_method(cdata: cmd, id: ast::node_id,
+                   name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
     ebml::tagged_docs(find_item(id, items), tag_item_impl_method) {|mid|
@@ -314,13 +315,14 @@ fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
     option::get(found)
 }
 
-fn get_class_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
+fn get_class_method(cdata: cmd, id: ast::node_id,
+                    name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
     let cls_items = alt maybe_find_item(id, items) {
             some(it) { it }
             none { fail (#fmt("get_class_method: class id not found \
-             when looking up method %s", name)) }};
+             when looking up method %s", *name)) }};
     ebml::tagged_docs(cls_items, tag_item_iface_method) {|mid|
         let m_did = class_member_id(mid, cdata);
         if item_name(mid) == name {
@@ -329,7 +331,7 @@ fn get_class_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
     }
     alt found {
       some(found) { found }
-      none { fail (#fmt("get_class_method: no method named %s", name)) }
+      none { fail (#fmt("get_class_method: no method named %s", *name)) }
     }
 }
 
@@ -574,7 +576,7 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
     ebml::tagged_docs(md, tag_meta_item_word) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
-        items += [attr::mk_word_item(n)];
+        items += [attr::mk_word_item(@n)];
     };
     ebml::tagged_docs(md, tag_meta_item_name_value) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
@@ -583,13 +585,13 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
         let v = str::from_bytes(ebml::doc_data(vd));
         // FIXME (#623): Should be able to decode meta_name_value variants,
         // but currently the encoder just drops them
-        items += [attr::mk_name_value_item_str(n, v)];
+        items += [attr::mk_name_value_item_str(@n, v)];
     };
     ebml::tagged_docs(md, tag_meta_item_list) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
-        items += [attr::mk_list_item(n, subitems)];
+        items += [attr::mk_list_item(@n, subitems)];
     };
     ret items;
 }
@@ -620,8 +622,8 @@ fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
     }
 }
 
-fn list_crate_attributes(md: ebml::doc, hash: str, out: io::writer) {
-    out.write_str(#fmt("=Crate Attributes (%s)=\n", hash));
+fn list_crate_attributes(md: ebml::doc, hash: @str, out: io::writer) {
+    out.write_str(#fmt("=Crate Attributes (%s)=\n", *hash));
 
     for get_attributes(md).each {|attr|
         out.write_str(#fmt["%s\n", pprust::attribute_to_str(attr)]);
@@ -635,7 +637,7 @@ fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
 }
 
 type crate_dep = {cnum: ast::crate_num, name: ast::ident,
-                  vers: str, hash: str};
+                  vers: @str, hash: @str};
 
 fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let mut deps: [crate_dep] = [];
@@ -647,9 +649,9 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     }
     ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
         deps += [{cnum: crate_num,
-                  name: docstr(depdoc, tag_crate_dep_name),
-                  vers: docstr(depdoc, tag_crate_dep_vers),
-                  hash: docstr(depdoc, tag_crate_dep_hash)}];
+                  name: @docstr(depdoc, tag_crate_dep_name),
+                  vers: @docstr(depdoc, tag_crate_dep_vers),
+                  hash: @docstr(depdoc, tag_crate_dep_hash)}];
         crate_num += 1;
     };
     ret deps;
@@ -660,24 +662,24 @@ fn list_crate_deps(data: @[u8], out: io::writer) {
 
     for get_crate_deps(data).each {|dep|
         out.write_str(#fmt["%d %s-%s-%s\n",
-                           dep.cnum, dep.name, dep.hash, dep.vers]);
+                           dep.cnum, *dep.name, *dep.hash, *dep.vers]);
     }
 
     out.write_str("\n");
 }
 
-fn get_crate_hash(data: @[u8]) -> str {
+fn get_crate_hash(data: @[u8]) -> @str {
     let cratedoc = ebml::doc(data);
     let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
-    ret str::from_bytes(ebml::doc_data(hashdoc));
+    ret @str::from_bytes(ebml::doc_data(hashdoc));
 }
 
-fn get_crate_vers(data: @[u8]) -> str {
+fn get_crate_vers(data: @[u8]) -> @str {
     let attrs = decoder::get_crate_attributes(data);
     ret alt attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), "vers") {
       some(ver) { ver }
-      none { "0.0" }
+      none { @"0.0" }
     };
 }
 

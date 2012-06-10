@@ -516,7 +516,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
-    #debug["[ %s ]", fcx.name];
+    #debug["[ %s ]", *fcx.name];
     #debug["*At beginning: stmt = %s", stmt_to_str(*s)];
     #debug["*prestate = %s", tritv::to_str(stmt_ann.states.prestate)];
     #debug["*poststate = %s", tritv::to_str(stmt_ann.states.prestate)];

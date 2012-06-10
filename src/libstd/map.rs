@@ -2,6 +2,7 @@
 
 import chained::hashmap;
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
+export box_str_hash;
 export bytes_hash, int_hash, uint_hash, set_add;
 export hash_from_vec, hash_from_strs, hash_from_bytes;
 export hash_from_ints, hash_from_uints;
@@ -290,6 +291,11 @@ fn hashmap<K: const, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
 #[doc = "Construct a hashmap for string keys"]
 fn str_hash<V: copy>() -> hashmap<str, V> {
     ret hashmap(str::hash, str::eq);
+}
+
+#[doc = "Construct a hashmap for boxed string keys"]
+fn box_str_hash<V: copy>() -> hashmap<@str, V> {
+    ret hashmap({|x: @str|str::hash(*x)}, {|x,y|str::eq(*x,*y)});
 }
 
 #[doc = "Construct a hashmap for byte string keys"]

@@ -513,8 +513,8 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let mut name;
     //XXX this triggers duplicate LLVM symbols
     if false /*ccx.sess.opts.debuginfo*/ {
-        name = mangle_internal_name_by_type_only(ccx, t, "tydesc");
-    } else { name = mangle_internal_name_by_seq(ccx, "tydesc"); }
+        name = mangle_internal_name_by_type_only(ccx, t, @"tydesc");
+    } else { name = mangle_internal_name_by_seq(ccx, @"tydesc"); }
     note_unique_llvm_symbol(ccx, name);
     let gvar = str::as_c_str(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
@@ -541,9 +541,9 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
     let mut fn_nm;
     //XXX this triggers duplicate LLVM symbols
     if false /*ccx.sess.opts.debuginfo*/ {
-        fn_nm = mangle_internal_name_by_type_only(ccx, t, "glue_" + name);
+        fn_nm = mangle_internal_name_by_type_only(ccx, t, @("glue_" + name));
     } else {
-        fn_nm = mangle_internal_name_by_seq(ccx, "glue_" + name);
+        fn_nm = mangle_internal_name_by_seq(ccx, @("glue_" + name));
     }
     note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
@@ -697,8 +697,8 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
-    assert bcx.ccx().tcx.intrinsic_ifaces.contains_key("ty_visitor");
-    let (iid, ty) = bcx.ccx().tcx.intrinsic_ifaces.get("ty_visitor");
+    assert bcx.ccx().tcx.intrinsic_ifaces.contains_key(@"ty_visitor");
+    let (iid, ty) = bcx.ccx().tcx.intrinsic_ifaces.get(@"ty_visitor");
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
     bcx = reflect::emit_calls_to_iface_visit_ty(bcx, t, v, iid);
     build_return(bcx);
@@ -1495,7 +1495,7 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
         // to actually generate from this?
         C_integral(T_int_ty(cx, t), i as u64, True)
       }
-      ast::lit_float(fs, t) { C_floating(fs, T_float_ty(cx, t)) }
+      ast::lit_float(fs, t) { C_floating(*fs, T_float_ty(cx, t)) }
       ast::lit_bool(b) { C_bool(b) }
       ast::lit_nil { C_nil() }
       ast::lit_str(s) {
@@ -2158,7 +2158,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
       ast_map::node_ctor(nm, _, ct, pt) { (pt, nm, alt ct {
                   ast_map::res_ctor(_, _, sp) { sp }
                   ast_map::class_ctor(ct_, _) { ct_.span }}) }
-      ast_map::node_dtor(_, dtor, _, pt) {(pt, "drop", dtor.span)}
+      ast_map::node_dtor(_, dtor, _, pt) {(pt, @"drop", dtor.span)}
       ast_map::node_expr(*) { ccx.tcx.sess.bug("Can't monomorphize an expr") }
       ast_map::node_export(*) {
           ccx.tcx.sess.bug("Can't monomorphize an export")
@@ -2184,7 +2184,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
     }
     ccx.monomorphizing.insert(fn_id, depth + 1u);
 
-    let pt = *pt + [path_name(ccx.names(name))];
+    let pt = *pt + [path_name(@ccx.names(*name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
 
     let mk_lldecl = {||
@@ -3382,7 +3382,7 @@ fn trans_rec(bcx: block, fields: [ast::field],
     let mut temp_cleanups = [];
     for fields.each {|fld|
         let ix = option::get(vec::position(ty_fields, {|ft|
-            str::eq(fld.node.ident, ft.ident)
+            str::eq(*fld.node.ident, *ft.ident)
         }));
         let dst = GEPi(bcx, addr, [0u, ix]);
         bcx = trans_expr_save_in(bcx, fld.node.expr, dst);
@@ -3395,7 +3395,7 @@ fn trans_rec(bcx: block, fields: [ast::field],
         bcx = cx;
         // Copy over inherited fields
         for ty_fields.eachi {|i, tf|
-            if !vec::any(fields, {|f| str::eq(f.node.ident, tf.ident)}) {
+            if !vec::any(fields, {|f| str::eq(*f.node.ident, *tf.ident)}) {
                 let dst = GEPi(bcx, addr, [0u, i]);
                 let base = GEPi(bcx, base_val, [0u, i]);
                 let val = load_if_immediate(bcx, base, tf.mt.ty);
@@ -3841,7 +3841,7 @@ fn trans_log(log_ex: @ast::expr, lvl: @ast::expr,
         ccx.module_data.get(modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
-            ccx, modpath, "loglevel");
+            ccx, modpath, @"loglevel");
         let global = str::as_c_str(s, {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
         });
@@ -4320,7 +4320,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         option::iter(simple_name) {|name|
-            str::as_c_str(name, {|buf|
+            str::as_c_str(*name, {|buf|
                 llvm::LLVMSetValueName(val, buf)
             });
         }
@@ -4604,7 +4604,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     let fn_args = vec::map(variant.node.args, {|varg|
         {mode: ast::expl(ast::by_copy),
          ty: varg.ty,
-         ident: "arg",
+         ident: @"arg",
          id: varg.id}
     });
     let fcx = new_fn_ctxt_w_id(ccx, [], llfndecl, variant.node.id,
@@ -5122,7 +5122,7 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id) -> str {
      some(s) { s }
      none    {
          let s = mangle_exported_name(ccx, path +
-           [path_name(ccx.names("dtor"))], ty::node_id_to_type(ccx.tcx, id));
+           [path_name(@ccx.names("dtor"))], ty::node_id_to_type(ccx.tcx, id));
          ccx.item_symbols.insert(id, s);
          s
      }
@@ -5164,7 +5164,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 // def_ids otherwise -- one to identify the type, and one to
                 // find the dtor symbol.
                 let t = ty::node_id_to_type(ccx.tcx, dtor_id);
-                register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
+                register_fn_full(ccx, i.span, my_path + [path_name(@"dtor")],
                                  i.id, t)
               }
             }
@@ -5172,7 +5172,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
           ast_map::node_method(m, impl_id, pth) {
             exprt = true;
             let mty = ty::node_id_to_type(ccx.tcx, id);
-            let pth = *pth + [path_name(ccx.names("meth")),
+            let pth = *pth + [path_name(@ccx.names("meth")),
                               path_name(m.ident)];
             let llfn = register_fn_full(ccx, m.span, pth, id, mty);
             set_inline_hint_if_appr(m.attrs, llfn);
@@ -5248,7 +5248,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
         let path = item_path(ccx, it);
         for vec::each(variants) {|variant|
             let p = path + [path_name(variant.node.name),
-                            path_name("discrim")];
+                            path_name(@"discrim")];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
             note_unique_llvm_symbol(ccx, s);
@@ -5376,7 +5376,7 @@ fn decl_crate_map(sess: session::session, mapmeta: link_meta,
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
     let mapname = if sess.building_library {
-        mapmeta.name + "_" + mapmeta.vers + "_" + mapmeta.extras_hash
+        *mapmeta.name + "_" + *mapmeta.vers + "_" + mapmeta.extras_hash
     } else { "toplevel" };
     let sym_name = "_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
@@ -5395,8 +5395,8 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     while cstore::have_crate_data(cstore, i) {
         let cdata = cstore::get_crate_data(cstore, i);
         let nm = "_rust_crate_map_" + cdata.name +
-            "_" + cstore::get_crate_vers(cstore, i) +
-            "_" + cstore::get_crate_hash(cstore, i);
+            "_" + *cstore::get_crate_vers(cstore, i) +
+            "_" + *cstore::get_crate_hash(cstore, i);
         let cr = str::as_c_str(nm, {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
@@ -5506,7 +5506,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.name + ".rc";
+    let llmod_id = *link_meta.name + ".rc";
 
     let llmod = str::as_c_str(llmod_id, {|buf|
         llvm::LLVMModuleCreateWithNameInContext

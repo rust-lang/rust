@@ -9,7 +9,7 @@ type syntax_expander_ =
 type syntax_expander = {
     expander: syntax_expander_,
     span: option<span>};
-type macro_def = {ident: str, ext: syntax_extension};
+type macro_def = {ident: ast::ident, ext: syntax_extension};
 type macro_definer =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
 type item_decorator =
@@ -150,7 +150,7 @@ fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {
     alt expr.node {
       ast::expr_lit(l) {
         alt l.node {
-          ast::lit_str(s) { ret s; }
+          ast::lit_str(s) { ret *s; }
           _ { cx.span_fatal(l.span, error); }
         }
       }
