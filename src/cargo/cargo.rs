@@ -17,30 +17,30 @@ import vec;
 import getopts::{optflag, optopt, opt_present};
 
 type package = {
-    mut name: str,
-    mut uuid: str,
-    mut url: str,
-    mut method: str,
-    mut description: str,
-    mut ref: option<str>,
-    mut tags: [str],
-    mut versions: [(str, str)]
+    name: str,
+    uuid: str,
+    url: str,
+    method: str,
+    description: str,
+    ref: option<str>,
+    tags: [str],
+    versions: [(str, str)]
 };
 
 type local_package = {
-    mut name: str,
-    mut metaname: str,
-    mut version: str,
-    mut files: [str]
+    name: str,
+    metaname: str,
+    version: str,
+    files: [str]
 };
 
-type source = {
-    mut name: str,
+type source = @{
+    name: str,
     mut url: str,
     mut method: str,
     mut key: option<str>,
     mut keyfp: option<str>,
-    mut packages: [package]
+    mut packages: [mut package]
 };
 
 type cargo = {
@@ -58,13 +58,13 @@ type cargo = {
 };
 
 type crate = {
-    mut name: str,
-    mut vers: str,
-    mut uuid: str,
-    mut desc: option<str>,
-    mut sigs: option<str>,
-    mut crate_type: option<str>,
-    mut deps: [str]
+    name: str,
+    vers: str,
+    uuid: str,
+    desc: option<str>,
+    sigs: option<str>,
+    crate_type: option<str>,
+    deps: [str]
 };
 
 type options = {
@@ -350,13 +350,13 @@ fn load_crate(filename: str) -> option<crate> {
     alt (name, vers, uuid) {
         (some(name0), some(vers0), some(uuid0)) {
             some({
-                mut name: name0,
-                mut vers: vers0,
-                mut uuid: uuid0,
-                mut desc: desc,
-                mut sigs: sigs,
-                mut crate_type: crate_type,
-                mut deps: deps })
+                name: name0,
+                vers: vers0,
+                uuid: uuid0,
+                desc: desc,
+                sigs: sigs,
+                crate_type: crate_type,
+                deps: deps })
         }
         _ { ret none; }
     }
@@ -427,12 +427,13 @@ fn parse_source(name: str, j: json::json) -> source {
             if method == "file" {
                 url = os::make_absolute(url);
             }
-            ret { mut name: name,
-                  mut url: url,
-                  mut method: method,
-                  mut key: key,
-                  mut keyfp: keyfp,
-                  mut packages: [] };
+            ret @{
+                name: name,
+                mut url: url,
+                mut method: method,
+                mut key: key,
+                mut keyfp: keyfp,
+                mut packages: [mut] };
         }
         _ { fail "needed dict value in source"; }
     };
@@ -453,7 +454,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     }
 }
 
-fn load_one_source_package(&&src: source, p: map::hashmap<str, json::json>) {
+fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
     let name = alt p.find("name") {
         some(json::string(_n)) {
             if !valid_pkg_name(_n) {
@@ -529,36 +530,30 @@ fn load_one_source_package(&&src: source, p: map::hashmap<str, json::json>) {
     };
 
     let newpkg = {
-        mut name: name,
-        mut uuid: uuid,
-        mut url: url,
-        mut method: method,
-        mut description: description,
-        mut ref: ref,
-        mut tags: tags,
-        mut versions: []
+        name: name,
+        uuid: uuid,
+        url: url,
+        method: method,
+        description: description,
+        ref: ref,
+        tags: tags,
+        versions: []
     };
 
-    for src.packages.each { |pkg|
-        if pkg.uuid == uuid {
-            pkg.name = newpkg.name;
-            pkg.uuid = newpkg.uuid;
-            pkg.url = newpkg.url;
-            pkg.method = newpkg.method;
-            pkg.description = newpkg.description;
-            pkg.ref = newpkg.ref;
-            pkg.tags = newpkg.tags;
-            pkg.versions = newpkg.versions;
-            log(debug, "  updated package: " + src.name + "/" + name);
-            ret;
-        }
+    alt src.packages.position({ |pkg| pkg.uuid == uuid }) {
+      some(idx) {
+        src.packages[idx] = newpkg;
+        log(debug, "  updated package: " + src.name + "/" + name);
+      }
+      none {
+        vec::grow(src.packages, 1u, newpkg);
+      }
     }
 
-    vec::grow(src.packages, 1u, newpkg);
     log(debug, "  loaded package: " + src.name + "/" + name);
 }
 
-fn load_source_info(&c: cargo, &src: source) {
+fn load_source_info(c: cargo, src: source) {
     let dir = path::connect(c.sourcedir, src.name);
     let srcfile = path::connect(dir, "source.json");
     if !os::path_exists(srcfile) { ret; }
@@ -579,7 +574,7 @@ fn load_source_info(&c: cargo, &src: source) {
         }
     };
 }
-fn load_source_packages(&&c: cargo, &src: source) {
+fn load_source_packages(c: cargo, src: source) {
     log(debug, "loading source: " + src.name);
     let dir = path::connect(c.sourcedir, src.name);
     let pkgfile = path::connect(dir, "packages.json");
@@ -698,7 +693,7 @@ fn configure(opts: options) -> cargo {
     c
 }
 
-fn for_each_package(&c: cargo, b: fn(source, package)) {
+fn for_each_package(c: cargo, b: fn(source, package)) {
     for c.sources.each_value {|v|
         // FIXME (#2280): this temporary shouldn't be
         // necessary, but seems to be, for borrowing.
@@ -742,7 +737,7 @@ fn test_one_crate(_c: cargo, path: str, cf: str) {
   run_programs(buildpath);
 }
 
-fn install_one_crate(&c: cargo, path: str, cf: str) {
+fn install_one_crate(c: cargo, path: str, cf: str) {
     let buildpath = alt run_in_buildpath("installing", path,
                                          "/build", cf, []) {
       none { ret; }
@@ -782,7 +777,7 @@ fn rustc_sysroot() -> str {
     }
 }
 
-fn install_source(&c: cargo, path: str) {
+fn install_source(c: cargo, path: str) {
     #debug("source: %s", path);
     os::change_dir(path);
 
@@ -824,7 +819,7 @@ fn install_source(&c: cargo, path: str) {
     }
 }
 
-fn install_git(&c: cargo, wd: str, url: str, ref: option<str>) {
+fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
     run::program_output("git", ["clone", url, wd]);
     if option::is_some::<str>(ref) {
         let r = option::get::<str>(ref);
@@ -835,7 +830,7 @@ fn install_git(&c: cargo, wd: str, url: str, ref: option<str>) {
     install_source(c, wd);
 }
 
-fn install_curl(&c: cargo, wd: str, url: str) {
+fn install_curl(c: cargo, wd: str, url: str) {
     let tarpath = path::connect(wd, "pkg.tar");
     let p = run::program_output("curl", ["-f", "-s", "-o",
                                          tarpath, url]);
@@ -847,13 +842,13 @@ fn install_curl(&c: cargo, wd: str, url: str) {
     install_source(c, wd);
 }
 
-fn install_file(&c: cargo, wd: str, path: str) {
+fn install_file(c: cargo, wd: str, path: str) {
     run::program_output("tar", ["-x", "--strip-components=1",
                              "-C", wd, "-f", path]);
     install_source(c, wd);
 }
 
-fn install_package(&c: cargo, src: str, wd: str, pkg: package) {
+fn install_package(c: cargo, src: str, wd: str, pkg: package) {
     let url = copy pkg.url;
     let method = alt pkg.method {
         "git" { "git" }
@@ -871,7 +866,7 @@ fn install_package(&c: cargo, src: str, wd: str, pkg: package) {
     }
 }
 
-fn cargo_suggestion(&c: cargo, fallback: fn())
+fn cargo_suggestion(c: cargo, fallback: fn())
 {
     if c.sources.size() == 0u {
         error("no sources defined - you may wish to run " +
@@ -881,7 +876,7 @@ fn cargo_suggestion(&c: cargo, fallback: fn())
     fallback();
 }
 
-fn install_uuid(&c: cargo, wd: str, uuid: str) {
+fn install_uuid(c: cargo, wd: str, uuid: str) {
     let mut ps = [];
     for_each_package(c, { |s, p|
         if p.uuid == uuid {
@@ -905,7 +900,7 @@ fn install_uuid(&c: cargo, wd: str, uuid: str) {
     }
 }
 
-fn install_named(&c: cargo, wd: str, name: str) {
+fn install_named(c: cargo, wd: str, name: str) {
     let mut ps = [];
     for_each_package(c, { |s, p|
         if p.name == name {
@@ -929,7 +924,7 @@ fn install_named(&c: cargo, wd: str, name: str) {
     }
 }
 
-fn install_uuid_specific(&c: cargo, wd: str, src: str, uuid: str) {
+fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
     alt c.sources.find(src) {
       some(s) {
         let packages = copy s.packages;
@@ -945,7 +940,7 @@ fn install_uuid_specific(&c: cargo, wd: str, src: str, uuid: str) {
     error("can't find package: " + src + "/" + uuid);
 }
 
-fn install_named_specific(&c: cargo, wd: str, src: str, name: str) {
+fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     alt c.sources.find(src) {
         some(s) {
           let packages = copy s.packages;
@@ -961,7 +956,7 @@ fn install_named_specific(&c: cargo, wd: str, src: str, name: str) {
     error("can't find package: " + src + "/" + name);
 }
 
-fn cmd_uninstall(&c: cargo) {
+fn cmd_uninstall(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
@@ -1026,7 +1021,7 @@ fn cmd_uninstall(&c: cargo) {
     }
 }
 
-fn install_query(&c: cargo, wd: str, target: str) {
+fn install_query(c: cargo, wd: str, target: str) {
     alt c.dep_cache.find(target) {
         some(_inst) {
             if _inst {
@@ -1086,7 +1081,7 @@ fn install_query(&c: cargo, wd: str, target: str) {
     }
 }
 
-fn cmd_install(&c: cargo) unsafe {
+fn cmd_install(c: cargo) unsafe {
     let wd_base = c.workdir + path::path_sep();
     let wd = alt tempfile::mkdtemp(wd_base, "") {
         some(_wd) { _wd }
@@ -1113,7 +1108,7 @@ fn cmd_install(&c: cargo) unsafe {
     install_query(c, wd, copy query);
 }
 
-fn sync(&c: cargo) {
+fn sync(c: cargo) {
     for c.sources.each_key { |k|
         let mut s = c.sources.get(k);
         sync_one(c, s);
@@ -1121,7 +1116,7 @@ fn sync(&c: cargo) {
     }
 }
 
-fn sync_one_file(&c: cargo, dir: str, &src: source) -> bool {
+fn sync_one_file(c: cargo, dir: str, src: source) -> bool {
     let name = src.name;
     let srcfile = path::connect(dir, "source.json.new");
     let destsrcfile = path::connect(dir, "source.json");
@@ -1145,7 +1140,7 @@ fn sync_one_file(&c: cargo, dir: str, &src: source) -> bool {
     os::copy_file(path::connect(url, "source.json.sig"), srcsigfile);
     os::copy_file(path::connect(url, "packages.json.sig"), sigfile);
 
-    alt src.key {
+    alt copy src.key {
         some(u) {
             let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
                                                   u]);
@@ -1197,7 +1192,7 @@ fn sync_one_file(&c: cargo, dir: str, &src: source) -> bool {
     ret true;
 }
 
-fn sync_one_git(&c: cargo, dir: str, &src: source) -> bool {
+fn sync_one_git(c: cargo, dir: str, src: source) -> bool {
     let name = src.name;
     let srcfile = path::connect(dir, "source.json");
     let pkgfile = path::connect(dir, "packages.json");
@@ -1254,7 +1249,7 @@ fn sync_one_git(&c: cargo, dir: str, &src: source) -> bool {
 
     let has_src_file = os::path_exists(srcfile);
 
-    alt src.key {
+    alt copy src.key {
         some(u) {
             let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
                                                   u]);
@@ -1299,7 +1294,7 @@ fn sync_one_git(&c: cargo, dir: str, &src: source) -> bool {
     ret true;
 }
 
-fn sync_one_curl(&c: cargo, dir: str, &src: source) -> bool {
+fn sync_one_curl(c: cargo, dir: str, src: source) -> bool {
     let name = src.name;
     let srcfile = path::connect(dir, "source.json.new");
     let destsrcfile = path::connect(dir, "source.json");
@@ -1331,7 +1326,7 @@ fn sync_one_curl(&c: cargo, dir: str, &src: source) -> bool {
         }
     }
 
-    alt src.key {
+    alt copy src.key {
         some(u) {
             let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
                                                   u]);
@@ -1407,7 +1402,7 @@ fn sync_one_curl(&c: cargo, dir: str, &src: source) -> bool {
     ret true;
 }
 
-fn sync_one(&c: cargo, &src: source) {
+fn sync_one(c: cargo, src: source) {
     let name = src.name;
     let dir = path::connect(c.sourcedir, name);
 
@@ -1427,7 +1422,7 @@ fn sync_one(&c: cargo, &src: source) {
     }
 }
 
-fn cmd_init(&c: cargo) {
+fn cmd_init(c: cargo) {
     let srcurl = "http://www.rust-lang.org/cargo/sources.json";
     let sigurl = "http://www.rust-lang.org/cargo/sources.json.sig";
 
@@ -1494,7 +1489,7 @@ fn print_source(s: source) {
     });
 }
 
-fn cmd_list(&c: cargo) {
+fn cmd_list(c: cargo) {
     sync(c);
 
     if vec::len(c.opts.free) >= 3u {
@@ -1519,7 +1514,7 @@ fn cmd_list(&c: cargo) {
     }
 }
 
-fn cmd_search(&c: cargo) {
+fn cmd_search(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
@@ -1551,7 +1546,7 @@ fn install_to_dir(srcfile: str, destdir: str) {
     }
 }
 
-fn dump_cache(&c: cargo) {
+fn dump_cache(c: cargo) {
     need_dir(c.root);
 
     let out = path::connect(c.root, "cache.json");
@@ -1561,7 +1556,7 @@ fn dump_cache(&c: cargo) {
         copy_warn(out, path::connect(c.root, "cache.json.old"));
     }
 }
-fn dump_sources(&c: cargo) {
+fn dump_sources(c: cargo) {
     if c.sources.size() < 1u {
         ret;
     }
@@ -1586,13 +1581,13 @@ fn dump_sources(&c: cargo) {
                 chash.insert("url", json::string(v.url));
                 chash.insert("method", json::string(v.method));
 
-                alt v.key {
+                alt copy v.key {
                     some(key) {
                         chash.insert("key", json::string(key));
                     }
                     _ {}
                 }
-                alt v.keyfp {
+                alt copy v.keyfp {
                     some(keyfp) {
                         chash.insert("keyfp", json::string(keyfp));
                     }
@@ -1616,10 +1611,11 @@ fn copy_warn(srcfile: str, destfile: str) {
     }
 }
 
-fn cmd_sources(&c: cargo) {
+fn cmd_sources(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         for c.sources.each_value { |v|
-            info(#fmt("%s (%s) via %s", v.name, v.url, v.method));
+            info(#fmt("%s (%s) via %s",
+                      copy v.name, copy v.url, copy v.method));
         }
         ret;
     }
@@ -1653,13 +1649,13 @@ fn cmd_sources(&c: cargo) {
                     error(#fmt("source already exists: %s", name));
                 }
                 none {
-                    c.sources.insert(name, {
-                        mut name: name,
+                    c.sources.insert(name, @{
+                        name: name,
                         mut url: url,
                         mut method: assume_source_method(url),
                         mut key: none,
                         mut keyfp: none,
-                        mut packages: []
+                        mut packages: [mut]
                     });
                     info(#fmt("added source: %s", name));
                 }
