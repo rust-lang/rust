@@ -733,7 +733,7 @@ impl tcp_socket for tcp_socket {
 #[doc="
 Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 "]
-impl tcp_socket_buf of io::reader for tcp_socket_buf {
+impl tcp_socket_buf of io::reader for @tcp_socket_buf {
     fn read_bytes(amt: uint) -> [u8] {
         let has_amt_available =
             vec::len((*self).buf) >= amt;
@@ -748,7 +748,9 @@ impl tcp_socket_buf of io::reader for tcp_socket_buf {
         else {
             let read_result = read((*self).sock, 0u);
             if read_result.is_failure() {
-                // failure case.. no good answer, yet.
+                let err_data = read_result.get_err();
+                log(debug, #fmt("ERROR sock_buf as io::reader.read err %? %?",
+                                 err_data.err_name, err_data.err_msg));
                 []
             }
             else {
@@ -779,14 +781,19 @@ impl tcp_socket_buf of io::reader for tcp_socket_buf {
 #[doc="
 Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 "]
-impl tcp_socket_buf of io::writer for tcp_socket_buf {
+impl tcp_socket_buf of io::writer for @tcp_socket_buf {
     fn write(data: [const u8]/&) unsafe {
         let socket_data_ptr = ptr::addr_of(**((*self).sock));
         let write_buf_vec = vec::unpack_const_slice(data) {|ptr, len|
             [ uv::ll::buf_init(ptr as *u8, len) ]
         };
         let write_buf_vec_ptr = ptr::addr_of(write_buf_vec);
-        write_common_impl(socket_data_ptr, write_buf_vec_ptr);
+        let w_result = write_common_impl(socket_data_ptr, write_buf_vec_ptr);
+        if w_result.is_failure() {
+            let err_data = w_result.get_err();
+            log(debug, #fmt("ERROR sock_buf as io::writer.writer err: %? %?",
+                             err_data.err_name, err_data.err_msg));
+        }
     }
     fn seek(dist: int, seek: io::seek_style) {
       log(debug, #fmt("tcp_socket_buf seek stub %? %?", dist, seek));
@@ -1204,7 +1211,7 @@ fn ipv4_ip_addr_to_sockaddr_in(input_ip: ip::ip_addr,
     }
 }
 
-#[cfg(test)]
+//#[cfg(test)]
 mod test {
     // FIXME don't run on fbsd or linux 32 bit (#2064)
     #[cfg(target_os="win32")]
@@ -1232,6 +1239,10 @@ mod test {
             fn test_gl_tcp_server_access_denied() unsafe {
                 impl_gl_tcp_ipv4_server_access_denied();
             }
+            #[test]
+            fn test_gl_tcp_ipv4_server_client_reader_writer() {
+                impl_gl_tcp_ipv4_server_client_reader_writer();
+            }
 
         }
         #[cfg(target_arch="x86")]
@@ -1258,6 +1269,11 @@ mod test {
             //#[ignore(cfg(target_os = "win32"))]
             fn test_gl_tcp_server_access_denied() unsafe {
                 impl_gl_tcp_ipv4_server_access_denied();
+            }
+            #[test]
+            #[ignore(cfg(target_os = "linux"))]
+            fn test_gl_tcp_ipv4_server_client_reader_writer() {
+                impl_gl_tcp_ipv4_server_client_reader_writer();
             }
         }
     }
@@ -1400,6 +1416,73 @@ mod test {
           }
         }
     }
+    fn impl_gl_tcp_ipv4_server_client_reader_writer() {
+        let iotask = uv::global_loop::get();
+        let server_ip = "127.0.0.1";
+        let server_port = 8891u;
+        let expected_req = "ping";
+        let expected_resp = "pong";
+
+        let server_result_po = comm::port::<str>();
+        let server_result_ch = comm::chan(server_result_po);
+
+        let cont_po = comm::port::<()>();
+        let cont_ch = comm::chan(cont_po);
+        // server
+        task::spawn_sched(task::manual_threads(1u)) {||
+            let actual_req = comm::listen {|server_ch|
+                run_tcp_test_server(
+                    server_ip,
+                    server_port,
+                    expected_resp,
+                    server_ch,
+                    cont_ch,
+                    iotask)
+            };
+            server_result_ch.send(actual_req);
+        };
+        comm::recv(cont_po);
+        // client
+        let server_addr = ip::v4::parse_addr(server_ip);
+        let conn_result = connect(server_addr, server_port, iotask);
+        if result::is_failure(conn_result) {
+            assert false;
+        }
+        let sock_buf = @socket_buf(result::unwrap(conn_result));
+        buf_write(sock_buf as io::writer, expected_req);
+
+        // so contrived!
+        let actual_resp = str::as_bytes(expected_resp) {|resp_buf|
+            buf_read(sock_buf as io::reader,
+                     vec::len(resp_buf))
+        };
+        
+        let actual_req = comm::recv(server_result_po);
+        log(debug, #fmt("REQ: expected: '%s' actual: '%s'",
+                       expected_req, actual_req));
+        log(debug, #fmt("RESP: expected: '%s' actual: '%s'",
+                       expected_resp, actual_resp));
+        assert str::contains(actual_req, expected_req);
+        assert str::contains(actual_resp, expected_resp);
+    }
+
+    fn buf_write(+w: io::writer, val: str) {
+        log(debug, #fmt("BUF_WRITE: val len %?", str::len(val)));
+        str::as_slice(val, 0u, str::len(val) -1u) {|val_slice|
+            str::byte_slice(val_slice) {|b_slice|
+                log(debug, #fmt("BUF_WRITE: b_slice len %?",
+                                vec::len(b_slice)));
+                w.write(b_slice)
+            }
+        }
+    }
+
+    fn buf_read(+r: io::reader, len: uint) -> str {
+        let new_bytes = r.read_bytes(len);
+        log(debug, #fmt("in buf_read.. new_bytes len: %?",
+                        vec::len(new_bytes)));
+        str::from_bytes(new_bytes)
+    }
 
     fn run_tcp_test_server(server_ip: str, server_port: uint, resp: str,
                           server_ch: comm::chan<str>,
@@ -1441,6 +1524,9 @@ mod test {
                         let received_req_bytes = read(sock, 0u);
                         alt received_req_bytes {
                           result::ok(data) {
+                            log(debug, "SERVER: got REQ str::from_bytes..");
+                            log(debug, #fmt("SERVER: REQ data len: %?",
+                                            vec::len(data)));
                             server_ch.send(
                                 str::from_bytes(data));
                             log(debug, "SERVER: before write");
