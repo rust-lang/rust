@@ -23,7 +23,6 @@ export
    as_buf,
    as_c_str,
    unpack_slice,
-   as_slice,
 
    // Adding things to and removing things from a string
    push_char,
@@ -1619,16 +1618,6 @@ pure fn unpack_slice<T>(s: str/&, f: fn(*u8, uint) -> T) -> T {
         let (buf,len) = *v;
         f(buf, len)
     }
-}
-
-pure fn as_slice<T>(s: str,
-                    start: uint, end: uint,
-                    f: fn(str/&) -> T) -> T unsafe {
-    assert (start <= end);
-    assert (end <= len(s));
-    let p = ptr::addr_of(s);
-    f(::unsafe::reinterpret_cast(
-        (ptr::offset(p, start), (end - start) * sys::size_of::<u8>())))
 }
 
 #[doc = "
