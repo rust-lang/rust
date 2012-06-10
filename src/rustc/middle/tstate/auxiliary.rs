@@ -41,7 +41,7 @@ fn comma_str(args: [@constr_arg_use]) -> str {
         if comma { rslt += ", "; } else { comma = true; }
         alt a.node {
           carg_base { rslt += "*"; }
-          carg_ident(i) { rslt += i.ident; }
+          carg_ident(i) { rslt += *i.ident; }
           carg_lit(l) { rslt += lit_to_str(l); }
         }
     }
@@ -143,11 +143,11 @@ fn log_states_err(pp: pre_and_post_state) {
     log_cond_err(p2);
 }
 
-fn print_ident(i: ident) { log(debug, " " + i + " "); }
+fn print_ident(i: ident) { log(debug, " " + *i + " "); }
 
 fn print_idents(&idents: [ident]) {
     if vec::len::<ident>(idents) == 0u { ret; }
-    log(debug, "an ident: " + vec::pop::<ident>(idents));
+    log(debug, "an ident: " + *vec::pop::<ident>(idents));
     print_idents(idents);
 }
 
@@ -500,7 +500,7 @@ fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
 fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
               occ: [@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",
-           constr_args_to_str(fn@(i: inst) -> str { ret i.ident; }, occ));
+           constr_args_to_str(fn@(i: inst) -> str { ret *i.ident; }, occ));
     for (*occs).each {|pd|
         log(debug,
                  "match_args: candidate " + pred_args_to_str(pd));
@@ -581,7 +581,7 @@ fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
 
 fn pred_args_to_str(p: pred_args) -> str {
     "<" + uint::str(p.node.bit_num) + ", " +
-        constr_args_to_str(fn@(i: inst) -> str { ret i.ident; }, p.node.args)
+        constr_args_to_str(fn@(i: inst) -> str { ret *i.ident; }, p.node.args)
         + ">"
 }
 
@@ -695,7 +695,7 @@ fn insts_to_str(stuff: [constr_arg_general_<inst>]) -> str {
         rslt +=
             " " +
                 alt i {
-                  carg_ident(p) { p.ident }
+                  carg_ident(p) { *p.ident }
                   carg_base { "*" }
                   carg_lit(_) { "[lit]" }
                 } + " ";

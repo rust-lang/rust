@@ -233,7 +233,7 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
     }
 }
 
-fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
+fn trans_estr(bcx: block, s: @str, vstore: ast::vstore,
               dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_estr");
     let ccx = bcx.ccx();
@@ -242,27 +242,27 @@ fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
       ast::vstore_fixed(_)
       {
         // "hello"/_  =>  "hello"/5  =>  [i8 x 6] in llvm
-        #debug("trans_estr: fixed: %s", s);
-        C_postr(s)
+        #debug("trans_estr: fixed: %s", *s);
+        C_postr(*s)
       }
 
       ast::vstore_slice(_) {
         // "hello"  =>  (*i8, 6u) in llvm
-        #debug("trans_estr: slice '%s'", s);
-        C_estr_slice(ccx, s)
+        #debug("trans_estr: slice '%s'", *s);
+        C_estr_slice(ccx, *s)
       }
 
       ast::vstore_uniq {
-        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
-        let len = C_uint(ccx, str::len(s));
+        let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
+        let len = C_uint(ccx, str::len(*s));
         let c = Call(bcx, ccx.upcalls.str_new_uniq, [cs, len]);
         PointerCast(bcx, c,
                     T_unique_ptr(T_unique(ccx, T_vec(ccx, T_i8()))))
       }
 
       ast::vstore_box {
-        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
-        let len = C_uint(ccx, str::len(s));
+        let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
+        let len = C_uint(ccx, str::len(*s));
         Call(bcx, ccx.upcalls.str_new_shared, [cs, len])
       }
     };

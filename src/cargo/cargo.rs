@@ -224,10 +224,10 @@ fn load_link(mis: [@ast::meta_item]) -> (option<str>,
     for mis.each {|a|
         alt a.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) {
-                alt v {
-                    "name" { name = some(s); }
-                    "vers" { vers = some(s); }
-                    "uuid" { uuid = some(s); }
+                alt *v {
+                    "name" { name = some(*s); }
+                    "vers" { vers = some(*s); }
+                    "uuid" { uuid = some(*s); }
                     _ { }
                 }
             }
@@ -259,15 +259,15 @@ fn load_crate(filename: str) -> option<crate> {
     for c.node.attrs.each {|a|
         alt a.node.value.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) {
-                alt v {
-                    "desc" { desc = some(v); }
-                    "sigs" { sigs = some(v); }
-                    "crate_type" { crate_type = some(v); }
+                alt *v {
+                    "desc" { desc = some(*v); }
+                    "sigs" { sigs = some(*v); }
+                    "crate_type" { crate_type = some(*v); }
                     _ { }
                 }
             }
             ast::meta_list(v, mis) {
-                if v == "link" {
+                if *v == "link" {
                     let (n, v, u) = load_link(mis);
                     name = n;
                     vers = v;
@@ -290,7 +290,7 @@ fn load_crate(filename: str) -> option<crate> {
             ast::view_item_use(ident, metas, id) {
                 let name_items = attr::find_meta_items_by_name(metas, "name");
                 let m = if name_items.is_empty() {
-                    metas + [attr::mk_name_value_item_str("name", ident)]
+                    metas + [attr::mk_name_value_item_str(@"name", *ident)]
                 } else {
                     metas
                 };
@@ -303,9 +303,9 @@ fn load_crate(filename: str) -> option<crate> {
                         some(value) {
                             let name = attr::get_meta_item_name(item);
 
-                            alt name {
-                                "vers" { attr_vers = value; }
-                                "from" { attr_from = value; }
+                            alt *name {
+                                "vers" { attr_vers = *value; }
+                                "from" { attr_from = *value; }
                                 _ {}
                             }
                         }
@@ -317,11 +317,11 @@ fn load_crate(filename: str) -> option<crate> {
                     attr_from
                 } else {
                     if !str::is_empty(attr_vers) {
-                        attr_name + "@" + attr_vers
-                    } else { attr_name }
+                        *attr_name + "@" + attr_vers
+                    } else { *attr_name }
                 };
 
-                alt attr_name {
+                alt *attr_name {
                     "std" | "core" { }
                     _ { e.deps += [query]; }
                 }

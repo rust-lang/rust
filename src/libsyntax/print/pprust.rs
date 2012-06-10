@@ -342,7 +342,7 @@ fn print_region(s: ps, region: @ast::region) {
       ast::re_anon { word_space(s, "&"); }
       ast::re_named(name) {
         word(s.s, "&");
-        word_space(s, name);
+        word_space(s, *name);
       }
     }
 }
@@ -382,7 +382,7 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         fn print_field(s: ps, f: ast::ty_field) {
             cbox(s, indent_unit);
             print_mutability(s, f.node.mt.mutbl);
-            word(s.s, f.node.ident);
+            word(s.s, *f.node.ident);
             word_space(s, ":");
             print_type(s, f.node.mt.ty);
             end(s);
@@ -443,7 +443,7 @@ fn print_item(s: ps, &&item: @ast::item) {
     alt item.node {
       ast::item_const(ty, expr) {
         head(s, "const");
-        word_space(s, item.ident + ":");
+        word_space(s, *item.ident + ":");
         print_type(s, ty);
         space(s.s);
         end(s); // end the head-ibox
@@ -461,7 +461,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_mod(_mod) {
         head(s, "mod");
-        word_nbsp(s, item.ident);
+        word_nbsp(s, *item.ident);
         bopen(s);
         print_mod(s, _mod, item.attrs);
         bclose(s, item.span);
@@ -469,7 +469,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_native_mod(nmod) {
         head(s, "native");
         word_nbsp(s, "mod");
-        word_nbsp(s, item.ident);
+        word_nbsp(s, *item.ident);
         bopen(s);
         print_native_mod(s, nmod, item.attrs);
         bclose(s, item.span);
@@ -478,7 +478,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, "type");
-        word(s.s, item.ident);
+        word(s.s, *item.ident);
         print_region_param(s, rp);
         print_type_params(s, params);
         end(s); // end the inner ibox
@@ -492,13 +492,13 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_enum(variants, params, rp) {
         let newtype =
             vec::len(variants) == 1u &&
-                str::eq(item.ident, variants[0].node.name) &&
+                str::eq(*item.ident, *variants[0].node.name) &&
                 vec::len(variants[0].node.args) == 1u;
         if newtype {
             ibox(s, indent_unit);
             word_space(s, "enum");
         } else { head(s, "enum"); }
-        word(s.s, item.ident);
+        word(s.s, *item.ident);
         print_region_param(s, rp);
         print_type_params(s, params);
         space(s.s);
@@ -524,7 +524,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_class(tps, ifaces, items, ctor, m_dtor, rp) {
           head(s, "class");
-          word_nbsp(s, item.ident);
+          word_nbsp(s, *item.ident);
           print_region_param(s, rp);
           print_type_params(s, tps);
           word_space(s, "implements");
@@ -570,7 +570,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                       ast::class_mutable { word_nbsp(s, "mut"); }
                       _ {}
                     }
-                    word(s.s, nm);
+                    word(s.s, *nm);
                     word_nbsp(s, ":");
                     print_type(s, t);
                     word(s.s, ";");
@@ -588,7 +588,7 @@ fn print_item(s: ps, &&item: @ast::item) {
        }
       ast::item_impl(tps, rp, ifce, ty, methods) {
         head(s, "impl");
-        word(s.s, item.ident);
+        word(s.s, *item.ident);
         print_region_param(s, rp);
         print_type_params(s, tps);
         space(s.s);
@@ -608,7 +608,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_iface(tps, rp, methods) {
         head(s, "iface");
-        word(s.s, item.ident);
+        word(s.s, *item.ident);
         print_region_param(s, rp);
         print_type_params(s, tps);
         word(s.s, " ");
@@ -627,18 +627,18 @@ fn print_item(s: ps, &&item: @ast::item) {
 fn print_res(s: ps, decl: ast::fn_decl, name: ast::ident,
              typarams: [ast::ty_param], rp: ast::region_param) {
     head(s, "resource");
-    word(s.s, name);
+    word(s.s, *name);
     print_region_param(s, rp);
     print_type_params(s, typarams);
     popen(s);
-    word_space(s, decl.inputs[0].ident + ":");
+    word_space(s, *decl.inputs[0].ident + ":");
     print_type(s, decl.inputs[0].ty);
     pclose(s);
     space(s.s);
 }
 
 fn print_variant(s: ps, v: ast::variant) {
-    word(s.s, v.node.name);
+    word(s.s, *v.node.name);
     if vec::len(v.node.args) > 0u {
         popen(s);
         fn print_variant_arg(s: ps, arg: ast::variant_arg) {
@@ -892,7 +892,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         fn print_field(s: ps, field: ast::field) {
             ibox(s, indent_unit);
             if field.node.mutbl == ast::m_mutbl { word_nbsp(s, "mut"); }
-            word(s.s, field.node.ident);
+            word(s.s, *field.node.ident);
             word_space(s, ":");
             print_expr(s, field.node.expr);
             end(s);
@@ -1089,7 +1089,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             print_expr_parens_if_not_bot(s, expr);
         }
         word(s.s, ".");
-        word(s.s, id);
+        word(s.s, *id);
         if vec::len(tys) > 0u {
             word(s.s, "::<");
             commasep(s, inconsistent, tys, print_type);
@@ -1222,7 +1222,7 @@ fn print_decl(s: ps, decl: @ast::decl) {
     }
 }
 
-fn print_ident(s: ps, ident: ast::ident) { word(s.s, ident); }
+fn print_ident(s: ps, ident: ast::ident) { word(s.s, *ident); }
 
 fn print_for_decl(s: ps, loc: @ast::local, coll: @ast::expr) {
     print_local_decl(s, loc);
@@ -1237,7 +1237,7 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     let mut first = true;
     for path.idents.each {|id|
         if first { first = false; } else { word(s.s, "::"); }
-        word(s.s, id);
+        word(s.s, *id);
     }
     if path.rp.is_some() || !path.types.is_empty() {
         if colons_before_params { word(s.s, "::"); }
@@ -1290,7 +1290,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         word(s.s, "{");
         fn print_field(s: ps, f: ast::field_pat) {
             cbox(s, indent_unit);
-            word(s.s, f.ident);
+            word(s.s, *f.ident);
             word_space(s, ":");
             print_pat(s, f.pat);
             end(s);
@@ -1327,7 +1327,7 @@ fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
       ast::impure_fn { head(s, "fn") }
       _ { head(s, purity_to_str(decl.purity) + " fn") }
     }
-    word(s.s, name);
+    word(s.s, *name);
     print_type_params(s, typarams);
     print_fn_args_and_ret(s, decl, []);
 }
@@ -1341,7 +1341,7 @@ fn print_fn_args(s: ps, decl: ast::fn_decl,
             if first { first = false; } else { word_space(s, ","); }
             if cap_item.is_move { word_nbsp(s, "move") }
             else { word_nbsp(s, "copy") }
-            word(s.s, cap_item.name);
+            word(s.s, *cap_item.name);
         }
     }
 }
@@ -1418,7 +1418,7 @@ fn print_type_params(s: ps, &&params: [ast::ty_param]) {
     if vec::len(params) > 0u {
         word(s.s, "<");
         fn printParam(s: ps, param: ast::ty_param) {
-            word(s.s, param.ident);
+            word(s.s, *param.ident);
             print_bounds(s, param.bounds);
         }
         commasep(s, inconsistent, params, printParam);
@@ -1429,14 +1429,14 @@ fn print_type_params(s: ps, &&params: [ast::ty_param]) {
 fn print_meta_item(s: ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     alt item.node {
-      ast::meta_word(name) { word(s.s, name); }
+      ast::meta_word(name) { word(s.s, *name); }
       ast::meta_name_value(name, value) {
-        word_space(s, name);
+        word_space(s, *name);
         word_space(s, "=");
         print_literal(s, @value);
       }
       ast::meta_list(name, items) {
-        word(s.s, name);
+        word(s.s, *name);
         popen(s);
         commasep(s, consistent, items, print_meta_item);
         pclose(s);
@@ -1449,7 +1449,7 @@ fn print_view_path(s: ps, &&vp: @ast::view_path) {
     alt vp.node {
       ast::view_path_simple(ident, path, _) {
         if path.idents[vec::len(path.idents)-1u] != ident {
-            word_space(s, ident);
+            word_space(s, *ident);
             word_space(s, "=");
         }
         print_path(s, path, false);
@@ -1464,7 +1464,7 @@ fn print_view_path(s: ps, &&vp: @ast::view_path) {
         print_path(s, path, false);
         word(s.s, "::{");
         commasep(s, inconsistent, idents) {|s, w|
-            word(s.s, w.node.name)
+            word(s.s, *w.node.name)
         }
         word(s.s, "}");
       }
@@ -1481,7 +1481,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     alt item.node {
       ast::view_item_use(id, mta, _) {
         head(s, "use");
-        word(s.s, id);
+        word(s.s, *id);
         if vec::len(mta) > 0u {
             popen(s);
             commasep(s, consistent, mta, print_meta_item);
@@ -1529,11 +1529,11 @@ fn print_arg(s: ps, input: ast::arg) {
     print_arg_mode(s, input.mode);
     alt input.ty.node {
       ast::ty_infer {
-        word(s.s, input.ident);
+        word(s.s, *input.ident);
       }
       _ {
-        if str::len(input.ident) > 0u {
-            word_space(s, input.ident + ":");
+        if str::len(*input.ident) > 0u {
+            word_space(s, *input.ident + ":");
         }
         print_type(s, input.ty);
       }
@@ -1546,7 +1546,7 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
                tps: option<[ast::ty_param]>) {
     ibox(s, indent_unit);
     word(s.s, opt_proto_to_str(opt_proto));
-    alt id { some(id) { word(s.s, " "); word(s.s, id); } _ { } }
+    alt id { some(id) { word(s.s, " "); word(s.s, *id); } _ { } }
     alt tps { some(tps) { print_type_params(s, tps); } _ { } }
     zerobreak(s.s);
     popen(s);
@@ -1608,7 +1608,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
       _ {}
     }
     alt lit.node {
-      ast::lit_str(st) { print_string(s, st); }
+      ast::lit_str(st) { print_string(s, *st); }
       ast::lit_int(ch, ast::ty_char) {
         word(s.s, "'" + char::escape_default(ch as char) + "'");
       }
@@ -1640,7 +1640,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
         }
       }
       ast::lit_float(f, t) {
-        word(s.s, f + ast_util::float_ty_to_str(t));
+        word(s.s, *f + ast_util::float_ty_to_str(t));
       }
       ast::lit_nil { word(s.s, "()"); }
       ast::lit_bool(val) {
@@ -1804,7 +1804,7 @@ fn constrs_str<T>(constrs: [T], elt: fn(T) -> str) -> str {
 }
 
 fn fn_arg_idx_to_str(decl: ast::fn_decl, &&idx: uint) -> str {
-    decl.inputs[idx].ident
+    *decl.inputs[idx].ident
 }
 
 fn opt_proto_to_str(opt_p: option<ast::proto>) -> str {

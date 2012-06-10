@@ -210,7 +210,7 @@ impl methods for ctxt {
                 for metas.each {|meta|
                     alt meta.node {
                       ast::meta_word(lintname) {
-                        alt lookup_lint(self.dict, lintname) {
+                        alt lookup_lint(self.dict, *lintname) {
                           (name, none) {
                             self.span_lint(
                                 self.get_level(unrecognized_warning),
@@ -444,7 +444,7 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
 
               ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
-              if ids == ["str"] && (! uses_vstore.contains_key(t.id)) {
+              if ids == [@"str"] && (! uses_vstore.contains_key(t.id)) {
                 cx.sess.span_lint(
                     old_vecs, it.id, t.id,
                     t.span, "deprecated str type");

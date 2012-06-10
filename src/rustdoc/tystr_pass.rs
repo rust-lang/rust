@@ -116,7 +116,7 @@ fn fold_enum(
                   }, _) {
                     let ast_variant = option::get(
                         vec::find(ast_variants) {|v|
-                            v.node.name == variant.name
+                            *v.node.name == variant.name
                         });
 
                     pprust::variant_to_str(ast_variant)
@@ -151,7 +151,7 @@ fn fold_res(
               ast_map::node_item(@{
                 node: ast::item_res(decl, tys, _, _, _, rp), _
               }, _) {
-                pprust::res_to_str(decl, doc.name(), tys, rp)
+                pprust::res_to_str(decl, @doc.name(), tys, rp)
               }
             }
         })
@@ -200,7 +200,7 @@ fn get_method_sig(
             node: ast::item_iface(_, _, methods), _
           }, _) {
             alt check vec::find(methods) {|method|
-                method.ident == method_name
+                *method.ident == method_name
             } {
                 some(method) {
                     some(pprust::fun_to_str(
@@ -215,7 +215,7 @@ fn get_method_sig(
             node: ast::item_impl(_, _, _, _, methods), _
           }, _) {
             alt check vec::find(methods) {|method|
-                method.ident == method_name
+                *method.ident == method_name
             } {
                 some(method) {
                     some(pprust::fun_to_str(
@@ -307,7 +307,7 @@ fn fold_type(
               }, _) {
                 some(#fmt(
                     "type %s%s = %s",
-                    ident,
+                    *ident,
                     pprust::typarams_to_str(params),
                     pprust::ty_to_str(ty)
                 ))

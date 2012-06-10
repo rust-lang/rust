@@ -138,7 +138,7 @@ fn mk_fn_info(ccx: crate_ctxt,
          used_vars: v,
          ignore: ignore};
     ccx.fm.insert(id, rslt);
-    #debug("%s has %u constraints", name, num_constraints(rslt));
+    #debug("%s has %u constraints", *name, num_constraints(rslt));
 }
 
 

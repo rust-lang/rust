@@ -81,7 +81,7 @@ impl parser_common for parser {
     fn token_is_keyword(word: str, ++tok: token::token) -> bool {
         self.require_keyword(word);
         alt tok {
-          token::IDENT(sid, false) { str::eq(word, self.get_str(sid)) }
+          token::IDENT(sid, false) { str::eq(word, *self.get_str(sid)) }
           _ { false }
         }
     }
@@ -97,7 +97,7 @@ impl parser_common for parser {
         // workaround LLVM bug #13042
         alt @self.token {
           @token::IDENT(sid, false) {
-            if str::eq(word, self.get_str(sid)) {
+            if str::eq(word, *self.get_str(sid)) {
                 self.bump();
                 ret true;
             } else { ret false; }
@@ -128,7 +128,7 @@ impl parser_common for parser {
         }
     }
 
-    fn check_restricted_keywords_(w: ast::ident) {
+    fn check_restricted_keywords_(w: str) {
         if self.is_restricted_keyword(w) {
             self.fatal("found `" + w + "` in restricted position");
         }

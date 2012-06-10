@@ -44,7 +44,7 @@ fn load_library_crate(cx: ctxt) -> {ident: str, data: @[u8]} {
       some(t) { ret t; }
       none {
         cx.diag.span_fatal(
-            cx.span, #fmt["can't find crate for '%s'", cx.ident]);
+            cx.span, #fmt["can't find crate for '%s'", *cx.ident]);
       }
     }
 }
@@ -69,7 +69,7 @@ fn find_library_crate_aux(cx: ctxt,
                           filesearch: filesearch::filesearch) ->
    option<{ident: str, data: @[u8]}> {
     let crate_name = crate_name_from_metas(cx.metas);
-    let prefix: str = nn.prefix + crate_name + "-";
+    let prefix: str = nn.prefix + *crate_name + "-";
     let suffix: str = nn.suffix;
 
     let mut matches = [];
@@ -107,7 +107,7 @@ fn find_library_crate_aux(cx: ctxt,
         some(matches[0])
     } else {
         cx.diag.span_err(
-            cx.span, #fmt("multiple matching crates for `%s`", crate_name));
+            cx.span, #fmt("multiple matching crates for `%s`", *crate_name));
         cx.diag.handler().note("candidates:");
         for matches.each {|match|
             cx.diag.handler().note(#fmt("path: %s", match.ident));
@@ -119,7 +119,7 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-fn crate_name_from_metas(metas: [@ast::meta_item]) -> str {
+fn crate_name_from_metas(metas: [@ast::meta_item]) -> @str {
     let name_items = attr::find_meta_items_by_name(metas, "name");
     alt vec::last_opt(name_items) {
       some(i) {
@@ -146,7 +146,7 @@ fn crate_matches(crate_data: @[u8], metas: [@ast::meta_item], hash: str) ->
     let linkage_metas = attr::find_linkage_metas(attrs);
     if hash.is_not_empty() {
         let chash = decoder::get_crate_hash(crate_data);
-        if chash != hash { ret false; }
+        if *chash != hash { ret false; }
     }
     metadata_matches(linkage_metas, metas)
 }
