@@ -16,6 +16,8 @@ import str;
 import vec;
 import getopts::{optflag, optopt, opt_present};
 
+// FIXME: Make these fields imm
+
 type package = {
     mut name: str,
     mut uuid: str,
