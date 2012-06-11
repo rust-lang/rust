@@ -282,7 +282,10 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             rdr.fatal("no valid digits found for number");
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
-        ret token::LIT_INT(parsed as i64, ast::ty_i);
+
+        #debug["lexing %s as an unsuffixed integer literal",
+               num_str];
+        ret token::LIT_INT_UNSUFFIXED(parsed as i64, ast::ty_i);
     }
 }
 

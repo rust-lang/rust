@@ -58,6 +58,7 @@ enum token {
     /* Literals */
     LIT_INT(i64, ast::int_ty),
     LIT_UINT(u64, ast::uint_ty),
+    LIT_INT_UNSUFFIXED(i64, ast::int_ty),
     LIT_FLOAT(str_num, ast::float_ty),
     LIT_STR(str_num),
 
@@ -132,6 +133,9 @@ fn to_str(in: interner<@str>, t: token) -> str {
       LIT_UINT(u, t) {
         ret uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t);
       }
+      LIT_INT_UNSUFFIXED(i, t) {
+        ret int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t);
+      }
       LIT_FLOAT(s, t) {
         ret *interner::get(in, s) +
             ast_util::float_ty_to_str(t);
@@ -161,6 +165,7 @@ pure fn can_begin_expr(t: token) -> bool {
       TILDE { true }
       LIT_INT(_, _) { true }
       LIT_UINT(_, _) { true }
+      LIT_INT_UNSUFFIXED(_, _) { true }
       LIT_FLOAT(_, _) { true }
       LIT_STR(_) { true }
       POUND { true }
@@ -178,6 +183,7 @@ fn is_lit(t: token::token) -> bool {
     ret alt t {
           token::LIT_INT(_, _) { true }
           token::LIT_UINT(_, _) { true }
+          token::LIT_INT_UNSUFFIXED(_, _) { true }
           token::LIT_FLOAT(_, _) { true }
           token::LIT_STR(_) { true }
           _ { false }

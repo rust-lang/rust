@@ -1628,6 +1628,17 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
              u64::to_str(u, 10u)
              + ast_util::uint_ty_to_str(t));
       }
+      ast::lit_int_unsuffixed(i, t) {
+        if i < 0_i64 {
+            word(s.s,
+                 "-" + u64::to_str(-i as u64, 10u)
+                 + ast_util::int_ty_to_str(t));
+        } else {
+            word(s.s,
+                 u64::to_str(i as u64, 10u)
+                 + ast_util::int_ty_to_str(t));
+        }
+      }
       ast::lit_float(f, t) {
         word(s.s, f + ast_util::float_ty_to_str(t));
       }

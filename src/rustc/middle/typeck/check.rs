@@ -629,40 +629,32 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
 
     alt lit.node {
       ast::lit_str(_) { ty::mk_str(tcx) }
-      ast::lit_int(v, t) {
-        alt t {
-          ty_char | ty_i8 | ty_i16 | ty_i32 | ty_i64 {
-            // If it's a char or has an explicit suffix, give it the
-            // appropriate integral type.
-            ty::mk_mach_int(tcx, t)
-          }
-          ty_i {
-            // Otherwise, an unsuffixed integer literal parses to a
-            // `ty_i`.  In that case, it could have any integral type,
-            // so create an integral type variable for it.
-            let vid = fcx.infcx.next_ty_var_integral_id();
-
-            // We need to sniff at the value `v` provided and figure
-            // out how big of an int it is; that determines the set of
-            // possibly types it could take on.
-            let possible_types = alt v {
-              0i64 to 127i64 { min_8bit_tys() }
-              128i64 to 65535i64 { min_16bit_tys() }
-              65536i64 to 4294967295i64 { min_32bit_tys() }
-              _ { min_64bit_tys() }
-          };
-
-            // Store the set of possible types
-            fcx.infcx.set(fcx.infcx.tvib, vid,
-                          root(possible_types));
-            ty::mk_var_integral(tcx, vid);
-
-            // FIXME: remove me when #1425 is finished.
-            ty::mk_mach_int(tcx, t)
-          }
-        }
-      }
+      ast::lit_int(_, t) { ty::mk_mach_int(tcx, t) }
       ast::lit_uint(_, t) { ty::mk_mach_uint(tcx, t) }
+      ast::lit_int_unsuffixed(v, t) {
+        // An unsuffixed integer literal could have any integral type,
+        // so we create an integral type variable for it.
+        let vid = fcx.infcx.next_ty_var_integral_id();
+
+        // We need to sniff at the value `v` and figure out how big of
+        // an int it is; that determines the range of possible types
+        // that the integral type variable could take on.
+        let possible_types = alt v {
+          0i64 to 127i64 { min_8bit_tys() }
+          128i64 to 65535i64 { min_16bit_tys() }
+          65536i64 to 4294967295i64 { min_32bit_tys() }
+          _ { min_64bit_tys() }
+        };
+
+        // Store the set of possible types and return the integral
+        // type variable.
+        fcx.infcx.set(fcx.infcx.tvib, vid,
+                      root(possible_types));
+        ty::mk_var_integral(tcx, vid);
+
+        // FIXME: remove me when #1425 is finished.
+        ty::mk_mach_int(tcx, t)
+      }
       ast::lit_float(_, t) { ty::mk_mach_float(tcx, t) }
       ast::lit_nil { ty::mk_nil(tcx) }
       ast::lit_bool(_) { ty::mk_bool(tcx) }

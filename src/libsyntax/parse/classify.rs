@@ -51,7 +51,14 @@ fn need_parens(expr: @ast::expr, outer_prec: uint) -> bool {
 
 fn ends_in_lit_int(ex: @ast::expr) -> bool {
     alt ex.node {
-      ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i), _}) { true }
+      ast::expr_lit(node) {
+        alt node {
+          @{node: ast::lit_int(_, ast::ty_i), _} |
+          @{node: ast::lit_int_unsuffixed(_, ast::ty_i), _}
+          { true }
+          _ { false }
+        }
+      }
       ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
       ast::expr_move(_, sub) | ast::expr_copy(sub) |
       ast::expr_assign(_, sub) |

@@ -1483,6 +1483,11 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
     alt lit.node {
       ast::lit_int(i, t) { C_integral(T_int_ty(cx, t), i as u64, True) }
       ast::lit_uint(u, t) { C_integral(T_uint_ty(cx, t), u, False) }
+      ast::lit_int_unsuffixed(i, t) {
+        // FIXME (#1425): should we be using cx.fcx.infcx to figure out what
+        // to actually generate from this?
+        C_integral(T_int_ty(cx, t), i as u64, True)
+      }
       ast::lit_float(fs, t) { C_floating(fs, T_float_ty(cx, t)) }
       ast::lit_bool(b) { C_bool(b) }
       ast::lit_nil { C_nil() }
