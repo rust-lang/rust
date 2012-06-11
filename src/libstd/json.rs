@@ -603,6 +603,12 @@ impl of to_str::to_str for json {
     fn to_str() -> str { to_str(self) }
 }
 
+impl of to_str::to_str for error {
+    fn to_str() -> str {
+        #fmt("%u:%u: %s", self.line, self.col, self.msg)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     fn mk_dict(items: [(str, json)]) -> json {

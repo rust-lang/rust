@@ -12,6 +12,7 @@ import io::writer_util;
 import result;
 import std::{map, json, tempfile, term, sort, getopts};
 import map::hashmap;
+import json::to_str;
 import str;
 import vec;
 import getopts::{optflag, optopt, opt_present};
@@ -450,7 +451,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
             }
         }
         ok(_) { fail "malformed sources.json"; }
-        err(e) { fail #fmt("%s:%u:%u: %s", filename, e.line, e.col, e.msg); }
+        err(e) { fail #fmt("%s:%s", filename, e.to_str()); }
     }
 }
 
@@ -570,7 +571,7 @@ fn load_source_info(c: cargo, src: source) {
                  "(source info is not a dict)");
         }
         err(e) {
-            warn(#fmt("%s:%u:%u: %s", src.name, e.line, e.col, e.msg));
+            warn(#fmt("%s:%s", src.name, e.to_str()));
         }
     };
 }
@@ -599,7 +600,7 @@ fn load_source_packages(c: cargo, src: source) {
                  "(packages is not a list)");
         }
         err(e) {
-            warn(#fmt("%s:%u:%u: %s", src.name, e.line, e.col, e.msg));
+            warn(#fmt("%s:%s", src.name, e.to_str()));
         }
     };
 }
