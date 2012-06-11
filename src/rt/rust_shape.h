@@ -58,6 +58,7 @@ const uint8_t SHAPE_SEND_TYDESC = 29u;
 const uint8_t SHAPE_RPTR = 31u;
 const uint8_t SHAPE_FIXEDVEC = 32u;
 const uint8_t SHAPE_SLICE = 33u;
+const uint8_t SHAPE_UNBOXED_VEC = 34u;
 
 #ifdef _LP64
 const uint8_t SHAPE_PTR = SHAPE_U64;
@@ -263,9 +264,9 @@ protected:
 
 private:
     void walk_vec0();
+    void walk_unboxed_vec0();
     void walk_tag0();
     void walk_box0();
-    void walk_box_old0();
     void walk_uniq0();
     void walk_struct0();
     void walk_res0();
@@ -318,6 +319,7 @@ ctxt<T>::walk() {
     case SHAPE_RPTR:     walk_rptr0();            break;
     case SHAPE_FIXEDVEC: walk_fixedvec0();        break;
     case SHAPE_SLICE:    walk_slice0();           break;
+    case SHAPE_UNBOXED_VEC: walk_unboxed_vec0();  break;
     default:             abort();
     }
 }
@@ -371,6 +373,19 @@ ctxt<T>::walk_vec0() {
     const uint8_t *end_sp = sp + sp_size;
 
     static_cast<T *>(this)->walk_vec1(is_pod);
+
+    sp = end_sp;
+}
+
+template<typename T>
+void
+ctxt<T>::walk_unboxed_vec0() {
+    bool is_pod = *sp++;
+
+    uint16_t sp_size = get_u16_bump(sp);
+    const uint8_t *end_sp = sp + sp_size;
+
+    static_cast<T *>(this)->walk_unboxed_vec1(is_pod);
 
     sp = end_sp;
 }
@@ -516,6 +531,9 @@ public:
     void walk_vec1(bool is_pod) {
         DPRINT("vec<"); walk(); DPRINT(">");
     }
+    void walk_unboxed_vec1(bool is_pod) {
+        DPRINT("unboxed_vec<"); walk(); DPRINT(">");
+    }
     void walk_uniq1() {
         DPRINT("~<"); walk(); DPRINT(">");
     }
@@ -601,6 +619,11 @@ public:
 
     void walk_vec1(bool is_pod) {
         sa.set(sizeof(void *), sizeof(void *));
+    }
+
+    void walk_unboxed_vec1(bool is_pod) {
+        assert(false &&
+               "trying to compute size of dynamically sized unboxed vector");
     }
 
     void walk_res1(const rust_fn *dtor, const uint8_t *end_sp) {
@@ -849,6 +872,12 @@ protected:
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
     static std::pair<ptr_pair,ptr_pair> get_vec_data_range(ptr_pair &dp);
 
+    static std::pair<uint8_t *,uint8_t *> get_unboxed_vec_data_range(ptr dp);
+    static std::pair<ptr_pair,ptr_pair>
+        get_unboxed_vec_data_range(ptr_pair &dp);
+    static ptr get_unboxed_vec_end(ptr dp);
+    static ptr_pair get_unboxed_vec_end(ptr_pair &dp);
+
     static std::pair<uint8_t *,uint8_t *> get_slice_data_range(bool is_str,
                                                                ptr dp);
     static std::pair<ptr_pair,ptr_pair> get_slice_data_range(bool is_str,
@@ -878,6 +907,13 @@ public:
 
     void walk_vec1(bool is_pod) {
         DATA_SIMPLE(void *, walk_vec2(is_pod));
+    }
+
+    void walk_unboxed_vec1(bool is_pod) {
+        // align?
+        U next_dp = get_unboxed_vec_end(dp);
+        static_cast<T *>(this)->walk_unboxed_vec2(is_pod);
+        dp = next_dp;
     }
 
     void walk_slice1(bool is_pod, bool is_str) {
@@ -955,7 +991,7 @@ data<T,U>::walk_uniq_contents1() {
     if (body_td) {
         U body_dp(dp.box_body());
         arena arena;
-        T sub(*static_cast<T *>(this), body_td->shape,
+        T sub(*static_cast<T *>(this), /*body_td->shape,*/ this->sp,
               body_td->shape_tables, body_dp);
         sub.align = true;
         static_cast<T *>(this)->walk_uniq_contents2(sub);
@@ -998,6 +1034,38 @@ data<T,U>::get_vec_data_range(ptr_pair &dp) {
     ptr_pair start(fst.first, snd.first);
     ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
+}
+
+template<typename T,typename U>
+std::pair<uint8_t *,uint8_t *>
+data<T,U>::get_unboxed_vec_data_range(ptr dp) {
+    rust_vec* ptr = (rust_vec*)dp;
+    uint8_t* data = &ptr->data[0];
+    return std::make_pair(data, data + ptr->fill);
+}
+
+template<typename T,typename U>
+std::pair<ptr_pair,ptr_pair>
+data<T,U>::get_unboxed_vec_data_range(ptr_pair &dp) {
+    std::pair<uint8_t *,uint8_t *> fst =
+        get_unboxed_vec_data_range(shape::ptr(dp.fst));
+    std::pair<uint8_t *,uint8_t *> snd =
+        get_unboxed_vec_data_range(shape::ptr(dp.snd));
+    ptr_pair start(fst.first, snd.first);
+    ptr_pair end(fst.second, snd.second);
+    return std::make_pair(start, end);
+}
+
+template<typename T,typename U>
+ptr data<T,U>::get_unboxed_vec_end(ptr dp) {
+    rust_vec* ptr = (rust_vec*)dp;
+    return dp + sizeof(rust_vec) + ptr->fill;
+}
+
+template<typename T,typename U>
+ptr_pair data<T,U>::get_unboxed_vec_end(ptr_pair &dp) {
+    return ptr_pair(get_unboxed_vec_end(ptr(dp.fst)),
+                    get_unboxed_vec_end(ptr(dp.snd)));
 }
 
 template<typename T,typename U>
@@ -1133,6 +1201,10 @@ private:
             out << prefix << "(null)";
         else
             walk_vec2(is_pod, get_vec_data_range(dp));
+    }
+
+    void walk_unboxed_vec2(bool is_pod) {
+        walk_vec2(is_pod, get_unboxed_vec_data_range(dp));
     }
 
     void walk_slice2(bool is_pod, bool is_str) {
