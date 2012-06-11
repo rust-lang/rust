@@ -1,4 +1,3 @@
-
 import util::interner;
 import util::interner::interner;
 import std::map::{hashmap, str_hash};
@@ -66,94 +65,90 @@ enum token {
     IDENT(str_num, bool),
     UNDERSCORE,
     EOF,
-
 }
 
 fn binop_to_str(o: binop) -> str {
     alt o {
-      PLUS { ret "+"; }
-      MINUS { ret "-"; }
-      STAR { ret "*"; }
-      SLASH { ret "/"; }
-      PERCENT { ret "%"; }
-      CARET { ret "^"; }
-      AND { ret "&"; }
-      OR { ret "|"; }
-      SHL { ret "<<"; }
-      SHR { ret ">>"; }
+      PLUS { "+" }
+      MINUS { "-" }
+      STAR { "*" }
+      SLASH { "/" }
+      PERCENT { "%" }
+      CARET { "^" }
+      AND { "&" }
+      OR { "|" }
+      SHL { "<<" }
+      SHR { ">>" }
     }
 }
 
 fn to_str(in: interner<@str>, t: token) -> str {
     alt t {
-      EQ { ret "="; }
-      LT { ret "<"; }
-      LE { ret "<="; }
-      EQEQ { ret "=="; }
-      NE { ret "!="; }
-      GE { ret ">="; }
-      GT { ret ">"; }
-      NOT { ret "!"; }
-      TILDE { ret "~"; }
-      OROR { ret "||"; }
-      ANDAND { ret "&&"; }
-      BINOP(op) { ret binop_to_str(op); }
-      BINOPEQ(op) { ret binop_to_str(op) + "="; }
+      EQ { "=" }
+      LT { "<" }
+      LE { "<=" }
+      EQEQ { "==" }
+      NE { "!=" }
+      GE { ">=" }
+      GT { ">" }
+      NOT { "!" }
+      TILDE { "~" }
+      OROR { "||" }
+      ANDAND { "&&" }
+      BINOP(op) { binop_to_str(op) }
+      BINOPEQ(op) { binop_to_str(op) + "=" }
 
       /* Structural symbols */
-      AT {
-        ret "@";
-      }
-      DOT { ret "."; }
-      ELLIPSIS { ret "..."; }
-      COMMA { ret ","; }
-      SEMI { ret ";"; }
-      COLON { ret ":"; }
-      MOD_SEP { ret "::"; }
-      RARROW { ret "->"; }
-      LARROW { ret "<-"; }
-      DARROW { ret "<->"; }
-      FAT_ARROW { ret "=>"; }
-      LPAREN { ret "("; }
-      RPAREN { ret ")"; }
-      LBRACKET { ret "["; }
-      RBRACKET { ret "]"; }
-      LBRACE { ret "{"; }
-      RBRACE { ret "}"; }
-      POUND { ret "#"; }
-      DOLLAR { ret "$"; }
+      AT { "@" }
+      DOT { "." }
+      ELLIPSIS { "..." }
+      COMMA { "," }
+      SEMI { "" }
+      COLON { ":" }
+      MOD_SEP { "::" }
+      RARROW { "->" }
+      LARROW { "<-" }
+      DARROW { "<->" }
+      FAT_ARROW { "=>" }
+      LPAREN { "(" }
+      RPAREN { ")" }
+      LBRACKET { "[" }
+      RBRACKET { "]" }
+      LBRACE { "{" }
+      RBRACE { "}" }
+      POUND { "#" }
+      DOLLAR { "$" }
 
       /* Literals */
       LIT_INT(c, ast::ty_char) {
-        ret "'" + char::escape_default(c as char) + "'";
+        "'" + char::escape_default(c as char) + "'"
       }
       LIT_INT(i, t) {
-        ret int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t);
+        int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t)
       }
       LIT_UINT(u, t) {
-        ret uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t);
+        uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t)
       }
       LIT_INT_UNSUFFIXED(i, t) {
-        ret int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t);
+        int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t)
       }
       LIT_FLOAT(s, t) {
-        ret *interner::get(in, s) +
-            ast_util::float_ty_to_str(t);
+        *interner::get(in, s) +
+            ast_util::float_ty_to_str(t)
       }
       LIT_STR(s) {
-        ret "\""
+        "\""
             + str::escape_default(*interner::get(in, s))
-            + "\"";
+            + "\""
       }
       /* Name components */
       IDENT(s, _) {
-        ret *interner::get(in, s);
+        *interner::get(in, s)
       }
-      UNDERSCORE { ret "_"; }
-      EOF { ret "<eof>"; }
+      UNDERSCORE { "_" }
+      EOF { "<eof>" }
     }
 }
-
 
 pure fn can_begin_expr(t: token) -> bool {
     alt t {
@@ -179,28 +174,27 @@ pure fn can_begin_expr(t: token) -> bool {
     }
 }
 
-fn is_lit(t: token::token) -> bool {
-    ret alt t {
-          token::LIT_INT(_, _) { true }
-          token::LIT_UINT(_, _) { true }
-          token::LIT_INT_UNSUFFIXED(_, _) { true }
-          token::LIT_FLOAT(_, _) { true }
-          token::LIT_STR(_) { true }
-          _ { false }
-        }
+fn is_lit(t: token) -> bool {
+    alt t {
+      LIT_INT(_, _) { true }
+      LIT_UINT(_, _) { true }
+      LIT_INT_UNSUFFIXED(_, _) { true }
+      LIT_FLOAT(_, _) { true }
+      LIT_STR(_) { true }
+      _ { false }
+    }
 }
 
-pure fn is_ident(t: token::token) -> bool {
-    alt t { token::IDENT(_, _) { ret true; } _ { } }
-    ret false;
+pure fn is_ident(t: token) -> bool {
+    alt t { IDENT(_, _) { true } _ { false } }
 }
 
-pure fn is_plain_ident(t: token::token) -> bool {
-    ret alt t { token::IDENT(_, false) { true } _ { false } };
+pure fn is_plain_ident(t: token) -> bool {
+    alt t { IDENT(_, false) { true } _ { false } }
 }
 
-pure fn is_bar(t: token::token) -> bool {
-    alt t { token::BINOP(token::OR) | token::OROR { true } _ { false } }
+pure fn is_bar(t: token) -> bool {
+    alt t { BINOP(OR) | OROR { true } _ { false } }
 }
 
 #[doc = "
@@ -219,7 +213,7 @@ fn keyword_table() -> hashmap<str, ()> {
     for restricted_keyword_table().each_key {|word|
         keywords.insert(word, ());
     }
-    ret keywords;
+    keywords
 }
 
 #[doc = "Keywords that may be used as identifiers"]
