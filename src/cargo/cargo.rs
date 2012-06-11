@@ -9,12 +9,9 @@ import syntax::diagnostic;
 
 import result::{ok, err};
 import io::writer_util;
-import result;
 import std::{map, json, tempfile, term, sort, getopts};
 import map::hashmap;
 import json::to_str;
-import str;
-import vec;
 import getopts::{optflag, optopt, opt_present};
 
 type package = {
