@@ -249,16 +249,10 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
             }
             add_u16(s, id as u16);
 
-            // Hack: always encode 0 tps, since we will encode
-            // a monomorpized version
+            // Hack: always encode 0 tps, since the shape glue format
+            // hasn't changed since we started monomorphizing.
             add_u16(s, 0_u16);
 
-            // add_u16(s, vec::len(tps) as u16);
-            // for vec::each(tps) {|tp|
-            //     let subshape = shape_of(ccx, tp, ty_param_map);
-            //     add_u16(s, vec::len(subshape) as u16);
-            //     s += subshape;
-            // }
             s
           }
         }
@@ -345,10 +339,10 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
           let ri = @{did: dtor_did, tps: tps};
           let id = interner::intern(ccx.shape_cx.resources, ri);
           add_u16(s, id as u16);
-          add_u16(s, vec::len(tps) as u16);
-          for vec::each(tps) {|tp|
-             add_substr(s, shape_of(ccx, tp));
-          }
+
+          // Hack: always encode 0 tps, since the shape glue format
+          // hasn't changed since we started monomorphizing.
+          add_u16(s, 0_u16);
         };
         for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each {|f|
             sub += shape_of(ccx, f.mt.ty);
@@ -374,10 +368,9 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
 
         let mut s = [shape_res];
         add_u16(s, id as u16);
-        add_u16(s, vec::len(tps) as u16);
-        for vec::each(tps) {|tp|
-            add_substr(s, shape_of(ccx, tp));
-        }
+        // Hack: always encode 0 tps, since the shape glue format
+        // hasn't changed since we started monomorphizing.
+        add_u16(s, 0_u16);
         add_substr(s, shape_of(ccx, subt));
         s
       }
