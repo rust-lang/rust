@@ -106,7 +106,7 @@ fn map_decoded_item(diag: span_handler,
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now:
     alt ii {
-      ii_item(_) | ii_ctor(_,_,_,_) { /* fallthrough */ }
+      ii_item(*) | ii_ctor(*) | ii_dtor(*) { /* fallthrough */ }
       ii_native(i) {
         cx.map.insert(i.id, node_native_item(i, native_abi_rust_intrinsic,
                                              @path));

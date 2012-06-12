@@ -749,6 +749,12 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
+      ty::ty_class(did,substs) {
+        // Call the dtor if there is one
+        option::map_default(ty::ty_dtor(bcx.tcx(), did), bcx) {|dt_id|
+          trans_class_drop(bcx, v, dt_id, did, substs)
+        }
+      }
       _ { bcx }
     };
     build_return(bcx);
@@ -2287,7 +2293,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
       }
       some(none) { fn_id } // Not inlinable
       none { // Not seen yet
-        alt check csearch::maybe_get_item_ast(
+        alt csearch::maybe_get_item_ast(
             ccx.tcx, fn_id,
             bind astencode::decode_inlined_item(_, _, ccx.maps, _, _)) {
 
@@ -2327,6 +2333,10 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             trans_item(ccx, *item);
             local_def(my_id)
           }
+          csearch::found_parent(_, _) {
+              ccx.sess.bug("maybe_get_item_ast returned a found_parent \
+               with a non-item parent");
+          }
           csearch::found(ast::ii_method(impl_did, mth)) {
             ccx.external.insert(fn_id, some(mth.id));
             let {bounds: impl_bnds, rp: _, ty: impl_ty} =
@@ -2339,6 +2349,10 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                          llfn, impl_self(impl_ty), none, mth.id);
             }
             local_def(mth.id)
+          }
+          csearch::found(ast::ii_dtor(dtor, nm, tps, parent_id)) {
+              ccx.external.insert(fn_id, some(dtor.node.id));
+              local_def(dtor.node.id)
           }
         }
       }

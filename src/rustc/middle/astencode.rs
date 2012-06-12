@@ -427,6 +427,12 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
                               with ctor.node}
             with ctor}, nm, tps, parent_id)
       }
+      ast::ii_dtor(dtor, nm, tps, parent_id) {
+        let dtor_body = fld.fold_block(dtor.node.body);
+        ast::ii_dtor({node: {body: dtor_body
+                              with dtor.node}
+            with dtor}, nm, tps, parent_id)
+      }
     }
 }
 
@@ -463,6 +469,16 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl, id: ctor_id
                               with ctor.node}
             with ctor}, nm, new_params, new_parent)
+      }
+      ast::ii_dtor(dtor, nm, tps, parent_id) {
+        let dtor_body = fld.fold_block(dtor.node.body);
+        let new_params = fold::fold_ty_params(tps, fld);
+        let dtor_id = fld.new_id(dtor.node.id);
+        let new_parent = xcx.tr_def_id(parent_id);
+        let new_self = fld.new_id(dtor.node.self_id);
+        ast::ii_dtor({node: {id: dtor_id, self_id: new_self, body: dtor_body}
+                        with dtor},
+          nm, new_params, new_parent)
       }
      }
 }
