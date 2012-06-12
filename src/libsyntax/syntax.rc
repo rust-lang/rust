@@ -29,6 +29,7 @@ mod util {
 
 mod parse {
     export parser;
+    export common;
     export lexer;
     export token;
     export comments;
@@ -63,6 +64,8 @@ mod ext {
     mod expand;
     mod qquote;
     mod build;
+
+    mod earley_parser;
 
     mod fmt;
     mod env;

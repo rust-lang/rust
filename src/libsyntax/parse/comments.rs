@@ -199,8 +199,9 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
 
 
         let bstart = rdr.pos;
+        rdr.next_token();
         //discard, and look ahead; we're working with internal state
-        let {tok: tok, sp: sp} = rdr.next_token();
+        let {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(tok) {
             let s = get_str_from(rdr, bstart);
             vec::push(literals, {lit: s, pos: sp.lo});

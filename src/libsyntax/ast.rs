@@ -378,6 +378,17 @@ enum token_tree {
 }
 
 #[auto_serialize]
+type matcher = spanned<matcher_>;
+
+#[auto_serialize]
+enum matcher_ {
+    mtc_tok(token::token),
+    /* body, separator, zero ok? : */
+    mtc_rep([matcher], option<token::token>, bool),
+    mtc_bb(ident, ident, uint)
+}
+
+#[auto_serialize]
 type mac = spanned<mac_>;
 
 #[auto_serialize]

@@ -85,7 +85,7 @@ enum token {
 
 #[auto_serialize]
 #[doc = "For interpolation during macro expansion."]
-enum whole_nonterminal {
+enum whole_nt {
     w_item(@ast::item),
     w_block(ast::blk),
     w_stmt(@ast::stmt),
@@ -257,7 +257,9 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
         "self", "send", "static",
         "to",
         "use",
-        "with"
+        "with",
+        /* temp */
+        "sep", "many", "at_least_one", "parse"
     ];
     for keys.each {|word|
         words.insert(word, ());

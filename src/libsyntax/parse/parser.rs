@@ -803,10 +803,11 @@ class parser {
         } else if self.token == token::POUND
             && self.look_ahead(1u) == token::POUND {
             self.bump(); self.bump();
-            let macname = self.parse_path_without_tps();
-            let macbody = self.parse_token_tree();
-            ret pexpr(self.mk_mac_expr(lo, self.span.hi,
-                                       mac_invoc_tt(macname, macbody)));
+            //let macname = self.parse_path_without_tps();
+            //let macbody = self.parse_token_tree();
+            //ret pexpr(self.mk_mac_expr(lo, self.span.hi,
+            //                           mac_invoc_tt(macname, macbody)));
+            ret pexpr(self.parse_tt_mac_demo());
         } else if self.token == token::POUND
             && self.look_ahead(1u) == token::LT {
             self.bump(); self.bump();
@@ -1082,6 +1083,58 @@ class parser {
           }
           _ { parse_tt_flat(self, false) }
         };
+    }
+
+    /* temporary */
+    fn parse_tt_mac_demo() -> @expr {
+        let ms = self.parse_seq(token::LBRACE, token::RBRACE,
+                                common::seq_sep_none(),
+                                {|p| p.parse_matcher(@mut 0u)}).node;
+        let tt = self.parse_token_tree();
+        alt tt {
+          tt_delim(tts) {
+            let rdr = lexer::new_tt_reader(self.reader.span_diag(),
+                                           self.reader.interner(), tts)
+                as reader;
+            ext::earley_parser::parse(self.sess, self.cfg, rdr, ms);
+          }
+          _ { fail; }
+        }
+
+        ret self.mk_expr(0u, 0u, expr_break);
+    }
+
+    fn parse_matcher(name_idx: @mut uint) -> matcher {
+        let lo = self.span.lo;
+        let mut sep = none;
+        if self.eat_keyword("sep") { sep = some(self.token); self.bump(); }
+
+        let m = if self.is_keyword("many")||self.is_keyword("at_least_one") {
+            let zero_ok = self.is_keyword("many");
+            self.bump();
+            let ms = (self.parse_seq(token::LPAREN, token::RPAREN,
+                                     common::seq_sep_none(),
+                                     {|p| p.parse_matcher(name_idx)}).node);
+            if ms.len() == 0u {
+                self.fatal("repetition body must be nonempty");
+            }
+            mtc_rep(ms, sep, zero_ok)
+        } else if option::is_some(sep) {
+            self.fatal("`sep <tok>` must preceed `many` or `at_least_one`");
+        } else if self.eat_keyword("parse") {
+            let bound_to = self.parse_ident();
+            self.expect(token::EQ);
+            let nt_name = self.parse_ident();
+
+            let m = mtc_bb(bound_to, nt_name, *name_idx);
+            *name_idx += 1u;
+            m
+        } else {
+            let m = mtc_tok(self.token);
+            self.bump();
+            m
+        };
+        ret spanned(lo, self.span.hi, m);
     }
 
 

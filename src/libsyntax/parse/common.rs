@@ -111,8 +111,8 @@ impl parser_common for parser {
         if !self.eat_keyword(word) {
             self.fatal("expecting " + word + ", found " +
                     token_to_str(self.reader, self.token));
+        }
     }
-}
 
     fn is_restricted_keyword(word: str) -> bool {
         self.restricted_keywords.contains_key(word)

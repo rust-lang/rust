@@ -13,13 +13,17 @@ iface reader {
     fn is_eof() -> bool;
     fn next_token() -> {tok: token::token, sp: span};
     fn fatal(str) -> !;
+    fn span_diag() -> diagnostic::span_handler;
     fn interner() -> @interner::interner<@str>;
+    fn peek() -> {tok: token::token, sp: span};
+    fn dup() -> reader;
 }
 
 enum tt_frame_up { /* to break a circularity */
     tt_frame_up(option<tt_frame>)
 }
 
+/* TODO: figure out how to have a uniquely linked stack, and change to `~` */
 #[doc = "an unzipping of `token_tree`s"]
 type tt_frame = @{
     readme: [ast::token_tree],
@@ -27,7 +31,7 @@ type tt_frame = @{
     up: tt_frame_up
 };
 
-type tt_reader = ~{
+type tt_reader = @{
     span_diagnostic: diagnostic::span_handler,
     interner: @interner::interner<@str>,
     mut cur: tt_frame,
@@ -39,7 +43,7 @@ type tt_reader = ~{
 fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
                  itr: @interner::interner<@str>, src: [ast::token_tree])
     -> tt_reader {
-    let r = ~{span_diagnostic: span_diagnostic, interner: itr,
+    let r = @{span_diagnostic: span_diagnostic, interner: itr,
               mut cur: @{readme: src, mut idx: 0u,
                          up: tt_frame_up(option::none)},
               /* dummy values, never read: */
@@ -62,7 +66,7 @@ pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
 }
 
 pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
-    ~{span_diagnostic: r.span_diagnostic, interner: r.interner,
+    @{span_diagnostic: r.span_diagnostic, interner: r.interner,
       mut cur: dup_tt_frame(r.cur),
       mut cur_tok: r.cur_tok, mut cur_span: r.cur_span}
 }
@@ -75,13 +79,17 @@ type string_reader = @{
     mut curr: char,
     mut chpos: uint,
     filemap: codemap::filemap,
-    interner: @interner::interner<@str>
+    interner: @interner::interner<@str>,
+    /* cached: */
+    mut peek_tok: token::token,
+    mut peek_span: span
 };
 
 fn new_string_reader(span_diagnostic: diagnostic::span_handler,
                      filemap: codemap::filemap,
                      itr: @interner::interner<@str>) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
+    string_advance_token(r); /* fill in peek_* */
     ret r;
 }
 
@@ -93,7 +101,10 @@ fn new_low_level_string_reader(span_diagnostic: diagnostic::span_handler,
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
               mut chpos: filemap.start_pos.ch,
-              filemap: filemap, interner: itr};
+              filemap: filemap, interner: itr,
+              /* dummy values; not read */
+              mut peek_tok: token::EOF,
+              mut peek_span: ast_util::mk_sp(0u,0u)};
     if r.pos < (*filemap.src).len() {
         let next = str::char_range_at(*r.src, r.pos);
         r.pos = next.next;
@@ -102,23 +113,29 @@ fn new_low_level_string_reader(span_diagnostic: diagnostic::span_handler,
     ret r;
 }
 
+fn dup_string_reader(&&r: string_reader) -> string_reader {
+    @{span_diagnostic: r.span_diagnostic, src: r.src,
+      mut col: r.col, mut pos: r.pos, mut curr: r.curr, mut chpos: r.chpos,
+      filemap: r.filemap, interner: r.interner,
+      mut peek_tok: r.peek_tok, mut peek_span: r.peek_span}
+}
+
 impl string_reader_as_reader of reader for string_reader {
     fn is_eof() -> bool { is_eof(self) }
     fn next_token() -> {tok: token::token, sp: span} {
-        consume_whitespace_and_comments(self);
-        let start_chpos = self.chpos;
-        let tok = if is_eof(self) {
-            token::EOF
-        } else {
-            next_token_inner(self)
-        };
-        ret {tok: tok, sp: ast_util::mk_sp(start_chpos, self.chpos)};
+        let ret_val = {tok: self.peek_tok, sp: self.peek_span};
+        string_advance_token(self);
+        ret ret_val;
     }
     fn fatal(m: str) -> ! {
-        self.span_diagnostic.span_fatal(
-            ast_util::mk_sp(self.chpos, self.chpos), m)
+        self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
+    fn span_diag() -> diagnostic::span_handler { self.span_diagnostic }
     fn interner() -> @interner::interner<@str> { self.interner }
+    fn peek() -> {tok: token::token, sp: span} {
+        {tok: self.peek_tok, sp: self.peek_span}
+    }
+    fn dup() -> reader { dup_string_reader(self) as reader }
 }
 
 impl tt_reader_as_reader of reader for tt_reader {
@@ -135,13 +152,25 @@ impl tt_reader_as_reader of reader for tt_reader {
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(copy self.cur_span, m);
     }
+    fn span_diag() -> diagnostic::span_handler { self.span_diagnostic }
     fn interner() -> @interner::interner<@str> { self.interner }
+    fn peek() -> {tok: token::token, sp: span} {
+        { tok: self.cur_tok, sp: self.cur_span }
+    }
+    fn dup() -> reader { dup_tt_reader(self) as reader }
 }
 
 fn string_advance_token(&&r: string_reader) {
     consume_whitespace_and_comments(r);
 
-    next_token_inner(r);
+    if is_eof(r) {
+        r.peek_tok = token::EOF;
+    } else {
+        let start_chpos = r.chpos;
+        r.peek_tok = next_token_inner(r);
+        r.peek_span = ast_util::mk_sp(start_chpos, r.chpos);
+    };
+
 }
 
 fn tt_next_token(&&r: tt_reader) -> {tok: token::token, sp: span} {
@@ -149,11 +178,11 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token::token, sp: span} {
     if r.cur.idx >= vec::len(r.cur.readme) {
         /* done with this set; pop */
         alt r.cur.up {
-          tt_frame_up(option::none) {
+          tt_frame_up(none) {
             r.cur_tok = token::EOF;
             ret ret_val;
           }
-          tt_frame_up(option::some(tt_f)) {
+          tt_frame_up(some(tt_f)) {
             r.cur = tt_f;
             /* the above `if` would need to be a `while` if we didn't know
             that the last thing in a `tt_delim` is always a `tt_flat` */
@@ -165,11 +194,10 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token::token, sp: span} {
     between popping and pushing until we got to an actual `tt_flat` */
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_flat`, even though it won't happen */
-        alt r.cur.readme[r.cur.idx] {
+        alt copy r.cur.readme[r.cur.idx] {
           tt_delim(tts) {
-            /* TODO: this copy should be a unary move, once they exist */
             r.cur = @{readme: tts, mut idx: 0u,
-                      up: tt_frame_up(option::some(copy r.cur)) };
+                      up: tt_frame_up(option::some(r.cur)) };
           }
           tt_flat(sp, tok) {
             r.cur_span = sp; r.cur_tok = tok;
