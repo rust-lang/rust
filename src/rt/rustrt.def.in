@@ -111,6 +111,9 @@ rust_uv_last_error
 rust_uv_strerror
 rust_uv_err_name
 rust_uv_ip4_addr
+rust_uv_ip4_name
+rust_uv_ip6_addr
+rust_uv_ip6_name
 rust_uv_tcp_connect
 rust_uv_tcp_bind
 rust_uv_listen
@@ -126,6 +129,7 @@ rust_uv_helper_uv_buf_t_size
 rust_uv_helper_uv_write_t_size
 rust_uv_helper_uv_err_t_size
 rust_uv_helper_sockaddr_in_size
+rust_uv_helper_sockaddr_in6_size
 rust_uv_helper_uv_async_t_size
 rust_uv_helper_uv_timer_t_size
 rust_uv_get_stream_handle_from_connect_req
