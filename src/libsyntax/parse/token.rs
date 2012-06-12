@@ -77,7 +77,23 @@ enum token {
     /* Name components */
     IDENT(str_num, bool),
     UNDERSCORE,
+
+    //ACTUALLY(whole_nonterminal),
+
     EOF,
+}
+
+#[auto_serialize]
+#[doc = "For interpolation during macro expansion."]
+enum whole_nonterminal {
+    w_item(@ast::item),
+    w_block(ast::blk),
+    w_stmt(@ast::stmt),
+    w_pat( @ast::pat),
+    w_expr(@ast::expr),
+    w_ty(  @ast::ty),
+    w_ident(ast::ident),
+    w_path(@ast::path),
 }
 
 fn binop_to_str(o: binop) -> str {

@@ -45,7 +45,7 @@ fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
               mut cur_tok: token::EOF, /* dummy value, never read */
               mut cur_chpos: 0u /* dummy value, never read */
              };
-    //tt_next_token(r); /* get cur_tok and cur_chpos set up */
+    tt_next_token(r); /* get cur_tok and cur_chpos set up */
     ret r;
 }
 
