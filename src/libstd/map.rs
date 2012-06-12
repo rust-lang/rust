@@ -262,7 +262,7 @@ mod chained {
         ret vec::to_mut(vec::from_elem(nchains, absent));
     }
 
-    fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
+    fn mk<K, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
         let initial_capacity: uint = 32u; // 2^5
         let slf: t<K, V> = @{mut count: 0u,
                              mut chains: chains(initial_capacity),
@@ -282,7 +282,7 @@ Parameters:
 hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
-fn hashmap<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
+fn hashmap<K: const, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
         -> hashmap<K, V> {
     chained::mk(hasher, eqer)
 }
