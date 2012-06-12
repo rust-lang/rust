@@ -381,10 +381,8 @@ fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> ValueRef {
 fn malloc_general(bcx: block, t: ty::t, heap: heap) ->
     {box: ValueRef, body: ValueRef} {
     let _icx = bcx.insn_ctxt("malloc_general");
-    let mk_ty = alt heap { heap_shared { ty::mk_imm_box }
-                           heap_exchange { ty::mk_imm_uniq } };
     let box = malloc_raw(bcx, t, heap);
-    let non_gc_box = non_gc_box_cast(bcx, box, mk_ty(bcx.tcx(), t));
+    let non_gc_box = non_gc_box_cast(bcx, box);
     let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
     ret {box: box, body: body};
 }
@@ -2682,11 +2680,11 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
             let t = expr_ty(cx, base);
             let val = alt check ty::get(t).struct {
               ty::ty_box(_) {
-                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
+                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_uniq(_) {
-                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
+                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_res(_, _, _) {
@@ -2714,10 +2712,11 @@ Before taking a pointer to the inside of a box it should be cast into address
 space 0. Otherwise the resulting (non-box) pointer will be in the wrong
 address space and thus be the wrong type.
 "]
-fn non_gc_box_cast(cx: block, val: ValueRef, t: ty::t) -> ValueRef {
+fn non_gc_box_cast(cx: block, val: ValueRef) -> ValueRef {
     #debug("non_gc_box_cast");
     add_comment(cx, "non_gc_box_cast");
-    let non_gc_t = type_of_non_gc_box(cx.ccx(), t);
+    assert(llvm::LLVMGetPointerAddressSpace(val_ty(val)) as uint == 1u);
+    let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
     PointerCast(cx, val, non_gc_t)
 }
 
@@ -3885,11 +3884,8 @@ fn trans_fail_expr(bcx: block, sp_opt: option<span>,
         bcx = expr_res.bcx;
 
         if ty::type_is_str(e_ty) {
-            let unit_ty = ty::mk_mach_uint(tcx, ast::ty_u8);
-            let vec_ty = ty::mk_vec(tcx, {ty: unit_ty, mutbl: ast::m_imm});
-            let unit_llty = type_of(ccx, unit_ty);
-            let body = tvec::get_bodyptr(bcx, expr_res.val, vec_ty);
-            let data = tvec::get_dataptr(bcx, body, unit_llty);
+            let body = tvec::get_bodyptr(bcx, expr_res.val);
+            let data = tvec::get_dataptr(bcx, body);
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable || ty::type_is_bot(e_ty) {
             ret bcx;
