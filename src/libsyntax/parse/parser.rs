@@ -805,7 +805,7 @@ class parser {
             self.bump();
             let mutbl = self.parse_mutability();
             let es = self.parse_seq_to_end(
-                token::RBRACKET, seq_sep_trailing_disallowed(token::COMMA),
+                token::RBRACKET, seq_sep_trailing_allowed(token::COMMA),
                 {|p| p.parse_expr()});
             hi = self.span.hi;
             ex = expr_vec(es, mutbl);
