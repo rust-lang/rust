@@ -223,10 +223,10 @@ type sockaddr_in = {
     mut sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8)
 };
 
-// unix size: 28 .. make due w/ 32
+// unix size: 28 .. FIXME: stuck with 32 becuse of rust padding structs?
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
-    a2: *u8, a3: (u8, u8, u8, u8)
+    a2: *u8, a3: *u8
 };
 
 mod uv_ll_struct_stubgen {
@@ -500,6 +500,12 @@ native mod rustrt {
     fn rust_uv_err_name(err: *uv_err_t) -> *libc::c_char;
     fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
         -> sockaddr_in;
+    fn rust_uv_ip6_addr(ip: *u8, port: libc::c_int)
+        -> sockaddr_in6;
+    fn rust_uv_ip4_name(src: *sockaddr_in, dst: *u8, size: libc::size_t)
+        -> libc::c_int;
+    fn rust_uv_ip6_name(src: *sockaddr_in6, dst: *u8, size: libc::size_t)
+        -> libc::c_int;
     // FIXME ref #2064
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
@@ -558,6 +564,7 @@ native mod rustrt {
     fn rust_uv_helper_uv_write_t_size() -> libc::c_uint;
     fn rust_uv_helper_uv_err_t_size() -> libc::c_uint;
     fn rust_uv_helper_sockaddr_in_size() -> libc::c_uint;
+    fn rust_uv_helper_sockaddr_in6_size() -> libc::c_uint;
     fn rust_uv_helper_uv_async_t_size() -> libc::c_uint;
     fn rust_uv_helper_uv_timer_t_size() -> libc::c_uint;
 }
@@ -684,6 +691,17 @@ unsafe fn ip4_addr(ip: str, port: int)
     log(debug, #fmt("vec val: '%s' length: %u",
                      ip_back, vec::len(addr_vec)));
     ret rustrt::rust_uv_ip4_addr(addr_vec_ptr,
+                                 port as libc::c_int);
+}
+unsafe fn ip6_addr(ip: str, port: int)
+-> sockaddr_in6 {
+    let mut addr_vec = str::bytes(ip);
+    addr_vec += [0u8]; // add null terminator
+    let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
+    let ip_back = str::from_bytes(addr_vec);
+    log(debug, #fmt("vec val: '%s' length: %u",
+                     ip_back, vec::len(addr_vec)));
+    ret rustrt::rust_uv_ip6_addr(addr_vec_ptr,
                                  port as libc::c_int);
 }
 
@@ -1365,6 +1383,21 @@ mod test {
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
+    }
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    fn test_uv_ll_struct_size_sockaddr_in6() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_sockaddr_in6_size();
+        let rust_handle_size = sys::size_of::<sockaddr_in6>();
+        let output = #fmt("sockaddr_in -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        // FIXME .. rust appears to pack structs to the nearest byte..?
+        // .. can't get the uv::ll::sockaddr_in6 to == 28 :/
+        // .. so the type always appears to be 32 in size.. which is
+        // good, i guess.. better too big than too little
+        assert (4u+native_handle_size as uint) == rust_handle_size;
     }
 
     #[test]
