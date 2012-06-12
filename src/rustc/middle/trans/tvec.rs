@@ -57,17 +57,14 @@ fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                   fill: ValueRef, alloc: ValueRef) -> result {
     let _icx = bcx.insn_ctxt("tvec::alloc_uniq_raw");
     let ccx = bcx.ccx();
-    let llunitty = type_of::type_of(ccx, unit_ty);
-    let llvecty = T_vec(ccx, llunitty);
-    let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
-    let vecbodyty = unit_ty; // FIXME: This is not the correct type (#2536)
+
+    let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
+    let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
+
     let {box, body} = base::malloc_unique_dyn(bcx, vecbodyty, vecsize);
-    let boxptr = PointerCast(bcx, box,
-                             T_unique_ptr(T_unique(bcx.ccx(), llvecty)));
-    let bodyptr = PointerCast(bcx, body, T_ptr(llvecty));
-    Store(bcx, fill, GEPi(bcx, bodyptr, [0u, abi::vec_elt_fill]));
-    Store(bcx, alloc, GEPi(bcx, bodyptr, [0u, abi::vec_elt_alloc]));
-    ret {bcx: bcx, val: boxptr};
+    Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
+    Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
+    ret {bcx: bcx, val: box};
 }
 
 fn alloc_uniq(bcx: block, unit_ty: ty::t, elts: uint) -> result {
@@ -91,14 +88,9 @@ fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
 
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let llunitty = type_of::type_of(ccx, unit_ty);
-    let llvecty = T_vec(ccx, llunitty);
-    let vecbodyty = unit_ty; // FIXME: This is not the correct type (#2536)
+    let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let {box: newptr, body: new_body_ptr} =
         base::malloc_unique_dyn(bcx, vecbodyty, size);
-    let newptr = PointerCast(bcx, newptr,
-                             T_unique_ptr(T_unique(bcx.ccx(), llvecty)));
-    let new_body_ptr = PointerCast(bcx, new_body_ptr, T_ptr(llvecty));
     call_memmove(bcx, new_body_ptr, body_ptr, size);
 
     Store(bcx, fill, GEPi(bcx, new_body_ptr, [0u, abi::vec_elt_alloc]));

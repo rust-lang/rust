@@ -88,7 +88,7 @@ export ty_str, mk_str, type_is_str;
 export ty_vec, mk_vec, type_is_vec;
 export ty_estr, mk_estr;
 export ty_evec, mk_evec;
-export ty_unboxed_vec, mk_unboxed_vec;
+export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
 export vstore, vstore_fixed, vstore_uniq, vstore_box, vstore_slice;
 export ty_nil, mk_nil, type_is_nil;
 export ty_iface, mk_iface;
@@ -676,6 +676,9 @@ fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
 
 fn mk_unboxed_vec(cx: ctxt, tm: mt) -> t {
     mk_t(cx, ty_unboxed_vec(tm))
+}
+fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
+    mk_t(cx, ty_unboxed_vec({ty: ty, mutbl: ast::m_imm}))
 }
 
 
