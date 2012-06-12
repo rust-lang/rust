@@ -54,7 +54,7 @@ is either `x/y` or `x/y + 1`.
 pure fn div_floor(x: uint, y: uint) -> uint { ret x / y; }
 
 #[doc = "Produce a uint suitable for use in a hash table"]
-pure fn hash(x: uint) -> uint { ret x; }
+pure fn hash(&&x: uint) -> uint { ret x; }
 
 #[doc = "
 Iterate over the range [`lo`..`hi`), or stop when requested
