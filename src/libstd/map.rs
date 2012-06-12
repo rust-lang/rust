@@ -328,7 +328,7 @@ fn vec_from_set<T: copy>(s: set<T>) -> [T] {
 
 #[doc = "Construct a hashmap from a vector"]
 fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
-                                   items: [(K, V)]) -> hashmap<K, V> {
+                                         items: [(K, V)]) -> hashmap<K, V> {
     let map = hashmap(hasher, eqer);
     vec::iter(items) { |item|
         let (key, value) = item;
