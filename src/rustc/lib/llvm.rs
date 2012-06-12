@@ -783,9 +783,16 @@ native mod llvm {
     /** Adds the target data to the given pass manager. The pass manager
         references the target data only weakly. */
     fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
-    /** Returns the size of a type. */
+    /** Number of bytes clobbered when doing a Store to *T. */
     fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
+
+    /** Number of bytes clobbered when doing a Store to *T. */
+    fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
+
+    /** Distance between successive elements in an array of T.
+    Includes ABI padding. */
     fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
+
     /** Returns the preferred alignment of a type. */
     fn LLVMPreferredAlignmentOfType(TD: TargetDataRef,
                                     Ty: TypeRef) -> c_uint;

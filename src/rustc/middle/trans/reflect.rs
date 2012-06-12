@@ -31,6 +31,14 @@ impl methods for reflector {
         do_spill_noroot(self.bcx, ss)
     }
 
+    fn c_size_and_align(t: ty::t) -> [ValueRef] {
+        let tr = type_of::type_of(self.bcx.ccx(), t);
+        let s = shape::llsize_of_real(self.bcx.ccx(), tr);
+        let a = shape::llalign_of_min(self.bcx.ccx(), tr);
+        ret [self.c_uint(s),
+             self.c_uint(a)];
+    }
+
     fn visit(ty_name: str, args: [ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = option::get(ty::method_idx("visit_" + ty_name,

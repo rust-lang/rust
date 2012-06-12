@@ -635,33 +635,60 @@ type tag_metrics = {
     payload_align: ValueRef
 };
 
-// Returns the real size of the given type for the current target.
-fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+// Returns the number of bytes clobbered by a Store to this type.
+fn llsize_of_store(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
 }
 
+// Returns the number of bytes between successive elements of type T in an
+// array of T. This is the "ABI" size. It includes any ABI-mandated padding.
 fn llsize_of_alloc(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMABISizeOfType(cx.td.lltd, t) as uint;
 }
 
-// Returns the preferred alignment of the given type for the current target.
-// The preffered alignment may be larger than the alignment used when
-// packing the type into structs
-fn llalign_of_pref(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
+// Returns, as near as we can figure, the "real" size of a type. As in, the
+// bits in this number of bytes actually carry data related to the datum
+// with the type. Not junk, padding, accidentally-damaged words, or
+// whatever. Rounds up to the nearest byte though, so if you have a 1-bit
+// value, we return 1 here, not 0. Most of rustc works in bytes.
+fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+    let nbits = llvm::LLVMSizeOfTypeInBits(cx.td.lltd, t) as uint;
+    if nbits & 7u != 0u {
+        // Not an even number of bytes, spills into "next" byte.
+        1u + (nbits >> 3)
+    } else {
+        nbits >> 3
+    }
 }
 
-// Returns the minimum alignment of a type required by the plattform.
-// This is the alignment that will be used for struct fields.
-fn llalign_of_min(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMABIAlignmentOfType(cx.td.lltd, t) as uint;
-}
-
+// Returns the "default" size of t, which is calculated by casting null to a
+// *T and then doing gep(1) on it and measuring the result. Really, look in
+// the LLVM sources. It does that. So this is likely similar to the ABI size
+// (i.e. including alignment-padding), but goodness knows which alignment it
+// winds up using. Probably the ABI one? Not recommended.
 fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
     ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
                                False);
 }
 
+// Returns the preferred alignment of the given type for the current target.
+// The preffered alignment may be larger than the alignment used when
+// packing the type into structs. This will be used for things like
+// allocations inside a stack frame, which LLVM has a free hand in.
+fn llalign_of_pref(cx: @crate_ctxt, t: TypeRef) -> uint {
+    ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
+}
+
+// Returns the minimum alignment of a type required by the plattform.
+// This is the alignment that will be used for struct fields, arrays,
+// and similar ABI-mandated things.
+fn llalign_of_min(cx: @crate_ctxt, t: TypeRef) -> uint {
+    ret llvm::LLVMABIAlignmentOfType(cx.td.lltd, t) as uint;
+}
+
+// Returns the "default" alignment of t, which is calculated by casting
+// null to a record containing a single-bit followed by a t value, then
+// doing gep(0,1) to get at the trailing (and presumably padded) t cell.
 fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
     ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMAlignOf(t), cx.int_type,
                                False);
