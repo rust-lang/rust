@@ -2052,38 +2052,34 @@ fn hash_type_structure(st: sty) -> uint {
       ty_box(mt) { hash_subty(19u, mt.ty) }
       ty_evec(mt, _) { hash_subty(20u, mt.ty) }
       ty_vec(mt) { hash_subty(21u, mt.ty) }
+      ty_tup(ts) { hash_subtys(25u, ts) }
       ty_rec(fields) {
         let mut h = 26u;
         for fields.each {|f| h = hash_subty(h, f.mt.ty); }
         h
       }
-      ty_tup(ts) { hash_subtys(25u, ts) }
       ty_fn(f) {
         let mut h = 27u;
         for f.inputs.each {|a| h = hash_subty(h, a.ty); }
         hash_subty(h, f.output)
       }
+      ty_self { 28u }
       ty_var(v) { hash_uint(29u, v.to_uint()) }
       ty_var_integral(v) { hash_uint(30u, v.to_uint()) }
       ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
-      ty_self { 28u }
       ty_type { 32u }
       ty_bot { 34u }
       ty_ptr(mt) { hash_subty(35u, mt.ty) }
-      ty_rptr(region, mt) {
-        let mut h = (46u << 2u) + hash_region(region);
-        hash_subty(h, mt.ty)
-      }
-      ty_res(did, sub, substs) {
-        let mut h = hash_subty(hash_def(18u, did), sub);
-        hash_substs(h, substs)
-      }
       ty_constr(t, cs) {
         let mut h = hash_subty(36u, t);
         for cs.each {|c| h = (h << 2u) + hash_type_constr(h, c); }
         h
       }
       ty_uniq(mt) { hash_subty(37u, mt.ty) }
+      ty_res(did, sub, substs) {
+        let mut h = hash_subty(hash_def(38u, did), sub);
+        hash_substs(h, substs)
+      }
       ty_iface(did, substs) {
         let mut h = hash_def(40u, did);
         hash_substs(h, substs)
@@ -2095,6 +2091,10 @@ fn hash_type_structure(st: sty) -> uint {
       ty_class(did, substs) {
         let mut h = hash_def(45u, did);
         hash_substs(h, substs)
+      }
+      ty_rptr(region, mt) {
+        let mut h = (46u << 2u) + hash_region(region);
+        hash_subty(h, mt.ty)
       }
     }
 }
