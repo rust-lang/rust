@@ -297,20 +297,14 @@ fn bytes_hash<V: copy>() -> hashmap<[u8], V> {
     ret hashmap(vec::u8::hash, vec::u8::eq);
 }
 
-fn hash_int(&&x: int) -> uint { int::hash(x) }
-fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
-
 #[doc = "Construct a hashmap for int keys"]
 fn int_hash<V: copy>() -> hashmap<int, V> {
-    ret hashmap(hash_int, eq_int);
+    ret hashmap(int::hash, int::eq);
 }
-
-fn hash_uint(&&x: uint) -> uint { uint::hash(x) }
-fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
 
 #[doc = "Construct a hashmap for uint keys"]
 fn uint_hash<V: copy>() -> hashmap<uint, V> {
-    ret hashmap(hash_uint, eq_uint);
+    ret hashmap(uint::hash, uint::eq);
 }
 
 #[doc = "
@@ -355,12 +349,12 @@ fn hash_from_bytes<V: copy>(items: [([u8], V)]) -> hashmap<[u8], V> {
 
 #[doc = "Construct a hashmap from a vector with int keys"]
 fn hash_from_ints<V: copy>(items: [(int, V)]) -> hashmap<int, V> {
-    hash_from_vec(hash_int, eq_int, items)
+    hash_from_vec(int::hash, int::eq, items)
 }
 
 #[doc = "Construct a hashmap from a vector with uint keys"]
 fn hash_from_uints<V: copy>(items: [(uint, V)]) -> hashmap<uint, V> {
-    hash_from_vec(hash_uint, eq_uint, items)
+    hash_from_vec(uint::hash, uint::eq, items)
 }
 
 #[cfg(test)]
