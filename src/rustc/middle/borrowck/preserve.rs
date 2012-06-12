@@ -17,7 +17,7 @@ impl public_methods for borrowck_ctxt {
           }
           cat_local(_) {
             // Normally, local variables are lendable, and so this
-            // case should never trigged.  However, if we are
+            // case should never trigger.  However, if we are
             // preserving an expression like a.b where the field `b`
             // has @ type, then it will recurse to ensure that the `a`
             // is stable to try and avoid rooting the value `a.b`.  In
