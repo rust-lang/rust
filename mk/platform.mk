@@ -9,7 +9,13 @@ endef
 $(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_HOST_VAR,$(t))))
 $(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: host for $(t) is $(HOST_$(t))))
 
+# FIXME: This appears to do nothing
 CFG_GCCISH_FLAGS += -fno-strict-aliasing
+
+# FIXME: no-omit-frame-pointer is just so that task_start_wrapper
+# has a frame pointer and the stack walker can understand it. Turning off
+# frame pointers everywhere is overkill
+CFG_GCCISH_CFLAGS += -fno-omit-frame-pointer
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets
