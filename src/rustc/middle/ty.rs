@@ -88,6 +88,7 @@ export ty_str, mk_str, type_is_str;
 export ty_vec, mk_vec, type_is_vec;
 export ty_estr, mk_estr;
 export ty_evec, mk_evec;
+export ty_unboxed_vec, mk_unboxed_vec;
 export vstore, vstore_fixed, vstore_uniq, vstore_box, vstore_slice;
 export ty_nil, mk_nil, type_is_nil;
 export ty_iface, mk_iface;
@@ -378,6 +379,7 @@ enum sty {
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
     ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
+    ty_unboxed_vec(mt),
 }
 
 // In the middle end, constraints have a def_id attached, referring
@@ -576,7 +578,8 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_enum(_, substs) | ty_class(_, substs) | ty_iface(_, substs) {
         flags |= sflags(substs);
       }
-      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_evec(m, _) | ty_ptr(m) {
+      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_evec(m, _) |
+      ty_ptr(m) | ty_unboxed_vec(m) {
         flags |= get(m.ty).flags;
       }
       ty_rptr(r, m) {
@@ -671,6 +674,11 @@ fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
     mk_t(cx, ty_evec(tm, t))
 }
 
+fn mk_unboxed_vec(cx: ctxt, tm: mt) -> t {
+    mk_t(cx, ty_unboxed_vec(tm))
+}
+
+
 fn mk_rec(cx: ctxt, fs: [field]) -> t { mk_t(cx, ty_rec(fs)) }
 
 fn mk_constr(cx: ctxt, t: t, cs: [@type_constr]) -> t {
@@ -752,7 +760,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_var_integral(_) |
       ty_param(_, _) {
       }
-      ty_box(tm) | ty_vec(tm) | ty_evec(tm, _) |
+      ty_box(tm) | ty_vec(tm) | ty_evec(tm, _) | ty_unboxed_vec(tm) |
       ty_ptr(tm) | ty_rptr(_, tm) {
         maybe_walk_ty(tm.ty, f);
       }
@@ -800,6 +808,9 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       }
       ty_vec(tm) {
         ty_vec({ty: fldop(tm.ty), mutbl: tm.mutbl})
+      }
+      ty_unboxed_vec(tm) {
+        ty_unboxed_vec({ty: fldop(tm.ty), mutbl: tm.mutbl})
       }
       ty_evec(tm, vst) {
         ty_evec({ty: fldop(tm.ty), mutbl: tm.mutbl}, vst)
@@ -1155,7 +1166,7 @@ pure fn type_is_unsafe_ptr(ty: t) -> bool {
 
 pure fn type_is_vec(ty: t) -> bool {
     ret alt get(ty).struct {
-          ty_vec(_) | ty_evec(_, _) { true }
+          ty_vec(_) | ty_evec(_, _) | ty_unboxed_vec(_) { true }
           ty_str | ty_estr(_) { true }
           _ { false }
         };
@@ -1593,7 +1604,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_var(_) | ty_var_integral(_) {
         cx.sess.bug("Asked to compute kind of a type variable");
       }
-      ty_type | ty_opaque_closure_ptr(_) | ty_opaque_box {
+      ty_type | ty_opaque_closure_ptr(_) | ty_opaque_box | ty_unboxed_vec(_) {
         cx.sess.bug("Asked to compute kind of fictitious type");
       }
     };
@@ -1647,6 +1658,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_opaque_box |
           ty_opaque_closure_ptr(_) |
           ty_evec(_, _) |
+          ty_unboxed_vec(_) |
           ty_vec(_) {
             false
           }
@@ -2052,6 +2064,7 @@ fn hash_type_structure(st: sty) -> uint {
       ty_box(mt) { hash_subty(19u, mt.ty) }
       ty_evec(mt, _) { hash_subty(20u, mt.ty) }
       ty_vec(mt) { hash_subty(21u, mt.ty) }
+      ty_unboxed_vec(mt) { hash_subty(22u, mt.ty) }
       ty_tup(ts) { hash_subtys(25u, ts) }
       ty_rec(fields) {
         let mut h = 26u;
@@ -2411,6 +2424,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> str {
       ty_box(_) { "@-ptr" }
       ty_uniq(_) { "~-ptr" }
       ty_evec(_, _) | ty_vec(_) { "vector" }
+      ty_unboxed_vec(_) { "unboxed vector" }
       ty_ptr(_) { "*-ptr" }
       ty_rptr(_, _) { "&-ptr" }
       ty_rec(_) { "record" }

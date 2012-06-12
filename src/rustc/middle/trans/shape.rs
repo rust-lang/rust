@@ -269,14 +269,16 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
         add_substr(s, shape_of(ccx, mt.ty));
         s
       }
+      ty::ty_unboxed_vec(mt) {
+        let mut s = [shape_unboxed_vec];
+        add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
+        add_substr(s, shape_of(ccx, mt.ty));
+        s
+      }
       ty::ty_evec(mt, ty::vstore_uniq) |
       ty::ty_vec(mt) {
-        let mut s_inner = [shape_unboxed_vec];
-        add_bool(s_inner, ty::type_is_pod(ccx.tcx, mt.ty));
-        add_substr(s_inner, shape_of(ccx, mt.ty));
-        let mut s = [shape_uniq];
-        add_substr(s, s_inner);
-        s
+        shape_of(ccx,
+                 ty::mk_imm_uniq(ccx.tcx, ty::mk_unboxed_vec(ccx.tcx, mt)))
       }
 
       ty::ty_estr(ty::vstore_fixed(n)) {

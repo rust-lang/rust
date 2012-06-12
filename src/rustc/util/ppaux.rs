@@ -8,7 +8,7 @@ import middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_iface, ty_int};
 import middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 import middle::ty::{ty_ptr, ty_rec, ty_res, ty_rptr, ty_self, ty_str, ty_tup};
 import middle::ty::{ty_type, ty_uniq, ty_uint, ty_var, ty_var_integral};
-import middle::ty::{ty_vec, vid};
+import middle::ty::{ty_vec, ty_unboxed_vec, vid};
 import metadata::encoder;
 import syntax::codemap;
 import syntax::print::pprust;
@@ -186,6 +186,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         }
       }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
+      ty_unboxed_vec(tm) { "unboxed_vec<" + mt_to_str(cx, tm) + ">" }
       ty_type { "type" }
       ty_rec(elems) {
         let mut strs: [str] = [];
