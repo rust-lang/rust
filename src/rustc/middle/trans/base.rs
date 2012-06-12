@@ -50,6 +50,7 @@ import type_of::type_of; // Issue #1873
 import syntax::ast_map::{path, path_mod, path_name};
 
 import std::smallintmap;
+import option::is_none;
 
 // Destinations
 
@@ -1207,7 +1208,8 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
     }
 }
 
-fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
+// See [Note-arg-mode]
+fn call_tydesc_glue_full(++cx: block, v: ValueRef, tydesc: ValueRef,
                          field: uint, static_ti: option<@tydesc_info>) {
     let _icx = cx.insn_ctxt("call_tydesc_glue_full");
     lazily_emit_tydesc_glue(cx.ccx(), field, static_ti);
@@ -1245,8 +1247,9 @@ fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
                     C_null(T_ptr(T_ptr(cx.ccx().tydesc_type))), llrawptr]);
 }
 
-fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: uint) ->
-   block {
+// See [Note-arg-mode]
+fn call_tydesc_glue(++cx: block, v: ValueRef, t: ty::t, field: uint)
+    -> block {
     let _icx = cx.insn_ctxt("call_tydesc_glue");
     let mut ti = none;
     let td = get_tydesc(cx.ccx(), t, ti);
@@ -3111,8 +3114,9 @@ fn body_contains_ret(body: ast::blk) -> bool {
     cx.found
 }
 
+// See [Note-arg-mode]
 fn trans_call_inner(
-    in_cx: block,
+    ++in_cx: block,
     call_info: option<node_info>,
     fn_expr_ty: ty::t,
     ret_ty: ty::t,
@@ -3240,8 +3244,8 @@ fn need_invoke(bcx: block) -> bool {
           _ { }
         }
         cur = alt cur.parent {
-          parent_some(next) { next }
-          parent_none { ret false; }
+          some(next) { next }
+          none { ret false; }
         }
     }
 }
@@ -3262,7 +3266,7 @@ fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
     loop {
         alt bcx.kind {
           block_scope(inf) {
-            if inf.cleanups.len() > 0u || bcx.parent == parent_none {
+            if inf.cleanups.len() > 0u || is_none(bcx.parent) {
                 f(inf); ret;
             }
           }
@@ -3471,11 +3475,11 @@ fn add_root_cleanup(bcx: block, scope_id: ast::node_id,
               some({id, _}) if id == scope_id { ret bcx_sid; }
               _ {
                 alt bcx_sid.parent {
-                  parent_none {
+                  none {
                     bcx.tcx().sess.bug(
                         #fmt["no enclosing scope with id %d", scope_id]);
                   }
-                  parent_some(bcx_par) { bcx_par }
+                  some(bcx_par) { bcx_par }
                 }
               }
             }
@@ -3785,7 +3789,10 @@ fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
 
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
-fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
+// [Note-arg-mode]
+// ++ mode is temporary, due to how borrowck treats enums. With hope,
+// will go away anyway when we get rid of modes.
+fn do_spill_noroot(++cx: block, v: ValueRef) -> ValueRef {
     let llptr = alloca(cx, val_ty(v));
     Store(cx, v, llptr);
     ret llptr;
@@ -3970,9 +3977,9 @@ fn trans_break_cont(bcx: block, to_end: bool)
           _ {}
         }
         unwind = alt unwind.parent {
-          parent_some(cx) { cx }
+          some(cx) { cx }
           // This is a return from a loop body block
-          parent_none {
+          none {
             Store(bcx, C_bool(!to_end), bcx.fcx.llretptr);
             cleanup_and_leave(bcx, none, some(bcx.fcx.llreturn));
             Unreachable(bcx);
@@ -4090,7 +4097,7 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-fn new_block(cx: fn_ctxt, parent: block_parent, +kind: block_kind,
+fn new_block(cx: fn_ctxt, parent: option<block>, +kind: block_kind,
              name: str, opt_node_info: option<node_info>) -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
@@ -4099,19 +4106,10 @@ fn new_block(cx: fn_ctxt, parent: block_parent, +kind: block_kind,
     let llbb: BasicBlockRef = str::as_c_str(s, {|buf|
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
-    let bcx = @{llbb: llbb,
-                mut terminated: false,
-                mut unreachable: false,
-                parent: parent,
-                kind: kind,
-                node_info: opt_node_info,
-                fcx: cx};
-    alt parent {
-      parent_some(cx) {
+    let bcx = mk_block(llbb, parent, kind, opt_node_info, cx);
+    option::iter(parent) {|cx|
         if cx.unreachable { Unreachable(bcx); }
-      }
-      _ {}
-    }
+    };
     ret bcx;
 }
 
@@ -4122,20 +4120,20 @@ fn simple_block_scope() -> block_kind {
 
 // Use this when you're at the top block of a function or the like.
 fn top_scope_block(fcx: fn_ctxt, opt_node_info: option<node_info>) -> block {
-    ret new_block(fcx, parent_none, simple_block_scope(),
+    ret new_block(fcx, none, simple_block_scope(),
                   "function top level", opt_node_info);
 }
 
 fn scope_block(bcx: block,
                opt_node_info: option<node_info>,
                n: str) -> block {
-    ret new_block(bcx.fcx, parent_some(bcx), simple_block_scope(),
+    ret new_block(bcx.fcx, some(bcx), simple_block_scope(),
                   n, opt_node_info);
 }
 
 fn loop_scope_block(bcx: block, loop_break: block, n: str,
                     opt_node_info: option<node_info>) -> block {
-    ret new_block(bcx.fcx, parent_some(bcx), block_scope({
+    ret new_block(bcx.fcx, some(bcx), block_scope({
         loop_break: some(loop_break),
         mut cleanups: [],
         mut cleanup_paths: [],
@@ -4146,17 +4144,11 @@ fn loop_scope_block(bcx: block, loop_break: block, n: str,
 
 // Use this when you're making a general CFG BB within a scope.
 fn sub_block(bcx: block, n: str) -> block {
-    ret new_block(bcx.fcx, parent_some(bcx), block_non_scope, n, none);
+    new_block(bcx.fcx, some(bcx), block_non_scope, n, none)
 }
 
 fn raw_block(fcx: fn_ctxt, llbb: BasicBlockRef) -> block {
-    ret @{llbb: llbb,
-          mut terminated: false,
-          mut unreachable: false,
-          parent: parent_none,
-          kind: block_non_scope,
-          node_info: none,
-          fcx: fcx};
+    mk_block(llbb, none, block_non_scope, none, fcx)
 }
 
 
@@ -4231,8 +4223,8 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
           _ {}
         }
         cur = alt cur.parent {
-          parent_some(next) { next }
-          parent_none { assert option::is_none(upto); break; }
+          some(next) { next }
+          none { assert is_none(upto); break; }
         };
     }
     alt leave {
