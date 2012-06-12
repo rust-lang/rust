@@ -68,7 +68,7 @@ export sty;
 export subst, subst_tps, substs_is_noop, substs_to_str, substs;
 export t;
 export new_ty_hash;
-export enum_variants, substd_enum_variants;
+export enum_variants, substd_enum_variants, enum_is_univariant;
 export iface_methods, store_iface_methods, impl_iface;
 export enum_variant_with_id;
 export ty_dtor;
@@ -2661,6 +2661,10 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           }
         }
     }
+}
+
+fn enum_is_univariant(cx: ctxt, id: ast::def_id) -> bool {
+    vec::len(*enum_variants(cx, id)) == 1u
 }
 
 fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {

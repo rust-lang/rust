@@ -43,10 +43,19 @@ impl public_methods for borrowck_ctxt {
             // type never changes.
             self.preserve(cmt_base, opt_scope_id)
           }
-          cat_comp(cmt_base, comp_variant) {
-            self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_variant)
+          cat_comp(cmt_base, comp_variant(enum_did)) {
+            if ty::enum_is_univariant(self.tcx, enum_did) {
+                self.preserve(cmt_base, opt_scope_id)
+            } else {
+                // If there are multiple variants: overwriting the
+                // base could cause the type of this memory to change,
+                // so require imm.
+                self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_variant)
+            }
           }
           cat_deref(cmt_base, _, uniq_ptr) {
+            // Overwriting the base could cause this memory to be
+            // freed, so require imm.
             self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_uniq)
           }
           cat_deref(_, _, region_ptr) {
