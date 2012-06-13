@@ -190,7 +190,7 @@ fn trans_evec(bcx: block, args: [@ast::expr],
         let lleltptr = InBoundsGEP(bcx, dataptr, [C_uint(ccx, i)]);
         bcx = base::trans_expr_save_in(bcx, e, lleltptr);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
-        temp_cleanups += [lleltptr];
+        vec::push(temp_cleanups, lleltptr);
         i += 1u;
     }
 

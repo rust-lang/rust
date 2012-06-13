@@ -159,7 +159,7 @@ impl parser_common for parser {
                        else { self.expect(t); } }
               _ { }
             }
-            v += [f(self)];
+            vec::push(v, f(self));
         }
 
         ret v;
@@ -202,7 +202,7 @@ impl parser_common for parser {
               _ { }
             }
             if sep.trailing_sep_allowed && self.token == ket { break; }
-            v += [f(self)];
+            vec::push(v, f(self));
         }
         ret v;
     }

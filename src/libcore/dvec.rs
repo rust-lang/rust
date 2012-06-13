@@ -137,7 +137,9 @@ impl extensions<A:copy> for dvec<A> {
     #[doc = "Append a single item to the end of the list"]
     fn push(t: A) {
         self.swap { |v|
-            let mut v <- v; v += [t]; v // more efficient than v + [t]
+            let mut v <- v;
+            vec::push(v, t);
+            v
         }
     }
 
@@ -170,7 +172,7 @@ impl extensions<A:copy> for dvec<A> {
             vec::reserve(v, new_len);
             let mut i = from_idx;
             while i < to_idx {
-                v += [ts[i]];
+                vec::push(v, ts[i]);
                 i += 1u;
             }
             v

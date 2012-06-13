@@ -1444,7 +1444,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
 // doesn't need to be dropped. (Issue #839)
 fn move_val(cx: block, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> block {
-    assert !cx.terminated;
+
     let _icx = cx.insn_ctxt("move_val");
     let mut src_val = src.val;
     let tcx = cx.tcx();
@@ -1777,7 +1777,10 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
     // A user-defined operator method
     alt bcx.ccx().maps.method_map.find(ex.id) {
       some(origin) {
+        let bcx = lhs_res.bcx;
         let callee_id = ast_util::op_expr_callee_id(ex);
+        #debug["user-defined method callee_id: %s",
+               ast_map::node_id_to_str(bcx.tcx().items, callee_id)];
         let fty = node_id_type(bcx, callee_id);
 
         let dty = expr_ty(bcx, dst);

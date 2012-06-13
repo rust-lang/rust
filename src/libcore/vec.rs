@@ -4,6 +4,7 @@ import option::{some, none};
 import ptr::addr_of;
 import libc::size_t;
 
+export append;
 export init_op;
 export is_empty;
 export is_not_empty;
@@ -187,7 +188,9 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
     let mut v = [];
     unchecked{reserve(v, n_elts)}
     let mut i: uint = 0u;
-    while i < n_elts { v += [t]; i += 1u; }
+    unsafe { // because push is impure
+        while i < n_elts { push(v, t); i += 1u; }
+    }
     ret v;
 }
 
@@ -372,11 +375,8 @@ fn shift<T: copy>(&v: [T]) -> T {
 }
 
 #[doc = "Prepend an element to a vector"]
-fn unshift<T: copy>(&v: [const T], +t: T) {
-    // n.b.---for most callers, using unshift() ought not to type check, but
-    // it does. It's because the type system is unaware of the mutability of
-    // `v` and so allows the vector to be covariant.
-    v = [const t] + v;
+fn unshift<T: copy>(&v: [T], +t: T) {
+    v = [t] + v;
 }
 
 #[doc = "Remove the last element from a vector and return it"]
@@ -390,12 +390,69 @@ fn pop<T>(&v: [const T]) -> T unsafe {
 }
 
 #[doc = "Append an element to a vector"]
+#[inline(always)]
 fn push<T>(&v: [const T], +initval: T) {
-    v += [initval];
+    let ln = v.len();
+    unsafe {
+        reserve_at_least(v, ln + 1u);
+        unsafe::set_len(v, ln + 1u);
+        let p = ptr::mut_addr_of(v[ln]);
+
+        // FIXME: for performance, try replacing the memmove and <- with a
+        // memset and unsafe::forget.
+        ptr::memset(p, 0, 1u); // needed to stop drop glue from running on
+                               // garbage data.
+        *p = initval;
+    }
 }
 
+#[inline(always)]
+fn push_all<T: copy>(&v: [const T], rhs: [const T]/&) {
+    for uint::range(0u, rhs.len()) {|i|
+        push(v, rhs[i]);
+    }
+}
 
 // Appending
+#[inline(always)]
+pure fn append<T: copy>(lhs: [T]/&, rhs: [const T]/&) -> [T] {
+    let mut v = [];
+    let mut i = 0u;
+    while i < lhs.len() {
+        unsafe { // This is impure, but it appears pure to the caller.
+            push(v, lhs[i]);
+        }
+        i += 1u;
+    }
+    i = 0u;
+    while i < rhs.len() {
+        unsafe { // This is impure, but it appears pure to the caller.
+            push(v, rhs[i]);
+        }
+        i += 1u;
+    }
+    ret v;
+}
+
+#[inline(always)]
+pure fn append_mut<T: copy>(lhs: [mut T]/&, rhs: [const T]/&) -> [mut T] {
+    let mut v = [mut];
+    let mut i = 0u;
+    while i < lhs.len() {
+        unsafe { // This is impure, but it appears pure to the caller.
+            push(v, lhs[i]);
+        }
+        i += 1u;
+    }
+    i = 0u;
+    while i < rhs.len() {
+        unsafe { // This is impure, but it appears pure to the caller.
+            push(v, rhs[i]);
+        }
+        i += 1u;
+    }
+    ret v;
+}
 
 #[doc = "
 Expands a vector in place, initializing the new elements to a given value
@@ -409,7 +466,8 @@ Expands a vector in place, initializing the new elements to a given value
 fn grow<T: copy>(&v: [const T], n: uint, initval: T) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
-    while i < n { v += [initval]; i += 1u; }
+
+    while i < n { push(v, initval); i += 1u; }
 }
 
 #[doc = "
@@ -428,7 +486,7 @@ Function `init_op` is called `n` times with the values [0..`n`)
 fn grow_fn<T>(&v: [const T], n: uint, op: init_op<T>) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
-    while i < n { v += [op(i)]; i += 1u; }
+    while i < n { push(v, op(i)); i += 1u; }
 }
 
 #[doc = "
@@ -453,7 +511,7 @@ Apply a function to each element of a vector and return the results
 pure fn map<T, U>(v: [T]/&, f: fn(T) -> U) -> [U] {
     let mut result = [];
     unchecked{reserve(result, len(v));}
-    for each(v) {|elem| result += [f(elem)]; }
+    for each(v) {|elem| unsafe { push(result, f(elem)); } }
     ret result;
 }
 
@@ -486,7 +544,10 @@ pure fn map2<T: copy, U: copy, V>(v0: [T]/&, v1: [U]/&,
     if v0_len != len(v1) { fail; }
     let mut u: [V] = [];
     let mut i = 0u;
-    while i < v0_len { u += [f(copy v0[i], copy v1[i])]; i += 1u; }
+    while i < v0_len {
+        unsafe { push(u, f(copy v0[i], copy v1[i])) };
+        i += 1u;
+    }
     ret u;
 }
 
@@ -502,7 +563,7 @@ pure fn filter_map<T, U: copy>(v: [T]/&, f: fn(T) -> option<U>)
     for each(v) {|elem|
         alt f(elem) {
           none {/* no-op */ }
-          some(result_elem) { result += [result_elem]; }
+          some(result_elem) { unsafe { push(result, result_elem); } }
         }
     }
     ret result;
@@ -518,7 +579,7 @@ only those elements for which `f` returned true.
 pure fn filter<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [T] {
     let mut result = [];
     for each(v) {|elem|
-        if f(elem) { result += [elem]; }
+        if f(elem) { unsafe { push(result, elem); } }
     }
     ret result;
 }
@@ -530,7 +591,7 @@ Flattens a vector of vectors of T into a single vector of T.
 "]
 pure fn concat<T: copy>(v: [[T]]/&) -> [T] {
     let mut r = [];
-    for each(v) {|inner| r += inner; }
+    for each(v) {|inner| unsafe { push_all(r, inner); } }
     ret r;
 }
 
@@ -541,7 +602,7 @@ pure fn connect<T: copy>(v: [[T]]/&, sep: T) -> [T] {
     let mut r: [T] = [];
     let mut first = true;
     for each(v) {|inner|
-        if first { first = false; } else { r += [sep]; }
+        if first { first = false; } else { unsafe { push(r, sep); } }
         r += inner;
     }
     ret r;
@@ -1023,6 +1084,20 @@ pure fn unpack_mut_slice<T,U>(s: [mut T]/&,
     let v : *(*const T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
     let (buf,len) = *v;
     f(buf, len / sys::size_of::<T>())
+}
+
+impl extensions<T: copy> for [T] {
+    #[inline(always)]
+    pure fn +(rhs: [T]/&) -> [T] {
+        append(self, rhs)
+    }
+}
+
+impl extensions<T: copy> for [mut T] {
+    #[inline(always)]
+    pure fn +(rhs: [mut T]/&) -> [mut T] {
+        append_mut(self, rhs)
+    }
 }
 
 #[doc = "Extension methods for vectors"]

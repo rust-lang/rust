@@ -33,8 +33,8 @@ fn create<T: copy>() -> t<T> {
         let nalloc = uint::next_power_of_two(nelts + 1u);
         while i < nalloc {
             if i < nelts {
-                rv += [mut elts[(lo + i) % nelts]];
-            } else { rv += [mut none]; }
+                vec::push(rv, elts[(lo + i) % nelts]);
+            } else { vec::push(rv, none); }
             i += 1u;
         }
 

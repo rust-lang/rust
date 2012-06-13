@@ -1743,8 +1743,9 @@ mod unsafe {
    Does not verify that the vector contains valid UTF-8.
    "]
    unsafe fn from_bytes(v: [const u8]) -> str unsafe {
-       let vcopy = v + [0u8];
-       ret ::unsafe::transmute(vcopy);
+       let mut vcopy : [u8] = ::unsafe::transmute(copy v);
+       vec::push(vcopy, 0u8);
+       ::unsafe::transmute(vcopy)
    }
 
    #[doc = "

@@ -154,7 +154,6 @@ class lookup {
     }
 
     fn add_candidates_from_param(n: uint, did: ast::def_id) {
-
         let tcx = self.tcx();
         let mut iface_bnd_idx = 0u; // count only iface bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
@@ -202,6 +201,8 @@ class lookup {
 
     fn add_candidates_from_iface(did: ast::def_id, iface_substs: ty::substs) {
 
+        #debug["method_from_iface"];
+
         let ms = *ty::iface_methods(self.tcx(), did);
         for ms.eachi {|i, m|
             if m.ident != self.m_name { cont; }
@@ -234,6 +235,8 @@ class lookup {
     }
 
     fn add_candidates_from_class(did: ast::def_id, class_substs: ty::substs) {
+
+        #debug["method_from_class"];
 
         let ms = *ty::iface_methods(self.tcx(), did);
 
@@ -285,6 +288,8 @@ class lookup {
         let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
         let mut added_any = false;
 
+        #debug["method_from_scope"];
+
         for list::each(impls_vecs) {|impls|
             for vec::each(*impls) {|im|
                 // Check whether this impl has a method with the right name.
@@ -297,9 +302,11 @@ class lookup {
 
                     // if we can assign the caller to the callee, that's a
                     // potential match.  Collect those in the vector.
-                    alt self.fcx.can_mk_assignty(
+                    let can_assign = self.fcx.can_mk_assignty(
                         self.self_expr, self.borrow_scope,
-                        self.self_ty, impl_ty) {
+                        self.self_ty, impl_ty);
+                    #debug["can_assign = %?", can_assign];
+                    alt can_assign {
                       result::err(_) { /* keep looking */ }
                       result::ok(_) {
                         let fty = self.ty_from_did(m.did);

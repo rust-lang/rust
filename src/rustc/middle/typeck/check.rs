@@ -921,22 +921,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let lhs_t = fcx.expr_ty(lhs);
         let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
         ret alt (op, ty::get(lhs_t).struct) {
-          (ast::add, ty::ty_vec(lhs_mt)) {
-            // For adding vectors with type L=[ML TL] and R=[MR TR], the the
-            // result [ML T] where TL <: T and TR <: T.  In other words, the
-            // result type is (generally) the LUB of (TL, TR) and takes the
-            // mutability from the LHS.
-            let t_var = fcx.infcx.next_ty_var();
-            let const_vec_t = ty::mk_vec(tcx, {ty: t_var,
-                                               mutbl: ast::m_const});
-            demand::suptype(fcx, lhs.span, const_vec_t, lhs_t);
-            let rhs_bot = check_expr_with(fcx, rhs, const_vec_t);
-            let result_vec_t = ty::mk_vec(tcx, {ty: t_var,
-                                                mutbl: lhs_mt.mutbl});
-            fcx.write_ty(expr.id, result_vec_t);
-            lhs_bot | rhs_bot
-          }
-
           (_, _) if ty::type_is_integral(lhs_t) &&
           ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs can be any integral type
