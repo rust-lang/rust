@@ -335,15 +335,18 @@ fn get_class_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
 
 fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
+    let mut found = none;
     let cls_items = alt maybe_find_item(id, items) {
             some(it) { it }
-            none     { ret none; }};
-    let mut rslt = none;
-    ebml::tagged_docs(cls_items, tag_item_dtor) {|f|
-        let did = parse_def_id(ebml::doc_data(f));
-        rslt = some(translate_def_id(cdata, did));
-    }
-    rslt
+            none     { fail (#fmt("class_dtor: class id not found \
+              when looking up dtor for %d", id)); }
+    };
+    ebml::tagged_docs(cls_items, tag_item_dtor) {|doc|
+         let doc1 = ebml::get_doc(doc, tag_def_id);
+         let did = parse_def_id(ebml::doc_data(doc1));
+         found = some(translate_def_id(cdata, did));
+    };
+    found
 }
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {

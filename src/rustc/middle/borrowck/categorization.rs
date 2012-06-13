@@ -67,8 +67,8 @@ fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
         some(deref_ptr(unsafe_ptr))
       }
 
-      ty::ty_enum(*) {
-        some(deref_comp(comp_variant))
+      ty::ty_enum(did, _) {
+        some(deref_comp(comp_variant(did)))
       }
 
       ty::ty_res(*) {
@@ -275,10 +275,12 @@ impl public_methods for borrowck_ctxt {
         }
     }
 
-    fn cat_variant<N: ast_node>(arg: N, cmt: cmt) -> cmt {
+    fn cat_variant<N: ast_node>(arg: N,
+                                enum_did: ast::def_id,
+                                cmt: cmt) -> cmt {
         @{id: arg.id(), span: arg.span(),
-          cat: cat_comp(cmt, comp_variant),
-          lp: cmt.lp.map { |l| @lp_comp(l, comp_variant) },
+          cat: cat_comp(cmt, comp_variant(enum_did)),
+          lp: cmt.lp.map { |l| @lp_comp(l, comp_variant(enum_did)) },
           mutbl: cmt.mutbl, // imm iff in an immutable context
           ty: self.tcx.ty(arg)}
     }

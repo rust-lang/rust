@@ -99,6 +99,9 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_vec(mt) {
             T_unique_ptr(T_unique(cx, T_vec(cx, type_of(cx, mt.ty))))
           }
+          ty::ty_unboxed_vec(mt) {
+            T_vec(cx, type_of(cx, mt.ty))
+          }
           ty::ty_ptr(mt) { T_ptr(type_of(cx, mt.ty)) }
           ty::ty_rptr(_, mt) { T_ptr(type_of(cx, mt.ty)) }
 

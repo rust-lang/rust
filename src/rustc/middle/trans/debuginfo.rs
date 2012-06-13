@@ -236,8 +236,8 @@ fn create_block(cx: block) -> @metadata<block_md> {
     let mut cx = cx;
     while option::is_none(cx.node_info) {
         alt cx.parent {
-          parent_some(b) { cx = b; }
-          parent_none { fail; }
+          some(b) { cx = b; }
+          none { fail; }
         }
     }
     let sp = option::get(cx.node_info).span;
@@ -254,8 +254,8 @@ fn create_block(cx: block) -> @metadata<block_md> {
     }*/
 
     let parent = alt cx.parent {
-        parent_none { create_function(cx.fcx).node }
-        parent_some(bcx) { create_block(bcx).node }
+        none { create_function(cx.fcx).node }
+        some(bcx) { create_block(bcx).node }
     };
     let file_node = create_file(cx.ccx(), fname);
     let unique_id = alt cache.find(LexicalBlockTag) {
@@ -658,8 +658,8 @@ fn create_local_var(bcx: block, local: @ast::local)
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.file.name);
     let context = alt bcx.parent {
-        parent_none { create_function(bcx.fcx).node }
-        parent_some(_) { create_block(bcx).node }
+        none { create_function(bcx.fcx).node }
+        some(_) { create_block(bcx).node }
     };
     let mdnode = create_var(tg, context, name, filemd.node,
                             loc.line as int, tymd.node);
@@ -761,9 +761,10 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
             (nm, decl.output, ctor_id)
           }
           ast_map::class_ctor(ctor,_) {
-            fcx.ccx.sess.span_bug(ctor.span, "create_function: \
-                  expected a resource ctor here"); }
+            // FIXME: output type may be wrong (#2194)
+            (nm, ctor.node.dec.output, ctor.node.id)
           }
+        }
       }
       ast_map::node_expr(expr) {
         alt expr.node {

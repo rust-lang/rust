@@ -338,8 +338,16 @@ impl methods for gather_loan_ctxt {
           }
           ast::pat_enum(_, some(subpats)) {
             // variant(x, y, z)
+            let enum_did = alt self.bccx.tcx.def_map
+.find(pat.id) {
+              some(ast::def_variant(enum_did, _)) {enum_did}
+              e {tcx.sess.span_bug(pat.span,
+                                   #fmt["resolved to %?, \
+                                         not variant", e])}
+            };
+
             for subpats.each { |subpat|
-                let subcmt = self.bccx.cat_variant(subpat, cmt);
+                let subcmt = self.bccx.cat_variant(subpat, enum_did, cmt);
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
             }
           }

@@ -238,11 +238,13 @@ enum ptr_kind {uniq_ptr, gc_ptr, region_ptr, unsafe_ptr}
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
 enum comp_kind {
-    comp_tuple, comp_res, comp_variant,
-    comp_field(str, // name of field
+    comp_tuple,                  // elt in a tuple
+    comp_res,                    // data for a resource
+    comp_variant(ast::def_id),   // internals to a variant of given enum
+    comp_field(str,              // name of field
                ast::mutability), // declared mutability of field
-    comp_index(ty::t, // type of vec/str/etc being deref'd
-               ast::mutability) // mutability of vec content
+    comp_index(ty::t,            // type of vec/str/etc being deref'd
+               ast::mutability)  // mutability of vec content
 }
 
 // We pun on *T to mean both actual deref of a ptr as well
@@ -411,7 +413,7 @@ impl to_str_methods for borrowck_ctxt {
           comp_index(*) { "[]" }
           comp_tuple { "()" }
           comp_res { "<res>" }
-          comp_variant { "<enum>" }
+          comp_variant(_) { "<enum>" }
         }
     }
 
@@ -468,7 +470,7 @@ impl to_str_methods for borrowck_ctxt {
           cat_comp(_, comp_field(*)) { mut_str + " field" }
           cat_comp(_, comp_tuple) { "tuple content" }
           cat_comp(_, comp_res) { "resource content" }
-          cat_comp(_, comp_variant) { "enum content" }
+          cat_comp(_, comp_variant(_)) { "enum content" }
           cat_comp(_, comp_index(t, _)) {
             alt ty::get(t).struct {
               ty::ty_vec(*) | ty::ty_evec(*) {
@@ -514,7 +516,7 @@ impl to_str_methods for borrowck_ctxt {
 // mutable structure.
 fn inherent_mutability(ck: comp_kind) -> mutability {
     alt ck {
-      comp_tuple | comp_res | comp_variant {m_imm}
+      comp_tuple | comp_res | comp_variant(_) {m_imm}
       comp_field(_, m) | comp_index(_, m) {m}
     }
 }

@@ -17,7 +17,7 @@ impl public_methods for borrowck_ctxt {
           }
           cat_local(_) {
             // Normally, local variables are lendable, and so this
-            // case should never trigged.  However, if we are
+            // case should never trigger.  However, if we are
             // preserving an expression like a.b where the field `b`
             // has @ type, then it will recurse to ensure that the `a`
             // is stable to try and avoid rooting the value `a.b`.  In
@@ -43,10 +43,19 @@ impl public_methods for borrowck_ctxt {
             // type never changes.
             self.preserve(cmt_base, opt_scope_id)
           }
-          cat_comp(cmt_base, comp_variant) {
-            self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_variant)
+          cat_comp(cmt_base, comp_variant(enum_did)) {
+            if ty::enum_is_univariant(self.tcx, enum_did) {
+                self.preserve(cmt_base, opt_scope_id)
+            } else {
+                // If there are multiple variants: overwriting the
+                // base could cause the type of this memory to change,
+                // so require imm.
+                self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_variant)
+            }
           }
           cat_deref(cmt_base, _, uniq_ptr) {
+            // Overwriting the base could cause this memory to be
+            // freed, so require imm.
             self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_uniq)
           }
           cat_deref(_, _, region_ptr) {

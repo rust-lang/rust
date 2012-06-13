@@ -266,7 +266,7 @@ pure fn view<T: copy>(v: [T]/&, start: uint, end: uint) -> [T]/&a {
 #[doc = "
 Split the vector `v` by applying each element against the predicate `f`.
 "]
-fn split<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+fn split<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -289,7 +289,7 @@ fn split<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
 Split the vector `v` by applying each element against the predicate `f` up
 to `n` times.
 "]
-fn splitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+fn splitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -315,7 +315,7 @@ fn splitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
 Reverse split the vector `v` by applying each element against the predicate
 `f`.
 "]
-fn rsplit<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+fn rsplit<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -338,7 +338,7 @@ fn rsplit<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
 Reverse split the vector `v` by applying each element against the predicate
 `f` up to `n times.
 "]
-fn rsplitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+fn rsplitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -776,7 +776,7 @@ Convert two vectors to a vector of pairs
 Returns a vector of tuples, where the i-th tuple contains contains the
 i-th elements from each of the input vectors.
 "]
-pure fn zip<T: copy, U: copy>(v: [const T], u: [const U]) -> [(T, U)] {
+pure fn zip<T: copy, U: copy>(v: [const T]/&, u: [const U]/&) -> [(T, U)] {
     let mut zipped = [];
     let sz = len(v);
     let mut i = 0u;
@@ -859,7 +859,7 @@ Iterates over a vector, with option to break
 Return true to continue, false to break.
 "]
 #[inline(always)]
-pure fn each<T>(v: [T]/&, f: fn(T) -> bool) unsafe {
+pure fn each<T>(v: [const T]/&, f: fn(T) -> bool) unsafe {
     vec::unpack_slice(v) {|p, n|
         let mut n = n;
         let mut p = p;
@@ -877,7 +877,7 @@ Iterates over a vector's elements and indices
 Return true to continue, false to break.
 "]
 #[inline(always)]
-pure fn eachi<T>(v: [T]/&, f: fn(uint, T) -> bool) unsafe {
+pure fn eachi<T>(v: [const T]/&, f: fn(uint, T) -> bool) unsafe {
     vec::unpack_slice(v) {|p, n|
         let mut i = 0u;
         let mut p = p;
@@ -996,7 +996,7 @@ fn as_mut_buf<E,T>(v: [mut E]/&, f: fn(*mut E) -> T) -> T unsafe {
 Work with the buffer and length of a slice.
 "]
 #[inline(always)]
-pure fn unpack_slice<T,U>(s: [T]/&,
+pure fn unpack_slice<T,U>(s: [const T]/&,
                           f: fn(*T, uint) -> U) -> U unsafe {
     let v : *(*T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
     let (buf,len) = *v;
@@ -1316,7 +1316,7 @@ mod u8 {
 //
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
-impl extensions/&<A> of iter::base_iter<A> for [A]/& {
+impl extensions/&<A> of iter::base_iter<A> for [const A]/& {
     fn each(blk: fn(A) -> bool) { each(self, blk) }
     fn size_hint() -> option<uint> { some(len(self)) }
     fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
@@ -1328,7 +1328,7 @@ impl extensions/&<A> of iter::base_iter<A> for [A]/& {
     fn contains(x: A) -> bool { iter::contains(self, x) }
     fn count(x: A) -> uint { iter::count(self, x) }
 }
-impl extensions/&<A:copy> for [A]/& {
+impl extensions/&<A:copy> for [const A]/& {
     fn filter_to_vec(pred: fn(A) -> bool) -> [A] {
         iter::filter_to_vec(self, pred)
     }

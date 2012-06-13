@@ -50,6 +50,7 @@ import type_of::type_of; // Issue #1873
 import syntax::ast_map::{path, path_mod, path_name};
 
 import std::smallintmap;
+import option::is_none;
 
 // Destinations
 
@@ -380,10 +381,8 @@ fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> ValueRef {
 fn malloc_general(bcx: block, t: ty::t, heap: heap) ->
     {box: ValueRef, body: ValueRef} {
     let _icx = bcx.insn_ctxt("malloc_general");
-    let mk_ty = alt heap { heap_shared { ty::mk_imm_box }
-                           heap_exchange { ty::mk_imm_uniq } };
     let box = malloc_raw(bcx, t, heap);
-    let non_gc_box = non_gc_box_cast(bcx, box, mk_ty(bcx.tcx(), t));
+    let non_gc_box = non_gc_box_cast(bcx, box);
     let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
     ret {box: box, body: body};
 }
@@ -749,6 +748,12 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_opaque_closure_ptr(ck) {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
+      }
+      ty::ty_class(did,substs) {
+        // Call the dtor if there is one
+        option::map_default(ty::ty_dtor(bcx.tcx(), did), bcx) {|dt_id|
+          trans_class_drop(bcx, v, dt_id, did, substs)
+        }
       }
       _ { bcx }
     };
@@ -1207,7 +1212,8 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
     }
 }
 
-fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
+// See [Note-arg-mode]
+fn call_tydesc_glue_full(++cx: block, v: ValueRef, tydesc: ValueRef,
                          field: uint, static_ti: option<@tydesc_info>) {
     let _icx = cx.insn_ctxt("call_tydesc_glue_full");
     lazily_emit_tydesc_glue(cx.ccx(), field, static_ti);
@@ -1245,8 +1251,9 @@ fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
                     C_null(T_ptr(T_ptr(cx.ccx().tydesc_type))), llrawptr]);
 }
 
-fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: uint) ->
-   block {
+// See [Note-arg-mode]
+fn call_tydesc_glue(++cx: block, v: ValueRef, t: ty::t, field: uint)
+    -> block {
     let _icx = cx.insn_ctxt("call_tydesc_glue");
     let mut ti = none;
     let td = get_tydesc(cx.ccx(), t, ti);
@@ -2286,7 +2293,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
       }
       some(none) { fn_id } // Not inlinable
       none { // Not seen yet
-        alt check csearch::maybe_get_item_ast(
+        alt csearch::maybe_get_item_ast(
             ccx.tcx, fn_id,
             bind astencode::decode_inlined_item(_, _, ccx.maps, _, _)) {
 
@@ -2326,6 +2333,10 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             trans_item(ccx, *item);
             local_def(my_id)
           }
+          csearch::found_parent(_, _) {
+              ccx.sess.bug("maybe_get_item_ast returned a found_parent \
+               with a non-item parent");
+          }
           csearch::found(ast::ii_method(impl_did, mth)) {
             ccx.external.insert(fn_id, some(mth.id));
             let {bounds: impl_bnds, rp: _, ty: impl_ty} =
@@ -2338,6 +2349,10 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                          llfn, impl_self(impl_ty), none, mth.id);
             }
             local_def(mth.id)
+          }
+          csearch::found(ast::ii_dtor(dtor, nm, tps, parent_id)) {
+              ccx.external.insert(fn_id, some(dtor.node.id));
+              local_def(dtor.node.id)
           }
         }
       }
@@ -2679,11 +2694,11 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
             let t = expr_ty(cx, base);
             let val = alt check ty::get(t).struct {
               ty::ty_box(_) {
-                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
+                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_uniq(_) {
-                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
+                let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_res(_, _, _) {
@@ -2711,10 +2726,11 @@ Before taking a pointer to the inside of a box it should be cast into address
 space 0. Otherwise the resulting (non-box) pointer will be in the wrong
 address space and thus be the wrong type.
 "]
-fn non_gc_box_cast(cx: block, val: ValueRef, t: ty::t) -> ValueRef {
+fn non_gc_box_cast(cx: block, val: ValueRef) -> ValueRef {
     #debug("non_gc_box_cast");
     add_comment(cx, "non_gc_box_cast");
-    let non_gc_t = type_of_non_gc_box(cx.ccx(), t);
+    assert(llvm::LLVMGetPointerAddressSpace(val_ty(val)) as uint == 1u);
+    let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
     PointerCast(cx, val, non_gc_t)
 }
 
@@ -3111,8 +3127,9 @@ fn body_contains_ret(body: ast::blk) -> bool {
     cx.found
 }
 
+// See [Note-arg-mode]
 fn trans_call_inner(
-    in_cx: block,
+    ++in_cx: block,
     call_info: option<node_info>,
     fn_expr_ty: ty::t,
     ret_ty: ty::t,
@@ -3240,8 +3257,8 @@ fn need_invoke(bcx: block) -> bool {
           _ { }
         }
         cur = alt cur.parent {
-          parent_some(next) { next }
-          parent_none { ret false; }
+          some(next) { next }
+          none { ret false; }
         }
     }
 }
@@ -3262,7 +3279,7 @@ fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
     loop {
         alt bcx.kind {
           block_scope(inf) {
-            if inf.cleanups.len() > 0u || bcx.parent == parent_none {
+            if inf.cleanups.len() > 0u || is_none(bcx.parent) {
                 f(inf); ret;
             }
           }
@@ -3471,11 +3488,11 @@ fn add_root_cleanup(bcx: block, scope_id: ast::node_id,
               some({id, _}) if id == scope_id { ret bcx_sid; }
               _ {
                 alt bcx_sid.parent {
-                  parent_none {
+                  none {
                     bcx.tcx().sess.bug(
                         #fmt["no enclosing scope with id %d", scope_id]);
                   }
-                  parent_some(bcx_par) { bcx_par }
+                  some(bcx_par) { bcx_par }
                 }
               }
             }
@@ -3785,7 +3802,10 @@ fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
 
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
-fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
+// [Note-arg-mode]
+// ++ mode is temporary, due to how borrowck treats enums. With hope,
+// will go away anyway when we get rid of modes.
+fn do_spill_noroot(++cx: block, v: ValueRef) -> ValueRef {
     let llptr = alloca(cx, val_ty(v));
     Store(cx, v, llptr);
     ret llptr;
@@ -3878,11 +3898,8 @@ fn trans_fail_expr(bcx: block, sp_opt: option<span>,
         bcx = expr_res.bcx;
 
         if ty::type_is_str(e_ty) {
-            let unit_ty = ty::mk_mach_uint(tcx, ast::ty_u8);
-            let vec_ty = ty::mk_vec(tcx, {ty: unit_ty, mutbl: ast::m_imm});
-            let unit_llty = type_of(ccx, unit_ty);
-            let body = tvec::get_bodyptr(bcx, expr_res.val, vec_ty);
-            let data = tvec::get_dataptr(bcx, body, unit_llty);
+            let body = tvec::get_bodyptr(bcx, expr_res.val);
+            let data = tvec::get_dataptr(bcx, body);
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable || ty::type_is_bot(e_ty) {
             ret bcx;
@@ -3970,9 +3987,9 @@ fn trans_break_cont(bcx: block, to_end: bool)
           _ {}
         }
         unwind = alt unwind.parent {
-          parent_some(cx) { cx }
+          some(cx) { cx }
           // This is a return from a loop body block
-          parent_none {
+          none {
             Store(bcx, C_bool(!to_end), bcx.fcx.llretptr);
             cleanup_and_leave(bcx, none, some(bcx.fcx.llreturn));
             Unreachable(bcx);
@@ -4090,7 +4107,7 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-fn new_block(cx: fn_ctxt, parent: block_parent, +kind: block_kind,
+fn new_block(cx: fn_ctxt, parent: option<block>, +kind: block_kind,
              name: str, opt_node_info: option<node_info>) -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
@@ -4099,19 +4116,10 @@ fn new_block(cx: fn_ctxt, parent: block_parent, +kind: block_kind,
     let llbb: BasicBlockRef = str::as_c_str(s, {|buf|
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
-    let bcx = @{llbb: llbb,
-                mut terminated: false,
-                mut unreachable: false,
-                parent: parent,
-                kind: kind,
-                node_info: opt_node_info,
-                fcx: cx};
-    alt parent {
-      parent_some(cx) {
+    let bcx = mk_block(llbb, parent, kind, opt_node_info, cx);
+    option::iter(parent) {|cx|
         if cx.unreachable { Unreachable(bcx); }
-      }
-      _ {}
-    }
+    };
     ret bcx;
 }
 
@@ -4122,20 +4130,20 @@ fn simple_block_scope() -> block_kind {
 
 // Use this when you're at the top block of a function or the like.
 fn top_scope_block(fcx: fn_ctxt, opt_node_info: option<node_info>) -> block {
-    ret new_block(fcx, parent_none, simple_block_scope(),
+    ret new_block(fcx, none, simple_block_scope(),
                   "function top level", opt_node_info);
 }
 
 fn scope_block(bcx: block,
                opt_node_info: option<node_info>,
                n: str) -> block {
-    ret new_block(bcx.fcx, parent_some(bcx), simple_block_scope(),
+    ret new_block(bcx.fcx, some(bcx), simple_block_scope(),
                   n, opt_node_info);
 }
 
 fn loop_scope_block(bcx: block, loop_break: block, n: str,
                     opt_node_info: option<node_info>) -> block {
-    ret new_block(bcx.fcx, parent_some(bcx), block_scope({
+    ret new_block(bcx.fcx, some(bcx), block_scope({
         loop_break: some(loop_break),
         mut cleanups: [],
         mut cleanup_paths: [],
@@ -4146,17 +4154,11 @@ fn loop_scope_block(bcx: block, loop_break: block, n: str,
 
 // Use this when you're making a general CFG BB within a scope.
 fn sub_block(bcx: block, n: str) -> block {
-    ret new_block(bcx.fcx, parent_some(bcx), block_non_scope, n, none);
+    new_block(bcx.fcx, some(bcx), block_non_scope, n, none)
 }
 
 fn raw_block(fcx: fn_ctxt, llbb: BasicBlockRef) -> block {
-    ret @{llbb: llbb,
-          mut terminated: false,
-          mut unreachable: false,
-          parent: parent_none,
-          kind: block_non_scope,
-          node_info: none,
-          fcx: fcx};
+    mk_block(llbb, none, block_non_scope, none, fcx)
 }
 
 
@@ -4231,8 +4233,8 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
           _ {}
         }
         cur = alt cur.parent {
-          parent_some(next) { next }
-          parent_none { assert option::is_none(upto); break; }
+          some(next) { next }
+          none { assert is_none(upto); break; }
         };
     }
     alt leave {

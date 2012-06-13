@@ -462,8 +462,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
     // Unbox in case of a box field
     if any_box_pat(m, col) {
         let box = Load(bcx, val);
-        let box_ty = node_id_type(bcx, pat_id);
-        let box_no_addrspace = non_gc_box_cast(bcx, box, box_ty);
+        let box_no_addrspace = non_gc_box_cast(bcx, box);
         let unboxed = GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
         compile_submatch(bcx, enter_box(dm, m, col, val), [unboxed]
                          + vals_left, chk, exits);
@@ -472,8 +471,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
 
     if any_uniq_pat(m, col) {
         let box = Load(bcx, val);
-        let box_ty = node_id_type(bcx, pat_id);
-        let box_no_addrspace = non_gc_box_cast(bcx, box, box_ty);
+        let box_no_addrspace = non_gc_box_cast(bcx, box);
         let unboxed = GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
         compile_submatch(bcx, enter_uniq(dm, m, col, val),
                          [unboxed] + vals_left, chk, exits);
