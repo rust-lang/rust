@@ -1,3 +1,4 @@
+// xfail-fast
 // aux-build:test_comm.rs
 
 use test_comm;
