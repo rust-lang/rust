@@ -557,8 +557,8 @@ fn load_source_info(c: cargo, src: source) {
     if !os::path_exists(srcfile) { ret; }
     let srcstr = io::read_whole_file_str(srcfile);
     alt json::from_str(result::get(srcstr)) {
-        ok(json::dict(_s)) {
-            let o = parse_source(src.name, json::dict(_s));
+        ok(json::dict(s)) {
+            let o = parse_source(src.name, json::dict(s));
 
             src.key = o.key;
             src.keyfp = o.keyfp;
@@ -635,7 +635,7 @@ fn build_cargo_options(argv: [str]) -> options {
 
 fn configure(opts: options) -> cargo {
     let home = alt get_cargo_root() {
-        ok(_home) { _home }
+        ok(home) { home }
         err(_err) { result::get(get_cargo_sysroot()) }
     };
 
@@ -647,11 +647,11 @@ fn configure(opts: options) -> cargo {
 
     let p = result::get(get_cargo_dir());
 
-    let sources = map::str_hash::<source>();
+    let sources = map::str_hash();
     try_parse_sources(path::connect(home, "sources.json"), sources);
     try_parse_sources(path::connect(home, "local-sources.json"), sources);
 
-    let dep_cache = map::str_hash::<bool>();
+    let dep_cache = map::str_hash();
 
     let mut c = {
         pgp: pgp::supported(),
@@ -668,9 +668,9 @@ fn configure(opts: options) -> cargo {
     };
 
     need_dir(c.root);
+    need_dir(c.installdir);
     need_dir(c.sourcedir);
     need_dir(c.workdir);
-    need_dir(c.installdir);
     need_dir(c.libdir);
     need_dir(c.bindir);
 
@@ -799,7 +799,7 @@ fn install_source(c: cargo, path: str) {
 
                     let wd_base = c.workdir + path::path_sep();
                     let wd = alt tempfile::mkdtemp(wd_base, "") {
-                        some(_wd) { _wd }
+                        some(wd) { wd }
                         none { fail #fmt("needed temp dir: %s", wd_base); }
                     };
 
@@ -819,8 +819,8 @@ fn install_source(c: cargo, path: str) {
 
 fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
     run::program_output("git", ["clone", url, wd]);
-    if option::is_some::<str>(ref) {
-        let r = option::get::<str>(ref);
+    if option::is_some(ref) {
+        let r = option::get(ref);
         os::change_dir(wd);
         run::run_program("git", ["checkout", r]);
     }
@@ -1021,8 +1021,8 @@ fn cmd_uninstall(c: cargo) {
 
 fn install_query(c: cargo, wd: str, target: str) {
     alt c.dep_cache.find(target) {
-        some(_inst) {
-            if _inst {
+        some(inst) {
+            if inst {
                 ret;
             }
         }
@@ -1082,7 +1082,7 @@ fn install_query(c: cargo, wd: str, target: str) {
 fn cmd_install(c: cargo) unsafe {
     let wd_base = c.workdir + path::path_sep();
     let wd = alt tempfile::mkdtemp(wd_base, "") {
-        some(_wd) { _wd }
+        some(wd) { wd }
         none { fail #fmt("needed temp dir: %s", wd_base); }
     };
 
@@ -1536,7 +1536,7 @@ fn cmd_search(c: cargo) {
 fn install_to_dir(srcfile: str, destdir: str) {
     let newfile = path::connect(destdir, path::basename(srcfile));
 
-    let status = run::run_program("cp", [srcfile, newfile]);
+    let status = run::run_program("cp", ["-r", srcfile, newfile]);
     if status == 0 {
         info(#fmt["installed: '%s'", newfile]);
     } else {
