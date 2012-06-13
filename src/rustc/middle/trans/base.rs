@@ -1444,6 +1444,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
 // doesn't need to be dropped. (Issue #839)
 fn move_val(cx: block, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> block {
+    assert !cx.terminated;
     let _icx = cx.insn_ctxt("move_val");
     let mut src_val = src.val;
     let tcx = cx.tcx();
@@ -1778,7 +1779,11 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(
+
+        let dty = expr_ty(bcx, dst);
+        let target = alloc_ty(bcx, dty);
+
+        let bcx = trans_call_inner(
             bcx, ex.info(), fty,
             expr_ty(bcx, ex),
             {|bcx|
@@ -1786,7 +1791,12 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
                 // #2528
                 impl::trans_method_callee(bcx, callee_id, dst, origin)
             },
-            arg_exprs([src]), save_in(lhs_res.val));
+            arg_exprs([src]), save_in(target));
+
+        ret move_val(bcx, DROP_EXISTING, lhs_res.val,
+                     // FIXME: should kind be owned?
+                     {bcx: bcx, val: target, kind: owned},
+                     dty);
       }
       _ {}
     }
