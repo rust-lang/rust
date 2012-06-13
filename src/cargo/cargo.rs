@@ -1536,7 +1536,7 @@ fn cmd_search(c: cargo) {
 fn install_to_dir(srcfile: str, destdir: str) {
     let newfile = path::connect(destdir, path::basename(srcfile));
 
-    let status = run::run_program("cp", [srcfile, newfile]);
+    let status = run::run_program("cp", ["-r", srcfile, newfile]);
     if status == 0 {
         info(#fmt["installed: '%s'", newfile]);
     } else {
