@@ -9,7 +9,7 @@ import ebml::writer;
 import syntax::ast::*;
 import syntax::print::pprust;
 import syntax::{ast_util, visit};
-import syntax::ast_util::local_def;
+import syntax::ast_util::*;
 import common::*;
 import middle::ty;
 import middle::ty::node_id_to_type;
@@ -206,12 +206,6 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 add_to_index(ebml_w, path, index, it.ident);
                 encode_named_def_id(ebml_w, it.ident,
                                     local_def(ctor.node.id));
-                /* Encode id for dtor */
-                option::iter(m_dtor) {|dtor|
-                        ebml_w.wr_tag(tag_item_dtor) {||
-                           encode_def_id(ebml_w, local_def(dtor.node.id));
-                    }
-                };
                 encode_class_item_paths(ebml_w, items, path + [it.ident],
                                         index);
             }
@@ -485,8 +479,8 @@ fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_family(ebml_w, purity_fn_family(decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         let its_ty = node_id_to_type(ecx.tcx, id);
-        #debug("fn name = %s ty = %s", ident,
-               util::ppaux::ty_to_str(ecx.tcx, its_ty));
+        #debug("fn name = %s ty = %s its node id = %d", ident,
+               util::ppaux::ty_to_str(ecx.tcx, its_ty), id);
         encode_type(ecx, ebml_w, its_ty);
         encode_path(ebml_w, path, ast_map::path_name(ident));
         alt item {
@@ -623,13 +617,23 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps, ifaces, items, ctor, _dtor, rp) {
+      item_class(tps, ifaces, items, ctor, m_dtor, rp) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
            class itself */
         let idx = encode_info_for_class(ecx, ebml_w, item.id, path, tps,
                                           items, index);
+        /* Encode the dtor */
+        option::iter(m_dtor) {|dtor|
+          *index += [{val: dtor.node.id, pos: ebml_w.writer.tell()}];
+          encode_info_for_fn(ecx, ebml_w, dtor.node.id, item.ident
+                             + "_dtor", path, if tps.len() > 0u {
+                               some(ii_dtor(dtor, item.ident, tps,
+                                            local_def(item.id))) }
+                             else { none }, tps, ast_util::dtor_dec());
+        }
+
         /* Index the class*/
         add_to_index();
         /* Now, make an item for the class itself */
@@ -644,6 +648,14 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         for ifaces.each {|t|
            encode_iface_ref(ebml_w, ecx, t);
         }
+        /* Encode the dtor */
+        /* Encode id for dtor */
+        option::iter(m_dtor) {|dtor|
+            ebml_w.wr_tag(tag_item_dtor) {||
+                encode_def_id(ebml_w, local_def(dtor.node.id));
+            }
+        };
+
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_iface_method
         needs to know*/
@@ -803,9 +815,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
                 alt i.node {
-                   item_class(tps, _, _, ctor, _, _) {
-                   /* this is assuming that ctors aren't inlined...
-                      probably shouldn't assume that */
+                   item_class(tps, _, _, ctor, m_dtor, _) {
                    #debug("encoding info for ctor %s %d", i.ident,
                           ctor.node.id);
                    *index += [{val: ctor.node.id, pos: ebml_w.writer.tell()}];
@@ -813,7 +823,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                       *pt, if tps.len() > 0u {
                              some(ii_ctor(ctor, i.ident, tps,
                                           local_def(i.id))) }
-                           else { none }, tps, ctor.node.dec)
+                      else { none }, tps, ctor.node.dec);
                   }
                   _ {}
                 }

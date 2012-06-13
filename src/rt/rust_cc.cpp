@@ -91,6 +91,10 @@ class irc : public shape::data<irc,shape::ptr> {
         walk_vec2(is_pod, get_vec_data_range(dp));
     }
 
+    void walk_unboxed_vec2(bool is_pod) {
+        walk_vec2(is_pod, get_unboxed_vec_data_range(dp));
+    }
+
     void walk_slice2(bool is_pod, bool is_str) {
         walk_vec2(is_pod, get_slice_data_range(is_str, dp));
     }
@@ -339,6 +343,10 @@ class mark : public shape::data<mark,shape::ptr> {
         if (shape::get_dp<void *>(dp) == NULL)
             return;
         walk_vec2(is_pod, get_vec_data_range(dp));
+    }
+
+    void walk_unboxed_vec2(bool is_pod) {
+        walk_vec2(is_pod, get_unboxed_vec_data_range(dp));
     }
 
     void walk_slice2(bool is_pod, bool is_str) {

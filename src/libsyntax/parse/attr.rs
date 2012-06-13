@@ -1,6 +1,6 @@
 import either::{either, left, right};
 import ast_util::spanned;
-import common::{parser_common, seq_sep};
+import common::{parser_common, seq_sep_trailing_disallowed};
 
 export attr_or_ext;
 export parser_attr;
@@ -111,7 +111,7 @@ impl parser_attr for parser {
 
     fn parse_meta_seq() -> [@ast::meta_item] {
         ret self.parse_seq(token::LPAREN, token::RPAREN,
-                           seq_sep(token::COMMA),
+                           seq_sep_trailing_disallowed(token::COMMA),
                            {|p| p.parse_meta_item()}).node;
     }
 

@@ -257,6 +257,7 @@ impl methods for reflector {
             };
             self.visit("closure_ptr", [self.c_uint(ckval)])
           }
+          ty::ty_unboxed_vec(mt) { self.bracketed_mt("vec", mt, []) }
         }
     }
 }

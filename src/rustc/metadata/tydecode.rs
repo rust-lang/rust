@@ -308,6 +308,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret ty::mk_rptr(st.tcx, r, mt);
       }
       'I' { ret ty::mk_vec(st.tcx, parse_mt(st, conv)); }
+      'U' { ret ty::mk_unboxed_vec(st.tcx, parse_mt(st, conv)); }
       'V' {
         let mt = parse_mt(st, conv);
         let v = parse_vstore(st);

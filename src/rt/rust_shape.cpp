@@ -263,6 +263,11 @@ public:
         walk_vec2(is_pod, get_vec_data_range(dp));
     }
 
+    void walk_unboxed_vec2(bool is_pod) {
+        walk_vec2(is_pod, get_unboxed_vec_data_range(dp));
+    }
+
+
     void walk_slice2(bool is_pod, bool is_str) {
         // Slices compare just like vecs.
         walk_vec2(is_pod, get_slice_data_range(is_str, dp));

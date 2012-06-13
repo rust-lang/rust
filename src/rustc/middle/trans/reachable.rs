@@ -9,7 +9,9 @@ import syntax::ast::*;
 import syntax::{visit, ast_util, ast_map};
 import syntax::ast_util::def_id_of_def;
 import syntax::attr;
+import syntax::print::pprust::expr_to_str;
 import std::map::hashmap;
+import driver::session::*;
 
 export map, find_reachable;
 
@@ -58,7 +60,11 @@ fn traverse_export(cx: ctx, exp_id: node_id) {
 
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { ret; }
-    alt cx.tcx.items.get(did.node) {
+    let n = alt cx.tcx.items.find(did.node) {
+        none { ret; } // This can happen for self, for example
+        some(n) { n }
+    };
+    alt n {
       ast_map::node_item(item, _) { traverse_public_item(cx, item); }
       ast_map::node_method(_, impl_id, _) { traverse_def_id(cx, impl_id); }
       ast_map::node_native_item(item, _, _) { cx.rmap.insert(item.id, ()); }
@@ -111,6 +117,10 @@ fn traverse_public_item(cx: ctx, item: @item) {
         cx.rmap.insert(ctor.node.id, ());
         option::iter(m_dtor) {|dtor|
             cx.rmap.insert(dtor.node.id, ());
+            // dtors don't have attrs
+            if tps.len() > 0u {
+                traverse_inline_body(cx, dtor.node.body);
+            }
         }
         for vec::each(items) {|item|
             alt item.node {
@@ -134,7 +144,13 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         alt e.node {
           expr_path(_) {
-            traverse_def_id(cx, def_id_of_def(cx.tcx.def_map.get(e.id)));
+            alt cx.tcx.def_map.find(e.id) {
+                some(d) {
+                  traverse_def_id(cx, def_id_of_def(d));
+                }
+                none      { cx.tcx.sess.span_bug(e.span, #fmt("Unbound node \
+                  id %? while traversing %s", e.id, expr_to_str(e))); }
+            }
           }
           expr_field(_, _, _) {
             alt cx.method_map.find(e.id) {

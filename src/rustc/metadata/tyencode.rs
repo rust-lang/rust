@@ -252,6 +252,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_vstore(w, cx, v);
       }
       ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
+      ty::ty_unboxed_vec(mt) { w.write_char('U'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
         w.write_str("R["/&);
         for fields.each {|field|

@@ -730,7 +730,8 @@ enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_native(@native_item),
-    ii_ctor(class_ctor, ident, [ty_param], def_id /* parent id */)
+    ii_ctor(class_ctor, ident, [ty_param], def_id /* parent id */),
+    ii_dtor(class_dtor, ident, [ty_param], def_id /* parent id */)
 }
 
 //

@@ -320,6 +320,7 @@ impl inlined_item_methods for inlined_item {
           ii_native(i) { /* FIXME: bad */ copy i.ident }
           ii_method(_, m) { /* FIXME: bad */ copy m.ident }
           ii_ctor(_, nm, _, _) { /* FIXME: bad */ copy nm }
+          ii_dtor(_, nm, _, _) { /* FIXME: bad */ copy nm }
         }
     }
 
@@ -329,6 +330,7 @@ impl inlined_item_methods for inlined_item {
           ii_native(i) { i.id }
           ii_method(_, m) { m.id }
           ii_ctor(ctor, _, _, _) { ctor.node.id }
+          ii_dtor(dtor, _, _, _) { dtor.node.id }
         }
     }
 
@@ -339,6 +341,9 @@ impl inlined_item_methods for inlined_item {
           ii_method(_, m) { visit::visit_method_helper(m, e, v) }
           ii_ctor(ctor, nm, tps, parent_id) {
               visit::visit_class_ctor_helper(ctor, nm, tps, parent_id, e, v);
+          }
+          ii_dtor(dtor, nm, tps, parent_id) {
+              visit::visit_class_dtor_helper(dtor, tps, parent_id, e, v);
           }
         }
     }
