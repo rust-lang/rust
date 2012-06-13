@@ -154,6 +154,8 @@ class lookup {
     }
 
     fn add_candidates_from_param(n: uint, did: ast::def_id) {
+        #debug["candidates_from_param"];
+
         let tcx = self.tcx();
         let mut iface_bnd_idx = 0u; // count only iface bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
