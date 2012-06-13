@@ -668,9 +668,9 @@ fn configure(opts: options) -> cargo {
     };
 
     need_dir(c.root);
+    need_dir(c.installdir);
     need_dir(c.sourcedir);
     need_dir(c.workdir);
-    need_dir(c.installdir);
     need_dir(c.libdir);
     need_dir(c.bindir);
 
