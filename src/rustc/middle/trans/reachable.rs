@@ -135,8 +135,34 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_const(*) | item_ty(*) |
+      item_ty(t, _, _) {
+        traverse_ty(t, cx, mk_ty_visitor());
+      }
+      item_const(*) |
       item_enum(*) | item_iface(*) {}
+    }
+}
+
+fn mk_ty_visitor() -> visit::vt<ctx> {
+    visit::mk_vt(@{visit_ty: traverse_ty with *visit::default_visitor()})
+}
+
+fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
+    if cx.rmap.contains_key(ty.id) { ret; }
+    cx.rmap.insert(ty.id, ());
+
+    alt ty.node {
+      ty_path(p, p_id) {
+        alt cx.tcx.def_map.find(p_id) {
+          // Kind of a hack to check this here, but I'm not sure what else
+          // to do
+          some(def_prim_ty(_)) { /* do nothing */ }
+          some(d) { traverse_def_id(cx, def_id_of_def(d)); }
+          none    { /* do nothing -- but should we fail here? */ }
+        }
+        for p.types.each {|t| v.visit_ty(t, cx, v); };
+      }
+      _ { visit::visit_ty(ty, cx, v); }
     }
 }
 
