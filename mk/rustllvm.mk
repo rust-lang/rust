@@ -14,11 +14,6 @@ endif
 
 RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustWrapper.cpp)
 
-# Behind an ifdef for now since this requires a patched LLVM.
-ifdef CFG_STACK_GROWTH
-RUSTLLVM_OBJS_CS_$(1) += rustllvm/RustPrologHook.cpp
-endif
-
 RUSTLLVM_DEF_$(1) := rustllvm/rustllvm$$(CFG_DEF_SUFFIX)
 
 RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
