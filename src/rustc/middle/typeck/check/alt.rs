@@ -191,8 +191,8 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                       fields",
                                 ex_f_count, f_count]);
         }
-        fn matches(name: str, f: ty::field) -> bool {
-            ret str::eq(name, f.ident);
+        fn matches(name: ast::ident, f: ty::field) -> bool {
+            ret str::eq(*name, *f.ident);
         }
         for fields.each {|f|
             alt vec::find(ex_fields, bind matches(f.ident, _)) {
@@ -203,7 +203,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 tcx.sess.span_fatal(pat.span,
                                     #fmt["mismatched types: did not \
                                           expect a record with a field `%s`",
-                                         f.ident]);
+                                         *f.ident]);
               }
             }
         }

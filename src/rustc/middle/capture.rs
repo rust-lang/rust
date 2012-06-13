@@ -44,7 +44,7 @@ fn check_capture_clause(tcx: ty::ctxt,
             tcx.sess.span_warn(
                 cap_item.span,
                 #fmt("captured variable '%s' not used in closure",
-                     cap_item.name));
+                     *cap_item.name));
         }
 
         let cap_def_id = ast_util::def_id_of_def(cap_def).node;
@@ -52,7 +52,7 @@ fn check_capture_clause(tcx: ty::ctxt,
             tcx.sess.span_err(
                 cap_item.span,
                 #fmt("variable '%s' captured more than once",
-                     cap_item.name));
+                     *cap_item.name));
         }
     }
 }
@@ -68,7 +68,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
 
     for (*cap_clause).each { |cap_item|
         #debug("Doing capture var: %s (%?)",
-               cap_item.name, cap_item.id);
+               *cap_item.name, cap_item.id);
 
         let cap_def = tcx.def_map.get(cap_item.id);
         let cap_def_id = ast_util::def_id_of_def(cap_def).node;

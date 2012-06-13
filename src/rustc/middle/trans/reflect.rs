@@ -41,7 +41,7 @@ impl methods for reflector {
 
     fn visit(ty_name: str, args: [ValueRef]) {
         let tcx = self.bcx.tcx();
-        let mth_idx = option::get(ty::method_idx("visit_" + ty_name,
+        let mth_idx = option::get(ty::method_idx(@("visit_" + ty_name),
                                                  *self.visitor_methods));
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
@@ -142,7 +142,7 @@ impl methods for reflector {
             for fields.eachi {|i, field|
                 self.bracketed_mt("rec_field", field.mt,
                                   [self.c_uint(i),
-                                   self.c_slice(field.ident)]);
+                                   self.c_slice(*field.ident)]);
             }
             self.visit("leave_rec", [self.c_uint(vec::len(fields))]);
           }
@@ -209,7 +209,7 @@ impl methods for reflector {
             for fields.eachi {|i, field|
                 self.bracketed_mt("class_field", field.mt,
                                   [self.c_uint(i),
-                                   self.c_slice(field.ident)]);
+                                   self.c_slice(*field.ident)]);
             }
             self.visit("leave_class", [self.c_uint(vec::len(fields))]);
           }
@@ -228,7 +228,7 @@ impl methods for reflector {
                 let extra = [self.c_uint(i),
                              self.c_int(v.disr_val),
                              self.c_uint(vec::len(v.args)),
-                             self.c_slice(v.name)];
+                             self.c_slice(*v.name)];
                 self.visit("enter_enum_variant", extra);
                 for v.args.eachi {|j, a|
                     self.bracketed_t("enum_variant_field", a,

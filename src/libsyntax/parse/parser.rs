@@ -151,8 +151,8 @@ class parser {
     fn warn(m: str) {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
-    fn get_str(i: token::str_num) -> str {
-        *interner::get(*self.reader.interner, i)
+    fn get_str(i: token::str_num) -> @str {
+        interner::get(*self.reader.interner, i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 
@@ -178,7 +178,7 @@ class parser {
                 let name = self.parse_value_ident();
                 p.bump();
                 name
-            } else { "" };
+            } else { @"" };
 
             {mode: mode, ty: p.parse_ty(false), ident: name,
              id: p.get_id()}
@@ -229,7 +229,7 @@ class parser {
     fn ident_index(args: [arg], i: ident) -> uint {
         let mut j = 0u;
         for args.each {|a| if a.ident == i { ret j; } j += 1u; }
-        self.fatal("unbound variable `" + i + "` in constraint arg");
+        self.fatal("unbound variable `" + *i + "` in constraint arg");
     }
 
     fn parse_type_constr_arg() -> @ty_constr_arg {
@@ -315,7 +315,7 @@ class parser {
         }
     }
 
-    fn region_from_name(s: option<str>) -> @region {
+    fn region_from_name(s: option<@str>) -> @region {
         let r = alt s {
           some (string) { re_named(string) }
           none { re_anon }
@@ -1858,13 +1858,13 @@ class parser {
 
     fn parse_method_name() -> ident {
         alt copy self.token {
-          token::BINOP(op) { self.bump(); token::binop_to_str(op) }
-          token::NOT { self.bump(); "!" }
-          token::LBRACKET { self.bump(); self.expect(token::RBRACKET); "[]" }
+          token::BINOP(op) { self.bump(); @token::binop_to_str(op) }
+          token::NOT { self.bump(); @"!" }
+          token::LBRACKET { self.bump(); self.expect(token::RBRACKET); @"[]" }
           _ {
             let id = self.parse_value_ident();
-            if id == "unary" && self.eat(token::BINOP(token::MINUS)) {
-                "unary-"
+            if id == @"unary" && self.eat(token::BINOP(token::MINUS)) {
+                @"unary-"
             }
             else { id }
           }
@@ -1969,7 +1969,7 @@ class parser {
         // Hack.  But then, this whole function is in service of a hack.
         let a_r = alt rp {
           rp_none { none }
-          rp_self { some(self.region_from_name(some("self"))) }
+          rp_self { some(self.region_from_name(some(@"self"))) }
         };
 
         @{span: s, global: false, idents: [i],
@@ -2243,7 +2243,7 @@ class parser {
         let mut variants: [variant] = [];
         // Newtype syntax
         if self.token == token::EQ {
-            self.check_restricted_keywords_(id);
+            self.check_restricted_keywords_(*id);
             self.bump();
             let ty = self.parse_ty(false);
             self.expect(token::SEMI);
@@ -2381,7 +2381,7 @@ class parser {
         let lo = self.span.lo;
         let first_ident = self.parse_ident();
         let mut path = [first_ident];
-        #debug("parsed view_path: %s", first_ident);
+        #debug("parsed view_path: %s", *first_ident);
         alt self.token {
           token::EQ {
             // x = foo::bar
@@ -2504,7 +2504,7 @@ class parser {
                       config: self.cfg});
     }
 
-    fn parse_str() -> str {
+    fn parse_str() -> @str {
         alt copy self.token {
           token::LIT_STR(s) { self.bump(); self.get_str(s) }
           _ {

@@ -237,7 +237,7 @@ type ctxt =
       node_type_substs: hashmap<node_id, [t]>,
 
       items: ast_map::map,
-      intrinsic_ifaces: hashmap<str, (ast::def_id, t)>,
+      intrinsic_ifaces: hashmap<ast::ident, (ast::def_id, t)>,
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
@@ -322,7 +322,7 @@ enum region {
 enum bound_region {
     br_self,      // The self region for classes, impls
     br_anon,      // The anonymous region parameter for a given function.
-    br_named(str) // A named region parameter.
+    br_named(ast::ident) // A named region parameter.
 }
 
 type opt_region = option<region>;
@@ -414,7 +414,7 @@ enum type_err {
     terr_constr_mismatch(@type_constr, @type_constr),
     terr_regions_differ(region, region),
     terr_vstores_differ(terr_vstore_kind, vstore, vstore),
-    terr_in_field(@type_err, str),
+    terr_in_field(@type_err, ast::ident),
     terr_sorts(t, t),
     terr_self_substs
 }
@@ -516,7 +516,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       node_types: @smallintmap::mk(),
       node_type_substs: map::int_hash(),
       items: amap,
-      intrinsic_ifaces: map::str_hash(),
+      intrinsic_ifaces: map::box_str_hash(),
       freevars: freevars,
       tcache: ast_util::new_def_hash(),
       rcache: mk_rcache(),
@@ -1992,7 +1992,7 @@ fn hash_bound_region(br: bound_region) -> uint {
     alt br { // no idea if this is any good
       ty::br_self { 0u }
       ty::br_anon { 1u }
-      ty::br_named(str) { str::hash(str) }
+      ty::br_named(str) { str::hash(*str) }
     }
 }
 
@@ -2298,7 +2298,7 @@ fn field_idx(id: ast::ident, fields: [field]) -> option<uint> {
 }
 
 fn get_field(rec_ty: t, id: ast::ident) -> field {
-    alt check vec::find(get_fields(rec_ty), {|f| str::eq(f.ident, id) }) {
+    alt check vec::find(get_fields(rec_ty), {|f| str::eq(*f.ident, *id) }) {
       some(f) { f }
     }
 }
@@ -2490,8 +2490,8 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
       }
       terr_record_mutability { ret "record elements differ in mutability"; }
       terr_record_fields(e_fld, a_fld) {
-        ret "expected a record with field `" + e_fld +
-                "` but found one with field `" + a_fld + "`";
+        ret "expected a record with field `" + *e_fld +
+                "` but found one with field `" + *a_fld + "`";
       }
       terr_arg_count { ret "incorrect number of function parameters"; }
       terr_mode_mismatch(e_mode, a_mode) {
@@ -2521,7 +2521,7 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
                  vstore_to_str(cx, a_vs));
       }
       terr_in_field(err, fname) {
-        ret #fmt("in field `%s`, %s", fname, type_err_to_str(cx, *err));
+        ret #fmt("in field `%s`, %s", *fname, type_err_to_str(cx, *err));
       }
       terr_sorts(exp, act) {
         ret #fmt("%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act));
@@ -2592,7 +2592,7 @@ fn ty_to_def_id(ty: t) -> option<ast::def_id> {
 }
 
 // Enum information
-type variant_info = @{args: [t], ctor_ty: t, name: str,
+type variant_info = @{args: [t], ctor_ty: t, name: ast::ident,
                       id: ast::def_id, disr_val: int};
 
 fn substd_enum_variants(cx: ctxt,
@@ -2667,7 +2667,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
               *path + [ast_map::path_name(nm)]
           }
           ast_map::node_dtor(_, _, _, path) {
-              *path + [ast_map::path_name("dtor")]
+              *path + [ast_map::path_name(@"dtor")]
           }
 
 
@@ -2861,7 +2861,7 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
          }
        }
        cx.sess.span_fatal(sp, #fmt("Class doesn't have a method \
-           named %s", name));
+           named %s", *name));
     }
     else {
       csearch::get_class_method(cx.sess.cstore, did, name)

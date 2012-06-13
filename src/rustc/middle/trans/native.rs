@@ -421,8 +421,8 @@ fn decl_x86_64_fn(tys: x86_64_tys,
 
 fn link_name(i: @ast::native_item) -> str {
     alt attr::first_attr_value_str_by_name(i.attrs, "link_name") {
-      none { ret i.ident; }
-      option::some(ln) { ret ln; }
+      none { ret *i.ident; }
+      option::some(ln) { ret *ln; }
     }
 }
 
@@ -805,7 +805,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
                                some(substs), some(item.span));
     let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
-    alt check item.ident {
+    alt check *item.ident {
       "size_of" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -913,7 +913,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let _icx = ccx.insn_ctxt("native::crust::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
-            ccx, path + [ast_map::path_name("__rust_abi")]);
+            ccx, path + [ast_map::path_name(@"__rust_abi")]);
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id);
@@ -950,7 +950,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         }
 
         let shim_name = link::mangle_internal_name_by_path(
-            ccx, path + [ast_map::path_name("__rust_stack_shim")]);
+            ccx, path + [ast_map::path_name(@"__rust_stack_shim")]);
         ret build_shim_fn_(ccx, shim_name, llrustfn, tys,
                            lib::llvm::CCallConv,
                            build_args, build_ret);

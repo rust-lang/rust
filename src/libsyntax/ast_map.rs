@@ -6,14 +6,14 @@ import ast_util::path_to_ident;
 import ast_util::inlined_item_methods;
 import diagnostic::span_handler;
 
-enum path_elt { path_mod(str), path_name(str) }
+enum path_elt { path_mod(ident), path_name(ident) }
 type path = [path_elt];
 
 fn path_to_str_with_sep(p: path, sep: str) -> str {
     let strs = vec::map(p) {|e|
         alt e {
-          path_mod(s) { /* FIXME: bad */ copy s }
-          path_name(s) { /* FIXME: bad */ copy s }
+          path_mod(s) { /* FIXME: bad */ copy *s }
+          path_name(s) { /* FIXME: bad */ copy *s }
         }
     };
     str::connect(strs, sep)
@@ -21,9 +21,9 @@ fn path_to_str_with_sep(p: path, sep: str) -> str {
 
 fn path_ident_to_str(p: path, i: ident) -> str {
     if vec::is_empty(p) {
-        /* FIXME: bad */ copy i
+        /* FIXME: bad */ copy *i
     } else {
-        #fmt["%s::%s", path_to_str(p), i]
+        #fmt["%s::%s", path_to_str(p), *i]
     }
 }
 
@@ -59,7 +59,7 @@ type ctx = {map: map, mut path: path,
             mut local_id: uint, diag: span_handler};
 type vt = visit::vt<ctx>;
 
-fn extend(cx: ctx, +elt: str) -> @path {
+fn extend(cx: ctx, +elt: ident) -> @path {
     @(cx.path + [path_name(elt)])
 }
 
@@ -192,7 +192,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       item_impl(_, _, _, _, ms) {
         let impl_did = ast_util::local_def(i.id);
         for ms.each {|m|
-            map_method(impl_did, extend(cx, /* FIXME: bad */ copy i.ident), m,
+            map_method(impl_did, extend(cx, i.ident), m,
                        cx);
         }
       }
@@ -208,7 +208,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         for vs.each {|v|
             cx.map.insert(v.node.id, node_variant(
                 /* FIXME: bad */ copy v, i,
-                extend(cx, /* FIXME: bad */ copy i.ident)));
+                extend(cx, i.ident)));
         }
       }
       item_native_mod(nm) {
@@ -229,7 +229,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           vec::iter(ifces) {|p| cx.map.insert(p.id,
                                   node_item(i, item_path)); };
           let d_id = ast_util::local_def(i.id);
-          let p = extend(cx, /* FIXME: bad */ copy i.ident);
+          let p = extend(cx, i.ident);
            // only need to handle methods
           vec::iter(ms) {|m| map_method(d_id, p, m, cx); }
       }
@@ -237,9 +237,9 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     }
     alt i.node {
       item_mod(_) | item_native_mod(_) {
-        cx.path += [path_mod(/* FIXME: bad */ copy i.ident)];
+        cx.path += [path_mod(i.ident)];
       }
-      _ { cx.path += [path_name(/* FIXME: bad */ copy i.ident)]; }
+      _ { cx.path += [path_name(i.ident)]; }
     }
     visit::visit_item(i, cx, v);
     vec::pop(cx.path);
@@ -281,11 +281,11 @@ fn node_id_to_str(map: map, id: node_id) -> str {
       }
       some(node_method(m, impl_did, path)) {
         #fmt["method %s in %s (id=%?)",
-             m.ident, path_to_str(*path), id]
+             *m.ident, path_to_str(*path), id]
       }
       some(node_variant(variant, def_id, path)) {
         #fmt["variant %s in %s (id=%?)",
-             variant.node.name, path_to_str(*path), id]
+             *variant.node.name, path_to_str(*path), id]
       }
       some(node_expr(expr)) {
         #fmt["expr %s (id=%?)",

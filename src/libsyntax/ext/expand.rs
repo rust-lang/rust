@@ -21,21 +21,21 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
               mac_invoc(pth, args, body) {
                 assert (vec::len(pth.idents) > 0u);
                 let extname = pth.idents[0];
-                alt exts.find(extname) {
+                alt exts.find(*extname) {
                   none {
                     cx.span_fatal(pth.span,
-                                  #fmt["macro undefined: '%s'", extname])
+                                  #fmt["macro undefined: '%s'", *extname])
                   }
                   some(item_decorator(_)) {
                     cx.span_fatal(
                         pth.span,
-                        #fmt["%s can only be used as a decorator", extname]);
+                        #fmt["%s can only be used as a decorator", *extname]);
                   }
                   some(normal({expander: exp, span: exp_sp})) {
                     let expanded = exp(cx, pth.span, args, body);
 
                     cx.bt_push(expanded_from({call_site: s,
-                                callie: {name: extname, span: exp_sp}}));
+                                callie: {name: *extname, span: exp_sp}}));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
                     cx.bt_pop();
@@ -44,7 +44,7 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   }
                   some(macro_defining(ext)) {
                     let named_extension = ext(cx, pth.span, args, body);
-                    exts.insert(named_extension.ident, named_extension.ext);
+                    exts.insert(*named_extension.ident, named_extension.ext);
                     (ast::expr_rec([], none), s)
                   }
                 }
@@ -74,7 +74,7 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
               ast::meta_name_value(n, _) { n }
               ast::meta_list(n, _) { n }
             };
-            alt exts.find(mname) {
+            alt exts.find(*mname) {
               none | some(normal(_)) | some(macro_defining(_)) {
                 items
               }

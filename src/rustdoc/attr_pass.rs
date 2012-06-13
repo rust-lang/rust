@@ -151,7 +151,7 @@ fn fold_enum(
                   }, _) {
                     let ast_variant = option::get(
                         vec::find(ast_variants) {|v|
-                            v.node.name == variant.name
+                            *v.node.name == variant.name
                         });
 
                     attr_parser::parse_desc(ast_variant.node.attrs)
@@ -207,14 +207,14 @@ fn merge_method_attrs(
             node: ast::item_iface(_, _, methods), _
           }, _) {
             par::seqmap(methods) {|method|
-                (method.ident, attr_parser::parse_desc(method.attrs))
+                (*method.ident, attr_parser::parse_desc(method.attrs))
             }
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, _, methods), _
           }, _) {
             par::seqmap(methods) {|method|
-                (method.ident, attr_parser::parse_desc(method.attrs))
+                (*method.ident, attr_parser::parse_desc(method.attrs))
             }
           }
           _ { fail "unexpected item" }

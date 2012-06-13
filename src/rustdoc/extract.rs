@@ -33,14 +33,14 @@ fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: str
 ) -> doc::moddoc {
-    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
+    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, @default_name),
                     crate.node.module)
 }
 
 fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
     {
         id: id,
-        name: name,
+        name: *name,
         path: [],
         brief: none,
         desc: none,
@@ -169,7 +169,7 @@ fn variantdocs_from_variants(
 
 fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
     {
-        name: variant.node.name,
+        name: *variant.node.name,
         desc: none,
         sig: none
     }
@@ -210,7 +210,7 @@ fn ifacedoc_from_iface(
         item: itemdoc,
         methods: par::seqmap(methods) {|method|
             {
-                name: method.ident,
+                name: *method.ident,
                 brief: none,
                 desc: none,
                 sections: [],
@@ -242,7 +242,7 @@ fn impldoc_from_impl(
         self_ty: none,
         methods: par::seqmap(methods) {|method|
             {
-                name: method.ident,
+                name: *method.ident,
                 brief: none,
                 desc: none,
                 sections: [],

@@ -21,7 +21,7 @@ import driver::session::session;
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> str {
     alt br {
       br_anon                        { "&" }
-      br_named(str)                  { #fmt["&%s", str] }
+      br_named(str)                  { #fmt["&%s", *str] }
       br_self if cx.sess.ppregions() { "&<self>" }
       br_self                        { "&self" }
     }
@@ -130,7 +130,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
           _ {purity_to_str(purity) + " "}
         };
         s += proto_to_str(proto);
-        alt ident { some(i) { s += " "; s += i; } _ { } }
+        alt ident { some(i) { s += " "; s += *i; } _ { } }
         s += "(";
         let mut strs = [];
         for inputs.each {|a| strs += [fn_input_to_str(cx, a)]; }
@@ -152,7 +152,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
             m.fty.output, m.fty.ret_style, m.fty.constraints) + ";";
     }
     fn field_to_str(cx: ctxt, f: field) -> str {
-        ret f.ident + ": " + mt_to_str(cx, f.mt);
+        ret *f.ident + ": " + mt_to_str(cx, f.mt);
     }
 
     // if there is an id, print that instead of the structural type:

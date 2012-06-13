@@ -2,7 +2,7 @@ import result::result;
 
 iface region_scope {
     fn anon_region() -> result<ty::region, str>;
-    fn named_region(id: str) -> result<ty::region, str>;
+    fn named_region(id: ast::ident) -> result<ty::region, str>;
 }
 
 enum empty_rscope { empty_rscope }
@@ -10,8 +10,8 @@ impl of region_scope for empty_rscope {
     fn anon_region() -> result<ty::region, str> {
         result::err("region types are not allowed here")
     }
-    fn named_region(id: str) -> result<ty::region, str> {
-        if id == "static" { result::ok(ty::re_static) }
+    fn named_region(id: ast::ident) -> result<ty::region, str> {
+        if *id == "static" { result::ok(ty::re_static) }
         else { result::err("only the static region is allowed here") }
     }
 }
@@ -27,9 +27,9 @@ impl of region_scope for type_rscope {
           }
         }
     }
-    fn named_region(id: str) -> result<ty::region, str> {
+    fn named_region(id: ast::ident) -> result<ty::region, str> {
         empty_rscope.named_region(id).chain_err { |_e|
-            if id == "self" { self.anon_region() }
+            if *id == "self" { self.anon_region() }
             else {
                 result::err("named regions other than `self` are not \
                              allowed as part of a type declaration")
@@ -47,7 +47,7 @@ impl of region_scope for @anon_rscope {
     fn anon_region() -> result<ty::region, str> {
         result::ok(self.anon)
     }
-    fn named_region(id: str) -> result<ty::region, str> {
+    fn named_region(id: ast::ident) -> result<ty::region, str> {
         self.base.named_region(id)
     }
 }
@@ -61,7 +61,7 @@ impl of region_scope for @binding_rscope {
     fn anon_region() -> result<ty::region, str> {
         result::ok(ty::re_bound(ty::br_anon))
     }
-    fn named_region(id: str) -> result<ty::region, str> {
+    fn named_region(id: ast::ident) -> result<ty::region, str> {
         self.base.named_region(id).chain_err {|_e|
             result::ok(ty::re_bound(ty::br_named(id)))
         }

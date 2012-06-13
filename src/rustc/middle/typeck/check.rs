@@ -260,7 +260,7 @@ fn check_fn(ccx: @crate_ctxt,
         vec::iter2(arg_tys, decl.inputs) {|arg_ty, input|
             assign(input.id, some(arg_ty));
             #debug["Argument %s is assigned to %s",
-                   input.ident, fcx.locals.get(input.id).to_str()];
+                   *input.ident, fcx.locals.get(input.id).to_str()];
         }
 
         // Add explicitly-declared locals.
@@ -284,7 +284,7 @@ fn check_fn(ccx: @crate_ctxt,
               if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
                 assign(p.id, none);
                 #debug["Pattern binding %s is assigned to %s",
-                       path.idents[0],
+                       *path.idents[0],
                        fcx.locals.get(p.id).to_str()];
               }
               _ {}
@@ -443,13 +443,13 @@ impl of region_scope for @fn_ctxt {
     fn anon_region() -> result<ty::region, str> {
         result::ok(self.infcx.next_region_var())
     }
-    fn named_region(id: str) -> result<ty::region, str> {
+    fn named_region(id: ast::ident) -> result<ty::region, str> {
         empty_rscope.named_region(id).chain_err { |_e|
             alt self.in_scope_regions.find(ty::br_named(id)) {
               some(r) { result::ok(r) }
-              none if id == "blk" { self.block_region() }
+              none if *id == "blk" { self.block_region() }
               none {
-                result::err(#fmt["named region `%s` not in scope here", id])
+                result::err(#fmt["named region `%s` not in scope here", *id])
               }
             }
         }
@@ -937,7 +937,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                    self_expr: self_ex,
                                    borrow_scope: op_ex.id,
                                    node_id: callee_id,
-                                   m_name: opname,
+                                   m_name: @opname,
                                    self_ty: self_t,
                                    supplied_tps: [],
                                    include_private: false});
@@ -1113,7 +1113,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_vstore(ev, vst) {
         let typ = alt ev.node {
           ast::expr_lit(@{node: ast::lit_str(s), span:_}) {
-            let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(s), vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(*s), vst);
             ty::mk_estr(tcx, tt)
           }
           ast::expr_vec(args, mutbl) {
@@ -1553,7 +1553,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             for fields_t.each {|f|
                 let mut found = false;
                 for base_fields.each {|bf|
-                    if str::eq(f.node.ident, bf.ident) {
+                    if str::eq(*f.node.ident, *bf.ident) {
                         demand::suptype(fcx, f.span, bf.mt.ty, f.node.mt.ty);
                         found = true;
                     }
@@ -1561,7 +1561,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 if !found {
                     tcx.sess.span_fatal(f.span,
                                         "unknown field in record update: " +
-                                            f.node.ident);
+                                            *f.node.ident);
                 }
             }
           }
@@ -1645,7 +1645,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
                 let msg = #fmt["attempted access of field %s on type %s, but \
                           no public field or method with that name was found",
-                               field, ty_to_str(tcx, t_err)];
+                               *field, ty_to_str(tcx, t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
                 fcx.write_ty(id, fcx.infcx.next_ty_var());
@@ -1690,7 +1690,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                    self_expr: p,
                                    borrow_scope: expr.id,
                                    node_id: alloc_id,
-                                   m_name: "alloc",
+                                   m_name: @"alloc",
                                    self_ty: p_ty,
                                    supplied_tps: [],
                                    include_private: false});
@@ -2310,7 +2310,7 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
     for tps_used.eachi { |i, b|
         if !b {
             ccx.tcx.sess.span_err(
-                span, #fmt["Type parameter %s is unused.", tps[i].ident]);
+                span, #fmt["Type parameter %s is unused.", *tps[i].ident]);
         }
     }
 }
@@ -2323,7 +2323,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
         {mode: ast::expl(m), ty: ty}
     }
     let tcx = ccx.tcx;
-    let (n_tps, inputs, output) = alt it.ident {
+    let (n_tps, inputs, output) = alt *it.ident {
       "size_of" |
       "pref_align_of" | "min_align_of" { (1u, [], ty::mk_uint(ccx.tcx)) }
       "get_tydesc" { (1u, [], ty::mk_nil_ptr(tcx)) }
@@ -2337,8 +2337,8 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
       "needs_drop" { (1u, [], ty::mk_bool(tcx)) }
 
       "visit_ty" {
-        assert ccx.tcx.intrinsic_ifaces.contains_key("ty_visitor");
-        let (_, visitor_iface) = ccx.tcx.intrinsic_ifaces.get("ty_visitor");
+        assert ccx.tcx.intrinsic_ifaces.contains_key(@"ty_visitor");
+        let (_, visitor_iface) = ccx.tcx.intrinsic_ifaces.get(@"ty_visitor");
         (1u, [arg(ast::by_ref, visitor_iface)], ty::mk_nil(tcx))
       }
       "frame_address" {

@@ -21,8 +21,8 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     }
 }
 
-fn make_new_str(cx: ext_ctxt, sp: codemap::span, s: str) -> @ast::expr {
-    ret make_new_lit(cx, sp, ast::lit_str(s));
+fn make_new_str(cx: ext_ctxt, sp: codemap::span, +s: str) -> @ast::expr {
+    ret make_new_lit(cx, sp, ast::lit_str(@s));
 }
 //
 // Local Variables:

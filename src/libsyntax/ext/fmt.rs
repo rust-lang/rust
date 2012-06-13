@@ -36,9 +36,10 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {
-        ret ["extfmt", "rt", ident];
+        ret [@"extfmt", @"rt", ident];
     }
-    fn make_rt_path_expr(cx: ext_ctxt, sp: span, ident: str) -> @ast::expr {
+    fn make_rt_path_expr(cx: ext_ctxt, sp: span,
+                         ident: ast::ident) -> @ast::expr {
         let path = make_path_vec(cx, ident);
         ret mk_path(cx, sp, path);
     }
@@ -57,18 +58,18 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
                   flag_sign_always { fstr = "flag_sign_always"; }
                   flag_alternate { fstr = "flag_alternate"; }
                 }
-                flagexprs += [make_rt_path_expr(cx, sp, fstr)];
+                flagexprs += [make_rt_path_expr(cx, sp, @fstr)];
             }
             ret mk_vec_e(cx, sp, flagexprs);
         }
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {
               count_implied {
-                ret make_rt_path_expr(cx, sp, "count_implied");
+                ret make_rt_path_expr(cx, sp, @"count_implied");
               }
               count_is(c) {
                 let count_lit = mk_int(cx, sp, c);
-                let count_is_path = make_path_vec(cx, "count_is");
+                let count_is_path = make_path_vec(cx, @"count_is");
                 let count_is_args = [count_lit];
                 ret mk_call(cx, sp, count_is_path, count_is_args);
               }
@@ -88,16 +89,16 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
               ty_octal { rt_type = "ty_octal"; }
               _ { rt_type = "ty_default"; }
             }
-            ret make_rt_path_expr(cx, sp, rt_type);
+            ret make_rt_path_expr(cx, sp, @rt_type);
         }
         fn make_conv_rec(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             ret mk_rec_e(cx, sp,
-                         [{ident: "flags", ex: flags_expr},
-                          {ident: "width", ex: width_expr},
-                          {ident: "precision", ex: precision_expr},
-                          {ident: "ty", ex: ty_expr}]);
+                         [{ident: @"flags", ex: flags_expr},
+                          {ident: @"width", ex: width_expr},
+                          {ident: @"precision", ex: precision_expr},
+                          {ident: @"ty", ex: ty_expr}]);
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
@@ -109,7 +110,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     fn make_conv_call(cx: ext_ctxt, sp: span, conv_type: str, cnv: conv,
                       arg: @ast::expr) -> @ast::expr {
         let fname = "conv_" + conv_type;
-        let path = make_path_vec(cx, fname);
+        let path = make_path_vec(cx, @fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = [cnv_expr, arg];
         ret mk_call(cx, arg.span, path, args);

@@ -65,7 +65,7 @@ fn visit_pat(p: @ast::pat, &&rcx: rcx, v: rvt) {
     alt p.node {
       ast::pat_ident(path, _)
       if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
-        #debug["visit_pat binding=%s", path.idents[0]];
+        #debug["visit_pat binding=%s", *path.idents[0]];
         visit_node(p.id, p.span, rcx);
       }
       _ {}

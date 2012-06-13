@@ -67,8 +67,8 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
         alt ty::get(ty).struct {
           ty::ty_bool {
             alt check ctor {
-              val(const_int(1i64)) { some("true") }
-              val(const_int(0i64)) { some("false") }
+              val(const_int(1i64)) { some(@"true") }
+              val(const_int(0i64)) { some(@"false") }
             }
           }
           ty::ty_enum(id, _) {
@@ -83,7 +83,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
       }
     };
     let msg = "non-exhaustive patterns" + alt ext {
-      some(s) { ": " + s + " not covered" }
+      some(s) { ": " + *s + " not covered" }
       none { "" }
     };
     tcx.sess.span_err(sp, msg);

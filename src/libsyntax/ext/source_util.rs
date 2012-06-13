@@ -36,19 +36,20 @@ fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
     let { file: @{ name: filename, _ }, _ } =
         codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret make_new_lit(cx, sp, ast::lit_str(filename));
+    ret make_new_lit(cx, sp, ast::lit_str(@filename));
 }
 
 fn expand_stringify(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                     _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "stringify");
-    ret make_new_lit(cx, sp, ast::lit_str(pprust::expr_to_str(args[0])));
+    ret make_new_lit(cx, sp, ast::lit_str(@pprust::expr_to_str(args[0])));
 }
 
 fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
     -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
-    ret make_new_lit(cx, sp, ast::lit_str(str::connect(cx.mod_path(), "::")));
+    ret make_new_lit(cx, sp, ast::lit_str(
+        @str::connect(cx.mod_path().map({|x|*x}), "::")));
 }
 
 fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
@@ -75,7 +76,7 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
       }
     }
 
-    ret make_new_lit(cx, sp, ast::lit_str(result::unwrap(res)));
+    ret make_new_lit(cx, sp, ast::lit_str(@result::unwrap(res)));
 }
 
 fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,

@@ -19,7 +19,7 @@ impl methods for lookup {
     // Entrypoint:
     fn method() -> option<method_origin> {
         #debug["method lookup(m_name=%s, self_ty=%s)",
-               self.m_name, self.fcx.infcx.ty_to_str(self.self_ty)];
+               *self.m_name, self.fcx.infcx.ty_to_str(self.self_ty)];
 
         // First, see whether this is an interface-bounded parameter
         let pass1 = alt ty::get(self.self_ty).struct {
