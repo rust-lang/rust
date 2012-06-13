@@ -396,17 +396,21 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
         let (ident, did) = i;
         if ast_util::is_exported(ident, md) {
             ebml_w.start_tag(tag_mod_impl);
+            alt ecx.tcx.items.find(did.node) {
+              some(ast_map::node_item(it@@{node: cl@item_class(*),_},_)) {
             /* If did stands for an iface
             ref, we need to map it to its parent class */
-            alt ecx.tcx.items.get(did.node) {
-              ast_map::node_item(it@@{node: cl@item_class(*),_},_) {
                 ebml_w.wr_str(def_to_str(local_def(it.id)));
               }
-              ast_map::node_item(@{node: item_impl(_,_,
-                                                   some(ifce),_,_),_},_) {
+              some(ast_map::node_item(@{node: item_impl(_,_,
+                                                   some(ifce),_,_),_},_)) {
                 ebml_w.wr_str(def_to_str(did));
               }
-              _ {
+              some(_) {
+                ebml_w.wr_str(def_to_str(did));
+              }
+              none {
+                // Must be a re-export, then!
                 ebml_w.wr_str(def_to_str(did));
               }
             };
