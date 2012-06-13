@@ -400,25 +400,25 @@ fn parse_source(name: str, j: json::json) -> source {
         json::dict(j) {
             let mut url = alt j.find("url") {
                 some(json::string(u)) {
-                    u
+                    *u
                 }
                 _ { fail "needed 'url' field in source"; }
             };
             let method = alt j.find("method") {
                 some(json::string(u)) {
-                    u
+                    *u
                 }
                 _ { assume_source_method(url) }
             };
             let key = alt j.find("key") {
                 some(json::string(u)) {
-                    some(u)
+                    some(*u)
                 }
                 _ { none }
             };
             let keyfp = alt j.find("keyfp") {
                 some(json::string(u)) {
-                    some(u)
+                    some(*u)
                 }
                 _ { none }
             };
@@ -455,13 +455,13 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
 fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
     let name = alt p.find("name") {
         some(json::string(n)) {
-            if !valid_pkg_name(n) {
-                warn("malformed source json: " + src.name + ", '" + n + "'"+
+            if !valid_pkg_name(*n) {
+                warn("malformed source json: " + src.name + ", '" + *n + "'"+
                      " is an invalid name (alphanumeric, underscores and" +
                      " dashes only)");
                 ret;
             }
-            n
+            *n
         }
         _ {
             warn("malformed source json: " + src.name + " (missing name)");
@@ -471,12 +471,12 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
 
     let uuid = alt p.find("uuid") {
         some(json::string(n)) {
-            if !is_uuid(n) {
-                warn("malformed source json: " + src.name + ", '" + n + "'"+
+            if !is_uuid(*n) {
+                warn("malformed source json: " + src.name + ", '" + *n + "'"+
                      " is an invalid uuid");
                 ret;
             }
-            n
+            *n
         }
         _ {
             warn("malformed source json: " + src.name + " (missing uuid)");
@@ -485,7 +485,7 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
     };
 
     let url = alt p.find("url") {
-        some(json::string(n)) { n }
+        some(json::string(n)) { *n }
         _ {
             warn("malformed source json: " + src.name + " (missing url)");
             ret;
@@ -493,7 +493,7 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
     };
 
     let method = alt p.find("method") {
-        some(json::string(n)) { n }
+        some(json::string(n)) { *n }
         _ {
             warn("malformed source json: " + src.name + " (missing method)");
             ret;
@@ -501,16 +501,16 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
     };
 
     let ref = alt p.find("ref") {
-        some(json::string(n)) { some(n) }
+        some(json::string(n)) { some(*n) }
         _ { none }
     };
 
     let mut tags = [];
     alt p.find("tags") {
         some(json::list(js)) {
-            for js.each {|j|
+            for (*js).each {|j|
                 alt j {
-                    json::string(j) { vec::grow(tags, 1u, j); }
+                    json::string(j) { vec::grow(tags, 1u, *j); }
                     _ { }
                 }
             }
@@ -519,7 +519,7 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
     }
 
     let description = alt p.find("description") {
-        some(json::string(n)) { n }
+        some(json::string(n)) { *n }
         _ {
             warn("malformed source json: " + src.name
                  + " (missing description)");
@@ -580,7 +580,7 @@ fn load_source_packages(c: cargo, src: source) {
     let pkgstr = io::read_whole_file_str(pkgfile);
     alt json::from_str(result::get(pkgstr)) {
         ok(json::list(js)) {
-            for js.each {|j|
+            for (*js).each {|j|
                 alt j {
                     json::dict(p) {
                         load_one_source_package(src, p);
@@ -1576,18 +1576,18 @@ fn dump_sources(c: cargo) {
                 let chash = map::str_hash();
                 let child = json::dict(chash);
 
-                chash.insert("url", json::string(v.url));
-                chash.insert("method", json::string(v.method));
+                chash.insert("url", json::string(@v.url));
+                chash.insert("method", json::string(@v.method));
 
                 alt copy v.key {
                     some(key) {
-                        chash.insert("key", json::string(key));
+                        chash.insert("key", json::string(@key));
                     }
                     _ {}
                 }
                 alt copy v.keyfp {
                     some(keyfp) {
-                        chash.insert("keyfp", json::string(keyfp));
+                        chash.insert("keyfp", json::string(@keyfp));
                     }
                     _ {}
                 }

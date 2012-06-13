@@ -28,17 +28,17 @@ export null;
 #[doc = "Represents a json value"]
 enum json {
     num(float),
-    string(str),
+    string(@str),
     boolean(bool),
-    list([json]),
-    dict(map::hashmap<str,json>),
+    list(@[json]),
+    dict(map::hashmap<str, json>),
     null,
 }
 
 type error = {
     line: uint,
     col: uint,
-    msg: str,
+    msg: @str,
 };
 
 #[doc = "Serializes a json value into a io::writer"]
@@ -46,22 +46,7 @@ fn to_writer(wr: io::writer, j: json) {
     alt j {
       num(n) { wr.write_str(float::to_str(n, 6u)); }
       string(s) {
-        wr.write_char('"');
-        let mut escaped = "";
-        str::chars_iter(s) { |c|
-            alt c {
-              '"' { escaped += "\\\""; }
-              '\\' { escaped += "\\\\"; }
-              '\x08' { escaped += "\\b"; }
-              '\x0c' { escaped += "\\f"; }
-              '\n' { escaped += "\\n"; }
-              '\r' { escaped += "\\r"; }
-              '\t' { escaped += "\\t"; }
-              _ { escaped += str::from_char(c); }
-            }
-        };
-        wr.write_str(escaped);
-        wr.write_char('"');
+        wr.write_str(escape_str(*s));
       }
       boolean(b) {
         wr.write_str(if b { "true" } else { "false" });
@@ -69,7 +54,7 @@ fn to_writer(wr: io::writer, j: json) {
       list(v) {
         wr.write_char('[');
         let mut first = true;
-        vec::iter(v) { |item|
+        for (*v).each { |item|
             if !first {
                 wr.write_str(", ");
             }
@@ -91,7 +76,7 @@ fn to_writer(wr: io::writer, j: json) {
                 wr.write_str(", ");
             }
             first = false;
-            to_writer(wr, string(key));
+            wr.write_str(escape_str(key));
             wr.write_str(": ");
             to_writer(wr, value);
         };
@@ -101,6 +86,26 @@ fn to_writer(wr: io::writer, j: json) {
         wr.write_str("null");
       }
     }
+}
+
+fn escape_str(s: str) -> str {
+    let mut escaped = "\"";
+    str::chars_iter(s) { |c|
+        alt c {
+          '"' { escaped += "\\\""; }
+          '\\' { escaped += "\\\\"; }
+          '\x08' { escaped += "\\b"; }
+          '\x0c' { escaped += "\\f"; }
+          '\n' { escaped += "\\n"; }
+          '\r' { escaped += "\\r"; }
+          '\t' { escaped += "\\t"; }
+          _ { escaped += str::from_char(c); }
+        }
+    };
+
+    escaped += "\"";
+
+    escaped
 }
 
 #[doc = "Serializes a json value into a string"]
@@ -134,8 +139,8 @@ impl parser for parser {
         self.ch
     }
 
-    fn error<T>(msg: str) -> result<T, error> {
-        err({ line: self.line, col: self.col, msg: msg })
+    fn error<T>(+msg: str) -> result<T, error> {
+        err({ line: self.line, col: self.col, msg: @msg })
     }
 
     fn parse() -> result<json, error> {
@@ -318,7 +323,7 @@ impl parser for parser {
         ok(res)
     }
 
-    fn parse_str() -> result<str, error> {
+    fn parse_str() -> result<@str, error> {
         let mut escape = false;
         let mut res = "";
 
@@ -365,7 +370,7 @@ impl parser for parser {
             } else {
                 if self.ch == '"' {
                     self.bump();
-                    ret ok(res);
+                    ret ok(@res);
                 }
                 str::push_char(res, self.ch);
             }
@@ -382,7 +387,7 @@ impl parser for parser {
 
         if self.ch == ']' {
             self.bump();
-            ret ok(list(values));
+            ret ok(list(@values));
         }
 
         loop {
@@ -398,7 +403,7 @@ impl parser for parser {
 
             alt self.ch {
               ',' { self.bump(); }
-              ']' { self.bump(); ret ok(list(values)); }
+              ']' { self.bump(); ret ok(list(@values)); }
               _ { ret self.error("expecting ',' or ']'"); }
             }
         };
@@ -436,7 +441,7 @@ impl parser for parser {
             self.bump();
 
             alt self.parse_value() {
-              ok(value) { values.insert(key, value); }
+              ok(value) { values.insert(copy *key, value); }
               e { ret e; }
             }
             self.parse_whitespace();
@@ -478,7 +483,7 @@ fn eq(value0: json, value1: json) -> bool {
       (num(f0), num(f1)) { f0 == f1 }
       (string(s0), string(s1)) { s0 == s1 }
       (boolean(b0), boolean(b1)) { b0 == b1 }
-      (list(l0), list(l1)) { vec::all2(l0, l1, eq) }
+      (list(l0), list(l1)) { vec::all2(*l0, *l1, eq) }
       (dict(d0), dict(d1)) {
           if d0.size() == d1.size() {
               let mut equal = true;
@@ -558,13 +563,17 @@ impl of to_json for bool {
 }
 
 impl of to_json for str {
+    fn to_json() -> json { string(@copy self) }
+}
+
+impl of to_json for @str {
     fn to_json() -> json { string(self) }
 }
 
 impl <A: to_json copy, B: to_json copy> of to_json for (A, B) {
     fn to_json() -> json {
         let (a, b) = self;
-        list([a.to_json(), b.to_json()])
+        list(@[a.to_json(), b.to_json()])
     }
 }
 
@@ -572,19 +581,19 @@ impl <A: to_json copy, B: to_json copy, C: to_json copy>
   of to_json for (A, B, C) {
     fn to_json() -> json {
         let (a, b, c) = self;
-        list([a.to_json(), b.to_json(), c.to_json()])
+        list(@[a.to_json(), b.to_json(), c.to_json()])
     }
 }
 
 impl <A: to_json> of to_json for [A] {
-    fn to_json() -> json { list(self.map { |elt| elt.to_json() }) }
+    fn to_json() -> json { list(@self.map { |elt| elt.to_json() }) }
 }
 
 impl <A: to_json copy> of to_json for hashmap<str, A> {
     fn to_json() -> json {
         let d = map::str_hash();
         for self.each() { |key, value|
-            d.insert(key, value.to_json());
+            d.insert(copy key, value.to_json());
         }
         dict(d)
     }
@@ -605,7 +614,7 @@ impl of to_str::to_str for json {
 
 impl of to_str::to_str for error {
     fn to_str() -> str {
-        #fmt("%u:%u: %s", self.line, self.col, self.msg)
+        #fmt("%u:%u: %s", self.line, self.col, *self.msg)
     }
 }
 
@@ -615,7 +624,7 @@ mod tests {
         let d = map::str_hash();
 
         vec::iter(items) { |item|
-            let (key, value) = item;
+            let (key, value) = copy item;
             d.insert(key, value);
         };
 
@@ -637,8 +646,8 @@ mod tests {
 
     #[test]
     fn test_write_str() {
-        assert to_str(string("")) == "\"\"";
-        assert to_str(string("foo")) == "\"foo\"";
+        assert to_str(string(@"")) == "\"\"";
+        assert to_str(string(@"foo")) == "\"foo\"";
     }
 
     #[test]
@@ -649,12 +658,12 @@ mod tests {
 
     #[test]
     fn test_write_list() {
-        assert to_str(list([])) == "[]";
-        assert to_str(list([boolean(true)])) == "[true]";
-        assert to_str(list([
+        assert to_str(list(@[])) == "[]";
+        assert to_str(list(@[boolean(true)])) == "[true]";
+        assert to_str(list(@[
             boolean(false),
             null,
-            list([string("foo\nbar"), num(3.5f)])
+            list(@[string(@"foo\nbar"), num(3.5f)])
         ])) == "[false, null, [\"foo\\nbar\", 3.5]]";
     }
 
@@ -664,9 +673,9 @@ mod tests {
         assert to_str(mk_dict([("a", boolean(true))])) == "{ \"a\": true }";
         assert to_str(mk_dict([
             ("a", boolean(true)),
-            ("b", list([
-                mk_dict([("c", string("\x0c\r"))]),
-                mk_dict([("d", string(""))])
+            ("b", list(@[
+                mk_dict([("c", string(@"\x0c\r"))]),
+                mk_dict([("d", string(@""))])
             ]))
         ])) ==
             "{ " +
@@ -681,35 +690,35 @@ mod tests {
     #[test]
     fn test_trailing_characters() {
         assert from_str("nulla") ==
-            err({line: 1u, col: 5u, msg: "trailing characters"});
+            err({line: 1u, col: 5u, msg: @"trailing characters"});
         assert from_str("truea") ==
-            err({line: 1u, col: 5u, msg: "trailing characters"});
+            err({line: 1u, col: 5u, msg: @"trailing characters"});
         assert from_str("falsea") ==
-            err({line: 1u, col: 6u, msg: "trailing characters"});
+            err({line: 1u, col: 6u, msg: @"trailing characters"});
         assert from_str("1a") ==
-            err({line: 1u, col: 2u, msg: "trailing characters"});
+            err({line: 1u, col: 2u, msg: @"trailing characters"});
         assert from_str("[]a") ==
-            err({line: 1u, col: 3u, msg: "trailing characters"});
+            err({line: 1u, col: 3u, msg: @"trailing characters"});
         assert from_str("{}a") ==
-            err({line: 1u, col: 3u, msg: "trailing characters"});
+            err({line: 1u, col: 3u, msg: @"trailing characters"});
     }
 
     #[test]
     fn test_read_identifiers() {
         assert from_str("n") ==
-            err({line: 1u, col: 2u, msg: "invalid syntax"});
+            err({line: 1u, col: 2u, msg: @"invalid syntax"});
         assert from_str("nul") ==
-            err({line: 1u, col: 4u, msg: "invalid syntax"});
+            err({line: 1u, col: 4u, msg: @"invalid syntax"});
 
         assert from_str("t") ==
-            err({line: 1u, col: 2u, msg: "invalid syntax"});
+            err({line: 1u, col: 2u, msg: @"invalid syntax"});
         assert from_str("truz") ==
-            err({line: 1u, col: 4u, msg: "invalid syntax"});
+            err({line: 1u, col: 4u, msg: @"invalid syntax"});
 
         assert from_str("f") ==
-            err({line: 1u, col: 2u, msg: "invalid syntax"});
+            err({line: 1u, col: 2u, msg: @"invalid syntax"});
         assert from_str("faz") ==
-            err({line: 1u, col: 3u, msg: "invalid syntax"});
+            err({line: 1u, col: 3u, msg: @"invalid syntax"});
 
         assert from_str("null") == ok(null);
         assert from_str("true") == ok(boolean(true));
@@ -722,20 +731,20 @@ mod tests {
     #[test]
     fn test_read_num() {
         assert from_str("+") ==
-            err({line: 1u, col: 1u, msg: "invalid syntax"});
+            err({line: 1u, col: 1u, msg: @"invalid syntax"});
         assert from_str(".") ==
-            err({line: 1u, col: 1u, msg: "invalid syntax"});
+            err({line: 1u, col: 1u, msg: @"invalid syntax"});
 
         assert from_str("-") ==
-            err({line: 1u, col: 2u, msg: "invalid number"});
+            err({line: 1u, col: 2u, msg: @"invalid number"});
         assert from_str("00") ==
-            err({line: 1u, col: 2u, msg: "invalid number"});
+            err({line: 1u, col: 2u, msg: @"invalid number"});
         assert from_str("1.") ==
-            err({line: 1u, col: 3u, msg: "invalid number"});
+            err({line: 1u, col: 3u, msg: @"invalid number"});
         assert from_str("1e") ==
-            err({line: 1u, col: 3u, msg: "invalid number"});
+            err({line: 1u, col: 3u, msg: @"invalid number"});
         assert from_str("1e+") ==
-            err({line: 1u, col: 4u, msg: "invalid number"});
+            err({line: 1u, col: 4u, msg: @"invalid number"});
 
         assert from_str("3") == ok(num(3f));
         assert from_str("3.1") == ok(num(3.1f));
@@ -750,82 +759,86 @@ mod tests {
     #[test]
     fn test_read_str() {
         assert from_str("\"") ==
-            err({line: 1u, col: 2u, msg: "EOF while parsing string"});
+            err({line: 1u, col: 2u, msg: @"EOF while parsing string"});
         assert from_str("\"lol") ==
-            err({line: 1u, col: 5u, msg: "EOF while parsing string"});
+            err({line: 1u, col: 5u, msg: @"EOF while parsing string"});
 
-        assert from_str("\"\"") == ok(string(""));
-        assert from_str("\"foo\"") == ok(string("foo"));
-        assert from_str("\"\\\"\"") == ok(string("\""));
-        assert from_str("\"\\b\"") == ok(string("\x08"));
-        assert from_str("\"\\n\"") == ok(string("\n"));
-        assert from_str("\"\\r\"") == ok(string("\r"));
-        assert from_str("\"\\t\"") == ok(string("\t"));
-        assert from_str(" \"foo\" ") == ok(string("foo"));
+        assert from_str("\"\"") == ok(string(@""));
+        assert from_str("\"foo\"") == ok(string(@"foo"));
+        assert from_str("\"\\\"\"") == ok(string(@"\""));
+        assert from_str("\"\\b\"") == ok(string(@"\x08"));
+        assert from_str("\"\\n\"") == ok(string(@"\n"));
+        assert from_str("\"\\r\"") == ok(string(@"\r"));
+        assert from_str("\"\\t\"") == ok(string(@"\t"));
+        assert from_str(" \"foo\" ") == ok(string(@"foo"));
     }
 
     #[test]
     fn test_read_list() {
         assert from_str("[") ==
-            err({line: 1u, col: 2u, msg: "EOF while parsing value"});
+            err({line: 1u, col: 2u, msg: @"EOF while parsing value"});
         assert from_str("[1") ==
-            err({line: 1u, col: 3u, msg: "EOF while parsing list"});
+            err({line: 1u, col: 3u, msg: @"EOF while parsing list"});
         assert from_str("[1,") ==
-            err({line: 1u, col: 4u, msg: "EOF while parsing value"});
+            err({line: 1u, col: 4u, msg: @"EOF while parsing value"});
         assert from_str("[1,]") ==
-            err({line: 1u, col: 4u, msg: "invalid syntax"});
+            err({line: 1u, col: 4u, msg: @"invalid syntax"});
         assert from_str("[6 7]") ==
-            err({line: 1u, col: 4u, msg: "expecting ',' or ']'"});
+            err({line: 1u, col: 4u, msg: @"expecting ',' or ']'"});
 
-        assert from_str("[]") == ok(list([]));
-        assert from_str("[ ]") == ok(list([]));
-        assert from_str("[true]") == ok(list([boolean(true)]));
-        assert from_str("[ false ]") == ok(list([boolean(false)]));
-        assert from_str("[null]") == ok(list([null]));
-        assert from_str("[3, 1]") == ok(list([num(3f), num(1f)]));
-        assert from_str("\n[3, 2]\n") == ok(list([num(3f), num(2f)]));
+        assert from_str("[]") == ok(list(@[]));
+        assert from_str("[ ]") == ok(list(@[]));
+        assert from_str("[true]") == ok(list(@[boolean(true)]));
+        assert from_str("[ false ]") == ok(list(@[boolean(false)]));
+        assert from_str("[null]") == ok(list(@[null]));
+        assert from_str("[3, 1]") == ok(list(@[num(3f), num(1f)]));
+        assert from_str("\n[3, 2]\n") == ok(list(@[num(3f), num(2f)]));
         assert from_str("[2, [4, 1]]") ==
-               ok(list([num(2f), list([num(4f), num(1f)])]));
+               ok(list(@[num(2f), list(@[num(4f), num(1f)])]));
     }
 
     #[test]
     fn test_read_dict() {
         assert from_str("{") ==
-            err({line: 1u, col: 2u, msg: "EOF while parsing object"});
+            err({line: 1u, col: 2u, msg: @"EOF while parsing object"});
         assert from_str("{ ") ==
-            err({line: 1u, col: 3u, msg: "EOF while parsing object"});
+            err({line: 1u, col: 3u, msg: @"EOF while parsing object"});
         assert from_str("{1") ==
-            err({line: 1u, col: 2u, msg: "key must be a string"});
+            err({line: 1u, col: 2u, msg: @"key must be a string"});
         assert from_str("{ \"a\"") ==
-            err({line: 1u, col: 6u, msg: "EOF while parsing object"});
+            err({line: 1u, col: 6u, msg: @"EOF while parsing object"});
         assert from_str("{\"a\"") ==
-            err({line: 1u, col: 5u, msg: "EOF while parsing object"});
+            err({line: 1u, col: 5u, msg: @"EOF while parsing object"});
         assert from_str("{\"a\" ") ==
-            err({line: 1u, col: 6u, msg: "EOF while parsing object"});
+            err({line: 1u, col: 6u, msg: @"EOF while parsing object"});
 
         assert from_str("{\"a\" 1") ==
-            err({line: 1u, col: 6u, msg: "expecting ':'"});
+            err({line: 1u, col: 6u, msg: @"expecting ':'"});
         assert from_str("{\"a\":") ==
-            err({line: 1u, col: 6u, msg: "EOF while parsing value"});
+            err({line: 1u, col: 6u, msg: @"EOF while parsing value"});
         assert from_str("{\"a\":1") ==
-            err({line: 1u, col: 7u, msg: "EOF while parsing object"});
+            err({line: 1u, col: 7u, msg: @"EOF while parsing object"});
         assert from_str("{\"a\":1 1") ==
-            err({line: 1u, col: 8u, msg: "expecting ',' or '}'"});
+            err({line: 1u, col: 8u, msg: @"expecting ',' or '}'"});
         assert from_str("{\"a\":1,") ==
-            err({line: 1u, col: 8u, msg: "EOF while parsing object"});
+            err({line: 1u, col: 8u, msg: @"EOF while parsing object"});
 
         assert eq(result::get(from_str("{}")), mk_dict([]));
         assert eq(result::get(from_str("{\"a\": 3}")),
                   mk_dict([("a", num(3.0f))]));
 
         assert eq(result::get(from_str("{ \"a\": null, \"b\" : true }")),
-                  mk_dict([("a", null), ("b", boolean(true))]));
+                  mk_dict([
+                      ("a", null),
+                      ("b", boolean(true))]));
         assert eq(result::get(from_str("\n{ \"a\": null, \"b\" : true }\n")),
-                  mk_dict([("a", null), ("b", boolean(true))]));
+                  mk_dict([
+                      ("a", null),
+                      ("b", boolean(true))]));
         assert eq(result::get(from_str("{\"a\" : 1.0 ,\"b\": [ true ]}")),
                   mk_dict([
                       ("a", num(1.0)),
-                      ("b", list([boolean(true)]))
+                      ("b", list(@[boolean(true)]))
                   ]));
         assert eq(result::get(from_str(
                       "{" +
@@ -838,9 +851,9 @@ mod tests {
                       "}")),
                   mk_dict([
                       ("a", num(1.0f)),
-                      ("b", list([
+                      ("b", list(@[
                           boolean(true),
-                          string("foo\nbar"),
+                          string(@"foo\nbar"),
                           mk_dict([
                               ("c", mk_dict([("d", null)]))
                           ])
@@ -851,6 +864,6 @@ mod tests {
     #[test]
     fn test_multiline_errors() {
         assert from_str("{\n  \"foo\":\n \"bar\"") ==
-            err({line: 3u, col: 8u, msg: "EOF while parsing object"});
+            err({line: 3u, col: 8u, msg: @"EOF while parsing object"});
     }
 }
