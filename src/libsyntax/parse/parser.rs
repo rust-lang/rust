@@ -2414,7 +2414,7 @@ class parser {
                   token::LBRACE {
                     let idents = self.parse_unspanned_seq(
                         token::LBRACE, token::RBRACE,
-                        seq_sep_trailing_disallowed(token::COMMA),
+                        seq_sep_trailing_allowed(token::COMMA),
                         {|p| p.parse_path_list_ident()});
                     let path = @{span: mk_sp(lo, self.span.hi),
                                  global: false, idents: path,
