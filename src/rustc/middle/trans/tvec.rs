@@ -69,18 +69,15 @@ fn alloc_uniq(bcx: block, unit_ty: ty::t, elts: uint) -> result {
 
 fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let _icx = bcx.insn_ctxt("tvec::duplicate_uniq");
-    let ccx = bcx.ccx();
-    let body_ptr = get_bodyptr(bcx, vptr);
-    let fill = get_fill(bcx, body_ptr);
-    let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
 
+    let fill = get_fill(bcx, get_bodyptr(bcx, vptr));
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
-    let {box: newptr, body: new_body_ptr} =
-        base::malloc_unique_dyn(bcx, vecbodyty, size);
-    call_memmove(bcx, new_body_ptr, body_ptr, size);
+    let {bcx, val: newptr} = alloc_uniq_raw(bcx, unit_ty, fill, fill);
 
-    Store(bcx, fill, GEPi(bcx, new_body_ptr, [0u, abi::vec_elt_alloc]));
+    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
+    let new_data_ptr = get_dataptr(bcx, get_bodyptr(bcx, newptr));
+    call_memmove(bcx, new_data_ptr, data_ptr, fill);
+
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
         iter_vec(bcx, newptr, vec_ty, base::take_ty)
     } else { bcx };
