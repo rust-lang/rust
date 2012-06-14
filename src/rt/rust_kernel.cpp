@@ -63,6 +63,11 @@ rust_kernel::malloc(size_t size, const char *tag) {
 }
 
 void *
+rust_kernel::calloc(size_t size, const char *tag) {
+    return _region.calloc(size, tag);
+}
+
+void *
 rust_kernel::realloc(void *mem, size_t size) {
     return _region.realloc(mem, size);
 }

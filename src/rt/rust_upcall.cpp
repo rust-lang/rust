@@ -144,22 +144,14 @@ exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
 
     LOG(task, mem, "upcall exchange malloc(0x%" PRIxPTR ")", td);
 
-    // Copied from boxed_region
-    size_t header_size = sizeof(rust_opaque_box);
-    size_t body_size = size;
-    size_t body_align = td->align;
-    // FIXME: This alignment calculation is suspicious. Is it right?
-    size_t total_size = align_to(header_size, body_align) + body_size;
-
-    void *p = task->kernel->malloc(total_size, "exchange malloc");
+    size_t total_size = get_box_size(size, td->align);
+    void *p = task->kernel->calloc(total_size, "exchange malloc");
 
     rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
     header->ref_count = -1; // This is not ref counted
     header->td = td;
     header->prev = 0;
     header->next = 0;
-
-    memset(&header[1], '\0', body_size);
 
     return (uintptr_t)header;
 }
@@ -174,8 +166,7 @@ upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
     rust_task *task = rust_get_current_task();
     LOG_UPCALL_ENTRY(task);
 
-    uintptr_t retval = exchange_malloc(task, args->td, args->td->size);
-    args->retval = retval;
+    args->retval = exchange_malloc(task, args->td, args->td->size);
 }
 
 extern "C" CDECL uintptr_t
@@ -196,8 +187,7 @@ upcall_s_exchange_malloc_dyn(s_exchange_malloc_dyn_args *args) {
     rust_task *task = rust_get_current_task();
     LOG_UPCALL_ENTRY(task);
 
-    uintptr_t retval = exchange_malloc(task, args->td, args->size);
-    args->retval = retval;
+    args->retval = exchange_malloc(task, args->td, args->size);
 }
 
 extern "C" CDECL uintptr_t
@@ -228,6 +218,26 @@ upcall_exchange_free(void *ptr) {
  * Allocate an object in the task-local heap.
  */
 
+extern "C" CDECL uintptr_t
+shared_malloc(rust_task *task, type_desc *td, uintptr_t size) {
+    LOG(task, mem, "upcall malloc(0x%" PRIxPTR ")", td);
+
+    cc::maybe_cc(task);
+
+    // FIXME--does this have to be calloc?
+    rust_opaque_box *box = task->boxed.calloc(td, size);
+    void *body = box_body(box);
+
+    debug::maybe_track_origin(task, box);
+
+    LOG(task, mem,
+        "upcall malloc(0x%" PRIxPTR ") = box 0x%" PRIxPTR
+        " with body 0x%" PRIxPTR,
+        td, (uintptr_t)box, (uintptr_t)body);
+
+    return (uintptr_t)box;
+}
+
 struct s_malloc_args {
     uintptr_t retval;
     type_desc *td;
@@ -238,21 +248,7 @@ upcall_s_malloc(s_malloc_args *args) {
     rust_task *task = rust_get_current_task();
     LOG_UPCALL_ENTRY(task);
 
-    LOG(task, mem, "upcall malloc(0x%" PRIxPTR ")", args->td);
-
-    cc::maybe_cc(task);
-
-    // FIXME--does this have to be calloc?
-    rust_opaque_box *box = task->boxed.calloc(args->td);
-    void *body = box_body(box);
-
-    debug::maybe_track_origin(task, box);
-
-    LOG(task, mem,
-        "upcall malloc(0x%" PRIxPTR ") = box 0x%" PRIxPTR
-        " with body 0x%" PRIxPTR,
-        args->td, (uintptr_t)box, (uintptr_t)body);
-    args->retval = (uintptr_t) box;
+    args->retval = shared_malloc(task, args->td, args->td->size);
 }
 
 extern "C" CDECL uintptr_t
@@ -261,6 +257,28 @@ upcall_malloc(type_desc *td) {
     UPCALL_SWITCH_STACK(&args, upcall_s_malloc);
     return args.retval;
 }
+
+struct s_malloc_dyn_args {
+    uintptr_t retval;
+    type_desc *td;
+    uintptr_t size;
+};
+
+extern "C" CDECL void
+upcall_s_malloc_dyn(s_malloc_dyn_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+
+    args->retval = shared_malloc(task, args->td, args->size);
+}
+
+extern "C" CDECL uintptr_t
+upcall_malloc_dyn(type_desc *td, uintptr_t size) {
+    s_malloc_dyn_args args = {0, td, size};
+    UPCALL_SWITCH_STACK(&args, upcall_s_malloc_dyn);
+    return args.retval;
+}
+
 
 /**********************************************************************
  * Called whenever an object in the task-local heap is freed.

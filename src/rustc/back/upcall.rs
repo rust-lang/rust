@@ -11,6 +11,7 @@ type upcalls =
     {_fail: ValueRef,
      trace: ValueRef,
      malloc: ValueRef,
+     malloc_dyn: ValueRef,
      free: ValueRef,
      exchange_malloc: ValueRef,
      exchange_malloc_dyn: ValueRef,
@@ -58,6 +59,9 @@ fn declare_upcalls(targ_cfg: @session::config,
                               int_t]),
           malloc:
               nothrow(d("malloc", [T_ptr(tydesc_type)],
+          malloc_dyn:
+              nothrow(d("malloc_dyn",
+                        [T_ptr(tydesc_type), int_t],
                         T_ptr(T_i8()))),
           free:
               nothrow(dv("free", [T_ptr(T_i8())])),

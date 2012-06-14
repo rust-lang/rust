@@ -113,6 +113,7 @@ public:
     void fatal(char const *fmt, ...);
 
     void *malloc(size_t size, const char *tag);
+    void *calloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
     memory_region *region() { return &_region; }
@@ -165,3 +166,13 @@ template <typename T> struct kernel_owned {
 };
 
 #endif /* RUST_KERNEL_H */
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
+//

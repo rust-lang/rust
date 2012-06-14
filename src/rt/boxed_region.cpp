@@ -2,14 +2,12 @@
 #include "rust_globals.h"
 #include "rust_task.h"
 #include "rust_env.h"
+#include "rust_util.h"
 
 // #define DUMP_BOXED_REGION
 
-rust_opaque_box *boxed_region::malloc(type_desc *td) {
-    size_t header_size = sizeof(rust_opaque_box);
-    size_t body_size = td->size;
-    size_t body_align = td->align;
-    size_t total_size = align_to(header_size, body_align) + body_size;
+rust_opaque_box *boxed_region::malloc(type_desc *td, size_t body_size) {
+    size_t total_size = get_box_size(body_size, td->align);
     rust_opaque_box *box =
       (rust_opaque_box*)backing_region->malloc(total_size, "@");
     box->td = td;
@@ -22,14 +20,14 @@ rust_opaque_box *boxed_region::malloc(type_desc *td) {
     LOG(rust_get_current_task(), box,
         "@malloc()=%p with td %p, size %lu==%lu+%lu, "
         "align %lu, prev %p, next %p\n",
-        box, td, total_size, header_size, body_size, body_align,
-        box->prev, box->next);
+        box, td, total_size, sizeof(rust_opaque_box), body_size,
+        td->align, box->prev, box->next);
 
     return box;
 }
 
-rust_opaque_box *boxed_region::calloc(type_desc *td) {
-    rust_opaque_box *box = malloc(td);
+rust_opaque_box *boxed_region::calloc(type_desc *td, size_t body_size) {
+    rust_opaque_box *box = malloc(td, body_size);
     memset(box_body(box), 0, td->size);
     return box;
 }
@@ -62,3 +60,13 @@ void boxed_region::free(rust_opaque_box *box) {
 
     backing_region->free(box);
 }
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
+//
