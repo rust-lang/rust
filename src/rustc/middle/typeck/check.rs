@@ -99,6 +99,23 @@ type fn_ctxt =
 
      ccx: @crate_ctxt};
 
+// Used by check_const and check_enum_variants
+fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t) -> @fn_ctxt {
+// It's kind of a kludge to manufacture a fake function context
+// and statement context, but we might as well do write the code only once
+    @{self_ty: none,
+      ret_ty: rty,
+      indirect_ret_ty: none,
+      purity: ast::pure_fn,
+      infcx: infer::new_infer_ctxt(ccx.tcx),
+      locals: int_hash(),
+      mut blocks: [],
+      in_scope_regions: @nil,
+      node_types: smallintmap::mk(),
+      node_type_substs: map::int_hash(),
+      ccx: ccx}
+}
+
 // a list of mapping from in-scope-region-names ("isr") to the
 // corresponding ty::region
 type isr_alist = @list<(ty::bound_region, ty::region)>;
@@ -705,7 +722,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
 }
 
 // Only for fields! Returns <none> for methods>
-// FIXME: privacy flags
+// Indifferent to privacy flags
 fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
                    items:[ty::field_ty], fieldname: ast::ident,
                    substs: ty::substs) -> option<ty::t> {
@@ -1390,7 +1407,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         alt structure_of(fcx, expr.span, fty) {
           // FIXME:
           // probably need to munge the constrs to drop constraints
-          // for any bound args
+          // for any bound args (contingent on #2588 not getting accepted)
           ty::ty_fn(f) {
             proto = f.proto;
             arg_tys = f.inputs;
@@ -1460,7 +1477,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             if type_is_c_like_enum(fcx,expr.span,t_e) && t_1_is_scalar {
                 /* this case is allowed */
             } else if !(type_is_scalar(fcx,expr.span,t_e) && t_1_is_scalar) {
-                // FIXME there are more forms of cast to support, eventually.
+                /*
+                If more type combinations should be supported than are
+                supported here, then file an enhancement issue and record the
+                issue number in this comment.
+                */
                 tcx.sess.span_err(expr.span,
                                   "non-scalar cast: " +
                                   ty_to_str(tcx, t_e) + " as " +
@@ -1516,14 +1537,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
           some(bexpr) {
             let bexpr_t = fcx.expr_ty(bexpr);
-            let mut base_fields; // FIXME remove mut after snapshot
-            alt structure_of(fcx, expr.span, bexpr_t) {
-              ty::ty_rec(flds) { base_fields = flds; }
+            let base_fields =  alt structure_of(fcx, expr.span, bexpr_t) {
+              ty::ty_rec(flds) { flds }
               _ {
                 tcx.sess.span_fatal(expr.span,
                                     "record update has non-record base");
               }
-            }
+            };
             fcx.write_ty(id, bexpr_t);
             for fields_t.each {|f|
                 let mut found = false;
@@ -1586,7 +1606,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               alt lookup_field_ty(tcx, base_id, cls_items, field, substs) {
                  some(field_ty) {
                     // (2) look up what field's type is, and return it
-                    // FIXME: actually instantiate any type params
                      fcx.write_ty(id, field_ty);
                      handled = true;
                  }
@@ -1843,21 +1862,8 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
 }
 
 fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
-    // FIXME: this is kinda a kludge; we manufacture a fake function context
-    // and statement context for checking the initializer expression.
     let rty = ty::node_id_to_type(ccx.tcx, id);
-    let fcx: @fn_ctxt =
-        @{self_ty: none,
-          ret_ty: rty,
-          indirect_ret_ty: none,
-          purity: ast::pure_fn,
-          infcx: infer::new_infer_ctxt(ccx.tcx),
-          locals: int_hash(),
-          mut blocks: [],
-          in_scope_regions: @nil,
-          node_types: smallintmap::mk(),
-          node_type_substs: map::int_hash(),
-          ccx: ccx};
+    let fcx = blank_fn_ctxt(ccx, rty);
     check_expr(fcx, e, none);
     let cty = fcx.expr_ty(e);
     let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
@@ -1882,21 +1888,8 @@ fn check_enum_variants(ccx: @crate_ctxt,
                        sp: span,
                        vs: [ast::variant],
                        id: ast::node_id) {
-    // FIXME: this is kinda a kludge; we manufacture a fake function context
-    // and statement context for checking the initializer expression.
     let rty = ty::node_id_to_type(ccx.tcx, id);
-    let fcx: @fn_ctxt =
-        @{self_ty: none,
-          ret_ty: rty,
-          indirect_ret_ty: none,
-          purity: ast::pure_fn,
-          infcx: infer::new_infer_ctxt(ccx.tcx),
-          locals: int_hash(),
-          mut blocks: [],
-          in_scope_regions: @nil,
-          node_types: smallintmap::mk(),
-          node_type_substs: map::int_hash(),
-          ccx: ccx};
+    let fcx = blank_fn_ctxt(ccx, rty);
     let mut disr_vals: [int] = [];
     let mut disr_val = 0;
     for vs.each {|v|
@@ -2140,9 +2133,17 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_upvar(_, inner, _) {
         ret ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
-      _ {
-        // FIXME: handle other names.
-        fcx.ccx.tcx.sess.unimpl("definition variant");
+      ast::def_ty_param(did, n) {
+        ret no_params(ty::mk_param(fcx.ccx.tcx, n, did));
+      }
+      ast::def_mod(*) | ast::def_native_mod(*) {
+        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found module");
+      }
+      ast::def_use(*) {
+        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found use");
+      }
+      ast::def_region(*) {
+        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found region");
       }
     }
 }

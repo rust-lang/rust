@@ -120,8 +120,6 @@ type crate_ctxt = {impl_map: resolve::impl_map,
                    vtable_map: vtable_map,
                    tcx: ty::ctxt};
 
-type class_map = hashmap<ast::node_id, ty::t>;
-
 // Functions that write types into the node type table
 fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
     #debug["write_ty_to_tcx(%d, %s)", node_id, ty_to_str(tcx, ty)];
