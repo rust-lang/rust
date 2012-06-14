@@ -179,7 +179,7 @@ impl extensions<A:copy> for dvec<A> {
 
     #[doc = "
         Append all elements of an iterable.
-    
+
         Failure will occur if the iterable's `each()` method
         attempts to access this vector.
     "]

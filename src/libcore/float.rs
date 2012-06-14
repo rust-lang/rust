@@ -109,7 +109,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     // stack of digits
     let mut fractionalParts = [];
 
-    // FIXME:
+    // FIXME: (#2608)
     // This used to return right away without rounding, as "[-]num",
     // but given epsilon like in f64.rs, I don't see how the comparison
     // to epsilon did much when only used there.
