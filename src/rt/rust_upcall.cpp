@@ -156,6 +156,7 @@ exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
     return (uintptr_t)header;
 }
 
+// FIXME: remove after snapshot (6/13/12)
 struct s_exchange_malloc_args {
     uintptr_t retval;
     type_desc *td;
@@ -238,6 +239,7 @@ shared_malloc(rust_task *task, type_desc *td, uintptr_t size) {
     return (uintptr_t)box;
 }
 
+// FIXME: remove after snapshot (6/13/12)
 struct s_malloc_args {
     uintptr_t retval;
     type_desc *td;

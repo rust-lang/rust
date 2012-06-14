@@ -348,17 +348,17 @@ fn opaque_box_body(bcx: block,
     PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
 }
 
-// malloc_raw: expects an unboxed type and returns a pointer to
-// enough space for a box of that type.  This includes a rust_opaque_box
-// header.
-fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> ValueRef {
+// malloc_raw_dyn: allocates a box to contain a given type, but with a
+// potentially dynamic size.
+fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
+                  size: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
     let (mk_fn, upcall) = alt heap {
-      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc) }
+      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc_dyn) }
       heap_exchange {
-        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc )
+        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc_dyn )
       }
     };
 
@@ -372,52 +372,40 @@ fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> ValueRef {
     lazily_emit_all_tydesc_glue(ccx, copy static_ti);
 
     // Allocate space:
-    let rval = Call(bcx, upcall, [lltydesc]);
+    let rval = Call(bcx, upcall, [lltydesc, size]);
     ret PointerCast(bcx, rval, llty);
 }
 
-// malloc_general: usefully wraps malloc_raw; allocates a box,
+// malloc_raw: expects an unboxed type and returns a pointer to
+// enough space for a box of that type.  This includes a rust_opaque_box
+// header.
+fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> ValueRef {
+    malloc_raw_dyn(bcx, t, heap, llsize_of(bcx.ccx(), type_of(bcx.ccx(), t)))
+}
+
+// malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a box,
 // and pulls out the body
-fn malloc_general(bcx: block, t: ty::t, heap: heap) ->
+fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef) ->
     {box: ValueRef, body: ValueRef} {
     let _icx = bcx.insn_ctxt("malloc_general");
-    let box = malloc_raw(bcx, t, heap);
+    let box = malloc_raw_dyn(bcx, t, heap, size);
     let non_gc_box = non_gc_box_cast(bcx, box);
     let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
     ret {box: box, body: body};
 }
 
 fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
-    malloc_general(bcx, t, heap_shared)
+    malloc_general_dyn(bcx, t, heap_shared,
+                       llsize_of(bcx.ccx(), type_of(bcx.ccx(), t)))
 }
 fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
-    malloc_general(bcx, t, heap_exchange)
-}
-
-fn malloc_unique_dyn_raw(bcx: block, t: ty::t, size: ValueRef) -> ValueRef {
-    let _icx = bcx.insn_ctxt("malloc_unique_dyn_raw");
-    let ccx = bcx.ccx();
-
-    // Grab the TypeRef type of box_ptr_ty.
-    let box_ptr_ty = ty::mk_imm_uniq(ccx.tcx, t);
-    let llty = type_of(ccx, box_ptr_ty);
-
-    // Get the tydesc for the body:
-    let mut static_ti = none;
-    let lltydesc = get_tydesc(ccx, t, static_ti);
-    lazily_emit_all_tydesc_glue(ccx, static_ti);
-
-    // Allocate space:
-    let rval = Call(bcx, ccx.upcalls.exchange_malloc_dyn, [lltydesc, size]);
-    ret PointerCast(bcx, rval, llty);
+    malloc_general_dyn(bcx, t, heap_exchange,
+                       llsize_of(bcx.ccx(), type_of(bcx.ccx(), t)))
 }
 
 fn malloc_unique_dyn(bcx: block, t: ty::t, size: ValueRef
                     ) -> {box: ValueRef, body: ValueRef} {
-    let _icx = bcx.insn_ctxt("malloc_unique_dyn");
-    let box = malloc_unique_dyn_raw(bcx, t, size);
-    let body = GEPi(bcx, box, [0u, abi::box_field_body]);
-    ret {box: box, body: body};
+    malloc_general_dyn(bcx, t, heap_exchange, size)
 }
 
 // Type descriptor and type glue stuff
