@@ -329,7 +329,7 @@ fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
     // FIXME---this will not unroll any entries we make in the
     // borrowings table.  But this is OK for the moment because this
     // is only used in method lookup, and there must be exactly one
-    // match or an error is reported. Still, it should be fixed.
+    // match or an error is reported. Still, it should be fixed. (#2593)
 
     indent {|| cx.probe {||
         cx.assign_tys(anmnt, a, b)
@@ -1501,6 +1501,7 @@ fn super_fns<C:combine>(
                     self.purities(a_f.purity, b_f.purity).chain {|purity|
                     //FIXME self.infcx().constrvecs(a_f.constraints,
                     //FIXME                         b_f.constraints).then {||
+                    // (Fix this if #2588 doesn't get accepted)
                         ok({purity: purity,
                             proto: p,
                             inputs: inputs,
