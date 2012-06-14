@@ -39,7 +39,7 @@ fn main() {
     log(debug, x);
     n = recv(p);
     n = recv(p);
-    // FIXME: use signal-channel for this.
+    // FIXME: use signal-channel for this. (#2600)
     #debug("children finished, root finishing");
 }
 

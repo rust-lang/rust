@@ -60,7 +60,7 @@ fn test_box() {
 }
 
 fn test_port() {
-    // FIXME: Re-enable this once we can compare resources.
+    // FIXME: Re-enable this once we can compare resources. (#2601)
     /*
     let p1 = comm::port::<int>();
     let p2 = comm::port::<int>();

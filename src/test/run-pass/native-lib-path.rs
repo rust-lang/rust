@@ -1,4 +1,4 @@
-// xfail-test FIXME I don't know how to test this
+// xfail-test FIXME I don't know how to test this (#2604)
 // compile-flags:-L.
 // The -L flag is also used for linking native libraries
 
