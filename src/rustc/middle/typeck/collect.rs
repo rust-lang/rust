@@ -26,7 +26,7 @@ import rscope::*;
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
     // FIXME: hooking into the "intrinsic" root module is crude.
-    // there ought to be a better approach. Attributes?
+    // there ought to be a better approach. Attributes? (#2592)
 
     for crate.node.module.items.each {|crate_item|
         if *crate_item.ident == "intrinsic" {
@@ -389,7 +389,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                                ty: t_dtor});
         };
         ensure_iface_methods(ccx, it.id);
-        /* FIXME: check for proper public/privateness */
+
         // Write the type of each of the members
         let (fields, methods) = split_class_items(members);
         for fields.each {|f|
