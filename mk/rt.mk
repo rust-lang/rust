@@ -79,6 +79,17 @@ RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
                   rt/arch/$$(HOST_$(1))/record_sp.S
 
+RUNTIME_HDR_$(1) := $$(wildcard \
+                       rt/*.h \
+                       rt/bigint/*.h \
+                       rt/isaac/*.h \
+                       rt/msvc/*.h \
+                       rt/sync/*.h \
+                       rt/uthash/*.h \
+                       rt/util/*.h \
+                       rt/vg/*.h \
+                       rt/arch/$$(HOST_$(1))/*.h)
+
 ifeq ($$(HOST_$(1)), i386)
   LIBUV_ARCH_$(1) := ia32
 else
@@ -105,17 +116,14 @@ RUNTIME_INCS_$(1) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
 				-I $$(S)src/libuv/include
 RUNTIME_OBJS_$(1) := $$(RUNTIME_CS_$(1):rt/%.cpp=rt/$(1)/%.o) \
                      $$(RUNTIME_S_$(1):rt/%.S=rt/$(1)/%.o)
-RUNTIME_DEP_FILES_$(1) := $$(RUNTIME_OBJS_$(1):%.o=%.d)
--include $$(RUNTIME_DEP_FILES_$(1))
-
 RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
 
-rt/$(1)/%.o: rt/%.cpp $$(MKFILE_DEPS)
+rt/$(1)/%.o: rt/%.cpp $$(RUNTIME_HDR_$(1)) $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1)) \
                  $$(SNAP_DEFINES)) $$<
 
-rt/$(1)/%.o: rt/%.S  $$(MKFILE_DEPS) \
+rt/$(1)/%.o: rt/%.S  $$(RUNTIME_HDR_$(1)) $$(MKFILE_DEPS) \
                      $$(LLVM_CONFIG_$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
@@ -126,6 +134,7 @@ rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: \
 	$$(Q)ar rcs $$@ $$<
 
 rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
+                        $$(RUNTIME_HDR_$(1)) \
                         $$(RUNTIME_DEF_$(1)) \
                         $$(RUNTIME_LIBS_$(1))
 	@$$(call E, link: $$@)
