@@ -2693,9 +2693,11 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
     let result = if ast::local_crate != id.crate {
         @csearch::get_enum_variants(cx, id)
     } else {
-        // FIXME: Now that the variants are run through the type checker (to
-        // check the disr_expr if it exists), this code should likely be
-        // moved there to avoid having to call eval_const_expr twice.
+        /*
+          Although both this code and check_enum_variants in typeck/check
+          call eval_const_expr, it should never get called twice for the same
+          expr, since check_enum_variants also updates the enum_var_cache
+         */
         alt cx.items.get(id.node) {
           ast_map::node_item(@{node: ast::item_enum(variants, _, _), _}, _) {
             let mut disr_val = -1;
