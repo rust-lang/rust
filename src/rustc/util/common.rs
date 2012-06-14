@@ -33,36 +33,28 @@ fn field_exprs(fields: [ast::field]) -> [@ast::expr] {
     ret es;
 }
 
-fn has_nonlocal_exits(b: ast::blk) -> bool {
-    let has_exits = @mut false;
-    fn visit_expr(flag: @mut bool, e: @ast::expr) {
-        alt e.node {
-          ast::expr_break { *flag = true; }
-          ast::expr_cont { *flag = true; }
-          _ { }
-        }
-    }
+// Takes a predicate p, returns true iff p is true for any subexpressions
+// of b
+fn block_expr_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
+    let rs = @mut false;
+    let visit_expr = {|flag: @mut bool, e: @ast::expr| *flag |= p(e.node)};
     let v =
-        visit::mk_simple_visitor(@{visit_expr: bind visit_expr(has_exits, _)
+        visit::mk_simple_visitor(@{visit_expr: bind visit_expr(rs, _)
                                       with *visit::default_simple_visitor()});
     visit::visit_block(b, (), v);
-    ret *has_exits;
+    ret *rs;
 }
 
-/* FIXME: copy/paste, yuck */
+fn has_nonlocal_exits(b: ast::blk) -> bool {
+    block_expr_query(b) {|e| alt e {
+      ast::expr_break | ast::expr_cont { true }
+      _ { false }}}
+}
+
 fn may_break(b: ast::blk) -> bool {
-    let has_exits = @mut false;
-    fn visit_expr(flag: @mut bool, e: @ast::expr) {
-        alt e.node {
-          ast::expr_break { *flag = true; }
-          _ { }
-        }
-    }
-    let v =
-        visit::mk_simple_visitor(@{visit_expr: bind visit_expr(has_exits, _)
-                                      with *visit::default_simple_visitor()});
-    visit::visit_block(b, (), v);
-    ret *has_exits;
+    block_expr_query(b) {|e| alt e {
+      ast::expr_break { true }
+      _ { false }}}
 }
 
 fn local_rhs_span(l: @ast::local, def: span) -> span {
@@ -71,7 +63,7 @@ fn local_rhs_span(l: @ast::local, def: span) -> span {
 
 fn is_main_name(path: syntax::ast_map::path) -> bool {
     // FIXME: path should be a constrained type, so we know
-    // the call to last doesn't fail
+    // the call to last doesn't fail (#34)
     vec::last(path) == syntax::ast_map::path_name(@"main")
 }
 
