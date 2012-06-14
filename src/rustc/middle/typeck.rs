@@ -118,13 +118,6 @@ type ty_table = hashmap<ast::def_id, ty::t>;
 type crate_ctxt = {impl_map: resolve::impl_map,
                    method_map: method_map,
                    vtable_map: vtable_map,
-                   // Not at all sure it's right to put these here
-                   /* node_id for the class this fn is in --
-                      none if it's not in a class */
-                   enclosing_class_id: option<ast::node_id>,
-                   /* map from node_ids for enclosing-class
-                      vars and methods to types */
-                   enclosing_class: class_map,
                    tcx: ty::ctxt};
 
 type class_map = hashmap<ast::node_id, ty::t>;
@@ -246,8 +239,6 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
     let ccx = @{impl_map: impl_map,
                 method_map: std::map::int_hash(),
                 vtable_map: std::map::int_hash(),
-                enclosing_class_id: none,
-                enclosing_class: std::map::int_hash(),
                 tcx: tcx};
     collect::collect_item_types(ccx, crate);
     check::check_item_types(ccx, crate);

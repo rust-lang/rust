@@ -320,26 +320,6 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method, self_ty: ty::t) {
     check_bare_fn(ccx, method.decl, method.body, method.id, some(self_ty));
 }
 
-fn class_types(ccx: @crate_ctxt, members: [@ast::class_member],
-               rp: ast::region_param) -> class_map {
-
-    let rslt = int_hash::<ty::t>();
-    let rs = rscope::type_rscope(rp);
-    for members.each { |m|
-      alt m.node {
-         ast::instance_var(_,t,_,id,_) {
-           rslt.insert(id, ccx.to_ty(rs, t));
-         }
-         ast::class_method(mth) {
-           rslt.insert(mth.id,
-                       ty::mk_fn(ccx.tcx,
-                                 collect::ty_of_method(ccx, mth, rp).fty));
-         }
-      }
-    }
-    rslt
-}
-
 fn check_class_member(ccx: @crate_ctxt, class_t: ty::t,
                       cm: @ast::class_member) {
     alt cm.node {
@@ -368,15 +348,10 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         for ms.each {|m| check_method(ccx, m, self_ty);}
       }
       ast::item_class(tps, ifaces, members, ctor, m_dtor, rp) {
-          let cid = some(it.id), tcx = ccx.tcx;
+          let tcx = ccx.tcx;
           let class_t = ty::node_id_to_type(tcx, it.id);
-          let members_info = class_types(ccx, members, rp);
-          // can also ditch the enclosing_class stuff once we move to self
-          // FIXME
-          let class_ccx = @{enclosing_class_id:cid,
-                            enclosing_class:members_info with *ccx};
           // typecheck the ctor
-          check_bare_fn(class_ccx, ctor.node.dec,
+          check_bare_fn(ccx, ctor.node.dec,
                         ctor.node.body, ctor.node.id,
                         some(class_t));
           // Write the ctor's self's type
@@ -384,14 +359,14 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
 
           option::iter(m_dtor) {|dtor|
             // typecheck the dtor
-           check_bare_fn(class_ccx, ast_util::dtor_dec(),
+           check_bare_fn(ccx, ast_util::dtor_dec(),
                            dtor.node.body, dtor.node.id,
                            some(class_t));
            // Write the dtor's self's type
            write_ty_to_tcx(tcx, dtor.node.self_id, class_t);
           };
           // typecheck the members
-          for members.each {|m| check_class_member(class_ccx, class_t, m); }
+          for members.each {|m| check_class_member(ccx, class_t, m); }
           // Check that there's at least one field
           let (fields,_) = split_class_items(members);
           if fields.len() < 1u {
