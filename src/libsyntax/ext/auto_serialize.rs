@@ -158,8 +158,7 @@ impl helpers for ext_ctxt {
           node: ast::ty_fn(ast::proto_any, {inputs: args,
                                             output: output,
                                             purity: ast::impure_fn,
-                                            cf: ast::return_val,
-                                            constraints: []}),
+                                            cf: ast::return_val}),
           span: span}
     }
 
@@ -438,10 +437,6 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         }
       }
 
-      ast::ty_constr(ty, _) {
-        ser_ty(cx, tps, ty, s, v)
-      }
-
       ast::ty_mac(_) {
         cx.span_err(ty.span, "cannot serialize macro types");
         []
@@ -543,8 +538,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident, tps: [ast::ty_param],
       node: ast::item_fn({inputs: ser_inputs,
                           output: ser_output,
                           purity: ast::impure_fn,
-                          cf: ast::return_val,
-                          constraints: []},
+                          cf: ast::return_val},
                          ser_tps,
                          ser_blk),
       vis: ast::public,
@@ -661,10 +655,6 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         }
       }
 
-      ast::ty_constr(ty, constrs) {
-        deser_ty(cx, tps, ty, d)
-      }
-
       ast::ty_mac(_) {
         #ast{ fail }
       }
@@ -744,8 +734,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
       node: ast::item_fn({inputs: deser_inputs,
                           output: v_ty,
                           purity: ast::impure_fn,
-                          cf: ast::return_val,
-                          constraints: []},
+                          cf: ast::return_val},
                          deser_tps,
                          deser_blk),
       vis: ast::public,

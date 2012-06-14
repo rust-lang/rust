@@ -885,8 +885,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
                     ty::mk_mach_uint(bcx.tcx(), ast::ty_u8))
             }],
             output: ty::mk_nil(bcx.tcx()),
-            ret_style: ast::return_val,
-            constraints: []
+            ret_style: ast::return_val
         });
         bcx = trans_call_inner(bcx, none, fty, ty::mk_nil(bcx.tcx()),
                                { |bcx|

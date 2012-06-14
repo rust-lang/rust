@@ -146,7 +146,6 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             T_struct(tys)
           }
           ty::ty_opaque_closure_ptr(_) { T_opaque_box_ptr(cx) }
-          ty::ty_constr(subt,_) { type_of(cx, subt) }
           ty::ty_class(did, ts) {
             // only instance vars are record fields at runtime
             let fields = lookup_class_fields(cx.tcx, did);

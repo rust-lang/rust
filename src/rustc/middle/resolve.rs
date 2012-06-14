@@ -634,9 +634,6 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
       _ { /* fallthrough */ }
     }
 
-    // here's where we need to set up the mapping
-    // for f's constrs in the table.
-    for decl.constraints.each {|c| resolve_constr(e, c, sc, v); }
     let scope = alt fk {
       visit::fk_item_fn(_, tps) | visit::fk_res(_, tps, _) |
       visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _)  |
@@ -740,19 +737,6 @@ fn follow_import(e: env, &&sc: scopes, path: [ident], sp: span) ->
           }
         }
     } else { ret none; }
-}
-
-fn resolve_constr(e: @env, c: @ast::constr, &&sc: scopes, _v: vt<scopes>) {
-    alt lookup_path_strict(*e, sc, c.span, c.node.path, ns_val) {
-       some(d@ast::def_fn(_,ast::pure_fn)) {
-         e.def_map.insert(c.node.id, d);
-       }
-       _ {
-           let s = path_to_str(c.node.path);
-           e.sess.span_err(c.span, #fmt("%s is not declared pure. Try \
-             `pure fn %s` instead of `fn %s`.", s, s, s));
-       }
-    }
 }
 
 // Import resolution

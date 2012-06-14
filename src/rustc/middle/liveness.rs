@@ -394,7 +394,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       }
 
       // live nodes required for interesting control flow:
-      expr_if_check(*) | expr_if(*) | expr_alt(*) |
+      expr_if(*) | expr_alt(*) |
       expr_while(*) | expr_loop(*) {
         (*self).add_live_node_for_node(expr.id, lnk_expr(expr.span));
         visit::visit_expr(expr, self, vt);
@@ -408,7 +408,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       expr_index(*) | expr_field(*) | expr_vstore(*) |
       expr_vec(*) | expr_rec(*) | expr_call(*) | expr_tup(*) |
       expr_bind(*) | expr_new(*) | expr_log(*) | expr_binary(*) |
-      expr_assert(*) | expr_check(*) | expr_addr_of(*) | expr_copy(*) |
+      expr_assert(*) | expr_addr_of(*) | expr_copy(*) |
       expr_loop_body(*) | expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_break | expr_cont | expr_lit(_) | expr_ret(*) |
       expr_block(*) | expr_move(*) | expr_assign(*) | expr_swap(*) |
@@ -875,7 +875,6 @@ class liveness {
             }
           }
 
-          expr_if_check(cond, then, els) |
           expr_if(cond, then, els) {
             //
             //     (cond)
@@ -1047,7 +1046,6 @@ class liveness {
           }
 
           expr_assert(e) |
-          expr_check(_, e) |
           expr_addr_of(_, e) |
           expr_copy(e) |
           expr_loop_body(e) |
@@ -1397,12 +1395,12 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       }
 
       // no correctness conditions related to liveness
-      expr_if_check(*) | expr_if(*) | expr_alt(*) |
+      expr_if(*) | expr_alt(*) |
       expr_while(*) | expr_loop(*) |
       expr_index(*) | expr_field(*) | expr_vstore(*) |
       expr_vec(*) | expr_rec(*) | expr_tup(*) |
       expr_bind(*) | expr_new(*) | expr_log(*) | expr_binary(*) |
-      expr_assert(*) | expr_check(*) | expr_copy(*) |
+      expr_assert(*) | expr_copy(*) |
       expr_loop_body(*) | expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_ret(*) | expr_break | expr_cont | expr_lit(_) |
       expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) {

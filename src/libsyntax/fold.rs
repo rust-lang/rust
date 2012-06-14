@@ -33,8 +33,6 @@ iface ast_fold {
     fn fold_decl(&&@decl) -> @decl;
     fn fold_expr(&&@expr) -> @expr;
     fn fold_ty(&&@ty) -> @ty;
-    fn fold_constr(&&@constr) -> @constr;
-    fn fold_ty_constr(&&@ty_constr) -> @ty_constr;
     fn fold_mod(_mod) -> _mod;
     fn fold_native_mod(native_mod) -> native_mod;
     fn fold_variant(variant) -> variant;
@@ -66,9 +64,6 @@ type ast_fold_precursor = @{
     fold_decl: fn@(decl_, span, ast_fold) -> (decl_, span),
     fold_expr: fn@(expr_, span, ast_fold) -> (expr_, span),
     fold_ty: fn@(ty_, span, ast_fold) -> (ty_, span),
-    fold_constr: fn@(ast::constr_, span, ast_fold) -> (constr_, span),
-    fold_ty_constr: fn@(ast::ty_constr_, span, ast_fold)
-        -> (ty_constr_, span),
     fold_mod: fn@(_mod, ast_fold) -> _mod,
     fold_native_mod: fn@(native_mod, ast_fold) -> native_mod,
     fold_variant: fn@(variant_, span, ast_fold) -> (variant_, span),
@@ -132,8 +127,7 @@ fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
     ret {inputs: vec::map(decl.inputs, bind fold_arg_(_, fld)),
          output: fld.fold_ty(decl.output),
          purity: decl.purity,
-         cf: decl.cf,
-         constraints: vec::map(decl.constraints, fld.fold_constr)}
+         cf: decl.cf}
 }
 
 fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
@@ -196,10 +190,7 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
                   native_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
                                   output: fld.fold_ty(fdec.output),
                                   purity: fdec.purity,
-                                  cf: fdec.cf,
-                                  constraints:
-                                      vec::map(fdec.constraints,
-                                               fld.fold_constr)},
+                                  cf: fdec.cf},
                                  fold_ty_params(typms, fld))
                 }
               },
@@ -471,11 +462,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_log(i, lv, e) { expr_log(i, fld.fold_expr(lv),
                                         fld.fold_expr(e)) }
           expr_assert(e) { expr_assert(fld.fold_expr(e)) }
-          expr_check(m, e) { expr_check(m, fld.fold_expr(e)) }
-          expr_if_check(cond, tr, fl) {
-            expr_if_check(fld.fold_expr(cond), fld.fold_block(tr),
-                          option::map(fl, fld.fold_expr))
-          }
           expr_mac(mac) { expr_mac(fold_mac(mac)) }
         }
 }
@@ -501,24 +487,11 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_fn(proto, decl) {ty_fn(proto, fold_fn_decl(decl, fld))}
       ty_tup(tys) {ty_tup(vec::map(tys) {|ty| fld.fold_ty(ty)})}
       ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
-      ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty),
-                                vec::map(constrs, fld.fold_ty_constr))}
       ty_vstore(t, vs) {ty_vstore(fld.fold_ty(t), vs)}
       ty_mac(mac) {ty_mac(fold_mac(mac))}
     }
 }
 
-fn noop_fold_constr(c: constr_, fld: ast_fold) -> constr_ {
-    {path: fld.fold_path(c.path), args: /* FIXME: bad */ copy c.args,
-     id: fld.new_id(c.id)}
-}
-
-fn noop_fold_ty_constr(c: ty_constr_, fld: ast_fold) -> ty_constr_ {
-    let rslt: ty_constr_ =
-        {path: fld.fold_path(c.path), args: /* FIXME: bad */ copy c.args,
-         id: fld.new_id(c.id)};
-    rslt
-}
 // ...nor do modules
 fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
     ret {view_items: vec::map(m.view_items, fld.fold_view_item),
@@ -603,8 +576,6 @@ fn default_ast_fold() -> ast_fold_precursor {
           fold_decl: wrap(noop_fold_decl),
           fold_expr: wrap(noop_fold_expr),
           fold_ty: wrap(noop_fold_ty),
-          fold_constr: wrap(noop_fold_constr),
-          fold_ty_constr: wrap(noop_fold_ty_constr),
           fold_mod: noop_fold_mod,
           fold_native_mod: noop_fold_native_mod,
           fold_variant: wrap(noop_fold_variant),
@@ -692,17 +663,6 @@ impl of ast_fold for ast_fold_precursor {
     fn fold_ty(&&x: @ty) -> @ty {
         let (n, s) = self.fold_ty(x.node, x.span, self as ast_fold);
         ret @{id: self.new_id(x.id), node: n, span: self.new_span(s)};
-    }
-    fn fold_constr(&&x: @ast::constr) ->
-       @ast::constr {
-        let (n, s) = self.fold_constr(x.node, x.span, self as ast_fold);
-        ret @{node: n, span: self.new_span(s)};
-    }
-    fn fold_ty_constr(&&x: @ast::ty_constr) ->
-       @ast::ty_constr {
-        let (n, s) : (ty_constr_, span) =
-            self.fold_ty_constr(x.node, x.span, self as ast_fold);
-        ret @{node: n, span: self.new_span(s)};
     }
     fn fold_mod(x: _mod) -> _mod {
         ret self.fold_mod(x, self as ast_fold);

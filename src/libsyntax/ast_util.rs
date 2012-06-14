@@ -384,7 +384,7 @@ fn dtor_dec() -> fn_decl {
     // dtor has one argument, of type ()
     {inputs: [{mode: ast::expl(ast::by_ref),
                ty: nil_t, ident: @"_", id: 0}],
-     output: nil_t, purity: impure_fn, cf: return_val, constraints: []}
+     output: nil_t, purity: impure_fn, cf: return_val}
 }
 
 // ______________________________________________________________________

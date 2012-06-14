@@ -210,7 +210,6 @@ fn check_fn(ccx: @crate_ctxt,
     };
 
     gather_locals(fcx, decl, body, arg_tys);
-    check_constraints(fcx, decl.constraints, decl.inputs);
     check_block(fcx, body);
 
     // We unify the tail expr's type with the
@@ -1291,15 +1290,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         check_expr(fcx, e, none);
         fcx.write_nil(id);
       }
-      ast::expr_check(_, e) {
-        bot = check_pred_expr(fcx, e);
-        fcx.write_nil(id);
-      }
-      ast::expr_if_check(cond, thn, elsopt) {
-        bot =
-            check_pred_expr(fcx, cond) |
-                check_then_else(fcx, thn, elsopt, id, expr.span);
-      }
       ast::expr_assert(e) {
         bot = check_expr_with(fcx, e, ty::mk_bool(tcx));
         fcx.write_nil(id);
@@ -1411,17 +1401,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // TODO: Perform substitutions on the return type.
 
         // Pull the argument and return types out.
-        let mut proto, arg_tys, rt, cf, constrs;
+        let mut proto, arg_tys, rt, cf;
         alt structure_of(fcx, expr.span, fty) {
-          // FIXME:
-          // probably need to munge the constrs to drop constraints
-          // for any bound args
           ty::ty_fn(f) {
             proto = f.proto;
             arg_tys = f.inputs;
             rt = f.output;
             cf = f.ret_style;
-            constrs = f.constraints;
           }
           _ { fail "LHS of bind expr didn't have a function type?!"; }
         }
@@ -1452,7 +1438,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         let ft = ty::mk_fn(tcx, {purity: ast::impure_fn, proto: proto,
                                  inputs: out_args, output: rt,
-                                 ret_style: cf, constraints: constrs});
+                                 ret_style: cf});
         fcx.write_ty(id, ft);
       }
       ast::expr_call(f, args, _) {
@@ -1710,8 +1696,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                 inputs: [{mode: m, ty: ty_uint},
                                          {mode: m, ty: ty_uint}],
                                 output: ty_nilp,
-                                ret_style: ast::return_val,
-                                constraints: []})
+                                ret_style: ast::return_val})
             };
 
             demand::suptype(fcx, expr.span,
@@ -2022,65 +2007,6 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     ret bot;
 }
 
-fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
-    let num_args = vec::len(args);
-    for cs.each {|c|
-        let mut c_args = [];
-        for c.node.args.each {|a|
-            c_args += [
-                 // "base" should not occur in a fn type thing, as of
-                 // yet, b/c we don't allow constraints on the return type
-
-                 // Works b/c no higher-order polymorphism
-                 /*
-                 This is kludgy, and we probably shouldn't be assigning
-                 node IDs here, but we're creating exprs that are
-                 ephemeral, just for the purposes of typechecking. So
-                 that's my justification.
-                 */
-                 @alt a.node {
-                    ast::carg_base {
-                      fcx.ccx.tcx.sess.span_bug(a.span,
-                                                "check_constraints:\
-                    unexpected carg_base");
-                    }
-                    ast::carg_lit(l) {
-                      let tmp_node_id = fcx.ccx.tcx.sess.next_node_id();
-                      {id: tmp_node_id, node: ast::expr_lit(l), span: a.span}
-                    }
-                    ast::carg_ident(i) {
-                      if i < num_args {
-                          let p = @{span: a.span, global: false,
-                                    idents: [args[i].ident],
-                                    rp: none, types: []};
-                          let arg_occ_node_id =
-                              fcx.ccx.tcx.sess.next_node_id();
-                          fcx.ccx.tcx.def_map.insert
-                              (arg_occ_node_id,
-                               ast::def_arg(args[i].id, args[i].mode));
-                          {id: arg_occ_node_id,
-                           node: ast::expr_path(p),
-                           span: a.span}
-                      } else {
-                          fcx.ccx.tcx.sess.span_bug(
-                              a.span, "check_constraints:\
-                                       carg_ident index out of bounds");
-                      }
-                    }
-                  }];
-        }
-        let p_op: ast::expr_ = ast::expr_path(c.node.path);
-        let oper: @ast::expr = @{id: c.node.id, node: p_op, span: c.span};
-        // Another ephemeral expr
-        let call_expr_id = fcx.ccx.tcx.sess.next_node_id();
-        let call_expr =
-            @{id: call_expr_id,
-              node: ast::expr_call(oper, c_args, false),
-              span: c.span};
-        check_pred_expr(fcx, call_expr);
-    }
-}
-
 // Determines whether the given node ID is a use of the def of
 // the self ID for the current method, if there is one
 // self IDs in an outer scope count. so that means that you can
@@ -2352,8 +2278,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
                     ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
             }],
             output: ty::mk_nil(ccx.tcx),
-            ret_style: ast::return_val,
-            constraints: []
+            ret_style: ast::return_val
         });
         (0u, [arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }
@@ -2366,8 +2291,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
     let fty = ty::mk_fn(tcx, {purity: ast::impure_fn,
                               proto: ast::proto_bare,
                               inputs: inputs, output: output,
-                              ret_style: ast::return_val,
-                              constraints: []});
+                              ret_style: ast::return_val});
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = (*i_ty.bounds).len();
     if i_n_tps != n_tps {

@@ -199,8 +199,6 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let last_use_map =
         time(time_passes, "liveness checking",
              bind middle::liveness::check_crate(ty_cx, method_map, crate));
-    time(time_passes, "typestate checking",
-         bind middle::tstate::ck::check_crate(ty_cx, crate));
     let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
         bind middle::borrowck::check_crate(ty_cx, method_map, crate));

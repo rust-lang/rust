@@ -198,20 +198,11 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_tup(ts) { for ts.each {|tt| v.visit_ty(tt, e, v); } }
       ty_fn(_, decl) {
         for decl.inputs.each {|a| v.visit_ty(a.ty, e, v); }
-        for decl.constraints.each {|c|
-            v.visit_constr(c.node.path, c.span, c.node.id, e, v);
-        }
         v.visit_ty(decl.output, e, v);
       }
       ty_path(p, _) { visit_path(p, e, v); }
       ty_vstore(t, _) {
         v.visit_ty(t, e, v);
-      }
-      ty_constr(t, cs) {
-        v.visit_ty(t, e, v);
-        for cs.each {|tc|
-            v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
-        }
       }
       ty_nil |
       ty_bot |
@@ -276,9 +267,6 @@ fn visit_ty_params<E>(tps: [ty_param], e: E, v: vt<E>) {
 
 fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
     for fd.inputs.each {|a| v.visit_ty(a.ty, e, v); }
-    for fd.constraints.each {|c|
-        v.visit_constr(c.node.path, c.span, c.node.id, e, v);
-    }
     v.visit_ty(fd.output, e, v);
 }
 
@@ -382,17 +370,12 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_binary(_, a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_addr_of(_, x) | expr_unary(_, x) | expr_loop_body(x) |
-      expr_check(_, x) | expr_assert(x) {
+      expr_assert(x) {
         v.visit_expr(x, e, v);
       }
       expr_lit(_) { }
       expr_cast(x, t) { v.visit_expr(x, e, v); v.visit_ty(t, e, v); }
       expr_if(x, b, eo) {
-        v.visit_expr(x, e, v);
-        v.visit_block(b, e, v);
-        visit_expr_opt(eo, e, v);
-      }
-      expr_if_check(x, b, eo) {
         v.visit_expr(x, e, v);
         v.visit_block(b, e, v);
         visit_expr_opt(eo, e, v);

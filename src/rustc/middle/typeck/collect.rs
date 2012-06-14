@@ -117,8 +117,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                             proto: ast::proto_box,
                             inputs: args,
                             output: enum_ty,
-                            ret_style: ast::return_val,
-                            constraints: []})
+                            ret_style: ast::return_val})
         };
         let tpt = {bounds: ty_param_bounds(ccx, ty_params),
                    rp: rp,
@@ -334,13 +333,13 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             proto: ast::proto_box,
             inputs: [{mode: ast::expl(ast::by_copy), ty: t_arg.ty}],
             output: t_res,
-            ret_style: ast::return_val, constraints: []
+            ret_style: ast::return_val
         });
         let t_dtor = ty::mk_fn(tcx, {
             purity: ast::impure_fn,
             proto: ast::proto_box,
             inputs: [t_arg], output: ty::mk_nil(tcx),
-            ret_style: ast::return_val, constraints: []
+            ret_style: ast::return_val
         });
         write_ty_to_tcx(tcx, it.id, t_res);
         write_ty_to_tcx(tcx, ctor_id, t_ctor);
@@ -637,8 +636,7 @@ fn ty_of_native_fn_decl(ccx: @crate_ctxt,
                                    proto: ast::proto_bare,
                                    inputs: input_tys,
                                    output: output_ty,
-                                   ret_style: ast::return_val,
-                                   constraints: []});
+                                   ret_style: ast::return_val});
     let tpt = {bounds: bounds, rp: ast::rp_none, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
     ret tpt;

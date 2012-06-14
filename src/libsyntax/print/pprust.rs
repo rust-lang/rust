@@ -400,11 +400,6 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         print_ty_fn(s, some(proto), d, none, none);
       }
       ast::ty_path(path, _) { print_path(s, path, print_colons); }
-      ast::ty_constr(t, cs) {
-        print_type(s, t);
-        space(s.s);
-        word(s.s, constrs_str(cs, ty_constr_to_str));
-      }
       ast::ty_vstore(t, v) {
         print_type(s, t);
         print_vstore(s, v);
@@ -792,9 +787,8 @@ fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
 }
 
 fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
-            elseopt: option<@ast::expr>, chk: bool) {
+            elseopt: option<@ast::expr>) {
     head(s, "if");
-    if chk { word_nbsp(s, "check"); }
     print_maybe_parens_discrim(s, test);
     space(s.s);
     print_block(s, blk);
@@ -980,10 +974,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_type_ex(s, ty, true);
       }
       ast::expr_if(test, blk, elseopt) {
-        print_if(s, test, blk, elseopt, false);
-      }
-      ast::expr_if_check(test, blk, elseopt) {
-        print_if(s, test, blk, elseopt, true);
+        print_if(s, test, blk, elseopt);
       }
       ast::expr_while(test, blk) {
         head(s, "while");
@@ -1134,15 +1125,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           }
         }
       }
-      ast::expr_check(m, expr) {
-        alt m {
-          ast::claimed_expr { word_nbsp(s, "claim"); }
-          ast::checked_expr { word_nbsp(s, "check"); }
-        }
-        popen(s);
-        print_expr(s, expr);
-        pclose(s);
-      }
       ast::expr_assert(expr) {
         word_nbsp(s, "assert");
         print_expr(s, expr);
@@ -1168,8 +1150,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
       ast::expr_assign(_, _) |
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
       ast::expr_log(_, _, _) | ast::expr_assert(_) |
-      ast::expr_call(_, _, true) |
-      ast::expr_check(_, _) { true }
+      ast::expr_call(_, _, true) { true }
       _ { false }
     };
     if parens { popen(s); }
@@ -1351,9 +1332,6 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
     popen(s);
     print_fn_args(s, decl, cap_items);
     pclose(s);
-    word(s.s, constrs_str(decl.constraints, {|c|
-        ast_fn_constr_to_str(decl, c)
-    }));
 
     maybe_print_comment(s, decl.output.span.lo);
     if decl.output.node != ast::ty_nil {
@@ -1561,7 +1539,6 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
         else { print_type(s, decl.output); }
         end(s);
     }
-    word(s.s, constrs_str(decl.constraints, ast_ty_fn_constr_to_str));
     end(s);
 }
 
@@ -1749,59 +1726,10 @@ fn next_comment(s: ps) -> option<comments::cmnt> {
     }
 }
 
-fn constr_args_to_str<T>(f: fn@(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
-   str {
-    let mut comma = false;
-    let mut s = "(";
-    for args.each {|a|
-        if comma { s += ", "; } else { comma = true; }
-        s += constr_arg_to_str::<T>(f, a.node);
-    }
-    s += ")";
-    ret s;
-}
-
-fn constr_arg_to_str<T>(f: fn@(T) -> str, c: ast::constr_arg_general_<T>) ->
-   str {
-    alt c {
-      ast::carg_base { ret "*"; }
-      ast::carg_ident(i) { ret f(i); }
-      ast::carg_lit(l) { ret lit_to_str(l); }
-    }
-}
-
 // needed b/c constr_args_to_str needs
 // something that takes an alias
 // (argh)
 fn uint_to_str(&&i: uint) -> str { ret uint::str(i); }
-
-fn ast_ty_fn_constr_to_str(&&c: @ast::constr) -> str {
-    ret path_to_str(c.node.path) +
-            constr_args_to_str(uint_to_str, c.node.args);
-}
-
-fn ast_fn_constr_to_str(decl: ast::fn_decl, &&c: @ast::constr) -> str {
-    let arg_to_str = bind fn_arg_idx_to_str(decl, _);
-    ret path_to_str(c.node.path) +
-            constr_args_to_str(arg_to_str, c.node.args);
-}
-
-fn ty_constr_to_str(&&c: @ast::ty_constr) -> str {
-    fn ty_constr_path_to_str(&&p: @ast::path) -> str { "*." + path_to_str(p) }
-
-    ret path_to_str(c.node.path) +
-            constr_args_to_str::<@ast::path>(ty_constr_path_to_str,
-                                             c.node.args);
-}
-
-fn constrs_str<T>(constrs: [T], elt: fn(T) -> str) -> str {
-    let mut s = "", colon = true;
-    for constrs.each {|c|
-        if colon { s += " : "; colon = false; } else { s += ", "; }
-        s += elt(c);
-    }
-    ret s;
-}
 
 fn fn_arg_idx_to_str(decl: ast::fn_decl, &&idx: uint) -> str {
     *decl.inputs[idx].ident

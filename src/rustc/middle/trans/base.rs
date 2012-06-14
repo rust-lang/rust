@@ -858,8 +858,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
                                       inputs: [{mode: ast::expl(ast::by_ref),
                                                 ty: ty::mk_nil_ptr(ccx.tcx)}],
                                       output: ty::mk_nil(ccx.tcx),
-                                      ret_style: ast::return_val,
-                                      constraints: []});
+                                      ret_style: ast::return_val});
         trans_external_path(ccx, did, fty)
     }
 }
@@ -2029,14 +2028,13 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
                                             proto: fty.proto,
                                             inputs: [],
                                             output: ty::mk_nil(tcx),
-                                            ret_style: ast::return_val,
-                                            constraints: []})) }
-      ty::ty_iface(_, _) { some(ty::mk_fn(tcx, {purity: ast::impure_fn,
-                                                proto: ast::proto_box,
-                                                inputs: [],
-                                                output: ty::mk_nil(tcx),
-                                                ret_style: ast::return_val,
-                                                constraints: []})) }
+                                            ret_style: ast::return_val})) }
+      ty::ty_iface(_, _) { some(ty::mk_fn(tcx,
+                                          {purity: ast::impure_fn,
+                                           proto: ast::proto_box,
+                                           inputs: [],
+                                           output: ty::mk_nil(tcx),
+                                           ret_style: ast::return_val})) }
       ty::ty_ptr(_) { some(ty::mk_uint(tcx)) }
       _ { none }
     }
@@ -3537,7 +3535,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
     fn unrooted(bcx: block, e: @ast::expr, dest: dest) -> block {
         let tcx = bcx.tcx();
         alt e.node {
-          ast::expr_if(cond, thn, els) | ast::expr_if_check(cond, thn, els) {
+          ast::expr_if(cond, thn, els) {
             ret trans_if(bcx, cond, thn, els, dest);
           }
           ast::expr_alt(expr, arms, mode) {
@@ -3643,23 +3641,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_assert(a) {
             assert dest == ignore;
             ret trans_check_expr(bcx, e, a, "Assertion");
-          }
-          ast::expr_check(ast::checked_expr, a) {
-            assert dest == ignore;
-            ret trans_check_expr(bcx, e, a, "Predicate");
-          }
-          ast::expr_check(ast::claimed_expr, a) {
-            assert dest == ignore;
-            /* Claims are turned on and off by a global variable
-            that the RTS sets. This case generates code to
-            check the value of that variable, doing nothing
-            if it's set to false and acting like a check
-            otherwise. */
-            let c = get_extern_const(bcx.ccx().externs, bcx.ccx().llmod,
-                                     "check_claims", T_bool());
-            ret with_cond(bcx, Load(bcx, c)) {|bcx|
-                trans_check_expr(bcx, e, a, "Claim")
-            };
           }
           ast::expr_while(cond, body) {
             assert dest == ignore;
