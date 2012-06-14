@@ -92,6 +92,11 @@ native mod rustrt {
                            ++count: libc::size_t) -> *unsafe::vec_repr;
 }
 
+#[abi = "rust-intrinsic"]
+native mod rusti {
+    fn move_val_init<T>(&dst: T, -src: T);
+}
+
 #[doc = "A function used to initialize the elements of a vector"]
 type init_op<T> = fn(uint) -> T;
 
@@ -392,17 +397,33 @@ fn pop<T>(&v: [const T]) -> T unsafe {
 #[doc = "Append an element to a vector"]
 #[inline(always)]
 fn push<T>(&v: [const T], +initval: T) {
-    let ln = v.len();
     unsafe {
-        reserve_at_least(v, ln + 1u);
-        unsafe::set_len(v, ln + 1u);
-        let p = ptr::mut_addr_of(v[ln]);
+        let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let fill = (**repr).fill;
+        if (**repr).alloc > fill {
+            let sz = sys::size_of::<T>();
+            (**repr).fill += sz;
+            let p = ptr::addr_of((**repr).data);
+            let p = ptr::offset(p, fill) as *mut T;
+            rusti::move_val_init(*p, initval);
+        }
+        else {
+            push_slow(v, initval);
+        }
+    }
+}
 
-        // FIXME: for performance, try replacing the memmove and <- with a
-        // memset and unsafe::forget.
-        ptr::memset(p, 0, 1u); // needed to stop drop glue from running on
-                               // garbage data.
-        *p = initval;
+fn push_slow<T>(&v: [const T], +initval: T) {
+    unsafe {
+        let ln = v.len();
+        reserve_at_least(v, ln + 1u);
+        let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let fill = (**repr).fill;
+        let sz = sys::size_of::<T>();
+        (**repr).fill += sz;
+        let p = ptr::addr_of((**repr).data);
+        let p = ptr::offset(p, fill) as *mut T;
+        rusti::move_val_init(*p, initval);
     }
 }
 
@@ -497,6 +518,7 @@ Sets the element at position `index` to `val`. If `index` is past the end
 of the vector, expands the vector by replicating `initval` to fill the
 intervening space.
 "]
+#[inline(always)]
 fn grow_set<T: copy>(&v: [mut T], index: uint, initval: T, val: T) {
     if index >= len(v) { grow(v, index - len(v) + 1u, initval); }
     v[index] = val;

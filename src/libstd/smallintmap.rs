@@ -19,6 +19,7 @@ fn mk<T: copy>() -> smallintmap<T> {
 Add a value to the map. If the map already contains a value for
 the specified key then the original value is replaced.
 "]
+#[inline(always)]
 fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
     self.v.grow_set_elt(key, none, some(val));
 }
@@ -62,6 +63,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         }
         sz
     }
+    #[inline(always)]
     fn insert(+key: uint, +value: V) -> bool {
         let exists = contains_key(self, key);
         insert(self, key, value);

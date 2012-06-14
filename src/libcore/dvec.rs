@@ -113,6 +113,7 @@ impl extensions<A> for dvec<A> {
     and return a new vector to replace it with.
 
     "]
+    #[inline(always)]
     fn swap(f: fn(-[mut A]) -> [mut A]) {
         self.borrow { |v| self.return(f(v)) }
     }
@@ -136,11 +137,8 @@ impl extensions<A> for dvec<A> {
 impl extensions<A:copy> for dvec<A> {
     #[doc = "Append a single item to the end of the list"]
     fn push(t: A) {
-        self.swap { |v|
-            let mut v <- v;
-            vec::push(v, t);
-            v
-        }
+        self.check_not_borrowed();
+        vec::push(self.data, t);
     }
 
     #[doc = "Remove and return the last element"]
