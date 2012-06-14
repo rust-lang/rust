@@ -1634,11 +1634,38 @@ fn cast_shift_rhs(op: ast::binop,
     }
 }
 
+fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
+                rhs: ValueRef, rhs_t: ty::t) -> block {
+    let text = if divmod == ast::div {
+        "divide by zero"
+    } else {
+        "modulo zero"
+    };
+    let is_zero = alt ty::get(rhs_t).struct {
+      ty::ty_int(t) {
+        let zero = C_integral(T_int_ty(cx.ccx(), t), 0u64, False);
+        ICmp(cx, lib::llvm::IntEQ, rhs, zero)
+      }
+      ty::ty_uint(t) {
+        let zero = C_integral(T_uint_ty(cx.ccx(), t), 0u64, False);
+        ICmp(cx, lib::llvm::IntEQ, rhs, zero)
+      }
+      _ {
+        cx.tcx().sess.bug("fail-if-zero on unexpected type: " +
+                          ty_to_str(cx.ccx().tcx, rhs_t));
+      }
+    };
+    with_cond(cx, is_zero) {|bcx|
+        trans_fail(bcx, some(span), text)
+    }
+}
+
 // Important to get types for both lhs and rhs, because one might be _|_
 // and the other not.
-fn trans_eager_binop(cx: block, op: ast::binop, lhs: ValueRef,
+fn trans_eager_binop(cx: block, span: span, op: ast::binop, lhs: ValueRef,
                      lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t, dest: dest)
     -> block {
+    let mut cx = cx;
     let _icx = cx.insn_ctxt("trans_eager_binop");
     if dest == ignore { ret cx; }
     let intype = {
@@ -1667,16 +1694,30 @@ fn trans_eager_binop(cx: block, op: ast::binop, lhs: ValueRef,
         else { Mul(cx, lhs, rhs) }
       }
       ast::div {
-        if is_float { FDiv(cx, lhs, rhs) }
-        else if ty::type_is_signed(intype) {
-            SDiv(cx, lhs, rhs)
-        } else { UDiv(cx, lhs, rhs) }
+        if is_float {
+            FDiv(cx, lhs, rhs)
+        } else {
+            // Only zero-check integers; fp /0 is NaN
+            cx = fail_if_zero(cx, span, op, rhs, rhs_t);
+            if ty::type_is_signed(intype) {
+                SDiv(cx, lhs, rhs)
+            } else {
+                UDiv(cx, lhs, rhs)
+            }
+        }
       }
       ast::rem {
-        if is_float { FRem(cx, lhs, rhs) }
-        else if ty::type_is_signed(intype) {
-            SRem(cx, lhs, rhs)
-        } else { URem(cx, lhs, rhs) }
+        if is_float {
+            FRem(cx, lhs, rhs)
+        } else {
+            // Only zero-check integers; fp %0 is NaN
+            cx = fail_if_zero(cx, span, op, rhs, rhs_t);
+            if ty::type_is_signed(intype) {
+                SRem(cx, lhs, rhs)
+            } else {
+                URem(cx, lhs, rhs)
+            }
+        }
       }
       ast::bitor { Or(cx, lhs, rhs) }
       ast::bitand { And(cx, lhs, rhs) }
@@ -1744,7 +1785,8 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
           _ { }
         }
     }
-    ret trans_eager_binop(bcx, op, Load(bcx, lhs_res.val), t, rhs_val, t,
+    ret trans_eager_binop(bcx, ex.span,
+                          op, Load(bcx, lhs_res.val), t, rhs_val, t,
                           save_in(lhs_res.val));
 }
 
@@ -1885,7 +1927,8 @@ fn trans_binary(bcx: block, op: ast::binop, lhs: @ast::expr,
         // Remaining cases are eager:
         let lhs_res = trans_temp_expr(bcx, lhs);
         let rhs_res = trans_temp_expr(lhs_res.bcx, rhs);
-        ret trans_eager_binop(rhs_res.bcx, op, lhs_res.val,
+        ret trans_eager_binop(rhs_res.bcx, ex.span,
+                              op, lhs_res.val,
                               expr_ty(bcx, lhs), rhs_res.val,
                               expr_ty(bcx, rhs), dest);
       }
