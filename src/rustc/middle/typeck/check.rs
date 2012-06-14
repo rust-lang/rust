@@ -456,6 +456,7 @@ impl methods for @fn_ctxt {
           none { result::err("no block is in scope here") }
         }
     }
+    #[inline(always)]
     fn write_ty(node_id: ast::node_id, ty: ty::t) {
         #debug["write_ty(%d, %s) in fcx %s",
                node_id, ty_to_str(self.tcx(), ty), self.tag()];
@@ -2310,6 +2311,11 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
                             param(ccx, 1u)) }
       "addr_of" { (1u, [arg(ast::by_ref, param(ccx, 0u))],
                    ty::mk_imm_ptr(tcx, param(ccx, 0u))) }
+      "move_val" | "move_val_init" {
+        (1u, [arg(ast::by_mutbl_ref, param(ccx, 0u)),
+              arg(ast::by_move, param(ccx, 0u))],
+         ty::mk_nil(tcx))
+      }
       "needs_drop" { (1u, [], ty::mk_bool(tcx)) }
 
       "visit_ty" {

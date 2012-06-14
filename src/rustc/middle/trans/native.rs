@@ -812,6 +812,26 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
         Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
               fcx.llretptr);
       }
+      "move_val" {
+        let tp_ty = substs.tys[0];
+        let src = {bcx: bcx,
+                   val: get_param(decl, first_real_arg + 1u),
+                   kind: owned };
+        bcx = move_val(bcx, DROP_EXISTING,
+                       get_param(decl, first_real_arg),
+                       src,
+                       tp_ty);
+      }
+      "move_val_init" {
+        let tp_ty = substs.tys[0];
+        let src = {bcx: bcx,
+                   val: get_param(decl, first_real_arg + 1u),
+                   kind: owned };
+        bcx = move_val(bcx, INIT,
+                       get_param(decl, first_real_arg),
+                       src,
+                       tp_ty);
+      }
       "min_align_of" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);

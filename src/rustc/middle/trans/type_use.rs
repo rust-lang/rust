@@ -79,7 +79,9 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
             let flags = alt check *i.ident {
               "visit_ty" { 3u }
               "size_of" |  "pref_align_of" | "min_align_of" |
-              "init" |  "reinterpret_cast" { use_repr }
+              "init" |  "reinterpret_cast" | "move_val" | "move_val_init" {
+                use_repr
+              }
               "get_tydesc" | "needs_drop" { use_tydesc }
               "forget" | "addr_of" { 0u }
             };
