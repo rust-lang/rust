@@ -55,6 +55,10 @@ rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) \
 
 include config.mk
 
+# We track all of the object files we might build so that we can find
+# and include all of the .d files in one fell swoop.
+ALL_OBJ_FILES :=
+
 MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
 NON_HOST_TRIPLES = $(filter-out $(CFG_HOST_TRIPLE),$(CFG_TARGET_TRIPLES))
 
@@ -527,3 +531,8 @@ ifneq ($(strip $(findstring TAGS.emacs,$(MAKECMDGOALS)) \
   CFG_INFO := $(info cfg: including ctags rules)
   include $(CFG_SRC_DIR)mk/ctags.mk
 endif
+
+# Find all of the .d files and include them to add information about
+# header file dependencies.
+ALL_DEP_FILES := $(ALL_OBJ_FILES:%.o=%.d)
+-include $(ALL_DEP_FILES)

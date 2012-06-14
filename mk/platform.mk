@@ -210,18 +210,20 @@ ifeq ($(CFG_C_COMPILER),clang)
     CXX=clang++
   endif
   ifeq ($(origin CPP),default)
-    CPP=cpp
+    CPP=clang -E
   endif
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
-  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
-    -MM $(2)
+  # These flags will cause the compiler to produce a .d file
+  # next to the .o file that lists header deps.
+  CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
 
   define CFG_MAKE_CC
 	CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
 		$$(CFG_GCCISH_CFLAGS) $$(CFG_CLANG_CFLAGS)		\
 		$$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))				\
 	    $$(CFG_CLANG_CFLAGS_$$(HOST_$(1)))				\
+        $$(CFG_DEPEND_FLAGS)                            \
 		-c -o $$(1) $$(2)
     CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
 		$$(CFG_GCCISH_LINK_FLAGS) -o $$(1)			\
@@ -241,12 +243,13 @@ ifeq ($(CFG_C_COMPILER),gcc)
     CXX=g++
   endif
   ifeq ($(origin CPP),default)
-    CPP=cpp
+    CPP=gcc -E
   endif
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
-  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
-    -MM $(2)
+  # These flags will cause the compiler to produce a .d file
+  # next to the .o file that lists header deps.
+  CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
 
   define CFG_MAKE_CC
 	CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
@@ -254,6 +257,7 @@ ifeq ($(CFG_C_COMPILER),gcc)
 	    $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))				\
         $$(CFG_GCC_CFLAGS)								\
         $$(CFG_GCC_CFLAGS_$$(HOST_$(1)))				\
+        $$(CFG_DEPEND_FLAGS)                            \
         -c -o $$(1) $$(2)
     CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)			\
@@ -272,7 +276,7 @@ endif
 # We're using llvm-mc as our assembler because it supports
 # .cfi pseudo-ops on mac
 define CFG_MAKE_ASSEMBLER
-  CFG_ASSEMBLE_$(1)=$$(CPP) $$(2) | \
+  CFG_ASSEMBLE_$(1)=$$(CPP) $$(CFG_DEPEND_FLAGS) $$(2) | \
                     $$(LLVM_MC_$$(CFG_HOST_TRIPLE)) \
                     -assemble \
                     -filetype=obj \
