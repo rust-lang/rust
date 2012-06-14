@@ -199,7 +199,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
             alt syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 "crate_type") {
-              option::some("lib") { true }
+              option::some(@"lib") { true }
               _ { false }
             }
         }
@@ -227,9 +227,9 @@ mod test {
             style: ast::attr_outer,
             value: ast_util::respan(ast_util::dummy_sp(),
                 ast::meta_name_value(
-                    "crate_type",
+                    @"crate_type",
                     ast_util::respan(ast_util::dummy_sp(),
-                                     ast::lit_str(t))))
+                                     ast::lit_str(@t))))
         })
     }
 

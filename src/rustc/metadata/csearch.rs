@@ -64,7 +64,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
     [(ast::crate_num, @[u8], ast::def_id)] {
     let cm = cstore::get_crate_data(cstore, cnum);
     #debug("resolve_path %s in crates[%d]:%s",
-           str::connect(path, "::"), cnum, cm.name);
+           ast_util::path_name_i(path), cnum, cm.name);
     let mut result = [];
     for decoder::resolve_path(path, cm.data).each {|def|
         if def.crate == ast::local_crate {
@@ -88,7 +88,7 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    [ast_map::path_mod(cdata.name)] + path
+    [ast_map::path_mod(@cdata.name)] + path
 }
 
 enum found_ast {
@@ -170,7 +170,8 @@ fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id) -> option<ty::t> {
     decoder::get_impl_iface(cdata, def.node, tcx)
 }
 
-fn get_impl_method(cstore: cstore::cstore, def: ast::def_id, mname: str)
+fn get_impl_method(cstore: cstore::cstore,
+                   def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_method(cdata, def.node, mname)
@@ -180,7 +181,8 @@ fn get_impl_method(cstore: cstore::cstore, def: ast::def_id, mname: str)
    for their methods (so that get_iface_methods can be reused to get
    class methods), classes require a slightly different version of
    get_impl_method. Sigh. */
-fn get_class_method(cstore: cstore::cstore, def: ast::def_id, mname: str)
+fn get_class_method(cstore: cstore::cstore,
+                    def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_class_method(cdata, def.node, mname)

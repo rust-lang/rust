@@ -279,7 +279,9 @@ library, a precondition is used here because result::t is generally
 used in 'careful' code contexts where it is both appropriate and easy
 to accommodate an error like the vectors being of different lengths."]
 fn map_vec2<S,T,U:copy,V:copy>(ss: [S], ts: [T], op: fn(S,T) -> result<V,U>)
-    : vec::same_length(ss, ts) -> result<[V],U> {
+    -> result<[V],U> {
+
+    assert vec::same_length(ss, ts);
 
     let n = vec::len(ts);
     let mut vs = [];
@@ -302,8 +304,9 @@ on its own as no result vector is built.
 "]
 fn iter_vec2<S,T,U:copy>(ss: [S], ts: [T],
                          op: fn(S,T) -> result<(),U>)
-    : vec::same_length(ss, ts)
     -> result<(),U> {
+
+    assert vec::same_length(ss, ts);
 
     let n = vec::len(ts);
     let mut i = 0u;

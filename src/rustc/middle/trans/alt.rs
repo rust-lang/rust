@@ -78,9 +78,9 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> opt {
 }
 
 type bind_map = [{ident: ast::ident, val: ValueRef}];
-fn assoc(key: str, list: bind_map) -> option<ValueRef> {
+fn assoc(key: ast::ident, list: bind_map) -> option<ValueRef> {
     for vec::each(list) {|elt|
-        if str::eq(elt.ident, key) { ret some(elt.val); }
+        if str::eq(*elt.ident, *key) { ret some(elt.val); }
     }
     ret none;
 }
@@ -194,7 +194,7 @@ fn enter_rec(dm: def_map, m: match, col: uint, fields: [ast::ident],
             for vec::each(fields) {|fname|
                 let mut pat = dummy;
                 for vec::each(fpats) {|fpat|
-                    if str::eq(fpat.ident, fname) { pat = fpat.pat; break; }
+                    if str::eq(*fpat.ident, *fname) { pat = fpat.pat; break; }
                 }
                 pats += [pat];
             }
@@ -287,12 +287,12 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
 }
 
 fn collect_record_fields(m: match, col: uint) -> [ast::ident] {
-    let mut fields = [];
+    let mut fields: [ast::ident] = [];
     for vec::each(m) {|br|
         alt br.pats[col].node {
           ast::pat_rec(fs, _) {
             for vec::each(fs) {|f|
-                if !vec::any(fields, bind str::eq(f.ident, _)) {
+                if !vec::any(fields, {|x| str::eq(*f.ident, *x)}) {
                     fields += [f.ident];
                 }
             }

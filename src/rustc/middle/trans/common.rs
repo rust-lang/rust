@@ -933,7 +933,7 @@ fn path_str(p: path) -> str {
         alt e { ast_map::path_name(s) | ast_map::path_mod(s) {
           if first { first = false; }
           else { r += "::"; }
-          r += s;
+          r += *s;
         } }
     }
     r
@@ -966,7 +966,7 @@ fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
     -> uint {
     alt ty::field_idx(ident, fields) {
        none { cx.sess.span_bug(sp, #fmt("base expr doesn't appear to \
-                 have a field named %s", ident)); }
+                 have a field named %s", *ident)); }
        some(i) { i }
     }
 }

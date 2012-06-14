@@ -83,7 +83,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
                        ii: ast::inlined_item,
                        maps: maps) {
     #debug["> Encoding inlined item: %s::%s (%u)",
-           ast_map::path_to_str(path), ii.ident(),
+           ast_map::path_to_str(path), *ii.ident(),
            ebml_w.writer.tell()];
 
     let id_range = compute_id_range(ii);
@@ -94,7 +94,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
     }
 
     #debug["< Encoded inlined fn: %s::%s (%u)",
-           ast_map::path_to_str(path), ii.ident(),
+           ast_map::path_to_str(path), *ii.ident(),
            ebml_w.writer.tell()];
 }
 
@@ -117,10 +117,10 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         let ii = renumber_ast(xcx, raw_ii);
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
                                   dcx.tcx.items, path, ii);
-        #debug["Fn named: %s", ii.ident()];
+        #debug["Fn named: %s", *ii.ident()];
         decode_side_tables(xcx, ast_doc);
         #debug["< Decoded inlined fn: %s::%s",
-               ast_map::path_to_str(path), ii.ident()];
+               ast_map::path_to_str(path), *ii.ident()];
         alt ii {
           ast::ii_item(i) {
             #debug(">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",

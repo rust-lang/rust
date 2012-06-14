@@ -173,11 +173,11 @@ impl public_methods for borrowck_ctxt {
           ast::expr_addr_of(*) | ast::expr_call(*) | ast::expr_bind(*) |
           ast::expr_swap(*) | ast::expr_move(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) | ast::expr_fn(*) | ast::expr_fn_block(*) |
-          ast::expr_assert(*) | ast::expr_check(*) | ast::expr_ret(*) |
+          ast::expr_assert(*) | ast::expr_ret(*) |
           ast::expr_loop_body(*) | ast::expr_unary(*) |
           ast::expr_copy(*) | ast::expr_cast(*) | ast::expr_fail(*) |
           ast::expr_vstore(*) | ast::expr_vec(*) | ast::expr_tup(*) |
-          ast::expr_if_check(*) | ast::expr_if(*) | ast::expr_log(*) |
+          ast::expr_if(*) | ast::expr_log(*) |
           ast::expr_new(*) | ast::expr_binary(*) | ast::expr_while(*) |
           ast::expr_block(*) | ast::expr_loop(*) | ast::expr_alt(*) |
           ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
@@ -295,14 +295,15 @@ impl public_methods for borrowck_ctxt {
         ret @{cat:cat_discr(cmt, alt_id) with *cmt};
     }
 
-    fn cat_field<N:ast_node>(node: N, base_cmt: cmt, f_name: str) -> cmt {
+    fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
+                             f_name: ast::ident) -> cmt {
         let f_mutbl = alt field_mutbl(self.tcx, base_cmt.ty, f_name) {
           some(f_mutbl) { f_mutbl }
           none {
             self.tcx.sess.span_bug(
                 node.span(),
                 #fmt["Cannot find field `%s` in type `%s`",
-                     f_name, ty_to_str(self.tcx, base_cmt.ty)]);
+                     *f_name, ty_to_str(self.tcx, base_cmt.ty)]);
           }
         };
         let m = alt f_mutbl {
@@ -427,7 +428,7 @@ impl private_methods for borrowck_ctxt {
 
 fn field_mutbl(tcx: ty::ctxt,
                base_ty: ty::t,
-               f_name: str) -> option<ast::mutability> {
+               f_name: ast::ident) -> option<ast::mutability> {
     // Need to refactor so that records/class fields can be treated uniformly.
     alt ty::get(base_ty).struct {
       ty::ty_rec(fields) {

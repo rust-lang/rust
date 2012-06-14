@@ -46,7 +46,7 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
     while !is_last(peek(st)) {
         rslt += str::from_byte(next_byte(st));
     }
-    ret rslt;
+    ret @rslt;
 }
 
 
@@ -61,31 +61,6 @@ fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
       '!' { next(st); (ast::noreturn, ty::mk_bot(st.tcx)) }
       _ { (ast::return_val, parse_ty(st, conv)) }
     }
-}
-
-fn parse_constrs_gen<T: copy>(st: @pstate, conv: conv_did,
-                                       pser: fn(@pstate)
-  -> ast::constr_arg_general_<T>) -> [@ty::constr_general<T>] {
-    let mut rslt: [@ty::constr_general<T>] = [];
-    alt peek(st) {
-      ':' {
-        loop {
-          next(st);
-          rslt += [parse_constr(st, conv, pser)];
-          if peek(st) != ';' { break; }
-        }
-      }
-      _ {}
-    }
-    rslt
-}
-
-fn parse_constrs(st: @pstate, conv: conv_did) -> [@ty::constr] {
-    parse_constrs_gen(st, conv, parse_constr_arg)
-}
-
-fn parse_ty_constrs(st: @pstate, conv: conv_did) -> [@ty::type_constr] {
-    parse_constrs_gen(st, conv, parse_ty_constr_arg)
 }
 
 fn parse_path(st: @pstate) -> @ast::path {
@@ -106,58 +81,6 @@ fn parse_path(st: @pstate) -> @ast::path {
     };
 }
 
-fn parse_constr_arg(st: @pstate) -> ast::fn_constr_arg {
-    alt peek(st) {
-      '*' { st.pos += 1u; ret ast::carg_base; }
-      c {
-
-        /* how will we disambiguate between
-           an arg index and a lit argument? */
-        if c >= '0' && c <= '9' {
-            next(st);
-            // FIXME #877
-            ret ast::carg_ident((c as uint) - 48u);
-        } else {
-            #error("Lit args are unimplemented");
-            fail; // FIXME #877
-        }
-        /*
-          else {
-          auto lit = parse_lit(st, conv, ',');
-          args += [respan(st.span, ast::carg_lit(lit))];
-          }
-        */
-      }
-    }
-}
-
-fn parse_ty_constr_arg(st: @pstate) -> ast::constr_arg_general_<@path> {
-    alt peek(st) {
-      '*' { st.pos += 1u; ret ast::carg_base; }
-      c { ret ast::carg_ident(parse_path(st)); }
-    }
-}
-
-fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
-                         pser: fn(@pstate) -> ast::constr_arg_general_<T>)
-    -> @ty::constr_general<T> {
-    // FIXME: use real spans and not a bogus one (#2407)
-    let sp = ast_util::dummy_sp();
-    let mut args: [@sp_constr_arg<T>] = [];
-    let pth = parse_path(st);
-    let mut ignore: char = next(st);
-    assert (ignore == '(');
-    let def = parse_def(st, conv);
-    let mut an_arg: constr_arg_general_<T>;
-    loop {
-        an_arg = pser(st);
-        args += [@respan(sp, an_arg)];
-        ignore = next(st);
-        if ignore != ';' { break; }
-    }
-    assert (ignore == ')');
-    ret @respan(sp, {path: pth, args: args, id: def});
-}
 
 fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
     ret ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
@@ -210,7 +133,7 @@ fn parse_bound_region(st: @pstate) -> ty::bound_region {
     alt check next(st) {
       's' { ty::br_self }
       'a' { ty::br_anon }
-      '[' { ty::br_named(parse_str(st, ']')) }
+      '[' { ty::br_named(@parse_str(st, ']')) }
     }
 }
 
@@ -322,7 +245,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) == '[');
         let mut fields: [ty::field] = [];
         while peek(st) != ']' {
-            let name = parse_str(st, '=');
+            let name = @parse_str(st, '=');
             fields += [{ident: name, mt: parse_mt(st, conv)}];
         }
         st.pos = st.pos + 1u;
@@ -372,13 +295,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
             ret tt;
           }
         }
-      }
-      'A' {
-        assert (next(st) == '[');
-        let tt = parse_ty(st, conv);
-        let tcs = parse_ty_constrs(st, conv);
-        assert (next(st) == ']');
-        ret ty::mk_constr(st.tcx, tt, tcs);
       }
       '"' {
         let def = parse_def(st, conv);
@@ -467,10 +383,9 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
         inputs += [{mode: ast::expl(mode), ty: parse_ty(st, conv)}];
     }
     st.pos += 1u; // eat the ']'
-    let cs = parse_constrs(st, conv);
     let (ret_style, ret_ty) = parse_ret_ty(st, conv);
     ret {purity: purity, proto: proto, inputs: inputs, output: ret_ty,
-         ret_style: ret_style, constraints: cs};
+         ret_style: ret_style};
 }
 
 

@@ -30,7 +30,7 @@ fn deserialize_span<D>(_d: D) -> span {
 type spanned<T> = {node: T, span: span};
 
 #[auto_serialize]
-type ident = str;
+type ident = @str;
 
 // Functions may or may not have names.
 #[auto_serialize]
@@ -283,9 +283,6 @@ type field = spanned<field_>;
 enum blk_check_mode { default_blk, unchecked_blk, unsafe_blk, }
 
 #[auto_serialize]
-enum expr_check_mode { claimed_expr, checked_expr, }
-
-#[auto_serialize]
 type expr = {id: node_id, node: expr_, span: span};
 
 #[auto_serialize]
@@ -317,12 +314,6 @@ enum expr_ {
     // the outside).
     expr_loop_body(@expr),
     expr_block(blk),
-
-    /*
-     * FIXME: many of these @exprs should be constrained with
-     * is_lval once we have constrained types working.
-     * (See #34)
-     */
     expr_copy(@expr),
     expr_move(@expr, @expr),
     expr_assign(@expr, @expr),
@@ -345,9 +336,6 @@ enum expr_ {
     /* just an assert, no significance to typestate */
     expr_assert(@expr),
 
-    /* preds that typestate is aware of */
-    expr_check(expr_check_mode, @expr),
-    expr_if_check(@expr, blk, option<@expr>),
     expr_mac(mac),
 }
 
@@ -399,11 +387,11 @@ type lit = spanned<lit_>;
 
 #[auto_serialize]
 enum lit_ {
-    lit_str(str),
+    lit_str(@str),
     lit_int(i64, int_ty),
     lit_uint(u64, uint_ty),
     lit_int_unsuffixed(i64, int_ty),
-    lit_float(str, float_ty),
+    lit_float(@str, float_ty),
     lit_nil,
     lit_bool(bool),
 }
@@ -464,7 +452,6 @@ enum ty_ {
     ty_fn(proto, fn_decl),
     ty_tup([@ty]),
     ty_path(@path, node_id),
-    ty_constr(@ty, [@ty_constr]),
     ty_vstore(@ty, vstore),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
@@ -472,56 +459,6 @@ enum ty_ {
     // nested in one.
     ty_infer,
 }
-
-
-/*
-A constraint arg that's a function argument is referred to by its position
-rather than name.  This is so we could have higher-order functions that have
-constraints (potentially -- right now there's no way to write that), and also
-so that the typestate pass doesn't have to map a function name onto its decl.
-So, the constr_arg type is parameterized: it's instantiated with uint for
-declarations, and ident for uses.
-*/
-#[auto_serialize]
-enum constr_arg_general_<T> { carg_base, carg_ident(T), carg_lit(@lit), }
-
-#[auto_serialize]
-type fn_constr_arg = constr_arg_general_<uint>;
-
-#[auto_serialize]
-type sp_constr_arg<T> = spanned<constr_arg_general_<T>>;
-
-#[auto_serialize]
-type ty_constr_arg = sp_constr_arg<@path>;
-
-#[auto_serialize]
-type constr_arg = spanned<fn_constr_arg>;
-
-// Constrained types' args are parameterized by paths, since
-// we refer to paths directly and not by indices.
-// The implicit root of such path, in the constraint-list for a
-// constrained type, is * (referring to the base record)
-
-#[auto_serialize]
-type constr_general_<ARG, ID> =
-    {path: @path, args: [@sp_constr_arg<ARG>], id: ID};
-
-// In the front end, constraints have a node ID attached.
-// Typeck turns this to a def_id, using the output of resolve.
-#[auto_serialize]
-type constr_general<ARG> = spanned<constr_general_<ARG, node_id>>;
-
-#[auto_serialize]
-type constr_ = constr_general_<uint, node_id>;
-
-#[auto_serialize]
-type constr = spanned<constr_general_<uint, node_id>>;
-
-#[auto_serialize]
-type ty_constr_ = constr_general_<@path, node_id>;
-
-#[auto_serialize]
-type ty_constr = spanned<ty_constr_>;
 
 /* The parser generates ast::constrs; resolve generates
  a mapping from each function to a list of ty::constr_defs,
@@ -534,8 +471,7 @@ type fn_decl =
     {inputs: [arg],
      output: @ty,
      purity: purity,
-     cf: ret_style,
-     constraints: [@constr]};
+     cf: ret_style};
 
 #[auto_serialize]
 enum purity {

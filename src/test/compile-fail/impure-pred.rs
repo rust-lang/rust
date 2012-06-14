@@ -8,7 +8,4 @@ pure fn f(_q: int) -> bool {
 }
 
 fn main() {
-    let x = 0;
-
-    check (f(x));
 }

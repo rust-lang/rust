@@ -6,7 +6,7 @@ fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
     ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
 }
 fn mk_str(cx: ext_ctxt, sp: span, s: str) -> @ast::expr {
-    let lit = ast::lit_str(s);
+    let lit = ast::lit_str(@s);
     ret mk_lit(cx, sp, lit);
 }
 fn mk_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {

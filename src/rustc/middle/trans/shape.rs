@@ -391,7 +391,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
       ty::ty_fn({proto: ast::proto_any, _}) { [shape_stack_fn] }
       ty::ty_fn({proto: ast::proto_bare, _}) { [shape_bare_fn] }
       ty::ty_opaque_closure_ptr(_) { [shape_opaque_closure_ptr] }
-      ty::ty_constr(inner_t, _) { shape_of(ccx, inner_t) }
       ty::ty_var(_) | ty::ty_var_integral(_) | ty::ty_self {
         ccx.sess.bug("shape_of: unexpected type struct found");
       }
@@ -421,7 +420,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             let variant_shape = shape_of_variant(ccx, v);
             add_substr(data, variant_shape);
 
-            let zname = str::bytes(v.name) + [0u8];
+            let zname = str::bytes(*v.name) + [0u8];
             add_substr(data, zname);
         }
         enum_variants += [variants];

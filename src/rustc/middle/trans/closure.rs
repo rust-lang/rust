@@ -390,7 +390,7 @@ fn trans_expr_fn(bcx: block,
     let ccx = bcx.ccx(), bcx = bcx;
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
-    let sub_path = bcx.fcx.path + [path_name("anon")];
+    let sub_path = bcx.fcx.path + [path_name(@"anon")];
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
@@ -676,7 +676,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // construct and return that thunk.
 
     // Give the thunk a name, type, and value.
-    let s = mangle_internal_name_by_path_and_seq(ccx, path, "thunk");
+    let s = mangle_internal_name_by_path_and_seq(ccx, path, @"thunk");
     let llthunk_ty = get_pair_fn_ty(type_of(ccx, incoming_fty));
     let llthunk = decl_internal_cdecl_fn(ccx.llmod, s, llthunk_ty);
 

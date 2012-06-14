@@ -47,7 +47,7 @@ export require_unique_names;
 /* Constructors */
 
 fn mk_name_value_item_str(+name: ast::ident, +value: str) -> @ast::meta_item {
-    let value_lit = dummy_spanned(ast::lit_str(value));
+    let value_lit = dummy_spanned(ast::lit_str(@value));
     ret mk_name_value_item(name, value_lit);
 }
 
@@ -100,12 +100,12 @@ fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
 Gets the string value if the meta_item is a meta_name_value variant
 containing a string, otherwise none
 "]
-fn get_meta_item_value_str(meta: @ast::meta_item) -> option<str> {
+fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@str> {
     alt meta.node {
       ast::meta_name_value(_, v) {
         alt v.node {
             ast::lit_str(s) {
-                option::some(/* FIXME bad */ copy s)
+                option::some(s)
             }
             _ {
                 option::none
@@ -130,11 +130,11 @@ a tuple containing the name and string value, otherwise `none`
 "]
 fn get_name_value_str_pair(
     item: @ast::meta_item
-) -> option<(str, str)> {
+) -> option<(ast::ident, @str)> {
     alt attr::get_meta_item_value_str(item) {
       some(value) {
         let name = attr::get_meta_item_name(item);
-        some((name, /* FIXME bad */ copy value))
+        some((name, value))
       }
       none { none }
     }
@@ -146,11 +146,11 @@ fn get_name_value_str_pair(
 #[doc = "
 Search a list of attributes and return only those with a specific name
 "]
-fn find_attrs_by_name(attrs: [ast::attribute], +name: ast::ident) ->
+fn find_attrs_by_name(attrs: [ast::attribute], +name: str) ->
    [ast::attribute] {
     let filter = (
         fn@(a: ast::attribute) -> option<ast::attribute> {
-            if get_attr_name(a) == name {
+            if *get_attr_name(a) == name {
                 option::some(a)
             } else { option::none }
         }
@@ -161,10 +161,10 @@ fn find_attrs_by_name(attrs: [ast::attribute], +name: ast::ident) ->
 #[doc = "
 Searcha list of meta items and return only those with a specific name
 "]
-fn find_meta_items_by_name(metas: [@ast::meta_item], +name: ast::ident) ->
+fn find_meta_items_by_name(metas: [@ast::meta_item], +name: str) ->
    [@ast::meta_item] {
     let filter = fn@(&&m: @ast::meta_item) -> option<@ast::meta_item> {
-        if get_meta_item_name(m) == name {
+        if *get_meta_item_name(m) == name {
             option::some(m)
         } else { option::none }
     };
@@ -209,17 +209,17 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
         }
 }
 
-fn contains_name(metas: [@ast::meta_item], +name: ast::ident) -> bool {
+fn contains_name(metas: [@ast::meta_item], +name: str) -> bool {
     let matches = find_meta_items_by_name(metas, name);
     ret vec::len(matches) > 0u;
 }
 
-fn attrs_contains_name(attrs: [ast::attribute], +name: ast::ident) -> bool {
+fn attrs_contains_name(attrs: [ast::attribute], +name: str) -> bool {
     vec::is_not_empty(find_attrs_by_name(attrs, name))
 }
 
-fn first_attr_value_str_by_name(attrs: [ast::attribute], +name: ast::ident)
-    -> option<str> {
+fn first_attr_value_str_by_name(attrs: [ast::attribute], +name: str)
+    -> option<@str> {
     let mattrs = find_attrs_by_name(attrs, name);
     if vec::len(mattrs) > 0u {
         ret get_meta_item_value_str(attr_meta(mattrs[0]));
@@ -238,11 +238,11 @@ fn last_meta_item_by_name(
 fn last_meta_item_value_str_by_name(
     items: [@ast::meta_item],
     +name: str
-) -> option<str> {
+) -> option<@str> {
     alt last_meta_item_by_name(items, name) {
       some(item) {
         alt attr::get_meta_item_value_str(item) {
-          some(value) { some(/* FIXME bad */ copy value) }
+          some(value) { some(value) }
           none { none }
         }
       }
@@ -285,7 +285,7 @@ fn sort_meta_items(+items: [@ast::meta_item]) -> [@ast::meta_item] {
     ret vec::from_mut(v);
 }
 
-fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
+fn remove_meta_items_by_name(items: [@ast::meta_item], name: ast::ident) ->
    [@ast::meta_item] {
 
     ret vec::filter_map(items, {
@@ -326,17 +326,17 @@ fn native_abi(attrs: [ast::attribute]) -> either<str, ast::native_abi> {
       option::none {
         either::right(ast::native_abi_cdecl)
       }
-      option::some("rust-intrinsic") {
+      option::some(@"rust-intrinsic") {
         either::right(ast::native_abi_rust_intrinsic)
       }
-      option::some("cdecl") {
+      option::some(@"cdecl") {
         either::right(ast::native_abi_cdecl)
       }
-      option::some("stdcall") {
+      option::some(@"stdcall") {
         either::right(ast::native_abi_stdcall)
       }
       option::some(t) {
-        either::left("unsupported abi: " + t)
+        either::left("unsupported abi: " + *t)
       }
     };
 }
@@ -352,8 +352,8 @@ fn find_inline_attr(attrs: [ast::attribute]) -> inline_attr {
     // TODO---validate the usage of #[inline] and #[inline(always)]
     vec::foldl(ia_none, attrs) {|ia,attr|
         alt attr.node.value.node {
-          ast::meta_word("inline") { ia_hint }
-          ast::meta_list("inline", items) {
+          ast::meta_word(@"inline") { ia_hint }
+          ast::meta_list(@"inline", items) {
             if !vec::is_empty(find_meta_items_by_name(items, "always")) {
                 ia_always
             } else {
@@ -373,11 +373,11 @@ fn require_unique_names(diagnostic: span_handler,
         let name = get_meta_item_name(meta);
 
         // FIXME: How do I silence the warnings? --pcw
-        if map.contains_key(name) {
+        if map.contains_key(*name) {
             diagnostic.span_fatal(meta.span,
-                                  #fmt["duplicate meta item `%s`", name]);
+                                  #fmt["duplicate meta item `%s`", *name]);
         }
-        map.insert(name, ());
+        map.insert(*name, ());
     }
 }
 

@@ -100,7 +100,9 @@ fn get_rpaths_relative_to_output(os: session::os,
 fn get_rpath_relative_to_output(os: session::os,
                                 cwd: path::path,
                                 output: path::path,
-                                &&lib: path::path) : not_win32(os) -> str {
+                                &&lib: path::path) -> str {
+    assert not_win32(os);
+
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
         session::os_linux { "$ORIGIN" + path::path_sep() }
@@ -141,7 +143,7 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
 
     path += vec::slice(split2, start_idx, len2 - 1u);
 
-    if check vec::is_not_empty(path) {
+    if vec::is_not_empty(path) {
         ret path::connect_many(path);
     } else {
         ret ".";
@@ -308,7 +310,6 @@ mod test {
     #[cfg(target_os = "linux")]
     fn test_rpath_relative() {
       let o = session::os_linux;
-      check not_win32(o);
       let res = get_rpath_relative_to_output(o,
             "/usr", "bin/rustc", "lib/libstd.so");
       assert res == "$ORIGIN/../lib";
@@ -318,7 +319,6 @@ mod test {
     #[cfg(target_os = "freebsd")]
     fn test_rpath_relative() {
       let o = session::os_freebsd;
-      check not_win32(o);
       let res = get_rpath_relative_to_output(o,
             "/usr", "bin/rustc", "lib/libstd.so");
       assert res == "$ORIGIN/../lib";
@@ -329,7 +329,6 @@ mod test {
     fn test_rpath_relative() {
       // this is why refinements would be nice
       let o = session::os_macos;
-      check not_win32(o);
       let res = get_rpath_relative_to_output(o, "/usr", "bin/rustc",
                                              "lib/libstd.so");
         assert res == "@executable_path/../lib";

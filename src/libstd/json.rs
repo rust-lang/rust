@@ -510,6 +510,14 @@ impl of to_json for json {
     fn to_json() -> json { self }
 }
 
+impl of to_json for @json {
+    fn to_json() -> json { *self }
+}
+
+impl of to_json for int {
+    fn to_json() -> json { num(self as float) }
+}
+
 impl of to_json for i8 {
     fn to_json() -> json { num(self as float) }
 }
@@ -523,6 +531,10 @@ impl of to_json for i32 {
 }
 
 impl of to_json for i64 {
+    fn to_json() -> json { num(self as float) }
+}
+
+impl of to_json for uint {
     fn to_json() -> json { num(self as float) }
 }
 

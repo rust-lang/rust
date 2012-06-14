@@ -37,7 +37,7 @@ type cnum_map = map::hashmap<ast::crate_num, ast::crate_num>;
 // Multiple items may have the same def_id in crate metadata. They may be
 // renamed imports or reexports. This map keeps the "real" module path
 // and def_id.
-type mod_path_map = map::hashmap<ast::def_id, str>;
+type mod_path_map = map::hashmap<ast::def_id, @str>;
 
 type crate_metadata = @{name: str,
                         data: @[u8],
@@ -83,12 +83,12 @@ fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {
     ret p(cstore).metas.get(cnum);
 }
 
-fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> str {
+fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> @str {
     let cdata = get_crate_data(cstore, cnum);
     ret decoder::get_crate_hash(cdata.data);
 }
 
-fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> str {
+fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @str {
     let cdata = get_crate_data(cstore, cnum);
     ret decoder::get_crate_vers(cdata.data);
 }
@@ -99,7 +99,7 @@ fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
     vec::iter(decoder::get_crate_module_paths(data.data)) {|dp|
         let (did, path) = dp;
         let d = {crate: cnum, node: did.node};
-        p(cstore).mod_path_map.insert(d, path);
+        p(cstore).mod_path_map.insert(d, @path);
     }
 }
 
@@ -153,32 +153,32 @@ fn find_use_stmt_cnum(cstore: cstore,
 
 // returns hashes of crates directly used by this crate. Hashes are
 // sorted by crate name.
-fn get_dep_hashes(cstore: cstore) -> [str] {
-    type crate_hash = {name: str, hash: str};
+fn get_dep_hashes(cstore: cstore) -> [@str] {
+    type crate_hash = {name: @str, hash: @str};
     let mut result = [];
 
     for p(cstore).use_crate_map.each_value {|cnum|
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
-        #debug("Add hash[%s]: %s", cdata.name, hash);
-        result += [{name: cdata.name, hash: hash}];
+        #debug("Add hash[%s]: %s", cdata.name, *hash);
+        result += [{name: @cdata.name, hash: hash}];
     };
     fn lteq(a: crate_hash, b: crate_hash) -> bool {
-        ret a.name <= b.name;
+        ret *a.name <= *b.name;
     }
     let sorted = std::sort::merge_sort(lteq, result);
     #debug("sorted:");
     for sorted.each {|x|
-        #debug("  hash[%s]: %s", x.name, x.hash);
+        #debug("  hash[%s]: %s", *x.name, *x.hash);
     }
-    fn mapper(ch: crate_hash) -> str { ret ch.hash; }
+    fn mapper(ch: crate_hash) -> @str { ret ch.hash; }
     ret vec::map(sorted, mapper);
 }
 
-fn get_path(cstore: cstore, d: ast::def_id) -> [str] {
+fn get_path(cstore: cstore, d: ast::def_id) -> [ast::ident] {
     // let f = bind str::split_str(_, "::");
     option::map_default(p(cstore).mod_path_map.find(d), [],
-                  {|ds| str::split_str(ds, "::")})
+                        {|ds| str::split_str(*ds, "::").map({|x|@x})})
 }
 // Local Variables:
 // mode: rust

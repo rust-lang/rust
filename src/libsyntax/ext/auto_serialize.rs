@@ -92,7 +92,7 @@ fn expand(cx: ext_ctxt,
           _mitem: ast::meta_item,
           in_items: [@ast::item]) -> [@ast::item] {
     fn not_auto_serialize(a: ast::attribute) -> bool {
-        attr::get_attr_name(a) != "auto_serialize"
+        attr::get_attr_name(a) != @"auto_serialize"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -126,18 +126,19 @@ impl helpers for ext_ctxt {
                    helper_name: str) -> @ast::path {
         let head = vec::init(base_path.idents);
         let tail = vec::last(base_path.idents);
-        self.path(base_path.span, head + [helper_name + "_" + tail])
+        self.path(base_path.span, head + [@(helper_name + "_" + *tail)])
     }
 
-    fn path(span: span, strs: [str]) -> @ast::path {
+    fn path(span: span, strs: [ast::ident]) -> @ast::path {
         @{span: span, global: false, idents: strs, rp: none, types: []}
     }
 
-    fn path_tps(span: span, strs: [str], tps: [@ast::ty]) -> @ast::path {
+    fn path_tps(span: span, strs: [ast::ident],
+                tps: [@ast::ty]) -> @ast::path {
         @{span: span, global: false, idents: strs, rp: none, types: tps}
     }
 
-    fn ty_path(span: span, strs: [str], tps: [@ast::ty]) -> @ast::ty {
+    fn ty_path(span: span, strs: [ast::ident], tps: [@ast::ty]) -> @ast::ty {
         @{id: self.next_id(),
           node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
           span: span}
@@ -149,7 +150,7 @@ impl helpers for ext_ctxt {
         let args = vec::map(input_tys) {|ty|
             {mode: ast::expl(ast::by_ref),
              ty: ty,
-             ident: "",
+             ident: @"",
              id: self.next_id()}
         };
 
@@ -157,8 +158,7 @@ impl helpers for ext_ctxt {
           node: ast::ty_fn(ast::proto_any, {inputs: args,
                                             output: output,
                                             purity: ast::impure_fn,
-                                            cf: ast::return_val,
-                                            constraints: []}),
+                                            cf: ast::return_val}),
           span: span}
     }
 
@@ -170,7 +170,7 @@ impl helpers for ext_ctxt {
         @{id: self.next_id(), node: node, span: span}
     }
 
-    fn var_ref(span: span, name: str) -> @ast::expr {
+    fn var_ref(span: span, name: ast::ident) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, [name])))
     }
 
@@ -192,7 +192,7 @@ impl helpers for ext_ctxt {
          span: expr.span}
     }
 
-    fn binder_pat(span: span, nm: str) -> @ast::pat {
+    fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
         let path = @{span: span, global: false, idents: [nm],
                      rp: none, types: []};
         @{id: self.next_id(),
@@ -212,7 +212,7 @@ impl helpers for ext_ctxt {
                 ast::expr_alt(v, arms, ast::alt_exhaustive)))
     }
 
-    fn lit_str(span: span, s: str) -> @ast::expr {
+    fn lit_str(span: span, s: @str) -> @ast::expr {
         self.expr(
             span,
             ast::expr_lit(
@@ -310,7 +310,7 @@ fn ser_variant(cx: ext_ctxt,
                bodyfn: fn(-@ast::expr, ast::blk) -> @ast::expr,
                argfn: fn(-@ast::expr, uint, ast::blk) -> @ast::expr)
     -> ast::arm {
-    let vnames = vec::from_fn(vec::len(tys)) {|i| #fmt["__v%u", i]};
+    let vnames = vec::from_fn(vec::len(tys)) {|i| @#fmt["__v%u", i]};
     let pats = vec::from_fn(vec::len(tys)) {|i|
         cx.binder_pat(tys[i].span, vnames[i])
     };
@@ -428,17 +428,13 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
             vec::is_empty(path.types) {
             let ident = path.idents[0];
 
-            alt tps.find(ident) {
+            alt tps.find(*ident) {
               some(f) { f(v) }
               none { ser_path(cx, tps, path, s, v) }
             }
         } else {
             ser_path(cx, tps, path, s, v)
         }
-      }
-
-      ast::ty_constr(ty, _) {
-        ser_ty(cx, tps, ty, s, v)
       }
 
       ast::ty_mac(_) {
@@ -474,7 +470,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
     }
 }
 
-fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
+fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident, tps: [ast::ty_param],
              f: fn(ext_ctxt, ser_tps_map,
                    -@ast::expr, -@ast::expr) -> [@ast::stmt])
     -> @ast::item {
@@ -489,7 +485,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
              ty: cx.ty_fn(span,
                           [cx.ty_path(span, [tp.ident], [])],
                           cx.ty_nil(span)),
-             ident: "__s" + tp.ident,
+             ident: @("__s" + *tp.ident),
              id: cx.next_id()}});
 
     #debug["tp_inputs = %?", tp_inputs];
@@ -497,12 +493,12 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
 
     let ser_inputs: [ast::arg] =
         [{mode: ast::expl(ast::by_ref),
-          ty: cx.ty_path(span, ["__S"], []),
-          ident: "__s",
+          ty: cx.ty_path(span, [@"__S"], []),
+          ident: @"__s",
           id: cx.next_id()},
          {mode: ast::expl(ast::by_ref),
           ty: v_ty,
-          ident: "__v",
+          ident: @"__v",
           id: cx.next_id()}]
         + tp_inputs;
 
@@ -510,21 +506,21 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
     vec::iter2(tps, tp_inputs) {|tp, arg|
         let arg_ident = arg.ident;
         tps_map.insert(
-            tp.ident,
+            *tp.ident,
             fn@(v: @ast::expr) -> [@ast::stmt] {
                 let f = cx.var_ref(span, arg_ident);
-                #debug["serializing type arg %s", arg_ident];
+                #debug["serializing type arg %s", *arg_ident];
                 [#ast(stmt){$(f)($(v));}]
             });
     }
 
     let ser_bnds = @[
         ast::bound_iface(cx.ty_path(span,
-                                    ["std", "serialization", "serializer"],
+                                    [@"std", @"serialization", @"serializer"],
                                     []))];
 
     let ser_tps: [ast::ty_param] =
-        [{ident: "__S",
+        [{ident: @"__S",
           id: cx.next_id(),
           bounds: ser_bnds}] +
         vec::map(tps) {|tp| cx.clone_ty_param(tp) };
@@ -536,14 +532,13 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
     let ser_blk = cx.blk(span,
                          f(cx, tps_map, #ast{ __s }, #ast{ __v }));
 
-    @{ident: "serialize_" + name,
+    @{ident: @("serialize_" + *name),
       attrs: [],
       id: cx.next_id(),
       node: ast::item_fn({inputs: ser_inputs,
                           output: ser_output,
                           purity: ast::impure_fn,
-                          cf: ast::return_val,
-                          constraints: []},
+                          cf: ast::return_val},
                          ser_tps,
                          ser_blk),
       vis: ast::public,
@@ -651,17 +646,13 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
             vec::is_empty(path.types) {
             let ident = path.idents[0];
 
-            alt tps.find(ident) {
+            alt tps.find(*ident) {
               some(f) { f() }
               none { deser_path(cx, tps, path, d) }
             }
         } else {
             deser_path(cx, tps, path, d)
         }
-      }
-
-      ast::ty_constr(ty, constrs) {
-        deser_ty(cx, tps, ty, d)
       }
 
       ast::ty_mac(_) {
@@ -683,7 +674,8 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
     }
 }
 
-fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
+fn mk_deser_fn(cx: ext_ctxt, span: span,
+               name: ast::ident, tps: [ast::ty_param],
                f: fn(ext_ctxt, deser_tps_map, -@ast::expr) -> @ast::expr)
     -> @ast::item {
     let ext_cx = cx; // required for #ast
@@ -697,15 +689,15 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
              ty: cx.ty_fn(span,
                           [],
                           cx.ty_path(span, [tp.ident], [])),
-             ident: "__d" + tp.ident,
+             ident: @("__d" + *tp.ident),
              id: cx.next_id()}});
 
     #debug["tp_inputs = %?", tp_inputs];
 
     let deser_inputs: [ast::arg] =
         [{mode: ast::expl(ast::by_ref),
-          ty: cx.ty_path(span, ["__D"], []),
-          ident: "__d",
+          ty: cx.ty_path(span, [@"__D"], []),
+          ident: @"__d",
           id: cx.next_id()}]
         + tp_inputs;
 
@@ -713,7 +705,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
     vec::iter2(tps, tp_inputs) {|tp, arg|
         let arg_ident = arg.ident;
         tps_map.insert(
-            tp.ident,
+            *tp.ident,
             fn@() -> @ast::expr {
                 let f = cx.var_ref(span, arg_ident);
                 #ast{ $(f)() }
@@ -721,12 +713,13 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
     }
 
     let deser_bnds = @[
-        ast::bound_iface(cx.ty_path(span,
-                                    ["std", "serialization", "deserializer"],
-                                    []))];
+        ast::bound_iface(cx.ty_path(
+            span,
+            [@"std", @"serialization", @"deserializer"],
+            []))];
 
     let deser_tps: [ast::ty_param] =
-        [{ident: "__D",
+        [{ident: @"__D",
           id: cx.next_id(),
           bounds: deser_bnds}] + vec::map(tps) {|tp|
         let cloned = cx.clone_ty_param(tp);
@@ -735,21 +728,20 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
 
     let deser_blk = cx.expr_blk(f(cx, tps_map, #ast(expr){__d}));
 
-    @{ident: "deserialize_" + name,
+    @{ident: @("deserialize_" + *name),
       attrs: [],
       id: cx.next_id(),
       node: ast::item_fn({inputs: deser_inputs,
                           output: v_ty,
                           purity: ast::impure_fn,
-                          cf: ast::return_val,
-                          constraints: []},
+                          cf: ast::return_val},
                          deser_tps,
                          deser_blk),
       vis: ast::public,
       span: span}
 }
 
-fn ty_fns(cx: ext_ctxt, name: str, ty: @ast::ty, tps: [ast::ty_param])
+fn ty_fns(cx: ext_ctxt, name: ast::ident, ty: @ast::ty, tps: [ast::ty_param])
     -> [@ast::item] {
 
     let span = ty.span;
@@ -759,7 +751,7 @@ fn ty_fns(cx: ext_ctxt, name: str, ty: @ast::ty, tps: [ast::ty_param])
     ]
 }
 
-fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: str,
+fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: ast::ident,
             e_span: span, variants: [ast::variant],
             -s: @ast::expr, -v: @ast::expr) -> [@ast::stmt] {
     let ext_cx = cx;
@@ -808,7 +800,7 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: str,
     [#ast(stmt){ $(s).emit_enum($(e_name), $(lam)) }]
 }
 
-fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: str,
+fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
               e_span: span, variants: [ast::variant],
               -d: @ast::expr) -> @ast::expr {
     let ext_cx = cx;
@@ -852,7 +844,7 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: str,
     #ast{ $(d).read_enum($(e_name), $(read_lambda)) }
 }
 
-fn enum_fns(cx: ext_ctxt, e_name: str, e_span: span,
+fn enum_fns(cx: ext_ctxt, e_name: ast::ident, e_span: span,
                variants: [ast::variant], tps: [ast::ty_param])
     -> [@ast::item] {
     [

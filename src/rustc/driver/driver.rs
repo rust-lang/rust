@@ -49,14 +49,14 @@ fn default_configuration(sess: session, argv0: str, input: input) ->
     };
 
     ret [ // Target bindings.
-         attr::mk_word_item(os::family()),
-         mk("target_os", os::sysname()),
-         mk("target_family", os::family()),
-         mk("target_arch", arch),
-         mk("target_libc", libc),
+         attr::mk_word_item(@os::family()),
+         mk(@"target_os", os::sysname()),
+         mk(@"target_family", os::family()),
+         mk(@"target_arch", arch),
+         mk(@"target_libc", libc),
          // Build bindings.
-         mk("build_compiler", argv0),
-         mk("build_input", source_name(input))];
+         mk(@"build_compiler", argv0),
+         mk(@"build_input", source_name(input))];
 }
 
 fn build_configuration(sess: session, argv0: str, input: input) ->
@@ -70,7 +70,7 @@ fn build_configuration(sess: session, argv0: str, input: input) ->
         {
             if sess.opts.test && !attr::contains_name(user_cfg, "test")
                {
-                [attr::mk_word_item("test")]
+                [attr::mk_word_item(@"test")]
             } else { [] }
         };
     ret user_cfg + gen_cfg + default_cfg;
@@ -82,7 +82,7 @@ fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
     // meta_item here. At the moment we just support the meta_word variant.
     // #2399
     let mut words = [];
-    for cfgspecs.each {|s| words += [attr::mk_word_item(s)]; }
+    for cfgspecs.each {|s| words += [attr::mk_word_item(@s)]; }
     ret words;
 }
 
@@ -199,8 +199,6 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let last_use_map =
         time(time_passes, "liveness checking",
              bind middle::liveness::check_crate(ty_cx, method_map, crate));
-    time(time_passes, "typestate checking",
-         bind middle::tstate::ck::check_crate(ty_cx, crate));
     let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
         bind middle::borrowck::check_crate(ty_cx, method_map, crate));

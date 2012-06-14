@@ -29,7 +29,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     // there ought to be a better approach. Attributes?
 
     for crate.node.module.items.each {|crate_item|
-        if crate_item.ident == "intrinsic" {
+        if *crate_item.ident == "intrinsic" {
             alt crate_item.node {
               ast::item_mod(m) {
                 for m.items.each {|intrinsic_item|
@@ -117,8 +117,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                             proto: ast::proto_box,
                             inputs: args,
                             output: enum_ty,
-                            ret_style: ast::return_val,
-                            constraints: []})
+                            ret_style: ast::return_val})
         };
         let tpt = {bounds: ty_param_bounds(ccx, ty_params),
                    rp: rp,
@@ -170,7 +169,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                        self_ty: ty::t) {
 
     if impl_m.tps != if_m.tps {
-        tcx.sess.span_err(sp, "method `" + if_m.ident +
+        tcx.sess.span_err(sp, "method `" + *if_m.ident +
                           "` has an incompatible set of type parameters");
         ret;
     }
@@ -178,7 +177,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
         tcx.sess.span_err(sp,#fmt["method `%s` has %u parameters \
                                    but the iface has %u",
-                                  if_m.ident,
+                                  *if_m.ident,
                                   vec::len(impl_m.fty.inputs),
                                   vec::len(if_m.fty.inputs)]);
         ret;
@@ -211,7 +210,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     };
     require_same_types(
         tcx, sp, impl_fty, if_fty,
-        {|| "method `" + if_m.ident + "` has an incompatible type"});
+        {|| "method `" + *if_m.ident + "` has an incompatible type"});
     ret;
 
     // Replaces bound references to the self region with `with_r`.
@@ -242,7 +241,7 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
                 ccx.tcx.sess.span_err(
                     span, #fmt["method `%s`'s purity \
                                 not match the iface method's \
-                                purity", m.ident]);
+                                purity", *m.ident]);
             }
             compare_impl_method(
                 ccx.tcx, span, m, vec::len(tps),
@@ -251,7 +250,7 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
           none {
             tcx.sess.span_err(
                 a_ifacety.path.span,
-                #fmt["missing method `%s`", if_m.ident]);
+                #fmt["missing method `%s`", *if_m.ident]);
           }
         } // alt
     } // |if_m|
@@ -334,13 +333,13 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             proto: ast::proto_box,
             inputs: [{mode: ast::expl(ast::by_copy), ty: t_arg.ty}],
             output: t_res,
-            ret_style: ast::return_val, constraints: []
+            ret_style: ast::return_val
         });
         let t_dtor = ty::mk_fn(tcx, {
             purity: ast::impure_fn,
             proto: ast::proto_box,
             inputs: [t_arg], output: ty::mk_nil(tcx),
-            ret_style: ast::return_val, constraints: []
+            ret_style: ast::return_val
         });
         write_ty_to_tcx(tcx, it.id, t_res);
         write_ty_to_tcx(tcx, ctor_id, t_ctor);
@@ -511,7 +510,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
                    rp: ast::rp_none, // functions do not have a self
                    ty: ty::mk_fn(ccx.tcx, tofd)};
         #debug["type of %s (id %d) is %s",
-               it.ident, it.id, ty_to_str(tcx, tpt.ty)];
+               *it.ident, it.id, ty_to_str(tcx, tpt.ty)];
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
@@ -637,8 +636,7 @@ fn ty_of_native_fn_decl(ccx: @crate_ctxt,
                                    proto: ast::proto_bare,
                                    inputs: input_tys,
                                    output: output_ty,
-                                   ret_style: ast::return_val,
-                                   constraints: []});
+                                   ret_style: ast::return_val});
     let tpt = {bounds: bounds, rp: ast::rp_none, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
     ret tpt;

@@ -241,7 +241,7 @@ enum comp_kind {
     comp_tuple,                  // elt in a tuple
     comp_res,                    // data for a resource
     comp_variant(ast::def_id),   // internals to a variant of given enum
-    comp_field(str,              // name of field
+    comp_field(ast::ident,       // name of field
                ast::mutability), // declared mutability of field
     comp_index(ty::t,            // type of vec/str/etc being deref'd
                ast::mutability)  // mutability of vec content
@@ -409,7 +409,7 @@ impl to_str_methods for borrowck_ctxt {
 
     fn comp_to_repr(comp: comp_kind) -> str {
         alt comp {
-          comp_field(fld, _) { fld }
+          comp_field(fld, _) { *fld }
           comp_index(*) { "[]" }
           comp_tuple { "()" }
           comp_res { "<res>" }

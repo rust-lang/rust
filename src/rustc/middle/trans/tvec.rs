@@ -69,18 +69,15 @@ fn alloc_uniq(bcx: block, unit_ty: ty::t, elts: uint) -> result {
 
 fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let _icx = bcx.insn_ctxt("tvec::duplicate_uniq");
-    let ccx = bcx.ccx();
-    let body_ptr = get_bodyptr(bcx, vptr);
-    let fill = get_fill(bcx, body_ptr);
-    let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
 
+    let fill = get_fill(bcx, get_bodyptr(bcx, vptr));
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
-    let {box: newptr, body: new_body_ptr} =
-        base::malloc_unique_dyn(bcx, vecbodyty, size);
-    call_memmove(bcx, new_body_ptr, body_ptr, size);
+    let {bcx, val: newptr} = alloc_uniq_raw(bcx, unit_ty, fill, fill);
 
-    Store(bcx, fill, GEPi(bcx, new_body_ptr, [0u, abi::vec_elt_alloc]));
+    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
+    let new_data_ptr = get_dataptr(bcx, get_bodyptr(bcx, newptr));
+    call_memmove(bcx, new_data_ptr, data_ptr, fill);
+
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
         iter_vec(bcx, newptr, vec_ty, base::take_ty)
     } else { bcx };
@@ -236,7 +233,7 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
     }
 }
 
-fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
+fn trans_estr(bcx: block, s: @str, vstore: ast::vstore,
               dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_estr");
     let ccx = bcx.ccx();
@@ -245,27 +242,27 @@ fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
       ast::vstore_fixed(_)
       {
         // "hello"/_  =>  "hello"/5  =>  [i8 x 6] in llvm
-        #debug("trans_estr: fixed: %s", s);
-        C_postr(s)
+        #debug("trans_estr: fixed: %s", *s);
+        C_postr(*s)
       }
 
       ast::vstore_slice(_) {
         // "hello"  =>  (*i8, 6u) in llvm
-        #debug("trans_estr: slice '%s'", s);
-        C_estr_slice(ccx, s)
+        #debug("trans_estr: slice '%s'", *s);
+        C_estr_slice(ccx, *s)
       }
 
       ast::vstore_uniq {
-        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
-        let len = C_uint(ccx, str::len(s));
+        let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
+        let len = C_uint(ccx, str::len(*s));
         let c = Call(bcx, ccx.upcalls.str_new_uniq, [cs, len]);
         PointerCast(bcx, c,
                     T_unique_ptr(T_unique(ccx, T_vec(ccx, T_i8()))))
       }
 
       ast::vstore_box {
-        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
-        let len = C_uint(ccx, str::len(s));
+        let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
+        let len = C_uint(ccx, str::len(*s));
         Call(bcx, ccx.upcalls.str_new_shared, [cs, len])
       }
     };
