@@ -287,7 +287,7 @@ fn program_output(prog: str, args: [str]) ->
     // Spawn two entire schedulers to read both stdout and sterr
     // in parallel so we don't deadlock while blocking on one
     // or the other. FIXME: Surely there's a much more clever way
-    // to do this.
+    // to do this. (#2625)
     let p = comm::port();
     let ch = comm::chan(p);
     task::spawn_sched(task::single_threaded) {||
@@ -387,7 +387,7 @@ mod tests {
     import io::writer_util;
 
     // Regression test for memory leaks
-    #[ignore(cfg(windows))] // FIXME
+    #[ignore(cfg(windows))] // FIXME (#2626)
     fn test_leaks() {
         run::run_program("echo", []);
         run::start_program("echo", []);
