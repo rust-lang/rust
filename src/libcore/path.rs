@@ -12,20 +12,20 @@ export split;
 export splitext;
 export normalize;
 
-// FIXME: This type should probably be constrained
+// FIXME: This type should probably be constrained (#2624)
 #[doc = "A path or fragment of a filesystem path"]
 type path = str;
 
 #[cfg(unix)]
 mod consts {
     #[doc = "
-    The primary path seperator character for the platform
+    The primary path separator character for the platform
 
     On all platforms it is '/'
     "]
     const path_sep: char = '/';
     #[doc = "
-    The secondary path seperator character for the platform
+    The secondary path separator character for the platform
 
     On Unixes it is '/'. On Windows it is '\\'.
     "]
@@ -98,7 +98,6 @@ fn basename(pp: path) -> path {
     ret split_dirname_basename(pp).basename;
 }
 
-// FIXME: Need some typestate to avoid bounds check when len(pre) == 0
 #[doc = "
 Connects to path segments
 
