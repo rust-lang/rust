@@ -379,16 +379,21 @@ fn shift<T>(&v: [T]) -> T {
     v <-> vv;
 
     unsafe {
-        let vv = unsafe::to_ptr(vv);
-        let r <- *vv;
+        let mut rr;
+        {
+            let vv = unsafe::to_ptr(vv);
+            let mut r <- *vv;
 
-        for uint::range(1u, ln) {|i|
-            // FIXME: this isn't legal, per se...
-            let r <- *ptr::offset(vv, i);
-            push(v, r);
+            for uint::range(1u, ln) {|i|
+                // FIXME: this isn't legal, per se...
+                let r <- *ptr::offset(vv, i);
+                push(v, r);
+            }
+            rr <- r;
         }
+        unsafe::set_len(vv, 0u);
 
-        r
+        rr
     }
 }
 
