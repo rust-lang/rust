@@ -16,8 +16,6 @@ import dvec::{dvec, extensions};
 
 export file_type;
 export parser;
-export parse_expr;
-export parse_pat;
 
 // FIXME: #ast expects to find this here but it's actually defined in `parse`
 // Fixing this will be easier when we have export decls on individual items --
@@ -25,12 +23,6 @@ export parse_pat;
 // (See #1893)
 import parse_from_source_str;
 export parse_from_source_str;
-
-// TODO: remove these once we go around a snapshot cycle.
-// These are here for the old way that #ast (qquote.rs) worked
-fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
-fn parse_pat(p: parser) -> @ast::pat { p.parse_pat() }
-
 
 enum restriction {
     UNRESTRICTED,
@@ -1231,8 +1223,6 @@ class parser {
     fn parse_fn_expr(proto: proto) -> @expr {
         let lo = self.last_span.lo;
 
-        let cc_old = self.parse_old_skool_capture_clause();
-
         // if we want to allow fn expression argument types to be inferred in
         // the future, just have to change parse_arg to parse_fn_block_arg.
         let (decl, capture_clause) =
@@ -1241,8 +1231,7 @@ class parser {
 
         let body = self.parse_block();
         ret self.mk_expr(lo, body.span.hi,
-                         expr_fn(proto, decl, body,
-                                 @(*capture_clause + cc_old)));
+                         expr_fn(proto, decl, body, capture_clause));
     }
 
     fn parse_fn_block_expr() -> @expr {
@@ -1729,55 +1718,6 @@ class parser {
         if self.eat(token::LT) {
             self.parse_seq_to_gt(some(token::COMMA), {|p| p.parse_ty_param()})
         } else { [] }
-    }
-
-    // FIXME Remove after snapshot
-    fn parse_old_skool_capture_clause() -> [capture_item] {
-        fn expect_opt_trailing_semi(p: parser) {
-            if !p.eat(token::SEMI) {
-                if p.token != token::RBRACKET {
-                    p.fatal("expecting ; or ]");
-                }
-            }
-        }
-
-        fn eat_ident_list(p: parser, is_move: bool) -> [capture_item] {
-            let mut res = [];
-            loop {
-                alt p.token {
-                  token::IDENT(_, _) {
-                    let id = p.get_id();
-                    let sp = mk_sp(p.span.lo, p.span.hi);
-                    let ident = p.parse_ident();
-                    res += [@{id:id, is_move: is_move, name:ident, span:sp}];
-                    if !p.eat(token::COMMA) {
-                        ret res;
-                    }
-                  }
-
-                  _ { ret res; }
-                }
-            };
-        }
-
-        let mut cap_items = [];
-
-        if self.eat(token::LBRACKET) {
-            while !self.eat(token::RBRACKET) {
-                if self.eat_keyword("copy") {
-                    cap_items += eat_ident_list(self, false);
-                    expect_opt_trailing_semi(self);
-                } else if self.eat_keyword("move") {
-                    cap_items += eat_ident_list(self, true);
-                    expect_opt_trailing_semi(self);
-                } else {
-                    let s: str = "expecting send, copy, or move clause";
-                    self.fatal(s);
-                }
-            }
-        }
-
-        ret cap_items;
     }
 
     fn parse_fn_decl(purity: purity,

@@ -59,7 +59,7 @@ fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(),
                                         res_rel_file(cx, sp, file),
                                         parse::parser::SOURCE_FILE);
-    ret parse::parser::parse_expr(p)
+    ret p.parse_expr();
 }
 
 fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
