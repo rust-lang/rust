@@ -594,7 +594,7 @@ Section: Comparing strings
 #[doc = "Bytewise string equality"]
 pure fn eq(&&a: str, &&b: str) -> bool {
     // FIXME: This should just be "a == b" but that calls into the shape code
-    // :(
+    // :( (#2627)
     let a_len = a.len();
     let b_len = b.len();
     if a_len != b_len { ret false; }
