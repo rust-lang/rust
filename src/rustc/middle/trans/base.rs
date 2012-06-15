@@ -706,12 +706,6 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         let bcx = drop_ty(bcx, body, body_mt.ty);
         trans_free(bcx, v)
       }
-
-      ty::ty_estr(ty::vstore_box) {
-        let v = PointerCast(bcx, v, type_of(ccx, t));
-        trans_free(bcx, v)
-      }
-
       ty::ty_opaque_box {
         let v = PointerCast(bcx, v, type_of(ccx, t));
         let td = Load(bcx, GEPi(bcx, v, [0u, abi::box_field_tydesc]));
@@ -725,8 +719,11 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         uniq::make_free_glue(bcx, v, t)
       }
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
+      ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) |
       ty::ty_vec(_) | ty::ty_str {
-        tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of(ccx, t)), t)
+        make_free_glue(bcx, v,
+                       tvec::expand_boxed_vec_ty(bcx.tcx(), t));
+        ret;
       }
       ty::ty_evec(_, _) {
           bcx.sess().unimpl("trans::base::make_free_glue on other evec");
@@ -793,6 +790,9 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str |
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) {
         free_ty(bcx, Load(bcx, v0), t)
+      }
+      ty::ty_unboxed_vec(_) {
+        tvec::make_drop_glue_unboxed(bcx, v0, t)
       }
       ty::ty_res(did, inner, substs) {
         trans_res_drop(bcx, v0, did, inner, substs.tps)

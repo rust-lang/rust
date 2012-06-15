@@ -1112,7 +1112,7 @@ fn type_is_str(ty: t) -> bool {
 fn sequence_element_type(cx: ctxt, ty: t) -> t {
     alt get(ty).struct {
       ty_str | ty_estr(_) { ret mk_mach_uint(cx, ast::ty_u8); }
-      ty_vec(mt) | ty_evec(mt, _) { ret mt.ty; }
+      ty_vec(mt) | ty_evec(mt, _) | ty_unboxed_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
     }
 }
@@ -1134,7 +1134,8 @@ pure fn type_is_box(ty: t) -> bool {
 
 pure fn type_is_boxed(ty: t) -> bool {
     alt get(ty).struct {
-      ty_box(_) | ty_opaque_box { true }
+      ty_box(_) | ty_opaque_box |
+      ty_evec(_, vstore_box) | ty_estr(vstore_box) { true }
       _ { false }
     }
 }
@@ -1212,6 +1213,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       ty_estr(vstore_fixed(_)) | ty_estr(vstore_slice(_)) |
       ty_evec(_, vstore_slice(_)) { false }
       ty_evec(mt, vstore_fixed(_)) { type_needs_drop(cx, mt.ty) }
+      ty_unboxed_vec(mt) { type_needs_drop(cx, mt.ty) }
       ty_rec(flds) {
         for flds.each {|f| if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum

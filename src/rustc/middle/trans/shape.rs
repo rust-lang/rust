@@ -277,8 +277,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
       }
       ty::ty_evec(mt, ty::vstore_uniq) |
       ty::ty_vec(mt) {
-        shape_of(ccx,
-                 ty::mk_imm_uniq(ccx.tcx, ty::mk_unboxed_vec(ccx.tcx, mt)))
+        shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
 
       ty::ty_estr(ty::vstore_fixed(n)) {
