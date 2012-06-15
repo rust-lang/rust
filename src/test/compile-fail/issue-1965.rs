@@ -1,4 +1,4 @@
-// error-pattern:moving out of immutable upvar
+// error-pattern:moving out of immutable variable declared in an outer block
 fn test(-x: uint) {}
 
 fn main() {

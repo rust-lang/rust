@@ -1,4 +1,4 @@
-// error-pattern:assigning to upvar
+// error-pattern:assigning to variable declared in an outer block
 // Make sure we can't write to upvars from fn@s
 fn main() {
     let i = 0;

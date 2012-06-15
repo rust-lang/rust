@@ -1,4 +1,4 @@
-// error-pattern:assigning to immutable upvar
+// error-pattern:assigning to immutable variable declared in an outer block
 // Make sure that nesting a block within a fn@ doesn't let us
 // mutate upvars from a fn@.
 fn f2(x: fn()) { x(); }
