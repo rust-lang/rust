@@ -3036,9 +3036,16 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             alt r.self_r {
               some(_) {
                 // This enum has a self region. Get rid of it
-                mk_enum(cx, did, {self_r: none,
-                                  self_ty: none,
-                                  tps: r.tps})
+                mk_enum(cx, did, {self_r: none, self_ty: none, tps: r.tps})
+              }
+              none { t }
+            }
+        }
+        ty_class(did, r) {
+            alt r.self_r {
+              some(_) {
+                // Ditto.
+                mk_class(cx, did, {self_r: none, self_ty: none, tps: r.tps})
               }
               none { t }
             }
