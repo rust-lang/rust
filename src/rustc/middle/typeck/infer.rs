@@ -147,7 +147,8 @@ import std::smallintmap::smallintmap;
 import std::smallintmap::map;
 import std::map::hashmap;
 import middle::ty;
-import middle::ty::{tv_vid, tvi_vid, region_vid, vid};
+import middle::ty::{tv_vid, tvi_vid, region_vid, vid,
+                    ty_int, ty_uint, get};
 import syntax::{ast, ast_util};
 import syntax::ast::{ret_style, purity};
 import util::ppaux::{ty_to_str, mt_to_str};
@@ -174,7 +175,7 @@ export compare_tys;
 export fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
-export min_8bit_tys, min_16bit_tys, min_32bit_tys, min_64bit_tys;
+export int_ty_set_all;
 
 // Bitvector to represent sets of integral types
 enum int_ty_set = uint;
@@ -193,9 +194,7 @@ const INT_TY_SET_u64   : uint = 0b00_1000_0000u;
 const INT_TY_SET_i     : uint = 0b01_0000_0000u;
 const INT_TY_SET_u     : uint = 0b10_0000_0000u;
 
-fn mk_int_ty_set() -> int_ty_set { int_ty_set(INT_TY_SET_EMPTY) }
-
-fn min_8bit_tys()  -> int_ty_set {
+fn int_ty_set_all()  -> int_ty_set {
     int_ty_set(INT_TY_SET_i8  | INT_TY_SET_u8 |
                INT_TY_SET_i16 | INT_TY_SET_u16 |
                INT_TY_SET_i32 | INT_TY_SET_u32 |
@@ -203,22 +202,58 @@ fn min_8bit_tys()  -> int_ty_set {
                INT_TY_SET_i   | INT_TY_SET_u)
 }
 
-fn min_16bit_tys() -> int_ty_set {
-    int_ty_set(INT_TY_SET_i16 | INT_TY_SET_u16 |
-               INT_TY_SET_i32 | INT_TY_SET_u32 |
-               INT_TY_SET_i64 | INT_TY_SET_u64 |
-               INT_TY_SET_i   | INT_TY_SET_u)
+fn intersection(a: int_ty_set, b: int_ty_set) -> int_ty_set {
+    int_ty_set(*a & *b)
 }
 
-fn min_32bit_tys() -> int_ty_set {
-    int_ty_set(INT_TY_SET_i32 | INT_TY_SET_u32 |
-               INT_TY_SET_i64 | INT_TY_SET_u64 |
-               // uh, can we count on ty_i and ty_u being 32 bits?
-               INT_TY_SET_i   | INT_TY_SET_u)
+fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
+    option<ty::t> {
+    #debug["type_contained_in(a=%s)", uint::to_str(*a, 10u)];
+
+    if *a == INT_TY_SET_i8    { ret some(ty::mk_i8(tcx)); }
+    if *a == INT_TY_SET_u8    { ret some(ty::mk_u8(tcx)); }
+    if *a == INT_TY_SET_i16   { ret some(ty::mk_i16(tcx)); }
+    if *a == INT_TY_SET_u16   { ret some(ty::mk_u16(tcx)); }
+    if *a == INT_TY_SET_i32   { ret some(ty::mk_i32(tcx)); }
+    if *a == INT_TY_SET_u32   { ret some(ty::mk_u32(tcx)); }
+    if *a == INT_TY_SET_i64   { ret some(ty::mk_i64(tcx)); }
+    if *a == INT_TY_SET_u64   { ret some(ty::mk_u64(tcx)); }
+    if *a == INT_TY_SET_i     { ret(some(ty::mk_int(tcx))); }
+    if *a == INT_TY_SET_u     { ret(some(ty::mk_uint(tcx))); }
+    ret none;
 }
 
-fn min_64bit_tys() -> int_ty_set {
-    int_ty_set(INT_TY_SET_i64 | INT_TY_SET_u64)
+fn is_subset_of(a: int_ty_set, b: int_ty_set) -> bool {
+    (*a & *b) == *a
+}
+
+fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
+    -> int_ty_set {
+
+    alt get(t).struct {
+      ty_int(int_ty) {
+        alt int_ty {
+          ast::ty_i8   { int_ty_set(INT_TY_SET_i8)  }
+          ast::ty_i16  { int_ty_set(INT_TY_SET_i16) }
+          ast::ty_i32  { int_ty_set(INT_TY_SET_i32) }
+          ast::ty_i64  { int_ty_set(INT_TY_SET_i64) }
+          ast::ty_i    { int_ty_set(INT_TY_SET_i)   }
+          ast::ty_char { tcx.sess.bug(
+              "char type passed to convert_integral_ty_to_int_ty_set()"); }
+        }
+      }
+      ty_uint(uint_ty) {
+        alt uint_ty {
+          ast::ty_u8  { int_ty_set(INT_TY_SET_u8)  }
+          ast::ty_u16 { int_ty_set(INT_TY_SET_u16) }
+          ast::ty_u32 { int_ty_set(INT_TY_SET_u32) }
+          ast::ty_u64 { int_ty_set(INT_TY_SET_u64) }
+          ast::ty_u   { int_ty_set(INT_TY_SET_u)   }
+        }
+      }
+      _ { tcx.sess.bug("non-integral type passed to \
+                        convert_integral_ty_to_int_ty_set()"); }
+    }
 }
 
 // Extra information needed to perform an assignment that may borrow.
@@ -265,6 +300,7 @@ enum infer_ctxt = @{
 };
 
 enum fixup_err {
+    unresolved_int_ty(tvi_vid),
     unresolved_ty(tv_vid),
     cyclic_ty(tv_vid),
     unresolved_region(region_vid),
@@ -273,6 +309,7 @@ enum fixup_err {
 
 fn fixup_err_to_str(f: fixup_err) -> str {
     alt f {
+      unresolved_int_ty(_) { "unconstrained integral type" }
       unresolved_ty(_) { "unconstrained type" }
       cyclic_ty(_) { "cyclic type of infinite size" }
       unresolved_region(_) { "unconstrained region" }
@@ -410,7 +447,7 @@ impl<V:copy to_str> of to_str for bound<V> {
     fn to_str(cx: infer_ctxt) -> str {
         alt self {
           some(v) { v.to_str(cx) }
-          none { "none " }
+          none { "none" }
         }
     }
 }
@@ -555,7 +592,7 @@ impl methods for infer_ctxt {
         *self.ty_var_integral_counter += 1u;
 
         self.tvib.vals.insert(id,
-                              root(mk_int_ty_set()));
+                              root(int_ty_set_all()));
         ret tvi_vid(id);
     }
 
@@ -771,9 +808,24 @@ impl unify_methods for infer_ctxt {
     }
 
     fn vars_integral<V:copy vid>(
-        _vb: vals_and_bindings<V, int_ty_set>,
-        _a_id: V, _b_id: V) -> ures {
-        // FIXME (#1425): do something real here.
+        vb: vals_and_bindings<V, int_ty_set>,
+        a_id: V, b_id: V) -> ures {
+
+        let {root: a_id, possible_types: a_pt} = self.get(vb, a_id);
+        let {root: b_id, possible_types: b_pt} = self.get(vb, b_id);
+
+        // If we're already dealing with the same two variables,
+        // there's nothing to do.
+        if a_id == b_id { ret uok(); }
+
+        // Otherwise, take the intersection of the two sets of
+        // possible types.
+        let intersection = intersection(a_pt, b_pt);
+        if *intersection == INT_TY_SET_EMPTY {
+            ret err(ty::terr_no_integral_type);
+        }
+        self.set(vb, a_id, root(intersection));
+        self.set(vb, b_id, redirect(a_id));
         uok()
     }
 
@@ -789,11 +841,21 @@ impl unify_methods for infer_ctxt {
         self.set_var_to_merged_bounds(vb, a_id, a_bounds, b_bounds)
     }
 
-    // FIXME (#1425): this is a terrible name.
-    fn vart_integral<V: copy vid, T: copy to_str st>(
-        _vb: vals_and_bindings<V, int_ty_set>,
-        _a_id: V, _b: T) -> ures {
-        // FIXME (#1425): do something real here.
+    fn vart_integral<V: copy vid>(
+        vb: vals_and_bindings<V, int_ty_set>,
+        a_id: V, b: ty::t) -> ures {
+
+        assert ty::type_is_integral(b);
+
+        let {root: a_id, possible_types: a_pt} = self.get(vb, a_id);
+
+        let intersection =
+            intersection(a_pt, convert_integral_ty_to_int_ty_set(
+                self.tcx, b));
+        if *intersection == INT_TY_SET_EMPTY {
+            ret err(ty::terr_no_integral_type);
+        }
+        self.set(vb, a_id, root(intersection));
         uok()
     }
 
@@ -809,10 +871,21 @@ impl unify_methods for infer_ctxt {
         self.set_var_to_merged_bounds(vb, b_id, a_bounds, b_bounds)
     }
 
-    fn tvar_integral<V: copy vid, T: copy to_str st>(
-        _vb: vals_and_bindings<V, int_ty_set>,
-        _a: T, _b_id: V) -> ures {
-        // FIXME (#1425): do something real here.
+    fn tvar_integral<V: copy vid>(
+        vb: vals_and_bindings<V, int_ty_set>,
+        a: ty::t, b_id: V) -> ures {
+
+        assert ty::type_is_integral(a);
+
+        let {root: b_id, possible_types: b_pt} = self.get(vb, b_id);
+
+        let intersection =
+            intersection(b_pt, convert_integral_ty_to_int_ty_set(
+                self.tcx, a));
+        if *intersection == INT_TY_SET_EMPTY {
+            ret err(ty::terr_no_integral_type);
+        }
+        self.set(vb, b_id, root(intersection));
         uok()
     }
 
@@ -1066,13 +1139,26 @@ impl methods for resolve_state {
     }
 
     fn resolve_ty_var_integral(vid: tvi_vid) -> ty::t {
-        let {root:_, possible_types: its} =
+        let {root:_, possible_types: pt} =
             self.infcx.get(self.infcx.tvib, vid);
-        let t1 = alt its {
-          // FIXME (#1425): do something real here.
-          int_ty_set(_) { ty::mk_int(self.infcx.tcx) }
-        };
-        ret t1;
+        // If there's only one type in the set of possible types, then
+        // that's the answer.
+        alt single_type_contained_in(self.infcx.tcx, pt) {
+          some(t) { t }
+          none {
+            if self.force_vars {
+                // As a last resort, default to int.
+                let ty = ty::mk_int(self.infcx.tcx);
+                self.infcx.set(
+                    self.infcx.tvib, vid,
+                    root(convert_integral_ty_to_int_ty_set(self.infcx.tcx,
+                                                           ty)));
+                ty
+            } else {
+                ty::mk_var_integral(self.infcx.tcx, vid)
+            }
+          }
+        }
     }
 
 }
@@ -1324,7 +1410,6 @@ iface combine {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
-    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]>;
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>>;
     fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs>;
@@ -1516,12 +1601,6 @@ fn super_fns<C:combine>(
     }
 }
 
-fn super_int_tys<C:combine>(
-    self: C, _a: ty::t, _b: ty::t) -> cres<ty::t> {
-    // FIXME (#1425): do something real here?
-    ok(ty::mk_int(self.infcx().tcx))
-}
-
 fn super_tys<C:combine>(
     self: C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
@@ -1537,6 +1616,20 @@ fn super_tys<C:combine>(
                  self.tag(),
                  a.to_str(self.infcx()),
                  b.to_str(self.infcx())]);
+      }
+
+      // Have to handle these first
+      (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) {
+        self.infcx().vars_integral(self.infcx().tvib, a_id, b_id).then {||
+            ok(a) }
+      }
+      (ty::ty_var_integral(a_id), _) {
+        self.infcx().vart_integral(self.infcx().tvib, a_id, b).then {||
+            ok(a) }
+      }
+      (_, ty::ty_var_integral(b_id)) {
+        self.infcx().tvar_integral(self.infcx().tvib, a, b_id).then {||
+            ok(a) }
       }
 
       (ty::ty_int(_), _) |
@@ -1787,21 +1880,6 @@ impl of combine for sub {
               (_, ty::ty_bot) {
                 err(ty::terr_sorts(b, a))
               }
-
-              // FIXME (#1425): I'm not sure if these three cases
-              // belong here or if they belong in super_tys.
-              (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) {
-                self.infcx().vars_integral(self.tvib, a_id, b_id).then {||
-                    ok(a) }
-              }
-              (ty::ty_var_integral(a_id), _) {
-                self.infcx().vart_integral(self.tvib, a_id, b).then {||
-                    ok(a) }
-              }
-              (_, ty::ty_var_integral(b_id)) {
-                self.infcx().tvar_integral(self.tvib, a, b_id).then {||
-                    ok(a) }
-              }
               _ {
                 super_tys(self, a, b)
               }
@@ -1846,10 +1924,6 @@ impl of combine for sub {
     }
 
     // Traits please:
-
-    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        super_int_tys(self, a, b)
-    }
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(self, a, b)
@@ -2028,10 +2102,6 @@ impl of combine for lub {
     }
 
     // Traits please:
-
-    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        super_int_tys(self, a, b)
-    }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         lattice_tys(self, a, b)
@@ -2236,10 +2306,6 @@ impl of combine for glb {
 
     // Traits please:
 
-    fn int_tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        super_int_tys(self, a, b)
-    }
-
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(self, a, b)
     }
@@ -2333,21 +2399,6 @@ fn lattice_tys<L:lattice_ops combine>(
             lattice_var_t(self, self.infcx().tvb, b_id, a,
                           {|x, y| self.tys(x, y) })
           }
-          (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) {
-            // FIXME (#1425): do something real here?
-            ok(a)
-          }
-
-          (ty::ty_var_integral(a_id), _) {
-            // FIXME (#1425): do something real here?
-            ok(a)
-          }
-
-          (_, ty::ty_var_integral(b_id)) {
-            // FIXME (#1425): do something real here?
-            ok(a)
-          }
-
           _ {
             super_tys(self, a, b)
           }

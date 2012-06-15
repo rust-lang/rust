@@ -54,7 +54,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
       ast::expr_lit(node) {
         alt node {
           @{node: ast::lit_int(_, ast::ty_i), _} |
-          @{node: ast::lit_int_unsuffixed(_, ast::ty_i), _}
+          @{node: ast::lit_int_unsuffixed(_), _}
           { true }
           _ { false }
         }

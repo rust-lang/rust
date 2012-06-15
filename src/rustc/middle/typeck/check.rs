@@ -73,11 +73,9 @@ import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
-import syntax::ast::{ty_char, ty_i8, ty_i16, ty_i32, ty_i64, ty_i};
+import syntax::ast::{ty_char, ty_i};
 import typeck::infer::{root, to_str};
 import typeck::infer::{unify_methods}; // infcx.set()
-import typeck::infer::{min_8bit_tys, min_16bit_tys, min_32bit_tys,
-                       min_64bit_tys};
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -624,29 +622,13 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
       ast::lit_str(_) { ty::mk_str(tcx) }
       ast::lit_int(_, t) { ty::mk_mach_int(tcx, t) }
       ast::lit_uint(_, t) { ty::mk_mach_uint(tcx, t) }
-      ast::lit_int_unsuffixed(v, t) {
+      ast::lit_int_unsuffixed(v) {
         // An unsuffixed integer literal could have any integral type,
         // so we create an integral type variable for it.
-        let vid = fcx.infcx.next_ty_var_integral_id();
-
-        // We need to sniff at the value `v` and figure out how big of
-        // an int it is; that determines the range of possible types
-        // that the integral type variable could take on.
-        let possible_types = alt v {
-          0i64 to 127i64 { min_8bit_tys() }
-          128i64 to 65535i64 { min_16bit_tys() }
-          65536i64 to 4294967295i64 { min_32bit_tys() }
-          _ { min_64bit_tys() }
-        };
-
-        // Store the set of possible types and return the integral
-        // type variable.
-        fcx.infcx.set(fcx.infcx.tvib, vid,
-                      root(possible_types));
-        ty::mk_var_integral(tcx, vid);
+        ty::mk_var_integral(tcx, fcx.infcx.next_ty_var_integral_id());
 
         // FIXME: remove me when #1425 is finished.
-        ty::mk_mach_int(tcx, t)
+        ty::mk_mach_int(tcx, ty_i)
       }
       ast::lit_float(_, t) { ty::mk_mach_float(tcx, t) }
       ast::lit_nil { ty::mk_nil(tcx) }

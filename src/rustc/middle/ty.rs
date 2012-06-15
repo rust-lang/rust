@@ -84,6 +84,7 @@ export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, fn_ty, mk_fn;
 export ty_fn_proto, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
 export ty_int, mk_int, mk_mach_int, mk_char;
+export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
 export ty_str, mk_str, type_is_str;
 export ty_vec, mk_vec, type_is_vec;
 export ty_estr, mk_estr;
@@ -416,7 +417,8 @@ enum type_err {
     terr_vstores_differ(terr_vstore_kind, vstore, vstore),
     terr_in_field(@type_err, ast::ident),
     terr_sorts(t, t),
-    terr_self_substs
+    terr_self_substs,
+    terr_no_integral_type,
 }
 
 enum param_bound {
@@ -442,7 +444,7 @@ impl of vid for tv_vid {
 
 impl of vid for tvi_vid {
     fn to_uint() -> uint { *self }
-    fn to_str() -> str { #fmt["<V (integral) %u>", self.to_uint()] }
+    fn to_str() -> str { #fmt["<VI%u>", self.to_uint()] }
 }
 
 impl of vid for region_vid {
@@ -619,11 +621,25 @@ fn mk_bool(cx: ctxt) -> t { mk_t(cx, ty_bool) }
 
 fn mk_int(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i)) }
 
+fn mk_i8(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i8)) }
+
+fn mk_i16(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i16)) }
+
+fn mk_i32(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i32)) }
+
+fn mk_i64(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i64)) }
+
 fn mk_float(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f)) }
 
 fn mk_uint(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u)) }
 
 fn mk_u8(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u8)) }
+
+fn mk_u16(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u16)) }
+
+fn mk_u32(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u32)) }
+
+fn mk_u64(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u64)) }
 
 fn mk_mach_int(cx: ctxt, tm: ast::int_ty) -> t { mk_t(cx, ty_int(tm)) }
 
@@ -1188,7 +1204,7 @@ pure fn type_is_unique(ty: t) -> bool {
 pure fn type_is_scalar(ty: t) -> bool {
     alt get(ty).struct {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_ptr(_) | ty_rptr(_, _) { true }
+      ty_var_integral(_) | ty_type | ty_ptr(_) | ty_rptr(_, _) { true }
       _ { false }
     }
 }
@@ -1827,7 +1843,7 @@ fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
 
 fn type_is_integral(ty: t) -> bool {
     alt get(ty).struct {
-      ty_int(_) | ty_uint(_) | ty_bool { true }
+      ty_var_integral(_) | ty_int(_) | ty_uint(_) | ty_bool { true }
       _ { false }
     }
 }
@@ -2531,6 +2547,10 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
       terr_self_substs {
         ret "inconsistent self substitution"; // XXX this is more of a bug
       }
+      terr_no_integral_type {
+        ret "couldn't determine an appropriate integral type for integer \
+             literal";
+      }
     }
 }
 
@@ -2966,7 +2986,7 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     fn tycat(ty: t) -> int {
         alt get(ty).struct {
           ty_bool { tycat_bool }
-          ty_int(_) | ty_uint(_) { tycat_int }
+          ty_int(_) | ty_uint(_) | ty_var_integral(_) { tycat_int }
           ty_float(_) { tycat_float }
           ty_estr(_) | ty_str { tycat_str }
           ty_evec(_, _) | ty_vec(_) { tycat_vec }

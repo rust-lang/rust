@@ -1473,15 +1473,25 @@ fn store_temp_expr(cx: block, action: copy_action, dst: ValueRef,
     ret move_val(cx, action, dst, src, t);
 }
 
-fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
+fn trans_crate_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
+    -> ValueRef {
     let _icx = cx.insn_ctxt("trans_crate_lit");
     alt lit.node {
       ast::lit_int(i, t) { C_integral(T_int_ty(cx, t), i as u64, True) }
       ast::lit_uint(u, t) { C_integral(T_uint_ty(cx, t), u, False) }
-      ast::lit_int_unsuffixed(i, t) {
-        // FIXME (#1425): should we be using cx.fcx.infcx to figure out what
-        // to actually generate from this?
-        C_integral(T_int_ty(cx, t), i as u64, True)
+      ast::lit_int_unsuffixed(i) {
+        let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
+        alt ty::get(lit_int_ty).struct {
+          ty::ty_int(t) {
+            C_integral(T_int_ty(cx, t), i as u64, True)
+          }
+          ty::ty_uint(t) {
+            C_integral(T_uint_ty(cx, t), i as u64, False)
+          }
+          _ { cx.sess.span_bug(lit.span,
+                               "integer literal doesn't have a type");
+            }
+        }
       }
       ast::lit_float(fs, t) { C_floating(*fs, T_float_ty(cx, t)) }
       ast::lit_bool(b) { C_bool(b) }
@@ -1492,13 +1502,13 @@ fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
     }
 }
 
-fn trans_lit(cx: block, lit: ast::lit, dest: dest) -> block {
+fn trans_lit(cx: block, e: @ast::expr, lit: ast::lit, dest: dest) -> block {
     let _icx = cx.insn_ctxt("trans_lit");
     if dest == ignore { ret cx; }
     alt lit.node {
       ast::lit_str(s) { tvec::trans_estr(cx, s, ast::vstore_uniq, dest) }
       _ {
-        store_in_dest(cx, trans_crate_lit(cx.ccx(), lit), dest)
+        store_in_dest(cx, trans_crate_lit(cx.ccx(), e, lit), dest)
       }
     }
 }
@@ -3584,7 +3594,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
           ast::expr_tup(args) { ret trans_tup(bcx, args, dest); }
           ast::expr_vstore(e, v) { ret tvec::trans_vstore(bcx, e, v, dest); }
-          ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
+          ast::expr_lit(lit) { ret trans_lit(bcx, e, *lit, dest); }
           ast::expr_vec(args, _) {
             ret tvec::trans_evec(bcx, args, ast::vstore_uniq, e.id, dest);
           }
@@ -4684,7 +4694,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt("trans_const_expr");
     alt e.node {
-      ast::expr_lit(lit) { ret trans_crate_lit(cx, *lit); }
+      ast::expr_lit(lit) { ret trans_crate_lit(cx, e, *lit); }
       ast::expr_binary(b, e1, e2) {
         let te1 = trans_const_expr(cx, e1);
         let te2 = trans_const_expr(cx, e2);

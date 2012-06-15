@@ -285,7 +285,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
 
         #debug["lexing %s as an unsuffixed integer literal",
                num_str];
-        ret token::LIT_INT_UNSUFFIXED(parsed as i64, ast::ty_i);
+        ret token::LIT_INT_UNSUFFIXED(parsed as i64);
     }
 }
 
