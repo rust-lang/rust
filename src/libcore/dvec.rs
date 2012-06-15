@@ -129,7 +129,7 @@ impl extensions<A> for dvec<A> {
     #[doc = "Overwrite the current contents"]
     fn set(+w: [mut A]) {
         self.check_not_borrowed();
-        self.data <- w; //FIXME check for recursive use (#2607)
+        self.data <- w;
     }
 }
 
