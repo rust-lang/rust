@@ -88,6 +88,7 @@ fn get_attr_name(attr: ast::attribute) -> ast::ident {
     get_meta_item_name(@attr.node.value)
 }
 
+// All "bad" FIXME copies are as per #2543
 fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
     alt meta.node {
       ast::meta_word(n) { /* FIXME bad */ copy n }
@@ -372,7 +373,7 @@ fn require_unique_names(diagnostic: span_handler,
     for metas.each {|meta|
         let name = get_meta_item_name(meta);
 
-        // FIXME: How do I silence the warnings? --pcw
+        // FIXME: How do I silence the warnings? --pcw (#2619)
         if map.contains_key(*name) {
             diagnostic.span_fatal(meta.span,
                                   #fmt["duplicate meta item `%s`", *name]);
