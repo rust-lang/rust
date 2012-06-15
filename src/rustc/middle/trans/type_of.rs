@@ -91,7 +91,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           }
           ty::ty_enum(did, _) { type_of_enum(cx, did, t) }
           ty::ty_estr(ty::vstore_box) { T_box_ptr(T_box(cx, T_i8())) }
-          ty::ty_evec(mt, ty::vstore_box) { 
+          ty::ty_evec(mt, ty::vstore_box) {
             T_box_ptr(T_box(cx, T_vec(cx, type_of(cx, mt.ty))))
           }
           ty::ty_box(mt) { T_box_ptr(T_box(cx, type_of(cx, mt.ty))) }
