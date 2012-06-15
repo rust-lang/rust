@@ -583,7 +583,7 @@ fn check_loans_in_expr(expr: @ast::expr,
                         expr.span,
                         [rval]);
       }
-      ast::expr_unary(_, _)
+      ast::expr_unary(*) | ast::expr_index(*)
       if self.bccx.method_map.contains_key(expr.id) {
         self.check_call(expr,
                         none,

@@ -200,7 +200,7 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
         visit_expr: fn@(e: @ast::expr) {
             vfn(e.id);
             alt e.node {
-              ast::expr_unary(_, _) | ast::expr_binary(_, _, _) {
+              ast::expr_unary(*) | ast::expr_binary(*) | ast::expr_index(*) {
                 vfn(ast_util::op_expr_callee_id(e));
               }
               _ { /* fallthrough */ }
