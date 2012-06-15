@@ -115,7 +115,7 @@ fn visit_node(id: ast::node_id, span: span, rcx: rcx) -> bool {
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = fcx.node_ty(id);
-    let ty = alt infer::resolve_deep(fcx.infcx, ty0, false) {
+    let ty = alt infer::resolve_deep(fcx.infcx, ty0, force_none) {
       result::err(_) { ret true; }
       result::ok(ty) { ty }
     };

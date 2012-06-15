@@ -176,6 +176,7 @@ export fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
 export int_ty_set_all;
+export force_level, force_none, force_non_region_vars_only, force_all;
 
 // Bitvector to represent sets of integral types
 enum int_ty_set = uint;
@@ -380,18 +381,19 @@ fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
 
 // See comment on the type `resolve_state` below
 fn resolve_shallow(cx: infer_ctxt, a: ty::t,
-                   force_vars: bool) -> fres<ty::t> {
+                   force_vars: force_level) -> fres<ty::t> {
     resolver(cx, false, force_vars).resolve(a)
 }
 
 // See comment on the type `resolve_state` below
 fn resolve_deep_var(cx: infer_ctxt, vid: tv_vid,
-                    force_vars: bool) -> fres<ty::t> {
+                    force_vars: force_level) -> fres<ty::t> {
     resolver(cx, true, force_vars).resolve(ty::mk_var(cx.tcx, vid))
 }
 
 // See comment on the type `resolve_state` below
-fn resolve_deep(cx: infer_ctxt, a: ty::t, force_vars: bool) -> fres<ty::t> {
+fn resolve_deep(cx: infer_ctxt, a: ty::t, force_vars: force_level)
+    -> fres<ty::t> {
     resolver(cx, true, force_vars).resolve(a)
 }
 
@@ -618,7 +620,7 @@ impl methods for infer_ctxt {
     }
 
     fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
-        alt infer::resolve_deep(self, typ, false) {
+        alt infer::resolve_deep(self, typ, force_none) {
           result::ok(new_type) { ret new_type; }
           result::err(_) { ret typ; }
         }
@@ -995,20 +997,34 @@ impl unify_methods for infer_ctxt {
 // A <: [B] and B <: int, then shallow resolution on A would yield
 // [B].  Deep resolution, on the other hand, would yield [int].
 //
-// But there is one more knob: the force_vars variable controls the
-// behavior in the face of unconstrained variables.  If it is true,
-// then unconstrained variables result in an error.
+// But there is one more knob: the `force_level` variable controls
+// the behavior in the face of unconstrained type and region
+// variables.
+
+enum force_level {
+    // Any unconstrained variables are OK.
+    force_none,
+
+    // Unconstrained region vars are OK; unconstrained ty vars and
+    // integral ty vars result in an error.
+    force_non_region_vars_only,
+
+    // Any unconstrained variables result in an error.
+    force_all,
+}
+
 
 type resolve_state = @{
     infcx: infer_ctxt,
     deep: bool,
-    force_vars: bool,
+    force_vars: force_level,
     mut err: option<fixup_err>,
     mut r_seen: [region_vid],
     mut v_seen: [tv_vid]
 };
 
-fn resolver(infcx: infer_ctxt, deep: bool, fvars: bool) -> resolve_state {
+fn resolver(infcx: infer_ctxt, deep: bool, fvars: force_level)
+    -> resolve_state {
     @{infcx: infcx,
       deep: deep,
       force_vars: fvars,
@@ -1021,7 +1037,7 @@ impl methods for resolve_state {
     fn resolve(typ: ty::t) -> fres<ty::t> {
         self.err = none;
 
-        #debug["Resolving %s (deep=%b, force_vars=%b)",
+        #debug["Resolving %s (deep=%b, force_vars=%?)",
                ty_to_str(self.infcx.tcx, typ),
                self.deep,
                self.force_vars];
@@ -1034,7 +1050,7 @@ impl methods for resolve_state {
         assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
         alt self.err {
           none {
-            #debug["Resolved to %s (deep=%b, force_vars=%b)",
+            #debug["Resolved to %s (deep=%b, force_vars=%?)",
                    ty_to_str(self.infcx.tcx, rty),
                    self.deep,
                    self.force_vars];
@@ -1095,8 +1111,11 @@ impl methods for resolve_state {
               { ub:_, lb:some(t) } { self.resolve_region(t) }
               { ub:some(t), lb:_ } { self.resolve_region(t) }
               { ub:none, lb:none } {
-                if self.force_vars {
+                alt self.force_vars {
+                  force_all {
                     self.err = some(unresolved_region(rid));
+                  }
+                  _ { /* ok */ }
                 }
                 ty::re_var(rid)
               }
@@ -1127,8 +1146,11 @@ impl methods for resolve_state {
               { ub:some(t), lb:_ } { self.resolve1(t) }
               { ub:_, lb:some(t) } { self.resolve1(t) }
               { ub:none, lb:none } {
-                if self.force_vars {
+                alt self.force_vars {
+                  force_non_region_vars_only | force_all {
                     self.err = some(unresolved_ty(vid));
+                  }
+                  force_none { /* ok */ }
                 }
                 ty::mk_var(tcx, vid)
               }
@@ -1146,7 +1168,8 @@ impl methods for resolve_state {
         alt single_type_contained_in(self.infcx.tcx, pt) {
           some(t) { t }
           none {
-            if self.force_vars {
+            alt self.force_vars {
+              force_non_region_vars_only | force_all {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
@@ -1154,13 +1177,14 @@ impl methods for resolve_state {
                     root(convert_integral_ty_to_int_ty_set(self.infcx.tcx,
                                                            ty)));
                 ty
-            } else {
+              }
+              force_none {
                 ty::mk_var_integral(self.infcx.tcx, vid)
+              }
             }
           }
         }
     }
-
 }
 
 // ______________________________________________________________________

@@ -76,6 +76,8 @@ import rscope::{in_binding_rscope, region_scope, type_rscope};
 import syntax::ast::{ty_char, ty_i};
 import typeck::infer::{root, to_str};
 import typeck::infer::{unify_methods}; // infcx.set()
+import typeck::infer::{force_level, force_none, force_non_region_vars_only,
+                       force_all};
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -1040,7 +1042,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         -> option<O> {
         alt expected {
           some(t) {
-            alt infer::resolve_shallow(fcx.infcx, t, false) {
+            alt infer::resolve_shallow(fcx.infcx, t, force_none) {
               result::ok(t) { unpack(ty::get(t).struct) }
               _ { none }
             }
@@ -2184,7 +2186,8 @@ fn instantiate_path(fcx: @fn_ctxt,
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
-    alt infer::resolve_shallow(fcx.infcx, tp, false) {
+    alt infer::resolve_shallow(fcx.infcx, tp,
+                               force_non_region_vars_only) {
       result::ok(t_s) if !ty::type_is_var(t_s) { ret t_s; }
       _ {
         fcx.ccx.tcx.sess.span_fatal
@@ -2357,5 +2360,3 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
                      ty_to_str(ccx.tcx, fty)]});
     }
 }
-
-

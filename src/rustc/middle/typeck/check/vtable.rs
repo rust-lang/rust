@@ -168,7 +168,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
 
 fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
     let tcx = fcx.ccx.tcx;
-    alt infer::resolve_deep(fcx.infcx, ty, true) {
+    alt infer::resolve_deep(fcx.infcx, ty, force_all) {
       result::ok(new_type) { new_type }
       result::err(e) {
         tcx.sess.span_fatal(

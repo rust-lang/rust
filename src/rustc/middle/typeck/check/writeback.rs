@@ -10,7 +10,7 @@ export resolve_type_vars_in_expr;
 fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
     option<ty::t> {
     if !ty::type_needs_infer(typ) { ret some(typ); }
-    alt infer::resolve_deep(fcx.infcx, typ, true) {
+    alt infer::resolve_deep(fcx.infcx, typ, force_all) {
       result::ok(new_type) { ret some(new_type); }
       result::err(e) {
         if !fcx.ccx.tcx.sess.has_errors() {
@@ -131,7 +131,7 @@ fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
 fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { ret; }
     let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
-    alt infer::resolve_deep_var(wbcx.fcx.infcx, var_id, true) {
+    alt infer::resolve_deep_var(wbcx.fcx.infcx, var_id, force_all) {
       result::ok(lty) {
         #debug["Type for local %s (id %d) resolved to %s",
                pat_to_str(l.node.pat), l.node.id,
