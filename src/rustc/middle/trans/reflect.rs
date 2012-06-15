@@ -80,10 +80,14 @@ impl methods for reflector {
                          [self.c_uint(mt.mutbl as uint)] + extra);
     }
 
-    fn vstore_name_and_extra(vstore: ty::vstore,
+    fn vstore_name_and_extra(t: ty::t,
+                             vstore: ty::vstore,
                              f: fn(str,[ValueRef])) {
         alt vstore {
-          ty::vstore_fixed(n) { f("fixed", [self.c_uint(n)]) }
+          ty::vstore_fixed(n) {
+            let extra = [self.c_uint(n)] + self.c_size_and_align(t);
+            f("fixed", extra)
+          }
           ty::vstore_slice(_) { f("slice", []) }
           ty::vstore_uniq { f("uniq", []);}
           ty::vstore_box { f("box", []); }
@@ -123,12 +127,12 @@ impl methods for reflector {
 
           ty::ty_vec(mt) { self.bracketed_mt("vec", mt, []) }
           ty::ty_estr(vst) {
-            self.vstore_name_and_extra(vst) {|name, extra|
+            self.vstore_name_and_extra(t, vst) {|name, extra|
                 self.visit("estr_" + name, extra)
             }
           }
           ty::ty_evec(mt, vst) {
-            self.vstore_name_and_extra(vst) {|name, extra|
+            self.vstore_name_and_extra(t, vst) {|name, extra|
                 self.bracketed_mt("evec_" + name, mt, extra)
             }
           }
@@ -138,21 +142,25 @@ impl methods for reflector {
           ty::ty_rptr(_, mt) { self.bracketed_mt("rptr", mt, []) }
 
           ty::ty_rec(fields) {
-            self.visit("enter_rec", [self.c_uint(vec::len(fields))]);
+            let extra = ([self.c_uint(vec::len(fields))]
+                         + self.c_size_and_align(t));
+            self.visit("enter_rec", extra);
             for fields.eachi {|i, field|
                 self.bracketed_mt("rec_field", field.mt,
                                   [self.c_uint(i),
                                    self.c_slice(*field.ident)]);
             }
-            self.visit("leave_rec", [self.c_uint(vec::len(fields))]);
+            self.visit("leave_rec", extra);
           }
 
           ty::ty_tup(tys) {
-            self.visit("enter_tup", [self.c_uint(vec::len(tys))]);
+            let extra = ([self.c_uint(vec::len(tys))]
+                         + self.c_size_and_align(t));
+            self.visit("enter_tup", extra);
             for tys.eachi {|i, t|
                 self.bracketed_t("tup_field", t, [self.c_uint(i)]);
             }
-            self.visit("leave_tup", [self.c_uint(vec::len(tys))]);
+            self.visit("leave_tup", extra);
           }
 
           // FIXME: fetch constants out of intrinsic:: for the numbers.
@@ -206,13 +214,16 @@ impl methods for reflector {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let fields = ty::class_items_as_fields(tcx, did, substs);
-            self.visit("enter_class", [self.c_uint(vec::len(fields))]);
+            let extra = ([self.c_uint(vec::len(fields))]
+                         + self.c_size_and_align(t));
+
+            self.visit("enter_class", extra);
             for fields.eachi {|i, field|
                 self.bracketed_mt("class_field", field.mt,
                                   [self.c_uint(i),
                                    self.c_slice(*field.ident)]);
             }
-            self.visit("leave_class", [self.c_uint(vec::len(fields))]);
+            self.visit("leave_class", extra);
           }
 
           // FIXME: visiting all the variants in turn is probably
@@ -223,8 +234,10 @@ impl methods for reflector {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let variants = ty::substd_enum_variants(tcx, did, substs);
+            let extra = ([self.c_uint(vec::len(variants))]
+                         + self.c_size_and_align(t));
 
-            self.visit("enter_enum", [self.c_uint(vec::len(variants))]);
+            self.visit("enter_enum", extra);
             for variants.eachi {|i, v|
                 let extra = [self.c_uint(i),
                              self.c_int(v.disr_val),
@@ -237,7 +250,7 @@ impl methods for reflector {
                 }
                 self.visit("leave_enum_variant", extra);
             }
-            self.visit("leave_enum", [self.c_uint(vec::len(variants))]);
+            self.visit("leave_enum", extra);
           }
 
           // Miscallaneous extra types
