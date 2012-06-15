@@ -1404,8 +1404,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
         ret bcx;
     }
     if ty::type_is_nil(t) || ty::type_is_bot(t) { ret bcx; }
-    if ty::type_is_boxed(t) || ty::type_is_vec(t) ||
-       ty::type_is_unique_box(t) {
+    if ty::type_is_boxed(t) || ty::type_is_unique(t) {
         if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
         Store(bcx, src, dst);
         ret take_ty(bcx, dst, t);
