@@ -1387,13 +1387,8 @@ fn kind_top() -> kind {
     kind_(0xffffffffu32)
 }
 
-fn remove_const(k: kind, tm: mt) -> kind {
-    if tm.mutbl == ast::m_mutbl {
-        k - kind_const()
-    }
-    else {
-        k
-    }
+fn remove_const(k: kind) -> kind {
+    k - kind_const()
 }
 
 fn remove_implicit(k: kind) -> kind {
@@ -1475,10 +1470,11 @@ fn test_kinds() {
 // Return the most permissive kind that a composite object containing a field
 // with the given mutability can have.
 // This is used to prevent objects containing mutable state from being
-// implicitly copied.
+// implicitly copied and to compute whether things have const kind.
 fn mutability_kind(m: mutability) -> kind {
     alt (m) {
-      m_mutbl | m_const { remove_implicit(kind_top()) }
+      m_mutbl { remove_const(remove_implicit(kind_top())) }
+      m_const { remove_implicit(kind_top()) }
       m_imm { kind_top() }
     }
 }
@@ -1528,18 +1524,18 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Unique boxes and vecs have the kind of their contained type,
       // but unique boxes can't be implicitly copyable.
       ty_uniq(tm) {
-        remove_implicit(remove_const(type_kind(cx, tm.ty), tm))
+        remove_implicit(mutable_type_kind(cx, tm))
       }
       // Implicit copyability of vecs is configurable
       ty_vec(tm) {
-          let k = if cx.vecs_implicitly_copyable {
+          if cx.vecs_implicitly_copyable {
               mutable_type_kind(cx, tm)
-          } else { remove_implicit(type_kind(cx, tm.ty)) };
-          remove_const(k, tm)
+          } else { remove_implicit(mutable_type_kind(cx, tm)) }
       }
 
-      // Slice and refcounted evecs are copyable; uniques and interiors
-      // depend on the their contained type, but aren't implicitly copyable.
+      // Slices, refcounted evecs are copyable; uniques depend on the their
+      // contained type, but aren't implicitly copyable.  Fixed vectors have
+      // the kind of the element they contain, taking mutability into account.
       ty_evec(tm, vstore_box) |
       ty_evec(tm, vstore_slice(_)) {
         if kind_lteq(kind_const(), type_kind(cx, tm.ty)) {
@@ -1549,23 +1545,24 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
             kind_implicitly_copyable()
         }
       }
-      ty_evec(tm, vstore_uniq) |
+      ty_evec(tm, vstore_uniq) {
+        remove_implicit(mutable_type_kind(cx, tm))
+      }
       ty_evec(tm, vstore_fixed(_)) {
-        remove_implicit(remove_const(type_kind(cx, tm.ty), tm))
+        mutable_type_kind(cx, tm)
       }
 
       // All estrs are copyable; uniques and interiors are sendable.
       ty_estr(vstore_box) |
       ty_estr(vstore_slice(_)) { kind_implicitly_copyable() | kind_const() }
-      ty_estr(vstore_uniq) |
-      ty_estr(vstore_fixed(_)) { kind_sendable() | kind_const() }
+      ty_estr(vstore_uniq) { kind_sendable() | kind_const() }
+      ty_estr(vstore_fixed(_)) { kind_implicitly_sendable() | kind_const() }
 
       // Records lower to the lowest of their members.
       ty_rec(flds) {
         let mut lowest = kind_top();
         for flds.each {|f|
             lowest = lower_kind(lowest, mutable_type_kind(cx, f.mt));
-            lowest = remove_const(lowest, f.mt);
         }
         lowest
       }
@@ -1614,10 +1611,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         (kind_const() & type_kind(cx, inner)) | kind_send_only()
       }
       ty_param(_, did) {
-        // FIXME: type params shouldn't be implicitly copyable (#2449)
-        let k = param_bounds_to_kind(cx.ty_param_bounds.get(did.node));
-        if kind_can_be_copied(k)
-            { raise_kind(k, kind_implicitly_copyable()) } else { k }
+        param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
       // FIXME: is self ever const?
