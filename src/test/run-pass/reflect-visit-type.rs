@@ -1,3 +1,6 @@
+// FIXME: un-xfail after snapshot
+// xfail-test
+
 enum my_visitor = @{ mut types: [str] };
 
 impl of intrinsic::ty_visitor for my_visitor {
