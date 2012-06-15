@@ -923,7 +923,9 @@ public:
     void walk_fixedvec1(uint16_t n_elts, bool is_pod) {
         size_align sa = size_of::get(*this);
         ALIGN_TO(sa.alignment);
+        U next_dp = dp + (n_elts * sa.size);
         static_cast<T *>(this)->walk_fixedvec2(n_elts, sa.size, is_pod);
+        dp = next_dp;
     }
 
     void walk_box1() { DATA_SIMPLE(void *, walk_box2()); }
