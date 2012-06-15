@@ -68,7 +68,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
                                                 modpath, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
-        cx.sess.chpos = p0.reader.chpos();
+        cx.sess.chpos = r0.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         ret (m0.view_items, m0.items, inner_attrs.inner);
     } else {
@@ -106,7 +106,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
                            /* FIXME: bad */ copy id,
                            ast::item_mod(m0), ast::public, mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
-        cx.sess.chpos = p0.reader.chpos();
+        cx.sess.chpos = r0.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         items += [i];
       }

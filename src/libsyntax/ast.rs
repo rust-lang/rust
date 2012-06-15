@@ -377,7 +377,7 @@ enum blk_sort {
 enum token_tree {
     /* for macro invocations; parsing is the macro's job */
     tt_delim([token_tree]),
-    tt_flat(uint, token::token)
+    tt_flat(span, token::token)
 }
 
 #[auto_serialize]

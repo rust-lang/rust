@@ -63,7 +63,7 @@ class parser {
     let mut token: token::token;
     let mut span: span;
     let mut last_span: span;
-    let mut buffer: [mut {tok: token::token, span: span}]/4;
+    let mut buffer: [mut {tok: token::token, sp: span}]/4;
     let mut buffer_start: int;
     let mut buffer_end: int;
     let mut restriction: restriction;
@@ -75,7 +75,7 @@ class parser {
     {
         self.reader <- rdr;
         let tok0 = self.reader.next_token();
-        let span0 = ast_util::mk_sp(tok0.chpos, self.reader.chpos());
+        let span0 = tok0.sp;
         self.sess = sess;
         self.cfg = cfg;
         self.file_type = ftype;
@@ -83,10 +83,10 @@ class parser {
         self.span = span0;
         self.last_span = span0;
         self.buffer = [mut
-            {tok: tok0.tok, span: span0},
-            {tok: tok0.tok, span: span0},
-            {tok: tok0.tok, span: span0},
-            {tok: tok0.tok, span: span0}
+            {tok: tok0.tok, sp: span0},
+            {tok: tok0.tok, sp: span0},
+            {tok: tok0.tok, sp: span0},
+            {tok: tok0.tok, sp: span0}
         ]/4;
         self.buffer_start = 0;
         self.buffer_end = 0;
@@ -100,16 +100,15 @@ class parser {
 
     fn bump() {
         self.last_span = self.span;
-        if self.buffer_start == self.buffer_end {
-            let next = self.reader.next_token();
-            self.token = next.tok;
-            self.span = mk_sp(next.chpos, self.reader.chpos());
+        let next = if self.buffer_start == self.buffer_end {
+            self.reader.next_token()
         } else {
             let next = self.buffer[self.buffer_start];
             self.buffer_start = (self.buffer_start + 1) & 3;
-            self.token = next.tok;
-            self.span = next.span;
-        }
+            next
+        };
+        self.token = next.tok;
+        self.span = next.sp;
     }
     fn swap(next: token::token, lo: uint, hi: uint) {
         self.token = next;
@@ -124,9 +123,7 @@ class parser {
     fn look_ahead(distance: uint) -> token::token {
         let dist = distance as int;
         while self.buffer_length() < dist {
-            let next = self.reader.next_token();
-            let sp = mk_sp(next.chpos, self.reader.chpos());
-            self.buffer[self.buffer_end] = {tok: next.tok, span: sp};
+            self.buffer[self.buffer_end] = self.reader.next_token();
             self.buffer_end = (self.buffer_end + 1) & 3;
         }
         ret copy self.buffer[(self.buffer_start + dist - 1) & 3].tok;
@@ -1082,7 +1079,7 @@ class parser {
               }
               _ { /* ok */ }
             }
-            let res = tt_flat(p.span.lo, p.token);
+            let res = tt_flat(p.span, p.token);
             p.bump();
             ret res;
         }

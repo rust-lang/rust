@@ -1,7 +1,7 @@
 import io::reader_util;
 import io::println;//XXXXXXXXxxx
 import util::interner;
-import lexer::{ string_reader, bump, is_eof, nextch, new_string_reader,
+import lexer::{ string_reader, bump, is_eof, nextch,
                is_whitespace, get_str_from, string_reader_as_reader };
 
 export cmnt;
@@ -176,8 +176,9 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         {|x|str::hash(*x)},
         {|x,y|str::eq(*x, *y)}
     );
-    let rdr = new_string_reader(span_diagnostic,
-                                codemap::new_filemap(path, src, 0u, 0u), itr);
+    let rdr = lexer::new_low_level_string_reader
+        (span_diagnostic, codemap::new_filemap(path, src, 0u, 0u), itr);
+
     let mut comments: [cmnt] = [];
     let mut literals: [lit] = [];
     let mut first_read: bool = true;
@@ -195,14 +196,17 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
             }
             break;
         }
-        let bpos = rdr.pos;
-        let tok = rdr.next_token();
-        if token::is_lit(tok.tok) {
-            let s = get_str_from(rdr, bpos);
-            literals += [{lit: s, pos: tok.chpos}];
+
+
+        let bstart = rdr.pos;
+        //discard, and look ahead; we're working with internal state
+        let {tok: tok, sp: sp} = rdr.next_token();
+        if token::is_lit(tok) {
+            let s = get_str_from(rdr, bstart);
+            literals += [{lit: s, pos: sp.lo}];
             log(debug, "tok lit: " + s);
         } else {
-            log(debug, "tok: " + token::to_str(*rdr.interner, tok.tok));
+            log(debug, "tok: " + token::to_str(*rdr.interner, tok));
         }
         first_read = false;
     }

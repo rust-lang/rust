@@ -2,17 +2,17 @@ import util::interner;
 import util::interner::intern;
 import diagnostic;
 import ast::{tt_delim,tt_flat};
+import codemap::span;
 
 export reader, string_reader, new_string_reader, is_whitespace;
 export tt_reader,  new_tt_reader, dup_tt_reader;
-export nextch, is_eof, bump, get_str_from;
+export nextch, is_eof, bump, get_str_from, new_low_level_string_reader;
 export string_reader_as_reader, tt_reader_as_reader;
 
 iface reader {
     fn is_eof() -> bool;
-    fn next_token() -> {tok: token::token, chpos: uint};
+    fn next_token() -> {tok: token::token, sp: span};
     fn fatal(str) -> !;
-    fn chpos() -> uint;
     fn interner() -> @interner::interner<@str>;
 }
 
@@ -33,7 +33,7 @@ type tt_reader = ~{
     mut cur: tt_frame,
     /* cached: */
     mut cur_tok: token::token,
-    mut cur_chpos: uint
+    mut cur_span: span
 };
 
 fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
@@ -42,10 +42,11 @@ fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
     let r = ~{span_diagnostic: span_diagnostic, interner: itr,
               mut cur: @{readme: src, mut idx: 0u,
                          up: tt_frame_up(option::none)},
-              mut cur_tok: token::EOF, /* dummy value, never read */
-              mut cur_chpos: 0u /* dummy value, never read */
+              /* dummy values, never read: */
+              mut cur_tok: token::EOF,
+              mut cur_span: ast_util::mk_sp(0u,0u)
              };
-    tt_next_token(r); /* get cur_tok and cur_chpos set up */
+    tt_next_token(r); /* get cur_tok and cur_span set up */
     ret r;
 }
 
@@ -63,7 +64,7 @@ pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
 pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
     ~{span_diagnostic: r.span_diagnostic, interner: r.interner,
       mut cur: dup_tt_frame(r.cur),
-      mut cur_tok: r.cur_tok, mut cur_chpos: r.cur_chpos}
+      mut cur_tok: r.cur_tok, mut cur_span: r.cur_span}
 }
 
 type string_reader = @{
@@ -80,6 +81,15 @@ type string_reader = @{
 fn new_string_reader(span_diagnostic: diagnostic::span_handler,
                      filemap: codemap::filemap,
                      itr: @interner::interner<@str>) -> string_reader {
+    let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
+    ret r;
+}
+
+/* For comments.rs, which hackily pokes into 'pos' and 'curr' */
+fn new_low_level_string_reader(span_diagnostic: diagnostic::span_handler,
+                               filemap: codemap::filemap,
+                               itr: @interner::interner<@str>)
+    -> string_reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
               mut chpos: filemap.start_pos.ch,
@@ -94,7 +104,7 @@ fn new_string_reader(span_diagnostic: diagnostic::span_handler,
 
 impl string_reader_as_reader of reader for string_reader {
     fn is_eof() -> bool { is_eof(self) }
-    fn next_token() -> {tok: token::token, chpos: uint} {
+    fn next_token() -> {tok: token::token, sp: span} {
         consume_whitespace_and_comments(self);
         let start_chpos = self.chpos;
         let tok = if is_eof(self) {
@@ -102,19 +112,18 @@ impl string_reader_as_reader of reader for string_reader {
         } else {
             next_token_inner(self)
         };
-        ret {tok: tok, chpos: start_chpos};
+        ret {tok: tok, sp: ast_util::mk_sp(start_chpos, self.chpos)};
     }
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(
             ast_util::mk_sp(self.chpos, self.chpos), m)
     }
-    fn chpos() -> uint { self.chpos }
     fn interner() -> @interner::interner<@str> { self.interner }
 }
 
 impl tt_reader_as_reader of reader for tt_reader {
     fn is_eof() -> bool { self.cur_tok == token::EOF }
-    fn next_token() -> {tok: token::token, chpos: uint} {
+    fn next_token() -> {tok: token::token, sp: span} {
         /* weird resolve bug: if the following `if`, or any of its
         statements are removed, we get resolution errors */
         if false {
@@ -124,15 +133,19 @@ impl tt_reader_as_reader of reader for tt_reader {
         tt_next_token(self)
     }
     fn fatal(m: str) -> ! {
-        self.span_diagnostic.span_fatal(
-            ast_util::mk_sp(self.chpos(), self.chpos()), m);
+        self.span_diagnostic.span_fatal(copy self.cur_span, m);
     }
-    fn chpos() -> uint { self.cur_chpos }
     fn interner() -> @interner::interner<@str> { self.interner }
 }
 
-fn tt_next_token(&&r: tt_reader) -> {tok: token::token, chpos: uint} {
-    let ret_val = { tok: r.cur_tok, chpos: r.cur_chpos };
+fn string_advance_token(&&r: string_reader) {
+    consume_whitespace_and_comments(r);
+
+    next_token_inner(r);
+}
+
+fn tt_next_token(&&r: tt_reader) -> {tok: token::token, sp: span} {
+    let ret_val = { tok: r.cur_tok, sp: r.cur_span };
     if r.cur.idx >= vec::len(r.cur.readme) {
         /* done with this set; pop */
         alt r.cur.up {
@@ -158,8 +171,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token::token, chpos: uint} {
             r.cur = @{readme: tts, mut idx: 0u,
                       up: tt_frame_up(option::some(copy r.cur)) };
           }
-          tt_flat(chpos, tok) {
-            r.cur_chpos = chpos; r.cur_tok = tok;
+          tt_flat(sp, tok) {
+            r.cur_span = sp; r.cur_tok = tok;
             r.cur.idx += 1u;
             ret ret_val;
           }
