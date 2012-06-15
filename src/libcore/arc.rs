@@ -28,7 +28,6 @@ resource arc_destruct<T>(data: *libc::c_void) {
     unsafe {
         let data: ~arc_data<T> = unsafe::reinterpret_cast(data);
         let new_count = rustrt::rust_atomic_decrement(&mut data.count);
-        let data_ptr : *() = unsafe::reinterpret_cast(data);
         assert new_count >= 0;
         if new_count == 0 {
             // drop glue takes over.
@@ -70,7 +69,6 @@ fn clone<T: const>(rc: &arc<T>) -> arc<T> {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
         let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
-        let data_ptr : *() = unsafe::reinterpret_cast(ptr);
         assert new_count >= 2;
         unsafe::forget(ptr);
     }
@@ -97,7 +95,6 @@ impl methods<T: send> for exclusive<T> {
             // this makes me nervous...
             let ptr: ~arc_data<ex_data<T>> = unsafe::reinterpret_cast(*self);
             let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
-            let data_ptr : *() = unsafe::reinterpret_cast(ptr);
             assert new_count > 1;
             unsafe::forget(ptr);
         }

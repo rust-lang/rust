@@ -2194,13 +2194,6 @@ mod tests {
     }
 
     #[test]
-    fn test_unshift() {
-        let mut x = [1, 2, 3];
-        unshift(x, 0);
-        assert x == [0, 1, 2, 3];
-    }
-
-    #[test]
     fn test_capacity() {
         let mut v = [0u64];
         reserve(v, 10u);
