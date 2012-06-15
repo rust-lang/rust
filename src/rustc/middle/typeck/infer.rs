@@ -209,7 +209,7 @@ fn intersection(a: int_ty_set, b: int_ty_set) -> int_ty_set {
 
 fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
     option<ty::t> {
-    #debug["type_contained_in(a=%s)", uint::to_str(*a, 10u)];
+    #debug["single_type_contained_in(a=%s)", uint::to_str(*a, 10u)];
 
     if *a == INT_TY_SET_i8    { ret some(ty::mk_i8(tcx)); }
     if *a == INT_TY_SET_u8    { ret some(ty::mk_u8(tcx)); }
@@ -219,13 +219,9 @@ fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
     if *a == INT_TY_SET_u32   { ret some(ty::mk_u32(tcx)); }
     if *a == INT_TY_SET_i64   { ret some(ty::mk_i64(tcx)); }
     if *a == INT_TY_SET_u64   { ret some(ty::mk_u64(tcx)); }
-    if *a == INT_TY_SET_i     { ret(some(ty::mk_int(tcx))); }
-    if *a == INT_TY_SET_u     { ret(some(ty::mk_uint(tcx))); }
+    if *a == INT_TY_SET_i     { ret some(ty::mk_int(tcx)); }
+    if *a == INT_TY_SET_u     { ret some(ty::mk_uint(tcx)); }
     ret none;
-}
-
-fn is_subset_of(a: int_ty_set, b: int_ty_set) -> bool {
-    (*a & *b) == *a
 }
 
 fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
@@ -1647,11 +1643,13 @@ fn super_tys<C:combine>(
         self.infcx().vars_integral(self.infcx().tvib, a_id, b_id).then {||
             ok(a) }
       }
-      (ty::ty_var_integral(a_id), _) {
+      (ty::ty_var_integral(a_id), ty::ty_int(_)) |
+      (ty::ty_var_integral(a_id), ty::ty_uint(_)) {
         self.infcx().vart_integral(self.infcx().tvib, a_id, b).then {||
             ok(a) }
       }
-      (_, ty::ty_var_integral(b_id)) {
+      (ty::ty_int(_), ty::ty_var_integral(b_id)) |
+      (ty::ty_uint(_), ty::ty_var_integral(b_id)) {
         self.infcx().tvar_integral(self.infcx().tvib, a, b_id).then {||
             ok(a) }
       }

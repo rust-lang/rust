@@ -73,8 +73,7 @@ import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
-import syntax::ast::{ty_char, ty_i};
-import typeck::infer::{root, to_str};
+import syntax::ast::ty_i;
 import typeck::infer::{unify_methods}; // infcx.set()
 import typeck::infer::{force_level, force_none, force_non_region_vars_only,
                        force_all};
@@ -624,7 +623,7 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
       ast::lit_str(_) { ty::mk_str(tcx) }
       ast::lit_int(_, t) { ty::mk_mach_int(tcx, t) }
       ast::lit_uint(_, t) { ty::mk_mach_uint(tcx, t) }
-      ast::lit_int_unsuffixed(v) {
+      ast::lit_int_unsuffixed(_) {
         // An unsuffixed integer literal could have any integral type,
         // so we create an integral type variable for it.
         ty::mk_var_integral(tcx, fcx.infcx.next_ty_var_integral_id());
