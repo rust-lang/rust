@@ -20,6 +20,7 @@ RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
                      -iquote $$(LLVM_INCDIR_$(1)) \
                      -iquote $$(S)src/rustllvm/include
 RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=rustllvm/$(1)/%.o)
+ALL_OBJ_FILES += $$(RUSTLLVM_OBJS_OBJS_$(1))
 
 rustllvm/$(1)/$(CFG_RUSTLLVM): $$(RUSTLLVM_OBJS_OBJS_$(1)) \
                           $$(MKFILE_DEPS) $$(RUSTLLVM_DEF_$(1))

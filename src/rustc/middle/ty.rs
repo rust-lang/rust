@@ -1112,7 +1112,7 @@ fn type_is_str(ty: t) -> bool {
 fn sequence_element_type(cx: ctxt, ty: t) -> t {
     alt get(ty).struct {
       ty_str | ty_estr(_) { ret mk_mach_uint(cx, ast::ty_u8); }
-      ty_vec(mt) | ty_evec(mt, _) { ret mt.ty; }
+      ty_vec(mt) | ty_evec(mt, _) | ty_unboxed_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
     }
 }
@@ -1134,7 +1134,8 @@ pure fn type_is_box(ty: t) -> bool {
 
 pure fn type_is_boxed(ty: t) -> bool {
     alt get(ty).struct {
-      ty_box(_) | ty_opaque_box { true }
+      ty_box(_) | ty_opaque_box |
+      ty_evec(_, vstore_box) | ty_estr(vstore_box) { true }
       _ { false }
     }
 }
@@ -1212,6 +1213,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       ty_estr(vstore_fixed(_)) | ty_estr(vstore_slice(_)) |
       ty_evec(_, vstore_slice(_)) { false }
       ty_evec(mt, vstore_fixed(_)) { type_needs_drop(cx, mt.ty) }
+      ty_unboxed_vec(mt) { type_needs_drop(cx, mt.ty) }
       ty_rec(flds) {
         for flds.each {|f| if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
@@ -2693,9 +2695,11 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
     let result = if ast::local_crate != id.crate {
         @csearch::get_enum_variants(cx, id)
     } else {
-        // FIXME: Now that the variants are run through the type checker (to
-        // check the disr_expr if it exists), this code should likely be
-        // moved there to avoid having to call eval_const_expr twice.
+        /*
+          Although both this code and check_enum_variants in typeck/check
+          call eval_const_expr, it should never get called twice for the same
+          expr, since check_enum_variants also updates the enum_var_cache
+         */
         alt cx.items.get(id.node) {
           ast_map::node_item(@{node: ast::item_enum(variants, _, _), _}, _) {
             let mut disr_val = -1;
@@ -3032,9 +3036,16 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             alt r.self_r {
               some(_) {
                 // This enum has a self region. Get rid of it
-                mk_enum(cx, did, {self_r: none,
-                                  self_ty: none,
-                                  tps: r.tps})
+                mk_enum(cx, did, {self_r: none, self_ty: none, tps: r.tps})
+              }
+              none { t }
+            }
+        }
+        ty_class(did, r) {
+            alt r.self_r {
+              some(_) {
+                // Ditto.
+                mk_class(cx, did, {self_r: none, self_ty: none, tps: r.tps})
               }
               none { t }
             }

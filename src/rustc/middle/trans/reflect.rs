@@ -156,6 +156,7 @@ impl methods for reflector {
           }
 
           // FIXME: fetch constants out of intrinsic:: for the numbers.
+          // (#2594)
           ty::ty_fn(fty) {
             let pureval = alt fty.purity {
               ast::pure_fn { 0u }
@@ -217,7 +218,7 @@ impl methods for reflector {
           // FIXME: visiting all the variants in turn is probably
           // not ideal. It'll work but will get costly on big enums.
           // Maybe let the visitor tell us if it wants to visit only
-          // a particular variant?
+          // a particular variant? (#2595)
           ty::ty_enum(did, substs) {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;

@@ -25,7 +25,7 @@ impl extensions<A:copy> for IMPL_T<A> {
     fn map_to_vec<B>(op: fn(A) -> B) -> [B] { iter::map_to_vec(self, op) }
     fn to_vec() -> [A] { iter::to_vec(self) }
 
-    // FIXME--bug in resolve prevents this from working
+    // FIXME--bug in resolve prevents this from working (#2611)
     // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> [B] {
     //     iter::flat_map_to_vec(self, op)
     // }

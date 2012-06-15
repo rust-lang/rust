@@ -1201,14 +1201,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               none {
                 alt sty {
                   ty::ty_enum(*) {
-                    tcx.sess.span_fatal(
+                    tcx.sess.span_err(
                         expr.span,
                         "can only dereference enums \
                          with a single variant which has a \
                          single argument");
                   }
                   _ {
-                    tcx.sess.span_fatal(
+                    tcx.sess.span_err(
                         expr.span,
                         #fmt["type %s cannot be dereferenced",
                              fcx.infcx.ty_to_str(oper_t)]);
@@ -1893,6 +1893,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
     let fcx = blank_fn_ctxt(ccx, rty);
     let mut disr_vals: [int] = [];
     let mut disr_val = 0;
+    let mut variants = [];
     for vs.each {|v|
         alt v.node.disr_expr {
           some(e) {
@@ -1921,8 +1922,18 @@ fn check_enum_variants(ccx: @crate_ctxt,
                                   "discriminator value already exists.");
         }
         disr_vals += [disr_val];
+        let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
+        let arg_tys = if v.node.args.len() > 0u {
+            ty::ty_fn_args(ctor_ty).map {|a| a.ty }
+          } else { [] };
+        variants += [@{args: arg_tys, ctor_ty: ctor_ty,
+              name: v.node.name, id: local_def(v.node.id),
+              disr_val: disr_val}];
         disr_val += 1;
     }
+
+    // cache so that ty::enum_variants won't repeat this work
+    ccx.tcx.enum_var_cache.insert(local_def(id), @variants);
 
     // Check that it is possible to represent this enum:
     let mut outer = true, did = local_def(id);

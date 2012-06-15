@@ -879,7 +879,7 @@ fn test_avoid_copying_the_body_spawn() {
 #[test]
 fn test_avoid_copying_the_body_spawn_listener() {
     avoid_copying_the_body {|f|
-        spawn_listener(fn~[move f](_po: comm::port<int>) {
+        spawn_listener(fn~(move f, _po: comm::port<int>) {
             f();
         });
     }
@@ -899,7 +899,7 @@ fn test_avoid_copying_the_body_run() {
 fn test_avoid_copying_the_body_run_listener() {
     avoid_copying_the_body {|f|
         let buildr = builder();
-        run_listener(buildr, fn~[move f](_po: comm::port<int>) {
+        run_listener(buildr, fn~(move f, _po: comm::port<int>) {
             f();
         });
     }

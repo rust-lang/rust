@@ -24,7 +24,7 @@ pure fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 pure fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
 pure fn path_name_i(idents: [ident]) -> str {
-    // FIXME: Bad copies
+    // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     str::connect(idents.map({|i|*i}), "::")
 }
 

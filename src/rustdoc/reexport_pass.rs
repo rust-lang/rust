@@ -122,7 +122,7 @@ fn build_reexport_def_map(
         def_map: ast_util::new_def_hash()
     };
 
-    // FIXME: Do a parallel fold
+    // FIXME: Do a parallel fold (#2597)
     let fold = fold::fold({
         fold_mod: fold_mod,
         fold_nmod: fold_nmod

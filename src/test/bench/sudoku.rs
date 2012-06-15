@@ -59,14 +59,12 @@ fn solve_grid(g: grid_t) {
             drop_colors(g, avail, row, col);
 
             // find first remaining color that is available
-            let mut i = 1 as uint;
-            while i < (10 as uint) { /* FIXME llvm ctlhd */
+            for uint::range(1u, 10u) {|i|
                 if bitv::get(avail, i) {
                     g[row][col] = i as u8;
                     ret true;
                 }
-                i += 1 as uint; /* else */
-            }
+            };
         }
         g[row][col] = 0u8;
         ret false;
@@ -131,6 +129,7 @@ fn write_grid(f: io::writer, g: grid_t) {
 fn main(args: [str]) {
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
+        // (#571)
         let g = vec::from_fn(10u, {|_i|
             vec::to_mut(vec::from_elem(10u, 0 as u8))
         });

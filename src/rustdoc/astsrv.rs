@@ -97,7 +97,7 @@ fn exec<T:send>(
 ) -> T {
     let po = comm::port();
     let ch = comm::chan(po);
-    let msg = handle_request(fn~[move f](ctxt: ctxt) {
+    let msg = handle_request(fn~(move f, ctxt: ctxt) {
         comm::send(ch, f(ctxt))
     });
     comm::send(srv.ch, msg);

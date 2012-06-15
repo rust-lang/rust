@@ -5,12 +5,34 @@ import back::abi;
 import base::{call_memmove,
                INIT, copy_val, load_if_immediate, get_tydesc,
                sub_block, do_spill_noroot,
-               dest, bcx_icx, non_gc_box_cast};
+               dest, bcx_icx, non_gc_box_cast,
+               heap, heap_exchange, heap_shared};
 import syntax::codemap::span;
 import shape::llsize_of;
 import build::*;
 import common::*;
 import util::ppaux::ty_to_str;
+
+// Boxed vector types are in some sense currently a "shorthand" for a box
+// containing an unboxed vector. This expands a boxed vector type into such an
+// expanded type. It doesn't respect mutability, but that doesn't matter at
+// this point.
+fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
+    let unit_ty = ty::sequence_element_type(tcx, t);
+    let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
+    alt ty::get(t).struct {
+      ty::ty_vec(_) | ty::ty_str |
+      ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) {
+        ty::mk_imm_uniq(tcx, unboxed_vec_ty)
+      }
+      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) {
+        ty::mk_imm_box(tcx, unboxed_vec_ty)
+      }
+      _ { tcx.sess.bug("non boxed-vec type \
+                        in tvec::expand_boxed_vec_ty");
+      }
+    }
+}
 
 fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_fill");
@@ -40,21 +62,25 @@ fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     ret PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
-fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
-                  fill: ValueRef, alloc: ValueRef) -> result {
-    let _icx = bcx.insn_ctxt("tvec::alloc_uniq_raw");
+fn alloc_raw(bcx: block, unit_ty: ty::t,
+              fill: ValueRef, alloc: ValueRef, heap: heap) -> result {
+    let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
 
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let {box, body} = base::malloc_unique_dyn(bcx, vecbodyty, vecsize);
+    let {box, body} = base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
     ret {bcx: bcx, val: box};
 }
+fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
+                  fill: ValueRef, alloc: ValueRef) -> result {
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
+}
 
-fn alloc_uniq(bcx: block, unit_ty: ty::t, elts: uint) -> result {
+fn alloc_vec(bcx: block, unit_ty: ty::t, elts: uint, heap: heap) -> result {
     let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
     let llunitty = type_of::type_of(ccx, unit_ty);
@@ -63,7 +89,7 @@ fn alloc_uniq(bcx: block, unit_ty: ty::t, elts: uint) -> result {
     let fill = Mul(bcx, C_uint(ccx, elts), unit_sz);
     let alloc = if elts < 4u { Mul(bcx, C_int(ccx, 4), unit_sz) }
                 else { fill };
-    let {bcx: bcx, val: vptr} = alloc_uniq_raw(bcx, unit_ty, fill, alloc);
+    let {bcx: bcx, val: vptr} = alloc_raw(bcx, unit_ty, fill, alloc, heap);
     ret {bcx: bcx, val: vptr};
 }
 
@@ -79,20 +105,18 @@ fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     call_memmove(bcx, new_data_ptr, data_ptr, fill);
 
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
-        iter_vec(bcx, newptr, vec_ty, base::take_ty)
+        iter_vec_raw(bcx, new_data_ptr, vec_ty, fill, base::take_ty)
     } else { bcx };
     ret rslt(bcx, newptr);
 }
-fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
+
+fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
-    let _icx = bcx.insn_ctxt("tvec::make_free_glue");
+    let _icx = bcx.insn_ctxt("tvec::make_drop_glue_unboxed");
     let tcx = bcx.tcx(), unit_ty = ty::sequence_element_type(tcx, vec_ty);
-    base::with_cond(bcx, IsNotNull(bcx, vptr)) {|bcx|
-        let bcx = if ty::type_needs_drop(tcx, unit_ty) {
-            iter_vec(bcx, vptr, vec_ty, base::drop_ty)
-        } else { bcx };
-        base::trans_unique_free(bcx, vptr)
-    }
+    if ty::type_needs_drop(tcx, unit_ty) {
+        iter_vec_unboxed(bcx, vptr, vec_ty, base::drop_ty)
+    } else { bcx }
 }
 
 fn trans_evec(bcx: block, args: [@ast::expr],
@@ -141,13 +165,18 @@ fn trans_evec(bcx: block, args: [@ast::expr],
             {bcx: bcx, val: p, dataptr: vp}
           }
           ast::vstore_uniq {
-            let {bcx, val} = alloc_uniq(bcx, unit_ty, args.len());
+            let {bcx, val} = alloc_vec(bcx, unit_ty, args.len(),
+                                       heap_exchange);
             add_clean_free(bcx, val, true);
             let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
             {bcx: bcx, val: val, dataptr: dataptr}
           }
           ast::vstore_box {
-            bcx.ccx().sess.unimpl("unhandled tvec::trans_evec");
+            let {bcx, val} = alloc_vec(bcx, unit_ty, args.len(),
+                                       heap_shared);
+            add_clean_free(bcx, val, true);
+            let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
+            {bcx: bcx, val: val, dataptr: dataptr}
           }
         };
 
@@ -223,12 +252,10 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
         let len = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_len]));
         (base, len)
       }
-      ty::vstore_uniq {
+      ty::vstore_uniq | ty::vstore_box {
+        #debug["get_base_and_len: %s", val_str(ccx.tn, v)];
         let body = tvec::get_bodyptr(cx, v);
         (tvec::get_dataptr(cx, body), tvec::get_fill(cx, body))
-      }
-      ty::vstore_box {
-        cx.ccx().sess.unimpl("unhandled tvec::get_base_and_len");
       }
     }
 }
@@ -388,7 +415,7 @@ type iter_vec_block = fn(block, ValueRef, ty::t) -> block;
 
 fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
                 fill: ValueRef, f: iter_vec_block) -> block {
-    let _icx = bcx.insn_ctxt("tvec::iter_vec_uniq");
+    let _icx = bcx.insn_ctxt("tvec::iter_vec_raw");
 
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
 
@@ -422,11 +449,12 @@ fn iter_vec_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t,
     iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
-fn iter_vec(bcx: block, vptr: ValueRef, vec_ty: ty::t,
-            f: iter_vec_block) -> block {
-    let _icx = bcx.insn_ctxt("tvec::iter_vec");
-    let fill = get_fill(bcx, get_bodyptr(bcx, vptr));
-    ret iter_vec_uniq(bcx, vptr, vec_ty, fill, f);
+fn iter_vec_unboxed(bcx: block, body_ptr: ValueRef, vec_ty: ty::t,
+                    f: iter_vec_block) -> block {
+    let _icx = bcx.insn_ctxt("tvec::iter_vec_unboxed");
+    let fill = get_fill(bcx, body_ptr);
+    let dataptr = get_dataptr(bcx, body_ptr);
+    ret iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
 
 //

@@ -36,7 +36,7 @@ export last_os_error;
 export set_exit_status;
 export walk_dir;
 
-// FIXME: move these to str perhaps?
+// FIXME: move these to str perhaps? #2620
 export as_c_charp, fill_charp_buf;
 
 native mod rustrt {
@@ -86,7 +86,7 @@ mod win32 {
     fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
         -> option<str> {
 
-        // FIXME: remove these when export globs work properly.
+        // FIXME: remove these when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::consts::os::extra::*;
 
@@ -167,7 +167,7 @@ mod global_env {
                 sched:  some({
                     mode: task::single_threaded,
                     // FIXME: This would be a good place to use
-                    // a very small native stack
+                    // a very small native stack (#2621)
                     native_stack_size: none
                 })
                 with task::get_opts(builder)
@@ -227,7 +227,7 @@ mod global_env {
         #[cfg(unix)]
         fn setenv(n: str, v: str) {
 
-            // FIXME: remove this when export globs work properly.
+            // FIXME: remove this when export globs work properly. #1238
             import libc::funcs::posix01::unistd::setenv;
             str::as_c_str(n) {|nbuf|
                 str::as_c_str(v) {|vbuf|
@@ -239,7 +239,7 @@ mod global_env {
 
         #[cfg(windows)]
         fn setenv(n: str, v: str) {
-            // FIXME: remove imports when export globs work properly.
+            // FIXME: remove imports when export globs work properly. #1238
             import libc::funcs::extra::kernel32::*;
             import win32::*;
             as_utf16_p(n) {|nbuf|
@@ -329,7 +329,7 @@ fn pipe() -> {in: c_int, out: c_int} {
 
 #[cfg(windows)]
 fn pipe() -> {in: c_int, out: c_int} {
-    // FIXME: remove this when export globs work properly.
+    // FIXME: remove this when export globs work properly. #1238
     import libc::consts::os::extra::*;
     // Windows pipes work subtly differently than unix pipes, and their
     // inheritance has to be handled in a different way that I do not fully
@@ -387,7 +387,7 @@ fn self_exe_path() -> option<path> {
 
     #[cfg(target_os = "macos")]
     fn load_self() -> option<path> unsafe {
-        // FIXME: remove imports when export globs work properly.
+        // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::*;
         fill_charp_buf() {|buf, sz|
             _NSGetExecutablePath(buf, ptr::mut_addr_of(sz as u32))
@@ -397,7 +397,7 @@ fn self_exe_path() -> option<path> {
 
     #[cfg(windows)]
     fn load_self() -> option<path> unsafe {
-        // FIXME: remove imports when export globs work properly.
+        // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
         import win32::*;
@@ -500,7 +500,7 @@ fn path_exists(p: path) -> bool {
 }
 
 // FIXME: under Windows, we should prepend the current drive letter to paths
-// that start with a slash.
+// that start with a slash. #2622
 #[doc = "
 Convert a relative path to an absolute path
 
@@ -526,11 +526,11 @@ fn make_dir(p: path, mode: c_int) -> bool {
 
     #[cfg(windows)]
     fn mkdir(p: path, _mode: c_int) -> bool unsafe {
-        // FIXME: remove imports when export globs work properly.
+        // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
         import win32::*;
-        // FIXME: turn mode into something useful?
+        // FIXME: turn mode into something useful? #2623
         as_utf16_p(p) {|buf|
             CreateDirectoryW(buf, unsafe::reinterpret_cast(0))
                 != (0 as BOOL)
@@ -588,7 +588,7 @@ fn remove_dir(p: path) -> bool {
 
     #[cfg(windows)]
     fn rmdir(p: path) -> bool {
-        // FIXME: remove imports when export globs work properly.
+        // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
@@ -610,7 +610,7 @@ fn change_dir(p: path) -> bool {
 
     #[cfg(windows)]
     fn chdir(p: path) -> bool {
-        // FIXME: remove imports when export globs work properly.
+        // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
@@ -633,7 +633,7 @@ fn copy_file(from: path, to: path) -> bool {
 
     #[cfg(windows)]
     fn do_copy_file(from: path, to: path) -> bool {
-        // FIXME: remove imports when export globs work properly.
+        // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;

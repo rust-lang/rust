@@ -1249,8 +1249,7 @@ mod unsafe {
     #[inline(always)]
     unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn([T]/&) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
-        // FIXME: should use &blk not &static here, but a snapshot is req'd
-        let v : *([T]/&static) =
+        let v : *([T]/&blk) =
             ::unsafe::reinterpret_cast(ptr::addr_of(pair));
         f(*v)
     }
@@ -1335,7 +1334,7 @@ impl extensions/&<A:copy> for [const A]/& {
     fn map_to_vec<B>(op: fn(A) -> B) -> [B] { iter::map_to_vec(self, op) }
     fn to_vec() -> [A] { iter::to_vec(self) }
 
-    // FIXME--bug in resolve prevents this from working
+    // FIXME--bug in resolve prevents this from working (#2611)
     // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> [B] {
     //     iter::flat_map_to_vec(self, op)
     // }

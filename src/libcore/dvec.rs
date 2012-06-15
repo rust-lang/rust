@@ -129,7 +129,7 @@ impl extensions<A> for dvec<A> {
     #[doc = "Overwrite the current contents"]
     fn set(+w: [mut A]) {
         self.check_not_borrowed();
-        self.data <- w; //FIXME check for recursive use
+        self.data <- w; //FIXME check for recursive use (#2607)
     }
 }
 
@@ -177,25 +177,28 @@ impl extensions<A:copy> for dvec<A> {
         }
     }
 
-    //FIXME--
-    //#[doc = "
-    //    Append all elements of an iterable.
-    //
-    //    Failure will occur if the iterable's `each()` method
-    //    attempts to access this vector.
-    //"]
-    //fn append_iter<I:iter::base<A>>(ts: I) {
-    //    self.data.swap { |v|
-    //        alt ts.size_hint() {
-    //          none {}
-    //          some(h) { vec::reserve(v, len(v) + h) }
-    //        }
-    //
-    //        for ts.each { |t| v = v + [t] };
-    //
-    //        v
-    //    }
-    //}
+    #[doc = "
+        Append all elements of an iterable.
+
+        Failure will occur if the iterable's `each()` method
+        attempts to access this vector.
+    "]
+    fn append_iter<A, I:iter::base_iter<A>>(ts: I) {
+       self.swap { |v|
+           let mut v = alt ts.size_hint() {
+             none { v }
+             some(h) {
+               let len = v.len() + h;
+               let mut v <- v;
+               vec::reserve(v, len);
+               v
+            }
+           };
+
+           for ts.each { |t| v += [t] };
+           v
+        }
+    }
 
     #[doc = "
         Gets a copy of the current contents.

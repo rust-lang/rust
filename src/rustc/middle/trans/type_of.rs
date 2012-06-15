@@ -76,10 +76,13 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     // this then, e.g. `option<{myfield: bool}>` would be a different
     // type than `option<myrec>`.
     let t_norm = ty::normalize_ty(cx.tcx, t);
-    let llty = if t != t_norm {
-        type_of(cx, t_norm)
+
+    let mut llty;
+    if t != t_norm {
+        llty = type_of(cx, t_norm);
+        cx.lltypes.insert(t, llty);
     } else {
-        alt ty::get(t).struct {
+        llty = alt ty::get(t).struct {
           ty::ty_nil | ty::ty_bot { T_nil() }
           ty::ty_bool { T_bool() }
           ty::ty_int(t) { T_int_ty(cx, t) }
@@ -91,7 +94,9 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           }
           ty::ty_enum(did, _) { type_of_enum(cx, did, t) }
           ty::ty_estr(ty::vstore_box) { T_box_ptr(T_box(cx, T_i8())) }
-          ty::ty_evec(mt, ty::vstore_box) |
+          ty::ty_evec(mt, ty::vstore_box) {
+            T_box_ptr(T_box(cx, T_vec(cx, type_of(cx, mt.ty))))
+          }
           ty::ty_box(mt) { T_box_ptr(T_box(cx, type_of(cx, mt.ty))) }
           ty::ty_opaque_box { T_box_ptr(T_box(cx, T_i8())) }
           ty::ty_uniq(mt) { T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))) }
@@ -147,20 +152,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           }
           ty::ty_opaque_closure_ptr(_) { T_opaque_box_ptr(cx) }
           ty::ty_constr(subt,_) { type_of(cx, subt) }
-          ty::ty_class(did, ts) {
-            // only instance vars are record fields at runtime
-            let fields = lookup_class_fields(cx.tcx, did);
-            let tys = vec::map(fields) {|f|
-                let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
-                type_of(cx, t)
-            };
-            if ty::ty_dtor(cx.tcx, did) == none {
-              T_struct(tys)
-            }
-            else {
-              // resource type
-              T_struct([T_i8(), T_struct(tys)])
-            }
+          ty::ty_class(*) {
+            // Only create the named struct, but don't fill it in. We fill it
+            // in *after* placing it into the type cache. This prevents
+            // infinite recursion with recursive class types.
+
+            common::T_named_struct(llvm_type_name(cx, t))
           }
           ty::ty_self { cx.tcx.sess.unimpl("type_of: ty_self"); }
           ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }
@@ -168,9 +165,33 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_var_integral(_) {
             cx.tcx.sess.bug("type_of shouldn't see a ty_var_integral");
           }
+        };
+
+        cx.lltypes.insert(t, llty);
+
+        // If this was a class, fill in the type now.
+        alt ty::get(t).struct {
+          ty::ty_class(did, ts) {
+            // Only instance vars are record fields at runtime.
+            let fields = lookup_class_fields(cx.tcx, did);
+            let mut tys = vec::map(fields) {|f|
+                let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
+                type_of(cx, t)
+            };
+
+            if ty::ty_dtor(cx.tcx, did) != none {
+              // resource type
+              tys = [T_i8(), T_struct(tys)];
+            }
+
+            common::set_struct_body(llty, tys);
+          }
+          _ {
+            // Nothing more to do.
+          }
         }
     };
-    cx.lltypes.insert(t, llty);
+
     ret llty;
 }
 
@@ -211,6 +232,9 @@ fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> str {
     let (name, did, tps) = alt check ty::get(t).struct {
       ty::ty_enum(did, substs) {
         ("enum", did, substs.tps)
+      }
+      ty::ty_class(did, substs) {
+        ("class", did, substs.tps)
       }
     };
     ret #fmt(

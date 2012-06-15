@@ -9,6 +9,7 @@ import diagnostic::span_handler;
 enum path_elt { path_mod(ident), path_name(ident) }
 type path = [path_elt];
 
+/* FIXMEs that say "bad" are as per #2543 */
 fn path_to_str_with_sep(p: path, sep: str) -> str {
     let strs = vec::map(p) {|e|
         alt e {
@@ -291,6 +292,7 @@ fn node_id_to_str(map: map, id: node_id) -> str {
         #fmt["expr %s (id=%?)",
              pprust::expr_to_str(expr), id]
       }
+      // FIXMEs are as per #2410
       some(node_export(_, path)) {
         #fmt["export %s (id=%?)", // FIXME: add more info here
              path_to_str(*path), id]

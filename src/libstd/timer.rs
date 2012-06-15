@@ -25,8 +25,6 @@ for *at least* that period of time.
 "]
 fn delayed_send<T: copy send>(iotask: iotask,
                               msecs: uint, ch: comm::chan<T>, val: T) {
-    // FIME: Looks like we don't need to spawn here
-    task::spawn() {||
         unsafe {
             let timer_done_po = comm::port::<()>();
             let timer_done_ch = comm::chan(timer_done_po);
@@ -59,7 +57,6 @@ fn delayed_send<T: copy send>(iotask: iotask,
             comm::send(ch, copy(val));
             // uv_close for this timer has been processed
             comm::recv(timer_done_po);
-        }
     };
 }
 
@@ -106,7 +103,7 @@ fn recv_timeout<T: copy send>(iotask: iotask,
     let timeout_po = comm::port::<()>();
     let timeout_ch = comm::chan(timeout_po);
     delayed_send(iotask, msecs, timeout_ch, ());
-    // FIXME: This could be written clearer
+    // FIXME: This could be written clearer (#2618)
     either::either(
         {|left_val|
             log(debug, #fmt("recv_time .. left_val %?",

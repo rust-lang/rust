@@ -1,8 +1,8 @@
 #[doc="An interface for numbers."]
 
 iface num {
-    // FIXME: Cross-crate overloading doesn't work yet.
-    // FIXME: Interface inheritance.
+    // FIXME: Cross-crate overloading doesn't work yet. (#2615)
+    // FIXME: Interface inheritance. (#2616)
     fn add(&&other: self) -> self;
     fn sub(&&other: self) -> self;
     fn mul(&&other: self) -> self;

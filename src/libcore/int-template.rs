@@ -137,7 +137,7 @@ impl num of num::num for T {
 }
 
 
-// FIXME: Has alignment issues on windows and 32-bit linux
+// FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
 #[ignore]
 fn test_from_str() {
@@ -157,7 +157,7 @@ fn test_from_str() {
     assert from_str("x") == none;
 }
 
-// FIXME: Has alignment issues on windows and 32-bit linux
+// FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
 #[ignore]
 fn test_parse_buf() {
