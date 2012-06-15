@@ -1876,6 +1876,8 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_type | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
+      ty_estr(vstore_uniq) | ty_estr(vstore_box) |
+      ty_evec(_, vstore_uniq) | ty_evec(_, vstore_box) |
       ty_iface(_, _) | ty_rptr(_,_) | ty_opaque_box { result = false; }
       // Structural types
       ty_enum(did, substs) {
@@ -1897,7 +1899,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         for elts.each {|elt| if !type_is_pod(cx, elt) { result = false; } }
       }
       ty_estr(vstore_fixed(_)) { result = true; }
-      ty_evec(mt, vstore_fixed(_)) {
+      ty_evec(mt, vstore_fixed(_)) | ty_unboxed_vec(mt) {
         result = type_is_pod(cx, mt.ty);
       }
       ty_res(_, inner, substs) {
@@ -1913,7 +1915,14 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
             type_is_pod(cx, sty)
         };
       }
-      _ { cx.sess.bug("unexpected type in type_is_pod"); }
+
+      ty_estr(vstore_slice(*)) | ty_evec(_, vstore_slice(*)) {
+        result = false;
+      }
+
+      ty_var(*) | ty_var_integral(*) | ty_self(*) {
+        cx.sess.bug("non concrete type in type_is_pod");
+      }
     }
 
     ret result;
