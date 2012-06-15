@@ -501,7 +501,7 @@ class parser {
             let lo = self.span.lo;
             self.bump();
             alt copy self.token {
-              token::LIT_INT_UNSUFFIXED(num, _) {
+              token::LIT_INT_UNSUFFIXED(num) {
                 self.bump();
                 some(mac_var(num as uint))
               }
@@ -534,7 +534,7 @@ class parser {
               token::UNDERSCORE {
                 self.bump(); some(vstore_fixed(none))
               }
-              token::LIT_INT_UNSUFFIXED(i, _) if i >= 0i64 {
+              token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 {
                 self.bump(); some(vstore_fixed(some(i as uint)))
               }
               token::BINOP(token::AND) {
@@ -553,7 +553,7 @@ class parser {
         alt tok {
           token::LIT_INT(i, it) { lit_int(i, it) }
           token::LIT_UINT(u, ut) { lit_uint(u, ut) }
-          token::LIT_INT_UNSUFFIXED(i, it) { lit_int_unsuffixed(i, it) }
+          token::LIT_INT_UNSUFFIXED(i) { lit_int_unsuffixed(i) }
           token::LIT_FLOAT(s, ft) { lit_float(self.get_str(s), ft) }
           token::LIT_STR(s) { lit_str(self.get_str(s)) }
           token::LPAREN { self.expect(token::RPAREN); lit_nil }

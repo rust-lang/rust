@@ -402,7 +402,7 @@ enum lit_ {
     lit_str(@str),
     lit_int(i64, int_ty),
     lit_uint(u64, uint_ty),
-    lit_int_unsuffixed(i64, int_ty),
+    lit_int_unsuffixed(i64),
     lit_float(@str, float_ty),
     lit_nil,
     lit_bool(bool),

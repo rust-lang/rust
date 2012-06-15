@@ -278,10 +278,9 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_uint(id.to_uint());
       }
       ty::ty_var_integral(id) {
-        // TODO: should we have a different character for these? (Issue #1425)
         w.write_char('X');
+        w.write_char('I');
         w.write_uint(id.to_uint());
-        w.write_str("(integral)");
       }
       ty::ty_param(id, did) {
         w.write_char('p');
