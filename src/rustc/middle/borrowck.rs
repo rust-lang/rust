@@ -460,13 +460,15 @@ impl to_str_methods for borrowck_ctxt {
           cat_special(sk_method) { "method" }
           cat_special(sk_static_item) { "static item" }
           cat_special(sk_self) { "self reference" }
-          cat_special(sk_heap_upvar) { "upvar" }
+          cat_special(sk_heap_upvar) { "variable declared in an outer block" }
           cat_rvalue { "non-lvalue" }
           cat_local(_) { mut_str + " local variable" }
           cat_arg(_) { "argument" }
           cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
                                      mut_str, self.pk_to_sigil(pk)] }
-          cat_stack_upvar(_) { mut_str + " upvar" }
+          cat_stack_upvar(_) {
+            mut_str + " variable declared in an outer block"
+          }
           cat_comp(_, comp_field(*)) { mut_str + " field" }
           cat_comp(_, comp_tuple) { "tuple content" }
           cat_comp(_, comp_res) { "resource content" }
