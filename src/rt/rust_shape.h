@@ -492,13 +492,9 @@ ctxt<T>::walk_res0() {
         reinterpret_cast<const rust_fn **>(tables->resources);
     const rust_fn *dtor = resources[dtor_offset];
 
-    // Read in the resource type parameters, but ignore them.
-    // TODO: remove after snapshot
-    uint16_t n_ty_params = get_u16_bump(sp);
-    for (uint16_t i = 0; i < n_ty_params; i++) {
-        uint16_t ty_param_len = get_u16_bump(sp);
-        sp += ty_param_len;
-    }
+    // Read in a dummy value; this used to be the number of parameters
+    uint16_t number_of_params = get_u16_bump(sp);
+    assert(number_of_params == 0 && "resource has type parameters on it");
 
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
