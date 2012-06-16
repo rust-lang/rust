@@ -102,14 +102,11 @@ impl methods<T> for exclusive<T> {
     fn with<U>(f: fn(sys::condition, x: &T) -> U) -> U {
         unsafe {
             let ptr: ~arc_data<ex_data<T>> = unsafe::reinterpret_cast(*self);
-            let r = {
-                let rec: &ex_data<T> = &(*ptr).data;
-                rec.lock.lock_cond() {|c|
-                    f(c, &rec.data)
-                }
-            };
+            let rec: &ex_data<T> = &(*ptr).data;
             unsafe::forget(ptr);
-            r
+            rec.lock.lock_cond() {|c|
+                f(c, &rec.data)
+            }
         }
     }
 }
