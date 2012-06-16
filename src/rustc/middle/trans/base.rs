@@ -1424,7 +1424,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
 // FIXME: We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
 // doesn't need to be dropped. (Issue #839)
-fn move_val(cx: block, action: copy_action, dst: ValueRef,
+fn move_val(+cx: block, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> block {
     let _icx = cx.insn_ctxt("move_val");
     let mut src_val = src.val;
