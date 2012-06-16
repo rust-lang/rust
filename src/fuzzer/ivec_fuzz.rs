@@ -57,11 +57,11 @@ fn vec_edits<T: copy>(v: [T], xs: [T]) -> [[T]] {
 
     if Lv != 1u {
         // When Lv == 1u, this is redundant with omit.
-        edits += [[]];
+        vec::push(edits, []);
     }
     if Lv >= 3u {
         // When Lv == 2u, this is redundant with swap.
-        edits += [vec::reversed(v)];
+        vec::push(edits, vec::reversed(v));
     }
     ix(0u, 1u, Lv) {|i| edits += [vec_omit(v, i)]; }
     ix(0u, 1u, Lv) {|i| edits += [vec_dup(v, i)]; }
@@ -71,10 +71,10 @@ fn vec_edits<T: copy>(v: [T], xs: [T]) -> [[T]] {
 
     ix(0u, 1u, len(xs)) {|j|
         ix(0u, 1u, Lv) {|i|
-            edits += [vec_poke(v, i, xs[j])];
+            vec::push(edits, vec_poke(v, i, xs[j]));
         }
         ix(0u, 0u, Lv) {|i|
-            edits += [vec_insert(v, i, xs[j])];
+            vec::push(edits, vec_insert(v, i, xs[j]));
         }
     }
 

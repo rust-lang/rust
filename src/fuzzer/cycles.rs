@@ -62,7 +62,7 @@ fn test_cycles(r : rand::rng, k: uint, n: uint)
 
     // Create a graph with no edges
     range(0u, vlen) {|_i|
-        v += [mut empty_pointy()];
+        vec::push(v, empty_pointy());
     }
 
     // Fill in the graph with random edges, with density k/n
@@ -77,7 +77,7 @@ fn test_cycles(r : rand::rng, k: uint, n: uint)
           // https://github.com/mozilla/rust/issues/1899
 
         if (likelihood(r, k, n)) { v[i].m = [p(choice(r, v))]; }
-        if (likelihood(r, k, n)) { v[i].n += [mut p(choice(r, v))]; }
+        if (likelihood(r, k, n)) { vec::push(v[i].n, mut p(choice(r, v))); }
         if (likelihood(r, k, n)) { v[i].o = {x: 0, y: p(choice(r, v))}; }
     }
 

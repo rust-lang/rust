@@ -316,7 +316,7 @@ fn load_crate(filename: str) -> option<crate> {
 
                 alt *attr_name {
                     "std" | "core" { }
-                    _ { e.deps += [query]; }
+                    _ { vec::push(e.deps, query); }
                 }
             }
             _ { }
@@ -775,7 +775,7 @@ fn install_source(c: cargo, path: str) {
     let mut cratefiles = [];
     for os::walk_dir(".") {|p|
         if str::ends_with(p, ".rc") {
-            cratefiles += [p];
+            vec::push(cratefiles, p);
         }
     }
 
