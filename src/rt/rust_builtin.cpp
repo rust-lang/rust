@@ -7,7 +7,6 @@
 #include "sync/timer.h"
 #include "rust_abi.h"
 #include "rust_port.h"
-#include "rust_cond_lock.h"
 
 #include <time.h>
 
@@ -862,60 +861,6 @@ rust_task_allow_kill() {
     rust_task *task = rust_get_current_task();
     task->allow_kill();
 }
-
-extern "C" rust_cond_lock*
-rust_create_cond_lock() {
-    return new rust_cond_lock();
-}
-
-extern "C" void
-rust_destroy_cond_lock(rust_cond_lock *lock) {
-    delete lock;
-}
-
-extern "C" void
-rust_lock_cond_lock(rust_cond_lock *lock) {
-    lock->lock.lock();
-}
-
-extern "C" void
-rust_unlock_cond_lock(rust_cond_lock *lock) {
-    lock->lock.unlock();
-}
-
-// The next two functions do not use the built in condition variable features
-// because the Rust schedule is not aware of them, and they can block the
-// scheduler thread.
-
-extern "C" void
-rust_wait_cond_lock(rust_cond_lock *lock) {
-    rust_task *task = rust_get_current_task();
-#ifdef DEBUG_LOCKS
-    assert(lock->lock.lock_held_by_current_thread());
-#endif
-    assert(NULL == lock->waiting);
-    lock->waiting = task;
-    lock->lock.unlock();
-    task->block(lock, "waiting for signal");
-    lock->lock.lock();
-    lock->waiting = NULL;
-}
-
-extern "C" bool
-rust_signal_cond_lock(rust_cond_lock *lock) {
-#ifdef DEBUG_LOCKS
-    assert(lock->lock.lock_held_by_current_thread());
-#endif
-    if(NULL == lock->waiting) {
-        return false;
-    }
-    else {
-        lock->waiting->wakeup(lock);
-        return true;
-    }
-}
-
-
 
 //
 // Local Variables:
