@@ -2,11 +2,8 @@
 share immutable data between tasks."]
 
 import comm::{port, chan, methods};
-import sys::methods;
 
 export arc, get, clone, shared_arc, get_arc;
-
-export exclusive, methods;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -19,12 +16,12 @@ native mod rustrt {
         -> libc::intptr_t;
 }
 
-type arc_data<T> = {
+type arc_data<T: const> = {
     mut count: libc::intptr_t,
     data: T
 };
 
-resource arc_destruct<T>(data: *libc::c_void) {
+resource arc_destruct<T: const>(data: *libc::c_void) {
     unsafe {
         let data: ~arc_data<T> = unsafe::reinterpret_cast(data);
         let new_count = rustrt::rust_atomic_decrement(&mut data.count);
@@ -74,43 +71,6 @@ fn clone<T: const>(rc: &arc<T>) -> arc<T> {
     arc_destruct(**rc)
 }
 
-// An arc over mutable data that is protected by a lock.
-type ex_data<T> = {lock: sys::lock_and_signal, data: T};
-type exclusive<T> = arc_destruct<ex_data<T>>;
-
-fn exclusive<T>(-data: T) -> exclusive<T> {
-    let data = ~{mut count: 1, data: {lock: sys::create_lock(),
-                                      data: data}};
-    unsafe {
-        let ptr = unsafe::reinterpret_cast(data);
-        unsafe::forget(data);
-        arc_destruct(ptr)
-    }
-}
-
-impl methods<T> for exclusive<T> {
-    fn clone() -> exclusive<T> {
-        unsafe {
-            // this makes me nervous...
-            let ptr: ~arc_data<ex_data<T>> = unsafe::reinterpret_cast(*self);
-            rustrt::rust_atomic_increment(&mut ptr.count);
-            unsafe::forget(ptr);
-        }
-        arc_destruct(*self)
-    }
-
-    fn with<U>(f: fn(sys::condition, x: &T) -> U) -> U {
-        unsafe {
-            let ptr: ~arc_data<ex_data<T>> = unsafe::reinterpret_cast(*self);
-            let rec: &ex_data<T> = &(*ptr).data;
-            unsafe::forget(ptr);
-            rec.lock.lock_cond() {|c|
-                f(c, &rec.data)
-            }
-        }
-    }
-}
-
 // Convenience code for sharing arcs between tasks
 
 type get_chan<T: const send> = chan<chan<arc<T>>>;
@@ -155,7 +115,6 @@ fn get_arc<T: send const>(c: get_chan<T>) -> arc::arc<T> {
 #[cfg(test)]
 mod tests {
     import comm::*;
-    import future::future;
 
     #[test]
     fn manually_share_arc() {
@@ -200,32 +159,5 @@ mod tests {
         };
 
         assert p.recv() == ();
-    }
-
-    #[test]
-    fn exclusive_arc() {
-        let mut futures = [];
-
-        let num_tasks = 10u;
-        let count = 1000u;
-
-        let total = exclusive(~mut 0u);
-
-        for uint::range(0u, num_tasks) {|_i|
-            let total = total.clone();
-            futures += [future::spawn({||
-                for uint::range(0u, count) {|_i|
-                    total.with {|_cond, count|
-                        **count += 1u;
-                    }
-                }
-            })];
-        };
-
-        for futures.each {|f| f.get() };
-
-        total.with {|_cond, total|
-            assert **total == num_tasks * count
-        };
     }
 }

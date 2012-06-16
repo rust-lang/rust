@@ -10,6 +10,7 @@ import std::map;
 import std::map::hashmap;
 import std::deque;
 import std::deque::t;
+import std::arc;
 import std::par;
 import io::writer_util;
 import comm::*;

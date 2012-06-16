@@ -19,7 +19,7 @@ export net, net_tcp;
 export uv, uv_ll, uv_iotask, uv_global_loop;
 export c_vec, util, timer;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap;
-export rope, arena, par;
+export rope, arena, arc, par;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
 export cmp;
@@ -69,6 +69,7 @@ mod term;
 mod time;
 mod prettyprint;
 mod arena;
+mod arc;
 mod par;
 mod cmp;
 
