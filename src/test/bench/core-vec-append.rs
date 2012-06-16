@@ -7,9 +7,7 @@ import io::writer_util;
 fn collect_raw(num: uint) -> [uint] {
     let mut result = [];
     for uint::range(0u, num) { |i|
-        //result += [i];
         vec::push(result, i);
-        //result = vec::append(result, [i]);
     }
     ret result;
 }
