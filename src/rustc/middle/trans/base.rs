@@ -1424,6 +1424,10 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
 // FIXME: We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
 // doesn't need to be dropped. (Issue #839)
+// n.b. + argument mode on cx is a workaround for #2633. Note that cx isn't
+// passed by value by default because currently, a newtype-like enum whose
+// representation is a box isn't considered to be boxed (and thus, not
+// considered immediate).
 fn move_val(+cx: block, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> block {
     let _icx = cx.insn_ctxt("move_val");
