@@ -454,7 +454,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_expr: fn@(e: @expr) {
             vfn(e.id);
-            alt e.node { 
+            alt e.node {
               expr_index(*) | expr_assign_op(*) |
               expr_unary(*) | expr_binary(*) {
                 vfn(ast_util::op_expr_callee_id(e));
