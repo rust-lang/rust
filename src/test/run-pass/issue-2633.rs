@@ -1,5 +1,3 @@
-// Currently segfaults
-// xfail-test
 class cat {
     let mut meow: fn@();
     new() { self.meow = fn@() { #error("meow"); };}

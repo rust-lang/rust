@@ -448,6 +448,23 @@ impl methods for check_loan_ctxt {
         }
     }
 
+    // Very subtle (#2633): liveness can mark options as last_use even
+    // when there is an outstanding loan.  In that case, it is not
+    // safe to consider the use a last_use.
+    fn check_last_use(expr: @ast::expr) {
+        let cmt = self.bccx.cat_expr(expr);
+        let lp = alt cmt.lp {
+          none { ret; }
+          some(lp) { lp }
+        };
+        for self.walk_loans_of(cmt.id, lp) { |_loan|
+            #debug["Removing last use entry %? due to outstanding loan",
+                   expr.id];
+            self.bccx.last_use_map.remove(expr.id);
+            ret;
+        }
+    }
+
     fn check_call(expr: @ast::expr,
                   callee: option<@ast::expr>,
                   callee_id: ast::node_id,
@@ -531,6 +548,10 @@ fn check_loans_in_expr(expr: @ast::expr,
     self.check_for_conflicting_loans(expr.id);
 
     alt expr.node {
+      ast::expr_path(*) if self.bccx.last_use_map.contains_key(expr.id) {
+        self.check_last_use(expr);
+      }
+
       ast::expr_swap(l, r) {
         self.check_assignment(at_swap, l);
         self.check_assignment(at_swap, r);

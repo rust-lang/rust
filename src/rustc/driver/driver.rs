@@ -203,7 +203,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
          bind middle::tstate::ck::check_crate(ty_cx, crate));
     let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
-        bind middle::borrowck::check_crate(ty_cx, method_map, crate));
+        bind middle::borrowck::check_crate(ty_cx, method_map,
+                                           last_use_map, crate));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_use_map, crate));
     time(time_passes, "lint checking",

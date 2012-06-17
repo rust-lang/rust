@@ -170,9 +170,11 @@ export check_crate, root_map, mutbl_map;
 
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
+               last_use_map: liveness::last_use_map,
                crate: @ast::crate) -> (root_map, mutbl_map) {
     let bccx = @{tcx: tcx,
                  method_map: method_map,
+                 last_use_map: last_use_map,
                  root_map: root_map(),
                  mutbl_map: int_hash()};
 
@@ -186,6 +188,7 @@ fn check_crate(tcx: ty::ctxt,
 
 type borrowck_ctxt = @{tcx: ty::ctxt,
                        method_map: typeck::method_map,
+                       last_use_map: liveness::last_use_map,
                        root_map: root_map,
                        mutbl_map: mutbl_map};
 

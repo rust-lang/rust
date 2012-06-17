@@ -63,6 +63,9 @@ export last_use_map;
 // the local/argument/etc that the path refers to.  However, it also
 // possible for the expr to be a closure, in which case the list is a
 // list of closed over variables that can be moved into the closure.
+//
+// Very subtle (#2633): borrowck will remove entries from this table
+// if it detects an outstanding loan (that is, the addr is taken).
 type last_use_map = hashmap<node_id, @dvec<node_id>>;
 
 enum variable = uint;
