@@ -126,7 +126,7 @@ that can be used to send and receive data to/from the remote host. In the
 event of failure, a `net::tcp::tcp_connect_err_data` instance will be
 returned
 "]
-fn connect(input_ip: ip::ip_addr, port: uint,
+fn connect(-input_ip: ip::ip_addr, port: uint,
            iotask: iotask)
     -> result::result<tcp_socket, tcp_connect_err_data> unsafe {
     let result_po = comm::port::<conn_attempt>();
@@ -551,7 +551,7 @@ a `result` instance containing empty data of type `()` on a
 successful/normal shutdown, and a `tcp_listen_err_data` enum in the event
 of listen exiting because of an error
 "]
-fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
+fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
           on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
           +new_connect_cb: fn~(tcp_new_connection,
@@ -568,7 +568,7 @@ fn listen(host_ip: ip::ip_addr, port: uint, backlog: uint,
     }
 }
 
-fn listen_common(host_ip: ip::ip_addr, port: uint, backlog: uint,
+fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
           on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
           -on_connect_cb: fn~(*uv::ll::uv_tcp_t))
@@ -589,8 +589,15 @@ fn listen_common(host_ip: ip::ip_addr, port: uint, backlog: uint,
     let server_data_ptr = ptr::addr_of(server_data);
 
     let setup_result = comm::listen {|setup_ch|
+        // FIXME this is to address a compiler warning about
+        // an implicit copy.. it seems that double nested
+        // will defeat a move sigil, as is done to the host_ip
+        // arg above.. this same pattern works w/o complaint in
+        // tcp::connect (because the iotask::interact cb isn't
+        // nested within a comm::listen block)
+        let loc_ip = copy(host_ip);
         iotask::interact(iotask) {|loop_ptr|
-            let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
+            let tcp_addr = ipv4_ip_addr_to_sockaddr_in(loc_ip,
                                                        port);
             alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
               0i32 {
@@ -1201,9 +1208,10 @@ type tcp_buffered_socket_data = {
 fn ipv4_ip_addr_to_sockaddr_in(input_ip: ip::ip_addr,
                                port: uint) -> uv::ll::sockaddr_in unsafe {
     // FIXME (#2656): ipv6
+    let addr_str = ip::format_addr(input_ip);
     alt input_ip {
-      ip::ipv4(_,_,_,_) {
-        uv::ll::ip4_addr(ip::format_addr(input_ip), port as int)
+      ip::ipv4(addr) {
+        uv::ll::ip4_addr(addr_str, port as int)
       }
       ip::ipv6(_,_,_,_,_,_,_,_) {
         fail "FIXME (#2656) ipv6 not yet supported";
