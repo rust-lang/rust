@@ -373,9 +373,7 @@ upcall_s_str_new_shared(s_str_new_shared_args *args) {
     size_t str_fill = args->len + 1;
     size_t str_alloc = str_fill;
     args->retval = (rust_opaque_box *)
-        task->kernel->malloc(sizeof(rust_opaque_box) +
-                             vec_size<char>(str_fill),
-                             "str_new_shared");
+        task->boxed.malloc(&str_body_tydesc, str_fill);
     rust_str *str = (rust_str *)box_body(args->retval);
     str->body.fill = str_fill;
     str->body.alloc = str_alloc;
@@ -425,6 +423,7 @@ upcall_s_str_concat(s_str_concat_args *args) {
     rust_vec_box* v = (rust_vec_box*)
         task->kernel->malloc(fill + sizeof(rust_vec_box),
                              "str_concat");
+    v->header.td = args->lhs->header.td;
     v->body.fill = v->body.alloc = fill;
     memmove(&v->body.data[0], &lhs->data[0], lhs->fill - 1);
     memmove(&v->body.data[lhs->fill - 1], &rhs->data[0], rhs->fill);

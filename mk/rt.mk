@@ -62,6 +62,7 @@ RUNTIME_CS_$(1) := \
               rt/rust_uv.cpp \
               rt/rust_log.cpp \
               rt/rust_port_selector.cpp \
+              rt/rust_util.cpp \
               rt/circular_buffer.cpp \
               rt/isaac/randport.cpp \
               rt/rust_kernel.cpp \

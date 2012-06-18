@@ -5,6 +5,8 @@
 #include "rust_task.h"
 #include "rust_env.h"
 
+extern struct type_desc str_body_tydesc;
+
 // Inline fn used regularly elsewhere.
 
 static inline size_t
@@ -82,6 +84,7 @@ make_str(rust_kernel* kernel, const char* c, size_t strlen,
     size_t str_alloc = str_fill;
     rust_str *str = (rust_str *)
         kernel->malloc(vec_size<char>(str_fill), name);
+    str->header.td = &str_body_tydesc;
     str->body.fill = str_fill;
     str->body.alloc = str_alloc;
     memcpy(&str->body.data, c, strlen);
@@ -94,6 +97,8 @@ make_str_vec(rust_kernel* kernel, size_t nstrs, char **strs) {
     rust_vec_box *v = (rust_vec_box *)
         kernel->malloc(vec_size<rust_vec_box*>(nstrs),
                        "str vec interior");
+    // FIXME: should have a real td (Issue #2639)
+    v->header.td = NULL;
     v->body.fill = v->body.alloc = sizeof(rust_vec_box*) * nstrs;
     for (size_t i = 0; i < nstrs; ++i) {
         rust_str *str = make_str(kernel, strs[i],
