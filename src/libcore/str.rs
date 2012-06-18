@@ -566,7 +566,7 @@ pure fn to_upper(s: str/&) -> str {
 }
 
 #[doc = "
-Replace all occurances of one string with another
+Replace all occurrences of one string with another
 
 # Arguments
 
