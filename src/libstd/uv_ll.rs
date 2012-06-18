@@ -704,6 +704,24 @@ unsafe fn ip6_addr(ip: str, port: int)
     ret rustrt::rust_uv_ip6_addr(addr_vec_ptr,
                                  port as libc::c_int);
 }
+unsafe fn ip4_name(src: &sockaddr_in) -> str {
+    // ipv4 addr max size: 15 + 1 trailing null byte
+    let dst: [u8] = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
+    let size = 16 as libc::size_t;
+    vec::as_buf(dst) {|dst_buf|
+        let result = rustrt::rust_uv_ip4_name(src as *sockaddr_in,
+                                              dst_buf, size);
+        alt result {
+          0i32 {
+            str::unsafe::from_buf(dst_buf)
+          }
+          _ {
+            ""
+          }
+        }
+    }
+}
 
 unsafe fn timer_init(loop_ptr: *libc::c_void,
                      timer_ptr: *uv_timer_t) -> libc::c_int {
