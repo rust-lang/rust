@@ -290,7 +290,9 @@ fn trans_estr(bcx: block, s: @str, vstore: ast::vstore,
       ast::vstore_box {
         let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
         let len = C_uint(ccx, str::len(*s));
-        Call(bcx, ccx.upcalls.str_new_shared, [cs, len])
+        let c = Call(bcx, ccx.upcalls.str_new_shared, [cs, len]);
+        PointerCast(bcx, c,
+                    T_box_ptr(T_box(ccx, T_vec(ccx, T_i8()))))
       }
     };
 

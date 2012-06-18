@@ -373,8 +373,9 @@ upcall_s_str_new_shared(s_str_new_shared_args *args) {
     size_t str_fill = args->len + 1;
     size_t str_alloc = str_fill;
     args->retval = (rust_opaque_box *)
-        task->boxed.malloc(&str_body_tydesc, str_fill);
-    rust_str *str = (rust_str *)box_body(args->retval);
+        task->boxed.malloc(&str_body_tydesc,
+                           str_fill + sizeof(rust_vec));
+    rust_str *str = (rust_str *)args->retval;
     str->body.fill = str_fill;
     str->body.alloc = str_alloc;
     memcpy(&str->body.data, args->cstr, args->len);
