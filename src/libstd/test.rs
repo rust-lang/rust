@@ -107,7 +107,8 @@ fn run_tests_console(opts: test_opts,
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
-            st.out.write_line(#fmt["\nrunning %u tests", st.total]);
+            let noun = if st.total != 1u { "tests" } else { "test" };
+            st.out.write_line(#fmt["\nrunning %u %s", st.total, noun]);
           }
           te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
           te_result(test, result) {
