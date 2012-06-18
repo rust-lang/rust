@@ -275,6 +275,11 @@ type vals_and_bindings<V:copy, T:copy> = {
     mut bindings: [(V, var_value<V, T>)]
 };
 
+enum node<V:copy, T:copy> = {
+    root: V,
+    possible_types: T,
+};
+
 enum infer_ctxt = @{
     tcx: ty::ctxt,
 
@@ -639,7 +644,7 @@ impl unify_methods for infer_ctxt {
 
     fn get<V:copy vid, T:copy>(
         vb: vals_and_bindings<V, T>, vid: V)
-        -> {root: V, possible_types: T} {
+        -> node<V, T> {
 
         alt vb.vals.find(vid.to_uint()) {
           none {
@@ -649,15 +654,15 @@ impl unify_methods for infer_ctxt {
           some(var_val) {
             alt var_val {
               redirect(vid) {
-                let {root: rt, possible_types: pt} = self.get(vb, vid);
-                if rt != vid {
+                let nde = self.get(vb, vid);
+                if nde.root != vid {
                     // Path compression
-                    vb.vals.insert(vid.to_uint(), redirect(rt));
+                    vb.vals.insert(vid.to_uint(), redirect(nde.root));
                 }
-                {root: rt, possible_types: pt}
+                nde
               }
               root(pt) {
-                {root: vid, possible_types: pt}
+                node({root: vid, possible_types: pt})
               }
             }
           }
@@ -771,8 +776,12 @@ impl unify_methods for infer_ctxt {
         a_id: V, b_id: V) -> ures {
 
         // Need to make sub_id a subtype of sup_id.
-        let {root: a_id, possible_types: a_bounds} = self.get(vb, a_id);
-        let {root: b_id, possible_types: b_bounds} = self.get(vb, b_id);
+        let nde_a = self.get(vb, a_id);
+        let nde_b = self.get(vb, b_id);
+        let a_id = nde_a.root;
+        let b_id = nde_b.root;
+        let a_bounds = nde_a.possible_types;
+        let b_bounds = nde_b.possible_types;
 
         #debug["vars(%s=%s <: %s=%s)",
                a_id.to_str(), a_bounds.to_str(self),
@@ -809,8 +818,12 @@ impl unify_methods for infer_ctxt {
         vb: vals_and_bindings<V, int_ty_set>,
         a_id: V, b_id: V) -> ures {
 
-        let {root: a_id, possible_types: a_pt} = self.get(vb, a_id);
-        let {root: b_id, possible_types: b_pt} = self.get(vb, b_id);
+        let nde_a = self.get(vb, a_id);
+        let nde_b = self.get(vb, b_id);
+        let a_id = nde_a.root;
+        let b_id = nde_b.root;
+        let a_pt = nde_a.possible_types;
+        let b_pt = nde_b.possible_types;
 
         // If we're already dealing with the same two variables,
         // there's nothing to do.
@@ -831,7 +844,10 @@ impl unify_methods for infer_ctxt {
         vb: vals_and_bindings<V, bounds<T>>,
         a_id: V, b: T) -> ures {
 
-        let {root: a_id, possible_types: a_bounds} = self.get(vb, a_id);
+        let nde_a = self.get(vb, a_id);
+        let a_id = nde_a.root;
+        let a_bounds = nde_a.possible_types;
+
         #debug["vart(%s=%s <: %s)",
                a_id.to_str(), a_bounds.to_str(self),
                b.to_str(self)];
@@ -845,7 +861,9 @@ impl unify_methods for infer_ctxt {
 
         assert ty::type_is_integral(b);
 
-        let {root: a_id, possible_types: a_pt} = self.get(vb, a_id);
+        let nde_a = self.get(vb, a_id);
+        let a_id = nde_a.root;
+        let a_pt = nde_a.possible_types;
 
         let intersection =
             intersection(a_pt, convert_integral_ty_to_int_ty_set(
@@ -862,7 +880,10 @@ impl unify_methods for infer_ctxt {
         a: T, b_id: V) -> ures {
 
         let a_bounds = {lb: some(a), ub: none};
-        let {root: b_id, possible_types: b_bounds} = self.get(vb, b_id);
+        let nde_b = self.get(vb, b_id);
+        let b_id = nde_b.root;
+        let b_bounds = nde_b.possible_types;
+
         #debug["tvar(%s <: %s=%s)",
                a.to_str(self),
                b_id.to_str(), b_bounds.to_str(self)];
@@ -875,7 +896,9 @@ impl unify_methods for infer_ctxt {
 
         assert ty::type_is_integral(a);
 
-        let {root: b_id, possible_types: b_pt} = self.get(vb, b_id);
+        let nde_b = self.get(vb, b_id);
+        let b_id = nde_b.root;
+        let b_pt = nde_b.possible_types;
 
         let intersection =
             intersection(b_pt, convert_integral_ty_to_int_ty_set(
@@ -1101,8 +1124,9 @@ impl methods for resolve_state {
             ret ty::re_var(rid);
         } else {
             vec::push(self.r_seen, rid);
-            let {root:_, possible_types: bounds} =
-                self.infcx.get(self.infcx.rb, rid);
+            let nde = self.infcx.get(self.infcx.rb, rid);
+            let bounds = nde.possible_types;
+
             let r1 = alt bounds {
               { ub:_, lb:some(t) } { self.resolve_region(t) }
               { ub:some(t), lb:_ } { self.resolve_region(t) }
@@ -1135,8 +1159,9 @@ impl methods for resolve_state {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let {root:_, possible_types: bounds} =
-                self.infcx.get(self.infcx.tvb, vid);
+            let nde = self.infcx.get(self.infcx.tvb, vid);
+            let bounds = nde.possible_types;
+
             let t1 = alt bounds {
               { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve1(t) }
               { ub:some(t), lb:_ } { self.resolve1(t) }
@@ -1157,8 +1182,9 @@ impl methods for resolve_state {
     }
 
     fn resolve_ty_var_integral(vid: tvi_vid) -> ty::t {
-        let {root:_, possible_types: pt} =
-            self.infcx.get(self.infcx.tvib, vid);
+        let nde = self.infcx.get(self.infcx.tvib, vid);
+        let pt = nde.possible_types;
+
         // If there's only one type in the set of possible types, then
         // that's the answer.
         alt single_type_contained_in(self.infcx.tcx, pt) {
@@ -1258,21 +1284,28 @@ impl assignment for infer_ctxt {
           }
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) {
-            let {root:_, possible_types: a_bounds} = self.get(self.tvb, a_id);
-            let {root:_, possible_types: b_bounds} = self.get(self.tvb, b_id);
+            let nde_a = self.get(self.tvb, a_id);
+            let nde_b = self.get(self.tvb, b_id);
+            let a_bounds = nde_a.possible_types;
+            let b_bounds = nde_b.possible_types;
+
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, b_bnd)
           }
 
           (ty::ty_var(a_id), _) {
-            let {root:_, possible_types:a_bounds} = self.get(self.tvb, a_id);
+            let nde_a = self.get(self.tvb, a_id);
+            let a_bounds = nde_a.possible_types;
+
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, some(b))
           }
 
           (_, ty::ty_var(b_id)) {
-            let {root:_, possible_types: b_bounds} = self.get(self.tvb, b_id);
+            let nde_b = self.get(self.tvb, b_id);
+            let b_bounds = nde_b.possible_types;
+
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
             self.assign_tys_or_sub(anmnt, a, b, some(a), b_bnd)
           }
@@ -2466,8 +2499,12 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     // upper/lower/sub/super/etc.
 
     // Need to find a type that is a supertype of both a and b:
-    let {root: a_vid, possible_types: a_bounds} = self.infcx().get(vb, a_vid);
-    let {root: b_vid, possible_types: b_bounds} = self.infcx().get(vb, b_vid);
+    let nde_a = self.infcx().get(vb, a_vid);
+    let nde_b = self.infcx().get(vb, b_vid);
+    let a_vid = nde_a.root;
+    let b_vid = nde_b.root;
+    let a_bounds = nde_a.possible_types;
+    let b_bounds = nde_b.possible_types;
 
     #debug["%s.lattice_vars(%s=%s <: %s=%s)",
            self.tag(),
@@ -2503,7 +2540,9 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     a_id: V, b: T,
     c_ts: fn(T, T) -> cres<T>) -> cres<T> {
 
-    let {root: a_id, possible_types: a_bounds} = self.infcx().get(vb, a_id);
+    let nde_a = self.infcx().get(vb, a_id);
+    let a_id = nde_a.root;
+    let a_bounds = nde_a.possible_types;
 
     // The comments in this function are written for LUB, but they
     // apply equally well to GLB if you inverse upper/lower/sub/super/etc.
