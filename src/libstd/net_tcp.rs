@@ -1213,9 +1213,7 @@ fn ipv4_ip_addr_to_sockaddr_in(input_ip: ip::ip_addr,
       ip::ipv4(addr) {
         uv::ll::ip4_addr(addr_str, port as int)
       }
-      ip::ipv6(_,_,_,_,_,_,_,_) {
-        fail "FIXME (#2656) ipv6 not yet supported";
-      }
+      _ { fail "only works w/ ipv4";}
     }
 }
 

@@ -710,7 +710,27 @@ unsafe fn ip4_name(src: &sockaddr_in) -> str {
                      0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
     let size = 16 as libc::size_t;
     vec::as_buf(dst) {|dst_buf|
-        let result = rustrt::rust_uv_ip4_name(src as *sockaddr_in,
+        rustrt::rust_uv_ip4_name(src as *sockaddr_in,
+                                              dst_buf, size);
+        // FIXME: seems that checking the result of uv_ip4_name
+        // doesn't work too well.. 
+        // libuv will actually map a malformed input ip to INADDR_NONE,
+        // which is going to be 255.255.255.255 on most
+        // platforms.
+        str::unsafe::from_buf(dst_buf);
+    }
+}
+unsafe fn ip6_name(src: &sockaddr_in6) -> str {
+    // ipv6 addr max size: 45 + 1 trailing null byte
+    let dst: [u8] = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8];
+    let size = 46 as libc::size_t;
+    vec::as_buf(dst) {|dst_buf|
+        let result = rustrt::rust_uv_ip6_name(src as *sockaddr_in6,
                                               dst_buf, size);
         alt result {
           0i32 {
