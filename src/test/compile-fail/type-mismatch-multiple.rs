@@ -2,4 +2,4 @@
 // error-pattern:mismatched types: expected `bool`
 // error-pattern:mismatched types: expected `int`
 
-fn main() { let a: bool = 1; let b: int = true; }
+fn main() { let a: bool = 1i; let b: int = true; }

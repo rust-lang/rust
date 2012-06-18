@@ -30,7 +30,7 @@ fn nested(x: &x.int) {  // (1)
         let b: &x.int = foo(x, a) { |_x, _y, z| z };
         let c: &x.int = foo(a, a) { |_x, _y, z| z };
 
-        let z = 3;
+        let z = 3i;
         let d: &x.int = foo(x, x) { |_x, _y, z| z };
         let e: &x.int = foo(x, &z) { |_x, _y, z| z };
         let f: &x.int = foo(&z, &z) { |_x, _y, z| z }; //! ERROR mismatched types: expected `&x.int` but found
