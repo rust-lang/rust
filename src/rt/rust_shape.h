@@ -47,7 +47,6 @@ const uint8_t SHAPE_VEC = 11u;
 const uint8_t SHAPE_TAG = 12u;
 const uint8_t SHAPE_STRUCT = 17u;
 const uint8_t SHAPE_BOX_FN = 18u;
-const uint8_t SHAPE_OBJ = 19u;
 const uint8_t SHAPE_RES = 20u;
 const uint8_t SHAPE_UNIQ = 22u;
 const uint8_t SHAPE_UNIQ_FN = 25u;

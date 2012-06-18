@@ -171,7 +171,7 @@ void task_start_wrapper(spawn_args *a)
     if(env) {
         // free the environment (which should be a unique closure).
         const type_desc *td = env->td;
-        td->drop_glue(NULL, NULL, td->first_param, box_body(env));
+        td->drop_glue(NULL, NULL, NULL, box_body(env));
         upcall_exchange_free(env);
     }
 

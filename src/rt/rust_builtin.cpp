@@ -271,9 +271,8 @@ static void
 debug_tydesc_helper(type_desc *t)
 {
     rust_task *task = rust_get_current_task();
-    LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR
-        ", first_param 0x%" PRIxPTR,
-        t->size, t->align, t->first_param);
+    LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR,
+        t->size, t->align);
 }
 
 extern "C" CDECL void

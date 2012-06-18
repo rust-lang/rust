@@ -2,7 +2,10 @@
 #ifndef RUST_TYPE_H
 #define RUST_TYPE_H
 
+#include "rust_globals.h"
 #include "rust_refcount.h"
+
+struct rust_opaque_box;
 
 // The type of functions that we spawn, which fall into two categories:
 // - the main function: has a NULL environment, but uses the void* arg
@@ -45,21 +48,21 @@ static inline void *box_body(rust_opaque_box *box) {
 // N.B. If you want to add a field to tydesc, please use one of the
 // unused fields!
 struct type_desc {
-    const type_desc **first_param;
+    uintptr_t UNUSED_1;
     size_t size;
     size_t align;
     glue_fn *take_glue;
     glue_fn *drop_glue;
     glue_fn *free_glue;
     glue_fn *visit_glue;
-    uintptr_t UNUSED_1;
     uintptr_t UNUSED_2;
     uintptr_t UNUSED_3;
     uintptr_t UNUSED_4;
+    uintptr_t UNUSED_5;
     const uint8_t *shape;
     const rust_shape_tables *shape_tables;
-    uintptr_t UNUSED_5;
     uintptr_t UNUSED_6;
+    uintptr_t UNUSED_7;
 };
 
 extern "C" type_desc *rust_clone_type_desc(type_desc*);
