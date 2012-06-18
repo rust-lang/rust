@@ -43,6 +43,7 @@ const uint8_t SHAPE_I64 = 7u;
 const uint8_t SHAPE_F32 = 8u;
 const uint8_t SHAPE_F64 = 9u;
 const uint8_t SHAPE_BOX = 10u;
+// FIXME: remove after snapshot (6/18/12)
 const uint8_t SHAPE_VEC = 11u;
 const uint8_t SHAPE_TAG = 12u;
 const uint8_t SHAPE_STRUCT = 17u;

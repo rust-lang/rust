@@ -78,7 +78,6 @@ const shape_i64: u8 = 7u8;
 const shape_f32: u8 = 8u8;
 const shape_f64: u8 = 9u8;
 const shape_box: u8 = 10u8;
-const shape_vec: u8 = 11u8;
 const shape_enum: u8 = 12u8;
 const shape_struct: u8 = 17u8;
 const shape_box_fn: u8 = 18u8;
@@ -226,14 +225,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
       ty::ty_float(ast::ty_f64) { [shape_f64] }
       ty::ty_estr(ty::vstore_uniq) |
       ty::ty_str {
-        // FIXME: we want to emit this as a unique pointer to an unboxed vec,
-        // but it doesn't work at the moment, since trans doesn't put
-        // tydescs in string boxes...
-        let mut s = [shape_vec];
-        add_bool(s, true); // type is POD
-        let unit_ty = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
-        add_substr(s, shape_of(ccx, unit_ty));
-        s
+        shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
       ty::ty_enum(did, substs) {
         alt enum_kind(ccx, did) {
