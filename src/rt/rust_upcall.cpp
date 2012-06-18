@@ -28,11 +28,11 @@
         (task)->name, (task));
 #endif
 
-#define UPCALL_SWITCH_STACK(A, F) call_upcall_on_c_stack((void*)A, (void*)F)
+#define UPCALL_SWITCH_STACK(T, A, F) \
+    call_upcall_on_c_stack(T, (void*)A, (void*)F)
 
 inline void
-call_upcall_on_c_stack(void *args, void *fn_ptr) {
-    rust_task *task = rust_get_current_task();
+call_upcall_on_c_stack(rust_task *task, void *args, void *fn_ptr) {
     task->call_on_c_stack(args, fn_ptr);
 }
 
@@ -93,6 +93,7 @@ upcall_call_shim_on_rust_stack(void *args, void *fn_ptr) {
 /**********************************************************************/
 
 struct s_fail_args {
+    rust_task *task;
     char const *expr;
     char const *file;
     size_t line;
@@ -100,7 +101,7 @@ struct s_fail_args {
 
 extern "C" CDECL void
 upcall_s_fail(s_fail_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
     task->fail(args->expr, args->file, args->line);
 }
@@ -109,11 +110,13 @@ extern "C" CDECL void
 upcall_fail(char const *expr,
             char const *file,
             size_t line) {
-    s_fail_args args = {expr,file,line};
-    UPCALL_SWITCH_STACK(&args, upcall_s_fail);
+    rust_task *task = rust_get_current_task();
+    s_fail_args args = {task,expr,file,line};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_fail);
 }
 
 struct s_trace_args {
+    rust_task *task;
     char const *msg;
     char const *file;
     size_t line;
@@ -121,7 +124,7 @@ struct s_trace_args {
 
 extern "C" CDECL void
 upcall_s_trace(s_trace_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
     LOG(task, trace, "Trace %s:%d: %s",
         args->file, args->line, args->msg);
@@ -131,8 +134,9 @@ extern "C" CDECL void
 upcall_trace(char const *msg,
              char const *file,
              size_t line) {
-    s_trace_args args = {msg,file,line};
-    UPCALL_SWITCH_STACK(&args, upcall_s_trace);
+    rust_task *task = rust_get_current_task();
+    s_trace_args args = {task,msg,file,line};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_trace);
 }
 
 /**********************************************************************
@@ -158,13 +162,14 @@ exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
 
 // FIXME: remove after snapshot (6/13/12)
 struct s_exchange_malloc_args {
+    rust_task *task;
     uintptr_t retval;
     type_desc *td;
 };
 
 extern "C" CDECL void
 upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
 
     args->retval = exchange_malloc(task, args->td, args->td->size);
@@ -172,12 +177,14 @@ upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
 
 extern "C" CDECL uintptr_t
 upcall_exchange_malloc(type_desc *td) {
-    s_exchange_malloc_args args = {0, td};
-    UPCALL_SWITCH_STACK(&args, upcall_s_exchange_malloc);
+    rust_task *task = rust_get_current_task();
+    s_exchange_malloc_args args = {task, 0, td};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_malloc);
     return args.retval;
 }
 
 struct s_exchange_malloc_dyn_args {
+    rust_task *task;
     uintptr_t retval;
     type_desc *td;
     uintptr_t size;
@@ -185,7 +192,7 @@ struct s_exchange_malloc_dyn_args {
 
 extern "C" CDECL void
 upcall_s_exchange_malloc_dyn(s_exchange_malloc_dyn_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
 
     args->retval = exchange_malloc(task, args->td, args->size);
@@ -193,26 +200,29 @@ upcall_s_exchange_malloc_dyn(s_exchange_malloc_dyn_args *args) {
 
 extern "C" CDECL uintptr_t
 upcall_exchange_malloc_dyn(type_desc *td, uintptr_t size) {
-    s_exchange_malloc_dyn_args args = {0, td, size};
-    UPCALL_SWITCH_STACK(&args, upcall_s_exchange_malloc_dyn);
+    rust_task *task = rust_get_current_task();
+    s_exchange_malloc_dyn_args args = {task, 0, td, size};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_malloc_dyn);
     return args.retval;
 }
 
 struct s_exchange_free_args {
+    rust_task *task;
     void *ptr;
 };
 
 extern "C" CDECL void
 upcall_s_exchange_free(s_exchange_free_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
     task->kernel->free(args->ptr);
 }
 
 extern "C" CDECL void
 upcall_exchange_free(void *ptr) {
-    s_exchange_free_args args = {ptr};
-    UPCALL_SWITCH_STACK(&args, upcall_s_exchange_free);
+    rust_task *task = rust_get_current_task();
+    s_exchange_free_args args = {task,ptr};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_free);
 }
 
 /**********************************************************************
@@ -241,13 +251,14 @@ shared_malloc(rust_task *task, type_desc *td, uintptr_t size) {
 
 // FIXME: remove after snapshot (6/13/12)
 struct s_malloc_args {
+    rust_task *task;
     uintptr_t retval;
     type_desc *td;
 };
 
 extern "C" CDECL void
 upcall_s_malloc(s_malloc_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
 
     args->retval = shared_malloc(task, args->td, args->td->size);
@@ -255,12 +266,14 @@ upcall_s_malloc(s_malloc_args *args) {
 
 extern "C" CDECL uintptr_t
 upcall_malloc(type_desc *td) {
-    s_malloc_args args = {0, td};
-    UPCALL_SWITCH_STACK(&args, upcall_s_malloc);
+    rust_task *task = rust_get_current_task();
+    s_malloc_args args = {task, 0, td};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc);
     return args.retval;
 }
 
 struct s_malloc_dyn_args {
+    rust_task *task;
     uintptr_t retval;
     type_desc *td;
     uintptr_t size;
@@ -268,7 +281,7 @@ struct s_malloc_dyn_args {
 
 extern "C" CDECL void
 upcall_s_malloc_dyn(s_malloc_dyn_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
 
     args->retval = shared_malloc(task, args->td, args->size);
@@ -276,8 +289,9 @@ upcall_s_malloc_dyn(s_malloc_dyn_args *args) {
 
 extern "C" CDECL uintptr_t
 upcall_malloc_dyn(type_desc *td, uintptr_t size) {
-    s_malloc_dyn_args args = {0, td, size};
-    UPCALL_SWITCH_STACK(&args, upcall_s_malloc_dyn);
+    rust_task *task = rust_get_current_task();
+    s_malloc_dyn_args args = {task, 0, td, size};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc_dyn);
     return args.retval;
 }
 
@@ -287,12 +301,13 @@ upcall_malloc_dyn(type_desc *td, uintptr_t size) {
  */
 
 struct s_free_args {
+    rust_task *task;
     void *ptr;
 };
 
 extern "C" CDECL void
 upcall_s_free(s_free_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
 
     rust_sched_loop *sched_loop = task->sched_loop;
@@ -308,8 +323,9 @@ upcall_s_free(s_free_args *args) {
 
 extern "C" CDECL void
 upcall_free(void* ptr) {
-    s_free_args args = {ptr};
-    UPCALL_SWITCH_STACK(&args, upcall_s_free);
+    rust_task *task = rust_get_current_task();
+    s_free_args args = {task,ptr};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_free);
 }
 
 /**********************************************************************
@@ -330,6 +346,7 @@ upcall_validate_box(rust_opaque_box* ptr) {
 /**********************************************************************/
 
 struct s_str_new_uniq_args {
+    rust_task *task;
     const char *cstr;
     size_t len;
     rust_str *retval;
@@ -337,7 +354,7 @@ struct s_str_new_uniq_args {
 
 extern "C" CDECL void
 upcall_s_str_new_uniq(s_str_new_uniq_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
     args->retval = make_str(task->kernel, args->cstr, args->len,
                             "str_new_uniq");
@@ -345,21 +362,24 @@ upcall_s_str_new_uniq(s_str_new_uniq_args *args) {
 
 extern "C" CDECL rust_str*
 upcall_str_new_uniq(const char *cstr, size_t len) {
-    s_str_new_uniq_args args = { cstr, len, 0 };
-    UPCALL_SWITCH_STACK(&args, upcall_s_str_new_uniq);
+    rust_task *task = rust_get_current_task();
+    s_str_new_uniq_args args = { task, cstr, len, 0 };
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_new_uniq);
     return args.retval;
 }
 
 extern "C" CDECL rust_str*
 upcall_str_new(const char *cstr, size_t len) {
-    s_str_new_uniq_args args = { cstr, len, 0 };
-    UPCALL_SWITCH_STACK(&args, upcall_s_str_new_uniq);
+    rust_task *task = rust_get_current_task();
+    s_str_new_uniq_args args = { task, cstr, len, 0 };
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_new_uniq);
     return args.retval;
 }
 
 
 
 struct s_str_new_shared_args {
+    rust_task *task;
     const char *cstr;
     size_t len;
     rust_opaque_box *retval;
@@ -367,7 +387,7 @@ struct s_str_new_shared_args {
 
 extern "C" CDECL void
 upcall_s_str_new_shared(s_str_new_shared_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
 
     size_t str_fill = args->len + 1;
@@ -384,20 +404,22 @@ upcall_s_str_new_shared(s_str_new_shared_args *args) {
 
 extern "C" CDECL rust_opaque_box*
 upcall_str_new_shared(const char *cstr, size_t len) {
-    s_str_new_shared_args args = { cstr, len, 0 };
-    UPCALL_SWITCH_STACK(&args, upcall_s_str_new_shared);
+    rust_task *task = rust_get_current_task();
+    s_str_new_shared_args args = { task, cstr, len, 0 };
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_new_shared);
     return args.retval;
 }
 
 
 struct s_vec_grow_args {
+    rust_task *task;
     rust_vec_box** vp;
     size_t new_sz;
 };
 
 extern "C" CDECL void
 upcall_s_vec_grow(s_vec_grow_args *args) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
     reserve_vec(task, args->vp, args->new_sz);
     (*args->vp)->body.fill = args->new_sz;
@@ -405,11 +427,13 @@ upcall_s_vec_grow(s_vec_grow_args *args) {
 
 extern "C" CDECL void
 upcall_vec_grow(rust_vec_box** vp, size_t new_sz) {
-    s_vec_grow_args args = {vp, new_sz};
-    UPCALL_SWITCH_STACK(&args, upcall_s_vec_grow);
+    rust_task *task = rust_get_current_task();
+    s_vec_grow_args args = {task, vp, new_sz};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_vec_grow);
 }
 
 struct s_str_concat_args {
+    rust_task *task;
     rust_vec_box* lhs;
     rust_vec_box* rhs;
     rust_vec_box* retval;
@@ -419,7 +443,7 @@ extern "C" CDECL void
 upcall_s_str_concat(s_str_concat_args *args) {
     rust_vec *lhs = &args->lhs->body;
     rust_vec *rhs = &args->rhs->body;
-    rust_task *task = rust_get_current_task();
+    rust_task *task = args->task;
     size_t fill = lhs->fill + rhs->fill - 1;
     rust_vec_box* v = (rust_vec_box*)
         task->kernel->malloc(fill + sizeof(rust_vec_box),
@@ -433,8 +457,9 @@ upcall_s_str_concat(s_str_concat_args *args) {
 
 extern "C" CDECL rust_vec_box*
 upcall_str_concat(rust_vec_box* lhs, rust_vec_box* rhs) {
-    s_str_concat_args args = {lhs, rhs, 0};
-    UPCALL_SWITCH_STACK(&args, upcall_s_str_concat);
+    rust_task *task = rust_get_current_task();
+    s_str_concat_args args = {task, lhs, rhs, 0};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_concat);
     return args.retval;
 }
 
@@ -486,7 +511,7 @@ upcall_rust_personality(int version,
     // then switch to the C stack.
 
     if (task->on_rust_stack()) {
-        UPCALL_SWITCH_STACK(&args, upcall_s_rust_personality);
+        UPCALL_SWITCH_STACK(task, &args, upcall_s_rust_personality);
     } else {
         upcall_s_rust_personality(&args);
     }
@@ -517,9 +542,10 @@ extern "C" void
 upcall_cmp_type(int8_t *result, const type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
+    rust_task *task = rust_get_current_task();
     s_cmp_type_args args = {result, tydesc, subtydescs,
                             data_0, data_1, cmp_type};
-    UPCALL_SWITCH_STACK(&args, upcall_s_cmp_type);
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_cmp_type);
 }
 
 extern "C" void
@@ -538,8 +564,9 @@ upcall_s_log_type(s_log_type_args *args) {
 
 extern "C" void
 upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
+    rust_task *task = rust_get_current_task();
     s_log_type_args args = {tydesc, data, level};
-    UPCALL_SWITCH_STACK(&args, upcall_s_log_type);
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_log_type);
 }
 
 // NB: This needs to be blazing fast. Don't switch stacks
