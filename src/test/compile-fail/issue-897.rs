@@ -1,5 +1,5 @@
 fn f() -> ! {
-    ret 42; //! ERROR expected `_|_` but found `int`
+    ret 42i; //! ERROR expected `_|_` but found `int`
     fail; //! WARNING unreachable statement
 }
 fn main() { }
