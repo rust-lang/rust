@@ -203,6 +203,23 @@ fn require_same_types(
     }
 }
 
+fn require_same_types_in_infcx(
+    infcx: infer::infer_ctxt,
+    span: span,
+    t1: ty::t,
+    t2: ty::t,
+    msg: fn() -> str) -> bool {
+
+    alt infer::compare_tys_in_infcx(infcx, t1, t2) {
+      result::ok(()) { true }
+      result::err(terr) {
+        infcx.tcx.sess.span_err(span, msg() + ": " +
+            ty::type_err_to_str(infcx.tcx, terr));
+        false
+      }
+    }
+}
+
 fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
     alt ty::get(a.ty).struct {
       ty::ty_vec(mt) {

@@ -172,6 +172,7 @@ export resolve_deep_var;
 export methods; // for infer_ctxt
 export unify_methods; // for infer_ctxt
 export compare_tys;
+export compare_tys_in_infcx;
 export fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
@@ -378,6 +379,10 @@ fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
 
 fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
     let infcx = new_infer_ctxt(tcx);
+    mk_eqty(infcx, a, b)
+}
+
+fn compare_tys_in_infcx(infcx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     mk_eqty(infcx, a, b)
 }
 

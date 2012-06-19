@@ -137,9 +137,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         check_expr_with(fcx, end, expected);
         let b_ty =
             fcx.infcx.resolve_type_vars_if_possible(fcx.expr_ty(begin));
-        if !require_same_types(
-            tcx, pat.span, b_ty,
-            fcx.infcx.resolve_type_vars_if_possible(fcx.expr_ty(end)),
+        let e_ty =
+            fcx.infcx.resolve_type_vars_if_possible(fcx.expr_ty(end));
+        #debug["pat_range beginning type: %?", b_ty];
+        #debug["pat_range ending type: %?", e_ty];
+        if !require_same_types_in_infcx(
+            fcx.infcx, pat.span, b_ty, e_ty,
             {|| "mismatched types in range" }) {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
