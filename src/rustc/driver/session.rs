@@ -32,6 +32,9 @@ const stats: uint = 16u;
 const no_asm_comments: uint = 32u;
 const no_verify: uint = 64u;
 const trace: uint = 128u;
+// FIXME: This exists to transition to a Rust crate runtime
+// It should be removed
+const no_rt: uint = 256u;
 
 fn debugging_opts_map() -> [(str, str, uint)] {
     [("ppregions", "prettyprint regions with \
@@ -43,7 +46,9 @@ fn debugging_opts_map() -> [(str, str, uint)] {
      ("stats", "gather trans statistics", stats),
      ("no-asm-comments", "omit comments when using -S", no_asm_comments),
      ("no-verify", "skip LLVM verification", no_verify),
-     ("trace", "emit trace logs", trace)]
+     ("trace", "emit trace logs", trace),
+     ("no-rt", "do not link to the runtime", no_rt)
+    ]
 }
 
 type options =
@@ -64,7 +69,6 @@ type options =
      test: bool,
      parse_only: bool,
      no_trans: bool,
-
      debugging_opts: uint,
     };
 

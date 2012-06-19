@@ -631,8 +631,10 @@ fn link_binary(sess: session,
         }
     }
 
-    // Always want the runtime linked in
-    cc_args += ["-lrustrt"];
+    if !sess.debugging_opt(session::no_rt) {
+        // Always want the runtime linked in
+        cc_args += ["-lrustrt"];
+    }
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
