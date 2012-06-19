@@ -267,7 +267,7 @@ type bounds<T:copy> = {lb: bound<T>, ub: bound<T>};
 
 enum var_value<V:copy, T:copy> {
     redirect(V),
-    root(T)
+    root(T, uint),
 }
 
 type vals_and_bindings<V:copy, T:copy> = {
@@ -278,6 +278,7 @@ type vals_and_bindings<V:copy, T:copy> = {
 enum node<V:copy, T:copy> = {
     root: V,
     possible_types: T,
+    rank: uint,
 };
 
 enum infer_ctxt = @{
@@ -475,7 +476,8 @@ impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
     fn to_str(cx: infer_ctxt) -> str {
         alt self {
           redirect(vid) { #fmt("redirect(%s)", vid.to_str()) }
-          root(pt) { #fmt("root(%s)", pt.to_str(cx)) }
+          root(pt, rk) { #fmt("root(%s, %s)", pt.to_str(cx),
+                              uint::to_str(rk, 10u)) }
         }
     }
 }
@@ -578,7 +580,7 @@ impl methods for infer_ctxt {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;
         self.tvb.vals.insert(id,
-                             root({lb: none, ub: none}));
+                             root({lb: none, ub: none}, 0u));
         ret tv_vid(id);
     }
 
@@ -595,7 +597,7 @@ impl methods for infer_ctxt {
         *self.ty_var_integral_counter += 1u;
 
         self.tvib.vals.insert(id,
-                              root(int_ty_set_all()));
+                              root(int_ty_set_all(), 0u));
         ret tvi_vid(id);
     }
 
@@ -607,7 +609,7 @@ impl methods for infer_ctxt {
         let id = *self.region_var_counter;
         *self.region_var_counter += 1u;
         self.rb.vals.insert(id,
-                            root({lb: none, ub: none}));
+                            root({lb: none, ub: none}, 0u));
         ret region_vid(id);
     }
 
@@ -661,8 +663,8 @@ impl unify_methods for infer_ctxt {
                 }
                 nde
               }
-              root(pt) {
-                node({root: vid, possible_types: pt})
+              root(pt, rk) {
+                node({root: vid, possible_types: pt, rank: rk})
               }
             }
           }
@@ -722,9 +724,10 @@ impl unify_methods for infer_ctxt {
     //    a.lb <: c.lb
     //    b.lb <: c.lb
     // If this cannot be achieved, the result is failure.
+
     fn set_var_to_merged_bounds<V:copy vid, T:copy to_str st>(
         vb: vals_and_bindings<V, bounds<T>>,
-        v_id: V, a: bounds<T>, b: bounds<T>) -> ures {
+        v_id: V, a: bounds<T>, b: bounds<T>, rank: uint) -> ures {
 
         // Think of the two diamonds, we want to find the
         // intersection.  There are basically four possibilities (you
@@ -765,7 +768,7 @@ impl unify_methods for infer_ctxt {
             // the new bounds must themselves
             // be relatable:
             self.bnds(bnds.lb, bnds.ub).then {||
-                self.set(vb, v_id, root(bnds));
+                self.set(vb, v_id, root(bnds, rank));
                 uok()
         }
         }}}}}
@@ -802,15 +805,42 @@ impl unify_methods for infer_ctxt {
           _ { /*fallthrough*/ }
         }
 
-        // For max perf, we should consider the rank here.  But for now,
-        // we always make b redirect to a.
-        self.set(vb, b_id, redirect(a_id));
-
         // Otherwise, we need to merge A and B so as to guarantee that
         // A remains a subtype of B.  Actually, there are other options,
         // but that's the route we choose to take.
-        self.set_var_to_merged_bounds(vb, a_id, a_bounds, b_bounds).then {||
-            uok()
+
+        // Rank optimization
+
+        // Make the node with greater rank the parent of the node with
+        // smaller rank.
+        if nde_a.rank > nde_b.rank {
+            #debug["vars(): a has smaller rank"];
+            // a has greater rank, so a should become b's parent,
+            // i.e., b should redirect to a.
+            self.set(vb, b_id, redirect(a_id));
+            self.set_var_to_merged_bounds(
+                vb, a_id, a_bounds, b_bounds, nde_a.rank).then {||
+                uok()
+            }
+        } else if nde_a.rank < nde_b.rank {
+            #debug["vars(): b has smaller rank"];
+            // b has geater rank, so a should redirect to b.
+            self.set(vb, a_id, redirect(b_id));
+            self.set_var_to_merged_bounds(
+                vb, b_id, a_bounds, b_bounds, nde_b.rank).then {||
+                uok()
+            }
+        } else {
+            #debug["vars(): a and b have equal rank"];
+            assert nde_a.rank == nde_b.rank;
+            // If equal, just redirect one to the other and increment
+            // the other's rank.  We choose arbitrarily to redirect b
+            // to a and increment a's rank.
+            self.set(vb, b_id, redirect(a_id));
+            self.set_var_to_merged_bounds(
+                vb, a_id, a_bounds, b_bounds, nde_a.rank + 1u).then {||
+                uok()
+            }
         }
     }
 
@@ -835,8 +865,29 @@ impl unify_methods for infer_ctxt {
         if *intersection == INT_TY_SET_EMPTY {
             ret err(ty::terr_no_integral_type);
         }
-        self.set(vb, a_id, root(intersection));
-        self.set(vb, b_id, redirect(a_id));
+
+        // Rank optimization
+        if nde_a.rank > nde_b.rank {
+            #debug["vars_integral(): a has smaller rank"];
+            // a has greater rank, so a should become b's parent,
+            // i.e., b should redirect to a.
+            self.set(vb, a_id, root(intersection, nde_a.rank));
+            self.set(vb, b_id, redirect(a_id));
+        } else if nde_a.rank < nde_b.rank {
+            #debug["vars_integral(): b has smaller rank"];
+            // b has greater rank, so a should redirect to b.
+            self.set(vb, b_id, root(intersection, nde_b.rank));
+            self.set(vb, a_id, redirect(b_id));
+        } else {
+            #debug["vars_integral(): a and b have equal rank"];
+            assert nde_a.rank == nde_b.rank;
+            // If equal, just redirect one to the other and increment
+            // the other's rank.  We choose arbitrarily to redirect b
+            // to a and increment a's rank.
+            self.set(vb, a_id, root(intersection, nde_a.rank + 1u));
+            self.set(vb, b_id, redirect(a_id));
+        };
+
         uok()
     }
 
@@ -852,7 +903,8 @@ impl unify_methods for infer_ctxt {
                a_id.to_str(), a_bounds.to_str(self),
                b.to_str(self)];
         let b_bounds = {lb: none, ub: some(b)};
-        self.set_var_to_merged_bounds(vb, a_id, a_bounds, b_bounds)
+        self.set_var_to_merged_bounds(vb, a_id, a_bounds, b_bounds,
+                                      nde_a.rank)
     }
 
     fn vart_integral<V: copy vid>(
@@ -871,7 +923,7 @@ impl unify_methods for infer_ctxt {
         if *intersection == INT_TY_SET_EMPTY {
             ret err(ty::terr_no_integral_type);
         }
-        self.set(vb, a_id, root(intersection));
+        self.set(vb, a_id, root(intersection, nde_a.rank));
         uok()
     }
 
@@ -887,7 +939,8 @@ impl unify_methods for infer_ctxt {
         #debug["tvar(%s <: %s=%s)",
                a.to_str(self),
                b_id.to_str(), b_bounds.to_str(self)];
-        self.set_var_to_merged_bounds(vb, b_id, a_bounds, b_bounds)
+        self.set_var_to_merged_bounds(vb, b_id, a_bounds, b_bounds,
+                                      nde_b.rank)
     }
 
     fn tvar_integral<V: copy vid>(
@@ -906,7 +959,7 @@ impl unify_methods for infer_ctxt {
         if *intersection == INT_TY_SET_EMPTY {
             ret err(ty::terr_no_integral_type);
         }
-        self.set(vb, b_id, root(intersection));
+        self.set(vb, b_id, root(intersection, nde_b.rank));
         uok()
     }
 
@@ -1197,7 +1250,8 @@ impl methods for resolve_state {
                 self.infcx.set(
                     self.infcx.tvib, vid,
                     root(convert_integral_ty_to_int_ty_set(self.infcx.tcx,
-                                                           ty)));
+                                                           ty),
+                        nde.rank));
                 ty
               }
               force_none {
@@ -2564,7 +2618,8 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
         #debug["bnd=none"];
         let a_bounds = self.with_bnd(a_bounds, b);
         self.infcx().bnds(a_bounds.lb, a_bounds.ub).then {||
-            self.infcx().set(vb, a_id, root(a_bounds));
+            self.infcx().set(vb, a_id, root(a_bounds,
+                                            nde_a.rank));
             ok(b)
         }
       }
