@@ -754,7 +754,8 @@ fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
       // We have to cast v0
      let classptr = GEPi(bcx, v0, [0u, 1u]);
      // Find and call the actual destructor
-     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, substs.tps);
+     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, some(class_did),
+                                  substs.tps);
      // The second argument is the "self" argument for drop
      let params = lib::llvm::fn_ty_param_tys
          (llvm::LLVMGetElementType
@@ -829,7 +830,11 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
+fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
+                // Parent ID is an option because resources don't
+                // have one. We can make this a def_id when
+                // resources get removed.
+                opt_id: option<ast::def_id>, substs: [ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
     if (substs.len() > 0u) {
@@ -841,14 +846,27 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
     } else if did.crate == ast::local_crate {
         get_item_val(ccx, did.node)
     } else {
-        let fty = ty::mk_fn(ccx.tcx, {purity: ast::impure_fn,
-                                      proto: ast::proto_bare,
-                                      inputs: [{mode: ast::expl(ast::by_ref),
+        alt opt_id {
+           some(parent_id) {
+             let tcx = ccx.tcx;
+             let name = csearch::get_symbol(ccx.sess.cstore, did);
+             let class_ty = ty::subst_tps(tcx, substs,
+                              ty::lookup_item_type(tcx, parent_id).ty);
+             let llty = type_of_dtor(ccx, class_ty);
+             get_extern_fn(ccx.externs, ccx.llmod, name, lib::llvm::CCallConv,
+                           llty)
+           }
+           none {
+             let fty = ty::mk_fn(ccx.tcx, {purity: ast::impure_fn,
+                                       proto: ast::proto_bare,
+                                     inputs: [{mode: ast::expl(ast::by_ref),
                                                 ty: ty::mk_nil_ptr(ccx.tcx)}],
                                       output: ty::mk_nil(ccx.tcx),
                                       ret_style: ast::return_val,
                                       constraints: []});
-        trans_external_path(ccx, did, fty)
+             trans_external_path(ccx, did, fty)
+           }
+      }
     }
 }
 
@@ -862,7 +880,7 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|bcx|
         let valptr = GEPi(bcx, rs, [0u, 1u]);
         // Find and call the actual destructor.
-        let dtor_addr = get_res_dtor(ccx, did, tps);
+        let dtor_addr = get_res_dtor(ccx, did, none, tps);
         let args = [bcx.fcx.llretptr, null_env_ptr(bcx)];
         // Kludge to work around the fact that we know the precise type of the
         // value here, but the dtor expects a type that might have opaque

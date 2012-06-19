@@ -21,12 +21,14 @@ import std::map::hashmap;
 
 import ty_ctxt = middle::ty::ctxt;
 
-type nominal_id = @{did: ast::def_id, tps: [ty::t]};
+type nominal_id = @{did: ast::def_id, parent_id: option<ast::def_id>,
+                    tps: [ty::t]};
 
 fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
+                 parent_id: option<ast::def_id>,
                  tps: [ty::t]) -> nominal_id {
     let tps_norm = tps.map { |t| ty::normalize_ty(tcx, t) };
-    @{did: did, tps: tps_norm}
+    @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 
 fn hash_nominal_id(&&ri: nominal_id) -> uint {
@@ -233,7 +235,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
           tk_enum { [s_variant_enum_t(ccx.tcx)] }
           tk_newtype | tk_complex {
             let mut s = [shape_enum], id;
-            let nom_id = mk_nominal_id(ccx.tcx, did, substs.tps);
+            let nom_id = mk_nominal_id(ccx.tcx, did, none, substs.tps);
             alt ccx.shape_cx.tag_id_to_index.find(nom_id) {
               none {
                 id = ccx.shape_cx.next_tag_id;
@@ -335,7 +337,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
           else { [shape_struct] };
         let mut sub = [];
         option::iter(m_dtor_did) {|dtor_did|
-          let ri = @{did: dtor_did, tps: tps};
+          let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
           let id = interner::intern(ccx.shape_cx.resources, ri);
           add_u16(s, id as u16);
 
@@ -362,7 +364,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
         for substs.tps.each() {|t| assert !ty::type_has_params(t); }
         let subt = ty::subst(ccx.tcx, substs, raw_subt);
         let tps = substs.tps;
-        let ri = @{did: did, tps: tps};
+        let ri = @{did: did, parent_id: none, tps: tps};
         let id = interner::intern(ccx.shape_cx.resources, ri);
 
         let mut s = [shape_res];
@@ -597,7 +599,8 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     for uint::range(0u, len) {|i|
         let ri = interner::get(ccx.shape_cx.resources, i);
         for ri.tps.each() {|s| assert !ty::type_has_params(s); }
-        dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.tps)];
+        dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.parent_id,
+                                            ri.tps)];
     }
     ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }

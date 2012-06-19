@@ -8,6 +8,7 @@ import std::map::hashmap;
 import ty::*;
 
 export type_of;
+export type_of_dtor;
 export type_of_explicit_args;
 export type_of_fn_from_ty;
 export type_of_fn;
@@ -249,5 +250,11 @@ fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> str {
             tps),
         did.crate
     );
+}
+
+fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
+    T_fn([T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))),
+          T_ptr(type_of(ccx, self_ty))],
+         llvm::LLVMVoidType())
 }
 
