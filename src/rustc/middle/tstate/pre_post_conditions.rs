@@ -364,7 +364,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         } else { find_pre_post_exprs(fcx, [l, r], e.id); }
       }
       expr_addr_of(_, x) | expr_cast(x, _) | expr_unary(_, x) |
-      expr_loop_body(x) | expr_assert(x) | expr_copy(x) {
+      expr_loop_body(x) | expr_do_body(x) | expr_assert(x) | expr_copy(x) {
         find_pre_post_expr(fcx, x);
         copy_pre_post(fcx.ccx, e.id, x);
       }

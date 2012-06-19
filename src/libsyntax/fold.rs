@@ -415,6 +415,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           }
           expr_unary(binop, ohs) { expr_unary(binop, fld.fold_expr(ohs)) }
           expr_loop_body(f) { expr_loop_body(fld.fold_expr(f)) }
+          expr_do_body(f) { expr_do_body(fld.fold_expr(f)) }
           expr_lit(_) { copy e }
           expr_cast(expr, ty) { expr_cast(fld.fold_expr(expr), ty) }
           expr_addr_of(m, ohs) { expr_addr_of(m, fld.fold_expr(ohs)) }

@@ -486,7 +486,8 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         }
         ret changed | set_poststate_ann(fcx.ccx, e.id, a_post);
       }
-      expr_field(x, _, _) | expr_loop_body(x) | expr_unary(_, x) |
+      expr_field(x, _, _) | expr_loop_body(x) | expr_do_body(x) |
+      expr_unary(_, x) |
       expr_addr_of(_, x) | expr_assert(x) | expr_cast(x, _) |
       expr_copy(x) {
         ret find_pre_post_state_sub(fcx, pres, x, e.id, none);

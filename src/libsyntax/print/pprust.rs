@@ -1048,6 +1048,9 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_loop_body(body) {
         print_expr(s, body);
       }
+      ast::expr_do_body(body) {
+        print_expr(s, body);
+      }
       ast::expr_block(blk) {
         // containing cbox, will be closed by print-block at }
         cbox(s, indent_unit);

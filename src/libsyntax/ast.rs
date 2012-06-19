@@ -318,6 +318,8 @@ enum expr_ {
     // easily type this (a function returning nil on the inside but bool on
     // the outside).
     expr_loop_body(@expr),
+    // Like expr_loop_body but for 'do' blocks
+    expr_do_body(@expr),
     expr_block(blk),
 
     /*

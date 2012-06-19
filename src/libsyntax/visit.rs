@@ -382,7 +382,8 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         for args.each {|eo| visit_expr_opt(eo, e, v); }
       }
       expr_binary(_, a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
-      expr_addr_of(_, x) | expr_unary(_, x) | expr_loop_body(x) |
+      expr_addr_of(_, x) | expr_unary(_, x) |
+      expr_loop_body(x) | expr_do_body(x) |
       expr_check(_, x) | expr_assert(x) {
         v.visit_expr(x, e, v);
       }

@@ -1364,6 +1364,32 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         }
       }
+      ast::expr_do_body(b) {
+        let expected_sty = unpack_expected(fcx, expected, {|x|some(x)}).get();
+        let (inner_ty, proto) = alt expected_sty {
+          ty::ty_fn(fty) {
+            (ty::mk_fn(tcx, fty), fty.proto)
+          }
+          _ {
+            tcx.sess.span_fatal(expr.span, "a do function's last argument \
+                                            should be of function type");
+          }
+        };
+        alt check b.node {
+          ast::expr_fn_block(decl, body, cap_clause) {
+            check_expr_fn(fcx, b, proto, decl, body, true, some(inner_ty));
+            demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
+            capture::check_capture_clause(tcx, b.id, cap_clause);
+          }
+        }
+        let block_ty = structurally_resolved_type(
+            fcx, expr.span, fcx.node_ty(b.id));
+        alt check ty::get(block_ty).struct {
+          ty::ty_fn(fty) {
+            fcx.write_ty(expr.id, ty::mk_fn(tcx, fty));
+          }
+        }
+      }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
         bot = check_block(fcx, b);

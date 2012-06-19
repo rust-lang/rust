@@ -412,7 +412,8 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       expr_vec(*) | expr_rec(*) | expr_call(*) | expr_tup(*) |
       expr_bind(*) | expr_new(*) | expr_log(*) | expr_binary(*) |
       expr_assert(*) | expr_check(*) | expr_addr_of(*) | expr_copy(*) |
-      expr_loop_body(*) | expr_cast(*) | expr_unary(*) | expr_fail(*) |
+      expr_loop_body(*) | expr_do_body(*) | expr_cast(*) |
+      expr_unary(*) | expr_fail(*) |
       expr_break | expr_cont | expr_lit(_) | expr_ret(*) |
       expr_block(*) | expr_move(*) | expr_assign(*) | expr_swap(*) |
       expr_assign_op(*) | expr_mac(*) {
@@ -1054,6 +1055,7 @@ class liveness {
           expr_addr_of(_, e) |
           expr_copy(e) |
           expr_loop_body(e) |
+          expr_do_body(e) |
           expr_cast(e, _) |
           expr_unary(_, e) {
             self.propagate_through_expr(e, succ)
@@ -1406,7 +1408,8 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_vec(*) | expr_rec(*) | expr_tup(*) |
       expr_bind(*) | expr_new(*) | expr_log(*) | expr_binary(*) |
       expr_assert(*) | expr_check(*) | expr_copy(*) |
-      expr_loop_body(*) | expr_cast(*) | expr_unary(*) | expr_fail(*) |
+      expr_loop_body(*) | expr_do_body(*) |
+      expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_ret(*) | expr_break | expr_cont | expr_lit(_) |
       expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) {
         visit::visit_expr(expr, self, vt);

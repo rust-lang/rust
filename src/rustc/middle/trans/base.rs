@@ -3622,6 +3622,9 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_loop_body(blk) {
             ret trans_loop_body(bcx, e, none, dest);
           }
+          ast::expr_do_body(blk) {
+            ret trans_expr(bcx, blk, dest);
+          }
           ast::expr_bind(f, args) {
             ret closure::trans_bind(
                 bcx, f, args, e.id, dest);
