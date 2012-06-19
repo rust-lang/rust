@@ -23,10 +23,10 @@ fn walk_stack(visit: fn(frame) -> bool) {
             reinterpret_cast(frame_pointer)
         };
         loop {
-            let frame = frame(frame_address);
+            let fr = frame(frame_address);
 
-            #debug("frame: %x", unsafe { reinterpret_cast(frame.fp) });
-            visit(frame);
+            #debug("frame: %x", unsafe { reinterpret_cast(fr.fp) });
+            visit(fr);
 
             unsafe {
                 let next_fp: **word = reinterpret_cast(frame_address);
@@ -44,7 +44,7 @@ fn walk_stack(visit: fn(frame) -> bool) {
 
 #[test]
 fn test_simple() {
-    for walk_stack { |frame|
+    for walk_stack { |_frame|
     }
 }
 
@@ -53,7 +53,7 @@ fn test_simple_deep() {
     fn run(i: int) {
         if i == 0 { ret }
 
-        for walk_stack { |frame|
+        for walk_stack { |_frame|
             unsafe {
                 breakpoint();
             }
