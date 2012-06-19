@@ -896,7 +896,8 @@ rust_wait_cond_lock(rust_cond_lock *lock) {
     lock->waiting = task;
     task->block(lock, "waiting for signal");
     lock->lock.unlock();
-    task->yield(false);
+    bool killed = false;
+    task->yield(&killed);
     lock->lock.lock();
 }
 
