@@ -573,7 +573,6 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
       }
       ast::item_class(tps, ifaces, members, ctor, m_dtor, _) {
         v.visit_ty_params(tps, sc, v);
-        // Can maybe skip this now that we require self on class fields
         let class_scope = @cons(scope_item(i), sc);
         /* visit the constructor... */
         let ctor_scope = @cons(scope_method(ctor.node.self_id, tps),
@@ -1061,7 +1060,7 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
               }
               ast::item_class(tps, _, members, ctor, _, _) {
                   if ns == ns_type {
-                    ret lookup_in_ty_params(e, name, tps);
+                      ret lookup_in_ty_params(e, name, tps);
                   }
                   if ns == ns_val && name == it.ident {
                       ret some(ast::def_fn(local_def(ctor.node.id),
@@ -1317,13 +1316,14 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
     alt i.node {
       ast::item_const(*) {
         if ns == ns_val {
-            ret some(ast::def_const(local_def(i.id))); }
-      }
-      ast::item_fn(decl, _, _) {
-        if ns == ns_val {
-            ret some(ast::def_fn(local_def(i.id), decl.purity));
+            ret some(ast::def_const(local_def(i.id)));
         }
       }
+      ast::item_fn(decl, _, _) {
+          if ns == ns_val {
+            ret some(ast::def_fn(local_def(i.id), decl.purity));
+           }
+       }
       ast::item_mod(_) {
         if ns == ns_module { ret some(ast::def_mod(local_def(i.id))); }
       }
@@ -1342,9 +1342,16 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
           _ { }
         }
       }
-      ast::item_class(*) {
-          if ns == ns_type {
-            ret some(ast::def_class(local_def(i.id)));
+      ast::item_class(_, _, _members, ct, _, _) {
+          alt ns {
+             ns_type {
+               ret some(ast::def_class(local_def(i.id)));
+             }
+             ns_val {
+               ret some(ast::def_fn(local_def(ct.node.id),
+                                    ast::impure_fn));
+             }
+             ns_module { }
           }
       }
       ast::item_impl(*) { /* ??? */ }
@@ -1653,14 +1660,6 @@ fn index_mod(md: ast::_mod) -> mod_index {
           ast::item_class(tps, _, items, ctor, _, _) {
               // add the class name itself
               add_to_index(index, it.ident, mie_item(it));
-              // add the constructor decl
-              add_to_index(index, it.ident,
-                           mie_item(@{ident: it.ident, attrs: [],
-                            id: ctor.node.id,
-                            node:
-                              item_fn(ctor.node.dec, tps, ctor.node.body),
-                            vis: ast::public,
-                            span: ctor.node.body.span}));
           }
         }
     }
