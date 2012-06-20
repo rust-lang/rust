@@ -2991,8 +2991,8 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_bool { tycat_bool }
           ty_int(_) | ty_uint(_) | ty_var_integral(_) { tycat_int }
           ty_float(_) { tycat_float }
-          ty_estr(_) | ty_str { tycat_str }
-          ty_evec(_, _) | ty_vec(_) { tycat_vec }
+          ty_str { tycat_str }
+          ty_vec(_) { tycat_vec }
           ty_rec(_) | ty_tup(_) | ty_enum(_, _) { tycat_struct }
           ty_bot { tycat_bot }
           _ { tycat_other }
