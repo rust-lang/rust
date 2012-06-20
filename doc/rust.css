@@ -51,3 +51,9 @@ h3 a:link, h3 a:visited { color: black; }
 .cm-s-default span.cm-bracket {color: #cc7;}
 .cm-s-default span.cm-tag {color: #170;}
 .cm-s-default span.cm-attribute {color: #00c;}
+
+h1.title {
+  background-image: url('http://www.rust-lang.org/logos/rust-logo-32x32-blk.png');
+  background-repeat: no-repeat;
+  background-position: right;
+}
