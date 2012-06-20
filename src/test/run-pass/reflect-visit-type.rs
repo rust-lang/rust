@@ -1,9 +1,10 @@
 // FIXME: un-xfail after snapshot
 // xfail-test
 
+import intrinsic::{tydesc, get_tydesc, visit_tydesc, ty_visitor};
 enum my_visitor = @{ mut types: ~[str] };
 
-impl of intrinsic::ty_visitor for my_visitor {
+impl of ty_visitor for my_visitor {
     fn visit_bot() -> bool {
         self.types += ["bot"];
         #error("visited bot type");
@@ -55,98 +56,91 @@ impl of intrinsic::ty_visitor for my_visitor {
     fn visit_estr_slice() -> bool { true }
     fn visit_estr_fixed(_sz: uint) -> bool { true }
 
-    fn visit_enter_box(_mtbl: uint) -> bool { true }
-    fn visit_leave_box(_mtbl: uint) -> bool { true }
-    fn visit_enter_uniq(_mtbl: uint) -> bool { true }
-    fn visit_leave_uniq(_mtbl: uint) -> bool { true }
-    fn visit_enter_ptr(_mtbl: uint) -> bool { true }
-    fn visit_leave_ptr(_mtbl: uint) -> bool { true }
-    fn visit_enter_rptr(_mtbl: uint) -> bool { true }
-    fn visit_leave_rptr(_mtbl: uint) -> bool { true }
+    fn visit_box(_mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_uniq(_mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_ptr(_mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_rptr(_mtbl: uint, _inner: *tydesc) -> bool { true }
 
-    fn visit_enter_vec(_mtbl: uint) -> bool {
+    fn visit_vec(_mtbl: uint, inner: *tydesc) -> bool {
         self.types += ["["];
-        #error("visited enter-vec");
-        true
-    }
-    fn visit_leave_vec(_mtbl: uint) -> bool {
+        visit_tydesc(inner, my_visitor(*self) as ty_visitor);
         self.types += ["]"];
-        #error("visited leave-vec");
         true
     }
-    fn visit_enter_evec_box(_mtbl: uint) -> bool { true }
-    fn visit_leave_evec_box(_mtbl: uint) -> bool { true }
-    fn visit_enter_evec_uniq(_mtbl: uint) -> bool { true }
-    fn visit_leave_evec_uniq(_mtbl: uint) -> bool { true }
-    fn visit_enter_evec_slice(_mtbl: uint) -> bool { true }
-    fn visit_leave_evec_slice(_mtbl: uint) -> bool { true }
-    fn visit_enter_evec_fixed(_mtbl: uint, _sz: uint) -> bool { true }
-    fn visit_leave_evec_fixed(_mtbl: uint, _sz: uint) -> bool { true }
+    fn visit_unboxed_vec(_mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_evec_box(_mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_evec_uniq(_mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_evec_slice(_mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_evec_fixed(_n: uint, _mtbl: uint,
+                        _sz: uint, _align: uint,
+                        _inner: *tydesc) -> bool { true }
 
-    fn visit_enter_rec(_n_fields: uint) -> bool { true }
-    fn visit_enter_rec_field(_mtbl: uint, _i: uint,
-                             _name: str/&) -> bool { true }
-    fn visit_leave_rec_field(_mtbl: uint, _i: uint,
-                             _name: str/&) -> bool { true }
-    fn visit_leave_rec(_n_fields: uint) -> bool { true }
+    fn visit_enter_rec(_n_fields: uint,
+                       _sz: uint, _align: uint) -> bool { true }
+    fn visit_rec_field(_i: uint, _name: str/&,
+                       _mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_leave_rec(_n_fields: uint,
+                       _sz: uint, _align: uint) -> bool { true }
 
-    fn visit_enter_class(_n_fields: uint) -> bool { true }
-    fn visit_enter_class_field(_mtbl: uint, _i: uint,
-                               _name: str/&) -> bool { true }
-    fn visit_leave_class_field(_mtbl: uint, _i: uint,
-                               _name: str/&) -> bool { true }
-    fn visit_leave_class(_n_fields: uint) -> bool { true }
+    fn visit_enter_class(_n_fields: uint,
+                         _sz: uint, _align: uint) -> bool { true }
+    fn visit_class_field(_i: uint, _name: str/&,
+                         _mtbl: uint, _inner: *tydesc) -> bool { true }
+    fn visit_leave_class(_n_fields: uint,
+                         _sz: uint, _align: uint) -> bool { true }
 
-    fn visit_enter_tup(_n_fields: uint) -> bool { true }
-    fn visit_enter_tup_field(_i: uint) -> bool { true }
-    fn visit_leave_tup_field(_i: uint) -> bool { true }
-    fn visit_leave_tup(_n_fields: uint) -> bool { true }
+    fn visit_enter_tup(_n_fields: uint,
+                       _sz: uint, _align: uint) -> bool { true }
+    fn visit_tup_field(_i: uint, _inner: *tydesc) -> bool { true }
+    fn visit_leave_tup(_n_fields: uint,
+                       _sz: uint, _align: uint) -> bool { true }
 
-    fn visit_enter_fn(_purity: uint, _proto: uint,
-                      _n_inputs: uint, _retstyle: uint) -> bool { true }
-    fn visit_enter_fn_input(_i: uint, _mode: uint) -> bool { true }
-    fn visit_leave_fn_input(_i: uint, _mode: uint) -> bool { true }
-    fn visit_enter_fn_output(_retstyle: uint) -> bool { true }
-    fn visit_leave_fn_output(_retstyle: uint) -> bool { true }
-    fn visit_leave_fn(_purity: uint, _proto: uint,
-                      _n_inputs: uint, _retstyle: uint) -> bool { true }
-
-    fn visit_enter_enum(_n_variants: uint) -> bool { true }
+    fn visit_enter_enum(_n_variants: uint,
+                        _sz: uint, _align: uint) -> bool { true }
     fn visit_enter_enum_variant(_variant: uint,
                                 _disr_val: int,
                                 _n_fields: uint,
                                 _name: str/&) -> bool { true }
-    fn visit_enter_enum_variant_field(_i: uint) -> bool { true }
-    fn visit_leave_enum_variant_field(_i: uint) -> bool { true }
+    fn visit_enum_variant_field(_i: uint, _inner: *tydesc) -> bool { true }
     fn visit_leave_enum_variant(_variant: uint,
                                 _disr_val: int,
                                 _n_fields: uint,
                                 _name: str/&) -> bool { true }
-    fn visit_leave_enum(_n_variants: uint) -> bool { true }
+    fn visit_leave_enum(_n_variants: uint,
+                        _sz: uint, _align: uint) -> bool { true }
 
-    fn visit_iface() -> bool { true }
-    fn visit_enter_res() -> bool { true }
-    fn visit_leave_res() -> bool { true }
+    fn visit_enter_fn(_purity: uint, _proto: uint,
+                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+    fn visit_fn_input(_i: uint, _mode: uint, _inner: *tydesc) -> bool { true }
+    fn visit_fn_output(_retstyle: uint, _inner: *tydesc) -> bool { true }
+    fn visit_leave_fn(_purity: uint, _proto: uint,
+                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+
+
+    fn visit_trait() -> bool { true }
     fn visit_var() -> bool { true }
     fn visit_var_integral() -> bool { true }
     fn visit_param(_i: uint) -> bool { true }
     fn visit_self() -> bool { true }
     fn visit_type() -> bool { true }
     fn visit_opaque_box() -> bool { true }
-    fn visit_enter_constr() -> bool { true }
-    fn visit_leave_constr() -> bool { true }
+    fn visit_constr(_inner: *tydesc) -> bool { true }
     fn visit_closure_ptr(_ck: uint) -> bool { true }
+}
+
+fn visit_ty<T>(v: ty_visitor) {
+    visit_tydesc(get_tydesc::<T>(), v);
 }
 
 fn main() {
     let v = my_visitor(@{mut types: ~[]});
-    let vv = v as intrinsic::ty_visitor;
+    let vv = v as ty_visitor;
 
-    intrinsic::visit_ty::<bool>(vv);
-    intrinsic::visit_ty::<int>(vv);
-    intrinsic::visit_ty::<i8>(vv);
-    intrinsic::visit_ty::<i16>(vv);
-    intrinsic::visit_ty::<~[int]>(vv);
+    visit_ty::<bool>(vv);
+    visit_ty::<int>(vv);
+    visit_ty::<i8>(vv);
+    visit_ty::<i16>(vv);
+    visit_ty::<~[int]>(vv);
 
     for (copy v.types).each {|s|
         io::println(#fmt("type: %s", s));

@@ -3,8 +3,21 @@
 
 mod intrinsic {
 
-    import rusti::visit_ty;
-    export ty_visitor, visit_ty;
+    import rusti::visit_tydesc;
+    export ty_visitor, get_tydesc, visit_tydesc, tydesc;
+
+    // FIXME (#2712): remove this when the interface has settled and the
+    // version in sys is no longer present.
+    fn get_tydesc<T>() -> *tydesc {
+        rusti::get_tydesc::<T>() as *tydesc
+    }
+
+    enum tydesc = {
+        first_param: **u8,
+        size: uint,
+        align: uint
+        // Remaining fields not listed
+    };
 
     iface ty_visitor {
         fn visit_bot() -> bool;
@@ -35,50 +48,37 @@ mod intrinsic {
         fn visit_estr_slice() -> bool;
         fn visit_estr_fixed(sz: uint) -> bool;
 
-        fn visit_enter_box(mtbl: uint) -> bool;
-        fn visit_leave_box(mtbl: uint) -> bool;
-        fn visit_enter_uniq(mtbl: uint) -> bool;
-        fn visit_leave_uniq(mtbl: uint) -> bool;
-        fn visit_enter_ptr(mtbl: uint) -> bool;
-        fn visit_leave_ptr(mtbl: uint) -> bool;
-        fn visit_enter_rptr(mtbl: uint) -> bool;
-        fn visit_leave_rptr(mtbl: uint) -> bool;
+        fn visit_box(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_uniq(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_ptr(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_rptr(mtbl: uint, inner: *tydesc) -> bool;
 
-        fn visit_enter_vec(mtbl: uint) -> bool;
-        fn visit_leave_vec(mtbl: uint) -> bool;
-        fn visit_enter_evec_box(mtbl: uint) -> bool;
-        fn visit_leave_evec_box(mtbl: uint) -> bool;
-        fn visit_enter_evec_uniq(mtbl: uint) -> bool;
-        fn visit_leave_evec_uniq(mtbl: uint) -> bool;
-        fn visit_enter_evec_slice(mtbl: uint) -> bool;
-        fn visit_leave_evec_slice(mtbl: uint) -> bool;
-        fn visit_enter_evec_fixed(mtbl: uint, n: uint,
-                                  sz: uint, align: uint) -> bool;
-        fn visit_leave_evec_fixed(mtbl: uint, n: uint,
-                                  sz: uint, align: uint) -> bool;
+        fn visit_vec(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_unboxed_vec(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_evec_box(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_evec_uniq(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_evec_slice(mtbl: uint, inner: *tydesc) -> bool;
+        fn visit_evec_fixed(n: uint, mtbl: uint,
+                            sz: uint, align: uint,
+                            inner: *tydesc) -> bool;
 
         fn visit_enter_rec(n_fields: uint,
                            sz: uint, align: uint) -> bool;
-        fn visit_enter_rec_field(mtbl: uint, i: uint,
-                                 name: str/&) -> bool;
-        fn visit_leave_rec_field(mtbl: uint, i: uint,
-                                 name: str/&) -> bool;
+        fn visit_rec_field(i: uint, name: str/&,
+                           mtbl: uint, inner: *tydesc) -> bool;
         fn visit_leave_rec(n_fields: uint,
                            sz: uint, align: uint) -> bool;
 
         fn visit_enter_class(n_fields: uint,
                              sz: uint, align: uint) -> bool;
-        fn visit_enter_class_field(mtbl: uint, i: uint,
-                                   name: str/&) -> bool;
-        fn visit_leave_class_field(mtbl: uint, i: uint,
-                                   name: str/&) -> bool;
+        fn visit_class_field(i: uint, name: str/&,
+                             mtbl: uint, inner: *tydesc) -> bool;
         fn visit_leave_class(n_fields: uint,
                              sz: uint, align: uint) -> bool;
 
         fn visit_enter_tup(n_fields: uint,
                            sz: uint, align: uint) -> bool;
-        fn visit_enter_tup_field(i: uint) -> bool;
-        fn visit_leave_tup_field(i: uint) -> bool;
+        fn visit_tup_field(i: uint, inner: *tydesc) -> bool;
         fn visit_leave_tup(n_fields: uint,
                            sz: uint, align: uint) -> bool;
 
@@ -88,8 +88,7 @@ mod intrinsic {
                                     disr_val: int,
                                     n_fields: uint,
                                     name: str/&) -> bool;
-        fn visit_enter_enum_variant_field(i: uint) -> bool;
-        fn visit_leave_enum_variant_field(i: uint) -> bool;
+        fn visit_enum_variant_field(i: uint, inner: *tydesc) -> bool;
         fn visit_leave_enum_variant(variant: uint,
                                     disr_val: int,
                                     n_fields: uint,
@@ -99,29 +98,25 @@ mod intrinsic {
 
         fn visit_enter_fn(purity: uint, proto: uint,
                           n_inputs: uint, retstyle: uint) -> bool;
-        fn visit_enter_fn_input(i: uint, mode: uint) -> bool;
-        fn visit_leave_fn_input(i: uint, mode: uint) -> bool;
-        fn visit_enter_fn_output(retstyle: uint) -> bool;
-        fn visit_leave_fn_output(retstyle: uint) -> bool;
+        fn visit_fn_input(i: uint, mode: uint, inner: *tydesc) -> bool;
+        fn visit_fn_output(retstyle: uint, inner: *tydesc) -> bool;
         fn visit_leave_fn(purity: uint, proto: uint,
                           n_inputs: uint, retstyle: uint) -> bool;
 
         fn visit_trait() -> bool;
-        fn visit_enter_res() -> bool;
-        fn visit_leave_res() -> bool;
         fn visit_var() -> bool;
         fn visit_var_integral() -> bool;
         fn visit_param(i: uint) -> bool;
         fn visit_self() -> bool;
         fn visit_type() -> bool;
         fn visit_opaque_box() -> bool;
-        fn visit_enter_constr() -> bool;
-        fn visit_leave_constr() -> bool;
+        fn visit_constr(inner: *tydesc) -> bool;
         fn visit_closure_ptr(ck: uint) -> bool;
     }
 
     #[abi = "rust-intrinsic"]
     extern mod rusti {
-        fn visit_ty<T>(&&tv: ty_visitor);
+        fn get_tydesc<T>() -> *();
+        fn visit_tydesc(td: *tydesc, &&tv: ty_visitor);
     }
 }

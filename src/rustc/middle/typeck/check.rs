@@ -2254,7 +2254,6 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
     let (n_tps, inputs, output) = alt *it.ident {
       "size_of" |
       "pref_align_of" | "min_align_of" { (1u, ~[], ty::mk_uint(ccx.tcx)) }
-      "get_tydesc" { (1u, ~[], ty::mk_nil_ptr(tcx)) }
       "init" { (1u, ~[], param(ccx, 0u)) }
       "forget" { (1u, ~[arg(ast::by_move, param(ccx, 0u))],
                   ty::mk_nil(tcx)) }
@@ -2277,10 +2276,19 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
          ty::mk_int(tcx))
       }
 
-      "visit_ty" {
-        assert ccx.tcx.intrinsic_traits.contains_key(@"ty_visitor");
-        let (_, visitor_trait) = ccx.tcx.intrinsic_traits.get(@"ty_visitor");
-        (1u, ~[arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
+      "get_tydesc" {
+        // FIXME (#2712): return *intrinsic::tydesc, not *()
+        (1u, ~[], ty::mk_nil_ptr(tcx))
+      }
+      "visit_tydesc" {
+        assert ccx.tcx.intrinsic_defs.contains_key(@"tydesc");
+        assert ccx.tcx.intrinsic_defs.contains_key(@"ty_visitor");
+        let (_, tydesc_ty) = ccx.tcx.intrinsic_defs.get(@"tydesc");
+        let (_, visitor_trait) = ccx.tcx.intrinsic_defs.get(@"ty_visitor");
+        let td_ptr = ty::mk_ptr(ccx.tcx, {ty: tydesc_ty,
+                                          mutbl: ast::m_imm});
+        (0u, ~[arg(ast::by_val, td_ptr),
+               arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
       }
       "frame_address" {
         let fty = ty::mk_fn(ccx.tcx, {

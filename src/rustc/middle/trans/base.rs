@@ -671,8 +671,8 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
-    assert bcx.ccx().tcx.intrinsic_traits.contains_key(@"ty_visitor");
-    let (iid, ty) = bcx.ccx().tcx.intrinsic_traits.get(@"ty_visitor");
+    assert bcx.ccx().tcx.intrinsic_defs.contains_key(@"ty_visitor");
+    let (iid, ty) = bcx.ccx().tcx.intrinsic_defs.get(@"ty_visitor");
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
     bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, iid);
     build_return(bcx);

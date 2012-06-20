@@ -33,16 +33,25 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
             alt crate_item.node {
               ast::item_mod(m) {
                 for m.items.each |intrinsic_item| {
+                    let def_id = { crate: ast::local_crate,
+                                  node: intrinsic_item.id };
+                    let substs = {self_r: none, self_ty: none, tps: ~[]};
+
                     alt intrinsic_item.node {
+
                       ast::item_trait(_, _, _) {
-                        let def_id = { crate: ast::local_crate,
-                                      node: intrinsic_item.id };
-                        let substs = {self_r: none, self_ty: none, tps: ~[]};
                         let ty = ty::mk_trait(ccx.tcx, def_id, substs);
-                        ccx.tcx.intrinsic_traits.insert
+                        ccx.tcx.intrinsic_defs.insert
                             (intrinsic_item.ident, (def_id, ty));
                       }
-                      _ { }
+
+                      ast::item_enum(_, _, _) {
+                        let ty = ty::mk_enum(ccx.tcx, def_id, substs);
+                        ccx.tcx.intrinsic_defs.insert
+                            (intrinsic_item.ident, (def_id, ty));
+                      }
+
+                     _ { }
                     }
                 }
               }

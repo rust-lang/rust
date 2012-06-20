@@ -76,7 +76,6 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                                  abi, _) {
         if abi == foreign_abi_rust_intrinsic {
             let flags = alt check *i.ident {
-              "visit_ty" { use_repr | use_tydesc }
               "size_of" |  "pref_align_of" | "min_align_of" |
               "init" |  "reinterpret_cast" | "move_val" | "move_val_init" {
                 use_repr
@@ -87,7 +86,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
               "atomic_xchng_rel" | "atomic_add_rel" | "atomic_sub_rel" {
                 0u
               }
-              "forget" | "addr_of" { 0u }
+              "visit_tydesc" | "forget" | "addr_of" { 0u }
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }

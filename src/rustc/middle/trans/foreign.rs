@@ -910,8 +910,13 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
       }
       "get_tydesc" {
         let tp_ty = substs.tys[0];
-        let td = get_tydesc_simple(ccx, tp_ty);
-        Store(bcx, PointerCast(bcx, td, T_ptr(T_nil())), fcx.llretptr);
+        let mut static_ti = none;
+        let lltydesc = get_tydesc(ccx, tp_ty, static_ti);
+        lazily_emit_all_tydesc_glue(ccx, copy static_ti);
+        // FIXME (#2712): change this to T_ptr(ccx.tydesc_ty) when the
+        // core::sys copy of the get_tydesc interface dies off.
+        let td = PointerCast(bcx, lltydesc, T_ptr(T_nil()));
+        Store(bcx, td, fcx.llretptr);
       }
       "init" {
         let tp_ty = substs.tys[0];
@@ -951,10 +956,12 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
               fcx.llretptr);
       }
-      "visit_ty" {
-        let tp_ty = substs.tys[0];
-        let visitor = get_param(decl, first_real_arg);
-        call_tydesc_glue(bcx, visitor, tp_ty, abi::tydesc_field_visit_glue);
+      "visit_tydesc" {
+        let td = get_param(decl, first_real_arg);
+        let visitor = get_param(decl, first_real_arg + 1u);
+        let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
+        call_tydesc_glue_full(bcx, visitor, td,
+                              abi::tydesc_field_visit_glue, none);
       }
       "frame_address" {
         let frameaddress = ccx.intrinsics.get("llvm.frameaddress");
