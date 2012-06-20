@@ -1,4 +1,3 @@
-// xfail-test
 fn main() {
 
     // The commented-out lines are ones that fail currently.  I'm

@@ -1,4 +1,3 @@
-// xfail-test
 fn main() {
 
     // the smallest positive values that need these types

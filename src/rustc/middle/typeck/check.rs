@@ -626,10 +626,7 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
       ast::lit_int_unsuffixed(_) {
         // An unsuffixed integer literal could have any integral type,
         // so we create an integral type variable for it.
-        ty::mk_var_integral(tcx, fcx.infcx.next_ty_var_integral_id());
-
-        // FIXME: remove me when #1425 is finished.
-        ty::mk_mach_int(tcx, ty_i)
+        ty::mk_var_integral(tcx, fcx.infcx.next_ty_var_integral_id())
       }
       ast::lit_float(_, t) { ty::mk_mach_float(tcx, t) }
       ast::lit_nil { ty::mk_nil(tcx) }
