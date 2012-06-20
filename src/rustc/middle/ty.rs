@@ -1608,7 +1608,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
       ty_res(did, inner, tps) {
         let inner = subst(cx, tps, inner);
-        (kind_const() & type_kind(cx, inner)) | kind_send_only()
+        (kind_const() | kind_send_only()) & type_kind(cx, inner)
       }
       ty_param(_, did) {
         param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
