@@ -119,6 +119,28 @@ is valid.  This basically corresponds to the block nesting structure:
 the regions for outer block scopes are superregions of those for inner
 block scopes.
 
+## Integral type variables
+
+There is a third variety of type variable that we use only for
+inferring the types of unsuffixed integer literals.  Integral type
+variables differ from general-purpose type variables in that there's
+no subtyping relationship among the various integral types, so instead
+of associating each variable with an upper and lower bound, we
+represent the set of possible integral types it can take on with an
+`int_ty_set`, which is a bitvector with one bit for each integral
+type.  Because intersecting these sets with each other is simpler than
+merging bounds, we don't need to do so transactionally as we do for
+general-purpose type variables.
+
+We could conceivably define a subtyping relationship among integral
+types based on their ranges, but we choose not to open that particular
+can of worms.  Our strategy is to treat integral type variables as
+unknown until the typing context constrains them to a unique integral
+type, at which point they take on that type.  If the typing context
+overconstrains the type, it's a type error; if we reach the point at
+which type variables must be resolved and an integral type variable is
+still underconstrained, it defaults to `int` as a last resort.
+
 ## GLB/LUB
 
 Computing the greatest-lower-bound and least-upper-bound of two
@@ -829,7 +851,7 @@ impl unify_methods for infer_ctxt {
             }
         } else if nde_a.rank < nde_b.rank {
             #debug["vars(): b has smaller rank"];
-            // b has geater rank, so a should redirect to b.
+            // b has greater rank, so a should redirect to b.
             self.set(vb, a_id, redirect(b_id));
             self.set_var_to_merged_bounds(
                 vb, b_id, a_bounds, b_bounds, nde_b.rank).then {||
