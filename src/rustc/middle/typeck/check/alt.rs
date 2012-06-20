@@ -198,7 +198,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             ret str::eq(*name, *f.ident);
         }
         for fields.each {|f|
-            alt vec::find(ex_fields, bind matches(f.ident, _)) {
+            alt vec::find(ex_fields, {|a|matches(f.ident, a)}) {
               some(field) {
                 check_pat(pcx, f.pat, field.mt.ty);
               }

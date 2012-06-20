@@ -328,8 +328,8 @@ fn map_crate(e: @env, c: @ast::crate) {
 
     // First, find all the modules, and index the names that they contain
     let v_map_mod =
-        @{visit_view_item: bind index_vi(e, _, _, _),
-          visit_item: bind index_i(e, _, _, _),
+        @{visit_view_item: {|a,b,c|index_vi(e, a, b, c)},
+          visit_item: {|a,b,c|index_i(e, a, b, c)},
           visit_block: visit_block_with_scope
           with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, top_scope(), visit::mk_vt(v_map_mod));
@@ -345,9 +345,9 @@ fn map_crate(e: @env, c: @ast::crate) {
 
     // Next, assemble the links for globbed imports and exports.
     let v_link_glob =
-        @{visit_view_item: bind link_glob(e, _, _, _),
+        @{visit_view_item: {|a,b,c|link_glob(e, a, b, c)},
           visit_block: visit_block_with_scope,
-          visit_item: bind visit_item_with_scope(e, _, _, _)
+          visit_item: {|a,b,c|visit_item_with_scope(e, a, b, c)}
           with *visit::default_visitor::<scopes>()};
     visit::visit_crate(*c, top_scope(), visit::mk_vt(v_link_glob));
 
@@ -414,17 +414,19 @@ fn resolve_names(e: @env, c: @ast::crate) {
     e.used_imports.track = true;
     let v =
         @{visit_native_item: visit_native_item_with_scope,
-          visit_item: bind walk_item(e, _, _, _),
+          visit_item: {|a,b,c|walk_item(e, a, b, c)},
           visit_block: visit_block_with_scope,
           visit_decl: visit_decl_with_scope,
           visit_arm: visit_arm_with_scope,
-          visit_local: bind visit_local_with_scope(e, _, _, _),
-          visit_pat: bind walk_pat(e, _, _, _),
-          visit_expr: bind walk_expr(e, _, _, _),
-          visit_ty: bind walk_ty(e, _, _, _),
-          visit_ty_params: bind walk_tps(e, _, _, _),
-          visit_constr: bind walk_constr(e, _, _, _, _, _),
-          visit_fn: bind visit_fn_with_scope(e, _, _, _, _, _, _, _)
+          visit_local: {|a,b,c|visit_local_with_scope(e, a, b, c)},
+          visit_pat: {|a,b,c|walk_pat(e, a, b, c)},
+          visit_expr: {|a,b,c|walk_expr(e, a, b ,c)},
+          visit_ty: {|a,b,c|walk_ty(e, a, b, c)},
+          visit_ty_params: {|a,b,c|walk_tps(e, a, b, c)},
+          visit_constr: {|a,b,c,d,f|walk_constr(e, a, b, c, d, f)},
+          visit_fn: {|a,b,c,d,f,g,h|
+              visit_fn_with_scope(e, a, b, c, d, f, g, h)
+          }
           with *visit::default_visitor()};
     visit::visit_crate(*c, top_scope(), visit::mk_vt(v));
     e.used_imports.track = false;
@@ -1713,11 +1715,12 @@ fn check_for_collisions(e: @env, c: ast::crate) {
     };
     // Other scopes have to be checked the hard way.
     let v =
-        @{visit_item: bind check_item(e, _, _, _),
-          visit_block: bind check_block(e, _, _, _),
-          visit_arm: bind check_arm(e, _, _, _),
-          visit_expr: bind check_expr(e, _, _, _),
-          visit_ty: bind check_ty(e, _, _, _) with *visit::default_visitor()};
+        @{visit_item: {|a,b,c|check_item(e, a, b, c)},
+          visit_block: {|a,b,c|check_block(e, a, b, c)},
+          visit_arm: {|a,b,c|check_arm(e, a, b, c)},
+          visit_expr: {|a,b,c|check_expr(e, a, b, c)},
+          visit_ty: {|a,b,c|check_ty(e, a, b, c)}
+          with *visit::default_visitor()};
     visit::visit_crate(c, (), visit::mk_vt(v));
 }
 
@@ -2157,9 +2160,9 @@ type iscopes = @list<@[@_impl]>;
 
 fn resolve_impls(e: @env, c: @ast::crate) {
     visit::visit_crate(*c, @nil, visit::mk_vt(@{
-        visit_block: bind visit_block_with_impl_scope(e, _, _, _),
-        visit_mod: bind visit_mod_with_impl_scope(e, _, _, _, _, _),
-        visit_expr: bind resolve_impl_in_expr(e, _, _, _)
+        visit_block: {|a,b,c|visit_block_with_impl_scope(e, a, b, c)},
+        visit_mod: {|a,b,c,d,f|visit_mod_with_impl_scope(e, a, b, c, d, f)},
+        visit_expr: {|a,b,c|resolve_impl_in_expr(e, a, b, c)}
         with *visit::default_visitor()
     }));
 }

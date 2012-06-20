@@ -37,7 +37,7 @@ fn next_byte(st: @pstate) -> u8 {
 
 fn parse_ident(st: @pstate, last: char) -> ast::ident {
     fn is_last(b: char, c: char) -> bool { ret c == b; }
-    ret parse_ident_(st, bind is_last(last, _));
+    ret parse_ident_(st, {|a|is_last(last, a)});
 }
 
 fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->

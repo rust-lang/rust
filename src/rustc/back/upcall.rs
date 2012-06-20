@@ -43,8 +43,8 @@ fn declare_upcalls(targ_cfg: @session::config,
     fn nothrow(f: ValueRef) -> ValueRef {
         base::set_no_unwind(f); f
     }
-    let d = bind decl(llmod, "upcall_", _, _, _);
-    let dv = bind decl(llmod, "upcall_", _, _, T_void());
+    let d = {|a,b,c|decl(llmod, "upcall_", a, b, c)};
+    let dv = {|a,b|decl(llmod, "upcall_", a, b, T_void())};
 
     let int_t = T_int(targ_cfg);
     let size_t = T_size_t(targ_cfg);

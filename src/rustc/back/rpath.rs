@@ -94,7 +94,10 @@ fn get_rpaths_relative_to_output(os: session::os,
                                  cwd: path::path,
                                  output: path::path,
                                  libs: [path::path]) -> [str] {
-    vec::map(libs, bind get_rpath_relative_to_output(os, cwd, output, _))
+    vec::map(libs, {|a|
+        check not_win32(os);
+        get_rpath_relative_to_output(os, cwd, output, a)
+    })
 }
 
 fn get_rpath_relative_to_output(os: session::os,
@@ -149,7 +152,7 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
 }
 
 fn get_absolute_rpaths(cwd: path::path, libs: [path::path]) -> [str] {
-    vec::map(libs, bind get_absolute_rpath(cwd, _))
+    vec::map(libs, {|a|get_absolute_rpath(cwd, a)})
 }
 
 fn get_absolute_rpath(cwd: path::path, &&lib: path::path) -> str {

@@ -134,7 +134,7 @@ impl methods for isr_alist {
 
 fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     let visit = visit::mk_simple_visitor(@{
-        visit_item: bind check_item(ccx, _)
+        visit_item: {|a|check_item(ccx, a)}
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), visit);
@@ -1395,63 +1395,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               none { ty::mk_nil(tcx) }
             };
         fcx.write_ty(id, typ);
-      }
-      ast::expr_bind(f, args) {
-        // Call the generic checker.
-        bot = check_expr(fcx, f, none);
-
-        let {fty, bot: ccob_bot} = {
-            let fn_ty = fcx.expr_ty(f);
-            check_call_or_bind(fcx, expr.span, expr.id, fn_ty, args)
-        };
-        bot |= ccob_bot;
-
-        // TODO: Perform substitutions on the return type.
-
-        // Pull the argument and return types out.
-        let mut proto, arg_tys, rt, cf, constrs;
-        alt structure_of(fcx, expr.span, fty) {
-          // FIXME:
-          // probably need to munge the constrs to drop constraints
-          // for any bound args (contingent on #2588 not getting accepted)
-          ty::ty_fn(f) {
-            proto = f.proto;
-            arg_tys = f.inputs;
-            rt = f.output;
-            cf = f.ret_style;
-            constrs = f.constraints;
-          }
-          _ { fail "LHS of bind expr didn't have a function type?!"; }
-        }
-
-        let proto = alt proto {
-          ast::proto_bare | ast::proto_box | ast::proto_uniq {
-            ast::proto_box
-          }
-          ast::proto_any | ast::proto_block {
-            tcx.sess.span_err(expr.span,
-                              #fmt["cannot bind %s closures",
-                                   proto_to_str(proto)]);
-            proto // dummy value so compilation can proceed
-          }
-        };
-
-        // For each blank argument, add the type of that argument
-        // to the resulting function type.
-        let mut out_args = [];
-        let mut i = 0u;
-        while i < vec::len(args) {
-            alt args[i] {
-              some(_) {/* no-op */ }
-              none { out_args += [arg_tys[i]]; }
-            }
-            i += 1u;
-        }
-
-        let ft = ty::mk_fn(tcx, {purity: ast::impure_fn, proto: proto,
-                                 inputs: out_args, output: rt,
-                                 ret_style: cf, constraints: constrs});
-        fcx.write_ty(id, ft);
       }
       ast::expr_call(f, args, _) {
         bot = check_call(fcx, expr.span, expr.id, f, args);

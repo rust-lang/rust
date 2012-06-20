@@ -43,7 +43,7 @@ fn find_locals(tcx: ty::ctxt,
     let visitor = visit::default_visitor::<ctxt>();
     let visitor =
         @{visit_expr: collect_pred,
-          visit_fn: bind do_nothing(_, _, _, _, _, _, _)
+          visit_fn: do_nothing
           with *visitor};
     visit::visit_fn(fk, f_decl, f_body, sp,
                     id, cx, visit::mk_vt(visitor));
@@ -147,9 +147,11 @@ fn mk_fn_info(ccx: crate_ctxt,
    to bit number) */
 fn mk_f_to_fn_info(ccx: crate_ctxt, c: @crate) {
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn:
-                                       bind mk_fn_info(ccx, _, _, _, _, _)
-                                   with *visit::default_simple_visitor()});
+        visit::mk_simple_visitor(@{
+            visit_fn: {|a,b,c,d,e|
+                mk_fn_info(ccx, a, b, c, d, e)
+            }
+            with *visit::default_simple_visitor()});
     visit::visit_crate(*c, (), visitor);
 }
 //

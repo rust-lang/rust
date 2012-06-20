@@ -39,7 +39,7 @@ fn block_expr_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr = {|flag: @mut bool, e: @ast::expr| *flag |= p(e.node)};
     let v =
-        visit::mk_simple_visitor(@{visit_expr: bind visit_expr(rs, _)
+        visit::mk_simple_visitor(@{visit_expr: {|a|visit_expr(rs, a)}
                                       with *visit::default_simple_visitor()});
     visit::visit_block(b, (), v);
     ret *rs;

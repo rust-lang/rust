@@ -903,19 +903,6 @@ argument to every element of a vector, producing a new vector.
 Even when a closure takes no parameters, you must still write the bars
 for the parameter list, as in `{|| ...}`.
 
-## Binding
-
-Partial application is done using the `bind` keyword in Rust.
-
-~~~~
-let findx = bind str::find_char(_, 'x');
-~~~~
-
-Binding a function produces a boxed closure (`fn@` type) in which some
-of the arguments to the bound function have already been provided.
-`findx` will be a function taking a single string argument, and
-returning the position where the letter `x` occurs.
-
 ## Iteration
 
 Functions taking closures provide a good way to define non-trivial

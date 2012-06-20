@@ -328,8 +328,8 @@ fn load_crate(filename: str) -> option<crate> {
         mut deps: []
     };
     let v = visit::mk_simple_visitor(@{
-        visit_view_item: bind goto_view_item(e, _),
-        visit_item: bind goto_item(e, _),
+        visit_view_item: {|a|goto_view_item(e, a)},
+        visit_item: {|a|goto_item(e, a)},
         with *visit::default_simple_visitor()
     });
 

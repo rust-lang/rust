@@ -13,8 +13,8 @@ import std::map::hashmap;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate, (), visit::mk_vt(@{
-        visit_expr: bind check_expr(tcx, _, _, _),
-        visit_local: bind check_local(tcx, _, _, _)
+        visit_expr: {|a,b,c|check_expr(tcx, a, b, c)},
+        visit_local: {|a,b,c|check_local(tcx, a, b, c)}
         with *visit::default_visitor::<()>()
     }));
     tcx.sess.abort_if_errors();

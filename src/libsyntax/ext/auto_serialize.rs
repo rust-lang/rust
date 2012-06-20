@@ -267,7 +267,7 @@ impl helpers for ext_ctxt {
         }
 
         let fld = fold::make_fold(@{
-            new_span: repl_sp(_, ast_util::dummy_sp(), span)
+            new_span: {|a|repl_sp(a, ast_util::dummy_sp(), span)}
             with *fold::default_ast_fold()
         });
 
@@ -757,8 +757,8 @@ fn ty_fns(cx: ext_ctxt, name: ast::ident, ty: @ast::ty, tps: [ast::ty_param])
 
     let span = ty.span;
     [
-        mk_ser_fn(cx, span, name, tps, ser_ty(_, _, ty, _, _)),
-        mk_deser_fn(cx, span, name, tps, deser_ty(_, _, ty, _))
+        mk_ser_fn(cx, span, name, tps, {|a,b,c,d|ser_ty(a, b, ty, c, d)}),
+        mk_deser_fn(cx, span, name, tps, {|a,b,c|deser_ty(a, b, ty, c)})
     ]
 }
 
@@ -860,8 +860,8 @@ fn enum_fns(cx: ext_ctxt, e_name: ast::ident, e_span: span,
     -> [@ast::item] {
     [
         mk_ser_fn(cx, e_span, e_name, tps,
-                  ser_enum(_, _, e_name, e_span, variants, _, _)),
+                  {|a,b,c,d|ser_enum(a, b, e_name, e_span, variants, c, d)}),
         mk_deser_fn(cx, e_span, e_name, tps,
-                    deser_enum(_, _, e_name, e_span, variants, _))
+                    {|a,b,c|deser_enum(a, b, e_name, e_span, variants, c)})
     ]
 }

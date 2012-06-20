@@ -980,7 +980,7 @@ fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
 pure fn pure_length<T>(ls: list<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
     unchecked {
-        pure_foldl(ls, 0u, count(_, _))
+        pure_foldl(ls, 0u, count)
     }
 }
 ~~~~
@@ -1940,49 +1940,6 @@ An example of a call expression:
 
 let x: int = add(1, 2);
 ~~~~
-
-
-### Bind expressions
-
-A _bind expression_ constructs a new function from an existing function.^[The
-`bind` expression is analogous to the `bind` expression in the Sather
-language.] The new function has zero or more of its arguments *bound* into a
-new, hidden boxed tuple that holds the bindings. For each concrete argument
-passed in the `bind` expression, the corresponding parameter in the existing
-function is *omitted* as a parameter of the new function. For each argument
-passed the placeholder symbol `_` in the `bind` expression, the corresponding
-parameter of the existing function is *retained* as a parameter of the new
-function.
-
-Any subsequent invocation of the new function with residual arguments causes
-invocation of the existing function with the combination of bound arguments
-and residual arguments that was specified during the binding.
-
-An example of a `bind` expression:
-
-~~~~{.xfail-test}
-fn add(x: int, y: int) -> int {
-    ret x + y;
-}
-type single_param_fn = fn(int) -> int;
-
-let add4: single_param_fn = bind add(4, _);
-
-let add5: single_param_fn = bind add(_, 5);
-
-assert (add(4,5) == add4(5));
-assert (add(4,5) == add5(4));
-
-~~~~
-
-A `bind` expression generally stores a copy of the bound arguments in a
-hidden, boxed tuple, owned by the resulting first-class function. For each
-bound slot in the bound function's signature, space is allocated in the hidden
-tuple and populated with a copy of the bound value.
-
-A `bind` expression is an alternative way of constructing a shared function
-closure; the [`fn@` expression](#shared-function-expressions) form is another
-way.
 
 ### Shared function expressions
 

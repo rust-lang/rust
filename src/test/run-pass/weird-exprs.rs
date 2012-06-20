@@ -10,7 +10,7 @@ fn funny() {
 fn what() {
     fn the(x: @mut bool) { ret while !*x { *x = true; }; }
     let i = @mut false;
-    let dont = bind the(i);
+    let dont = {||the(i)};
     dont();
     assert (*i);
 }

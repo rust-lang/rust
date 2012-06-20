@@ -551,7 +551,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
 }
 
 fn exprs_to_constr_args(tcx: ty::ctxt, args: [@expr]) -> [@constr_arg_use] {
-    let f = bind expr_to_constr_arg(tcx, _);
+    let f = {|a|expr_to_constr_arg(tcx, a)};
     let mut rslt: [@constr_arg_use] = [];
     for args.each {|e| rslt += [f(e)]; }
     rslt

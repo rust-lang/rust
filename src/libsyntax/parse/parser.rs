@@ -829,14 +829,6 @@ class parser {
             let ex_ext = self.parse_syntax_ext();
             hi = ex_ext.span.hi;
             ex = ex_ext.node;
-        } else if self.eat_keyword("bind") {
-            let e = self.parse_expr_res(RESTRICT_NO_CALL_EXPRS);
-            let es = self.parse_unspanned_seq(
-                token::LPAREN, token::RPAREN,
-                seq_sep_trailing_disallowed(token::COMMA),
-                {|p| p.parse_expr_or_hole()});
-            hi = self.span.hi;
-            ex = expr_bind(e, es);
         } else if self.eat_keyword("fail") {
             if can_begin_expr(self.token) {
                 let e = self.parse_expr();
@@ -1008,19 +1000,13 @@ class parser {
             alt copy self.token {
               // expr(...)
               token::LPAREN if self.permits_call() {
-                let es_opt = self.parse_unspanned_seq(
+                let es = self.parse_unspanned_seq(
                     token::LPAREN, token::RPAREN,
                     seq_sep_trailing_disallowed(token::COMMA),
-                    {|p| p.parse_expr_or_hole()});
+                    {|p| p.parse_expr()});
                 hi = self.span.hi;
 
-                let nd =
-                    if vec::any(es_opt, {|e| option::is_none(e) }) {
-                    expr_bind(self.to_expr(e), es_opt)
-                } else {
-                    let es = vec::map(es_opt) {|e| option::get(e) };
-                    expr_call(self.to_expr(e), es, false)
-                };
+                let nd = expr_call(self.to_expr(e), es, false);
                 e = self.mk_pexpr(lo, hi, nd);
               }
 
@@ -1368,13 +1354,6 @@ class parser {
 
     fn parse_expr() -> @expr {
         ret self.parse_expr_res(UNRESTRICTED);
-    }
-
-    fn parse_expr_or_hole() -> option<@expr> {
-        alt self.token {
-          token::UNDERSCORE { self.bump(); ret none; }
-          _ { ret some(self.parse_expr()); }
-        }
     }
 
     fn parse_expr_res(r: restriction) -> @expr {

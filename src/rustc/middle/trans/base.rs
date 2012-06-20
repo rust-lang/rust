@@ -920,7 +920,7 @@ enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
 fn compare_scalar_types(cx: block, lhs: ValueRef, rhs: ValueRef,
                         t: ty::t, op: ast::binop) -> result {
-    let f = bind compare_scalar_values(cx, lhs, rhs, _, op);
+    let f = {|a|compare_scalar_values(cx, lhs, rhs, a, op)};
 
     alt ty::get(t).struct {
       ty::ty_nil { ret rslt(cx, f(nil_type)); }
@@ -950,7 +950,7 @@ fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
         cx.tcx().sess.bug("compare_scalar_values: must be a\
           comparison operator");
     }
-    let die = bind die_(cx);
+    let die = fn@() -> ! { die_(cx) };
     alt nt {
       nil_type {
         // We don't need to do actual comparisons for nil.
@@ -1609,7 +1609,8 @@ fn trans_compare(cx: block, op: ast::binop, lhs: ValueRef,
 fn cast_shift_expr_rhs(cx: block, op: ast::binop,
                        lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
-                   bind Trunc(cx, _, _), bind ZExt(cx, _, _))
+                   {|a,b|Trunc(cx, a, b)},
+                   {|a,b|ZExt(cx, a, b)})
 }
 
 fn cast_shift_const_rhs(op: ast::binop,
@@ -2343,7 +2344,9 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
       none { // Not seen yet
         alt csearch::maybe_get_item_ast(
             ccx.tcx, fn_id,
-            bind astencode::decode_inlined_item(_, _, ccx.maps, _, _)) {
+            {|a,b,c,d|
+                astencode::decode_inlined_item(a, b, ccx.maps, c, d)
+            }) {
 
           csearch::not_found {
             ccx.external.insert(fn_id, none);
@@ -3663,10 +3666,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
           ast::expr_do_body(blk) {
             ret trans_expr(bcx, blk, dest);
-          }
-          ast::expr_bind(f, args) {
-            ret closure::trans_bind(
-                bcx, f, args, e.id, dest);
           }
           ast::expr_copy(a) {
             if !expr_is_lval(bcx, a) {
@@ -5351,7 +5350,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
 
 fn trans_constants(ccx: @crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-        visit_item: bind trans_constant(ccx, _)
+        visit_item: {|a|trans_constant(ccx, a)}
         with *visit::default_simple_visitor()
     }));
 }
@@ -5495,14 +5494,14 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
     -> encoder::encode_parms {
 
     let encode_inlined_item =
-        bind astencode::encode_inlined_item(_, _, _, _, cx.maps);
+        {|a,b,c,d|astencode::encode_inlined_item(a, b, c, d, cx.maps)};
 
     ret {
         diag: cx.sess.diagnostic(),
         tcx: cx.tcx,
         reachable: cx.reachable,
         reexports: reexports(cx),
-        impl_map: impl_map(cx, _),
+        impl_map: {|a|impl_map(cx, a)},
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
         link_meta: cx.link_meta,
