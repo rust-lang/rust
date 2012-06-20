@@ -1334,7 +1334,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 tcx.sess.span_fatal(
                     expr.span, #fmt("a loop function's last argument \
                                      should return `bool`, not `%s`",
-                                    ty_to_str(tcx, fty.output)));
+                                    fcx.infcx.ty_to_str(fty.output)));
               }
             }
             (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}), fty.proto)
@@ -1471,12 +1471,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ {
             if ty::type_is_nil(t_e) {
                 tcx.sess.span_err(expr.span, "cast from nil: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
+                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                                  fcx.infcx.ty_to_str(t_1));
             } else if ty::type_is_nil(t_1) {
                 tcx.sess.span_err(expr.span, "cast to nil: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
+                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                                  fcx.infcx.ty_to_str(t_1));
             }
 
             let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
@@ -1490,8 +1490,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 */
                 tcx.sess.span_err(expr.span,
                                   "non-scalar cast: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
+                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                                  fcx.infcx.ty_to_str(t_1));
             }
           }
         }
@@ -1639,7 +1639,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
                 let msg = #fmt["attempted access of field %s on type %s, but \
                           no public field or method with that name was found",
-                               *field, ty_to_str(tcx, t_err)];
+                               *field, fcx.infcx.ty_to_str(t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
                 fcx.write_ty(id, fcx.infcx.next_ty_var());
@@ -1667,7 +1667,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               _ {
                 tcx.sess.span_fatal(
                     expr.span, "cannot index a value of type `" +
-                    ty_to_str(tcx, base_t) + "`");
+                    fcx.infcx.ty_to_str(base_t) + "`");
               }
             }
           }
@@ -1708,7 +1708,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           none {
             let t_err = fcx.infcx.resolve_type_vars_if_possible(p_ty);
             let msg = #fmt["no `alloc()` method found for type `%s`",
-                           ty_to_str(tcx, t_err)];
+                           fcx.infcx.ty_to_str(t_err)];
             tcx.sess.span_err(expr.span, msg);
           }
         }
