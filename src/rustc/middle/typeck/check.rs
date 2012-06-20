@@ -68,7 +68,6 @@ type parameter).
 
 import astconv::{ast_conv, ast_ty_to_ty};
 import collect::{methods}; // ccx.to_ty()
-import method::{methods};  // methods for method::lookup
 import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
@@ -905,15 +904,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         opname: str, args: [option<@ast::expr>])
         -> option<(ty::t, bool)> {
         let callee_id = ast_util::op_expr_callee_id(op_ex);
-        let lkup = method::lookup({fcx: fcx,
-                                   expr: op_ex,
-                                   self_expr: self_ex,
-                                   borrow_scope: op_ex.id,
-                                   node_id: callee_id,
-                                   m_name: @opname,
-                                   self_ty: self_t,
-                                   supplied_tps: [],
-                                   include_private: false});
+        let lkup = method::lookup(fcx, op_ex, self_ex, op_ex.id,
+                                  callee_id, @opname, self_t, [], false);
         alt lkup.method() {
           some(origin) {
             let {fty: method_ty, bot: bot} = {
@@ -1629,15 +1621,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             // encloses the method call
             let borrow_scope = fcx.tcx().region_map.get(expr.id);
 
-            let lkup = method::lookup({fcx: fcx,
-                                       expr: expr,
-                                       self_expr: base,
-                                       borrow_scope: borrow_scope,
-                                       node_id: expr.id,
-                                       m_name: field,
-                                       self_ty: expr_t,
-                                       supplied_tps: tps,
-                                       include_private: is_self_ref});
+            let lkup = method::lookup(fcx, expr, base, borrow_scope,
+                                      expr.id, field, expr_t, tps,
+                                      is_self_ref);
             alt lkup.method() {
               some(entry) {
                 fcx.ccx.method_map.insert(id, entry);
@@ -1686,15 +1672,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         let p_ty = fcx.expr_ty(p);
 
-        let lkup = method::lookup({fcx: fcx,
-                                   expr: p,
-                                   self_expr: p,
-                                   borrow_scope: expr.id,
-                                   node_id: alloc_id,
-                                   m_name: @"alloc",
-                                   self_ty: p_ty,
-                                   supplied_tps: [],
-                                   include_private: false});
+        let lkup = method::lookup(fcx, p, p, expr.id, alloc_id,
+                                  @"alloc", p_ty, [], false);
         alt lkup.method() {
           some(entry) {
             fcx.ccx.method_map.insert(alloc_id, entry);
