@@ -2489,7 +2489,7 @@ impl of lattice_ops for glb {
 fn lattice_tys<L:lattice_ops combine>(
     self: L, a: ty::t, b: ty::t) -> cres<ty::t> {
 
-    #debug("%s.tys(%s, %s)", self.tag(),
+    #debug("%s.lattice_tys(%s, %s)", self.tag(),
            a.to_str(self.infcx()),
            b.to_str(self.infcx()));
     if a == b { ret ok(a); }
