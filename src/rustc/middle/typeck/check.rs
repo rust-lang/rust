@@ -1198,7 +1198,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
           }
           ast::neg {
-            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
+            // If the operand's type is an integral type variable, we
+            // don't want to resolve it yet, because the rest of the
+            // typing context might not have had the opportunity to
+            // constrain it yet.
+            if !(ty::type_is_var_integral(oprnd_t)) {
+                oprnd_t = structurally_resolved_type(fcx, oprnd.span,
+                                                     oprnd_t);
+            }
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::type_is_fp(oprnd_t)) {
                 oprnd_t = check_user_unop(fcx, "-", "unary-", expr,
