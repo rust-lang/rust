@@ -229,6 +229,25 @@ type sockaddr_in6 = {
     a2: *u8, a3: *u8
 };
 
+// unix size: 28
+// unix size: 28 .. FIXME: stuck with 32 becuse of rust padding structs?
+type addr_in = {
+    a0: *u8, a1: *u8,
+    a2: *u8, a3: *u8
+};
+
+// unix size: 48
+type addrinfo = {
+    a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+    a04: *u8, a05: *u8
+};
+
+// unix size: 72
+type uv_getaddrinfo_t = {
+    a00: *u8, a01: *u8, a02: *u8, a03: *u8, a04: *u8, a05: *u8,
+    a06: *u8, a07: *u8, a08: *u8
+};
+
 mod uv_ll_struct_stubgen {
     fn gen_stub_uv_tcp_t() -> uv_tcp_t {
         ret gen_stub_os();
@@ -474,10 +493,18 @@ mod uv_ll_struct_stubgen {
             a12: 0 as *u8
         };
     }
+    fn gen_stub_uv_getaddrinfo_t() -> uv_getaddrinfo_t {
+        {
+            a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
+            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8, a07: 0 as *u8,
+            a08: 0 as *u8
+        }
+    }
 }
 
 #[nolink]
 native mod rustrt {
+    // libuv public API
     fn rust_uv_loop_new() -> *libc::c_void;
     fn rust_uv_loop_delete(lp: *libc::c_void);
     fn rust_uv_loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int;
@@ -533,6 +560,14 @@ native mod rustrt {
         repeat: libc::c_uint) -> libc::c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
 
+    fn rust_uv_getaddrinfo(loop_ptr: *libc::c_void,
+                           handle: *uv_getaddrinfo_t, cb: *u8,
+                           node_name_ptr: *u8,
+                           service_name_ptr: *u8,
+                           // should probably only pass ptr::null()
+                           hints: *addrinfo)
+        -> libc::c_int;
+
     // data accessors/helpers for rust-mapped uv structs
     fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
     fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
@@ -567,6 +602,9 @@ native mod rustrt {
     fn rust_uv_helper_sockaddr_in6_size() -> libc::c_uint;
     fn rust_uv_helper_uv_async_t_size() -> libc::c_uint;
     fn rust_uv_helper_uv_timer_t_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_getaddrinfo_t_size() -> libc::c_uint;
+    fn rust_uv_helper_addrinfo_size() -> libc::c_uint;
+    fn rust_uv_helper_addr_in_size() -> libc::c_uint;
 }
 
 unsafe fn loop_new() -> *libc::c_void {
@@ -717,7 +755,7 @@ unsafe fn ip4_name(src: &sockaddr_in) -> str {
         // libuv will actually map a malformed input ip to INADDR_NONE,
         // which is going to be 255.255.255.255 on most
         // platforms.
-        str::unsafe::from_buf(dst_buf);
+        str::unsafe::from_buf(dst_buf)
     }
 }
 unsafe fn ip6_name(src: &sockaddr_in6) -> str {
@@ -771,6 +809,9 @@ unsafe fn async_t() -> uv_async_t {
 }
 unsafe fn timer_t() -> uv_timer_t {
     ret uv_ll_struct_stubgen::gen_stub_uv_timer_t();
+}
+unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
+    ret uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
 }
 
 // data access helpers
@@ -1431,10 +1472,22 @@ mod test {
         let output = #fmt("sockaddr_in -- native: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
-        // FIXME .. rust appears to pack structs to the nearest byte..?
+        // FIXME .. rust appears to pad structs to the nearest byte..?
         // .. can't get the uv::ll::sockaddr_in6 to == 28 :/
         // .. so the type always appears to be 32 in size.. which is
         // good, i guess.. better too big than too little
+        assert (4u+native_handle_size as uint) == rust_handle_size;
+    }
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    fn test_uv_ll_struct_size_addr_in() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_addr_in_size();
+        let rust_handle_size = sys::size_of::<addr_in>();
+        let output = #fmt("addr_in -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        // FIXME .. see note above about struct padding
         assert (4u+native_handle_size as uint) == rust_handle_size;
     }
 
@@ -1460,5 +1513,28 @@ mod test {
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
+    }
+    
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
+        let rust_handle_size = sys::size_of::<uv_getaddrinfo_t>();
+        let output = #fmt("uv_getaddrinfo_t -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        assert native_handle_size as uint == rust_handle_size;
+    }
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    fn test_uv_ll_struct_size_addrinfo() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_addrinfo_size();
+        let rust_handle_size = sys::size_of::<addrinfo>();
+        let output = #fmt("addrinfo -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        assert native_handle_size as uint == rust_handle_size;
     }
 }
