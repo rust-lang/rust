@@ -312,6 +312,30 @@ extern "C" size_t
 rust_uv_helper_uv_timer_t_size() {
     return sizeof(uv_timer_t);
 }
+extern "C" size_t
+rust_uv_helper_addr_in_size() {
+    return sizeof(sockaddr_in6);
+}
+extern "C" size_t
+rust_uv_helper_uv_getaddrinfo_t_size() {
+    return sizeof(uv_getaddrinfo_t);
+}
+extern "C" size_t
+rust_uv_helper_addrinfo_size() {
+    return sizeof(addrinfo);
+}
+extern "C" unsigned long int
+rust_uv_helper_get_INADDR_NONE() {
+	return INADDR_NONE;
+}
+extern "C" unsigned long int
+rust_uv_helper_get_AF_INET() {
+	return AF_INET;
+}
+extern "C" unsigned long int
+rust_uv_helper_get_AF_INET6() {
+	return AF_INET6;
+}
 
 extern "C" uv_stream_t*
 rust_uv_get_stream_handle_from_connect_req(uv_connect_t* connect) {
@@ -479,4 +503,10 @@ rust_uv_current_kernel_malloc(size_t size) {
 extern "C" void
 rust_uv_current_kernel_free(void* mem) {
     current_kernel_free(mem);
+}
+
+extern  "C" int
+rust_uv_getaddrinfo(uv_loop_t* loop, uv_getaddrinfo_t* handle, uv_getaddrinfo_cb cb,
+					const char* node, const char* service, const struct addrinfo* hints) {
+	return uv_getaddrinfo(loop, handle, cb, node, service, hints);
 }
