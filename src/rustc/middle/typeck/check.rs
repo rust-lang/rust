@@ -1132,7 +1132,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // and so forth. - Niko
         fcx.write_nil(expr.id);
       }
-      ast::expr_unary(unop, oper) {
+      ast::expr_unary(unop, oprnd) {
         let exp_inner = unpack_expected(fcx, expected) {|sty|
             alt unop {
               ast::box(_) | ast::uniq(_) {
@@ -1145,17 +1145,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               ast::deref { none }
             }
         };
-        bot = check_expr(fcx, oper, exp_inner);
-        let mut oper_t = fcx.expr_ty(oper);
+        bot = check_expr(fcx, oprnd, exp_inner);
+        let mut oprnd_t = fcx.expr_ty(oprnd);
         alt unop {
           ast::box(mutbl) {
-            oper_t = ty::mk_box(tcx, {ty: oper_t, mutbl: mutbl});
+            oprnd_t = ty::mk_box(tcx, {ty: oprnd_t, mutbl: mutbl});
           }
           ast::uniq(mutbl) {
-            oper_t = ty::mk_uniq(tcx, {ty: oper_t, mutbl: mutbl});
+            oprnd_t = ty::mk_uniq(tcx, {ty: oprnd_t, mutbl: mutbl});
           }
           ast::deref {
-            let sty = structure_of(fcx, expr.span, oper_t);
+            let sty = structure_of(fcx, expr.span, oprnd_t);
 
             // deref'ing an unsafe pointer requires that we be in an unsafe
             // context
@@ -1169,7 +1169,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
 
             alt ty::deref_sty(tcx, sty, true) {
-              some(mt) { oper_t = mt.ty }
+              some(mt) { oprnd_t = mt.ty }
               none {
                 alt sty {
                   ty::ty_enum(*) {
@@ -1183,39 +1183,39 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     tcx.sess.span_err(
                         expr.span,
                         #fmt["type %s cannot be dereferenced",
-                             fcx.infcx.ty_to_str(oper_t)]);
+                             fcx.infcx.ty_to_str(oprnd_t)]);
                   }
                 }
               }
             }
           }
           ast::not {
-            oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
-            if !(ty::type_is_integral(oper_t) ||
-                 ty::get(oper_t).struct == ty::ty_bool) {
-                oper_t = check_user_unop(fcx, "!", "!", expr,
-                                         oper, oper_t);
+            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
+            if !(ty::type_is_integral(oprnd_t) ||
+                 ty::get(oprnd_t).struct == ty::ty_bool) {
+                oprnd_t = check_user_unop(fcx, "!", "!", expr,
+                                         oprnd, oprnd_t);
             }
           }
           ast::neg {
-            oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
-            if !(ty::type_is_integral(oper_t) ||
-                 ty::type_is_fp(oper_t)) {
-                oper_t = check_user_unop(fcx, "-", "unary-", expr,
-                                         oper, oper_t);
+            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
+            if !(ty::type_is_integral(oprnd_t) ||
+                 ty::type_is_fp(oprnd_t)) {
+                oprnd_t = check_user_unop(fcx, "-", "unary-", expr,
+                                         oprnd, oprnd_t);
             }
           }
         }
-        fcx.write_ty(id, oper_t);
+        fcx.write_ty(id, oprnd_t);
       }
-      ast::expr_addr_of(mutbl, oper) {
-        bot = check_expr(fcx, oper, unpack_expected(fcx, expected) {|ty|
+      ast::expr_addr_of(mutbl, oprnd) {
+        bot = check_expr(fcx, oprnd, unpack_expected(fcx, expected) {|ty|
             alt ty { ty::ty_rptr(_, mt) { some(mt.ty) } _ { none } }
         });
-        let region = region_of(fcx, oper);
-        let tm = { ty: fcx.expr_ty(oper), mutbl: mutbl };
-        let oper_t = ty::mk_rptr(tcx, region, tm);
-        fcx.write_ty(id, oper_t);
+        let region = region_of(fcx, oprnd);
+        let tm = { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
+        let oprnd_t = ty::mk_rptr(tcx, region, tm);
+        fcx.write_ty(id, oprnd_t);
       }
       ast::expr_path(pth) {
         let defn = lookup_def(fcx, pth.span, id);
