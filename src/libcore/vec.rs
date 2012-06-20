@@ -1162,14 +1162,14 @@ pure fn unpack_mut_slice<T,U>(s: &[mut T],
 
 impl extensions<T: copy> for ~[T] {
     #[inline(always)]
-    pure fn +(rhs: &[T]) -> ~[T] {
+    pure fn +(rhs: &[const T]) -> ~[T] {
         append(self, rhs)
     }
 }
 
 impl extensions<T: copy> for ~[mut T] {
     #[inline(always)]
-    pure fn +(rhs: &[mut T]) -> ~[mut T] {
+    pure fn +(rhs: &[const T]) -> ~[mut T] {
         append_mut(self, rhs)
     }
 }
