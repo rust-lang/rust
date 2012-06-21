@@ -166,6 +166,7 @@ fn test_is_uuid() {
 }
 
 // FIXME: implement url/URL parsing so we don't have to resort to weak checks
+// (#2661)
 
 fn has_archive_extension(p: str) -> bool {
     str::ends_with(p, ".tar") ||
@@ -189,7 +190,7 @@ fn is_archive_path(u: str) -> bool {
 
 fn is_archive_url(u: str) -> bool {
     // FIXME: this requires the protocol bit - if we had proper url parsing,
-    // we wouldn't need it
+    // we wouldn't need it (#2661)
 
     alt str::find_str(u, "://") {
         option::some(i) { has_archive_extension(u) }
@@ -958,7 +959,7 @@ fn cmd_uninstall(c: cargo) {
 
     // FIXME: needs stronger pattern matching
     // FIXME: needs to uninstall from a specified location in a cache instead
-    // of looking for it (binaries can be uninstalled by name only)
+    // of looking for it (binaries can be uninstalled by name only) (#2662)
     if is_uuid(target) {
         for os::list_dir(lib).each { |file|
             alt str::find_str(file, "-" + target + "-") {
@@ -1061,7 +1062,7 @@ fn install_query(c: cargo, wd: str, target: str) {
 
     // FIXME: This whole dep_cache and current_install
     // thing is a bit of a hack. It should be cleaned up in the future.
-
+    // #2662
     if target == c.current_install {
         for c.dep_cache.each { |k, _v|
             c.dep_cache.remove(k);
@@ -1894,7 +1895,7 @@ fn main(argv: [str]) {
     if !first_time && o.free[1] != "init" {
         cmd_init(c);
 
-        // FIXME: shouldn't need to reconfigure
+        // FIXME: shouldn't need to reconfigure (#2662)
         c = configure(o);
     }
 
