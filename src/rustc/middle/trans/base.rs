@@ -398,18 +398,16 @@ fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef) ->
     ret {box: box, body: body};
 }
 
-fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
-    malloc_general_dyn(bcx, t, heap_shared,
+fn malloc_general(bcx: block, t: ty::t, heap: heap) ->
+    {box: ValueRef, body: ValueRef} {
+    malloc_general_dyn(bcx, t, heap,
                        llsize_of(bcx.ccx(), type_of(bcx.ccx(), t)))
+}
+fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
+    malloc_general(bcx, t, heap_shared)
 }
 fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
-    malloc_general_dyn(bcx, t, heap_exchange,
-                       llsize_of(bcx.ccx(), type_of(bcx.ccx(), t)))
-}
-
-fn malloc_unique_dyn(bcx: block, t: ty::t, size: ValueRef
-                    ) -> {box: ValueRef, body: ValueRef} {
-    malloc_general_dyn(bcx, t, heap_exchange, size)
+    malloc_general(bcx, t, heap_exchange)
 }
 
 // Type descriptor and type glue stuff
@@ -1487,6 +1485,19 @@ fn trans_lit(cx: block, e: @ast::expr, lit: ast::lit, dest: dest) -> block {
     }
 }
 
+
+fn trans_boxed_expr(bcx: block, contents: @ast::expr,
+                    t: ty::t, heap: heap,
+                    dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("trans_boxed_expr");
+    let {box, body} = malloc_general(bcx, t, heap);
+    add_clean_free(bcx, box, true);
+    let bcx = trans_expr_save_in(bcx, contents, body);
+    revoke_clean(bcx, box);
+    ret store_in_dest(bcx, box, dest);
+}
+
+
 fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
                un_expr: @ast::expr, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("trans_unary");
@@ -1509,35 +1520,25 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
     alt op {
       ast::not {
         let {bcx, val} = trans_temp_expr(bcx, e);
-        ret store_in_dest(bcx, Not(bcx, val), dest);
+        store_in_dest(bcx, Not(bcx, val), dest)
       }
       ast::neg {
         let {bcx, val} = trans_temp_expr(bcx, e);
         let neg = if ty::type_is_fp(e_ty) {
             FNeg(bcx, val)
         } else { Neg(bcx, val) };
-        ret store_in_dest(bcx, neg, dest);
+        store_in_dest(bcx, neg, dest)
       }
       ast::box(_) {
-        let mut {box, body} = malloc_boxed(bcx, e_ty);
-        add_clean_free(bcx, box, false);
-        // Cast the body type to the type of the value. This is needed to
-        // make enums work, since enums have a different LLVM type depending
-        // on whether they're boxed or not
-        let ccx = bcx.ccx();
-        let llety = T_ptr(type_of(ccx, e_ty));
-        body = PointerCast(bcx, body, llety);
-        let bcx = trans_expr_save_in(bcx, e, body);
-        revoke_clean(bcx, box);
-        ret store_in_dest(bcx, box, dest);
+        trans_boxed_expr(bcx, e, e_ty, heap_shared, dest)
       }
       ast::uniq(_) {
-        ret uniq::trans_uniq(bcx, e, un_expr.id, dest);
+        trans_boxed_expr(bcx, e, e_ty, heap_exchange, dest)
       }
       ast::deref {
         bcx.sess().bug("deref expressions should have been \
                                translated using trans_lval(), not \
-                               trans_unary()");
+                               trans_unary()")
       }
     }
 }
