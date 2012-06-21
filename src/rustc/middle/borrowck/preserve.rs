@@ -29,6 +29,12 @@ impl public_methods for borrowck_ctxt {
             }
             ok(())
           }
+          cat_binding(_) {
+            // Bindings are these kind of weird implicit pointers (cc
+            // #2329).  We require (in gather_loans) that they be
+            // rooted in an immutable location.
+            ok(())
+          }
           cat_arg(_) {
             // This can happen as not all args are lendable (e.g., &&
             // modes).  In that case, the caller guarantees stability.

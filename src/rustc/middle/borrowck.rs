@@ -175,6 +175,7 @@ fn check_crate(tcx: ty::ctxt,
     let bccx = @{tcx: tcx,
                  method_map: method_map,
                  last_use_map: last_use_map,
+                 binding_map: int_hash(),
                  root_map: root_map(),
                  mutbl_map: int_hash()};
 
@@ -189,6 +190,7 @@ fn check_crate(tcx: ty::ctxt,
 type borrowck_ctxt = @{tcx: ty::ctxt,
                        method_map: typeck::method_map,
                        last_use_map: liveness::last_use_map,
+                       binding_map: binding_map,
                        root_map: root_map,
                        mutbl_map: mutbl_map};
 
@@ -207,6 +209,10 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
 type mutbl_map = std::map::hashmap<ast::node_id, ()>;
+
+// maps from each binding's id to the mutability of the location it
+// points at.  See gather_loan.rs for more detail (search for binding_map)
+type binding_map = std::map::hashmap<ast::node_id, ast::mutability>;
 
 // Errors that can occur"]
 enum bckerr_code {
@@ -228,6 +234,7 @@ enum categorization {
     cat_rvalue,                     // result of eval'ing some misc expr
     cat_special(special_kind),      //
     cat_local(ast::node_id),        // local variable
+    cat_binding(ast::node_id),      // pattern binding
     cat_arg(ast::node_id),          // formal argument
     cat_stack_upvar(cmt),           // upvar in stack closure
     cat_deref(cmt, uint, ptr_kind), // deref of a ptr
@@ -381,6 +388,7 @@ impl to_str_methods for borrowck_ctxt {
           cat_stack_upvar(_) { "stack-upvar" }
           cat_rvalue { "rvalue" }
           cat_local(node_id) { #fmt["local(%d)", node_id] }
+          cat_binding(node_id) { #fmt["binding(%d)", node_id] }
           cat_arg(node_id) { #fmt["arg(%d)", node_id] }
           cat_deref(cmt, derefs, ptr) {
             #fmt["%s->(%s, %u)", self.cat_to_repr(cmt.cat),
@@ -466,6 +474,7 @@ impl to_str_methods for borrowck_ctxt {
           cat_special(sk_heap_upvar) { "variable declared in an outer block" }
           cat_rvalue { "non-lvalue" }
           cat_local(_) { mut_str + " local variable" }
+          cat_binding(_) { "pattern binding" }
           cat_arg(_) { "argument" }
           cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
                                      mut_str, self.pk_to_sigil(pk)] }

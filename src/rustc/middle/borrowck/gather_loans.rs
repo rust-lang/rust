@@ -364,6 +364,16 @@ impl methods for gather_loan_ctxt {
             // cat_discr in the method preserve():
             let cmt1 = self.bccx.cat_discr(cmt, alt_id);
             let arm_scope = ty::re_scope(arm_id);
+
+            // Remember the mutability of the location that this
+            // binding refers to.  This will be used later when
+            // categorizing the binding.  This is a bit of a hack that
+            // would be better fixed by #2329; in that case we could
+            // allow the user to specify if they want an imm, const,
+            // or mut binding, or else just reflect the mutability
+            // through the type of the region pointer.
+            self.bccx.binding_map.insert(pat.id, cmt1.mutbl);
+
             self.guarantee_valid(cmt1, m_const, arm_scope);
 
             for o_pat.each { |p|

@@ -265,12 +265,16 @@ impl public_methods for borrowck_ctxt {
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_binding(vid) {
-            // no difference between a binding and any other local variable
-            // from out point of view, except that they are always immutable
+          ast::def_binding(pid) {
+            // bindings are "special" since they are implicit pointers.
+
+            // lookup the mutability for this binding that we found in
+            // gather_loans when we categorized it
+            let mutbl = self.binding_map.get(pid);
+
             @{id:id, span:span,
-              cat:cat_local(vid), lp:some(@lp_local(vid)),
-              mutbl:m_imm, ty:expr_ty}
+              cat:cat_binding(pid), lp:none,
+              mutbl:mutbl, ty:expr_ty}
           }
         }
     }

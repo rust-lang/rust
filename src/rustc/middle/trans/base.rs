@@ -3335,7 +3335,7 @@ fn need_invoke(bcx: block) -> bool {
     loop {
         alt cur.kind {
           block_scope(inf) {
-            for inf.cleanups.each {|cleanup|
+            for vec::each(inf.cleanups) {|cleanup|
                 alt cleanup {
                   clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) {
                     if cleanup_type == normal_exit_and_unwind {

@@ -154,7 +154,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token::token, sp: span} {
             ret ret_val;
           }
           tt_frame_up(option::some(tt_f)) {
-            r.cur <- tt_f;
+            r.cur = tt_f;
             /* the above `if` would need to be a `while` if we didn't know
             that the last thing in a `tt_delim` is always a `tt_flat` */
             r.cur.idx += 1u;
