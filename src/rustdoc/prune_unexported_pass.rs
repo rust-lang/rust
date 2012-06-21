@@ -62,7 +62,9 @@ fn exported_items_from_mod(
     srv: astsrv::srv,
     doc: doc::moddoc
 ) -> [doc::itemtag] {
-    exported_items_from(srv, doc, bind is_exported_from_mod(_, doc.id(), _))
+    exported_items_from(srv, doc, {|a,b|
+        is_exported_from_mod(a, doc.id(), b)
+    })
 }
 
 fn exported_items_from(

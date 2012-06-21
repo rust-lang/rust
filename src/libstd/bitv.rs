@@ -185,7 +185,7 @@ Converts the bitvector to a vector of uint with the same length.
 Each uint in the resulting vector has either value 0u or 1u.
 "]
 fn to_vec(v: bitv) -> [uint] {
-    let sub = bind init_to_vec(v, _);
+    let sub = {|x|init_to_vec(v, x)};
     ret vec::from_fn::<uint>(v.nbits, sub);
 }
 

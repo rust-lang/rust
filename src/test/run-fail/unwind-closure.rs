@@ -5,6 +5,7 @@ fn f(a: @int) {
 }
 
 fn main() {
-    let g = bind f(@0);
+    let b = @0;
+    let g = {|move b|f(b)};
     g();
 }

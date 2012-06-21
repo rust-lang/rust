@@ -330,24 +330,32 @@ An _integer literal_ has one of three forms:
   * A _binary literal_ starts with the character sequence `U+0030` `U+0062`
     (`0b`) and continues as any mixture binary digits and underscores.
 
-By default, an integer literal is of type `int`. An integer literal may be
-followed (immediately, without any spaces) by an _integer suffix_, which
-changes the type of the literal. There are two kinds of integer literal
-suffix:
+An integer literal may be followed (immediately, without any spaces) by an
+_integer suffix_, which changes the type of the literal. There are two kinds
+of integer literal suffix:
 
-  * The `u` suffix gives the literal type `uint`.
+  * The `i` and `u` suffixes give the literal type `int` or `uint`,
+    respectively.
   * Each of the signed and unsigned machine types `u8`, `i8`,
     `u16`, `i16`, `u32`, `i32`, `u64` and `i64`
     give the literal the corresponding machine type.
 
+The type of an _unsuffixed_ integer literal is determined by type inference.
+If a integer type can be _uniquely_ determined from the surrounding program
+context, the unsuffixed integer literal has that type.  If the program context
+underconstrains the type, the unsuffixed integer literal's type is `int`; if
+the program context overconstrains the type, it is considered a static type
+error.
 
 Examples of integer literals of various forms:
 
 ~~~~
-123;                               // type int
+123; 0xff00;                       // type determined by program context; 
+                                   // defaults to int in absence of type
+				   // information
+
 123u;                              // type uint
 123_u;                             // type uint
-0xff00;                            // type int
 0xff_u8;                           // type u8
 0b1111_1111_1001_0000_i32;         // type i32
 ~~~~
@@ -980,7 +988,7 @@ fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
 pure fn pure_length<T>(ls: list<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
     unchecked {
-        pure_foldl(ls, 0u, count(_, _))
+        pure_foldl(ls, 0u, count)
     }
 }
 ~~~~
@@ -1940,49 +1948,6 @@ An example of a call expression:
 
 let x: int = add(1, 2);
 ~~~~
-
-
-### Bind expressions
-
-A _bind expression_ constructs a new function from an existing function.^[The
-`bind` expression is analogous to the `bind` expression in the Sather
-language.] The new function has zero or more of its arguments *bound* into a
-new, hidden boxed tuple that holds the bindings. For each concrete argument
-passed in the `bind` expression, the corresponding parameter in the existing
-function is *omitted* as a parameter of the new function. For each argument
-passed the placeholder symbol `_` in the `bind` expression, the corresponding
-parameter of the existing function is *retained* as a parameter of the new
-function.
-
-Any subsequent invocation of the new function with residual arguments causes
-invocation of the existing function with the combination of bound arguments
-and residual arguments that was specified during the binding.
-
-An example of a `bind` expression:
-
-~~~~{.xfail-test}
-fn add(x: int, y: int) -> int {
-    ret x + y;
-}
-type single_param_fn = fn(int) -> int;
-
-let add4: single_param_fn = bind add(4, _);
-
-let add5: single_param_fn = bind add(_, 5);
-
-assert (add(4,5) == add4(5));
-assert (add(4,5) == add5(4));
-
-~~~~
-
-A `bind` expression generally stores a copy of the bound arguments in a
-hidden, boxed tuple, owned by the resulting first-class function. For each
-bound slot in the bound function's signature, space is allocated in the hidden
-tuple and populated with a copy of the bound value.
-
-A `bind` expression is an alternative way of constructing a shared function
-closure; the [`fn@` expression](#shared-function-expressions) form is another
-way.
 
 ### Shared function expressions
 

@@ -292,7 +292,7 @@ mod tests {
                                     two(17, 42));
 
         #debug("*** test parameterized: taggypar<int>");
-        let eq4: eqfn<taggypar<int>> = bind taggypareq::<int>(_, _);
+        let eq4: eqfn<taggypar<int>> = {|x,y|taggypareq::<int>(x, y)};
         test_parameterized::<taggypar<int>>(eq4, onepar::<int>(1),
                                             twopar::<int>(1, 2),
                                             threepar::<int>(1, 2, 3),

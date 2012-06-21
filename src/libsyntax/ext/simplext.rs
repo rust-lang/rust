@@ -113,7 +113,7 @@ fn a_d_map(ad: arb_depth<matchable>, f: selector) -> match_result {
     alt ad {
       leaf(x) { ret f(x); }
       seq(ads, span) {
-        alt option_flatten_map(bind a_d_map(_, f), *ads) {
+        alt option_flatten_map({|x| a_d_map(x, f)}, *ads) {
           none { ret none; }
           some(ts) { ret some(seq(@ts, span)); }
         }
@@ -128,7 +128,7 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
               some(matches) { a_d_map(matches, s2) }
             }
     }
-    ret bind scomp(s1, s2, _);
+    ret {|x|scomp(s1, s2, x)};
 }
 
 
@@ -190,16 +190,22 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     }
     let afp = default_ast_fold();
     let f_pre =
-        @{fold_ident: bind transcribe_ident(cx, b, idx_path, _, _),
-          fold_path: bind transcribe_path(cx, b, idx_path, _, _),
-          fold_expr:
-              bind transcribe_expr(cx, b, idx_path, _, _, _, afp.fold_expr),
-          fold_ty: bind transcribe_type(cx, b, idx_path,
-                                        _, _, _, afp.fold_ty),
-          fold_block:
-              bind transcribe_block(cx, b, idx_path, _, _, _, afp.fold_block),
-          map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _),
-          new_id: bind new_id(_, cx)
+        @{fold_ident: {|x,y|transcribe_ident(cx, b, idx_path, x, y)},
+          fold_path: {|x,y|transcribe_path(cx, b, idx_path, x, y)},
+          fold_expr: {|x,y,z|
+              transcribe_expr(cx, b, idx_path, x, y, z, afp.fold_expr)
+          },
+          fold_ty: {|x,y,z|
+              transcribe_type(cx, b, idx_path,
+                              x, y, z, afp.fold_ty)
+          },
+          fold_block: {|x,y,z|
+              transcribe_block(cx, b, idx_path, x, y, z, afp.fold_block)
+          },
+          map_exprs: {|x,y|
+              transcribe_exprs(cx, b, idx_path, x, y)
+          },
+          new_id: {|x|new_id(x, cx)}
           with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
@@ -249,7 +255,7 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
     // using fold is a hack: we want visit, but it doesn't hit idents ) :
     // solve this with macros
     let f_pre =
-        @{fold_ident: bind mark_ident(_, _, b, idents)
+        @{fold_ident: {|x,y|mark_ident(x, y, b, idents)}
           with *default_ast_fold()};
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
@@ -475,7 +481,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                       _ { cx.bug("broken traversal in p_t_s_r") }
                     }
             }
-            b.literal_ast_matchers.push(bind select(cx, _, e));
+            b.literal_ast_matchers.push({|x|select(cx, x, e)});
           }
         }
       }
@@ -517,7 +523,7 @@ fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
         if b.real_binders.contains_key(p_id) {
             cx.span_fatal(p.span, "duplicate binding identifier");
         }
-        b.real_binders.insert(p_id, compose_sels(s, bind select(cx, _)));
+        b.real_binders.insert(p_id, compose_sels(s, {|x|select(cx, x)}));
       }
       none { }
     }
@@ -562,7 +568,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
                           _ { none }
                         }
                 }
-                let final_step = bind select_pt_1(cx, _, select_pt_2);
+                let final_step = {|x|select_pt_1(cx, x, select_pt_2)};
                 b.real_binders.insert(id, compose_sels(s, final_step));
               }
               none { no_des(cx, pth.span, "under `#<>`"); }
@@ -582,7 +588,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
                       _ { none }
                     }
             }
-            let final_step = bind select_pt_1(cx, _, select_pt_2);
+            let final_step = {|x|select_pt_1(cx, x, select_pt_2)};
             b.real_binders.insert(id, compose_sels(s, final_step));
           }
           none { no_des(cx, blk.span, "under `#{}`"); }
@@ -619,7 +625,7 @@ fn p_t_s_r_ellipses(cx: ext_ctxt, repeat_me: @expr, offset: uint, s: selector,
             }
     }
     p_t_s_rec(cx, match_expr(repeat_me),
-              compose_sels(s, bind select(cx, repeat_me, offset, _)), b);
+              compose_sels(s, {|x|select(cx, repeat_me, offset, x)}), b);
 }
 
 
@@ -643,7 +649,7 @@ fn p_t_s_r_length(cx: ext_ctxt, len: uint, at_least: bool, s: selector,
             }
     }
     b.literal_ast_matchers.push(
-        compose_sels(s, bind len_select(cx, _, at_least, len)));
+        compose_sels(s, {|x|len_select(cx, x, at_least, len)}));
 }
 
 fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
@@ -664,7 +670,7 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
                 }
         }
         p_t_s_rec(cx, match_expr(elts[idx]),
-                  compose_sels(s, bind select(cx, _, idx)), b);
+                  compose_sels(s, {|x, copy idx|select(cx, x, idx)}), b);
         idx += 1u;
     }
 }
@@ -739,7 +745,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
         }
     }
 
-    let ext = bind generic_extension(_, _, _, _, clauses);
+    let ext = {|a,b,c,d, move clauses|
+        generic_extension(a,b,c,d,clauses)
+    };
 
     ret {ident:
              alt macro_name {

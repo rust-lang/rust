@@ -65,22 +65,22 @@ type visitor<E> =
       visit_class_item: fn@(@class_member, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
-    ret @{visit_mod: bind visit_mod::<E>(_, _, _, _, _),
-          visit_view_item: bind visit_view_item::<E>(_, _, _),
-          visit_native_item: bind visit_native_item::<E>(_, _, _),
-          visit_item: bind visit_item::<E>(_, _, _),
-          visit_local: bind visit_local::<E>(_, _, _),
-          visit_block: bind visit_block::<E>(_, _, _),
-          visit_stmt: bind visit_stmt::<E>(_, _, _),
-          visit_arm: bind visit_arm::<E>(_, _, _),
-          visit_pat: bind visit_pat::<E>(_, _, _),
-          visit_decl: bind visit_decl::<E>(_, _, _),
-          visit_expr: bind visit_expr::<E>(_, _, _),
-          visit_ty: bind skip_ty::<E>(_, _, _),
-          visit_ty_params: bind visit_ty_params::<E>(_, _, _),
-          visit_constr: bind visit_constr::<E>(_, _, _, _, _),
-          visit_fn: bind visit_fn::<E>(_, _, _, _, _, _, _),
-          visit_class_item: bind visit_class_item::<E>(_,_,_)};
+    ret @{visit_mod: {|a,b,c,d,e|visit_mod::<E>(a, b, c, d, e)},
+          visit_view_item: {|a,b,c|visit_view_item::<E>(a, b, c)},
+          visit_native_item: {|a,b,c|visit_native_item::<E>(a, b, c)},
+          visit_item: {|a,b,c|visit_item::<E>(a, b, c)},
+          visit_local: {|a,b,c|visit_local::<E>(a, b, c)},
+          visit_block: {|a,b,c|visit_block::<E>(a, b, c)},
+          visit_stmt: {|a,b,c|visit_stmt::<E>(a, b, c)},
+          visit_arm: {|a,b,c|visit_arm::<E>(a, b, c)},
+          visit_pat: {|a,b,c|visit_pat::<E>(a, b, c)},
+          visit_decl: {|a,b,c|visit_decl::<E>(a, b, c)},
+          visit_expr: {|a,b,c|visit_expr::<E>(a, b, c)},
+          visit_ty: {|a,b,c|skip_ty::<E>(a, b, c)},
+          visit_ty_params: {|a,b,c|visit_ty_params::<E>(a, b, c)},
+          visit_constr: {|a,b,c,d,e|visit_constr::<E>(a, b, c, d, e)},
+          visit_fn: {|a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g)},
+          visit_class_item: {|a,b,c|visit_class_item::<E>(a, b, c)}};
 }
 
 fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
@@ -377,10 +377,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         visit_exprs(args, e, v);
         v.visit_expr(callee, e, v);
       }
-      expr_bind(callee, args) {
-        v.visit_expr(callee, e, v);
-        for args.each {|eo| visit_expr_opt(eo, e, v); }
-      }
       expr_binary(_, a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_addr_of(_, x) | expr_unary(_, x) |
       expr_loop_body(x) | expr_do_body(x) |
@@ -559,9 +555,9 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         visit_fn(fk, decl, body, sp, id, e, v);
     }
     let visit_ty = if v.visit_ty == simple_ignore_ty {
-        bind skip_ty(_, _, _)
+        {|a,b,c| skip_ty(a, b, c)}
     } else {
-        bind v_ty(v.visit_ty, _, _, _)
+        {|a,b,c| v_ty(v.visit_ty, a, b, c)}
     };
     fn v_class_item(f: fn@(@class_member),
                     cm: @class_member, &&e: (),
@@ -569,24 +565,33 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(cm);
         visit_class_item(cm, e, v);
     }
-    ret mk_vt(@{visit_mod: bind v_mod(v.visit_mod, _, _, _, _, _),
-                visit_view_item: bind v_view_item(v.visit_view_item, _, _, _),
+    ret mk_vt(@{visit_mod: {|a,b,c,d,e|v_mod(v.visit_mod, a, b, c, d, e)},
+                visit_view_item: {|a,b,c|
+                    v_view_item(v.visit_view_item, a, b, c)
+                },
                 visit_native_item:
-                    bind v_native_item(v.visit_native_item, _, _, _),
-                visit_item: bind v_item(v.visit_item, _, _, _),
-                visit_local: bind v_local(v.visit_local, _, _, _),
-                visit_block: bind v_block(v.visit_block, _, _, _),
-                visit_stmt: bind v_stmt(v.visit_stmt, _, _, _),
-                visit_arm: bind v_arm(v.visit_arm, _, _, _),
-                visit_pat: bind v_pat(v.visit_pat, _, _, _),
-                visit_decl: bind v_decl(v.visit_decl, _, _, _),
-                visit_expr: bind v_expr(v.visit_expr, _, _, _),
+                    {|a,b,c|v_native_item(v.visit_native_item, a, b, c)},
+                visit_item: {|a,b,c|v_item(v.visit_item, a, b, c)},
+                visit_local: {|a,b,c|v_local(v.visit_local, a, b, c)},
+                visit_block: {|a,b,c|v_block(v.visit_block, a, b, c)},
+                visit_stmt: {|a,b,c|v_stmt(v.visit_stmt, a, b, c)},
+                visit_arm: {|a,b,c|v_arm(v.visit_arm, a, b, c)},
+                visit_pat: {|a,b,c|v_pat(v.visit_pat, a, b, c)},
+                visit_decl: {|a,b,c|v_decl(v.visit_decl, a, b, c)},
+                visit_expr: {|a,b,c|v_expr(v.visit_expr, a, b, c)},
                 visit_ty: visit_ty,
-                visit_ty_params: bind v_ty_params(v.visit_ty_params, _, _, _),
-                visit_constr: bind v_constr(v.visit_constr, _, _, _, _, _),
-                visit_fn: bind v_fn(v.visit_fn, _, _, _, _, _, _, _),
-                visit_class_item: bind v_class_item(v.visit_class_item, _, _,
-                                                    _)
+                visit_ty_params: {|a,b,c|
+                    v_ty_params(v.visit_ty_params, a, b, c)
+                },
+                visit_constr: {|a,b,c,d,e|
+                    v_constr(v.visit_constr, a, b, c, d, e)
+                },
+                visit_fn: {|a,b,c,d,e,f,g|
+                    v_fn(v.visit_fn, a, b, c, d, e, f, g)
+                },
+                visit_class_item: {|a,b,c|
+                    v_class_item(v.visit_class_item, a, b, c)
+                }
                });
 }
 

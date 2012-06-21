@@ -53,8 +53,8 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     }
 
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-        visit_item: bind convert(ccx, _),
-        visit_native_item: bind convert_native(ccx, _)
+        visit_item: {|a|convert(ccx, a)},
+        visit_native_item: {|a|convert_native(ccx, a)}
         with *visit::default_simple_visitor()
     }));
 }

@@ -445,8 +445,8 @@ fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
 fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
     -> ast::inlined_item {
     let fld = fold::make_fold(@{
-        new_id: xcx.tr_id(_),
-        new_span: xcx.tr_span(_)
+        new_id: {|a|xcx.tr_id(a)},
+        new_span: {|a|xcx.tr_span(a)}
         with *fold::default_ast_fold()
     });
 
@@ -697,7 +697,7 @@ impl helpers for @e::encode_ctxt {
         @{diag: self.tcx.sess.diagnostic(),
           ds: e::def_to_str,
           tcx: self.tcx,
-          reachable: encoder::reachable(self, _),
+          reachable: {|a|encoder::reachable(self, a)},
           abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}
     }
 }
@@ -903,7 +903,7 @@ impl decoder for ebml::ebml_deserializer {
 
         tydecode::parse_ty_data(
             self.parent.data, xcx.dcx.cdata.cnum, self.pos, xcx.dcx.tcx,
-            xcx.tr_def_id(_))
+            {|a|xcx.tr_def_id(a)})
     }
 
     fn read_tys(xcx: extended_decode_ctxt) -> [ty::t] {
@@ -913,7 +913,7 @@ impl decoder for ebml::ebml_deserializer {
     fn read_bounds(xcx: extended_decode_ctxt) -> @[ty::param_bound] {
         tydecode::parse_bounds_data(
             self.parent.data, self.pos, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
-            xcx.tr_def_id(_))
+            {|a|xcx.tr_def_id(a)})
     }
 
     fn read_ty_param_bounds_and_ty(xcx: extended_decode_ctxt)

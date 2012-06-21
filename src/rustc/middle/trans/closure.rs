@@ -426,14 +426,6 @@ fn trans_expr_fn(bcx: block,
     ret bcx;
 }
 
-fn trans_bind(cx: block, f: @ast::expr, args: [option<@ast::expr>],
-              id: ast::node_id, dest: dest) -> block {
-    let _icx = cx.insn_ctxt("closure::trans_bind");
-    let f_res = trans_callee(cx, f);
-    ret trans_bind_1(cx, expr_ty(cx, f), f_res, args,
-                     node_id_type(cx, id), dest);
-}
-
 fn trans_bind_1(cx: block, outgoing_fty: ty::t,
                 f_res: lval_maybe_callee,
                 args: [option<@ast::expr>], pair_ty: ty::t,

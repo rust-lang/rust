@@ -8,9 +8,11 @@ fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve::def_map,
                 method_map: typeck::method_map, tcx: ty::ctxt) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{
-        visit_item: check_item(sess, ast_map, def_map, _, _, _),
+        visit_item: {|a,b,c|check_item(sess, ast_map, def_map, a, b, c)},
         visit_pat: check_pat,
-        visit_expr: bind check_expr(sess, def_map, method_map, tcx, _, _, _)
+        visit_expr: {|a,b,c|
+            check_expr(sess, def_map, method_map, tcx, a, b, c)
+        }
         with *visit::default_visitor()
     }));
     sess.abort_if_errors();

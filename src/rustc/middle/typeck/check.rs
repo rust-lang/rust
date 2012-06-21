@@ -134,7 +134,7 @@ impl methods for isr_alist {
 
 fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     let visit = visit::mk_simple_visitor(@{
-        visit_item: bind check_item(ccx, _)
+        visit_item: {|a|check_item(ccx, a)}
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), visit);
@@ -1132,7 +1132,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // and so forth. - Niko
         fcx.write_nil(expr.id);
       }
-      ast::expr_unary(unop, oper) {
+      ast::expr_unary(unop, oprnd) {
         let exp_inner = unpack_expected(fcx, expected) {|sty|
             alt unop {
               ast::box(_) | ast::uniq(_) {
@@ -1145,17 +1145,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               ast::deref { none }
             }
         };
-        bot = check_expr(fcx, oper, exp_inner);
-        let mut oper_t = fcx.expr_ty(oper);
+        bot = check_expr(fcx, oprnd, exp_inner);
+        let mut oprnd_t = fcx.expr_ty(oprnd);
         alt unop {
           ast::box(mutbl) {
-            oper_t = ty::mk_box(tcx, {ty: oper_t, mutbl: mutbl});
+            oprnd_t = ty::mk_box(tcx, {ty: oprnd_t, mutbl: mutbl});
           }
           ast::uniq(mutbl) {
-            oper_t = ty::mk_uniq(tcx, {ty: oper_t, mutbl: mutbl});
+            oprnd_t = ty::mk_uniq(tcx, {ty: oprnd_t, mutbl: mutbl});
           }
           ast::deref {
-            let sty = structure_of(fcx, expr.span, oper_t);
+            let sty = structure_of(fcx, expr.span, oprnd_t);
 
             // deref'ing an unsafe pointer requires that we be in an unsafe
             // context
@@ -1169,7 +1169,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
 
             alt ty::deref_sty(tcx, sty, true) {
-              some(mt) { oper_t = mt.ty }
+              some(mt) { oprnd_t = mt.ty }
               none {
                 alt sty {
                   ty::ty_enum(*) {
@@ -1183,39 +1183,46 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     tcx.sess.span_err(
                         expr.span,
                         #fmt["type %s cannot be dereferenced",
-                             fcx.infcx.ty_to_str(oper_t)]);
+                             fcx.infcx.ty_to_str(oprnd_t)]);
                   }
                 }
               }
             }
           }
           ast::not {
-            oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
-            if !(ty::type_is_integral(oper_t) ||
-                 ty::get(oper_t).struct == ty::ty_bool) {
-                oper_t = check_user_unop(fcx, "!", "!", expr,
-                                         oper, oper_t);
+            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
+            if !(ty::type_is_integral(oprnd_t) ||
+                 ty::get(oprnd_t).struct == ty::ty_bool) {
+                oprnd_t = check_user_unop(fcx, "!", "!", expr,
+                                         oprnd, oprnd_t);
             }
           }
           ast::neg {
-            oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
-            if !(ty::type_is_integral(oper_t) ||
-                 ty::type_is_fp(oper_t)) {
-                oper_t = check_user_unop(fcx, "-", "unary-", expr,
-                                         oper, oper_t);
+            // If the operand's type is an integral type variable, we
+            // don't want to resolve it yet, because the rest of the
+            // typing context might not have had the opportunity to
+            // constrain it yet.
+            if !(ty::type_is_var_integral(oprnd_t)) {
+                oprnd_t = structurally_resolved_type(fcx, oprnd.span,
+                                                     oprnd_t);
+            }
+            if !(ty::type_is_integral(oprnd_t) ||
+                 ty::type_is_fp(oprnd_t)) {
+                oprnd_t = check_user_unop(fcx, "-", "unary-", expr,
+                                         oprnd, oprnd_t);
             }
           }
         }
-        fcx.write_ty(id, oper_t);
+        fcx.write_ty(id, oprnd_t);
       }
-      ast::expr_addr_of(mutbl, oper) {
-        bot = check_expr(fcx, oper, unpack_expected(fcx, expected) {|ty|
+      ast::expr_addr_of(mutbl, oprnd) {
+        bot = check_expr(fcx, oprnd, unpack_expected(fcx, expected) {|ty|
             alt ty { ty::ty_rptr(_, mt) { some(mt.ty) } _ { none } }
         });
-        let region = region_of(fcx, oper);
-        let tm = { ty: fcx.expr_ty(oper), mutbl: mutbl };
-        let oper_t = ty::mk_rptr(tcx, region, tm);
-        fcx.write_ty(id, oper_t);
+        let region = region_of(fcx, oprnd);
+        let tm = { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
+        let oprnd_t = ty::mk_rptr(tcx, region, tm);
+        fcx.write_ty(id, oprnd_t);
       }
       ast::expr_path(pth) {
         let defn = lookup_def(fcx, pth.span, id);
@@ -1327,7 +1334,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 tcx.sess.span_fatal(
                     expr.span, #fmt("a loop function's last argument \
                                      should return `bool`, not `%s`",
-                                    ty_to_str(tcx, fty.output)));
+                                    fcx.infcx.ty_to_str(fty.output)));
               }
             }
             (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}), fty.proto)
@@ -1389,63 +1396,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             };
         fcx.write_ty(id, typ);
       }
-      ast::expr_bind(f, args) {
-        // Call the generic checker.
-        bot = check_expr(fcx, f, none);
-
-        let {fty, bot: ccob_bot} = {
-            let fn_ty = fcx.expr_ty(f);
-            check_call_or_bind(fcx, expr.span, expr.id, fn_ty, args)
-        };
-        bot |= ccob_bot;
-
-        // TODO: Perform substitutions on the return type.
-
-        // Pull the argument and return types out.
-        let mut proto, arg_tys, rt, cf, constrs;
-        alt structure_of(fcx, expr.span, fty) {
-          // FIXME:
-          // probably need to munge the constrs to drop constraints
-          // for any bound args (contingent on #2588 not getting accepted)
-          ty::ty_fn(f) {
-            proto = f.proto;
-            arg_tys = f.inputs;
-            rt = f.output;
-            cf = f.ret_style;
-            constrs = f.constraints;
-          }
-          _ { fail "LHS of bind expr didn't have a function type?!"; }
-        }
-
-        let proto = alt proto {
-          ast::proto_bare | ast::proto_box | ast::proto_uniq {
-            ast::proto_box
-          }
-          ast::proto_any | ast::proto_block {
-            tcx.sess.span_err(expr.span,
-                              #fmt["cannot bind %s closures",
-                                   proto_to_str(proto)]);
-            proto // dummy value so compilation can proceed
-          }
-        };
-
-        // For each blank argument, add the type of that argument
-        // to the resulting function type.
-        let mut out_args = [];
-        let mut i = 0u;
-        while i < vec::len(args) {
-            alt args[i] {
-              some(_) {/* no-op */ }
-              none { out_args += [arg_tys[i]]; }
-            }
-            i += 1u;
-        }
-
-        let ft = ty::mk_fn(tcx, {purity: ast::impure_fn, proto: proto,
-                                 inputs: out_args, output: rt,
-                                 ret_style: cf, constraints: constrs});
-        fcx.write_ty(id, ft);
-      }
       ast::expr_call(f, args, _) {
         bot = check_call(fcx, expr.span, expr.id, f, args);
       }
@@ -1464,12 +1414,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ {
             if ty::type_is_nil(t_e) {
                 tcx.sess.span_err(expr.span, "cast from nil: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
+                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                                  fcx.infcx.ty_to_str(t_1));
             } else if ty::type_is_nil(t_1) {
                 tcx.sess.span_err(expr.span, "cast to nil: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
+                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                                  fcx.infcx.ty_to_str(t_1));
             }
 
             let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
@@ -1483,8 +1433,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 */
                 tcx.sess.span_err(expr.span,
                                   "non-scalar cast: " +
-                                  ty_to_str(tcx, t_e) + " as " +
-                                  ty_to_str(tcx, t_1));
+                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                                  fcx.infcx.ty_to_str(t_1));
             }
           }
         }
@@ -1632,7 +1582,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
                 let msg = #fmt["attempted access of field %s on type %s, but \
                           no public field or method with that name was found",
-                               *field, ty_to_str(tcx, t_err)];
+                               *field, fcx.infcx.ty_to_str(t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
                 fcx.write_ty(id, fcx.infcx.next_ty_var());
@@ -1660,7 +1610,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               _ {
                 tcx.sess.span_fatal(
                     expr.span, "cannot index a value of type `" +
-                    ty_to_str(tcx, base_t) + "`");
+                    fcx.infcx.ty_to_str(base_t) + "`");
               }
             }
           }
@@ -1701,7 +1651,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           none {
             let t_err = fcx.infcx.resolve_type_vars_if_possible(p_ty);
             let msg = #fmt["no `alloc()` method found for type `%s`",
-                           ty_to_str(tcx, t_err)];
+                           fcx.infcx.ty_to_str(t_err)];
             tcx.sess.span_err(expr.span, msg);
           }
         }

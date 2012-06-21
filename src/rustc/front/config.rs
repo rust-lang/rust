@@ -24,9 +24,9 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
     let ctxt = @{in_cfg: in_cfg};
 
     let precursor =
-        @{fold_mod: bind fold_mod(ctxt, _, _),
-          fold_block: fold::wrap(bind fold_block(ctxt, _, _)),
-          fold_native_mod: bind fold_native_mod(ctxt, _, _)
+        @{fold_mod: {|a,b|fold_mod(ctxt, a, b)},
+          fold_block: fold::wrap({|a,b|fold_block(ctxt, a, b)}),
+          fold_native_mod: {|a,b|fold_native_mod(ctxt, a, b)}
           with *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
@@ -41,7 +41,7 @@ fn filter_item(cx: ctxt, &&item: @ast::item) ->
 
 fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
-    let filter = bind filter_item(cx, _);
+    let filter = {|a|filter_item(cx, a)};
     let filtered_items = vec::filter_map(m.items, filter);
     ret {view_items: vec::map(m.view_items, fld.fold_view_item),
          items: vec::map(filtered_items, fld.fold_item)};
@@ -56,7 +56,7 @@ fn filter_native_item(cx: ctxt, &&item: @ast::native_item) ->
 
 fn fold_native_mod(cx: ctxt, nm: ast::native_mod,
                    fld: fold::ast_fold) -> ast::native_mod {
-    let filter = bind filter_native_item(cx, _);
+    let filter = {|a|filter_native_item(cx, a)};
     let filtered_items = vec::filter_map(nm.items, filter);
     ret {view_items: vec::map(nm.view_items, fld.fold_view_item),
          items: filtered_items};
@@ -81,7 +81,7 @@ fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
 
 fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
-    let filter = bind filter_stmt(cx, _);
+    let filter = {|a|filter_stmt(cx, a)};
     let filtered_stmts = vec::filter_map(b.stmts, filter);
     ret {view_items: b.view_items,
          stmts: vec::map(filtered_stmts, fld.fold_stmt),

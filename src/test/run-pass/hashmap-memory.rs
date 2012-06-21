@@ -59,7 +59,7 @@ mod map_reduce {
             }
         }
 
-        map(input, emit(intermediates, ctrl, _, _));
+        map(input, {|a,b|emit(intermediates, ctrl, a, b)});
         send(ctrl, mapper_done);
     }
 

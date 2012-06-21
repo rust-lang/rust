@@ -1,8 +1,4 @@
 fn main() {
-
-    // The commented-out lines are ones that fail currently.  I'm
-    // working on figuring out why (#1425). -- lkuper
-
     fn id_i8(n: i8) -> i8 { n }
     fn id_i16(n: i16) -> i16 { n }
     fn id_i32(n: i32) -> i32 { n }
@@ -16,22 +12,22 @@ fn main() {
 
     let _i: i8 = -128;
     let j = -128;
-    // id_i8(j);
+    id_i8(j);
     id_i8(-128);
 
     let _i: i16 = -32_768;
     let j = -32_768;
-    // id_i16(j);
+    id_i16(j);
     id_i16(-32_768);
 
     let _i: i32 = -2_147_483_648;
     let j = -2_147_483_648;
-    // id_i32(j);
+    id_i32(j);
     id_i32(-2_147_483_648);
 
     let _i: i64 = -9_223_372_036_854_775_808;
     let j = -9_223_372_036_854_775_808;
-    // id_i64(j);
+    id_i64(j);
     id_i64(-9_223_372_036_854_775_808);
 
     let _i: uint = 1;

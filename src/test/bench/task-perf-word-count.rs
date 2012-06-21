@@ -91,7 +91,7 @@ mod map_reduce {
             send(c, emit_val(val));
         }
 
-        map(input, bind emit(intermediates, ctrl, _, _));
+        map(input, {|a,b|emit(intermediates, ctrl, a, b)});
 
         for intermediates.each_value {|v| send(v, release); }
 
@@ -125,7 +125,7 @@ mod map_reduce {
             ret none;
         }
 
-        reduce(key, bind get(p, state));
+        reduce(key, {||get(p, state)});
     }
 
     fn map_reduce(-inputs: [str]) {

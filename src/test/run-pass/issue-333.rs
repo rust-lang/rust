@@ -1,4 +1,4 @@
-fn quux<T: copy>(x: T) -> T { let f = id::<T>(_); ret f(x); }
+fn quux<T: copy>(x: T) -> T { let f = id::<T>; ret f(x); }
 
 fn id<T: copy>(x: T) -> T { ret x; }
 

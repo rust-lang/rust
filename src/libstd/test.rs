@@ -162,7 +162,7 @@ fn run_tests_console(opts: test_opts,
           mut ignored: 0u,
           mut failures: []};
 
-    run_tests(opts, tests, bind callback(_, st));
+    run_tests(opts, tests, {|x|callback(x, st)});
 
     assert (st.passed + st.failed + st.ignored == st.total);
     let success = st.failed == 0u;
@@ -349,7 +349,7 @@ fn filter_tests(opts: test_opts,
             } else { ret option::none; }
         }
 
-        let filter = bind filter_fn(_, filter_str);
+        let filter = {|x|filter_fn(x, filter_str)};
 
         vec::filter_map(filtered, filter)
     };
@@ -367,7 +367,7 @@ fn filter_tests(opts: test_opts,
             } else { ret option::none; }
         };
 
-        vec::filter_map(filtered, bind filter(_))
+        vec::filter_map(filtered, {|x|filter(x)})
     };
 
     // Sort the tests alphabetically
@@ -376,7 +376,7 @@ fn filter_tests(opts: test_opts,
             fn lteq(t1: test_desc, t2: test_desc) -> bool {
                 str::le(t1.name, t2.name)
             }
-            sort::merge_sort(bind lteq(_, _), filtered)
+        sort::merge_sort({|x,y|lteq(x, y)}, filtered)
         };
 
     ret filtered;

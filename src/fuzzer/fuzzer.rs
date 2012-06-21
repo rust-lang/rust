@@ -139,8 +139,8 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
     let exprs = @mut [];
     let tys = @mut [];
     let v = visit::mk_simple_visitor(@{
-        visit_expr: bind stash_expr_if(safe_to_steal_expr, exprs, _, tm),
-        visit_ty: bind stash_ty_if(safe_to_steal_ty, tys, _, tm)
+        visit_expr: {|a|stash_expr_if(safe_to_steal_expr, exprs, a, tm)},
+        visit_ty: {|a|stash_ty_if(safe_to_steal_ty, tys, a, tm)}
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(crate, (), v);
@@ -188,8 +188,8 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint,
         }
     }
     let afp =
-        @{fold_expr: fold::wrap(bind fold_expr_rep(j, i,
-                                                   newexpr.node, _, _, tm))
+        @{fold_expr: fold::wrap({|a,b|
+        fold_expr_rep(j, i, newexpr.node, a, b, tm)})
           with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
@@ -211,7 +211,7 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty,
         } else { fold::noop_fold_ty(original, fld) }
     }
     let afp =
-        @{fold_ty: fold::wrap(bind fold_ty_rep(j, i, newty.node, _, _, tm))
+        @{fold_ty: fold::wrap({|a,b|fold_ty_rep(j, i, newty.node, a, b, tm)})
          with *fold::default_ast_fold()};
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
@@ -235,7 +235,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
                          filename: str, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
-                                  bind safe_to_use_expr(_, cx.mode));
+                                  {|a|safe_to_use_expr(a, cx.mode)});
     check_variants_T(crate, codemap, filename, "expr",
                      extra_exprs + stolen.exprs, pprust::expr_to_str,
                      replace_expr_in_crate, cx);
@@ -268,13 +268,13 @@ fn check_variants_T<T: copy>(
                 // testing the string for stability is easier and ok for now.
                 let handler = diagnostic::mk_handler(none);
                 let str3 =
-                    @as_str(bind pprust::print_crate(
+                    @as_str({|a|pprust::print_crate(
                         codemap,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
-                        io::str_reader(""), _,
-                        pprust::no_ann()));
+                        io::str_reader(""), a,
+                        pprust::no_ann())});
                 alt cx.mode {
                   tm_converge {
                     check_roundtrip_convergence(str3, 1u);
@@ -421,12 +421,12 @@ fn parse_and_print(code: @str) -> str {
     let crate = parse::parse_crate_from_source_str(
         filename, code, [], sess);
     io::with_str_reader(*code) { |rdr|
-        as_str(bind pprust::print_crate(sess.cm,
+        as_str({|a|pprust::print_crate(sess.cm,
                                         sess.span_diagnostic,
                                         crate,
                                         filename,
-                                        rdr, _,
-                                        pprust::no_ann()))
+                                        rdr, a,
+                                       pprust::no_ann())})
     }
 }
 
@@ -439,7 +439,7 @@ fn has_raw_pointers(c: ast::crate) -> bool {
         }
     }
     let v =
-        visit::mk_simple_visitor(@{visit_ty: bind visit_ty(has_rp, _)
+        visit::mk_simple_visitor(@{visit_ty: {|a|visit_ty(has_rp, a)}
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(c, (), v);
     ret *has_rp;
@@ -565,12 +565,12 @@ fn check_variants(files: [str], cx: context) {
                 s, [], sess);
         io::with_str_reader(*s) { |rdr|
             #error("%s",
-                   as_str(bind pprust::print_crate(sess.cm,
+                   as_str({|a|pprust::print_crate(sess.cm,
                                                    sess.span_diagnostic,
                                                    crate,
                                                    file,
-                                                   rdr, _,
-                                                   pprust::no_ann())));
+                                                   rdr, a,
+                                                  pprust::no_ann())}));
         }
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }

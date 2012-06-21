@@ -169,7 +169,7 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
     let pretty =
         option::map(getopts::opt_default(match, "pretty",
                                          "normal"),
-                    bind parse_pretty(sess, _));
+                    {|a|parse_pretty(sess, a)});
     alt pretty {
       some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, input, ppm); ret; }
       none::<pp_mode> {/* continue */ }

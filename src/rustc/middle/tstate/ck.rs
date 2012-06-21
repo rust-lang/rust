@@ -80,7 +80,9 @@ fn check_states_against_conditions(fcx: fn_ctxt,
     let visitor = visit::mk_vt(
         @{visit_stmt: check_states_stmt,
           visit_expr: check_states_expr,
-          visit_fn: bind do_nothing::<fn_ctxt>(_, _, _, _, _, _, _)
+          visit_fn: {|a,b,c,d,e,f,g|
+              do_nothing::<fn_ctxt>(a, b, c, d, e, f, g)
+          }
           with *visit::default_visitor::<fn_ctxt>()});
     visit::visit_fn(fk, f_decl, f_body, sp, id, fcx, visitor);
 }

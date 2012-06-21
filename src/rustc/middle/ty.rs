@@ -2991,8 +2991,8 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_bool { tycat_bool }
           ty_int(_) | ty_uint(_) | ty_var_integral(_) { tycat_int }
           ty_float(_) { tycat_float }
-          ty_estr(_) | ty_str { tycat_str }
-          ty_evec(_, _) | ty_vec(_) { tycat_vec }
+          ty_str { tycat_str }
+          ty_vec(_) { tycat_vec }
           ty_rec(_) | ty_tup(_) | ty_enum(_, _) { tycat_struct }
           ty_bot { tycat_bot }
           _ { tycat_other }
@@ -3002,21 +3002,18 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     const t: bool = true;
     const f: bool = false;
 
+    let tbl = [
     /*.          add,     shift,   bit
       .             sub,     rel,     logic
       .                mult,    eq,         */
-    /*other*/
-    /*bool*/
-    /*int*/
-    /*float*/
-    /*str*/
-    /*vec*/
-    /*bot*/
-    let tbl =
-        [[f, f, f, f, t, t, f, f], [f, f, f, f, t, t, t, t],
-         [t, t, t, t, t, t, t, f], [t, t, t, f, t, t, f, f],
-         [t, f, f, f, t, t, f, f], [t, f, f, f, t, t, f, f],
-         [f, f, f, f, t, t, f, f], [t, t, t, t, t, t, t, t]]; /*struct*/
+    /*other*/   [f, f, f, f, t, t, f, f],
+    /*bool*/    [f, f, f, f, t, t, t, t],
+    /*int*/     [t, t, t, t, t, t, t, f],
+    /*float*/   [t, t, t, f, t, t, f, f],
+    /*str*/     [t, f, f, f, t, t, f, f],
+    /*vec*/     [t, f, f, f, t, t, f, f],
+    /*bot*/     [f, f, f, f, t, t, f, f],
+    /*struct*/  [t, t, t, t, t, t, t, t]];
 
     ret tbl[tycat(ty)][opcat(op)];
 }

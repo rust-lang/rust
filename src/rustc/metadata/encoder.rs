@@ -271,7 +271,7 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
     let ty_str_ctxt = @{diag: ecx.diag,
                         ds: def_to_str,
                         tcx: ecx.tcx,
-                        reachable: reachable(ecx, _),
+                        reachable: {|a|reachable(ecx, a)},
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for params.each {|param|
         ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
@@ -292,7 +292,7 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
         @{diag: ecx.diag,
           ds: def_to_str,
           tcx: ecx.tcx,
-          reachable: reachable(ecx, _),
+          reachable: {|a|reachable(ecx, a)},
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
@@ -551,7 +551,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                      index: @mut [entry<int>]) {
         *index += [{val: item.id, pos: ebml_w.writer.tell()}];
     }
-    let add_to_index = bind add_to_index_(item, copy ebml_w, index);
+    let add_to_index = {|copy ebml_w|add_to_index_(item, ebml_w, index)};
 
     alt item.node {
       item_const(_, _) {

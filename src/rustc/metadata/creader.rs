@@ -31,8 +31,8 @@ fn read_crates(diag: span_handler, crate: ast::crate,
               mut next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
-                                       bind visit_view_item(e, _),
-                                   visit_item: bind visit_item(e, _)
+                                       {|a|visit_view_item(e, a)},
+                                   visit_item: {|a|visit_item(e, a)}
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);

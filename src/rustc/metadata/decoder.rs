@@ -77,7 +77,7 @@ fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
     fn eq_item(bytes: [u8], item_id: int) -> bool {
         ret io::u64_from_be_bytes(bytes, 0u, 4u) as int == item_id;
     }
-    let eqer = bind eq_item(_, item_id);
+    let eqer = {|a|eq_item(a, item_id)};
     let found = lookup_hash(items, eqer, hash_node_id(item_id));
     if vec::len(found) == 0u {
         ret option::none::<ebml::doc>;
@@ -213,7 +213,7 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     let s = ast_util::path_name_i(path);
     let md = ebml::doc(data);
     let paths = ebml::get_doc(md, tag_paths);
-    let eqer = bind eq_item(_, s);
+    let eqer = {|a|eq_item(a, s)};
     let mut result: [ast::def_id] = [];
     #debug("resolve_path: looking up %s", s);
     for lookup_hash(paths, eqer, hash_path(s)).each {|doc|

@@ -68,13 +68,13 @@ fn from_assoc_list<K:copy, V:copy>(
 fn from_def_assoc_list<V:copy>(
     list: [(ast::def_id, V)]
 ) -> map::hashmap<ast::def_id, V> {
-    from_assoc_list(list, bind ast_util::new_def_hash())
+    from_assoc_list(list, ast_util::new_def_hash)
 }
 
 fn from_str_assoc_list<V:copy>(
     list: [(str, V)]
 ) -> map::hashmap<str, V> {
-    from_assoc_list(list, bind map::str_hash())
+    from_assoc_list(list, map::str_hash)
 }
 
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
@@ -256,7 +256,7 @@ fn for_each_reexported_impl(
     f: fn@(ast::node_id, resolve::_impl)
 ) {
     let visitor = @{
-        visit_mod: bind visit_mod(ctxt, f, _, _, _)
+        visit_mod: {|a,b,c|visit_mod(ctxt, f, a, b, c)}
         with *visit::default_simple_visitor()
     };
     let visitor = visit::mk_simple_visitor(visitor);
