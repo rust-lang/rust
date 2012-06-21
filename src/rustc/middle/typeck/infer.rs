@@ -197,7 +197,7 @@ export fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
 export int_ty_set_all;
-export force_level, force_none, force_non_region_vars_only, force_all;
+export force_level, force_none, force_ty_vars_only, force_all;
 
 // Bitvector to represent sets of integral types
 enum int_ty_set = uint;
@@ -1093,9 +1093,9 @@ enum force_level {
     // Any unconstrained variables are OK.
     force_none,
 
-    // Unconstrained region vars are OK; unconstrained ty vars and
-    // integral ty vars result in an error.
-    force_non_region_vars_only,
+    // Unconstrained region vars and integral ty vars are OK;
+    // unconstrained general-purpose ty vars result in an error.
+    force_ty_vars_only,
 
     // Any unconstrained variables result in an error.
     force_all,
@@ -1237,7 +1237,7 @@ impl methods for resolve_state {
               { ub:_, lb:some(t) } { self.resolve1(t) }
               { ub:none, lb:none } {
                 alt self.force_vars {
-                  force_non_region_vars_only | force_all {
+                  force_ty_vars_only | force_all {
                     self.err = some(unresolved_ty(vid));
                   }
                   force_none { /* ok */ }
@@ -1260,7 +1260,7 @@ impl methods for resolve_state {
           some(t) { t }
           none {
             alt self.force_vars {
-              force_non_region_vars_only | force_all {
+              force_all {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
@@ -1270,7 +1270,7 @@ impl methods for resolve_state {
                         nde.rank));
                 ty
               }
-              force_none {
+              force_none | force_ty_vars_only {
                 ty::mk_var_integral(self.infcx.tcx, vid)
               }
             }

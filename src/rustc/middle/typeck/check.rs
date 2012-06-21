@@ -74,7 +74,7 @@ import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
 import syntax::ast::ty_i;
 import typeck::infer::{unify_methods}; // infcx.set()
-import typeck::infer::{force_level, force_none, force_non_region_vars_only,
+import typeck::infer::{force_level, force_none, force_ty_vars_only,
                        force_all};
 
 type fn_ctxt =
@@ -1174,14 +1174,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
           }
           ast::neg {
-            // If the operand's type is an integral type variable, we
-            // don't want to resolve it yet, because the rest of the
-            // typing context might not have had the opportunity to
-            // constrain it yet.
-            if !(ty::type_is_var_integral(oprnd_t)) {
-                oprnd_t = structurally_resolved_type(fcx, oprnd.span,
-                                                     oprnd_t);
-            }
+            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::type_is_fp(oprnd_t)) {
                 oprnd_t = check_user_unop(fcx, "-", "unary-", expr,
@@ -2116,7 +2109,7 @@ fn instantiate_path(fcx: @fn_ctxt,
 // resolution is possible, then an error is reported.
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     alt infer::resolve_shallow(fcx.infcx, tp,
-                               force_non_region_vars_only) {
+                               force_ty_vars_only) {
       result::ok(t_s) if !ty::type_is_var(t_s) { ret t_s; }
       _ {
         fcx.ccx.tcx.sess.span_fatal
