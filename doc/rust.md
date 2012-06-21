@@ -330,24 +330,32 @@ An _integer literal_ has one of three forms:
   * A _binary literal_ starts with the character sequence `U+0030` `U+0062`
     (`0b`) and continues as any mixture binary digits and underscores.
 
-By default, an integer literal is of type `int`. An integer literal may be
-followed (immediately, without any spaces) by an _integer suffix_, which
-changes the type of the literal. There are two kinds of integer literal
-suffix:
+An integer literal may be followed (immediately, without any spaces) by an
+_integer suffix_, which changes the type of the literal. There are two kinds
+of integer literal suffix:
 
-  * The `u` suffix gives the literal type `uint`.
+  * The `i` and `u` suffixes give the literal type `int` or `uint`,
+    respectively.
   * Each of the signed and unsigned machine types `u8`, `i8`,
     `u16`, `i16`, `u32`, `i32`, `u64` and `i64`
     give the literal the corresponding machine type.
 
+The type of an _unsuffixed_ integer literal is determined by type inference.
+If a integer type can be _uniquely_ determined from the surrounding program
+context, the unsuffixed integer literal has that type.  If the program context
+underconstrains the type, the unsuffixed integer literal's type is `int`; if
+the program context overconstrains the type, it is considered a static type
+error.
 
 Examples of integer literals of various forms:
 
 ~~~~
-123;                               // type int
+123; 0xff00;                       // type determined by program context; 
+                                   // defaults to int in absence of type
+				   // information
+
 123u;                              // type uint
 123_u;                             // type uint
-0xff00;                            // type int
 0xff_u8;                           // type u8
 0b1111_1111_1001_0000_i32;         // type i32
 ~~~~
