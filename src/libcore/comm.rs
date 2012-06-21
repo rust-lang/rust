@@ -94,27 +94,31 @@ fn listen<T: send, U>(f: fn(chan<T>) -> U) -> U {
     f(po.chan())
 }
 
-resource port_ptr<T: send>(po: *rust_port) unsafe {
+class port_ptr<T:send> {
+  let po: *rust_port;
+  new(po: *rust_port) { self.po = po; }
+  drop unsafe {
     task::unkillable {||
         // Once the port is detached it's guaranteed not to receive further
         // messages
         let yield = 0u;
         let yieldp = ptr::addr_of(yield);
-        rustrt::rust_port_begin_detach(po, yieldp);
+        rustrt::rust_port_begin_detach(self.po, yieldp);
         if yield != 0u {
             // Need to wait for the port to be detached
             // FIXME: If this fails then we're going to leave our port
             // in a bogus state. (Issue #1988)
             task::yield();
         }
-        rustrt::rust_port_end_detach(po);
+        rustrt::rust_port_end_detach(self.po);
 
         // Drain the port so that all the still-enqueued items get dropped
-        while rustrt::rust_port_size(po) > 0u as size_t {
-            recv_::<T>(po);
+        while rustrt::rust_port_size(self.po) > 0u as size_t {
+            recv_::<T>(self.po);
         }
-        rustrt::del_port(po);
+        rustrt::del_port(self.po);
     }
+  }
 }
 
 #[doc = "
@@ -126,21 +130,26 @@ Fails if the port is detached or dead. Fails if the port
 is owned by a different task.
 "]
 fn as_raw_port<T: send, U>(ch: comm::chan<T>, f: fn(*rust_port) -> U) -> U {
-    resource portref(p: *rust_port) {
-        if !ptr::is_null(p) {
-            rustrt::rust_port_drop(p);
-        }
+
+    class portref {
+       let p: *rust_port;
+       new(p: *rust_port) { self.p = p; }
+       drop {
+         if !ptr::is_null(self.p) {
+           rustrt::rust_port_drop(self.p);
+         }
+       }
     }
 
     let p = portref(rustrt::rust_port_take(*ch));
 
-    if ptr::is_null(*p) {
+    if ptr::is_null(p.p) {
         fail "unable to locate port for channel"
-    } else if rustrt::get_task_id() != rustrt::rust_port_task(*p) {
+    } else if rustrt::get_task_id() != rustrt::rust_port_task(p.p) {
         fail "unable to access unowned port"
     }
 
-    f(*p)
+    f(p.p)
 }
 
 #[doc = "
@@ -148,7 +157,7 @@ Constructs a channel. The channel is bound to the port used to
 construct it.
 "]
 fn chan<T: send>(p: port<T>) -> chan<T> {
-    chan_t(rustrt::get_port_id(***p))
+    chan_t(rustrt::get_port_id((**p).po))
 }
 
 #[doc = "
@@ -170,10 +179,10 @@ fn send<T: send>(ch: chan<T>, -data: T) {
 Receive from a port.  If no data is available on the port then the
 task will block until data becomes available.
 "]
-fn recv<T: send>(p: port<T>) -> T { recv_(***p) }
+fn recv<T: send>(p: port<T>) -> T { recv_((**p).po) }
 
 #[doc = "Returns true if there are messages available"]
-fn peek<T: send>(p: port<T>) -> bool { peek_(***p) }
+fn peek<T: send>(p: port<T>) -> bool { peek_((**p).po) }
 
 #[doc(hidden)]
 fn recv_chan<T: send>(ch: comm::chan<T>) -> T {
@@ -196,7 +205,7 @@ fn recv_<T: send>(p: *rust_port) -> T {
         // Data isn't available yet, so res has not been initialized.
         task::yield();
     } else {
-        // In the absense of compiler-generated preemption points
+        // In the absence of compiler-generated preemption points
         // this is a good place to yield
         task::yield();
     }
@@ -210,7 +219,7 @@ fn peek_(p: *rust_port) -> bool unsafe {
 #[doc = "Receive on one of two ports"]
 fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     -> either<A, B> unsafe {
-    let ports = [***p_a, ***p_b];
+    let ports = [(**p_a).po, (**p_b).po];
     let n_ports = 2 as libc::size_t;
     let yield = 0u, yieldp = ptr::addr_of(yield);
 
@@ -233,9 +242,9 @@ fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     // Now we know the port we're supposed to receive from
     assert resport != ptr::null();
 
-    if resport == ***p_a {
+    if resport == (**p_a).po {
         either::left(recv(p_a))
-    } else if resport == ***p_b {
+    } else if resport == (**p_b).po {
         either::right(recv(p_b))
     } else {
         fail "unexpected result from rust_port_select";
