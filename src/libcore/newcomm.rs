@@ -34,14 +34,8 @@ fn send<T: send>(c: chan<T>, -x: T) {
     (*c).with {|cond, data|
         let mut xx = none;
         xx <-> x;
-        alt xx {
-          some(y) {
-            let mut x <- y;
-            (*data).push(x);
-            cond.signal();
-          }
-          none { fail }
-        };
+        (*data).push(option::unwrap(xx));
+        cond.signal();
     }
 }
 
