@@ -85,12 +85,12 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // is mutable in the caller's frame, thus effectively
                 // passing the buck onto us to enforce this)
                 //
-                // FIXME---this handling is not really adequate.  For
-                // example, if there is a type like, {f: [int]}, we
-                // will ignore it, but we ought to be requiring it to
-                // be immutable (whereas something like {f:int} would
-                // be fine).
-                // (See #2493)
+                // FIXME (#2493): this handling is not really adequate.
+                // For example, if there is a type like, {f: [int]}, we
+                // will ignore it, but we ought to be requiring it to be
+                // immutable (whereas something like {f:int} would be
+                // fine).
+                //
 
                 alt opt_deref_kind(arg_ty.ty) {
                   some(deref_ptr(region_ptr)) |
@@ -130,7 +130,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         // Here, in an overloaded operator, the call is this expression,
         // and hence the scope of the borrow is this call.
         //
-        // FIXME/NOT REALLY---technically we should check the other
+        // FIX? / NOT REALLY---technically we should check the other
         // argument and consider the argument mode.  But how annoying.
         // And this problem when goes away when argument modes are
         // phased out.  So I elect to leave this undone.

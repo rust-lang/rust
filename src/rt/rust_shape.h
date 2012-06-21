@@ -84,7 +84,7 @@ public:
 
     template<typename T>
     inline T *alloc(size_t count = 1) {
-        // FIXME: align
+        // FIXME: align (probably won't fix before #1498)
         size_t sz = count * sizeof(T);
         T *rv = (T *)ptr;
         ptr += sz;
@@ -894,7 +894,8 @@ public:
     void walk_tag1(tag_info &tinfo);
 
     void walk_struct1(const uint8_t *end_sp) {
-        // FIXME: shouldn't we be aligning to the first element here?
+        // FIXME (probably won't fix before #1498): shouldn't we be aligning
+        // to the first element here?
         static_cast<T *>(this)->walk_struct2(end_sp);
     }
 

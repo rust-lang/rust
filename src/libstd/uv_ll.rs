@@ -505,7 +505,7 @@ native mod rustrt {
                            tcp_handle_ptr: *uv_tcp_t,
                            ++after_cb: *u8,
                            ++addr: *sockaddr_in) -> libc::c_int;
-    // FIXME ref 2064
+    // FIXME ref #2064
     fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
                         ++addr: *sockaddr_in) -> libc::c_int;
     fn rust_uv_listen(stream: *libc::c_void, backlog: libc::c_int,

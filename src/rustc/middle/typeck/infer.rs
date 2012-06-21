@@ -387,10 +387,10 @@ fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
     #debug["can_mk_assignty(%? / %s <: %s)",
            anmnt, a.to_str(cx), b.to_str(cx)];
 
-    // FIXME---this will not unroll any entries we make in the
-    // borrowings table.  But this is OK for the moment because this
-    // is only used in method lookup, and there must be exactly one
-    // match or an error is reported. Still, it should be fixed. (#2593)
+    // FIXME (#2593): this will not unroll any entries we make in the
+    // borrowings table.  But this is OK for the moment because this is only
+    // used in method lookup, and there must be exactly one match or an
+    // error is reported. Still, it should be fixed.
 
     indent {|| cx.probe {||
         cx.assign_tys(anmnt, a, b)
@@ -1707,16 +1707,16 @@ fn super_fns<C:combine>(
             argvecs(self, a_f.inputs, b_f.inputs).chain {|inputs|
                 self.tys(a_f.output, b_f.output).chain {|output|
                     self.purities(a_f.purity, b_f.purity).chain {|purity|
-                    //FIXME self.infcx().constrvecs(a_f.constraints,
-                    //FIXME                         b_f.constraints).then {||
-                    // (Fix this if #2588 doesn't get accepted)
+                    // FIXME: uncomment if #2588 doesn't get accepted:
+                    // self.infcx().constrvecs(a_f.constraints,
+                    //                         b_f.constraints).then {||
                         ok({purity: purity,
                             proto: p,
                             inputs: inputs,
                             output: output,
                             ret_style: rs,
                             constraints: a_f.constraints})
-                    //FIXME }
+                    // }
                     }
                 }
             }

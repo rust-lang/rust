@@ -67,8 +67,8 @@ command_line_args : public kernel_owned<command_line_args>
 };
 
 // A global that indicates whether Rust typestate claim statements should be
-// executed. Generated code will read this variable directly (I think).
-// FIXME: This belongs somewhere else (#2670)
+// executed Generated code will read this variable directly (I think).
+// FIXME (#2670): This belongs somewhere else
 int check_claims = 0;
 
 /**

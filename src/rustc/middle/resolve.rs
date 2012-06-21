@@ -215,9 +215,9 @@ fn iter_effective_import_paths(vi: ast::view_item,
     iter_export_paths(vi) {|vp|
         alt vp.node {
           ast::view_path_simple(_, _, _) { }
-          // FIXME: support uniform ident-list exports eventually;
-          // at the moment they have half a meaning as reaching into
-          // tags. (but also see #1893)
+          // FIXME (but also see #1893): support uniform ident-list exports
+          // eventually; at the moment they have half a meaning as reaching
+          // into tags.
           ast::view_path_list(_, _, _) {}
           ast::view_path_glob(_,_) {
             f(vp);

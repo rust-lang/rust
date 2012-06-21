@@ -20,9 +20,9 @@ type section = {
     body: str
 };
 
-// FIXME: We currently give topmod the name of the crate.  There would
-// probably be fewer special cases if the crate had its own name and
-// topmod's name was the empty string. (#2596)
+// FIXME (#2596): We currently give topmod the name of the crate.  There
+// would probably be fewer special cases if the crate had its own name
+// and topmod's name was the empty string.
 type cratedoc = {
     topmod: moddoc,
 };

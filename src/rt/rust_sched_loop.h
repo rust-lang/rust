@@ -88,6 +88,7 @@ public:
 
     randctx rctx;
     const char *const name; // Used for debugging
+
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_sched_loop(rust_scheduler *sched, int id);

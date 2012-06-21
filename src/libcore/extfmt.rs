@@ -274,8 +274,8 @@ mod rt {
     enum count { count_is(int), count_implied, }
     enum ty { ty_default, ty_bits, ty_hex_upper, ty_hex_lower, ty_octal, }
 
-    // FIXME: May not want to use a vector here for flags;
-    // instead just use a bool per flag (see Issue #1993)
+    // FIXME (#1993): May not want to use a vector here for flags; instead
+    // just use a bool per flag.
     type conv = {flags: [flag], width: count, precision: count, ty: ty};
 
     fn conv_int(cv: conv, i: int) -> str {

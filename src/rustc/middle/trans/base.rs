@@ -1354,10 +1354,10 @@ fn free_ty(cx: block, v: ValueRef, t: ty::t) -> block {
 
 fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
                 n_bytes: ValueRef) {
-    // FIXME: Provide LLVM with better alignment information when the
-    // alignment is statically known (it must be nothing more than a constant
-    // int, or LLVM complains -- not even a constant element of a tydesc
-    // works). (Related to #1645, I think?)
+    // FIXME (Related to #1645, I think?): Provide LLVM with better
+    // alignment information when the alignment is statically known (it must
+    // be nothing more than a constant int, or LLVM complains -- not even a
+    // constant element of a tydesc works).
     let _icx = cx.insn_ctxt("call_memmove");
     let ccx = cx.ccx();
     let key = alt ccx.sess.targ_cfg.arch {
@@ -1439,9 +1439,9 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
 
 // This works like copy_val, except that it deinitializes the source.
 // Since it needs to zero out the source, src also needs to be an lval.
-// FIXME: We always zero out the source. Ideally we would detect the
+// FIXME (#839): We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
-// doesn't need to be dropped. (Issue #839)
+// doesn't need to be dropped.
 fn move_val(cx: block, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> block {
 
@@ -1652,8 +1652,8 @@ fn cast_shift_rhs(op: ast::binop,
         if lhs_sz < rhs_sz {
             trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
-            // FIXME: If shifting by negative values becomes not undefined
-            // then this is wrong. (See discussion at #1570)
+            // FIXME (See discussion at #1570): If shifting by negative
+            // values becomes not undefined then this is wrong.
             zext(rhs, lhs_llty)
         } else {
             rhs
@@ -1790,14 +1790,14 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
             bcx, ex.info(), fty,
             expr_ty(bcx, ex),
             {|bcx|
-                // FIXME provide the already-computed address, not the expr
-                // #2528
+                // FIXME (#2528): provide the already-computed address, not
+                // the expr.
                 impl::trans_method_callee(bcx, callee_id, dst, origin)
             },
             arg_exprs([src]), save_in(target));
 
         ret move_val(bcx, DROP_EXISTING, lhs_res.val,
-                     // FIXME: should kind be owned?
+                     // FIXME (#2704): should kind be owned?
                      {bcx: bcx, val: target, kind: owned},
                      dty);
       }
@@ -4759,9 +4759,9 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
 }
 
 
-// FIXME: this should do some structural hash-consing to avoid
-// duplicate constants. I think. Maybe LLVM has a magical mode
-// that does so later on? (#2530)
+// FIXME (#2530): this should do some structural hash-consing to avoid
+// duplicate constants. I think. Maybe LLVM has a magical mode that does so
+// later on?
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt("trans_const_expr");
     alt e.node {
@@ -4863,9 +4863,9 @@ fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               ast_map::node_item(@{
                 node: ast::item_const(_, subexpr), _
               }, _) {
-                // FIXME: Instead of recursing here to regenerate the values
-                // for other constants, we should just look up the
-                // already-defined value (#2530)
+                // FIXME (#2530): Instead of recursing here to regenerate
+                // the values for other constants, we should just look up
+                // the already-defined value.
                 trans_const_expr(cx, subexpr)
               }
               _ {

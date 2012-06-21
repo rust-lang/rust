@@ -79,7 +79,7 @@ class irc : public shape::data<irc,shape::ptr> {
         shape::ptr data_end = sub.end_dp = shape::ptr(data_range.second);
         while (sub.dp < data_end) {
             sub.walk_reset();
-            // FIXME: shouldn't this be 'sub.align = true;'?
+            // FIXME (#2669): shouldn't this be 'sub.align = true;'?
             align = true;
         }
     }
@@ -214,7 +214,7 @@ irc::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                    variant_ptr_and_end) {
     irc sub(*this, variant_ptr_and_end.first);
 
-    assert(variant_id < 256);   // FIXME: Temporary sanity check.
+    assert(variant_id < 256);   // FIXME (#2666): Temporary sanity check.
 
     const uint8_t *variant_end = variant_ptr_and_end.second;
     while (sub.sp < variant_end) {
@@ -329,7 +329,7 @@ class mark : public shape::data<mark,shape::ptr> {
             return;
 
         if (data_range.second - data_range.first > 100000)
-            abort();    // FIXME: Temporary sanity check.
+            abort();    // FIXME (#2666): Temporary sanity check.
 
         mark sub(*this, shape::ptr(data_range.first));
         shape::ptr data_end = sub.end_dp = shape::ptr(data_range.second);
@@ -454,7 +454,7 @@ mark::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
                    variant_ptr_and_end) {
     mark sub(*this, variant_ptr_and_end.first);
 
-    assert(variant_id < 256);   // FIXME: Temporary sanity check.
+    assert(variant_id < 256);   // FIXME (#2666): Temporary sanity check.
 
     const uint8_t *variant_end = variant_ptr_and_end.second;
     while (sub.sp < variant_end) {
@@ -550,7 +550,9 @@ maybe_cc(rust_task *task) {
         return;
     }
 
-    // FIXME: Needs a snapshot.
+    // FIXME (#1498): depressingly, due to alignment bugs the whole file is
+    // disabled presently unless you're doing testing. Remove the whole thing
+    // when we transition to using a visitor for GC/CC.
 #if 0
     if (task->cc_counter++ > RUST_CC_FREQUENCY) {
         task->cc_counter = 0;

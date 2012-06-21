@@ -422,8 +422,9 @@ fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
 
     // Calculate the last pointer address we want to handle.
-    // FIXME: Optimize this when the size of the unit type is statically
-    // known to not use pointer casts, which tend to confuse LLVM. (#2536)
+    // FIXME (#2536): Optimize this when the size of the unit type is
+    // statically known to not use pointer casts, which tend to confuse
+    // LLVM.
     let data_end_ptr = pointer_add(bcx, data_ptr, fill);
 
     // Now perform the iteration.

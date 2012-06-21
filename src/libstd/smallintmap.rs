@@ -6,8 +6,8 @@ import core::option;
 import core::option::{some, none};
 import dvec::{dvec, extensions};
 
-// FIXME: Should not be @; there's a bug somewhere in rustc that requires this
-// to be. (#2347)
+// FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
+// requires this to be.
 type smallintmap<T: copy> = @{v: dvec<option<T>>};
 
 #[doc = "Create a smallintmap"]

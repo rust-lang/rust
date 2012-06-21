@@ -184,23 +184,22 @@ rust_kernel::run() {
     return rval;
 }
 
-// FIXME: Fix all these FIXMEs (#2690)
 void
 rust_kernel::fail() {
-    // FIXME: On windows we're getting "Application has requested the
-    // Runtime to terminate it in an unusual way" when trying to shutdown
-    // cleanly.
+    // FIXME (#2671): On windows we're getting "Application has
+    // requested the Runtime to terminate it in an unusual way" when
+    // trying to shutdown cleanly.
     set_exit_status(PROC_FAIL_CODE);
 #if defined(__WIN32__)
     exit(rval);
 #endif
     // Copy the list of schedulers so that we don't hold the lock while
     // running kill_all_tasks.
-    // FIXME: There's a lot that happens under kill_all_tasks, and I don't
-    // know that holding sched_lock here is ok, but we need to hold the
-    // sched lock to prevent the scheduler from being destroyed while
-    // we are using it. Probably we need to make rust_scheduler atomicly
-    // reference counted.
+    // FIXME (#2671): There's a lot that happens under kill_all_tasks,
+    // and I don't know that holding sched_lock here is ok, but we need
+    // to hold the sched lock to prevent the scheduler from being
+    // destroyed while we are using it. Probably we need to make
+    // rust_scheduler atomicly reference counted.
     std::vector<rust_scheduler*> scheds;
     {
         scoped_lock with(sched_lock);
@@ -210,9 +209,9 @@ rust_kernel::fail() {
         }
     }
 
-    // FIXME: This is not a foolproof way to kill all tasks while ensuring
-    // that no new tasks or schedulers are created in the meantime that
-    // keep the scheduler alive.
+    // FIXME (#2671): This is not a foolproof way to kill all tasks
+    // while ensuring that no new tasks or schedulers are created in the
+    // meantime that keep the scheduler alive.
     for (std::vector<rust_scheduler*>::iterator iter = scheds.begin();
          iter != scheds.end(); iter++) {
         (*iter)->kill_all_tasks();

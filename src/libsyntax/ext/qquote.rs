@@ -104,8 +104,8 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
               with *default_visitor()};
     let cx = @{lo:lo, gather: dvec()};
     node.visit(cx, mk_vt(v));
-    // FIXME: Maybe this is an overkill (merge_sort), it might be better
-    //   to just keep the gather array in sorted order ... (Issue #2250)
+    // FIXME (#2250): Maybe this is an overkill (merge_sort), it might
+    // be better to just keep the gather array in sorted order.
     cx.gather.swap { |v|
         vec::to_mut(std::sort::merge_sort({|a,b| a.lo < b.lo}, v))
     };

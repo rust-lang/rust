@@ -16,7 +16,7 @@ class rust_sched_launcher;
 class rust_sched_launcher_factory;
 
 class rust_scheduler : public kernel_owned<rust_scheduler> {
-    // FIXME: Make these private
+    // FIXME (#2693): Make these private
 public:
     rust_kernel *kernel;
 private:

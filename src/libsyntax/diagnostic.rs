@@ -201,7 +201,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     // arbitrarily only print up to six lines of the error
     let max_lines = 6u;
     let mut elided = false;
-    let mut display_lines = /* FIXME bad */ copy lines.lines;
+    let mut display_lines = /* FIXME (#2543) */ copy lines.lines;
     if vec::len(display_lines) > max_lines {
         display_lines = vec::slice(display_lines, 0u, max_lines);
         elided = true;

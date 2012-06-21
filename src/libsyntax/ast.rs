@@ -176,9 +176,7 @@ enum proto {
 
 #[auto_serialize]
 enum vstore {
-    /* FIXME: Change uint to @expr (actually only constant exprs,
-       as per #2112)
-     */
+    // FIXME (#2112): Change uint to @expr (actually only constant exprs)
     vstore_fixed(option<uint>),   // [1,2,3,4]/_ or 4
     vstore_uniq,                  // [1,2,3,4]/~
     vstore_box,                   // [1,2,3,4]/@
@@ -256,12 +254,11 @@ enum init_op { init_assign, init_move, }
 #[auto_serialize]
 type initializer = {op: init_op, expr: @expr};
 
+// FIXME (pending discussion of #1697, #2178...): local should really be
+// a refinement on pat.
 #[auto_serialize]
-type local_ =  /* FIXME: should really be a refinement on pat
-                  (pending discussion of #1697, #2178...)
-                */
-    {is_mutbl: bool, ty: @ty, pat: @pat,
-     init: option<initializer>, id: node_id};
+type local_ =  {is_mutbl: bool, ty: @ty, pat: @pat,
+                init: option<initializer>, id: node_id};
 
 #[auto_serialize]
 type local = spanned<local_>;
@@ -322,9 +319,8 @@ enum expr_ {
     expr_block(blk),
 
     /*
-     * FIXME: many of these @exprs should be constrained with
+     * FIXME (#34): many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
-     * (See #34)
      */
     expr_copy(@expr),
     expr_move(@expr, @expr),

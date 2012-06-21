@@ -160,7 +160,7 @@ rust_run_program(const char* argv[],
     for (int fd = getdtablesize() - 1; fd >= 3; fd--) close(fd);
     if (dir) {
         int result = chdir(dir);
-        // FIXME: need error handling (#2674)
+        // FIXME (#2674): need error handling
         assert(!result && "chdir failed");
     }
 

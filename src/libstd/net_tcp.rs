@@ -2,15 +2,12 @@
 High-level interface to libuv's TCP functionality
 "];
 
-// FIXME: Fewer import *'s
 import ip = net_ip;
 import uv::iotask;
 import uv::iotask::iotask;
-import comm::*;
-import result::*;
-import str::*;
-import future::*;
-import libc::size_t;
+import comm::methods;
+import future::future;
+import result::{result,err,ok,extensions};
 
 // data
 export tcp_socket, tcp_conn_port, tcp_err_data;
@@ -364,8 +361,8 @@ fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint,
     let new_conn_po = comm::port::<result::result<*uv::ll::uv_tcp_t,
                                                   tcp_err_data>>();
     let new_conn_ch = comm::chan(new_conn_po);
-    // FIXME: This shared box should not be captured in the i/o task
-    // Make it a unique pointer.
+    // FIXME (#2656): This shared box should not be captured in the i/o
+    // task Make it a unique pointer.
     let server_data: @tcp_conn_port_data = @{
         server_stream: uv::ll::tcp_t(),
         stream_closed_po: stream_closed_po,
@@ -946,10 +943,10 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
           }
         }
     };
-    // FIXME: Instead of passing unsafe pointers to local data, and waiting
-    // here for the write to complete, we should transfer ownership of
-    // everything to the I/O task and let it deal with the aftermath,
-    // so we don't have to sit here blocking.
+    // FIXME (#2656): Instead of passing unsafe pointers to local data,
+    // and waiting here for the write to complete, we should transfer
+    // ownership of everything to the I/O task and let it deal with the
+    // aftermath, so we don't have to sit here blocking.
     alt comm::recv(result_po) {
       tcp_write_success { result::ok(()) }
       tcp_write_error(err_data) { result::err(err_data.to_tcp_err()) }
@@ -1191,20 +1188,16 @@ crust fn tcp_write_complete_cb(write_req: *uv::ll::uv_write_t,
                               status: libc::c_int) unsafe {
     let write_data_ptr = uv::ll::get_data_for_req(write_req)
         as *write_req_data;
-    // FIXME: if instead of alt
-    alt status {
-      0i32 {
+    if status == 0i32 {
         log(debug, "successful write complete");
         comm::send((*write_data_ptr).result_ch, tcp_write_success);
-      }
-      _ {
+    } else {
         let stream_handle_ptr = uv::ll::get_stream_handle_from_write_req(
             write_req);
         let loop_ptr = uv::ll::get_loop_for_uv_handle(stream_handle_ptr);
         let err_data = uv::ll::get_last_err_data(loop_ptr);
         log(debug, "failure to write");
         comm::send((*write_data_ptr).result_ch, tcp_write_error(err_data));
-      }
     }
 }
 
@@ -1273,20 +1266,20 @@ type tcp_socket_data = {
 // convert rust ip_addr to libuv's native representation
 fn ipv4_ip_addr_to_sockaddr_in(input_ip: ip::ip_addr,
                                port: uint) -> uv::ll::sockaddr_in unsafe {
-    // FIXME ipv6
+    // FIXME (#2656): ipv6
     alt input_ip {
       ip::ipv4(_,_,_,_) {
         uv::ll::ip4_addr(ip::format_addr(input_ip), port as int)
       }
       ip::ipv6(_,_,_,_,_,_,_,_) {
-        fail "FIXME ipv6 not yet supported";
+        fail "FIXME (#2656) ipv6 not yet supported";
       }
     }
 }
 
 #[cfg(test)]
 mod test {
-    // FIXME don't run on fbsd or linux 32 bit(#2064)
+    // FIXME don't run on fbsd or linux 32 bit (#2064)
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]

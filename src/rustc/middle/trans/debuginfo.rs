@@ -522,7 +522,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
       option::none {}
     }*/
 
-    /* FIXME I am disabling this code as part of the patch that moves
+    /* FIXME (#2012): disabled this code as part of the patch that moves
      * recognition of named builtin types into resolve. I tried to fix
      * it, but it seems to already be broken -- it's only called when
      * --xg is given, and compiling with --xg fails on trivial programs.
@@ -531,8 +531,6 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
      * needed. It is only done to track spans, but you will not get the
      * right spans anyway -- types tend to refer to stuff defined
      * elsewhere, not be self-contained.
-     *
-     * See Issue #2012
      */
 
     fail;

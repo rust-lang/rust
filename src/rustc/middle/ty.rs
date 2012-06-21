@@ -1209,7 +1209,6 @@ pure fn type_is_scalar(ty: t) -> bool {
     }
 }
 
-// FIXME maybe inline this for speed?
 fn type_is_immediate(ty: t) -> bool {
     ret type_is_scalar(ty) || type_is_boxed(ty) ||
         type_is_unique(ty) || type_is_region_ptr(ty);
@@ -1614,7 +1613,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
-      // FIXME: is self ever const?
+      // FIXME (#2663): is self ever const?
       ty_self { kind_noncopyable() }
       ty_var(_) | ty_var_integral(_) {
         cx.sess.bug("Asked to compute kind of a type variable");
@@ -2038,7 +2037,6 @@ fn hash_type_structure(st: sty) -> uint {
     fn hash_type_constr(id: uint, c: @type_constr) -> uint {
         let mut h = id;
         h = (h << 2u) + hash_def(h, c.node.id);
-        // FIXME this makes little sense
         for c.node.args.each {|a|
             alt a.node {
               carg_base { h += h << 2u; }
@@ -2169,7 +2167,6 @@ fn args_eq<T>(eq: fn(T, T) -> bool,
 fn constr_eq(c: @constr, d: @constr) -> bool {
     fn eq_int(&&x: uint, &&y: uint) -> bool { ret x == y; }
     ret path_to_str(c.node.path) == path_to_str(d.node.path) &&
-            // FIXME: hack
             args_eq(eq_int, c.node.args, d.node.args);
 }
 

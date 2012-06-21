@@ -6,8 +6,6 @@ import cmath::c_float::*;
 import cmath::c_float_targ_consts::*;
 import num::num;
 
-// FIXME find out why these have to be exported explicitly
-
 export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
@@ -55,9 +53,8 @@ pure fn ge(x: f32, y: f32) -> bool { ret x >= y; }
 
 pure fn gt(x: f32, y: f32) -> bool { ret x > y; }
 
-// FIXME replace the predicates below with llvm intrinsics or calls
-// to the libmath macros in the rust runtime for performance
-// See Issue #1999
+// FIXME (#1999): replace the predicates below with llvm intrinsics or
+// calls to the libmath macros in the rust runtime for performance.
 
 #[doc = "
 Returns true if `x` is a positive number, including +0.0f320 and +Infinity
@@ -106,14 +103,13 @@ pure fn is_finite(x: f32) -> bool {
     ret !(is_NaN(x) || is_infinite(x));
 }
 
-// FIXME add is_normal, is_subnormal, and fpclassify
-// also see Issue #1999
+// FIXME (#1999): add is_normal, is_subnormal, and fpclassify.
 
 /* Module: consts */
 mod consts {
 
-    // FIXME replace with mathematical constants from cmath
-    // (requires Issue #1433 to fix)
+    // FIXME (requires Issue #1433 to fix): replace with mathematical
+    // constants from cmath.
     #[doc = "Archimedes' constant"]
     const pi: f32 = 3.14159265358979323846264338327950288_f32;
 
@@ -167,9 +163,8 @@ pure fn logarithm(n: f32, b: f32) -> f32 {
 
 #[cfg(target_os="freebsd")]
 pure fn logarithm(n: f32, b: f32) -> f32 {
-    // FIXME check if it is good to use log2 instead of ln here;
+    // FIXME (#2000): check if it is good to use log2 instead of ln here;
     // in theory should be faster since the radix is 2
-    // See Issue #2000
     ret ln(n) / ln(b);
 }
 

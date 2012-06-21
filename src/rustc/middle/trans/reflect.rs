@@ -163,8 +163,8 @@ impl methods for reflector {
             self.visit("leave_tup", extra);
           }
 
-          // FIXME: fetch constants out of intrinsic:: for the numbers.
-          // (#2594)
+          // FIXME (#2594): fetch constants out of intrinsic:: for the
+          // numbers.
           ty::ty_fn(fty) {
             let pureval = alt fty.purity {
               ast::pure_fn { 0u }
@@ -226,10 +226,10 @@ impl methods for reflector {
             self.visit("leave_class", extra);
           }
 
-          // FIXME: visiting all the variants in turn is probably
-          // not ideal. It'll work but will get costly on big enums.
-          // Maybe let the visitor tell us if it wants to visit only
-          // a particular variant? (#2595)
+          // FIXME (#2595): visiting all the variants in turn is probably
+          // not ideal. It'll work but will get costly on big enums. Maybe
+          // let the visitor tell us if it wants to visit only a particular
+          // variant?
           ty::ty_enum(did, substs) {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;

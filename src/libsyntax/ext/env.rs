@@ -11,8 +11,8 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "env");
 
-    // FIXME: if this was more thorough it would manufacture an
-    // option<str> rather than just an maybe-empty string. (Issue #2248)
+    // FIXME (#2248): if this was more thorough it would manufacture an
+    // option<str> rather than just an maybe-empty string.
 
     let var = expr_to_str(cx, args[0], "#env requires a string");
     alt os::getenv(var) {

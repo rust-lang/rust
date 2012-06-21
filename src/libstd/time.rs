@@ -319,15 +319,14 @@ fn strptime(s: str, format: str) -> result<tm, str> {
                 .chain { |pos| parse_type(s, pos, 'd', tm) }
           }
           'H' {
-            // FIXME: range check. (#2350 -- same issue for all FIXMEs in this
-            // file.)
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
               some(item) { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
               none { err("Invalid hour") }
             }
           }
           'I' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
               some(item) {
                   let (v, pos) = item;
@@ -338,7 +337,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
             }
           }
           'j' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 3u, false) {
               some(item) {
                 let (v, pos) = item;
@@ -349,14 +348,14 @@ fn strptime(s: str, format: str) -> result<tm, str> {
             }
           }
           'k' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, true) {
               some(item) { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
               none { err("Invalid hour") }
             }
           }
           'l' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, true) {
               some(item) {
                   let (v, pos) = item;
@@ -367,14 +366,14 @@ fn strptime(s: str, format: str) -> result<tm, str> {
             }
           }
           'M' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
               some(item) { let (v, pos) = item; tm.tm_min = v; ok(pos) }
               none { err("Invalid minute") }
             }
           }
           'm' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
               some(item) {
                 let (v, pos) = item;
@@ -412,7 +411,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
                 .chain { |pos| parse_type(s, pos, 'p', tm) }
           }
           'S' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
               some(item) {
                 let (v, pos) = item;
@@ -432,7 +431,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           }
           't' { parse_char(s, pos, '\t') }
           'u' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 1u, false) {
               some(item) {
                 let (v, pos) = item;
@@ -451,7 +450,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           }
           //'W' {}
           'w' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 1u, false) {
               some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
               none { err("Invalid weekday") }
@@ -460,7 +459,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           //'X' {}
           //'x' {}
           'Y' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 4u, false) {
               some(item) {
                 let (v, pos) = item;
@@ -471,7 +470,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
             }
           }
           'y' {
-            // FIXME: range check.
+            // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
               some(item) {
                 let (v, pos) = item;
@@ -584,7 +583,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
 
 fn strftime(format: str, tm: tm) -> str {
     fn parse_type(ch: char, tm: tm) -> str {
-        //FIXME: Implement missing types.
+        //FIXME (#2350): Implement missing types.
         alt check ch {
           'A' {
             alt check tm.tm_wday as int {
@@ -915,7 +914,7 @@ mod tests {
         assert local.tm_isdst == 0_i32;
         assert local.tm_gmtoff == -28800_i32;
 
-        // FIXME: We should probably standardize on the timezone
+        // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let zone = local.tm_zone;
         assert zone == "PST" || zone == "Pacific Standard Time";
@@ -1063,8 +1062,8 @@ mod tests {
         assert test("2009-02-13", "%F");
         assert test("03", "%H");
         assert test("13", "%H");
-        assert test("03", "%I"); // FIXME: flesh out
-        assert test("11", "%I"); // FIXME: flesh out
+        assert test("03", "%I"); // FIXME (#2350): flesh out
+        assert test("11", "%I"); // FIXME (#2350): flesh out
         assert test("044", "%j");
         assert test(" 3", "%k");
         assert test("13", "%k");
@@ -1162,7 +1161,7 @@ mod tests {
         assert local.strftime("%Y") == "2009";
         assert local.strftime("%y") == "09";
 
-        // FIXME: We should probably standardize on the timezone
+        // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let zone = local.strftime("%Z");
         assert zone == "PST" || zone == "Pacific Standard Time";
@@ -1170,7 +1169,7 @@ mod tests {
         assert local.strftime("%z") == "-0800";
         assert local.strftime("%%") == "%";
 
-        // FIXME: We should probably standardize on the timezone
+        // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let rfc822 = local.rfc822();
         let prefix = "Fri, 13 Feb 2009 15:31:30 ";

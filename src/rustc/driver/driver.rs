@@ -78,9 +78,9 @@ fn build_configuration(sess: session, argv0: str, input: input) ->
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
-    // FIXME: It would be nice to use the parser to parse all varieties of
-    // meta_item here. At the moment we just support the meta_word variant.
-    // #2399
+    // FIXME (#2399): It would be nice to use the parser to parse all
+    // varieties of meta_item here. At the moment we just support the
+    // meta_word variant.
     let mut words = [];
     for cfgspecs.each {|s| words += [attr::mk_word_item(@s)]; }
     ret words;
@@ -100,8 +100,7 @@ fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
         parse::parse_crate_from_file(file, cfg, sess.parse_sess)
       }
       str_input(src) {
-        // FIXME: Don't really want to box the source string
-        // #2319
+        // FIXME (#2319): Don't really want to box the source string
         parse::parse_crate_from_source_str(
             anon_src(), @src, cfg, sess.parse_sess)
       }
@@ -389,9 +388,10 @@ fn host_triple() -> str {
     // idea of the host triple is the same as for the set of libraries we've
     // actually built.  We can't just take LLVM's host triple because they
     // normalize all ix86 architectures to i386.
-    // FIXME: Instead of grabbing the host triple we really should be
-    // grabbing (at compile time) the target triple that this rustc is
-    // built with and calling that (at runtime) the host triple. (#2400)
+
+    // FIXME (#2400): Instead of grabbing the host triple we really should
+    // be grabbing (at compile time) the target triple that this rustc is
+    // built with and calling that (at runtime) the host triple.
     let ht = #env("CFG_HOST_TRIPLE");
     ret if ht != "" {
             ht
@@ -660,10 +660,10 @@ fn build_output_filenames(input: input,
         };
 
         if sess.building_library {
-            // FIXME: We might want to warn here; we're actually not going to
-            // respect the user's choice of library name when it comes time to
-            // link, we'll be linking to lib<basename>-<hash>-<version>.so no
-            // matter what. (#2401)
+            // FIXME (#2401): We might want to warn here; we're actually not
+            // going to respect the user's choice of library name when it
+            // comes time to link, we'll be linking to
+            // lib<basename>-<hash>-<version>.so no matter what.
         }
 
         if odir != none {

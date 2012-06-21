@@ -414,9 +414,9 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
             bump(rdr);
             ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
                                  ast::ty_f64);
-            /* FIXME: if this is out of range for either a 32-bit or
-            64-bit float, it won't be noticed till the back-end (Issue #2252)
-            */
+            /* FIXME (#2252): if this is out of range for either a
+            32-bit or 64-bit float, it won't be noticed till the
+            back-end.  */
         } else {
             is_float = true;
         }

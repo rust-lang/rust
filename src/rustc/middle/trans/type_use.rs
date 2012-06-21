@@ -183,8 +183,8 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         node_type_needs(cx, use_repr, val.id);
       }
       expr_index(base, _) | expr_field(base, _, _) {
-        // FIXME could be more careful and not count fields
-        // after the chosen field (#2537)
+        // FIXME (#2537): could be more careful and not count fields after
+        // the chosen field.
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 

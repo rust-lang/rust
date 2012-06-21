@@ -126,8 +126,8 @@ rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
         assert(!task->on_rust_stack() && "logging on rust stack");
     }
 
-    // FIXME: The scheduler and task names used to have meaning,
-    // but they are always equal to 'main' currently (#2672)
+    // FIXME (#2672): The scheduler and task names used to have meaning,
+    // but they are always equal to 'main' currently
 #if 0
 
 #if defined(__WIN32__)
@@ -233,8 +233,9 @@ void update_crate_map(const cratemap* map, log_directive* dirs,
     // First update log levels for this crate
     update_module_map(map->entries, dirs, n_dirs, n_matches);
     // Then recurse on linked crates
-    // FIXME this does double work in diamond-shaped deps. could keep
-    // a set of visited addresses, if it turns out to be actually slow (#2673)
+    // FIXME (#2673) this does double work in diamond-shaped deps. could
+    //   keep a set of visited addresses, if it turns out to be actually
+    //   slow
     for (size_t i = 0; map->children[i]; i++) {
         update_crate_map(map->children[i], dirs, n_dirs, n_matches);
     }

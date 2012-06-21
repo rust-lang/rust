@@ -88,11 +88,12 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
                 meta_word(id) { meta_word(fld.fold_ident(id)) }
                 meta_list(id, mis) {
                   let fold_meta_item = {|x|fold_meta_item_(x, fld)};
-                  meta_list(/* FIXME: bad */ copy id,
+                  meta_list(/* FIXME: (#2543) */ copy id,
                             vec::map(mis, fold_meta_item))
                 }
                 meta_name_value(id, s) {
-                  meta_name_value(fld.fold_ident(id), /* FIXME: bad */ copy s)
+                  meta_name_value(fld.fold_ident(id),
+                                  /* FIXME (#2543) */ copy s)
                 }
               },
           span: fld.new_span(mi.span)};
@@ -123,8 +124,8 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
                mac_ellipsis { mac_ellipsis }
-               mac_aq(_,_) { /* FIXME: bad */ copy m.node }
-               mac_var(_) { /* FIXME: bad */ copy m.node }
+               mac_aq(_,_) { /* FIXME (#2543) */ copy m.node }
+               mac_var(_) { /* FIXME (#2543) */ copy m.node }
              },
          span: fld.new_span(m.span)};
 }
@@ -145,7 +146,7 @@ fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
 }
 
 fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
-    {ident: /* FIXME: bad */ copy tp.ident,
+    {ident: /* FIXME (#2543) */ copy tp.ident,
      id: fld.new_id(tp.id),
      bounds: @vec::map(*tp.bounds, {|x|fold_ty_param_bound(x, fld)})}
 }
@@ -168,12 +169,12 @@ fn noop_fold_crate_directive(cd: crate_directive_, fld: ast_fold) ->
    crate_directive_ {
     ret alt cd {
           cdir_src_mod(id, attrs) {
-            cdir_src_mod(fld.fold_ident(id), /* FIXME: bad */ copy attrs)
+            cdir_src_mod(fld.fold_ident(id), /* FIXME (#2543) */ copy attrs)
           }
           cdir_dir_mod(id, cds, attrs) {
             cdir_dir_mod(fld.fold_ident(id),
                          vec::map(cds, fld.fold_crate_directive),
-                         /* FIXME: bad */ copy attrs)
+                         /* FIXME (#2543) */ copy attrs)
           }
           cdir_view_item(vi) { cdir_view_item(fld.fold_view_item(vi)) }
           cdir_syntax(_) { copy cd }
@@ -181,7 +182,7 @@ fn noop_fold_crate_directive(cd: crate_directive_, fld: ast_fold) ->
 }
 
 fn noop_fold_view_item(vi: view_item_, _fld: ast_fold) -> view_item_ {
-    ret /* FIXME: bad */ copy vi;
+    ret /* FIXME (#2543) */ copy vi;
 }
 
 
@@ -223,8 +224,8 @@ fn noop_fold_class_item(&&ci: @class_member, fld: ast_fold)
     -> @class_member {
     @{node: alt ci.node {
         instance_var(ident, t, cm, id, p) {
-           instance_var(/* FIXME: bad */ copy ident, fld.fold_ty(t), cm, id,
-                        p)
+           instance_var(/* FIXME (#2543) */ copy ident,
+                        fld.fold_ty(t), cm, id, p)
         }
         class_method(m) { class_method(fld.fold_method(m)) }
       },
@@ -260,7 +261,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                         id: dtor_id with dtor.node}
                     with dtor}};
               item_class(
-                  /* FIXME: bad */ copy typms,
+                  /* FIXME (#2543) */ copy typms,
                   vec::map(ifaces, {|p| fold_iface_ref(p, fld) }),
                   vec::map(items, fld.fold_class_item),
                   {node: {body: ctor_body,
@@ -278,7 +279,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_iface(tps, rp, methods) {
             item_iface(fold_ty_params(tps, fld),
                        rp,
-                       /* FIXME: bad */ copy methods)
+                       /* FIXME (#2543) */ copy methods)
           }
           item_res(decl, typms, body, did, cid, rp) {
             item_res(fold_fn_decl(decl, fld),
@@ -297,7 +298,7 @@ fn fold_iface_ref(&&p: @iface_ref, fld: ast_fold) -> @iface_ref {
 
 fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
     ret @{ident: fld.fold_ident(m.ident),
-          attrs: /* FIXME: bad */ copy m.attrs,
+          attrs: /* FIXME (#2543) */ copy m.attrs,
           tps: fold_ty_params(m.tps, fld),
           decl: fold_fn_decl(m.decl, fld),
           body: fld.fold_block(m.body),
@@ -344,7 +345,7 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           pat_rec(fields, etc) {
             let mut fs = [];
             for fields.each {|f|
-                fs += [{ident: /* FIXME: bad */ copy f.ident,
+                fs += [{ident: /* FIXME (#2543) */ copy f.ident,
                         pat: fld.fold_pat(f.pat)}];
             }
             pat_rec(fs, etc)
@@ -507,13 +508,13 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
 }
 
 fn noop_fold_constr(c: constr_, fld: ast_fold) -> constr_ {
-    {path: fld.fold_path(c.path), args: /* FIXME: bad */ copy c.args,
+    {path: fld.fold_path(c.path), args: /* FIXME (#2543) */ copy c.args,
      id: fld.new_id(c.id)}
 }
 
 fn noop_fold_ty_constr(c: ty_constr_, fld: ast_fold) -> ty_constr_ {
     let rslt: ty_constr_ =
-        {path: fld.fold_path(c.path), args: /* FIXME: bad */ copy c.args,
+        {path: fld.fold_path(c.path), args: /* FIXME (#2543) */ copy c.args,
          id: fld.new_id(c.id)};
     rslt
 }
@@ -542,7 +543,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
       some(e) {some(fld.fold_expr(e))}
       none {none}
     };
-    ret {name: /* FIXME: bad */ copy v.name,
+    ret {name: /* FIXME (#2543) */ copy v.name,
          attrs: attrs,
          args: args, id: fld.new_id(v.id),
          disr_expr: de,
@@ -550,7 +551,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
 }
 
 fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident {
-    ret /* FIXME: bad */ copy i;
+    ret /* FIXME (#2543) */ copy i;
 }
 
 fn noop_fold_path(&&p: path, fld: ast_fold) -> path {
@@ -644,7 +645,7 @@ impl of ast_fold for ast_fold_precursor {
     fn fold_class_item(&&ci: @class_member) -> @class_member {
         @{node: alt ci.node {
            instance_var(nm, t, mt, id, p) {
-               instance_var(/* FIXME: bad */ copy nm,
+               instance_var(/* FIXME (#2543) */ copy nm,
                             (self as ast_fold).fold_ty(t), mt, id, p)
            }
            class_method(m) {

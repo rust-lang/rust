@@ -8,7 +8,7 @@
     for testing purposes. It doesn't surve any functional
     purpose. This here, for instance, is just some filler text.
 
-    FIXME (1654): It would be nice if we could run some automated
+    FIXME (#1654): It would be nice if we could run some automated
     tests on this file
 
 "];

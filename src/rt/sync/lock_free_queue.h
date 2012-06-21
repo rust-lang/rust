@@ -88,8 +88,8 @@ class lock_free_queue {
         pointer_t *oldValue,
         pointer_t newValue) {
 
-        // FIXME this is requiring us to pass -fno-strict-aliasing to GCC
-        // (possibly there are other, similar problems)
+        // FIXME (#2701) this is requiring us to pass -fno-strict-aliasing
+        // to GCC (possibly there are other, similar problems)
         if (sync::compare_and_swap(
                 (uint64_t*) address,
                 *(uint64_t*) oldValue,

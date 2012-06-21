@@ -232,8 +232,8 @@ rand_free(randctx *rctx) {
 
 /* Debug helpers strictly to verify ABI conformance.
  *
- * FIXME: move these into a testcase when the testsuite
- * understands how to have explicit C files included. (#2688)
+ * FIXME (#2665): move these into a testcase when the testsuite
+ * understands how to have explicit C files included.
  */
 
 struct quad {
@@ -288,19 +288,20 @@ debug_opaque(type_desc *t, uint8_t *front) {
     rust_task *task = rust_get_current_task();
     LOG(task, stdlib, "debug_opaque");
     debug_tydesc_helper(t);
-    // FIXME may want to actually account for alignment.  `front` may not
-    // indeed be the front byte of the passed-in argument. (#2667)
+    // FIXME (#2667) may want to actually account for alignment.
+    // `front` may not indeed be the front byte of the passed-in
+    // argument.
     for (uintptr_t i = 0; i < t->size; ++front, ++i) {
         LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, *front);
     }
 }
 
-// FIXME this no longer reflects the actual structure of boxes! (#2667)
+// FIXME (#2667) this no longer reflects the actual structure of boxes!
 struct rust_box {
     RUST_REFCOUNTED(rust_box)
 
-    // FIXME `data` could be aligned differently from the actual box body data
-    // (#2667)
+    // FIXME (#2667) `data` could be aligned differently from the actual
+    // box body data
     uint8_t data[];
 };
 
@@ -636,7 +637,7 @@ extern "C" CDECL rust_task*
 rust_new_task_in_sched(rust_sched_id id) {
     rust_task *task = rust_get_current_task();
     rust_scheduler *sched = task->kernel->get_scheduler_by_id(id);
-    // FIXME: What if we didn't get the scheduler? (#2668)
+    // FIXME (#2668): What if we didn't get the scheduler?
     return new_task_common(sched, task);
 }
 

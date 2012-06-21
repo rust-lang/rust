@@ -9,7 +9,8 @@
  * if you're using a pthreads cvar+mutex pair.
  */
 
-// FIXME: This is not a portable way of specifying an invalid pthread_t
+// FIXME (#2683): This is not a portable way of specifying an invalid
+// pthread_t
 #define INVALID_THREAD 0
 
 

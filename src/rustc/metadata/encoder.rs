@@ -1028,9 +1028,8 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
 
     // We're just going to write a list of crate 'name-hash-version's, with
     // the assumption that they are numbered 1 to n.
-    // FIXME: This is not nearly enough to support correct versioning
+    // FIXME (#2166): This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
-    // See #2166
     ebml_w.start_tag(tag_crate_deps);
     for get_ordered_deps(cstore).each {|dep|
         encode_crate_dep(ebml_w, dep);

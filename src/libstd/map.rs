@@ -67,8 +67,8 @@ iface map<K, V: copy> {
     fn each_value(fn(V) -> bool);
 }
 
-// FIXME: package this up and export it as a datatype usable for
-// external code that doesn't want to pay the cost of a box. (#2344)
+// FIXME (#2344): package this up and export it as a datatype usable for
+// external code that doesn't want to pay the cost of a box.
 mod chained {
     export t, mk, hashmap;
 

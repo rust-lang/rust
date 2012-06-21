@@ -17,10 +17,10 @@ import dvec::{dvec, extensions};
 export file_type;
 export parser;
 
-// FIXME: #ast expects to find this here but it's actually defined in `parse`
-// Fixing this will be easier when we have export decls on individual items --
-// then parse can export this publicly, and everything else crate-visibly.
-// (See #1893)
+// FIXME (#1893): #ast expects to find this here but it's actually
+// defined in `parse` Fixing this will be easier when we have export
+// decls on individual items -- then parse can export this publicly, and
+// everything else crate-visibly.
 import parse_from_source_str;
 export parse_from_source_str;
 
@@ -172,10 +172,10 @@ class parser {
             {mode: mode, ty: p.parse_ty(false), ident: name,
              id: p.get_id()}
         };
-        // FIXME: constrs is empty because right now, higher-order functions
-        // can't have constrained types.
-        // Not sure whether that would be desirable anyway. See #34 for the
-        // story on constrained types.
+        // FIXME (#34): constrs is empty because right now, higher-order
+        // functions can't have constrained types. Not sure whether
+        // that would be desirable anyway. See bug for the story on
+        // constrained types.
         let constrs: [@constr] = [];
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ret {inputs: inputs, output: ret_ty,
@@ -2039,7 +2039,7 @@ class parser {
     }
 
     fn parse_ctor(result_ty: ast::ty_) -> class_contents {
-        // Can ctors/dtors have attrs? FIXME
+        // FIXME (#2660): Can ctors/dtors have attrs?
         let lo = self.last_span.lo;
         let (decl_, _) = self.parse_fn_decl(impure_fn, {|p| p.parse_arg()});
         let decl = {output: @{id: self.get_id(),
@@ -2050,7 +2050,7 @@ class parser {
     }
 
     fn parse_dtor() -> class_contents {
-        // Can ctors/dtors have attrs? FIXME
+        // FIXME (#2660): Can ctors/dtors have attrs?
         let lo = self.last_span.lo;
         let body = self.parse_block();
         dtor_decl(body, mk_sp(lo, self.last_span.hi))

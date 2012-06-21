@@ -491,7 +491,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
         // Compute the minimum and maximum size and alignment for each
         // variant.
         //
-        // FIXME: We could do better here; e.g. we know that any
+        // NB: We could do better here; e.g. we know that any
         // variant that contains (T,T) must be as least as large as
         // any variant that contains just T.
         let mut ranges = [];
@@ -500,7 +500,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             let mut min_size = 0u, min_align = 0u;
             for vec::each(variant.args) {|elem_t|
                 if ty::type_has_params(elem_t) {
-                    // FIXME: We could do better here; this causes us to
+                    // NB: We could do better here; this causes us to
                     // conservatively assume that (int, T) has minimum size 0,
                     // when in fact it has minimum size sizeof(int).
                     bounded = false;
@@ -699,7 +699,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 // Computes the static size of a enum, without using mk_tup(), which is
 // bad for performance.
 //
-// FIXME: Migrate trans over to use this.
+// NB: Migrate trans over to use this.
 
 // Computes the size of the data part of an enum.
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {

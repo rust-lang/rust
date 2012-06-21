@@ -385,7 +385,7 @@ fn shift<T>(&v: [T]) -> T {
             let mut r <- *vv;
 
             for uint::range(1u, ln) {|i|
-                // FIXME: this isn't legal, per se...
+                // FIXME (#2703): this isn't legal, per se...
                 let r <- *ptr::offset(vv, i);
                 push(v, r);
             }
