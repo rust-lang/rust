@@ -606,14 +606,6 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     };
 }
 
-// Returns true if the two types unify and false if they don't.
-fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
-    alt fcx.mk_eqty(expected, actual) {
-      result::ok(_) { ret true; }
-      result::err(_) { ret false; }
-    }
-}
-
 // AST fragment checking
 fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
@@ -1248,9 +1240,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         alt expr_opt {
           none {
-            if !are_compatible(fcx, ret_ty, ty::mk_nil(tcx)) {
+            alt fcx.mk_eqty(ret_ty, ty::mk_nil(tcx)) {
+              result::ok(_) { /* fall through */ }
+              result::err(_) {
                 tcx.sess.span_err(expr.span,
-                                  "ret; in function returning non-nil");
+                                  "ret; in function returning non-nil"); }
             }
           }
           some(e) { check_expr_with(fcx, e, ret_ty); }
@@ -2305,7 +2299,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
                                          expected %u", i_n_tps, n_tps));
     } else {
         require_same_types(
-            tcx, it.span, i_ty.ty, fty,
+            tcx, none, it.span, i_ty.ty, fty,
             {|| #fmt["intrinsic has wrong type. \
                       expected %s",
                      ty_to_str(ccx.tcx, fty)]});

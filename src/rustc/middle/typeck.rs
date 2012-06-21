@@ -188,33 +188,29 @@ fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
 
 fn require_same_types(
     tcx: ty::ctxt,
+    maybe_infcx: option<infer::infer_ctxt>,
     span: span,
     t1: ty::t,
     t2: ty::t,
     msg: fn() -> str) -> bool {
 
-    alt infer::compare_tys(tcx, t1, t2) {
-      result::ok(()) { true }
-      result::err(terr) {
-        tcx.sess.span_err(span, msg() + ": " +
-            ty::type_err_to_str(tcx, terr));
-        false
+    let l_tcx, l_infcx;
+    alt maybe_infcx {
+      none {
+        l_tcx = tcx;
+        l_infcx = infer::new_infer_ctxt(tcx);
+      }
+      some(i) {
+        l_tcx = i.tcx;
+        l_infcx = i;
       }
     }
-}
 
-fn require_same_types_in_infcx(
-    infcx: infer::infer_ctxt,
-    span: span,
-    t1: ty::t,
-    t2: ty::t,
-    msg: fn() -> str) -> bool {
-
-    alt infer::compare_tys_in_infcx(infcx, t1, t2) {
+    alt infer::mk_eqty(l_infcx, t1, t2) {
       result::ok(()) { true }
       result::err(terr) {
-        infcx.tcx.sess.span_err(span, msg() + ": " +
-            ty::type_err_to_str(infcx.tcx, terr));
+        l_tcx.sess.span_err(span, msg() + ": " +
+            ty::type_err_to_str(l_tcx, terr));
         false
       }
     }
