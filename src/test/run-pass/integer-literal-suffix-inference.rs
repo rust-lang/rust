@@ -1,8 +1,4 @@
 fn main() {
-
-    // The commented-out lines are ones that fail currently.  I'm
-    // working on figuring out why (#1425). -- lkuper
-
     fn id_i8(n: i8) -> i8 { n }
     fn id_i16(n: i16) -> i16 { n }
     fn id_i32(n: i32) -> i32 { n }
