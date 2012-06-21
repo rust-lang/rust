@@ -160,7 +160,7 @@ rust_run_program(const char* argv[],
     for (int fd = getdtablesize() - 1; fd >= 3; fd--) close(fd);
     if (dir) {
         int result = chdir(dir);
-        // FIXME: need error handling
+        // FIXME: need error handling (#2674)
         assert(!result && "chdir failed");
     }
 
@@ -178,7 +178,7 @@ rust_run_program(const char* argv[],
 
 extern "C" CDECL int
 rust_process_wait(int proc) {
-    // FIXME: stub; exists to placate linker.
+    // FIXME: stub; exists to placate linker. (#2692)
     return 0;
 }
 

@@ -184,7 +184,7 @@ rust_kernel::run() {
     return rval;
 }
 
-// FIXME: Fix all these FIXMEs
+// FIXME: Fix all these FIXMEs (#2690)
 void
 rust_kernel::fail() {
     // FIXME: On windows we're getting "Application has requested the

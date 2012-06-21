@@ -34,7 +34,7 @@ public:
     flag(const char *in_name) : name(in_name), valid(false) {}
 
     bool operator*() {
-        // FIXME: We ought to lock this.
+        // FIXME: We ought to lock this. (#2689)
         if (!valid) {
             char *ev = getenv(name);
             value = ev && ev[0] != '\0' && ev[0] != '0';

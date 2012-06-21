@@ -3,7 +3,7 @@
  * memory management and isolation between tasks, and domains.
  *
  * FIXME: Implement a custom lock-free malloc / free instead of relying solely
- *       on the standard malloc / free.
+ *       on the standard malloc / free. (#2686)
  */
 
 #ifndef MEMORY_REGION_H
