@@ -240,9 +240,6 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_tup(exprs) | expr_vec(exprs, _) {
         for exprs.each {|expr| maybe_copy(cx, expr); }
       }
-      expr_bind(_, args) {
-        for args.each {|a| alt a { some(ex) { maybe_copy(cx, ex); } _ {} } }
-      }
       expr_call(f, args, _) {
         let mut i = 0u;
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each {|arg_t|

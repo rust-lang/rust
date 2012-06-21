@@ -87,7 +87,7 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
               alt mi.node {
                 meta_word(id) { meta_word(fld.fold_ident(id)) }
                 meta_list(id, mis) {
-                  let fold_meta_item = bind fold_meta_item_(_, fld);
+                  let fold_meta_item = {|x|fold_meta_item_(x, fld)};
                   meta_list(/* FIXME: bad */ copy id,
                             vec::map(mis, fold_meta_item))
                 }
@@ -130,7 +130,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
 }
 
 fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
-    ret {inputs: vec::map(decl.inputs, bind fold_arg_(_, fld)),
+    ret {inputs: vec::map(decl.inputs, {|x| fold_arg_(x, fld)}),
          output: fld.fold_ty(decl.output),
          purity: decl.purity,
          cf: decl.cf,
@@ -147,16 +147,16 @@ fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
 fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
     {ident: /* FIXME: bad */ copy tp.ident,
      id: fld.new_id(tp.id),
-     bounds: @vec::map(*tp.bounds, fold_ty_param_bound(_, fld))}
+     bounds: @vec::map(*tp.bounds, {|x|fold_ty_param_bound(x, fld)})}
 }
 
 fn fold_ty_params(tps: [ty_param], fld: ast_fold) -> [ty_param] {
-    vec::map(tps, fold_ty_param(_, fld))
+    vec::map(tps, {|x|fold_ty_param(x, fld)})
 }
 
 fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
-    let fold_meta_item = bind fold_meta_item_(_, fld);
-    let fold_attribute = bind fold_attribute_(_, fld);
+    let fold_meta_item = {|x|fold_meta_item_(x, fld)};
+    let fold_attribute = {|x|fold_attribute_(x, fld)};
 
     ret {directives: vec::map(c.directives, fld.fold_crate_directive),
          module: fld.fold_mod(c.module),
@@ -186,8 +186,8 @@ fn noop_fold_view_item(vi: view_item_, _fld: ast_fold) -> view_item_ {
 
 
 fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
-    let fold_arg = bind fold_arg_(_, fld);
-    let fold_attribute = bind fold_attribute_(_, fld);
+    let fold_arg = {|x|fold_arg_(x, fld)};
+    let fold_attribute = {|x|fold_attribute_(x, fld)};
 
     ret @{ident: fld.fold_ident(ni.ident),
           attrs: vec::map(ni.attrs, fold_attribute),
@@ -209,7 +209,7 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
 }
 
 fn noop_fold_item(&&i: @item, fld: ast_fold) -> @item {
-    let fold_attribute = bind fold_attribute_(_, fld);
+    let fold_attribute = {|x|fold_attribute_(x, fld)};
 
     ret @{ident: fld.fold_ident(i.ident),
           attrs: vec::map(i.attrs, fold_attribute),
@@ -381,9 +381,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                   expr: fld.fold_expr(field.node.expr)},
              span: fld.new_span(field.span)};
     }
-    let fold_field = bind fold_field_(_, fld);
+    let fold_field = {|x|fold_field_(x, fld)};
 
-    let fold_mac = bind fold_mac_(_, fld);
+    let fold_mac = {|x|fold_mac_(x, fld)};
 
     ret alt e {
           expr_new(p, i, v) {
@@ -405,10 +405,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_call(f, args, blk) {
             expr_call(fld.fold_expr(f), fld.map_exprs(fld.fold_expr, args),
                       blk)
-          }
-          expr_bind(f, args) {
-            let opt_map_se = bind option::map(_, fld.fold_expr);
-            expr_bind(fld.fold_expr(f), vec::map(args, opt_map_se))
           }
           expr_binary(binop, lhs, rhs) {
             expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
@@ -483,7 +479,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
 }
 
 fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
-    let fold_mac = bind fold_mac_(_, fld);
+    let fold_mac = {|x|fold_mac_(x, fld)};
     fn fold_mt(mt: mt, fld: ast_fold) -> mt {
         {ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl}
     }
@@ -536,10 +532,10 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     fn fold_variant_arg_(va: variant_arg, fld: ast_fold) -> variant_arg {
         ret {ty: fld.fold_ty(va.ty), id: fld.new_id(va.id)};
     }
-    let fold_variant_arg = bind fold_variant_arg_(_, fld);
+    let fold_variant_arg = {|x|fold_variant_arg_(x, fld)};
     let args = vec::map(v.args, fold_variant_arg);
 
-    let fold_attribute = bind fold_attribute_(_, fld);
+    let fold_attribute = {|x|fold_attribute_(x, fld)};
     let attrs = vec::map(v.attrs, fold_attribute);
 
     let de = alt v.disr_expr {

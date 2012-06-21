@@ -17,8 +17,9 @@ import attr::parser_attr;
 import common::parser_common;
 import ast::node_id;
 import util::interner;
-import lexer::{string_reader_as_reader, tt_reader_as_reader,
-               reader, string_reader, tt_reader};
+// FIXME: resolve badness
+import lexer::*;//{string_reader_as_reader, tt_reader_as_reader,
+               //reader, string_reader, tt_reader};
 import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 
 type parse_sess = @{

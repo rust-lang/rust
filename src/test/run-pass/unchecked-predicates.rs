@@ -18,7 +18,7 @@ fn pure_foldl<T: copy, U: copy>(ls: @list<T>, u: U, f: fn(T, U) -> U) -> U {
 // fn from a pure fn
 pure fn pure_length<T: copy>(ls: @list<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
-    unchecked{ pure_foldl(ls, 0u, count(_, _)) }
+    unchecked{ pure_foldl(ls, 0u, count) }
 }
 
 pure fn nonempty_list<T: copy>(ls: @list<T>) -> bool { pure_length(ls) > 0u }

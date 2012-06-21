@@ -81,55 +81,55 @@ fn main() {
                             @plus(@val(22u), @val(5u))),
                        "plus(@minus(@val(3u), @val(10u)), \
                         @plus(@val(22u), @val(5u)))",
-                       serialize_expr(_, _),
-                       deserialize_expr(_),
-                       serialize_expr(_, _));
+                       serialize_expr,
+                       deserialize_expr,
+                       serialize_expr);
 
     test_ser_and_deser({lo: 0u, hi: 5u, node: 22u},
                        "{lo: 0u, hi: 5u, node: 22u}",
-                       serialize_spanned_uint(_, _),
-                       deserialize_spanned_uint(_),
-                       serialize_spanned_uint(_, _));
+                       serialize_spanned_uint,
+                       deserialize_spanned_uint,
+                       serialize_spanned_uint);
 
     test_ser_and_deser(an_enum({v: [1u, 2u, 3u]}),
                        "an_enum({v: [1u, 2u, 3u]})",
-                       serialize_an_enum(_, _),
-                       deserialize_an_enum(_),
-                       serialize_an_enum(_, _));
+                       serialize_an_enum,
+                       deserialize_an_enum,
+                       serialize_an_enum);
 
     test_ser_and_deser({x: 3u, y: 5u},
                        "{x: 3u, y: 5u}",
-                       serialize_point(_, _),
-                       deserialize_point(_),
-                       serialize_point(_, _));
+                       serialize_point,
+                       deserialize_point,
+                       serialize_point);
 
     test_ser_and_deser([1u, 2u, 3u],
                        "[1u, 2u, 3u]",
-                       serialize_uint_vec(_, _),
-                       deserialize_uint_vec(_),
-                       serialize_uint_vec(_, _));
+                       serialize_uint_vec,
+                       deserialize_uint_vec,
+                       serialize_uint_vec);
 
     test_ser_and_deser(top(22u),
                        "top(22u)",
-                       serialize_uint_quark(_, _),
-                       deserialize_uint_quark(_),
-                       serialize_uint_quark(_, _));
+                       serialize_uint_quark,
+                       deserialize_uint_quark,
+                       serialize_uint_quark);
 
     test_ser_and_deser(bottom(222u),
                        "bottom(222u)",
-                       serialize_uint_quark(_, _),
-                       deserialize_uint_quark(_),
-                       serialize_uint_quark(_, _));
+                       serialize_uint_quark,
+                       deserialize_uint_quark,
+                       serialize_uint_quark);
 
     test_ser_and_deser(a,
                        "a",
-                       serialize_c_like(_, _),
-                       deserialize_c_like(_),
-                       serialize_c_like(_, _));
+                       serialize_c_like,
+                       deserialize_c_like,
+                       serialize_c_like);
 
     test_ser_and_deser(b,
                        "b",
-                       serialize_c_like(_, _),
-                       deserialize_c_like(_),
-                       serialize_c_like(_, _));
+                       serialize_c_like,
+                       deserialize_c_like,
+                       serialize_c_like);
 }

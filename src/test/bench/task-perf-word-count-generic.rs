@@ -129,7 +129,7 @@ mod map_reduce {
             send(c, emit_val(val));
         }
 
-        map(input, bind emit(intermediates, ctrl, _, _));
+        map(input, {|a,b|emit(intermediates, ctrl, a, b)});
 
         fn finish<K: copy send, V: copy send>(_k: K, v: chan<reduce_proto<V>>)
         {
@@ -148,8 +148,8 @@ mod map_reduce {
 
         send(out, chan(p));
 
-        let ref_count = 0;
-        let is_done = false;
+        let mut ref_count = 0;
+        let mut is_done = false;
 
         fn get<V: copy send>(p: port<reduce_proto<V>>,
                              &ref_count: int, &is_done: bool)
@@ -171,7 +171,7 @@ mod map_reduce {
             ret none;
         }
 
-        reduce(key, bind get(p, ref_count, is_done));
+        reduce(key, {||get(p, ref_count, is_done)});
     }
 
     fn map_reduce<K1: copy send, K2: copy send, V: copy send>(

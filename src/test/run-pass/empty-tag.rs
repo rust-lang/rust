@@ -5,6 +5,6 @@ fn wrapper3(i: chan) {
 }
 
 fn main() {
-    let wrapped = bind wrapper3(chan_t);
+    let wrapped = {||wrapper3(chan_t)};
     wrapped();
 }

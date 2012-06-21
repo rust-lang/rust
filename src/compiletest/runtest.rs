@@ -325,7 +325,7 @@ fn compose_and_run_compiler(
         let abs_ab = path::connect(config.aux_base, rel_ab);
         let aux_args =
             make_compile_args(config, props, ["--lib"] + extra_link_args,
-                              bind make_lib_name(_, _, testfile), abs_ab);
+                              {|a,b|make_lib_name(a, b, testfile)}, abs_ab);
         let auxres = compose_and_run(config, abs_ab, aux_args, [],
                                      config.compile_lib_path, option::none);
         if auxres.status != 0 {

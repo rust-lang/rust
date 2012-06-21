@@ -396,21 +396,66 @@ synonym.
 
 ## Literals
 
+### Numeric literals
+
 Integers can be written in decimal (`144`), hexadecimal (`0x90`), and
-binary (`0b10010000`) base. Without a suffix, an integer literal is
-considered to be of type `int`. Add a `u` (`144u`) to make it a `uint`
-instead. Literals of the fixed-size integer types can be created by
-the literal with the type name (`255u8`, `50i64`, etc).
+binary (`0b10010000`) base.
+
+If you write an integer literal without a suffix (`3`, `-500`, etc.),
+the Rust compiler will try to infer its type based on type annotations
+and function signatures in the surrounding program.  For example, here
+the type of `x` is inferred to be `u16` because it is passed to a
+function that takes a `u16` argument:
+
+~~~~~
+let x = 3;
+
+fn identity_u16(n: u16) -> u16 { n }
+
+identity_u16(x);
+~~~~
+
+On the other hand, if the program gives conflicting information about
+what the type of the unsuffixed literal should be, you'll get an error
+message.
+
+~~~~~{.xfail-test}
+let x = 3;
+let y: i32 = 3;
+
+fn identity_u8(n: u8) -> u8 { n }
+fn identity_u16(n: u16) -> u16 { n }
+
+identity_u8(x);  // after this, `x` is assumed to have type `u8`
+identity_u16(x); // raises a type error (expected `u16` but found `u8`)
+identity_u16(y); // raises a type error (expected `u16` but found `i32`)
+~~~~
+
+In the absence of any type annotations at all, Rust will assume that
+an unsuffixed integer literal has type `int`.
+
+~~~~
+let n = 50;
+log(error, n); // n is an int
+~~~~
+
+It's also possible to avoid any type ambiguity by writing integer
+literals with a suffix.  The suffixes `i` and `u` are for the types
+`int` and `uint`, respectively: the literal `-3i` has type `int`,
+while `127u` has type `uint`.  For the fixed-size integer types, just
+suffix the literal with the type name: `255u8`, `50i64`, etc.
 
 Note that, in Rust, no implicit conversion between integer types
-happens. If you are adding one to a variable of type `uint`, you must
-type `v += 1u`—saying `+= 1` will give you a type error.
+happens. If you are adding one to a variable of type `uint`, saying
+`+= 1u8` will give you a type error.
 
 Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`. Without
 a suffix, the literal is assumed to be of type `float`. Suffixes `f32`
 and `f64` can be used to create literals of a specific type. The
 suffix `f` can be used to write `float` literals without a dot or
 exponent: `3f`.
+
+### Other literals
 
 The nil literal is written just like the type: `()`. The keywords
 `true` and `false` produce the boolean literals.
@@ -902,19 +947,6 @@ argument to every element of a vector, producing a new vector.
 
 Even when a closure takes no parameters, you must still write the bars
 for the parameter list, as in `{|| ...}`.
-
-## Binding
-
-Partial application is done using the `bind` keyword in Rust.
-
-~~~~
-let findx = bind str::find_char(_, 'x');
-~~~~
-
-Binding a function produces a boxed closure (`fn@` type) in which some
-of the arguments to the bound function have already been provided.
-`findx` will be a function taking a single string argument, and
-returning the position where the letter `x` occurs.
 
 ## Iteration
 

@@ -1,9 +1,9 @@
 fn fix_help<A, B>(f: native fn(fn@(A) -> B, A) -> B, x: A) -> B {
-    ret f(fix_help(f, _), x);
+    ret f({|a|fix_help(f, a)}, x);
 }
 
 fn fix<A, B>(f: native fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
-    ret fix_help(f, _);
+    ret {|a|fix_help(f, a)};
 }
 
 fn fact_(f: fn@(&&int) -> int, &&n: int) -> int {

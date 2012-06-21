@@ -81,7 +81,7 @@ fn find_pre_post_exprs(fcx: fn_ctxt, args: [@expr], id: node_id) {
     fn get_pp(ccx: crate_ctxt, &&e: @expr) -> pre_and_post {
         ret expr_pp(ccx, e);
     }
-    let pps = vec::map(args, bind get_pp(fcx.ccx, _));
+    let pps = vec::map(args, {|a|get_pp(fcx.ccx, a)});
 
     set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
                      seq_postconds(fcx, vec::map(pps, get_post)));
@@ -414,7 +414,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         let e_pp =
             {precondition: empty_prestate(num_local_vars),
              postcondition: false_postcond(num_local_vars)};
-        let g = bind combine_pp(antec_pp, fcx, _, _);
+        let g = {|a,b|combine_pp(antec_pp, fcx, a, b)};
         let alts_overall_pp =
             vec::foldl(e_pp, alt_pps, g);
         set_pre_and_post(fcx.ccx, e.id, alts_overall_pp.precondition,
@@ -448,22 +448,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       }
       expr_if_check(p, conseq, maybe_alt) {
         join_then_else(fcx, p, conseq, maybe_alt, e.id, if_check);
-      }
-      expr_bind(operator, maybe_args) {
-        let mut args = [];
-        let mut cmodes = callee_modes(fcx, operator.id);
-        let mut modes = [];
-        let mut i = 0;
-        for maybe_args.each {|expr_opt|
-            alt expr_opt {
-              none {/* no-op */ }
-              some(expr) { modes += [cmodes[i]]; args += [expr]; }
-            }
-            i += 1;
-        }
-        args += [operator]; /* ??? order of eval? */
-        forget_args_moved_in(fcx, e, modes, args);
-        find_pre_post_exprs(fcx, args, e.id);
       }
       expr_break { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_cont { clear_pp(expr_pp(fcx.ccx, e)); }
@@ -572,7 +556,7 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     }
     for b.node.stmts.each {|s| do_one_(fcx, s); }
     fn do_inner_(fcx: fn_ctxt, &&e: @expr) { find_pre_post_expr(fcx, e); }
-    let do_inner = bind do_inner_(fcx, _);
+    let do_inner = {|a|do_inner_(fcx, a)};
     option::map::<@expr, ()>(b.node.expr, do_inner);
 
     let mut pps: [pre_and_post] = [];

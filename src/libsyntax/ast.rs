@@ -300,7 +300,6 @@ enum expr_ {
     expr_rec([field], option<@expr>),
     expr_call(@expr, [@expr], bool), // True iff last argument is a block
     expr_tup([@expr]),
-    expr_bind(@expr, [option<@expr>]),
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),
     expr_lit(@lit),

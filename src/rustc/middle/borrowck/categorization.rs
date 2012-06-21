@@ -170,7 +170,7 @@ impl public_methods for borrowck_ctxt {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          ast::expr_addr_of(*) | ast::expr_call(*) | ast::expr_bind(*) |
+          ast::expr_addr_of(*) | ast::expr_call(*) |
           ast::expr_swap(*) | ast::expr_move(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) | ast::expr_fn(*) | ast::expr_fn_block(*) |
           ast::expr_assert(*) | ast::expr_check(*) | ast::expr_ret(*) |

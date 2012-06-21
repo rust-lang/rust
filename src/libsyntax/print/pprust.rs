@@ -102,7 +102,7 @@ fn typarams_to_str(tps: [ast::ty_param]) -> str {
 }
 
 fn path_to_str(&&p: @ast::path) -> str {
-    ret to_str(p, bind print_path(_, _, false));
+    ret to_str(p, {|a,b|print_path(a, b, false)});
 }
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
@@ -840,7 +840,7 @@ fn print_mac(s: ps, m: ast::mac) {
           some(@{node: ast::expr_vec(_, _), _}) { }
           _ { word(s.s, " "); }
         }
-        option::iter(arg, bind print_expr(s, _));
+        option::iter(arg, {|a|print_expr(s, a)});
         // FIXME: extension 'body' (#2339)
       }
       ast::mac_embed_type(ty) {
@@ -937,24 +937,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             nbsp(s);
             print_expr(s, option::get(blk));
         }
-      }
-      ast::expr_bind(func, args) {
-        fn print_opt(s: ps, expr: option<@ast::expr>) {
-            alt expr {
-              some(expr) { print_expr(s, expr); }
-              _ { word(s.s, "_"); }
-            }
-        }
-
-        // "bind" keyword is only needed if there are no "_" arguments.
-        if !vec::any(args) {|arg| option::is_none(arg) } {
-            word_nbsp(s, "bind");
-        }
-
-        print_expr(s, func);
-        popen(s);
-        commasep(s, inconsistent, args, print_opt);
-        pclose(s);
       }
       ast::expr_binary(op, lhs, rhs) {
         let prec = operator_prec(op);
@@ -1780,7 +1762,7 @@ fn ast_ty_fn_constr_to_str(&&c: @ast::constr) -> str {
 }
 
 fn ast_fn_constr_to_str(decl: ast::fn_decl, &&c: @ast::constr) -> str {
-    let arg_to_str = bind fn_arg_idx_to_str(decl, _);
+    let arg_to_str = {|a|fn_arg_idx_to_str(decl, a)};
     ret path_to_str(c.node.path) +
             constr_args_to_str(arg_to_str, c.node.args);
 }

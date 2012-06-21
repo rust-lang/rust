@@ -34,25 +34,33 @@ fn field_exprs(fields: [ast::field]) -> [@ast::expr] {
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
-// of b
-fn block_expr_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
+// of b -- skipping any inner loops (loop, while, loop_body)
+fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     let rs = @mut false;
-    let visit_expr = {|flag: @mut bool, e: @ast::expr| *flag |= p(e.node)};
-    let v =
-        visit::mk_simple_visitor(@{visit_expr: bind visit_expr(rs, _)
-                                      with *visit::default_simple_visitor()});
-    visit::visit_block(b, (), v);
+    let visit_expr = {|e: @ast::expr, &&flag: @mut bool,
+                       v: visit::vt<@mut bool>|
+        *flag |= p(e.node);
+        alt e.node {
+          // Skip inner loops, since a break in the inner loop isn't a
+          // break inside the outer loop
+          ast::expr_loop(*) | ast::expr_while(*) | ast::expr_loop_body(*) {}
+          _ { visit::visit_expr(e, flag, v); }
+        }
+    };
+    let v = visit::mk_vt(@{visit_expr: visit_expr
+                           with *visit::default_visitor()});
+    visit::visit_block(b, rs, v);
     ret *rs;
 }
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {
-    block_expr_query(b) {|e| alt e {
+    loop_query(b) {|e| alt e {
       ast::expr_break | ast::expr_cont { true }
       _ { false }}}
 }
 
 fn may_break(b: ast::blk) -> bool {
-    block_expr_query(b) {|e| alt e {
+    loop_query(b) {|e| alt e {
       ast::expr_break { true }
       _ { false }}}
 }

@@ -44,9 +44,9 @@ fn generate_test_harness(sess: session::session,
           testfns: dvec()};
 
     let precursor =
-        @{fold_crate: fold::wrap(bind fold_crate(cx, _, _)),
-          fold_item: bind fold_item(cx, _, _),
-          fold_mod: bind fold_mod(cx, _, _) with *fold::default_ast_fold()};
+        @{fold_crate: fold::wrap({|a,b|fold_crate(cx, a, b)}),
+          fold_item: {|a,b|fold_item(cx, a, b)},
+          fold_mod: {|a,b|fold_mod(cx, a, b)} with *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);

@@ -174,7 +174,7 @@ mod ct {
             let curr: [flag] = [f];
             ret {flags: curr + rest, next: j};
         }
-        let more = bind more_(_, s, i, lim);
+        let more = {|x|more_(x, s, i, lim)};
         let f = s[i];
         ret if f == '-' as u8 {
                 more(flag_left_justify)

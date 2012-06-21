@@ -132,7 +132,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     -> {crate: @ast::crate, tcx: option<ty::ctxt>} {
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, "parsing",
-                         bind parse_input(sess, cfg, input));
+                         {||parse_input(sess, cfg, input)});
     if upto == cu_parse { ret {crate: crate, tcx: none}; }
 
     sess.building_library = session::building_library(
@@ -140,75 +140,87 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     crate =
         time(time_passes, "configuration",
-             bind front::config::strip_unconfigured_items(crate));
+             {|copy crate|front::config::strip_unconfigured_items(crate)});
     crate =
         time(time_passes, "maybe building test harness",
-             bind front::test::modify_for_testing(sess, crate));
+             {|copy crate|front::test::modify_for_testing(sess, crate)});
     crate =
         time(time_passes, "expansion",
-             bind syntax::ext::expand::expand_crate(
-                 sess.parse_sess, sess.opts.cfg, crate));
+             {|copy crate|syntax::ext::expand::expand_crate(
+                 sess.parse_sess, sess.opts.cfg, crate)});
 
     if upto == cu_expand { ret {crate: crate, tcx: none}; }
 
     crate =
-        time(time_passes, "intrinsic injection",
-             bind front::intrinsic_inject::inject_intrinsic(sess, crate));
+        time(time_passes, "intrinsic injection", {|copy crate|
+            front::intrinsic_inject::inject_intrinsic(sess, crate)
+        });
 
     crate =
-        time(time_passes, "core injection",
-             bind front::core_inject::maybe_inject_libcore_ref(sess, crate));
+        time(time_passes, "core injection", {|copy crate|
+            front::core_inject::maybe_inject_libcore_ref(sess, crate)
+        });
 
-    time(time_passes, "building warning settings table",
-         bind lint::build_settings_crate(sess, crate));
+    time(time_passes, "building warning settings table", {|copy crate|
+        lint::build_settings_crate(sess, crate)
+    });
 
     let ast_map =
-        time(time_passes, "ast indexing",
-             bind syntax::ast_map::map_crate(sess.diagnostic(), *crate));
-    time(time_passes, "external crate/lib resolution",
-         bind creader::read_crates(
-             sess.diagnostic(), *crate, sess.cstore,
-             sess.filesearch,
-             session::sess_os_to_meta_os(sess.targ_cfg.os),
-             sess.opts.static));
+        time(time_passes, "ast indexing", {|copy crate|
+            syntax::ast_map::map_crate(sess.diagnostic(), *crate)
+        });
+    time(time_passes, "external crate/lib resolution", {|copy crate|
+        creader::read_crates(
+            sess.diagnostic(), *crate, sess.cstore,
+            sess.filesearch,
+            session::sess_os_to_meta_os(sess.targ_cfg.os),
+            sess.opts.static)
+    });
     let {def_map, exp_map, impl_map} =
-        time(time_passes, "resolution",
-             bind resolve::resolve_crate(sess, ast_map, crate));
+        time(time_passes, "resolution", {|copy crate|
+            resolve::resolve_crate(sess, ast_map, crate)
+        });
     let freevars =
-        time(time_passes, "freevar finding",
-             bind freevars::annotate_freevars(def_map, crate));
+        time(time_passes, "freevar finding", {|copy crate|
+            freevars::annotate_freevars(def_map, crate)
+        });
     let region_map =
-        time(time_passes, "region resolution",
-             bind middle::region::resolve_crate(sess, def_map, crate));
+        time(time_passes, "region resolution", {|copy crate|
+            middle::region::resolve_crate(sess, def_map, crate)
+        });
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars, region_map);
     let (method_map, vtable_map) =
-        time(time_passes, "typechecking",
-             bind typeck::check_crate(ty_cx, impl_map, crate));
-    time(time_passes, "const checking",
-         bind middle::check_const::check_crate(sess, crate, ast_map, def_map,
-                                               method_map, ty_cx));
+        time(time_passes, "typechecking", {|copy crate|
+            typeck::check_crate(ty_cx, impl_map, crate)
+        });
+    time(time_passes, "const checking", {|copy crate|
+        middle::check_const::check_crate(
+            sess, crate, ast_map, def_map, method_map, ty_cx)
+    });
 
     if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx)}; }
 
     time(time_passes, "block-use checking",
-         bind middle::block_use::check_crate(ty_cx, crate));
+         {|copy crate|middle::block_use::check_crate(ty_cx, crate)});
     time(time_passes, "loop checking",
-         bind middle::check_loop::check_crate(ty_cx, crate));
+         {|copy crate|middle::check_loop::check_crate(ty_cx, crate)});
     time(time_passes, "alt checking",
-         bind middle::check_alt::check_crate(ty_cx, crate));
+         {|copy crate|middle::check_alt::check_crate(ty_cx, crate)});
     let last_use_map =
-        time(time_passes, "liveness checking",
-             bind middle::liveness::check_crate(ty_cx, method_map, crate));
+        time(time_passes, "liveness checking", {|copy crate|
+            middle::liveness::check_crate(ty_cx, method_map, crate)
+        });
     time(time_passes, "typestate checking",
-         bind middle::tstate::ck::check_crate(ty_cx, crate));
+         {|copy crate|middle::tstate::ck::check_crate(ty_cx, crate)});
     let (root_map, mutbl_map) = time(
         time_passes, "borrow checking",
-        bind middle::borrowck::check_crate(ty_cx, method_map,
-                                           last_use_map, crate));
-    time(time_passes, "kind checking",
-         bind kind::check_crate(ty_cx, method_map, last_use_map, crate));
+        {|copy crate|middle::borrowck::check_crate(ty_cx, method_map,
+                                         last_use_map, crate)});
+    time(time_passes, "kind checking", {|copy crate|
+        kind::check_crate(ty_cx, method_map, last_use_map, crate)
+    });
     time(time_passes, "lint checking",
-         bind lint::check_crate(ty_cx, crate));
+         {|copy crate|lint::check_crate(ty_cx, crate)});
 
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
@@ -220,11 +232,11 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let (llmod, link_meta) =
         time(time_passes, "translation",
-             bind trans::base::trans_crate(
+             {|copy crate|trans::base::trans_crate(
                  sess, crate, ty_cx, outputs.obj_filename,
-                 exp_map, maps));
+                 exp_map, maps)});
     time(time_passes, "LLVM passes",
-         bind link::write::run_passes(sess, llmod, outputs.obj_filename));
+         {||link::write::run_passes(sess, llmod, outputs.obj_filename)});
 
     let stop_after_codegen =
         sess.opts.output_type != link::output_type_exe ||
@@ -233,8 +245,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     if stop_after_codegen { ret {crate: crate, tcx: some(ty_cx)}; }
 
     time(time_passes, "linking",
-         bind link::link_binary(sess, outputs.obj_filename,
-                                outputs.out_filename, link_meta));
+         {||link::link_binary(sess, outputs.obj_filename,
+                              outputs.out_filename, link_meta)});
     ret {crate: crate, tcx: some(ty_cx)};
 }
 
@@ -303,7 +315,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     alt ppm {
       ppm_typed {
         ann = {pre: ann_paren_for_expr,
-               post: bind ann_typed_post(option::get(tcx), _)};
+               post: {|a|ann_typed_post(option::get(tcx), a)}};
       }
       ppm_identified | ppm_expanded_identified {
         ann = {pre: ann_paren_for_expr, post: ann_identified_post};

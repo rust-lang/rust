@@ -331,7 +331,7 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
                 alt cond.node {
                     ast::expr_lit(@{node: ast::lit_bool(true),_}) {
                             cx.sess.span_lint(
-                                while_true, it.id, e.id,
+                                while_true, e.id, it.id,
                                 e.span,
                                 "denote infinite loops with loop { ... }");
                     }
@@ -357,14 +357,14 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
                 alt cx.def_map.get(id) {
                   ast::def_prim_ty(ast::ty_int(ast::ty_i)) {
                     cx.sess.span_lint(
-                        ctypes, fn_id, id,
+                        ctypes, id, fn_id,
                         ty.span,
                         "found rust type `int` in native module, while \
                          libc::c_int or libc::c_long should be used");
                   }
                   ast::def_prim_ty(ast::ty_uint(ast::ty_u)) {
                     cx.sess.span_lint(
-                        ctypes, fn_id, id,
+                        ctypes, id, fn_id,
                         ty.span,
                         "found rust type `uint` in native module, while \
                          libc::c_uint or libc::c_ulong should be used");
@@ -400,7 +400,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
                                node: ast::expr_path(@path),
                                span: _}, _) {
                 cx.sess.span_lint(
-                    path_statement, it.id, id,
+                    path_statement, id, it.id,
                     s.span,
                     "path statement with no effect");
               }
@@ -423,7 +423,7 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
               ast::expr_lit(@{node: ast::lit_str(_), span:_})
               if ! uses_vstore.contains_key(e.id) {
                 cx.sess.span_lint(
-                    old_vecs, it.id, e.id,
+                    old_vecs, e.id, it.id,
                     e.span, "deprecated vec/str expr");
               }
               ast::expr_vstore(@inner, _) {
@@ -438,7 +438,7 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
               ast::ty_vec(_)
               if ! uses_vstore.contains_key(t.id) {
                 cx.sess.span_lint(
-                    old_vecs, it.id, t.id,
+                    old_vecs, t.id, it.id,
                     t.span, "deprecated vec type");
               }
 
@@ -446,7 +446,7 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
                              rp: none, types: _}, _)
               if ids == [@"str"] && (! uses_vstore.contains_key(t.id)) {
                 cx.sess.span_lint(
-                    old_vecs, it.id, t.id,
+                    old_vecs, t.id, it.id,
                     t.span, "deprecated str type");
               }
 

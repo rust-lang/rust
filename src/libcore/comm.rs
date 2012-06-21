@@ -177,11 +177,11 @@ fn peek<T: send>(p: port<T>) -> bool { peek_(***p) }
 
 #[doc(hidden)]
 fn recv_chan<T: send>(ch: comm::chan<T>) -> T {
-    as_raw_port(ch, recv_(_))
+    as_raw_port(ch, {|x|recv_(x)})
 }
 
 fn peek_chan<T: send>(ch: comm::chan<T>) -> bool {
-    as_raw_port(ch, peek_(_))
+    as_raw_port(ch, {|x|peek_(x)})
 }
 
 #[doc = "Receive on a raw port pointer"]

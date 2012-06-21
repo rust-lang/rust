@@ -305,21 +305,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                      operands,
                                      controlflow_expr(fcx.ccx, operator));
       }
-      expr_bind(operator, maybe_args) {
-        let mut args = [];
-        let callee_ops = callee_arg_init_ops(fcx, operator.id);
-        let mut ops = [];
-        let mut i = 0;
-        for maybe_args.each {|a_opt|
-            alt a_opt {
-              none {/* no-op */ }
-              some(a) { ops += [callee_ops[i]]; args += [a]; }
-            }
-            i += 1;
-        }
-        ret find_pre_post_state_call(fcx, pres, operator, e.id, ops, args,
-                                     return_val);
-      }
       expr_path(_) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_log(_, lvl, ex) {
         ret find_pre_post_state_two(fcx, pres, lvl, ex, e.id, oper_pure);

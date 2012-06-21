@@ -77,7 +77,7 @@ fn solve_grid(g: grid_t) {
             if color != 0u8 { bitv::set(colors, color as uint, false); }
         }
 
-        let it = bind drop_color(g, avail, _, _);
+        let it = {|a,b|drop_color(g, avail, a, b)};
 
         for u8::range(0u8, 9u8) { |idx|
             it(idx, col); /* check same column fields */

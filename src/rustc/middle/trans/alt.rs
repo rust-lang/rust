@@ -663,7 +663,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
             *done = some(fail_cx.llbb);
             ret fail_cx.llbb;
         }
-        some(bind mk_fail(scope_cx, expr.span, fail_cx))
+        some({||mk_fail(scope_cx, expr.span, fail_cx)})
       }
       ast::alt_exhaustive { none }
     };
