@@ -356,9 +356,9 @@ fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
     let ccx = bcx.ccx();
 
     let (mk_fn, upcall) = alt heap {
-      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc_dyn) }
+      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc) }
       heap_exchange {
-        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc_dyn )
+        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc )
       }
     };
 

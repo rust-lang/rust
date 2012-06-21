@@ -143,47 +143,7 @@ upcall_trace(char const *msg,
  * Allocate an object in the exchange heap
  */
 
-extern "C" CDECL uintptr_t
-exchange_malloc(rust_task *task, type_desc *td, uintptr_t size) {
-
-    LOG(task, mem, "upcall exchange malloc(0x%" PRIxPTR ")", td);
-
-    size_t total_size = get_box_size(size, td->align);
-    void *p = task->kernel->calloc(total_size, "exchange malloc");
-
-    rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
-    header->ref_count = -1; // This is not ref counted
-    header->td = td;
-    header->prev = 0;
-    header->next = 0;
-
-    return (uintptr_t)header;
-}
-
-// FIXME: remove after snapshot (6/13/12)
 struct s_exchange_malloc_args {
-    rust_task *task;
-    uintptr_t retval;
-    type_desc *td;
-};
-
-extern "C" CDECL void
-upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
-    rust_task *task = args->task;
-    LOG_UPCALL_ENTRY(task);
-
-    args->retval = exchange_malloc(task, args->td, args->td->size);
-}
-
-extern "C" CDECL uintptr_t
-upcall_exchange_malloc(type_desc *td) {
-    rust_task *task = rust_get_current_task();
-    s_exchange_malloc_args args = {task, 0, td};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_malloc);
-    return args.retval;
-}
-
-struct s_exchange_malloc_dyn_args {
     rust_task *task;
     uintptr_t retval;
     type_desc *td;
@@ -191,18 +151,38 @@ struct s_exchange_malloc_dyn_args {
 };
 
 extern "C" CDECL void
-upcall_s_exchange_malloc_dyn(s_exchange_malloc_dyn_args *args) {
+upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
     rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
+    LOG(task, mem, "upcall exchange malloc(0x%" PRIxPTR ")", args->td);
 
-    args->retval = exchange_malloc(task, args->td, args->size);
+    size_t total_size = get_box_size(args->size, args->td->align);
+    // FIXME--does this have to be calloc? (Issue #2682)
+    void *p = task->kernel->calloc(total_size, "exchange malloc");
+
+    rust_opaque_box *header = static_cast<rust_opaque_box*>(p);
+    header->ref_count = -1; // This is not ref counted
+    header->td = args->td;
+    header->prev = 0;
+    header->next = 0;
+
+    args->retval = (uintptr_t)header;
 }
 
 extern "C" CDECL uintptr_t
+upcall_exchange_malloc(type_desc *td, uintptr_t size) {
+    rust_task *task = rust_get_current_task();
+    s_exchange_malloc_args args = {task, 0, td, size};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_malloc);
+    return args.retval;
+}
+
+// FIXME: remove after snapshot (6/21/12)
+extern "C" CDECL uintptr_t
 upcall_exchange_malloc_dyn(type_desc *td, uintptr_t size) {
     rust_task *task = rust_get_current_task();
-    s_exchange_malloc_dyn_args args = {task, 0, td, size};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_malloc_dyn);
+    s_exchange_malloc_args args = {task, 0, td, size};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_malloc);
     return args.retval;
 }
 
@@ -229,50 +209,7 @@ upcall_exchange_free(void *ptr) {
  * Allocate an object in the task-local heap.
  */
 
-extern "C" CDECL uintptr_t
-shared_malloc(rust_task *task, type_desc *td, uintptr_t size) {
-    LOG(task, mem, "upcall malloc(0x%" PRIxPTR ")", td);
-
-    cc::maybe_cc(task);
-
-    // FIXME--does this have to be calloc?
-    rust_opaque_box *box = task->boxed.calloc(td, size);
-    void *body = box_body(box);
-
-    debug::maybe_track_origin(task, box);
-
-    LOG(task, mem,
-        "upcall malloc(0x%" PRIxPTR ") = box 0x%" PRIxPTR
-        " with body 0x%" PRIxPTR,
-        td, (uintptr_t)box, (uintptr_t)body);
-
-    return (uintptr_t)box;
-}
-
-// FIXME: remove after snapshot (6/13/12)
 struct s_malloc_args {
-    rust_task *task;
-    uintptr_t retval;
-    type_desc *td;
-};
-
-extern "C" CDECL void
-upcall_s_malloc(s_malloc_args *args) {
-    rust_task *task = args->task;
-    LOG_UPCALL_ENTRY(task);
-
-    args->retval = shared_malloc(task, args->td, args->td->size);
-}
-
-extern "C" CDECL uintptr_t
-upcall_malloc(type_desc *td) {
-    rust_task *task = rust_get_current_task();
-    s_malloc_args args = {task, 0, td};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc);
-    return args.retval;
-}
-
-struct s_malloc_dyn_args {
     rust_task *task;
     uintptr_t retval;
     type_desc *td;
@@ -280,18 +217,41 @@ struct s_malloc_dyn_args {
 };
 
 extern "C" CDECL void
-upcall_s_malloc_dyn(s_malloc_dyn_args *args) {
+upcall_s_malloc(s_malloc_args *args) {
     rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
+    LOG(task, mem, "upcall malloc(0x%" PRIxPTR ")", args->td);
 
-    args->retval = shared_malloc(task, args->td, args->size);
+    cc::maybe_cc(task);
+
+    // FIXME--does this have to be calloc? (Issue #2682)
+    rust_opaque_box *box = task->boxed.calloc(args->td, args->size);
+    void *body = box_body(box);
+
+    debug::maybe_track_origin(task, box);
+
+    LOG(task, mem,
+        "upcall malloc(0x%" PRIxPTR ") = box 0x%" PRIxPTR
+        " with body 0x%" PRIxPTR,
+        args->td, (uintptr_t)box, (uintptr_t)body);
+
+    args->retval = (uintptr_t)box;
 }
 
 extern "C" CDECL uintptr_t
+upcall_malloc(type_desc *td, uintptr_t size) {
+    rust_task *task = rust_get_current_task();
+    s_malloc_args args = {task, 0, td, size};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc);
+    return args.retval;
+}
+
+// FIXME: remove after snapshot (6/21/12)
+extern "C" CDECL uintptr_t
 upcall_malloc_dyn(type_desc *td, uintptr_t size) {
     rust_task *task = rust_get_current_task();
-    s_malloc_dyn_args args = {task, 0, td, size};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc_dyn);
+    s_malloc_args args = {task, 0, td, size};
+    UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc);
     return args.retval;
 }
 
