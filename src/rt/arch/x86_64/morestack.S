@@ -51,7 +51,7 @@ MORESTACK:
 
         subq $184, %rsp
 
-	// FIXME: libgcc also saves rax. not sure if we need to
+	// FIXME: libgcc also saves rax. not sure if we need to (#2685)
 
 	// Save argument registers of the original function
 	movq %rdi,       (%rsp)
@@ -133,11 +133,6 @@ MORESTACK:
 
 	popq %rax // Restore the return value
 	popq %rbp
-	// FIXME: I don't think these rules are necessary
-	// since the unwinder should never encounter an instruction
-	// pointer pointing here.
-	.cfi_restore %rbp
-	.cfi_def_cfa %rsp, 16
 	ret
 	
 	.cfi_endproc
