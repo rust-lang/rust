@@ -106,8 +106,6 @@ class port_ptr<T:send> {
         rustrt::rust_port_begin_detach(self.po, yieldp);
         if yield != 0u {
             // Need to wait for the port to be detached
-            // FIXME: If this fails then we're going to leave our port
-            // in a bogus state. (Issue #1988)
             task::yield();
         }
         rustrt::rust_port_end_detach(self.po);
