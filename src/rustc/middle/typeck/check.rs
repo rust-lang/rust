@@ -2236,6 +2236,14 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       }
       "needs_drop" { (1u, ~[], ty::mk_bool(tcx)) }
 
+      "atomic_xchng" | "atomic_add" | "atomic_sub" |
+      "atomic_xchng_acq" | "atomic_add_acq" | "atomic_sub_acq" |
+      "atomic_xchng_rel" | "atomic_add_rel" | "atomic_sub_rel" {
+        (0u, ~[arg(ast::by_mutbl_ref, ty::mk_int(tcx)),
+               arg(ast::by_val, ty::mk_int(tcx))],
+         ty::mk_int(tcx))
+      }
+
       "visit_ty" {
         assert ccx.tcx.intrinsic_ifaces.contains_key(@"ty_visitor");
         let (_, visitor_iface) = ccx.tcx.intrinsic_ifaces.get(@"ty_visitor");

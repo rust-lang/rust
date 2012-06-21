@@ -7,7 +7,9 @@ import libc::c_uint;
 import syntax::{attr, ast_map};
 import lib::llvm::{ llvm, TypeRef, ValueRef,
                     ModuleRef, CallConv, Attribute,
-                    StructRetAttribute, ByValAttribute
+                    StructRetAttribute, ByValAttribute,
+                   SequentiallyConsistent, Acquire, Release,
+                   Xchg, Add, Sub
                   };
 import syntax::{ast, ast_util};
 import back::{link, abi};
@@ -806,6 +808,69 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                some(substs), some(item.span));
     let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     alt check *item.ident {
+      "atomic_xchng" {
+        let old = AtomicRMW(bcx, Xchg,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  SequentiallyConsistent);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_xchng_acq" {
+        let old = AtomicRMW(bcx, Xchg,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  Acquire);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_xchng_rel" {
+        let old = AtomicRMW(bcx, Xchg,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  Release);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_add" {
+        let old = AtomicRMW(bcx, Add,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  SequentiallyConsistent);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_add_acq" {
+        let old = AtomicRMW(bcx, Add,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  Acquire);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_add_rel" {
+        let old = AtomicRMW(bcx, Add,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  Release);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_sub" {
+        let old = AtomicRMW(bcx, Sub,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  SequentiallyConsistent);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_sub_acq" {
+        let old = AtomicRMW(bcx, Sub,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  Acquire);
+        Store(bcx, old, fcx.llretptr);
+      }
+      "atomic_sub_rel" {
+        let old = AtomicRMW(bcx, Sub,
+                  get_param(decl, first_real_arg),
+                  get_param(decl, first_real_arg + 1u),
+                  Release);
+        Store(bcx, old, fcx.llretptr);
+      }
       "size_of" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);

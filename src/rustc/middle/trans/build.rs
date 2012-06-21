@@ -5,7 +5,7 @@ import syntax::codemap;
 import codemap::span;
 import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
-        CallConv, TypeKind};
+        CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
 import common::*;
 import driver::session::session;
 
@@ -805,6 +805,13 @@ fn Resume(cx: block, Exn: ValueRef) -> ValueRef {
     cx.terminated = true;
     count_insn(cx, "resume");
     ret llvm::LLVMBuildResume(B(cx), Exn);
+}
+
+// Atomic Operations
+fn AtomicRMW(cx: block, op: AtomicBinOp,
+             dst: ValueRef, src: ValueRef,
+             order: AtomicOrdering) -> ValueRef {
+    llvm::LLVMBuildAtomicRMW(B(cx), op, dst, src, order)
 }
 
 //

@@ -128,6 +128,31 @@ enum TypeKind {
     X86_MMX   = 15
 }
 
+enum AtomicBinOp {
+    Xchg = 0,
+    Add  = 1,
+    Sub  = 2,
+    And  = 3,
+    Nand = 4,
+    Or   = 5,
+    Xor  = 6,
+    Max  = 7,
+    Min  = 8,
+    UMax = 9,
+    UMin = 10,
+}
+
+enum AtomicOrdering {
+    NotAtomic = 0,
+    Unordered = 1,
+    Monotonic = 2,
+    // Consume = 3,  // Not specified yet.
+    Acquire = 4,
+    Release = 5,
+    AcquireRelease = 6,
+    SequentiallyConsistent = 7
+}
+
 // FIXME: Not used right now, but will be once #2334 is fixed
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
 enum FileType {
@@ -771,6 +796,11 @@ native mod llvm {
        ValueRef;
     fn LLVMBuildPtrDiff(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
                         Name: *c_char) -> ValueRef;
+
+    /* Atomic Operations */
+    fn LLVMBuildAtomicRMW(B: BuilderRef, ++Op: AtomicBinOp,
+                          LHS: ValueRef, RHS: ValueRef,
+                          ++Order: AtomicOrdering) -> ValueRef;
 
     /* Selected entries from the downcasts. */
     fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;

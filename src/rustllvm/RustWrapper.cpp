@@ -172,3 +172,13 @@ extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
 extern "C" LLVMTypeRef LLVMMetadataType(void) {
   return LLVMMetadataTypeInContext(LLVMGetGlobalContext());
 }
+
+extern "C" LLVMValueRef LLVMBuildAtomicRMW(LLVMBuilderRef B,
+                                           AtomicRMWInst::BinOp op,
+                                           LLVMValueRef target,
+                                           LLVMValueRef source,
+                                           AtomicOrdering order) {
+    return wrap(unwrap(B)->CreateAtomicRMW(op,
+                                           unwrap(target), unwrap(source),
+                                           order));
+}
