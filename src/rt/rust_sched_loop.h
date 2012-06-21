@@ -87,11 +87,7 @@ public:
     memory_region local_region;
 
     randctx rctx;
-
-    // FIXME: Neither of these are used
-    int32_t list_index;
-    const char *const name;
-
+    const char *const name; // Used for debugging
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_sched_loop(rust_scheduler *sched, int id);
