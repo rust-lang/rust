@@ -32,7 +32,7 @@ fn target_env(_lib_path: str, _prog: str) -> [(str,str)] {
 }
 
 
-// FIXME: This code is duplicated in core::run::program_output
+// FIXME: This code is duplicated in core::run::program_output (#2659)
 fn run(lib_path: str,
        prog: str,
        args: [str],
