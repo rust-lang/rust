@@ -43,8 +43,6 @@ const uint8_t SHAPE_I64 = 7u;
 const uint8_t SHAPE_F32 = 8u;
 const uint8_t SHAPE_F64 = 9u;
 const uint8_t SHAPE_BOX = 10u;
-// FIXME: remove after snapshot (6/18/12)
-const uint8_t SHAPE_VEC = 11u;
 const uint8_t SHAPE_TAG = 12u;
 const uint8_t SHAPE_STRUCT = 17u;
 const uint8_t SHAPE_BOX_FN = 18u;
@@ -304,7 +302,6 @@ ctxt<T>::walk() {
     case SHAPE_I64:      WALK_NUMBER(int64_t);       break;
     case SHAPE_F32:      WALK_NUMBER(float);         break;
     case SHAPE_F64:      WALK_NUMBER(double);        break;
-    case SHAPE_VEC:      walk_vec0();             break;
     case SHAPE_TAG:      walk_tag0();             break;
     case SHAPE_BOX:      walk_box0();             break;
     case SHAPE_STRUCT:   walk_struct0();          break;
