@@ -561,14 +561,18 @@ native mod rustrt {
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
 
     fn rust_uv_getaddrinfo(loop_ptr: *libc::c_void,
-                           handle: *uv_getaddrinfo_t, cb: *u8,
+                           handle: *uv_getaddrinfo_t,
+                           cb: *u8,
                            node_name_ptr: *u8,
                            service_name_ptr: *u8,
                            // should probably only pass ptr::null()
-                           hints: *addrinfo)
-        -> libc::c_int;
+                           hints: *addrinfo) -> libc::c_int;
 
     // data accessors/helpers for rust-mapped uv structs
+    fn rust_uv_is_ipv4_addrinfo(input: *addrinfo) -> bool;
+    fn rust_uv_get_next_addrinfo(input: *addrinfo) -> *addrinfo;
+    fn rust_uv_addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in;
+    fn rust_uv_addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6;
     fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
     fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
     fn rust_uv_get_stream_handle_from_connect_req(
@@ -793,6 +797,19 @@ unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
 unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
     ret rustrt::rust_uv_timer_stop(timer_ptr);
 }
+unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
+                           handle: *uv_getaddrinfo_t,
+                           cb: *u8,
+                           node_name_ptr: *u8,
+                           service_name_ptr: *u8,
+                           hints: *addrinfo) -> libc::c_int {
+    rustrt::rust_uv_getaddrinfo(loop_ptr,
+                           handle,
+                           cb,
+                           node_name_ptr,
+                           service_name_ptr,
+                           hints)
+}
 
 // libuv struct initializers
 unsafe fn tcp_t() -> uv_tcp_t {
@@ -887,6 +904,19 @@ type uv_err_data = {
     err_name: str,
     err_msg: str
 };
+
+unsafe fn is_ipv4_addrinfo(input: *addrinfo) -> bool {
+    rustrt::rust_uv_is_ipv4_addrinfo(input)
+}
+unsafe fn get_next_addrinfo(input: *addrinfo) -> *addrinfo {
+    rustrt::rust_uv_get_next_addrinfo(input)
+}
+unsafe fn addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in {
+    rustrt::rust_uv_addrinfo_as_sockaddr_in(input)
+}
+unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
+    rustrt::rust_uv_addrinfo_as_sockaddr_in6(input)
+}
 
 #[cfg(test)]
 mod test {
