@@ -66,8 +66,8 @@ type decode_ctxt = @{
 
 type extended_decode_ctxt = @{
     dcx: decode_ctxt,
-    from_id_range: id_range,
-    to_id_range: id_range
+    from_id_range: ast_util::id_range,
+    to_id_range: ast_util::id_range
 };
 
 iface tr {
@@ -86,9 +86,9 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
            ast_map::path_to_str(path), *ii.ident(),
            ebml_w.writer.tell()];
 
-    let id_range = compute_id_range(ii);
+    let id_range = ast_util::compute_id_range_for_inlined_item(ii);
     ebml_w.wr_tag(c::tag_ast as uint) {||
-        encode_id_range(ebml_w, id_range);
+        ast_util::serialize_id_range(ebml_w, id_range);
         encode_ast(ebml_w, simplify_ast(ii));
         encode_side_tables_for_ii(ecx, maps, ebml_w, ii);
     }
@@ -108,7 +108,8 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
       none { none }
       some(ast_doc) {
         #debug["> Decoding inlined fn: %s::?", ast_map::path_to_str(path)];
-        let from_id_range = decode_id_range(ast_doc);
+        let ast_dsr = ebml::ebml_deserializer(ast_doc);
+        let from_id_range = ast_util::deserialize_id_range(ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
         let xcx = @{dcx: dcx,
                     from_id_range: from_id_range,
@@ -136,178 +137,10 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-type id_range = {min: ast::node_id, max: ast::node_id};
-
-fn empty(range: id_range) -> bool {
-    range.min >= range.max
-}
-
-fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
-    let visitor = visit::mk_simple_visitor(@{
-        visit_mod: fn@(_m: ast::_mod, _sp: span, id: ast::node_id) {
-            vfn(id)
-        },
-
-        visit_view_item: fn@(vi: @ast::view_item) {
-            alt vi.node {
-              ast::view_item_use(_, _, id) { vfn(id) }
-              ast::view_item_import(vps) | ast::view_item_export(vps) {
-                vec::iter(vps) {|vp|
-                    alt vp.node {
-                      ast::view_path_simple(_, _, id) { vfn(id) }
-                      ast::view_path_glob(_, id) { vfn(id) }
-                      ast::view_path_list(_, _, id) { vfn(id) }
-                    }
-                }
-              }
-            }
-        },
-
-        visit_native_item: fn@(ni: @ast::native_item) {
-            vfn(ni.id)
-        },
-
-        visit_item: fn@(i: @ast::item) {
-            vfn(i.id);
-            alt i.node {
-              ast::item_res(_, _, _, d_id, c_id, _) { vfn(d_id); vfn(c_id); }
-              ast::item_enum(vs, _, _) { for vs.each {|v| vfn(v.node.id); } }
-              _ {}
-            }
-        },
-
-        visit_local: fn@(l: @ast::local) {
-            vfn(l.node.id);
-        },
-
-        visit_block: fn@(b: ast::blk) {
-            vfn(b.node.id);
-        },
-
-        visit_stmt: fn@(s: @ast::stmt) {
-            vfn(ast_util::stmt_id(*s));
-        },
-
-        visit_arm: fn@(_a: ast::arm) { },
-
-        visit_pat: fn@(p: @ast::pat) {
-            vfn(p.id)
-        },
-
-        visit_decl: fn@(_d: @ast::decl) {
-        },
-
-        visit_expr: fn@(e: @ast::expr) {
-            vfn(e.id);
-            alt e.node {
-              ast::expr_unary(*) | ast::expr_binary(*) | ast::expr_index(*) {
-                vfn(ast_util::op_expr_callee_id(e));
-              }
-              _ { /* fallthrough */ }
-            }
-        },
-
-        visit_ty: fn@(t: @ast::ty) {
-            alt t.node {
-              ast::ty_path(_, id) {
-                vfn(id)
-              }
-              _ { /* fall through */ }
-            }
-        },
-
-        visit_ty_params: fn@(ps: [ast::ty_param]) {
-            vec::iter(ps) {|p| vfn(p.id) }
-        },
-
-        visit_constr: fn@(_p: @ast::path, _sp: span, id: ast::node_id) {
-            vfn(id);
-        },
-
-        visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,
-                      _b: ast::blk, _sp: span, id: ast::node_id) {
-            vfn(id);
-
-            alt fk {
-              visit::fk_ctor(nm, tps, self_id, parent_id) {
-                vec::iter(tps) {|tp| vfn(tp.id)}
-                vfn(id);
-                vfn(self_id);
-                vfn(parent_id.node);
-              }
-              visit::fk_dtor(tps, self_id, parent_id) {
-                vec::iter(tps) {|tp| vfn(tp.id)}
-                vfn(id);
-                vfn(self_id);
-                vfn(parent_id.node);
-              }
-              visit::fk_item_fn(_, tps) |
-              visit::fk_res(_, tps, _) {
-                vec::iter(tps) {|tp| vfn(tp.id)}
-              }
-              visit::fk_method(_, tps, m) {
-                vfn(m.self_id);
-                vec::iter(tps) {|tp| vfn(tp.id)}
-              }
-              visit::fk_anon(_, capture_clause)
-              | visit::fk_fn_block(capture_clause) {
-                for vec::each(*capture_clause) {|clause|
-                    vfn(clause.id);
-                }
-              }
-            }
-
-            vec::iter(d.inputs) {|arg|
-                vfn(arg.id)
-            }
-        },
-
-        visit_class_item: fn@(c: @ast::class_member) {
-            alt c.node {
-              ast::instance_var(_, _, _, id,_) {
-                vfn(id)
-              }
-              ast::class_method(_) {
-              }
-            }
-        }
-    });
-
-    item.accept((), visitor)
-}
-
-fn compute_id_range(item: ast::inlined_item) -> id_range {
-    let min = @mut int::max_value;
-    let max = @mut int::min_value;
-    visit_ids(item) {|id|
-        *min = int::min(*min, id);
-        *max = int::max(*max, id + 1);
-    }
-    ret {min:*min, max:*max};
-}
-
-fn encode_id_range(ebml_w: ebml::writer, id_range: id_range) {
-    ebml_w.wr_tag(c::tag_id_range as uint) {||
-        ebml_w.emit_tup(2u) {||
-            ebml_w.emit_tup_elt(0u) {|| ebml_w.emit_int(id_range.min) }
-            ebml_w.emit_tup_elt(1u) {|| ebml_w.emit_int(id_range.max) }
-        }
-    }
-}
-
-fn decode_id_range(par_doc: ebml::doc) -> id_range {
-    let range_doc = par_doc[c::tag_id_range];
-    let dsr = ebml::ebml_deserializer(range_doc);
-    dsr.read_tup(2u) {||
-        {min: dsr.read_tup_elt(0u) {|| dsr.read_int() },
-         max: dsr.read_tup_elt(1u) {|| dsr.read_int() }}
-    }
-}
-
 fn reserve_id_range(sess: session,
-                    from_id_range: id_range) -> id_range {
+                    from_id_range: ast_util::id_range) -> ast_util::id_range {
     // Handle the case of an empty range:
-    if empty(from_id_range) { ret from_id_range; }
+    if ast_util::empty(from_id_range) { ret from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.parse_sess.next_id;
     let to_id_max = sess.parse_sess.next_id + cnt;
@@ -318,7 +151,7 @@ fn reserve_id_range(sess: session,
 impl translation_routines for extended_decode_ctxt {
     fn tr_id(id: ast::node_id) -> ast::node_id {
         // from_id_range should be non-empty
-        assert !empty(self.from_id_range);
+        assert !ast_util::empty(self.from_id_range);
         (id - self.from_id_range.min + self.to_id_range.min)
     }
     fn tr_def_id(did: ast::def_id) -> ast::def_id {
@@ -749,12 +582,14 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
                              ebml_w: ebml::writer,
                              ii: ast::inlined_item) {
     ebml_w.wr_tag(c::tag_table as uint) {||
-        visit_ids(ii, fn@(id: ast::node_id, copy ebml_w) {
-            // Note: this will cause a copy of ebml_w, which is bad as
-            // it has mut fields.  But I believe it's harmless since
-            // we generate balanced EBML.
-            encode_side_tables_for_id(ecx, maps, ebml_w, id)
-        });
+        ast_util::visit_ids_for_inlined_item(
+            ii,
+            fn@(id: ast::node_id, copy ebml_w) {
+                // Note: this will cause a copy of ebml_w, which is bad as
+                // it has mut fields.  But I believe it's harmless since
+                // we generate balanced EBML.
+                encode_side_tables_for_id(ecx, maps, ebml_w, id)
+            });
     }
 }
 

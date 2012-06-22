@@ -18,10 +18,11 @@
    threads at any time. This may keep the task from being destroyed even after
    the task is dead from a Rust task lifecycle perspective.
 
-   FIXME: The task and the scheduler have an over-complicated, undocumented
-   protocol for shutting down the task, hopefully without races. It would be
-   easier to reason about if other runtime objects could not access the task
-   from arbitrary threads, and didn't need to be atomically refcounted.
+   FIXME (#2696): The task and the scheduler have an over-complicated,
+   undocumented protocol for shutting down the task, hopefully without
+   races. It would be easier to reason about if other runtime objects could
+   not access the task from arbitrary threads, and didn't need to be
+   atomically refcounted.
  */
 
 #ifndef RUST_TASK_H
@@ -42,8 +43,9 @@
 
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
-// FIXME: We want this to be 128 but need to slim the red zone calls down,
-// disable lazy symbol relocation, and other things we haven't discovered yet
+// FIXME (#1509): We want this to be 128 but need to slim the red zone calls
+// down, disable lazy symbol relocation, and other things we haven't
+// discovered yet
 #define RZ_LINUX_32 (1024*2)
 #define RZ_LINUX_64 (1024*2)
 #define RZ_MAC_32   (1024*20)
@@ -303,7 +305,7 @@ public:
     void allow_kill();
 };
 
-// FIXME: It would be really nice to be able to get rid of this.
+// FIXME (#2697): It would be really nice to be able to get rid of this.
 inline void *operator new[](size_t size, rust_task *task, const char *tag) {
     return task->malloc(size, tag);
 }
@@ -360,9 +362,9 @@ sanitize_next_sp(uintptr_t next_sp) {
     // to the amount of stack needed for calling __morestack I've added some
     // extra bytes here.
 
-    // FIXME: On the rust stack this potentially puts is quite far into the
-    // red zone. Might want to just allocate a new rust stack every time we
-    // switch back to rust.
+    // FIXME (#2698): On the rust stack this potentially puts is quite far
+    // into the red zone. Might want to just allocate a new rust stack every
+    // time we switch back to rust.
     const uintptr_t padding = 16;
 
     return align_down(next_sp - padding);
@@ -416,7 +418,7 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
 
     uintptr_t sp = sanitize_next_sp(next_rust_sp);
 
-    // FIXME(2047): There are times when this is called and needs
+    // FIXME (#2047): There are times when this is called and needs
     // to be able to throw, and we don't account for that.
     __morestack(args, fn_ptr, sp);
 
@@ -529,7 +531,7 @@ rust_task::record_stack_limit() {
 inline rust_task* rust_get_current_task() {
     uintptr_t sp_limit = get_sp_limit();
 
-    // FIXME (1226) - Because of a hack in upcall_call_shim_on_c_stack this
+    // FIXME (#1226) - Because of a hack in upcall_call_shim_on_c_stack this
     // value is sometimes inconveniently set to 0, so we can't use this
     // method of retreiving the task pointer and need to fall back to TLS.
     if (sp_limit == 0)

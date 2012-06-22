@@ -129,7 +129,7 @@ fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
                e: @ast::ty,
                tm: test_mode) {
     if c(e, tm) {
-        *es += [*e];
+        vec::push(*es,*e);
     } else {/* now my indices are wrong :( */ }
 }
 

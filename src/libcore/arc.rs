@@ -68,17 +68,18 @@ allowing them to share the underlying data."]
 fn clone<T: const>(rc: &arc<T>) -> arc<T> {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
-        rustrt::rust_atomic_increment(&mut ptr.count);
+        let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
+        assert new_count >= 2;
         unsafe::forget(ptr);
     }
     arc_destruct(**rc)
 }
 
 // An arc over mutable data that is protected by a lock.
-type ex_data<T> = {lock: sys::lock_and_signal, data: T};
-type exclusive<T> = arc_destruct<ex_data<T>>;
+type ex_data<T: send> = {lock: sys::lock_and_signal, data: T};
+type exclusive<T: send> = arc_destruct<ex_data<T>>;
 
-fn exclusive<T>(-data: T) -> exclusive<T> {
+fn exclusive<T:send >(-data: T) -> exclusive<T> {
     let data = ~{mut count: 1, data: {lock: sys::create_lock(),
                                       data: data}};
     unsafe {
@@ -88,12 +89,13 @@ fn exclusive<T>(-data: T) -> exclusive<T> {
     }
 }
 
-impl methods<T> for exclusive<T> {
+impl methods<T: send> for exclusive<T> {
     fn clone() -> exclusive<T> {
         unsafe {
             // this makes me nervous...
             let ptr: ~arc_data<ex_data<T>> = unsafe::reinterpret_cast(*self);
-            rustrt::rust_atomic_increment(&mut ptr.count);
+            let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
+            assert new_count > 1;
             unsafe::forget(ptr);
         }
         arc_destruct(*self)

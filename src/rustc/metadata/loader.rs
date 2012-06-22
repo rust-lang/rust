@@ -125,8 +125,8 @@ fn crate_name_from_metas(metas: [@ast::meta_item]) -> @str {
       some(i) {
         alt attr::get_meta_item_value_str(i) {
           some(n) { n }
-          // FIXME: Probably want a warning here since the user
-          // is using the wrong type of meta item (#2406)
+          // FIXME (#2406): Probably want a warning here since the user
+          // is using the wrong type of meta item.
           _ { fail }
         }
       }

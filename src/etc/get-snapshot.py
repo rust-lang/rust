@@ -8,11 +8,7 @@ def unpack_snapshot(triple, dl_path):
   tar = tarfile.open(dl_path)
   kernel = get_kernel(triple)
   for p in tar.getnames():
-
-    # FIXME: Fix this once win32 snapshot globs are fixed.
-    name = p.replace("rust-stage0/stage3/", "", 1);
-    name = name.replace("rust-stage0/", "", 1);
-
+    name = p.replace("rust-stage0/", "", 1);
     stagep = os.path.join(triple, "stage0")
     fp = os.path.join(stagep, name)
     print("extracting " + p)

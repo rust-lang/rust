@@ -286,8 +286,8 @@ fn program_output(prog: str, args: [str]) ->
 
     // Spawn two entire schedulers to read both stdout and sterr
     // in parallel so we don't deadlock while blocking on one
-    // or the other. FIXME: Surely there's a much more clever way
-    // to do this. (#2625)
+    // or the other. FIXME (#2625): Surely there's a much more
+    // clever way to do this.
     let p = comm::port();
     let ch = comm::chan(p);
     task::spawn_sched(task::single_threaded) {||

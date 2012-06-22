@@ -43,8 +43,6 @@ const uint8_t SHAPE_I64 = 7u;
 const uint8_t SHAPE_F32 = 8u;
 const uint8_t SHAPE_F64 = 9u;
 const uint8_t SHAPE_BOX = 10u;
-// FIXME: remove after snapshot (6/18/12)
-const uint8_t SHAPE_VEC = 11u;
 const uint8_t SHAPE_TAG = 12u;
 const uint8_t SHAPE_STRUCT = 17u;
 const uint8_t SHAPE_BOX_FN = 18u;
@@ -86,7 +84,7 @@ public:
 
     template<typename T>
     inline T *alloc(size_t count = 1) {
-        // FIXME: align
+        // FIXME: align (probably won't fix before #1498)
         size_t sz = count * sizeof(T);
         T *rv = (T *)ptr;
         ptr += sz;
@@ -304,7 +302,6 @@ ctxt<T>::walk() {
     case SHAPE_I64:      WALK_NUMBER(int64_t);       break;
     case SHAPE_F32:      WALK_NUMBER(float);         break;
     case SHAPE_F64:      WALK_NUMBER(double);        break;
-    case SHAPE_VEC:      walk_vec0();             break;
     case SHAPE_TAG:      walk_tag0();             break;
     case SHAPE_BOX:      walk_box0();             break;
     case SHAPE_STRUCT:   walk_struct0();          break;
@@ -897,7 +894,8 @@ public:
     void walk_tag1(tag_info &tinfo);
 
     void walk_struct1(const uint8_t *end_sp) {
-        // FIXME: shouldn't we be aligning to the first element here?
+        // FIXME (probably won't fix before #1498): shouldn't we be aligning
+        // to the first element here?
         static_cast<T *>(this)->walk_struct2(end_sp);
     }
 

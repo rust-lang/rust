@@ -59,7 +59,8 @@ rust_task::delete_this()
     DLOG(sched_loop, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
-    // FIXME: We should do this when the task exits, not in the destructor
+    // FIXME (#2677): We should do this when the task exits, not in the
+    // destructor
     {
         scoped_lock with(supervisor_lock);
         if (supervisor) {
@@ -67,7 +68,7 @@ rust_task::delete_this()
         }
     }
 
-    /* FIXME: tighten this up, there are some more
+    /* FIXME (#2677): tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
     assert(ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
@@ -114,13 +115,14 @@ cleanup_task(cleanup_args *args) {
         }
     }
 
-    // FIXME: For performance we should do the annihilator instead
-    // of the cycle collector even under normal termination, but
+    // FIXME (#2676): For performance we should do the annihilator
+    // instead of the cycle collector even under normal termination, but
     // since that would hide memory management errors (like not derefing
     // boxes), it needs to be disableable in debug builds.
     if (threw_exception) {
-        // FIXME: When the annihilator is more powerful and successfully
-        // runs resource destructors, etc. we can get rid of this cc
+        // FIXME (#2676): When the annihilator is more powerful and
+        // successfully runs resource destructors, etc. we can get rid
+        // of this cc
         cc::do_cc(task);
         annihilate_boxes(task);
     }
@@ -287,7 +289,7 @@ void
 rust_task::begin_failure(char const *expr, char const *file, size_t line) {
 
     if (expr) {
-        // FIXME: Change this message to be
+        // FIXME (#2678): Change this message to be
         // 'task failed at ...'
         LOG_ERR(this, task, "upcall fail '%s', %s:%" PRIdPTR,
                 expr, file, line);
@@ -301,7 +303,7 @@ rust_task::begin_failure(char const *expr, char const *file, size_t line) {
 #else
     die();
     conclude_failure();
-    // FIXME: Need unwinding on windows. This will end up aborting
+    // FIXME (#908): Need unwinding on windows. This will end up aborting
     sched_loop->fail();
 #endif
 }
@@ -458,7 +460,7 @@ rust_task::calloc(size_t size, const char *tag) {
 
 void
 rust_task::notify(bool success) {
-    // FIXME (1078) Do this in rust code
+    // FIXME (#1078) Do this in rust code
     if(notify_enabled) {
         rust_port *target_port =
             kernel->get_port_by_id(notify_port);
@@ -622,7 +624,7 @@ rust_task::reset_stack_limit() {
     uintptr_t sp = get_sp();
     // Have to do the rest on the C stack because it involves
     // freeing stack segments, logging, etc.
-    // FIXME: This probably doesn't need to happen on the C
+    // FIXME (#2679): This probably doesn't need to happen on the C
     // stack now
     reset_args ra = {this, sp};
     call_on_c_stack(&ra, (void*)reset_stack_limit_on_c_stack);

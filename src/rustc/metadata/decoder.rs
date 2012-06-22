@@ -433,8 +433,7 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
         let m_did = parse_def_id(ebml::doc_data(doc));
         let mth_item = lookup_item(m_did.node, cdata.data);
         rslt += [@{did: translate_def_id(cdata, m_did),
-                    /* FIXME tjc: take a look at this, it may relate
-                     to #2323 */
+                    /* FIXME (maybe #2323) tjc: take a look at this. */
                    n_tps: item_ty_param_count(mth_item) - base_tps,
                    ident: item_name(mth_item)}];
     }

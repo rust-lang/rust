@@ -64,9 +64,10 @@ fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
 fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
 
     // Remove any defined main function from the AST so it doesn't clash with
-    // the one we're going to add.  FIXME: This is sloppy. Instead we should
-    // have some mechanism to indicate to the translation pass which function
-    // we want to be main. (#2403)
+    // the one we're going to add.
+
+    // FIXME (#2403): This is sloppy. Instead we should have some mechanism to
+    // indicate to the translation pass which function we want to be main.
     fn nomain(&&item: @ast::item) -> option<@ast::item> {
         alt item.node {
           ast::item_fn(_, _, _) {
@@ -338,8 +339,8 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 }
 
 // Produces a bare function that wraps the test function
-// FIXME: This can go away once fn is the type of bare function
-// (See #1281)
+
+// FIXME (#1281): This can go away once fn is the type of bare function.
 fn mk_test_wrapper(cx: test_ctxt,
                    fn_path_expr: ast::expr,
                    span: span) -> @ast::expr {

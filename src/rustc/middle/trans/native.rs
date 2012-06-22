@@ -700,8 +700,8 @@ fn trans_native_mod(ccx: @crate_ctxt,
         }
     }
 
-    // FIXME this is very shaky and probably gets ABIs wrong all over
-    // the place (#2535)
+    // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
+    // over the place
     fn build_direct_fn(ccx: @crate_ctxt, decl: ValueRef,
                        item: @ast::native_item, tys: @c_stack_tys,
                        cc: lib::llvm::CallConv) {

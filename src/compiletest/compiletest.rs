@@ -139,7 +139,7 @@ fn make_tests(config: config) -> [test::test_desc] {
         let file = file;
         #debug("inspecting file %s", file);
         if is_test(config, file) {
-            tests += [make_test(config, file)]
+            vec::push(tests, make_test(config, file))
         }
     }
     ret tests;

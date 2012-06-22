@@ -22,14 +22,14 @@ native mod rustrt {
 
 // Reading
 
-// FIXME This is all buffered. We might need an unbuffered variant as well
-// #2004
+// FIXME (#2004): This is all buffered. We might need an unbuffered variant
+// as well
 enum seek_style { seek_set, seek_end, seek_cur, }
 
 
 // The raw underlying reader iface. All readers must implement this.
 iface reader {
-    // FIXME: Seekable really should be orthogonal. // #2004
+    // FIXME (#2004): Seekable really should be orthogonal.
     fn read_bytes(uint) -> [u8];
     fn read_byte() -> int;
     fn unread_byte(int);
@@ -82,8 +82,8 @@ impl reader_util for reader {
         while nbread > 0u {
             let data = self.read_bytes(nbread);
             if vec::len(data) == 0u {
-                // eof - FIXME should we do something if
-                // we're split in a unicode char? // #2004
+                // eof - FIXME (#2004): should we do something if
+                // we're split in a unicode char?
                 break;
             }
             buf += data;
@@ -234,9 +234,9 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
     }
 }
 
-// FIXME: this should either be an iface-less impl, a set of top-level
-// functions that take a reader, or a set of default methods on reader
-// (which can then be called reader) // #2004
+// FIXME (#2004): this should either be an iface-less impl, a set of
+// top-level functions that take a reader, or a set of default methods on
+// reader (which can then be called reader)
 
 fn stdin() -> reader { rustrt::rust_get_stdin() as reader }
 
@@ -312,9 +312,8 @@ fn with_str_reader<T>(s: str, f: fn(reader) -> T) -> T {
 // Writing
 enum fileflag { append, create, truncate, no_flag, }
 
-// FIXME: Seekable really should be orthogonal.
-// FIXME: eventually u64
-// #2004
+// FIXME (#2004): Seekable really should be orthogonal.
+// FIXME (#2004): eventually u64
 iface writer {
     fn write([const u8]/&);
     fn seek(int, seek_style);
@@ -586,9 +585,9 @@ fn buffered_file_writer(path: str) -> result<writer, str> {
     else { result::ok(FILE_writer(f, true)) }
 }
 
-// FIXME it would be great if this could be a const
-// FIXME why are these different from the way stdin() is implemented?
-// #2004
+// FIXME (#2004) it would be great if this could be a const
+// FIXME (#2004) why are these different from the way stdin() is
+// implemented?
 fn stdout() -> writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
@@ -670,8 +669,8 @@ fn read_whole_file_str(file: str) -> result<str, str> {
     })
 }
 
-// FIXME implement this in a low-level way. Going through the abstractions is
-// pointless. // #2004
+// FIXME (#2004): implement this in a low-level way. Going through the
+// abstractions is pointless.
 fn read_whole_file(file: str) -> result<[u8], str> {
     result::chain(file_reader(file), { |rdr|
         result::ok(rdr.read_whole_stream())
@@ -714,8 +713,8 @@ mod fsync {
     };
 
     // fsync file after executing blk
-    // FIXME find better way to create resources within lifetime of outer res
-    // #2004
+    // FIXME (#2004) find better way to create resources within lifetime of
+    // outer res
     fn FILE_res_sync(&&file: FILE_res, opt_level: option<level>,
                   blk: fn(&&res<*libc::FILE>)) {
         blk(res({

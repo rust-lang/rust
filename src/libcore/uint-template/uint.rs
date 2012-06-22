@@ -81,6 +81,7 @@ fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
 }
 
 #[doc = "Returns the smallest power of 2 greater than or equal to `n`"]
+#[inline(always)]
 fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;
     let mut tmp: uint = n - 1u;

@@ -19,7 +19,7 @@ fn target_env(lib_path: str, prog: str) -> [(str,str)] {
         else { (k,v) }
     };
     if str::ends_with(prog, "rustc.exe") {
-        env += [("RUST_THREADS", "1")]
+        vec::push(env, ("RUST_THREADS", "1"));
     }
     ret env;
 }
@@ -32,7 +32,7 @@ fn target_env(_lib_path: str, _prog: str) -> [(str,str)] {
 }
 
 
-// FIXME: This code is duplicated in core::run::program_output
+// FIXME (#2659): This code is duplicated in core::run::program_output
 fn run(lib_path: str,
        prog: str,
        args: [str],

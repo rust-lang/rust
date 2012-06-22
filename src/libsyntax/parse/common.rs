@@ -93,8 +93,8 @@ impl parser_common for parser {
     fn eat_keyword(word: str) -> bool {
         self.require_keyword(word);
 
-        // FIXME: this gratuitous use of @ is to
-        // workaround LLVM bug #13042
+        // FIXME (#13042): this gratuitous use of @ is to
+        // workaround LLVM bug.
         alt @self.token {
           @token::IDENT(sid, false) {
             if str::eq(word, *self.get_str(sid)) {
@@ -159,7 +159,7 @@ impl parser_common for parser {
                        else { self.expect(t); } }
               _ { }
             }
-            v += [f(self)];
+            vec::push(v, f(self));
         }
 
         ret v;
@@ -202,7 +202,7 @@ impl parser_common for parser {
               _ { }
             }
             if sep.trailing_sep_allowed && self.token == ket { break; }
-            v += [f(self)];
+            vec::push(v, f(self));
         }
         ret v;
     }

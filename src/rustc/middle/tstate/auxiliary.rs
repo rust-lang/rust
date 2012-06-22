@@ -195,8 +195,8 @@ may be the operator in a "check" expression in the source.  */
 
 type constraint = {
     path: @path,
-    // FIXME: really only want it to be mut during collect_locals.
-    // freeze it after that. (#2539)
+    // FIXME (#2539): really only want it to be mut during
+    // collect_locals.  freeze it after that.
     descs: @dvec<pred_args>
 };
 
@@ -494,9 +494,8 @@ fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
     ret rslt;
 }
 
-// FIXME
-// Would rather take an immutable vec as an argument,
-// should freeze it at some earlier point. (#2539)
+// FIXME (#2539): Would rather take an immutable vec as an argument,
+// should freeze it at some earlier point.
 fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
               occ: [@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",

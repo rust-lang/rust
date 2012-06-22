@@ -10,7 +10,7 @@ uint64_t ns_per_s = 1000000000LL;
 timer::timer() {
 #if __WIN32__
     _ticks_per_s = 0LL;
-    // FIXME: assert this works or have a workaround.
+    // FIXME (#2675): assert this works or have a workaround.
     QueryPerformanceFrequency((LARGE_INTEGER *)&_ticks_per_s);
     if (_ticks_per_s == 0LL) {
       _ticks_per_s = 1LL;

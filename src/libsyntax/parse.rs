@@ -17,7 +17,7 @@ import attr::parser_attr;
 import common::parser_common;
 import ast::node_id;
 import util::interner;
-// FIXME: resolve badness
+// FIXME (#1935): resolve badness
 import lexer::*;//{string_reader_as_reader, tt_reader_as_reader,
                //reader, string_reader, tt_reader};
 import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
@@ -75,7 +75,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     let cdirs = p.parse_crate_directives(token::EOF, first_cdir_attr);
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
-    let cx = @{sess: sess, cfg: /* FIXME: bad */ copy p.cfg};
+    let cx = @{sess: sess, cfg: /* FIXME (#2543) */ copy p.cfg};
     let (companionmod, _) = path::splitext(path::basename(input));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
         cx, cdirs, prefix, option::some(companionmod));
@@ -85,7 +85,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
                           {directives: cdirs,
                            module: m,
                            attrs: crate_attrs + attrs,
-                           config: /* FIXME: bad */ copy p.cfg});
+                           config: /* FIXME (#2543) */ copy p.cfg});
 }
 
 fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,

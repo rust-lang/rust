@@ -111,7 +111,7 @@ make_str_vec(rust_kernel* kernel, size_t nstrs, char **strs) {
 
 inline size_t get_box_size(size_t body_size, size_t body_align) {
     size_t header_size = sizeof(rust_opaque_box);
-    // FIXME: This alignment calculation is suspicious. Is it right?
+    // FIXME (#2699): This alignment calculation is suspicious. Is it right?
     size_t total_size = align_to(header_size, body_align) + body_size;
     return total_size;
 }

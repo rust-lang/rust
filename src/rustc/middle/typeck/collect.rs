@@ -25,8 +25,8 @@ import rscope::*;
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
-    // FIXME: hooking into the "intrinsic" root module is crude.
-    // there ought to be a better approach. Attributes? (#2592)
+    // FIXME (#2592): hooking into the "intrinsic" root module is crude.
+    // There ought to be a better approach. Attributes?
 
     for crate.node.module.items.each {|crate_item|
         if *crate_item.ident == "intrinsic" {
@@ -210,7 +210,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         ty::subst(tcx, substs, if_fty)
     };
     require_same_types(
-        tcx, sp, impl_fty, if_fty,
+        tcx, none, sp, impl_fty, if_fty,
         {|| "method `" + *if_m.ident + "` has an incompatible type"});
     ret;
 

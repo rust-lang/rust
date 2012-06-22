@@ -243,8 +243,8 @@ fn trit_str(t: trit) -> str {
     alt t { dont_care { "?" } ttrue { "1" } tfalse { "0" } }
 }
 
-// FIXME: Would be nice to have unit tests for some of these operations, as
-// a step towards formalizing them more rigorously. #2538
+// FIXME (#2538): Would be nice to have unit tests for some of these
+// operations, as a step towards formalizing them more rigorously.
 
 //
 // Local Variables:

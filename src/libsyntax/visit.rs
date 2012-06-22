@@ -28,7 +28,7 @@ enum fn_kind {
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
       fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _, _)
-          | fk_ctor(name, _, _, _) { /* FIXME: bad */ copy name }
+          | fk_ctor(name, _, _, _) { /* FIXME (#2543) */ copy name }
       fk_anon(*) | fk_fn_block(*) { @"anon" }
       fk_dtor(*)                  { @"drop" }
     }
@@ -38,7 +38,7 @@ fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
       fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps, _)
               | fk_ctor(_, tps, _, _) | fk_dtor(tps, _, _) {
-          /* FIXME: bad */ copy tps
+          /* FIXME (#2543) */ copy tps
       }
       fk_anon(*) | fk_fn_block(*) { [] }
     }
@@ -117,8 +117,8 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     alt i.node {
       item_const(t, ex) { v.visit_ty(t, e, v); v.visit_expr(ex, e, v); }
       item_fn(decl, tp, body) {
-        v.visit_fn(fk_item_fn(/* FIXME: bad */ copy i.ident,
-                              /* FIXME: bad */ copy tp), decl, body,
+        v.visit_fn(fk_item_fn(/* FIXME (#2543) */ copy i.ident,
+                              /* FIXME (#2543) */ copy tp), decl, body,
                    i.span, i.id, e, v);
       }
       item_mod(m) { v.visit_mod(m, i.span, i.id, e, v); }
@@ -131,8 +131,8 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         v.visit_ty_params(tps, e, v);
       }
       item_res(decl, tps, body, dtor_id, _, rp) {
-        v.visit_fn(fk_res(/* FIXME: bad */ copy i.ident,
-                          /* FIXME: bad */ copy tps,
+        v.visit_fn(fk_res(/* FIXME (#2543) */ copy i.ident,
+                          /* FIXME (#2543) */ copy tps,
                           rp),
                    decl, body, i.span, dtor_id, e, v);
       }
@@ -287,15 +287,16 @@ fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
 fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
-    v.visit_fn(fk_method(/* FIXME: bad */ copy m.ident,
-                         /* FIXME: bad */ copy m.tps, m),
+    v.visit_fn(fk_method(/* FIXME (#2543) */ copy m.ident,
+                         /* FIXME (#2543) */ copy m.tps, m),
                m.decl, m.body, m.span, m.id, e, v);
 }
 
 // Similar logic to the comment on visit_method_helper - Tim
 fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: [ty_param],
                               parent_id: def_id, e: E, v: vt<E>) {
-    v.visit_fn(fk_ctor(/* FIXME: bad */ copy nm, /* FIXME: bad */ copy tps,
+    v.visit_fn(fk_ctor(/* FIXME (#2543) */ copy nm,
+                       /* FIXME (#2543) */ copy tps,
                        ctor.node.self_id, parent_id), ctor.node.dec,
                ctor.node.body, ctor.span, ctor.node.id, e, v)
 
@@ -303,7 +304,7 @@ fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: [ty_param],
 
 fn visit_class_dtor_helper<E>(dtor: class_dtor, tps: [ty_param],
                               parent_id: def_id, e: E, v: vt<E>) {
-    v.visit_fn(fk_dtor(/* FIXME: bad */ copy tps, dtor.node.self_id,
+    v.visit_fn(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.self_id,
                        parent_id), ast_util::dtor_dec(),
                dtor.node.body, dtor.span, dtor.node.id, e, v)
 

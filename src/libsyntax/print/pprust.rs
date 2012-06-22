@@ -545,12 +545,11 @@ fn print_item(s: ps, &&item: @ast::item) {
           }
           for items.each {|ci|
                   /*
-                     FIXME: collect all private items and print them
-                     in a single "priv" section
+                     FIXME (#1893): collect all private items and print
+                     them in a single "priv" section
 
                      tjc: I'm not going to fix this yet b/c we might
                      change how exports work, including for class items
-                     (see #1893)
                    */
              hardbreak_if_not_bol(s);
              maybe_print_comment(s, ci.span.lo);

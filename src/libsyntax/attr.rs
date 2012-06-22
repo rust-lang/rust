@@ -91,9 +91,9 @@ fn get_attr_name(attr: ast::attribute) -> ast::ident {
 // All "bad" FIXME copies are as per #2543
 fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
     alt meta.node {
-      ast::meta_word(n) { /* FIXME bad */ copy n }
-      ast::meta_name_value(n, _) { /* FIXME bad */ copy n }
-      ast::meta_list(n, _) { /* FIXME bad */ copy n }
+      ast::meta_word(n) { /* FIXME (#2543) */ copy n }
+      ast::meta_name_value(n, _) { /* FIXME (#2543) */ copy n }
+      ast::meta_list(n, _) { /* FIXME (#2543) */ copy n }
     }
 }
 
@@ -120,7 +120,7 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@str> {
 #[doc = "Gets a list of inner meta items from a list meta_item type"]
 fn get_meta_item_list(meta: @ast::meta_item) -> option<[@ast::meta_item]> {
     alt meta.node {
-      ast::meta_list(_, l) { option::some(/* FIXME bad */ copy l) }
+      ast::meta_list(_, l) { option::some(/* FIXME (#2543) */ copy l) }
       _ { option::none }
     }
 }
@@ -266,15 +266,15 @@ fn last_meta_item_list_by_name(
 
 /* Higher-level applications */
 
-// FIXME: This needs to sort by meta_item variant in addition to the item name
-// (See [Fixme-sorting])
+// FIXME (#607): This needs to sort by meta_item variant in addition to
+// the item name (See [Fixme-sorting])
 fn sort_meta_items(+items: [@ast::meta_item]) -> [@ast::meta_item] {
     fn lteq(&&ma: @ast::meta_item, &&mb: @ast::meta_item) -> bool {
         fn key(m: @ast::meta_item) -> ast::ident {
             alt m.node {
-              ast::meta_word(name) { /* FIXME bad */ copy name }
-              ast::meta_name_value(name, _) { /* FIXME bad */ copy name }
-              ast::meta_list(name, _) { /* FIXME bad */ copy name }
+              ast::meta_word(name) { /* FIXME (#2543) */ copy name }
+              ast::meta_name_value(name, _) { /* FIXME (#2543) */ copy name }
+              ast::meta_list(name, _) { /* FIXME (#2543) */ copy name }
             }
         }
         ret key(ma) <= key(mb);
@@ -292,7 +292,7 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: ast::ident) ->
     ret vec::filter_map(items, {
         |item|
         if get_meta_item_name(item) != name {
-            option::some(/* FIXME bad */ copy item)
+            option::some(/* FIXME (#2543) */ copy item)
         } else {
             option::none
         }
@@ -317,7 +317,7 @@ linkage
 fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
     find_linkage_attrs(attrs).flat_map {|attr|
         alt check attr.node.value.node {
-          ast::meta_list(_, items) { /* FIXME bad */ copy items }
+          ast::meta_list(_, items) { /* FIXME (#2543) */ copy items }
         }
     }
 }

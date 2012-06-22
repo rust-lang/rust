@@ -864,7 +864,7 @@ mod node {
         loop {
             alt (leaf_iterator::next(it)) {
               option::none   { break; }
-              option::some(x) { forest += [mut @leaf(x)]; }
+              option::some(x) { vec::push(forest, @leaf(x)); }
             }
         }
         //2. Rebuild tree from forest

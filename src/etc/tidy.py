@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, fileinput, subprocess
+import sys, fileinput, subprocess, re
 
 err=0
 cols=78
@@ -23,6 +23,11 @@ file_names = [s for s in sys.argv[1:] if not s.endswith("_gen.rs")]
 try:
     for line in fileinput.input(file_names,
                                 openhook=fileinput.hook_encoded("utf-8")):
+
+        if fileinput.filename().find("tidy.py") == -1:
+            if line.find("FIXME") != -1:
+                if re.search("FIXME.*#\d+", line) == None:
+                    report_err("FIXME without issue number")
         if (line.find('\t') != -1 and
             fileinput.filename().find("Makefile") == -1):
             report_err("tab character")

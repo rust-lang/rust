@@ -51,6 +51,7 @@ pure fn get_type_desc<T>() -> *type_desc {
 }
 
 #[doc = "Returns the size of a type"]
+#[inline(always)]
 pure fn size_of<T>() -> uint unsafe {
     unchecked { rusti::size_of::<T>() }
 }

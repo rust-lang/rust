@@ -104,7 +104,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
                           procres);
         }
 
-        srcs += [procres.stdout];
+        vec::push(srcs, procres.stdout);
         round += 1;
     }
 

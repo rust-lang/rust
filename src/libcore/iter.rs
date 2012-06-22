@@ -97,8 +97,8 @@ fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
     alt foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
           some(a_) if a_ < b {
-            // FIXME: Not sure if this is successfully optimized to a move
-            // #2005
+            // FIXME (#2005): Not sure if this is successfully optimized to
+            // a move
             a
           }
           _ { some(b) }
@@ -113,8 +113,8 @@ fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
     alt foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
           some(a_) if a_ > b {
-            // FIXME: Not sure if this is successfully optimized to a move
-            // #2005
+            // FIXME (#2005): Not sure if this is successfully optimized to
+            // a move.
             a
           }
           _ { some(b) }
