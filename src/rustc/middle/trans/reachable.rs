@@ -209,7 +209,11 @@ fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
         visit_item: {|i, cx, v|
             visit::visit_item(i, cx, v);
             alt i.node {
-              item_res(_, _, _, _, _, _) {
+              item_res(*) {
+                traverse_public_item(cx, i);
+              }
+              // Classes with dtors too!
+              item_class(_, _, _, _, some(_), _) {
                 traverse_public_item(cx, i);
               }
               _ {}
