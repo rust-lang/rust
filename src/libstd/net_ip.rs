@@ -4,17 +4,28 @@ Types/fns concerning Internet Protocol (IP), versions 4 & 6
 
 import vec;
 import uint;
+import iotask = uv::iotask::iotask;
+import interact = uv::iotask::interact;
+import comm::methods;
 
 import sockaddr_in = uv::ll::sockaddr_in;
 import sockaddr_in6 = uv::ll::sockaddr_in6;
+import addrinfo = uv::ll::addrinfo;
+import uv_getaddrinfo_t = uv::ll::uv_getaddrinfo_t;
 import uv_ip4_addr = uv::ll::ip4_addr;
 import uv_ip4_name = uv::ll::ip4_name;
 import uv_ip6_addr = uv::ll::ip6_addr;
 import uv_ip6_name = uv::ll::ip6_name;
+import uv_getaddrinfo = uv::ll::getaddrinfo;
+import create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
+import set_data_for_uv_handle = uv::ll::set_data_for_uv_handle;
+import get_data_for_uv_handle = uv::ll::get_data_for_uv_handle;
+import ll = uv::ll;
 
 export ip_addr, parse_addr_err;
 export format_addr;
-export v4;
+export v4, v6;
+export get_addr;
 
 #[doc = "An IP address"]
 enum ip_addr {
@@ -57,6 +68,92 @@ fn format_addr(ip: ip_addr) -> str {
             result
         }
       }
+    }
+}
+
+type get_addr_data = {
+    output_ch: comm::chan<result::result<[ip_addr],ip_get_addr_err>>
+};
+
+crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
+                     res: *addrinfo) unsafe {
+    let handle_data = get_data_for_uv_handle(handle) as
+        *get_addr_data;
+    if status == 0i32 {
+        if res != (ptr::null::<addrinfo>()) {
+            let mut out_vec = [];
+            let mut curr_addr = res;
+            loop {
+                if ll::is_ipv4_addrinfo(curr_addr) {
+                    out_vec +=
+                        [ipv4(copy((
+                            *ll::addrinfo_as_sockaddr_in(curr_addr))))];
+                }
+                else {
+                    out_vec +=
+                        [ipv6(copy((
+                            *ll::addrinfo_as_sockaddr_in6(curr_addr))))];
+                }
+
+                let next_addr = ll::get_next_addrinfo(curr_addr);
+                if next_addr == ptr::null::<addrinfo>() as *addrinfo {
+                    break;
+                }
+                else {
+                    curr_addr = next_addr
+                }
+            }
+            (*handle_data).output_ch.send(result::ok(out_vec));
+        }
+        else {
+            (*handle_data).output_ch.send(
+                result::err(get_addr_unknown_error));
+        }
+    }
+    else {
+        (*handle_data).output_ch.send(
+            result::err(get_addr_unknown_error));
+    }
+}
+
+#[doc="
+"]
+enum ip_get_addr_err {
+    get_addr_unknown_error
+}
+
+#[doc="
+"]
+fn get_addr(++node: str, iotask: iotask)
+        -> result::result<[ip_addr], ip_get_addr_err> unsafe {
+    comm::listen {|output_ch|
+        str::unpack_slice(node) {|node_ptr, len|
+            log(debug, #fmt("sliace len %?", len));
+            let handle = create_uv_getaddrinfo_t();
+            let handle_ptr = ptr::addr_of(handle);
+            let handle_data: get_addr_data = {
+                output_ch: output_ch
+            };
+            let handle_data_ptr = ptr::addr_of(handle_data);
+            interact(iotask) {|loop_ptr|
+                let result = uv_getaddrinfo(
+                    loop_ptr,
+                    handle_ptr,
+                    get_addr_cb,
+                    node_ptr,
+                    ptr::null(),
+                    ptr::null());
+                alt result {
+                  0i32 {
+                    set_data_for_uv_handle(handle_ptr, handle_data_ptr);
+                  }
+                  _ {
+                    output_ch.send(result::err(get_addr_unknown_error));
+                  }
+                }
+            };
+            output_ch.recv()
+        }
     }
 }
 
