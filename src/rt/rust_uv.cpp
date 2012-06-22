@@ -510,3 +510,20 @@ rust_uv_getaddrinfo(uv_loop_t* loop, uv_getaddrinfo_t* handle, uv_getaddrinfo_cb
 					const char* node, const char* service, const struct addrinfo* hints) {
 	return uv_getaddrinfo(loop, handle, cb, node, service, hints);
 }
+extern "C" bool
+rust_uv_is_ipv4_addrinfo(addrinfo* input) {
+	// if it aint AF_INET, it's AF_INET6
+	return input->ai_family == AF_INET;
+}
+extern "C" addrinfo*
+rust_uv_get_next_addrinfo(addrinfo* input) {
+	return input->ai_next;
+}
+extern "C" sockaddr_in*
+rust_uv_addrinfo_as_sockaddr_in(addrinfo* input) {
+	return (sockaddr_in*)input->ai_addr;
+}
+extern "C" sockaddr_in6*
+rust_uv_addrinfo_as_sockaddr_in6(addrinfo* input) {
+	return (sockaddr_in6*)input->ai_addr;
+}
