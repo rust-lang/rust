@@ -396,6 +396,15 @@ fn shift<T>(&v: [T]) -> T {
     }
 }
 
+#[doc = "Prepend an element to the vector"]
+fn unshift<T>(&v: [T], +x: T) {
+    let mut vv = [x];
+    v <-> vv;
+    while len(vv) > 0 {
+        push(v, shift(vv));
+    }
+}
+
 #[doc = "Remove the last element from a vector and return it"]
 fn pop<T>(&v: [const T]) -> T unsafe {
     let ln = len(v);
@@ -2195,6 +2204,13 @@ mod tests {
         let x_imm = from_mut(x);
         let addr_imm = unsafe::to_ptr(x_imm);
         assert addr == addr_imm;
+    }
+
+    #[test]
+    fn test_unshift() {
+        let mut x = [1, 2, 3];
+        unshift(x, 0);
+        assert x == [0, 1, 2, 3];
     }
 
     #[test]
