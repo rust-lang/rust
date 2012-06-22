@@ -7,7 +7,11 @@ use std;
 
 export context;
 
-resource arc_destruct<T: const>(_data: int) { }
+class arc_destruct<T:const> {
+  let _data: int;
+  new(data: int) { self._data = data; }
+  drop {}
+}
 
 fn arc<T: const>(_data: T) -> arc_destruct<T> {
     arc_destruct(0)

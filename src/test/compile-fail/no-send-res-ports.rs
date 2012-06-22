@@ -1,6 +1,10 @@
 fn main() {
-    resource foo(_x: comm::port<()>) {}
-
+    class foo {
+      let _x: comm::port<()>;
+      new(x: comm::port<()>) { self._x = x; }
+      drop {}
+    }
+   
     let x = ~mut some(foo(comm::port()));
 
     task::spawn {|move x| //! ERROR not a sendable value

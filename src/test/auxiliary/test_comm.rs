@@ -1,6 +1,5 @@
 /*
-  Minimized version of core::comm (with still-local modifications
-  to turn a resource into a class) for testing. 
+  Minimized version of core::comm for testing. 
 
   Could probably be more minimal.
  */

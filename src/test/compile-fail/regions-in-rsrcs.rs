@@ -1,19 +1,37 @@
-resource no0(x: &uint) { //! ERROR to use region types here, the containing type must be declared with a region bound
+class no0 {
+  let x: &uint;
+  new(x: &uint) { self.x = x; } //! ERROR to use region types here, the containing type must be declared with a region bound
+  drop {}
 }
 
-resource no1(x: &self.uint) { //! ERROR to use region types here, the containing type must be declared with a region bound
+class no1 {
+  let x: &self.uint;
+  new(x: &self.uint) { self.x = x; } //! ERROR to use region types here, the containing type must be declared with a region bound
+  drop {}
 }
 
-resource no2(x: &foo.uint) { //! ERROR named regions other than `self` are not allowed as part of a type declaration
+class no2 {
+  let x: &foo.uint;
+  new(x: &foo.uint) { self.x = x; } //! ERROR named regions other than `self` are not allowed as part of a type declaration
+  drop {}
 }
 
-resource yes0/&(x: &uint) {
+class yes0/& {
+  let x: &uint;
+  new(x: &uint) { self.x = x; }
+  drop {}
 }
 
-resource yes1/&(x: &self.uint) {
+class yes1/& {
+  let x: &self.uint;
+  new(x: &self.uint) { self.x = x; }
+  drop {}
 }
 
-resource yes2/&(x: &foo.uint) { //! ERROR named regions other than `self` are not allowed as part of a type declaration
+class yes2/& {
+  let x: &foo.uint;
+  new(x: &foo.uint) { self.x = x; } //! ERROR named regions other than `self` are not allowed as part of a type declaration
+  drop {}
 }
 
 fn main() {}

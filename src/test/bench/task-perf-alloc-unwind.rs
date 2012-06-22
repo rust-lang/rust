@@ -41,7 +41,10 @@ enum st {
     })
 }
 
-resource r(_l: @nillist) {
+class r {
+  let _l: @nillist;
+  new(l: @nillist) { self._l = l; }
+  drop {}
 }
 
 fn recurse_or_fail(depth: int, st: option<st>) {
