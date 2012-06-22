@@ -123,6 +123,10 @@ rust_uv_read_start
 rust_uv_read_stop
 rust_uv_malloc_buf_base_of
 rust_uv_free_base_of_buf
+rust_uv_is_ipv4_addrinfo
+rust_uv_get_next_addrinfo
+rust_uv_addrinfo_as_sockaddr_in
+rust_uv_addrinfo_as_sockaddr_in6
 rust_uv_helper_uv_tcp_t_size
 rust_uv_helper_uv_connect_t_size
 rust_uv_helper_uv_buf_t_size
