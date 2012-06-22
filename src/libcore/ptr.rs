@@ -10,6 +10,7 @@ export is_null;
 export is_not_null;
 export memcpy;
 export memmove;
+export memset;
 export buf_len;
 export position;
 export extensions;
@@ -23,6 +24,8 @@ native mod libc_ {
     fn memcpy(dest: *c_void, src: *c_void, n: libc::size_t) -> *c_void;
     #[rust_stack]
     fn memmove(dest: *c_void, src: *c_void, n: libc::size_t) -> *c_void;
+    #[rust_stack]
+    fn memset(dest: *c_void, c: libc::c_int, len: libc::size_t) -> *c_void;
 }
 
 #[abi = "rust-intrinsic"]
@@ -106,6 +109,12 @@ and destination may overlap.
 unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
     let n = count * sys::size_of::<T>();
     libc_::memmove(dst as *c_void, src as *c_void, n as size_t);
+}
+
+#[inline(always)]
+unsafe fn memset<T>(dst: *mut T, c: int, count: uint)  {
+    let n = count * sys::size_of::<T>();
+    libc_::memset(dst as *c_void, c as libc::c_int, n as size_t);
 }
 
 #[doc = "Extension methods for pointers"]

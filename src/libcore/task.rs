@@ -64,8 +64,8 @@ Indicates the manner in which a task exited.
 A task that completes without failing and whose supervised children complete
 without failing is considered to exit successfully.
 
-FIXME: This description does not indicate the current behavior for linked
-failure. (See #1868)
+FIXME (See #1868): This description does not indicate the current behavior
+for linked failure.
 "]
 enum task_result {
     success,
@@ -275,7 +275,7 @@ fn future_result(builder: builder) -> future::future<task_result> {
     task.
     "];
 
-    // FIXME (1087, 1857): Once linked failure and notification are
+    // FIXME (#1087, #1857): Once linked failure and notification are
     // handled in the library, I can imagine implementing this by just
     // registering an arbitrary number of task::on_exit handlers and
     // sending out messages.
@@ -506,10 +506,10 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
     let mut f = if opts.supervise {
         f
     } else {
-        // FIXME: The runtime supervision API is weird here because it
-        // was designed to let the child unsupervise itself, when what
-        // we actually want is for parents to unsupervise new
-        // children. (#1868, #1789)
+        // FIXME (#1868, #1789): The runtime supervision API is weird here
+        // because it was designed to let the child unsupervise itself,
+        // when what we actually want is for parents to unsupervise new
+        // children.
         fn~() {
             rustrt::unsupervise();
             f();
@@ -529,7 +529,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
     };
 
     option::iter(opts.notify_chan) {|c|
-        // FIXME (1087): Would like to do notification in Rust
+        // FIXME (#1087): Would like to do notification in Rust
         rustrt::rust_task_config_notify(new_task, c);
     }
 

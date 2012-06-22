@@ -103,7 +103,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
 
         let i = p0.mk_item(cdir.span.lo, cdir.span.hi,
-                           /* FIXME: bad */ copy id,
+                           /* FIXME (#2543) */ copy id,
                            ast::item_mod(m0), ast::public, mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = r0.chpos;
@@ -119,7 +119,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         let (m0, a0) = eval_crate_directives_to_mod(
             cx, cdirs, full_path, none);
         let i =
-            @{ident: /* FIXME: bad */ copy id,
+            @{ident: /* FIXME (#2543) */ copy id,
               attrs: attrs + a0,
               id: cx.sess.next_id,
               node: ast::item_mod(m0),

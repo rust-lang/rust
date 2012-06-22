@@ -183,7 +183,7 @@ Please make a clean build." % "\n  ".join(matches))
     shutil.move(file0, file1)
 
     if flag == "install":
-      # FIXME this is an ugly quick hack; pls make it better
+      # FIXME (#2664): this is an ugly quick hack; pls make it better
       path  = file1
       comps = path.split("-")
       parts = { 'year': comps[2], \

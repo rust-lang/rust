@@ -16,11 +16,10 @@ export to_vec;
 export to_str;
 export eq_vec;
 
-// FIXME: With recursive object types, we could implement binary methods like
-//        union, intersection, and difference. At that point, we could write
-//        an optimizing version of this module that produces a different obj
-//        for the case where nbits <= 32.
-// (Issue #2341)
+// FIXME (#2341): With recursive object types, we could implement binary
+// methods like union, intersection, and difference. At that point, we could
+// write an optimizing version of this module that produces a different obj
+// for the case where nbits <= 32.
 
 #[doc = "The bitvector type"]
 type bitv = @{storage: [mut uint], nbits: uint};

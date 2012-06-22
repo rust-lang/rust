@@ -1,6 +1,6 @@
 /**
 
-An implementation of the Graph500 Bread First Search problem in Rust.
+An implementation of the Graph500 Breadth First Search problem in Rust.
 
 */
 

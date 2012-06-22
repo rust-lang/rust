@@ -166,8 +166,8 @@ mod global_env {
             task::set_opts(builder, {
                 sched:  some({
                     mode: task::single_threaded,
-                    // FIXME: This would be a good place to use
-                    // a very small native stack (#2621)
+                    // FIXME (#2621): This would be a good place to use a
+                    // very small native stack
                     native_stack_size: none
                 })
                 with task::get_opts(builder)
@@ -499,8 +499,8 @@ fn path_exists(p: path) -> bool {
     }
 }
 
-// FIXME: under Windows, we should prepend the current drive letter to paths
-// that start with a slash. #2622
+// FIXME (#2622): under Windows, we should prepend the current drive letter
+// to paths that start with a slash.
 #[doc = "
 Convert a relative path to an absolute path
 
@@ -696,8 +696,8 @@ fn remove_file(p: path) -> bool {
 
     #[cfg(windows)]
     fn unlink(p: path) -> bool {
-        // FIXME: remove imports when export globs work properly.
-        // (similar to Issue #2006)
+        // FIXME (similar to Issue #2006): remove imports when export globs
+        // work properly.
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;

@@ -203,7 +203,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         let {tok: tok, sp: sp} = rdr.next_token();
         if token::is_lit(tok) {
             let s = get_str_from(rdr, bstart);
-            literals += [{lit: s, pos: sp.lo}];
+            vec::push(literals, {lit: s, pos: sp.lo});
             log(debug, "tok lit: " + s);
         } else {
             log(debug, "tok: " + token::to_str(*rdr.interner, tok));

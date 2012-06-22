@@ -13,8 +13,8 @@ type path = [path_elt];
 fn path_to_str_with_sep(p: path, sep: str) -> str {
     let strs = vec::map(p) {|e|
         alt e {
-          path_mod(s) { /* FIXME: bad */ copy *s }
-          path_name(s) { /* FIXME: bad */ copy *s }
+          path_mod(s) { /* FIXME (#2543) */ copy *s }
+          path_name(s) { /* FIXME (#2543) */ copy *s }
         }
     };
     str::connect(strs, sep)
@@ -22,7 +22,7 @@ fn path_to_str_with_sep(p: path, sep: str) -> str {
 
 fn path_ident_to_str(p: path, i: ident) -> str {
     if vec::is_empty(p) {
-        /* FIXME: bad */ copy *i
+        /* FIXME (#2543) */ copy *i
     } else {
         #fmt["%s::%s", path_to_str(p), *i]
     }
@@ -98,7 +98,7 @@ fn map_decoded_item(diag: span_handler,
     // even if we did I think it only needs an ordering between local
     // variables that are simultaneously in scope).
     let cx = {map: map,
-              mut path: /* FIXME: bad */ copy path,
+              mut path: /* FIXME (#2543) */ copy path,
               mut local_id: 0u,
               diag: diag};
     let v = mk_ast_map_visitor();
@@ -124,27 +124,29 @@ fn map_decoded_item(diag: span_handler,
 fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
           sp: codemap::span, id: node_id, cx: ctx, v: vt) {
     for decl.inputs.each {|a|
-        cx.map.insert(a.id, node_arg(/* FIXME: bad */ copy a, cx.local_id));
+        cx.map.insert(a.id,
+                      node_arg(/* FIXME (#2543) */
+                          copy a, cx.local_id));
         cx.local_id += 1u;
     }
     alt fk {
       visit::fk_ctor(nm, tps, self_id, parent_id) {
           let ct = @{node: {id: id,
                             self_id: self_id,
-                            dec: /* FIXME: bad */ copy decl,
-                            body: /* FIXME: bad */ copy body},
+                            dec: /* FIXME (#2543) */ copy decl,
+                            body: /* FIXME (#2543) */ copy body},
                     span: sp};
-          cx.map.insert(id, node_ctor(/* FIXME: bad */ copy nm,
-                                      /* FIXME: bad */ copy tps,
+          cx.map.insert(id, node_ctor(/* FIXME (#2543) */ copy nm,
+                                      /* FIXME (#2543) */ copy tps,
                                       class_ctor(ct, parent_id),
-                                      @/* FIXME: bad */ copy cx.path));
+                                      @/* FIXME (#2543) */ copy cx.path));
        }
       visit::fk_dtor(tps, self_id, parent_id) {
           let dt = @{node: {id: id, self_id: self_id,
-                     body: /* FIXME: bad */ copy body}, span: sp};
-          cx.map.insert(id, node_dtor(/* FIXME: bad */ copy tps, dt,
+                     body: /* FIXME (#2543) */ copy body}, span: sp};
+          cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
                                       parent_id,
-                                      @/* FIXME: bad */ copy cx.path));
+                                      @/* FIXME (#2543) */ copy cx.path));
        }
 
        _ {}
@@ -153,7 +155,7 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 }
 
 fn map_block(b: blk, cx: ctx, v: vt) {
-    cx.map.insert(b.node.id, node_block(/* FIXME: bad */ copy b));
+    cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy b));
     visit::visit_block(b, cx, v);
 }
 
@@ -187,7 +189,7 @@ fn map_method(impl_did: def_id, impl_path: @path,
 }
 
 fn map_item(i: @item, cx: ctx, v: vt) {
-    let item_path = @/* FIXME: bad */ copy cx.path;
+    let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     alt i.node {
       item_impl(_, _, _, _, ms) {
@@ -198,9 +200,10 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         }
       }
       item_res(decl, tps, _, dtor_id, ctor_id, _) {
-        cx.map.insert(ctor_id, node_ctor(/* FIXME: bad */ copy i.ident,
-                                         /* FIXME: bad */ copy tps,
-                                         res_ctor(/* FIXME: bad */ copy decl,
+        cx.map.insert(ctor_id, node_ctor(/* FIXME (#2543) */ copy i.ident,
+                                         /* FIXME (#2543) */ copy tps,
+                                         res_ctor(/* FIXME (#2543) */
+                                                  copy decl,
                                                   ctor_id, i.span),
                                          item_path));
         cx.map.insert(dtor_id, node_item(i, item_path));
@@ -208,7 +211,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       item_enum(vs, _, _) {
         for vs.each {|v|
             cx.map.insert(v.node.id, node_variant(
-                /* FIXME: bad */ copy v, i,
+                /* FIXME (#2543) */ copy v, i,
                 extend(cx, i.ident)));
         }
       }
@@ -220,7 +223,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         for nm.items.each {|nitem|
             cx.map.insert(nitem.id,
                           node_native_item(nitem, abi,
-                                           @/* FIXME: bad */ copy cx.path));
+                                           /* FIXME (#2543) */
+                                           @copy cx.path));
         }
       }
       item_class(tps, ifces, items, ctor, dtor, _) {
@@ -251,7 +255,9 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
       view_item_export(vps) {
         for vps.each {|vp|
             let (id, name) = alt vp.node {
-              view_path_simple(nm, _, id) { (id, /* FIXME: bad */ copy nm) }
+              view_path_simple(nm, _, id) {
+                (id, /* FIXME (#2543) */ copy nm)
+              }
               view_path_glob(pth, id) | view_path_list(pth, _, id) {
                 (id, path_to_ident(pth))
               }
@@ -294,19 +300,19 @@ fn node_id_to_str(map: map, id: node_id) -> str {
       }
       // FIXMEs are as per #2410
       some(node_export(_, path)) {
-        #fmt["export %s (id=%?)", // FIXME: add more info here
+        #fmt["export %s (id=%?)", // add more info here
              path_to_str(*path), id]
       }
-      some(node_arg(_, _)) { // FIXME: add more info here
+      some(node_arg(_, _)) { // add more info here
         #fmt["arg (id=%?)", id]
       }
-      some(node_local(_)) { // FIXME: add more info here
+      some(node_local(_)) { // add more info here
         #fmt["local (id=%?)", id]
       }
-      some(node_ctor(*)) { // FIXME: add more info here
+      some(node_ctor(*)) { // add more info here
         #fmt["node_ctor (id=%?)", id]
       }
-      some(node_dtor(*)) { // FIXME: add more info here
+      some(node_dtor(*)) { // add more info here
         #fmt["node_dtor (id=%?)", id]
       }
       some(node_block(_)) {

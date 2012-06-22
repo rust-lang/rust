@@ -74,7 +74,7 @@ import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
 import syntax::ast::ty_i;
 import typeck::infer::{unify_methods}; // infcx.set()
-import typeck::infer::{force_level, force_none, force_non_region_vars_only,
+import typeck::infer::{force_level, force_none, force_ty_vars_only,
                        force_all};
 
 type fn_ctxt =
@@ -606,14 +606,6 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     };
 }
 
-// Returns true if the two types unify and false if they don't.
-fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
-    alt fcx.mk_eqty(expected, actual) {
-      result::ok(_) { ret true; }
-      result::err(_) { ret false; }
-    }
-}
-
 // AST fragment checking
 fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
@@ -929,22 +921,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let lhs_t = fcx.expr_ty(lhs);
         let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
         ret alt (op, ty::get(lhs_t).struct) {
-          (ast::add, ty::ty_vec(lhs_mt)) {
-            // For adding vectors with type L=[ML TL] and R=[MR TR], the the
-            // result [ML T] where TL <: T and TR <: T.  In other words, the
-            // result type is (generally) the LUB of (TL, TR) and takes the
-            // mutability from the LHS.
-            let t_var = fcx.infcx.next_ty_var();
-            let const_vec_t = ty::mk_vec(tcx, {ty: t_var,
-                                               mutbl: ast::m_const});
-            demand::suptype(fcx, lhs.span, const_vec_t, lhs_t);
-            let rhs_bot = check_expr_with(fcx, rhs, const_vec_t);
-            let result_vec_t = ty::mk_vec(tcx, {ty: t_var,
-                                                mutbl: lhs_mt.mutbl});
-            fcx.write_ty(expr.id, result_vec_t);
-            lhs_bot | rhs_bot
-          }
-
           (_, _) if ty::type_is_integral(lhs_t) &&
           ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs can be any integral type
@@ -1198,14 +1174,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
           }
           ast::neg {
-            // If the operand's type is an integral type variable, we
-            // don't want to resolve it yet, because the rest of the
-            // typing context might not have had the opportunity to
-            // constrain it yet.
-            if !(ty::type_is_var_integral(oprnd_t)) {
-                oprnd_t = structurally_resolved_type(fcx, oprnd.span,
-                                                     oprnd_t);
-            }
+            oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::type_is_fp(oprnd_t)) {
                 oprnd_t = check_user_unop(fcx, "-", "unary-", expr,
@@ -1248,9 +1217,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         alt expr_opt {
           none {
-            if !are_compatible(fcx, ret_ty, ty::mk_nil(tcx)) {
+            alt fcx.mk_eqty(ret_ty, ty::mk_nil(tcx)) {
+              result::ok(_) { /* fall through */ }
+              result::err(_) {
                 tcx.sess.span_err(expr.span,
-                                  "ret; in function returning non-nil");
+                                  "ret; in function returning non-nil"); }
             }
           }
           some(e) { check_expr_with(fcx, e, ret_ty); }
@@ -2138,7 +2109,7 @@ fn instantiate_path(fcx: @fn_ctxt,
 // resolution is possible, then an error is reported.
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     alt infer::resolve_shallow(fcx.infcx, tp,
-                               force_non_region_vars_only) {
+                               force_ty_vars_only) {
       result::ok(t_s) if !ty::type_is_var(t_s) { ret t_s; }
       _ {
         fcx.ccx.tcx.sess.span_fatal
@@ -2305,7 +2276,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
                                          expected %u", i_n_tps, n_tps));
     } else {
         require_same_types(
-            tcx, it.span, i_ty.ty, fty,
+            tcx, none, it.span, i_ty.ty, fty,
             {|| #fmt["intrinsic has wrong type. \
                       expected %s",
                      ty_to_str(ccx.tcx, fty)]});

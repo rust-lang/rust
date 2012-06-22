@@ -173,10 +173,9 @@ fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
          0u8,0u8,0u8,0u8,0u8
          ]/65;
 
-    // FIXME: post-snapshot, you can do this without
-    // the raw pointers and unsafe bits, and the
-    // codegen will prove it's all in-bounds, no
-    // extra cost.
+    // FIXME (#2649): post-snapshot, you can do this without the raw
+    // pointers and unsafe bits, and the codegen will prove it's all
+    // in-bounds, no extra cost.
 
     vec::unpack_slice(buf) {|p, len|
         let mp = p as *mut u8;

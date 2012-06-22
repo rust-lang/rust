@@ -32,7 +32,7 @@ const stats: uint = 16u;
 const no_asm_comments: uint = 32u;
 const no_verify: uint = 64u;
 const trace: uint = 128u;
-// FIXME: This exists to transition to a Rust crate runtime
+// FIXME (#2377): This exists to transition to a Rust crate runtime
 // It should be removed
 const no_rt: uint = 256u;
 

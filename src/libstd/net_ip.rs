@@ -36,7 +36,7 @@ fn format_addr(ip: ip_addr) -> str {
         #fmt["%u.%u.%u.%u", a as uint, b as uint, c as uint, d as uint]
       }
       ipv6(_, _, _, _, _, _, _, _) {
-        fail "FIXME impl parsing of ipv6 addr";
+        fail "FIXME (#2651) impl parsing of ipv6 addr";
       }
     }
 }

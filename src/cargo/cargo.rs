@@ -165,7 +165,8 @@ fn test_is_uuid() {
     assert !is_uuid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaป");
 }
 
-// FIXME: implement url/URL parsing so we don't have to resort to weak checks
+// FIXME (#2661): implement url/URL parsing so we don't have to resort
+// to weak checks
 
 fn has_archive_extension(p: str) -> bool {
     str::ends_with(p, ".tar") ||
@@ -188,8 +189,8 @@ fn is_archive_path(u: str) -> bool {
 }
 
 fn is_archive_url(u: str) -> bool {
-    // FIXME: this requires the protocol bit - if we had proper url parsing,
-    // we wouldn't need it
+    // FIXME (#2661): this requires the protocol bit - if we had proper
+    // url parsing, we wouldn't need it
 
     alt str::find_str(u, "://") {
         option::some(i) { has_archive_extension(u) }
@@ -315,7 +316,7 @@ fn load_crate(filename: str) -> option<crate> {
 
                 alt *attr_name {
                     "std" | "core" { }
-                    _ { e.deps += [query]; }
+                    _ { vec::push(e.deps, query); }
                 }
             }
             _ { }
@@ -774,7 +775,7 @@ fn install_source(c: cargo, path: str) {
     let mut cratefiles = [];
     for os::walk_dir(".") {|p|
         if str::ends_with(p, ".rc") {
-            cratefiles += [p];
+            vec::push(cratefiles, p);
         }
     }
 
@@ -956,9 +957,10 @@ fn cmd_uninstall(c: cargo) {
     let bin = c.bindir;
     let target = c.opts.free[2u];
 
-    // FIXME: needs stronger pattern matching
-    // FIXME: needs to uninstall from a specified location in a cache instead
-    // of looking for it (binaries can be uninstalled by name only)
+    // FIXME (#2662): needs stronger pattern matching
+    // FIXME (#2662): needs to uninstall from a specified location in a
+    // cache instead of looking for it (binaries can be uninstalled by
+    // name only)
     if is_uuid(target) {
         for os::list_dir(lib).each { |file|
             alt str::find_str(file, "-" + target + "-") {
@@ -1059,8 +1061,8 @@ fn install_query(c: cargo, wd: str, target: str) {
         }
     }
 
-    // FIXME: This whole dep_cache and current_install
-    // thing is a bit of a hack. It should be cleaned up in the future.
+    // FIXME (#2662): This whole dep_cache and current_install thing is
+    // a bit of a hack. It should be cleaned up in the future.
 
     if target == c.current_install {
         for c.dep_cache.each { |k, _v|
@@ -1894,7 +1896,7 @@ fn main(argv: [str]) {
     if !first_time && o.free[1] != "init" {
         cmd_init(c);
 
-        // FIXME: shouldn't need to reconfigure
+        // FIXME (#2662): shouldn't need to reconfigure
         c = configure(o);
     }
 

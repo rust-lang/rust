@@ -30,11 +30,10 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     ret pieces_to_expr(cx, sp, pieces, args);
 }
 
-// FIXME: A lot of these functions for producing expressions can probably
-// be factored out in common with other code that builds expressions.
-// FIXME: Cleanup the naming of these functions
+// FIXME (#2249): A lot of these functions for producing expressions can
+// probably be factored out in common with other code that builds
+// expressions.  Also: Cleanup the naming of these functions.
 // NOTE: Moved many of the common ones to build.rs --kevina
-// See Issue #2249
 fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {

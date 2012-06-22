@@ -193,13 +193,11 @@ export resolve_deep;
 export resolve_deep_var;
 export methods; // for infer_ctxt
 export unify_methods; // for infer_ctxt
-export compare_tys;
-export compare_tys_in_infcx;
 export fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
 export int_ty_set_all;
-export force_level, force_none, force_non_region_vars_only, force_all;
+export force_level, force_none, force_ty_vars_only, force_all;
 
 // Bitvector to represent sets of integral types
 enum int_ty_set = uint;
@@ -389,23 +387,14 @@ fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
     #debug["can_mk_assignty(%? / %s <: %s)",
            anmnt, a.to_str(cx), b.to_str(cx)];
 
-    // FIXME---this will not unroll any entries we make in the
-    // borrowings table.  But this is OK for the moment because this
-    // is only used in method lookup, and there must be exactly one
-    // match or an error is reported. Still, it should be fixed. (#2593)
+    // FIXME (#2593): this will not unroll any entries we make in the
+    // borrowings table.  But this is OK for the moment because this is only
+    // used in method lookup, and there must be exactly one match or an
+    // error is reported. Still, it should be fixed.
 
     indent {|| cx.probe {||
         cx.assign_tys(anmnt, a, b)
     } }.to_ures()
-}
-
-fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
-    let infcx = new_infer_ctxt(tcx);
-    mk_eqty(infcx, a, b)
-}
-
-fn compare_tys_in_infcx(infcx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    mk_eqty(infcx, a, b)
 }
 
 // See comment on the type `resolve_state` below
@@ -1104,9 +1093,9 @@ enum force_level {
     // Any unconstrained variables are OK.
     force_none,
 
-    // Unconstrained region vars are OK; unconstrained ty vars and
-    // integral ty vars result in an error.
-    force_non_region_vars_only,
+    // Unconstrained region vars and integral ty vars are OK;
+    // unconstrained general-purpose ty vars result in an error.
+    force_ty_vars_only,
 
     // Any unconstrained variables result in an error.
     force_all,
@@ -1248,7 +1237,7 @@ impl methods for resolve_state {
               { ub:_, lb:some(t) } { self.resolve1(t) }
               { ub:none, lb:none } {
                 alt self.force_vars {
-                  force_non_region_vars_only | force_all {
+                  force_ty_vars_only | force_all {
                     self.err = some(unresolved_ty(vid));
                   }
                   force_none { /* ok */ }
@@ -1271,7 +1260,7 @@ impl methods for resolve_state {
           some(t) { t }
           none {
             alt self.force_vars {
-              force_non_region_vars_only | force_all {
+              force_all {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
@@ -1281,7 +1270,7 @@ impl methods for resolve_state {
                         nde.rank));
                 ty
               }
-              force_none {
+              force_none | force_ty_vars_only {
                 ty::mk_var_integral(self.infcx.tcx, vid)
               }
             }
@@ -1718,16 +1707,16 @@ fn super_fns<C:combine>(
             argvecs(self, a_f.inputs, b_f.inputs).chain {|inputs|
                 self.tys(a_f.output, b_f.output).chain {|output|
                     self.purities(a_f.purity, b_f.purity).chain {|purity|
-                    //FIXME self.infcx().constrvecs(a_f.constraints,
-                    //FIXME                         b_f.constraints).then {||
-                    // (Fix this if #2588 doesn't get accepted)
+                    // FIXME: uncomment if #2588 doesn't get accepted:
+                    // self.infcx().constrvecs(a_f.constraints,
+                    //                         b_f.constraints).then {||
                         ok({purity: purity,
                             proto: p,
                             inputs: inputs,
                             output: output,
                             ret_style: rs,
                             constraints: a_f.constraints})
-                    //FIXME }
+                    // }
                     }
                 }
             }

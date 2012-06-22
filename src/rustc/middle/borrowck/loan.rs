@@ -43,7 +43,7 @@ impl loan_methods for loan_ctxt {
         }
 
         alt cmt.cat {
-          cat_rvalue | cat_special(_) {
+          cat_binding(_) | cat_rvalue | cat_special(_) {
             // should never be loanable
             self.bccx.tcx.sess.span_bug(
                 cmt.span,

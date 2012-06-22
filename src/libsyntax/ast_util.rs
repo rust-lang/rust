@@ -159,7 +159,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
             for variants.each {|v|
                 if v.node.name == i {
                    local = true;
-                   parent_enum = some(/* FIXME: bad */ copy it.ident);
+                   parent_enum = some(/* FIXME (#2543) */ copy it.ident);
                 }
             }
           }
@@ -268,7 +268,7 @@ pure fn is_unguarded(&&a: arm) -> bool {
 }
 
 pure fn unguarded_pat(a: arm) -> option<[@pat]> {
-    if is_unguarded(a) { some(/* FIXME: bad */ copy a.pats) } else { none }
+    if is_unguarded(a) { some(/* FIXME (#2543) */ copy a.pats) } else { none }
 }
 
 // Provides an extra node_id to hang callee information on, in case the
@@ -278,8 +278,8 @@ fn op_expr_callee_id(e: @expr) -> node_id { e.id - 1 }
 
 pure fn class_item_ident(ci: @class_member) -> ident {
     alt ci.node {
-      instance_var(i,_,_,_,_) { /* FIXME: bad */ copy i }
-      class_method(it) { /* FIXME: bad */ copy it.ident }
+      instance_var(i,_,_,_,_) { /* FIXME (#2543) */ copy i }
+      class_method(it) { /* FIXME (#2543) */ copy it.ident }
     }
 }
 
@@ -297,7 +297,7 @@ fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
     for cs.each {|c|
       alt c.node {
         instance_var(i, t, cm, id, vis) {
-          vs += [{ident: /* FIXME: bad */ copy i,
+          vs += [{ident: /* FIXME (#2543) */ copy i,
                   ty: t,
                   cm: cm,
                   id: id,
@@ -319,11 +319,11 @@ pure fn class_member_visibility(ci: @class_member) -> visibility {
 impl inlined_item_methods for inlined_item {
     fn ident() -> ident {
         alt self {
-          ii_item(i) { /* FIXME: bad */ copy i.ident }
-          ii_native(i) { /* FIXME: bad */ copy i.ident }
-          ii_method(_, m) { /* FIXME: bad */ copy m.ident }
-          ii_ctor(_, nm, _, _) { /* FIXME: bad */ copy nm }
-          ii_dtor(_, nm, _, _) { /* FIXME: bad */ copy nm }
+          ii_item(i) { /* FIXME (#2543) */ copy i.ident }
+          ii_native(i) { /* FIXME (#2543) */ copy i.ident }
+          ii_method(_, m) { /* FIXME (#2543) */ copy m.ident }
+          ii_ctor(_, nm, _, _) { /* FIXME (#2543) */ copy nm }
+          ii_dtor(_, nm, _, _) { /* FIXME (#2543) */ copy nm }
         }
     }
 
@@ -480,12 +480,17 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(id);
         },
 
-        visit_fn: fn@(fk: visit::fn_kind, d: fn_decl,
-                      _b: blk, _sp: span, id: node_id) {
+        visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,
+                      _b: ast::blk, _sp: span, id: ast::node_id) {
             vfn(id);
 
             alt fk {
-              visit::fk_ctor(_, tps, self_id, parent_id) |
+              visit::fk_ctor(nm, tps, self_id, parent_id) {
+                vec::iter(tps) {|tp| vfn(tp.id)}
+                vfn(id);
+                vfn(self_id);
+                vfn(parent_id.node);
+              }
               visit::fk_dtor(tps, self_id, parent_id) {
                 vec::iter(tps) {|tp| vfn(tp.id)}
                 vfn(id);
@@ -500,7 +505,11 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
                 vfn(m.self_id);
                 vec::iter(tps) {|tp| vfn(tp.id)}
               }
-              visit::fk_anon(*) | visit::fk_fn_block(*) {
+              visit::fk_anon(_, capture_clause)
+              | visit::fk_fn_block(capture_clause) {
+                for vec::each(*capture_clause) {|clause|
+                    vfn(clause.id);
+                }
               }
             }
 

@@ -123,7 +123,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
     let loc = lookup_char_pos(map, pos);
     alt (loc.file.substr) {
       fss_none {
-        {filename: /* FIXME bad */ copy loc.file.name,
+        {filename: /* FIXME (#2543) */ copy loc.file.name,
          line: loc.line,
          col: loc.col,
          file: some(loc.file)}
@@ -132,7 +132,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
         lookup_char_pos_adj(map, sp.lo + (pos - loc.file.start_pos.ch))
       }
       fss_external(eloc) {
-        {filename: /* FIXME bad */ copy eloc.filename,
+        {filename: /* FIXME (#2543) */ copy eloc.filename,
          line: eloc.line + loc.line - 1u,
          col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
          file: none}
@@ -178,7 +178,7 @@ type file_lines = {file: filemap, lines: [uint]};
 
 fn span_to_filename(sp: span, cm: codemap::codemap) -> filename {
     let lo = lookup_char_pos(cm, sp.lo);
-    ret /* FIXME bad */ copy lo.file.name;
+    ret /* FIXME (#2543) */ copy lo.file.name;
 }
 
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {

@@ -1,6 +1,6 @@
 // A module for searching for libraries
-// FIXME: I'm not happy how this module turned out. Should probably
-// just be folded into cstore.
+// FIXME (#2658): I'm not happy how this module turned out. Should
+// probably just be folded into cstore.
 
 import result::result;
 export filesearch;

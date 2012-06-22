@@ -356,9 +356,9 @@ fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
     let ccx = bcx.ccx();
 
     let (mk_fn, upcall) = alt heap {
-      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc_dyn) }
+      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc) }
       heap_exchange {
-        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc_dyn )
+        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc )
       }
     };
 
@@ -754,7 +754,8 @@ fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
       // We have to cast v0
      let classptr = GEPi(bcx, v0, [0u, 1u]);
      // Find and call the actual destructor
-     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, substs.tps);
+     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, some(class_did),
+                                  substs.tps);
      // The second argument is the "self" argument for drop
      let params = lib::llvm::fn_ty_param_tys
          (llvm::LLVMGetElementType
@@ -829,7 +830,11 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
+fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
+                // Parent ID is an option because resources don't
+                // have one. We can make this a def_id when
+                // resources get removed.
+                opt_id: option<ast::def_id>, substs: [ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
     if (substs.len() > 0u) {
@@ -841,14 +846,27 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
     } else if did.crate == ast::local_crate {
         get_item_val(ccx, did.node)
     } else {
-        let fty = ty::mk_fn(ccx.tcx, {purity: ast::impure_fn,
-                                      proto: ast::proto_bare,
-                                      inputs: [{mode: ast::expl(ast::by_ref),
+        alt opt_id {
+           some(parent_id) {
+             let tcx = ccx.tcx;
+             let name = csearch::get_symbol(ccx.sess.cstore, did);
+             let class_ty = ty::subst_tps(tcx, substs,
+                              ty::lookup_item_type(tcx, parent_id).ty);
+             let llty = type_of_dtor(ccx, class_ty);
+             get_extern_fn(ccx.externs, ccx.llmod, name, lib::llvm::CCallConv,
+                           llty)
+           }
+           none {
+             let fty = ty::mk_fn(ccx.tcx, {purity: ast::impure_fn,
+                                       proto: ast::proto_bare,
+                                     inputs: [{mode: ast::expl(ast::by_ref),
                                                 ty: ty::mk_nil_ptr(ccx.tcx)}],
                                       output: ty::mk_nil(ccx.tcx),
                                       ret_style: ast::return_val,
                                       constraints: []});
-        trans_external_path(ccx, did, fty)
+             trans_external_path(ccx, did, fty)
+           }
+      }
     }
 }
 
@@ -862,7 +880,7 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|bcx|
         let valptr = GEPi(bcx, rs, [0u, 1u]);
         // Find and call the actual destructor.
-        let dtor_addr = get_res_dtor(ccx, did, tps);
+        let dtor_addr = get_res_dtor(ccx, did, none, tps);
         let args = [bcx.fcx.llretptr, null_env_ptr(bcx)];
         // Kludge to work around the fact that we know the precise type of the
         // value here, but the dtor expects a type that might have opaque
@@ -1336,10 +1354,10 @@ fn free_ty(cx: block, v: ValueRef, t: ty::t) -> block {
 
 fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
                 n_bytes: ValueRef) {
-    // FIXME: Provide LLVM with better alignment information when the
-    // alignment is statically known (it must be nothing more than a constant
-    // int, or LLVM complains -- not even a constant element of a tydesc
-    // works). (Related to #1645, I think?)
+    // FIXME (Related to #1645, I think?): Provide LLVM with better
+    // alignment information when the alignment is statically known (it must
+    // be nothing more than a constant int, or LLVM complains -- not even a
+    // constant element of a tydesc works).
     let _icx = cx.insn_ctxt("call_memmove");
     let ccx = cx.ccx();
     let key = alt ccx.sess.targ_cfg.arch {
@@ -1421,11 +1439,12 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
 
 // This works like copy_val, except that it deinitializes the source.
 // Since it needs to zero out the source, src also needs to be an lval.
-// FIXME: We always zero out the source. Ideally we would detect the
+// FIXME (#839): We always zero out the source. Ideally we would detect the
 // case where a variable is always deinitialized by block exit and thus
-// doesn't need to be dropped. (Issue #839)
+// doesn't need to be dropped.
 fn move_val(cx: block, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> block {
+
     let _icx = cx.insn_ctxt("move_val");
     let mut src_val = src.val;
     let tcx = cx.tcx();
@@ -1633,8 +1652,8 @@ fn cast_shift_rhs(op: ast::binop,
         if lhs_sz < rhs_sz {
             trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
-            // FIXME: If shifting by negative values becomes not undefined
-            // then this is wrong. (See discussion at #1570)
+            // FIXME (See discussion at #1570): If shifting by negative
+            // values becomes not undefined then this is wrong.
             zext(rhs, lhs_llty)
         } else {
             rhs
@@ -1758,17 +1777,29 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
     // A user-defined operator method
     alt bcx.ccx().maps.method_map.find(ex.id) {
       some(origin) {
+        let bcx = lhs_res.bcx;
         let callee_id = ast_util::op_expr_callee_id(ex);
+        #debug["user-defined method callee_id: %s",
+               ast_map::node_id_to_str(bcx.tcx().items, callee_id)];
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(
+
+        let dty = expr_ty(bcx, dst);
+        let target = alloc_ty(bcx, dty);
+
+        let bcx = trans_call_inner(
             bcx, ex.info(), fty,
             expr_ty(bcx, ex),
             {|bcx|
-                // FIXME provide the already-computed address, not the expr
-                // #2528
+                // FIXME (#2528): provide the already-computed address, not
+                // the expr.
                 impl::trans_method_callee(bcx, callee_id, dst, origin)
             },
-            arg_exprs([src]), save_in(lhs_res.val));
+            arg_exprs([src]), save_in(target));
+
+        ret move_val(bcx, DROP_EXISTING, lhs_res.val,
+                     // FIXME (#2704): should kind be owned?
+                     {bcx: bcx, val: target, kind: owned},
+                     dty);
       }
       _ {}
     }
@@ -2304,14 +2335,14 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         }
       }
       ast_map::node_dtor(_, dtor, _, pt) {
-          let parent_id = alt ty::ty_to_def_id(ty::node_id_to_type(ccx.tcx,
-                                     dtor.node.self_id)) {
-                  some(did) { did }
-                  none      { ccx.sess.span_bug(dtor.span, "Bad self ty in \
+        let parent_id = alt ty::ty_to_def_id(ty::node_id_to_type(ccx.tcx,
+                                              dtor.node.self_id)) {
+                some(did) { did }
+                none      { ccx.sess.span_bug(dtor.span, "Bad self ty in \
                                dtor"); }
-          };
-          trans_class_dtor(ccx, *pt, dtor.node.body,
-                           dtor.node.id, psubsts, some(hash_id), parent_id)
+        };
+        trans_class_dtor(ccx, *pt, dtor.node.body,
+          dtor.node.id, psubsts, some(hash_id), parent_id)
       }
       // Ugh -- but this ensures any new variants won't be forgotten
       ast_map::node_expr(*) { ccx.tcx.sess.bug("Can't monomorphize an expr") }
@@ -3317,7 +3348,7 @@ fn need_invoke(bcx: block) -> bool {
     loop {
         alt cur.kind {
           block_scope(inf) {
-            for inf.cleanups.each {|cleanup|
+            for vec::each(inf.cleanups) {|cleanup|
                 alt cleanup {
                   clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) {
                     if cleanup_type == normal_exit_and_unwind {
@@ -4728,9 +4759,9 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
 }
 
 
-// FIXME: this should do some structural hash-consing to avoid
-// duplicate constants. I think. Maybe LLVM has a magical mode
-// that does so later on? (#2530)
+// FIXME (#2530): this should do some structural hash-consing to avoid
+// duplicate constants. I think. Maybe LLVM has a magical mode that does so
+// later on?
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt("trans_const_expr");
     alt e.node {
@@ -4832,9 +4863,9 @@ fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               ast_map::node_item(@{
                 node: ast::item_const(_, subexpr), _
               }, _) {
-                // FIXME: Instead of recursing here to regenerate the values
-                // for other constants, we should just look up the
-                // already-defined value (#2530)
+                // FIXME (#2530): Instead of recursing here to regenerate
+                // the values for other constants, we should just look up
+                // the already-defined value.
                 trans_const_expr(cx, subexpr)
               }
               _ {
@@ -4930,15 +4961,15 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
 }
 
 fn trans_class_dtor(ccx: @crate_ctxt, path: path,
-    body: ast::blk,
-    dtor_id: ast::node_id, substs: option<param_substs>,
-                    hash_id: option<mono_id>, parent_id: ast::def_id)
+    body: ast::blk, dtor_id: ast::node_id,
+    psubsts: option<param_substs>,
+    hash_id: option<mono_id>, parent_id: ast::def_id)
     -> ValueRef {
   let tcx = ccx.tcx;
   /* Look up the parent class's def_id */
   let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
   /* Substitute in the class type if necessary */
-  option::iter(substs) {|ss|
+  option::iter(psubsts) {|ss|
     class_ty = ty::subst_tps(tcx, ss.tys, class_ty);
   }
 
@@ -4947,7 +4978,9 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   let lldty = T_fn([T_ptr(type_of(ccx, ty::mk_nil(tcx))),
                     T_ptr(type_of(ccx, class_ty))],
                    llvm::LLVMVoidType());
-  let s = get_dtor_symbol(ccx, path, dtor_id);
+
+  let s = get_dtor_symbol(ccx, path, dtor_id, psubsts);
+
   /* Register the dtor as a function. It has external linkage */
   let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
   lib::llvm::SetLinkage(lldecl, lib::llvm::ExternalLinkage);
@@ -4959,7 +4992,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   }
   /* Translate the dtor body */
   trans_fn(ccx, path, ast_util::dtor_dec(),
-           body, lldecl, impl_self(class_ty), substs, dtor_id);
+           body, lldecl, impl_self(class_ty), psubsts, dtor_id);
   lldecl
 }
 
@@ -5196,16 +5229,34 @@ fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
     } + [path_name(i.ident)]
 }
 
-/* If there's already a symbol for the dtor with <id>, return it;
-   otherwise, create one and register it, returning it as well */
-fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id) -> str {
+/* If there's already a symbol for the dtor with <id> and substs <substs>,
+   return it; otherwise, create one and register it, returning it as well */
+fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
+                   substs: option<param_substs>) -> str {
+  let t = ty::node_id_to_type(ccx.tcx, id);
   alt ccx.item_symbols.find(id) {
      some(s) { s }
+     none if is_none(substs) {
+       let s = mangle_exported_name(ccx,
+                               path + [path_name(@ccx.names("dtor"))],
+                               t);
+       ccx.item_symbols.insert(id, s);
+       s
+     }
      none    {
-         let s = mangle_exported_name(ccx, path +
-           [path_name(@ccx.names("dtor"))], ty::node_id_to_type(ccx.tcx, id));
-         ccx.item_symbols.insert(id, s);
-         s
+       // Monomorphizing, so just make a symbol, don't add
+       // this to item_symbols
+       alt substs {
+         some(ss) {
+           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, t);
+           mangle_exported_name(ccx, path +
+                           [path_name(@ccx.names("dtor"))], mono_ty)
+         }
+         none {
+             ccx.sess.bug(#fmt("get_dtor_symbol: not monomorphizing and \
+               couldn't find a symbol for dtor %?", path));
+         }
+       }
      }
   }
 }
@@ -5289,7 +5340,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             let lldty = T_fn([T_ptr(type_of(ccx, ty::mk_nil(tcx))),
                     T_ptr(type_of(ccx, class_ty))],
                                    llvm::LLVMVoidType());
-            let s = get_dtor_symbol(ccx, *pt, dt.node.id);
+            let s = get_dtor_symbol(ccx, *pt, dt.node.id, none);
 
             /* Make the declaration for the dtor */
             let llfn = decl_internal_cdecl_fn(ccx.llmod, s, lldty);

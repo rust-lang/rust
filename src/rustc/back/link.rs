@@ -85,13 +85,12 @@ mod write {
             }
         }
         if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
-        // FIXME: This is mostly a copy of the bits of opt's -O2 that are
-        // available in the C api.
-        // FIXME2: We might want to add optimization levels like -O1, -O2,
+        // FIXME (#2396): This is mostly a copy of the bits of opt's -O2 that
+        // are available in the C api.
+        // Also: We might want to add optimization levels like -O1, -O2,
         // -Os, etc
-        // FIXME3: Should we expose and use the pass lists used by the opt
+        // Also: Should we expose and use the pass lists used by the opt
         // tool?
-        // See #2396
 
         if opts.optimize != 0u {
             let fpm = mk_pass_manager();
@@ -668,9 +667,8 @@ fn link_binary(sess: session,
     // Stack growth requires statically linking a __morestack function
     cc_args += ["-lmorestack"];
 
-    // FIXME: At some point we want to rpath our guesses as to where
+    // FIXME (#2397): At some point we want to rpath our guesses as to where
     // native libraries might live, based on the addl_lib_search_paths
-    // #2397
     cc_args += rpath::get_rpath_flags(sess, output);
 
     #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));

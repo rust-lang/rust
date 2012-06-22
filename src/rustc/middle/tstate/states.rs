@@ -169,9 +169,9 @@ fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
                             id: node_id, ops: [init_op], bs: [@expr],
                             cf: ret_style) -> bool {
     let mut changed = find_pre_post_state_expr(fcx, pres, a);
-    // FIXME: This could be a typestate constraint (except we're
-    // not using them inside the compiler, I guess... see
-    // discussion at #2178)
+    // FIXME (#2178): This could be a typestate constraint (except we're
+    // not using them inside the compiler, I guess... see discussion in
+    // bug)
     if vec::len(bs) != vec::len(ops) {
         fcx.ccx.tcx.sess.span_bug(a.span,
                                   #fmt["mismatched arg lengths: \

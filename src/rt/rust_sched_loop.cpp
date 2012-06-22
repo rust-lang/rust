@@ -134,7 +134,7 @@ rust_task *
 rust_sched_loop::schedule_task() {
     lock.must_have_lock();
     assert(this);
-    // FIXME: in the face of failing tasks, this is not always right.
+    // FIXME: in the face of failing tasks, this is not always right. (#2695)
     // assert(n_live_tasks() > 0);
     if (running_tasks.length() > 0) {
         size_t k = isaac_rand(&rctx);

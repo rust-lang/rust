@@ -47,6 +47,7 @@ fn check_loans(bccx: borrowck_ctxt,
                                  mut declared_purity: ast::impure_fn,
                                  mut fn_args: @[]});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
+                            visit_local: check_loans_in_local,
                             visit_block: check_loans_in_block,
                             visit_fn: check_loans_in_fn
                             with *visit::default_visitor()});
@@ -419,6 +420,9 @@ impl methods for check_loan_ctxt {
           // rvalues, I guess.
           cat_special(sk_static_item) { }
 
+          cat_deref(_, _, unsafe_ptr) {
+          }
+
           // Nothing else.
           _ {
             self.bccx.span_err(
@@ -540,6 +544,18 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
         }
     }
     #debug["purity on exit=%?", copy self.declared_purity];
+}
+
+fn check_loans_in_local(local: @ast::local,
+                        &&self: check_loan_ctxt,
+                        vt: visit::vt<check_loan_ctxt>) {
+    alt local.node.init {
+      some({op: ast::init_move, expr: expr}) {
+        self.check_move_out(expr);
+      }
+      some({op: ast::init_assign, _}) | none {}
+    }
+    visit::visit_local(local, self, vt);
 }
 
 fn check_loans_in_expr(expr: @ast::expr,

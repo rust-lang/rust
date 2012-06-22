@@ -213,15 +213,6 @@ MORESTACK:
 
 	popl %ebp
 
-	// FIXME: I don't think these rules are necessary
-	// since the unwinder should never encounter an instruction
-	// pointer pointing here.
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
-	// Restore the rule for how to find %ebp
-	.cfi_restore %ebp
-	// Tell the unwinder how to find the CFA in terms of %esp
-	.cfi_def_cfa %esp, 16
-#endif
 	retl $8
 
 .L$bail:

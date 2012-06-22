@@ -29,8 +29,7 @@ export num;
 
 // PORT check per architecture
 
-// FIXME obtain these in a different way
-// (perhaps related to Issue #1433)
+// FIXME (#1433): obtain these in a different way
 
 const radix: uint = 2u;
 
@@ -127,14 +126,13 @@ pure fn is_finite(x: f64) -> bool {
     ret !(is_NaN(x) || is_infinite(x));
 }
 
-// FIXME add is_normal, is_subnormal, and fpclassify
-// also see Issue #1999
+// FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
 /* Module: consts */
 mod consts {
 
-    // FIXME replace with mathematical constants from cmath
-    // (requires Issue #1433 to fix)
+    // FIXME (requires Issue #1433 to fix): replace with mathematical
+    // constants from cmath.
     #[doc = "Archimedes' constant"]
     const pi: f64 = 3.14159265358979323846264338327950288_f64;
 
@@ -188,9 +186,8 @@ pure fn logarithm(n: f64, b: f64) -> f64 {
 
 #[cfg(target_os="freebsd")]
 pure fn logarithm(n: f64, b: f64) -> f64 {
-    // FIXME check if it is good to use log2 instead of ln here;
-    // in theory should be faster since the radix is 2
-    // See Issue #2000
+    // FIXME (#2000): check if it is good to use log2 instead of ln here; in
+    // theory should be faster since the radix is 2
     ret ln(n) / ln(b);
 }
 

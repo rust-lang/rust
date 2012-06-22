@@ -38,8 +38,8 @@ const neg_infinity: float = -1.0/0.0;
 /* Module: consts */
 mod consts {
 
-    // FIXME replace with mathematical constants from cmath
-    // (requires Issue #1433 to fix)
+    // FIXME (requires Issue #1433 to fix): replace with mathematical
+    // constants from cmath.
     #[doc = "Archimedes' constant"]
     const pi: float = 3.14159265358979323846264338327950288;
 

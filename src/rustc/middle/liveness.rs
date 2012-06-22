@@ -1669,7 +1669,14 @@ impl check_methods for @liveness {
                     #fmt["illegal move from field `%s`", *name]);
                 ret;
               }
-              vk_local(*) | vk_self | vk_implicit_ret {
+              vk_self {
+                self.tcx.sess.span_err(
+                    move_span,
+                    "illegal move from self (cannot move out of a field of \
+                       self)");
+                ret;
+              }
+              vk_local(*) | vk_implicit_ret {
                 self.tcx.sess.span_bug(
                     move_span,
                     #fmt["illegal reader (%?) for `%?`",

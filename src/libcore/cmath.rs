@@ -2,8 +2,8 @@ export c_float;
 export c_double;
 
 // uncomment once #1433 is fixed
-// FIXME export c_float_math_consts;
-// FIXME export c_double_math_consts;
+// FIXME (#1433): export c_float_math_consts;
+// FIXME (#1433): export c_double_math_consts;
 
 export c_float_targ_consts;
 export c_double_targ_consts;
@@ -68,8 +68,7 @@ native mod c_double {
     #[link_name="ilogb"] pure fn ilog_radix(n: c_double) -> c_int;
     pure fn modf(n: c_double, &iptr: c_double) -> c_double;
     pure fn pow(n: c_double, e: c_double) -> c_double;
-// FIXME enable when rounding modes become available
-// (See Issue #1379)
+// FIXME (#1379): enable when rounding modes become available
 //    pure fn rint(n: c_double) -> c_double;
     pure fn round(n: c_double) -> c_double;
     // rename: for consistency with logradix
@@ -149,8 +148,7 @@ native mod c_float {
     #[link_name="modff"] pure fn modf(n: c_float,
                                       &iptr: c_float) -> c_float;
     #[link_name="powf"] pure fn pow(n: c_float, e: c_float) -> c_float;
-// FIXME enable when rounding modes become available
-// (See Issue #1379)
+// FIXME (#1379): enable when rounding modes become available
 //    #[link_name="rintf"] pure fn rint(n: c_float) -> c_float;
     #[link_name="roundf"] pure fn round(n: c_float) -> c_float;
     #[link_name="scalbnf"] pure fn ldexp_radix(n: c_float, i: c_int)
@@ -176,8 +174,8 @@ mod c_float_targ_consts {
     const max_exp: uint = 128u;
     const min_10_exp: int = -37;
     const max_10_exp: int = 38;
-    // FIXME this is wrong! replace with hexadecimal (%a) constants below
-    // (see Issue #1433)
+    // FIXME (#1433): this is wrong, replace with hexadecimal (%a) constants
+    // below.
     const min_value: f32 = 1.175494e-38_f32;
     const max_value: f32 = 3.402823e+38_f32;
     const epsilon: f32 = 0.000000_f32;
@@ -191,8 +189,8 @@ mod c_double_targ_consts {
     const max_exp: uint = 1024u;
     const min_10_exp: int = -307;
     const max_10_exp: int = 308;
-    // FIXME this is wrong! replace with hexadecimal (%a) constants below
-    // (see Issue #1433)
+    // FIXME (#1433): this is wrong, replace with hexadecimal (%a) constants
+    // below.
     const min_value: f64 = 2.225074e-308_f64;
     const max_value: f64 = 1.797693e+308_f64;
     const epsilon: f64 = 2.220446e-16_f64;
