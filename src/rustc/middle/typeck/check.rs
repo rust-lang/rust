@@ -1551,8 +1551,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               }
               none {
                 let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
-                let msg = #fmt["attempted access of field %s on type %s, but \
-                          no public field or method with that name was found",
+                let msg = #fmt["attempted access of field `%s` on type `%s`, \
+                                but no public field or method with that name \
+                                was found",
                                *field, fcx.infcx.ty_to_str(t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue

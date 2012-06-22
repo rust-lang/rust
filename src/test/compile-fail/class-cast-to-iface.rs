@@ -1,4 +1,4 @@
-// error-pattern: attempted access of field eat on type noisy
+// error-pattern: attempted access of field `eat` on type `noisy`
 iface noisy {
   fn speak();
 }

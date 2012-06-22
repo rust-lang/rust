@@ -15,7 +15,7 @@ fn f(p: *rec) -> int {
     // are prohibited by various checks, such as that the enum is
     // instantiable and so forth).
 
-    ret p.f; //! ERROR attempted access of field f on type *rec
+    ret p.f; //! ERROR attempted access of field `f` on type `*rec`
 }
 
 fn main() {
