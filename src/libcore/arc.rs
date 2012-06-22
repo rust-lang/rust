@@ -24,17 +24,19 @@ type arc_data<T> = {
     data: T
 };
 
-resource arc_destruct<T>(data: *libc::c_void) {
-    unsafe {
-        let data: ~arc_data<T> = unsafe::reinterpret_cast(data);
-        let new_count = rustrt::rust_atomic_decrement(&mut data.count);
-        assert new_count >= 0;
-        if new_count == 0 {
-            // drop glue takes over.
-        } else {
-            unsafe::forget(data);
-        }
-    }
+class arc_destruct<T> {
+  let data: *libc::c_void;
+  new(data: *libc::c_void) { self.data = data; }
+  drop unsafe {
+     let data: ~arc_data<T> = unsafe::reinterpret_cast(self.data);
+     let new_count = rustrt::rust_atomic_decrement(&mut data.count);
+     assert new_count >= 0;
+     if new_count == 0 {
+         // drop glue takes over.
+     } else {
+       unsafe::forget(data);
+     }
+  }
 }
 
 type arc<T: const> = arc_destruct<T>;
@@ -52,7 +54,7 @@ fn arc<T: const>(-data: T) -> arc<T> {
  wrapper."]
 fn get<T: const>(rc: &a.arc<T>) -> &a.T {
     unsafe {
-        let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
+        let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
         // Cast us back into the correct region
         let r = unsafe::reinterpret_cast(&ptr.data);
         unsafe::forget(ptr);
@@ -67,12 +69,12 @@ object. However, one of the `arc` objects can be sent to another task,
 allowing them to share the underlying data."]
 fn clone<T: const>(rc: &arc<T>) -> arc<T> {
     unsafe {
-        let ptr: ~arc_data<T> = unsafe::reinterpret_cast(**rc);
+        let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
         let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
         assert new_count >= 2;
         unsafe::forget(ptr);
     }
-    arc_destruct(**rc)
+    arc_destruct((*rc).data)
 }
 
 // An arc over mutable data that is protected by a lock.
@@ -93,17 +95,19 @@ impl methods<T: send> for exclusive<T> {
     fn clone() -> exclusive<T> {
         unsafe {
             // this makes me nervous...
-            let ptr: ~arc_data<ex_data<T>> = unsafe::reinterpret_cast(*self);
+            let ptr: ~arc_data<ex_data<T>> =
+                  unsafe::reinterpret_cast(self.data);
             let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
             assert new_count > 1;
             unsafe::forget(ptr);
         }
-        arc_destruct(*self)
+        arc_destruct(self.data)
     }
 
     fn with<U>(f: fn(sys::condition, x: &T) -> U) -> U {
         unsafe {
-            let ptr: ~arc_data<ex_data<T>> = unsafe::reinterpret_cast(*self);
+            let ptr: ~arc_data<ex_data<T>> =
+                  unsafe::reinterpret_cast(self.data);
             let r = {
                 let rec: &ex_data<T> = &(*ptr).data;
                 rec.lock.lock_cond() {|c|
@@ -123,8 +127,10 @@ type get_chan<T: const send> = chan<chan<arc<T>>>;
 // (terminate, get)
 type shared_arc<T: const send> = (shared_arc_res, get_chan<T>);
 
-resource shared_arc_res(c: comm::chan<()>) {
-    c.send(());
+class shared_arc_res {
+   let c: comm::chan<()>;
+   new(c: comm::chan<()>) { self.c = c; }
+   drop { self.c.send(()); }
 }
 
 fn shared_arc<T: send const>(-data: T) -> shared_arc<T> {

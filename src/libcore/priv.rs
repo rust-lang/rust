@@ -181,8 +181,12 @@ unsafe fn weaken_task(f: fn(comm::port<()>)) unsafe {
     let _unweaken = unweaken(ch);
     f(po);
 
-    resource unweaken(ch: comm::chan<()>) unsafe {
-        rustrt::rust_task_unweaken(unsafe::reinterpret_cast(ch));
+    class unweaken {
+      let ch: comm::chan<()>;
+      new(ch: comm::chan<()>) { self.ch = ch; }
+      drop unsafe {
+        rustrt::rust_task_unweaken(unsafe::reinterpret_cast(self.ch));
+      }
     }
 }
 

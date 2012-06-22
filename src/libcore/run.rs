@@ -170,9 +170,9 @@ fn run_program(prog: str, args: [str]) -> int {
 #[doc ="
 Spawns a process and returns a program
 
-The returned value is a boxed resource containing a <program> object that can
-be used for sending and recieving data over the standard file descriptors.
-The resource will ensure that file descriptors are closed properly.
+The returned value is a boxed class containing a <program> object that can
+be used for sending and receiving data over the standard file descriptors.
+The class will ensure that file descriptors are closed properly.
 
 # Arguments
 
@@ -181,7 +181,7 @@ The resource will ensure that file descriptors are closed properly.
 
 # Return value
 
-A boxed resource of <program>
+A class with a <program> field
 "]
 fn start_program(prog: str, args: [str]) -> program {
     let pipe_input = os::pipe();
@@ -221,16 +221,20 @@ fn start_program(prog: str, args: [str]) -> program {
        libc::fclose(r.out_file);
        libc::fclose(r.err_file);
     }
-    resource prog_res(r: prog_repr) { destroy_repr(r); }
+    class prog_res {
+        let r: prog_repr;
+        new(-r: prog_repr) { self.r = r; }
+        drop { destroy_repr(self.r); }
+    }
 
     impl of program for prog_res {
-        fn get_id() -> pid_t { ret self.pid; }
-        fn input() -> io::writer { io::fd_writer(self.in_fd, false) }
-        fn output() -> io::reader { io::FILE_reader(self.out_file, false) }
-        fn err() -> io::reader { io::FILE_reader(self.err_file, false) }
-        fn close_input() { close_repr_input(*self); }
-        fn finish() -> int { finish_repr(*self) }
-        fn destroy() { destroy_repr(*self); }
+        fn get_id() -> pid_t { ret self.r.pid; }
+        fn input() -> io::writer { io::fd_writer(self.r.in_fd, false) }
+        fn output() -> io::reader { io::FILE_reader(self.r.out_file, false) }
+        fn err() -> io::reader { io::FILE_reader(self.r.err_file, false) }
+        fn close_input() { close_repr_input(self.r); }
+        fn finish() -> int { finish_repr(self.r) }
+        fn destroy() { destroy_repr(self.r); }
     }
     let repr = {pid: pid,
                 mut in_fd: pipe_input.out,

@@ -230,10 +230,14 @@ impl extensions for rng {
 
 }
 
-resource rand_res(c: *rctx) { rustrt::rand_free(c); }
+class rand_res {
+    let c: *rctx;
+    new(c: *rctx) { self.c = c; }
+    drop { rustrt::rand_free(self.c); }
+}
 
 impl of rng for @rand_res {
-    fn next() -> u32 { ret rustrt::rand_next(**self); }
+    fn next() -> u32 { ret rustrt::rand_next((*self).c); }
 }
 
 #[doc = "Create a new random seed for seeded_rng"]
