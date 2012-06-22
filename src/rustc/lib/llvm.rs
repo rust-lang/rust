@@ -1092,8 +1092,10 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef] unsafe {
 
 /* Memory-managed interface to target data. */
 
-resource target_data_res(TD: TargetDataRef) {
-    llvm::LLVMDisposeTargetData(TD);
+class target_data_res {
+    let TD: TargetDataRef;
+    new(TD: TargetDataRef) { self.TD = TD; }
+    drop { llvm::LLVMDisposeTargetData(self.TD); }
 }
 
 type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
@@ -1106,8 +1108,10 @@ fn mk_target_data(string_rep: str) -> target_data {
 
 /* Memory-managed interface to pass managers. */
 
-resource pass_manager_res(PM: PassManagerRef) {
-    llvm::LLVMDisposePassManager(PM);
+class pass_manager_res {
+    let PM: PassManagerRef;
+    new(PM: PassManagerRef) { self.PM = PM; }
+    drop { llvm::LLVMDisposePassManager(self.PM); }
 }
 
 type pass_manager = {llpm: PassManagerRef, dtor: @pass_manager_res};
@@ -1119,8 +1123,10 @@ fn mk_pass_manager() -> pass_manager {
 
 /* Memory-managed interface to object files. */
 
-resource object_file_res(ObjectFile: ObjectFileRef) {
-    llvm::LLVMDisposeObjectFile(ObjectFile);
+class object_file_res {
+    let ObjectFile: ObjectFileRef;
+    new(ObjectFile: ObjectFileRef) { self.ObjectFile = ObjectFile; }
+    drop { llvm::LLVMDisposeObjectFile(self.ObjectFile); }
 }
 
 type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
@@ -1133,8 +1139,10 @@ fn mk_object_file(llmb: MemoryBufferRef) -> option<object_file> {
 
 /* Memory-managed interface to section iterators. */
 
-resource section_iter_res(SI: SectionIteratorRef) {
-    llvm::LLVMDisposeSectionIterator(SI);
+class section_iter_res {
+    let SI: SectionIteratorRef;
+    new(SI: SectionIteratorRef) { self.SI = SI; }
+    drop { llvm::LLVMDisposeSectionIterator(self.SI); }
 }
 
 type section_iter = {llsi: SectionIteratorRef, dtor: @section_iter_res};

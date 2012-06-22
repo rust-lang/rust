@@ -10,7 +10,7 @@ import common::*;
 import driver::session::session;
 
 fn B(cx: block) -> BuilderRef {
-    let b = *cx.fcx.ccx.builder;
+    let b = cx.fcx.ccx.builder.B;
     llvm::LLVMPositionBuilderAtEnd(b, cx.llbb);
     ret b;
 }

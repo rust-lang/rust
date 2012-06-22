@@ -223,8 +223,10 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
             diagnostic::emit(cmsp, msg, lvl);
         };
 
-        resource finally(ch: comm::chan<monitor_msg>) {
-            comm::send(ch, done);
+        class finally {
+            let ch: comm::chan<monitor_msg>;
+            new(ch: comm::chan<monitor_msg>) { self.ch = ch; }
+            drop { comm::send(self.ch, done); }
         }
 
         let _finally = finally(ch);

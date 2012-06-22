@@ -41,11 +41,15 @@ enum c_vec<T> {
     c_vec_({ base: *mut T, len: uint, rsrc: @dtor_res})
 }
 
-resource dtor_res(dtor: option<fn@()>) {
-    alt dtor {
+class dtor_res {
+  let dtor: option<fn@()>;
+  new(dtor: option<fn@()>) { self.dtor = dtor; }
+  drop {
+    alt self.dtor {
       option::none { }
       option::some(f) { f(); }
     }
+  }
 }
 
 /*

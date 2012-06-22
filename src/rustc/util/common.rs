@@ -14,8 +14,10 @@ fn indent<R>(op: fn() -> R) -> R {
     ret r;
 }
 
-resource _indenter(_i: ()) {
-    #debug["<<"];
+class _indenter {
+    let _i: ();
+    new(_i: ()) { self._i = (); }
+    drop { #debug["<<"]; }
 }
 
 fn indenter() -> _indenter {

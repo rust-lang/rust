@@ -62,7 +62,11 @@ type stats =
      llvm_insns: hashmap<str, uint>,
      fn_times: @mut [{ident: str, time: int}]};
 
-resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
+class BuilderRef_res {
+    let B: BuilderRef;
+    new(B: BuilderRef) { self.B = B; }
+    drop { llvm::LLVMDisposeBuilder(self.B); }
+}
 
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt = {

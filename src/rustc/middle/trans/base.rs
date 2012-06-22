@@ -88,9 +88,13 @@ fn dup_for_join(dest: dest) -> dest {
     }
 }
 
-resource icx_popper(ccx: @crate_ctxt) {
-    if ccx.sess.count_llvm_insns() {
-        vec::pop(*ccx.stats.llvm_insn_ctxt);
+class icx_popper {
+    let ccx: @crate_ctxt;
+    new(ccx: @crate_ctxt) { self.ccx = ccx; }
+    drop {
+      if self.ccx.sess.count_llvm_insns() {
+          vec::pop(*(self.ccx.stats.llvm_insn_ctxt));
+      }
     }
 }
 
@@ -5186,7 +5190,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let llbb = str::as_c_str("top", {|buf|
             llvm::LLVMAppendBasicBlock(llfn, buf)
         });
-        let bld = *ccx.builder;
+        let bld = ccx.builder.B;
         llvm::LLVMPositionBuilderAtEnd(bld, llbb);
         let crate_map = ccx.crate_map;
         let start_ty = T_fn([val_ty(rust_main), ccx.int_type, ccx.int_type,

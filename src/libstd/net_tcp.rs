@@ -35,33 +35,41 @@ Encapsulates an open TCP/IP connection through libuv
 underlying libuv data structures when it goes out of scope. This is the
 data structure that is used for read/write operations over a TCP stream.
 "]
-resource tcp_socket(socket_data: @tcp_socket_data)
+class tcp_socket {
+  let socket_data: @tcp_socket_data;
+  new(socket_data: @tcp_socket_data) { self.socket_data = socket_data; }
+  drop {
     unsafe {
-    let closed_po = comm::port::<()>();
-    let closed_ch = comm::chan(closed_po);
-    let close_data = {
-        closed_ch: closed_ch
-    };
-    let close_data_ptr = ptr::addr_of(close_data);
-    let stream_handle_ptr = (*socket_data).stream_handle_ptr;
-    iotask::interact((*socket_data).iotask) {|loop_ptr|
-        log(debug, #fmt("interact dtor for tcp_socket stream %? loop %?",
+       let closed_po = comm::port::<()>();
+       let closed_ch = comm::chan(closed_po);
+       let close_data = {
+             closed_ch: closed_ch
+       };
+       let close_data_ptr = ptr::addr_of(close_data);
+       let stream_handle_ptr = (*(self.socket_data)).stream_handle_ptr;
+       iotask::interact((*(self.socket_data)).iotask) {|loop_ptr|
+          log(debug, #fmt("interact dtor for tcp_socket stream %? loop %?",
             stream_handle_ptr, loop_ptr));
-        uv::ll::set_data_for_uv_handle(stream_handle_ptr,
+           uv::ll::set_data_for_uv_handle(stream_handle_ptr,
                                        close_data_ptr);
-        uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
-    };
-    comm::recv(closed_po);
-    log(debug, #fmt("about to free socket_data at %?", socket_data));
-    rustrt::rust_uv_current_kernel_free(stream_handle_ptr
-                                       as *libc::c_void);
-    log(debug, "exiting dtor for tcp_socket");
+           uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
+       };
+       comm::recv(closed_po);
+       log(debug, #fmt("about to free socket_data at %?", self.socket_data));
+       rustrt::rust_uv_current_kernel_free(stream_handle_ptr
+                                           as *libc::c_void);
+       log(debug, "exiting dtor for tcp_socket");
+    }
+  }
 }
 
-resource tcp_conn_port(conn_data: @tcp_conn_port_data) unsafe {
-    let conn_data_ptr = ptr::addr_of(*conn_data);
+class tcp_conn_port {
+  let conn_data: @tcp_conn_port_data;
+  new(conn_data: @tcp_conn_port_data) { self.conn_data = conn_data; }
+  drop unsafe {
+    let conn_data_ptr = ptr::addr_of(*(self.conn_data));
     let server_stream_ptr = ptr::addr_of((*conn_data_ptr).server_stream);
-    let stream_closed_po = (*conn_data).stream_closed_po;
+    let stream_closed_po = (*(self.conn_data)).stream_closed_po;
     let iotask = (*conn_data_ptr).iotask;
     iotask::interact(iotask) {|loop_ptr|
         log(debug, #fmt("dtor for tcp_conn_port loop: %?",
@@ -69,6 +77,7 @@ resource tcp_conn_port(conn_data: @tcp_conn_port_data) unsafe {
         uv::ll::close(server_stream_ptr, tcp_nl_close_cb);
     }
     comm::recv(stream_closed_po);
+  }
 }
 
 #[doc="
@@ -207,7 +216,7 @@ value as the `err` variant
 "]
 fn write(sock: tcp_socket, raw_write_data: [u8])
     -> result::result<(), tcp_err_data> unsafe {
-    let socket_data_ptr = ptr::addr_of(**sock);
+    let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     write_common_impl(socket_data_ptr, raw_write_data)
 }
 
@@ -240,7 +249,7 @@ value as the `err` variant
 "]
 fn write_future(sock: tcp_socket, raw_write_data: [u8])
     -> future::future<result::result<(), tcp_err_data>> unsafe {
-    let socket_data_ptr = ptr::addr_of(**sock);
+    let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     future::spawn {||
         write_common_impl(socket_data_ptr, raw_write_data)
     }
@@ -262,7 +271,7 @@ on) from until `read_stop` is called, or a `tcp_err_data` record
 fn read_start(sock: tcp_socket)
     -> result::result<comm::port<
         result::result<[u8], tcp_err_data>>, tcp_err_data> unsafe {
-    let socket_data = ptr::addr_of(**sock);
+    let socket_data = ptr::addr_of(*(sock.socket_data));
     read_start_common_impl(socket_data)
 }
 
@@ -275,7 +284,7 @@ Stop reading from an open TCP connection; used with `read_start`
 "]
 fn read_stop(sock: tcp_socket) ->
     result::result<(), tcp_err_data> unsafe {
-    let socket_data = ptr::addr_of(**sock);
+    let socket_data = ptr::addr_of(*(sock.socket_data));
     read_stop_common_impl(socket_data)
 }
 
@@ -295,7 +304,7 @@ read attempt. Pass `0u` to wait indefinitely
 "]
 fn read(sock: tcp_socket, timeout_msecs: uint)
     -> result::result<[u8],tcp_err_data> {
-    let socket_data = ptr::addr_of(**sock);
+    let socket_data = ptr::addr_of(*(sock.socket_data));
     read_common_impl(socket_data, timeout_msecs)
 }
 
@@ -329,7 +338,7 @@ read attempt. Pass `0u` to wait indefinitely
 "]
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
     -> future::future<result::result<[u8],tcp_err_data>> {
-    let socket_data = ptr::addr_of(**sock);
+    let socket_data = ptr::addr_of(*(sock.socket_data));
     future::spawn {||
         read_common_impl(socket_data, timeout_msecs)
     }
@@ -444,8 +453,8 @@ variant
 "]
 fn conn_recv(server_port: tcp_conn_port)
     -> result::result<tcp_socket, tcp_err_data> {
-    let new_conn_po = (**server_port).new_conn_po;
-    let iotask = (**server_port).iotask;
+    let new_conn_po = (*(server_port.conn_data)).new_conn_po;
+    let iotask = (*(server_port.conn_data)).iotask;
     let new_conn_result = comm::recv(new_conn_po);
     alt new_conn_result {
       ok(client_stream_ptr) {
@@ -475,8 +484,8 @@ once a new connection is recv'd. Its parameter:
 "]
 fn conn_recv_spawn(server_port: tcp_conn_port,
                    +cb: fn~(result::result<tcp_socket, tcp_err_data>)) {
-    let new_conn_po = (**server_port).new_conn_po;
-    let iotask = (**server_port).iotask;
+    let new_conn_po = (*(server_port.conn_data)).new_conn_po;
+    let iotask = (*(server_port.conn_data)).iotask;
     let new_conn_result = comm::recv(new_conn_po);
     task::spawn {||
         let sock_create_result = alt new_conn_result {
@@ -507,7 +516,7 @@ connection
 none.
 "]
 fn conn_peek(server_port: tcp_conn_port) -> bool {
-    let new_conn_po = (**server_port).new_conn_po;
+    let new_conn_po = (*(server_port.conn_data)).new_conn_po;
     comm::peek(new_conn_po)
 }
 
