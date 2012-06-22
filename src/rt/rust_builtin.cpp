@@ -891,9 +891,7 @@ rust_unlock_cond_lock(rust_cond_lock *lock) {
 extern "C" void
 rust_wait_cond_lock(rust_cond_lock *lock) {
     rust_task *task = rust_get_current_task();
-#ifdef DEBUG_LOCKS
-    assert(lock->lock.lock_held_by_current_thread());
-#endif
+    lock->lock.must_have_lock();
     assert(NULL == lock->waiting);
     lock->waiting = task;
     task->block(lock, "waiting for signal");
@@ -905,9 +903,7 @@ rust_wait_cond_lock(rust_cond_lock *lock) {
 
 extern "C" bool
 rust_signal_cond_lock(rust_cond_lock *lock) {
-#ifdef DEBUG_LOCKS
-    assert(lock->lock.lock_held_by_current_thread());
-#endif
+    lock->lock.must_have_lock();
     if(NULL == lock->waiting) {
         return false;
     }
