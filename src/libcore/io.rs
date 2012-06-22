@@ -224,7 +224,11 @@ impl <T: reader, C> of reader for {base: T, cleanup: C} {
     fn tell() -> uint { self.base.tell() }
 }
 
-resource FILE_res(f: *libc::FILE) { libc::fclose(f); }
+class FILE_res {
+    let f: *libc::FILE;
+    new(f: *libc::FILE) { self.f = f; }
+    drop { libc::fclose(self.f); }
+}
 
 fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
     if cleanup {
@@ -383,7 +387,11 @@ impl of writer for fd_t {
     fn flush() -> int { 0 }
 }
 
-resource fd_res(fd: fd_t) { libc::close(fd); }
+class fd_res {
+    let fd: fd_t;
+    new(fd: fd_t) { self.fd = fd; }
+    drop { libc::close(self.fd); }
+}
 
 fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
     if cleanup {
@@ -695,13 +703,17 @@ mod fsync {
     }
 
 
-    // Resource of artifacts that need to fsync on destruction
-    resource res<t>(arg: arg<t>) {
-        alt arg.opt_level {
-          option::none { }
-          option::some(level) {
-            // fail hard if not succesful
-            assert(arg.fsync_fn(arg.val, level) != -1);
+    // Artifacts that need to fsync on destruction
+    class res<t> {
+        let arg: arg<t>;
+        new(-arg: arg<t>) { self.arg <- arg; }
+        drop {
+          alt self.arg.opt_level {
+            option::none { }
+            option::some(level) {
+              // fail hard if not succesful
+              assert(self.arg.fsync_fn(self.arg.val, level) != -1);
+            }
           }
         }
     }
@@ -718,7 +730,7 @@ mod fsync {
     fn FILE_res_sync(&&file: FILE_res, opt_level: option<level>,
                   blk: fn(&&res<*libc::FILE>)) {
         blk(res({
-            val: *file, opt_level: opt_level,
+            val: file.f, opt_level: opt_level,
             fsync_fn: fn@(&&file: *libc::FILE, l: level) -> int {
                 ret os::fsync_fd(libc::fileno(file), l) as int;
             }
@@ -729,7 +741,7 @@ mod fsync {
     fn fd_res_sync(&&fd: fd_res, opt_level: option<level>,
                    blk: fn(&&res<fd_t>)) {
         blk(res({
-            val: *fd, opt_level: opt_level,
+            val: fd.fd, opt_level: opt_level,
             fsync_fn: fn@(&&fd: fd_t, l: level) -> int {
                 ret os::fsync_fd(fd, l) as int;
             }

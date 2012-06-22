@@ -482,9 +482,12 @@ Temporarily make the task unkillable
 
 "]
 unsafe fn unkillable(f: fn()) {
-    resource allow_failure(_i: ()) {
-        rustrt::rust_task_allow_kill();
+    class allow_failure {
+      let i: (); // since a class must have at least one field
+      new(_i: ()) { self.i = (); }
+      drop { rustrt::rust_task_allow_kill(); }
     }
+
     let _allow_failure = allow_failure(());
     rustrt::rust_task_inhibit_kill();
     f();

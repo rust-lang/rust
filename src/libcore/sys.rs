@@ -85,16 +85,20 @@ pure fn log_str<T>(t: T) -> str {
     }
 }
 
-resource lock_and_signal(lock: rust_cond_lock) {
-    rustrt::rust_destroy_cond_lock(lock);
+class lock_and_signal {
+    let lock: rust_cond_lock;
+    new(lock: rust_cond_lock) { self.lock = lock; }
+    drop { rustrt::rust_destroy_cond_lock(self.lock); }
 }
 
 enum condition {
     condition_(rust_cond_lock)
 }
 
-resource unlock(lock: rust_cond_lock) {
-    rustrt::rust_unlock_cond_lock(lock);
+class unlock {
+    let lock: rust_cond_lock;
+    new(lock: rust_cond_lock) { self.lock = lock; }
+    drop { rustrt::rust_unlock_cond_lock(self.lock); }
 }
 
 fn create_lock() -> lock_and_signal {
@@ -103,15 +107,15 @@ fn create_lock() -> lock_and_signal {
 
 impl methods for lock_and_signal {
     fn lock<T>(f: fn() -> T) -> T {
-        rustrt::rust_lock_cond_lock(*self);
-        let _r = unlock(*self);
+        rustrt::rust_lock_cond_lock(self.lock);
+        let _r = unlock(self.lock);
         f()
     }
 
     fn lock_cond<T>(f: fn(condition) -> T) -> T {
-        rustrt::rust_lock_cond_lock(*self);
-        let _r = unlock(*self);
-        f(condition_(*self))
+        rustrt::rust_lock_cond_lock(self.lock);
+        let _r = unlock(self.lock);
+        f(condition_(self.lock))
     }
 }
 
