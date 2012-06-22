@@ -218,7 +218,7 @@ fn require_same_types(
 
 fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
     alt ty::get(a.ty).struct {
-      ty::ty_vec(mt) {
+      ty::ty_evec(mt, vstore_uniq) {
         if mt.mutbl != ast::m_imm { ret false; }
         alt ty::get(mt.ty).struct {
           ty::ty_str { ret true; }

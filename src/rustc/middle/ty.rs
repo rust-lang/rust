@@ -684,7 +684,7 @@ fn mk_nil_ptr(cx: ctxt) -> t {
     mk_ptr(cx, {ty: mk_nil(cx), mutbl: ast::m_imm})
 }
 
-fn mk_vec(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_vec(tm)) }
+fn mk_vec(cx: ctxt, tm: mt) -> t { mk_evec(cx, tm, vstore_uniq) }
 
 fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
     mk_t(cx, ty_evec(tm, t))
