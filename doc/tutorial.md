@@ -1377,26 +1377,7 @@ Like vectors, strings are always unique. You can wrap them in a shared
 box to share them. Unlike vectors, there is no mutable variant of
 strings. They are always immutable.
 
-## Resources
-
-Resources are data types that have a destructor associated with them.
-
-~~~~
-# fn close_file_desc(x: int) {}
-resource file_desc(fd: int) {
-    close_file_desc(fd);
-}
-~~~~
-
-This defines a type `file_desc` and a constructor of the same name,
-which takes an integer. The type has an associated destructor procedure,
-whose contents are specified by the block. Values of such a type can not
-be copied, and when they are destroyed (by going out of scope, or, when
-boxed, when their box is cleaned up), their body runs. In the example
-above, this would cause the given file descriptor to be closed.
-
-NOTE: We're considering alternative approaches for data types with
-destructors. Resources might go away in the future.
+NOTE: Section on resources removed. ToDo: document classes and destructors
 
 # Argument passing
 
@@ -1581,7 +1562,7 @@ without any sophistication).
 ## Kinds
 
 Perhaps surprisingly, the 'copy' (duplicate) operation is not defined
-for all Rust types. Resource types (types with destructors) can not be
+for all Rust types. Resource types (classes with destructors) cannot be
 copied, and neither can any type whose copying would require copying a
 resource (such as records or unique boxes containing a resource).
 
