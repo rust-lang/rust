@@ -271,12 +271,12 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     }
 }
 
-fn check_for_main_fn(ccx: @crate_ctxt, crate: @ast::crate) {
+fn check_for_main_fn(ccx: @crate_ctxt) {
     let tcx = ccx.tcx;
     if !tcx.sess.building_library {
         alt copy tcx.sess.main_fn {
           some((id, sp)) { check_main_fn_ty(ccx, id, sp); }
-          none { tcx.sess.span_err(crate.span, "main function not found"); }
+          none { tcx.sess.err("main function not found"); }
         }
     }
 }
@@ -289,7 +289,7 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                 tcx: tcx};
     collect::collect_item_types(ccx, crate);
     check::check_item_types(ccx, crate);
-    check_for_main_fn(ccx, crate);
+    check_for_main_fn(ccx);
     tcx.sess.abort_if_errors();
     (ccx.method_map, ccx.vtable_map)
 }
