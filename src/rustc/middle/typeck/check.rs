@@ -385,7 +385,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           // Check that there's at least one field
           let (fields,_) = split_class_items(members);
           if fields.len() < 1u {
-              ccx.tcx.sess.span_err(it.span, "A class must have at least one \
+              ccx.tcx.sess.span_err(it.span, "a class must have at least one \
                 field");
           }
           // Check that the class is instantiable
@@ -942,7 +942,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 // separate case below.
                 tcx.sess.span_bug(
                     expr.span,
-                    #fmt["Comparison operator in expr_binop: %s",
+                    #fmt["comparison operator in expr_binop: %s",
                          ast_util::binop_to_str(op)]);
               }
               _ { lhs_t }
@@ -1221,7 +1221,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               result::ok(_) { /* fall through */ }
               result::err(_) {
                 tcx.sess.span_err(expr.span,
-                                  "ret; in function returning non-nil"); }
+                                  "`ret;` in function returning non-nil"); }
             }
           }
           some(e) { check_expr_with(fcx, e, ret_ty); }
@@ -1303,7 +1303,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               result::ok(_) {}
               result::err(err) {
                 tcx.sess.span_fatal(
-                    expr.span, #fmt("a loop function's last argument \
+                    expr.span, #fmt("a `loop` function's last argument \
                                      should return `bool`, not `%s`",
                                     fcx.infcx.ty_to_str(fty.output)));
               }
@@ -1311,8 +1311,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}), fty.proto)
           }
           _ {
-            tcx.sess.span_fatal(expr.span, "a loop function's last argument \
-                                            should be of function type");
+            tcx.sess.span_fatal(expr.span, "a `loop` function's last \
+                                            argument should be of function \
+                                            type");
           }
         };
         alt check b.node {
@@ -1338,7 +1339,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             (ty::mk_fn(tcx, fty), fty.proto)
           }
           _ {
-            tcx.sess.span_fatal(expr.span, "a do function's last argument \
+            tcx.sess.span_fatal(expr.span, "a `do` function's last argument \
                                             should be of function type");
           }
         };
@@ -1786,8 +1787,8 @@ fn check_instantiable(tcx: ty::ctxt,
     let rty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, rty) {
         tcx.sess.span_err(sp, #fmt["this type cannot be instantiated \
-                                    without an instance of itself. \
-                                    Consider using option<%s>.",
+                                    without an instance of itself; \
+                                    consider using `option<%s>`",
                                    ty_to_str(tcx, rty)]);
     }
 }
@@ -1826,7 +1827,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
         }
         if vec::contains(disr_vals, disr_val) {
             ccx.tcx.sess.span_err(v.span,
-                                  "discriminator value already exists.");
+                                  "discriminator value already exists");
         }
         disr_vals += [disr_val];
         let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
@@ -1853,7 +1854,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
           _ { false }
         }
     }) {
-        ccx.tcx.sess.span_err(sp, "illegal recursive enum type. \
+        ccx.tcx.sess.span_err(sp, "illegal recursive enum type; \
                                    wrap the inner value in a box to \
                                    make it representable");
     }
@@ -2200,13 +2201,13 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
     if !r_used {
         ccx.tcx.sess.span_err(
             span, "lifetime `self` unused inside \
-                   reference-parameterized type.");
+                   reference-parameterized type");
     }
 
     for tps_used.eachi { |i, b|
         if !b {
             ccx.tcx.sess.span_err(
-                span, #fmt["Type parameter %s is unused.", *tps[i].ident]);
+                span, #fmt["type parameter `%s` is unused", *tps[i].ident]);
         }
     }
 }
@@ -2273,13 +2274,13 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
     let i_n_tps = (*i_ty.bounds).len();
     if i_n_tps != n_tps {
         tcx.sess.span_err(it.span, #fmt("intrinsic has wrong number \
-                                         of type parameters. found %u, \
+                                         of type parameters: found %u, \
                                          expected %u", i_n_tps, n_tps));
     } else {
         require_same_types(
             tcx, none, it.span, i_ty.ty, fty,
-            {|| #fmt["intrinsic has wrong type. \
-                      expected %s",
+            {|| #fmt["intrinsic has wrong type: \
+                      expected `%s`",
                      ty_to_str(ccx.tcx, fty)]});
     }
 }
