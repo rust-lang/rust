@@ -156,7 +156,7 @@ rust_uv_get_len_from_buf
 rust_uv_get_kernel_global_chan_ptr
 rust_uv_current_kernel_malloc
 rust_uv_current_kernel_free
-rust_uv_getaddr_info
+rust_uv_getaddrinfo
 rust_dbg_lock_create
 rust_dbg_lock_destroy
 rust_dbg_lock_lock
