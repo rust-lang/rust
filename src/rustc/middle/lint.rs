@@ -47,6 +47,7 @@ enum lint {
     non_implicitly_copyable_typarams,
     vecs_not_implicitly_copyable,
     implicit_copies,
+    old_strs,
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -62,6 +63,7 @@ fn int_to_lint(i: int) -> lint {
       6 { non_implicitly_copyable_typarams }
       7 { vecs_not_implicitly_copyable }
       8 { implicit_copies }
+      9 { old_strs }
     }
 }
 
@@ -103,7 +105,12 @@ fn get_lint_dict() -> lint_dict {
 
         ("old_vecs",
          @{lint: old_vecs,
-           desc: "old (deprecated) vectors and strings",
+           desc: "old (deprecated) vectors",
+           default: warn}),
+
+        ("old_strs",
+         @{lint: old_strs,
+           desc: "old (deprecated) strings",
            default: ignore}),
 
         ("unrecognized_warning",
@@ -419,13 +426,19 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
 
         visit_expr:fn@(e: @ast::expr) {
             alt e.node {
-              ast::expr_vec(_, _) |
-              ast::expr_lit(@{node: ast::lit_str(_), span:_})
+              ast::expr_vec(_, _)
               if ! uses_vstore.contains_key(e.id) {
                 cx.sess.span_lint(
                     old_vecs, e.id, it.id,
-                    e.span, "deprecated vec/str expr");
+                    e.span, "deprecated vec expr");
               }
+              ast::expr_lit(@{node: ast::lit_str(_), span:_})
+              if ! uses_vstore.contains_key(e.id) {
+                cx.sess.span_lint(
+                    old_strs, e.id, it.id,
+                    e.span, "deprecated str expr");
+              }
+
               ast::expr_vstore(@inner, _) {
                 uses_vstore.insert(inner.id, true);
               }
@@ -441,15 +454,13 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
                     old_vecs, t.id, it.id,
                     t.span, "deprecated vec type");
               }
-
               ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
               if ids == [@"str"] && (! uses_vstore.contains_key(t.id)) {
                 cx.sess.span_lint(
-                    old_vecs, t.id, it.id,
+                    old_strs, t.id, it.id,
                     t.span, "deprecated str type");
               }
-
               ast::ty_vstore(inner, _) {
                 uses_vstore.insert(inner.id, true);
               }
