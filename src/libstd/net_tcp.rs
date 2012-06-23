@@ -771,7 +771,9 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
         self.read_bytes(1u)[0] as int
     }
     fn unread_byte(amt: int) {
-        vec::unshift((*self).buf, amt as u8);
+        // FIXME: stubbing this out pending the
+        // return of vec::unshift
+        //vec::unshift((*self).buf, amt as u8);
     }
     fn eof() -> bool {
         false // noop
