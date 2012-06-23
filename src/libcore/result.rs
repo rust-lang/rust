@@ -43,16 +43,16 @@ pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
 }
 
 #[doc = "Returns true if the result is `ok`"]
-pure fn is_success<T, U>(res: result<T, U>) -> bool {
+pure fn is_ok<T, U>(res: result<T, U>) -> bool {
     alt res {
       ok(_) { true }
       err(_) { false }
     }
 }
 
-#[doc = "Returns true if the result is `error`"]
-pure fn is_failure<T, U>(res: result<T, U>) -> bool {
-    !is_success(res)
+#[doc = "Returns true if the result is `err`"]
+pure fn is_err<T, U>(res: result<T, U>) -> bool {
+    !is_ok(res)
 }
 
 #[doc = "
@@ -181,9 +181,9 @@ fn map_err<T: copy, E, F: copy>(res: result<T, E>, op: fn(E) -> F)
 }
 
 impl extensions<T, E> for result<T, E> {
-    fn is_success() -> bool { is_success(self) }
+    fn is_ok() -> bool { is_ok(self) }
 
-    fn is_failure() -> bool { is_failure(self) }
+    fn is_err() -> bool { is_err(self) }
 
     fn iter(f: fn(T)) {
         alt self {
