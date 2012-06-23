@@ -1979,7 +1979,7 @@ class parser {
         let rp = self.parse_region_param();
         let ty_params = self.parse_ty_params();
         let class_path = self.ident_to_path_tys(class_name, rp, ty_params);
-        let ifaces : [@iface_ref] = if self.eat_keyword("implements")
+        let ifaces : [@iface_ref] = if self.eat(token::COLON)
             { self.parse_iface_ref_list() }
         else { [] };
         self.expect(token::LBRACE);

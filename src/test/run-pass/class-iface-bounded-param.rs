@@ -2,7 +2,7 @@ use std;
 import std::map::{map, hashmap, int_hash};
 
 class keys<K: copy, V: copy, M: copy map<K,V>>
-    implements iter::base_iter<K> {
+    : iter::base_iter<K> {
 
     let map: M;
 

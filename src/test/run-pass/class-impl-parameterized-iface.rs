@@ -2,7 +2,7 @@
 use std;
 import std::map::*;
 
-class cat implements map<int, bool> {
+class cat : map<int, bool> {
   priv {
     // Yes, you can have negative meows
     let mut meows : int;

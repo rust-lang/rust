@@ -2,7 +2,7 @@ iface noisy {
   fn speak();
 }
 
-class cat implements noisy {
+class cat : noisy {
   priv {
     let mut meows : uint;
     fn meow() {
