@@ -39,6 +39,9 @@ Version 0.3  (June 2012) - not yet!
     * Syntax extensions: #line, #col, #file, #mod,
       #stringify, #include, #include_str, #include_bin.
 
+  * Tool improvements
+    * Cargo automatically resolves dependencies
+
 Version 0.2  (March 2012)
 -------------------------
 
