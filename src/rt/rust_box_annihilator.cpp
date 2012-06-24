@@ -138,15 +138,14 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
         void *data;
     };
 
-    typedef void (*dtor)(void **retptr, void *env, void *dptr);
+    typedef void (*dtor)(void **retptr, void *dptr);
 
     static void run_dtor(run_dtor_args *args) {
         dtor f = (dtor)args->dtor;
-        f(NULL, args->dtor->env, args->data);
+        f(NULL, args->data);
     }
 
-    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp,
-                   bool live) {
+    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp) {
         void *data = (void*)(uintptr_t)dp;
         // Switch back to the Rust stack to run the destructor
         run_dtor_args args = {dtor, data};

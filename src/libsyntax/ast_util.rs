@@ -425,7 +425,6 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_item: fn@(i: @item) {
             vfn(i.id);
             alt i.node {
-              item_res(_, _, _, d_id, c_id, _) { vfn(d_id); vfn(c_id); }
               item_enum(vs, _, _) { for vs.each {|v| vfn(v.node.id); } }
               _ {}
             }
@@ -497,8 +496,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
                 vfn(self_id);
                 vfn(parent_id.node);
               }
-              visit::fk_item_fn(_, tps) |
-              visit::fk_res(_, tps, _) {
+              visit::fk_item_fn(_, tps) {
                 vec::iter(tps) {|tp| vfn(tp.id)}
               }
               visit::fk_method(_, tps, m) {

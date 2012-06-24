@@ -304,8 +304,7 @@ public:
     void walk_tag2(tag_info &tinfo,
                    const data_pair<tag_variant_t> &tag_variants);
     void walk_struct2(const uint8_t *end_sp);
-    void walk_res2(const rust_fn *dtor, const uint8_t *end_sp,
-                   const data_pair<uintptr_t> &live);
+    void walk_res2(const rust_fn *dtor, const uint8_t *end_sp);
     void walk_variant2(tag_info &tinfo,
                        tag_variant_t variant_id,
                        const std::pair<const uint8_t *,const uint8_t *>
@@ -356,8 +355,7 @@ cmp::walk_struct2(const uint8_t *end_sp) {
 }
 
 void
-cmp::walk_res2(const rust_fn *dtor, const uint8_t *end_sp,
-              const data_pair<uintptr_t> &live) {
+cmp::walk_res2(const rust_fn *dtor, const uint8_t *end_sp) {
     abort();    // TODO
 }
 
@@ -463,7 +461,7 @@ log::walk_variant2(tag_info &tinfo,
 }
 
 void
-log::walk_res2(const rust_fn *dtor, const uint8_t *end_sp, bool live) {
+log::walk_res2(const rust_fn *dtor, const uint8_t *end_sp) {
     out << prefix << "res";
 
     if (this->sp == end_sp)

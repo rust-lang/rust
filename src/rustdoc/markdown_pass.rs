@@ -198,9 +198,6 @@ fn header_kind(doc: doc::itemtag) -> str {
       doc::enumtag(_) {
         "Enum"
       }
-      doc::restag(_) {
-        "Resource"
-      }
       doc::ifacetag(_) {
         "Interface"
       }
@@ -352,7 +349,6 @@ fn write_item_(ctxt: ctxt, doc: doc::itemtag, write_header: bool) {
       doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
       doc::consttag(constdoc) { write_const(ctxt, constdoc) }
       doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
-      doc::restag(resdoc) { write_res(ctxt, resdoc) }
       doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
       doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
       doc::tytag(tydoc) { write_type(ctxt, tydoc) }
@@ -641,11 +637,6 @@ fn should_write_variant_list_with_signatures() {
         "\n\n#### Variants\n\
          \n* `b(int)`\
          \n* `c(int)` - a\n\n");
-}
-
-fn write_res(ctxt: ctxt, doc: doc::resdoc) {
-    write_sig(ctxt, doc.sig);
-    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]

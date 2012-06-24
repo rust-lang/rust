@@ -335,7 +335,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
             [shape_res]
           }
           else { [shape_struct] };
-        let mut sub = [];
         option::iter(m_dtor_did) {|dtor_did|
           let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
           let id = interner::intern(ccx.shape_cx.resources, ri);
@@ -346,33 +345,13 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
           add_u16(s, 0_u16);
         };
         for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each {|f|
-            sub += shape_of(ccx, f.mt.ty);
+           add_substr(s, shape_of(ccx, f.mt.ty));
         }
-        add_substr(s, sub);
         s
       }
       ty::ty_rptr(_, mt) {
         let mut s = [shape_rptr];
         add_substr(s, shape_of(ccx, mt.ty));
-        s
-      }
-      ty::ty_res(did, raw_subt, substs) {
-        #debug["ty_res(%?, %?, %?)",
-               did,
-               ty_to_str(ccx.tcx, raw_subt),
-               substs.tps.map({|t| ty_to_str(ccx.tcx, t) })];
-        for substs.tps.each() {|t| assert !ty::type_has_params(t); }
-        let subt = ty::subst(ccx.tcx, substs, raw_subt);
-        let tps = substs.tps;
-        let ri = @{did: did, parent_id: none, tps: tps};
-        let id = interner::intern(ccx.shape_cx.resources, ri);
-
-        let mut s = [shape_res];
-        add_u16(s, id as u16);
-        // Hack: always encode 0 tps, since the shape glue format
-        // hasn't changed since we started monomorphizing.
-        add_u16(s, 0_u16);
-        add_substr(s, shape_of(ccx, subt));
         s
       }
       ty::ty_param(*) {
@@ -599,8 +578,9 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     for uint::range(0u, len) {|i|
         let ri = interner::get(ccx.shape_cx.resources, i);
         for ri.tps.each() {|s| assert !ty::type_has_params(s); }
-        dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.parent_id,
-                                            ri.tps)];
+        option::iter(ri.parent_id) {|id|
+            dtors += [trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];
+        }
     }
     ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
@@ -744,10 +724,6 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |
           ty::ty_ptr(_) | ty::ty_rptr(_,_) { nilptr(tcx) }
           ty::ty_fn(_) { ty::mk_tup(tcx, [nilptr(tcx), nilptr(tcx)]) }
-          ty::ty_res(_, sub, substs) {
-            let sub1 = ty::subst(tcx, substs, sub);
-            ty::mk_tup(tcx, [ty::mk_int(tcx), simplify_type(tcx, sub1)])
-          }
           ty::ty_evec(_, ty::vstore_slice(_)) |
           ty::ty_estr(ty::vstore_slice(_)) {
             ty::mk_tup(tcx, [nilptr(tcx), ty::mk_int(tcx)])

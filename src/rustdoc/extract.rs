@@ -83,11 +83,6 @@ fn moddoc_from_mod(
                     enumdoc_from_enum(itemdoc, variants)
                 ))
               }
-              ast::item_res(_, _, _, _, _, _) {
-                some(doc::restag(
-                    resdoc_from_resource(itemdoc)
-                ))
-              }
               ast::item_iface(_, _, methods) {
                 some(doc::ifacetag(
                     ifacedoc_from_iface(itemdoc, methods)
@@ -186,20 +181,6 @@ fn should_extract_enums() {
 fn should_extract_enum_variants() {
     let doc = test::mk_doc("enum e { v }");
     assert doc.cratemod().enums()[0].variants[0].name == "v";
-}
-
-fn resdoc_from_resource(itemdoc: doc::itemdoc) -> doc::resdoc {
-    {
-        item: itemdoc,
-        sig: none
-    }
-}
-
-#[test]
-fn should_extract_resources() {
-    let doc = test::mk_doc("resource r(b: bool) { }");
-    assert doc.cratemod().resources()[0].id() != 0;
-    assert doc.cratemod().resources()[0].name() == "r";
 }
 
 fn ifacedoc_from_iface(

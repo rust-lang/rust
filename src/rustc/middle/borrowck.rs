@@ -249,7 +249,6 @@ enum ptr_kind {uniq_ptr, gc_ptr, region_ptr, unsafe_ptr}
 // structure accessible without a dereference":
 enum comp_kind {
     comp_tuple,                  // elt in a tuple
-    comp_res,                    // data for a resource
     comp_variant(ast::def_id),   // internals to a variant of given enum
     comp_field(ast::ident,       // name of field
                ast::mutability), // declared mutability of field
@@ -423,7 +422,6 @@ impl to_str_methods for borrowck_ctxt {
           comp_field(fld, _) { *fld }
           comp_index(*) { "[]" }
           comp_tuple { "()" }
-          comp_res { "<res>" }
           comp_variant(_) { "<enum>" }
         }
     }
@@ -483,7 +481,6 @@ impl to_str_methods for borrowck_ctxt {
           }
           cat_comp(_, comp_field(*)) { mut_str + " field" }
           cat_comp(_, comp_tuple) { "tuple content" }
-          cat_comp(_, comp_res) { "resource content" }
           cat_comp(_, comp_variant(_)) { "enum content" }
           cat_comp(_, comp_index(t, _)) {
             alt ty::get(t).struct {
@@ -530,7 +527,7 @@ impl to_str_methods for borrowck_ctxt {
 // mutable structure.
 fn inherent_mutability(ck: comp_kind) -> mutability {
     alt ck {
-      comp_tuple | comp_res | comp_variant(_) {m_imm}
+      comp_tuple | comp_variant(_)        {m_imm}
       comp_field(_, m) | comp_index(_, m) {m}
     }
 }

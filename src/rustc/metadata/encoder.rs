@@ -186,17 +186,6 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
               encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
           }
-          item_res(_, tps, _, _, ctor_id, _) {
-            ebml_w.wr_tag(tag_paths_data_item) {||
-                encode_name_and_def_id(ebml_w, it.ident, ctor_id);
-            }
-            // The same ident has to be added twice (with different positions)
-            // because it's for both the ctor and the dtor.
-            add_to_index(ebml_w, path, index, it.ident);
-            ebml_w.wr_tag(tag_paths_data_item) {||
-                encode_name_and_def_id(ebml_w, it.ident, it.id);
-            }
-          }
           item_class(_, _, items, ctor, m_dtor, _) {
             ebml_w.wr_tag(tag_paths_data_item) {||
                 encode_name_and_def_id(ebml_w, it.ident, it.id);
@@ -696,34 +685,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         /* Each class has its own index -- encode it */
         let bkts = create_index(idx, hash_node_id);
         encode_index(ebml_w, bkts, write_int);
-        ebml_w.end_tag();
-      }
-      item_res(_, tps, _, _, ctor_id, rp) {
-        add_to_index();
-        let fn_ty = node_id_to_type(tcx, ctor_id);
-
-        ebml_w.start_tag(tag_items_data_item);
-        encode_def_id(ebml_w, local_def(ctor_id));
-        encode_family(ebml_w, 'y');
-        encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, ty::ty_fn_ret(fn_ty));
-        encode_name(ebml_w, item.ident);
-        ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
-        if (tps.len() == 0u) {
-            encode_symbol(ecx, ebml_w, item.id);
-        }
-        encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        encode_region_param(ebml_w, rp);
-        ebml_w.end_tag();
-
-        *index += [{val: ctor_id, pos: ebml_w.writer.tell()}];
-        ebml_w.start_tag(tag_items_data_item);
-        encode_def_id(ebml_w, local_def(ctor_id));
-        encode_family(ebml_w, 'f');
-        encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, fn_ty);
-        encode_parent_item(ebml_w, local_def(item.id));
-        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
       item_impl(tps, rp, ifce, _, methods) {

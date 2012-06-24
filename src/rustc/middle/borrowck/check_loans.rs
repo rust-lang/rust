@@ -532,7 +532,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                   }
                   visit::fk_anon(*) | visit::fk_fn_block(*) |
                   visit::fk_method(*) | visit::fk_item_fn(*) |
-                  visit::fk_res(*) | visit::fk_dtor(*) {
+                  visit::fk_dtor(*) {
                     self.in_ctor = false;
                     self.declared_purity = decl.purity;
                     self.fn_args = @decl.inputs.map({|i| i.id});

@@ -43,16 +43,12 @@ enum ast_node {
     // order they are introduced.
     node_arg(arg, uint),
     node_local(uint),
-    // Constructor for either a resource or a class
-    node_ctor(ident, [ty_param], a_ctor, @path),
+    // Constructor for a class
+    // def_id is parent id
+    node_ctor(ident, [ty_param], @class_ctor, def_id, @path),
     // Destructor for a class
     node_dtor([ty_param], @class_dtor, def_id, @path),
     node_block(blk),
-}
-
-enum a_ctor {
-  res_ctor(fn_decl, node_id, codemap::span),
-  class_ctor(@class_ctor, def_id /* ID for parent class */),
 }
 
 type map = std::map::hashmap<node_id, ast_node>;
@@ -138,7 +134,7 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
                     span: sp};
           cx.map.insert(id, node_ctor(/* FIXME (#2543) */ copy nm,
                                       /* FIXME (#2543) */ copy tps,
-                                      class_ctor(ct, parent_id),
+                                      ct, parent_id,
                                       @/* FIXME (#2543) */ copy cx.path));
        }
       visit::fk_dtor(tps, self_id, parent_id) {
@@ -198,15 +194,6 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             map_method(impl_did, extend(cx, i.ident), m,
                        cx);
         }
-      }
-      item_res(decl, tps, _, dtor_id, ctor_id, _) {
-        cx.map.insert(ctor_id, node_ctor(/* FIXME (#2543) */ copy i.ident,
-                                         /* FIXME (#2543) */ copy tps,
-                                         res_ctor(/* FIXME (#2543) */
-                                                  copy decl,
-                                                  ctor_id, i.span),
-                                         item_path));
-        cx.map.insert(dtor_id, node_item(i, item_path));
       }
       item_enum(vs, _, _) {
         for vs.each {|v|

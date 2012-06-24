@@ -115,18 +115,6 @@ fn should_execute_op_on_variant_desc() {
 }
 
 #[test]
-fn should_execute_op_on_resource_brief() {
-    let doc = test::mk_doc("#[doc = \" a \"] resource r(a: bool) { }");
-    assert doc.cratemod().resources()[0].brief() == some("a");
-}
-
-#[test]
-fn should_execute_op_on_resource_desc() {
-    let doc = test::mk_doc("#[doc = \" a \"] resource r(a: bool) { }");
-    assert doc.cratemod().resources()[0].desc() == some("a");
-}
-
-#[test]
 fn should_execute_op_on_iface_brief() {
     let doc = test::mk_doc(
         "#[doc = \" a \"] iface i { fn a(); }");

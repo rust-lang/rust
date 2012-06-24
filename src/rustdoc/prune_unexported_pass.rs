@@ -202,19 +202,6 @@ fn should_prune_unexported_variants() {
 }
 
 #[test]
-fn should_prune_unexported_resources_from_top_mod() {
-    let doc = test::mk_doc("export a; mod a { } resource r(a: bool) { }");
-    assert vec::is_empty(doc.cratemod().resources());
-}
-
-#[test]
-fn should_prune_unexported_resources() {
-    let doc = test::mk_doc(
-        "mod a { export a; mod a { } resource r(a: bool) { } }");
-    assert vec::is_empty(doc.cratemod().mods()[0].resources());
-}
-
-#[test]
 fn should_prune_unexported_ifaces_from_top_mod() {
     let doc = test::mk_doc("export a; mod a { } iface b { fn c(); }");
     assert vec::is_empty(doc.cratemod().ifaces());

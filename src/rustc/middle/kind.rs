@@ -22,8 +22,8 @@ import lint::{non_implicitly_copyable_typarams,implicit_copies};
 //  const: Things thare are deeply immutable. They are guaranteed never to
 //    change, and can be safely shared without copying between tasks.
 //
-// Send includes scalar types, resources and unique types containing only
-// sendable types.
+// Send includes scalar types as well as classes and unique types containing
+// only sendable types.
 //
 // Copy includes boxes, closure and unique types containing copyable types.
 //
@@ -160,7 +160,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
         let cap_clause = alt fk {
           visit::fk_anon(_, cc) | visit::fk_fn_block(cc) { cc }
           visit::fk_item_fn(*) | visit::fk_method(*) |
-          visit::fk_res(*) | visit::fk_ctor(*) | visit::fk_dtor(*) { @[] }
+          visit::fk_ctor(*) | visit::fk_dtor(*) { @[] }
         };
         let captured_vars = (*cap_clause).map { |cap_item|
             let cap_def = cx.tcx.def_map.get(cap_item.id);

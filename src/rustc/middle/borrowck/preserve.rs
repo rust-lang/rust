@@ -43,8 +43,7 @@ impl public_methods for borrowck_ctxt {
           }
           cat_comp(cmt_base, comp_field(*)) |
           cat_comp(cmt_base, comp_index(*)) |
-          cat_comp(cmt_base, comp_tuple) |
-          cat_comp(cmt_base, comp_res) {
+          cat_comp(cmt_base, comp_tuple) {
             // Most embedded components: if the base is stable, the
             // type never changes.
             self.preserve(cmt_base, opt_scope_id)

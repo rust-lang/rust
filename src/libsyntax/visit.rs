@@ -15,7 +15,6 @@ enum vt<E> { mk_vt(visitor<E>), }
 enum fn_kind {
     fk_item_fn(ident, [ty_param]), //< an item declared with fn()
     fk_method(ident, [ty_param], @method),
-    fk_res(ident, [ty_param], region_param),
     fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
     fk_ctor(ident, [ty_param], node_id /* self id */,
@@ -27,7 +26,7 @@ enum fn_kind {
 
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
-      fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _, _)
+      fk_item_fn(name, _) | fk_method(name, _, _)
           | fk_ctor(name, _, _, _) { /* FIXME (#2543) */ copy name }
       fk_anon(*) | fk_fn_block(*) { @"anon" }
       fk_dtor(*)                  { @"drop" }
@@ -36,7 +35,7 @@ fn name_of_fn(fk: fn_kind) -> ident {
 
 fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
-      fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps, _)
+      fk_item_fn(_, tps) | fk_method(_, tps, _)
               | fk_ctor(_, tps, _, _) | fk_dtor(tps, _, _) {
           /* FIXME (#2543) */ copy tps
       }
@@ -129,12 +128,6 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       item_ty(t, tps, rp) {
         v.visit_ty(t, e, v);
         v.visit_ty_params(tps, e, v);
-      }
-      item_res(decl, tps, body, dtor_id, _, rp) {
-        v.visit_fn(fk_res(/* FIXME (#2543) */ copy i.ident,
-                          /* FIXME (#2543) */ copy tps,
-                          rp),
-                   decl, body, i.span, dtor_id, e, v);
       }
       item_enum(variants, tps, _) {
         v.visit_ty_params(tps, e, v);

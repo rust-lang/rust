@@ -359,7 +359,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
               visitor: visit::vt<ctxt>) {
 
     let fn_cx = alt fk {
-      visit::fk_item_fn(*) | visit::fk_method(*) | visit::fk_res(*) |
+      visit::fk_item_fn(*) | visit::fk_method(*) |
       visit::fk_ctor(*) | visit::fk_dtor(*) {
         // Top-level functions are a root scope.
         {parent: some(id) with cx}

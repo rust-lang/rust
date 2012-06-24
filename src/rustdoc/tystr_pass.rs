@@ -23,7 +23,6 @@ fn run(
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
-        fold_res: fold_res,
         fold_iface: fold_iface,
         fold_impl: fold_impl,
         fold_type: fold_type
@@ -137,33 +136,6 @@ fn fold_enum(
 fn should_add_variant_sigs() {
     let doc = test::mk_doc("enum a { b(int) }");
     assert doc.cratemod().enums()[0].variants[0].sig == some("b(int)");
-}
-
-fn fold_res(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::resdoc
-) -> doc::resdoc {
-    let srv = fold.ctxt;
-
-    {
-        sig: some(astsrv::exec(srv) {|ctxt|
-            alt check ctxt.ast_map.get(doc.id()) {
-              ast_map::node_item(@{
-                node: ast::item_res(decl, tys, _, _, _, rp), _
-              }, _) {
-                pprust::res_to_str(decl, @doc.name(), tys, rp)
-              }
-            }
-        })
-        with doc
-    }
-}
-
-#[test]
-fn should_add_resource_sigs() {
-    let doc = test::mk_doc("resource r<T>(b: bool) { }");
-    assert doc.cratemod().resources()[0].sig
-        == some("resource r<T>(b: bool)");
 }
 
 fn fold_iface(

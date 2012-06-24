@@ -115,8 +115,10 @@ eget ante feugiat tortor congue auctor ac quis ante. Proin
 condimentum lacinia tincidunt.
 
 "]
-resource bored(bored: bool) {
-    log(error, bored);
+class bored {
+  let bored: bool;
+  new(bored: bool) { self.bored = bored; }
+  drop { log(error, self.bored); }
 }
 
 #[doc = "

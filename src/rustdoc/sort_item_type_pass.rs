@@ -9,7 +9,6 @@ fn mk_pass() -> pass {
               doc::consttag(_) { 0 }
               doc::tytag(_) { 1 }
               doc::enumtag(_) { 2 }
-              doc::restag(_) { 3 }
               doc::ifacetag(_) { 4 }
               doc::impltag(_) { 5 }
               doc::fntag(_) { 6 }
@@ -30,7 +29,6 @@ fn test() {
          const iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \
-         resource ires(a: bool) { } \
          iface iiface { fn a(); } \
          impl iimpl for int { fn a() { } } \
          type itype = int;";
@@ -40,7 +38,6 @@ fn test() {
         assert doc.cratemod().items[0].name() == "iconst";
         assert doc.cratemod().items[1].name() == "itype";
         assert doc.cratemod().items[2].name() == "ienum";
-        assert doc.cratemod().items[3].name() == "ires";
         assert doc.cratemod().items[4].name() == "iiface";
         assert doc.cratemod().items[5].name() == "iimpl";
         assert doc.cratemod().items[6].name() == "ifn";

@@ -1917,29 +1917,6 @@ class parser {
         (ident, item_impl(tps, rp, ifce, ty, meths), none)
     }
 
-    fn parse_item_res() -> item_info {
-        let ident = self.parse_value_ident();
-        let rp = self.parse_region_param();
-        let ty_params = self.parse_ty_params();
-        self.expect(token::LPAREN);
-        let arg_ident = self.parse_value_ident();
-        self.expect(token::COLON);
-        let t = self.parse_ty(false);
-        self.expect(token::RPAREN);
-        let dtor = self.parse_block_no_value();
-        let decl = {
-            inputs: [{mode: expl(by_ref), ty: t,
-                      ident: arg_ident, id: self.get_id()}],
-            output: @{id: self.get_id(), node: ty_nil,
-                      span: ast_util::dummy_sp()},
-            purity: impure_fn,
-            cf: return_val,
-            constraints: []
-        };
-        (ident, item_res(decl, ty_params, dtor,
-                         self.get_id(), self.get_id(), rp), none)
-    }
-
     // Instantiates ident <i> with references to <typarams> as arguments.
     // Used to create a path that refers to a class which will be defined as
     // the return type of the ctor function.
@@ -2341,8 +2318,6 @@ class parser {
             self.parse_item_iface()
         } else if self.eat_keyword("impl") {
             self.parse_item_impl()
-        } else if self.eat_keyword("resource") {
-            self.parse_item_res()
         } else if self.eat_keyword("class") {
             self.parse_item_class()
         } else { ret none; };

@@ -69,8 +69,8 @@ fn traverse_def_id(cx: ctx, did: def_id) {
       ast_map::node_method(_, impl_id, _) { traverse_def_id(cx, impl_id); }
       ast_map::node_native_item(item, _, _) { cx.rmap.insert(item.id, ()); }
       ast_map::node_variant(v, _, _) { cx.rmap.insert(v.node.id, ()); }
-      // If it's a class ctor, consider the parent reachable
-      ast_map::node_ctor(_, _, ast_map::class_ctor(_, parent_id), _) {
+      // If it's a ctor, consider the parent reachable
+      ast_map::node_ctor(_, _, _, parent_id, _) {
         traverse_def_id(cx, parent_id);
       }
       _ {}
@@ -93,10 +93,6 @@ fn traverse_public_item(cx: ctx, item: @item) {
           if !traverse_exports(cx, nm.view_items) {
               for vec::each(nm.items) {|item| cx.rmap.insert(item.id, ()); }
           }
-      }
-      item_res(_, tps, blk, _, _, _) {
-        // resources seem to be unconditionally inlined
-        traverse_inline_body(cx, blk);
       }
       item_fn(_, tps, blk) {
         if tps.len() > 0u ||
@@ -209,10 +205,6 @@ fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
         visit_item: {|i, cx, v|
             visit::visit_item(i, cx, v);
             alt i.node {
-              item_res(*) {
-                traverse_public_item(cx, i);
-              }
-              // Classes with dtors too!
               item_class(_, _, _, _, some(_), _) {
                 traverse_public_item(cx, i);
               }

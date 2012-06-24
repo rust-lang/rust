@@ -1851,16 +1851,6 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_res(a_id, a_t, a_substs),
-       ty::ty_res(b_id, b_t, b_substs))
-      if a_id == b_id {
-        self.tys(a_t, b_t).chain {|t|
-            self.substs(a_substs, b_substs).chain {|substs|
-                ok(ty::mk_res(tcx, a_id, t, substs))
-            }
-        }
-      }
-
       (ty::ty_rec(as), ty::ty_rec(bs)) {
         if check vec::same_length(as, bs) {
             map_vec2(as, bs) {|a,b|

@@ -374,12 +374,6 @@ fn merge_reexports(
                 with doc
             })
           }
-          doc::restag(doc @ {item, _}) {
-            doc::restag({
-                item: reexport(item, name)
-                with doc
-            })
-          }
           doc::ifacetag(doc @ {item, _}) {
             doc::ifacetag({
                 item: reexport(item, name)

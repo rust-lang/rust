@@ -50,7 +50,7 @@ import type_of::type_of; // Issue #1873
 import syntax::ast_map::{path, path_mod, path_name};
 
 import std::smallintmap;
-import option::is_none;
+import option::{is_none, is_some};
 
 // Destinations
 
@@ -758,8 +758,7 @@ fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
       // We have to cast v0
      let classptr = GEPi(bcx, v0, [0u, 1u]);
      // Find and call the actual destructor
-     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, some(class_did),
-                                  substs.tps);
+     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, class_did, substs.tps);
      // The second argument is the "self" argument for drop
      let params = lib::llvm::fn_ty_param_tys
          (llvm::LLVMGetElementType
@@ -799,9 +798,6 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_unboxed_vec(_) {
         tvec::make_drop_glue_unboxed(bcx, v0, t)
       }
-      ty::ty_res(did, inner, substs) {
-        trans_res_drop(bcx, v0, did, inner, substs.tps)
-      }
       ty::ty_class(did, substs) {
         let tcx = bcx.tcx();
         alt ty::ty_dtor(tcx, did) {
@@ -835,10 +831,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
 }
 
 fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
-                // Parent ID is an option because resources don't
-                // have one. We can make this a def_id when
-                // resources get removed.
-                opt_id: option<ast::def_id>, substs: [ty::t])
+                parent_id: ast::def_id, substs: [ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
     if (substs.len() > 0u) {
@@ -850,54 +843,13 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
     } else if did.crate == ast::local_crate {
         get_item_val(ccx, did.node)
     } else {
-        alt opt_id {
-           some(parent_id) {
-             let tcx = ccx.tcx;
-             let name = csearch::get_symbol(ccx.sess.cstore, did);
-             let class_ty = ty::subst_tps(tcx, substs,
-                              ty::lookup_item_type(tcx, parent_id).ty);
-             let llty = type_of_dtor(ccx, class_ty);
-             get_extern_fn(ccx.externs, ccx.llmod, name, lib::llvm::CCallConv,
-                           llty)
-           }
-           none {
-             let fty = ty::mk_fn(ccx.tcx, {purity: ast::impure_fn,
-                                       proto: ast::proto_bare,
-                                     inputs: [{mode: ast::expl(ast::by_ref),
-                                                ty: ty::mk_nil_ptr(ccx.tcx)}],
-                                      output: ty::mk_nil(ccx.tcx),
-                                      ret_style: ast::return_val,
-                                      constraints: []});
-             trans_external_path(ccx, did, fty)
-           }
-      }
-    }
-}
-
-fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
-                  inner_t: ty::t, tps: [ty::t]) -> block {
-    let _icx = bcx.insn_ctxt("trans_res_drop");
-    let ccx = bcx.ccx();
-    let inner_t_s = ty::subst_tps(ccx.tcx, tps, inner_t);
-
-    let drop_flag = GEPi(bcx, rs, [0u, 0u]);
-    with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|bcx|
-        let valptr = GEPi(bcx, rs, [0u, 1u]);
-        // Find and call the actual destructor.
-        let dtor_addr = get_res_dtor(ccx, did, none, tps);
-        let args = [bcx.fcx.llretptr, null_env_ptr(bcx)];
-        // Kludge to work around the fact that we know the precise type of the
-        // value here, but the dtor expects a type that might have opaque
-        // boxes and such.
-        let val_llty = lib::llvm::fn_ty_param_tys
-            (llvm::LLVMGetElementType
-             (llvm::LLVMTypeOf(dtor_addr)))[args.len()];
-        let val_cast = BitCast(bcx, valptr, val_llty);
-        Call(bcx, dtor_addr, args + [val_cast]);
-
-        let bcx = drop_ty(bcx, valptr, inner_t_s);
-        Store(bcx, C_u8(0u), drop_flag);
-        bcx
+        let tcx = ccx.tcx;
+        let name = csearch::get_symbol(ccx.sess.cstore, did);
+        let class_ty = ty::subst_tps(tcx, substs,
+                          ty::lookup_item_type(tcx, parent_id).ty);
+        let llty = type_of_dtor(ccx, class_ty);
+        get_extern_fn(ccx.externs, ccx.llmod, name, lib::llvm::CCallConv,
+                      llty)
     }
 }
 
@@ -1086,12 +1038,6 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             cx = f(cx, llfld_a, arg);
         }
       }
-      ty::ty_res(_, inner, substs) {
-        let tcx = cx.tcx();
-        let inner1 = ty::subst(tcx, substs, inner);
-        let llfld_a = GEPi(cx, av, [0u, 1u]);
-        ret f(cx, llfld_a, inner1);
-      }
       ty::ty_enum(tid, substs) {
         let variants = ty::enum_variants(cx.tcx(), tid);
         let n_variants = (*variants).len();
@@ -1130,10 +1076,15 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         ret next_cx;
       }
       ty::ty_class(did, substs) {
+          // Take the drop bit into account
+          let classptr = if is_some(ty::ty_dtor(cx.tcx(), did)) {
+                  GEPi(cx, av, [0u, 1u])
+              }
+          else { av };
         for vec::eachi(ty::class_items_as_mutable_fields(cx.tcx(), did,
                                                          substs))
            {|i, fld|
-               let llfld_a = GEPi(cx, av, [0u, i]);
+               let llfld_a = GEPi(cx, classptr, [0u, i]);
                cx = f(cx, llfld_a, fld.mt.ty);
            }
       }
@@ -1895,10 +1846,6 @@ fn autoderef(cx: block, e_id: ast::node_id,
             t1 = mt.ty;
             v1 = v;
           }
-          ty::ty_res(did, inner, substs) {
-            t1 = ty::subst(ccx.tcx, substs, inner);
-            v1 = GEPi(cx, v1, [0u, 1u]);
-          }
           ty::ty_enum(did, substs) {
             let variants = ty::enum_variants(ccx.tcx, did);
             if (*variants).len() != 1u || variants[0].args.len() != 1u {
@@ -2221,15 +2168,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         crate?)", fn_id)});
     // Get the path so that we can create a symbol
     let (pt, name, span) = alt map_node {
-      ast_map::node_item(i, pt) {
-        alt i.node {
-          ast::item_res(_, _, _, dtor_id, _, _) {
-            item_ty = ty::node_id_to_type(ccx.tcx, dtor_id);
-          }
-          _ {}
-        }
-        (pt, i.ident, i.span)
-      }
+      ast_map::node_item(i, pt) { (pt, i.ident, i.span) }
       ast_map::node_variant(v, enm, pt) { (pt, v.node.name, enm.span) }
       ast_map::node_method(m, _, pt) { (pt, m.ident, m.span) }
       ast_map::node_native_item(i, ast::native_abi_rust_intrinsic, pt)
@@ -2239,9 +2178,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         ret {val: get_item_val(ccx, fn_id.node),
              must_cast: true};
       }
-      ast_map::node_ctor(nm, _, ct, pt) { (pt, nm, alt ct {
-                  ast_map::res_ctor(_, _, sp) { sp }
-                  ast_map::class_ctor(ct_, _) { ct_.span }}) }
+      ast_map::node_ctor(nm, _, ct, _, pt) { (pt, nm, ct.span) }
       ast_map::node_dtor(_, dtor, _, pt) {(pt, @"drop", dtor.span)}
       ast_map::node_expr(*) { ccx.tcx.sess.bug("Can't monomorphize an expr") }
       ast_map::node_export(*) {
@@ -2285,12 +2222,6 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node);
         d
       }
-      ast_map::node_item(
-          @{node: ast::item_res(dt, _, body, d_id, _, _), _}, _) {
-          let d = mk_lldecl();
-          trans_fn(ccx, pt, dt, body, d, no_self, psubsts, d_id);
-          d
-      }
       ast_map::node_item(*) {
           ccx.tcx.sess.bug("Can't monomorphize this kind of item")
       }
@@ -2319,24 +2250,15 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
                  impl_self(selfty), psubsts, fn_id.node);
         d
       }
-      ast_map::node_ctor(nm, tps, ct, _) {
+      ast_map::node_ctor(nm, tps, ctor, parent_id, _) {
+        // ctors don't have attrs, at least not right now
         let d = mk_lldecl();
-        alt ct {
-          ast_map::res_ctor(decl,_, _) {
-            set_inline_hint(d);
-            trans_res_ctor(ccx, pt, decl, fn_id.node, psubsts, d);
-            d
-          }
-          ast_map::class_ctor(ctor, parent_id) {
-            // ctors don't have attrs, at least not right now
-            let tp_tys: [ty::t] = ty::ty_params_to_tys(ccx.tcx, tps);
-            trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, d,
-                 option::get_default(psubsts,
-                   {tys:tp_tys, vtables: none, bounds: @[]}),
-              fn_id.node, parent_id, ctor.span);
-            d
-          }
-        }
+        let tp_tys: [ty::t] = ty::ty_params_to_tys(ccx.tcx, tps);
+        trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, d,
+               option::get_default(psubsts,
+                        {tys:tp_tys, vtables: none, bounds: @[]}),
+                         fn_id.node, parent_id, ctor.span);
+        d
       }
       ast_map::node_dtor(_, dtor, _, pt) {
         let parent_id = alt ty::ty_to_def_id(ty::node_id_to_type(ccx.tcx,
@@ -2411,9 +2333,6 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                     if there.id == fn_id { my_id = here.id.node; }
                     ccx.external.insert(there.id, some(here.id.node));
                 }
-              }
-              ast::item_res(_, _, _, _, ctor_id, _) {
-                my_id = ctor_id;
               }
             }
             trans_item(ccx, *item);
@@ -2639,7 +2558,12 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
        _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
                  base expr has non-record type"); }
     };
+    // seems wrong? Doesn't take into account the field
+    // sizes
+
     let ix = field_idx_strict(bcx.tcx(), sp, field, fields);
+
+    #debug("val = %s ix = %u", bcx.val_str(val), ix);
 
     /* self is a class with a dtor, which means we
        have to select out the object itself
@@ -2788,9 +2712,6 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
               ty::ty_uniq(_) {
                 let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
                 GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
-              }
-              ty::ty_res(_, _, _) {
-                GEPi(sub.bcx, sub.val, [0u, 1u])
               }
               ty::ty_enum(_, _) {
                 let ety = expr_ty(cx, e);
@@ -4683,34 +4604,6 @@ fn trans_fn(ccx: @crate_ctxt,
     }
 }
 
-fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
-                  ctor_id: ast::node_id,
-                  param_substs: option<param_substs>, llfndecl: ValueRef) {
-    let _icx = ccx.insn_ctxt("trans_res_ctor");
-    // Create a function for the constructor
-    let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, ctor_id, param_substs,
-                               none);
-    create_llargs_for_fn_args(fcx, no_self, dtor.inputs);
-    let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
-    let fty = node_id_type(bcx, ctor_id);
-    let arg_t = ty::ty_fn_args(fty)[0].ty;
-    let arg = alt fcx.llargs.find(dtor.inputs[0].id) {
-      some(local_mem(x)) { x }
-      _ { ccx.sess.bug("Someone forgot to document an invariant \
-            in trans_res_ctor"); }
-    };
-    let llretptr = fcx.llretptr;
-
-    let dst = GEPi(bcx, llretptr, [0u, 1u]);
-    memmove_ty(bcx, dst, arg, arg_t);
-    let flag = GEPi(bcx, llretptr, [0u, 0u]);
-    let one = C_u8(1u);
-    Store(bcx, one, flag);
-    build_return(bcx);
-    finish_fn(fcx, lltop);
-}
-
-
 fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
                       variant: ast::variant, disr: int, is_degen: bool,
                       param_substs: option<param_substs>,
@@ -5029,16 +4922,6 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_impl(tps, _rp, _, _, ms) {
         impl::trans_impl(ccx, *path, item.ident, ms, tps);
       }
-      ast::item_res(decl, tps, body, dtor_id, ctor_id, _) {
-        if tps.len() == 0u {
-            let llctor_decl = get_item_val(ccx, ctor_id);
-            trans_res_ctor(ccx, *path, decl, ctor_id, none, llctor_decl);
-
-            let lldtor_decl = get_item_val(ccx, item.id);
-            trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
-                     lldtor_decl, no_self, none, dtor_id);
-        }
-      }
       ast::item_mod(m) {
         trans_mod(ccx, m);
       }
@@ -5293,16 +5176,6 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 set_inline_hint_if_appr(i.attrs, llfn);
                 llfn
               }
-              ast::item_res(_, _, _, dtor_id, _, _) {
-                // Note that the destructor is associated with the item's id,
-                // not the dtor_id. This is a bit counter-intuitive, but
-                // simplifies ty_res, which would have to carry around two
-                // def_ids otherwise -- one to identify the type, and one to
-                // find the dtor symbol.
-                let t = ty::node_id_to_type(ccx.tcx, dtor_id);
-                register_fn_full(ccx, i.span, my_path + [path_name(@"dtor")],
-                                 i.id, t)
-              }
             }
           }
           ast_map::node_method(m, impl_id, pth) {
@@ -5318,18 +5191,9 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             exprt = true;
             register_fn(ccx, ni.span, *pth + [path_name(ni.ident)], ni.id)
           }
-          ast_map::node_ctor(nm, tps, ct, pt) {
+          ast_map::node_ctor(nm, tps, ctor, _, pt) {
             let my_path = *pt + [path_name(nm)];
-            alt ct {
-              ast_map::res_ctor(_,_,sp) {
-                let llctor = register_fn(ccx, sp, my_path, id);
-                set_inline_hint(llctor);
-                llctor
-              }
-              ast_map::class_ctor(ctor, _) {
-                register_fn(ccx, ctor.span, my_path, ctor.node.id)
-              }
-            }
+            register_fn(ccx, ctor.span, my_path, ctor.node.id)
           }
           ast_map::node_dtor(tps, dt, parent_id, pt) {
             /*

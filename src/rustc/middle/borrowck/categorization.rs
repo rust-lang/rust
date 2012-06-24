@@ -71,10 +71,6 @@ fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
         some(deref_comp(comp_variant(did)))
       }
 
-      ty::ty_res(*) {
-        some(deref_comp(comp_res))
-      }
-
       ty::ty_evec(mt, ty::vstore_fixed(_)) {
         some(deref_comp(comp_index(t, mt.mutbl)))
       }

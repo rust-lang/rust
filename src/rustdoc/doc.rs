@@ -33,7 +33,6 @@ enum itemtag {
     consttag(constdoc),
     fntag(fndoc),
     enumtag(enumdoc),
-    restag(resdoc),
     ifacetag(ifacedoc),
     impltag(impldoc),
     tytag(tydoc)
@@ -81,8 +80,6 @@ type variantdoc = {
     desc: option<str>,
     sig: option<str>
 };
-
-type resdoc = simpleitemdoc;
 
 type ifacedoc = {
     item: itemdoc,
@@ -192,15 +189,6 @@ impl util for moddoc {
         }
     }
 
-    fn resources() -> [resdoc] {
-        vec::filter_map(self.items) {|itemtag|
-            alt itemtag {
-              restag(resdoc) { some(resdoc) }
-              _ { none }
-            }
-        }
-    }
-
     fn ifaces() -> [ifacedoc] {
         vec::filter_map(self.items) {|itemtag|
             alt itemtag {
@@ -276,15 +264,6 @@ impl util for [page] {
         }
     }
 
-    fn resources() -> [resdoc] {
-        vec::filter_map(self) {|page|
-            alt page {
-              itempage(restag(resdoc)) { some(resdoc) }
-              _ { none }
-            }
-        }
-    }
-
     fn ifaces() -> [ifacedoc] {
         vec::filter_map(self) {|page|
             alt page {
@@ -325,7 +304,6 @@ impl of item for itemtag {
           doc::fntag(doc) { doc.item }
           doc::consttag(doc) { doc.item }
           doc::enumtag(doc) { doc.item }
-          doc::restag(doc) { doc.item }
           doc::ifacetag(doc) { doc.item }
           doc::impltag(doc) { doc.item }
           doc::tytag(doc) { doc.item }

@@ -354,10 +354,6 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_fn(decl, tps, body) {
         check_bare_fn(ccx, decl, body, it.id, none);
       }
-      ast::item_res(decl, tps, body, dtor_id, _, rp) {
-        check_instantiable(ccx.tcx, it.span, it.id);
-        check_bare_fn(ccx, decl, body, dtor_id, none);
-      }
       ast::item_impl(tps, rp, _, ty, ms) {
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each {|m| check_method(ccx, m, self_ty);}

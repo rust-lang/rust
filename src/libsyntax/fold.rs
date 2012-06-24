@@ -281,14 +281,6 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                        rp,
                        /* FIXME (#2543) */ copy methods)
           }
-          item_res(decl, typms, body, did, cid, rp) {
-            item_res(fold_fn_decl(decl, fld),
-                     fold_ty_params(typms, fld),
-                     fld.fold_block(body),
-                     fld.new_id(did),
-                     fld.new_id(cid),
-                     rp)
-          }
         };
 }
 

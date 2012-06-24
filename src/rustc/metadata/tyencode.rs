@@ -265,14 +265,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_fn(f) {
         enc_ty_fn(w, cx, f);
       }
-      ty::ty_res(def, ty, substs) {
-        w.write_str("r["/&);
-        w.write_str(cx.ds(def));
-        w.write_char('|');
-        enc_ty(w, cx, ty);
-        enc_substs(w, cx, substs);
-        w.write_char(']');
-      }
       ty::ty_var(id) {
         w.write_char('X');
         w.write_uint(id.to_uint());

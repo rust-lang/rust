@@ -950,9 +950,8 @@ public:
     }
 
     void walk_res1(const rust_fn *dtor, const uint8_t *end_sp) {
-        typename U::template data<uintptr_t>::t live = bump_dp<uintptr_t>(dp);
         // Delegate to the implementation.
-        static_cast<T *>(this)->walk_res2(dtor, end_sp, live);
+        static_cast<T *>(this)->walk_res2(dtor, end_sp);
     }
 
     template<typename WN>
@@ -1287,7 +1286,7 @@ private:
                        const std::pair<const uint8_t *,const uint8_t *>
                        variant_ptr_and_end);
     void walk_string2(const std::pair<ptr,ptr> &data);
-    void walk_res2(const rust_fn *dtor, const uint8_t *end_sp, bool live);
+    void walk_res2(const rust_fn *dtor, const uint8_t *end_sp);
 
     template<typename T>
     inline void walk_number2() {

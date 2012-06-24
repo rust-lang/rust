@@ -743,7 +743,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let (ident, ret_ty, id) = alt cx.tcx.items.get(fcx.id) {
       ast_map::node_item(item, _) {
         alt item.node {
-          ast::item_fn(decl, _, _) | ast::item_res(decl, _, _, _, _, _) {
+          ast::item_fn(decl, _, _) {
             (item.ident, decl.output, item.id)
           }
           _ { fcx.ccx.sess.span_bug(item.span, "create_function: item \
@@ -753,16 +753,9 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       ast_map::node_method(method, _, _) {
           (method.ident, method.decl.output, method.id)
       }
-      ast_map::node_ctor(nm, _, ct, _) {
-        alt ct {
-          ast_map::res_ctor(decl, ctor_id, _) {
-            (nm, decl.output, ctor_id)
-          }
-          ast_map::class_ctor(ctor,_) {
-            // FIXME: output type may be wrong (#2194)
-            (nm, ctor.node.dec.output, ctor.node.id)
-          }
-        }
+      ast_map::node_ctor(nm, _, ctor, _, _) {
+        // FIXME: output type may be wrong (#2194)
+        (nm, ctor.node.dec.output, ctor.node.id)
       }
       ast_map::node_expr(expr) {
         alt expr.node {

@@ -639,9 +639,8 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     // for f's constrs in the table.
     for decl.constraints.each {|c| resolve_constr(e, c, sc, v); }
     let scope = alt fk {
-      visit::fk_item_fn(_, tps) | visit::fk_res(_, tps, _) |
-      visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _)  |
-      visit::fk_dtor(tps, _, _) {
+      visit::fk_item_fn(_, tps) | visit::fk_method(_, tps, _)
+      | visit::fk_ctor(_, tps, _, _) | visit::fk_dtor(tps, _, _) {
         scope_bare_fn(decl, id, tps) }
       visit::fk_anon(ast::proto_bare, _) {
         scope_bare_fn(decl, id, []) }
@@ -1333,15 +1332,6 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
       ast::item_ty(*) | item_iface(*) | item_enum(*) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
-      ast::item_res(_, _, _, _, ctor_id, _) {
-        alt ns {
-          ns_val {
-            ret some(ast::def_fn(local_def(ctor_id), ast::impure_fn));
-          }
-          ns_type { ret some(ast::def_ty(local_def(i.id))); }
-          _ { }
-        }
-      }
       ast::item_class(_, _, _members, ct, _, _) {
           alt ns {
              ns_type {
@@ -1644,7 +1634,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
           ast::item_native_mod(_) | ast::item_ty(_, _, _) |
-          ast::item_res(*) | ast::item_impl(*) | ast::item_iface(*) {
+          ast::item_impl(*) | ast::item_iface(*) {
             add_to_index(index, it.ident, mie_item(it));
           }
           ast::item_enum(variants, _, _) {
@@ -1867,10 +1857,6 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                   }
                   ast::item_ty(*) | ast::item_iface(*) {
                     add_name(types, it.span, it.ident);
-                  }
-                  ast::item_res(*) {
-                    add_name(types, it.span, it.ident);
-                    add_name(values, it.span, it.ident);
                   }
                   _ { }
                 }

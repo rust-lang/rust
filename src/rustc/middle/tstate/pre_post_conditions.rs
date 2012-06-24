@@ -49,14 +49,6 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       item_mod(m) { find_pre_post_mod(m); }
       item_native_mod(nm) { find_pre_post_native_mod(nm); }
       item_ty(*) | item_enum(*) | item_iface(*) { ret; }
-      item_res(_, _, body, dtor_id, _, _) {
-        let fcx =
-            {enclosing: ccx.fm.get(dtor_id),
-             id: dtor_id,
-             name: i.ident,
-             ccx: ccx};
-        find_pre_post_fn(fcx, body);
-      }
       item_class(*) {
           fail "find_pre_post_item: shouldn't be called on item_class";
       }

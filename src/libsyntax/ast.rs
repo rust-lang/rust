@@ -670,9 +670,6 @@ enum item_ {
     item_native_mod(native_mod),
     item_ty(@ty, [ty_param], region_param),
     item_enum([variant], [ty_param], region_param),
-    item_res(fn_decl /* dtor */, [ty_param], blk /* dtor body */,
-             node_id /* dtor id */, node_id /* ctor id */,
-             region_param),
     item_class([ty_param], /* ty params for class */
                [@iface_ref],   /* ifaces this class implements */
                [@class_member], /* methods, etc. */

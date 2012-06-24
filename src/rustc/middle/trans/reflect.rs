@@ -255,7 +255,6 @@ impl methods for reflector {
 
           // Miscallaneous extra types
           ty::ty_iface(_, _) { self.leaf("iface") }
-          ty::ty_res(_, t, _) { self.bracketed_t("res", t, []) }
           ty::ty_var(_) { self.leaf("var") }
           ty::ty_var_integral(_) { self.leaf("var_integral") }
           ty::ty_param(n, _) { self.visit("param", [self.c_uint(n)]) }

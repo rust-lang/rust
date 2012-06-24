@@ -261,11 +261,6 @@ fn convert_class_item(ccx: @crate_ctxt,
                       rp: ast::region_param,
                       bounds: @[ty::param_bounds],
                       v: ast_util::ivar) {
-    /* we want to do something here, b/c within the
-    scope of the class, it's ok to refer to fields &
-    methods unqualified */
-    /* they have these types *within the scope* of the
-    class. outside the class, it's done with expr_field */
     let tt = ccx.to_ty(type_rscope(rp), v.ty);
     write_ty_to_tcx(ccx.tcx, v.id, tt);
     /* add the field to the tcache */
@@ -322,37 +317,6 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             check_methods_against_iface(ccx, tps, rp, selfty, t, cms);
         }
       }
-      ast::item_res(decl, tps, _, dtor_id, ctor_id, rp) {
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let def_id = local_def(it.id);
-        let t_arg = ty_of_arg(ccx, type_rscope(rp),
-                                       decl.inputs[0], none);
-        let t_res = ty::mk_res(tcx, def_id, t_arg.ty, substs);
-
-        let t_ctor = ty::mk_fn(tcx, {
-            purity: ast::pure_fn,
-            proto: ast::proto_box,
-            inputs: [{mode: ast::expl(ast::by_copy), ty: t_arg.ty}],
-            output: t_res,
-            ret_style: ast::return_val, constraints: []
-        });
-        let t_dtor = ty::mk_fn(tcx, {
-            purity: ast::impure_fn,
-            proto: ast::proto_box,
-            inputs: [t_arg], output: ty::mk_nil(tcx),
-            ret_style: ast::return_val, constraints: []
-        });
-        write_ty_to_tcx(tcx, it.id, t_res);
-        write_ty_to_tcx(tcx, ctor_id, t_ctor);
-        tcx.tcache.insert(local_def(ctor_id),
-                          {bounds: bounds,
-                           rp: rp,
-                           ty: t_ctor});
-        tcx.tcache.insert(def_id, {bounds: bounds,
-                                   rp: rp,
-                                   ty: t_res});
-        write_ty_to_tcx(tcx, dtor_id, t_dtor);
-      }
       ast::item_iface(*) {
         let tpt = ty_of_item(ccx, it);
         #debug["item_iface(it.id=%d, tpt.ty=%s)",
@@ -366,11 +330,21 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
         // Write the ctor type
-        let t_ctor =
-            ty::mk_fn(
-                tcx,
-                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_any,
-                              ctor.node.dec, none));
+        let t_args = ctor.node.dec.inputs.map {|a|
+                           ty_of_arg(ccx, type_rscope(rp), a, none)};
+        let t_res = ty::mk_class(tcx, local_def(it.id),
+                                 {self_r: alt rp {
+                       ast::rp_none { none }
+                       ast::rp_self { some(ty::re_bound(ty::br_self)) }
+                                     },
+                                  self_ty: none,
+                                  tps: ty::ty_params_to_tys(tcx, tps)});
+        let t_ctor = ty::mk_fn(tcx, {purity: ast::impure_fn,
+              proto: ast::proto_any,
+              inputs: t_args,
+              output: t_res,
+              ret_style: ast::return_val,
+              constraints: []}); // tjc TODO
         write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
         tcx.tcache.insert(local_def(ctor.node.id),
                           {bounds: tpt.bounds,
@@ -537,15 +511,6 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
 
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
-      }
-      ast::item_res(decl, tps, _, _, _, rp) {
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let t_arg = ty_of_arg(ccx, type_rscope(rp),
-                                       decl.inputs[0], none);
-        let t = ty::mk_res(tcx, local_def(it.id), t_arg.ty, substs);
-        let t_res = {bounds: bounds, rp: rp, ty: t};
-        tcx.tcache.insert(local_def(it.id), t_res);
-        ret t_res;
       }
       ast::item_enum(_, tps, rp) {
         // Create a new generic polytype.

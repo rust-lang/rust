@@ -93,7 +93,6 @@ export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
 export vstore, vstore_fixed, vstore_uniq, vstore_box, vstore_slice;
 export ty_nil, mk_nil, type_is_nil;
 export ty_iface, mk_iface;
-export ty_res, mk_res;
 export ty_param, mk_param, ty_params_to_tys;
 export ty_ptr, mk_ptr, mk_mut_ptr, mk_imm_ptr, mk_nil_ptr, type_is_unsafe_ptr;
 export ty_rptr, mk_rptr;
@@ -366,7 +365,6 @@ enum sty {
     ty_fn(fn_ty),
     ty_iface(def_id, substs),
     ty_class(def_id, substs),
-    ty_res(def_id, t, substs),
     ty_tup([t]),
 
     ty_var(tv_vid), // type variable during typechecking
@@ -598,11 +596,6 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         for f.inputs.each {|a| flags |= get(a.ty).flags; }
         flags |= get(f.output).flags;
       }
-      ty_res(_, tt, substs) {
-        flags |= (has_resources as uint);
-        flags |= get(tt).flags;
-        flags |= sflags(substs);
-      }
       ty_constr(tt, _) {
         flags |= get(tt).flags;
       }
@@ -716,11 +709,6 @@ fn mk_class(cx: ctxt, class_id: ast::def_id, substs: substs) -> t {
     mk_t(cx, ty_class(class_id, substs))
 }
 
-fn mk_res(cx: ctxt, did: ast::def_id,
-          inner: t, substs: substs) -> t {
-    mk_t(cx, ty_res(did, inner, substs))
-}
-
 fn mk_var(cx: ctxt, v: tv_vid) -> t { mk_t(cx, ty_var(v)) }
 
 fn mk_var_integral(cx: ctxt, v: tvi_vid) -> t {
@@ -795,10 +783,6 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
         for ft.inputs.each {|a| maybe_walk_ty(a.ty, f); }
         maybe_walk_ty(ft.output, f);
       }
-      ty_res(_, sub, substs) {
-        maybe_walk_ty(sub, f);
-        for substs.tps.each {|tp| maybe_walk_ty(tp, f); }
-      }
       ty_constr(sub, _) { maybe_walk_ty(sub, f); }
       ty_uniq(tm) { maybe_walk_ty(tm.ty, f); }
     }
@@ -859,10 +843,6 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
         };
         let new_output = fldop(f.output);
         ty_fn({inputs: new_args, output: new_output with f})
-      }
-      ty_res(did, subty, substs) {
-        ty_res(did, fldop(subty),
-               fold_substs(substs, fldop))
       }
       ty_rptr(r, tm) {
         ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -943,10 +923,6 @@ fn fold_regions_and_ty(
       }
       ty_iface(def_id, substs) {
         ty::mk_iface(cx, def_id, fold_substs(substs, fldr, fldt))
-      }
-      ty_res(def_id, t, substs) {
-        ty::mk_res(cx, def_id, fldt(t),
-                   fold_substs(substs, fldr, fldt))
       }
       sty @ ty_fn(_) {
         fold_sty_to_ty(cx, sty) {|t|
@@ -1100,8 +1076,8 @@ fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
 
 fn type_is_structural(ty: t) -> bool {
     alt get(ty).struct {
-      ty_rec(_) | ty_class(_, _) | ty_tup(_) | ty_enum(_, _) | ty_fn(_) |
-      ty_iface(_, _) | ty_res(_, _, _) | ty_evec(_, vstore_fixed(_))
+      ty_rec(_) | ty_class(*) | ty_tup(_) | ty_enum(*) | ty_fn(_) |
+      ty_iface(*) | ty_evec(_, vstore_fixed(_))
       | ty_estr(vstore_fixed(_)) { true }
       _ { false }
     }
@@ -1318,7 +1294,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             }
             !needs_unwind_cleanup
           }
-          ty_uniq(_) | ty_str | ty_vec(_) | ty_res(_, _, _) |
+          ty_uniq(_) | ty_str | ty_vec(_) |
           ty_estr(vstore_uniq) |
           ty_estr(vstore_box) |
           ty_evec(_, vstore_uniq) |
@@ -1605,10 +1581,6 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
-      ty_res(did, inner, tps) {
-        let inner = subst(cx, tps, inner);
-        (kind_const() | kind_send_only()) & type_kind(cx, inner)
-      }
       ty_param(_, did) {
         param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
@@ -1713,18 +1685,6 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             r
           }
 
-          ty_res(did, _, _) if vec::contains(*seen, did) {
-            false
-          }
-
-          ty_res(did, sub, substs) {
-            vec::push(*seen, did);
-            let sty = subst(cx, substs, sub);
-            let r = type_requires(cx, seen, r_ty, sty);
-            vec::pop(*seen);
-            r
-          }
-
           ty_tup(ts) {
             vec::any(ts) {|t|
                 type_requires(cx, seen, r_ty, t)
@@ -1786,10 +1746,6 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
             if type_structurally_contains(cx, tt, test) { ret true; }
         }
         ret false;
-      }
-      ty_res(_, sub, substs) {
-        let sty = subst(cx, substs, sub);
-        ret type_structurally_contains(cx, sty, test);
       }
       ty_evec(mt, vstore_fixed(_)) {
         ret type_structurally_contains(cx, mt.ty, test);
@@ -1895,9 +1851,6 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_evec(mt, vstore_fixed(_)) | ty_unboxed_vec(mt) {
         result = type_is_pod(cx, mt.ty);
       }
-      ty_res(_, inner, substs) {
-        result = type_is_pod(cx, subst(cx, substs, inner));
-      }
       ty_constr(subt, _) { result = type_is_pod(cx, subt); }
       ty_param(_, _) { result = false; }
       ty_opaque_closure_ptr(_) { result = true; }
@@ -1964,11 +1917,6 @@ fn deref_sty(cx: ctxt, sty: sty, expl: bool) -> option<mt> {
 
       ty_ptr(mt) if expl {
         some(mt)
-      }
-
-      ty_res(_, inner, substs) {
-        let inner = subst(cx, substs, inner);
-        some({ty: inner, mutbl: ast::m_imm})
       }
 
       ty_enum(did, substs) {
@@ -2111,10 +2059,6 @@ fn hash_type_structure(st: sty) -> uint {
         h
       }
       ty_uniq(mt) { hash_subty(37u, mt.ty) }
-      ty_res(did, sub, substs) {
-        let mut h = hash_subty(hash_def(38u, did), sub);
-        hash_substs(h, substs)
-      }
       ty_iface(did, substs) {
         let mut h = hash_def(40u, did);
         hash_substs(h, substs)
@@ -2452,7 +2396,6 @@ fn ty_sort_str(cx: ctxt, t: t) -> str {
       ty_fn(_) { "fn" }
       ty_iface(id, _) { #fmt["iface %s", item_path_str(cx, id)] }
       ty_class(id, _) { #fmt["class %s", item_path_str(cx, id)] }
-      ty_res(id, _, _) { #fmt["resource %s", item_path_str(cx, id)] }
       ty_tup(_) { "tuple" }
       ty_var(_) { "variable" }
       ty_var_integral(_) { "integral variable" }
@@ -2606,7 +2549,7 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
 
 fn ty_to_def_id(ty: t) -> option<ast::def_id> {
     alt get(ty).struct {
-      ty_iface(id, _) | ty_class(id, _) | ty_res(id, _, _) | ty_enum(id, _) {
+      ty_iface(id, _) | ty_class(id, _) | ty_enum(id, _) {
         some(id)
       }
       _ { none }
@@ -2685,7 +2628,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::init(*path) + [ast_map::path_name(variant.node.name)]
           }
 
-          ast_map::node_ctor(nm, _, _, path) {
+          ast_map::node_ctor(nm, _, _, _, path) {
               *path + [ast_map::path_name(nm)]
           }
           ast_map::node_dtor(_, _, _, path) {

@@ -6,8 +6,12 @@ type u = {
     c: *int
 };
 
-resource r(v: u) unsafe {
-    let v2: ~int = unsafe::reinterpret_cast(v.c);
+class r {
+  let v: u;
+  new(v: u) { self.v = v; }
+  drop unsafe {
+    let v2: ~int = unsafe::reinterpret_cast(self.v.c);
+  }
 }
 
 enum t = {

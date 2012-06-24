@@ -338,14 +338,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'f' {
         parse_ty_rust_fn(st, conv)
       }
-      'r' {
-        assert next(st) == '[';
-        let def = parse_def(st, conv);
-        let inner = parse_ty(st, conv);
-        let substs = parse_substs(st, conv);
-        assert next(st) == ']';
-        ret ty::mk_res(st.tcx, def, inner, substs);
-      }
       'X' {
         ret ty::mk_var(st.tcx, ty::tv_vid(parse_int(st) as uint));
       }

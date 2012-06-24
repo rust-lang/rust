@@ -147,8 +147,7 @@ class irc : public shape::data<irc,shape::ptr> {
     void walk_tydesc2(char) {
     }
 
-    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp,
-                   bool live) {
+    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
@@ -394,8 +393,7 @@ class mark : public shape::data<mark,shape::ptr> {
         }
     }
 
-    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp,
-                   bool live) {
+    void walk_res2(const shape::rust_fn *dtor, const uint8_t *end_sp) {
         while (this->sp != end_sp) {
             this->walk();
             align = true;
