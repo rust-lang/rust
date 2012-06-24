@@ -1,4 +1,4 @@
-// error-pattern:attempted access of field nap on type
+// error-pattern:attempted access of field `nap` on type
 // xfail-fast
 // aux-build:cci_class_5.rs
 use cci_class_5;

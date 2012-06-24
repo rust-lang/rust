@@ -3,7 +3,7 @@ import to_str::to_str;
 
 mod kitty {
 
-class cat implements to_str {
+class cat : to_str {
   priv {
     let mut meows : uint;
     fn meow() {

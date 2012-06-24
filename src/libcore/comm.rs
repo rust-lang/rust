@@ -440,7 +440,7 @@ fn test_recv_chan_wrong_task() {
     let po = port();
     let ch = chan(po);
     send(ch, "flower");
-    assert result::is_failure(task::try {||
+    assert result::is_err(task::try {||
         recv_chan(ch)
     })
 }

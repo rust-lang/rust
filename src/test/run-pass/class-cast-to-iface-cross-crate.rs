@@ -1,7 +1,7 @@
 import to_str::*;
 import to_str::to_str;
 
-class cat implements to_str {
+class cat : to_str {
   priv {
     let mut meows : uint;
     fn meow() {

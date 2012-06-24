@@ -232,5 +232,5 @@ fn test_weaken_task_fail() unsafe {
             fail;
         }
     };
-    assert result::is_failure(res);
+    assert result::is_err(res);
 }

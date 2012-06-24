@@ -385,7 +385,6 @@ fn shift<T>(&v: [T]) -> T {
             let mut r <- *vv;
 
             for uint::range(1u, ln) {|i|
-                // FIXME (#2703): this isn't legal, per se...
                 let r <- *ptr::offset(vv, i);
                 push(v, r);
             }
@@ -394,6 +393,15 @@ fn shift<T>(&v: [T]) -> T {
         unsafe::set_len(vv, 0u);
 
         rr
+    }
+}
+
+#[doc = "Prepend an element to the vector"]
+fn unshift<T>(&v: [T], +x: T) {
+    let mut vv = [x];
+    v <-> vv;
+    while len(vv) > 0 {
+        push(v, shift(vv));
     }
 }
 
@@ -2196,6 +2204,13 @@ mod tests {
         let x_imm = from_mut(x);
         let addr_imm = unsafe::to_ptr(x_imm);
         assert addr == addr_imm;
+    }
+
+    #[test]
+    fn test_unshift() {
+        let mut x = [1, 2, 3];
+        unshift(x, 0);
+        assert x == [0, 1, 2, 3];
     }
 
     #[test]

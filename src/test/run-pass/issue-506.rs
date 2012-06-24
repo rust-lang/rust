@@ -1,9 +1,3 @@
-// xfail-test
-// FIXME: This test is no longer testing what it was intended to. It should
-// be testing spawning of a native function, but is actually testing
-// spawning some other function, then executing a native function.
-// #2602
-
 /*
   A reduced test case for Issue #506, provided by Rob Arnold.
 */
@@ -13,9 +7,7 @@ import task;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn task_yield();
+    fn rust_task_allow_kill();
 }
 
-fn yield_wrap(&&_arg: ()) { rustrt::task_yield(); }
-
-fn main() { task::spawn((), yield_wrap); }
+fn main() { task::spawn(rustrt::rust_task_allow_kill); }

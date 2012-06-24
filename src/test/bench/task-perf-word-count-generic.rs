@@ -77,7 +77,6 @@ mod map_reduce {
 
     type putter<K: send, V: send> = fn(K, V);
 
-    // FIXME: the first K1 parameter should probably be a - (#2599)
     type mapper<K1: send, K2: send, V: send> = fn~(K1, putter<K2, V>);
 
     type getter<V: send> = fn() -> option<V>;

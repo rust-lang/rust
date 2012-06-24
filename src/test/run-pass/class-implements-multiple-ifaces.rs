@@ -24,7 +24,7 @@ fn vec_includes<T>(xs: [T], x: T) -> bool {
 }
 
 // vtables other than the 1st one don't seem to work
-class cat implements noisy, scratchy, bitey {
+class cat : noisy, scratchy, bitey {
   priv {
     let meows : @mut uint;
     let scratched : dvec<furniture>;

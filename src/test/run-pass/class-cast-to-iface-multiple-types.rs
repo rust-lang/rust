@@ -2,7 +2,7 @@ iface noisy {
   fn speak() -> int;
 }
 
-class dog implements noisy {
+class dog : noisy {
   priv {
     let barks : @mut uint;
     fn bark() -> int {
@@ -26,7 +26,7 @@ class dog implements noisy {
   fn speak() -> int { self.bark() }
 }
 
-class cat implements noisy {
+class cat : noisy {
   priv {
     let meows : @mut uint;
     fn meow() -> uint {
