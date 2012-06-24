@@ -12,7 +12,7 @@ export range;
 export compl;
 export abs;
 export parse_buf, from_str, to_str, to_str_bytes, str;
-export ord, eq, num;
+export ord, eq, extensions;
 
 const min_value: T = -1 as T << (inst::bits - 1 as T);
 const max_value: T = min_value - 1 as T;
@@ -124,16 +124,18 @@ impl eq of eq for T {
     }
 }
 
-impl num of num::num for T {
-    fn add(&&other: T)    -> T { ret self + other; }
-    fn sub(&&other: T)    -> T { ret self - other; }
-    fn mul(&&other: T)    -> T { ret self * other; }
-    fn div(&&other: T)    -> T { ret self / other; }
-    fn modulo(&&other: T) -> T { ret self % other; }
-    fn neg()              -> T { ret -self;        }
+mod extensions {
+    impl num of num::num for T {
+        fn add(&&other: T)    -> T { ret self + other; }
+        fn sub(&&other: T)    -> T { ret self - other; }
+        fn mul(&&other: T)    -> T { ret self * other; }
+        fn div(&&other: T)    -> T { ret self / other; }
+        fn modulo(&&other: T) -> T { ret self % other; }
+        fn neg()              -> T { ret -self;        }
 
-    fn to_int()         -> int { ret self as int; }
-    fn from_int(n: int) -> T   { ret n as T;      }
+        fn to_int()         -> int { ret self as int; }
+        fn from_int(n: int) -> T   { ret n as T;      }
+    }
 }
 
 

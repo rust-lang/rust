@@ -17,7 +17,7 @@ export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
 export pow_with_uint;
-export num;
+export extensions;
 
 // export when m_float == c_double
 
@@ -410,16 +410,18 @@ fn sin(x: float) -> float { f64::sin(x as f64) as float }
 fn cos(x: float) -> float { f64::cos(x as f64) as float }
 fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
-impl num of num for float {
-    fn add(&&other: float)    -> float { ret self + other; }
-    fn sub(&&other: float)    -> float { ret self - other; }
-    fn mul(&&other: float)    -> float { ret self * other; }
-    fn div(&&other: float)    -> float { ret self / other; }
-    fn modulo(&&other: float) -> float { ret self % other; }
-    fn neg()                  -> float { ret -self;        }
+mod extensions {
+    impl num of num for float {
+        fn add(&&other: float)    -> float { ret self + other; }
+        fn sub(&&other: float)    -> float { ret self - other; }
+        fn mul(&&other: float)    -> float { ret self * other; }
+        fn div(&&other: float)    -> float { ret self / other; }
+        fn modulo(&&other: float) -> float { ret self % other; }
+        fn neg()                  -> float { ret -self;        }
 
-    fn to_int()         -> int   { ret self as int; }
-    fn from_int(n: int) -> float { ret n as float;  }
+        fn to_int()         -> int   { ret self as int; }
+        fn from_int(n: int) -> float { ret n as float;  }
+    }
 }
 
 #[test]

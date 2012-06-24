@@ -12,9 +12,24 @@ import option_iter::extensions;
 import ptr::extensions;
 import rand::extensions;
 import result::extensions;
+import int::extensions::*;
+import i8::extensions::*;
+import i16::extensions::*;
+import i32::extensions::*;
+import i64::extensions::*;
+import uint::extensions::*;
+import u8::extensions::*;
+import u16::extensions::*;
+import u32::extensions::*;
+import u64::extensions::*;
+import float::extensions::*;
+import f32::extensions::*;
+import f64::extensions::*;
 
 export path, option, some, none, unreachable;
 export extensions;
+// The following exports are the extension impls for numeric types
+export num;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is

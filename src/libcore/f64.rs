@@ -22,7 +22,7 @@ export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
 export epsilon;
-export num;
+export extensions;
 
 // These are not defined inside consts:: for consistency with
 // the integer types
@@ -196,16 +196,18 @@ pure fn log2(n: f64) -> f64 {
     ret ln(n) / consts::ln_2;
 }
 
-impl num of num for f64 {
-    fn add(&&other: f64)    -> f64 { ret self + other; }
-    fn sub(&&other: f64)    -> f64 { ret self - other; }
-    fn mul(&&other: f64)    -> f64 { ret self * other; }
-    fn div(&&other: f64)    -> f64 { ret self / other; }
-    fn modulo(&&other: f64) -> f64 { ret self % other; }
-    fn neg()                -> f64 { ret -self;        }
+mod extensions {
+    impl num of num for f64 {
+        fn add(&&other: f64)    -> f64 { ret self + other; }
+        fn sub(&&other: f64)    -> f64 { ret self - other; }
+        fn mul(&&other: f64)    -> f64 { ret self * other; }
+        fn div(&&other: f64)    -> f64 { ret self / other; }
+        fn modulo(&&other: f64) -> f64 { ret self % other; }
+        fn neg()                -> f64 { ret -self;        }
 
-    fn to_int()         -> int { ret self as int; }
-    fn from_int(n: int) -> f64 { ret n as f64;    }
+        fn to_int()         -> int { ret self as int; }
+        fn from_int(n: int) -> f64 { ret n as f64;    }
+    }
 }
 
 //
