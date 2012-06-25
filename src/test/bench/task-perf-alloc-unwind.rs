@@ -78,7 +78,7 @@ fn recurse_or_fail(depth: int, st: option<st>) {
                 tuple: (@cons((), first(st.tuple)),
                         ~cons((), @*second(st.tuple))),
                 vec: st.vec + [@cons((), st.vec.last())],
-                res: r(@cons((), *(st.res)))
+                res: r(@cons((), st.res._l))
             })
           }
         };

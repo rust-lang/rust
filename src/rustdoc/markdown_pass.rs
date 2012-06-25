@@ -639,18 +639,6 @@ fn should_write_variant_list_with_signatures() {
          \n* `c(int)` - a\n\n");
 }
 
-#[test]
-fn should_write_resource_header() {
-    let markdown = test::render("resource r(a: bool) { }");
-    assert str::contains(markdown, "## Resource `r`");
-}
-
-#[test]
-fn should_write_resource_signature() {
-    let markdown = test::render("resource r(a: bool) { }");
-    assert str::contains(markdown, "\n    resource r(a: bool)\n");
-}
-
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
     write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
