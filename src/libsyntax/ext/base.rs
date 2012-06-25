@@ -6,19 +6,23 @@ import std::map::str_hash;
 
 type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
-type syntax_expander = {
-    expander: syntax_expander_,
-    span: option<span>};
+type syntax_expander = {expander: syntax_expander_, span: option<span>};
+
 type macro_def = {ident: ast::ident, ext: syntax_extension};
 type macro_definer =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
 type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, [@ast::item]) -> [@ast::item];
 
+type syntax_expander_tt = {expander: syntax_expander_tt_, span: option<span>};
+type syntax_expander_tt_ = fn@(ext_ctxt, span, ast::token_tree) -> @ast::expr;
+
 enum syntax_extension {
     normal(syntax_expander),
     macro_defining(macro_definer),
     item_decorator(item_decorator),
+
+    normal_tt(syntax_expander_tt)
 }
 
 // A temporary hard-coded map of methods for expanding syntax extension

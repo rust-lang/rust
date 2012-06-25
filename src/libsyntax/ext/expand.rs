@@ -47,6 +47,39 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                     exts.insert(*named_extension.ident, named_extension.ext);
                     (ast::expr_rec([], none), s)
                   }
+                  some(normal_tt(_)) {
+                    cx.span_fatal(pth.span,
+                                  #fmt["this tt-style macro should be \
+                                        invoked '%s!{...}'", *extname])
+                  }
+                }
+              }
+              mac_invoc_tt(pth, tt) {
+                assert (vec::len(pth.idents) > 0u);
+                let extname = pth.idents[0];
+                alt exts.find(*extname) {
+                  none {
+                    cx.span_fatal(pth.span,
+                                  #fmt["macro undefined: '%s'", *extname])
+                  }
+                  some(normal_tt({expander: exp, span: exp_sp})) {
+                    let expanded = exp(cx, pth.span, tt);
+
+                    cx.bt_push(expanded_from({call_site: s,
+                                callie: {name: *extname, span: exp_sp}}));
+                    //keep going, outside-in
+                    let fully_expanded = fld.fold_expr(expanded).node;
+                    cx.bt_pop();
+
+                    (fully_expanded, s)
+
+                  }
+                  _ {
+                    cx.span_fatal(pth.span,
+                                  #fmt["'%s' is not a tt-style macro",
+                                       *extname])
+                  }
+
                 }
               }
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
@@ -75,7 +108,8 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
               ast::meta_list(n, _) { n }
             };
             alt exts.find(*mname) {
-              none | some(normal(_)) | some(macro_defining(_)) {
+              none | some(normal(_)) | some(macro_defining(_))
+              | some(normal_tt(_)) {
                 items
               }
 

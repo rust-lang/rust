@@ -883,8 +883,17 @@ class parser {
             is_ident(self.token) && !self.is_keyword("true") &&
             !self.is_keyword("false") {
             let pth = self.parse_path_with_tps(true);
-            hi = pth.span.hi;
-            ex = expr_path(pth);
+
+            /* `!`, as an operator, is prefix, so we know this isn't that */
+            if self.token == token::NOT {
+                self.bump();
+                let m_body = self.parse_token_tree();
+                let hi = self.span.hi;
+                ret pexpr(self.mk_mac_expr(lo, hi, mac_invoc_tt(pth,m_body)));
+            } else {
+                hi = pth.span.hi;
+                ex = expr_path(pth);
+            }
         } else {
             let lit = self.parse_lit();
             hi = lit.span.hi;
