@@ -9,9 +9,6 @@ endef
 $(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_HOST_VAR,$(t))))
 $(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: host for $(t) is $(HOST_$(t))))
 
-# FIXME: This appears to do nothing
-CFG_GCCISH_FLAGS += -fno-strict-aliasing
-
 # FIXME: no-omit-frame-pointer is just so that task_start_wrapper
 # has a frame pointer and the stack walker can understand it. Turning off
 # frame pointers everywhere is overkill
@@ -146,7 +143,7 @@ ifdef CFG_UNIXY
       CFG_VALGRIND += wine
     endif
 
-    CFG_GCCISH_CFLAGS := -fno-strict-aliasing -march=i586
+    CFG_GCCISH_CFLAGS := -march=i586
     CFG_GCCISH_PRE_LIB_FLAGS :=
     CFG_GCCISH_POST_LIB_FLAGS :=
     CFG_GCCISH_DEF_FLAG :=
