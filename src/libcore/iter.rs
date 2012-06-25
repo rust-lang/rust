@@ -85,6 +85,20 @@ fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
     }
 }
 
+fn position<A,IA:base_iter<A>>(self: IA, f: fn(A) -> bool)
+        -> option<uint> {
+    let mut i = 0;
+    for self.each {|a|
+        if f(a) { ret some(i); }
+        i += 1;
+    }
+    ret none;
+}
+
+// note: 'rposition' would only make sense to provide with a bidirectional
+// iter interface, such as would provide "reach" in addition to "each". as is,
+// it would have to be implemented with foldr, which is too inefficient.
+
 fn repeat(times: uint, blk: fn()) {
     let mut i = 0u;
     while i < times {

@@ -16,6 +16,9 @@ impl extensions<A> of iter::base_iter<A> for IMPL_T<A> {
     }
     fn contains(x: A) -> bool { iter::contains(self, x) }
     fn count(x: A) -> uint { iter::count(self, x) }
+    fn position(f: fn(A) -> bool) -> option<uint> {
+        iter::position(self, f)
+    }
 }
 
 impl extensions<A:copy> for IMPL_T<A> {
