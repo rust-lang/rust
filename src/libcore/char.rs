@@ -231,7 +231,7 @@ fn test_to_digit() {
 }
 
 #[test]
-fn test_is_ascii() unsafe {
+fn test_is_ascii() {
    assert str::all("banana", char::is_ascii);
    assert ! str::all("ประเทศไทย中华Việt Nam", char::is_ascii);
 }

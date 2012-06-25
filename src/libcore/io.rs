@@ -192,13 +192,13 @@ fn convert_whence(whence: seek_style) -> i32 {
 }
 
 impl of reader for *libc::FILE {
-    fn read_bytes(len: uint) -> [u8] unsafe {
+    fn read_bytes(len: uint) -> [u8] {
         let mut buf : [mut u8] = [mut];
         vec::reserve(buf, len);
         vec::as_mut_buf(buf) {|b|
             let read = libc::fread(b as *mut c_void, 1u as size_t,
                                    len as size_t, self);
-            vec::unsafe::set_len(buf, read as uint);
+            unsafe { vec::unsafe::set_len(buf, read as uint) };
         }
         ret vec::from_mut(buf);
     }
@@ -333,7 +333,7 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
 }
 
 impl of writer for *libc::FILE {
-    fn write(v: [const u8]/&) unsafe {
+    fn write(v: [const u8]/&) {
         vec::unpack_const_slice(v) {|vbuf, len|
             let nout = libc::fwrite(vbuf as *c_void, len as size_t,
                                     1u as size_t, self);
@@ -361,7 +361,7 @@ fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
 }
 
 impl of writer for fd_t {
-    fn write(v: [const u8]/&) unsafe {
+    fn write(v: [const u8]/&) {
         let mut count = 0u;
         vec::unpack_const_slice(v) {|vbuf, len|
             while count < len {

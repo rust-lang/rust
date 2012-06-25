@@ -131,17 +131,17 @@ Convert to a string in a given base
 
 Fails if `radix` < 2 or `radix` > 16
 "]
-fn to_str(num: T, radix: uint) -> str unsafe {
+fn to_str(num: T, radix: uint) -> str {
     to_str_bytes(false, num, radix) {|slice|
         vec::unpack_slice(slice) {|p, len|
-            str::unsafe::from_buf_len(p, len)
+            unsafe { str::unsafe::from_buf_len(p, len) }
         }
     }
 }
 
 #[doc = "Low-level helper routine for string conversion."]
 fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
-                   f: fn([u8]/&) -> U) -> U unsafe {
+                   f: fn([u8]/&) -> U) -> U {
 
     #[inline(always)]
     fn digit(n: T) -> u8 {
@@ -177,28 +177,30 @@ fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
     // pointers and unsafe bits, and the codegen will prove it's all
     // in-bounds, no extra cost.
 
-    vec::unpack_slice(buf) {|p, len|
-        let mp = p as *mut u8;
-        let mut i = len;
-        let mut n = num;
-        let radix = radix as T;
-        loop {
-            i -= 1u;
+    unsafe {
+        vec::unpack_slice(buf) {|p, len|
+            let mp = p as *mut u8;
+            let mut i = len;
+            let mut n = num;
+            let radix = radix as T;
+            loop {
+                i -= 1u;
+                assert 0u < i && i < len;
+                *ptr::mut_offset(mp, i) = digit(n % radix);
+                n /= radix;
+                if n == 0 as T { break; }
+            }
+
             assert 0u < i && i < len;
-            *ptr::mut_offset(mp, i) = digit(n % radix);
-            n /= radix;
-            if n == 0 as T { break; }
+
+            if neg {
+                i -= 1u;
+                *ptr::mut_offset(mp, i) = '-' as u8;
+            }
+
+            vec::unsafe::form_slice(ptr::offset(p, i),
+                                    len - i, f)
         }
-
-        assert 0u < i && i < len;
-
-        if neg {
-            i -= 1u;
-            *ptr::mut_offset(mp, i) = '-' as u8;
-        }
-
-        vec::unsafe::form_slice(ptr::offset(p, i),
-                                len - i, f)
     }
 }
 

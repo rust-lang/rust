@@ -1,4 +1,4 @@
-// error-pattern: ret; in function returning non-nil
+// error-pattern: `ret;` in function returning non-nil
 
 fn f() { ret; }
 

@@ -7,7 +7,7 @@ enum cat_type { tuxedo, tabby, tortoiseshell }
 // for any int value that's less than the meows field
 
 // ok: T should be in scope when resolving the iface ref for map
-class cat<T: copy> implements map<int, T> {
+class cat<T: copy> : map<int, T> {
   priv {
     // Yes, you can have negative meows
     let mut meows : int;

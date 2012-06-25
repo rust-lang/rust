@@ -677,7 +677,7 @@ fn mk_nil_ptr(cx: ctxt) -> t {
     mk_ptr(cx, {ty: mk_nil(cx), mutbl: ast::m_imm})
 }
 
-fn mk_vec(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_vec(tm)) }
+fn mk_vec(cx: ctxt, tm: mt) -> t { mk_evec(cx, tm, vstore_uniq) }
 
 fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
     mk_t(cx, ty_evec(tm, t))
@@ -1472,7 +1472,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) { kind_implicitly_sendable() | kind_const() }
       // Implicit copyability of strs is configurable
-      ty_str {
+      ty_str | ty_estr(vstore_uniq) {
         if cx.vecs_implicitly_copyable {
             kind_implicitly_sendable() | kind_const()
         } else { kind_sendable() | kind_const() }
@@ -1502,7 +1502,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         remove_implicit(mutable_type_kind(cx, tm))
       }
       // Implicit copyability of vecs is configurable
-      ty_vec(tm) {
+      ty_vec(tm) | ty_evec(tm, vstore_uniq) {
           if cx.vecs_implicitly_copyable {
               mutable_type_kind(cx, tm)
           } else { remove_implicit(mutable_type_kind(cx, tm)) }
@@ -1520,9 +1520,6 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
             kind_implicitly_copyable()
         }
       }
-      ty_evec(tm, vstore_uniq) {
-        remove_implicit(mutable_type_kind(cx, tm))
-      }
       ty_evec(tm, vstore_fixed(_)) {
         mutable_type_kind(cx, tm)
       }
@@ -1530,7 +1527,6 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // All estrs are copyable; uniques and interiors are sendable.
       ty_estr(vstore_box) |
       ty_estr(vstore_slice(_)) { kind_implicitly_copyable() | kind_const() }
-      ty_estr(vstore_uniq) { kind_sendable() | kind_const() }
       ty_estr(vstore_fixed(_)) { kind_implicitly_sendable() | kind_const() }
 
       // Records lower to the lowest of their members.

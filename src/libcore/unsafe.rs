@@ -45,20 +45,24 @@ unsafe fn transmute<L, G>(-thing: L) -> G {
 mod tests {
 
     #[test]
-    fn test_reinterpret_cast() unsafe {
-        assert reinterpret_cast(1) == 1u;
+    fn test_reinterpret_cast() {
+        assert unsafe { reinterpret_cast(1) } == 1u;
     }
 
     #[test]
-    fn test_transmute() unsafe {
-        let x = @1;
-        let x: *int = transmute(x);
-        assert *x == 1;
-        let _x: @int = transmute(x);
+    fn test_transmute() {
+        unsafe {
+            let x = @1;
+            let x: *int = transmute(x);
+            assert *x == 1;
+            let _x: @int = transmute(x);
+        }
     }
 
     #[test]
-    fn test_transmute2() unsafe {
-        assert transmute("L") == [76u8, 0u8];
+    fn test_transmute2() {
+        unsafe {
+            assert transmute("L") == [76u8, 0u8];
+        }
     }
 }

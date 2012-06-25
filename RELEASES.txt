@@ -1,3 +1,47 @@
+Version 0.3  (June 2012) - not yet!
+-----------------------------------
+
+  * ~1500 changes, numerous bugfixes
+
+  * New coding conveniences
+    * Integer-literal suffix inference
+    * Per-module control over warnings, errors
+    * #[cfg(windows)] and #[cfg(unix)] attributes
+
+  * Semantic cleanup
+    * Resolve pass and exhaustiveness checker rewritten
+    * Borrow-check taking over from alias-analysis
+    * Liveness taking over from last-use, typestate
+    * Extensive work on region pointers
+
+  * Experimental new language features
+    * Slices and fixed-size, interior-allocated vectors
+    * #!-comments for lang versioning, shell execution
+    * More work on classes
+    * Type reflection
+
+  * Removal of various obsolete features
+    * Keywords: be, prove, syntax, note, mutable, do, bind
+    * Constructs: do-while loops, fn binding, 
+
+  * Compiler reorganization
+    * Syntax-layer of compiler split into separate crate
+    * Clang (from LLVM project) integrated into build
+    * Typechecker split into sub-modules
+
+  * New library code
+    * New time functions
+    * Extension methods for many built-in types
+    * Arc: atomic-refcount read-only / exclusive-use shared cells
+    * Par: parallel map and search routines
+    * Extensive work on libuv interface
+    * Much vector code moved to libraries
+    * Syntax extensions: #line, #col, #file, #mod,
+      #stringify, #include, #include_str, #include_bin.
+
+  * Tool improvements
+    * Cargo automatically resolves dependencies
+
 Version 0.2  (March 2012)
 -------------------------
 

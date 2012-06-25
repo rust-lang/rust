@@ -771,9 +771,9 @@ class parser {
         } else if self.eat_keyword("if") {
             ret pexpr(self.parse_if_expr());
         } else if self.eat_keyword("for") {
-            ret pexpr(self.parse_for_expr());
+            ret pexpr(self.parse_sugary_call_expr("for", expr_loop_body));
         } else if self.eat_keyword("do") {
-            ret pexpr(self.parse_do_expr());
+            ret pexpr(self.parse_sugary_call_expr("do", expr_do_body));
         } else if self.eat_keyword("while") {
             ret pexpr(self.parse_while_expr());
         } else if self.eat_keyword("loop") {
@@ -1283,36 +1283,21 @@ class parser {
         }
     }
 
-    fn parse_for_expr() -> @expr {
+    fn parse_sugary_call_expr(keyword: str,
+                              ctor: fn(+@expr) -> expr_) -> @expr {
         let lo = self.last_span;
         let call = self.parse_expr_res(RESTRICT_STMT_EXPR);
         alt call.node {
           expr_call(f, args, true) {
             let b_arg = vec::last(args);
             let last = self.mk_expr(b_arg.span.lo, b_arg.span.hi,
-                                    expr_loop_body(b_arg));
+                                    ctor(b_arg));
             @{node: expr_call(f, vec::init(args) + [last], true)
               with *call}
           }
           _ {
-            self.span_fatal(lo, "`for` must be followed by a block call");
-          }
-        }
-    }
-
-    fn parse_do_expr() -> @expr {
-        let lo = self.last_span;
-        let call = self.parse_expr_res(RESTRICT_STMT_EXPR);
-        alt call.node {
-          expr_call(f, args, true) {
-            let b_arg = vec::last(args);
-            let last = self.mk_expr(b_arg.span.lo, b_arg.span.hi,
-                                    expr_do_body(b_arg));
-            @{node: expr_call(f, vec::init(args) + [last], true)
-              with *call}
-          }
-          _ {
-            self.span_fatal(lo, "`do` must be followed by a block call");
+            self.span_fatal(
+                lo, #fmt("`%s` must be followed by a block call", keyword));
           }
         }
     }
@@ -1956,7 +1941,7 @@ class parser {
         let rp = self.parse_region_param();
         let ty_params = self.parse_ty_params();
         let class_path = self.ident_to_path_tys(class_name, rp, ty_params);
-        let ifaces : [@iface_ref] = if self.eat_keyword("implements")
+        let ifaces : [@iface_ref] = if self.eat(token::COLON)
             { self.parse_iface_ref_list() }
         else { [] };
         self.expect(token::LBRACE);

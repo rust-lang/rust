@@ -40,7 +40,7 @@ fn run(args: [str]) {
     let mut worker_results = [];
     for uint::range(0u, workers) {|_i|
         let builder = task::builder();
-        worker_results += [task::future_result(builder)];
+        vec::push(worker_results, task::future_result(builder));
         task::run(builder) {||
             for uint::range(0u, size / workers) {|_i|
                 comm::send(to_child, bytes(100u));

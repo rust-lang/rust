@@ -34,7 +34,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
             i += 1u;
         }
       }
-      expr_loop_body(body) {
+      expr_loop_body(body) | expr_do_body(body) {
         cx.allow_block = true;
         v.visit_expr(body, cx, v);
       }

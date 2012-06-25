@@ -93,10 +93,10 @@ fn parse_buf(buf: [u8], radix: uint) -> option<T> {
 fn from_str(s: str) -> option<T> { parse_buf(str::bytes(s), 10u) }
 
 #[doc = "Convert to a string in a given base"]
-fn to_str(n: T, radix: uint) -> str unsafe {
+fn to_str(n: T, radix: uint) -> str {
     to_str_bytes(n, radix) {|slice|
         vec::unpack_slice(slice) {|p, len|
-            str::unsafe::from_buf_len(p, len)
+            unsafe { str::unsafe::from_buf_len(p, len) }
         }
     }
 }

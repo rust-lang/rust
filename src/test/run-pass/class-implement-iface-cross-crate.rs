@@ -3,7 +3,7 @@
 use cci_class_iface;
 import cci_class_iface::animals::*;
 
-class cat implements noisy {
+class cat : noisy {
   priv {
     let mut meows : uint;
     fn meow() {

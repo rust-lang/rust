@@ -43,16 +43,16 @@ pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
 }
 
 #[doc = "Returns true if the result is `ok`"]
-pure fn is_success<T, U>(res: result<T, U>) -> bool {
+pure fn is_ok<T, U>(res: result<T, U>) -> bool {
     alt res {
       ok(_) { true }
       err(_) { false }
     }
 }
 
-#[doc = "Returns true if the result is `error`"]
-pure fn is_failure<T, U>(res: result<T, U>) -> bool {
-    !is_success(res)
+#[doc = "Returns true if the result is `err`"]
+pure fn is_err<T, U>(res: result<T, U>) -> bool {
+    !is_ok(res)
 }
 
 #[doc = "
@@ -180,22 +180,10 @@ fn map_err<T: copy, E, F: copy>(res: result<T, E>, op: fn(E) -> F)
     }
 }
 
-impl extensions<T:copy, E:copy> for result<T,E> {
-    fn get() -> T { get(self) }
+impl extensions<T, E> for result<T, E> {
+    fn is_ok() -> bool { is_ok(self) }
 
-    fn get_err() -> E { get_err(self) }
-
-    fn is_success() -> bool { is_success(self) }
-
-    fn is_failure() -> bool { is_failure(self) }
-
-    fn chain<U:copy>(op: fn(T) -> result<U,E>) -> result<U,E> {
-        chain(self, op)
-    }
-
-    fn chain_err<F:copy>(op: fn(E) -> result<T,F>) -> result<T,F> {
-        chain_err(self, op)
-    }
+    fn is_err() -> bool { is_err(self) }
 
     fn iter(f: fn(T)) {
         alt self {
@@ -210,6 +198,21 @@ impl extensions<T:copy, E:copy> for result<T,E> {
           err(e) { f(e) }
         }
     }
+}
+
+impl extensions<T:copy, E> for result<T, E> {
+    fn get() -> T { get(self) }
+
+    fn map_err<F:copy>(op: fn(E) -> F) -> result<T,F> {
+        alt self {
+          ok(t) { ok(t) }
+          err(e) { err(op(e)) }
+        }
+    }
+}
+
+impl extensions<T, E:copy> for result<T, E> {
+    fn get_err() -> E { get_err(self) }
 
     fn map<U:copy>(op: fn(T) -> U) -> result<U,E> {
         alt self {
@@ -217,12 +220,15 @@ impl extensions<T:copy, E:copy> for result<T,E> {
           err(e) { err(e) }
         }
     }
+}
 
-    fn map_err<F:copy>(op: fn(E) -> F) -> result<T,F> {
-        alt self {
-          ok(t) { ok(t) }
-          err(e) { err(op(e)) }
-        }
+impl extensions<T:copy, E:copy> for result<T,E> {
+    fn chain<U:copy>(op: fn(T) -> result<U,E>) -> result<U,E> {
+        chain(self, op)
+    }
+
+    fn chain_err<F:copy>(op: fn(E) -> result<T,F>) -> result<T,F> {
+        chain_err(self, op)
     }
 }
 
@@ -320,14 +326,16 @@ fn iter_vec2<S,T,U:copy>(ss: [S], ts: [T],
 #[doc="
 Unwraps a result, assuming it is an `ok(T)`
 "]
-fn unwrap<T, U>(-res: result<T, U>) -> T unsafe {
-    let addr = alt res {
-      ok(x) { ptr::addr_of(x) }
-      err(_) { fail "error result" }
-    };
-    let liberated_value = unsafe::reinterpret_cast(*addr);
-    unsafe::forget(res);
-    ret liberated_value;
+fn unwrap<T, U>(-res: result<T, U>) -> T {
+    unsafe {
+        let addr = alt res {
+          ok(x) { ptr::addr_of(x) }
+          err(_) { fail "error result" }
+        };
+        let liberated_value = unsafe::reinterpret_cast(*addr);
+        unsafe::forget(res);
+        ret liberated_value;
+    }
 }
 
 #[cfg(test)]

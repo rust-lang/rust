@@ -251,7 +251,6 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
     let keys = [
         "as",
         "else",
-        "implements",
         "move",
         "of",
         "priv", "pub",

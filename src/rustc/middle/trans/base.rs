@@ -1752,7 +1752,6 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
             arg_exprs([src]), save_in(target));
 
         ret move_val(bcx, DROP_EXISTING, lhs_res.val,
-                     // FIXME (#2704): should kind be owned?
                      {bcx: bcx, val: target, kind: owned},
                      dty);
       }

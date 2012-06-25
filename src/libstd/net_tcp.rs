@@ -822,7 +822,7 @@ fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
     log(debug, "starting tcp::read");
     let iotask = (*socket_data).iotask;
     let rs_result = read_start_common_impl(socket_data);
-    if result::is_failure(rs_result) {
+    if result::is_err(rs_result) {
         let err_data = result::get_err(rs_result);
         result::err(err_data)
     }
@@ -1433,7 +1433,7 @@ mod test {
 
                         let accept_result = accept(new_conn);
                         log(debug, "SERVER: after accept()");
-                        if result::is_failure(accept_result) {
+                        if result::is_err(accept_result) {
                             log(debug, "SERVER: error accept connection");
                             let err_data = result::get_err(accept_result);
                             comm::send(kill_ch, some(err_data));
@@ -1474,7 +1474,7 @@ mod test {
                 log(debug, "SERVER: recv'd on cont_ch..leaving listen cb");
             });
             // err check on listen_result
-            if result::is_failure(listen_result) {
+            if result::is_err(listen_result) {
                 let err_data = result::get_err(listen_result);
                 log(debug, #fmt("SERVER: exited abnormally name %s msg %s",
                                 err_data.err_name, err_data.err_msg));
@@ -1495,7 +1495,7 @@ mod test {
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let new_listener_result =
                 new_listener(server_ip_addr, server_port, 128u, iotask);
-            if result::is_failure(new_listener_result) {
+            if result::is_err(new_listener_result) {
                 let err_data = result::get_err(new_listener_result);
                 log(debug, #fmt("SERVER: exited abnormally name %s msg %s",
                                 err_data.err_name, err_data.err_msg));
@@ -1507,7 +1507,7 @@ mod test {
             // in a loop {}, but we're just going to take a single
             // client.. get their req, write a resp and then exit
             let new_conn_result = server_port.recv();
-            if result::is_failure(new_conn_result) {
+            if result::is_err(new_conn_result) {
                 let err_data = result::get_err(new_conn_result);
                 log(debug, #fmt("SERVER: exited abnormally name %s msg %s",
                                 err_data.err_name, err_data.err_msg));
@@ -1544,7 +1544,7 @@ mod test {
 
         log(debug, "CLIENT: starting..");
         let connect_result = connect(server_ip_addr, server_port, iotask);
-        if result::is_failure(connect_result) {
+        if result::is_err(connect_result) {
             log(debug, "CLIENT: failed to connect");
             let err_data = result::get_err(connect_result);
             log(debug, #fmt("CLIENT: connect err name: %s msg: %s",
@@ -1556,7 +1556,7 @@ mod test {
             let resp_bytes = str::bytes(resp);
             tcp_write_single(sock, resp_bytes);
             let read_result = sock.read(0u);
-            if read_result.is_failure() {
+            if read_result.is_err() {
                 log(debug, "CLIENT: failure to read");
                 ""
             }
@@ -1573,7 +1573,7 @@ mod test {
     fn tcp_write_single(sock: tcp_socket, val: [u8]) {
         let write_result_future = sock.write_future(val);
         let write_result = write_result_future.get();
-        if result::is_failure(write_result) {
+        if result::is_err(write_result) {
             log(debug, "tcp_write_single: write failed!");
             let err_data = result::get_err(write_result);
             log(debug, #fmt("tcp_write_single err name: %s msg: %s",

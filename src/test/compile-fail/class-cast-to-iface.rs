@@ -1,9 +1,9 @@
-// error-pattern: attempted access of field eat on type noisy
+// error-pattern: attempted access of field `eat` on type `noisy`
 iface noisy {
   fn speak();
 }
 
-class cat implements noisy {
+class cat : noisy {
   priv {
     let mut meows : uint;
     fn meow() {

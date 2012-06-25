@@ -210,13 +210,13 @@ fn recv_<T: send>(p: *rust_port) -> T {
     ret res;
 }
 
-fn peek_(p: *rust_port) -> bool unsafe {
+fn peek_(p: *rust_port) -> bool {
     rustrt::rust_port_size(p) != 0u as libc::size_t
 }
 
 #[doc = "Receive on one of two ports"]
 fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
-    -> either<A, B> unsafe {
+    -> either<A, B> {
     let ports = [(**p_a).po, (**p_b).po];
     let n_ports = 2 as libc::size_t;
     let yield = 0u, yieldp = ptr::addr_of(yield);
@@ -440,7 +440,7 @@ fn test_recv_chan_wrong_task() {
     let po = port();
     let ch = chan(po);
     send(ch, "flower");
-    assert result::is_failure(task::try {||
+    assert result::is_err(task::try {||
         recv_chan(ch)
     })
 }

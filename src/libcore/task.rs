@@ -504,7 +504,7 @@ type task_id = int;
 type rust_task = libc::c_void;
 type rust_closure = libc::c_void;
 
-fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
+fn spawn_raw(opts: task_opts, +f: fn~()) {
 
     let mut f = if opts.supervise {
         f
@@ -519,25 +519,27 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
         }
     };
 
-    let fptr = ptr::addr_of(f);
-    let closure: *rust_closure = unsafe::reinterpret_cast(fptr);
+    unsafe {
+        let fptr = ptr::addr_of(f);
+        let closure: *rust_closure = unsafe::reinterpret_cast(fptr);
 
-    let new_task = alt opts.sched {
-      none {
-        rustrt::new_task()
-      }
-      some(sched_opts) {
-        new_task_in_new_sched(sched_opts)
-      }
-    };
+        let new_task = alt opts.sched {
+          none {
+            rustrt::new_task()
+          }
+          some(sched_opts) {
+            new_task_in_new_sched(sched_opts)
+          }
+        };
 
-    option::iter(opts.notify_chan) {|c|
-        // FIXME (#1087): Would like to do notification in Rust
-        rustrt::rust_task_config_notify(new_task, c);
+        option::iter(opts.notify_chan) {|c|
+            // FIXME (#1087): Would like to do notification in Rust
+            rustrt::rust_task_config_notify(new_task, c);
+        }
+
+        rustrt::start_task(new_task, closure);
+        unsafe::forget(f);
     }
-
-    rustrt::start_task(new_task, closure);
-    unsafe::forget(f);
 
     fn new_task_in_new_sched(opts: sched_opts) -> *rust_task {
         if opts.native_stack_size != none {
@@ -962,7 +964,7 @@ fn test_osmain() {
 #[test]
 #[ignore(cfg(windows))]
 #[should_fail]
-fn test_unkillable() unsafe {
+fn test_unkillable() {
     import comm::methods;
     let po = comm::port();
     let ch = po.chan();
@@ -980,14 +982,16 @@ fn test_unkillable() unsafe {
         fail;
     }
 
-    unkillable {||
-        let p = ~0;
-        let pp: *uint = unsafe::transmute(p);
+    unsafe {
+        unkillable {||
+            let p = ~0;
+            let pp: *uint = unsafe::transmute(p);
 
-        // If we are killed here then the box will leak
-        po.recv();
+            // If we are killed here then the box will leak
+            po.recv();
 
-        let _p: ~int = unsafe::transmute(pp);
+            let _p: ~int = unsafe::transmute(pp);
+        }
     }
 
     // Now we can be killed

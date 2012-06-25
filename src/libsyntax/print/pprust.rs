@@ -495,9 +495,11 @@ fn print_item(s: ps, &&item: @ast::item) {
           word_nbsp(s, *item.ident);
           print_region_param(s, rp);
           print_type_params(s, tps);
-          word_space(s, "implements");
-          commasep(s, inconsistent, ifaces, {|s, p|
-                      print_path(s, p.path, false)});
+          if vec::len(ifaces) != 0u {
+              word_space(s, ":");
+              commasep(s, inconsistent, ifaces, {|s, p|
+                  print_path(s, p.path, false)});
+          }
           bopen(s);
           hardbreak_if_not_bol(s);
           maybe_print_comment(s, ctor.span.lo);

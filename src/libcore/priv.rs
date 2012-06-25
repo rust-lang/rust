@@ -82,7 +82,7 @@ unsafe fn chan_from_global_ptr<T: send>(
 }
 
 #[test]
-fn test_from_global_chan1() unsafe {
+fn test_from_global_chan1() {
 
     // This is unreadable, right?
 
@@ -91,11 +91,13 @@ fn test_from_global_chan1() unsafe {
     let globchanp = ptr::addr_of(globchan);
 
     // Create the global channel, attached to a new task
-    let ch = chan_from_global_ptr(globchanp, task::builder) {|po|
-        let ch = comm::recv(po);
-        comm::send(ch, true);
-        let ch = comm::recv(po);
-        comm::send(ch, true);
+    let ch = unsafe {
+        chan_from_global_ptr(globchanp, task::builder) {|po|
+            let ch = comm::recv(po);
+            comm::send(ch, true);
+            let ch = comm::recv(po);
+            comm::send(ch, true);
+        }
     };
     // Talk to it
     let po = comm::port();
@@ -103,9 +105,11 @@ fn test_from_global_chan1() unsafe {
     assert comm::recv(po) == true;
 
     // This one just reuses the previous channel
-    let ch = chan_from_global_ptr(globchanp, task::builder) {|po|
-        let ch = comm::recv(po);
-        comm::send(ch, false);
+    let ch = unsafe {
+        chan_from_global_ptr(globchanp, task::builder) {|po|
+            let ch = comm::recv(po);
+            comm::send(ch, false);
+        }
     };
 
     // Talk to the original global task
@@ -115,7 +119,7 @@ fn test_from_global_chan1() unsafe {
 }
 
 #[test]
-fn test_from_global_chan2() unsafe {
+fn test_from_global_chan2() {
 
     iter::repeat(100u) {||
         // The global channel
@@ -129,12 +133,14 @@ fn test_from_global_chan2() unsafe {
         // create the global channel
         for uint::range(0u, 10u) {|i|
             task::spawn() {||
-                let ch = chan_from_global_ptr(
-                    globchanp, task::builder) {|po|
+                let ch = unsafe {
+                    chan_from_global_ptr(
+                        globchanp, task::builder) {|po|
 
-                    for uint::range(0u, 10u) {|_j|
-                        let ch = comm::recv(po);
-                        comm::send(ch, {i});
+                        for uint::range(0u, 10u) {|_j|
+                            let ch = comm::recv(po);
+                            comm::send(ch, {i});
+                        }
                     }
                 };
                 let po = comm::port();
@@ -174,10 +180,12 @@ This function is super-unsafe. Do not use.
 * Weak tasks must not be supervised. A supervised task keeps
   a reference to its parent, so the parent will not die.
 "]
-unsafe fn weaken_task(f: fn(comm::port<()>)) unsafe {
+unsafe fn weaken_task(f: fn(comm::port<()>)) {
     let po = comm::port();
     let ch = comm::chan(po);
-    rustrt::rust_task_weaken(unsafe::reinterpret_cast(ch));
+    unsafe {
+        rustrt::rust_task_weaken(unsafe::reinterpret_cast(ch));
+    }
     let _unweaken = unweaken(ch);
     f(po);
 
@@ -191,37 +199,22 @@ unsafe fn weaken_task(f: fn(comm::port<()>)) unsafe {
 }
 
 #[test]
-fn test_weaken_task_then_unweaken() unsafe {
+fn test_weaken_task_then_unweaken() {
     task::try {||
-        weaken_task {|_po|
+        unsafe {
+            weaken_task {|_po|
+            }
         }
     };
 }
 
 #[test]
-fn test_weaken_task_wait() unsafe {
+fn test_weaken_task_wait() {
     let builder = task::builder();
     task::unsupervise(builder);
     task::run(builder) {||
-        weaken_task {|po|
-            comm::recv(po);
-        }
-    }
-}
-
-#[test]
-fn test_weaken_task_stress() unsafe {
-    // Create a bunch of weak tasks
-    iter::repeat(100u) {||
-        task::spawn {||
-            weaken_task {|_po|
-            }
-        }
-        let builder = task::builder();
-        task::unsupervise(builder);
-        task::run(builder) {||
+        unsafe {
             weaken_task {|po|
-                // Wait for it to tell us to die
                 comm::recv(po);
             }
         }
@@ -229,12 +222,37 @@ fn test_weaken_task_stress() unsafe {
 }
 
 #[test]
+fn test_weaken_task_stress() {
+    // Create a bunch of weak tasks
+    iter::repeat(100u) {||
+        task::spawn {||
+            unsafe {
+                weaken_task {|_po|
+                }
+            }
+        }
+        let builder = task::builder();
+        task::unsupervise(builder);
+        task::run(builder) {||
+            unsafe {
+                weaken_task {|po|
+                    // Wait for it to tell us to die
+                    comm::recv(po);
+                }
+            }
+        }
+    }
+}
+
+#[test]
 #[ignore(cfg(windows))]
-fn test_weaken_task_fail() unsafe {
+fn test_weaken_task_fail() {
     let res = task::try {||
-        weaken_task {|_po|
-            fail;
+        unsafe {
+            weaken_task {|_po|
+                fail;
+            }
         }
     };
-    assert result::is_failure(res);
+    assert result::is_err(res);
 }

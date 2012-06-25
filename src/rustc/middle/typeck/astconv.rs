@@ -170,6 +170,12 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             ret ty::mk_evec(tcx, mt, vst);
           }
 
+          // HACK: if we get a []/~, we assume that it was actually a
+          // [] that got written down, and we throw away the /~...
+          ty::ty_evec(mt, vstore_uniq) {
+            ret ty::mk_evec(tcx, mt, vst);
+          }
+
           ty::ty_str {
             ret ty::mk_estr(tcx, vst);
           }

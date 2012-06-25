@@ -52,8 +52,6 @@ fn test_tag() {
     send(ch, tag1);
     send(ch, tag2(10));
     send(ch, tag3(10, 11u8, 'A'));
-    // FIXME: Do port semantics really guarantee these happen in order?
-    // (#2605)
     let mut t1: t;
     t1 = recv(po);
     assert (t1 == tag1);

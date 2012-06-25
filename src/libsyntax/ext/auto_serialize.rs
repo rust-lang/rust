@@ -452,10 +452,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         []
       }
 
-      ast::ty_vstore(_, _) {
-        cx.span_unimpl(ty.span, "serialization for vstore types");
-      }
-
+      ast::ty_vstore(@{node: ast::ty_vec(mt),_}, ast::vstore_uniq) |
       ast::ty_vec(mt) {
         let ser_e =
             cx.expr(
@@ -472,6 +469,11 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
             std::serialization::emit_from_vec($(s), $(v), {|__e| $(ser_e) })
         }]
       }
+
+      ast::ty_vstore(_, _) {
+        cx.span_unimpl(ty.span, "serialization for vstore types");
+      }
+
     }
 }
 
@@ -673,13 +675,14 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         #ast{ fail }
       }
 
-      ast::ty_vstore(_, _) {
-        cx.span_unimpl(ty.span, "deserialization for vstore types");
-      }
-
+      ast::ty_vstore(@{node: ast::ty_vec(mt),_}, ast::vstore_uniq) |
       ast::ty_vec(mt) {
         let l = deser_lambda(cx, tps, mt.ty, cx.clone(d));
         #ast{ std::serialization::read_to_vec($(d), $(l)) }
+      }
+
+      ast::ty_vstore(_, _) {
+        cx.span_unimpl(ty.span, "deserialization for vstore types");
       }
     }
 }

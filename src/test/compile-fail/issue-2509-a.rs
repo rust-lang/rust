@@ -1,4 +1,4 @@
-class c { //! ERROR A class must have at least one field
+class c { //! ERROR a class must have at least one field
     new() { }
 }
 
