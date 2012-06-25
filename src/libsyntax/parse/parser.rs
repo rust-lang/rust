@@ -1283,7 +1283,8 @@ class parser {
         }
     }
 
-    fn parse_sugary_call_expr(keyword: str, ctor: fn(+@expr) -> expr_) -> @expr {
+    fn parse_sugary_call_expr(keyword: str,
+                              ctor: fn(+@expr) -> expr_) -> @expr {
         let lo = self.last_span;
         let call = self.parse_expr_res(RESTRICT_STMT_EXPR);
         alt call.node {
