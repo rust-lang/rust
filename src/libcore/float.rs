@@ -4,7 +4,7 @@
 // because it contains re-exports, we also have to explicitly
 // export locally defined things. That's a bit annoying.
 export to_str_common, to_str_exact, to_str, from_str;
-export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
+export add, sub, mul, div, rem, lt, le, gt, eq, ne;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;
@@ -17,7 +17,8 @@ export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
 export pow_with_uint;
-export extensions;
+
+export num;
 
 // export when m_float == c_double
 
@@ -26,8 +27,16 @@ export j0, j1, jn, y0, y1, yn;
 // PORT this must match in width according to architecture
 
 import m_float = f64;
-import f64::*;
-import num::num;
+
+import f64::{add, sub, mul, div, rem, lt, le, gt, eq, ne};
+import f64::logarithm;
+import f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
+import f64::{erf, erfc, exp, expm1, exp2, abs_sub};
+import f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
+import f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
+import f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
+import f64::signbit;
+import f64::{j0, j1, jn, y0, y1, yn};
 
 const NaN: float = 0.0/0.0;
 
@@ -410,18 +419,16 @@ fn sin(x: float) -> float { f64::sin(x as f64) as float }
 fn cos(x: float) -> float { f64::cos(x as f64) as float }
 fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
-mod extensions {
-    impl num of num for float {
-        fn add(&&other: float)    -> float { ret self + other; }
-        fn sub(&&other: float)    -> float { ret self - other; }
-        fn mul(&&other: float)    -> float { ret self * other; }
-        fn div(&&other: float)    -> float { ret self / other; }
-        fn modulo(&&other: float) -> float { ret self % other; }
-        fn neg()                  -> float { ret -self;        }
+impl num of num::num for float {
+    fn add(&&other: float)    -> float { ret self + other; }
+    fn sub(&&other: float)    -> float { ret self - other; }
+    fn mul(&&other: float)    -> float { ret self * other; }
+    fn div(&&other: float)    -> float { ret self / other; }
+    fn modulo(&&other: float) -> float { ret self % other; }
+    fn neg()                  -> float { ret -self;        }
 
-        fn to_int()         -> int   { ret self as int; }
-        fn from_int(n: int) -> float { ret n as float;  }
-    }
+    fn to_int()         -> int   { ret self as int; }
+    fn from_int(n: int) -> float { ret n as float;  }
 }
 
 #[test]
@@ -519,7 +526,7 @@ fn test_to_str_inf() {
 
 #[test]
 fn test_ifaces() {
-    fn test<U:num>(ten: U) {
+    fn test<U:num::num>(ten: U) {
         assert (ten.to_int() == 10);
 
         let two = ten.from_int(2);

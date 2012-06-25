@@ -4,9 +4,8 @@
 
 import cmath::c_float::*;
 import cmath::c_float_targ_consts::*;
-import num::num;
 
-export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
+export add, sub, mul, div, rem, lt, le, gt, eq, ne;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;
@@ -18,7 +17,8 @@ export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
 export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
-export extensions;
+
+export num;
 
 // These are not defined inside consts:: for consistency with
 // the integer types
@@ -173,18 +173,16 @@ pure fn log2(n: f32) -> f32 {
     ret ln(n) / consts::ln_2;
 }
 
-mod extensions {
-    impl num of num for f32 {
-        fn add(&&other: f32)    -> f32 { ret self + other; }
-        fn sub(&&other: f32)    -> f32 { ret self - other; }
-        fn mul(&&other: f32)    -> f32 { ret self * other; }
-        fn div(&&other: f32)    -> f32 { ret self / other; }
-        fn modulo(&&other: f32) -> f32 { ret self % other; }
-        fn neg()                -> f32 { ret -self;        }
+impl num of num::num for f32 {
+    fn add(&&other: f32)    -> f32 { ret self + other; }
+    fn sub(&&other: f32)    -> f32 { ret self - other; }
+    fn mul(&&other: f32)    -> f32 { ret self * other; }
+    fn div(&&other: f32)    -> f32 { ret self / other; }
+    fn modulo(&&other: f32) -> f32 { ret self % other; }
+    fn neg()                -> f32 { ret -self;        }
 
-        fn to_int()         -> int { ret self as int; }
-        fn from_int(n: int) -> f32 { ret n as f32;    }
-    }
+    fn to_int()         -> int { ret self as int; }
+    fn from_int(n: int) -> f32 { ret n as f32;    }
 }
 
 //

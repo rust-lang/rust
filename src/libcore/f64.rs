@@ -4,12 +4,11 @@
 
 import cmath::c_double::*;
 import cmath::c_double_targ_consts::*;
-import num::num;
 
 // Even though this module exports everything defined in it,
 // because it contains re-exports, we also have to explicitly
 // export locally defined things. That's a bit annoying.
-export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
+export add, sub, mul, div, rem, lt, le, gt, eq, ne;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;
@@ -22,7 +21,10 @@ export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
 export epsilon;
-export extensions;
+
+export j0, j1, jn, y0, y1, yn;
+
+export num;
 
 // These are not defined inside consts:: for consistency with
 // the integer types
@@ -196,18 +198,16 @@ pure fn log2(n: f64) -> f64 {
     ret ln(n) / consts::ln_2;
 }
 
-mod extensions {
-    impl num of num for f64 {
-        fn add(&&other: f64)    -> f64 { ret self + other; }
-        fn sub(&&other: f64)    -> f64 { ret self - other; }
-        fn mul(&&other: f64)    -> f64 { ret self * other; }
-        fn div(&&other: f64)    -> f64 { ret self / other; }
-        fn modulo(&&other: f64) -> f64 { ret self % other; }
-        fn neg()                -> f64 { ret -self;        }
+impl num of num::num for f64 {
+    fn add(&&other: f64)    -> f64 { ret self + other; }
+    fn sub(&&other: f64)    -> f64 { ret self - other; }
+    fn mul(&&other: f64)    -> f64 { ret self * other; }
+    fn div(&&other: f64)    -> f64 { ret self / other; }
+    fn modulo(&&other: f64) -> f64 { ret self % other; }
+    fn neg()                -> f64 { ret -self;        }
 
-        fn to_int()         -> int { ret self as int; }
-        fn from_int(n: int) -> f64 { ret n as f64;    }
-    }
+    fn to_int()         -> int { ret self as int; }
+    fn from_int(n: int) -> f64 { ret n as f64;    }
 }
 
 //
