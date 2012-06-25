@@ -567,6 +567,7 @@ native mod rustrt {
                            service_name_ptr: *u8,
                            // should probably only pass ptr::null()
                            hints: *addrinfo) -> libc::c_int;
+    fn rust_uv_freeaddrinfo(res: *addrinfo);
 
     // data accessors/helpers for rust-mapped uv structs
     fn rust_uv_is_ipv4_addrinfo(input: *addrinfo) -> bool;
@@ -755,7 +756,7 @@ unsafe fn ip4_name(src: &sockaddr_in) -> str {
         rustrt::rust_uv_ip4_name(src as *sockaddr_in,
                                               dst_buf, size);
         // FIXME: seems that checking the result of uv_ip4_name
-        // doesn't work too well.. 
+        // doesn't work too well..
         // libuv will actually map a malformed input ip to INADDR_NONE,
         // which is going to be 255.255.255.255 on most
         // platforms.
@@ -809,6 +810,9 @@ unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
                            node_name_ptr,
                            service_name_ptr,
                            hints)
+}
+unsafe fn freeaddrinfo(res: *addrinfo) {
+    rustrt::rust_uv_freeaddrinfo(res);
 }
 
 // libuv struct initializers
@@ -1544,7 +1548,7 @@ mod test {
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
     }
-    
+
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
