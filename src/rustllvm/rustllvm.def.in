@@ -7,7 +7,6 @@ LLVMRustConstInt
 LLVMRustParseBitcode
 LLVMRustParseAssemblyFile
 LLVMRustPrintPassTimings
-LLVMLinkModules
 LLVMCreateObjectFile
 LLVMDisposeObjectFile
 LLVMGetSections
