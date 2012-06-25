@@ -180,19 +180,21 @@ mod global_env {
         }
     }
 
-    fn global_env_task(msg_po: comm::port<msg>) unsafe {
-        priv::weaken_task {|weak_po|
-            loop {
-                alt comm::select2(msg_po, weak_po) {
-                  either::left(msg_getenv(n, resp_ch)) {
-                    comm::send(resp_ch, impl::getenv(n))
-                  }
-                  either::left(msg_setenv(n, v, resp_ch)) {
-                    comm::send(resp_ch, impl::setenv(n, v))
-                  }
-                  either::right(_) {
-                    break;
-                  }
+    fn global_env_task(msg_po: comm::port<msg>) {
+        unsafe {
+            priv::weaken_task {|weak_po|
+                loop {
+                    alt comm::select2(msg_po, weak_po) {
+                      either::left(msg_getenv(n, resp_ch)) {
+                        comm::send(resp_ch, impl::getenv(n))
+                      }
+                      either::left(msg_setenv(n, v, resp_ch)) {
+                        comm::send(resp_ch, impl::setenv(n, v))
+                      }
+                      either::right(_) {
+                        break;
+                      }
+                    }
                 }
             }
         }
@@ -201,18 +203,20 @@ mod global_env {
     mod impl {
 
         #[cfg(unix)]
-        fn getenv(n: str) -> option<str> unsafe {
-            let s = str::as_c_str(n, libc::getenv);
-            ret if unsafe::reinterpret_cast(s) == 0 {
-                option::none::<str>
-            } else {
-                let s = unsafe::reinterpret_cast(s);
-                option::some::<str>(str::unsafe::from_buf(s))
-            };
+        fn getenv(n: str) -> option<str> {
+            unsafe {
+                let s = str::as_c_str(n, libc::getenv);
+                ret if unsafe::reinterpret_cast(s) == 0 {
+                    option::none::<str>
+                } else {
+                    let s = unsafe::reinterpret_cast(s);
+                    option::some::<str>(str::unsafe::from_buf(s))
+                };
+            }
         }
 
         #[cfg(windows)]
-        fn getenv(n: str) -> option<str> unsafe {
+        fn getenv(n: str) -> option<str> {
             import libc::types::os::arch::extra::*;
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -362,21 +366,23 @@ fn dll_filename(base: str) -> str {
 fn self_exe_path() -> option<path> {
 
     #[cfg(target_os = "freebsd")]
-    fn load_self() -> option<path> unsafe {
-        import libc::funcs::bsd44::*;
-        import libc::consts::os::extra::*;
-        fill_charp_buf() {|buf, sz|
-            let mib = [CTL_KERN as c_int,
-                       KERN_PROC as c_int,
-                       KERN_PROC_PATHNAME as c_int, -1 as c_int];
-            sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
-                   buf as *mut c_void, ptr::mut_addr_of(sz),
-                   ptr::null(), 0u as size_t) == (0 as c_int)
+    fn load_self() -> option<path> {
+        unsafe {
+            import libc::funcs::bsd44::*;
+            import libc::consts::os::extra::*;
+            fill_charp_buf() {|buf, sz|
+                let mib = [CTL_KERN as c_int,
+                           KERN_PROC as c_int,
+                           KERN_PROC_PATHNAME as c_int, -1 as c_int];
+                sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
+                       buf as *mut c_void, ptr::mut_addr_of(sz),
+                       ptr::null(), 0u as size_t) == (0 as c_int)
+            }
         }
     }
 
     #[cfg(target_os = "linux")]
-    fn load_self() -> option<path> unsafe {
+    fn load_self() -> option<path> {
         import libc::funcs::posix01::unistd::readlink;
         fill_charp_buf() {|buf, sz|
             as_c_charp("/proc/self/exe") { |proc_self_buf|
@@ -386,9 +392,10 @@ fn self_exe_path() -> option<path> {
     }
 
     #[cfg(target_os = "macos")]
-    fn load_self() -> option<path> unsafe {
+    fn load_self() -> option<path> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::*;
+
         fill_charp_buf() {|buf, sz|
             _NSGetExecutablePath(buf, ptr::mut_addr_of(sz as u32))
                 == (0 as c_int)
@@ -396,7 +403,7 @@ fn self_exe_path() -> option<path> {
     }
 
     #[cfg(windows)]
-    fn load_self() -> option<path> unsafe {
+    fn load_self() -> option<path> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
@@ -525,14 +532,14 @@ fn make_dir(p: path, mode: c_int) -> bool {
     ret mkdir(p, mode);
 
     #[cfg(windows)]
-    fn mkdir(p: path, _mode: c_int) -> bool unsafe {
+    fn mkdir(p: path, _mode: c_int) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
         import win32::*;
         // FIXME: turn mode into something useful? #2623
         as_utf16_p(p) {|buf|
-            CreateDirectoryW(buf, unsafe::reinterpret_cast(0))
+            CreateDirectoryW(buf, unsafe { unsafe::reinterpret_cast(0) })
                 != (0 as BOOL)
         }
     }
@@ -645,7 +652,7 @@ fn copy_file(from: path, to: path) -> bool {
     }
 
     #[cfg(unix)]
-    fn do_copy_file(from: path, to: path) -> bool unsafe {
+    fn do_copy_file(from: path, to: path) -> bool {
         let istream = as_c_charp(from) {|fromp|
             as_c_charp("rb") {|modebuf|
                 libc::fopen(fromp, modebuf)

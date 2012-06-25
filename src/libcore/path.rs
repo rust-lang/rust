@@ -105,14 +105,20 @@ Given paths `pre` and `post, removes any trailing path separator on `pre` and
 any leading path separator on `post`, and returns the concatenation of the two
 with a single path separator between them.
 "]
-fn connect(pre: path, post: path) -> path unsafe {
+fn connect(pre: path, post: path) -> path {
     let mut pre_ = pre;
     let mut post_ = post;
     let sep = consts::path_sep as u8;
     let pre_len  = str::len(pre);
     let post_len = str::len(post);
-    if pre_len > 1u && pre[pre_len-1u] == sep { str::unsafe::pop_byte(pre_); }
-    if post_len > 1u && post[0] == sep { str::unsafe::shift_byte(post_); }
+    unsafe {
+        if pre_len > 1u && pre[pre_len-1u] == sep {
+            str::unsafe::pop_byte(pre_);
+        }
+        if post_len > 1u && post[0] == sep {
+            str::unsafe::shift_byte(post_);
+        }
+    }
     ret pre_ + path_sep() + post_;
 }
 

@@ -70,7 +70,7 @@ pure fn iter<T>(opt: option<T>, f: fn(T)) {
     alt opt { none { } some(t) { f(t); } }
 }
 
-pure fn unwrap<T>(-opt: option<T>) -> T unsafe {
+pure fn unwrap<T>(-opt: option<T>) -> T {
     #[doc = "
     Moves a value out of an option type and returns it.
 
@@ -78,13 +78,15 @@ pure fn unwrap<T>(-opt: option<T>) -> T unsafe {
     option types without copying them.
     "];
 
-    let addr = alt opt {
-      some(x) { ptr::addr_of(x) }
-      none { fail "option none" }
-    };
-    let liberated_value = unsafe::reinterpret_cast(*addr);
-    unsafe::forget(opt);
-    ret liberated_value;
+    unsafe {
+        let addr = alt opt {
+          some(x) { ptr::addr_of(x) }
+          none { fail "option none" }
+        };
+        let liberated_value = unsafe::reinterpret_cast(*addr);
+        unsafe::forget(opt);
+        ret liberated_value;
+    }
 }
 
 impl extensions<T> for option<T> {

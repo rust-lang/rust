@@ -52,7 +52,7 @@ pure fn get_type_desc<T>() -> *type_desc {
 
 #[doc = "Returns the size of a type"]
 #[inline(always)]
-pure fn size_of<T>() -> uint unsafe {
+pure fn size_of<T>() -> uint {
     unchecked { rusti::size_of::<T>() }
 }
 
@@ -62,12 +62,12 @@ Returns the ABI-required minimum alignment of a type
 This is the alignment used for struct fields. It may be smaller
 than the preferred alignment.
 "]
-pure fn min_align_of<T>() -> uint unsafe {
+pure fn min_align_of<T>() -> uint {
     unchecked { rusti::min_align_of::<T>() }
 }
 
 #[doc = "Returns the preferred alignment of a type"]
-pure fn pref_align_of<T>() -> uint unsafe {
+pure fn pref_align_of<T>() -> uint {
     unchecked { rusti::pref_align_of::<T>() }
 }
 

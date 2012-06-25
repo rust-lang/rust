@@ -66,7 +66,7 @@ fn spawn_process(prog: str, args: [str],
                  env: option<[(str,str)]>,
                  dir: option<str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
-   -> pid_t unsafe {
+   -> pid_t {
     with_argv(prog, args) {|argv|
         with_envp(env) { |envp|
             with_dirp(dir) { |dirp|
@@ -78,7 +78,7 @@ fn spawn_process(prog: str, args: [str],
 }
 
 fn with_argv<T>(prog: str, args: [str],
-                cb: fn(**libc::c_char) -> T) -> T unsafe {
+                cb: fn(**libc::c_char) -> T) -> T {
     let mut argptrs = str::as_c_str(prog) {|b| [b] };
     let mut tmps = [];
     for vec::each(args) {|arg|
@@ -92,7 +92,7 @@ fn with_argv<T>(prog: str, args: [str],
 
 #[cfg(unix)]
 fn with_envp<T>(env: option<[(str,str)]>,
-                cb: fn(*c_void) -> T) -> T unsafe {
+                cb: fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     alt env {
@@ -107,7 +107,9 @@ fn with_envp<T>(env: option<[(str,str)]>,
             ptrs += str::as_c_str(*t) {|b| [b]};
         }
         ptrs += [ptr::null()];
-        vec::as_buf(ptrs) { |p| cb(::unsafe::reinterpret_cast(p)) }
+        vec::as_buf(ptrs) { |p|
+            unsafe { cb(::unsafe::reinterpret_cast(p)) }
+        }
       }
       _ {
         cb(ptr::null())
@@ -117,31 +119,33 @@ fn with_envp<T>(env: option<[(str,str)]>,
 
 #[cfg(windows)]
 fn with_envp<T>(env: option<[(str,str)]>,
-                cb: fn(*c_void) -> T) -> T unsafe {
+                cb: fn(*c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
-    alt env {
-      some(es) if !vec::is_empty(es) {
-        let mut blk : [u8] = [];
-        for vec::each(es) {|e|
-            let (k,v) = e;
-            let t = #fmt("%s=%s", k, v);
-            let mut v : [u8] = ::unsafe::reinterpret_cast(t);
-            blk += v;
-            ::unsafe::forget(v);
+    unsafe {
+        alt env {
+          some(es) if !vec::is_empty(es) {
+            let mut blk : [u8] = [];
+            for vec::each(es) {|e|
+                let (k,v) = e;
+                let t = #fmt("%s=%s", k, v);
+                let mut v : [u8] = ::unsafe::reinterpret_cast(t);
+                blk += v;
+                ::unsafe::forget(v);
+            }
+            blk += [0_u8];
+            vec::as_buf(blk) {|p| cb(::unsafe::reinterpret_cast(p)) }
+          }
+          _ {
+            cb(ptr::null())
+          }
         }
-        blk += [0_u8];
-        vec::as_buf(blk) {|p| cb(::unsafe::reinterpret_cast(p)) }
-      }
-      _ {
-        cb(ptr::null())
-      }
     }
 }
 
 fn with_dirp<T>(d: option<str>,
-                cb: fn(*libc::c_char) -> T) -> T unsafe {
+                cb: fn(*libc::c_char) -> T) -> T {
     alt d {
       some(dir) { str::as_c_str(dir, cb) }
       none { cb(ptr::null()) }

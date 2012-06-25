@@ -122,9 +122,9 @@ Convert a vector of bytes to a UTF-8 string
 
 Fails if invalid UTF-8
 "]
-pure fn from_bytes(vv: [u8]) -> str unsafe {
-   assert is_utf8(vv);
-   ret unsafe::from_bytes(vv);
+pure fn from_bytes(vv: [u8]) -> str {
+    assert is_utf8(vv);
+    ret unsafe { unsafe::from_bytes(vv) };
 }
 
 #[doc = "
@@ -134,83 +134,85 @@ Convert a byte to a UTF-8 string
 
 Fails if invalid UTF-8
 "]
-pure fn from_byte(b: u8) -> str unsafe {
+pure fn from_byte(b: u8) -> str {
     assert b < 128u8;
     let mut v = [b, 0u8];
-    ::unsafe::transmute(v)
+    unsafe { ::unsafe::transmute(v) }
 }
 
 #[doc = "Appends a character at the end of a string"]
-fn push_char(&s: str, ch: char) unsafe {
-    let code = ch as uint;
-    let nb = if code < max_one_b { 1u }
+fn push_char(&s: str, ch: char) {
+    unsafe {
+        let code = ch as uint;
+        let nb = if code < max_one_b { 1u }
         else if code < max_two_b { 2u }
         else if code < max_three_b { 3u }
         else if code < max_four_b { 4u }
         else if code < max_five_b { 5u }
         else { 6u };
-    let len = len(s);
-    let new_len = len + nb;
-    reserve_at_least(s, new_len);
-    let off = len;
-    as_buf(s) {|buf|
-        let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
-        if nb == 1u {
-            *ptr::mut_offset(buf, off) =
-                code as u8;
-        } else if nb == 2u {
-            *ptr::mut_offset(buf, off) =
-                (code >> 6u & 31u | tag_two_b) as u8;
-            *ptr::mut_offset(buf, off + 1u) =
-                (code & 63u | tag_cont) as u8;
-        } else if nb == 3u {
-            *ptr::mut_offset(buf, off) =
-                (code >> 12u & 15u | tag_three_b) as u8;
-            *ptr::mut_offset(buf, off + 1u) =
-                (code >> 6u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 2u) =
-                (code & 63u | tag_cont) as u8;
-        } else if nb == 4u {
-            *ptr::mut_offset(buf, off) =
-                (code >> 18u & 7u | tag_four_b) as u8;
-            *ptr::mut_offset(buf, off + 1u) =
-                (code >> 12u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 2u) =
-                (code >> 6u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 3u) =
-                (code & 63u | tag_cont) as u8;
-        } else if nb == 5u {
-            *ptr::mut_offset(buf, off) =
-                (code >> 24u & 3u | tag_five_b) as u8;
-            *ptr::mut_offset(buf, off + 1u) =
-                (code >> 18u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 2u) =
-                (code >> 12u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 3u) =
-                (code >> 6u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 4u) =
-                (code & 63u | tag_cont) as u8;
-        } else if nb == 6u {
-            *ptr::mut_offset(buf, off) =
-                (code >> 30u & 1u | tag_six_b) as u8;
-            *ptr::mut_offset(buf, off + 1u) =
-                (code >> 24u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 2u) =
-                (code >> 18u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 3u) =
-                (code >> 12u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 4u) =
-                (code >> 6u & 63u | tag_cont) as u8;
-            *ptr::mut_offset(buf, off + 5u) =
-                (code & 63u | tag_cont) as u8;
+        let len = len(s);
+        let new_len = len + nb;
+        reserve_at_least(s, new_len);
+        let off = len;
+        as_buf(s) {|buf|
+            let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
+            if nb == 1u {
+                *ptr::mut_offset(buf, off) =
+                    code as u8;
+            } else if nb == 2u {
+                *ptr::mut_offset(buf, off) =
+                    (code >> 6u & 31u | tag_two_b) as u8;
+                *ptr::mut_offset(buf, off + 1u) =
+                    (code & 63u | tag_cont) as u8;
+            } else if nb == 3u {
+                *ptr::mut_offset(buf, off) =
+                    (code >> 12u & 15u | tag_three_b) as u8;
+                *ptr::mut_offset(buf, off + 1u) =
+                    (code >> 6u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 2u) =
+                    (code & 63u | tag_cont) as u8;
+            } else if nb == 4u {
+                *ptr::mut_offset(buf, off) =
+                    (code >> 18u & 7u | tag_four_b) as u8;
+                *ptr::mut_offset(buf, off + 1u) =
+                    (code >> 12u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 2u) =
+                    (code >> 6u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 3u) =
+                    (code & 63u | tag_cont) as u8;
+            } else if nb == 5u {
+                *ptr::mut_offset(buf, off) =
+                    (code >> 24u & 3u | tag_five_b) as u8;
+                *ptr::mut_offset(buf, off + 1u) =
+                    (code >> 18u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 2u) =
+                    (code >> 12u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 3u) =
+                    (code >> 6u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 4u) =
+                    (code & 63u | tag_cont) as u8;
+            } else if nb == 6u {
+                *ptr::mut_offset(buf, off) =
+                    (code >> 30u & 1u | tag_six_b) as u8;
+                *ptr::mut_offset(buf, off + 1u) =
+                    (code >> 24u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 2u) =
+                    (code >> 18u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 3u) =
+                    (code >> 12u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 4u) =
+                    (code >> 6u & 63u | tag_cont) as u8;
+                *ptr::mut_offset(buf, off + 5u) =
+                    (code & 63u | tag_cont) as u8;
+            }
+            *ptr::mut_offset(buf, off + nb) = 0u8;
         }
-        *ptr::mut_offset(buf, off + nb) = 0u8;
-    }
 
-    as_bytes(s) {|bytes|
-        let mut mut_bytes: [u8] = ::unsafe::reinterpret_cast(bytes);
-        vec::unsafe::set_len(mut_bytes, new_len + 1u);
-        ::unsafe::forget(mut_bytes);
+        as_bytes(s) {|bytes|
+            let mut mut_bytes: [u8] = ::unsafe::reinterpret_cast(bytes);
+            vec::unsafe::set_len(mut_bytes, new_len + 1u);
+            ::unsafe::forget(mut_bytes);
+        }
     }
 }
 
@@ -276,9 +278,9 @@ Remove the first character from a string and return it
 
 If the string does not contain any characters
 "]
-fn shift_char(&s: str) -> char unsafe {
+fn shift_char(&s: str) -> char {
     let {ch, next} = char_range_at(s, 0u);
-    s = unsafe::slice_bytes(s, next, len(s));
+    s = unsafe { unsafe::slice_bytes(s, next, len(s)) };
     ret ch;
 }
 
@@ -320,20 +322,22 @@ Converts a string to a vector of bytes
 
 The result vector is not null-terminated.
 "]
-pure fn bytes(s: str) -> [u8] unsafe {
-    let mut s_copy = s;
-    let mut v: [u8] = ::unsafe::transmute(s_copy);
-    vec::unsafe::set_len(v, len(s));
-    ret v;
+pure fn bytes(s: str) -> [u8] {
+    unsafe {
+        let mut s_copy = s;
+        let mut v: [u8] = ::unsafe::transmute(s_copy);
+        vec::unsafe::set_len(v, len(s));
+        ret v;
+    }
 }
 
 #[doc = "
 Work with the string as a byte slice, not including trailing null.
 "]
 #[inline(always)]
-pure fn byte_slice<T>(s: str/&, f: fn([u8]/&) -> T) -> T unsafe {
+pure fn byte_slice<T>(s: str/&, f: fn([u8]/&) -> T) -> T {
     unpack_slice(s) {|p,n|
-        vec::unsafe::form_slice(p, n-1u, f)
+        unsafe { vec::unsafe::form_slice(p, n-1u, f) }
     }
 }
 
@@ -365,10 +369,10 @@ Returns a slice of the given string from the byte range [`begin`..`end`)
 Fails when `begin` and `end` do not point to valid characters or
 beyond the last character of the string
 "]
-pure fn slice(s: str/&, begin: uint, end: uint) -> str unsafe {
+pure fn slice(s: str/&, begin: uint, end: uint) -> str {
     assert is_char_boundary(s, begin);
     assert is_char_boundary(s, end);
-    unsafe::slice_bytes(s, begin, end)
+    unsafe { unsafe::slice_bytes(s, begin, end) }
 }
 
 #[doc = "
@@ -396,7 +400,7 @@ pure fn split_char_nonempty(s: str/&, sep: char) -> [str] {
 }
 
 pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
-    -> [str] unsafe {
+    -> [str] {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
         let mut result = [], done = 0u;
@@ -404,7 +408,7 @@ pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
         while i < l && done < count {
             if s[i] == b {
                 if allow_empty || start < i {
-                    result += [unsafe::slice_bytes(s, start, i)];
+                    result += [unsafe { unsafe::slice_bytes(s, start, i) }];
                 }
                 start = i + 1u;
                 done += 1u;
@@ -412,7 +416,7 @@ pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
             i += 1u;
         }
         if allow_empty || start < l {
-            result += [unsafe::slice_bytes(s, start, l)];
+            result += [unsafe { unsafe::slice_bytes(s, start, l) }];
         }
         result
     } else {
@@ -440,14 +444,14 @@ pure fn split_nonempty(s: str/&, sepfn: fn(char) -> bool) -> [str] {
 }
 
 pure fn split_inner(s: str/&, sepfn: fn(cc: char) -> bool, count: uint,
-               allow_empty: bool) -> [str] unsafe {
+               allow_empty: bool) -> [str] {
     let l = len(s);
     let mut result = [], i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
         let {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
             if allow_empty || start < i {
-                result += [unsafe::slice_bytes(s, start, i)];
+                result += [unsafe { unsafe::slice_bytes(s, start, i) }];
             }
             start = next;
             done += 1u;
@@ -455,7 +459,7 @@ pure fn split_inner(s: str/&, sepfn: fn(cc: char) -> bool, count: uint,
         i = next;
     }
     if allow_empty || start < l {
-        result += [unsafe::slice_bytes(s, start, l)];
+        result += [unsafe { unsafe::slice_bytes(s, start, l) }];
     }
     result
 }
@@ -578,7 +582,7 @@ Replace all occurrences of one string with another
 
 The original string with all occurances of `from` replaced with `to`
 "]
-pure fn replace(s: str, from: str, to: str) -> str unsafe {
+pure fn replace(s: str, from: str, to: str) -> str {
     let mut result = "", first = true;
     iter_between_matches(s, from) {|start, end|
         if first { first = false; } else { result += to; }
@@ -709,7 +713,7 @@ Apply a function to each substring after splitting by character, up to
 `count` times
 "]
 pure fn splitn_char_iter(ss: str/&, sep: char, count: uint,
-                         ff: fn(&&str)) unsafe {
+                         ff: fn(&&str)) {
    vec::iter(splitn_char(ss, sep, count), ff)
 }
 
@@ -1149,7 +1153,7 @@ Returns true if one string starts with another
 * haystack - The string to look in
 * needle - The string to look for
 "]
-pure fn starts_with(haystack: str/&a, needle: str/&b) -> bool unsafe {
+pure fn starts_with(haystack: str/&a, needle: str/&b) -> bool {
     let haystack_len = len(haystack), needle_len = len(needle);
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
@@ -1564,9 +1568,11 @@ interop.
 let i = str::as_bytes(\"Hello World\") { |bytes| vec::len(bytes) };
 ~~~
 "]
-pure fn as_bytes<T>(s: str, f: fn([u8]) -> T) -> T unsafe {
-    let v: *[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
-    f(*v)
+pure fn as_bytes<T>(s: str, f: fn([u8]) -> T) -> T {
+    unsafe {
+        let v: *[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        f(*v)
+    }
 }
 
 #[doc = "
@@ -1575,8 +1581,8 @@ Work with the byte buffer of a string.
 Allows for unsafe manipulation of strings, which is useful for native
 interop.
 "]
-pure fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T unsafe {
-    as_bytes(s) { |v| vec::as_buf(v, f) }
+pure fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T {
+    as_bytes(s) { |v| unsafe { vec::as_buf(v, f) } }
 }
 
 #[doc = "
@@ -1591,7 +1597,7 @@ interop, without copying the original string.
 let s = str::as_buf(\"PATH\", { |path_buf| libc::getenv(path_buf) });
 ~~~
 "]
-pure fn as_c_str<T>(s: str, f: fn(*libc::c_char) -> T) -> T unsafe {
+pure fn as_c_str<T>(s: str, f: fn(*libc::c_char) -> T) -> T {
     as_buf(s) {|buf| f(buf as *libc::c_char) }
 }
 
@@ -1605,10 +1611,12 @@ indexable area for a null byte, as is the case in slices pointing
 to full strings, or suffixes of them.
 "]
 #[inline(always)]
-pure fn unpack_slice<T>(s: str/&, f: fn(*u8, uint) -> T) -> T unsafe {
-    let v : *(*u8,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
-    let (buf,len) = *v;
-    f(buf, len)
+pure fn unpack_slice<T>(s: str/&, f: fn(*u8, uint) -> T) -> T {
+    unsafe {
+        let v : *(*u8,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let (buf,len) = *v;
+        f(buf, len)
+    }
 }
 
 #[doc = "
@@ -1653,7 +1661,7 @@ capacity, then no action is taken.
 * s - A string
 * n - The number of bytes to reserve space for
 "]
-fn reserve_at_least(&s: str, n: uint) unsafe {
+fn reserve_at_least(&s: str, n: uint) {
     reserve(s, uint::next_power_of_two(n + 1u) - 1u)
 }
 
@@ -1661,7 +1669,7 @@ fn reserve_at_least(&s: str, n: uint) unsafe {
 Returns the number of single-byte characters the string can hold without
 reallocating
 "]
-pure fn capacity(&&s: str) -> uint unsafe {
+pure fn capacity(&&s: str) -> uint {
     as_bytes(s) {|buf|
         let vcap = vec::capacity(buf);
         assert vcap > 0u;
@@ -1742,10 +1750,12 @@ mod unsafe {
 
    Does not verify that the vector contains valid UTF-8.
    "]
-   unsafe fn from_bytes(v: [const u8]) -> str unsafe {
-       let mut vcopy : [u8] = ::unsafe::transmute(copy v);
-       vec::push(vcopy, 0u8);
-       ::unsafe::transmute(vcopy)
+   unsafe fn from_bytes(v: [const u8]) -> str {
+       unsafe {
+           let mut vcopy : [u8] = ::unsafe::transmute(copy v);
+           vec::push(vcopy, 0u8);
+           ::unsafe::transmute(vcopy)
+       }
    }
 
    #[doc = "
@@ -1765,20 +1775,22 @@ mod unsafe {
    If begin is greater than end.
    If end is greater than the length of the string.
    "]
-   unsafe fn slice_bytes(s: str/&, begin: uint, end: uint) -> str unsafe {
+   unsafe fn slice_bytes(s: str/&, begin: uint, end: uint) -> str {
        unpack_slice(s) { |sbuf, n|
            assert (begin <= end);
            assert (end <= n);
 
            let mut v = [];
            vec::reserve(v, end - begin + 1u);
-           vec::as_buf(v) { |vbuf|
-               let src = ptr::offset(sbuf, begin);
-               ptr::memcpy(vbuf, src, end - begin);
+           unsafe {
+               vec::as_buf(v) { |vbuf|
+                   let src = ptr::offset(sbuf, begin);
+                   ptr::memcpy(vbuf, src, end - begin);
+               }
+               vec::unsafe::set_len(v, end - begin);
+               v += [0u8];
+               ::unsafe::transmute(v)
            }
-           vec::unsafe::set_len(v, end - begin);
-           v += [0u8];
-           ::unsafe::transmute(v)
        }
    }
 
@@ -1795,22 +1807,22 @@ mod unsafe {
    #[doc = "
    Removes the last byte from a string and returns it. (Not UTF-8 safe).
    "]
-   unsafe fn pop_byte(&s: str) -> u8 unsafe {
+   unsafe fn pop_byte(&s: str) -> u8 {
        let len = len(s);
        assert (len > 0u);
        let b = s[len - 1u];
-       set_len(s, len - 1u);
+       unsafe { set_len(s, len - 1u) };
        ret b;
    }
 
    #[doc = "
    Removes the first byte from a string and returns it. (Not UTF-8 safe).
    "]
-   unsafe fn shift_byte(&s: str) -> u8 unsafe {
+   unsafe fn shift_byte(&s: str) -> u8 {
        let len = len(s);
        assert (len > 0u);
        let b = s[0];
-       s = unsafe::slice_bytes(s, 1u, len);
+       s = unsafe { unsafe::slice_bytes(s, 1u, len) };
        ret b;
    }
 
@@ -1825,11 +1837,13 @@ mod unsafe {
     }
 
     #[test]
-    fn test_from_buf_len() unsafe {
-        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-        let b = vec::unsafe::to_ptr(a);
-        let c = from_buf_len(b, 3u);
-        assert (c == "AAA");
+    fn test_from_buf_len() {
+        unsafe {
+            let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+            let b = vec::unsafe::to_ptr(a);
+            let c = from_buf_len(b, 3u);
+            assert (c == "AAA");
+        }
     }
 
 }
@@ -2274,24 +2288,27 @@ mod tests {
     }
 
     #[test]
-    fn test_unsafe_slice() unsafe {
-        assert (eq("ab", unsafe::slice_bytes("abc", 0u, 2u)));
-        assert (eq("bc", unsafe::slice_bytes("abc", 1u, 3u)));
-        assert (eq("", unsafe::slice_bytes("abc", 1u, 1u)));
-        fn a_million_letter_a() -> str {
-            let mut i = 0;
-            let mut rs = "";
-            while i < 100000 { rs += "aaaaaaaaaa"; i += 1; }
-            ret rs;
+    fn test_unsafe_slice() {
+        unsafe {
+            assert (eq("ab", unsafe::slice_bytes("abc", 0u, 2u)));
+            assert (eq("bc", unsafe::slice_bytes("abc", 1u, 3u)));
+            assert (eq("", unsafe::slice_bytes("abc", 1u, 1u)));
+            fn a_million_letter_a() -> str {
+                let mut i = 0;
+                let mut rs = "";
+                while i < 100000 { rs += "aaaaaaaaaa"; i += 1; }
+                ret rs;
+            }
+            fn half_a_million_letter_a() -> str {
+                let mut i = 0;
+                let mut rs = "";
+                while i < 100000 { rs += "aaaaa"; i += 1; }
+                ret rs;
+            }
+            assert eq(half_a_million_letter_a(),
+                      unsafe::slice_bytes(a_million_letter_a(),
+                                          0u, 500000u));
         }
-        fn half_a_million_letter_a() -> str {
-            let mut i = 0;
-            let mut rs = "";
-            while i < 100000 { rs += "aaaaa"; i += 1; }
-            ret rs;
-        }
-        assert (eq(half_a_million_letter_a(),
-               unsafe::slice_bytes(a_million_letter_a(), 0u, 500000u)));
     }
 
     #[test]
@@ -2483,25 +2500,25 @@ mod tests {
     }
 
     #[test]
-    fn test_shift_byte() unsafe {
+    fn test_shift_byte() {
         let mut s = "ABC";
-        let b = unsafe::shift_byte(s);
+        let b = unsafe { unsafe::shift_byte(s) };
         assert (s == "BC");
         assert (b == 65u8);
     }
 
     #[test]
-    fn test_pop_byte() unsafe {
+    fn test_pop_byte() {
         let mut s = "ABC";
-        let b = unsafe::pop_byte(s);
+        let b = unsafe { unsafe::pop_byte(s) };
         assert (s == "AB");
         assert (b == 67u8);
     }
 
     #[test]
-    fn test_unsafe_from_bytes() unsafe {
+    fn test_unsafe_from_bytes() {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
-        let b = unsafe::from_bytes(a);
+        let b = unsafe { unsafe::from_bytes(a) };
         assert (b == "AAAAAAA");
     }
 
@@ -2541,11 +2558,13 @@ mod tests {
     }
 
     #[test]
-    fn test_from_buf() unsafe {
-        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-        let b = vec::unsafe::to_ptr(a);
-        let c = unsafe::from_buf(b);
-        assert (c == "AAAAAAA");
+    fn test_from_buf() {
+        unsafe {
+            let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+            let b = vec::unsafe::to_ptr(a);
+            let c = unsafe::from_buf(b);
+            assert (c == "AAAAAAA");
+        }
     }
 
     #[test]
@@ -2557,25 +2576,33 @@ mod tests {
     }
 
     #[test]
-    fn test_as_buf() unsafe {
+    fn test_as_buf() {
         let a = "Abcdefg";
-        let b = as_buf(a, {|buf| assert (*buf == 65u8); 100 });
+        let b = as_buf(a, {|buf|
+            assert unsafe { *buf } == 65u8;
+            100
+        });
         assert (b == 100);
     }
 
     #[test]
-    fn test_as_buf_small() unsafe {
+    fn test_as_buf_small() {
         let a = "A";
-        let b = as_buf(a, {|buf| assert (*buf == 65u8); 100 });
+        let b = as_buf(a, {|buf|
+            assert unsafe { *buf } == 65u8;
+            100
+        });
         assert (b == 100);
     }
 
     #[test]
-    fn test_as_buf2() unsafe {
-        let s = "hello";
-        let sb = as_buf(s, {|b| b });
-        let s_cstr = unsafe::from_buf(sb);
-        assert (eq(s_cstr, s));
+    fn test_as_buf2() {
+        unsafe {
+            let s = "hello";
+            let sb = as_buf(s, {|b| b });
+            let s_cstr = unsafe::from_buf(sb);
+            assert (eq(s_cstr, s));
+        }
     }
 
     #[test]
@@ -2813,14 +2840,16 @@ mod tests {
     }
 
     #[test]
-    fn test_unpack_slice() unsafe {
+    fn test_unpack_slice() {
         let a = "hello";
         unpack_slice(a) {|buf, len|
-            assert a[0] == 'h' as u8;
-            assert *buf == 'h' as u8;
-            assert len == 6u;
-            assert *ptr::offset(buf,4u) == 'o' as u8;
-            assert *ptr::offset(buf,5u) == 0u8;
+            unsafe {
+                assert a[0] == 'h' as u8;
+                assert *buf == 'h' as u8;
+                assert len == 6u;
+                assert *ptr::offset(buf,4u) == 'o' as u8;
+                assert *ptr::offset(buf,5u) == 0u8;
+            }
         }
     }
 

@@ -326,14 +326,16 @@ fn iter_vec2<S,T,U:copy>(ss: [S], ts: [T],
 #[doc="
 Unwraps a result, assuming it is an `ok(T)`
 "]
-fn unwrap<T, U>(-res: result<T, U>) -> T unsafe {
-    let addr = alt res {
-      ok(x) { ptr::addr_of(x) }
-      err(_) { fail "error result" }
-    };
-    let liberated_value = unsafe::reinterpret_cast(*addr);
-    unsafe::forget(res);
-    ret liberated_value;
+fn unwrap<T, U>(-res: result<T, U>) -> T {
+    unsafe {
+        let addr = alt res {
+          ok(x) { ptr::addr_of(x) }
+          err(_) { fail "error result" }
+        };
+        let liberated_value = unsafe::reinterpret_cast(*addr);
+        unsafe::forget(res);
+        ret liberated_value;
+    }
 }
 
 #[cfg(test)]

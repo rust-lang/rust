@@ -2,9 +2,9 @@
 
 export ptr_eq;
 
-pure fn ptr_eq<T>(a: @T, b: @T) -> bool unchecked {
+pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     #[doc = "Determine if two shared boxes point to the same object"];
-    ptr::addr_of(*a) == ptr::addr_of(*b)
+    unsafe { ptr::addr_of(*a) == ptr::addr_of(*b) }
 }
 
 #[test]

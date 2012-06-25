@@ -81,7 +81,7 @@ mod ct {
     enum piece { piece_string(str), piece_conv(conv), }
     type error_fn = fn@(str) -> ! ;
 
-    fn parse_fmt_string(s: str, error: error_fn) -> [piece] unsafe {
+    fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
         let mut pieces: [piece] = [];
         let lim = str::len(s);
         let mut buf = "";
@@ -225,7 +225,7 @@ mod ct {
             } else { {count: count_implied, next: i} };
     }
     fn parse_type(s: str, i: uint, lim: uint, error: error_fn) ->
-       {ty: ty, next: uint} unsafe {
+       {ty: ty, next: uint} {
         if i >= lim { error("missing type in conversion"); }
         let tstr = str::slice(s, i, i+1u);
         // TODO: Do we really want two signed types here?
@@ -314,7 +314,7 @@ mod rt {
         let mut s = str::from_char(c);
         ret pad(cv, s, pad_nozero);
     }
-    fn conv_str(cv: conv, s: str) -> str unsafe {
+    fn conv_str(cv: conv, s: str) -> str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = alt cv.precision {
@@ -378,7 +378,7 @@ mod rt {
             };
     }
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, pad_float }
-    fn pad(cv: conv, &s: str, mode: pad_mode) -> str unsafe {
+    fn pad(cv: conv, &s: str, mode: pad_mode) -> str {
         let uwidth : uint = alt cv.width {
           count_implied { ret s; }
           count_is(width) {

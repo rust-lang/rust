@@ -158,14 +158,16 @@ fn reserve_at_least<T>(&v: [const T], n: uint) {
 Returns the number of elements the vector can hold without reallocating
 "]
 #[inline(always)]
-pure fn capacity<T>(&&v: [const T]) -> uint unsafe {
-    let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
-    (**repr).alloc / sys::size_of::<T>()
+pure fn capacity<T>(&&v: [const T]) -> uint {
+    unsafe {
+        let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        (**repr).alloc / sys::size_of::<T>()
+    }
 }
 
 #[doc = "Returns the length of a vector"]
 #[inline(always)]
-pure fn len<T>(&&v: [const T]/&) -> uint unsafe {
+pure fn len<T>(&&v: [const T]/&) -> uint {
     unpack_const_slice(v) {|_p, len| len}
 }
 
@@ -200,13 +202,13 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
 }
 
 #[doc = "Produces a mut vector from an immutable vector."]
-fn to_mut<T>(+v: [T]) -> [mut T] unsafe {
-    ::unsafe::transmute(v)
+fn to_mut<T>(+v: [T]) -> [mut T] {
+    unsafe { ::unsafe::transmute(v) }
 }
 
 #[doc = "Produces an immutable vector from a mut vector."]
-fn from_mut<T>(+v: [mut T]) -> [T] unsafe {
-    ::unsafe::transmute(v)
+fn from_mut<T>(+v: [mut T]) -> [T] {
+    unsafe { ::unsafe::transmute(v) }
 }
 
 // Accessors
@@ -406,13 +408,15 @@ fn unshift<T>(&v: [T], +x: T) {
 }
 
 #[doc = "Remove the last element from a vector and return it"]
-fn pop<T>(&v: [const T]) -> T unsafe {
+fn pop<T>(&v: [const T]) -> T {
     let ln = len(v);
     assert ln > 0u;
     let valptr = ptr::mut_addr_of(v[ln - 1u]);
-    let val <- *valptr;
-    unsafe::set_len(v, ln - 1u);
-    val
+    unsafe {
+        let val <- *valptr;
+        unsafe::set_len(v, ln - 1u);
+        val
+    }
 }
 
 #[doc = "Append an element to a vector"]
@@ -963,13 +967,15 @@ Iterates over a vector, with option to break
 Return true to continue, false to break.
 "]
 #[inline(always)]
-pure fn each<T>(v: [const T]/&, f: fn(T) -> bool) unsafe {
+pure fn each<T>(v: [const T]/&, f: fn(T) -> bool) {
     vec::unpack_slice(v) {|p, n|
         let mut n = n;
         let mut p = p;
         while n > 0u {
-            if !f(*p) { break; }
-            p = ptr::offset(p, 1u);
+            unsafe {
+                if !f(*p) { break; }
+                p = ptr::offset(p, 1u);
+            }
             n -= 1u;
         }
     }
@@ -981,13 +987,15 @@ Iterates over a vector's elements and indices
 Return true to continue, false to break.
 "]
 #[inline(always)]
-pure fn eachi<T>(v: [const T]/&, f: fn(uint, T) -> bool) unsafe {
+pure fn eachi<T>(v: [const T]/&, f: fn(uint, T) -> bool) {
     vec::unpack_slice(v) {|p, n|
         let mut i = 0u;
         let mut p = p;
         while i < n {
-            if !f(i, *p) { break; }
-            p = ptr::offset(p, 1u);
+            unsafe {
+                if !f(i, *p) { break; }
+                p = ptr::offset(p, 1u);
+            }
             i += 1u;
         }
     }
@@ -1088,11 +1096,11 @@ Work with the buffer of a vector.
 Allows for unsafe manipulation of vector contents, which is useful for native
 interop.
 "]
-fn as_buf<E,T>(v: [E]/&, f: fn(*E) -> T) -> T unsafe {
+fn as_buf<E,T>(v: [E]/&, f: fn(*E) -> T) -> T {
     unpack_slice(v) { |buf, _len| f(buf) }
 }
 
-fn as_mut_buf<E,T>(v: [mut E]/&, f: fn(*mut E) -> T) -> T unsafe {
+fn as_mut_buf<E,T>(v: [mut E]/&, f: fn(*mut E) -> T) -> T {
     unpack_mut_slice(v) { |buf, _len| f(buf) }
 }
 
@@ -1101,10 +1109,12 @@ Work with the buffer and length of a slice.
 "]
 #[inline(always)]
 pure fn unpack_slice<T,U>(s: [const T]/&,
-                          f: fn(*T, uint) -> U) -> U unsafe {
-    let v : *(*T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
-    let (buf,len) = *v;
-    f(buf, len / sys::size_of::<T>())
+                          f: fn(*T, uint) -> U) -> U {
+    unsafe {
+        let v : *(*T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let (buf,len) = *v;
+        f(buf, len / sys::size_of::<T>())
+    }
 }
 
 #[doc = "
@@ -1112,10 +1122,13 @@ Work with the buffer and length of a slice.
 "]
 #[inline(always)]
 pure fn unpack_const_slice<T,U>(s: [const T]/&,
-                                f: fn(*const T, uint) -> U) -> U unsafe {
-    let v : *(*const T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
-    let (buf,len) = *v;
-    f(buf, len / sys::size_of::<T>())
+                                f: fn(*const T, uint) -> U) -> U {
+    unsafe {
+        let v : *(*const T,uint) =
+            ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let (buf,len) = *v;
+        f(buf, len / sys::size_of::<T>())
+    }
 }
 
 #[doc = "
@@ -1123,10 +1136,13 @@ Work with the buffer and length of a slice.
 "]
 #[inline(always)]
 pure fn unpack_mut_slice<T,U>(s: [mut T]/&,
-                              f: fn(*mut T, uint) -> U) -> U unsafe {
-    let v : *(*const T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
-    let (buf,len) = *v;
-    f(buf, len / sys::size_of::<T>())
+                              f: fn(*mut T, uint) -> U) -> U {
+    unsafe {
+        let v : *(*const T,uint) =
+            ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let (buf,len) = *v;
+        f(buf, len / sys::size_of::<T>())
+    }
 }
 
 impl extensions<T: copy> for [T] {
@@ -1380,12 +1396,14 @@ mod u8 {
     export hash;
 
     #[doc = "Bytewise string comparison"]
-    pure fn cmp(&&a: [u8], &&b: [u8]) -> int unsafe {
+    pure fn cmp(&&a: [u8], &&b: [u8]) -> int {
         let a_len = len(a);
         let b_len = len(b);
         let n = uint::min(a_len, b_len) as libc::size_t;
-        let r = libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
-                             unsafe::to_ptr(b) as *libc::c_void, n) as int;
+        let r = unsafe {
+            libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
+                         unsafe::to_ptr(b) as *libc::c_void, n) as int
+        };
 
         if r != 0 { r } else {
             if a_len == b_len {
@@ -1405,10 +1423,10 @@ mod u8 {
     pure fn le(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) <= 0 }
 
     #[doc = "Bytewise equality"]
-    pure fn eq(&&a: [u8], &&b: [u8]) -> bool unsafe { cmp(a, b) == 0 }
+    pure fn eq(&&a: [u8], &&b: [u8]) -> bool { unsafe { cmp(a, b) == 0 } }
 
     #[doc = "Bytewise inequality"]
-    pure fn ne(&&a: [u8], &&b: [u8]) -> bool unsafe { cmp(a, b) != 0 }
+    pure fn ne(&&a: [u8], &&b: [u8]) -> bool { unsafe { cmp(a, b) != 0 } }
 
     #[doc ="Bytewise greater than or equal"]
     pure fn ge(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) >= 0 }
@@ -1482,26 +1500,28 @@ mod tests {
     fn add(&&x: uint, &&y: uint) -> uint { ret x + y; }
 
     #[test]
-    fn test_unsafe_ptrs() unsafe {
-        // Test on-stack copy-from-buf.
-        let a = [1, 2, 3];
-        let mut ptr = unsafe::to_ptr(a);
-        let b = unsafe::from_buf(ptr, 3u);
-        assert (len(b) == 3u);
-        assert (b[0] == 1);
-        assert (b[1] == 2);
-        assert (b[2] == 3);
+    fn test_unsafe_ptrs() {
+        unsafe {
+            // Test on-stack copy-from-buf.
+            let a = [1, 2, 3];
+            let mut ptr = unsafe::to_ptr(a);
+            let b = unsafe::from_buf(ptr, 3u);
+            assert (len(b) == 3u);
+            assert (b[0] == 1);
+            assert (b[1] == 2);
+            assert (b[2] == 3);
 
-        // Test on-heap copy-from-buf.
-        let c = [1, 2, 3, 4, 5];
-        ptr = unsafe::to_ptr(c);
-        let d = unsafe::from_buf(ptr, 5u);
-        assert (len(d) == 5u);
-        assert (d[0] == 1);
-        assert (d[1] == 2);
-        assert (d[2] == 3);
-        assert (d[3] == 4);
-        assert (d[4] == 5);
+            // Test on-heap copy-from-buf.
+            let c = [1, 2, 3, 4, 5];
+            ptr = unsafe::to_ptr(c);
+            let d = unsafe::from_buf(ptr, 5u);
+            assert (len(d) == 5u);
+            assert (d[0] == 1);
+            assert (d[1] == 2);
+            assert (d[2] == 3);
+            assert (d[3] == 4);
+            assert (d[4] == 5);
+        }
     }
 
     #[test]
@@ -2189,21 +2209,25 @@ mod tests {
     }
 
     #[test]
-    fn to_mut_no_copy() unsafe {
-        let x = [1, 2, 3];
-        let addr = unsafe::to_ptr(x);
-        let x_mut = to_mut(x);
-        let addr_mut = unsafe::to_ptr(x_mut);
-        assert addr == addr_mut;
+    fn to_mut_no_copy() {
+        unsafe {
+            let x = [1, 2, 3];
+            let addr = unsafe::to_ptr(x);
+            let x_mut = to_mut(x);
+            let addr_mut = unsafe::to_ptr(x_mut);
+            assert addr == addr_mut;
+        }
     }
 
     #[test]
-    fn from_mut_no_copy() unsafe {
-        let x = [mut 1, 2, 3];
-        let addr = unsafe::to_ptr(x);
-        let x_imm = from_mut(x);
-        let addr_imm = unsafe::to_ptr(x_imm);
-        assert addr == addr_imm;
+    fn from_mut_no_copy() {
+        unsafe {
+            let x = [mut 1, 2, 3];
+            let addr = unsafe::to_ptr(x);
+            let x_imm = from_mut(x);
+            let addr_imm = unsafe::to_ptr(x_imm);
+            assert addr == addr_imm;
+        }
     }
 
     #[test]
