@@ -60,14 +60,11 @@ fn test_box() {
 }
 
 fn test_port() {
-    // FIXME: Re-enable this once we can compare resources. (#2601)
-    /*
     let p1 = comm::port::<int>();
     let p2 = comm::port::<int>();
 
     assert (p1 == p1);
     assert (p1 != p2);
-    */
 }
 
 fn test_chan() {
@@ -98,7 +95,7 @@ fn test_ptr() unsafe {
 fn test_fn() {
     fn f() { }
     fn g() { }
-    fn h(i: int) { }
+    fn h(_i: int) { }
     let f1 = f;
     let f2 = f;
     let g1 = g;
@@ -128,6 +125,28 @@ fn test_native_fn() {
     assert test::unsupervise == test::unsupervise;
 }
 
+class p {
+  let mut x: int;
+  let mut y: int;
+  new(x: int, y: int) { self.x = x; self.y = y; }
+}
+
+fn test_class() {
+  let q = p(1, 2);
+  let r = p(1, 2);
+  
+  unsafe {
+  #error("q = %x, r = %x",
+         (unsafe::reinterpret_cast::<*p, uint>(ptr::addr_of(q))),
+         (unsafe::reinterpret_cast::<*p, uint>(ptr::addr_of(r))));
+  }
+  assert(q == r);
+  r.y = 17;
+  assert(r.y != q.y);
+  assert(r.y == 17);
+  assert(q != r);
+}
+
 fn main() {
     test_nil();
     test_bool();
@@ -138,4 +157,5 @@ fn main() {
     test_ptr();
     test_fn();
     test_native_fn();
+    test_class();
 }

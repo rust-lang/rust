@@ -334,7 +334,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
         let mut s = if option::is_some(m_dtor_did) {
             [shape_res]
           }
-          else { [shape_struct] };
+        else { [shape_struct] }, sub = [];
         option::iter(m_dtor_did) {|dtor_did|
           let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
           let id = interner::intern(ccx.shape_cx.resources, ri);
@@ -345,8 +345,9 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> [u8] {
           add_u16(s, 0_u16);
         };
         for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each {|f|
-           add_substr(s, shape_of(ccx, f.mt.ty));
+           sub += shape_of(ccx, f.mt.ty);
         }
+        add_substr(s, sub);
         s
       }
       ty::ty_rptr(_, mt) {
