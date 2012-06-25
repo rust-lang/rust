@@ -546,7 +546,11 @@ fn read_path(d: ebml::doc) -> {path: str, pos: uint} {
 
 fn describe_def(items: ebml::doc, id: ast::def_id) -> str {
     if id.crate != ast::local_crate { ret "external"; }
-    ret item_family_to_str(item_family(find_item(id.node, items)));
+    let it = alt maybe_find_item(id.node, items) {
+        some(it) { it }
+        none { fail (#fmt("describe_def: item not found %?", id)); }
+    };
+    ret item_family_to_str(item_family(it));
 }
 
 fn item_family_to_str(fam: char) -> str {
@@ -567,6 +571,8 @@ fn item_family_to_str(fam: char) -> str {
       'i' { ret "impl"; }
       'I' { ret "iface"; }
       'C' { ret "class"; }
+      'g' { ret "public field"; }
+      'j' { ret "private field"; }
     }
 }
 

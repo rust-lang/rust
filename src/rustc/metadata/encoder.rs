@@ -191,7 +191,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
             ebml_w.wr_tag(tag_paths) {||
-                // As in the res case, we add the same ident twice: for the
+                // We add the same ident twice: for the
                 // class and for its ctor
                 add_to_index(ebml_w, path, index, it.ident);
                 encode_named_def_id(ebml_w, it.ident,
@@ -422,8 +422,9 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          id: node_id, path: ast_map::path,
                          class_tps: [ty_param],
                          items: [@class_member],
-                         global_index: @mut[entry<int>])
- -> [entry<int>] {
+                         global_index: @mut[entry<int>]) -> [entry<int>] {
+    /* Each class has its own index, since different classes
+       may have fields with the same name */
     let index = @mut [];
     let tcx = ecx.tcx;
     for items.each {|ci|
@@ -432,6 +433,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
       alt ci.node {
         instance_var(nm, _, mt, id, vis) {
           *index += [{val: id, pos: ebml_w.writer.tell()}];
+          *global_index += [{val: id, pos: ebml_w.writer.tell()}];
           ebml_w.start_tag(tag_items_data_item);
           #debug("encode_info_for_class: doing %s %d", *nm, id);
           encode_visibility(ebml_w, vis);
@@ -446,8 +448,6 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
            alt m.vis {
               public {
                 *index += [{val: m.id, pos: ebml_w.writer.tell()}];
-                /* Not sure whether we really need to have two indices,
-                   but it works for now -- tjc */
                 *global_index += [{val: m.id, pos: ebml_w.writer.tell()}];
                 let impl_path = path + [ast_map::path_name(m.ident)];
                 #debug("encode_info_for_class: doing %s %d", *m.ident, m.id);
