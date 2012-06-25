@@ -7,6 +7,7 @@ Version 0.3  (June 2012) - not yet!
     * Integer-literal suffix inference
     * Per-module control over warnings, errors
     * #[cfg(windows)] and #[cfg(unix)] attributes
+    * *-patterns (wildcard extended to all constructor fields)
 
   * Semantic cleanup
     * Resolve pass and exhaustiveness checker rewritten
@@ -17,12 +18,13 @@ Version 0.3  (June 2012) - not yet!
   * Experimental new language features
     * Slices and fixed-size, interior-allocated vectors
     * #!-comments for lang versioning, shell execution
-    * More work on classes
+    * Destructors and iface implementation for classes;
+       type-parameterized classes and class methods
     * Type reflection
 
   * Removal of various obsolete features
     * Keywords: be, prove, syntax, note, mutable, do, bind
-    * Constructs: do-while loops, fn binding, 
+    * Constructs: do-while loops, fn binding, resources
 
   * Compiler reorganization
     * Syntax-layer of compiler split into separate crate
