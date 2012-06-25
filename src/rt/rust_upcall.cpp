@@ -177,15 +177,6 @@ upcall_exchange_malloc(type_desc *td, uintptr_t size) {
     return args.retval;
 }
 
-// FIXME (#2681): remove after snapshot (6/21/12)
-extern "C" CDECL uintptr_t
-upcall_exchange_malloc_dyn(type_desc *td, uintptr_t size) {
-    rust_task *task = rust_get_current_task();
-    s_exchange_malloc_args args = {task, 0, td, size};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_exchange_malloc);
-    return args.retval;
-}
-
 struct s_exchange_free_args {
     rust_task *task;
     void *ptr;
@@ -245,16 +236,6 @@ upcall_malloc(type_desc *td, uintptr_t size) {
     UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc);
     return args.retval;
 }
-
-// FIXME (#2681): remove after snapshot (6/21/12)
-extern "C" CDECL uintptr_t
-upcall_malloc_dyn(type_desc *td, uintptr_t size) {
-    rust_task *task = rust_get_current_task();
-    s_malloc_args args = {task, 0, td, size};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_malloc);
-    return args.retval;
-}
-
 
 /**********************************************************************
  * Called whenever an object in the task-local heap is freed.
