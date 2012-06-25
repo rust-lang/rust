@@ -72,7 +72,7 @@ upcall_trace
 upcall_free
 upcall_validate_box
 upcall_log_type
-upcall_malloc_dyn
+upcall_malloc
 upcall_rust_personality
 upcall_vec_grow
 upcall_str_new
@@ -84,7 +84,7 @@ upcall_call_shim_on_rust_stack
 upcall_new_stack
 upcall_del_stack
 upcall_reset_stack_limit
-upcall_exchange_malloc_dyn
+upcall_exchange_malloc
 upcall_exchange_free
 rust_uv_loop_new
 rust_uv_loop_delete
