@@ -1127,30 +1127,40 @@ enum list<T> {
 let a: list<int> = cons(7, @cons(13, @nil));
 ~~~~
 
-### Resources
+### Classes
 
-_Resources_ are values that have a destructor associated with them. A
-_resource item_ is used to declare resource type and constructor.
+TODO: more about classes
+
+_Classes_ are named record types that may have a destructor associated
+with them, as well as fields and methods. For historical reasons, we
+may call a class with a destructor and a single field a "resource".
+
+A _class item_ declares a class type:
 
 ~~~~
-resource file_descriptor(fd: libc::c_int) {
-    libc::close(fd);
+class file_descriptor {
+    let fd: libc::c_int;
+    new(fd: libc::c_int) { self.fd = fd; }
+    drop { libc::close(self.fd); }
 }
 ~~~~
 
 Calling the `file_descriptor` constructor function on an integer will
 produce a value with the `file_descriptor` type. Resource types have a
-noncopyable [type kind](#type-kinds), and thus may not be copied. The
-semantics guarantee that for each constructed resources value, the
-destructor will run once: when the value is disposed of (barring
-drastic program termination that somehow prevents unwinding from taking
-place). For stack-allocated values, disposal happens when the value
-goes out of scope. For values in shared boxes, it happens when the
-reference count of the box reaches zero.
+noncopyable [type kind](#type-kinds), and thus may not be
+copied. Class types that don't have destructors may be copied if all
+their fields are copyable. The semantics guarantee that for each
+constructed resource value, the destructor will run once: when the
+value is disposed of (barring drastic program termination that somehow
+prevents unwinding from taking place). For stack-allocated values,
+disposal happens when the value goes out of scope. For values in
+shared boxes, it happens when the reference count of the box reaches
+zero.
 
-The argument to the resource constructor is stored in the resulting
-value, and can be accessed using the dereference (`*`) [unary
-operator](#unary-operator-expressions).
+The argument or arguments to the class constructor may be stored in
+the class's named fields, and can be accessed by a field reference. In
+this case, the `file_descriptor`'s data field would be accessed like
+`f.fd`, if `f` is a value of type `file_descriptor`.
 
 ### Interfaces
 
