@@ -69,6 +69,9 @@ Options:
     -W <foo>           enable warning <foo>
     -W no-<foo>        disable warning <foo>
     -W err-<foo>       enable warning <foo> as an error
+    -W all             enable all warnings
+    -W no-all          disable all warnings
+    -W err-all         enable all warnings as errors
     -W help            Print available warnings and default settings
 
     -Z help            list internal options for debugging rustc
