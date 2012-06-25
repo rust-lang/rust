@@ -179,7 +179,7 @@ pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
     let mut v = [];
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
-    while i < n_elts { v += [op(i)]; i += 1u; }
+    while i < n_elts unsafe { push(v, op(i)); i += 1u; }
     ret v;
 }
 
@@ -564,7 +564,7 @@ Apply a function to each element of a vector and return the results
 pure fn mapi<T, U>(v: [T]/&, f: fn(uint, T) -> U) -> [U] {
     let mut result = [];
     unchecked{reserve(result, len(v));}
-    for eachi(v) {|i, elem| result += [f(i, elem)]; }
+    for eachi(v) {|i, elem| unsafe { push(result, f(i, elem)); } }
     ret result;
 }
 

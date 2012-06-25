@@ -42,7 +42,7 @@ fn map_slices<A: copy send, B: copy send>(
             // FIXME: why is the ::<A, ()> annotation required here? (#2617)
             vec::unpack_slice::<A, ()>(xs) {|p, _len|
                 let f = f();
-                futures += [future::spawn() {|copy base|
+                let f = future::spawn() {|copy base|
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
@@ -55,7 +55,8 @@ fn map_slices<A: copy send, B: copy send>(
                         assert(vec::len(slice) == end - base);
                         f(base, slice)
                     }
-                }];
+                };
+                vec::push(futures, f);
             };
             base += items_per_task;
         }
