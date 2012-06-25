@@ -61,20 +61,6 @@ extern "C" void LLVMRustAddPrintModulePass(LLVMPassManagerRef PMR,
   PM->run(*unwrap(M));
 }
 
-extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
-  static std::string err;
-
-  // For some strange reason, unwrap() doesn't work here. "No matching
-  // function" error.
-  Module *DM = reinterpret_cast<Module *>(Dest);
-  Module *SM = reinterpret_cast<Module *>(Src);
-  if (Linker::LinkModules(DM, SM, Linker::DestroySource, &err)) {
-    LLVMRustError = err.c_str();
-    return false;
-  }
-  return true;
-}
-
 void LLVMInitializeX86TargetInfo();
 void LLVMInitializeX86Target();
 void LLVMInitializeX86TargetMC();
