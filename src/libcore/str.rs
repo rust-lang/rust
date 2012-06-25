@@ -1727,7 +1727,7 @@ mod unsafe {
         vec::reserve(v, len + 1u);
         vec::as_buf(v) {|b| ptr::memcpy(b, buf, len); }
         vec::unsafe::set_len(v, len);
-        v += [0u8];
+        vec::push(v, 0u8);
 
         assert is_utf8(v);
         ret ::unsafe::transmute(v);

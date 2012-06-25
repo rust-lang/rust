@@ -193,7 +193,7 @@ impl writer for writer {
         write_vuint(self.writer, tag_id);
 
         // Write a placeholder four-byte size.
-        self.size_positions += [self.writer.tell()];
+        vec::push(self.size_positions, self.writer.tell());
         let zeroes: [u8]/& = [0u8, 0u8, 0u8, 0u8]/&;
         self.writer.write(zeroes);
     }

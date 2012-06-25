@@ -36,7 +36,7 @@ fn sort_and_fmt(mm: hashmap<[u8], uint>, total: uint) -> str {
 
    // map -> [(k,%)]
    mm.each(fn&(key: [u8], val: uint) -> bool {
-      pairs += [(key, pct(val, total))];
+      vec::push(pairs, (key, pct(val, total)));
       ret true;
    });
 

@@ -255,14 +255,18 @@ pure fn slice<T: copy>(v: [const T]/&, start: uint, end: uint) -> [T] {
     assert (start <= end);
     assert (end <= len(v));
     let mut result = [];
-    unchecked{reserve(result, end - start)}
+
+//    unchecked {
+//        push_all(result, view(v, start, end));
+//    }
+
     let mut i = start;
     while i < end { result += [v[i]]; i += 1u; }
     ret result;
 }
 
 #[doc = "Return a slice that points into another slice."]
-pure fn view<T: copy>(v: [T]/&, start: uint, end: uint) -> [T]/&a {
+pure fn view<T: copy>(v: [const T]/&a, start: uint, end: uint) -> [T]/&a {
     assert (start <= end);
     assert (end <= len(v));
     unpack_slice(v) {|p, _len|
@@ -454,6 +458,7 @@ fn push_slow<T>(&v: [const T], +initval: T) {
 
 #[inline(always)]
 fn push_all<T: copy>(&v: [const T], rhs: [const T]/&) {
+    reserve(v, v.len() + rhs.len());
     for uint::range(0u, rhs.len()) {|i|
         push(v, rhs[i]);
     }

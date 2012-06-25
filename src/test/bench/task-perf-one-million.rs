@@ -21,7 +21,7 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
     iter::repeat (children) {||
         alt check comm::recv(port) {
           ready(child_ch) {
-            child_chs += [child_ch];
+            vec::push(child_chs, child_ch);
           }
         }
     }

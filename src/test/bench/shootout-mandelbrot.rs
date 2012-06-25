@@ -72,7 +72,7 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
     for uint::range(0_u, size/8_u) {
         |j|
         let x = {re: xincr*(j as f64) - 1.5f64, im: y};
-        crv += [fillbyte(x, incr)];
+        vec::push(crv, fillbyte(x, incr));
     };
     comm::send(ch, {i:i, b:crv});
 }
