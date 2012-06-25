@@ -418,7 +418,7 @@ net::tcp::listen(remote_ip, remote_port, backlog)
     let cont_ch = comm::chan(cont_po);
     task::spawn {||
         let accept_result = net::tcp::accept(new_conn);
-        if accept_result.is_failure() {
+        if accept_result.is_err() {
             comm::send(cont_ch, result::get_err(accept_result));
             // fail?
         }
@@ -754,7 +754,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
         }
         else {
             let read_result = read((*self).sock, 0u);
-            if read_result.is_failure() {
+            if read_result.is_err() {
                 let err_data = read_result.get_err();
                 log(debug, #fmt("ERROR sock_buf as io::reader.read err %? %?",
                                  err_data.err_name, err_data.err_msg));
@@ -771,9 +771,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
         self.read_bytes(1u)[0] as int
     }
     fn unread_byte(amt: int) {
-        // FIXME: stubbing this out pending the
-        // return of vec::unshift
-        //vec::unshift((*self).buf, amt as u8);
+        vec::unshift((*self).buf, amt as u8);
     }
     fn eof() -> bool {
         false // noop
@@ -798,7 +796,7 @@ impl tcp_socket_buf of io::writer for @tcp_socket_buf {
         };
         let write_buf_vec_ptr = ptr::addr_of(write_buf_vec);
         let w_result = write_common_impl(socket_data_ptr, write_buf_vec_ptr);
-        if w_result.is_failure() {
+        if w_result.is_err() {
             let err_data = w_result.get_err();
             log(debug, #fmt("ERROR sock_buf as io::writer.writer err: %? %?",
                              err_data.err_name, err_data.err_msg));
@@ -1321,7 +1319,7 @@ mod test {
                 client_ch,
                 hl_loop)
         };
-        assert actual_resp_result.is_success();
+        assert actual_resp_result.is_ok();
         let actual_resp = actual_resp_result.get();
         let actual_req = comm::recv(server_result_po);
         log(debug, #fmt("REQ: expected: '%s' actual: '%s'",
@@ -1453,7 +1451,7 @@ mod test {
         // client
         let server_addr = ip::v4::parse_addr(server_ip);
         let conn_result = connect(server_addr, server_port, iotask);
-        if result::is_failure(conn_result) {
+        if result::is_err(conn_result) {
             assert false;
         }
         let sock_buf = @socket_buf(result::unwrap(conn_result));
@@ -1589,7 +1587,7 @@ mod test {
                            new_conn, kill_ch);
         });
         // err check on listen_result
-        if result::is_failure(listen_result) {
+        if result::is_err(listen_result) {
             result::get_err(listen_result)
         }
         else {
