@@ -506,9 +506,15 @@ rust_uv_current_kernel_free(void* mem) {
 }
 
 extern  "C" int
-rust_uv_getaddrinfo(uv_loop_t* loop, uv_getaddrinfo_t* handle, uv_getaddrinfo_cb cb,
-					const char* node, const char* service, const struct addrinfo* hints) {
+rust_uv_getaddrinfo(uv_loop_t* loop, uv_getaddrinfo_t* handle,
+					uv_getaddrinfo_cb cb,
+					char* node, char* service,
+					addrinfo* hints) {
 	return uv_getaddrinfo(loop, handle, cb, node, service, hints);
+}
+extern "C" void
+rust_uv_freeaddrinfo(addrinfo* res) {
+	uv_freeaddrinfo(res);
 }
 extern "C" bool
 rust_uv_is_ipv4_addrinfo(addrinfo* input) {
