@@ -18,6 +18,7 @@ import syntax::codemap::span;
 import dvec::{dvec, extensions};
 
 import std::map::hashmap;
+import option::is_some;
 
 import ty_ctxt = middle::ty::ctxt;
 
@@ -732,19 +733,24 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_estr(ty::vstore_slice(_)) {
             ty::mk_tup(tcx, [nilptr(tcx), ty::mk_int(tcx)]/~)
           }
+          // Reduce a class type to a record type in which all the fields are
+          // simplified
+          ty::ty_class(did, substs) {
+            let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
+                // remember the drop flag
+                  [{ident: @"drop", mt: {ty:
+                                        ty::mk_u8(tcx),
+                                        mutbl: ast::m_mutbl}}]/~ }
+                else { []/~ }) +
+              ty::lookup_class_fields(tcx, did).map {|f|
+                 let t = ty::lookup_field_type(tcx, did, f.id, substs);
+                 {ident: f.ident,
+                  mt: {ty: simplify_type(tcx, t), mutbl: ast::m_const}}
+            };
+            ty::mk_rec(tcx, simpl_fields)
+          }
           _ { typ }
         }
     }
     ty::fold_ty(tcx, typ) {|t| simplifier(tcx, t) }
 }
-
-// Given a tag type `ty`, returns the offset of the payload.
-//fn tag_payload_offs(bcx: block, tag_id: ast::def_id, tps: [ty::t]/~)
-//    -> ValueRef {
-//    alt tag_kind(tag_id) {
-//      tk_unit | tk_enum | tk_newtype { C_int(bcx.ccx(), 0) }
-//      tk_complex {
-//        compute_tag_metrics(tag_id, tps)
-//      }
-//    }
-//}
