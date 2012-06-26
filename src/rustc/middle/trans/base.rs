@@ -5456,17 +5456,12 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
 
     fn impl_map(cx: @crate_ctxt,
                 id: ast::node_id) -> [(ast::ident, ast::def_id)]/~ {
-        alt *cx.maps.impl_map.get(id) {
-          list::cons(impls, @list::nil) {
-            (*impls).map {|i|
-                (i.ident, i.did)
-            }
-          }
-          _ {
-            cx.sess.bug(#fmt("encode_info_for_mod: empty impl_map \
-                              entry for %?", id));
-          }
+        let mut result = []/~;
+        for list::each(cx.maps.impl_map.get(id)) {
+            |impls|
+            result += (*impls).map({|i| (i.ident, i.did) });
         }
+        ret result;
     }
 }
 
