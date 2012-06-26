@@ -1218,7 +1218,6 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
            accum
          }
       }
-
       ty_tup(elts) {
         for elts.each {|m| if type_needs_drop(cx, m) { accum = true; } }
         accum
@@ -1720,6 +1719,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
    bool {
     let sty = get(ty).struct;
+    #debug("type_structurally_contains: %s", ty_to_str(cx, ty));
     if test(sty) { ret true; }
     alt sty {
       ty_enum(did, substs) {
@@ -1737,6 +1737,14 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
         }
         ret false;
       }
+      ty_class(did, substs) {
+        for lookup_class_fields(cx, did).each {|field|
+            let ft = lookup_field_type(cx, did, field.id, substs);
+            if type_structurally_contains(cx, ft, test) { ret true; }
+        }
+        ret false;
+      }
+
       ty_tup(ts) {
         for ts.each {|tt|
             if type_structurally_contains(cx, tt, test) { ret true; }
