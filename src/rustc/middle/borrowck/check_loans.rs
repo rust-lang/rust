@@ -185,7 +185,7 @@ impl methods for check_loan_ctxt {
                 if is_fn_arg { ret; } // case (a) above
               }
               ast::expr_fn_block(*) | ast::expr_fn(*) |
-              ast::expr_loop_body(*) {
+              ast::expr_loop_body(*) | ast::expr_do_body(*) {
                 if self.is_stack_closure(expr.id) { ret; } // case (b) above
               }
               _ {}
