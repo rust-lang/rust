@@ -385,9 +385,11 @@ type matcher = spanned<matcher_>;
 
 #[auto_serialize]
 enum matcher_ {
+    /* match one token */
     mtc_tok(token::token),
-    /* body, separator, zero ok? : */
+    /* match repetitions of a sequence: body, separator, zero ok? : */
     mtc_rep(~[matcher], option<token::token>, bool),
+    /* parse a Rust NT: name to bind, name of NT, position in match array : */
     mtc_bb(ident, ident, uint)
 }
 
