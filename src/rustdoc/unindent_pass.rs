@@ -21,7 +21,7 @@ fn unindent(s: str) -> str {
     let lines = str::lines_any(s);
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = vec::foldl(uint::max_value, lines) {|min_indent, line|
+    let min_indent = do vec::foldl(uint::max_value, lines) {|min_indent, line|
 
         // After we see the first non-whitespace line, look at
         // the line we have. If it is not whitespace, and therefore
@@ -47,7 +47,7 @@ fn unindent(s: str) -> str {
         } else {
             saw_first_line = true;
             let mut spaces = 0u;
-            str::all(line) {|char|
+            do str::all(line) {|char|
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
@@ -63,7 +63,7 @@ fn unindent(s: str) -> str {
 
     if check vec::is_not_empty(lines) {
         let unindented = ~[str::trim(vec::head(lines))]
-            + par::anymap(vec::tail(lines)) {|line|
+            + do par::anymap(vec::tail(lines)) {|line|
             if str::is_whitespace(line) {
                 line
             } else {

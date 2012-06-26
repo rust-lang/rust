@@ -67,9 +67,9 @@ fn spawn_process(prog: str, args: ~[str],
                  dir: option<str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
    -> pid_t {
-    with_argv(prog, args) {|argv|
-        with_envp(env) { |envp|
-            with_dirp(dir) { |dirp|
+    do with_argv(prog, args) {|argv|
+        do with_envp(env) { |envp|
+            do with_dirp(dir) { |dirp|
                 rustrt::rust_run_program(argv, envp, dirp,
                                          in_fd, out_fd, err_fd)
             }
@@ -79,12 +79,12 @@ fn spawn_process(prog: str, args: ~[str],
 
 fn with_argv<T>(prog: str, args: ~[str],
                 cb: fn(**libc::c_char) -> T) -> T {
-    let mut argptrs = str::as_c_str(prog) {|b| ~[b] };
+    let mut argptrs = str::as_c_str(prog, {|b| ~[b] });
     let mut tmps = ~[];
     for vec::each(args) {|arg|
         let t = @arg;
         vec::push(tmps, t);
-        vec::push_all(argptrs, str::as_c_str(*t) {|b| ~[b] });
+        vec::push_all(argptrs, str::as_c_str(*t, {|b| ~[b] }));
     }
     vec::push(argptrs, ptr::null());
     vec::as_buf(argptrs, cb)
@@ -104,12 +104,12 @@ fn with_envp<T>(env: option<~[(str,str)]>,
             let (k,v) = e;
             let t = @(#fmt("%s=%s", k, v));
             vec::push(tmps, t);
-            vec::push_all(ptrs, str::as_c_str(*t) {|b| ~[b]});
+            vec::push_all(ptrs, str::as_c_str(*t, {|b| ~[b]}));
         }
         vec::push(ptrs, ptr::null());
-        vec::as_buf(ptrs) { |p|
+        vec::as_buf(ptrs, { |p|
             unsafe { cb(::unsafe::reinterpret_cast(p)) }
-        }
+        })
       }
       _ {
         cb(ptr::null())
@@ -135,7 +135,7 @@ fn with_envp<T>(env: option<~[(str,str)]>,
                 ::unsafe::forget(v);
             }
             blk += ~[0_u8];
-            vec::as_buf(blk) {|p| cb(::unsafe::reinterpret_cast(p)) }
+            vec::as_buf(blk, {|p| cb(::unsafe::reinterpret_cast(p)) })
           }
           _ {
             cb(ptr::null())
@@ -298,11 +298,11 @@ fn program_output(prog: str, args: ~[str]) ->
     // clever way to do this.
     let p = comm::port();
     let ch = comm::chan(p);
-    task::spawn_sched(task::single_threaded) {||
+    do task::spawn_sched(task::single_threaded) {||
         let errput = readclose(pipe_err.in);
         comm::send(ch, (2, errput));
     };
-    task::spawn_sched(task::single_threaded) {||
+    do task::spawn_sched(task::single_threaded) {||
         let output = readclose(pipe_out.in);
         comm::send(ch, (1, output));
     };

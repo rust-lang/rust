@@ -19,5 +19,5 @@ fn iotask(cx: ctx, ip: str) {
 fn main() {
     let p = comm::port::<int>();
     let ch = comm::chan(p);
-    task::spawn {|| iotask(ch, "localhost"); };
+    task::spawn({|| iotask(ch, "localhost"); });
 }

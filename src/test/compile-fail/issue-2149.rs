@@ -7,5 +7,5 @@ impl monad<A> for ~[A] {
    }
 }
 fn main() {
-    ["hi"].bind {|x| [x] };
+    ["hi"].bind({|x| [x] });
 }

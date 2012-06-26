@@ -7,5 +7,5 @@ fn x(it: fn(int)) {
 
 fn main() {
     let a = @0;
-    x {|_i|};
+    x({|_i|});
 }

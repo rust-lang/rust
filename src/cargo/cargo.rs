@@ -1469,10 +1469,10 @@ fn print_source(s: source) {
     }, copy s.packages);
     let l = vec::len(pks);
 
-    print(io::with_str_writer() { |writer|
+    print(io::with_str_writer({ |writer|
         let mut list = "   >> ";
 
-        vec::iteri(pks) { |i, pk|
+        do vec::iteri(pks) { |i, pk|
             if str::len(list) > 78u {
                 writer.write_line(list);
                 list = "   >> ";
@@ -1481,14 +1481,14 @@ fn print_source(s: source) {
         }
 
         writer.write_line(list);
-    });
+    }));
 }
 
 fn cmd_list(c: cargo) {
     sync(c);
 
     if vec::len(c.opts.free) >= 3u {
-        vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) { |name|
+        do vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) { |name|
             if !valid_pkg_name(name) {
                 error(#fmt("'%s' is an invalid source name", name));
             } else {

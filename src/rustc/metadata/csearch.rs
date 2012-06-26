@@ -120,7 +120,7 @@ fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
                      name: option<ast::ident>)
     -> @~[@decoder::_impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_impls_for_mod(cdata, def.node, name) {|cnum|
+    do decoder::get_impls_for_mod(cdata, def.node, name) {|cnum|
         cstore::get_crate_data(cstore, cnum)
     }
 }

@@ -68,14 +68,14 @@ fn warn_if_multiple_versions(diag: span_handler,
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(*crate_cache.last().metas);
         let {lefts: matches, rights: non_matches} =
-            partition(crate_cache.map_to_vec {|entry|
+            partition(crate_cache.map_to_vec({|entry|
                 let othername = loader::crate_name_from_metas(*entry.metas);
                 if name == othername {
                     left(entry)
                 } else {
                     right(entry)
                 }
-            });
+            }));
 
         assert matches.is_not_empty();
 

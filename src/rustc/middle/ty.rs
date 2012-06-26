@@ -558,7 +558,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
     fn sflags(substs: substs) -> uint {
         let mut f = 0u;
         for substs.tps.each {|tt| f |= get(tt).flags; }
-        substs.self_r.iter { |r| f |= rflags(r) }
+        substs.self_r.iter({ |r| f |= rflags(r) });
         ret f;
     }
     alt st {
@@ -795,8 +795,8 @@ fn fold_sty_to_ty(tcx: ty::ctxt, sty: sty, foldop: fn(t) -> t) -> t {
 fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: substs, fldop: fn(t) -> t) -> substs {
         {self_r: substs.self_r,
-         self_ty: substs.self_ty.map { |t| fldop(t) },
-         tps: substs.tps.map { |t| fldop(t) }}
+         self_ty: substs.self_ty.map({ |t| fldop(t) }),
+         tps: substs.tps.map({ |t| fldop(t) })}
     }
 
     alt sty {
@@ -825,7 +825,7 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
         ty_iface(did, fold_substs(substs, fldop))
       }
       ty_rec(fields) {
-        let new_fields = vec::map(fields) {|fl|
+        let new_fields = do vec::map(fields) {|fl|
             let new_ty = fldop(fl.mt.ty);
             let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
             {ident: fl.ident, mt: new_mt}
@@ -833,14 +833,14 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
         ty_rec(new_fields)
       }
       ty_tup(ts) {
-        let new_ts = vec::map(ts) {|tt| fldop(tt) };
+        let new_ts = vec::map(ts, {|tt| fldop(tt) });
         ty_tup(new_ts)
       }
       ty_fn(f) {
-        let new_args = vec::map(f.inputs) {|a|
+        let new_args = vec::map(f.inputs, {|a|
             let new_ty = fldop(a.ty);
             {mode: a.mode, ty: new_ty}
-        };
+        });
         let new_output = fldop(f.output);
         ty_fn({inputs: new_args, output: new_output with f})
       }
@@ -863,7 +863,7 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
 
 // Folds types from the bottom up.
 fn fold_ty(cx: ctxt, t0: t, fldop: fn(t) -> t) -> t {
-    let sty = fold_sty(get(t0).struct) {|t| fold_ty(cx, fldop(t), fldop) };
+    let sty = fold_sty(get(t0).struct, {|t| fold_ty(cx, fldop(t), fldop) });
     fldop(mk_t(cx, sty))
 }
 
@@ -894,9 +894,9 @@ fn fold_regions_and_ty(
         fldr: fn(r: region) -> region,
         fldt: fn(t: t) -> t) -> substs {
 
-        {self_r: substs.self_r.map { |r| fldr(r) },
-         self_ty: substs.self_ty.map { |t| fldt(t) },
-         tps: substs.tps.map { |t| fldt(t) }}
+        {self_r: substs.self_r.map({ |r| fldr(r) }),
+         self_ty: substs.self_ty.map({ |t| fldt(t) }),
+         tps: substs.tps.map({ |t| fldt(t) })}
     }
 
     let tb = ty::get(ty);
@@ -925,14 +925,10 @@ fn fold_regions_and_ty(
         ty::mk_iface(cx, def_id, fold_substs(substs, fldr, fldt))
       }
       sty @ ty_fn(_) {
-        fold_sty_to_ty(cx, sty) {|t|
-            fldfnt(t)
-        }
+        fold_sty_to_ty(cx, sty, {|t| fldfnt(t) })
       }
       sty {
-        fold_sty_to_ty(cx, sty) {|t|
-            fldt(t)
-        }
+        fold_sty_to_ty(cx, sty, {|t| fldt(t) })
       }
     }
 }
@@ -981,7 +977,7 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
             t0
           }
           sty {
-            fold_sty_to_ty(cx, sty) {|t|
+            do fold_sty_to_ty(cx, sty) {|t|
                 do_fold(cx, t, under_r, fldop)
             }
           }
@@ -998,7 +994,7 @@ fn subst_tps(cx: ctxt, tps: ~[t], typ: t) -> t {
     if !tbox_has_flag(tb, has_params) { ret typ; }
     alt tb.struct {
       ty_param(idx, _) { tps[idx] }
-      sty { fold_sty_to_ty(cx, sty) {|t| subst_tps(cx, tps, t) } }
+      sty { fold_sty_to_ty(cx, sty, {|t| subst_tps(cx, tps, t) }) }
     }
 }
 
@@ -1012,7 +1008,7 @@ fn substs_to_str(cx: ctxt, substs: substs) -> str {
     #fmt["substs(self_r=%s, self_ty=%s, tps=%?)",
          substs.self_r.map_default("none", { |r| region_to_str(cx, r) }),
          substs.self_ty.map_default("none", { |t| ty_to_str(cx, t) }),
-         substs.tps.map { |t| ty_to_str(cx, t) }]
+         substs.tps.map({ |t| ty_to_str(cx, t) })]
 }
 
 fn subst(cx: ctxt,
@@ -1276,7 +1272,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
     let mut encountered_box = encountered_box;
     let mut needs_unwind_cleanup = false;
-    maybe_walk_ty(ty) {|ty|
+    do maybe_walk_ty(ty) {|ty|
         let old_encountered_box = encountered_box;
         let result = alt get(ty).struct {
           ty_box(_) | ty_opaque_box {
@@ -1665,7 +1661,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           }
 
           ty_rec(fields) {
-            vec::any(fields) {|field|
+            do vec::any(fields) {|field|
                 type_requires(cx, seen, r_ty, field.mt.ty)
             }
           }
@@ -1680,16 +1676,16 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
           ty_class(did, substs) {
             vec::push(*seen, did);
-            let r = vec::any(class_items_as_fields(cx, did, substs)) {|f|
-                      type_requires(cx, seen, r_ty, f.mt.ty)};
+            let r = vec::any(class_items_as_fields(cx, did, substs),{|f|
+                      type_requires(cx, seen, r_ty, f.mt.ty)});
             vec::pop(*seen);
             r
           }
 
           ty_tup(ts) {
-            vec::any(ts) {|t|
+            vec::any(ts, {|t|
                 type_requires(cx, seen, r_ty, t)
-            }
+            })
           }
 
           ty_enum(did, _) if vec::contains(*seen, did) {
@@ -1699,12 +1695,12 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_enum(did, substs) {
             vec::push(*seen, did);
             let vs = enum_variants(cx, did);
-            let r = vec::len(*vs) > 0u && vec::all(*vs) {|variant|
-                vec::any(variant.args) {|aty|
+            let r = vec::len(*vs) > 0u && vec::all(*vs, {|variant|
+                vec::any(variant.args, {|aty|
                     let sty = subst(cx, substs, aty);
                     type_requires(cx, seen, r_ty, sty)
-                }
-            };
+                })
+            });
             vec::pop(*seen);
             r
           }
@@ -1865,11 +1861,11 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_param(_, _) { result = false; }
       ty_opaque_closure_ptr(_) { result = true; }
       ty_class(did, substs) {
-        result = vec::any(lookup_class_fields(cx, did)) { |f|
+        result = vec::any(lookup_class_fields(cx, did), { |f|
             let fty = ty::lookup_item_type(cx, f.id);
             let sty = subst(cx, substs, fty.ty);
             type_is_pod(cx, sty)
-        };
+        });
       }
 
       ty_estr(vstore_slice(*)) | ty_evec(_, vstore_slice(*)) {
@@ -2294,7 +2290,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
     // contain duplicates.  (Integral type vars aren't counted.)
     fn vars_in_type(ty: t) -> ~[tv_vid] {
         let mut rslt = ~[];
-        walk_ty(ty) {|ty|
+        do walk_ty(ty) {|ty|
             alt get(ty).struct { ty_var(v) { vec::push(rslt, v); } _ { } }
         }
         rslt
@@ -2574,10 +2570,10 @@ type variant_info = @{args: ~[t], ctor_ty: t, name: ast::ident,
 fn substd_enum_variants(cx: ctxt,
                         id: ast::def_id,
                         substs: substs) -> ~[variant_info] {
-    vec::map(*enum_variants(cx, id)) { |variant_info|
-        let substd_args = vec::map(variant_info.args) {|aty|
+    do vec::map(*enum_variants(cx, id)) { |variant_info|
+        let substd_args = vec::map(variant_info.args, {|aty|
             subst(cx, substs, aty)
-        };
+        });
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
@@ -2682,7 +2678,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
                 let ctor_ty = node_id_to_type(cx, variant.node.id);
                 let arg_tys = {
                     if vec::len(variant.node.args) > 0u {
-                        ty_fn_args(ctor_ty).map { |a| a.ty }
+                        ty_fn_args(ctor_ty).map({ |a| a.ty })
                     } else { ~[] }
                 };
                 alt variant.node.disr_expr {
@@ -2791,8 +2787,8 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
 
 fn lookup_class_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
     -> field_ty {
-    alt vec::find(lookup_class_fields(cx, parent))
-                 {|f| f.id.node == field_id.node} {
+    alt vec::find(lookup_class_fields(cx, parent),
+                 {|f| f.id.node == field_id.node}) {
         some(t) { t }
         none { cx.sess.bug("class ID not found in parent's fields"); }
     }
@@ -3029,7 +3025,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
     // types, which isn't necessary after #2187
     let t = mk_t(cx, mach_sty(cx.sess.targ_cfg, t));
 
-    let sty = fold_sty(get(t).struct) {|t| normalize_ty(cx, t) };
+    let sty = fold_sty(get(t).struct, {|t| normalize_ty(cx, t) });
     let t_norm = mk_t(cx, sty);
     cx.normalized_cache.insert(t, t_norm);
     ret t_norm;

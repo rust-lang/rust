@@ -28,7 +28,7 @@ impl of region_scope for type_rscope {
         }
     }
     fn named_region(id: ast::ident) -> result<ty::region, str> {
-        empty_rscope.named_region(id).chain_err { |_e|
+        do empty_rscope.named_region(id).chain_err { |_e|
             if *id == "self" { self.anon_region() }
             else {
                 result::err("named regions other than `self` are not \
@@ -62,7 +62,7 @@ impl of region_scope for @binding_rscope {
         result::ok(ty::re_bound(ty::br_anon))
     }
     fn named_region(id: ast::ident) -> result<ty::region, str> {
-        self.base.named_region(id).chain_err {|_e|
+        do self.base.named_region(id).chain_err {|_e|
             result::ok(ty::re_bound(ty::br_named(id)))
         }
     }

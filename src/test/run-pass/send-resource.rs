@@ -11,7 +11,7 @@ fn main() {
     let p = port();
     let c = chan(p);
 
-    spawn() {||
+    do spawn() {||
         let p = port();
         c.send(chan(p));
 

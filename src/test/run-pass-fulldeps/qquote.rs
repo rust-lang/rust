@@ -79,8 +79,8 @@ fn main() {
     // issue #1926
     let s = #ast(expr){__s};
     let e = #ast(expr){__e};
-    let call = #ast(expr){$(s).foo {|__e| $(e)}};
-    check_pp(call, pprust::print_expr, "__s.foo {|__e| __e }")
+    let call = #ast(expr){$(s).foo({|__e| $(e)})};
+    check_pp(call, pprust::print_expr, "__s.foo({|__e| __e })")
 }
 
 fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {

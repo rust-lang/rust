@@ -321,7 +321,7 @@ fn compose_and_run_compiler(
 
     let extra_link_args = ~["-L", aux_output_dir_name(config, testfile)];
 
-    vec::iter(props.aux_builds) {|rel_ab|
+    do vec::iter(props.aux_builds) {|rel_ab|
         let abs_ab = path::connect(config.aux_base, rel_ab);
         let aux_args =
             make_compile_args(config, props, ~["--lib"] + extra_link_args,

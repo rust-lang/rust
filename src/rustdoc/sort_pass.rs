@@ -47,7 +47,7 @@ fn test() {
     }
 
     let source = "mod z { mod y { } fn x() { } } mod w { }";
-    astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = mk_pass("", name_lteq).f(srv, doc);
         assert doc.cratemod().mods()[0].name() == "w";
@@ -64,7 +64,7 @@ fn should_be_stable() {
     }
 
     let source = "mod a { mod b { } } mod c { mod d { } }";
-    astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = mk_pass("", always_eq).f(srv, doc);
         assert doc.cratemod().mods()[0].items[0].name() == "b";

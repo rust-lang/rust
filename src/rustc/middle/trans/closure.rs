@@ -233,7 +233,7 @@ fn store_environment(bcx: block,
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    vec::iteri(bound_values) { |i, bv|
+    do vec::iteri(bound_values) { |i, bv|
         #debug["Copy %s into closure", ev_to_str(ccx, bv)];
 
         if !ccx.sess.no_asm_comments() {
@@ -294,7 +294,7 @@ fn build_closure(bcx0: block,
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // Package up the captured upvars
-    vec::iter(cap_vars) { |cap_var|
+    do vec::iter(cap_vars) { |cap_var|
         #debug["Building closure: captured variable %?", cap_var];
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
@@ -323,7 +323,7 @@ fn build_closure(bcx0: block,
           }
         }
     }
-    option::iter(include_ret_handle) {|flagptr|
+    do option::iter(include_ret_handle) {|flagptr|
         let our_ret = alt bcx.fcx.loop_ret {
           some({retptr, _}) { retptr }
           none { bcx.fcx.llretptr }
@@ -354,7 +354,7 @@ fn load_environment(fcx: fn_ctxt,
 
     // Populate the upvars from the environment.
     let mut i = 0u;
-    vec::iter(cap_vars) { |cap_var|
+    do vec::iter(cap_vars) { |cap_var|
         alt cap_var.mode {
           capture::cap_drop { /* ignore */ }
           _ {
@@ -504,7 +504,7 @@ fn make_fn_glue(
     let fn_env = fn@(ck: ty::closure_kind) -> block {
         let box_cell_v = GEPi(cx, v, ~[0u, abi::fn_field_box]);
         let box_ptr_v = Load(cx, box_cell_v);
-        with_cond(cx, IsNotNull(cx, box_ptr_v)) {|bcx|
+        do with_cond(cx, IsNotNull(cx, box_ptr_v)) {|bcx|
             let closure_ty = ty::mk_opaque_closure_ptr(tcx, ck);
             glue_fn(bcx, box_cell_v, closure_ty)
         }
@@ -537,7 +537,7 @@ fn make_opaque_cbox_take_glue(
     let ccx = bcx.ccx(), tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
-    with_cond(bcx, IsNotNull(bcx, cbox_in)) {|bcx|
+    do with_cond(bcx, IsNotNull(bcx, cbox_in)) {|bcx|
         // Load the size from the type descr found in the cbox
         let cbox_in = PointerCast(bcx, cbox_in, llopaquecboxty);
         let tydescptr = GEPi(bcx, cbox_in, ~[0u, abi::box_field_tydesc]);
@@ -599,7 +599,7 @@ fn make_opaque_cbox_free_glue(
     }
 
     let ccx = bcx.ccx();
-    with_cond(bcx, IsNotNull(bcx, cbox)) {|bcx|
+    do with_cond(bcx, IsNotNull(bcx, cbox)) {|bcx|
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
         let cbox = PointerCast(bcx, cbox, T_opaque_cbox_ptr(ccx));

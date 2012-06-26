@@ -34,7 +34,7 @@ fn test00() {
     while i < number_of_tasks {
         let builder = task::builder();
         results += ~[task::future_result(builder)];
-        task::run(builder) {|copy i|
+        do task::run(builder) {|copy i|
             test00_start(ch, i, number_of_messages)
         }
         i = i + 1;

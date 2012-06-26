@@ -12,13 +12,13 @@ fn test_ret() { let x: @int = ret; }
 
 fn test_fail() {
     fn f() { let x: @int = fail; }
-    task::try {|| f() };
+    task::try({|| f() });
 }
 
 fn test_fail_indirect() {
     fn f() -> ! { fail; }
     fn g() { let x: @int = f(); }
-    task::try {|| g() };
+    task::try({|| g() });
 }
 
 fn main() {

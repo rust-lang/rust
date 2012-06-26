@@ -11,7 +11,7 @@ type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */
 fn path_to_str_with_sep(p: path, sep: str) -> str {
-    let strs = vec::map(p) {|e|
+    let strs = do vec::map(p) {|e|
         alt e {
           path_mod(s) { /* FIXME (#2543) */ copy *s }
           path_name(s) { /* FIXME (#2543) */ copy *s }
@@ -156,7 +156,7 @@ fn map_block(b: blk, cx: ctx, v: vt) {
 }
 
 fn number_pat(cx: ctx, pat: @pat) {
-    ast_util::walk_pat(pat) {|p|
+    do ast_util::walk_pat(pat) {|p|
         alt p.node {
           pat_ident(_, _) {
             cx.map.insert(p.id, node_local(cx.local_id));
@@ -218,12 +218,12 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           let (_, ms) = ast_util::split_class_items(items);
           // Map iface refs to their parent classes. This is
           // so we can find the self_ty
-          vec::iter(ifces) {|p| cx.map.insert(p.id,
+          do vec::iter(ifces) {|p| cx.map.insert(p.id,
                                   node_item(i, item_path)); };
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
            // only need to handle methods
-          vec::iter(ms) {|m| map_method(d_id, p, m, cx); }
+          do vec::iter(ms) {|m| map_method(d_id, p, m, cx); }
       }
       _ { }
     }

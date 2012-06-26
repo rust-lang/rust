@@ -360,7 +360,7 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
         let new_fill = Add(bcx, old_fill, elt_sz);
         let do_grow = ICmp(bcx, lib::llvm::IntUGT, new_fill,
                            get_alloc(bcx, vptr));
-        bcx = base::with_cond(bcx, do_grow) {|bcx|
+        bcx = do base::with_cond(bcx, do_grow) {|bcx|
             let pt = PointerCast(bcx, vptrptr,
                                  T_ptr(T_ptr(T_i8())));
             Call(bcx, ccx.upcalls.vec_grow, ~[pt, new_fill]);

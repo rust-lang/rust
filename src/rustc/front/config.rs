@@ -13,7 +13,7 @@ type ctxt = @{
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
 fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
-    strip_items(crate) {|attrs|
+    do strip_items(crate) {|attrs|
         in_cfg(crate.node.config, attrs)
     }
 }

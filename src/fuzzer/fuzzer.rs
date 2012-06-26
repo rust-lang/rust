@@ -259,9 +259,9 @@ fn check_variants_T<T: copy>(
     let L = vec::len(things);
 
     if L < 100u {
-        under(uint::min(L, 20u)) {|i|
+        do under(uint::min(L, 20u)) {|i|
             log(error, "Replacing... #" + uint::str(i));
-            under(uint::min(L, 30u)) {|j|
+            do under(uint::min(L, 30u)) {|j|
                 log(error, "With... " + stringifier(@things[j]));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
@@ -421,7 +421,7 @@ fn parse_and_print(code: @str) -> str {
     write_file(filename, *code);
     let crate = parse::parse_crate_from_source_str(
         filename, code, ~[], sess);
-    io::with_str_reader(*code) { |rdr|
+    io::with_str_reader(*code, { |rdr|
         as_str({|a|pprust::print_crate(sess.cm,
                                        sess.span_diagnostic,
                                        crate,
@@ -429,7 +429,7 @@ fn parse_and_print(code: @str) -> str {
                                        rdr, a,
                                        pprust::no_ann(),
                                        false)})
-    }
+    })
 }
 
 fn has_raw_pointers(c: ast::crate) -> bool {
@@ -565,7 +565,7 @@ fn check_variants(files: ~[str], cx: context) {
             parse::parse_crate_from_source_str(
                 file,
                 s, ~[], sess);
-        io::with_str_reader(*s) { |rdr|
+        io::with_str_reader(*s, { |rdr|
             #error("%s",
                    as_str({|a|pprust::print_crate(sess.cm,
                                                   sess.span_diagnostic,
@@ -573,8 +573,8 @@ fn check_variants(files: ~[str], cx: context) {
                                                   file,
                                                   rdr, a,
                                                   pprust::no_ann(),
-                                                  false)}));
-        }
+                                                  false)}))
+        });
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
 }

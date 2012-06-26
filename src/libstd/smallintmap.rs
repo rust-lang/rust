@@ -102,7 +102,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         }
     }
     fn each_value(it: fn(V) -> bool) {
-        self.each {|_i, v| it(v)}
+        self.each({|_i, v| it(v)});
     }
 }
 

@@ -12,7 +12,7 @@ fn main() {
     // actually working.
     //let bt0 = sys::frame_address();
     //#debug["%?", bt0];
-    iter(~[1u, 2u, 3u]) {|i|
+    do iter(~[1u, 2u, 3u]) {|i|
         io::print(#fmt["%u\n", i]);
 
         //let bt1 = sys::frame_address();

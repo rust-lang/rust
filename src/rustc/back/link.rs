@@ -443,7 +443,7 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
 // gas doesn't!
 fn sanitize(s: str) -> str {
     let mut result = "";
-    str::chars_iter(s) {|c|
+    do str::chars_iter(s) {|c|
         alt c {
           '@' { result += "_sbox_"; }
           '~' { result += "_ubox_"; }

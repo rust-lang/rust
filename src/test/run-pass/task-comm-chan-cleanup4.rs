@@ -16,13 +16,13 @@ fn starbase() {
     for int::range(0, 10) { |_i|
         let p = comm::port();
         let c = comm::chan(p);
-        task::spawn {|| starship(c);};
+        task::spawn({|| starship(c);});
         task::yield();
     }
 }
 
 fn main() {
     for int::range(0, 10) { |_i|
-        task::spawn {|| starbase();};
+        task::spawn({|| starbase();});
     }
 }

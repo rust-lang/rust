@@ -322,7 +322,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     };
     let is_expanded = upto != cu_parse;
     let src = codemap::get_filemap(sess.codemap, source_name(input)).src;
-    io::with_str_reader(*src) { |rdr|
+    do io::with_str_reader(*src) { |rdr|
         pprust::print_crate(sess.codemap, sess.span_diagnostic, crate,
                             source_name(input),
                             rdr, io::stdout(), ann, is_expanded);
@@ -417,7 +417,7 @@ fn build_session_options(match: getopts::match,
     let lint_flags = vec::append(getopts::opt_strs(match, "W"),
                                  getopts::opt_strs(match, "warn"));
     let lint_dict = lint::get_lint_dict();
-    let lint_opts = vec::map(lint_flags) {|flag|
+    let lint_opts = do vec::map(lint_flags) {|flag|
         alt lint::lookup_lint(lint_dict, flag) {
           (flag, none) {
             early_error(demitter, #fmt("unknown warning: %s", flag))

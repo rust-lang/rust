@@ -42,12 +42,12 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
     let doc =fold::default_seq_fold_iface(fold, doc);
 
     {
-        methods: par::anymap(doc.methods) {|doc|
+        methods: par::anymap(doc.methods, {|doc|
             {
                 brief: extract(doc.desc)
                 with doc
             }
-        }
+        })
         with doc
     }
 }
@@ -56,12 +56,12 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: par::anymap(doc.methods) {|doc|
+        methods: par::anymap(doc.methods, {|doc|
             {
                 brief: extract(doc.desc)
                 with doc
             }
-        }
+        })
         with doc
     }
 }
@@ -88,7 +88,7 @@ fn should_promote_impl_method_desc() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);
             run(srv, doc)
@@ -134,7 +134,7 @@ fn first_sentence_(s: str) -> str {
     let mut dotcount = 0;
     // The index of the character following a single dot. This allows
     // Things like [0..1) to appear in the brief description
-    let idx = str::find(s) {|ch|
+    let idx = do str::find(s) {|ch|
         if ch == '.' {
             dotcount += 1;
             false
@@ -165,7 +165,7 @@ fn paragraphs(s: str) -> ~[str] {
     let lines = str::lines_any(s);
     let mut whitespace_lines = 0;
     let mut accum = "";
-    let paras = vec::foldl(~[], lines) {|paras, line|
+    let paras = do vec::foldl(~[], lines) {|paras, line|
         let mut res = paras;
 
         if str::is_whitespace(line) {

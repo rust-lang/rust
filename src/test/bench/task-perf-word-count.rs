@@ -64,7 +64,7 @@ mod map_reduce {
         for inputs.each {|i|
             let builder = task::builder();
             results += ~[task::future_result(builder)];
-            task::run(builder) {|| map_task(ctrl, i)}
+            do task::run(builder) {|| map_task(ctrl, i)}
         }
         ret results;
     }
@@ -162,7 +162,7 @@ mod map_reduce {
                     let ch = chan(p);
                     let builder = task::builder();
                     results += ~[task::future_result(builder)];
-                    task::run(builder) {||reduce_task(k, ch)}
+                    task::run(builder, {||reduce_task(k, ch)});
                     c = recv(p);
                     reducers.insert(k, c);
                   }

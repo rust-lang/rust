@@ -24,7 +24,7 @@ fn request_task(c: chan<ctx>) {
 fn new_cx() -> ctx {
     let p = port();
     let ch = chan(p);
-    let t = task::spawn {|| request_task(ch); };
+    let t = task::spawn({|| request_task(ch); });
     let mut cx: ctx;
     cx = recv(p);
     ret cx;

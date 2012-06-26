@@ -103,12 +103,12 @@ type init_op<T> = fn(uint) -> T;
 
 #[doc = "Returns true if a vector contains no elements"]
 pure fn is_empty<T>(v: &[const T]) -> bool {
-    unpack_const_slice(v) {|_p, len| len == 0u}
+    unpack_const_slice(v, {|_p, len| len == 0u})
 }
 
 #[doc = "Returns true if a vector contains some elements"]
 pure fn is_not_empty<T>(v: &[const T]) -> bool {
-    unpack_const_slice(v) {|_p, len| len > 0u}
+    unpack_const_slice(v, {|_p, len| len > 0u})
 }
 
 #[doc = "Returns true if two vectors have the same length"]
@@ -169,7 +169,7 @@ pure fn capacity<T>(&&v: ~[const T]) -> uint {
 #[doc = "Returns the length of a vector"]
 #[inline(always)]
 pure fn len<T>(&&v: &[const T]) -> uint {
-    unpack_const_slice(v) {|_p, len| len}
+    unpack_const_slice(v, { |_p, len| len})
 }
 
 #[doc = "
@@ -266,7 +266,7 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
 pure fn view<T: copy>(v: &[const T], start: uint, end: uint) -> &a.[T] {
     assert (start <= end);
     assert (end <= len(v));
-    unpack_slice(v) {|p, _len|
+    do unpack_slice(v) {|p, _len|
         unsafe {
             ::unsafe::reinterpret_cast(
                 (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
@@ -455,9 +455,9 @@ fn push_slow<T>(&v: ~[const T], +initval: T) {
 // Unchecked vector indexing
 #[inline(always)]
 unsafe fn ref<T: copy>(v: &[const T], i: uint) -> T {
-    unpack_slice(v) {|p, _len|
+    unpack_slice(v, {|p, _len|
         *ptr::offset(p, i)
-    }
+    })
 }
 
 #[inline(always)]
@@ -473,7 +473,7 @@ fn push_all<T: copy>(&v: ~[const T], rhs: &[const T]) {
 fn push_all_move<T>(&v: ~[const T], -rhs: ~[const T]) {
     reserve(v, v.len() + rhs.len());
     unsafe {
-        unpack_slice(rhs) {|p, len|
+        do unpack_slice(rhs) {|p, len|
             for uint::range(0, len) {|i|
                 let x <- *ptr::offset(p, i);
                 push(v, x);
@@ -678,7 +678,7 @@ pure fn connect<T: copy>(v: &[[T]/~], sep: T) -> ~[T] {
 #[doc = "Reduce a vector from left to right"]
 pure fn foldl<T: copy, U>(z: T, v: &[U], p: fn(T, U) -> T) -> T {
     let mut accum = z;
-    iter(v) { |elt|
+    do iter(v) { |elt|
         accum = p(accum, elt);
     }
     ret accum;
@@ -687,7 +687,7 @@ pure fn foldl<T: copy, U>(z: T, v: &[U], p: fn(T, U) -> T) -> T {
 #[doc = "Reduce a vector from right to left"]
 pure fn foldr<T, U: copy>(v: &[T], z: U, p: fn(T, U) -> U) -> U {
     let mut accum = z;
-    riter(v) { |elt|
+    do riter(v) { |elt|
         accum = p(elt, accum);
     }
     ret accum;
@@ -787,7 +787,7 @@ is returned. If `f` matches no elements then none is returned.
 "]
 pure fn find_between<T: copy>(v: &[T], start: uint, end: uint,
                       f: fn(T) -> bool) -> option<T> {
-    option::map(position_between(v, start, end, f)) { |i| v[i] }
+    option::map(position_between(v, start, end, f), { |i| v[i] })
 }
 
 #[doc = "
@@ -810,12 +810,12 @@ the element is returned. If `f` matches no elements then none is returned.
 "]
 pure fn rfind_between<T: copy>(v: &[T], start: uint, end: uint,
                                f: fn(T) -> bool) -> option<T> {
-    option::map(rposition_between(v, start, end, f)) { |i| v[i] }
+    option::map(rposition_between(v, start, end, f), { |i| v[i] })
 }
 
 #[doc = "Find the first index containing a matching value"]
 pure fn position_elem<T>(v: &[T], x: T) -> option<uint> {
-    position(v) { |y| x == y }
+    position(v, { |y| x == y })
 }
 
 #[doc = "
@@ -847,7 +847,7 @@ pure fn position_between<T>(v: &[T], start: uint, end: uint,
 
 #[doc = "Find the last index containing a matching value"]
 pure fn rposition_elem<T>(v: &[T], x: T) -> option<uint> {
-    rposition(v) { |y| x == y }
+    rposition(v, { |y| x == y })
 }
 
 #[doc = "
@@ -974,7 +974,7 @@ element's value.
 */
 #[inline(always)]
 pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
-    unpack_slice(v) { |base_ptr, len|
+    do unpack_slice(v) { |base_ptr, len|
         assert start <= end;
         assert end <= len;
         unsafe {
@@ -996,7 +996,7 @@ Return true to continue, false to break.
 "]
 #[inline(always)]
 pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
-    vec::unpack_slice(v) {|p, n|
+    do vec::unpack_slice(v) {|p, n|
         let mut n = n;
         let mut p = p;
         while n > 0u {
@@ -1016,7 +1016,7 @@ Return true to continue, false to break.
 "]
 #[inline(always)]
 pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
-    vec::unpack_slice(v) {|p, n|
+    do vec::unpack_slice(v) {|p, n|
         let mut i = 0u;
         let mut p = p;
         while i < n {
@@ -1064,7 +1064,7 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
 "]
 pure fn riter<T>(v: &[T], f: fn(T)) {
-    riteri(v) { |_i, v| f(v) }
+    riteri(v, { |_i, v| f(v) })
 }
 
 #[doc ="
@@ -1102,9 +1102,9 @@ pure fn permute<T: copy>(v: &[T], put: fn(~[T])) {
             let mut rest = slice(v, 0u, i);
             unchecked {
                 push_all(rest, view(v, i+1u, ln));
-                permute(rest) {|permutation|
+                permute(rest, {|permutation|
                     put(append(~[elt], permutation))
-                }
+                })
             }
             i += 1u;
         }
@@ -1130,11 +1130,11 @@ Allows for unsafe manipulation of vector contents, which is useful for native
 interop.
 "]
 fn as_buf<E,T>(v: &[E], f: fn(*E) -> T) -> T {
-    unpack_slice(v) { |buf, _len| f(buf) }
+    unpack_slice(v, { |buf, _len| f(buf) })
 }
 
 fn as_mut_buf<E,T>(v: &[mut E], f: fn(*mut E) -> T) -> T {
-    unpack_mut_slice(v) { |buf, _len| f(buf) }
+    unpack_mut_slice(v, { |buf, _len| f(buf) })
 }
 
 #[doc = "
@@ -1896,19 +1896,19 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        permute(~[]) {|v| vec::push(results, v); }
+        permute(~[], {|v| vec::push(results, v); });
         assert results == ~[~[]];
 
         results = ~[];
-        permute(~[7]) {|v| results += ~[v]; }
+        permute(~[7], {|v| results += ~[v]; });
         assert results == ~[~[7]];
 
         results = ~[];
-        permute(~[1,1]) {|v| results += ~[v]; }
+        permute(~[1,1], {|v| results += ~[v]; });
         assert results == ~[~[1,1],~[1,1]];
 
         results = ~[];
-        permute(~[5,2,0]) {|v| results += ~[v]; }
+        permute(~[5,2,0], {|v| results += ~[v]; });
         assert results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]];
     }

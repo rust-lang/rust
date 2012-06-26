@@ -1,7 +1,7 @@
 fn f(&&n: uint) {
     let mut i = 0u;
     while i < n {
-        task::try {|| g() };
+        do task::try {|| g() };
         i += 1u;
     }
 }
@@ -18,5 +18,5 @@ fn main(args: ~[str]) {
     };
     let n = uint::from_str(args[1]).get();
     let mut i = 0u;
-    while i < n { task::spawn {|| f(n); }; i += 1u; }
+    while i < n { task::spawn({|| f(n); }); i += 1u; }
 }

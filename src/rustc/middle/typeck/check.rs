@@ -172,13 +172,13 @@ fn check_fn(ccx: @crate_ctxt,
                                        { |br| ty::re_free(body.node.id, br) })
     };
 
-    let arg_tys = fn_ty.inputs.map { |a| a.ty };
+    let arg_tys = fn_ty.inputs.map({ |a| a.ty });
     let ret_ty = fn_ty.output;
 
     #debug["check_fn(arg_tys=%?, ret_ty=%?, self_ty=%?)",
-           arg_tys.map {|a| ty_to_str(tcx, a) },
+           arg_tys.map({|a| ty_to_str(tcx, a) }),
            ty_to_str(tcx, ret_ty),
-           option::map(self_ty) {|st| ty_to_str(tcx, st) }];
+           option::map(self_ty, {|st| ty_to_str(tcx, st) })];
 
     // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,
@@ -239,7 +239,7 @@ fn check_fn(ccx: @crate_ctxt,
     }
 
     let mut i = 0u;
-    vec::iter(arg_tys) {|arg|
+    do vec::iter(arg_tys) {|arg|
         fcx.write_ty(decl.inputs[i].id, arg);
         i += 1u;
     }
@@ -272,7 +272,7 @@ fn check_fn(ccx: @crate_ctxt,
         };
 
         // Add formal parameters.
-        vec::iter2(arg_tys, decl.inputs) {|arg_ty, input|
+        do vec::iter2(arg_tys, decl.inputs) {|arg_ty, input|
             assign(input.id, some(arg_ty));
             #debug["Argument %s is assigned to %s",
                    *input.ident, fcx.locals.get(input.id).to_str()];
@@ -368,7 +368,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           // Write the ctor's self's type
           write_ty_to_tcx(tcx, ctor.node.self_id, class_t);
 
-          option::iter(m_dtor) {|dtor|
+          do option::iter(m_dtor) {|dtor|
             // typecheck the dtor
            check_bare_fn(ccx, ast_util::dtor_dec(),
                            dtor.node.body, dtor.node.id,
@@ -430,7 +430,7 @@ impl of region_scope for @fn_ctxt {
         result::ok(self.infcx.next_region_var())
     }
     fn named_region(id: ast::ident) -> result<ty::region, str> {
-        empty_rscope.named_region(id).chain_err { |_e|
+        do empty_rscope.named_region(id).chain_err { |_e|
             alt self.in_scope_regions.find(ty::br_named(id)) {
               some(r) { result::ok(r) }
               none if *id == "blk" { self.block_region() }
@@ -632,7 +632,7 @@ fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
 
 fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
               expected: option<ty::t>) -> bool {
-    ret check_expr_with_unifier(fcx, expr, expected) {||
+    ret do check_expr_with_unifier(fcx, expr, expected) {||
         for expected.each {|t|
             demand::suptype(fcx, expr.span, t, fcx.expr_ty(expr));
         }
@@ -697,7 +697,7 @@ fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
                    substs: ty::substs) -> option<ty::t> {
 
     let o_field = vec::find(items, {|f| f.ident == fieldname});
-    option::map(o_field) {|f|
+    do option::map(o_field) {|f|
         ty::lookup_field_type(tcx, class_id, f.id, substs)
     }
 }
@@ -756,7 +756,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // if the wrong number of arguments were supplied
         let expected_arg_count = vec::len(fn_ty.inputs);
         let arg_tys = if expected_arg_count == supplied_arg_count {
-            fn_ty.inputs.map { |a| a.ty }
+            fn_ty.inputs.map({ |a| a.ty })
         } else {
             fcx.ccx.tcx.sess.span_err(
                 sp, #fmt["this function takes %u parameter%s but %u \
@@ -792,10 +792,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     if is_block == check_blocks {
                         let arg_ty = arg_tys[i];
                         bot |= check_expr_with_unifier(
-                            fcx, a, some(arg_ty)) {||
+                            fcx, a, some(arg_ty), {||
                             demand::assign(fcx, a.span, call_expr_id,
                                            arg_ty, a);
-                        };
+                        });
                     }
                   }
                   none { }
@@ -824,7 +824,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // Call the generic checker.
         let fty = {
-            let args_opt = args.map { |arg| some(arg) };
+            let args_opt = args.map({ |arg| some(arg) });
             let r = check_call_or_bind(fcx, sp, call_expr_id,
                                        fn_ty, args_opt);
             bot |= r.bot;
@@ -1021,7 +1021,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                      expected: option<ty::t>) {
         let tcx = fcx.ccx.tcx;
 
-        let expected_tys = unpack_expected(fcx, expected) { |sty|
+        let expected_tys = do unpack_expected(fcx, expected) { |sty|
             alt sty {
               ty::ty_fn(fn_ty) {some({inputs:fn_ty.inputs,
                                       output:fn_ty.output})}
@@ -1106,7 +1106,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_nil(expr.id);
       }
       ast::expr_unary(unop, oprnd) {
-        let exp_inner = unpack_expected(fcx, expected) {|sty|
+        let exp_inner = do unpack_expected(fcx, expected) {|sty|
             alt unop {
               ast::box(_) | ast::uniq(_) {
                 alt sty {
@@ -1182,9 +1182,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, oprnd_t);
       }
       ast::expr_addr_of(mutbl, oprnd) {
-        bot = check_expr(fcx, oprnd, unpack_expected(fcx, expected) {|ty|
+        bot = check_expr(fcx, oprnd, unpack_expected(fcx, expected, {|ty|
             alt ty { ty::ty_rptr(_, mt) { some(mt.ty) } _ { none } }
-        });
+        }));
         let region = region_of(fcx, oprnd);
         let tm = { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = ty::mk_rptr(tcx, region, tm);
@@ -1418,11 +1418,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_tup(elts) {
         let mut elt_ts = ~[];
         vec::reserve(elt_ts, vec::len(elts));
-        let flds = unpack_expected(fcx, expected) {|sty|
+        let flds = unpack_expected(fcx, expected, {|sty|
             alt sty { ty::ty_tup(flds) { some(flds) } _ { none } }
-        };
+        });
         for elts.eachi {|i, e|
-            check_expr(fcx, e, flds.map {|fs| fs[i]});
+            check_expr(fcx, e, flds.map({|fs| fs[i]}));
             let ety = fcx.expr_ty(e);
             vec::push(elt_ts, ety);
         }
@@ -1430,17 +1430,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_rec(fields, base) {
-        option::iter(base) {|b| check_expr(fcx, b, expected); }
+        option::iter(base, {|b| check_expr(fcx, b, expected); });
         let expected = if expected == none && base != none {
             some(fcx.expr_ty(base.get()))
         } else { expected };
-        let flds = unpack_expected(fcx, expected) {|sty|
+        let flds = unpack_expected(fcx, expected, {|sty|
             alt sty { ty::ty_rec(flds) { some(flds) } _ { none } }
-        };
+        });
         let fields_t = vec::map(fields, {|f|
-            bot |= check_expr(fcx, f.node.expr, flds.chain {|flds|
-                vec::find(flds) {|tf| tf.ident == f.node.ident}
-            }.map {|tf| tf.mt.ty});
+            bot |= check_expr(fcx, f.node.expr, flds.chain({|flds|
+                vec::find(flds, {|tf| tf.ident == f.node.ident})
+            }).map({|tf| tf.mt.ty}));
             let expr_t = fcx.expr_ty(f.node.expr);
             let expr_mt = {ty: expr_t, mutbl: f.node.mutbl};
             // for the most precise error message,
@@ -1533,7 +1533,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ {}
         }
         if !handled {
-            let tps = vec::map(tys) { |ty| fcx.to_ty(ty) };
+            let tps = vec::map(tys, { |ty| fcx.to_ty(ty) });
             let is_self_ref = self_ref(fcx, base.id);
 
             // this will be the call or block that immediately
@@ -1829,7 +1829,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
         vec::push(disr_vals, disr_val);
         let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
         let arg_tys = if v.node.args.len() > 0u {
-            ty::ty_fn_args(ctor_ty).map {|a| a.ty }
+            ty::ty_fn_args(ctor_ty).map({|a| a.ty })
           } else { ~[] };
         vec::push(variants, @{args: arg_tys, ctor_ty: ctor_ty,
               name: v.node.name, id: local_def(v.node.id),
@@ -2098,7 +2098,7 @@ fn instantiate_path(fcx: @fn_ctxt,
             (sp, "not enough type parameters provided for this item");
         fcx.infcx.next_ty_vars(ty_param_count)
     } else {
-        pth.types.map { |aty| fcx.to_ty(aty) }
+        pth.types.map({ |aty| fcx.to_ty(aty) })
     };
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};

@@ -10,7 +10,7 @@ fn child() { assert (1 == 2); }
 
 fn parent() {
     let p = port::<int>();
-    task::spawn {|| child(); };
+    task::spawn({|| child(); });
     let x = recv(p);
 }
 
@@ -22,6 +22,6 @@ fn sleeper() {
 }
 
 fn main() {
-    task::spawn {|| sleeper(); };
-    task::spawn {|| parent(); };
+    task::spawn({|| sleeper(); });
+    task::spawn({|| parent(); });
 }

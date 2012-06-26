@@ -70,7 +70,7 @@ fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
 #[doc = "Return the offset of the first null pointer in `buf`."]
 #[inline(always)]
 unsafe fn buf_len<T>(buf: **T) -> uint {
-    position(buf) {|i| i == null() }
+    do position(buf) {|i| i == null() }
 }
 
 #[doc = "Return the first offset `i` such that `f(buf[i]) == true`."]
@@ -171,9 +171,9 @@ fn test_position() {
 
     let s = "hello";
     unsafe {
-        assert 2u == as_c_str(s) {|p| position(p) {|c| c == 'l' as c_char} };
-        assert 4u == as_c_str(s) {|p| position(p) {|c| c == 'o' as c_char} };
-        assert 5u == as_c_str(s) {|p| position(p) {|c| c == 0 as c_char } };
+        assert 2u == as_c_str(s, {|p| position(p, {|c| c == 'l' as c_char})});
+        assert 4u == as_c_str(s, {|p| position(p, {|c| c == 'o' as c_char})});
+        assert 5u == as_c_str(s, {|p| position(p, {|c| c == 0 as c_char })});
     }
 }
 
@@ -182,11 +182,11 @@ fn test_buf_len() {
     let s0 = "hello";
     let s1 = "there";
     let s2 = "thing";
-    str::as_c_str(s0) {|p0|
-        str::as_c_str(s1) {|p1|
-            str::as_c_str(s2) {|p2|
+    do str::as_c_str(s0) {|p0|
+        do str::as_c_str(s1) {|p1|
+            do str::as_c_str(s2) {|p2|
                 let v = ~[p0, p1, p2, null()];
-                vec::as_buf(v) {|vp|
+                do vec::as_buf(v) {|vp|
                     assert unsafe { buf_len(vp) } == 3u;
                 }
             }

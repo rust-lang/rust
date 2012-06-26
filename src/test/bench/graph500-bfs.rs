@@ -60,24 +60,24 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
         }
     }
 
-    vec::from_fn((1u << scale) * edgefactor) {|_i|
+    do vec::from_fn((1u << scale) * edgefactor) {|_i|
         choose_edge(0i64, 0i64, scale, r)
     }
 }
 
 fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
-    let graph = vec::from_fn(N) {|_i| 
+    let graph = do vec::from_fn(N) {|_i| 
         map::hashmap::<node_id, ()>({|x| x as uint }, {|x, y| x == y })
     };
 
-    vec::each(edges) {|e| 
+    do vec::each(edges) {|e| 
         let (i, j) = e;
         map::set_add(graph[i], j);
         map::set_add(graph[j], i);
         true
     }
 
-    graph.map() {|v|
+    do graph.map() {|v|
         map::vec_from_set(v)
     }
 }
@@ -89,9 +89,9 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
     while keys.size() < n {
         let k = r.gen_uint_range(0u, graph.len());
 
-        if graph[k].len() > 0u && vec::any(graph[k]) {|i|
+        if graph[k].len() > 0u && vec::any(graph[k], {|i|
             i != k as node_id
-        } {
+        }) {
             map::set_add(keys, k as node_id);
         }
     }
@@ -113,7 +113,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     while Q.size() > 0u {
         let t = Q.pop_front();
 
-        graph[t].each() {|k| 
+        do graph[t].each() {|k| 
             if marks[k] == -1i64 {
                 marks[k] = t;
                 Q.add_back(k);
@@ -140,7 +140,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         black(node_id)
     };
 
-    let mut colors = vec::from_fn(graph.len()) {|i|
+    let mut colors = do vec::from_fn(graph.len()) {|i|
         if i as node_id == key {
             gray(key)
         }
@@ -161,7 +161,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         // Do the BFS.
         log(info, #fmt("PBFS iteration %?", i));
         i += 1u;
-        colors = colors.mapi() {|i, c|
+        colors = do colors.mapi() {|i, c|
             let c : color = c;
             alt c {
               white {
@@ -171,7 +171,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
                 
                 let mut color = white;
 
-                neighbors.each() {|k|
+                do neighbors.each() {|k|
                     if is_gray(colors[k]) {
                         color = gray(k);
                         false
@@ -188,7 +188,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     }
 
     // Convert the results.
-    vec::map(colors) {|c|
+    do vec::map(colors) {|c|
         alt c {
           white { -1i64 }
           black(parent) { parent }
@@ -209,7 +209,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
         black(node_id)
     };
 
-    let mut colors = vec::from_fn((*arc::get(&graph)).len()) {|i|
+    let mut colors = do vec::from_fn((*arc::get(&graph)).len()) {|i|
         if i as node_id == key {
             gray(key)
         }
@@ -235,7 +235,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
 
         let color = arc::arc(colors);
 
-        colors = par::mapi_factory(*arc::get(&color)) {||
+        colors = do par::mapi_factory(*arc::get(&color)) {||
             let colors = arc::clone(&color);
             let graph = arc::clone(&graph);
             fn~(i: uint, c: color) -> color {
@@ -250,7 +250,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
                     
                     let mut color = white;
                     
-                    neighbors.each() {|k|
+                    do neighbors.each() {|k|
                         if is_gray(colors[k]) {
                             color = gray(k);
                             false
@@ -268,7 +268,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
     }
 
     // Convert the results.
-    par::map(colors) {|c|
+    do par::map(colors) {|c|
         alt c {
           white { -1i64 }
           black(parent) { parent }
@@ -291,7 +291,7 @@ fn validate(edges: ~[(node_id, node_id)],
     log(info, "Verifying tree structure...");
 
     let mut status = true;
-    let level = tree.map() {|parent| 
+    let level = do tree.map() {|parent| 
         let mut parent = parent;
         let mut path = ~[];
 
@@ -322,7 +322,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     log(info, "Verifying tree edges...");
 
-    let status = tree.alli() {|k, parent|
+    let status = do tree.alli() {|k, parent|
         if parent != root && parent != -1i64 {
             level[parent] == level[k] - 1
         }
@@ -338,7 +338,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     log(info, "Verifying graph edges...");
 
-    let status = edges.all() {|e| 
+    let status = do edges.all() {|e| 
         let (u, v) = e;
 
         abs(level[u] - level[v]) <= 1
@@ -355,7 +355,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     log(info, "Verifying tree and graph edges...");
 
-    let status = par::alli(tree) {|u, v|
+    let status = do par::alli(tree) {|u, v|
         let u = u as node_id;
         if v == -1i64 || u == root {
             true
@@ -397,7 +397,7 @@ fn main(args: ~[str]) {
     let stop = time::precise_time_s();
 
     let mut total_edges = 0u;
-    vec::each(graph) {|edges| total_edges += edges.len(); true };
+    vec::each(graph, {|edges| total_edges += edges.len(); true });
 
     io::stdout().write_line(#fmt("Generated graph with %? edges in %? seconds.",
                                  total_edges / 2u,
@@ -408,7 +408,7 @@ fn main(args: ~[str]) {
 
     let graph_arc = arc::arc(copy graph);
 
-    gen_search_keys(graph, num_keys).map() {|root|
+    do gen_search_keys(graph, num_keys).map() {|root|
         io::stdout().write_line("");
         io::stdout().write_line(#fmt("Search key: %?", root));
 

@@ -273,7 +273,7 @@ fn lookup_lint(dict: lint_dict, s: str)
 }
 
 fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
-    cx.with_warn_attrs(i.attrs) {|cx|
+    do cx.with_warn_attrs(i.attrs) {|cx|
         if !cx.is_default {
             cx.sess.warning_settings.settings_map.insert(i.id, cx.curr);
         }
@@ -297,7 +297,7 @@ fn build_settings_crate(sess: session::session, crate: @ast::crate) {
         cx.set_level(lint, level);
     }
 
-    cx.with_warn_attrs(crate.node.attrs) {|cx|
+    do cx.with_warn_attrs(crate.node.attrs) {|cx|
         // Copy out the default settings
         for cx.curr.each {|k, v|
             sess.warning_settings.default_settings.insert(k, v);
@@ -357,7 +357,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
                        decl: ast::fn_decl) {
-        let tys = vec::map(decl.inputs) {|a| a.ty };
+        let tys = vec::map(decl.inputs, {|a| a.ty });
         for vec::each(vec::append_one(tys, decl.output)) {|ty|
             alt ty.node {
               ast::ty_path(_, id) {

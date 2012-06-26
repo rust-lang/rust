@@ -17,14 +17,14 @@ import comm::recv;
 fn grandchild(c: chan<int>) { send(c, 42); }
 
 fn child(c: chan<int>) {
-    task::spawn {|| grandchild(c); }
+    task::spawn({|| grandchild(c); })
 }
 
 fn main() {
     let p = comm::port();
     let ch = chan(p);
 
-    task::spawn {|| child(ch); }
+    task::spawn({|| child(ch); });
 
     let x: int = recv(p);
 

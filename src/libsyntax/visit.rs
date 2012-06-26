@@ -151,7 +151,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
           for ifaces.each {|p| visit_path(p.path, e, v); }
           visit_class_ctor_helper(ctor, i.ident, tps,
                                   ast_util::local_def(i.id), e, v);
-          option::iter(m_dtor) {|dtor|
+          do option::iter(m_dtor) {|dtor|
                   visit_class_dtor_helper(dtor, tps,
                      ast_util::local_def(i.id), e, v)};
       }
@@ -227,7 +227,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     alt p.node {
       pat_enum(path, children) {
         visit_path(path, e, v);
-        option::iter(children) {|children|
+        do option::iter(children) {|children|
                 for children.each {|child| v.visit_pat(child, e, v); }}
       }
       pat_rec(fields, _) {
@@ -239,7 +239,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       }
       pat_ident(path, inner) {
           visit_path(path, e, v);
-          option::iter(inner) {|subpat| v.visit_pat(subpat, e, v)};
+          do option::iter(inner) {|subpat| v.visit_pat(subpat, e, v)};
       }
       pat_lit(ex) { v.visit_expr(ex, e, v); }
       pat_range(e1, e2) { v.visit_expr(e1, e, v); v.visit_expr(e2, e, v); }
@@ -344,7 +344,7 @@ fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
 fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
     alt m.node {
       ast::mac_invoc(pth, arg, body) {
-        option::map(arg) {|arg| v.visit_expr(arg, e, v)}; }
+        option::map(arg, {|arg| v.visit_expr(arg, e, v)}); }
       ast::mac_invoc_tt(pth, tt) { /* no user-serviceable parts inside */ }
       ast::mac_embed_type(ty) { v.visit_ty(ty, e, v); }
       ast::mac_embed_block(blk) { v.visit_block(blk, e, v); }

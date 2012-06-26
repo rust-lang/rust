@@ -88,9 +88,9 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     alt io::read_whole_file(res_rel_file(cx, sp, file)) {
       result::ok(src) {
-        let u8_exprs = vec::map(src) { |char: u8|
+        let u8_exprs = vec::map(src, { |char: u8|
             mk_lit(cx, sp, ast::lit_uint(char as u64, ast::ty_u8))
-        };
+        });
         ret mk_uniq_vec_e(cx, sp, u8_exprs);
       }
       result::err(e) {

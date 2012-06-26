@@ -56,7 +56,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       ast::expr_call(f, args, _) {
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         let scope_r = ty::re_scope(ex.id);
-        vec::iter2(args, arg_tys) { |arg, arg_ty|
+        do vec::iter2(args, arg_tys) { |arg, arg_ty|
             alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
               ast::by_mutbl_ref {
                 let arg_cmt = self.bccx.cat_expr(arg);
@@ -215,7 +215,7 @@ impl methods for gather_loan_ctxt {
             };
 
             let result = {
-                self.check_mutbl(req_mutbl, cmt).chain { |_ok|
+                do self.check_mutbl(req_mutbl, cmt).chain { |_ok|
                     self.bccx.preserve(cmt, opt_scope_id)
                 }
             };

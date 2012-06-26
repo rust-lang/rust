@@ -106,7 +106,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
       ast::proto_bare | ast::proto_box | ast::proto_uniq { cap_copy }
     };
 
-    vec::iter(*freevars) { |fvar|
+    do vec::iter(*freevars) { |fvar|
         let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
         alt cap_map.find(fvar_def_id) {
           option::some(_) { /* was explicitly named, do nothing */ }

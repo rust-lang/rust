@@ -9,7 +9,7 @@ pure fn range(from: uint, to: uint, f: fn(uint)) {
 }
 
 pure fn range2(from: uint, to: uint, f: fn(uint)) {
-    range(from, to) { |i|
+    do range(from, to) { |i|
         f(i*2u);
     }
 }
@@ -31,7 +31,7 @@ pure fn range6(from: uint, to: uint, x: @{f: fn(uint)}) {
 }
 
 pure fn range7(from: uint, to: uint) {
-    range(from, to) { |i|
+    do range(from, to) { |i|
         print(i); //! ERROR access to impure function prohibited in pure context
     }
 }

@@ -150,7 +150,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
 
     // Find the check function that enforces the appropriate bounds for this
     // kind of function:
-    with_appropriate_checker(cx, fn_id) { |chk|
+    do with_appropriate_checker(cx, fn_id) { |chk|
 
         // Begin by checking the variables in the capture clause, if any.
         // Here we slightly abuse the map function to both check and report
@@ -162,7 +162,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
           visit::fk_item_fn(*) | visit::fk_method(*) |
           visit::fk_ctor(*) | visit::fk_dtor(*) { @~[] }
         };
-        let captured_vars = (*cap_clause).map { |cap_item|
+        let captured_vars = do (*cap_clause).map { |cap_item|
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
@@ -251,7 +251,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_path(_) | expr_field(_, _, _) {
-        option::iter(cx.tcx.node_type_substs.find(e.id)) {|ts|
+        do option::iter(cx.tcx.node_type_substs.find(e.id)) {|ts|
             let bounds = alt check e.node {
               expr_path(_) {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
@@ -286,7 +286,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                   %s (%u tys), declared = %? (%u tys)",
                   tys_to_str(cx.tcx, ts), ts.len(), *bounds, (*bounds).len());
             }
-            vec::iter2(ts, *bounds) {|ty, bound|
+            do vec::iter2(ts, *bounds) {|ty, bound|
                 check_bounds(cx, e.id, e.span, ty, bound)
             }
         }
@@ -314,10 +314,10 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
 fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
     alt aty.node {
       ty_path(_, id) {
-        option::iter(cx.tcx.node_type_substs.find(id)) {|ts|
+        do option::iter(cx.tcx.node_type_substs.find(id)) {|ts|
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
-            vec::iter2(ts, *bounds) {|ty, bound|
+            do vec::iter2(ts, *bounds) {|ty, bound|
                 check_bounds(cx, aty.id, aty.span, ty, bound)
             }
         }

@@ -109,10 +109,10 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
             enum_ty
         } else {
             let rs = type_rscope(rp);
-            let args = variant.node.args.map { |va|
+            let args = variant.node.args.map({ |va|
                 let arg_ty = ccx.to_ty(rs, va.ty);
                 {mode: ast::expl(ast::by_copy), ty: arg_ty}
-            };
+            });
             ty::mk_fn(tcx, {purity: ast::pure_fn,
                             proto: ast::proto_box,
                             inputs: args,
@@ -137,17 +137,17 @@ fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
     let tcx = ccx.tcx;
     alt check tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_iface(_, rp, ms), _}, _) {
-        store_methods::<ast::ty_method>(ccx, id, ms) {|m|
+        store_methods::<ast::ty_method>(ccx, id, ms, {|m|
             ty_of_ty_method(ccx, m, rp)
-        };
+        });
       }
       ast_map::node_item(@{node: ast::item_class(_,_,its,_,_,rp), _}, _) {
         let (_,ms) = split_class_items(its);
         // All methods need to be stored, since lookup_method
         // relies on the same method cache for self-calls
-        store_methods::<@ast::method>(ccx, id, ms) {|m|
+        store_methods::<@ast::method>(ccx, id, ms, {|m|
             ty_of_method(ccx, m, rp)
-        };
+        });
       }
     }
 }
@@ -196,7 +196,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
     let if_fty = {
-        let dummy_tps = vec::from_fn((*if_m.tps).len()) { |i|
+        let dummy_tps = do vec::from_fn((*if_m.tps).len()) { |i|
             // hack: we don't know the def id of the impl tp, but it
             // is not important for unification
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
@@ -217,7 +217,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     // Replaces bound references to the self region with `with_r`.
     fn replace_bound_self(tcx: ty::ctxt, ty: ty::t,
                           with_r: ty::region) -> ty::t {
-        ty::fold_regions(tcx, ty) { |r, _in_fn|
+        do ty::fold_regions(tcx, ty) { |r, _in_fn|
             if r == ty::re_bound(ty::br_self) {with_r} else {r}
         }
     }
@@ -276,7 +276,7 @@ fn convert_methods(ccx: @crate_ctxt,
                    self_ty: ty::t) -> ~[converted_method] {
 
     let tcx = ccx.tcx;
-    vec::map(ms) { |m|
+    do vec::map(ms) { |m|
         write_ty_to_tcx(tcx, m.self_id, self_ty);
         let bounds = ty_param_bounds(ccx, m.tps);
         let mty = ty_of_method(ccx, m, rp);
@@ -330,8 +330,8 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
         // Write the ctor type
-        let t_args = ctor.node.dec.inputs.map {|a|
-                           ty_of_arg(ccx, type_rscope(rp), a, none)};
+        let t_args = ctor.node.dec.inputs.map({|a|
+                           ty_of_arg(ccx, type_rscope(rp), a, none)});
         let t_res = ty::mk_class(tcx, local_def(it.id),
                                  {self_r: alt rp {
                        ast::rp_none { none }
@@ -350,7 +350,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                           {bounds: tpt.bounds,
                            rp: rp,
                            ty: t_ctor});
-        option::iter(m_dtor) {|dtor|
+        do option::iter(m_dtor) {|dtor|
             // Write the dtor type
             let t_dtor = ty::mk_fn(
                 tcx,
@@ -553,7 +553,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
 
     fn compute_bounds(ccx: @crate_ctxt,
                       param: ast::ty_param) -> ty::param_bounds {
-        @vec::flat_map(*param.bounds) { |b|
+        @do vec::flat_map(*param.bounds) { |b|
             alt b {
               ast::bound_send { ~[ty::bound_send] }
               ast::bound_copy { ~[ty::bound_copy] }
@@ -576,7 +576,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
         }
     }
 
-    @params.map { |param|
+    @do params.map { |param|
         alt ccx.tcx.ty_param_bounds.find(param.id) {
           some(bs) { bs }
           none {
@@ -595,7 +595,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
 
     let bounds = ty_param_bounds(ccx, ty_params);
     let rb = in_binding_rscope(empty_rscope);
-    let input_tys = decl.inputs.map { |a| ty_of_arg(ccx, rb, a, none) };
+    let input_tys = decl.inputs.map({ |a| ty_of_arg(ccx, rb, a, none) });
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
     let t_fn = ty::mk_fn(ccx.tcx, {purity: decl.purity,

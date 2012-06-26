@@ -10,7 +10,7 @@ fn lp<T>(s: str, f: fn(str) -> T) -> T {
 
 fn apply<T>(s: str, f: fn(str) -> T) -> T {
     fn g<T>(s: str, f: fn(str) -> T) -> T {f(s)}
-    g(s) {|v| let r = f(v); r }
+    g(s, {|v| let r = f(v); r })
 }
 
 fn main() {}

@@ -192,9 +192,9 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
 }
 
 fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
-    let self_r = parse_opt(st) {|| parse_region(st) };
+    let self_r = parse_opt(st, {|| parse_region(st) });
 
-    let self_ty = parse_opt(st) {|| parse_ty(st, conv) };
+    let self_ty = parse_opt(st, {|| parse_ty(st, conv) });
 
     assert next(st) == '[';
     let mut params: [ty::t]/~ = []/~;

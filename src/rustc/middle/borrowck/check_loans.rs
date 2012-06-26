@@ -488,7 +488,7 @@ impl methods for check_loan_ctxt {
         let arg_tys =
             ty::ty_fn_args(
                 ty::node_id_to_type(self.tcx(), callee_id));
-        vec::iter2(args, arg_tys) { |arg, arg_ty|
+        do vec::iter2(args, arg_tys) { |arg, arg_ty|
             alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
               ast::by_move {
                 self.check_move_out(arg);
@@ -508,9 +508,9 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      visitor: visit::vt<check_loan_ctxt>) {
 
     #debug["purity on entry=%?", copy self.declared_purity];
-    save_and_restore(self.in_ctor) {||
-        save_and_restore(self.declared_purity) {||
-            save_and_restore(self.fn_args) {||
+    do save_and_restore(self.in_ctor) {||
+        do save_and_restore(self.declared_purity) {||
+            do save_and_restore(self.fn_args) {||
                 let is_stack_closure = self.is_stack_closure(id);
 
                 // In principle, we could consider fk_anon(*) or
@@ -637,7 +637,7 @@ fn check_loans_in_expr(expr: @ast::expr,
 fn check_loans_in_block(blk: ast::blk,
                         &&self: check_loan_ctxt,
                         vt: visit::vt<check_loan_ctxt>) {
-    save_and_restore(self.declared_purity) {||
+    do save_and_restore(self.declared_purity) {||
         self.check_for_conflicting_loans(blk.node.id);
 
         alt blk.node.rules {

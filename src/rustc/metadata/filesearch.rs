@@ -134,7 +134,7 @@ fn get_cargo_root() -> result<path, str> {
 }
 
 fn get_cargo_root_nearest() -> result<path, str> {
-    result::chain(get_cargo_root()) { |p|
+    do result::chain(get_cargo_root()) { |p|
         let cwd = os::getcwd();
         let mut dirname = path::dirname(cwd);
         let mut dirpath = path::split(dirname);
@@ -158,13 +158,13 @@ fn get_cargo_root_nearest() -> result<path, str> {
 }
 
 fn get_cargo_lib_path() -> result<path, str> {
-    result::chain(get_cargo_root()) { |p|
+    do result::chain(get_cargo_root()) { |p|
         result::ok(path::connect(p, libdir()))
     }
 }
 
 fn get_cargo_lib_path_nearest() -> result<path, str> {
-    result::chain(get_cargo_root_nearest()) { |p|
+    do result::chain(get_cargo_root_nearest()) { |p|
         result::ok(path::connect(p, libdir()))
     }
 }

@@ -129,12 +129,12 @@ impl methods for reflector {
 
           ty::ty_vec(mt) { self.bracketed_mt("vec", mt, ~[]) }
           ty::ty_estr(vst) {
-            self.vstore_name_and_extra(t, vst) {|name, extra|
+            do self.vstore_name_and_extra(t, vst) {|name, extra|
                 self.visit("estr_" + name, extra)
             }
           }
           ty::ty_evec(mt, vst) {
-            self.vstore_name_and_extra(t, vst) {|name, extra|
+            do self.vstore_name_and_extra(t, vst) {|name, extra|
                 self.bracketed_mt("evec_" + name, mt, extra)
             }
           }

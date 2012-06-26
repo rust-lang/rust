@@ -31,7 +31,7 @@ fn delayed_send<T: copy send>(iotask: iotask,
             let timer_done_ch_ptr = ptr::addr_of(timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(timer);
-            iotask::interact(iotask) {|loop_ptr|
+            do iotask::interact(iotask) {|loop_ptr|
                 let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
                 if (init_result == 0i32) {
                     let start_result = uv::ll::timer_start(
@@ -151,7 +151,7 @@ mod test {
     #[test]
     fn test_gl_timer_sleep_stress1() {
         let hl_loop = uv::global_loop::get();
-        iter::repeat(200u) {||
+        do iter::repeat(200u) {||
             sleep(hl_loop, 1u);
         }
     }
@@ -171,14 +171,14 @@ mod test {
 
         };
 
-        iter::repeat(repeat) {||
+        do iter::repeat(repeat) {||
 
             for spec.each {|spec|
                 let (times, maxms) = spec;
-                task::spawn {||
+                do task::spawn {||
                     import rand::*;
                     let rng = rng();
-                    iter::repeat(times) {||
+                    do iter::repeat(times) {||
                         sleep(hl_loop, rng.next() as uint % maxms);
                     }
                     comm::send(ch, ());
@@ -186,7 +186,7 @@ mod test {
             }
         }
 
-        iter::repeat(repeat * spec.len()) {||
+        do iter::repeat(repeat * spec.len()) {||
             comm::recv(po)
         }
     }
@@ -204,14 +204,14 @@ mod test {
         let mut failures = 0;
         let hl_loop = uv::global_loop::get();
 
-        iter::repeat(times as uint) {||
+        do iter::repeat(times as uint) {||
             task::yield();
 
             let expected = rand::rng().gen_str(16u);
             let test_po = comm::port::<str>();
             let test_ch = comm::chan(test_po);
 
-            task::spawn() {||
+            do task::spawn() {||
                 delayed_send(hl_loop, 1u, test_ch, expected);
             };
 
@@ -231,12 +231,12 @@ mod test {
         let mut failures = 0;
         let hl_loop = uv::global_loop::get();
 
-        iter::repeat(times as uint) {||
+        do iter::repeat(times as uint) {||
             let expected = rand::rng().gen_str(16u);
             let test_po = comm::port::<str>();
             let test_ch = comm::chan(test_po);
 
-            task::spawn() {||
+            do task::spawn() {||
                 delayed_send(hl_loop, 1000u, test_ch, expected);
             };
 

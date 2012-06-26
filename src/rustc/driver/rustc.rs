@@ -211,7 +211,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
     let p = comm::port();
     let ch = comm::chan(p);
 
-    alt task::try  {||
+    alt do task::try  {||
 
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
@@ -259,7 +259,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 }
 
 fn main(args: ~[str]) {
-    monitor {|demitter|
+    do monitor {|demitter|
         run_compiler(args, demitter);
     }
 }

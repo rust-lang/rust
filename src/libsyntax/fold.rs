@@ -255,7 +255,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
               let ctor_body = fld.fold_block(ctor.node.body);
               let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
               let ctor_id   = fld.new_id(ctor.node.id);
-              let dtor = option::map(m_dtor) {|dtor|
+              let dtor = do option::map(m_dtor) {|dtor|
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
                 {node: {body: dtor_body,
@@ -273,7 +273,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_impl(tps, rp, ifce, ty, methods) {
               item_impl(fold_ty_params(tps, fld),
                         rp,
-                        ifce.map { |p| fold_iface_ref(p, fld) },
+                        ifce.map({ |p| fold_iface_ref(p, fld) }),
                         fld.fold_ty(ty),
                         vec::map(methods, fld.fold_method))
           }
@@ -332,8 +332,8 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           }
           pat_lit(e) { pat_lit(fld.fold_expr(e)) }
           pat_enum(pth, pats) {
-              pat_enum(fld.fold_path(pth), option::map(pats)
-                       {|pats| vec::map(pats, fld.fold_pat)})
+              pat_enum(fld.fold_path(pth), option::map(pats,
+                       {|pats| vec::map(pats, fld.fold_pat)}))
           }
           pat_rec(fields, etc) {
             let mut fs = ~[];
@@ -490,9 +490,9 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_vec(mt) {ty_vec(fold_mt(mt, fld))}
       ty_ptr(mt) {ty_ptr(fold_mt(mt, fld))}
       ty_rptr(region, mt) {ty_rptr(region, fold_mt(mt, fld))}
-      ty_rec(fields) {ty_rec(vec::map(fields) {|f| fold_field(f, fld)})}
+      ty_rec(fields) {ty_rec(vec::map(fields, {|f| fold_field(f, fld)}))}
       ty_fn(proto, decl) {ty_fn(proto, fold_fn_decl(decl, fld))}
-      ty_tup(tys) {ty_tup(vec::map(tys) {|ty| fld.fold_ty(ty)})}
+      ty_tup(tys) {ty_tup(vec::map(tys, {|ty| fld.fold_ty(ty)}))}
       ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
       ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty),
                                 vec::map(constrs, fld.fold_ty_constr))}

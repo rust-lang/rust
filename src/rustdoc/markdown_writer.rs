@@ -56,7 +56,7 @@ fn markdown_writer(
     page: doc::page
 ) -> writer {
     let filename = make_local_filename(config, page);
-    generic_writer {|markdown|
+    do generic_writer {|markdown|
         write_file(filename, markdown);
     }
 }
@@ -78,7 +78,7 @@ fn pandoc_writer(
         "--output=" + filename
     ];
 
-    generic_writer {|markdown|
+    do generic_writer {|markdown|
         import io::writer_util;
 
         #debug("pandoc cmd: %s", pandoc_cmd);
@@ -101,14 +101,14 @@ fn pandoc_writer(
 
         let stdout_po = comm::port();
         let stdout_ch = comm::chan(stdout_po);
-        task::spawn_sched(task::single_threaded) {||
+        do task::spawn_sched(task::single_threaded) {||
             comm::send(stdout_ch, readclose(pipe_out.in));
         }
         let stdout = comm::recv(stdout_po);
 
         let stderr_po = comm::port();
         let stderr_ch = comm::chan(stderr_po);
-        task::spawn_sched(task::single_threaded) {||
+        do task::spawn_sched(task::single_threaded) {||
             comm::send(stderr_ch, readclose(pipe_err.in));
         }
         let stderr = comm::recv(stderr_po);
@@ -137,7 +137,7 @@ fn readclose(fd: libc::c_int) -> str {
 }
 
 fn generic_writer(+process: fn~(markdown: str)) -> writer {
-    let ch = task::spawn_listener {|po: comm::port<writeinstr>|
+    let ch = do task::spawn_listener {|po: comm::port<writeinstr>|
         let mut markdown = "";
         let mut keep_going = true;
         while keep_going {
@@ -236,7 +236,7 @@ fn should_name_mod_file_names_by_path() {
 #[cfg(test)]
 mod test {
     fn mk_doc(name: str, source: str) -> doc::doc {
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, name);
             let doc = path_pass::mk_pass().f(srv, doc);
             doc
@@ -262,7 +262,7 @@ fn future_writer_factory(
     let writer_factory = fn~(page: doc::page) -> writer {
         let writer_po = comm::port();
         let writer_ch = comm::chan(writer_po);
-        task::spawn {||
+        do task::spawn {||
             let (writer, future) = future_writer();
             comm::send(writer_ch, writer);
             let s = future::get(future);
@@ -280,7 +280,7 @@ fn future_writer() -> (writer, future::future<str>) {
     let writer = fn~(+instr: writeinstr) {
         comm::send(chan, copy instr);
     };
-    let future = future::from_fn {||
+    let future = do future::from_fn {||
         let mut res = "";
         loop {
             alt comm::recv(port) {

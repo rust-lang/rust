@@ -733,7 +733,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_class(did,substs) {
         // Call the dtor if there is one
-        option::map_default(ty::ty_dtor(bcx.tcx(), did), bcx) {|dt_id|
+        do option::map_default(ty::ty_dtor(bcx.tcx(), did), bcx) {|dt_id|
           trans_class_drop(bcx, v, dt_id, did, substs)
         }
       }
@@ -746,7 +746,7 @@ fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
                     class_did: ast::def_id,
                     substs: ty::substs) -> block {
   let drop_flag = GEPi(bcx, v0, ~[0u, 0u]);
-  with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|cx|
+  do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|cx|
     let mut bcx = cx;
       // We have to cast v0
      let classptr = GEPi(bcx, v0, ~[0u, 1u]);
@@ -864,12 +864,12 @@ fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t) -> block {
 
     let llbox_ty = T_opaque_box_ptr(ccx);
     let box_ptr = PointerCast(bcx, box_ptr, llbox_ty);
-    with_cond(bcx, IsNotNull(bcx, box_ptr)) {|bcx|
+    do with_cond(bcx, IsNotNull(bcx, box_ptr)) {|bcx|
         let rc_ptr = GEPi(bcx, box_ptr, ~[0u, abi::box_field_refcnt]);
         let rc = Sub(bcx, Load(bcx, rc_ptr), C_int(ccx, 1));
         Store(bcx, rc, rc_ptr);
         let zero_test = ICmp(bcx, lib::llvm::IntEQ, C_int(ccx, 0), rc);
-        with_cond(bcx, zero_test) {|bcx| free_ty(bcx, box_ptr, t)}
+        with_cond(bcx, zero_test, {|bcx| free_ty(bcx, box_ptr, t)})
     }
 }
 
@@ -1354,7 +1354,7 @@ fn copy_val(cx: block, action: copy_action, dst: ValueRef,
         let dstcmp = load_if_immediate(cx, dst, t);
         let cast = PointerCast(cx, dstcmp, val_ty(src));
         // Self-copy check
-        with_cond(cx, ICmp(cx, lib::llvm::IntNE, cast, src)) {|bcx|
+        do with_cond(cx, ICmp(cx, lib::llvm::IntNE, cast, src)) {|bcx|
             copy_val_no_check(bcx, action, dst, src, t)
         }
     } else {
@@ -1637,7 +1637,7 @@ fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
                           ty_to_str(cx.ccx().tcx, rhs_t));
       }
     };
-    with_cond(cx, is_zero) {|bcx|
+    do with_cond(cx, is_zero) {|bcx|
         trans_fail(bcx, some(span), text)
     }
 }
@@ -1870,7 +1870,7 @@ fn trans_lazy_binop(bcx: block, op: lazy_binop_ty, a: @ast::expr,
                     b: @ast::expr, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("trans_lazy_binop");
     let {bcx: past_lhs, val: lhs} = {
-        with_scope_result(bcx, a.info(), "lhs") { |bcx|
+        do with_scope_result(bcx, a.info(), "lhs") { |bcx|
             trans_temp_expr(bcx, a)
         }
     };
@@ -1882,7 +1882,7 @@ fn trans_lazy_binop(bcx: block, op: lazy_binop_ty, a: @ast::expr,
       lazy_or { CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb); }
     }
     let {bcx: past_rhs, val: rhs} = {
-        with_scope_result(before_rhs, b.info(), "rhs") { |bcx|
+        do with_scope_result(before_rhs, b.info(), "rhs") { |bcx|
             trans_temp_expr(bcx, b)
         }
     };
@@ -2331,7 +2331,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
               ast::item_enum(_, _, _) {
                 let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
                 let vs_there = ty::enum_variants(ccx.tcx, parent_id);
-                vec::iter2(*vs_here, *vs_there) {|here, there|
+                do vec::iter2(*vs_here, *vs_there) {|here, there|
                     if there.id == fn_id { my_id = here.id.node; }
                     ccx.external.insert(there.id, some(here.id.node));
                 }
@@ -2622,7 +2622,7 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     #debug("trans_index: len %s", val_str(bcx.ccx().tn, len));
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
-    let bcx = with_cond(bcx, bounds_check) {|bcx|
+    let bcx = do with_cond(bcx, bounds_check) {|bcx|
         // fail: bad bounds check.
         trans_fail(bcx, some(ex.span), "bounds check")
     };
@@ -3109,7 +3109,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
       arg_exprs(es) {
         let llarg_tys = type_of_explicit_args(ccx, arg_tys);
         let last = es.len() - 1u;
-        vec::iteri(es) {|i, e|
+        do vec::iteri(es) {|i, e|
             let r = trans_arg_expr(bcx, arg_tys[i], llarg_tys[i],
                                    e, temp_cleanups, if i == last { ret_flag }
                                    else { none }, 0u);
@@ -3125,7 +3125,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
     // now that all arguments have been successfully built, we can revoke any
     // temporary cleanups, as they are only needed if argument construction
     // should fail (for example, cleanup of copy mode args).
-    vec::iter(temp_cleanups) {|c|
+    do vec::iter(temp_cleanups) {|c|
         revoke_clean(bcx, c)
     }
 
@@ -3169,7 +3169,7 @@ fn trans_call_inner(
     args: call_args,
     dest: dest) -> block {
 
-    with_scope(in_cx, call_info, "call") {|cx|
+    do with_scope(in_cx, call_info, "call") {|cx|
         let ret_in_loop = alt args {
           arg_exprs(args) { args.len() > 0u && alt vec::last(args).node {
             ast::expr_loop_body(@{node: ast::expr_fn_block(_, body, _), _}) {
@@ -3237,8 +3237,8 @@ fn trans_call_inner(
         if ty::type_is_bot(ret_ty) {
             Unreachable(bcx);
         } else if ret_in_loop {
-            bcx = with_cond(bcx, Load(bcx, option::get(ret_flag))) {|bcx|
-                option::iter(copy bcx.fcx.loop_ret) {|lret|
+            bcx = do with_cond(bcx, Load(bcx, option::get(ret_flag))) {|bcx|
+                do option::iter(copy bcx.fcx.loop_ret) {|lret|
                     Store(bcx, C_bool(true), lret.flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);
                 }
@@ -3297,7 +3297,7 @@ fn need_invoke(bcx: block) -> bool {
 
 fn have_cached_lpad(bcx: block) -> bool {
     let mut res = false;
-    in_lpad_scope_cx(bcx) {|inf|
+    do in_lpad_scope_cx(bcx) {|inf|
         alt inf.landing_pad {
           some(_) { res = true; }
           none { res = false; }
@@ -3325,7 +3325,7 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
     let _icx = bcx.insn_ctxt("get_landing_pad");
 
     let mut cached = none, pad_bcx = bcx; // Guaranteed to be set below
-    in_lpad_scope_cx(bcx) {|inf|
+    do in_lpad_scope_cx(bcx) {|inf|
         // If there is a valid landing pad still around, use it
         alt copy inf.landing_pad {
           some(target) { cached = some(target); }
@@ -3585,7 +3585,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             ret alt::trans_alt(bcx, e, expr, arms, mode, dest);
           }
           ast::expr_block(blk) {
-            ret with_scope(bcx, blk.info(), "block-expr body") {|bcx|
+            ret do with_scope(bcx, blk.info(), "block-expr body") {|bcx|
                 trans_block(bcx, blk, dest)
             };
           }
@@ -3697,7 +3697,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             otherwise. */
             let c = get_extern_const(bcx.ccx().externs, bcx.ccx().llmod,
                                      "check_claims", T_bool());
-            ret with_cond(bcx, Load(bcx, c)) {|bcx|
+            ret do with_cond(bcx, Load(bcx, c)) {|bcx|
                 trans_check_expr(bcx, e, a, "Claim")
             };
           }
@@ -3895,13 +3895,14 @@ fn trans_log(log_ex: @ast::expr, lvl: @ast::expr,
     };
     let current_level = Load(bcx, global);
     let {bcx, val: level} = {
-        with_scope_result(bcx, lvl.info(), "level") {|bcx|
+        do with_scope_result(bcx, lvl.info(), "level") {|bcx|
             trans_temp_expr(bcx, lvl)
         }
     };
 
-    with_cond(bcx, ICmp(bcx, lib::llvm::IntUGE, current_level, level)) {|bcx|
-        with_scope(bcx, log_ex.info(), "log") {|bcx|
+    do with_cond(bcx, ICmp(bcx, lib::llvm::IntUGE, current_level, level)) {
+        |bcx|
+        do with_scope(bcx, log_ex.info(), "log") {|bcx|
             let {bcx, val, _} = trans_temp_expr(bcx, e);
             let e_ty = expr_ty(bcx, e);
             let tydesc = get_tydesc_simple(ccx, e_ty);
@@ -3919,11 +3920,11 @@ fn trans_check_expr(bcx: block, chk_expr: @ast::expr,
     let _icx = bcx.insn_ctxt("trans_check_expr");
     let expr_str = s + " " + expr_to_str(pred_expr) + " failed";
     let {bcx, val} = {
-        with_scope_result(bcx, chk_expr.info(), "check") {|bcx|
+        do with_scope_result(bcx, chk_expr.info(), "check") {|bcx|
             trans_temp_expr(bcx, pred_expr)
         }
     };
-    with_cond(bcx, Not(bcx, val)) {|bcx|
+    do with_cond(bcx, Not(bcx, val)) {|bcx|
         trans_fail(bcx, some(pred_expr.span), expr_str)
     }
 }
@@ -4159,7 +4160,7 @@ fn new_block(cx: fn_ctxt, parent: option<block>, +kind: block_kind,
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
     let bcx = mk_block(llbb, parent, kind, opt_node_info, cx);
-    option::iter(parent) {|cx|
+    do option::iter(parent) {|cx|
         if cx.unreachable { Unreachable(bcx); }
     };
     ret bcx;
@@ -4223,7 +4224,7 @@ fn trans_block_cleanups_(bcx: block, cleanup_cx: block, is_lpad: bool) ->
     alt check cleanup_cx.kind {
       block_scope({cleanups, _}) {
         let cleanups = copy cleanups;
-        vec::riter(cleanups) {|cu|
+        do vec::riter(cleanups) {|cu|
             alt cu {
               clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) {
                 // Some types don't need to be cleaned up during
@@ -4361,7 +4362,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     };
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
-        option::iter(simple_name) {|name|
+        do option::iter(simple_name) {|name|
             str::as_c_str(*name, {|buf|
                 llvm::LLVMSetValueName(val, buf)
             });
@@ -4375,7 +4376,7 @@ fn trans_block(bcx: block, b: ast::blk, dest: dest)
     -> block {
     let _icx = bcx.insn_ctxt("trans_block");
     let mut bcx = bcx;
-    block_locals(b) {|local| bcx = alloc_local(bcx, local); };
+    do block_locals(b) {|local| bcx = alloc_local(bcx, local); };
     for vec::each(b.node.stmts) {|s|
         debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
@@ -4871,7 +4872,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   /* Look up the parent class's def_id */
   let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
   /* Substitute in the class type if necessary */
-  option::iter(psubsts) {|ss|
+  do option::iter(psubsts) {|ss|
     class_ty = ty::subst_tps(tcx, ss.tys, class_ty);
   }
 
@@ -4889,7 +4890,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
 
   /* If we're monomorphizing, register the monomorphized decl
      for the dtor */
-  option::iter(hash_id) {|h_id|
+  do option::iter(hash_id) {|h_id|
     ccx.monomorphized.insert(h_id, lldecl);
   }
   /* Translate the dtor body */
@@ -4966,7 +4967,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
           trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
                            get_item_val(ccx, ctor.node.id), psubsts,
                            ctor.node.id, local_def(item.id), ctor.span);
-          option::iter(m_dtor) {|dtor|
+          do option::iter(m_dtor) {|dtor|
              trans_class_dtor(ccx, *path, dtor.node.body,
                dtor.node.id, none, none, local_def(item.id));
           };

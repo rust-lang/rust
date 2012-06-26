@@ -41,9 +41,9 @@ fn map_slices<A: copy send, B: copy send>(
         while base < len {
             let end = uint::min(len, base + items_per_task);
             // FIXME: why is the ::<A, ()> annotation required here? (#2617)
-            vec::unpack_slice::<A, ()>(xs) {|p, _len|
+            do vec::unpack_slice::<A, ()>(xs) {|p, _len|
                 let f = f();
-                let f = future_spawn() {|copy base|
+                let f = do future_spawn() {|copy base|
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
@@ -66,7 +66,7 @@ fn map_slices<A: copy send, B: copy send>(
         log(info, #fmt("num_tasks: %?", (num_tasks, futures.len())));
         assert(num_tasks == futures.len());
 
-        let r = futures.map() {|ys|
+        let r = do futures.map() {|ys|
             ys.get()
         };
         assert(r.len() == futures.len());
@@ -76,23 +76,23 @@ fn map_slices<A: copy send, B: copy send>(
 
 #[doc="A parallel version of map."]
 fn map<A: copy send, B: copy send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
-    vec::concat(map_slices(xs) {||
+    vec::concat(map_slices(xs, {||
         fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
             vec::map(slice, f)
         }
-    })
+    }))
 }
 
 #[doc="A parallel version of mapi."]
 fn mapi<A: copy send, B: copy send>(xs: ~[A],
                                     f: fn~(uint, A) -> B) -> ~[B] {
-    let slices = map_slices(xs) {||
+    let slices = map_slices(xs, {||
         fn~(base: uint, slice : &[A], copy f) -> ~[B] {
-            vec::mapi(slice) {|i, x|
+            vec::mapi(slice, {|i, x|
                 f(i + base, x)
-            }
+            })
         }
-    };
+    });
     let r = vec::concat(slices);
     log(info, (r.len(), xs.len()));
     assert(r.len() == xs.len());
@@ -105,14 +105,14 @@ In this case, f is a function that creates functions to run over the
 inner elements. This is to skirt the need for copy constructors."]
 fn mapi_factory<A: copy send, B: copy send>(
     xs: ~[A], f: fn() -> fn~(uint, A) -> B) -> ~[B] {
-    let slices = map_slices(xs) {||
+    let slices = map_slices(xs, {||
         let f = f();
         fn~(base: uint, slice : &[A], move f) -> ~[B] {
-            vec::mapi(slice) {|i, x|
+            vec::mapi(slice, {|i, x|
                 f(i + base, x)
-            }
+            })
         }
-    };
+    });
     let r = vec::concat(slices);
     log(info, (r.len(), xs.len()));
     assert(r.len() == xs.len());
@@ -121,20 +121,20 @@ fn mapi_factory<A: copy send, B: copy send>(
 
 #[doc="Returns true if the function holds for all elements in the vector."]
 fn alli<A: copy send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
-    vec::all(map_slices(xs) {||
+    do vec::all(map_slices(xs, {||
         fn~(base: uint, slice : &[A], copy f) -> bool {
-            vec::alli(slice) {|i, x|
+            vec::alli(slice, {|i, x|
                 f(i + base, x)
-            }
+            })
         }
-    }) {|x| x }
+    })) {|x| x }
 }
 
 #[doc="Returns true if the function holds for any elements in the vector."]
 fn any<A: copy send>(xs: ~[A], f: fn~(A) -> bool) -> bool {
-    vec::any(map_slices(xs) {||
+    do vec::any(map_slices(xs, {||
         fn~(_base : uint, slice: &[A], copy f) -> bool {
             vec::any(slice, f)
         }
-    }) {|x| x }
+    })) {|x| x }
 }

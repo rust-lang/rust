@@ -55,9 +55,9 @@ fn build_mod_index(
     config: config::config
 ) -> doc::index {
     {
-        entries: par::anymap(doc.items) {|doc|
+        entries: par::anymap(doc.items, {|doc|
             item_to_entry(doc, config)
-        }
+        })
     }
 }
 
@@ -66,9 +66,9 @@ fn build_nmod_index(
     config: config::config
 ) -> doc::index {
     {
-        entries: par::anymap(doc.fns) {|doc|
+        entries: par::anymap(doc.fns, {|doc|
             item_to_entry(doc::fntag(doc), config)
-        }
+        })
     }
 }
 
@@ -215,7 +215,7 @@ fn should_index_foreign_mod_contents() {
 #[cfg(test)]
 mod test {
     fn mk_doc(output_style: config::output_style, source: str) -> doc::doc {
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
             let config = {
                 output_style: output_style
                 with config::default_config("whatever")

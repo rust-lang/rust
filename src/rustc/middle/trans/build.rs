@@ -672,7 +672,7 @@ fn Call(cx: block, Fn: ValueRef, Args: ~[ValueRef]) -> ValueRef {
 
         #debug["Call(Fn=%s, Args=%?)",
                val_str(cx.ccx().tn, Fn),
-               Args.map { |arg| val_str(cx.ccx().tn, arg) }];
+               Args.map({ |arg| val_str(cx.ccx().tn, arg) })];
 
         ret llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                 Args.len() as c_uint, noname());

@@ -6,7 +6,7 @@ class socket {
     drop { }
 
     fn set_identity()  {
-        closure { ||
+        do closure { ||
             setsockopt_bytes(copy self.sock)
         }
     }

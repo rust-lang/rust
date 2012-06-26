@@ -28,7 +28,7 @@ type nominal_id = @{did: ast::def_id, parent_id: option<ast::def_id>,
 fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
                  parent_id: option<ast::def_id>,
                  tps: ~[ty::t]) -> nominal_id {
-    let tps_norm = tps.map { |t| ty::normalize_ty(tcx, t) };
+    let tps_norm = tps.map({ |t| ty::normalize_ty(tcx, t) });
     @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 
@@ -49,7 +49,7 @@ fn eq_nominal_id(&&mi: nominal_id, &&ni: nominal_id) -> bool {
     if mi.did != ni.did {
         false
     } else {
-        vec::all2(mi.tps, ni.tps) { |m_tp, n_tp|
+        do vec::all2(mi.tps, ni.tps) { |m_tp, n_tp|
             ty::type_id(m_tp) == ty::type_id(n_tp)
         }
     }
@@ -137,7 +137,7 @@ enum enum_kind {
 
 fn enum_kind(ccx: @crate_ctxt, did: ast::def_id) -> enum_kind {
     let variants = ty::enum_variants(ccx.tcx, did);
-    if vec::any(*variants) {|v| vec::len(v.args) > 0u} {
+    if vec::any(*variants, {|v| vec::len(v.args) > 0u}) {
         if vec::len(*variants) == 1u { tk_newtype }
         else { tk_complex }
     } else {
@@ -338,7 +338,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
             ~[shape_res]
           }
         else { ~[shape_struct] }, sub = ~[];
-        option::iter(m_dtor_did) {|dtor_did|
+        do option::iter(m_dtor_did) {|dtor_did|
           let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
           let id = interner::intern(ccx.shape_cx.resources, ri);
           add_u16(s, id as u16);
@@ -391,7 +391,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     while i < ccx.shape_cx.tag_order.len() {
         let {did, substs} = ccx.shape_cx.tag_order[i];
         let variants = @ty::substd_enum_variants(ccx.tcx, did, substs);
-        vec::iter(*variants) {|v|
+        do vec::iter(*variants) {|v|
             offsets += ~[vec::len(data) as u16];
 
             let variant_shape = shape_of_variant(ccx, v);
@@ -583,7 +583,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     for uint::range(0u, len) {|i|
         let ri = interner::get(ccx.shape_cx.resources, i);
         for ri.tps.each() {|s| assert !ty::type_has_params(s); }
-        option::iter(ri.parent_id) {|id|
+        do option::iter(ri.parent_id) {|id|
             dtors += ~[trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];
         }
     }
@@ -742,7 +742,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
                                         ty::mk_u8(tcx),
                                         mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +
-              ty::lookup_class_fields(tcx, did).map {|f|
+              do ty::lookup_class_fields(tcx, did).map {|f|
                  let t = ty::lookup_field_type(tcx, did, f.id, substs);
                  {ident: f.ident,
                   mt: {ty: simplify_type(tcx, t), mutbl: ast::m_const}}
@@ -752,5 +752,5 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           _ { typ }
         }
     }
-    ty::fold_ty(tcx, typ) {|t| simplifier(tcx, t) }
+    ty::fold_ty(tcx, typ, {|t| simplifier(tcx, t) })
 }

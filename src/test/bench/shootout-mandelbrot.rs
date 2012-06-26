@@ -158,12 +158,12 @@ fn main(args: ~[str]) {
 
     let writep = comm::port();
     let writech = comm::chan(writep);
-    task::spawn {||
+    do task::spawn {||
         writer(path, writech, size);
     };
     let ch = comm::recv(writep);
     for uint::range(0_u, size) {|j|
-        task::spawn {|| chanmb(j, size, ch);};
+        do task::spawn {|| chanmb(j, size, ch);};
         if j % yieldevery == 0_u {
             #debug("Y %u", j);
             task::yield();

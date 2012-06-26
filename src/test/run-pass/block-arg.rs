@@ -3,33 +3,33 @@ fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];
 
     // Statement form does not require parentheses:
-    vec::iter(v) { |i|
+    vec::iter(v, { |i|
         log(info, i);
-    }
+    });
 
     // Usable at all:
-    let mut any_negative = vec::any(v) { |e| float::is_negative(e) };
+    let mut any_negative = vec::any(v, { |e| float::is_negative(e) });
     assert any_negative;
 
     // Higher precedence than assignments:
-    any_negative = vec::any(v) { |e| float::is_negative(e) };
+    any_negative = vec::any(v, { |e| float::is_negative(e) });
     assert any_negative;
 
     // Higher precedence than unary operations:
-    let abs_v = vec::map(v) { |e| float::abs(e) };
-    assert vec::all(abs_v) { |e| float::is_nonnegative(e) };
-    assert !vec::any(abs_v) { |e| float::is_negative(e) };
+    let abs_v = vec::map(v, { |e| float::abs(e) });
+    assert vec::all(abs_v, { |e| float::is_nonnegative(e) });
+    assert !vec::any(abs_v, { |e| float::is_negative(e) });
 
     // Usable in funny statement-like forms:
-    if !vec::any(v) { |e| float::is_positive(e) } {
+    if !vec::any(v, { |e| float::is_positive(e) }) {
         assert false;
     }
-    alt vec::all(v) { |e| float::is_negative(e) } {
+    alt vec::all(v, { |e| float::is_negative(e) }) {
         true { fail "incorrect answer."; }
         false { }
     }
     alt 3 {
-      _ if vec::any(v) { |e| float::is_negative(e) } {
+      _ if vec::any(v, { |e| float::is_negative(e) }) {
       }
       _ {
         fail "wrong answer.";
@@ -39,8 +39,8 @@ fn main() {
 
     // Lower precedence than binary operations:
     let w = vec::foldl(0f, v, { |x, y| x + y }) + 10f;
-    let y = vec::foldl(0f, v) { |x, y| x + y } + 10f;
-    let z = 10f + vec::foldl(0f, v) { |x, y| x + y };
+    let y = vec::foldl(0f, v, { |x, y| x + y }) + 10f;
+    let z = 10f + vec::foldl(0f, v, { |x, y| x + y });
     assert w == y;
     assert y == z;
 

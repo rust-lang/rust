@@ -56,13 +56,13 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
 }
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {
-    loop_query(b) {|e| alt e {
+    do loop_query(b) {|e| alt e {
       ast::expr_break | ast::expr_cont { true }
       _ { false }}}
 }
 
 fn may_break(b: ast::blk) -> bool {
-    loop_query(b) {|e| alt e {
+    do loop_query(b) {|e| alt e {
       ast::expr_break { true }
       _ { false }}}
 }

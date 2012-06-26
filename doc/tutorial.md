@@ -924,7 +924,7 @@ processes. They copy the values they close over, much like boxed
 closures, but they also 'own' them—meaning no other code can access
 them. Unique closures mostly exist for spawning new [tasks](#tasks).
 
-### Shorthand syntax
+### Do syntax
 
 The compact syntax used for stack closures (`{|arg1, arg2| body}`) can
 also be used to express boxed and unique closures in situations where
@@ -934,25 +934,10 @@ the long-hand syntax for the function you're passing, since the
 compiler can look at the argument type to find out what the parameter
 types are.
 
-As a further simplification, if the final parameter to a function is a
-closure, the closure need not be placed within parentheses. You could,
-for example, write...
-
-~~~~
-let doubled = vec::map(~[1, 2, 3]) {|x| x*2};
-~~~~
-
-`vec::map` is a function in the core library that applies its last
-argument to every element of a vector, producing a new vector.
-
-Even when a closure takes no parameters, you must still write the bars
-for the parameter list, as in `{|| ...}`.
-
-## Iteration
-
-Functions taking closures provide a good way to define non-trivial
-iteration constructs. For example, this one iterates over a vector
-of integers backwards:
+Because closures in Rust are so versatile, they are used often, and in
+particular, functions taking closures are used as control structures
+in much the same way as `if` or `loop`. For example, this one iterates
+over a vector of integers backwards:
 
 ~~~~
 fn for_rev(v: ~[int], act: fn(int)) {
@@ -971,19 +956,22 @@ To run such an iteration, you could do this:
 for_rev(~[1, 2, 3], {|n| log(error, n); });
 ~~~~
 
-Making use of the shorthand where a final closure argument can be
-moved outside of the parentheses permits the following, which
-looks quite like a normal loop:
+Because this is such a common pattern Rust has a special form
+of function call that can be written more like a built-in control
+structure:
 
 ~~~~
-# fn for_rev(v: ~[int], act: fn(int)) {}
-for_rev(~[1, 2, 3]) {|n|
+# fn for_rev(v: [int], act: fn(int)) {}
+do for_rev(~[1, 2, 3]) {|n|
     log(error, n);
 }
 ~~~~
 
-Note that, because `for_rev()` returns unit type, no semicolon is
-needed when the final closure is pulled outside of the parentheses.
+Notice that the call is prefixed with the keyword `do` and, instead of
+writing the final closure inside the argument list it is moved outside
+of the parenthesis where it looks visually more like a typical block
+of code. The `do` expression is purely syntactic sugar for a call
+that takes a final closure argument.
 
 # For loops
 
@@ -992,12 +980,12 @@ To allow breaking out of loops, many iteration functions, such as
 `false` to break off iteration.
 
 ~~~~
-vec::each(~[2, 4, 8, 5, 16]) {|n|
+vec::each(~[2, 4, 8, 5, 16], {|n|
     if n % 2 != 0 {
         io::println("found odd number!");
         false
     } else { true }
-}
+});
 ~~~~
 
 You can see how that gets noisy. As a syntactic convenience, if the
@@ -2350,7 +2338,7 @@ module `task`.  Let's begin with the simplest one, `task::spawn()`:
 
 ~~~~
 let some_value = 22;
-task::spawn {||
+do task::spawn {||
     io::println("This executes in the child task.");
     io::println(#fmt("%d", some_value));
 }
@@ -2376,7 +2364,7 @@ in parallel.  We might write something like:
 # fn some_other_expensive_computation() {}
 let port = comm::port::<int>();
 let chan = comm::chan::<int>(port);
-task::spawn {||
+do task::spawn {||
     let result = some_expensive_computation();
     comm::send(chan, result);
 }
@@ -2407,7 +2395,7 @@ The next statement actually spawns the child:
 # fn some_expensive_computation() -> int { 42 }
 # let port = comm::port::<int>();
 # let chan = comm::chan::<int>(port);
-task::spawn {||
+do task::spawn {||
     let result = some_expensive_computation();
     comm::send(chan, result);
 }
@@ -2470,7 +2458,7 @@ Here is the code for the parent task:
 fn main() {
     let from_child = comm::port();
     let to_parent = comm::chan(from_child);
-    let to_child = task::spawn_listener {|from_parent|
+    let to_child = do task::spawn_listener {|from_parent|
         stringifier(from_parent, to_parent);
     };
     comm::send(to_child, 22u);

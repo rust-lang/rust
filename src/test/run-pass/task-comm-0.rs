@@ -20,7 +20,7 @@ fn test05_start(ch : chan<int>) {
 fn test05() {
     let po = comm::port();
     let ch = comm::chan(po);
-    task::spawn {|| test05_start(ch); };
+    task::spawn({|| test05_start(ch); });
     let mut value = comm::recv(po);
     log(error, value);
     value = comm::recv(po);

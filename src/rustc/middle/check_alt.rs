@@ -219,7 +219,7 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
       ty::ty_enum(eid, _) {
         let mut found = ~[];
         for m.each {|r|
-            option::iter(pat_ctor_id(tcx, r[0])) {|id|
+            do option::iter(pat_ctor_id(tcx, r[0])) {|id|
                 if !vec::contains(found, id) { vec::push(found, id); }
             }
         }

@@ -41,10 +41,10 @@ fn main() {
     let ch = chan(p);
     let recv_reader: port<chan<~[u8]>> = port();
     let recv_reader_chan = chan(recv_reader);
-    let pack = task::spawn {|| packager(recv_reader_chan, ch); };
+    let pack = task::spawn({|| packager(recv_reader_chan, ch); });
 
     let source_chan: chan<~[u8]> = recv(recv_reader);
-    let prod = task::spawn {|| producer(source_chan); };
+    let prod = task::spawn({|| producer(source_chan); });
 
     loop {
         let msg = recv(p);

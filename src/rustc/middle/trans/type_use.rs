@@ -114,7 +114,7 @@ fn type_needs(cx: ctx, use: uint, ty: ty::t) {
 
 fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                     enums_seen: @list<def_id>) {
-    ty::maybe_walk_ty(ty) {|ty|
+    do ty::maybe_walk_ty(ty) {|ty|
         if ty::type_has_params(ty) {
             alt ty::get(ty).struct {
                 /*
@@ -181,11 +181,11 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_path(_) {
-        cx.ccx.tcx.node_type_substs.find(e.id).iter {|ts|
+        do cx.ccx.tcx.node_type_substs.find(e.id).iter {|ts|
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
-            vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts) {|uses, subst|
+            vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts, {|uses, subst|
                 type_needs(cx, uses, subst)
-            }
+            })
         }
       }
       expr_fn(*) | expr_fn_block(*) {
@@ -209,11 +209,11 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        option::iter(cx.ccx.maps.method_map.find(e.id)) {|mth|
+        do option::iter(cx.ccx.maps.method_map.find(e.id)) {|mth|
             alt mth.origin {
               typeck::method_static(did) {
-                option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
-                    vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
+                do option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
+                    do vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
                         {|uses, subst| type_needs(cx, uses, subst)}
                 }
               }
@@ -231,14 +231,14 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         node_type_needs(cx, use_repr, v.id);
       }
       expr_call(f, _, _) {
-        vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))) {|a|
+        vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)), {|a|
             alt a.mode {
               expl(by_move) | expl(by_copy) | expl(by_val) {
                 type_needs(cx, use_repr, a.ty);
               }
               _ {}
             }
-        }
+        })
       }
       expr_alt(_, _, _) | expr_block(_) | expr_if(_, _, _) |
       expr_while(_, _) | expr_fail(_) | expr_break | expr_cont |
@@ -265,7 +265,7 @@ fn handle_body(cx: ctx, body: blk) {
         },
         visit_block: {|b, cx, v|
             visit::visit_block(b, cx, v);
-            option::iter(b.node.expr) {|e|
+            do option::iter(b.node.expr) {|e|
                 node_type_needs(cx, use_repr, e.id);
             }
         },

@@ -58,7 +58,7 @@ fn from_assoc_list<K:copy, V:copy>(
 ) -> map::hashmap<K, V> {
 
     let map = new_hash();
-    vec::iter(list) {|elt|
+    do vec::iter(list) {|elt|
         let (k, v) = elt;
         map.insert(k, v);
     }
@@ -78,7 +78,7 @@ fn from_str_assoc_list<V:copy>(
 }
 
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
-    let assoc_list = astsrv::exec(srv) {|ctxt|
+    let assoc_list = do astsrv::exec(srv) {|ctxt|
         let def_set = ast_util::new_def_hash();
         for ctxt.exp_map.each {|_id, defs|
             for defs.each {|def|
@@ -98,7 +98,7 @@ fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
 
 fn find_reexport_impls(ctxt: astsrv::ctxt) -> ~[ast::def_id] {
     let defs = @mut ~[];
-    for_each_reexported_impl(ctxt) {|_mod_id, i|
+    do for_each_reexported_impl(ctxt) {|_mod_id, i|
         *defs += ~[i.did]
     }
     ret *defs;
@@ -166,7 +166,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
     let def_assoc_list = to_assoc_list(def_map);
     #debug("def_map: %?", def_assoc_list);
 
-    let assoc_list = astsrv::exec(srv) {|ctxt|
+    let assoc_list = do astsrv::exec(srv) {|ctxt|
 
         let def_map = from_def_assoc_list(def_assoc_list);
         let path_map = map::str_hash::<~[(str,doc::itemtag)]>();
@@ -194,7 +194,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             }
 
             if reexportdocs.len() > 0u {
-                option::iter(path_map.find(modpath)) {|docs|
+                do option::iter(path_map.find(modpath)) {|docs|
                     reexportdocs = docs + vec::filter(reexportdocs, {|x|
                         !vec::contains(docs, x)
                     });
@@ -226,7 +226,7 @@ fn find_reexport_impl_docs(
 ) -> ~[(str, (str, doc::itemtag))] {
     let docs = @mut ~[];
 
-    for_each_reexported_impl(ctxt) {|mod_id, i|
+    do for_each_reexported_impl(ctxt) {|mod_id, i|
         let path = alt ctxt.ast_map.find(mod_id) {
           some(ast_map::node_item(item, path)) {
             let path = ast_map::path_to_str(*path);
@@ -338,7 +338,7 @@ fn merge_reexports(
         #debug("looking for reexports in path %?", path);
         alt path_map.find(str::connect(path, "::")) {
           some(name_docs) {
-            vec::foldl(~[], name_docs) {|v, name_doc|
+            do vec::foldl(~[], name_docs) {|v, name_doc|
                 let (name, doc) = name_doc;
                 v + ~[reexport_doc(doc, name)]
             }
@@ -462,7 +462,7 @@ fn should_duplicate_multiple_reexported_items() {
                   import a::b; import a::c; \
                   export b; export c; \
                   }";
-    astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = path_pass::mk_pass().f(srv, doc);
         let doc = run(srv, doc);
@@ -484,7 +484,7 @@ fn should_rename_items_reexported_with_different_names() {
 #[test]
 fn should_reexport_in_topmod() {
     fn mk_doc(source: str) -> doc::doc {
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "core");
             let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)
@@ -515,7 +515,7 @@ fn should_not_reexport_multiple_times() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)

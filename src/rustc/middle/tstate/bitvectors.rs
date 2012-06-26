@@ -49,7 +49,7 @@ fn seq_postconds(fcx: fn_ctxt, ps: ~[postcond]) -> postcond {
     let sz = vec::len(ps);
     if sz >= 1u {
         let prev = tritv_clone(ps[0]);
-        vec::iter_between(ps, 1u, sz) {|p| seq_tritv(prev, p); }
+        vec::iter_between(ps, 1u, sz, {|p| seq_tritv(prev, p); });
         ret prev;
     } else { ret ann::empty_poststate(num_constraints(fcx.enclosing)); }
 }

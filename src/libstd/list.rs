@@ -29,7 +29,7 @@ accumulated result.
 "]
 fn foldl<T: copy, U>(z: T, ls: @list<U>, f: fn(T, U) -> T) -> T {
     let mut accum: T = z;
-    iter(ls) {|elt| accum = f(accum, elt);}
+    do iter(ls) {|elt| accum = f(accum, elt);}
     accum
 }
 
@@ -77,7 +77,7 @@ pure fn is_not_empty<T: copy>(ls: @list<T>) -> bool {
 #[doc = "Returns the length of a list"]
 fn len<T>(ls: @list<T>) -> uint {
     let mut count = 0u;
-    iter(ls) {|_e| count += 1u;}
+    iter(ls, {|_e| count += 1u;});
     count
 }
 

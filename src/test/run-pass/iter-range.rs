@@ -8,6 +8,6 @@ fn range(a: int, b: int, it: fn(int)) {
 
 fn main() {
     let mut sum: int = 0;
-    range(0, 100) {|x| sum += x; }
+    range(0, 100, {|x| sum += x; });
     log(debug, sum);
 }

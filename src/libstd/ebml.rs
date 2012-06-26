@@ -222,19 +222,19 @@ impl writer for writer {
     }
 
     fn wr_tagged_u64(tag_id: uint, v: u64) {
-        io::u64_to_be_bytes(v, 8u) {|v|
+        do io::u64_to_be_bytes(v, 8u) {|v|
             self.wr_tagged_bytes(tag_id, v);
         }
     }
 
     fn wr_tagged_u32(tag_id: uint, v: u32) {
-        io::u64_to_be_bytes(v as u64, 4u) {|v|
+        do io::u64_to_be_bytes(v as u64, 4u) {|v|
             self.wr_tagged_bytes(tag_id, v);
         }
     }
 
     fn wr_tagged_u16(tag_id: uint, v: u16) {
-        io::u64_to_be_bytes(v as u64, 2u) {|v|
+        do io::u64_to_be_bytes(v as u64, 2u) {|v|
             self.wr_tagged_bytes(tag_id, v);
         }
     }
@@ -244,19 +244,19 @@ impl writer for writer {
     }
 
     fn wr_tagged_i64(tag_id: uint, v: i64) {
-        io::u64_to_be_bytes(v as u64, 8u) {|v|
+        do io::u64_to_be_bytes(v as u64, 8u) {|v|
             self.wr_tagged_bytes(tag_id, v);
         }
     }
 
     fn wr_tagged_i32(tag_id: uint, v: i32) {
-        io::u64_to_be_bytes(v as u64, 4u) {|v|
+        do io::u64_to_be_bytes(v as u64, 4u) {|v|
             self.wr_tagged_bytes(tag_id, v);
         }
     }
 
     fn wr_tagged_i16(tag_id: uint, v: i16) {
-        io::u64_to_be_bytes(v as u64, 2u) {|v|
+        do io::u64_to_be_bytes(v as u64, 2u) {|v|
             self.wr_tagged_bytes(tag_id, v);
         }
     }
@@ -355,7 +355,7 @@ impl serializer of serialization::serializer for ebml::writer {
     fn emit_enum_variant_arg(_idx: uint, f: fn()) { f() }
 
     fn emit_vec(len: uint, f: fn()) {
-        self.wr_tag(es_vec as uint) {||
+        do self.wr_tag(es_vec as uint) {||
             self._emit_tagged_uint(es_vec_len, len);
             f()
         }
@@ -482,7 +482,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
         #debug["read_enum_variant()"];
         let idx = self._next_uint(es_enum_vid);
         #debug["  idx=%u", idx];
-        self.push_doc(self.next_doc(es_enum_body)) {||
+        do self.push_doc(self.next_doc(es_enum_body)) {||
             f(idx)
         }
     }
@@ -494,7 +494,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
 
     fn read_vec<T:copy>(f: fn(uint) -> T) -> T {
         #debug["read_vec()"];
-        self.push_doc(self.next_doc(es_vec)) {||
+        do self.push_doc(self.next_doc(es_vec)) {||
             let len = self._next_uint(es_vec_len);
             #debug["  len=%u", len];
             f(len)
@@ -549,14 +549,14 @@ fn test_option_int() {
     }
 
     fn serialize_0<S: serialization::serializer>(s: S, v: option<int>) {
-        s.emit_enum("core::option::t") {||
+        do s.emit_enum("core::option::t") {||
             alt v {
               none {
-                s.emit_enum_variant("core::option::none", 0u, 0u) {||}
+                s.emit_enum_variant("core::option::none", 0u, 0u, {||});
               }
               some(v0) {
-                s.emit_enum_variant("core::option::some", 1u, 1u) {||
-                    s.emit_enum_variant_arg(0u) {|| serialize_1(s, v0) }
+                do s.emit_enum_variant("core::option::some", 1u, 1u) {||
+                    s.emit_enum_variant_arg(0u, {|| serialize_1(s, v0) });
                 }
               }
             }
@@ -568,12 +568,12 @@ fn test_option_int() {
     }
 
     fn deserialize_0<S: serialization::deserializer>(s: S) -> option<int> {
-        s.read_enum("core::option::t") {||
-            s.read_enum_variant {|i|
+        do s.read_enum("core::option::t") {||
+            do s.read_enum_variant {|i|
                 alt check i {
                   0u { none }
                   1u {
-                    let v0 = s.read_enum_variant_arg(0u) {||
+                    let v0 = do s.read_enum_variant_arg(0u) {||
                         deserialize_1(s)
                     };
                     some(v0)

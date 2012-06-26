@@ -4,7 +4,7 @@ native mod rusti {
 }
 
 fn main() {
-    rusti::frame_address {|addr|
+    do rusti::frame_address {|addr|
         assert addr.is_not_null();
     }
 }

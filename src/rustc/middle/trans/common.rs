@@ -251,7 +251,7 @@ fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
            cx.to_str(), val_str(cx.ccx().tn, val),
            ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
-    in_scope_cx(cx) {|info|
+    do in_scope_cx(cx) {|info|
         vec::push(info.cleanups, clean({|a|base::drop_ty(a, val, ty)},
                                 cleanup_type));
         scope_clean_changed(info);
@@ -271,7 +271,7 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
             ret base::drop_ty(bcx, val, ty);
         }
     }
-    in_scope_cx(cx) {|info|
+    do in_scope_cx(cx) {|info|
         vec::push(info.cleanups, clean_temp(val, {|a|do_drop(a, val, ty)},
                                      cleanup_type));
         scope_clean_changed(info);
@@ -283,7 +283,7 @@ fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
            cx.to_str(), val_str(cx.ccx().tn, val),
            ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
-    in_scope_cx(cx) {|info|
+    do in_scope_cx(cx) {|info|
         vec::push(info.cleanups,
                   clean_temp(val, {|a|base::drop_ty(a, val, ty)},
                              cleanup_type));
@@ -295,7 +295,7 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
       heap_shared { {|a|base::trans_free(a, ptr)} }
       heap_exchange { {|a|base::trans_unique_free(a, ptr)} }
     };
-    in_scope_cx(cx) {|info|
+    do in_scope_cx(cx) {|info|
         vec::push(info.cleanups, clean_temp(ptr, free_fn,
                                      normal_exit_and_unwind));
         scope_clean_changed(info);
@@ -307,8 +307,8 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: block, val: ValueRef) {
-    in_scope_cx(cx) {|info|
-        option::iter(vec::position(info.cleanups, {|cu|
+    do in_scope_cx(cx) {|info|
+        do option::iter(vec::position(info.cleanups, {|cu|
             alt cu { clean_temp(v, _, _) if v == val { true } _ { false } }
         })) {|i|
             info.cleanups =
@@ -361,7 +361,7 @@ impl node_info for ast::blk {
 
 impl node_info for option<@ast::expr> {
     fn info() -> option<node_info> {
-        self.chain { |s| s.info() }
+        self.chain({ |s| s.info() })
     }
 }
 
@@ -840,7 +840,7 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
       none { }
     }
 
-    let sc = str::as_c_str(s) {|buf|
+    let sc = do str::as_c_str(s) {|buf|
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
@@ -862,7 +862,7 @@ fn C_estr_slice(cx: @crate_ctxt, s: str) -> ValueRef {
 
 // Returns a Plain Old LLVM String:
 fn C_postr(s: str) -> ValueRef {
-    ret str::as_c_str(s) {|buf|
+    ret do str::as_c_str(s) {|buf|
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
 }
@@ -924,7 +924,7 @@ fn hash_mono_id(&&mi: mono_id) -> uint {
         h = h * alt param {
           mono_precise(ty, vts) {
             let mut h = ty::type_id(ty);
-            option::iter(vts) {|vts|
+            do option::iter(vts) {|vts|
                 for vec::each(vts) {|vt| h += hash_mono_id(vt); }
             }
             h
@@ -980,7 +980,7 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let params = ty::node_id_to_type_params(tcx, id);
     alt bcx.fcx.param_substs {
       some(substs) {
-        vec::map(params) {|t| ty::subst_tps(tcx, substs.tys, t) }
+        vec::map(params, {|t| ty::subst_tps(tcx, substs.tys, t) })
       }
       _ { params }
     }

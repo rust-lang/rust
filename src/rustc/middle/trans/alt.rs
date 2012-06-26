@@ -153,7 +153,7 @@ fn enter_match(dm: def_map, m: match, col: uint, val: ValueRef,
 }
 
 fn enter_default(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
-    enter_match(dm, m, col, val) {|p|
+    do enter_match(dm, m, col, val) {|p|
         alt p.node {
           ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) { some(~[]) }
           ast::pat_ident(_, none) if !pat_is_variant(dm, p) {
@@ -167,7 +167,7 @@ fn enter_default(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
 fn enter_opt(tcx: ty::ctxt, m: match, opt: opt, col: uint,
              variant_size: uint, val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
-    enter_match(tcx.def_map, m, col, val) {|p|
+    do enter_match(tcx.def_map, m, col, val) {|p|
         alt p.node {
           ast::pat_enum(_, subpats) {
             if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
@@ -193,7 +193,7 @@ fn enter_opt(tcx: ty::ctxt, m: match, opt: opt, col: uint,
 fn enter_rec(dm: def_map, m: match, col: uint, fields: ~[ast::ident],
              val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
-    enter_match(dm, m, col, val) {|p|
+    do enter_match(dm, m, col, val) {|p|
         alt p.node {
           ast::pat_rec(fpats, _) {
             let mut pats = ~[];
@@ -214,7 +214,7 @@ fn enter_rec(dm: def_map, m: match, col: uint, fields: ~[ast::ident],
 fn enter_tup(dm: def_map, m: match, col: uint, val: ValueRef,
              n_elts: uint) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
-    enter_match(dm, m, col, val) {|p|
+    do enter_match(dm, m, col, val) {|p|
         alt p.node {
           ast::pat_tup(elts) { some(elts) }
           _ { some(vec::from_elem(n_elts, dummy)) }
@@ -224,7 +224,7 @@ fn enter_tup(dm: def_map, m: match, col: uint, val: ValueRef,
 
 fn enter_box(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
-    enter_match(dm, m, col, val) {|p|
+    do enter_match(dm, m, col, val) {|p|
         alt p.node {
           ast::pat_box(sub) { some(~[sub]) }
           _ { some(~[dummy]) }
@@ -234,7 +234,7 @@ fn enter_box(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
 
 fn enter_uniq(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
-    enter_match(dm, m, col, val) {|p|
+    do enter_match(dm, m, col, val) {|p|
         alt p.node {
           ast::pat_uniq(sub) { some(~[sub]) }
           _ { some(~[dummy]) }
@@ -285,7 +285,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     }
     let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
-    let args = vec::from_fn(size) { |i|
+    let args = do vec::from_fn(size) { |i|
         GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
                  enum_ty_substs, i)
     };
@@ -398,11 +398,11 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
                 bcx.fcx.lllocals.insert(val, loc);
             };
             let {bcx: guard_cx, val} = {
-                with_scope_result(bcx, e.info(), "guard") {|bcx|
+                do with_scope_result(bcx, e.info(), "guard") {|bcx|
                     trans_temp_expr(bcx, e)
                 }
             };
-            bcx = with_cond(guard_cx, Not(guard_cx, val)) {|bcx|
+            bcx = do with_cond(guard_cx, Not(guard_cx, val)) {|bcx|
                 compile_submatch(bcx, vec::tail(m), vals, chk, exits);
                 bcx
             };
@@ -553,7 +553,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
               compare {
                 let t = node_id_type(bcx, pat_id);
                 let {bcx: after_cx, val: matches} = {
-                    with_scope_result(bcx, none, "compare_scope") {|bcx|
+                    do with_scope_result(bcx, none, "compare_scope") {|bcx|
                         alt trans_opt(bcx, opt) {
                           single_result({bcx, val}) {
                             trans_compare(bcx, ast::eq, test_val, t, val, t)
@@ -636,7 +636,7 @@ fn trans_alt(bcx: block,
              mode: ast::alt_mode,
              dest: dest) -> block {
     let _icx = bcx.insn_ctxt("alt::trans_alt");
-    with_scope(bcx, alt_expr.info(), "alt") {|bcx|
+    do with_scope(bcx, alt_expr.info(), "alt") {|bcx|
         trans_alt_inner(bcx, expr, arms, mode, dest)
     }
 }
@@ -728,7 +728,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         let vdefs = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat.id));
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let mut i = 0;
-        option::iter(sub) {|sub| for vec::each(args.vals) {|argval|
+        do option::iter(sub) {|sub| for vec::each(args.vals) {|argval|
             bcx = bind_irrefutable_pat(bcx, sub[i], argval, make_copy);
             i += 1;
         }}

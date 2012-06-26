@@ -10,7 +10,7 @@ fn main() {
     let mut i = 10;
     while (i > 0) {
         log(debug, i);
-        task::spawn {|copy i| child(i, ch); };
+        task::spawn({|copy i| child(i, ch); });
         i = i - 1;
     }
 

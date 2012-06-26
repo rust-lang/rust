@@ -46,7 +46,7 @@ fn main(args: ~[str]) {
         let get_chan_chan = chan(get_chan);
         {
             let num_chan = num_chan.clone();
-            futures += ~[future::spawn {|move num_chan, move get_chan_chan|
+            futures += ~[do future::spawn {|move num_chan, move get_chan_chan|
                 let p = port();
                 get_chan_chan.send(chan(p));
                 thread_ring(i, msg_per_task, num_chan,  p)

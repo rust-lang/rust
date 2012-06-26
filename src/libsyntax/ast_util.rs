@@ -408,7 +408,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             alt vi.node {
               view_item_use(_, _, id) { vfn(id) }
               view_item_import(vps) | view_item_export(vps) {
-                vec::iter(vps) {|vp|
+                do vec::iter(vps) {|vp|
                     alt vp.node {
                       view_path_simple(_, _, id) { vfn(id) }
                       view_path_glob(_, id) { vfn(id) }
@@ -473,7 +473,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_ty_params: fn@(ps: ~[ty_param]) {
-            vec::iter(ps) {|p| vfn(p.id) }
+            vec::iter(ps, {|p| vfn(p.id) })
         },
 
         visit_constr: fn@(_p: @path, _sp: span, id: node_id) {
@@ -486,23 +486,23 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
             alt fk {
               visit::fk_ctor(nm, tps, self_id, parent_id) {
-                vec::iter(tps) {|tp| vfn(tp.id)}
+                vec::iter(tps, {|tp| vfn(tp.id)});
                 vfn(id);
                 vfn(self_id);
                 vfn(parent_id.node);
               }
               visit::fk_dtor(tps, self_id, parent_id) {
-                vec::iter(tps) {|tp| vfn(tp.id)}
+                vec::iter(tps, {|tp| vfn(tp.id)});
                 vfn(id);
                 vfn(self_id);
                 vfn(parent_id.node);
               }
               visit::fk_item_fn(_, tps) {
-                vec::iter(tps) {|tp| vfn(tp.id)}
+                vec::iter(tps, {|tp| vfn(tp.id)});
               }
               visit::fk_method(_, tps, m) {
                 vfn(m.self_id);
-                vec::iter(tps) {|tp| vfn(tp.id)}
+                vec::iter(tps, {|tp| vfn(tp.id)});
               }
               visit::fk_anon(_, capture_clause)
               | visit::fk_fn_block(capture_clause) {
@@ -512,7 +512,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
               }
             }
 
-            vec::iter(d.inputs) {|arg|
+            do vec::iter(d.inputs) {|arg|
                 vfn(arg.id)
             }
         },
@@ -536,7 +536,7 @@ fn visit_ids_for_inlined_item(item: inlined_item, vfn: fn@(node_id)) {
 fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
     let min = @mut int::max_value;
     let max = @mut int::min_value;
-    visit_ids_fn { |id|
+    do visit_ids_fn { |id|
         *min = int::min(*min, id);
         *max = int::max(*max, id + 1);
     }
@@ -544,7 +544,7 @@ fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
 }
 
 fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
-    compute_id_range { |f| visit_ids_for_inlined_item(item, f) }
+    compute_id_range({ |f| visit_ids_for_inlined_item(item, f) })
 }
 
 pure fn is_item_impl(item: @ast::item) -> bool {

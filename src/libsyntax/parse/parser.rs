@@ -159,7 +159,7 @@ class parser {
     }
 
     fn parse_ty_fn_decl(purity: ast::purity) -> fn_decl {
-        let inputs = self.parse_unspanned_seq(
+        let inputs = do self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA)) { |p|
             let mode = p.parse_arg_mode();
@@ -186,7 +186,7 @@ class parser {
     }
 
     fn parse_ty_methods() -> ~[ty_method] {
-        self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
+        do self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
                                  seq_sep_none()) { |p|
             let attrs = p.parse_outer_attributes();
             let flo = p.span.lo;
@@ -494,11 +494,11 @@ class parser {
     }
 
     fn parse_arg_or_capture_item() -> arg_or_capture_item {
-        self.parse_capture_item_or() {|p| p.parse_arg() }
+        self.parse_capture_item_or({|p| p.parse_arg() })
     }
 
     fn parse_fn_block_arg() -> arg_or_capture_item {
-        self.parse_capture_item_or() {|p|
+        do self.parse_capture_item_or {|p|
             let m = p.parse_arg_mode();
             let i = p.parse_value_ident();
             let t = if p.eat(token::COLON) {
@@ -2065,7 +2065,7 @@ class parser {
               members(mms) { ms = vec::append(ms, mms); }
             }
         }
-        let actual_dtor = option::map(the_dtor) {|dtor|
+        let actual_dtor = do option::map(the_dtor) {|dtor|
             let (d_body, d_s) = dtor;
             {node: {id: self.get_id(),
                     self_id: self.get_id(),

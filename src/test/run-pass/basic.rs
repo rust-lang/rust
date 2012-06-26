@@ -32,8 +32,8 @@ fn main() {
     let s: str = "hello there";
     let p = comm::port();
     let ch = comm::chan(p);
-    task::spawn {|| a(ch); };
-    task::spawn {|| b(ch); };
+    task::spawn({|| a(ch); });
+    task::spawn({|| b(ch); });
     let mut x: int = 10;
     x = g(n, s);
     log(debug, x);

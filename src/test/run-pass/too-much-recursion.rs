@@ -7,7 +7,7 @@
 fn main() {
     let builder = task::builder();
     task::unsupervise(builder);
-    task::run(builder) {||
+    do task::run(builder) {||
         fn f() { f() };
         f();
     };

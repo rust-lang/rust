@@ -88,7 +88,7 @@ fn md4_str(msg: ~[u8]) -> str {
         f(a); f(b); f(c); f(d);
     }
     let mut result = "";
-    app(a, b, c, d) {|u|
+    do app(a, b, c, d) {|u|
         let mut i = 0u32;
         while i < 4u32 {
             let byte = (u >> (i * 8u32)) as u8;

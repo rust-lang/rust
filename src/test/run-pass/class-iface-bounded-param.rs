@@ -10,7 +10,7 @@ class keys<K: copy, V: copy, M: copy map<K,V>>
         self.map = map;
     }
 
-    fn each(blk: fn(K) -> bool) { self.map.each { |k, _v| blk(k)} }
+    fn each(blk: fn(K) -> bool) { self.map.each({ |k, _v| blk(k)}) }
     fn size_hint() -> option<uint> { some(self.map.size()) }
     fn eachi(blk: fn(uint, K) -> bool) { iter::eachi(self, blk) }
 }

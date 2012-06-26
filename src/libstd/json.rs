@@ -90,7 +90,7 @@ fn to_writer(wr: io::writer, j: json) {
 
 fn escape_str(s: str) -> str {
     let mut escaped = "\"";
-    str::chars_iter(s) { |c|
+    do str::chars_iter(s) { |c|
         alt c {
           '"' { escaped += "\\\""; }
           '\\' { escaped += "\\\\"; }
@@ -110,7 +110,7 @@ fn escape_str(s: str) -> str {
 
 #[doc = "Serializes a json value into a string"]
 fn to_str(j: json) -> str {
-    io::with_str_writer { |wr| to_writer(wr, j) }
+    io::with_str_writer({ |wr| to_writer(wr, j) })
 }
 
 type parser = {
@@ -598,7 +598,7 @@ impl <A: to_json copy, B: to_json copy, C: to_json copy>
 }
 
 impl <A: to_json> of to_json for ~[A] {
-    fn to_json() -> json { list(@self.map { |elt| elt.to_json() }) }
+    fn to_json() -> json { list(@self.map({ |elt| elt.to_json() })) }
 }
 
 impl <A: to_json copy> of to_json for hashmap<str, A> {
@@ -635,7 +635,7 @@ mod tests {
     fn mk_dict(items: ~[(str, json)]) -> json {
         let d = map::str_hash();
 
-        vec::iter(items) { |item|
+        do vec::iter(items) { |item|
             let (key, value) = copy item;
             d.insert(key, value);
         };

@@ -79,7 +79,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             let vinfo =
                 ty::enum_variant_with_id(
                     tcx, v_def_ids.enm, v_def_ids.var);
-            vinfo.args.map { |t| ty::subst(tcx, expected_substs, t) }
+            vinfo.args.map({ |t| ty::subst(tcx, expected_substs, t) })
         };
         let arg_len = arg_types.len(), subpats_len = alt subpats {
             none { arg_len }
@@ -96,8 +96,8 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                 tcx.sess.span_fatal(pat.span, s);
             }
 
-            option::iter(subpats) {|pats|
-                vec::iter2(pats, arg_types) {|subpat, arg_ty|
+            do option::iter(subpats) {|pats|
+                do vec::iter2(pats, arg_types) {|subpat, arg_ty|
                   check_pat(pcx, subpat, arg_ty);
                 }
             };

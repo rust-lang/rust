@@ -35,7 +35,7 @@ type joinable_task = port<()>;
 fn spawn_joinable(f: fn~()) -> joinable_task {
     let p = port();
     let c = chan(p);
-    task::spawn() {||
+    do task::spawn() {||
         f();
         c.send(());
     }
@@ -97,7 +97,7 @@ mod map_reduce {
     {
         let mut tasks = ~[];
         for inputs.each {|i|
-            tasks += ~[spawn_joinable {|| map_task(map, ctrl, i)}];
+            tasks += ~[spawn_joinable({|| map_task(map, ctrl, i)})];
         }
         ret tasks;
     }
@@ -208,7 +208,7 @@ mod map_reduce {
                     let ch = chan(p);
                     let r = reduce, kk = k;
                     tasks += ~[
-                        spawn_joinable {|| reduce_task(r, kk, ch) }
+                        spawn_joinable({|| reduce_task(r, kk, ch) })
                     ];
                     c = recv(p);
                     treemap::insert(reducers, k, c);

@@ -96,7 +96,7 @@ fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @str {
 fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
                   data: crate_metadata) {
     p(cstore).metas.insert(cnum, data);
-    vec::iter(decoder::get_crate_module_paths(data.data)) {|dp|
+    do vec::iter(decoder::get_crate_module_paths(data.data)) {|dp|
         let (did, path) = dp;
         let d = {crate: cnum, node: did.node};
         p(cstore).mod_path_map.insert(d, @path);

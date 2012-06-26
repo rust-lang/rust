@@ -4,7 +4,7 @@ fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let arc_v = arc::arc(v);
 
-    task::spawn() {|move arc_v| //! NOTE move of variable occurred here
+    do task::spawn() {|move arc_v| //! NOTE move of variable occurred here
         let v = *arc::get(&arc_v);
         assert v[3] == 4;
     };

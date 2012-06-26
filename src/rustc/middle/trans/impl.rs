@@ -260,7 +260,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
                                                              impl_id))),
                          {|| "make_impl_vtable: non-iface-type implemented"});
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
-    make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id)) {|im|
+    make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), {|im|
         let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             C_null(T_ptr(T_nil()))
@@ -279,7 +279,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
                 trans_external_path(ccx, m_id, fty)
             }
         }
-    })
+    }))
 }
 
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)

@@ -53,7 +53,7 @@ class cat : noisy, scratchy, bitey {
       let t : hashmap<body_part, uint> =
         hashmap::<body_part, uint>(hsher, eqer);
       self.bite_counts = t;
-      iter(~[finger, toe, nose, ear]) {|p|
+      do iter(~[finger, toe, nose, ear]) {|p|
           self.bite_counts.insert(p, 0u);
       };
     }
@@ -73,7 +73,7 @@ class cat : noisy, scratchy, bitey {
     #error("In bite()");
     let all = ~[toe, nose, ear];
     let mut min = finger;
-    iter(all) {|next|
+    do iter(all) {|next|
       #debug("min = %?", min);
         if self.bite_counts.get(next) < self.bite_counts.get(min) {
             min = next;

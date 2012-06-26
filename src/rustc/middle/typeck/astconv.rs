@@ -121,7 +121,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy>(
             #fmt["wrong number of type arguments, expected %u but found %u",
                  (*decl_bounds).len(), path.types.len()]);
     }
-    let tps = path.types.map { |a_t| ast_ty_to_ty(self, rscope, a_t) };
+    let tps = path.types.map({ |a_t| ast_ty_to_ty(self, rscope, a_t) });
 
     let substs = {self_r:self_r, self_ty:none, tps:tps};
     {substs: substs, ty: ty::subst(tcx, substs, decl_ty)}
@@ -244,11 +244,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
         ty::mk_rptr(tcx, r, mt)
       }
       ast::ty_tup(fields) {
-        let flds = vec::map(fields) { |t| ast_ty_to_ty(self, rscope, t) };
+        let flds = vec::map(fields, { |t| ast_ty_to_ty(self, rscope, t) });
         ty::mk_tup(tcx, flds)
       }
       ast::ty_rec(fields) {
-        let flds = fields.map {|f|
+        let flds = do fields.map {|f|
             let tm = ast_mt_to_mt(self, rscope, f.node.mt);
             {ident: f.node.ident, mt: tm}
         };
@@ -412,13 +412,13 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
     expected_tys: expected_tys) -> ty::fn_ty {
 
     #debug["ty_of_fn_decl"];
-    indent {||
+    do indent {||
         // new region names that appear inside of the fn decl are bound to
         // that function type
         let rb = in_binding_rscope(rscope);
 
-        let input_tys = decl.inputs.mapi { |i, a|
-            let expected_arg_ty = expected_tys.chain { |e|
+        let input_tys = do decl.inputs.mapi { |i, a|
+            let expected_arg_ty = do expected_tys.chain { |e|
                 // no guarantee that the correct number of expected args
                 // were supplied
                 if i < e.inputs.len() {some(e.inputs[i])} else {none}
@@ -426,16 +426,16 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
             ty_of_arg(self, rb, a, expected_arg_ty)
         };
 
-        let expected_ret_ty = expected_tys.map { |e| e.output };
+        let expected_ret_ty = expected_tys.map({ |e| e.output });
         let output_ty = alt decl.output.node {
           ast::ty_infer if expected_ret_ty.is_some() {expected_ret_ty.get()}
           ast::ty_infer {self.ty_infer(decl.output.span)}
           _ {ast_ty_to_ty(self, rb, decl.output)}
         };
 
-        let out_constrs = vec::map(decl.constraints) {|constr|
+        let out_constrs = vec::map(decl.constraints, {|constr|
             ty::ast_constr_to_constr(self.tcx(), constr)
-        };
+        });
 
         {purity: decl.purity, proto: proto, inputs: input_tys,
          output: output_ty, ret_style: decl.cf, constraints: out_constrs}

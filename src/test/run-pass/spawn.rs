@@ -5,7 +5,7 @@ use std;
 import task;
 
 fn main() {
-    task::spawn {|| child(10); };
+    task::spawn({|| child(10); });
 }
 
 fn child(&&i: int) { log(error, i); assert (i == 10); }

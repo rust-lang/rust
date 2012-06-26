@@ -34,7 +34,7 @@ class and_then_get_big_again {
 }
 
 fn main() {
-    task::spawn {||
+    do task::spawn {||
         let r = and_then_get_big_again(4);
         getbig_call_c_and_fail(10000);
     };

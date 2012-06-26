@@ -249,7 +249,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
 }
 
 fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
-    option::iter (sp.expn_info) {|ei|
+    do option::iter (sp.expn_info) {|ei|
         let ss = option::map_default(ei.callie.span, @"", {
             |span|
             @codemap::span_to_str(span, cm)

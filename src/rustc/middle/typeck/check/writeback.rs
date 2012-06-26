@@ -83,7 +83,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     alt e.node {
       ast::expr_fn(_, decl, _, _) |
       ast::expr_fn_block(decl, _, _) {
-        vec::iter(decl.inputs) {|input|
+        do vec::iter(decl.inputs) {|input|
             let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 
             // Just in case we never constrained the mode to anything,

@@ -280,7 +280,7 @@ impl public_methods for borrowck_ctxt {
                                 cmt: cmt) -> cmt {
         @{id: arg.id(), span: arg.span(),
           cat: cat_comp(cmt, comp_variant(enum_did)),
-          lp: cmt.lp.map { |l| @lp_comp(l, comp_variant(enum_did)) },
+          lp: cmt.lp.map({ |l| @lp_comp(l, comp_variant(enum_did)) }),
           mutbl: cmt.mutbl, // imm iff in an immutable context
           ty: self.tcx.ty(arg)}
     }
@@ -311,9 +311,9 @@ impl public_methods for borrowck_ctxt {
           m_mutbl | m_const { f_mutbl }
         };
         let f_comp = comp_field(f_name, f_mutbl);
-        let lp = base_cmt.lp.map { |lp|
+        let lp = base_cmt.lp.map({ |lp|
             @lp_comp(lp, f_comp)
-        };
+        });
         @{id: node.id(), span: node.span(),
           cat: cat_comp(base_cmt, f_comp), lp:lp,
           mutbl: m, ty: self.tcx.ty(node)}
@@ -321,10 +321,10 @@ impl public_methods for borrowck_ctxt {
 
     fn cat_deref<N:ast_node>(node: N, base_cmt: cmt, derefs: uint,
                              expl: bool) -> option<cmt> {
-        ty::deref(self.tcx, base_cmt.ty, expl).map { |mt|
+        do ty::deref(self.tcx, base_cmt.ty, expl).map { |mt|
             alt deref_kind(self.tcx, base_cmt.ty) {
               deref_ptr(ptr) {
-                let lp = base_cmt.lp.chain { |l|
+                let lp = do base_cmt.lp.chain { |l|
                     // Given that the ptr itself is loanable, we can
                     // loan out deref'd uniq ptrs as the data they are
                     // the only way to reach the data they point at.
@@ -341,7 +341,7 @@ impl public_methods for borrowck_ctxt {
               }
 
               deref_comp(comp) {
-                let lp = base_cmt.lp.map { |l| @lp_comp(l, comp) };
+                let lp = base_cmt.lp.map({ |l| @lp_comp(l, comp) });
                 @{id:node.id(), span:node.span(),
                   cat:cat_comp(base_cmt, comp), lp:lp,
                   mutbl:mt.mutbl, ty:mt.ty}
@@ -367,7 +367,7 @@ impl public_methods for borrowck_ctxt {
           deref_ptr(ptr) {
             // make deref of vectors explicit, as explained in the comment at
             // the head of this section
-            let deref_lp = base_cmt.lp.map { |lp| @lp_deref(lp, ptr) };
+            let deref_lp = base_cmt.lp.map({ |lp| @lp_deref(lp, ptr) });
             let deref_cmt = @{id:expr.id, span:expr.span,
                               cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
                               mutbl:m_imm, ty:mt.ty};
@@ -383,7 +383,7 @@ impl public_methods for borrowck_ctxt {
         fn comp(expr: @ast::expr, of_cmt: cmt,
                 vect: ty::t, mt: ty::mt) -> cmt {
             let comp = comp_index(vect, mt.mutbl);
-            let index_lp = of_cmt.lp.map { |lp| @lp_comp(lp, comp) };
+            let index_lp = of_cmt.lp.map({ |lp| @lp_comp(lp, comp) });
             @{id:expr.id, span:expr.span,
               cat:cat_comp(of_cmt, comp), lp:index_lp,
               mutbl:mt.mutbl, ty:mt.ty}
@@ -393,7 +393,7 @@ impl public_methods for borrowck_ctxt {
     fn cat_tuple_elt<N: ast_node>(elt: N, cmt: cmt) -> cmt {
         @{id: elt.id(), span: elt.span(),
           cat: cat_comp(cmt, comp_tuple),
-          lp: cmt.lp.map { |l| @lp_comp(l, comp_tuple) },
+          lp: cmt.lp.map({ |l| @lp_comp(l, comp_tuple) }),
           mutbl: cmt.mutbl, // imm iff in an immutable context
           ty: self.tcx.ty(elt)}
     }

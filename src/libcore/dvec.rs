@@ -114,12 +114,12 @@ impl extensions<A> for dvec<A> {
     "]
     #[inline(always)]
     fn swap(f: fn(-~[mut A]) -> ~[mut A]) {
-        self.borrow { |v| self.return(f(v)) }
+        self.borrow({ |v| self.return(f(v)) })
     }
 
     #[doc = "Returns the number of elements currently in the dvec"]
     fn len() -> uint {
-        self.borrow { |v|
+        do self.borrow { |v|
             let l = v.len();
             self.return(v);
             l
@@ -134,7 +134,7 @@ impl extensions<A> for dvec<A> {
 
     #[doc = "Remove and return the last element"]
     fn pop() -> A {
-        self.borrow { |v|
+        do self.borrow { |v|
             let mut v <- v;
             let result = vec::pop(v);
             self.return(v);
@@ -164,7 +164,7 @@ impl extensions<A> for dvec<A> {
 
     #[doc = "Remove and return the first element"]
     fn shift() -> A {
-        self.borrow { |v|
+        do self.borrow { |v|
             let mut v = vec::from_mut(v);
             let result = vec::shift(v);
             self.return(vec::to_mut(v));
@@ -187,7 +187,7 @@ impl extensions<A:copy> for dvec<A> {
         Appends elements from `from_idx` to `to_idx` (exclusive)
     "]
     fn push_slice(ts: &[const A], from_idx: uint, to_idx: uint) {
-        self.swap { |v|
+        do self.swap { |v|
             let mut v <- v;
             let new_len = vec::len(v) + to_idx - from_idx;
             vec::reserve(v, new_len);
@@ -207,7 +207,7 @@ impl extensions<A:copy> for dvec<A> {
         attempts to access this vector.
     "]
     fn append_iter<A, I:iter::base_iter<A>>(ts: I) {
-       self.swap { |v|
+       do self.swap { |v|
            let mut v = alt ts.size_hint() {
              none { v }
              some(h) {
@@ -229,7 +229,7 @@ impl extensions<A:copy> for dvec<A> {
         See `unwrap()` if you do not wish to copy the contents.
     "]
     fn get() -> ~[A] {
-        self.borrow { |v|
+        do self.borrow { |v|
             let w = vec::from_mut(copy v);
             self.return(v);
             w
@@ -259,7 +259,7 @@ impl extensions<A:copy> for dvec<A> {
     growing the vector if necessary.  New elements will be initialized
     with `initval`"]
     fn grow_set_elt(idx: uint, initval: A, val: A) {
-        self.swap { |v|
+        do self.swap { |v|
             let mut v <- v;
             vec::grow_set(v, idx, initval, val);
             v

@@ -56,12 +56,12 @@ fn get_monitor_task_gl() -> iotask unsafe {
     #debug("before priv::chan_from_global_ptr");
     type monchan = chan<iotask>;
 
-    let monitor_ch = chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
+    let monitor_ch = do chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
                                                      builder_fn) {|msg_po|
         #debug("global monitor task starting");
 
         // As a weak task the runtime will notify us when to exit
-        weaken_task() {|weak_exit_po|
+        do weaken_task() {|weak_exit_po|
             #debug("global monitor task is now weak");
             let hl_loop = spawn_loop();
             loop {
@@ -87,7 +87,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
 
     // once we have a chan to the monitor loop, we ask it for
     // the libuv loop's async handle
-    listen { |fetch_ch|
+    do listen { |fetch_ch|
         monitor_ch.send(fetch_ch);
         fetch_ch.recv()
     }
@@ -95,11 +95,11 @@ fn get_monitor_task_gl() -> iotask unsafe {
 
 fn spawn_loop() -> iotask unsafe {
     let builder = task::builder();
-    task::add_wrapper(builder) {|task_body|
+    do task::add_wrapper(builder) {|task_body|
         fn~(move task_body) {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
-            weaken_task {|weak_exit_po|
+            do weaken_task {|weak_exit_po|
                 #debug("global libuv task is now weak %?", weak_exit_po);
                 task_body();
 
@@ -129,7 +129,7 @@ mod test {
         log(debug, "in simple timer cb");
         ll::timer_stop(timer_ptr);
         let hl_loop = get_gl();
-        iotask::interact(hl_loop) {|_loop_ptr|
+        do iotask::interact(hl_loop) {|_loop_ptr|
             log(debug, "closing timer");
             ll::close(timer_ptr, simple_timer_close_cb);
             log(debug, "about to deref exit_ch_ptr");
@@ -146,7 +146,7 @@ mod test {
                        exit_ch_ptr));
         let timer_handle = ll::timer_t();
         let timer_ptr = ptr::addr_of(timer_handle);
-        iotask::interact(iotask) {|loop_ptr|
+        do iotask::interact(iotask) {|loop_ptr|
             log(debug, "user code inside interact loop!!!");
             let init_status = ll::timer_init(loop_ptr, timer_ptr);
             if(init_status == 0i32) {
@@ -191,13 +191,13 @@ mod test {
         let exit_po = comm::port::<()>();
         let exit_ch = comm::chan(exit_po);
         let cycles = 5000u;
-        iter::repeat(cycles) {||
+        do iter::repeat(cycles) {||
             task::spawn_sched(task::manual_threads(1u), {||
                 impl_uv_hl_simple_timer(hl_loop);
                 comm::send(exit_ch, ());
             });
         };
-        iter::repeat(cycles) {||
+        do iter::repeat(cycles) {||
             comm::recv(exit_po);
         };
         log(debug, "test_stress_gl_uv_global_loop_high_level_global_timer"+

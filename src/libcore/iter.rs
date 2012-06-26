@@ -28,7 +28,7 @@ fn any<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
 fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
                                          prd: fn(A) -> bool) -> ~[A] {
     let mut result = ~[];
-    self.size_hint().iter {|hint| vec::reserve(result, hint); }
+    self.size_hint().iter({|hint| vec::reserve(result, hint); });
     for self.each {|a|
         if prd(a) { vec::push(result, a); }
     }
@@ -37,7 +37,7 @@ fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
 
 fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
     let mut result = ~[];
-    self.size_hint().iter {|hint| vec::reserve(result, hint); }
+    self.size_hint().iter({|hint| vec::reserve(result, hint); });
     for self.each {|a|
         vec::push(result, op(a));
     }
@@ -76,7 +76,7 @@ fn contains<A,IA:base_iter<A>>(self: IA, x: A) -> bool {
 }
 
 fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
-    foldl(self, 0u) {|count, value|
+    do foldl(self, 0u) {|count, value|
         if value == x {
             count + 1u
         } else {
@@ -108,7 +108,7 @@ fn repeat(times: uint, blk: fn()) {
 }
 
 fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
-    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
+    alt do foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
           some(a_) if a_ < b {
             // FIXME (#2005): Not sure if this is successfully optimized to
@@ -124,7 +124,7 @@ fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
 }
 
 fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
-    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
+    alt do foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
           some(a_) if a_ > b {
             // FIXME (#2005): Not sure if this is successfully optimized to

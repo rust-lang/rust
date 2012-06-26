@@ -661,7 +661,7 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
 
     if vec::len(subst) == 0u { ret ~[]; }
     let mut res = ~[];
-    (*c.descs).swap { |v|
+    do (*c.descs).swap { |v|
         let v <- vec::from_mut(v);
         for v.each { |d|
             if args_mention(d.node.args, find_in_subst_bool, subst) {
@@ -821,8 +821,8 @@ fn forget_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dead_v: node_id) {
     // In the postcondition given by parent_exp, clear the bits
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
-    option::iter(d) {|d_id|
-        for_constraints_mentioning(fcx, d_id) {|c|
+    do option::iter(d) {|d_id|
+        do for_constraints_mentioning(fcx, d_id) {|c|
                 #debug("clearing constraint %u %s",
                        c.bit_num,
                        constraint_to_str(fcx.ccx.tcx, c.c));
@@ -838,8 +838,8 @@ fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
     let mut changed = false;
-    option::iter(d) {|d_id|
-        for_constraints_mentioning(fcx, d_id) {|c|
+    do option::iter(d) {|d_id|
+        do for_constraints_mentioning(fcx, d_id) {|c|
                 changed |= clear_in_poststate_(c.bit_num, p);
         }
     }
@@ -926,7 +926,7 @@ type binding = {lhs: ~[dest], rhs: option<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let mut lhs = ~[];
-    pat_bindings(tcx.def_map, loc.node.pat) {|p_id, _s, name|
+    do pat_bindings(tcx.def_map, loc.node.pat) {|p_id, _s, name|
       vec::push(lhs, local_dest({ident: path_to_ident(name), node: p_id}));
     };
     {lhs: lhs, rhs: loc.node.init}
@@ -956,7 +956,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
 }
 
 fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> ~[init_op] {
-    vec::map(callee_modes(fcx, callee)) {|m|
+    do vec::map(callee_modes(fcx, callee)) {|m|
         alt ty::resolved_mode(fcx.ccx.tcx, m) {
           by_move { init_move }
           by_copy | by_ref | by_val | by_mutbl_ref { init_assign }

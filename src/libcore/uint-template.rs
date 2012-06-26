@@ -131,8 +131,8 @@ Convert to a string in a given base
 Fails if `radix` < 2 or `radix` > 16
 "]
 fn to_str(num: T, radix: uint) -> str {
-    to_str_bytes(false, num, radix) {|slice|
-        vec::unpack_slice(slice) {|p, len|
+    do to_str_bytes(false, num, radix) {|slice|
+        do vec::unpack_slice(slice) {|p, len|
             unsafe { str::unsafe::from_buf_len(p, len) }
         }
     }
@@ -177,7 +177,7 @@ fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
     // in-bounds, no extra cost.
 
     unsafe {
-        vec::unpack_slice(buf) {|p, len|
+        do vec::unpack_slice(buf) {|p, len|
             let mp = p as *mut u8;
             let mut i = len;
             let mut n = num;

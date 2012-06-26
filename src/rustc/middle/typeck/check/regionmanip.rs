@@ -15,22 +15,22 @@ fn replace_bound_regions_in_fn_ty(
     for self_ty.each { |t| vec::push(all_tys, t) }
 
     #debug["replace_bound_regions_in_fn_ty(self_ty=%?, fn_ty=%s, all_tys=%?)",
-           self_ty.map { |t| ty_to_str(tcx, t) },
+           self_ty.map({ |t| ty_to_str(tcx, t) }),
            ty_to_str(tcx, ty::mk_fn(tcx, fn_ty)),
-           all_tys.map { |t| ty_to_str(tcx, t) }];
+           all_tys.map({ |t| ty_to_str(tcx, t) })];
     let _i = indenter();
 
-    let isr = create_bound_region_mapping(tcx, isr, all_tys) { |br|
+    let isr = do create_bound_region_mapping(tcx, isr, all_tys) { |br|
         #debug["br=%?", br];
         mapf(br)
     };
-    let t_fn = ty::fold_sty_to_ty(tcx, ty::ty_fn(fn_ty)) { |t|
+    let t_fn = ty::fold_sty_to_ty(tcx, ty::ty_fn(fn_ty), { |t|
         replace_bound_regions(tcx, isr, t)
-    };
-    let t_self = self_ty.map { |t| replace_bound_regions(tcx, isr, t) };
+    });
+    let t_self = self_ty.map({ |t| replace_bound_regions(tcx, isr, t) });
 
     #debug["result of replace_bound_regions_in_fn_ty: self_ty=%?, fn_ty=%s",
-           t_self.map { |t| ty_to_str(tcx, t) },
+           t_self.map({ |t| ty_to_str(tcx, t) }),
            ty_to_str(tcx, t_fn)];
 
     ret {isr: isr,
@@ -78,7 +78,7 @@ fn replace_bound_regions_in_fn_ty(
         }
 
         // For each type `ty` in `tys`...
-        tys.foldl(isr) { |isr, ty|
+        do tys.foldl(isr) { |isr, ty|
             let mut isr = isr;
 
             // Using fold_regions is inefficient, because it
@@ -86,7 +86,7 @@ fn replace_bound_regions_in_fn_ty(
             // terms of locating all the regions within the various
             // kinds of types.  This had already caused me several
             // bugs so I decided to switch over.
-            ty::fold_regions(tcx, ty) { |r, in_fn|
+            do ty::fold_regions(tcx, ty) { |r, in_fn|
                 if !in_fn { isr = append_isr(isr, to_r, r); }
                 r
             };
@@ -104,7 +104,7 @@ fn replace_bound_regions_in_fn_ty(
         isr: isr_alist,
         ty: ty::t) -> ty::t {
 
-        ty::fold_regions(tcx, ty) { |r, in_fn|
+        do ty::fold_regions(tcx, ty) { |r, in_fn|
             alt r {
               // As long as we are not within a fn() type, `&T` is
               // mapped to the free region anon_r.  But within a fn

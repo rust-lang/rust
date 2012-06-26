@@ -43,11 +43,11 @@ fn load_props(testfile: str) -> test_props {
             pp_exact = parse_pp_exact(ln, testfile);
         }
 
-        option::iter(parse_aux_build(ln)) {|ab|
+        do option::iter(parse_aux_build(ln)) {|ab|
             vec::push(aux_builds, ab);
         }
 
-        option::iter(parse_exec_env(ln)) {|ee|
+        do option::iter(parse_exec_env(ln)) {|ee|
             vec::push(exec_env, ee);
         }
     };
@@ -104,7 +104,7 @@ fn parse_compile_flags(line: str) -> option<str> {
 }
 
 fn parse_exec_env(line: str) -> option<(str, str)> {
-    parse_name_value_directive(line, "exec-env").map {|nv|
+    do parse_name_value_directive(line, "exec-env").map {|nv|
         // nv is either FOO or FOO=BAR
         let strs = str::splitn_char(nv, '=', 1u);
         alt strs.len() {

@@ -295,7 +295,7 @@ fn future_result(builder: builder) -> future::future<task_result> {
         with get_opts(builder)
     });
 
-    future::from_fn {||
+    do future::from_fn {||
         alt comm::recv(po) {
           exit(_, result) { result }
         }
@@ -307,7 +307,7 @@ fn future_task(builder: builder) -> future::future<task> {
 
     let mut po = comm::port();
     let ch = comm::chan(po);
-    add_wrapper(builder) {|body|
+    do add_wrapper(builder) {|body|
         fn~() {
             comm::send(ch, get_task());
             body();
@@ -342,7 +342,7 @@ fn run_listener<A:send>(-builder: builder,
     let setup_po = comm::port();
     let setup_ch = comm::chan(setup_po);
 
-    run(builder) {||
+    do run(builder) {||
         let po = comm::port();
         let mut ch = comm::chan(po);
         comm::send(setup_ch, ch);
@@ -439,7 +439,7 @@ fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
     let mut builder = builder();
     unsupervise(builder);
     let result = future_result(builder);
-    run(builder) {||
+    do run(builder) {||
         comm::send(ch, f());
     }
     alt future::get(result) {
@@ -540,7 +540,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
         };
         assert !new_task.is_null();
 
-        option::iter(opts.notify_chan) {|c|
+        do option::iter(opts.notify_chan) {|c|
             // FIXME (#1087): Would like to do notification in Rust
             rustrt::rust_task_config_notify(new_task, c);
         }
@@ -657,10 +657,10 @@ unsafe fn key_to_key_value<T>(key: local_data_key<T>) -> *libc::c_void {
 unsafe fn local_data_lookup<T>(map: task_local_map, key: local_data_key<T>)
         -> option<(uint, *libc::c_void, fn@(+*libc::c_void))> {
     let key_value = key_to_key_value(key);
-    let map_pos = (*map).position {|entry|
+    let map_pos = (*map).position({|entry|
         alt entry { some((k,_,_)) { k == key_value } none { false } }
-    };
-    map_pos.map {|index|
+    });
+    do map_pos.map {|index|
         // .get() is guaranteed because of "none { false }" above.
         let (_, data_ptr, finaliser) = (*map)[index].get();
         (index, data_ptr, finaliser)
@@ -671,7 +671,7 @@ unsafe fn local_get_helper<T>(task: *rust_task, key: local_data_key<T>,
                               do_pop: bool) -> option<@T> {
     let map = get_task_local_map(task);
     // Interpret our findings from the map
-    local_data_lookup(map, key).map {|result|
+    do local_data_lookup(map, key).map {|result|
         // A reference count magically appears on 'data' out of thin air.
         // 'data' has the reference we originally stored it with. We either
         // need to erase it from the map or artificially bump the count.
@@ -799,7 +799,7 @@ native mod rustrt {
 fn test_spawn_raw_simple() {
     let po = comm::port();
     let ch = comm::chan(po);
-    spawn_raw(default_task_opts()) {||
+    do spawn_raw(default_task_opts()) {||
         comm::send(ch, ());
     }
     comm::recv(po);
@@ -812,7 +812,7 @@ fn test_spawn_raw_unsupervise() {
         supervise: false
         with default_task_opts()
     };
-    spawn_raw(opts) {||
+    do spawn_raw(opts) {||
         fail;
     }
 }
@@ -829,7 +829,7 @@ fn test_spawn_raw_notify() {
         notify_chan: some(notify_ch)
         with default_task_opts()
     };
-    spawn_raw(opts) {||
+    do spawn_raw(opts) {||
         comm::send(task_ch, get_task());
     }
     let task_ = comm::recv(task_po);
@@ -840,7 +840,7 @@ fn test_spawn_raw_notify() {
         notify_chan: some(notify_ch)
         with default_task_opts()
     };
-    spawn_raw(opts) {||
+    do spawn_raw(opts) {||
         comm::send(task_ch, get_task());
         fail;
     }
@@ -853,7 +853,7 @@ fn test_run_basic() {
     let po = comm::port();
     let ch = comm::chan(po);
     let buildr = builder();
-    run(buildr) {||
+    do run(buildr) {||
         comm::send(ch, ());
     }
     comm::recv(po);
@@ -864,13 +864,13 @@ fn test_add_wrapper() {
     let po = comm::port();
     let ch = comm::chan(po);
     let buildr = builder();
-    add_wrapper(buildr) {|body|
+    do add_wrapper(buildr) {|body|
         fn~() {
             body();
             comm::send(ch, ());
         }
     }
-    run(buildr) {||}
+    do run(buildr) {||}
     comm::recv(po);
 }
 
@@ -879,13 +879,13 @@ fn test_add_wrapper() {
 fn test_future_result() {
     let buildr = builder();
     let result = future_result(buildr);
-    run(buildr) {||}
+    do run(buildr) {||}
     assert future::get(result) == success;
 
     let buildr = builder();
     let result = future_result(buildr);
     unsupervise(buildr);
-    run(buildr) {|| fail }
+    do run(buildr) {|| fail }
     assert future::get(result) == failure;
 }
 
@@ -895,7 +895,7 @@ fn test_future_task() {
     let ch = comm::chan(po);
     let buildr = builder();
     let task1 = future_task(buildr);
-    run(buildr) {|| comm::send(ch, get_task()) }
+    do run(buildr) {|| comm::send(ch, get_task()) }
     assert future::get(task1) == comm::recv(po);
 }
 
@@ -903,7 +903,7 @@ fn test_future_task() {
 fn test_spawn_listiner_bidi() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let ch = spawn_listener {|po|
+    let ch = do spawn_listener {|po|
         // Now the child has a port called 'po' to read from and
         // an environment-captured channel called 'ch'.
         let res = comm::recv(po);
@@ -918,7 +918,7 @@ fn test_spawn_listiner_bidi() {
 
 #[test]
 fn test_try_success() {
-    alt try {||
+    alt do try {||
         "Success!"
     } {
         result::ok("Success!") { }
@@ -929,7 +929,7 @@ fn test_try_success() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_try_fail() {
-    alt try {||
+    alt do try {||
         fail
     } {
         result::err(()) { }
@@ -941,7 +941,7 @@ fn test_try_fail() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_spawn_sched_no_threads() {
-    spawn_sched(manual_threads(0u)) {|| };
+    do spawn_sched(manual_threads(0u)) {|| };
 }
 
 #[test]
@@ -952,7 +952,7 @@ fn test_spawn_sched() {
     fn f(i: int, ch: comm::chan<()>) {
         let parent_sched_id = rustrt::rust_get_sched_id();
 
-        spawn_sched(single_threaded) {||
+        do spawn_sched(single_threaded) {||
             let child_sched_id = rustrt::rust_get_sched_id();
             assert parent_sched_id != child_sched_id;
 
@@ -973,9 +973,9 @@ fn test_spawn_sched_childs_on_same_sched() {
     let po = comm::port();
     let ch = comm::chan(po);
 
-    spawn_sched(single_threaded) {||
+    do spawn_sched(single_threaded) {||
         let parent_sched_id = rustrt::rust_get_sched_id();
-        spawn {||
+        do spawn {||
             let child_sched_id = rustrt::rust_get_sched_id();
             // This should be on the same scheduler
             assert parent_sched_id == child_sched_id;
@@ -1002,7 +1002,7 @@ fn test_spawn_sched_blocking() {
 
     // Testing that a task in one scheduler can block in foreign code
     // without affecting other schedulers
-    iter::repeat(20u) {||
+    do iter::repeat(20u) {||
 
         let start_po = comm::port();
         let start_ch = comm::chan(start_po);
@@ -1011,7 +1011,7 @@ fn test_spawn_sched_blocking() {
 
         let lock = testrt::rust_dbg_lock_create();
 
-        spawn_sched(single_threaded) {||
+        do spawn_sched(single_threaded) {||
             testrt::rust_dbg_lock_lock(lock);
 
             comm::send(start_ch, ());
@@ -1038,7 +1038,7 @@ fn test_spawn_sched_blocking() {
         let setup_ch = comm::chan(setup_po);
         let parent_po = comm::port();
         let parent_ch = comm::chan(parent_po);
-        spawn {||
+        do spawn {||
             let child_po = comm::port();
             comm::send(setup_ch, comm::chan(child_po));
             pingpong(child_po, parent_ch);
@@ -1063,7 +1063,7 @@ fn avoid_copying_the_body(spawnfn: fn(+fn~())) {
     let x = ~1;
     let x_in_parent = ptr::addr_of(*x) as uint;
 
-    spawnfn {||
+    do spawnfn {||
         let x_in_child = ptr::addr_of(*x) as uint;
         comm::send(ch, x_in_child);
     }
@@ -1079,7 +1079,7 @@ fn test_avoid_copying_the_body_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_spawn_listener() {
-    avoid_copying_the_body {|f|
+    do avoid_copying_the_body {|f|
         spawn_listener(fn~(move f, _po: comm::port<int>) {
             f();
         });
@@ -1088,9 +1088,9 @@ fn test_avoid_copying_the_body_spawn_listener() {
 
 #[test]
 fn test_avoid_copying_the_body_run() {
-    avoid_copying_the_body {|f|
+    do avoid_copying_the_body {|f|
         let buildr = builder();
-        run(buildr) {||
+        do run(buildr) {||
             f();
         }
     }
@@ -1098,7 +1098,7 @@ fn test_avoid_copying_the_body_run() {
 
 #[test]
 fn test_avoid_copying_the_body_run_listener() {
-    avoid_copying_the_body {|f|
+    do avoid_copying_the_body {|f|
         let buildr = builder();
         run_listener(buildr, fn~(move f, _po: comm::port<int>) {
             f();
@@ -1108,8 +1108,8 @@ fn test_avoid_copying_the_body_run_listener() {
 
 #[test]
 fn test_avoid_copying_the_body_try() {
-    avoid_copying_the_body {|f|
-        try {||
+    do avoid_copying_the_body {|f|
+        do try {||
             f()
         };
     }
@@ -1117,10 +1117,10 @@ fn test_avoid_copying_the_body_try() {
 
 #[test]
 fn test_avoid_copying_the_body_future_task() {
-    avoid_copying_the_body {|f|
+    do avoid_copying_the_body {|f|
         let buildr = builder();
         future_task(buildr);
-        run(buildr) {||
+        do run(buildr) {||
             f();
         }
     }
@@ -1128,10 +1128,10 @@ fn test_avoid_copying_the_body_future_task() {
 
 #[test]
 fn test_avoid_copying_the_body_unsupervise() {
-    avoid_copying_the_body {|f|
+    do avoid_copying_the_body {|f|
         let buildr = builder();
         unsupervise(buildr);
-        run(buildr) {||
+        do run(buildr) {||
             f();
         }
     }
@@ -1151,7 +1151,7 @@ fn test_osmain() {
 
     let po = comm::port();
     let ch = comm::chan(po);
-    run(buildr) {||
+    do run(buildr) {||
         comm::send(ch, ());
     }
     comm::recv(po);
@@ -1166,12 +1166,12 @@ fn test_unkillable() {
     let ch = po.chan();
 
     // We want to do this after failing
-    spawn {||
+    do spawn {||
         iter::repeat(10u, yield);
         ch.send(());
     }
 
-    spawn {||
+    do spawn {||
         yield();
         // We want to fail after the unkillable task
         // blocks on recv
@@ -1179,7 +1179,7 @@ fn test_unkillable() {
     }
 
     unsafe {
-        unkillable {||
+        do unkillable {||
             let p = ~0;
             let pp: *uint = unsafe::transmute(p);
 
@@ -1198,7 +1198,7 @@ fn test_unkillable() {
 fn test_tls_multitask() unsafe {
     fn my_key(+_x: @str) { }
     local_data_set(my_key, @"parent data");
-    task::spawn {||
+    do task::spawn {||
         assert local_data_get(my_key) == none; // TLS shouldn't carry over.
         local_data_set(my_key, @"child data");
         assert *(local_data_get(my_key).get()) == "child data";
@@ -1230,19 +1230,19 @@ fn test_tls_pop() unsafe {
 #[test]
 fn test_tls_modify() unsafe {
     fn my_key(+_x: @str) { }
-    local_data_modify(my_key) {|data|
+    local_data_modify(my_key, {|data|
         alt data {
             some(@val) { fail "unwelcome value: " + val }
             none       { some(@"first data") }
         }
-    }
-    local_data_modify(my_key) {|data|
+    });
+    local_data_modify(my_key, {|data|
         alt data {
             some(@"first data") { some(@"next data") }
             some(@val)          { fail "wrong value: " + val }
             none                { fail "missing value" }
         }
-    }
+    });
     assert *(local_data_pop(my_key).get()) == "next data";
 }
 
@@ -1254,7 +1254,7 @@ fn test_tls_crust_automorestack_memorial_bug() unsafe {
     // something within a rust stack segment. Then a subsequent upcall (esp.
     // for logging, think vsnprintf) would run on a stack smaller than 1 MB.
     fn my_key(+_x: @str) { }
-    task::spawn {||
+    do task::spawn {||
         unsafe { local_data_set(my_key, @"hax"); }
     }
 }
@@ -1264,7 +1264,7 @@ fn test_tls_multiple_types() unsafe {
     fn str_key(+_x: @str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
-    task::spawn{||
+    do task::spawn{||
         local_data_set(str_key, @"string data");
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);
@@ -1276,7 +1276,7 @@ fn test_tls_overwrite_multiple_types() unsafe {
     fn str_key(+_x: @str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
-    task::spawn{||
+    do task::spawn{||
         local_data_set(str_key, @"string data");
         local_data_set(int_key, @42);
         // This could cause a segfault if overwriting-destruction is done with
@@ -1294,7 +1294,7 @@ fn test_tls_cleanup_on_failure() unsafe {
     fn int_key(+_x: @int) { }
     local_data_set(str_key, @"parent data");
     local_data_set(box_key, @@());
-    task::spawn{|| // spawn_linked
+    do task::spawn{|| // spawn_linked
         local_data_set(str_key, @"string data");
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);

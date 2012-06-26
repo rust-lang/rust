@@ -48,7 +48,7 @@ class tcp_socket {
        };
        let close_data_ptr = ptr::addr_of(close_data);
        let stream_handle_ptr = (*(self.socket_data)).stream_handle_ptr;
-       iotask::interact((*(self.socket_data)).iotask) {|loop_ptr|
+       do iotask::interact((*(self.socket_data)).iotask) {|loop_ptr|
           log(debug, #fmt("interact dtor for tcp_socket stream %? loop %?",
             stream_handle_ptr, loop_ptr));
            uv::ll::set_data_for_uv_handle(stream_handle_ptr,
@@ -72,7 +72,7 @@ class tcp_conn_port {
     let server_stream_ptr = ptr::addr_of((*conn_data_ptr).server_stream);
     let stream_closed_po = (*(self.conn_data)).stream_closed_po;
     let iotask = (*conn_data_ptr).iotask;
-    iotask::interact(iotask) {|loop_ptr|
+    do iotask::interact(iotask) {|loop_ptr|
         log(debug, #fmt("dtor for tcp_conn_port loop: %?",
                        loop_ptr));
         uv::ll::close(server_stream_ptr, tcp_nl_close_cb);
@@ -131,7 +131,7 @@ fn connect(input_ip: ip::ip_addr, port: uint,
     // we can send into the interact cb to be handled in libuv..
     log(debug, #fmt("stream_handle_ptr outside interact %?",
         stream_handle_ptr));
-    iotask::interact(iotask) {|loop_ptr|
+    do iotask::interact(iotask) {|loop_ptr|
         log(debug, "in interact cb for tcp client connect..");
         log(debug, #fmt("stream_handle_ptr in interact %?",
             stream_handle_ptr));
@@ -251,7 +251,7 @@ value as the `err` variant
 fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
     -> future<result::result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
-    future_spawn {||
+    do future_spawn {||
         write_common_impl(socket_data_ptr, raw_write_data)
     }
 }
@@ -340,7 +340,7 @@ read attempt. Pass `0u` to wait indefinitely
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
     -> future<result::result<~[u8],tcp_err_data>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
-    future_spawn {||
+    do future_spawn {||
         read_common_impl(socket_data, timeout_msecs)
     }
 }
@@ -387,7 +387,7 @@ fn new_listener(host_ip: ip::ip_addr, port: uint, backlog: uint,
 
     let setup_po = comm::port::<option<tcp_err_data>>();
     let setup_ch = comm::chan(setup_po);
-    iotask::interact(iotask) {|loop_ptr|
+    do iotask::interact(iotask) {|loop_ptr|
         let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
                                                    port);
         alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
@@ -488,7 +488,7 @@ fn conn_recv_spawn(server_port: tcp_conn_port,
     let new_conn_po = (*(server_port.conn_data)).new_conn_po;
     let iotask = (*(server_port.conn_data)).iotask;
     let new_conn_result = comm::recv(new_conn_po);
-    task::spawn {||
+    do task::spawn {||
         let sock_create_result = alt new_conn_result {
           ok(client_stream_ptr) {
             conn_port_new_tcp_socket(client_stream_ptr, iotask)
@@ -709,7 +709,7 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
 
     let setup_po = comm::port::<option<tcp_err_data>>();
     let setup_ch = comm::chan(setup_po);
-    iotask::interact(iotask) {|loop_ptr|
+    do iotask::interact(iotask) {|loop_ptr|
         let tcp_addr = ipv4_ip_addr_to_sockaddr_in(host_ip,
                                                    port);
         alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
@@ -755,7 +755,7 @@ fn listen_for_conn(host_ip: ip::ip_addr, port: uint, backlog: uint,
       none {
         on_establish_cb(kill_ch);
         let kill_result = comm::recv(kill_po);
-        iotask::interact(iotask) {|loop_ptr|
+        do iotask::interact(iotask) {|loop_ptr|
             log(debug, #fmt("tcp::listen post-kill recv hl interact %?",
                             loop_ptr));
             (*server_data_ptr).active = false;
@@ -861,7 +861,7 @@ fn read_stop_common_impl(socket_data: *tcp_socket_data) ->
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let stop_po = comm::port::<option<tcp_err_data>>();
     let stop_ch = comm::chan(stop_po);
-    iotask::interact((*socket_data).iotask) {|loop_ptr|
+    do iotask::interact((*socket_data).iotask) {|loop_ptr|
         log(debug, "in interact cb for tcp::read_stop");
         alt uv::ll::read_stop(stream_handle_ptr as *uv::ll::uv_stream_t) {
           0i32 {
@@ -893,7 +893,7 @@ fn read_start_common_impl(socket_data: *tcp_socket_data)
     let start_po = comm::port::<option<uv::ll::uv_err_data>>();
     let start_ch = comm::chan(start_po);
     log(debug, "in tcp::read_start before interact loop");
-    iotask::interact((*socket_data).iotask) {|loop_ptr|
+    do iotask::interact((*socket_data).iotask) {|loop_ptr|
         log(debug, #fmt("in tcp::read_start interact cb %?", loop_ptr));
         alt uv::ll::read_start(stream_handle_ptr as *uv::ll::uv_stream_t,
                                on_alloc_cb,
@@ -935,7 +935,7 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
         result_ch: comm::chan(result_po)
     };
     let write_data_ptr = ptr::addr_of(write_data);
-    iotask::interact((*socket_data_ptr).iotask) {|loop_ptr|
+    do iotask::interact((*socket_data_ptr).iotask) {|loop_ptr|
         log(debug, #fmt("in interact cb for tcp::write %?", loop_ptr));
         alt uv::ll::write(write_req_ptr,
                           stream_handle_ptr,
@@ -979,8 +979,8 @@ fn conn_port_new_tcp_socket(
         iotask : iotask
     };
     let client_socket_data_ptr = ptr::addr_of(*client_socket_data);
-    comm::listen {|cont_ch|
-        iotask::interact(iotask) {|loop_ptr|
+    do comm::listen {|cont_ch|
+        do iotask::interact(iotask) {|loop_ptr|
             log(debug, #fmt("in interact cb 4 conn_port_new_tcp.. loop %?",
                 loop_ptr));
             uv::ll::set_data_for_uv_handle(stream_handle_ptr,
@@ -1332,8 +1332,8 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        task::spawn_sched(task::manual_threads(1u)) {||
-            let actual_req = comm::listen {|server_ch|
+        do task::spawn_sched(task::manual_threads(1u)) {||
+            let actual_req = do comm::listen {|server_ch|
                 run_tcp_test_server(
                     server_ip,
                     server_port,
@@ -1347,7 +1347,7 @@ mod test {
         comm::recv(cont_po);
         // client
         log(debug, "server started, firing up client..");
-        let actual_resp = comm::listen {|client_ch|
+        let actual_resp = do comm::listen {|client_ch|
             run_tcp_test_client(
                 server_ip,
                 server_port,
@@ -1376,8 +1376,8 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        task::spawn_sched(task::manual_threads(1u)) {||
-            let actual_req = comm::listen {|server_ch|
+        do task::spawn_sched(task::manual_threads(1u)) {||
+            let actual_req = do comm::listen {|server_ch|
                 run_tcp_test_server_listener(
                     server_ip,
                     server_port,
@@ -1391,7 +1391,7 @@ mod test {
         comm::recv(cont_po);
         // client
         log(debug, "server started, firing up client..");
-        let actual_resp = comm::listen {|client_ch|
+        let actual_resp = do comm::listen {|client_ch|
             run_tcp_test_client(
                 server_ip,
                 server_port,
@@ -1413,7 +1413,7 @@ mod test {
                           cont_ch: comm::chan<()>,
                           iotask: iotask) -> str {
 
-        task::spawn_sched(task::manual_threads(1u)) {||
+        do task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let listen_result =
                 listen_for_conn(server_ip_addr, server_port, 128u,
@@ -1428,8 +1428,8 @@ mod test {
                 // will want the POWER
                 {|new_conn, kill_ch|
                 log(debug, "SERVER: new connection!");
-                comm::listen {|cont_ch|
-                    task::spawn_sched(task::manual_threads(1u)) {||
+                do comm::listen {|cont_ch|
+                    do task::spawn_sched(task::manual_threads(1u)) {||
                         log(debug, "SERVER: starting worker for new req");
 
                         let accept_result = accept(new_conn);
@@ -1492,7 +1492,7 @@ mod test {
                                     cont_ch: comm::chan<()>,
                                     iotask: iotask) -> str {
 
-        task::spawn_sched(task::manual_threads(1u)) {||
+        do task::spawn_sched(task::manual_threads(1u)) {||
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let new_listener_result =
                 new_listener(server_ip_addr, server_port, 128u, iotask);

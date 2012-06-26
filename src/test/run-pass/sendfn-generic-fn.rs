@@ -27,7 +27,7 @@ fn spawn<A: copy, B: copy>(f: native fn(fn~(A,B)->pair<A,B>)) {
     let arg = fn~(a: A, b: B) -> pair<A,B> {
         ret make_generic_record(a, b);
     };
-    task::spawn {|| f(arg); };
+    task::spawn({|| f(arg); });
 }
 
 fn test05() {

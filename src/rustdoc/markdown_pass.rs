@@ -82,7 +82,7 @@ fn write_markdown(
     doc: doc::doc,
     +writer_factory: writer_factory
 ) {
-    par::anymap(doc.pages) {|page|
+    do par::anymap(doc.pages) {|page|
         let ctxt = {
             w: writer_factory(page)
         };
@@ -115,7 +115,7 @@ fn should_request_new_writer_for_each_page() {
     let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
     write_markdown(doc, writer_factory);
     // We expect two pages to have been written
-    iter::repeat(2u) {||
+    do iter::repeat(2u) {||
         comm::recv(po);
     }
 }
@@ -146,7 +146,7 @@ fn should_write_title_for_each_page() {
         "#[link(name = \"core\")]; mod a { }");
     let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
     write_markdown(doc, writer_factory);
-    iter::repeat(2u) {||
+    do iter::repeat(2u) {||
         let (page, markdown) = comm::recv(po);
         alt page {
           doc::cratepage(_) {
@@ -295,7 +295,7 @@ fn write_desc(
 }
 
 fn write_sections(ctxt: ctxt, sections: ~[doc::section]) {
-    vec::iter(sections) {|section|
+    do vec::iter(sections) {|section|
         write_section(ctxt, section);
     }
 }
@@ -645,7 +645,7 @@ fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
 }
 
 fn write_methods(ctxt: ctxt, docs: ~[doc::methoddoc]) {
-    vec::iter(docs) {|doc| write_method(ctxt, doc) }
+    do vec::iter(docs) {|doc| write_method(ctxt, doc) }
 }
 
 fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
@@ -760,7 +760,7 @@ mod test {
     }
 
     fn create_doc_srv(source: str) -> (astsrv::srv, doc::doc) {
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
 
             let config = {
                 output_style: config::doc_per_crate

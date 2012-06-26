@@ -152,7 +152,7 @@ impl extensions for rng {
 
     #[doc = "Return a random byte string of the specified length"]
     fn gen_bytes(len: uint) -> ~[u8] {
-        vec::from_fn(len) {|_i|
+        do vec::from_fn(len) {|_i|
             self.gen_u8()
         }
     }

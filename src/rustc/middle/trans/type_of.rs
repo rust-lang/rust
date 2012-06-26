@@ -16,7 +16,7 @@ export type_of_non_gc_box;
 
 fn type_of_explicit_args(cx: @crate_ctxt,
                          inputs: ~[ty::arg]) -> ~[TypeRef] {
-    vec::map(inputs) {|arg|
+    do vec::map(inputs) {|arg|
         let arg_ty = arg.ty;
         let llty = type_of(cx, arg_ty);
         alt ty::resolved_mode(cx.tcx, arg.mode) {
@@ -175,7 +175,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_class(did, ts) {
             // Only instance vars are record fields at runtime.
             let fields = lookup_class_fields(cx.tcx, did);
-            let mut tys = vec::map(fields) {|f|
+            let mut tys = do vec::map(fields) {|f|
                 let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
                 type_of(cx, t)
             };

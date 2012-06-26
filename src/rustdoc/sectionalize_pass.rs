@@ -34,7 +34,7 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
     let doc = fold::default_seq_fold_iface(fold, doc);
 
     {
-        methods: par::anymap(doc.methods) {|method|
+        methods: do par::anymap(doc.methods) {|method|
             let (desc, sections) = sectionalize(method.desc);
 
             {
@@ -51,7 +51,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: par::anymap(doc.methods) {|method|
+        methods: do par::anymap(doc.methods) {|method|
             let (desc, sections) = sectionalize(method.desc);
 
             {
@@ -228,7 +228,7 @@ fn should_sectionalize_impl_methods() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);
             run(srv, doc)

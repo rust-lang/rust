@@ -13,7 +13,7 @@ fn target_env(lib_path: str, prog: str) -> ~[(str,str)] {
     assert prog.ends_with(".exe");
     let aux_path = prog.slice(0u, prog.len() - 4u) + ".libaux";
 
-    env = vec::map(env) {|pair|
+    env = do vec::map(env) {|pair|
         let (k,v) = pair;
         if k == "PATH" { ("PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
@@ -60,14 +60,14 @@ fn run(lib_path: str,
     writeclose(pipe_in.out, input);
     let p = comm::port();
     let ch = comm::chan(p);
-    task::spawn_sched(task::single_threaded) {||
+    do task::spawn_sched(task::single_threaded) {||
         let errput = readclose(pipe_err.in);
         comm::send(ch, (2, errput));
-    };
-    task::spawn_sched(task::single_threaded) {||
+    }
+    do task::spawn_sched(task::single_threaded) {||
         let output = readclose(pipe_out.in);
         comm::send(ch, (1, output));
-    };
+    }
     let status = run::waitpid(pid);
     let mut errs = "";
     let mut outs = "";

@@ -397,7 +397,7 @@ Loop through a rope, char by char, until the end.
 * it - A block to execute with each consecutive character of the rope.
 "]
 fn iter_chars(rope: rope, it: fn(char)) {
-    loop_chars(rope) {|x|
+    do loop_chars(rope) {|x|
         it(x);
         true
     };

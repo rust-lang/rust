@@ -100,8 +100,8 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
     // For each item, look through the attributes.  If any of them are
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
-    let new_items = vec::flat_map(module.items) {|item|
-        vec::foldr(item.attrs, ~[item]) {|attr, items|
+    let new_items = do vec::flat_map(module.items) {|item|
+        do vec::foldr(item.attrs, ~[item]) {|attr, items|
             let mname = alt attr.node.value.node {
               ast::meta_word(n) { n }
               ast::meta_name_value(n, _) { n }

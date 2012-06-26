@@ -230,7 +230,7 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
 
 fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: ~[mode],
                         operands: ~[@expr]) {
-    vec::iteri(modes) {|i,mode|
+    do vec::iteri(modes) {|i,mode|
         alt ty::resolved_mode(fcx.ccx.tcx, mode) {
           by_move { forget_in_postcond(fcx, parent.id, operands[i].id); }
           by_ref | by_val | by_mutbl_ref | by_copy { }
@@ -463,7 +463,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                     /* LHS always becomes initialized,
                      whether or not this is a move */
                     find_pre_post_expr(fcx, an_init.expr);
-                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
+                    do pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
                         {|p_id, _s, _n|
                         copy_pre_post(fcx.ccx, p_id, an_init.expr);
                     };
@@ -477,7 +477,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                       _ { }
                     }
 
-                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
+                    do pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
                         {|p_id, _s, n|
                         let ident = path_to_ident(n);
                         alt p {
@@ -505,7 +505,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                                    prev_pp.postcondition);
                   }
                   none {
-                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
+                    do pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
                         {|p_id, _s, _n|
                         clear_pp(node_id_to_ts_ann(fcx.ccx, p_id).conditions);
                     };

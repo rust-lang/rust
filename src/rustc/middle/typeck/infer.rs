@@ -355,31 +355,31 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
-    indent {|| cx.commit {|| sub(cx).tys(a, b) } }.to_ures()
+    indent({|| cx.commit({|| sub(cx).tys(a, b) }) }).to_ures()
 }
 
 fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
-    indent {|| cx.probe {|| sub(cx).tys(a, b) } }.to_ures()
+    indent({|| cx.probe({|| sub(cx).tys(a, b) }) }).to_ures()
 }
 
 fn mk_subr(cx: infer_ctxt, a: ty::region, b: ty::region) -> ures {
     #debug["mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx)];
-    indent {|| cx.commit {|| sub(cx).regions(a, b) } }.to_ures()
+    indent({|| cx.commit({|| sub(cx).regions(a, b) }) }).to_ures()
 }
 
 fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
-    indent {|| cx.commit {|| cx.eq_tys(a, b) } }.to_ures()
+    indent({|| cx.commit({|| cx.eq_tys(a, b) }) }).to_ures()
 }
 
 fn mk_assignty(cx: infer_ctxt, anmnt: assignment,
                a: ty::t, b: ty::t) -> ures {
     #debug["mk_assignty(%? / %s <: %s)",
            anmnt, a.to_str(cx), b.to_str(cx)];
-    indent {|| cx.commit {||
+    indent({|| cx.commit({||
         cx.assign_tys(anmnt, a, b)
-    } }.to_ures()
+    }) }).to_ures()
 }
 
 fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
@@ -392,9 +392,9 @@ fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
     // used in method lookup, and there must be exactly one match or an
     // error is reported. Still, it should be fixed.
 
-    indent {|| cx.probe {||
+    indent({|| cx.probe({||
         cx.assign_tys(anmnt, a, b)
-    } }.to_ures()
+    }) }).to_ures()
 }
 
 // See comment on the type `resolve_state` below
@@ -418,7 +418,7 @@ fn resolve_deep(cx: infer_ctxt, a: ty::t, force_vars: force_level)
 impl methods for ures {
     fn then<T:copy>(f: fn() -> result<T,ty::type_err>)
         -> result<T,ty::type_err> {
-        self.chain() {|_i| f() }
+        self.chain({|_i| f() })
     }
 }
 
@@ -431,7 +431,7 @@ impl methods<T:copy> for cres<T> {
     }
 
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T> {
-        self.chain {|s|
+        do self.chain {|s|
             if s == t {
                 self
             } else {
@@ -520,7 +520,7 @@ impl of st for ty::t {
 
 impl of st for ty::region {
     fn sub(infcx: infer_ctxt, &&b: ty::region) -> ures {
-        sub(infcx).regions(self, b).chain {|_r| ok(()) }
+        sub(infcx).regions(self, b).chain({|_r| ok(()) })
     }
 
     fn lub(infcx: infer_ctxt, &&b: ty::region) -> cres<ty::region> {
@@ -605,7 +605,7 @@ impl methods for infer_ctxt {
     }
 
     fn next_ty_vars(n: uint) -> ~[ty::t] {
-        vec::from_fn(n) {|_i| self.next_ty_var() }
+        vec::from_fn(n, {|_i| self.next_ty_var() })
     }
 
     fn next_ty_var_integral_id() -> tvi_vid {
@@ -706,7 +706,7 @@ impl unify_methods for infer_ctxt {
             ok(b)
           }
           (some(v_a), some(v_b)) {
-            merge_op(v_a, v_b).chain {|v|
+            do merge_op(v_a, v_b).chain {|v|
                 ok(some(v))
             }
           }
@@ -719,11 +719,11 @@ impl unify_methods for infer_ctxt {
         glb: fn(V,V) -> cres<V>) -> cres<bounds<V>> {
 
         let _r = indenter();
-        self.merge_bnd(a.ub, b.ub, glb).chain {|ub|
+        do self.merge_bnd(a.ub, b.ub, glb).chain {|ub|
             #debug["glb of ubs %s and %s is %s",
                    a.ub.to_str(self), b.ub.to_str(self),
                    ub.to_str(self)];
-            self.merge_bnd(a.lb, b.lb, lub).chain {|lb|
+            do self.merge_bnd(a.lb, b.lb, lub).chain {|lb|
                 #debug["lub of lbs %s and %s is %s",
                        a.lb.to_str(self), b.lb.to_str(self),
                        lb.to_str(self)];
@@ -771,11 +771,11 @@ impl unify_methods for infer_ctxt {
         // them explicitly gives the type inferencer more
         // information and helps to produce tighter bounds
         // when necessary.
-        indent {||
-        self.bnds(a.lb, b.ub).then {||
-        self.bnds(b.lb, a.ub).then {||
-        self.merge_bnd(a.ub, b.ub, {|x, y| x.glb(self, y)}).chain {|ub|
-        self.merge_bnd(a.lb, b.lb, {|x, y| x.lub(self, y)}).chain {|lb|
+        do indent {||
+        do self.bnds(a.lb, b.ub).then {||
+        do self.bnds(b.lb, a.ub).then {||
+        do self.merge_bnd(a.ub, b.ub, {|x, y| x.glb(self, y)}).chain {|ub|
+        do self.merge_bnd(a.lb, b.lb, {|x, y| x.lub(self, y)}).chain {|lb|
             let bnds = {lb: lb, ub: ub};
             #debug["merge(%s): bnds=%s",
                    v_id.to_str(),
@@ -783,7 +783,7 @@ impl unify_methods for infer_ctxt {
 
             // the new bounds must themselves
             // be relatable:
-            self.bnds(bnds.lb, bnds.ub).then {||
+            do self.bnds(bnds.lb, bnds.ub).then {||
                 self.set(vb, v_id, root(bnds, rank));
                 uok()
         }
@@ -812,7 +812,7 @@ impl unify_methods for infer_ctxt {
         // see if we can make those types subtypes.
         alt (a_bounds.ub, b_bounds.lb) {
           (some(a_ub), some(b_lb)) {
-            let r = self.try {|| a_ub.sub(self, b_lb) };
+            let r = self.try({|| a_ub.sub(self, b_lb) });
             alt r {
               ok(()) { ret result::ok(()); }
               err(_) { /*fallthrough */ }
@@ -835,17 +835,17 @@ impl unify_methods for infer_ctxt {
             // i.e., b should redirect to a.
             self.set(vb, b_id, redirect(a_id));
             self.set_var_to_merged_bounds(
-                vb, a_id, a_bounds, b_bounds, nde_a.rank).then {||
+                vb, a_id, a_bounds, b_bounds, nde_a.rank).then({||
                 uok()
-            }
+            })
         } else if nde_a.rank < nde_b.rank {
             #debug["vars(): b has smaller rank"];
             // b has greater rank, so a should redirect to b.
             self.set(vb, a_id, redirect(b_id));
             self.set_var_to_merged_bounds(
-                vb, b_id, a_bounds, b_bounds, nde_b.rank).then {||
+                vb, b_id, a_bounds, b_bounds, nde_b.rank).then({||
                 uok()
-            }
+            })
         } else {
             #debug["vars(): a and b have equal rank"];
             assert nde_a.rank == nde_b.rank;
@@ -854,9 +854,9 @@ impl unify_methods for infer_ctxt {
             // to a and increment a's rank.
             self.set(vb, b_id, redirect(a_id));
             self.set_var_to_merged_bounds(
-                vb, a_id, a_bounds, b_bounds, nde_a.rank + 1u).then {||
+                vb, a_id, a_bounds, b_bounds, nde_a.rank + 1u).then({||
                 uok()
-            }
+            })
         }
     }
 
@@ -1026,7 +1026,7 @@ impl unify_methods for infer_ctxt {
         a: bound<T>, b: bound<T>) -> ures {
 
         #debug("bnds(%s <: %s)", a.to_str(self), b.to_str(self));
-        indent {||
+        do indent {||
             alt (a, b) {
               (none, none) |
               (some(_), none) |
@@ -1044,7 +1044,7 @@ impl unify_methods for infer_ctxt {
         as: ~[@ty::type_constr], bs: ~[@ty::type_constr]) -> ures {
 
         if check vec::same_length(as, bs) {
-            iter_vec2(as, bs) {|a,b|
+            do iter_vec2(as, bs) {|a,b|
                 self.constrs(a, b)
             }
         } else {
@@ -1053,24 +1053,24 @@ impl unify_methods for infer_ctxt {
     }
 
     fn sub_tys(a: ty::t, b: ty::t) -> ures {
-        sub(self).tys(a, b).chain {|_t| ok(()) }
+        sub(self).tys(a, b).chain({|_t| ok(()) })
     }
 
     fn sub_regions(a: ty::region, b: ty::region) -> ures {
-        sub(self).regions(a, b).chain {|_t| ok(()) }
+        sub(self).regions(a, b).chain({|_t| ok(()) })
     }
 
     fn eq_tys(a: ty::t, b: ty::t) -> ures {
-        self.sub_tys(a, b).then {||
+        self.sub_tys(a, b).then({||
             self.sub_tys(b, a)
-        }
+        })
     }
 
     fn eq_regions(a: ty::region, b: ty::region) -> ures {
         #debug["eq_regions(%s, %s)",
                a.to_str(self), b.to_str(self)];
-        indent {||
-            self.sub_regions(a, b).then {||
+        do indent {||
+            do self.sub_regions(a, b).then {||
                 self.sub_regions(b, a)
             }
         }
@@ -1134,7 +1134,7 @@ impl methods for resolve_state {
         // allow us to pass back errors in any useful way.
 
         assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
-        let rty = indent {|| self.resolve1(typ) };
+        let rty = indent({|| self.resolve1(typ) });
         assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
         alt self.err {
           none {
@@ -1462,11 +1462,11 @@ impl assignment for infer_ctxt {
                anmnt, a.to_str(self), nr_b.to_str(self),
                r_b.to_str(self)];
 
-        indent {||
-            self.sub_tys(a, nr_b).then {||
+        do indent {||
+            do self.sub_tys(a, nr_b).then {||
                 let r_a = ty::re_scope(anmnt.borrow_scope);
                 #debug["anmnt=%?", anmnt];
-                sub(self).contraregions(r_a, r_b).chain {|_r|
+                do sub(self).contraregions(r_a, r_b).chain {|_r|
                     // if successful, add an entry indicating that
                     // borrowing occurred
                     #debug["borrowing expression #%?", anmnt];
@@ -1564,7 +1564,7 @@ fn super_substs<C:combine>(
             ok(none)
           }
           (some(a), some(b)) {
-            infcx.eq_regions(a, b).then {||
+            do infcx.eq_regions(a, b).then {||
                 ok(some(a))
             }
           }
@@ -1582,9 +1582,10 @@ fn super_substs<C:combine>(
         }
     }
 
-    self.tps(a.tps, b.tps).chain { |tps|
-        self.self_tys(a.self_ty, b.self_ty).chain { |self_ty|
-            eq_opt_regions(self.infcx(), a.self_r, b.self_r).chain { |self_r|
+    do self.tps(a.tps, b.tps).chain { |tps|
+        do self.self_tys(a.self_ty, b.self_ty).chain { |self_ty|
+            do eq_opt_regions(self.infcx(), a.self_r, b.self_r).chain {
+                |self_r|
                 ok({self_r: self_r, self_ty: self_ty, tps: tps})
             }
         }
@@ -1600,11 +1601,11 @@ fn super_tps<C:combine>(
     // variance.
 
     if check vec::same_length(as, bs) {
-        iter_vec2(as, bs) {|a, b|
+        iter_vec2(as, bs, {|a, b|
             self.infcx().eq_tys(a, b)
-        }.then {||
+        }).then({||
             ok(as)
-        }
+        })
     } else {
         err(ty::terr_ty_param_size(bs.len(), as.len()))
     }
@@ -1621,9 +1622,9 @@ fn super_self_tys<C:combine>(
         ok(none)
       }
       (some(a), some(b)) {
-        self.infcx().eq_tys(a, b).then {||
+        self.infcx().eq_tys(a, b).then({||
             ok(some(a))
-        }
+        })
       }
       (none, some(_)) |
       (some(_), none) {
@@ -1639,11 +1640,11 @@ fn super_flds<C:combine>(
     self: C, a: ty::field, b: ty::field) -> cres<ty::field> {
 
     if a.ident == b.ident {
-        self.mts(a.mt, b.mt).chain {|mt|
+        self.mts(a.mt, b.mt).chain({|mt|
             ok({ident: a.ident, mt: mt})
-        }.chain_err {|e|
+        }).chain_err({|e|
             err(ty::terr_in_field(@e, a.ident))
-        }
+        })
     } else {
         err(ty::terr_record_fields(b.ident, a.ident))
     }
@@ -1661,8 +1662,8 @@ fn super_args<C:combine>(
     self: C, a: ty::arg, b: ty::arg)
     -> cres<ty::arg> {
 
-    self.modes(a.mode, b.mode).chain {|m|
-        self.contratys(a.ty, b.ty).chain {|t|
+    do self.modes(a.mode, b.mode).chain {|m|
+        do self.contratys(a.ty, b.ty).chain {|t|
             ok({mode: m, ty: t})
         }
     }
@@ -1674,7 +1675,7 @@ fn super_vstores<C:combine>(
 
     alt (a, b) {
       (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) {
-        self.contraregions(a_r, b_r).chain {|r|
+        do self.contraregions(a_r, b_r).chain {|r|
             ok(ty::vstore_slice(r))
         }
       }
@@ -1696,17 +1697,17 @@ fn super_fns<C:combine>(
                           b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
 
         if check vec::same_length(a_args, b_args) {
-            map_vec2(a_args, b_args) {|a, b| self.args(a, b) }
+            map_vec2(a_args, b_args, {|a, b| self.args(a, b) })
         } else {
             err(ty::terr_arg_count)
         }
     }
 
-    self.protos(a_f.proto, b_f.proto).chain {|p|
-        self.ret_styles(a_f.ret_style, b_f.ret_style).chain {|rs|
-            argvecs(self, a_f.inputs, b_f.inputs).chain {|inputs|
-                self.tys(a_f.output, b_f.output).chain {|output|
-                    self.purities(a_f.purity, b_f.purity).chain {|purity|
+    do self.protos(a_f.proto, b_f.proto).chain {|p|
+        do self.ret_styles(a_f.ret_style, b_f.ret_style).chain {|rs|
+            do argvecs(self, a_f.inputs, b_f.inputs).chain {|inputs|
+                do self.tys(a_f.output, b_f.output).chain {|output|
+                    do self.purities(a_f.purity, b_f.purity).chain {|purity|
                     // FIXME: uncomment if #2588 doesn't get accepted:
                     // self.infcx().constrvecs(a_f.constraints,
                     //                         b_f.constraints).then {||
@@ -1743,18 +1744,18 @@ fn super_tys<C:combine>(
 
       // Have to handle these first
       (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) {
-        self.infcx().vars_integral(self.infcx().tvib, a_id, b_id).then {||
-            ok(a) }
+        self.infcx().vars_integral(self.infcx().tvib, a_id, b_id).then({||
+            ok(a) })
       }
       (ty::ty_var_integral(a_id), ty::ty_int(_)) |
       (ty::ty_var_integral(a_id), ty::ty_uint(_)) {
-        self.infcx().vart_integral(self.infcx().tvib, a_id, b).then {||
-            ok(a) }
+        self.infcx().vart_integral(self.infcx().tvib, a_id, b).then({||
+            ok(a) })
       }
       (ty::ty_int(_), ty::ty_var_integral(b_id)) |
       (ty::ty_uint(_), ty::ty_var_integral(b_id)) {
-        self.infcx().tvar_integral(self.infcx().tvib, a, b_id).then {||
-            ok(a) }
+        self.infcx().tvar_integral(self.infcx().tvib, a, b_id).then({||
+            ok(a) })
       }
 
       (ty::ty_int(_), _) |
@@ -1786,78 +1787,78 @@ fn super_tys<C:combine>(
 
       (ty::ty_enum(a_id, a_substs), ty::ty_enum(b_id, b_substs))
       if a_id == b_id {
-        self.substs(a_substs, b_substs).chain {|tps|
+        do self.substs(a_substs, b_substs).chain {|tps|
             ok(ty::mk_enum(tcx, a_id, tps))
         }
       }
 
       (ty::ty_iface(a_id, a_substs), ty::ty_iface(b_id, b_substs))
       if a_id == b_id {
-        self.substs(a_substs, b_substs).chain {|substs|
+        do self.substs(a_substs, b_substs).chain {|substs|
             ok(ty::mk_iface(tcx, a_id, substs))
         }
       }
 
       (ty::ty_class(a_id, a_substs), ty::ty_class(b_id, b_substs))
       if a_id == b_id {
-        self.substs(a_substs, b_substs).chain {|substs|
+        do self.substs(a_substs, b_substs).chain {|substs|
             ok(ty::mk_class(tcx, a_id, substs))
         }
       }
 
       (ty::ty_box(a_mt), ty::ty_box(b_mt)) {
-        self.mts(a_mt, b_mt).chain {|mt|
+        do self.mts(a_mt, b_mt).chain {|mt|
             ok(ty::mk_box(tcx, mt))
         }
       }
 
       (ty::ty_uniq(a_mt), ty::ty_uniq(b_mt)) {
-        self.mts(a_mt, b_mt).chain {|mt|
+        do self.mts(a_mt, b_mt).chain {|mt|
             ok(ty::mk_uniq(tcx, mt))
         }
       }
 
       (ty::ty_vec(a_mt), ty::ty_vec(b_mt)) {
-        self.mts(a_mt, b_mt).chain {|mt|
+        do self.mts(a_mt, b_mt).chain {|mt|
             ok(ty::mk_vec(tcx, mt))
         }
       }
 
       (ty::ty_ptr(a_mt), ty::ty_ptr(b_mt)) {
-        self.mts(a_mt, b_mt).chain {|mt|
+        do self.mts(a_mt, b_mt).chain {|mt|
             ok(ty::mk_ptr(tcx, mt))
         }
       }
 
       (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) {
-        self.contraregions(a_r, b_r).chain {|r|
-            self.mts(a_mt, b_mt).chain {|mt|
+        do self.contraregions(a_r, b_r).chain {|r|
+            do self.mts(a_mt, b_mt).chain {|mt|
                 ok(ty::mk_rptr(tcx, r, mt))
             }
         }
       }
 
       (ty::ty_evec(a_mt, vs_a), ty::ty_evec(b_mt, vs_b)) {
-        self.mts(a_mt, b_mt).chain {|mt|
-            self.vstores(ty::terr_vec, vs_a, vs_b).chain {|vs|
+        do self.mts(a_mt, b_mt).chain {|mt|
+            do self.vstores(ty::terr_vec, vs_a, vs_b).chain {|vs|
                 ok(ty::mk_evec(tcx, mt, vs))
             }
         }
       }
 
       (ty::ty_estr(vs_a), ty::ty_estr(vs_b)) {
-        self.vstores(ty::terr_str, vs_a, vs_b).chain {|vs|
+        do self.vstores(ty::terr_str, vs_a, vs_b).chain {|vs|
             ok(ty::mk_estr(tcx,vs))
         }
       }
 
       (ty::ty_rec(as), ty::ty_rec(bs)) {
         if check vec::same_length(as, bs) {
-            map_vec2(as, bs) {|a,b|
+            map_vec2(as, bs, {|a,b|
                 self.flds(a, b)
-            }.chain {|flds|
+            }).chain({|flds|
                 ok(ty::mk_rec(tcx, flds))
-            }
+            })
         } else {
             err(ty::terr_record_size(bs.len(), as.len()))
         }
@@ -1865,23 +1866,23 @@ fn super_tys<C:combine>(
 
       (ty::ty_tup(as), ty::ty_tup(bs)) {
         if check vec::same_length(as, bs) {
-            map_vec2(as, bs) {|a, b| self.tys(a, b) }.chain {|ts|
+            map_vec2(as, bs, {|a, b| self.tys(a, b) }).chain({|ts|
                 ok(ty::mk_tup(tcx, ts))
-            }
+            })
         } else {
             err(ty::terr_tuple_size(bs.len(), as.len()))
         }
       }
 
       (ty::ty_fn(a_fty), ty::ty_fn(b_fty)) {
-        self.fns(a_fty, b_fty).chain {|fty|
+        do self.fns(a_fty, b_fty).chain {|fty|
             ok(ty::mk_fn(tcx, fty))
         }
       }
 
       (ty::ty_constr(a_t, a_constrs), ty::ty_constr(b_t, b_constrs)) {
-        self.tys(a_t, b_t).chain {|t|
-            self.infcx().constrvecs(a_constrs, b_constrs).then {||
+        do self.tys(a_t, b_t).chain {|t|
+            do self.infcx().constrvecs(a_constrs, b_constrs).then {||
                 ok(ty::mk_constr(tcx, t, a_constrs))
             }
         }
@@ -1910,25 +1911,25 @@ impl of combine for sub {
                self.tag(),
                a.to_str(self.infcx()),
                b.to_str(self.infcx())];
-        indent {||
+        do indent {||
             alt (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) {
-                self.infcx().vars(self.rb, a_id, b_id).then {||
+                do self.infcx().vars(self.rb, a_id, b_id).then {||
                     ok(a)
                 }
               }
               (ty::re_var(a_id), _) {
-                  self.infcx().vart(self.rb, a_id, b).then {||
+                  do self.infcx().vart(self.rb, a_id, b).then {||
                       ok(a)
                   }
               }
               (_, ty::re_var(b_id)) {
-                  self.infcx().tvar(self.rb, a, b_id).then {||
+                  do self.infcx().tvar(self.rb, a, b_id).then {||
                       ok(a)
                   }
               }
               _ {
-                self.lub().regions(a, b).compare(b) {||
+                do self.lub().regions(a, b).compare(b) {||
                     ty::terr_regions_differ(b, a)
                 }
               }
@@ -1947,50 +1948,50 @@ impl of combine for sub {
           m_mutbl {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
-            self.infcx().eq_tys(a.ty, b.ty).then {|| ok(a) }
+            self.infcx().eq_tys(a.ty, b.ty).then({|| ok(a) })
           }
           m_imm | m_const {
             // Otherwise we can be covariant:
-            self.tys(a.ty, b.ty).chain {|_t| ok(a) }
+            self.tys(a.ty, b.ty).chain({|_t| ok(a) })
           }
         }
     }
 
     fn protos(a: ast::proto, b: ast::proto) -> cres<ast::proto> {
-        self.lub().protos(a, b).compare(b) {||
+        self.lub().protos(a, b).compare(b, {||
             ty::terr_proto_mismatch(b, a)
-        }
+        })
     }
 
     fn purities(f1: purity, f2: purity) -> cres<purity> {
-        self.lub().purities(f1, f2).compare(f2) {||
+        self.lub().purities(f1, f2).compare(f2, {||
             ty::terr_purity_mismatch(f2, f1)
-        }
+        })
     }
 
     fn ret_styles(a: ret_style, b: ret_style) -> cres<ret_style> {
-        self.lub().ret_styles(a, b).compare(b) {||
+        self.lub().ret_styles(a, b).compare(b, {||
             ty::terr_ret_style_mismatch(b, a)
-        }
+        })
     }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         #debug("%s.tys(%s, %s)", self.tag(),
                a.to_str(*self), b.to_str(*self));
         if a == b { ret ok(a); }
-        indent {||
+        do indent {||
             alt (ty::get(a).struct, ty::get(b).struct) {
               (ty::ty_bot, _) {
                 ok(a)
               }
               (ty::ty_var(a_id), ty::ty_var(b_id)) {
-                self.infcx().vars(self.tvb, a_id, b_id).then {|| ok(a) }
+                self.infcx().vars(self.tvb, a_id, b_id).then({|| ok(a) })
               }
               (ty::ty_var(a_id), _) {
-                self.infcx().vart(self.tvb, a_id, b).then {|| ok(a) }
+                self.infcx().vart(self.tvb, a_id, b).then({|| ok(a) })
               }
               (_, ty::ty_var(b_id)) {
-                self.infcx().tvar(self.tvb, a, b_id).then {|| ok(a) }
+                self.infcx().tvar(self.tvb, a, b_id).then({|| ok(a) })
               }
               (_, ty::ty_bot) {
                 err(ty::terr_sorts(b, a))
@@ -2011,7 +2012,7 @@ impl of combine for sub {
         // First, we instantiate each bound region in the subtype with a fresh
         // region variable.
         let {fn_ty: a_fn_ty, _} = {
-            replace_bound_regions_in_fn_ty(self.tcx, @nil, none, a) { |br|
+            do replace_bound_regions_in_fn_ty(self.tcx, @nil, none, a) { |br|
                 // N.B.: The name of the bound region doesn't have
                 // anything to do with the region variable that's created
                 // for it.  The only thing we're doing with `br` here is
@@ -2027,7 +2028,7 @@ impl of combine for sub {
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
         let {fn_ty: b_fn_ty, _} = {
-            replace_bound_regions_in_fn_ty(self.tcx, @nil, none, b) { |br|
+            do replace_bound_regions_in_fn_ty(self.tcx, @nil, none, b) { |br|
                 // FIXME: eventually re_skolemized (issue #2263)
                 ty::re_bound(br)
             }
@@ -2093,21 +2094,21 @@ impl of combine for lub {
 
         alt m {
           m_imm | m_const {
-            self.tys(a.ty, b.ty).chain {|t|
+            self.tys(a.ty, b.ty).chain({|t|
                 ok({ty: t, mutbl: m})
-            }
+            })
           }
 
           m_mutbl {
-            self.infcx().try {||
-                self.infcx().eq_tys(a.ty, b.ty).then {||
+            self.infcx().try({||
+                self.infcx().eq_tys(a.ty, b.ty).then({||
                     ok({ty: a.ty, mutbl: m})
-                }
-            }.chain_err {|_e|
-                self.tys(a.ty, b.ty).chain {|t|
+                })
+            }).chain_err({|_e|
+                self.tys(a.ty, b.ty).chain({|t|
                     ok({ty: t, mutbl: m_const})
-                }
-            }
+                })
+            })
           }
         }
     }
@@ -2159,7 +2160,7 @@ impl of combine for lub {
                a.to_str(self.infcx()),
                b.to_str(self.infcx())];
 
-        indent {||
+        do indent {||
             alt (a, b) {
               (ty::re_static, _) | (_, ty::re_static) {
                 ok(ty::re_static) // nothing lives longer than static
@@ -2272,19 +2273,19 @@ impl of combine for glb {
           // If one side or both is mut, then the GLB must use
           // the precise type from the mut side.
           (m_mutbl, m_const) {
-            sub(*self).tys(a.ty, b.ty).chain {|_t|
+            sub(*self).tys(a.ty, b.ty).chain({|_t|
                 ok({ty: a.ty, mutbl: m_mutbl})
-            }
+            })
           }
           (m_const, m_mutbl) {
-            sub(*self).tys(b.ty, a.ty).chain {|_t|
+            sub(*self).tys(b.ty, a.ty).chain({|_t|
                 ok({ty: b.ty, mutbl: m_mutbl})
-            }
+            })
           }
           (m_mutbl, m_mutbl) {
-            self.infcx().eq_tys(a.ty, b.ty).then {||
+            self.infcx().eq_tys(a.ty, b.ty).then({||
                 ok({ty: a.ty, mutbl: m_mutbl})
-            }
+            })
           }
 
           // If one side or both is immutable, we can use the GLB of
@@ -2292,17 +2293,17 @@ impl of combine for glb {
           (m_imm, m_const) |
           (m_const, m_imm) |
           (m_imm, m_imm) {
-            self.tys(a.ty, b.ty).chain {|t|
+            self.tys(a.ty, b.ty).chain({|t|
                 ok({ty: t, mutbl: m_imm})
-            }
+            })
           }
 
           // If both sides are const, then we can use GLB of both
           // sides and mutbl of only `m_const`.
           (m_const, m_const) {
-            self.tys(a.ty, b.ty).chain {|t|
+            self.tys(a.ty, b.ty).chain({|t|
                 ok({ty: t, mutbl: m_const})
-            }
+            })
           }
 
           // There is no mutual subtype of these combinations.
@@ -2356,7 +2357,7 @@ impl of combine for glb {
                a.to_str(self.infcx()),
                b.to_str(self.infcx())];
 
-        indent {||
+        do indent {||
             alt (a, b) {
               (ty::re_static, r) | (r, ty::re_static) {
                 // static lives longer than everything else
@@ -2494,7 +2495,7 @@ fn lattice_tys<L:lattice_ops combine>(
            a.to_str(self.infcx()),
            b.to_str(self.infcx()));
     if a == b { ret ok(a); }
-    indent {||
+    do indent {||
         alt (ty::get(a).struct, ty::get(b).struct) {
           (ty::ty_bot, _) { self.ty_bot(b) }
           (_, ty::ty_bot) { self.ty_bot(a) }
@@ -2580,7 +2581,7 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     let a_bnd = self.bnd(a_bounds), b_bnd = self.bnd(b_bounds);
     alt (a_bnd, b_bnd) {
       (some(a_ty), some(b_ty)) {
-        alt self.infcx().try {|| c_ts(a_ty, b_ty) } {
+        alt self.infcx().try({|| c_ts(a_ty, b_ty) }) {
             ok(t) { ret ok(t); }
             err(_) { /*fallthrough */ }
         }
@@ -2590,9 +2591,9 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
 
     // Otherwise, we need to merge A and B into one variable.  We can
     // then use either variable as an upper bound:
-    self.infcx().vars(vb, a_vid, b_vid).then {||
+    self.infcx().vars(vb, a_vid, b_vid).then({||
         ok(a_t)
-    }
+    })
 }
 
 fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
@@ -2623,7 +2624,7 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
         // and then return b.
         #debug["bnd=none"];
         let a_bounds = self.with_bnd(a_bounds, b);
-        self.infcx().bnds(a_bounds.lb, a_bounds.ub).then {||
+        do self.infcx().bnds(a_bounds.lb, a_bounds.ub).then {||
             self.infcx().set(vb, a_id, root(a_bounds,
                                             nde_a.rank));
             ok(b)

@@ -216,7 +216,7 @@ fn run_tests_console(opts: test_opts,
 fn print_failures(st: console_test_state) {
     st.out.write_line("\nfailures:");
     let failures = copy st.failures;
-    let failures = vec::map(failures) {|test| test.name};
+    let failures = vec::map(failures, {|test| test.name});
     let failures = sort::merge_sort(str::le, failures);
     for vec::each(failures) {|name|
         st.out.write_line(#fmt["    %s", name]);
@@ -390,7 +390,7 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
         ret;
     }
 
-    task::spawn {||
+    do task::spawn {||
         let testfn = copy test.fn;
         let mut builder = task::builder();
         let result_future = task::future_result(builder);

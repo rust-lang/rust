@@ -67,7 +67,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
         let n = llvm::LLVMCountStructElementTypes(ty);
         let elts = vec::from_elem(n as uint, ptr::null());
-        vec::as_buf(elts) {|buf|
+        do vec::as_buf(elts) {|buf|
             llvm::LLVMGetStructElementTypes(ty, buf);
         }
         ret elts;
@@ -82,7 +82,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             2 /* float */ { 4u }
             3 /* double */ { 8u }
             10 /* struct */ {
-                vec::foldl(0u, struct_tys(ty)) {|a, t|
+                do vec::foldl(0u, struct_tys(ty)) {|a, t|
                     uint::max(a, ty_align(t))
                 }
             }
@@ -105,7 +105,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             2 /* float */ { 4u }
             3 /* double */ { 8u }
             10 /* struct */ {
-                vec::foldl(0u, struct_tys(ty)) {|s, t|
+                do vec::foldl(0u, struct_tys(ty)) {|s, t|
                     s + ty_size(t)
                 }
             }
@@ -404,12 +404,12 @@ fn x86_64_tys(atys: ~[TypeRef],
 
 fn decl_x86_64_fn(tys: x86_64_tys,
                   decl: fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
-    let atys = vec::map(tys.arg_tys) {|t| t.ty };
+    let atys = vec::map(tys.arg_tys, {|t| t.ty });
     let rty = tys.ret_ty.ty;
     let fnty = T_fn(atys, rty);
     let llfn = decl(fnty);
 
-    vec::iteri(tys.attrs) {|i, a|
+    do vec::iteri(tys.attrs) {|i, a|
         alt a {
             option::some(attr) {
                 let llarg = get_param(llfn, i);
@@ -640,7 +640,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
             let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
             alt tys.x86_64_tys {
                 some(x86_64) {
-                    vec::iteri(x86_64.attrs) {|i, a|
+                    do vec::iteri(x86_64.attrs) {|i, a|
                         alt a {
                             some(attr) {
                                 llvm::LLVMAddInstrAttribute(
@@ -691,7 +691,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
         // Declare the "prototype" for the base function F:
         alt tys.x86_64_tys {
           some(x86_64) {
-            decl_x86_64_fn(x86_64) {|fnty|
+            do decl_x86_64_fn(x86_64) {|fnty|
                 decl_fn(ccx.llmod, lname, cc, fnty)
             }
           }
@@ -1153,7 +1153,7 @@ fn register_extern_fn(ccx: @crate_ctxt, sp: span,
     ret if ccx.sess.targ_cfg.arch == arch_x86_64 {
         let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
         let x86_64 = x86_64_tys(llargtys, llretty, ret_def);
-        decl_x86_64_fn(x86_64) {|fnty|
+        do decl_x86_64_fn(x86_64) {|fnty|
             register_fn_fuller(ccx, sp, path, node_id,
                                t, lib::llvm::CCallConv, fnty)
         }

@@ -11,7 +11,7 @@ fn from_srv(
 
     #[doc = "Use the AST service to create a document tree"];
 
-    astsrv::exec(srv) {|ctxt|
+    do astsrv::exec(srv) {|ctxt|
         extract(ctxt.ast, default_name)
     }
 }
@@ -55,7 +55,7 @@ fn moddoc_from_mod(
 ) -> doc::moddoc {
     {
         item: itemdoc,
-        items: vec::filter_map(module.items) {|item|
+        items: do vec::filter_map(module.items) {|item|
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::item_mod(m) {
@@ -113,7 +113,7 @@ fn nmoddoc_from_mod(
 ) -> doc::nmoddoc {
     {
         item: itemdoc,
-        fns: par::seqmap(module.items) {|item|
+        fns: do par::seqmap(module.items) {|item|
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::foreign_item_fn(_, _) {
@@ -189,7 +189,7 @@ fn ifacedoc_from_iface(
 ) -> doc::ifacedoc {
     {
         item: itemdoc,
-        methods: par::seqmap(methods) {|method|
+        methods: do par::seqmap(methods) {|method|
             {
                 name: *method.ident,
                 brief: none,
@@ -221,7 +221,7 @@ fn impldoc_from_impl(
         item: itemdoc,
         iface_ty: none,
         self_ty: none,
-        methods: par::seqmap(methods) {|method|
+        methods: do par::seqmap(methods) {|method|
             {
                 name: *method.ident,
                 brief: none,
@@ -339,7 +339,7 @@ mod test {
     #[test]
     fn extract_from_seq_srv() {
         let source = "";
-        astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) {|srv|
             let doc = from_srv(srv, "name");
             assert doc.cratemod().name() == "name";
         }

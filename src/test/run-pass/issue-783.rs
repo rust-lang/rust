@@ -10,7 +10,7 @@ fn a() {
         }
         let p = port();
         let ch = chan(p);
-        spawn {|| b(ch); };
+        spawn({|| b(ch); });
         recv(p);
     }
     let mut i = 0;
@@ -21,7 +21,7 @@ fn a() {
 }
 
 fn main() {
-    iter::repeat(100u) {||
-        spawn {|| a(); }
+    do iter::repeat(100u) {||
+        spawn({|| a(); });
     }
 }

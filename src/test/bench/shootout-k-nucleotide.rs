@@ -142,7 +142,7 @@ fn main(args: ~[str]) {
    let from_child = vec::map (sizes, { |_sz|     comm::port() });
    let to_parent  = vec::mapi(sizes, { |ii, _sz| comm::chan(from_child[ii]) });
    let to_child   = vec::mapi(sizes, fn@(ii: uint, sz: uint) -> comm::chan<~[u8]> {
-      ret task::spawn_listener { |from_parent|
+      ret do task::spawn_listener { |from_parent|
          make_sequence_processor(sz, from_parent, to_parent[ii]);
       };
    });

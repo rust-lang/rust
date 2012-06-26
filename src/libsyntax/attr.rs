@@ -315,7 +315,7 @@ From a list of crate attributes get only the meta_items that impact crate
 linkage
 "]
 fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
-    find_linkage_attrs(attrs).flat_map {|attr|
+    do find_linkage_attrs(attrs).flat_map {|attr|
         alt check attr.node.value.node {
           ast::meta_list(_, items) { /* FIXME (#2543) */ copy items }
         }
@@ -351,7 +351,7 @@ enum inline_attr {
 #[doc = "True if something like #[inline] is found in the list of attrs."]
 fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
     // TODO---validate the usage of #[inline] and #[inline(always)]
-    vec::foldl(ia_none, attrs) {|ia,attr|
+    do vec::foldl(ia_none, attrs) {|ia,attr|
         alt attr.node.value.node {
           ast::meta_word(@"inline") { ia_hint }
           ast::meta_list(@"inline", items) {

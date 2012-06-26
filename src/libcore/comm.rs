@@ -98,7 +98,7 @@ class port_ptr<T:send> {
   let po: *rust_port;
   new(po: *rust_port) { self.po = po; }
   drop unsafe {
-    task::unkillable {||
+    do task::unkillable {||
         // Once the port is detached it's guaranteed not to receive further
         // messages
         let yield = 0u;
@@ -223,7 +223,7 @@ fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
 
     let mut resport: *rust_port;
     resport = rusti::init::<*rust_port>();
-    vec::as_buf(ports) {|ports|
+    do vec::as_buf(ports) {|ports|
         rustrt::rust_port_select(ptr::addr_of(resport), ports, n_ports,
                                  yieldp);
     }
@@ -364,16 +364,16 @@ fn test_select2_rendezvous() {
     let ch_a = chan(po_a);
     let ch_b = chan(po_b);
 
-    iter::repeat(10u) {||
-        task::spawn {||
-            iter::repeat(10u) {|| task::yield() }
+    do iter::repeat(10u) {||
+        do task::spawn {||
+            iter::repeat(10u, {|| task::yield() });
             send(ch_a, "a");
         };
 
         assert select2(po_a, po_b) == either::left("a");
 
-        task::spawn {||
-            iter::repeat(10u) {|| task::yield() }
+        do task::spawn {||
+            iter::repeat(10u, {|| task::yield() });
             send(ch_b, "b");
         };
 
@@ -391,14 +391,14 @@ fn test_select2_stress() {
     let msgs = 100u;
     let times = 4u;
 
-    iter::repeat(times) {||
-        task::spawn {||
-            iter::repeat(msgs) {||
+    do iter::repeat(times) {||
+        do task::spawn {||
+            do iter::repeat(msgs) {||
                 send(ch_a, "a")
             }
         };
-        task::spawn {||
-            iter::repeat(msgs) {||
+        do task::spawn {||
+            do iter::repeat(msgs) {||
                 send(ch_b, "b")
             }
         };
@@ -406,7 +406,7 @@ fn test_select2_stress() {
 
     let mut as = 0;
     let mut bs = 0;
-    iter::repeat(msgs * times * 2u) {||
+    do iter::repeat(msgs * times * 2u) {||
         alt check select2(po_a, po_b) {
           either::left("a") { as += 1 }
           either::right("b") { bs += 1 }
@@ -440,9 +440,9 @@ fn test_recv_chan_wrong_task() {
     let po = port();
     let ch = chan(po);
     send(ch, "flower");
-    assert result::is_err(task::try {||
+    assert result::is_err(task::try({||
         recv_chan(ch)
-    })
+    }))
 }
 
 #[test]
@@ -462,8 +462,8 @@ fn test_chan_peek() {
 
 #[test]
 fn test_listen() {
-    listen {|parent|
-        task::spawn {||
+    do listen {|parent|
+        do task::spawn {||
             parent.send("oatmeal-salad");
         }
         assert parent.recv() == "oatmeal-salad";
@@ -473,18 +473,18 @@ fn test_listen() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_port_detach_fail() {
-    iter::repeat(100u) {||
+    do iter::repeat(100u) {||
         let builder = task::builder();
         task::unsupervise(builder);
-        task::run(builder) {||
+        do task::run(builder) {||
             let po = port();
             let ch = po.chan();
 
-            task::spawn {||
+            do task::spawn {||
                 fail;
             }
 
-            task::spawn {||
+            do task::spawn {||
                 ch.send(());
             }
         }

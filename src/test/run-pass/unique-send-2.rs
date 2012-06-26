@@ -13,7 +13,7 @@ fn main() {
     let n = 100u;
     let mut expected = 0u;
     for uint::range(0u, n) {|i|
-        task::spawn {|| child(ch, i); };
+        task::spawn({|| child(ch, i); });
         expected += i;
     }
 

@@ -10,6 +10,6 @@ fn child() { assert (1 == 2); }
 
 fn main() {
     let p = port::<int>();
-    task::spawn {|| child(); };
+    task::spawn({|| child(); });
     let x = recv(p);
 }

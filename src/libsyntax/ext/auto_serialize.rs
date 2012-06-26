@@ -100,7 +100,7 @@ fn expand(cx: ext_ctxt,
           with *item}
     }
 
-    vec::flat_map(in_items) {|in_item|
+    do vec::flat_map(in_items) {|in_item|
         alt in_item.node {
           ast::item_ty(ty, tps, _) {
             vec::append(~[filter_attrs(in_item)],
@@ -151,7 +151,7 @@ impl helpers for ext_ctxt {
     fn ty_fn(span: span,
              -input_tys: ~[@ast::ty],
              -output: @ast::ty) -> @ast::ty {
-        let args = vec::map(input_tys) {|ty|
+        let args = do vec::map(input_tys) {|ty|
             {mode: ast::expl(ast::by_ref),
              ty: ty,
              ident: @"",
@@ -294,7 +294,7 @@ fn ser_path(cx: ext_ctxt, tps: ser_tps_map, path: @ast::path,
             ast::expr_path(
                 cx.helper_path(path, "serialize")));
 
-    let ty_args = vec::map(path.types) {|ty|
+    let ty_args = do vec::map(path.types) {|ty|
         let sv_stmts = ser_ty(cx, tps, ty, cx.clone(s), #ast{ __v });
         let sv = cx.expr(path.span,
                          ast::expr_block(cx.blk(path.span, sv_stmts)));
@@ -316,12 +316,14 @@ fn ser_variant(cx: ext_ctxt,
                bodyfn: fn(-@ast::expr, ast::blk) -> @ast::expr,
                argfn: fn(-@ast::expr, uint, ast::blk) -> @ast::expr)
     -> ast::arm {
-    let vnames = vec::from_fn(vec::len(tys)) {|i| @#fmt["__v%u", i]};
-    let pats = vec::from_fn(vec::len(tys)) {|i|
+    let vnames = do vec::from_fn(vec::len(tys)) {|i|
+        @#fmt["__v%u", i]
+    };
+    let pats = do vec::from_fn(vec::len(tys)) {|i|
         cx.binder_pat(tys[i].span, vnames[i])
     };
     let pat: @ast::pat = @{id: cx.next_id(), node: pfn(pats), span: span};
-    let stmts = vec::from_fn(vec::len(tys)) {|i|
+    let stmts = do vec::from_fn(vec::len(tys)) {|i|
         let v = cx.var_ref(span, vnames[i]);
         let arg_blk =
             cx.blk(
@@ -374,7 +376,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_rec(flds) {
-        let fld_stmts = vec::from_fn(vec::len(flds)) {|fidx|
+        let fld_stmts = do vec::from_fn(vec::len(flds)) {|fidx|
             let fld = flds[fidx];
             let vf = cx.expr(fld.span,
                              ast::expr_field(cx.clone(v),
@@ -516,7 +518,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
                     tp_inputs);
 
     let tps_map = map::str_hash();
-    vec::iter2(tps, tp_inputs) {|tp, arg|
+    do vec::iter2(tps, tp_inputs) {|tp, arg|
         let arg_ident = arg.ident;
         tps_map.insert(
             *tp.ident,
@@ -537,7 +539,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
         vec::append(~[{ident: @"__S",
                       id: cx.next_id(),
                       bounds: ser_bnds}],
-                    vec::map(tps) {|tp| cx.clone_ty_param(tp) });
+                    vec::map(tps, {|tp| cx.clone_ty_param(tp) }));
 
     let ser_output: @ast::ty = @{id: cx.next_id(),
                                  node: ast::ty_nil,
@@ -573,7 +575,7 @@ fn deser_path(cx: ext_ctxt, tps: deser_tps_map, path: @ast::path,
             ast::expr_path(
                 cx.helper_path(path, "deserialize")));
 
-    let ty_args = vec::map(path.types) {|ty|
+    let ty_args = do vec::map(path.types) {|ty|
         let dv_expr = deser_ty(cx, tps, ty, cx.clone(d));
         cx.lambda(cx.expr_blk(dv_expr))
     };
@@ -616,7 +618,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
       }
 
       ast::ty_rec(flds) {
-        let fields = vec::from_fn(vec::len(flds)) {|fidx|
+        let fields = do vec::from_fn(vec::len(flds)) {|fidx|
             let fld = flds[fidx];
             let d = cx.clone(d);
             let f = cx.lit_str(fld.span, fld.node.ident);
@@ -645,7 +647,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         //    d.read_tup_elt(2u, {||...}))
         // }
 
-        let arg_exprs = vec::from_fn(vec::len(tys)) {|i|
+        let arg_exprs = do vec::from_fn(vec::len(tys)) {|i|
             let idx = cx.lit_uint(ty.span, i);
             let body = deser_lambda(cx, tps, tys[i], cx.clone(d));
             #ast{ $(d).read_tup_elt($(idx), $(body)) }
@@ -723,7 +725,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
                     tp_inputs);
 
     let tps_map = map::str_hash();
-    vec::iter2(tps, tp_inputs) {|tp, arg|
+    do vec::iter2(tps, tp_inputs) {|tp, arg|
         let arg_ident = arg.ident;
         tps_map.insert(
             *tp.ident,
@@ -743,12 +745,12 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
         vec::append(~[{ident: @"__D",
                       id: cx.next_id(),
                       bounds: deser_bnds}],
-                    vec::map(tps) {|tp|
+                    vec::map(tps, {|tp|
                         let cloned = cx.clone_ty_param(tp);
                         {bounds: @(vec::append(*cloned.bounds,
                                                ~[ast::bound_copy]))
                          with cloned}
-                    });
+                    }));
 
     let deser_blk = cx.expr_blk(f(cx, tps_map, #ast(expr){__d}));
 
@@ -781,11 +783,11 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: ast::ident,
             e_span: span, variants: ~[ast::variant],
             -s: @ast::expr, -v: @ast::expr) -> ~[@ast::stmt] {
     let ext_cx = cx;
-    let arms = vec::from_fn(vec::len(variants)) {|vidx|
+    let arms = do vec::from_fn(vec::len(variants)) {|vidx|
         let variant = variants[vidx];
         let v_span = variant.span;
         let v_name = variant.node.name;
-        let variant_tys = vec::map(variant.node.args) {|a| a.ty };
+        let variant_tys = vec::map(variant.node.args, {|a| a.ty });
 
         ser_variant(
             cx, tps, variant_tys, v_span, cx.clone(s),
@@ -830,13 +832,13 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
               e_span: span, variants: ~[ast::variant],
               -d: @ast::expr) -> @ast::expr {
     let ext_cx = cx;
-    let arms: ~[ast::arm] = vec::from_fn(vec::len(variants)) {|vidx|
+    let arms: ~[ast::arm] = do vec::from_fn(vec::len(variants)) {|vidx|
         let variant = variants[vidx];
         let v_span = variant.span;
         let v_name = variant.node.name;
-        let tys = vec::map(variant.node.args) {|a| a.ty };
+        let tys = vec::map(variant.node.args, {|a| a.ty });
 
-        let arg_exprs = vec::from_fn(vec::len(tys)) {|i|
+        let arg_exprs = do vec::from_fn(vec::len(tys)) {|i|
             let idx = cx.lit_uint(v_span, i);
             let body = deser_lambda(cx, tps, tys[i], cx.clone(d));
             #ast{ $(d).read_enum_variant_arg($(idx), $(body)) }

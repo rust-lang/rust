@@ -406,7 +406,7 @@ fn add_class_fields(self: @ir_maps, did: def_id) {
 
 fn visit_local(local: @local, &&self: @ir_maps, vt: vt<@ir_maps>) {
     let def_map = self.tcx.def_map;
-    pat_util::pat_bindings(def_map, local.node.pat) { |p_id, sp, path|
+    do pat_util::pat_bindings(def_map, local.node.pat) { |p_id, sp, path|
         #debug["adding local variable %d", p_id];
         let name = ast_util::path_to_ident(path);
         (*self).add_live_node_for_node(p_id, lnk_vdef(sp));
@@ -560,9 +560,9 @@ class liveness {
         alt expr.node {
           expr_path(_) {
             let def = self.tcx.def_map.get(expr.id);
-            relevant_def(def).map { |rdef|
+            relevant_def(def).map({ |rdef|
                 self.variable_from_rdef(rdef, expr.span)
-            }
+            })
           }
           _ {none}
         }
@@ -576,9 +576,9 @@ class liveness {
                              span: span) -> option<variable> {
         alt self.tcx.def_map.find(node_id) {
           some(def) {
-            relevant_def(def).map { |rdef|
+            relevant_def(def).map({ |rdef|
               self.variable_from_rdef(rdef, span)
-            }
+            })
           }
           none {
             self.tcx.sess.span_bug(
@@ -589,7 +589,7 @@ class liveness {
 
     fn pat_bindings(pat: @pat, f: fn(live_node, variable, span)) {
         let def_map = self.tcx.def_map;
-        pat_util::pat_bindings(def_map, pat) {|p_id, sp, _n|
+        do pat_util::pat_bindings(def_map, pat) {|p_id, sp, _n|
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
             f(ln, var, sp);
@@ -663,7 +663,7 @@ class liveness {
     }
 
     fn ln_str(ln: live_node) -> str {
-        io::with_str_writer { |wr|
+        do io::with_str_writer { |wr|
             wr.write_str("[ln(");
             wr.write_uint(*ln);
             wr.write_str(") of kind ");
@@ -695,9 +695,9 @@ class liveness {
     fn init_from_succ(ln: live_node, succ_ln: live_node) {
         // more efficient version of init_empty() / merge_from_succ()
         self.successors[*ln] = succ_ln;
-        self.indices2(ln, succ_ln) { |idx, succ_idx|
+        self.indices2(ln, succ_ln, { |idx, succ_idx|
             self.users[idx] = self.users[succ_idx];
-        }
+        });
         #debug["init_from_succ(ln=%s, succ=%s)",
                self.ln_str(ln), self.ln_str(succ_ln)];
     }
@@ -707,7 +707,7 @@ class liveness {
         if ln == succ_ln { ret false; }
 
         let mut changed = false;
-        self.indices2(ln, succ_ln) { |idx, succ_idx|
+        do self.indices2(ln, succ_ln) { |idx, succ_idx|
             changed |= copy_if_invalid(copy self.users[succ_idx].reader,
                                        self.users[idx].reader);
             changed |= copy_if_invalid(copy self.users[succ_idx].writer,
@@ -776,9 +776,9 @@ class liveness {
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
         let entry_ln: live_node =
-            self.with_loop_nodes(self.s.exit_ln, self.s.exit_ln) {||
+            self.with_loop_nodes(self.s.exit_ln, self.s.exit_ln, {||
                 self.propagate_through_fn_block(decl, body)
-            };
+            });
 
         // hack to skip the loop unless #debug is enabled:
         #debug["^^ liveness computation results for body %d (entry=%s)",
@@ -832,7 +832,7 @@ class liveness {
 
     fn propagate_through_block(blk: blk, succ: live_node) -> live_node {
         let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
-        blk.node.stmts.foldr(succ) { |stmt, succ|
+        do blk.node.stmts.foldr(succ) { |stmt, succ|
             self.propagate_through_stmt(stmt, succ)
         }
     }
@@ -852,7 +852,7 @@ class liveness {
     fn propagate_through_decl(decl: @decl, succ: live_node) -> live_node {
         alt decl.node {
           decl_local(locals) {
-            locals.foldr(succ) { |local, succ|
+            do locals.foldr(succ) { |local, succ|
                 self.propagate_through_local(local, succ)
             }
           }
@@ -877,9 +877,9 @@ class liveness {
         // initialization, which is mildly more complex than checking
         // once at the func header but otherwise equivalent.
 
-        let opt_init = local.node.init.map { |i| i.expr };
+        let opt_init = local.node.init.map({ |i| i.expr });
         let mut succ = self.propagate_through_opt_expr(opt_init, succ);
-        self.pat_bindings(local.node.pat) { |ln, var, _sp|
+        do self.pat_bindings(local.node.pat) { |ln, var, _sp|
             self.init_from_succ(ln, succ);
             self.define(ln, var);
             succ = ln;
@@ -889,14 +889,14 @@ class liveness {
 
     fn propagate_through_exprs(exprs: ~[@expr],
                                succ: live_node) -> live_node {
-        exprs.foldr(succ) { |expr, succ|
+        do exprs.foldr(succ) { |expr, succ|
             self.propagate_through_expr(expr, succ)
         }
     }
 
     fn propagate_through_opt_expr(opt_expr: option<@expr>,
                                   succ: live_node) -> live_node {
-        opt_expr.foldl(succ) { |succ, expr|
+        do opt_expr.foldl(succ) { |succ, expr|
             self.propagate_through_expr(expr, succ)
         }
     }
@@ -930,7 +930,7 @@ class liveness {
             // the construction of a closure itself is not important,
             // but we have to consider the closed over variables.
             let caps = (*self.ir).captures(expr);
-            (*caps).foldr(succ) { |cap, succ|
+            do (*caps).foldr(succ) { |cap, succ|
                 self.init_from_succ(cap.ln, succ);
                 let var = self.variable_from_rdef(cap.rv, expr.span);
                 self.acc(cap.ln, var, ACC_READ | ACC_USE);
@@ -1063,7 +1063,7 @@ class liveness {
 
           expr_rec(fields, with_expr) {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
-            fields.foldr(succ) { |field, succ|
+            do fields.foldr(succ) { |field, succ|
                 self.propagate_through_expr(field.node.expr, succ)
             }
           }
@@ -1273,10 +1273,10 @@ class liveness {
             alt def {
               def_self(_) {
                 // Note: the field_map is empty unless we are in a ctor
-                ret self.ir.field_map.find(fld).map { |var|
+                ret self.ir.field_map.find(fld).map({ |var|
                     let ln = self.live_node(expr.id, expr.span);
                     (ln, var)
-                };
+                });
               }
               _ { ret none; }
             }
@@ -1320,17 +1320,17 @@ class liveness {
             first_merge = false;
         }
         let cond_ln = self.propagate_through_opt_expr(cond, ln);
-        let body_ln = self.with_loop_nodes(succ, ln) {||
+        let body_ln = self.with_loop_nodes(succ, ln, {||
             self.propagate_through_block(body, cond_ln)
-        };
+        });
 
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
             assert cond_ln == self.propagate_through_opt_expr(cond, ln);
-            assert body_ln == self.with_loop_nodes(succ, ln) {||
+            assert body_ln == self.with_loop_nodes(succ, ln, {||
                 self.propagate_through_block(body, cond_ln)
-            };
+            });
         }
 
         cond_ln
@@ -1373,7 +1373,7 @@ fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
         // should not be live at this point.
 
         #debug["check_local() with no initializer"];
-        (*self).pat_bindings(local.node.pat) { |ln, var, sp|
+        do (*self).pat_bindings(local.node.pat) { |ln, var, sp|
             if !self.warn_about_unused(sp, ln, var) {
                 alt (*self).live_on_exit(ln, var) {
                   none { /* not live: good */ }
@@ -1438,7 +1438,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_call(f, args, _) {
         let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
         vt.visit_expr(f, self, vt);
-        vec::iter2(args, targs) { |arg_expr, arg_ty|
+        do vec::iter2(args, targs) { |arg_expr, arg_ty|
             alt ty::resolved_mode(self.tcx, arg_ty.mode) {
               by_val | by_copy | by_ref | by_mutbl_ref{
                 vt.visit_expr(arg_expr, self, vt);
@@ -1621,7 +1621,7 @@ impl check_methods for @liveness {
     }
 
     fn check_for_reassignments_in_pat(pat: @pat) {
-        (*self).pat_bindings(pat) { |ln, var, sp|
+        do (*self).pat_bindings(pat) { |ln, var, sp|
             self.check_for_reassignment(ln, var, sp);
         }
     }
@@ -1752,7 +1752,7 @@ impl check_methods for @liveness {
     }
 
     fn warn_about_unused_or_dead_vars_in_pat(pat: @pat) {
-        (*self).pat_bindings(pat) { |ln, var, sp|
+        do (*self).pat_bindings(pat) { |ln, var, sp|
             if !self.warn_about_unused(sp, ln, var) {
                 self.warn_about_dead_assign(sp, ln, var);
             }

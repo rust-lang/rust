@@ -261,9 +261,9 @@ mod chained {
             }
         }
 
-        fn each_key(blk: fn(K) -> bool) { self.each { |k, _v| blk(k)} }
+        fn each_key(blk: fn(K) -> bool) { self.each({ |k, _v| blk(k)}) }
 
-        fn each_value(blk: fn(V) -> bool) { self.each { |_k, v| blk(v)} }
+        fn each_value(blk: fn(V) -> bool) { self.each({ |_k, v| blk(v)}) }
     }
 
     fn chains<K,V>(nchains: uint) -> ~[mut chain<K,V>] {
@@ -332,7 +332,7 @@ Convert a set into a vector.
 "]
 fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
     let mut v = ~[];
-    s.each_key() {|k|
+    do s.each_key() {|k|
         vec::push(v, k);
         true
     };
@@ -343,7 +343,7 @@ fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
 fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
                                          items: ~[(K, V)]) -> hashmap<K, V> {
     let map = hashmap(hasher, eqer);
-    vec::iter(items) { |item|
+    do vec::iter(items) { |item|
         let (key, value) = item;
         map.insert(key, value);
     }

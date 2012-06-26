@@ -53,7 +53,7 @@ fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
 }
 
 fn traverse_export(cx: ctx, exp_id: node_id) {
-    option::iter(cx.exp_map.find(exp_id)) {|defs|
+    do option::iter(cx.exp_map.find(exp_id)) {|defs|
         for vec::each(defs) {|def| traverse_def_id(cx, def.id); }
     }
 }
@@ -111,7 +111,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       }
       item_class(tps, _ifaces, items, ctor, m_dtor, _) {
         cx.rmap.insert(ctor.node.id, ());
-        option::iter(m_dtor) {|dtor|
+        do option::iter(m_dtor) {|dtor|
             cx.rmap.insert(dtor.node.id, ());
             // dtors don't have attrs
             if tps.len() > 0u {

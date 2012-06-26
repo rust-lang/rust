@@ -106,7 +106,7 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
     node.visit(cx, mk_vt(v));
     // FIXME (#2250): Maybe this is an overkill (merge_sort), it might
     // be better to just keep the gather array in sorted order.
-    cx.gather.swap { |v|
+    do cx.gather.swap { |v|
         vec::to_mut(std::sort::merge_sort({|a,b| a.lo < b.lo}, v))
     };
     ret cx;
@@ -132,7 +132,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     -> @ast::expr
 {
     let mut what = "expr";
-    option::iter(arg) {|arg|
+    do option::iter(arg) {|arg|
         let args: ~[@ast::expr] =
             alt arg.node {
               ast::expr_vec(elts, _) { elts }
@@ -205,7 +205,7 @@ fn finish<T: qq_helper>
     let mut state = active;
     let mut i = 0u, j = 0u;
     let g_len = cx.gather.len();
-    str::chars_iter(*str) {|ch|
+    do str::chars_iter(*str) {|ch|
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
             let repl = #fmt("$%u ", j);
@@ -259,11 +259,11 @@ fn finish<T: qq_helper>
         rcall = mk_call(cx,sp,
                         ~[@"syntax", @"ext", @"qquote", @"replace"],
                         ~[pcall,
-                         mk_uniq_vec_e(cx,sp, qcx.gather.map_to_vec {|g|
+                         mk_uniq_vec_e(cx,sp, qcx.gather.map_to_vec({|g|
                              mk_call(cx,sp,
                                      ~[@"syntax", @"ext",
                                       @"qquote", @g.constr],
-                                     ~[g.e])}),
+                                     ~[g.e])})),
                          mk_path(cx,sp,
                                  ~[@"syntax", @"ext", @"qquote",
                                   @node.get_fold_fn()])]);

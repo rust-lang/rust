@@ -23,7 +23,7 @@ fn main() {
     let c = comm::chan(p);
     let builder = task::builder();
     task::unsupervise(builder);
-    task::run(builder) {|| f(c); }
+    task::run(builder, {|| f(c); });
     #error("hiiiiiiiii");
     assert comm::recv(p);
 }

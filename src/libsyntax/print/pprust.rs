@@ -511,7 +511,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_fn_args_and_ret(s, ctor.node.dec, ~[]);
           space(s.s);
           print_block(s, ctor.node.body);
-          option::iter(m_dtor) {|dtor|
+          do option::iter(m_dtor) {|dtor|
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, dtor.span.lo);
             head(s, "drop");
@@ -1136,8 +1136,8 @@ fn print_decl(s: ps, decl: @ast::decl) {
         word_nbsp(s, "let");
 
         // if any are mut, all are mut
-        if vec::any(locs) {|l| l.node.is_mutbl } {
-            assert vec::all(locs) {|l| l.node.is_mutbl };
+        if vec::any(locs, {|l| l.node.is_mutbl }) {
+            assert vec::all(locs, {|l| l.node.is_mutbl });
             word_nbsp(s, "mut");
         }
 
@@ -1405,7 +1405,7 @@ fn print_view_path(s: ps, &&vp: @ast::view_path) {
       ast::view_path_list(path, idents, _) {
         print_path(s, path, false);
         word(s.s, "::{");
-        commasep(s, inconsistent, idents) {|s, w|
+        do commasep(s, inconsistent, idents) {|s, w|
             word(s.s, *w.node.name)
         }
         word(s.s, "}");

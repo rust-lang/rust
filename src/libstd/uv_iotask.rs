@@ -39,9 +39,9 @@ fn spawn_iotask(-builder: task::builder) -> iotask {
         with get_opts(builder)
     });
 
-    listen {|iotask_ch|
+    do listen {|iotask_ch|
 
-        run(copy(builder)) {||
+        do run(copy(builder)) {||
             #debug("entering libuv task");
             run_loop(iotask_ch);
             #debug("libuv task exiting");
@@ -211,7 +211,7 @@ mod test {
             exit_ch: exit_ch
         };
         let ah_data_ptr = ptr::addr_of(ah_data);
-        interact(iotask) {|loop_ptr|
+        do interact(iotask) {|loop_ptr|
             ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
             ll::set_data_for_uv_handle(ah_ptr, ah_data_ptr as *libc::c_void);
             ll::async_send(ah_ptr);
@@ -224,7 +224,7 @@ mod test {
     unsafe fn spawn_test_loop(exit_ch: comm::chan<()>) -> iotask {
         let iotask_port = comm::port::<iotask>();
         let iotask_ch = comm::chan(iotask_port);
-        task::spawn_sched(task::manual_threads(1u)) {||
+        do task::spawn_sched(task::manual_threads(1u)) {||
             run_loop(iotask_ch);
             exit_ch.send(());
         };
@@ -255,13 +255,13 @@ mod test {
         // called, at least.
         let work_exit_po = comm::port::<()>();
         let work_exit_ch = comm::chan(work_exit_po);
-        iter::repeat(7u) {||
-            task::spawn_sched(task::manual_threads(1u), {||
+        do iter::repeat(7u) {||
+            do task::spawn_sched(task::manual_threads(1u)) {||
                 impl_uv_iotask_async(iotask);
                 comm::send(work_exit_ch, ());
-            });
+            };
         };
-        iter::repeat(7u) {||
+        do iter::repeat(7u) {||
             comm::recv(work_exit_po);
         };
         log(debug, "sending teardown_loop msg..");

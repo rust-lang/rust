@@ -276,7 +276,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
             let mut repeat: option<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
-            free_vars(b, repeat_me) {|fv|
+            do free_vars(b, repeat_me) {|fv|
                 let cur_pos = follow(b.get(fv), idx_path);
                 alt cur_pos {
                   leaf(_) { }

@@ -18,7 +18,7 @@ fn walk_stack(visit: fn(frame) -> bool) {
 
     #debug("beginning stack walk");
 
-    frame_address { |frame_pointer|
+    do frame_address { |frame_pointer|
         let mut frame_address: *word = unsafe {
             reinterpret_cast(frame_pointer)
         };

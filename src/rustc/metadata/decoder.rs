@@ -64,7 +64,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@(~[u8]) -> bool, hash: uint) ->
 
     let mut result: ~[ebml::doc] = ~[];
     let belt = tag_index_buckets_bucket_elt;
-    ebml::tagged_docs(bucket, belt) {|elt|
+    do ebml::tagged_docs(bucket, belt) {|elt|
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
         if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
             vec::push(result, ebml::doc_at(d.data, pos).doc);
@@ -110,7 +110,7 @@ fn item_symbol(item: ebml::doc) -> str {
 
 fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
     let mut found = none;
-    ebml::tagged_docs(d, tag_items_data_parent_item) {|did|
+    do ebml::tagged_docs(d, tag_items_data_parent_item) {|did|
         found = some(parse_def_id(ebml::doc_data(did)));
     }
     found
@@ -134,7 +134,7 @@ fn field_mutability(d: ebml::doc) -> ast::class_mutability {
 }
 
 fn variant_disr_val(d: ebml::doc) -> option<int> {
-    option::chain(ebml::maybe_get_doc(d, tag_disr_val)) {|val_doc|
+    do option::chain(ebml::maybe_get_doc(d, tag_disr_val)) {|val_doc|
         int::parse_buf(ebml::doc_data(val_doc), 10u)
     }
 }
@@ -157,7 +157,7 @@ fn item_type(item_id: ast::def_id, item: ebml::doc,
 fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> option<ty::t> {
     let mut result = none;
-    ebml::tagged_docs(item, tag_impl_iface) {|ity|
+    do ebml::tagged_docs(item, tag_impl_iface) {|ity|
         result = some(doc_type(ity, tcx, cdata));
     };
     result
@@ -166,7 +166,7 @@ fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
 fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> @~[ty::param_bounds] {
     let mut bounds = ~[];
-    ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
+    do ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
         let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx, {|did|
             translate_def_id(cdata, did)
         });
@@ -197,7 +197,7 @@ fn item_ty_param_count(item: ebml::doc) -> uint {
 fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> ~[ast::def_id] {
     let mut ids: ~[ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
-    ebml::tagged_docs(item, v) {|p|
+    do ebml::tagged_docs(item, v) {|p|
         let ext = parse_def_id(ebml::doc_data(p));
         vec::push(ids, {crate: cdata.cnum, node: ext.node});
     };
@@ -232,7 +232,7 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
     let mut result = ~[];
     vec::reserve(result, len);
 
-    ebml::docs(path_doc) {|tag, elt_doc|
+    do ebml::docs(path_doc) {|tag, elt_doc|
         if tag == tag_path_elt_mod {
             let str = ebml::doc_as_str(elt_doc);
             vec::push(result, ast_map::path_mod(@str));
@@ -306,7 +306,7 @@ fn get_impl_method(cdata: cmd, id: ast::node_id,
                    name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
-    ebml::tagged_docs(find_item(id, items), tag_item_impl_method) {|mid|
+    do ebml::tagged_docs(find_item(id, items), tag_item_impl_method) {|mid|
         let m_did = parse_def_id(ebml::doc_data(mid));
         if item_name(find_item(m_did.node, items)) == name {
             found = some(translate_def_id(cdata, m_did));
@@ -323,7 +323,7 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
             some(it) { it }
             none { fail (#fmt("get_class_method: class id not found \
              when looking up method %s", *name)) }};
-    ebml::tagged_docs(cls_items, tag_item_iface_method) {|mid|
+    do ebml::tagged_docs(cls_items, tag_item_iface_method) {|mid|
         let m_did = class_member_id(mid, cdata);
         if item_name(mid) == name {
             found = some(m_did);
@@ -343,7 +343,7 @@ fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
             none     { fail (#fmt("class_dtor: class id not found \
               when looking up dtor for %d", id)); }
     };
-    ebml::tagged_docs(cls_items, tag_item_dtor) {|doc|
+    do ebml::tagged_docs(cls_items, tag_item_dtor) {|doc|
          let doc1 = ebml::get_doc(doc, tag_def_id);
          let did = parse_def_id(ebml::doc_data(doc1));
          found = some(translate_def_id(cdata, did));
@@ -429,7 +429,7 @@ type _impl = {did: ast::def_id, ident: ast::ident, methods: ~[@method_info]};
 fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     -> ~[@method_info] {
     let mut rslt = ~[];
-    ebml::tagged_docs(item, tag_item_impl_method) {|doc|
+    do ebml::tagged_docs(item, tag_item_impl_method) {|doc|
         let m_did = parse_def_id(ebml::doc_data(doc));
         let mth_item = lookup_item(m_did.node, cdata.data);
         vec::push(rslt, @{did: translate_def_id(cdata, m_did),
@@ -447,7 +447,7 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
-    ebml::tagged_docs(mod_item, tag_mod_impl) {|doc|
+    do ebml::tagged_docs(mod_item, tag_mod_impl) {|doc|
         let did = parse_def_id(ebml::doc_data(doc));
         let local_did = translate_def_id(cdata, did);
           // The impl may be defined in a different crate. Ask the caller
@@ -473,7 +473,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
-    ebml::tagged_docs(item, tag_item_iface_method) {|mth|
+    do ebml::tagged_docs(item, tag_item_iface_method) {|mth|
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
@@ -498,7 +498,7 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
-    ebml::tagged_docs(item, tag_item_field) {|an_item|
+    do ebml::tagged_docs(item, tag_item_field) {|an_item|
        let f = item_family(an_item);
        if p(f) {
           let name = item_name(an_item);
@@ -578,12 +578,12 @@ fn item_family_to_str(fam: char) -> str {
 
 fn get_meta_items(md: ebml::doc) -> ~[@ast::meta_item] {
     let mut items: ~[@ast::meta_item] = ~[];
-    ebml::tagged_docs(md, tag_meta_item_word) {|meta_item_doc|
+    do ebml::tagged_docs(md, tag_meta_item_word) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
         vec::push(items, attr::mk_word_item(@n));
     };
-    ebml::tagged_docs(md, tag_meta_item_name_value) {|meta_item_doc|
+    do ebml::tagged_docs(md, tag_meta_item_name_value) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         let n = str::from_bytes(ebml::doc_data(nd));
@@ -592,7 +592,7 @@ fn get_meta_items(md: ebml::doc) -> ~[@ast::meta_item] {
         // but currently the encoder just drops them
         vec::push(items, attr::mk_name_value_item_str(@n, v));
     };
-    ebml::tagged_docs(md, tag_meta_item_list) {|meta_item_doc|
+    do ebml::tagged_docs(md, tag_meta_item_list) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
@@ -605,7 +605,7 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
     let mut attrs: ~[ast::attribute] = ~[];
     alt ebml::maybe_get_doc(md, tag_attributes) {
       option::some(attrs_d) {
-        ebml::tagged_docs(attrs_d, tag_attribute) {|attr_doc|
+        do ebml::tagged_docs(attrs_d, tag_attribute) {|attr_doc|
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
@@ -652,7 +652,7 @@ fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
     fn docstr(doc: ebml::doc, tag_: uint) -> str {
         str::from_bytes(ebml::doc_data(ebml::get_doc(doc, tag_)))
     }
-    ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
+    do ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
         vec::push(deps, {cnum: crate_num,
                   name: @docstr(depdoc, tag_crate_dep_name),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
@@ -691,7 +691,7 @@ fn get_crate_vers(data: @~[u8]) -> @str {
 fn list_crate_items(bytes: @~[u8], md: ebml::doc, out: io::writer) {
     out.write_str("=Items=\n");
     let items = ebml::get_doc(md, tag_items);
-    iter_crate_items(bytes) {|path, did|
+    do iter_crate_items(bytes) {|path, did|
         out.write_str(#fmt["%s (%s)\n", path, describe_def(items, did)]);
     }
     out.write_str("\n");
@@ -702,9 +702,9 @@ fn iter_crate_items(bytes: @~[u8], proc: fn(str, ast::def_id)) {
     let paths = ebml::get_doc(md, tag_paths);
     let index = ebml::get_doc(paths, tag_index);
     let bs = ebml::get_doc(index, tag_index_buckets);
-    ebml::tagged_docs(bs, tag_index_buckets_bucket) {|bucket|
+    do ebml::tagged_docs(bs, tag_index_buckets_bucket) {|bucket|
         let et = tag_index_buckets_bucket_elt;
-        ebml::tagged_docs(bucket, et) {|elt|
+        do ebml::tagged_docs(bucket, et) {|elt|
             let data = read_path(elt);
             let {tag:_, doc:def} = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
@@ -723,7 +723,7 @@ fn get_crate_module_paths(bytes: @~[u8]) -> ~[(ast::def_id, str)] {
     // fowarded path due to renamed import or reexport
     let mut res = ~[];
     let mods = map::str_hash();
-    iter_crate_items(bytes) {|path, did|
+    do iter_crate_items(bytes) {|path, did|
         let m = mod_of_path(path);
         if str::is_not_empty(m) {
             // if m has a sub-item, it must be a module
@@ -734,7 +734,7 @@ fn get_crate_module_paths(bytes: @~[u8]) -> ~[(ast::def_id, str)] {
         // unified later by using the mods map
         vec::push(res, (did, path));
     }
-    ret vec::filter(res) {|x|
+    ret do vec::filter(res) {|x|
         let (_, xp) = x;
         mods.contains_key(xp)
     }
