@@ -571,7 +571,9 @@ native mod rustrt {
     fn rust_uv_freeaddrinfo(res: *addrinfo);
 
     // data accessors/helpers for rust-mapped uv structs
+    fn rust_uv_helper_get_INADDR_NONE() -> u32;
     fn rust_uv_is_ipv4_addrinfo(input: *addrinfo) -> bool;
+    fn rust_uv_is_ipv6_addrinfo(input: *addrinfo) -> bool;
     fn rust_uv_get_next_addrinfo(input: *addrinfo) -> *addrinfo;
     fn rust_uv_addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in;
     fn rust_uv_addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6;
@@ -913,6 +915,12 @@ type uv_err_data = {
 
 unsafe fn is_ipv4_addrinfo(input: *addrinfo) -> bool {
     rustrt::rust_uv_is_ipv4_addrinfo(input)
+}
+unsafe fn is_ipv6_addrinfo(input: *addrinfo) -> bool {
+    rustrt::rust_uv_is_ipv6_addrinfo(input)
+}
+unsafe fn get_INADDR_NONE() -> u32 {
+    rustrt::rust_uv_helper_get_INADDR_NONE()
 }
 unsafe fn get_next_addrinfo(input: *addrinfo) -> *addrinfo {
     rustrt::rust_uv_get_next_addrinfo(input)
