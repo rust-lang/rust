@@ -9,6 +9,7 @@
 
 import std::map::hashmap;
 import rustc::driver::session;
+import session::{basic_options, options};
 import session::session;
 import rustc::driver::driver;
 import syntax::diagnostic;
@@ -37,7 +38,7 @@ type ctxt = {
 
 type srv_owner<T> = fn(srv: srv) -> T;
 type ctxt_handler<T> = fn~(ctxt: ctxt) -> T;
-type parser = fn~(session::session, str) -> @ast::crate;
+type parser = fn~(session, str) -> @ast::crate;
 
 enum msg {
     handle_request(fn~(ctxt)),
@@ -104,7 +105,8 @@ fn exec<T:send>(
     comm::recv(po)
 }
 
-fn build_ctxt(sess: session::session, ast: @ast::crate,
+fn build_ctxt(sess: session,
+              ast: @ast::crate,
               ignore_errors: @mut bool) -> ctxt {
 
     import rustc::front::config;
@@ -124,8 +126,8 @@ fn build_ctxt(sess: session::session, ast: @ast::crate,
     }
 }
 
-fn build_session() -> (session::session, @mut bool) {
-    let sopts: @session::options = session::basic_options();
+fn build_session() -> (session, @mut bool) {
+    let sopts: @options = basic_options();
     let codemap = codemap::new_codemap();
     let error_handlers = build_error_handlers(codemap);
     let {emitter, span_handler, ignore_errors} = error_handlers;
