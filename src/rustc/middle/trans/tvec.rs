@@ -152,8 +152,15 @@ fn trans_evec(bcx: block, args: [@ast::expr]/~,
           }
           ast::vstore_slice(_) {
             let n = vec::len(args);
+            // Make a fake type to use for the cleanup
+            let ty = ty::mk_evec(bcx.tcx(),
+                                 {ty: unit_ty, mutbl: ast::m_mutbl},
+                                 ty::vstore_fixed(n));
+
             let n = C_uint(ccx, n);
             let vp = base::arrayalloca(bcx, llunitty, n);
+            add_clean(bcx, vp, ty);
+
             let len = Mul(bcx, n, unit_sz);
 
             let p = base::alloca(bcx, T_struct([T_ptr(llunitty),
