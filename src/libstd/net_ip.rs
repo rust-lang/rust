@@ -84,7 +84,6 @@ crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
     if status == 0i32 {
         if res != (ptr::null::<addrinfo>()) {
             let mut out_vec = [];
-            let mut addr_strings = [];
             log(debug, #fmt("initial addrinfo: %?", res));
             let mut curr_addr = res;
             loop {
@@ -96,17 +95,6 @@ crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                     ipv6(copy((
                         *ll::addrinfo_as_sockaddr_in6(curr_addr))))
                 };
-                // we're doing this check to avoid adding multiple
-                // ip_addrs to the out_vec that are duplicates.. on
-                // 64bit unbuntu a call to uv_getaddrinfo against
-                // localhost seems to return three addrinfos, all
-                // distinct (by ptr addr), that are all ipv4
-                // addresses and all point to 127.0.0.1
-                let addr_str = format_addr(new_ip_addr);
-                if !vec::contains(addr_strings, addr_str) {
-                    addr_strings += [addr_str];
-                    out_vec += [new_ip_addr];
-                }
 
                 let next_addr = ll::get_next_addrinfo(curr_addr);
                 if next_addr == ptr::null::<addrinfo>() as *addrinfo {

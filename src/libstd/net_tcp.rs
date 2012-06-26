@@ -7,7 +7,8 @@ import uv::iotask;
 import uv::iotask::iotask;
 import comm::methods;
 import future_spawn = future::spawn;
-// FIXME: should be able to replace w/ result::{result, extensions};
+// FIXME #1935
+// should be able to, but can't atm, replace w/ result::{result, extensions};
 import result::*;
 import libc::size_t;
 import str::extensions;
@@ -589,7 +590,7 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
     let server_data_ptr = ptr::addr_of(server_data);
 
     let setup_result = comm::listen {|setup_ch|
-        // FIXME this is to address a compiler warning about
+        // this is to address a compiler warning about
         // an implicit copy.. it seems that double nested
         // will defeat a move sigil, as is done to the host_ip
         // arg above.. this same pattern works w/o complaint in
@@ -1239,9 +1240,6 @@ mod test {
                 impl_gl_tcp_ipv4_server_address_in_use();
             }
             #[test]
-            // FIXME: this probably needs to be ignored on windows.
-            // ... need to verify (someday we'll have 64bit windows! :)
-            //#[ignore(cfg(target_os = "win32"))]
             fn test_gl_tcp_server_access_denied() unsafe {
                 impl_gl_tcp_ipv4_server_access_denied();
             }
@@ -1270,9 +1268,6 @@ mod test {
             }
             #[test]
             #[ignore(cfg(target_os = "linux"))]
-            // FIXME: this probably needs to be ignored on windows.
-            // ... need to verify
-            //#[ignore(cfg(target_os = "win32"))]
             fn test_gl_tcp_server_access_denied() unsafe {
                 impl_gl_tcp_ipv4_server_access_denied();
             }

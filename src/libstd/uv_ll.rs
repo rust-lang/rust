@@ -223,14 +223,15 @@ type sockaddr_in = {
     mut sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8)
 };
 
-// unix size: 28 .. FIXME: stuck with 32 becuse of rust padding structs?
+// unix size: 28 .. FIXME #1645
+// stuck with 32 becuse of rust padding structs?
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8
 };
 
-// unix size: 28
-// unix size: 28 .. FIXME: stuck with 32 becuse of rust padding structs?
+// unix size: 28 .. FIXME #1645
+// stuck with 32 becuse of rust padding structs?
 type addr_in = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8
@@ -755,11 +756,12 @@ unsafe fn ip4_name(src: &sockaddr_in) -> str {
     vec::as_buf(dst) {|dst_buf|
         rustrt::rust_uv_ip4_name(src as *sockaddr_in,
                                               dst_buf, size);
-        // FIXME: seems that checking the result of uv_ip4_name
+        // seems that checking the result of uv_ip4_name
         // doesn't work too well..
-        // libuv will actually map a malformed input ip to INADDR_NONE,
-        // which is going to be 255.255.255.255 on most
-        // platforms.
+        // you're stuck looking at the value of dst_buf
+        // to see if it is the string representation of
+        // INADDR_NONE (0xffffffff or 255.255.255.255 on
+        // many platforms)
         str::unsafe::from_buf(dst_buf)
     }
 }
@@ -1506,7 +1508,7 @@ mod test {
         let output = #fmt("sockaddr_in -- native: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
-        // FIXME .. rust appears to pad structs to the nearest byte..?
+        // FIXME #1645 .. rust appears to pad structs to the nearest byte..?
         // .. can't get the uv::ll::sockaddr_in6 to == 28 :/
         // .. so the type always appears to be 32 in size.. which is
         // good, i guess.. better too big than too little
@@ -1521,7 +1523,7 @@ mod test {
         let output = #fmt("addr_in -- native: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
-        // FIXME .. see note above about struct padding
+        // FIXME #1645 .. see note above about struct padding
         assert (4u+native_handle_size as uint) == rust_handle_size;
     }
 
