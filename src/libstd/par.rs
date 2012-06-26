@@ -2,6 +2,7 @@ import comm::port;
 import comm::chan;
 import comm::send;
 import comm::recv;
+import future_spawn = future::spawn;
 import future::future;
 
 export map, mapi, alli, any, mapi_factory;
@@ -42,7 +43,7 @@ fn map_slices<A: copy send, B: copy send>(
             // FIXME: why is the ::<A, ()> annotation required here? (#2617)
             vec::unpack_slice::<A, ()>(xs) {|p, _len|
                 let f = f();
-                let f = future::spawn() {|copy base|
+                let f = future_spawn() {|copy base|
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),

@@ -6,6 +6,7 @@ import ip = net_ip;
 import uv::iotask;
 import uv::iotask::iotask;
 import comm::methods;
+import future_spawn = future::spawn;
 import future::future;
 import result::{result,err,ok,extensions};
 
@@ -248,9 +249,9 @@ A `future` value that, once the `write` operation completes, resolves to a
 value as the `err` variant
 "]
 fn write_future(sock: tcp_socket, raw_write_data: [u8]/~)
-    -> future::future<result::result<(), tcp_err_data>> unsafe {
+    -> future<result::result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
-    future::spawn {||
+    future_spawn {||
         write_common_impl(socket_data_ptr, raw_write_data)
     }
 }
@@ -337,9 +338,9 @@ Otherwise, use the blocking `tcp::read` function instead.
 read attempt. Pass `0u` to wait indefinitely
 "]
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
-    -> future::future<result::result<[u8]/~,tcp_err_data>> {
+    -> future<result::result<[u8]/~,tcp_err_data>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
-    future::spawn {||
+    future_spawn {||
         read_common_impl(socket_data, timeout_msecs)
     }
 }
@@ -802,7 +803,7 @@ impl sock_methods for tcp_socket {
         read(self, timeout_msecs)
     }
     fn read_future(timeout_msecs: uint) ->
-        future::future<result::result<[u8]/~, tcp_err_data>> {
+        future<result::result<[u8]/~, tcp_err_data>> {
         read_future(self, timeout_msecs)
     }
     fn write(raw_write_data: [u8]/~)
@@ -810,7 +811,7 @@ impl sock_methods for tcp_socket {
         write(self, raw_write_data)
     }
     fn write_future(raw_write_data: [u8]/~)
-        -> future::future<result::result<(), tcp_err_data>> {
+        -> future<result::result<(), tcp_err_data>> {
         write_future(self, raw_write_data)
     }
 }
