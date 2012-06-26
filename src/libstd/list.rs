@@ -10,7 +10,7 @@ enum list<T> {
 }
 
 #[doc = "Create a list from a vector"]
-fn from_vec<T: copy>(v: [T]) -> @list<T> {
+fn from_vec<T: copy>(v: [T]/~) -> @list<T> {
     vec::foldr(v, @nil::<T>, { |h, t| @cons(h, t) })
 }
 
@@ -135,9 +135,9 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let empty : @list::list<int> = from_vec([]);
-        let full1 = from_vec([1]);
-        let full2 = from_vec(['r', 'u']);
+        let empty : @list::list<int> = from_vec([]/~);
+        let full1 = from_vec([1]/~);
+        let full2 = from_vec(['r', 'u']/~);
 
         assert is_empty(empty);
         assert !is_empty(full1);
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_from_vec() {
-        let l = from_vec([0, 1, 2]);
+        let l = from_vec([0, 1, 2]/~);
 
         assert (head(l) == 0);
 
@@ -163,14 +163,14 @@ mod tests {
 
     #[test]
     fn test_from_vec_empty() {
-        let empty : @list::list<int> = from_vec([]);
+        let empty : @list::list<int> = from_vec([]/~);
         assert (empty == @list::nil::<int>);
     }
 
     #[test]
     fn test_foldl() {
         fn add(&&a: uint, &&b: int) -> uint { ret a + (b as uint); }
-        let l = from_vec([0, 1, 2, 3, 4]);
+        let l = from_vec([0, 1, 2, 3, 4]/~);
         let empty = @list::nil::<int>;
         assert (list::foldl(0u, l, add) == 10u);
         assert (list::foldl(0u, empty, add) == 0u);
@@ -181,21 +181,21 @@ mod tests {
         fn sub(&&a: int, &&b: int) -> int {
             a - b
         }
-        let l = from_vec([1, 2, 3, 4]);
+        let l = from_vec([1, 2, 3, 4]/~);
         assert (list::foldl(0, l, sub) == -10);
     }
 
     #[test]
     fn test_find_success() {
         fn match(&&i: int) -> bool { ret i == 2; }
-        let l = from_vec([0, 1, 2]);
+        let l = from_vec([0, 1, 2]/~);
         assert (list::find(l, match) == option::some(2));
     }
 
     #[test]
     fn test_find_fail() {
         fn match(&&_i: int) -> bool { ret false; }
-        let l = from_vec([0, 1, 2]);
+        let l = from_vec([0, 1, 2]/~);
         let empty = @list::nil::<int>;
         assert (list::find(l, match) == option::none::<int>);
         assert (list::find(empty, match) == option::none::<int>);
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_has() {
-        let l = from_vec([5, 8, 6]);
+        let l = from_vec([5, 8, 6]/~);
         let empty = @list::nil::<int>;
         assert (list::has(l, 5));
         assert (!list::has(l, 7));
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let l = from_vec([0, 1, 2]);
+        let l = from_vec([0, 1, 2]/~);
         let empty = @list::nil::<int>;
         assert (list::len(l) == 3u);
         assert (list::len(empty) == 0u);

@@ -41,7 +41,7 @@ iface ast_fold {
     fn fold_ident(&&ident) -> ident;
     fn fold_path(&&@path) -> @path;
     fn fold_local(&&@local) -> @local;
-    fn map_exprs(fn@(&&@expr) -> @expr, [@expr]) -> [@expr];
+    fn map_exprs(fn@(&&@expr) -> @expr, [@expr]/~) -> [@expr]/~;
     fn new_id(node_id) -> node_id;
     fn new_span(span) -> span;
 }
@@ -75,7 +75,7 @@ type ast_fold_precursor = @{
     fold_ident: fn@(&&ident, ast_fold) -> ident,
     fold_path: fn@(path, ast_fold) -> path,
     fold_local: fn@(local_, span, ast_fold) -> (local_, span),
-    map_exprs: fn@(fn@(&&@expr) -> @expr, [@expr]) -> [@expr],
+    map_exprs: fn@(fn@(&&@expr) -> @expr, [@expr]/~) -> [@expr]/~,
     new_id: fn@(node_id) -> node_id,
     new_span: fn@(span) -> span};
 
@@ -151,7 +151,7 @@ fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
      bounds: @vec::map(*tp.bounds, {|x|fold_ty_param_bound(x, fld)})}
 }
 
-fn fold_ty_params(tps: [ty_param], fld: ast_fold) -> [ty_param] {
+fn fold_ty_params(tps: [ty_param]/~, fld: ast_fold) -> [ty_param]/~ {
     vec::map(tps, {|x|fold_ty_param(x, fld)})
 }
 
@@ -335,10 +335,11 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
                        {|pats| vec::map(pats, fld.fold_pat)})
           }
           pat_rec(fields, etc) {
-            let mut fs = [];
+            let mut fs = []/~;
             for fields.each {|f|
-                fs += [{ident: /* FIXME (#2543) */ copy f.ident,
-                        pat: fld.fold_pat(f.pat)}];
+                vec::push(fs,
+                          {ident: /* FIXME (#2543) */ copy f.ident,
+                           pat: fld.fold_pat(f.pat)});
             }
             pat_rec(fs, etc)
           }
@@ -570,7 +571,7 @@ fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
 
 /* temporarily eta-expand because of a compiler bug with using `fn<T>` as a
    value */
-fn noop_map_exprs(f: fn@(&&@expr) -> @expr, es: [@expr]) -> [@expr] {
+fn noop_map_exprs(f: fn@(&&@expr) -> @expr, es: [@expr]/~) -> [@expr]/~ {
     ret vec::map(es, f);
 }
 
@@ -717,7 +718,7 @@ impl of ast_fold for ast_fold_precursor {
         let (n, s) = self.fold_local(x.node, x.span, self as ast_fold);
         ret @{node: n, span: self.new_span(s)};
     }
-    fn map_exprs(f: fn@(&&@expr) -> @expr, e: [@expr]) -> [@expr] {
+    fn map_exprs(f: fn@(&&@expr) -> @expr, e: [@expr]/~) -> [@expr]/~ {
         self.map_exprs(f, e)
     }
     fn new_id(node_id: ast::node_id) -> node_id {

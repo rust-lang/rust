@@ -9,7 +9,7 @@ fn init(ar: &a.arena::arena, str: str) -> &a.hold {
     new(*ar) s(str)
 }
 
-fn main(args: [str]) {
+fn main(args: [str]/~) {
     let ar = arena::arena();
     let leak = init(&ar, args[0]);
     alt *leak {

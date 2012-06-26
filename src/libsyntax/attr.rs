@@ -56,7 +56,7 @@ fn mk_name_value_item(+name: ast::ident, +value: ast::lit)
     ret @dummy_spanned(ast::meta_name_value(name, value));
 }
 
-fn mk_list_item(+name: ast::ident, +items: [@ast::meta_item]) ->
+fn mk_list_item(+name: ast::ident, +items: [@ast::meta_item]/~) ->
    @ast::meta_item {
     ret @dummy_spanned(ast::meta_list(name, items));
 }
@@ -75,9 +75,9 @@ fn mk_attr(item: @ast::meta_item) -> ast::attribute {
 fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 
 // Get the meta_items from inside a vector of attributes
-fn attr_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
-    let mut mitems = [];
-    for attrs.each {|a| mitems += [attr_meta(a)]; }
+fn attr_metas(attrs: [ast::attribute]/~) -> [@ast::meta_item]/~ {
+    let mut mitems = []/~;
+    for attrs.each {|a| mitems += [attr_meta(a)]/~; }
     ret mitems;
 }
 
@@ -118,7 +118,7 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@str> {
 }
 
 #[doc = "Gets a list of inner meta items from a list meta_item type"]
-fn get_meta_item_list(meta: @ast::meta_item) -> option<[@ast::meta_item]> {
+fn get_meta_item_list(meta: @ast::meta_item) -> option<[@ast::meta_item]/~> {
     alt meta.node {
       ast::meta_list(_, l) { option::some(/* FIXME (#2543) */ copy l) }
       _ { option::none }
@@ -147,8 +147,8 @@ fn get_name_value_str_pair(
 #[doc = "
 Search a list of attributes and return only those with a specific name
 "]
-fn find_attrs_by_name(attrs: [ast::attribute], +name: str) ->
-   [ast::attribute] {
+fn find_attrs_by_name(attrs: [ast::attribute]/~, +name: str) ->
+   [ast::attribute]/~ {
     let filter = (
         fn@(a: ast::attribute) -> option<ast::attribute> {
             if *get_attr_name(a) == name {
@@ -162,8 +162,8 @@ fn find_attrs_by_name(attrs: [ast::attribute], +name: str) ->
 #[doc = "
 Searcha list of meta items and return only those with a specific name
 "]
-fn find_meta_items_by_name(metas: [@ast::meta_item], +name: str) ->
-   [@ast::meta_item] {
+fn find_meta_items_by_name(metas: [@ast::meta_item]/~, +name: str) ->
+   [@ast::meta_item]/~ {
     let filter = fn@(&&m: @ast::meta_item) -> option<@ast::meta_item> {
         if *get_meta_item_name(m) == name {
             option::some(m)
@@ -176,7 +176,7 @@ fn find_meta_items_by_name(metas: [@ast::meta_item], +name: str) ->
 Returns true if a list of meta items contains another meta item. The
 comparison is performed structurally.
 "]
-fn contains(haystack: [@ast::meta_item], needle: @ast::meta_item) -> bool {
+fn contains(haystack: [@ast::meta_item]/~, needle: @ast::meta_item) -> bool {
     #debug("looking for %s",
            print::pprust::meta_item_to_str(*needle));
     for haystack.each {|item|
@@ -201,7 +201,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
           }
           ast::meta_list(na, la) {
 
-            // [Fixme-sorting]
+            // [Fixme-sorting]/~
             // FIXME (#607): Needs implementing
             // This involves probably sorting the list by name and
             // meta_item variant
@@ -210,16 +210,16 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
         }
 }
 
-fn contains_name(metas: [@ast::meta_item], +name: str) -> bool {
+fn contains_name(metas: [@ast::meta_item]/~, +name: str) -> bool {
     let matches = find_meta_items_by_name(metas, name);
     ret vec::len(matches) > 0u;
 }
 
-fn attrs_contains_name(attrs: [ast::attribute], +name: str) -> bool {
+fn attrs_contains_name(attrs: [ast::attribute]/~, +name: str) -> bool {
     vec::is_not_empty(find_attrs_by_name(attrs, name))
 }
 
-fn first_attr_value_str_by_name(attrs: [ast::attribute], +name: str)
+fn first_attr_value_str_by_name(attrs: [ast::attribute]/~, +name: str)
     -> option<@str> {
     let mattrs = find_attrs_by_name(attrs, name);
     if vec::len(mattrs) > 0u {
@@ -229,7 +229,7 @@ fn first_attr_value_str_by_name(attrs: [ast::attribute], +name: str)
 }
 
 fn last_meta_item_by_name(
-    items: [@ast::meta_item],
+    items: [@ast::meta_item]/~,
     +name: str
 ) -> option<@ast::meta_item> {
     let items = attr::find_meta_items_by_name(items, name);
@@ -237,7 +237,7 @@ fn last_meta_item_by_name(
 }
 
 fn last_meta_item_value_str_by_name(
-    items: [@ast::meta_item],
+    items: [@ast::meta_item]/~,
     +name: str
 ) -> option<@str> {
     alt last_meta_item_by_name(items, name) {
@@ -252,9 +252,9 @@ fn last_meta_item_value_str_by_name(
 }
 
 fn last_meta_item_list_by_name(
-    items: [@ast::meta_item],
+    items: [@ast::meta_item]/~,
     +name: str
-) -> option<[@ast::meta_item]> {
+) -> option<[@ast::meta_item]/~> {
     alt last_meta_item_by_name(items, name) {
       some(item) {
         attr::get_meta_item_list(item)
@@ -268,7 +268,7 @@ fn last_meta_item_list_by_name(
 
 // FIXME (#607): This needs to sort by meta_item variant in addition to
 // the item name (See [Fixme-sorting])
-fn sort_meta_items(+items: [@ast::meta_item]) -> [@ast::meta_item] {
+fn sort_meta_items(+items: [@ast::meta_item]/~) -> [@ast::meta_item]/~ {
     fn lteq(&&ma: @ast::meta_item, &&mb: @ast::meta_item) -> bool {
         fn key(m: @ast::meta_item) -> ast::ident {
             alt m.node {
@@ -281,13 +281,13 @@ fn sort_meta_items(+items: [@ast::meta_item]) -> [@ast::meta_item] {
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
-    let v: [mut @ast::meta_item] = vec::to_mut(items);
+    let v: [mut @ast::meta_item]/~ = vec::to_mut(items);
     std::sort::quick_sort(lteq, v);
     ret vec::from_mut(v);
 }
 
-fn remove_meta_items_by_name(items: [@ast::meta_item], name: ast::ident) ->
-   [@ast::meta_item] {
+fn remove_meta_items_by_name(items: [@ast::meta_item]/~, name: ast::ident) ->
+   [@ast::meta_item]/~ {
 
     ret vec::filter_map(items, {
         |item|
@@ -299,11 +299,11 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: ast::ident) ->
     });
 }
 
-fn find_linkage_attrs(attrs: [ast::attribute]) -> [ast::attribute] {
-    let mut found = [];
+fn find_linkage_attrs(attrs: [ast::attribute]/~) -> [ast::attribute]/~ {
+    let mut found = []/~;
     for find_attrs_by_name(attrs, "link").each {|attr|
         alt attr.node.value.node {
-          ast::meta_list(_, _) { found += [attr] }
+          ast::meta_list(_, _) { found += [attr]/~ }
           _ { #debug("ignoring link attribute that has incorrect type"); }
         }
     }
@@ -314,7 +314,7 @@ fn find_linkage_attrs(attrs: [ast::attribute]) -> [ast::attribute] {
 From a list of crate attributes get only the meta_items that impact crate
 linkage
 "]
-fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
+fn find_linkage_metas(attrs: [ast::attribute]/~) -> [@ast::meta_item]/~ {
     find_linkage_attrs(attrs).flat_map {|attr|
         alt check attr.node.value.node {
           ast::meta_list(_, items) { /* FIXME (#2543) */ copy items }
@@ -322,7 +322,7 @@ fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
     }
 }
 
-fn native_abi(attrs: [ast::attribute]) -> either<str, ast::native_abi> {
+fn native_abi(attrs: [ast::attribute]/~) -> either<str, ast::native_abi> {
     ret alt attr::first_attr_value_str_by_name(attrs, "abi") {
       option::none {
         either::right(ast::native_abi_cdecl)
@@ -349,7 +349,7 @@ enum inline_attr {
 }
 
 #[doc = "True if something like #[inline] is found in the list of attrs."]
-fn find_inline_attr(attrs: [ast::attribute]) -> inline_attr {
+fn find_inline_attr(attrs: [ast::attribute]/~) -> inline_attr {
     // TODO---validate the usage of #[inline] and #[inline(always)]
     vec::foldl(ia_none, attrs) {|ia,attr|
         alt attr.node.value.node {
@@ -368,7 +368,7 @@ fn find_inline_attr(attrs: [ast::attribute]) -> inline_attr {
 
 
 fn require_unique_names(diagnostic: span_handler,
-                        metas: [@ast::meta_item]) {
+                        metas: [@ast::meta_item]/~) {
     let map = map::str_hash();
     for metas.each {|meta|
         let name = get_meta_item_name(meta);

@@ -17,8 +17,8 @@ class r2 {
 fn main() {
     foo({f: 3});
     foo({mut f: 3}); //! ERROR missing `const`
-    foo([1]);
-    foo([mut 1]); //! ERROR missing `const`
+    foo([1]/~);
+    foo([mut 1]/~); //! ERROR missing `const`
     foo(~1);
     foo(~mut 1); //! ERROR missing `const`
     foo(@1);

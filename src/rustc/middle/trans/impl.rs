@@ -16,14 +16,14 @@ import lib::llvm::llvm::LLVMGetParam;
 import std::map::hashmap;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
-              methods: [@ast::method], tps: [ast::ty_param]) {
+              methods: [@ast::method]/~, tps: [ast::ty_param]/~) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { ret; }
-    let sub_path = path + [path_name(name)];
+    let sub_path = path + [path_name(name)]/~;
     for vec::each(methods) {|m|
         if m.tps.len() == 0u {
             let llfn = get_item_val(ccx, m.id);
-            trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
+            trans_fn(ccx, sub_path + [path_name(m.ident)]/~, m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)),
                      none, m.id);
         }
@@ -34,14 +34,14 @@ fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
     let _icx = bcx.insn_ctxt("impl::trans_self_arg");
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
-    let mut temp_cleanups = [];
+    let mut temp_cleanups = []/~;
     let result = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
                                 T_ptr(type_of::type_of(bcx.ccx(), basety)),
                                 base, temp_cleanups, none, derefs);
 
     // by-ref self argument should not require cleanup in the case of
     // other arguments failing:
-    assert temp_cleanups == [];
+    assert temp_cleanups == []/~;
 
     ret result;
 }
@@ -73,7 +73,8 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
     }
 }
 
-fn method_from_methods(ms: [@ast::method], name: ast::ident) -> ast::def_id {
+fn method_from_methods(ms: [@ast::method]/~, name: ast::ident)
+    -> ast::def_id {
   local_def(option::get(vec::find(ms, {|m| m.ident == name})).id)
 }
 
@@ -147,16 +148,16 @@ fn trans_iface_callee(bcx: block, val: ValueRef,
     -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("impl::trans_iface_callee");
     let ccx = bcx.ccx();
-    let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0u, 0u]),
+    let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0u, 0u]/~),
                                        T_ptr(T_ptr(T_vtable()))));
-    let box = Load(bcx, GEPi(bcx, val, [0u, 1u]));
-    // FIXME[impl] I doubt this is alignment-safe (#2534)
-    let self = GEPi(bcx, box, [0u, abi::box_field_body]);
+    let box = Load(bcx, GEPi(bcx, val, [0u, 1u]/~));
+    // FIXME[impl]/~ I doubt this is alignment-safe (#2534)
+    let self = GEPi(bcx, box, [0u, abi::box_field_body]/~);
     let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(box));
     let llfty = type_of::type_of_fn_from_ty(ccx, callee_ty);
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
-    let mptr = Load(bcx, GEPi(bcx, vtable, [0u, n_method]));
+    let mptr = Load(bcx, GEPi(bcx, vtable, [0u, n_method]/~));
     {bcx: bcx, val: mptr, kind: owned, env: env}
 }
 
@@ -234,7 +235,7 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
     }
 }
 
-fn make_vtable(ccx: @crate_ctxt, ptrs: [ValueRef]) -> ValueRef {
+fn make_vtable(ccx: @crate_ctxt, ptrs: [ValueRef]/~) -> ValueRef {
     let _icx = ccx.insn_ctxt("impl::make_vtable");
     let tbl = C_struct(ptrs);
     let vt_gvar = str::as_c_str(ccx.names("vtable"), {|buf|
@@ -246,7 +247,7 @@ fn make_vtable(ccx: @crate_ctxt, ptrs: [ValueRef]) -> ValueRef {
     vt_gvar
 }
 
-fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
+fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t]/~,
                     vtables: typeck::vtable_res) -> ValueRef {
     let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
@@ -288,12 +289,12 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     let bcx = trans_expr_save_in(bcx, val, body);
     revoke_clean(bcx, box);
     let result = get_dest_addr(dest);
-    Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0u, 1u]),
+    Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0u, 1u]/~),
                                 T_ptr(val_ty(box))));
     let orig = ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);
-    Store(bcx, vtable, PointerCast(bcx, GEPi(bcx, result, [0u, 0u]),
+    Store(bcx, vtable, PointerCast(bcx, GEPi(bcx, result, [0u, 0u]/~),
                                    T_ptr(val_ty(vtable))));
     bcx
 }

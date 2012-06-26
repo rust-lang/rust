@@ -68,7 +68,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
                        ii: ast::inlined_item) {
     #debug["> Encoding inlined item: %s::%s (%u)",
            ast_map::path_to_str(path), ii.ident(),
-           ebml_w.writer.tell()];
+           ebml_w.writer.tell()]/~;
 
     let id_range = compute_id_range_for_inlined_item(ii);
     ebml_w.wr_tag(c::tag_ast as uint) {||
@@ -79,7 +79,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
 
     #debug["< Encoded inlined fn: %s::%s (%u)",
            ast_map::path_to_str(path), ii.ident(),
-           ebml_w.writer.tell()];
+           ebml_w.writer.tell()]/~;
 }
 
 fn decode_inlined_item(cdata: cstore::crate_metadata,
@@ -103,7 +103,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         #debug["Fn named: %s", ii.ident()];
         decode_side_tables(xcx, ast_doc);
         #debug["< Decoded inlined fn: %s::%s",
-               ast_map::path_to_str(path), ii.ident()];
+               ast_map::path_to_str(path), ii.ident()]/~;
         alt ii {
           ast::ii_item(i) {
             #debug(">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
@@ -522,7 +522,7 @@ impl helpers for ebml::writer {
         e::write_type(ecx, self, ty)
     }
 
-    fn emit_tys(ecx: @e::encode_ctxt, tys: [ty::t]) {
+    fn emit_tys(ecx: @e::encode_ctxt, tys: [ty::t]/~) {
         self.emit_from_vec(tys) {|ty|
             e::write_type(ecx, self, ty)
         }
@@ -707,7 +707,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
 
 impl decoder for ebml::doc {
     fn as_int() -> int { ebml::doc_as_u64(self) as int }
-    fn [](tag: c::astencode_tag) -> ebml::doc {
+    fn []/~(tag: c::astencode_tag) -> ebml::doc {
         ebml::get_doc(self, tag as uint)
     }
     fn opt_child(tag: c::astencode_tag) -> option<ebml::doc> {
@@ -727,11 +727,11 @@ impl decoder for ebml::ebml_deserializer {
             xcx.tr_def_id(_))
     }
 
-    fn read_tys(xcx: extended_decode_ctxt) -> [ty::t] {
+    fn read_tys(xcx: extended_decode_ctxt) -> [ty::t]/~ {
         self.read_to_vec {|| self.read_ty(xcx) }
     }
 
-    fn read_bounds(xcx: extended_decode_ctxt) -> @[ty::param_bound] {
+    fn read_bounds(xcx: extended_decode_ctxt) -> @[ty::param_bound]/~ {
         tydecode::parse_bounds_data(
             self.parent.data, self.pos, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
             xcx.tr_def_id(_))
@@ -765,7 +765,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
 
         #debug[">> Side table document with tag 0x%x \
                 found for id %d (orig %d)",
-               tag, id, id0];
+               tag, id, id0]/~;
 
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
@@ -859,7 +859,7 @@ type fake_session = ();
 
 #[cfg(test)]
 impl of fake_ext_ctxt for fake_session {
-    fn cfg() -> ast::crate_cfg { [] }
+    fn cfg() -> ast::crate_cfg { []/~ }
     fn parse_sess() -> parse::parse_sess { new_parse_sess() }
 }
 
@@ -922,13 +922,13 @@ fn test_simplification() {
     let item_in = ast::ii_item(#ast(item) {
         fn new_int_alist<B: copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-            ret {eq_fn: eq_int, mut data: []};
+            ret {eq_fn: eq_int, mut data: []/~};
         }
     });
     let item_out = simplify_ast(item_in);
     let item_exp = ast::ii_item(#ast(item) {
         fn new_int_alist<B: copy>() -> alist<int, B> {
-            ret {eq_fn: eq_int, mut data: []};
+            ret {eq_fn: eq_int, mut data: []/~};
         }
     });
     alt (item_out, item_exp) {

@@ -1,5 +1,5 @@
 // pp-exact
-fn f() -> [int] {
+fn f() -> [int]/~ {
     let picard = 0;
 
     let data = 1;
@@ -7,7 +7,7 @@ fn f() -> [int] {
     let worf = 2;
 
 
-    let enterprise = [picard, data, worf];
+    let enterprise = [picard, data, worf]/~;
 
 
 

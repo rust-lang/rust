@@ -23,16 +23,16 @@ fn myrandom_next(r: myrandom, mx: u32) -> u32 {
 
 type aminoacids = {ch: char, prob: u32};
 
-fn make_cumulative(aa: [aminoacids]) -> [aminoacids] {
+fn make_cumulative(aa: [aminoacids]/~) -> [aminoacids]/~ {
     let mut cp: u32 = 0u32;
-    let mut ans: [aminoacids] = [];
-    for aa.each {|a| cp += a.prob; ans += [{ch: a.ch, prob: cp}]; }
+    let mut ans: [aminoacids]/~ = []/~;
+    for aa.each {|a| cp += a.prob; ans += [{ch: a.ch, prob: cp}]/~; }
     ret ans;
 }
 
-fn select_random(r: u32, genelist: [aminoacids]) -> char {
+fn select_random(r: u32, genelist: [aminoacids]/~) -> char {
     if r < genelist[0].prob { ret genelist[0].ch; }
-    fn bisect(v: [aminoacids], lo: uint, hi: uint, target: u32) -> char {
+    fn bisect(v: [aminoacids]/~, lo: uint, hi: uint, target: u32) -> char {
         if hi > lo + 1u {
             let mid: uint = lo + (hi - lo) / 2u;
             if target < v[mid].prob {
@@ -43,7 +43,7 @@ fn select_random(r: u32, genelist: [aminoacids]) -> char {
     ret bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);
 }
 
-fn make_random_fasta(wr: io::writer, id: str, desc: str, genelist: [aminoacids], n: int) {
+fn make_random_fasta(wr: io::writer, id: str, desc: str, genelist: [aminoacids]/~, n: int) {
     wr.write_line(">" + id + " " + desc);
     let rng = @{mut last: std::rand::rng().next()};
     let mut op: str = "";
@@ -74,7 +74,7 @@ fn make_repeat_fasta(wr: io::writer, id: str, desc: str, s: str, n: int) unsafe 
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 
-fn main(args: [str]) {
+fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
         // alioth tests k-nucleotide with this data at 25,000,000
         ["", "5000000"]
@@ -85,22 +85,22 @@ fn main(args: [str]) {
     };
 
     let writer = if os::getenv("RUST_BENCH").is_some() {
-        result::get(io::file_writer("./shootout-fasta.data", [io::truncate, io::create]))
+        result::get(io::file_writer("./shootout-fasta.data", [io::truncate, io::create]/~))
     } else {
         io::stdout()
     };
 
     let n = int::from_str(args[1]).get();
 
-    let iub: [aminoacids] =
+    let iub: [aminoacids]/~ =
         make_cumulative([acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
                          acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
                          acid('H', 2u32), acid('K', 2u32), acid('M', 2u32),
                          acid('N', 2u32), acid('R', 2u32), acid('S', 2u32),
-                         acid('V', 2u32), acid('W', 2u32), acid('Y', 2u32)]);
-    let homosapiens: [aminoacids] =
+                         acid('V', 2u32), acid('W', 2u32), acid('Y', 2u32)]/~);
+    let homosapiens: [aminoacids]/~ =
         make_cumulative([acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
-                         acid('t', 30u32)]);
+                         acid('t', 30u32)]/~);
     let alu: str =
         "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
             "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +

@@ -76,7 +76,7 @@ fn pandoc_writer(
         "--to=html",
         "--css=rust.css",
         "--output=" + filename
-    ];
+    ]/~;
 
     generic_writer {|markdown|
         import io::writer_util;
@@ -178,7 +178,7 @@ fn make_filename(
             }
           }
           doc::itempage(doc) {
-            str::connect(doc.path() + [doc.name()], "_")
+            str::connect(doc.path() + [doc.name()]/~, "_")
           }
         }
     };
@@ -247,7 +247,7 @@ mod test {
 fn write_file(path: str, s: str) {
     import io::writer_util;
 
-    alt io::file_writer(path, [io::create, io::truncate]) {
+    alt io::file_writer(path, [io::create, io::truncate]/~) {
       result::ok(writer) {
         writer.write_str(s);
       }

@@ -9,7 +9,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     }
 
     ret @{id: cx.next_id(),
-          node: ast::expr_path(@{span: sp, global: false, idents: [@res],
-                                 rp: none, types: []}),
+          node: ast::expr_path(@{span: sp, global: false, idents: [@res]/~,
+                                 rp: none, types: []/~}),
           span: sp};
 }

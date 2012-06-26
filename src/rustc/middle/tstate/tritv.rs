@@ -249,16 +249,16 @@ fn tritv_doesntcare(v: t) -> bool {
     ret true;
 }
 
-fn to_vec(v: t) -> [uint] {
+fn to_vec(v: t) -> [uint]/~ {
     let mut i: uint = 0u;
-    let mut rslt: [uint] = [];
+    let mut rslt: [uint]/~ = []/~;
     while i < v.nbits {
         rslt +=
             [alt tritv_get(v, i) {
                dont_care { 2u }
                ttrue { 1u }
                tfalse { 0u }
-             }];
+             }]/~;
         i += 1u;
     }
     ret rslt;

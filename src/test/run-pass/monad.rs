@@ -1,6 +1,6 @@
-impl monad<A> for [A] {
-    fn bind<B>(f: fn(A) -> [B]) -> [B] {
-        let mut r = [];
+impl monad<A> for [A]/~ {
+    fn bind<B>(f: fn(A) -> [B]/~) -> [B]/~ {
+        let mut r = []/~;
         for self.each {|elt| r += f(elt); }
         r
     }

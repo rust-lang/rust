@@ -19,14 +19,14 @@ impl extensions<A> of iter::base_iter<A> for IMPL_T<A> {
 }
 
 impl extensions<A:copy> for IMPL_T<A> {
-    fn filter_to_vec(pred: fn(A) -> bool) -> [A] {
+    fn filter_to_vec(pred: fn(A) -> bool) -> [A]/~ {
         iter::filter_to_vec(self, pred)
     }
-    fn map_to_vec<B>(op: fn(A) -> B) -> [B] { iter::map_to_vec(self, op) }
-    fn to_vec() -> [A] { iter::to_vec(self) }
+    fn map_to_vec<B>(op: fn(A) -> B) -> [B]/~ { iter::map_to_vec(self, op) }
+    fn to_vec() -> [A]/~ { iter::to_vec(self) }
 
     // FIXME--bug in resolve prevents this from working (#2611)
-    // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> [B] {
+    // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> [B]/~ {
     //     iter::flat_map_to_vec(self, op)
     // }
 

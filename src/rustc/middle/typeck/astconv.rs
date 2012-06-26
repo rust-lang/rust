@@ -337,9 +337,9 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             "implied fixed length for bound");
       }
       ast::ty_constr(t, cs) {
-        let mut out_cs = [];
+        let mut out_cs = []/~;
         for cs.each {|constr|
-            out_cs += [ty::ast_constr_to_constr(tcx, constr)];
+            out_cs += [ty::ast_constr_to_constr(tcx, constr)]/~;
         }
         ty::mk_constr(tcx, ast_ty_to_ty(self, rscope, t), out_cs)
       }
@@ -402,7 +402,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy>(
     {mode: mode, ty: ty}
 }
 
-type expected_tys = option<{inputs: [ty::arg],
+type expected_tys = option<{inputs: [ty::arg]/~,
                             output: ty::t}>;
 
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(

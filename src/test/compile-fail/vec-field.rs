@@ -2,7 +2,7 @@
 // issue #367
 
 fn f() {
-    let v = [1i];
+    let v = [1i]/~;
     log(debug, v.some_field_name); //type error
 }
 

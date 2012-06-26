@@ -43,7 +43,7 @@ enum file_substr {
 
 type filemap =
     @{name: filename, substr: file_substr, src: @str,
-      start_pos: file_pos, mut lines: [file_pos]};
+      start_pos: file_pos, mut lines: [file_pos]/~};
 
 type codemap = @{files: dvec<filemap>};
 
@@ -57,7 +57,7 @@ fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
    -> filemap {
     ret @{name: filename, substr: substr, src: src,
           start_pos: {ch: start_pos_ch, byte: start_pos_byte},
-          mut lines: [{ch: start_pos_ch, byte: start_pos_byte}]};
+          mut lines: [{ch: start_pos_ch, byte: start_pos_byte}]/~};
 }
 
 fn new_filemap(+filename: filename, src: @str,
@@ -74,7 +74,7 @@ fn mk_substr_filename(cm: codemap, sp: span) -> str
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
-    file.lines += [{ch: chpos, byte: byte_pos + file.start_pos.byte}];
+    file.lines += [{ch: chpos, byte: byte_pos + file.start_pos.byte}]/~;
 }
 
 type lookup_fn = pure fn(file_pos) -> uint;
@@ -174,7 +174,7 @@ fn span_to_str(sp: span, cm: codemap) -> str {
              lo.line, lo.col, hi.line, hi.col)
 }
 
-type file_lines = {file: filemap, lines: [uint]};
+type file_lines = {file: filemap, lines: [uint]/~};
 
 fn span_to_filename(sp: span, cm: codemap::codemap) -> filename {
     let lo = lookup_char_pos(cm, sp.lo);
@@ -184,8 +184,8 @@ fn span_to_filename(sp: span, cm: codemap::codemap) -> filename {
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
-    let mut lines = [];
-    for uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
+    let mut lines = []/~;
+    for uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]/~; };
     ret @{file: lo.file, lines: lines};
 }
 

@@ -245,18 +245,18 @@ checking for overflow:
         if x == uint::max_value { ret err(\"overflow\"); }
         else { ret ok(x+1u); }
     }
-    map([1u, 2u, 3u], inc_conditionally).chain {|incd|
-        assert incd == [2u, 3u, 4u];
+    map([1u, 2u, 3u]/~, inc_conditionally).chain {|incd|
+        assert incd == [2u, 3u, 4u]/~;
     }
 "]
 fn map_vec<T,U:copy,V:copy>(
-    ts: [T], op: fn(T) -> result<V,U>) -> result<[V],U> {
+    ts: [T]/~, op: fn(T) -> result<V,U>) -> result<[V]/~,U> {
 
-    let mut vs: [V] = [];
+    let mut vs: [V]/~ = []/~;
     vec::reserve(vs, vec::len(ts));
     for vec::each(ts) {|t|
         alt op(t) {
-          ok(v) { vs += [v]; }
+          ok(v) { vs += [v]/~; }
           err(u) { ret err(u); }
         }
     }
@@ -284,16 +284,17 @@ length.  While we do not often use preconditions in the standard
 library, a precondition is used here because result::t is generally
 used in 'careful' code contexts where it is both appropriate and easy
 to accommodate an error like the vectors being of different lengths."]
-fn map_vec2<S,T,U:copy,V:copy>(ss: [S], ts: [T], op: fn(S,T) -> result<V,U>)
-    : vec::same_length(ss, ts) -> result<[V],U> {
+fn map_vec2<S,T,U:copy,V:copy>(ss: [S]/~, ts: [T]/~,
+                               op: fn(S,T) -> result<V,U>)
+    : vec::same_length(ss, ts) -> result<[V]/~,U> {
 
     let n = vec::len(ts);
-    let mut vs = [];
+    let mut vs = []/~;
     vec::reserve(vs, n);
     let mut i = 0u;
     while i < n {
         alt op(ss[i],ts[i]) {
-          ok(v) { vs += [v]; }
+          ok(v) { vs += [v]/~; }
           err(u) { ret err(u); }
         }
         i += 1u;
@@ -306,7 +307,7 @@ Applies op to the pairwise elements from `ss` and `ts`, aborting on
 error.  This could be implemented using `map2()` but it is more efficient
 on its own as no result vector is built.
 "]
-fn iter_vec2<S,T,U:copy>(ss: [S], ts: [T],
+fn iter_vec2<S,T,U:copy>(ss: [S]/~, ts: [T]/~,
                          op: fn(S,T) -> result<(),U>)
     : vec::same_length(ss, ts)
     -> result<(),U> {

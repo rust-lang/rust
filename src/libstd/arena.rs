@@ -5,11 +5,11 @@ export arena, arena_with_size;
 import list;
 import list::{list, cons, nil};
 
-type chunk = {data: [u8], mut fill: uint};
+type chunk = {data: [u8]/~, mut fill: uint};
 type arena = {mut chunks: @list<@chunk>};
 
 fn chunk(size: uint) -> @chunk {
-    let mut v = [];
+    let mut v = []/~;
     vec::reserve(v, size);
     @{ data: v, mut fill: 0u }
 }

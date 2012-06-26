@@ -1,7 +1,7 @@
 use std;
 import vec;
 
-fn vec_equal<T>(v: [T], u: [T],
+fn vec_equal<T>(v: [T]/~, u: [T]/~,
                 element_equality_test: fn@(&&T, &&T) -> bool) ->
    bool {
     let Lv = vec::len(v);
@@ -20,11 +20,11 @@ pure fn builtin_equal_int(&&a: int, &&b: int) -> bool { ret a == b; }
 fn main() {
     assert (builtin_equal(5, 5));
     assert (!builtin_equal(5, 4));
-    assert (!vec_equal([5, 5], [5], bind builtin_equal(_, _)));
-    assert (!vec_equal([5, 5], [5], builtin_equal_int));
-    assert (!vec_equal([5, 5], [5, 4], builtin_equal_int));
-    assert (!vec_equal([5, 5], [4, 5], builtin_equal_int));
-    assert (vec_equal([5, 5], [5, 5], builtin_equal_int));
+    assert (!vec_equal([5, 5]/~, [5]/~, bind builtin_equal(_, _)));
+    assert (!vec_equal([5, 5]/~, [5]/~, builtin_equal_int));
+    assert (!vec_equal([5, 5]/~, [5, 4]/~, builtin_equal_int));
+    assert (!vec_equal([5, 5]/~, [4, 5]/~, builtin_equal_int));
+    assert (vec_equal([5, 5]/~, [5, 5]/~, builtin_equal_int));
 
     #error("Pass");
 }

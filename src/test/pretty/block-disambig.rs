@@ -39,9 +39,9 @@ fn test8() -> int {
 fn test9() { let regs = @mut 0; alt check true { true { } } *regs += 1; }
 
 fn test10() -> int {
-    let regs = @mut [0];
+    let regs = @mut [0]/~;
     alt check true { true { } }
     (*regs)[0]
 }
 
-fn test11() -> [int] { if true { } [1, 2] }
+fn test11() -> [int]/~ { if true { } [1, 2]/~ }

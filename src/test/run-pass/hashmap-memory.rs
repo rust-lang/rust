@@ -31,9 +31,9 @@ mod map_reduce {
 
     type mapper = native fn(str, putter);
 
-    enum ctrl_proto { find_reducer([u8], chan<int>), mapper_done, }
+    enum ctrl_proto { find_reducer([u8]/~, chan<int>), mapper_done, }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: [str]) {
+    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: [str]/~) {
         for inputs.each {|i|
             task::spawn {|| map_task(ctrl, i); };
         }
@@ -63,7 +63,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn map_reduce(inputs: [str]) {
+    fn map_reduce(inputs: [str]/~) {
         let ctrl = port();
 
         // This task becomes the master control task. It spawns others

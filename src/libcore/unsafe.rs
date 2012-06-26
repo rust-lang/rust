@@ -33,7 +33,7 @@ Both types must have the same size and alignment.
 
 # Example
 
-    assert transmute(\"L\") == [76u8, 0u8];
+    assert transmute(\"L\") == [76u8, 0u8]/~;
 "]
 unsafe fn transmute<L, G>(-thing: L) -> G {
     let newthing = reinterpret_cast(thing);
@@ -62,7 +62,7 @@ mod tests {
     #[test]
     fn test_transmute2() {
         unsafe {
-            assert transmute("L") == [76u8, 0u8];
+            assert transmute("L") == [76u8, 0u8]/~;
         }
     }
 }

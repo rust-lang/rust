@@ -79,7 +79,7 @@ fn Ret(cx: block, V: ValueRef) {
     llvm::LLVMBuildRet(B(cx), V);
 }
 
-fn AggregateRet(cx: block, RetVals: [ValueRef]) {
+fn AggregateRet(cx: block, RetVals: [ValueRef]/~) {
     if cx.unreachable { ret; }
     assert (!cx.terminated);
     cx.terminated = true;
@@ -134,7 +134,7 @@ fn noname() -> *libc::c_char unsafe {
     ret unsafe::reinterpret_cast(ptr::addr_of(cnull));
 }
 
-fn Invoke(cx: block, Fn: ValueRef, Args: [ValueRef],
+fn Invoke(cx: block, Fn: ValueRef, Args: [ValueRef]/~,
           Then: BasicBlockRef, Catch: BasicBlockRef) {
     if cx.unreachable { ret; }
     assert (!cx.terminated);
@@ -151,7 +151,7 @@ fn Invoke(cx: block, Fn: ValueRef, Args: [ValueRef],
     }
 }
 
-fn FastInvoke(cx: block, Fn: ValueRef, Args: [ValueRef],
+fn FastInvoke(cx: block, Fn: ValueRef, Args: [ValueRef]/~,
               Then: BasicBlockRef, Catch: BasicBlockRef) {
     if cx.unreachable { ret; }
     assert (!cx.terminated);
@@ -417,7 +417,7 @@ fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
     llvm::LLVMBuildStore(B(cx), Val, Ptr);
 }
 
-fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
+fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]/~) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
     count_insn(cx, "gep");
@@ -428,14 +428,14 @@ fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
 
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
-fn GEPi(cx: block, base: ValueRef, ixs: [uint]) -> ValueRef {
-    let mut v: [ValueRef] = [];
-    for vec::each(ixs) {|i| v += [C_i32(i as i32)]; }
+fn GEPi(cx: block, base: ValueRef, ixs: [uint]/~) -> ValueRef {
+    let mut v: [ValueRef]/~ = []/~;
+    for vec::each(ixs) {|i| v += [C_i32(i as i32)]/~; }
     count_insn(cx, "gepi");
     ret InBoundsGEP(cx, base, v);
 }
 
-fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) ->
+fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]/~) ->
    ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
@@ -607,7 +607,7 @@ fn EmptyPhi(cx: block, Ty: TypeRef) -> ValueRef {
     ret llvm::LLVMBuildPhi(B(cx), Ty, noname());
 }
 
-fn Phi(cx: block, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
+fn Phi(cx: block, Ty: TypeRef, vals: [ValueRef]/~, bbs: [BasicBlockRef]/~)
    -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(Ty); }
     assert vals.len() == bbs.len();
@@ -657,15 +657,15 @@ fn add_comment(bcx: block, text: str) {
         let asm = str::as_c_str(comment_text, {|c|
             str::as_c_str("", {|e|
                 count_insn(bcx, "inlineasm");
-                llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e,
+                llvm::LLVMConstInlineAsm(T_fn([]/~, T_void()), c, e,
                                          False, False)
             })
         });
-        Call(bcx, asm, []);
+        Call(bcx, asm, []/~);
     }
 }
 
-fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
+fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]/~) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         count_insn(cx, "call");
@@ -679,7 +679,7 @@ fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     }
 }
 
-fn FastCall(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
+fn FastCall(cx: block, Fn: ValueRef, Args: [ValueRef]/~) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         count_insn(cx, "fastcall");
@@ -690,7 +690,7 @@ fn FastCall(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     }
 }
 
-fn CallWithConv(cx: block, Fn: ValueRef, Args: [ValueRef],
+fn CallWithConv(cx: block, Fn: ValueRef, Args: [ValueRef]/~,
                 Conv: CallConv) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
@@ -779,7 +779,7 @@ fn Trap(cx: block) {
         llvm::LLVMGetNamedFunction(M, buf)
     });
     assert (T as int != 0);
-    let Args: [ValueRef] = [];
+    let Args: [ValueRef]/~ = []/~;
     unsafe {
         count_insn(cx, "trap");
         llvm::LLVMBuildCall(b, T, vec::unsafe::to_ptr(Args),

@@ -8,7 +8,7 @@ fn under(r : rand::rng, n : uint) -> uint {
 }
 
 // random choice from a vec
-fn choice<T: copy>(r : rand::rng, v : [const T]) -> T {
+fn choice<T: copy>(r : rand::rng, v : [const T]/~) -> T {
     assert vec::len(v) != 0u; v[under(r, vec::len(v))]
 }
 
@@ -32,8 +32,8 @@ type pointy = {
     mut f : fn@()->(),
     mut g : fn~()->(),
 
-    mut m : [maybe_pointy],
-    mut n : [mut maybe_pointy],
+    mut m : [maybe_pointy]/~,
+    mut n : [mut maybe_pointy]/~,
     mut o : {x : int, y : maybe_pointy}
 };
 // To add: objects; ifaces; anything type-parameterized?
@@ -47,8 +47,8 @@ fn empty_pointy() -> @pointy {
         mut f : fn@()->(){},
         mut g : fn~()->(){},
 
-        mut m : [],
-        mut n : [mut],
+        mut m : []/~,
+        mut n : [mut]/~,
         mut o : {x : 0, y : none}
     }
 }
@@ -58,7 +58,7 @@ fn nop<T>(_x: T) { }
 
 fn test_cycles(r : rand::rng, k: uint, n: uint)
 {
-    let v : [mut @pointy] = [mut];
+    let v : [mut @pointy]/~ = [mut]/~;
 
     // Create a graph with no edges
     range(0u, vlen) {|_i|

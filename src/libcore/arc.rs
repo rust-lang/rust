@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn manually_share_arc() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]/~;
         let arc_v = arc::arc(v);
 
         let p = port();
@@ -182,7 +182,7 @@ mod tests {
 
             let arc_v = p.recv();
 
-            let v = *arc::get::<[int]>(&arc_v);
+            let v = *arc::get::<[int]/~>(&arc_v);
             assert v[3] == 4;
         };
 
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn auto_share_arc() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]/~;
         let (_res, arc_c) = shared_arc(v);
 
         let p = port();
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     #[ignore] // this can probably infinite loop too.
     fn exclusive_arc() {
-        let mut futures = [];
+        let mut futures = []/~;
 
         let num_tasks = 10u;
         let count = 1000u;
@@ -231,7 +231,7 @@ mod tests {
                         **count += 1u;
                     }
                 }
-            })];
+            })]/~;
         };
 
         for futures.each {|f| f.get() };

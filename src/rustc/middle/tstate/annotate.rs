@@ -7,13 +7,13 @@ import aux::{num_constraints, get_fn_info, crate_ctxt, add_node};
 import ann::empty_ann;
 import pat_util::pat_binding_ids;
 
-fn collect_ids_expr(e: @expr, rs: @mut [node_id]) { vec::push(*rs, e.id); }
+fn collect_ids_expr(e: @expr, rs: @mut [node_id]/~) { vec::push(*rs, e.id); }
 
-fn collect_ids_block(b: blk, rs: @mut [node_id]) {
+fn collect_ids_block(b: blk, rs: @mut [node_id]/~) {
     vec::push(*rs, b.node.id);
 }
 
-fn collect_ids_stmt(s: @stmt, rs: @mut [node_id]) {
+fn collect_ids_stmt(s: @stmt, rs: @mut [node_id]/~) {
     alt s.node {
       stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
         #debug["node_id %s", int::str(id)];
@@ -23,11 +23,11 @@ fn collect_ids_stmt(s: @stmt, rs: @mut [node_id]) {
     }
 }
 
-fn collect_ids_local(tcx: ty::ctxt, l: @local, rs: @mut [node_id]) {
+fn collect_ids_local(tcx: ty::ctxt, l: @local, rs: @mut [node_id]/~) {
     *rs += pat_binding_ids(tcx.def_map, l.node.pat);
 }
 
-fn node_ids_in_fn(tcx: ty::ctxt, body: blk, rs: @mut [node_id]) {
+fn node_ids_in_fn(tcx: ty::ctxt, body: blk, rs: @mut [node_id]/~) {
     let collect_ids =
         visit::mk_simple_visitor(@{visit_expr: {|a|collect_ids_expr(a, rs)},
                                    visit_block: {|a|collect_ids_block(a, rs)},
@@ -38,7 +38,7 @@ fn node_ids_in_fn(tcx: ty::ctxt, body: blk, rs: @mut [node_id]) {
     collect_ids.visit_block(body, (), collect_ids);
 }
 
-fn init_vecs(ccx: crate_ctxt, node_ids: [node_id], len: uint) {
+fn init_vecs(ccx: crate_ctxt, node_ids: [node_id]/~, len: uint) {
     for node_ids.each {|i|
         log(debug, int::str(i) + " |-> " + uint::str(len));
         add_node(ccx, i, empty_ann(len));
@@ -46,7 +46,7 @@ fn init_vecs(ccx: crate_ctxt, node_ids: [node_id], len: uint) {
 }
 
 fn visit_fn(ccx: crate_ctxt, num_constraints: uint, body: blk) {
-    let node_ids: @mut [node_id] = @mut [];
+    let node_ids: @mut [node_id]/~ = @mut []/~;
     node_ids_in_fn(ccx.tcx, body, node_ids);
     let node_id_vec = *node_ids;
     init_vecs(ccx, node_id_vec, num_constraints);

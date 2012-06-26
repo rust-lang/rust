@@ -3,7 +3,7 @@ import vec;
 
 fn test_heap_to_heap() {
     // a spills onto the heap
-    let mut a = [0, 1, 2, 3, 4];
+    let mut a = [0, 1, 2, 3, 4]/~;
     a += a;
     assert (vec::len(a) == 10u);
     assert (a[0] == 0);
@@ -20,7 +20,7 @@ fn test_heap_to_heap() {
 
 fn test_stack_to_heap() {
     // a is entirely on the stack
-    let mut a = [0, 1, 2];
+    let mut a = [0, 1, 2]/~;
     // a spills to the heap
     a += a;
     assert (vec::len(a) == 6u);
@@ -34,7 +34,7 @@ fn test_stack_to_heap() {
 
 fn test_loop() {
     // Make sure we properly handle repeated self-appends.
-    let mut a: [int] = [0];
+    let mut a: [int]/~ = [0]/~;
     let mut i = 20;
     let mut expected_len = 1u;
     while i > 0 {

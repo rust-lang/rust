@@ -32,11 +32,11 @@ fn is_some(&&mpu: matcher_pos_up) -> bool {
 }
 
 type matcher_pos = ~{
-    elts: [ast::matcher], // maybe should be /& ? Need to understand regions.
+    elts: [ast::matcher]/~, // maybe should be /&? Need to understand regions.
     sep: option<token>,
     mut idx: uint,
     mut up: matcher_pos_up, // mutable for swapping only
-    matches: [dvec<@arb_depth>]
+    matches: [dvec<@arb_depth>]/~
 };
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
@@ -55,26 +55,26 @@ fn count_names(ms: [matcher]/&) -> uint {
         }})
 }
 
-fn new_matcher_pos(ms: [matcher], sep: option<token>) -> matcher_pos {
+fn new_matcher_pos(ms: [matcher]/~, sep: option<token>) -> matcher_pos {
     ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(none),
       matches: copy vec::from_fn(count_names(ms), {|_i| dvec::dvec()}) }
 }
 
 /* logically, an arb_depth should contain only one kind of nonterminal */
-enum arb_depth { leaf(whole_nt), seq([@arb_depth]) }
+enum arb_depth { leaf(whole_nt), seq([@arb_depth]/~) }
 
 type earley_item = matcher_pos;
 
 
-fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: [matcher])
-    -> [@arb_depth] {
-    let mut cur_eis = [];
+fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: [matcher]/~)
+    -> [@arb_depth]/~ {
+    let mut cur_eis = []/~;
     vec::push(cur_eis, new_matcher_pos(ms, none));
 
     loop {
-        let mut bb_eis = []; // black-box parsed by parser.rs
-        let mut next_eis = []; // or proceed normally
-        let mut eof_eis = [];
+        let mut bb_eis = []/~; // black-box parsed by parser.rs
+        let mut next_eis = []/~; // or proceed normally
+        let mut eof_eis = []/~;
 
         let {tok: tok, sp: _} = rdr.peek();
 
@@ -218,12 +218,12 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: [matcher])
 
 fn parse_nt(p: parser, name: str) -> whole_nt {
     alt name {
-      "item" { alt p.parse_item([], ast::public) {
+      "item" { alt p.parse_item([]/~, ast::public) {
         some(i) { token::w_item(i) }
         none { p.fatal("expected an item keyword") }
       }}
       "block" { token::w_block(p.parse_block()) }
-      "stmt" { token::w_stmt(p.parse_stmt([])) }
+      "stmt" { token::w_stmt(p.parse_stmt([]/~)) }
       "pat" { token::w_pat(p.parse_pat()) }
       "expr" { token::w_expr(p.parse_expr()) }
       "ty" { token::w_ty(p.parse_ty(false /* no need to disambiguate*/)) }

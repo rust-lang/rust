@@ -21,7 +21,7 @@ fn thread_ring(i: uint,
     };
 }
 
-fn main(args: [str]) {
+fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
         ["", "100", "10000"]
     } else if args.len() <= 1u {
@@ -39,7 +39,7 @@ fn main(args: [str]) {
     let start = time::precise_time_s();
 
     // create the ring
-    let mut futures = [];
+    let mut futures = []/~;
 
     for uint::range(1u, num_tasks) {|i|
         let get_chan = port();
@@ -50,7 +50,7 @@ fn main(args: [str]) {
                 let p = port();
                 get_chan_chan.send(chan(p));
                 thread_ring(i, msg_per_task, num_chan,  p)
-            }];
+            }]/~;
         }
         
         num_chan = get_chan.recv();

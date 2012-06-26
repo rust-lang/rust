@@ -56,7 +56,7 @@ fn main() {
         calllink08,
         calllink09,
         calllink10
-    ];
+    ]/~;
     let rng = rand::rng();
     for fns.each {|f|
         let sz = rng.next() % 256u32 + 256u32;

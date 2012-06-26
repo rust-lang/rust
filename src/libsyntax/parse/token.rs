@@ -260,7 +260,7 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
         "with",
         /* temp */
         "sep", "many", "at_least_one", "parse"
-    ];
+    ]/~;
     for keys.each {|word|
         words.insert(word, ());
     }
@@ -298,7 +298,7 @@ fn restricted_keyword_table() -> hashmap<str, ()> {
         "true", "trait", "type",
         "unchecked", "unsafe",
         "while"
-    ];
+    ]/~;
     for keys.each {|word|
         words.insert(word, ());
     }

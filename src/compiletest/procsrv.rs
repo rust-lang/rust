@@ -5,7 +5,7 @@ import libc::{c_int, pid_t};
 export run;
 
 #[cfg(target_os = "win32")]
-fn target_env(lib_path: str, prog: str) -> [(str,str)] {
+fn target_env(lib_path: str, prog: str) -> [(str,str)]/~ {
 
     let mut env = os::env();
 
@@ -27,16 +27,16 @@ fn target_env(lib_path: str, prog: str) -> [(str,str)] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(_lib_path: str, _prog: str) -> [(str,str)] {
-    []
+fn target_env(_lib_path: str, _prog: str) -> [(str,str)]/~ {
+    []/~
 }
 
 
 // FIXME (#2659): This code is duplicated in core::run::program_output
 fn run(lib_path: str,
        prog: str,
-       args: [str],
-       env: [(str, str)],
+       args: [str]/~,
+       env: [(str, str)]/~,
        input: option<str>) -> {status: int, out: str, err: str} {
 
     let pipe_in = os::pipe();

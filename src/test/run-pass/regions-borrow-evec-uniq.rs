@@ -7,7 +7,7 @@ fn main() {
     let r = foo(p);
     assert r == 1;
 
-    let p = [5,4,3,2,1];
+    let p = [5,4,3,2,1]/~;
     let r = foo(p);
     assert r == 5;
 }

@@ -45,7 +45,7 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   some(macro_defining(ext)) {
                     let named_extension = ext(cx, pth.span, args, body);
                     exts.insert(*named_extension.ident, named_extension.ext);
-                    (ast::expr_rec([], none), s)
+                    (ast::expr_rec([]/~, none), s)
                   }
                   some(normal_tt(_)) {
                     cx.span_fatal(pth.span,
@@ -101,7 +101,7 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
     let new_items = vec::flat_map(module.items) {|item|
-        vec::foldr(item.attrs, [item]) {|attr, items|
+        vec::foldr(item.attrs, [item]/~) {|attr, items|
             let mname = alt attr.node.value.node {
               ast::meta_word(n) { n }
               ast::meta_name_value(n, _) { n }

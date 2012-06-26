@@ -19,5 +19,5 @@ fn main() {
     let m = int_hash();
     m.insert(1, 2);
     m.insert(3, 4);
-    assert iter::to_vec(keys(m)) == [1, 3];
+    assert iter::to_vec(keys(m)) == [1, 3]/~;
 }

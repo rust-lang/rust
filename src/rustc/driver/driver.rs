@@ -56,7 +56,7 @@ fn default_configuration(sess: session, argv0: str, input: input) ->
          mk(@"target_libc", libc),
          // Build bindings.
          mk(@"build_compiler", argv0),
-         mk(@"build_input", source_name(input))];
+         mk(@"build_input", source_name(input))]/~;
 }
 
 fn build_configuration(sess: session, argv0: str, input: input) ->
@@ -70,19 +70,19 @@ fn build_configuration(sess: session, argv0: str, input: input) ->
         {
             if sess.opts.test && !attr::contains_name(user_cfg, "test")
                {
-                [attr::mk_word_item(@"test")]
-            } else { [] }
+                [attr::mk_word_item(@"test")]/~
+            } else { []/~ }
         };
     ret user_cfg + gen_cfg + default_cfg;
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
+fn parse_cfgspecs(cfgspecs: [str]/~) -> ast::crate_cfg {
     // FIXME (#2399): It would be nice to use the parser to parse all
     // varieties of meta_item here. At the moment we just support the
     // meta_word variant.
-    let mut words = [];
-    for cfgspecs.each {|s| words += [attr::mk_word_item(@s)]; }
+    let mut words = []/~;
+    for cfgspecs.each {|s| vec::push(words, attr::mk_word_item(@s)); }
     ret words;
 }
 
@@ -563,7 +563,7 @@ fn parse_pretty(sess: session, &&name: str) -> pp_mode {
                    "`identified`");
 }
 
-fn opts() -> [getopts::opt] {
+fn opts() -> [getopts::opt]/~ {
     ret [optflag("h"), optflag("help"), optflag("v"), optflag("version"),
          optflag("emit-llvm"), optflagopt("pretty"),
          optflag("ls"), optflag("parse-only"), optflag("no-trans"),
@@ -577,7 +577,7 @@ fn opts() -> [getopts::opt] {
          optmulti("Z"),
 
          optmulti("cfg"), optflag("test"),
-         optflag("lib"), optflag("bin"), optflag("static"), optflag("gc")];
+         optflag("lib"), optflag("bin"), optflag("static"), optflag("gc")]/~;
 }
 
 type output_filenames = @{out_filename: str, obj_filename:str};
@@ -692,7 +692,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let match =
-            alt getopts::getopts(["--test"], opts()) {
+            alt getopts::getopts(["--test"]/~, opts()) {
               ok(m) { m }
               err(f) { fail "test_switch_implies_cfg_test: " +
                        getopts::fail_str(f); }
@@ -708,7 +708,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let match =
-            alt getopts::getopts(["--test", "--cfg=test"], opts()) {
+            alt getopts::getopts(["--test", "--cfg=test"]/~, opts()) {
               ok(m) { m }
               err(f) { fail "test_switch_implies_cfg_test_unless_cfg_test: " +
                        getopts::fail_str(f); }

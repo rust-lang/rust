@@ -33,13 +33,13 @@ type ctxt = {
     filesearch: filesearch,
     span: span,
     ident: ast::ident,
-    metas: [@ast::meta_item],
+    metas: [@ast::meta_item]/~,
     hash: str,
     os: os,
     static: bool
 };
 
-fn load_library_crate(cx: ctxt) -> {ident: str, data: @[u8]} {
+fn load_library_crate(cx: ctxt) -> {ident: str, data: @[u8]/~} {
     alt find_library_crate(cx) {
       some(t) { ret t; }
       none {
@@ -49,7 +49,7 @@ fn load_library_crate(cx: ctxt) -> {ident: str, data: @[u8]} {
     }
 }
 
-fn find_library_crate(cx: ctxt) -> option<{ident: str, data: @[u8]}> {
+fn find_library_crate(cx: ctxt) -> option<{ident: str, data: @[u8]/~}> {
     attr::require_unique_names(cx.diag, cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
@@ -67,12 +67,12 @@ fn libname(cx: ctxt) -> {prefix: str, suffix: str} {
 fn find_library_crate_aux(cx: ctxt,
                           nn: {prefix: str, suffix: str},
                           filesearch: filesearch::filesearch) ->
-   option<{ident: str, data: @[u8]}> {
+   option<{ident: str, data: @[u8]/~}> {
     let crate_name = crate_name_from_metas(cx.metas);
     let prefix: str = nn.prefix + *crate_name + "-";
     let suffix: str = nn.suffix;
 
-    let mut matches = [];
+    let mut matches = []/~;
     filesearch::search(filesearch, { |path|
         #debug("inspecting file %s", path);
         let f: str = path::basename(path);
@@ -89,7 +89,7 @@ fn find_library_crate_aux(cx: ctxt,
                     option::none::<()>
                 } else {
                     #debug("found %s with matching metadata", path);
-                    matches += [{ident: path, data: cvec}];
+                    matches += [{ident: path, data: cvec}]/~;
                     option::none::<()>
                 }
               }
@@ -119,7 +119,7 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-fn crate_name_from_metas(metas: [@ast::meta_item]) -> @str {
+fn crate_name_from_metas(metas: [@ast::meta_item]/~) -> @str {
     let name_items = attr::find_meta_items_by_name(metas, "name");
     alt vec::last_opt(name_items) {
       some(i) {
@@ -134,14 +134,14 @@ fn crate_name_from_metas(metas: [@ast::meta_item]) -> @str {
     }
 }
 
-fn note_linkage_attrs(diag: span_handler, attrs: [ast::attribute]) {
+fn note_linkage_attrs(diag: span_handler, attrs: [ast::attribute]/~) {
     for attr::find_linkage_attrs(attrs).each {|attr|
         diag.handler().note(#fmt("meta: %s", pprust::attr_to_str(attr)));
     }
 }
 
-fn crate_matches(crate_data: @[u8], metas: [@ast::meta_item], hash: str) ->
-    bool {
+fn crate_matches(crate_data: @[u8]/~, metas: [@ast::meta_item]/~,
+                 hash: str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
     if hash.is_not_empty() {
@@ -151,8 +151,8 @@ fn crate_matches(crate_data: @[u8], metas: [@ast::meta_item], hash: str) ->
     metadata_matches(linkage_metas, metas)
 }
 
-fn metadata_matches(extern_metas: [@ast::meta_item],
-                    local_metas: [@ast::meta_item]) -> bool {
+fn metadata_matches(extern_metas: [@ast::meta_item]/~,
+                    local_metas: [@ast::meta_item]/~) -> bool {
 
     #debug("matching %u metadata requirements against %u items",
            vec::len(local_metas), vec::len(extern_metas));
@@ -173,14 +173,14 @@ fn metadata_matches(extern_metas: [@ast::meta_item],
 }
 
 fn get_metadata_section(os: os,
-                        filename: str) -> option<@[u8]> unsafe {
+                        filename: str) -> option<@[u8]/~> unsafe {
     let mb = str::as_c_str(filename, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
-    if mb as int == 0 { ret option::none::<@[u8]>; }
+    if mb as int == 0 { ret option::none::<@[u8]/~>; }
     let of = alt mk_object_file(mb) {
         option::some(of) { of }
-        _ { ret option::none::<@[u8]>; }
+        _ { ret option::none::<@[u8]/~>; }
     };
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
@@ -196,7 +196,7 @@ fn get_metadata_section(os: os,
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }
-    ret option::none::<@[u8]>;
+    ret option::none::<@[u8]/~>;
 }
 
 fn meta_section_name(os: os) -> str {

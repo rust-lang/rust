@@ -7,16 +7,16 @@ import comm::port;
 import comm::recv;
 import comm::send;
 
-enum msg { closed, received([u8]), }
+enum msg { closed, received([u8]/~), }
 
-fn producer(c: chan<[u8]>) {
-    send(c, [1u8, 2u8, 3u8, 4u8]);
-    let empty: [u8] = [];
+fn producer(c: chan<[u8]/~>) {
+    send(c, [1u8, 2u8, 3u8, 4u8]/~);
+    let empty: [u8]/~ = []/~;
     send(c, empty);
 }
 
-fn packager(cb: chan<chan<[u8]>>, msg: chan<msg>) {
-    let p: port<[u8]> = port();
+fn packager(cb: chan<chan<[u8]/~>>, msg: chan<msg>) {
+    let p: port<[u8]/~> = port();
     send(cb, chan(p));
     loop {
         #debug("waiting for bytes");
@@ -39,11 +39,11 @@ fn packager(cb: chan<chan<[u8]>>, msg: chan<msg>) {
 fn main() {
     let p: port<msg> = port();
     let ch = chan(p);
-    let recv_reader: port<chan<[u8]>> = port();
+    let recv_reader: port<chan<[u8]/~>> = port();
     let recv_reader_chan = chan(recv_reader);
     let pack = task::spawn {|| packager(recv_reader_chan, ch); };
 
-    let source_chan: chan<[u8]> = recv(recv_reader);
+    let source_chan: chan<[u8]/~> = recv(recv_reader);
     let prod = task::spawn {|| producer(source_chan); };
 
     loop {

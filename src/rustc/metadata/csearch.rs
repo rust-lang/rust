@@ -39,12 +39,12 @@ fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
 }
 
 fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
-               path: [ast::ident]) -> [ast::def] {
-    let mut result = [];
+               path: [ast::ident]/~) -> [ast::def]/~ {
+    let mut result = []/~;
     #debug("lookup_defs: path = %? cnum = %?", path, cnum);
     for resolve_path(cstore, cnum, path).each {|elt|
         let (c, data, def) = elt;
-        result += [decoder::lookup_def(c, data, def)];
+        result += [decoder::lookup_def(c, data, def)]/~;
     }
     ret result;
 }
@@ -60,21 +60,21 @@ fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
 /* Returns a vector of possible def IDs for a given path,
    in a given crate */
 fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
-                path: [ast::ident]) ->
-    [(ast::crate_num, @[u8], ast::def_id)] {
+                path: [ast::ident]/~) ->
+    [(ast::crate_num, @[u8]/~, ast::def_id)]/~ {
     let cm = cstore::get_crate_data(cstore, cnum);
     #debug("resolve_path %s in crates[%d]:%s",
            ast_util::path_name_i(path), cnum, cm.name);
-    let mut result = [];
+    let mut result = []/~;
     for decoder::resolve_path(path, cm.data).each {|def|
         if def.crate == ast::local_crate {
-            result += [(cnum, cm.data, def)];
+            result += [(cnum, cm.data, def)]/~;
         } else {
             if cm.cnum_map.contains_key(def.crate) {
                 // This reexport is itself a reexport from another crate
                 let next_cnum = cm.cnum_map.get(def.crate);
                 let next_cm_data = cstore::get_crate_data(cstore, next_cnum);
-                result += [(next_cnum, next_cm_data.data, def)];
+                result += [(next_cnum, next_cm_data.data, def)]/~;
             }
         }
     }
@@ -88,7 +88,7 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    [ast_map::path_mod(@cdata.name)] + path
+    [ast_map::path_mod(@cdata.name)]/~ + path
 }
 
 enum found_ast {
@@ -109,7 +109,8 @@ fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
                                 decode_inlined_item)
 }
 
-fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
+fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
+    -> [ty::variant_info]/~ {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     ret decoder::get_enum_variants(cdata, def.node, tcx)
@@ -117,20 +118,20 @@ fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
                      name: option<ast::ident>)
-    -> @[@decoder::_impl] {
+    -> @[@decoder::_impl]/~ {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impls_for_mod(cdata, def.node, name) {|cnum|
         cstore::get_crate_data(cstore, cnum)
     }
 }
 
-fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method] {
+fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method]/~ {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_iface_methods(cdata, def.node, tcx)
 }
 
-fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> [ty::field_ty] {
+fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> [ty::field_ty]/~ {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_class_fields(cdata, def.node)
@@ -159,7 +160,7 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                  class_id, def)});
     #debug("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
-    ret {bounds: @[], rp: ast::rp_none, ty: ty};
+    ret {bounds: @[]/~, rp: ast::rp_none, ty: ty};
 }
 
 // Given a def_id for an impl or class, return the iface it implements,

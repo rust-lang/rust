@@ -23,7 +23,7 @@ pure fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
 pure fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
-pure fn path_name_i(idents: [ident]) -> str {
+pure fn path_name_i(idents: [ident]/~) -> str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     str::connect(idents.map({|i|*i}), "::")
 }
@@ -246,18 +246,19 @@ fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
 }
 
 fn block_from_expr(e: @expr) -> blk {
-    let blk_ = default_block([], option::some::<@expr>(e), e.id);
+    let blk_ = default_block([]/~, option::some::<@expr>(e), e.id);
     ret {node: blk_, span: e.span};
 }
 
-fn default_block(+stmts1: [@stmt], expr1: option<@expr>, id1: node_id) ->
+fn default_block(+stmts1: [@stmt]/~, expr1: option<@expr>, id1: node_id) ->
    blk_ {
-    {view_items: [], stmts: stmts1, expr: expr1, id: id1, rules: default_blk}
+    {view_items: []/~, stmts: stmts1,
+     expr: expr1, id: id1, rules: default_blk}
 }
 
 fn ident_to_path(s: span, +i: ident) -> @path {
-    @{span: s, global: false, idents: [i],
-      rp: none, types: []}
+    @{span: s, global: false, idents: [i]/~,
+      rp: none, types: []/~}
 }
 
 pure fn is_unguarded(&&a: arm) -> bool {
@@ -267,7 +268,7 @@ pure fn is_unguarded(&&a: arm) -> bool {
     }
 }
 
-pure fn unguarded_pat(a: arm) -> option<[@pat]> {
+pure fn unguarded_pat(a: arm) -> option<[@pat]/~> {
     if is_unguarded(a) { some(/* FIXME (#2543) */ copy a.pats) } else { none }
 }
 
@@ -286,14 +287,14 @@ pure fn class_item_ident(ci: @class_member) -> ident {
 type ivar = {ident: ident, ty: @ty, cm: class_mutability,
              id: node_id, vis: visibility};
 
-fn public_methods(ms: [@method]) -> [@method] {
+fn public_methods(ms: [@method]/~) -> [@method]/~ {
     vec::filter(ms, {|m| alt m.vis {
                     public { true }
                     _   { false }}})
 }
 
-fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
-    let mut vs = [], ms = [];
+fn split_class_items(cs: [@class_member]/~) -> ([ivar]/~, [@method]/~) {
+    let mut vs = []/~, ms = []/~;
     for cs.each {|c|
       alt c.node {
         instance_var(i, t, cm, id, vis) {
@@ -301,9 +302,9 @@ fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
                   ty: t,
                   cm: cm,
                   id: id,
-                  vis: vis}];
+                  vis: vis}]/~;
         }
-        class_method(m) { ms += [m]; }
+        class_method(m) { ms += [m]/~; }
       }
     };
     (vs, ms)
@@ -383,8 +384,8 @@ fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
     // dtor has one argument, of type ()
     {inputs: [{mode: ast::expl(ast::by_ref),
-               ty: nil_t, ident: @"_", id: 0}],
-     output: nil_t, purity: impure_fn, cf: return_val, constraints: []}
+               ty: nil_t, ident: @"_", id: 0}]/~,
+     output: nil_t, purity: impure_fn, cf: return_val, constraints: []/~}
 }
 
 // ______________________________________________________________________
@@ -471,7 +472,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             }
         },
 
-        visit_ty_params: fn@(ps: [ty_param]) {
+        visit_ty_params: fn@(ps: [ty_param]/~) {
             vec::iter(ps) {|p| vfn(p.id) }
         },
 

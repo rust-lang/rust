@@ -13,13 +13,13 @@ import codemap::span;
 enum vt<E> { mk_vt(visitor<E>), }
 
 enum fn_kind {
-    fk_item_fn(ident, [ty_param]), //< an item declared with fn()
-    fk_method(ident, [ty_param], @method),
+    fk_item_fn(ident, [ty_param]/~), //< an item declared with fn()
+    fk_method(ident, [ty_param]/~, @method),
     fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
-    fk_ctor(ident, [ty_param], node_id /* self id */,
+    fk_ctor(ident, [ty_param]/~, node_id /* self id */,
             def_id /* parent class id */), // class constructor
-    fk_dtor([ty_param], node_id /* self id */,
+    fk_dtor([ty_param]/~, node_id /* self id */,
             def_id /* parent class id */) // class destructor
 
 }
@@ -33,13 +33,13 @@ fn name_of_fn(fk: fn_kind) -> ident {
     }
 }
 
-fn tps_of_fn(fk: fn_kind) -> [ty_param] {
+fn tps_of_fn(fk: fn_kind) -> [ty_param]/~ {
     alt fk {
       fk_item_fn(_, tps) | fk_method(_, tps, _)
               | fk_ctor(_, tps, _, _) | fk_dtor(tps, _, _) {
           /* FIXME (#2543) */ copy tps
       }
-      fk_anon(*) | fk_fn_block(*) { [] }
+      fk_anon(*) | fk_fn_block(*) { []/~ }
     }
 }
 
@@ -58,7 +58,7 @@ type visitor<E> =
       visit_decl: fn@(@decl, E, vt<E>),
       visit_expr: fn@(@expr, E, vt<E>),
       visit_ty: fn@(@ty, E, vt<E>),
-      visit_ty_params: fn@([ty_param], E, vt<E>),
+      visit_ty_params: fn@([ty_param]/~, E, vt<E>),
       visit_constr: fn@(@path, span, node_id, E, vt<E>),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
       visit_class_item: fn@(@class_member, E, vt<E>)};
@@ -256,7 +256,7 @@ fn visit_native_item<E>(ni: @native_item, e: E, v: vt<E>) {
     }
 }
 
-fn visit_ty_params<E>(tps: [ty_param], e: E, v: vt<E>) {
+fn visit_ty_params<E>(tps: [ty_param]/~, e: E, v: vt<E>) {
     for tps.each {|tp|
         for vec::each(*tp.bounds) {|bound|
             alt bound {
@@ -286,7 +286,7 @@ fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
 }
 
 // Similar logic to the comment on visit_method_helper - Tim
-fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: [ty_param],
+fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: [ty_param]/~,
                               parent_id: def_id, e: E, v: vt<E>) {
     v.visit_fn(fk_ctor(/* FIXME (#2543) */ copy nm,
                        /* FIXME (#2543) */ copy tps,
@@ -295,7 +295,7 @@ fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: [ty_param],
 
 }
 
-fn visit_class_dtor_helper<E>(dtor: class_dtor, tps: [ty_param],
+fn visit_class_dtor_helper<E>(dtor: class_dtor, tps: [ty_param]/~,
                               parent_id: def_id, e: E, v: vt<E>) {
     v.visit_fn(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.self_id,
                        parent_id), ast_util::dtor_dec(),
@@ -337,7 +337,7 @@ fn visit_expr_opt<E>(eo: option<@expr>, e: E, v: vt<E>) {
     alt eo { none { } some(ex) { v.visit_expr(ex, e, v); } }
 }
 
-fn visit_exprs<E>(exprs: [@expr], e: E, v: vt<E>) {
+fn visit_exprs<E>(exprs: [@expr]/~, e: E, v: vt<E>) {
     for exprs.each {|ex| v.visit_expr(ex, e, v); }
 }
 
@@ -454,7 +454,7 @@ type simple_visitor =
       visit_decl: fn@(@decl),
       visit_expr: fn@(@expr),
       visit_ty: fn@(@ty),
-      visit_ty_params: fn@([ty_param]),
+      visit_ty_params: fn@([ty_param]/~),
       visit_constr: fn@(@path, span, node_id),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
       visit_class_item: fn@(@class_member)};
@@ -474,7 +474,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_decl: fn@(_d: @decl) { },
           visit_expr: fn@(_e: @expr) { },
           visit_ty: simple_ignore_ty,
-          visit_ty_params: fn@(_ps: [ty_param]) {},
+          visit_ty_params: fn@(_ps: [ty_param]/~) {},
           visit_constr: fn@(_p: @path, _sp: span, _id: node_id) { },
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
                         _id: node_id) { },
@@ -533,7 +533,9 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(ty);
         visit_ty(ty, e, v);
     }
-    fn v_ty_params(f: fn@([ty_param]), ps: [ty_param], &&e: (), v: vt<()>) {
+    fn v_ty_params(f: fn@([ty_param]/~),
+                   ps: [ty_param]/~,
+                   &&e: (), v: vt<()>) {
         f(ps);
         visit_ty_params(ps, e, v);
     }

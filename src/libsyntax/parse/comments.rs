@@ -16,7 +16,7 @@ enum cmnt_style {
     blank_line, // Just a manual blank line "\n\n", for layout
 }
 
-type cmnt = {style: cmnt_style, lines: [str], pos: uint};
+type cmnt = {style: cmnt_style, lines: [str]/~, pos: uint};
 
 fn read_to_eol(rdr: string_reader) -> str {
     let mut val = "";
@@ -41,14 +41,14 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
     }
 }
 
-fn push_blank_line_comment(rdr: string_reader, &comments: [cmnt]) {
+fn push_blank_line_comment(rdr: string_reader, &comments: [cmnt]/~) {
     #debug(">>> blank-line comment");
-    let v: [str] = [];
-    comments += [{style: blank_line, lines: v, pos: rdr.chpos}];
+    let v: [str]/~ = []/~;
+    comments += [{style: blank_line, lines: v, pos: rdr.chpos}]/~;
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: string_reader,
-                                           &comments: [cmnt]) {
+                                           &comments: [cmnt]/~) {
     while is_whitespace(rdr.curr) && !is_eof(rdr) {
         if rdr.col == 0u && rdr.curr == '\n' {
             push_blank_line_comment(rdr, comments);
@@ -62,18 +62,18 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool) -> cmnt {
     let p = rdr.chpos;
     #debug("<<< shebang comment");
     ret {style: if code_to_the_left { trailing } else { isolated },
-         lines: [read_one_line_comment(rdr)],
+         lines: [read_one_line_comment(rdr)]/~,
          pos: p};
 }
 
 fn read_line_comments(rdr: string_reader, code_to_the_left: bool) -> cmnt {
     #debug(">>> line comments");
     let p = rdr.chpos;
-    let mut lines: [str] = [];
+    let mut lines: [str]/~ = []/~;
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
         log(debug, line);
-        lines += [line];
+        lines += [line]/~;
         consume_non_eol_whitespace(rdr);
     }
     #debug("<<< line comments");
@@ -88,7 +88,7 @@ fn all_whitespace(s: str, begin: uint, end: uint) -> bool {
     ret true;
 }
 
-fn trim_whitespace_prefix_and_push_line(&lines: [str],
+fn trim_whitespace_prefix_and_push_line(&lines: [str]/~,
                                         s: str, col: uint) unsafe {
     let mut s1;
     let len = str::len(s);
@@ -98,13 +98,13 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str],
         } else { s1 = ""; }
     } else { s1 = s; }
     log(debug, "pushing line: " + s1);
-    lines += [s1];
+    lines += [s1]/~;
 }
 
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool) -> cmnt {
     #debug(">>> block comment");
     let p = rdr.chpos;
-    let mut lines: [str] = [];
+    let mut lines: [str]/~ = []/~;
     let mut col: uint = rdr.col;
     bump(rdr);
     bump(rdr);
@@ -153,14 +153,14 @@ fn peeking_at_comment(rdr: string_reader) -> bool {
 }
 
 fn consume_comment(rdr: string_reader, code_to_the_left: bool,
-                   &comments: [cmnt]) {
+                   &comments: [cmnt]/~) {
     #debug(">>> consume comment");
     if rdr.curr == '/' && nextch(rdr) == '/' {
-        comments += [read_line_comments(rdr, code_to_the_left)];
+        comments += [read_line_comments(rdr, code_to_the_left)]/~;
     } else if rdr.curr == '/' && nextch(rdr) == '*' {
-        comments += [read_block_comment(rdr, code_to_the_left)];
+        comments += [read_block_comment(rdr, code_to_the_left)]/~;
     } else if rdr.curr == '#' && nextch(rdr) == '!' {
-        comments += [read_shebang_comment(rdr, code_to_the_left)];
+        comments += [read_shebang_comment(rdr, code_to_the_left)]/~;
     } else { fail; }
     #debug("<<< consume comment");
 }
@@ -170,7 +170,7 @@ type lit = {lit: str, pos: uint};
 fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
                                 path: str,
                                 srdr: io::reader) ->
-   {cmnts: [cmnt], lits: [lit]} {
+   {cmnts: [cmnt]/~, lits: [lit]/~} {
     let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = @interner::mk::<@str>(
         {|x|str::hash(*x)},
@@ -179,8 +179,8 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
     let rdr = lexer::new_low_level_string_reader
         (span_diagnostic, codemap::new_filemap(path, src, 0u, 0u), itr);
 
-    let mut comments: [cmnt] = [];
-    let mut literals: [lit] = [];
+    let mut comments: [cmnt]/~ = []/~;
+    let mut literals: [lit]/~ = []/~;
     let mut first_read: bool = true;
     while !is_eof(rdr) {
         loop {

@@ -211,7 +211,7 @@ fn header_kind(doc: doc::itemtag) -> str {
 }
 
 fn header_name(doc: doc::itemtag) -> str {
-    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+    let fullpath = str::connect(doc.path() + [doc.name()]/~, "::");
     alt doc {
       doc::modtag(_) if doc.id() != syntax::ast::crate_node_id {
         fullpath
@@ -275,7 +275,7 @@ fn should_write_full_path_to_mod() {
 fn write_common(
     ctxt: ctxt,
     desc: option<str>,
-    sections: [doc::section]
+    sections: [doc::section]/~
 ) {
     write_desc(ctxt, desc);
     write_sections(ctxt, sections);
@@ -294,7 +294,7 @@ fn write_desc(
     }
 }
 
-fn write_sections(ctxt: ctxt, sections: [doc::section]) {
+fn write_sections(ctxt: ctxt, sections: [doc::section]/~) {
     vec::iter(sections) {|section|
         write_section(ctxt, section);
     }
@@ -381,10 +381,10 @@ fn write_index(ctxt: ctxt, index: doc::index) {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
         if option::is_some(entry.brief) {
-            ctxt.w.write_line(#fmt("* [%s](%s) - %s",
+            ctxt.w.write_line(#fmt("* [%s]/~(%s) - %s",
                                    header, id, option::get(entry.brief)));
         } else {
-            ctxt.w.write_line(#fmt("* [%s](%s)", header, id));
+            ctxt.w.write_line(#fmt("* [%s]/~(%s)", header, id));
         }
     }
     ctxt.w.write_line("");
@@ -395,8 +395,8 @@ fn should_write_index() {
     let markdown = test::render("mod a { } mod b { }");
     assert str::contains(
         markdown,
-        "\n\n* [Module `a`](#module-a)\n\
-         * [Module `b`](#module-b)\n\n"
+        "\n\n* [Module `a`]/~(#module-a)\n\
+         * [Module `b`]/~(#module-b)\n\n"
     );
 }
 
@@ -417,7 +417,7 @@ fn should_write_index_for_native_mods() {
     let markdown = test::render("native mod a { fn a(); }");
     assert str::contains(
         markdown,
-        "\n\n* [Function `a`](#function-a)\n\n"
+        "\n\n* [Function `a`]/~(#function-a)\n\n"
     );
 }
 
@@ -468,7 +468,7 @@ fn write_fnlike(
     ctxt: ctxt,
     sig: option<str>,
     desc: option<str>,
-    sections: [doc::section]
+    sections: [doc::section]/~
 ) {
     write_sig(ctxt, sig);
     write_common(ctxt, desc, sections);
@@ -518,12 +518,12 @@ fn should_correctly_indent_fn_signature() {
                     items: [doc::fntag({
                         sig: some("line 1\nline 2")
                         with doc.cratemod().fns()[0]
-                    })]
+                    })]/~
                     with doc.cratemod()
                 }
                 with doc.cratedoc()
             })
-        ]
+        ]/~
     };
     let markdown = test::write_markdown_str(doc);
     assert str::contains(markdown, "    line 1\n    line 2");
@@ -580,7 +580,7 @@ fn should_write_enum_description() {
 
 fn write_variants(
     ctxt: ctxt,
-    docs: [doc::variantdoc]
+    docs: [doc::variantdoc]/~
 ) {
     if vec::is_empty(docs) {
         ret;
@@ -644,7 +644,7 @@ fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
     write_methods(ctxt, doc.methods);
 }
 
-fn write_methods(ctxt: ctxt, docs: [doc::methoddoc]) {
+fn write_methods(ctxt: ctxt, docs: [doc::methoddoc]/~) {
     vec::iter(docs) {|doc| write_method(ctxt, doc) }
 }
 

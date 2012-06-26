@@ -1,6 +1,6 @@
 // Check usage and precedence of block arguments in expressions:
 fn main() {
-    let v = [-1f, 0f, 1f, 2f, 3f];
+    let v = [-1f, 0f, 1f, 2f, 3f]/~;
 
     // Statement form does not require parentheses:
     vec::iter(v) { |i|

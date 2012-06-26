@@ -11,7 +11,7 @@ type pass = {
 fn run_passes(
     srv: astsrv::srv,
     doc: doc::doc,
-    passes: [pass]
+    passes: [pass]/~
 ) -> doc::doc {
 
     #[doc(
@@ -55,11 +55,11 @@ fn test_run_passes() {
                             name: doc.cratemod().name() + "two"
                             with doc.cratemod().item
                         },
-                        items: [],
+                        items: []/~,
                         index: none
                     }
                 })
-            ]
+            ]/~
         }
     }
     fn pass2(
@@ -74,11 +74,11 @@ fn test_run_passes() {
                             name: doc.cratemod().name() + "three"
                             with doc.cratemod().item
                         },
-                        items: [],
+                        items: []/~,
                         index: none
                     }
                 })
-            ]
+            ]/~
         }
     }
     let source = "";
@@ -92,14 +92,14 @@ fn test_run_passes() {
                 name: "",
                 f: pass2
             }
-        ];
+        ]/~;
         let doc = extract::from_srv(srv, "one");
         let doc = run_passes(srv, doc, passes);
         assert doc.cratemod().name() == "onetwothree";
     }
 }
 
-fn main(args: [str]) {
+fn main(args: [str]/~) {
 
     if vec::contains(args, "-h") {
         config::usage();
@@ -156,6 +156,6 @@ fn run(config: config::config) {
             markdown_pass::mk_pass(
                 markdown_writer::make_writer_factory(config)
             )
-        ]);
+        ]/~);
     }
 }

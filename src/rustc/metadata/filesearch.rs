@@ -25,29 +25,29 @@ fn pick_file(file: path, path: path) -> option<path> {
 
 iface filesearch {
     fn sysroot() -> path;
-    fn lib_search_paths() -> [path];
+    fn lib_search_paths() -> [path]/~;
     fn get_target_lib_path() -> path;
     fn get_target_lib_file_path(file: path) -> path;
 }
 
 fn mk_filesearch(maybe_sysroot: option<path>,
                  target_triple: str,
-                 addl_lib_search_paths: [path]) -> filesearch {
+                 addl_lib_search_paths: [path]/~) -> filesearch {
     type filesearch_impl = {sysroot: path,
-                            addl_lib_search_paths: [path],
+                            addl_lib_search_paths: [path]/~,
                             target_triple: str};
     impl of filesearch for filesearch_impl {
         fn sysroot() -> path { self.sysroot }
-        fn lib_search_paths() -> [path] {
+        fn lib_search_paths() -> [path]/~ {
             self.addl_lib_search_paths
-                + [make_target_lib_path(self.sysroot, self.target_triple)]
+                + [make_target_lib_path(self.sysroot, self.target_triple)]/~
                 + alt get_cargo_lib_path_nearest() {
-                  result::ok(p) { [p] }
-                  result::err(p) { [] }
+                  result::ok(p) { [p]/~ }
+                  result::err(p) { []/~ }
                 }
                 + alt get_cargo_lib_path() {
-                  result::ok(p) { [p] }
-                  result::err(p) { [] }
+                  result::ok(p) { [p]/~ }
+                  result::err(p) { []/~ }
                 }
         }
         fn get_target_lib_path() -> path {
@@ -85,13 +85,13 @@ fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     ret rslt;
 }
 
-fn relative_target_lib_path(target_triple: str) -> [path] {
-    [libdir(), "rustc", target_triple, libdir()]
+fn relative_target_lib_path(target_triple: str) -> [path]/~ {
+    [libdir(), "rustc", target_triple, libdir()]/~
 }
 
 fn make_target_lib_path(sysroot: path,
                         target_triple: str) -> path {
-    let path = [sysroot] + relative_target_lib_path(target_triple);
+    let path = [sysroot]/~ + relative_target_lib_path(target_triple);
     let path = path::connect_many(path);
     ret path;
 }
@@ -113,7 +113,7 @@ fn get_sysroot(maybe_sysroot: option<path>) -> path {
 }
 
 fn get_cargo_sysroot() -> result<path, str> {
-    let path = [get_default_sysroot(), libdir(), "cargo"];
+    let path = [get_default_sysroot(), libdir(), "cargo"]/~;
     result::ok(path::connect_many(path))
 }
 

@@ -217,7 +217,7 @@ fn peek_(p: *rust_port) -> bool {
 #[doc = "Receive on one of two ports"]
 fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     -> either<A, B> {
-    let ports = [(**p_a).po, (**p_b).po];
+    let ports = [(**p_a).po, (**p_b).po]/~;
     let n_ports = 2 as libc::size_t;
     let yield = 0u, yieldp = ptr::addr_of(yield);
 

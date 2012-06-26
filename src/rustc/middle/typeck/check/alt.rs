@@ -4,7 +4,7 @@ import middle::typeck::infer::methods; // next_ty_var,
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
              discrim: @ast::expr,
-             arms: [ast::arm]) -> bool {
+             arms: [ast::arm]/~) -> bool {
     let tcx = fcx.ccx.tcx;
     let mut bot;
 
@@ -52,7 +52,7 @@ type pat_ctxt = {
 };
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
-                     subpats: option<[@ast::pat]>, expected: ty::t) {
+                     subpats: option<[@ast::pat]/~>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -170,7 +170,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
       }
       ast::pat_ident(path, c) {
-        check_pat_variant(pcx, pat, path, some([]), expected);
+        check_pat_variant(pcx, pat, path, some([]/~), expected);
       }
       ast::pat_enum(path, subpats) {
         check_pat_variant(pcx, pat, path, subpats, expected);

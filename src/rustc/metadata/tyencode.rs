@@ -395,7 +395,7 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
     });
 }
 
-fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {
+fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]/~) {
     for vec::each(*bs) {|bound|
         alt bound {
           ty::bound_send { w.write_char('S'); }

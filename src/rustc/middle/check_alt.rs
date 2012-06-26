@@ -36,18 +36,18 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
 }
 
 // Check for unreachable patterns
-fn check_arms(tcx: ty::ctxt, arms: [arm]) {
-    let mut seen = [];
+fn check_arms(tcx: ty::ctxt, arms: [arm]/~) {
+    let mut seen = []/~;
     for arms.each {|arm|
         for arm.pats.each {|pat|
-            let v = [pat];
+            let v = [pat]/~;
             alt is_useful(tcx, seen, v) {
               not_useful {
                 tcx.sess.span_err(pat.span, "unreachable pattern");
               }
               _ {}
             }
-            if option::is_none(arm.guard) { seen += [v]; }
+            if option::is_none(arm.guard) { seen += [v]/~; }
         }
     }
 }
@@ -59,8 +59,8 @@ fn raw_pat(p: @pat) -> @pat {
     }
 }
 
-fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
-    let ext = alt is_useful(tcx, vec::map(pats, {|p| [p]}), [wild()]) {
+fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]/~) {
+    let ext = alt is_useful(tcx, vec::map(pats, {|p| [p]/~}), [wild()]/~) {
       not_useful { ret; } // This is good, wildcard pattern isn't reachable
       useful_ { none }
       useful(ty, ctor) {
@@ -89,7 +89,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
     tcx.sess.span_err(sp, msg);
 }
 
-type matrix = [[@pat]];
+type matrix = [[@pat]/~]/~;
 
 enum useful { useful(ty::t, ctor), useful_, not_useful }
 
@@ -111,7 +111,7 @@ enum ctor {
 // checking (if a wildcard pattern is useful in relation to a matrix, the
 // matrix isn't exhaustive).
 
-fn is_useful(tcx: ty::ctxt, m: matrix, v: [@pat]) -> useful {
+fn is_useful(tcx: ty::ctxt, m: matrix, v: [@pat]/~) -> useful {
     if m.len() == 0u { ret useful_; }
     if m[0].len() == 0u { ret not_useful; }
     let real_pat = alt vec::find(m, {|r| r[0].id != 0}) {
@@ -167,7 +167,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: [@pat]) -> useful {
     }
 }
 
-fn is_useful_specialized(tcx: ty::ctxt, m: matrix, v: [@pat], ctor: ctor,
+fn is_useful_specialized(tcx: ty::ctxt, m: matrix, v: [@pat]/~, ctor: ctor,
                           arity: uint, lty: ty::t) -> useful {
     let ms = vec::filter_map(m, {|r| specialize(tcx, r, ctor, arity, lty)});
     alt is_useful(tcx, ms, option::get(specialize(tcx, v, ctor, arity, lty))){
@@ -217,10 +217,10 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
         ret some(single);
       }
       ty::ty_enum(eid, _) {
-        let mut found = [];
+        let mut found = []/~;
         for m.each {|r|
             option::iter(pat_ctor_id(tcx, r[0])) {|id|
-                if !vec::contains(found, id) { found += [id]; }
+                if !vec::contains(found, id) { found += [id]/~; }
             }
         }
         let variants = ty::enum_variants(tcx, eid);
@@ -270,8 +270,8 @@ fn wild() -> @pat {
     @{id: 0, node: pat_wild, span: syntax::ast_util::dummy_sp()}
 }
 
-fn specialize(tcx: ty::ctxt, r: [@pat], ctor_id: ctor, arity: uint,
-              left_ty: ty::t) -> option<[@pat]> {
+fn specialize(tcx: ty::ctxt, r: [@pat]/~, ctor_id: ctor, arity: uint,
+              left_ty: ty::t) -> option<[@pat]/~> {
     let r0 = raw_pat(r[0]);
     alt r0.node {
       pat_wild { some(vec::from_elem(arity, wild()) + vec::tail(r)) }
@@ -308,7 +308,7 @@ fn specialize(tcx: ty::ctxt, r: [@pat], ctor_id: ctor, arity: uint,
         some(args + vec::tail(r))
       }
       pat_tup(args) { some(args + vec::tail(r)) }
-      pat_box(a) | pat_uniq(a) { some([a] + vec::tail(r)) }
+      pat_box(a) | pat_uniq(a) { some([a]/~ + vec::tail(r)) }
       pat_lit(expr) {
         let e_v = eval_const_expr(tcx, expr);
         let match = alt check ctor_id {
@@ -334,7 +334,7 @@ fn specialize(tcx: ty::ctxt, r: [@pat], ctor_id: ctor, arity: uint,
     }
 }
 
-fn default(tcx: ty::ctxt, r: [@pat]) -> option<[@pat]> {
+fn default(tcx: ty::ctxt, r: [@pat]/~) -> option<[@pat]/~> {
     if is_wild(tcx, r[0]) { some(vec::tail(r)) }
     else { none }
 }

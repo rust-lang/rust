@@ -6,18 +6,18 @@ import uint;
 import u8;
 import vec::*;
 
-fn enum_chars(start: u8, end: u8) -> [char] {
+fn enum_chars(start: u8, end: u8) -> [char]/~ {
     assert start < end;
     let mut i = start;
-    let mut r = [];
+    let mut r = []/~;
     while i <= end { vec::push(r, i as char); i += 1u as u8; }
     ret r;
 }
 
-fn enum_uints(start: uint, end: uint) -> [uint] {
+fn enum_uints(start: uint, end: uint) -> [uint]/~ {
     assert start < end;
     let mut i = start;
-    let mut r = [];
+    let mut r = []/~;
     while i <= end { vec::push(r, i); i += 1u; }
     ret r;
 }

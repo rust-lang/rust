@@ -44,7 +44,7 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
     }
 }
 
-fn apply_to_sections(op: op, sections: [doc::section]) -> [doc::section] {
+fn apply_to_sections(op: op, sections: [doc::section]/~) -> [doc::section]/~ {
     par::anymap(sections) {|section, copy op|
         {
             header: op(section.header),
@@ -76,7 +76,7 @@ fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
     }
 }
 
-fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
+fn apply_to_methods(op: op, docs: [doc::methoddoc]/~) -> [doc::methoddoc]/~ {
     par::anymap(docs) {|doc, copy op|
         {
             brief: maybe_apply_op(op, doc.brief),

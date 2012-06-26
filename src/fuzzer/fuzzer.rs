@@ -10,7 +10,7 @@ type context = { mode: test_mode }; // + rng
 
 fn write_file(filename: str, content: str) {
     result::get(
-        io::file_writer(filename, [io::create, io::truncate]))
+        io::file_writer(filename, [io::create, io::truncate]/~))
         .write_str(content);
 }
 
@@ -18,10 +18,10 @@ fn contains(haystack: str, needle: str) -> bool {
     str::contains(haystack, needle)
 }
 
-fn find_rust_files(&files: [str], path: str) {
+fn find_rust_files(&files: [str]/~, path: str) {
     if str::ends_with(path, ".rs") && !contains(path, "utf8") {
         // ignoring "utf8" tests because something is broken
-        files += [path];
+        files += [path]/~;
     } else if os::path_is_dir(path)
         && !contains(path, "compile-fail")
         && !contains(path, "build") {
@@ -32,7 +32,7 @@ fn find_rust_files(&files: [str], path: str) {
 }
 
 
-fn common_exprs() -> [ast::expr] {
+fn common_exprs() -> [ast::expr]/~ {
     fn dse(e: ast::expr_) -> ast::expr {
         { id: 0, node: e, span: ast_util::dummy_sp() }
     }
@@ -54,7 +54,7 @@ fn common_exprs() -> [ast::expr] {
                          @dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
      dse(ast::expr_unary(ast::uniq(ast::m_imm),
                          @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
-    ]
+    ]/~
 }
 
 pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
@@ -116,16 +116,16 @@ fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
 
 // Not type-parameterized: https://github.com/mozilla/rust/issues/898 (FIXED)
 fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
-                 es: @mut [ast::expr],
+                 es: @mut [ast::expr]/~,
                  e: @ast::expr,
                  tm: test_mode) {
     if c(e, tm) {
-        *es += [*e];
+        *es += [*e]/~;
     } else {/* now my indices are wrong :( */ }
 }
 
 fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
-               es: @mut [ast::ty],
+               es: @mut [ast::ty]/~,
                e: @ast::ty,
                tm: test_mode) {
     if c(e, tm) {
@@ -133,11 +133,11 @@ fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
     } else {/* now my indices are wrong :( */ }
 }
 
-type stolen_stuff = {exprs: [ast::expr], tys: [ast::ty]};
+type stolen_stuff = {exprs: [ast::expr]/~, tys: [ast::ty]/~};
 
 fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
-    let exprs = @mut [];
-    let tys = @mut [];
+    let exprs = @mut []/~;
+    let tys = @mut []/~;
     let v = visit::mk_simple_visitor(@{
         visit_expr: {|a|stash_expr_if(safe_to_steal_expr, exprs, a, tm)},
         visit_ty: {|a|stash_ty_if(safe_to_steal_ty, tys, a, tm)}
@@ -248,7 +248,7 @@ fn check_variants_T<T: copy>(
   codemap: codemap::codemap,
   filename: str,
   thing_label: str,
-  things: [T],
+  things: [T]/~,
   stringifier: fn@(@T) -> str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
@@ -333,19 +333,19 @@ fn check_whole_compiler(code: str, suggested_filename_prefix: str,
 fn removeIfExists(filename: str) {
     // So sketchy!
     assert !contains(filename, " ");
-    run::program_output("bash", ["-c", "rm " + filename]);
+    run::program_output("bash", ["-c", "rm " + filename]/~);
 }
 
 fn removeDirIfExists(filename: str) {
     // So sketchy!
     assert !contains(filename, " ");
-    run::program_output("bash", ["-c", "rm -r " + filename]);
+    run::program_output("bash", ["-c", "rm -r " + filename]/~);
 }
 
 fn check_running(exe_filename: str) -> happiness {
     let p = run::program_output(
         "/Users/jruderman/scripts/timed_run_rust_program.py",
-        [exe_filename]);
+        [exe_filename]/~);
     let comb = p.out + "\n" + p.err;
     if str::len(comb) > 1u {
         log(error, "comb comb comb: " + comb);
@@ -385,7 +385,7 @@ fn check_compiling(filename: str) -> happiness {
     let p = run::program_output(
         "/Users/jruderman/code/rust/build/x86_64-apple-darwin/\
          stage1/bin/rustc",
-        [filename]);
+        [filename]/~);
 
     //#error("Status: %d", p.status);
     if p.status == 0 {
@@ -419,7 +419,7 @@ fn parse_and_print(code: @str) -> str {
     let sess = parse::new_parse_sess(option::none);
     write_file(filename, *code);
     let crate = parse::parse_crate_from_source_str(
-        filename, code, [], sess);
+        filename, code, []/~, sess);
     io::with_str_reader(*code) { |rdr|
         as_str({|a|pprust::print_crate(sess.cm,
                                         sess.span_diagnostic,
@@ -451,7 +451,7 @@ fn content_is_dangerous_to_run(code: str) -> bool {
          "import",  // espeically fs, run
          "native",
          "unsafe",
-         "log"];    // python --> rust pipe deadlock?
+         "log"]/~;    // python --> rust pipe deadlock?
 
     for dangerous_patterns.each {|p| if contains(code, p) { ret true; } }
     ret false;
@@ -459,7 +459,7 @@ fn content_is_dangerous_to_run(code: str) -> bool {
 
 fn content_is_dangerous_to_compile(code: str) -> bool {
     let dangerous_patterns =
-        ["xfail-test"];
+        ["xfail-test"]/~;
 
     for dangerous_patterns.each {|p| if contains(code, p) { ret true; } }
     ret false;
@@ -475,7 +475,7 @@ fn content_might_not_converge(code: str) -> bool {
          " be ",       // don't want to replace its child with a non-call:
                        // "Non-call expression in tail call"
          "\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
-        ];
+        ]/~;
 
     for confusing_patterns.each {|p| if contains(code, p) { ret true; } }
     ret false;
@@ -488,7 +488,7 @@ fn file_might_not_converge(filename: str) -> bool {
       "block-arg-in-ternary.rs", // wrapping
       "move-3-unique.rs", // 0 becomes (0), but both seem reasonable. wtf?
       "move-3.rs"  // 0 becomes (0), but both seem reasonable. wtf?
-    ];
+    ]/~;
 
 
     for confusing_files.each {|f| if contains(filename, f) { ret true; } }
@@ -518,12 +518,12 @@ fn check_roundtrip_convergence(code: @str, maxIters: uint) {
         write_file("round-trip-b.rs", *newv);
         run::run_program("diff",
                          ["-w", "-u", "round-trip-a.rs",
-                          "round-trip-b.rs"]);
+                          "round-trip-b.rs"]/~);
         fail "Mismatch";
     }
 }
 
-fn check_convergence(files: [str]) {
+fn check_convergence(files: [str]/~) {
     #error("pp convergence tests: %u files", vec::len(files));
     for files.each {|file|
         if !file_might_not_converge(file) {
@@ -538,7 +538,7 @@ fn check_convergence(files: [str]) {
     }
 }
 
-fn check_variants(files: [str], cx: context) {
+fn check_variants(files: [str]/~, cx: context) {
     for files.each {|file|
         if cx.mode == tm_converge && file_might_not_converge(file) {
             #error("Skipping convergence test based on\
@@ -562,7 +562,7 @@ fn check_variants(files: [str], cx: context) {
         let crate =
             parse::parse_crate_from_source_str(
                 file,
-                s, [], sess);
+                s, []/~, sess);
         io::with_str_reader(*s) { |rdr|
             #error("%s",
                    as_str({|a|pprust::print_crate(sess.cm,
@@ -576,12 +576,12 @@ fn check_variants(files: [str], cx: context) {
     }
 }
 
-fn main(args: [str]) {
+fn main(args: [str]/~) {
     if vec::len(args) != 2u {
         #error("usage: %s <testdir>", args[0]);
         ret;
     }
-    let mut files = [];
+    let mut files = []/~;
     let root = args[1];
 
     find_rust_files(files, root);

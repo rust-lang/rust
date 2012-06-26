@@ -58,12 +58,12 @@ mod map_reduce {
 
     enum reduce_proto { emit_val(int), done, ref, release, }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: [str]) ->
-       [future::future<task::task_result>] {
-        let mut results = [];
+    fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: [str]/~) ->
+       [future::future<task::task_result>]/~ {
+        let mut results = []/~;
         for inputs.each {|i|
             let builder = task::builder();
-            results += [task::future_result(builder)];
+            results += [task::future_result(builder)]/~;
             task::run(builder) {|| map_task(ctrl, i)}
         }
         ret results;
@@ -128,7 +128,7 @@ mod map_reduce {
         reduce(key, {||get(p, state)});
     }
 
-    fn map_reduce(-inputs: [str]) {
+    fn map_reduce(-inputs: [str]/~) {
         let ctrl = port::<ctrl_proto>();
 
         // This task becomes the master control task. It task::_spawns
@@ -161,7 +161,7 @@ mod map_reduce {
                     let p = port();
                     let ch = chan(p);
                     let builder = task::builder();
-                    results += [task::future_result(builder)];
+                    results += [task::future_result(builder)]/~;
                     task::run(builder) {||reduce_task(k, ch)}
                     c = recv(p);
                     reducers.insert(k, c);
@@ -178,9 +178,9 @@ mod map_reduce {
     }
 }
 
-fn main(argv: [str]) {
+fn main(argv: [str]/~) {
     let inputs = if vec::len(argv) < 2u {
-        [input1(), input2(), input3()]
+        [input1(), input2(), input3()]/~
     } else {
         vec::map(vec::slice(argv, 1u, vec::len(argv)),
                  {|f| result::get(io::read_whole_file_str(f)) })

@@ -92,7 +92,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
     let rounds =
         alt props.pp_exact { option::some(_) { 1 } option::none { 2 } };
 
-    let mut srcs = [result::get(io::read_whole_file_str(testfile))];
+    let mut srcs = [result::get(io::read_whole_file_str(testfile))]/~;
 
     let mut round = 0;
     while round < rounds {
@@ -139,12 +139,12 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
 
     fn print_source(config: config, testfile: str, src: str) -> procres {
         compose_and_run(config, testfile, make_pp_args(config, testfile),
-                        [], config.compile_lib_path, option::some(src))
+                        []/~, config.compile_lib_path, option::some(src))
     }
 
     fn make_pp_args(config: config, _testfile: str) -> procargs {
         let prog = config.rustc_path;
-        let args = ["-", "--pretty", "normal"];
+        let args = ["-", "--pretty", "normal"]/~;
         ret {prog: prog, args: args};
     }
 
@@ -179,7 +179,7 @@ actual:\n\
     fn make_typecheck_args(config: config, testfile: str) -> procargs {
         let prog = config.rustc_path;
         let mut args = ["-", "--no-trans", "--lib", "-L", config.build_base,
-                        "-L", aux_output_dir_name(config, testfile)];
+                        "-L", aux_output_dir_name(config, testfile)]/~;
         args += split_maybe_args(config.rustcflags);
         ret {prog: prog, args: args};
     }
@@ -227,7 +227,7 @@ fn check_error_patterns(props: test_props,
     }
 }
 
-fn check_expected_errors(expected_errors: [errors::expected_error],
+fn check_expected_errors(expected_errors: [errors::expected_error]/~,
                          testfile: str,
                          procres: procres) {
 
@@ -286,13 +286,13 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     }
 }
 
-type procargs = {prog: str, args: [str]};
+type procargs = {prog: str, args: [str]/~};
 
 type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
-    let link_args = ["-L", aux_output_dir_name(config, testfile)];
+    let link_args = ["-L", aux_output_dir_name(config, testfile)]/~;
     compose_and_run_compiler(
         config, props, testfile,
         make_compile_args(config, props, link_args,
@@ -319,14 +319,14 @@ fn compose_and_run_compiler(
         ensure_dir(aux_output_dir_name(config, testfile));
     }
 
-    let extra_link_args = ["-L", aux_output_dir_name(config, testfile)];
+    let extra_link_args = ["-L", aux_output_dir_name(config, testfile)]/~;
 
     vec::iter(props.aux_builds) {|rel_ab|
         let abs_ab = path::connect(config.aux_base, rel_ab);
         let aux_args =
-            make_compile_args(config, props, ["--lib"] + extra_link_args,
+            make_compile_args(config, props, ["--lib"]/~ + extra_link_args,
                               {|a,b|make_lib_name(a, b, testfile)}, abs_ab);
-        let auxres = compose_and_run(config, abs_ab, aux_args, [],
+        let auxres = compose_and_run(config, abs_ab, aux_args, []/~,
                                      config.compile_lib_path, option::none);
         if auxres.status != 0 {
             fatal_procres(
@@ -335,7 +335,7 @@ fn compose_and_run_compiler(
         }
     }
 
-    compose_and_run(config, testfile, args, [],
+    compose_and_run(config, testfile, args, []/~,
                     config.compile_lib_path, input)
 }
 
@@ -348,19 +348,19 @@ fn ensure_dir(path: path) {
 
 fn compose_and_run(config: config, testfile: str,
                    procargs: procargs,
-                   procenv: [(str, str)],
+                   procenv: [(str, str)]/~,
                    lib_path: str,
                    input: option<str>) -> procres {
     ret program_output(config, testfile, lib_path,
                        procargs.prog, procargs.args, procenv, input);
 }
 
-fn make_compile_args(config: config, props: test_props, extras: [str],
+fn make_compile_args(config: config, props: test_props, extras: [str]/~,
                      xform: fn(config, str) -> str, testfile: str) ->
    procargs {
     let prog = config.rustc_path;
     let mut args = [testfile, "-o", xform(config, testfile),
-                    "-L", config.build_base] + extras;
+                    "-L", config.build_base]/~ + extras;
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
     ret {prog: prog, args: args};
@@ -390,12 +390,12 @@ fn make_run_args(config: config, _props: test_props, testfile: str) ->
             split_maybe_args(runtool)
         };
 
-    let args = toolargs + [make_exe_name(config, testfile)];
+    let args = toolargs + [make_exe_name(config, testfile)]/~;
     ret {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
 }
 
-fn split_maybe_args(argstr: option<str>) -> [str] {
-    fn rm_whitespace(v: [str]) -> [str] {
+fn split_maybe_args(argstr: option<str>) -> [str]/~ {
+    fn rm_whitespace(v: [str]/~) -> [str]/~ {
         fn flt(&&s: str) -> option<str> {
           if !str::is_whitespace(s) { option::some(s) } else { option::none }
         }
@@ -404,12 +404,12 @@ fn split_maybe_args(argstr: option<str>) -> [str] {
 
     alt argstr {
       option::some(s) { rm_whitespace(str::split_char(s, ' ')) }
-      option::none { [] }
+      option::none { []/~ }
     }
 }
 
 fn program_output(config: config, testfile: str, lib_path: str, prog: str,
-                  args: [str], env: [(str, str)],
+                  args: [str]/~, env: [(str, str)]/~,
                   input: option<str>) -> procres {
     let cmdline =
         {
@@ -429,12 +429,12 @@ fn program_output(config: config, testfile: str, lib_path: str, prog: str,
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn make_cmdline(_libpath: str, prog: str, args: [str]) -> str {
+fn make_cmdline(_libpath: str, prog: str, args: [str]/~) -> str {
     #fmt["%s %s", prog, str::connect(args, " ")]
 }
 
 #[cfg(target_os = "win32")]
-fn make_cmdline(libpath: str, prog: str, args: [str]) -> str {
+fn make_cmdline(libpath: str, prog: str, args: [str]/~) -> str {
     #fmt["%s %s %s", lib_path_cmd_prefix(libpath), prog,
          str::connect(args, " ")]
 }
@@ -454,7 +454,7 @@ fn dump_output(config: config, testfile: str, out: str, err: str) {
 fn dump_output_file(config: config, testfile: str, out: str, extension: str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer = result::get(
-        io::file_writer(outfile, [io::create, io::truncate]));
+        io::file_writer(outfile, [io::create, io::truncate]/~));
     writer.write_str(out);
 }
 

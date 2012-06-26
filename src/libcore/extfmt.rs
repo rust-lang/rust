@@ -9,12 +9,12 @@ The 'fmt' extension is modeled on the posix printf system.
 
 A posix conversion ostensibly looks like this
 
-> %[parameter][flags][width][.precision][length]type
+> %[parameter]/~[flags]/~[width]/~[.precision]/~[length]/~type
 
 Given the different numeric type bestiary we have, we omit the 'length'
 parameter and support slightly different conversions for 'type'
 
-> %[parameter][flags][width][.precision]type
+> %[parameter]/~[flags]/~[width]/~[.precision]/~type
 
 we also only support translating-to-rust a tiny subset of the possible
 combinations at the moment.
@@ -71,7 +71,7 @@ mod ct {
     // A formatted conversion from an expression to a string
     type conv =
         {param: option<int>,
-         flags: [flag],
+         flags: [flag]/~,
          width: count,
          precision: count,
          ty: ty};
@@ -81,14 +81,14 @@ mod ct {
     enum piece { piece_string(str), piece_conv(conv), }
     type error_fn = fn@(str) -> ! ;
 
-    fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
-        let mut pieces: [piece] = [];
+    fn parse_fmt_string(s: str, error: error_fn) -> [piece]/~ {
+        let mut pieces: [piece]/~ = []/~;
         let lim = str::len(s);
         let mut buf = "";
-        fn flush_buf(buf: str, &pieces: [piece]) -> str {
+        fn flush_buf(buf: str, &pieces: [piece]/~) -> str {
             if str::len(buf) > 0u {
                 let piece = piece_string(buf);
-                pieces += [piece];
+                pieces += [piece]/~;
             }
             ret "";
         }
@@ -108,7 +108,7 @@ mod ct {
                 } else {
                     buf = flush_buf(buf, pieces);
                     let rs = parse_conversion(s, i, lim, error);
-                    pieces += [rs.piece];
+                    pieces += [rs.piece]/~;
                     i = rs.next;
                 }
             } else { buf += curr; i += size; }
@@ -162,16 +162,16 @@ mod ct {
             };
     }
     fn parse_flags(s: str, i: uint, lim: uint) ->
-       {flags: [flag], next: uint} {
-        let noflags: [flag] = [];
+       {flags: [flag]/~, next: uint} {
+        let noflags: [flag]/~ = []/~;
         if i >= lim { ret {flags: noflags, next: i}; }
 
         fn more_(f: flag, s: str, i: uint, lim: uint) ->
-           {flags: [flag], next: uint} {
+           {flags: [flag]/~, next: uint} {
             let next = parse_flags(s, i + 1u, lim);
             let rest = next.flags;
             let j = next.next;
-            let curr: [flag] = [f];
+            let curr: [flag]/~ = [f]/~;
             ret {flags: curr + rest, next: j};
         }
         let more = {|x|more_(x, s, i, lim)};
@@ -262,7 +262,7 @@ mod ct {
 // Functions used by the fmt extension at runtime. For now there are a lot of
 // decisions made a runtime. If it proves worthwhile then some of these
 // conditions can be evaluated at compile-time. For now though it's cleaner to
-// implement it this way, I think.
+// implement it 0this way, I think.
 mod rt {
     enum flag {
         flag_left_justify,
@@ -276,7 +276,7 @@ mod rt {
 
     // FIXME (#1993): May not want to use a vector here for flags; instead
     // just use a bool per flag.
-    type conv = {flags: [flag], width: count, precision: count, ty: ty};
+    type conv = {flags: [flag]/~, width: count, precision: count, ty: ty};
 
     fn conv_int(cv: conv, i: int) -> str {
         let radix = 10u;
@@ -430,11 +430,12 @@ mod rt {
         }
         ret padstr + s;
     }
-    fn have_flag(flags: [flag], f: flag) -> bool {
+    fn have_flag(flags: [flag]/~, f: flag) -> bool {
         for vec::each(flags) {|candidate| if candidate == f { ret true; } }
         ret false;
     }
 }
+
 
 // Local Variables:
 // mode: rust;

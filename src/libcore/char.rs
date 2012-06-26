@@ -65,7 +65,7 @@ pure fn is_uppercase(c: char) -> bool {
 #[doc = "
 Indicates whether a character is whitespace, defined in
 terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
-additional 'Cc'-category control codes in the range [0x09, 0x0d]
+additional 'Cc'-category control codes in the range [0x09, 0x0d]/~
 "]
 pure fn is_whitespace(c: char) -> bool {
     ret ('\x09' <= c && c <= '\x0d')
@@ -128,8 +128,8 @@ Return the hexadecimal unicode escape of a char.
 
 The rules are as follows:
 
-  - chars in [0,0xff] get 2-digit escapes: `\\xNN`
-  - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
+  - chars in [0,0xff]/~ get 2-digit escapes: `\\xNN`
+  - chars in [0x100,0xffff]/~ get 4-digit escapes: `\\uNNNN`
   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
 "]
 fn escape_unicode(c: char) -> str {
@@ -154,7 +154,7 @@ languages. The exact rules are:
 
   - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
   - Single-quote, double-quote and backslash chars are backslash-escaped.
-  - Any other chars in the range [0x20,0x7e] are not escaped.
+  - Any other chars in the range [0x20,0x7e]/~ are not escaped.
   - Any other chars are given hex unicode escapes; see `escape_unicode`.
 "]
 fn escape_default(c: char) -> str {

@@ -14,7 +14,7 @@ class notify {
                task::get_task(),
                ptr::addr_of(*(self.v)) as uint,
                task::failing(),
-               *(self.v)];
+               *(self.v)]/~;
         let b = *(self.v);
         comm::send(self.ch, b);
     }
@@ -26,7 +26,7 @@ fn joinable(f: fn~()) -> comm::port<bool> {
         let b = @mut false;
         #error["wrapper: task=%? allocated v=%x",
                task::get_task(),
-               ptr::addr_of(*b) as uint];
+               ptr::addr_of(*b) as uint]/~;
         let _r = notify(c, b);
         f();
         *b = true;

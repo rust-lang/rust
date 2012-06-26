@@ -90,7 +90,7 @@ fn fold_item(
 fn parse_item_attrs<T:send>(
     srv: astsrv::srv,
     id: doc::ast_id,
-    +parse_attrs: fn~([ast::attribute]) -> T) -> T {
+    +parse_attrs: fn~([ast::attribute]/~) -> T) -> T {
     astsrv::exec(srv) {|ctxt|
         let attrs = alt ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) { item.attrs }
@@ -197,11 +197,11 @@ fn fold_iface(
 fn merge_method_attrs(
     srv: astsrv::srv,
     item_id: doc::ast_id,
-    docs: [doc::methoddoc]
-) -> [doc::methoddoc] {
+    docs: [doc::methoddoc]/~
+) -> [doc::methoddoc]/~ {
 
     // Create an assoc list from method name to attributes
-    let attrs: [(str, option<str>)] = astsrv::exec(srv) {|ctxt|
+    let attrs: [(str, option<str>)]/~ = astsrv::exec(srv) {|ctxt|
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_iface(_, _, methods), _

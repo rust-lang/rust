@@ -1,4 +1,4 @@
-fn gpg(args: [str]) -> { status: int, out: str, err: str } {
+fn gpg(args: [str]/~) -> { status: int, out: str, err: str } {
     ret run::program_output("gpg", args);
 }
 
@@ -59,7 +59,7 @@ fn signing_key_fp() -> str {
 }
 
 fn supported() -> bool {
-    let r = gpg(["--version"]);
+    let r = gpg(["--version"]/~);
     r.status == 0
 }
 
@@ -67,7 +67,7 @@ fn init(root: str) {
     let p = path::connect(root, "gpg");
     if !os::path_is_dir(p) {
         os::make_dir(p, 0x1c0i32);
-        let p = run::start_program("gpg", ["--homedir", p, "--import"]);
+        let p = run::start_program("gpg", ["--homedir", p, "--import"]/~);
         p.input().write_str(signing_key());
         let s = p.finish();
         if s != 0 {
@@ -78,7 +78,8 @@ fn init(root: str) {
 
 fn add(root: str, key: str) {
     let path = path::connect(root, "gpg");
-    let p = run::program_output("gpg", ["--homedir", path, "--import", key]);
+    let p =
+        run::program_output("gpg", ["--homedir", path, "--import", key]/~);
     if p.status != 0 {
         fail "pgp add failed: " + p.out;
     }
@@ -87,7 +88,7 @@ fn add(root: str, key: str) {
 fn verify(root: str, data: str, sig: str, keyfp: str) -> bool {
     let path = path::connect(root, "gpg");
     let p = gpg(["--homedir", path, "--with-fingerprint", "--verify", sig,
-                 data]);
+                 data]/~);
     let res = "Primary key fingerprint: " + keyfp;
     for str::split_char(p.err, '\n').each {|line|
         if line == res { ret true; }

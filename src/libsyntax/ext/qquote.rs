@@ -35,7 +35,7 @@ impl of qq_helper for @ast::crate {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_crate(*self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_crate"])
+        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_crate"]/~)
     }
     fn get_fold_fn() -> str {"fold_crate"}
 }
@@ -49,7 +49,7 @@ impl of qq_helper for @ast::expr {
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_expr"])
+        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_expr"]/~)
     }
     fn get_fold_fn() -> str {"fold_expr"}
 }
@@ -63,7 +63,7 @@ impl of qq_helper for @ast::ty {
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_ty"])
+        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_ty"]/~)
     }
     fn get_fold_fn() -> str {"fold_ty"}
 }
@@ -72,7 +72,7 @@ impl of qq_helper for @ast::item {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_item(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_item"])
+        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_item"]/~)
     }
     fn get_fold_fn() -> str {"fold_item"}
 }
@@ -81,7 +81,7 @@ impl of qq_helper for @ast::stmt {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_stmt(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_stmt"])
+        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_stmt"]/~)
     }
     fn get_fold_fn() -> str {"fold_stmt"}
 }
@@ -90,7 +90,7 @@ impl of qq_helper for @ast::pat {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_pat(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_pat"])
+        mk_path(cx, sp, [@"syntax", @"ext", @"qquote", @"parse_pat"]/~)
     }
     fn get_fold_fn() -> str {"fold_pat"}
 }
@@ -133,12 +133,12 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
 {
     let mut what = "expr";
     option::iter(arg) {|arg|
-        let args: [@ast::expr] =
+        let args: [@ast::expr]/~ =
             alt arg.node {
               ast::expr_vec(elts, _) { elts }
               _ {
                 ecx.span_fatal
-                    (_sp, "#ast requires arguments of the form `[...]`.")
+                    (_sp, "#ast requires arguments of the form `[...]/~`.")
               }
             };
         if vec::len::<@ast::expr>(args) != 1u {
@@ -163,14 +163,14 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     };
 }
 
-fn parse_crate(p: parser) -> @ast::crate { p.parse_crate_mod([]) }
+fn parse_crate(p: parser) -> @ast::crate { p.parse_crate_mod([]/~) }
 fn parse_ty(p: parser) -> @ast::ty { p.parse_ty(false) }
-fn parse_stmt(p: parser) -> @ast::stmt { p.parse_stmt([]) }
+fn parse_stmt(p: parser) -> @ast::stmt { p.parse_stmt([]/~) }
 fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
 fn parse_pat(p: parser) -> @ast::pat { p.parse_pat() }
 
 fn parse_item(p: parser) -> @ast::item {
-    alt p.parse_item([], ast::public) {
+    alt p.parse_item([]/~, ast::public) {
       some(item) { item }
       none       { fail "parse_item: parsing an item failed"; }
     }
@@ -230,47 +230,48 @@ fn finish<T: qq_helper>
     let cx = ecx;
 
     let cfg_call = {||
-        mk_call_(cx, sp, mk_access(cx, sp, [@"ext_cx"], @"cfg"), [])
+        mk_call_(cx, sp, mk_access(cx, sp, [@"ext_cx"]/~, @"cfg"), []/~)
     };
 
     let parse_sess_call = {||
-        mk_call_(cx, sp, mk_access(cx, sp, [@"ext_cx"], @"parse_sess"), [])
+        mk_call_(cx, sp,
+                 mk_access(cx, sp, [@"ext_cx"]/~, @"parse_sess"), []/~)
     };
 
     let pcall = mk_call(cx,sp,
                        [@"syntax", @"parse", @"parser",
-                        @"parse_from_source_str"],
+                        @"parse_from_source_str"]/~,
                        [node.mk_parse_fn(cx,sp),
                         mk_str(cx,sp, fname),
                         mk_call(cx,sp,
                                 [@"syntax",@"ext",
-                                 @"qquote", @"mk_file_substr"],
+                                 @"qquote", @"mk_file_substr"]/~,
                                 [mk_str(cx,sp, loc.file.name),
                                  mk_uint(cx,sp, loc.line),
-                                 mk_uint(cx,sp, loc.col)]),
+                                 mk_uint(cx,sp, loc.col)]/~),
                         mk_unary(cx,sp, ast::box(ast::m_imm),
                                  mk_str(cx,sp, str2)),
                         cfg_call(),
-                        parse_sess_call()]
+                        parse_sess_call()]/~
                       );
     let mut rcall = pcall;
     if (g_len > 0u) {
         rcall = mk_call(cx,sp,
-                        [@"syntax", @"ext", @"qquote", @"replace"],
+                        [@"syntax", @"ext", @"qquote", @"replace"]/~,
                         [pcall,
                          mk_uniq_vec_e(cx,sp, qcx.gather.map_to_vec {|g|
                              mk_call(cx,sp,
                                      [@"syntax", @"ext",
-                                      @"qquote", @g.constr],
-                                     [g.e])}),
+                                      @"qquote", @g.constr]/~,
+                                     [g.e]/~)}),
                          mk_path(cx,sp,
                                  [@"syntax", @"ext", @"qquote",
-                                  @node.get_fold_fn()])]);
+                                  @node.get_fold_fn()]/~)]/~);
     }
     ret rcall;
 }
 
-fn replace<T>(node: T, repls: [fragment], ff: fn (ast_fold, T) -> T)
+fn replace<T>(node: T, repls: [fragment]/~, ff: fn (ast_fold, T) -> T)
     -> T
 {
     let aft = default_ast_fold();
@@ -290,7 +291,7 @@ fn fold_item(f: ast_fold, &&n: @ast::item) -> @ast::item {f.fold_item(n)}
 fn fold_stmt(f: ast_fold, &&n: @ast::stmt) -> @ast::stmt {f.fold_stmt(n)}
 fn fold_pat(f: ast_fold, &&n: @ast::pat) -> @ast::pat {f.fold_pat(n)}
 
-fn replace_expr(repls: [fragment],
+fn replace_expr(repls: [fragment]/~,
                 e: ast::expr_, s: span, fld: ast_fold,
                 orig: fn@(ast::expr_, span, ast_fold)->(ast::expr_, span))
     -> (ast::expr_, span)
@@ -304,7 +305,7 @@ fn replace_expr(repls: [fragment],
     }
 }
 
-fn replace_ty(repls: [fragment],
+fn replace_ty(repls: [fragment]/~,
                 e: ast::ty_, s: span, fld: ast_fold,
                 orig: fn@(ast::ty_, span, ast_fold)->(ast::ty_, span))
     -> (ast::ty_, span)

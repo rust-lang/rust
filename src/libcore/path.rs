@@ -127,7 +127,7 @@ Connects a vector of path segments into a single path.
 
 Inserts path separators as needed.
 "]
-fn connect_many(paths: [path]) -> path {
+fn connect_many(paths: [path]/~) -> path {
     ret if vec::len(paths) == 1u {
         paths[0]
     } else {
@@ -144,7 +144,7 @@ each piece of the path. On Windows, if the path is absolute then
 the first element of the returned vector will be the drive letter
 followed by a colon.
 "]
-fn split(p: path) -> [path] {
+fn split(p: path) -> [path]/~ {
     str::split_nonempty(p, {|c|
         c == consts::path_sep || c == consts::alt_path_sep
     })
@@ -234,7 +234,7 @@ fn normalize(p: path) -> path {
 
     ret s;
 
-    fn strip_dots(s: [path]) -> [path] {
+    fn strip_dots(s: [path]/~) -> [path]/~ {
         vec::filter_map(s, { |elem|
             if elem == "." {
                 option::none
@@ -244,12 +244,12 @@ fn normalize(p: path) -> path {
         })
     }
 
-    fn rollup_doubledots(s: [path]) -> [path] {
+    fn rollup_doubledots(s: [path]/~) -> [path]/~ {
         if vec::is_empty(s) {
-            ret [];
+            ret []/~;
         }
 
-        let mut t = [];
+        let mut t = []/~;
         let mut i = vec::len(s);
         let mut skip = 0;
         while i != 0u {
@@ -258,7 +258,7 @@ fn normalize(p: path) -> path {
                 skip += 1;
             } else {
                 if skip == 0 {
-                    t += [s[i]];
+                    vec::push(t, s[i]);
                 } else {
                     skip -= 1;
                 }
@@ -266,7 +266,7 @@ fn normalize(p: path) -> path {
         }
         let mut t = vec::reversed(t);
         while skip > 0 {
-            t += [".."];
+            vec::push(t, "..");
             skip -= 1;
         }
         ret t;
@@ -322,28 +322,28 @@ mod tests {
     #[test]
     fn split1() {
         let actual = split("a" + ps() + "b");
-        let expected = ["a", "b"];
+        let expected = ["a", "b"]/~;
         assert actual == expected;
     }
 
     #[test]
     fn split2() {
         let actual = split("a" + aps() + "b");
-        let expected = ["a", "b"];
+        let expected = ["a", "b"]/~;
         assert actual == expected;
     }
 
     #[test]
     fn split3() {
         let actual = split(ps() + "a" + ps() + "b");
-        let expected = ["a", "b"];
+        let expected = ["a", "b"]/~;
         assert actual == expected;
     }
 
     #[test]
     fn split4() {
         let actual = split("a" + ps() + "b" + aps() + "c");
-        let expected = ["a", "b", "c"];
+        let expected = ["a", "b", "c"]/~;
         assert actual == expected;
     }
 

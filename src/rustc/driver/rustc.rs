@@ -109,7 +109,7 @@ fn describe_debug_flags() {
     }
 }
 
-fn run_compiler(args: [str], demitter: diagnostic::emitter) {
+fn run_compiler(args: [str]/~, demitter: diagnostic::emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
 
@@ -250,7 +250,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
 
-                ].each {|note|
+                ]/~.each {|note|
                     diagnostic::emit(none, note, diagnostic::note)
                 }
             }
@@ -260,7 +260,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
     }
 }
 
-fn main(args: [str]) {
+fn main(args: [str]/~) {
     monitor {|demitter|
         run_compiler(args, demitter);
     }

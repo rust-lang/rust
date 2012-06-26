@@ -96,7 +96,7 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> str {
     }
 }
 
-fn tys_to_str(cx: ctxt, ts: [t]) -> str {
+fn tys_to_str(cx: ctxt, ts: [t]/~) -> str {
     let mut rs = "";
     for ts.each {|t| rs += ty_to_str(cx, t); }
     rs
@@ -121,8 +121,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     }
     fn fn_to_str(cx: ctxt, purity: ast::purity, proto: ast::proto,
                  ident: option<ast::ident>,
-                 inputs: [arg], output: t, cf: ast::ret_style,
-                 constrs: [@constr]) -> str {
+                 inputs: [arg]/~, output: t, cf: ast::ret_style,
+                 constrs: [@constr]/~) -> str {
         let mut s;
 
         s = alt purity {
@@ -132,8 +132,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         s += proto_to_str(proto);
         alt ident { some(i) { s += " "; s += *i; } _ { } }
         s += "(";
-        let mut strs = [];
-        for inputs.each {|a| strs += [fn_input_to_str(cx, a)]; }
+        let mut strs = []/~;
+        for inputs.each {|a| strs += [fn_input_to_str(cx, a)]/~; }
         s += str::connect(strs, ", ");
         s += ")";
         if ty::get(output).struct != ty_nil {
@@ -189,13 +189,13 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_unboxed_vec(tm) { "unboxed_vec<" + mt_to_str(cx, tm) + ">" }
       ty_type { "type" }
       ty_rec(elems) {
-        let mut strs: [str] = [];
-        for elems.each {|fld| strs += [field_to_str(cx, fld)]; }
+        let mut strs: [str]/~ = []/~;
+        for elems.each {|fld| strs += [field_to_str(cx, fld)]/~; }
         "{" + str::connect(strs, ",") + "}"
       }
       ty_tup(elems) {
-        let mut strs = [];
-        for elems.each {|elem| strs += [ty_to_str(cx, elem)]; }
+        let mut strs = []/~;
+        for elems.each {|elem| strs += [ty_to_str(cx, elem)]/~; }
         "(" + str::connect(strs, ",") + ")"
       }
       ty_fn(f) {
@@ -205,7 +205,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_var(v) { v.to_str() }
       ty_var_integral(v) { v.to_str() }
       ty_param(id, _) {
-        "'" + str::from_bytes([('a' as u8) + (id as u8)])
+        "'" + str::from_bytes([('a' as u8) + (id as u8)]/~)
       }
       ty_self { "self" }
       ty_enum(did, substs) | ty_class(did, substs) {
@@ -234,7 +234,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
 fn parameterized(cx: ctxt,
                  base: str,
                  self_r: option<ty::region>,
-                 tps: [ty::t]) -> str {
+                 tps: [ty::t]/~) -> str {
 
     let r_str = alt self_r {
       none { "" }
@@ -262,7 +262,7 @@ fn constr_to_str(c: @constr) -> str {
             pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
 }
 
-fn constrs_str(constrs: [@constr]) -> str {
+fn constrs_str(constrs: [@constr]/~) -> str {
     let mut s = "";
     let mut colon = true;
     for constrs.each {|c|

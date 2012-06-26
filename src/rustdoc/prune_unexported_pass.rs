@@ -30,7 +30,7 @@ fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
     }
 }
 
-fn exported_items(srv: astsrv::srv, doc: doc::moddoc) -> [doc::itemtag] {
+fn exported_items(srv: astsrv::srv, doc: doc::moddoc) -> [doc::itemtag]/~ {
     exported_things(
         srv, doc,
         exported_items_from_crate,
@@ -41,9 +41,9 @@ fn exported_items(srv: astsrv::srv, doc: doc::moddoc) -> [doc::itemtag] {
 fn exported_things<T>(
     srv: astsrv::srv,
     doc: doc::moddoc,
-    from_crate: fn(astsrv::srv, doc::moddoc) -> [T],
-    from_mod: fn(astsrv::srv, doc::moddoc) -> [T]
-) -> [T] {
+    from_crate: fn(astsrv::srv, doc::moddoc) -> [T]/~,
+    from_mod: fn(astsrv::srv, doc::moddoc) -> [T]/~
+) -> [T]/~ {
     if doc.id() == ast::crate_node_id {
         from_crate(srv, doc)
     } else {
@@ -54,14 +54,14 @@ fn exported_things<T>(
 fn exported_items_from_crate(
     srv: astsrv::srv,
     doc: doc::moddoc
-) -> [doc::itemtag] {
+) -> [doc::itemtag]/~ {
     exported_items_from(srv, doc, is_exported_from_crate)
 }
 
 fn exported_items_from_mod(
     srv: astsrv::srv,
     doc: doc::moddoc
-) -> [doc::itemtag] {
+) -> [doc::itemtag]/~ {
     exported_items_from(srv, doc, {|a,b|
         is_exported_from_mod(a, doc.id(), b)
     })
@@ -71,7 +71,7 @@ fn exported_items_from(
     srv: astsrv::srv,
     doc: doc::moddoc,
     is_exported: fn(astsrv::srv, str) -> bool
-) -> [doc::itemtag] {
+) -> [doc::itemtag]/~ {
     vec::filter_map(doc.items) { |itemtag|
         let itemtag = alt itemtag {
           doc::enumtag(enumdoc) {
@@ -96,7 +96,7 @@ fn exported_variants_from(
     srv: astsrv::srv,
     doc: doc::enumdoc,
     is_exported: fn(astsrv::srv, str) -> bool
-) -> [doc::variantdoc] {
+) -> [doc::variantdoc]/~ {
     vec::filter_map(doc.variants) { |doc|
         if is_exported(srv, doc.name) {
             some(doc)

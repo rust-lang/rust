@@ -126,7 +126,7 @@ capacity, then no action is taken.
 * v - A vector
 * n - The number of elements to reserve space for
 "]
-fn reserve<T>(&v: [const T], n: uint) {
+fn reserve<T>(&v: [const T]/~, n: uint) {
     // Only make the (slow) call into the runtime if we have to
     if capacity(v) < n {
         let ptr = ptr::addr_of(v) as **unsafe::vec_repr;
@@ -150,7 +150,7 @@ capacity, then no action is taken.
 * v - A vector
 * n - The number of elements to reserve space for
 "]
-fn reserve_at_least<T>(&v: [const T], n: uint) {
+fn reserve_at_least<T>(&v: [const T]/~, n: uint) {
     reserve(v, uint::next_power_of_two(n));
 }
 
@@ -158,7 +158,7 @@ fn reserve_at_least<T>(&v: [const T], n: uint) {
 Returns the number of elements the vector can hold without reallocating
 "]
 #[inline(always)]
-pure fn capacity<T>(&&v: [const T]) -> uint {
+pure fn capacity<T>(&&v: [const T]/~) -> uint {
     unsafe {
         let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).alloc / sys::size_of::<T>()
@@ -177,8 +177,8 @@ Creates and initializes an immutable vector.
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value returned by the function `op`.
 "]
-pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
-    let mut v = [];
+pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> [T]/~ {
+    let mut v = []/~;
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
     while i < n_elts unsafe { push(v, op(i)); i += 1u; }
@@ -191,8 +191,8 @@ Creates and initializes an immutable vector.
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value `t`.
 "]
-pure fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
-    let mut v = [];
+pure fn from_elem<T: copy>(n_elts: uint, t: T) -> [T]/~ {
+    let mut v = []/~;
     unchecked{reserve(v, n_elts)}
     let mut i: uint = 0u;
     unsafe { // because push is impure
@@ -202,12 +202,12 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
 }
 
 #[doc = "Produces a mut vector from an immutable vector."]
-fn to_mut<T>(+v: [T]) -> [mut T] {
+fn to_mut<T>(+v: [T]/~) -> [mut T]/~ {
     unsafe { ::unsafe::transmute(v) }
 }
 
 #[doc = "Produces an immutable vector from a mut vector."]
-fn from_mut<T>(+v: [mut T]) -> [T] {
+fn from_mut<T>(+v: [mut T]/~) -> [T]/~ {
     unsafe { ::unsafe::transmute(v) }
 }
 
@@ -217,18 +217,18 @@ fn from_mut<T>(+v: [mut T]) -> [T] {
 pure fn head<T: copy>(v: [const T]/&) -> T { v[0] }
 
 #[doc = "Returns a vector containing all but the first element of a slice"]
-pure fn tail<T: copy>(v: [const T]/&) -> [T] {
+pure fn tail<T: copy>(v: [const T]/&) -> [T]/~ {
     ret slice(v, 1u, len(v));
 }
 
 #[doc = "Returns a vector containing all but the first `n` \
          elements of a slice"]
-pure fn tailn<T: copy>(v: [const T]/&, n: uint) -> [T] {
+pure fn tailn<T: copy>(v: [const T]/&, n: uint) -> [T]/~ {
     slice(v, n, len(v))
 }
 
 #[doc = "Returns a vector containing all but the last element of a slice"]
-pure fn init<T: copy>(v: [const T]/&) -> [T] {
+pure fn init<T: copy>(v: [const T]/&) -> [T]/~ {
     assert len(v) != 0u;
     slice(v, 0u, len(v) - 1u)
 }
@@ -251,10 +251,10 @@ pure fn last_opt<T: copy>(v: [const T]/&) -> option<T> {
 }
 
 #[doc = "Returns a copy of the elements from [`start`..`end`) from `v`."]
-pure fn slice<T: copy>(v: [const T]/&, start: uint, end: uint) -> [T] {
+pure fn slice<T: copy>(v: [const T]/&, start: uint, end: uint) -> [T]/~ {
     assert (start <= end);
     assert (end <= len(v));
-    let mut result = [];
+    let mut result = []/~;
     unchecked {
         push_all(result, view(v, start, end));
     }
@@ -276,12 +276,12 @@ pure fn view<T: copy>(v: [const T]/&, start: uint, end: uint) -> [T]/&a {
 #[doc = "
 Split the vector `v` by applying each element against the predicate `f`.
 "]
-fn split<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]] {
+fn split<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]/~]/~ {
     let ln = len(v);
-    if (ln == 0u) { ret [] }
+    if (ln == 0u) { ret []/~ }
 
     let mut start = 0u;
-    let mut result = [];
+    let mut result = []/~;
     while start < ln {
         alt position_between(v, start, ln, f) {
           none { break }
@@ -299,13 +299,13 @@ fn split<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]] {
 Split the vector `v` by applying each element against the predicate `f` up
 to `n` times.
 "]
-fn splitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]] {
+fn splitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]/~]/~ {
     let ln = len(v);
-    if (ln == 0u) { ret [] }
+    if (ln == 0u) { ret []/~ }
 
     let mut start = 0u;
     let mut count = n;
-    let mut result = [];
+    let mut result = []/~;
     while start < ln && count > 0u {
         alt position_between(v, start, ln, f) {
           none { break }
@@ -325,12 +325,12 @@ fn splitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]] {
 Reverse split the vector `v` by applying each element against the predicate
 `f`.
 "]
-fn rsplit<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]] {
+fn rsplit<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]/~]/~ {
     let ln = len(v);
-    if (ln == 0u) { ret [] }
+    if (ln == 0u) { ret []/~ }
 
     let mut end = ln;
-    let mut result = [];
+    let mut result = []/~;
     while end > 0u {
         alt rposition_between(v, 0u, end, f) {
           none { break }
@@ -348,13 +348,13 @@ fn rsplit<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [[T]] {
 Reverse split the vector `v` by applying each element against the predicate
 `f` up to `n times.
 "]
-fn rsplitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]] {
+fn rsplitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]/~]/~ {
     let ln = len(v);
-    if (ln == 0u) { ret [] }
+    if (ln == 0u) { ret []/~ }
 
     let mut end = ln;
     let mut count = n;
-    let mut result = [];
+    let mut result = []/~;
     while end > 0u && count > 0u {
         alt rposition_between(v, 0u, end, f) {
           none { break }
@@ -373,11 +373,11 @@ fn rsplitn<T: copy>(v: [T]/&, n: uint, f: fn(T) -> bool) -> [[T]] {
 // Mutators
 
 #[doc = "Removes the first element from a vector and return it"]
-fn shift<T>(&v: [T]) -> T {
+fn shift<T>(&v: [T]/~) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
 
-    let mut vv = [];
+    let mut vv = []/~;
     v <-> vv;
 
     unsafe {
@@ -399,8 +399,8 @@ fn shift<T>(&v: [T]) -> T {
 }
 
 #[doc = "Prepend an element to the vector"]
-fn unshift<T>(&v: [T], +x: T) {
-    let mut vv = [x];
+fn unshift<T>(&v: [T]/~, +x: T) {
+    let mut vv = [x]/~;
     v <-> vv;
     while len(vv) > 0 {
         push(v, shift(vv));
@@ -408,7 +408,7 @@ fn unshift<T>(&v: [T], +x: T) {
 }
 
 #[doc = "Remove the last element from a vector and return it"]
-fn pop<T>(&v: [const T]) -> T {
+fn pop<T>(&v: [const T]/~) -> T {
     let ln = len(v);
     assert ln > 0u;
     let valptr = ptr::mut_addr_of(v[ln - 1u]);
@@ -421,7 +421,7 @@ fn pop<T>(&v: [const T]) -> T {
 
 #[doc = "Append an element to a vector"]
 #[inline(always)]
-fn push<T>(&v: [const T], +initval: T) {
+fn push<T>(&v: [const T]/~, +initval: T) {
     unsafe {
         let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         let fill = (**repr).fill;
@@ -438,7 +438,7 @@ fn push<T>(&v: [const T], +initval: T) {
     }
 }
 
-fn push_slow<T>(&v: [const T], +initval: T) {
+fn push_slow<T>(&v: [const T]/~, +initval: T) {
     unsafe {
         let ln = v.len();
         reserve_at_least(v, ln + 1u);
@@ -453,8 +453,9 @@ fn push_slow<T>(&v: [const T], +initval: T) {
 }
 
 #[inline(always)]
-fn push_all<T: copy>(&v: [const T], rhs: [const T]/&) {
+fn push_all<T: copy>(&v: [const T]/~, rhs: [const T]/&) {
     reserve(v, v.len() + rhs.len());
+
     for uint::range(0u, rhs.len()) {|i|
         push(v, rhs[i]);
     }
@@ -462,8 +463,8 @@ fn push_all<T: copy>(&v: [const T], rhs: [const T]/&) {
 
 // Appending
 #[inline(always)]
-pure fn append<T: copy>(lhs: [T]/&, rhs: [const T]/&) -> [T] {
-    let mut v = [];
+pure fn append<T: copy>(lhs: [T]/&, rhs: [const T]/&) -> [T]/~ {
+    let mut v = []/~;
     let mut i = 0u;
     while i < lhs.len() {
         unsafe { // This is impure, but it appears pure to the caller.
@@ -482,8 +483,8 @@ pure fn append<T: copy>(lhs: [T]/&, rhs: [const T]/&) -> [T] {
 }
 
 #[inline(always)]
-pure fn append_mut<T: copy>(lhs: [mut T]/&, rhs: [const T]/&) -> [mut T] {
-    let mut v = [mut];
+pure fn append_mut<T: copy>(lhs: [mut T]/&, rhs: [const T]/&) -> [mut T]/~ {
+    let mut v = [mut]/~;
     let mut i = 0u;
     while i < lhs.len() {
         unsafe { // This is impure, but it appears pure to the caller.
@@ -510,7 +511,7 @@ Expands a vector in place, initializing the new elements to a given value
 * n - The number of elements to add
 * initval - The value for the new elements
 "]
-fn grow<T: copy>(&v: [const T], n: uint, initval: T) {
+fn grow<T: copy>(&v: [const T]/~, n: uint, initval: T) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
 
@@ -530,7 +531,7 @@ Function `init_op` is called `n` times with the values [0..`n`)
 * init_op - A function to call to retreive each appended element's
             value
 "]
-fn grow_fn<T>(&v: [const T], n: uint, op: init_op<T>) {
+fn grow_fn<T>(&v: [const T]/~, n: uint, op: init_op<T>) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
     while i < n { push(v, op(i)); i += 1u; }
@@ -545,7 +546,7 @@ of the vector, expands the vector by replicating `initval` to fill the
 intervening space.
 "]
 #[inline(always)]
-fn grow_set<T: copy>(&v: [mut T], index: uint, initval: T, val: T) {
+fn grow_set<T: copy>(&v: [mut T]/~, index: uint, initval: T, val: T) {
     if index >= len(v) { grow(v, index - len(v) + 1u, initval); }
     v[index] = val;
 }
@@ -556,8 +557,8 @@ fn grow_set<T: copy>(&v: [mut T], index: uint, initval: T, val: T) {
 #[doc = "
 Apply a function to each element of a vector and return the results
 "]
-pure fn map<T, U>(v: [T]/&, f: fn(T) -> U) -> [U] {
-    let mut result = [];
+pure fn map<T, U>(v: [T]/&, f: fn(T) -> U) -> [U]/~ {
+    let mut result = []/~;
     unchecked{reserve(result, len(v));}
     for each(v) {|elem| unsafe { push(result, f(elem)); } }
     ret result;
@@ -566,8 +567,8 @@ pure fn map<T, U>(v: [T]/&, f: fn(T) -> U) -> [U] {
 #[doc = "
 Apply a function to each element of a vector and return the results
 "]
-pure fn mapi<T, U>(v: [T]/&, f: fn(uint, T) -> U) -> [U] {
-    let mut result = [];
+pure fn mapi<T, U>(v: [T]/&, f: fn(uint, T) -> U) -> [U]/~ {
+    let mut result = []/~;
     unchecked{reserve(result, len(v));}
     for eachi(v) {|i, elem| unsafe { push(result, f(i, elem)); } }
     ret result;
@@ -577,8 +578,8 @@ pure fn mapi<T, U>(v: [T]/&, f: fn(uint, T) -> U) -> [U] {
 Apply a function to each element of a vector and return a concatenation
 of each result vector
 "]
-pure fn flat_map<T, U>(v: [T]/&, f: fn(T) -> [U]) -> [U] {
-    let mut result = [];
+pure fn flat_map<T, U>(v: [T]/&, f: fn(T) -> [U]/~) -> [U]/~ {
+    let mut result = []/~;
     for each(v) {|elem| result += f(elem); }
     ret result;
 }
@@ -587,10 +588,10 @@ pure fn flat_map<T, U>(v: [T]/&, f: fn(T) -> [U]) -> [U] {
 Apply a function to each pair of elements and return the results
 "]
 pure fn map2<T: copy, U: copy, V>(v0: [T]/&, v1: [U]/&,
-                                  f: fn(T, U) -> V) -> [V] {
+                                  f: fn(T, U) -> V) -> [V]/~ {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail; }
-    let mut u: [V] = [];
+    let mut u: [V]/~ = []/~;
     let mut i = 0u;
     while i < v0_len {
         unsafe { push(u, f(copy v0[i], copy v1[i])) };
@@ -606,8 +607,8 @@ If function `f` returns `none` then that element is excluded from
 the resulting vector.
 "]
 pure fn filter_map<T, U: copy>(v: [T]/&, f: fn(T) -> option<U>)
-    -> [U] {
-    let mut result = [];
+    -> [U]/~ {
+    let mut result = []/~;
     for each(v) {|elem|
         alt f(elem) {
           none {/* no-op */ }
@@ -624,8 +625,8 @@ holds.
 Apply function `f` to each element of `v` and return a vector containing
 only those elements for which `f` returned true.
 "]
-pure fn filter<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [T] {
-    let mut result = [];
+pure fn filter<T: copy>(v: [T]/&, f: fn(T) -> bool) -> [T]/~ {
+    let mut result = []/~;
     for each(v) {|elem|
         if f(elem) { unsafe { push(result, elem); } }
     }
@@ -637,8 +638,8 @@ Concatenate a vector of vectors.
 
 Flattens a vector of vectors of T into a single vector of T.
 "]
-pure fn concat<T: copy>(v: [[T]]/&) -> [T] {
-    let mut r = [];
+pure fn concat<T: copy>(v: [[T]/~]/&) -> [T]/~ {
+    let mut r = []/~;
     for each(v) {|inner| unsafe { push_all(r, inner); } }
     ret r;
 }
@@ -646,8 +647,8 @@ pure fn concat<T: copy>(v: [[T]]/&) -> [T] {
 #[doc = "
 Concatenate a vector of vectors, placing a given separator between each
 "]
-pure fn connect<T: copy>(v: [[T]]/&, sep: T) -> [T] {
-    let mut r: [T] = [];
+pure fn connect<T: copy>(v: [[T]/~]/&, sep: T) -> [T]/~ {
+    let mut r: [T]/~ = []/~;
     let mut first = true;
     for each(v) {|inner|
         if first { first = false; } else { unsafe { push(r, sep); } }
@@ -873,9 +874,9 @@ vector contains the first element of the i-th tuple of the input vector,
 and the i-th element of the second vector contains the second element
 of the i-th tuple of the input vector.
 "]
-pure fn unzip<T: copy, U: copy>(v: [(T, U)]/&) -> ([T], [U]) {
-    let mut as = [], bs = [];
-    for each(v) {|p| let (a, b) = p; as += [a]; bs += [b]; }
+pure fn unzip<T: copy, U: copy>(v: [(T, U)]/&) -> ([T]/~, [U]/~) {
+    let mut as = []/~, bs = []/~;
+    for each(v) {|p| let (a, b) = p; as += [a]/~; bs += [b]/~; }
     ret (as, bs);
 }
 
@@ -885,12 +886,12 @@ Convert two vectors to a vector of pairs
 Returns a vector of tuples, where the i-th tuple contains contains the
 i-th elements from each of the input vectors.
 "]
-pure fn zip<T: copy, U: copy>(v: [const T]/&, u: [const U]/&) -> [(T, U)] {
-    let mut zipped = [];
+pure fn zip<T: copy, U: copy>(v: [const T]/&, u: [const U]/&) -> [(T, U)]/~ {
+    let mut zipped = []/~;
     let sz = len(v);
     let mut i = 0u;
     assert sz == len(u);
-    while i < sz { zipped += [(v[i], u[i])]; i += 1u; }
+    while i < sz { zipped += [(v[i], u[i])]/~; i += 1u; }
     ret zipped;
 }
 
@@ -903,12 +904,12 @@ Swaps two elements in a vector
 * a - The index of the first element
 * b - The index of the second element
 "]
-fn swap<T>(&&v: [mut T], a: uint, b: uint) {
+fn swap<T>(&&v: [mut T]/~, a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
 #[doc = "Reverse the order of elements in a vector, in place"]
-fn reverse<T>(v: [mut T]) {
+fn reverse<T>(v: [mut T]/~) {
     let mut i: uint = 0u;
     let ln = len::<T>(v);
     while i < ln / 2u { v[i] <-> v[ln - i - 1u]; i += 1u; }
@@ -916,12 +917,12 @@ fn reverse<T>(v: [mut T]) {
 
 
 #[doc = "Returns a vector with the order of elements reversed"]
-fn reversed<T: copy>(v: [const T]/&) -> [T] {
-    let mut rs: [T] = [];
+fn reversed<T: copy>(v: [const T]/&) -> [T]/~ {
+    let mut rs: [T]/~ = []/~;
     let mut i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }
-    while i != 0u { rs += [v[i]]; i -= 1u; }
-    rs += [v[0]];
+    while i != 0u { rs += [v[i]]/~; i -= 1u; }
+    rs += [v[0]]/~;
     ret rs;
 }
 
@@ -1064,28 +1065,28 @@ lexicographically sorted).
 The total number of permutations produced is `len(v)!`.  If `v` contains
 repeated elements, then some permutations are repeated.
 "]
-pure fn permute<T: copy>(v: [T]/&, put: fn([T])) {
+pure fn permute<T: copy>(v: [T]/&, put: fn([T]/~)) {
   let ln = len(v);
   if ln == 0u {
-    put([]);
+    put([]/~);
   } else {
     let mut i = 0u;
     while i < ln {
       let elt = v[i];
       let rest = slice(v, 0u, i) + slice(v, i+1u, ln);
-      permute(rest) {|permutation| put([elt] + permutation)}
+      permute(rest) {|permutation| put([elt]/~ + permutation)}
       i += 1u;
     }
   }
 }
 
-pure fn windowed<TT: copy>(nn: uint, xx: [TT]/&) -> [[TT]] {
-    let mut ww = [];
+pure fn windowed<TT: copy>(nn: uint, xx: [TT]/&) -> [[TT]/~]/~ {
+    let mut ww = []/~;
     assert 1u <= nn;
     vec::iteri (xx, {|ii, _x|
         let len = vec::len(xx);
         if ii+nn <= len {
-            ww += [vec::slice(xx, ii, ii+nn)];
+            ww += [vec::slice(xx, ii, ii+nn)]/~;
         }
     });
     ret ww;
@@ -1146,16 +1147,16 @@ pure fn unpack_mut_slice<T,U>(s: [mut T]/&,
     }
 }
 
-impl extensions<T: copy> for [T] {
+impl extensions<T: copy> for [T]/~ {
     #[inline(always)]
-    pure fn +(rhs: [T]/&) -> [T] {
+    pure fn +(rhs: [T]/&) -> [T]/~ {
         append(self, rhs)
     }
 }
 
-impl extensions<T: copy> for [mut T] {
+impl extensions<T: copy> for [mut T]/~ {
     #[inline(always)]
-    pure fn +(rhs: [mut T]/&) -> [mut T] {
+    pure fn +(rhs: [mut T]/&) -> [mut T]/~ {
         append_mut(self, rhs)
     }
 }
@@ -1180,7 +1181,7 @@ impl extensions/&<T: copy> for [const T]/& {
     pure fn head() -> T { head(self) }
     #[doc = "Returns all but the last elemnt of a vector"]
     #[inline]
-    pure fn init() -> [T] { init(self) }
+    pure fn init() -> [T]/~ { init(self) }
     #[doc = "
     Returns the last element of a `v`, failing if the vector is empty.
     "]
@@ -1188,10 +1189,10 @@ impl extensions/&<T: copy> for [const T]/& {
     pure fn last() -> T { last(self) }
     #[doc = "Returns a copy of the elements from [`start`..`end`) from `v`."]
     #[inline]
-    pure fn slice(start: uint, end: uint) -> [T] { slice(self, start, end) }
+    pure fn slice(start: uint, end: uint) -> [T]/~ { slice(self, start, end) }
     #[doc = "Returns all but the first element of a vector"]
     #[inline]
-    pure fn tail() -> [T] { tail(self) }
+    pure fn tail() -> [T]/~ { tail(self) }
 }
 
 #[doc = "Extension methods for vectors"]
@@ -1259,12 +1260,12 @@ impl extensions/&<T> for [T]/& {
     Apply a function to each element of a vector and return the results
     "]
     #[inline]
-    pure fn map<U>(f: fn(T) -> U) -> [U] { map(self, f) }
+    pure fn map<U>(f: fn(T) -> U) -> [U]/~ { map(self, f) }
     #[doc = "
     Apply a function to the index and value of each element in the vector
     and return the results
     "]
-    pure fn mapi<U>(f: fn(uint, T) -> U) -> [U] {
+    pure fn mapi<U>(f: fn(uint, T) -> U) -> [U]/~ {
         mapi(self, f)
     }
     #[doc = "Returns true if the function returns true for all elements.
@@ -1278,7 +1279,7 @@ impl extensions/&<T> for [T]/& {
     of each result vector
     "]
     #[inline]
-    pure fn flat_map<U>(f: fn(T) -> [U]) -> [U] { flat_map(self, f) }
+    pure fn flat_map<U>(f: fn(T) -> [U]/~) -> [U]/~ { flat_map(self, f) }
     #[doc = "
     Apply a function to each element of a vector and return the results
 
@@ -1286,7 +1287,7 @@ impl extensions/&<T> for [T]/& {
     the resulting vector.
     "]
     #[inline]
-    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> [U] {
+    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> [U]/~ {
         filter_map(self, f)
     }
 }
@@ -1301,7 +1302,7 @@ impl extensions/&<T: copy> for [T]/& {
     only those elements for which `f` returned true.
     "]
     #[inline]
-    pure fn filter(f: fn(T) -> bool) -> [T] { filter(self, f) }
+    pure fn filter(f: fn(T) -> bool) -> [T]/~ { filter(self, f) }
     #[doc = "
     Search for the first element that matches a given predicate
 
@@ -1342,7 +1343,7 @@ mod unsafe {
     * elts - The number of elements in the buffer
     "]
     #[inline(always)]
-    unsafe fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
+    unsafe fn from_buf<T>(ptr: *T, elts: uint) -> [T]/~ {
         ret ::unsafe::reinterpret_cast(
             rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
                                         ptr as *(),
@@ -1357,7 +1358,7 @@ mod unsafe {
     the vector is actually the specified size.
     "]
     #[inline(always)]
-    unsafe fn set_len<T>(&&v: [const T], new_len: uint) {
+    unsafe fn set_len<T>(&&v: [const T]/~, new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
@@ -1372,7 +1373,7 @@ mod unsafe {
     would also make any pointers to it invalid.
     "]
     #[inline(always)]
-    unsafe fn to_ptr<T>(v: [const T]) -> *T {
+    unsafe fn to_ptr<T>(v: [const T]/~) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
@@ -1397,7 +1398,7 @@ mod u8 {
     export hash;
 
     #[doc = "Bytewise string comparison"]
-    pure fn cmp(&&a: [u8], &&b: [u8]) -> int {
+    pure fn cmp(&&a: [u8]/~, &&b: [u8]/~) -> int {
         let a_len = len(a);
         let b_len = len(b);
         let n = uint::min(a_len, b_len) as libc::size_t;
@@ -1418,25 +1419,25 @@ mod u8 {
     }
 
     #[doc = "Bytewise less than or equal"]
-    pure fn lt(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) < 0 }
+    pure fn lt(&&a: [u8]/~, &&b: [u8]/~) -> bool { cmp(a, b) < 0 }
 
     #[doc = "Bytewise less than or equal"]
-    pure fn le(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) <= 0 }
+    pure fn le(&&a: [u8]/~, &&b: [u8]/~) -> bool { cmp(a, b) <= 0 }
 
     #[doc = "Bytewise equality"]
-    pure fn eq(&&a: [u8], &&b: [u8]) -> bool { unsafe { cmp(a, b) == 0 } }
+    pure fn eq(&&a: [u8]/~, &&b: [u8]/~) -> bool { unsafe { cmp(a, b) == 0 } }
 
     #[doc = "Bytewise inequality"]
-    pure fn ne(&&a: [u8], &&b: [u8]) -> bool { unsafe { cmp(a, b) != 0 } }
+    pure fn ne(&&a: [u8]/~, &&b: [u8]/~) -> bool { unsafe { cmp(a, b) != 0 } }
 
     #[doc ="Bytewise greater than or equal"]
-    pure fn ge(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) >= 0 }
+    pure fn ge(&&a: [u8]/~, &&b: [u8]/~) -> bool { cmp(a, b) >= 0 }
 
     #[doc = "Bytewise greater than"]
-    pure fn gt(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) > 0 }
+    pure fn gt(&&a: [u8]/~, &&b: [u8]/~) -> bool { cmp(a, b) > 0 }
 
     #[doc = "String hash function"]
-    fn hash(&&s: [u8]) -> uint {
+    fn hash(&&s: [u8]/~) -> uint {
         /* Seems to have been tragically copy/pasted from str.rs,
            or vice versa. But I couldn't figure out how to abstract
            it out. -- tjc */
@@ -1465,14 +1466,14 @@ impl extensions/&<A> of iter::base_iter<A> for [const A]/& {
     fn count(x: A) -> uint { iter::count(self, x) }
 }
 impl extensions/&<A:copy> for [const A]/& {
-    fn filter_to_vec(pred: fn(A) -> bool) -> [A] {
+    fn filter_to_vec(pred: fn(A) -> bool) -> [A]/~ {
         iter::filter_to_vec(self, pred)
     }
-    fn map_to_vec<B>(op: fn(A) -> B) -> [B] { iter::map_to_vec(self, op) }
-    fn to_vec() -> [A] { iter::to_vec(self) }
+    fn map_to_vec<B>(op: fn(A) -> B) -> [B]/~ { iter::map_to_vec(self, op) }
+    fn to_vec() -> [A]/~ { iter::to_vec(self) }
 
     // FIXME--bug in resolve prevents this from working (#2611)
-    // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> [B] {
+    // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> [B]/~ {
     //     iter::flat_map_to_vec(self, op)
     // }
 
@@ -1504,7 +1505,7 @@ mod tests {
     fn test_unsafe_ptrs() {
         unsafe {
             // Test on-stack copy-from-buf.
-            let a = [1, 2, 3];
+            let a = [1, 2, 3]/~;
             let mut ptr = unsafe::to_ptr(a);
             let b = unsafe::from_buf(ptr, 3u);
             assert (len(b) == 3u);
@@ -1513,7 +1514,7 @@ mod tests {
             assert (b[2] == 3);
 
             // Test on-heap copy-from-buf.
-            let c = [1, 2, 3, 4, 5];
+            let c = [1, 2, 3, 4, 5]/~;
             ptr = unsafe::to_ptr(c);
             let d = unsafe::from_buf(ptr, 5u);
             assert (len(d) == 5u);
@@ -1564,58 +1565,58 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        assert (is_empty::<int>([]));
-        assert (!is_empty([0]));
+        assert (is_empty::<int>([]/~));
+        assert (!is_empty([0]/~));
     }
 
     #[test]
     fn test_is_not_empty() {
-        assert (is_not_empty([0]));
-        assert (!is_not_empty::<int>([]));
+        assert (is_not_empty([0]/~));
+        assert (!is_not_empty::<int>([]/~));
     }
 
     #[test]
     fn test_head() {
-        let a = [11, 12];
+        let a = [11, 12]/~;
         assert (head(a) == 11);
     }
 
     #[test]
     fn test_tail() {
-        let mut a = [11];
-        assert (tail(a) == []);
+        let mut a = [11]/~;
+        assert (tail(a) == []/~);
 
-        a = [11, 12];
-        assert (tail(a) == [12]);
+        a = [11, 12]/~;
+        assert (tail(a) == [12]/~);
     }
 
     #[test]
     fn test_last() {
-        let mut n = last_opt([]);
+        let mut n = last_opt([]/~);
         assert (n == none);
-        n = last_opt([1, 2, 3]);
+        n = last_opt([1, 2, 3]/~);
         assert (n == some(3));
-        n = last_opt([1, 2, 3, 4, 5]);
+        n = last_opt([1, 2, 3, 4, 5]/~);
         assert (n == some(5));
     }
 
     #[test]
     fn test_slice() {
         // Test on-stack -> on-stack slice.
-        let mut v = slice([1, 2, 3], 1u, 3u);
+        let mut v = slice([1, 2, 3]/~, 1u, 3u);
         assert (len(v) == 2u);
         assert (v[0] == 2);
         assert (v[1] == 3);
 
         // Test on-heap -> on-stack slice.
-        v = slice([1, 2, 3, 4, 5], 0u, 3u);
+        v = slice([1, 2, 3, 4, 5]/~, 0u, 3u);
         assert (len(v) == 3u);
         assert (v[0] == 1);
         assert (v[1] == 2);
         assert (v[2] == 3);
 
         // Test on-heap -> on-heap slice.
-        v = slice([1, 2, 3, 4, 5, 6], 1u, 6u);
+        v = slice([1, 2, 3, 4, 5, 6]/~, 1u, 6u);
         assert (len(v) == 5u);
         assert (v[0] == 2);
         assert (v[1] == 3);
@@ -1627,7 +1628,7 @@ mod tests {
     #[test]
     fn test_pop() {
         // Test on-stack pop.
-        let mut v = [1, 2, 3];
+        let mut v = [1, 2, 3]/~;
         let mut e = pop(v);
         assert (len(v) == 2u);
         assert (v[0] == 1);
@@ -1635,7 +1636,7 @@ mod tests {
         assert (e == 3);
 
         // Test on-heap pop.
-        v = [1, 2, 3, 4, 5];
+        v = [1, 2, 3, 4, 5]/~;
         e = pop(v);
         assert (len(v) == 4u);
         assert (v[0] == 1);
@@ -1648,7 +1649,7 @@ mod tests {
     #[test]
     fn test_push() {
         // Test on-stack push().
-        let mut v = [];
+        let mut v = []/~;
         push(v, 1);
         assert (len(v) == 1u);
         assert (v[0] == 1);
@@ -1663,7 +1664,7 @@ mod tests {
     #[test]
     fn test_grow() {
         // Test on-stack grow().
-        let mut v = [];
+        let mut v = []/~;
         grow(v, 2u, 1);
         assert (len(v) == 2u);
         assert (v[0] == 1);
@@ -1681,7 +1682,7 @@ mod tests {
 
     #[test]
     fn test_grow_fn() {
-        let mut v = [];
+        let mut v = []/~;
         grow_fn(v, 3u, square);
         assert (len(v) == 3u);
         assert (v[0] == 0u);
@@ -1691,7 +1692,7 @@ mod tests {
 
     #[test]
     fn test_grow_set() {
-        let mut v = [mut 1, 2, 3];
+        let mut v = [mut 1, 2, 3]/~;
         grow_set(v, 4u, 4, 5);
         assert (len(v) == 5u);
         assert (v[0] == 1);
@@ -1704,7 +1705,7 @@ mod tests {
     #[test]
     fn test_map() {
         // Test on-stack map.
-        let mut v = [1u, 2u, 3u];
+        let mut v = [1u, 2u, 3u]/~;
         let mut w = map(v, square_ref);
         assert (len(w) == 3u);
         assert (w[0] == 1u);
@@ -1712,7 +1713,7 @@ mod tests {
         assert (w[2] == 9u);
 
         // Test on-heap map.
-        v = [1u, 2u, 3u, 4u, 5u];
+        v = [1u, 2u, 3u, 4u, 5u]/~;
         w = map(v, square_ref);
         assert (len(w) == 5u);
         assert (w[0] == 1u);
@@ -1726,8 +1727,8 @@ mod tests {
     fn test_map2() {
         fn times(&&x: int, &&y: int) -> int { ret x * y; }
         let f = times;
-        let v0 = [1, 2, 3, 4, 5];
-        let v1 = [5, 4, 3, 2, 1];
+        let v0 = [1, 2, 3, 4, 5]/~;
+        let v1 = [5, 4, 3, 2, 1]/~;
         let u = map2::<int, int, int>(v0, v1, f);
         let mut i = 0;
         while i < 5 { assert (v0[i] * v1[i] == u[i]); i += 1; }
@@ -1736,14 +1737,14 @@ mod tests {
     #[test]
     fn test_filter_map() {
         // Test on-stack filter-map.
-        let mut v = [1u, 2u, 3u];
+        let mut v = [1u, 2u, 3u]/~;
         let mut w = filter_map(v, square_if_odd);
         assert (len(w) == 2u);
         assert (w[0] == 1u);
         assert (w[1] == 9u);
 
         // Test on-heap filter-map.
-        v = [1u, 2u, 3u, 4u, 5u];
+        v = [1u, 2u, 3u, 4u, 5u]/~;
         w = filter_map(v, square_if_odd);
         assert (len(w) == 3u);
         assert (w[0] == 1u);
@@ -1756,32 +1757,32 @@ mod tests {
             } else { ret option::none::<int>; }
         }
         fn halve_for_sure(&&i: int) -> int { ret i / 2; }
-        let all_even: [int] = [0, 2, 8, 6];
-        let all_odd1: [int] = [1, 7, 3];
-        let all_odd2: [int] = [];
-        let mix: [int] = [9, 2, 6, 7, 1, 0, 0, 3];
-        let mix_dest: [int] = [1, 3, 0, 0];
+        let all_even: [int]/~ = [0, 2, 8, 6]/~;
+        let all_odd1: [int]/~ = [1, 7, 3]/~;
+        let all_odd2: [int]/~ = []/~;
+        let mix: [int]/~ = [9, 2, 6, 7, 1, 0, 0, 3]/~;
+        let mix_dest: [int]/~ = [1, 3, 0, 0]/~;
         assert (filter_map(all_even, halve) == map(all_even, halve_for_sure));
-        assert (filter_map(all_odd1, halve) == []);
-        assert (filter_map(all_odd2, halve) == []);
+        assert (filter_map(all_odd1, halve) == []/~);
+        assert (filter_map(all_odd2, halve) == []/~);
         assert (filter_map(mix, halve) == mix_dest);
     }
 
     #[test]
     fn test_filter() {
-        assert filter([1u, 2u, 3u], is_odd) == [1u, 3u];
-        assert filter([1u, 2u, 4u, 8u, 16u], is_three) == [];
+        assert filter([1u, 2u, 3u]/~, is_odd) == [1u, 3u]/~;
+        assert filter([1u, 2u, 4u, 8u, 16u]/~, is_three) == []/~;
     }
 
     #[test]
     fn test_foldl() {
         // Test on-stack fold.
-        let mut v = [1u, 2u, 3u];
+        let mut v = [1u, 2u, 3u]/~;
         let mut sum = foldl(0u, v, add);
         assert (sum == 6u);
 
         // Test on-heap fold.
-        v = [1u, 2u, 3u, 4u, 5u];
+        v = [1u, 2u, 3u, 4u, 5u]/~;
         sum = foldl(0u, v, add);
         assert (sum == 15u);
     }
@@ -1791,7 +1792,7 @@ mod tests {
         fn sub(&&a: int, &&b: int) -> int {
             a - b
         }
-        let mut v = [1, 2, 3, 4];
+        let mut v = [1, 2, 3, 4]/~;
         let sum = foldl(0, v, sub);
         assert sum == -10;
     }
@@ -1801,7 +1802,7 @@ mod tests {
         fn sub(&&a: int, &&b: int) -> int {
             a - b
         }
-        let mut v = [1, 2, 3, 4];
+        let mut v = [1, 2, 3, 4]/~;
         let sum = foldr(v, 0, sub);
         assert sum == -2;
     }
@@ -1809,21 +1810,21 @@ mod tests {
     #[test]
     fn test_iter_empty() {
         let mut i = 0;
-        iter::<int>([], { |_v| i += 1 });
+        iter::<int>([]/~, { |_v| i += 1 });
         assert i == 0;
     }
 
     #[test]
     fn test_iter_nonempty() {
         let mut i = 0;
-        iter([1, 2, 3], { |v| i += v });
+        iter([1, 2, 3]/~, { |v| i += v });
         assert i == 6;
     }
 
     #[test]
     fn test_iteri() {
         let mut i = 0;
-        iteri([1, 2, 3], { |j, v|
+        iteri([1, 2, 3]/~, { |j, v|
             if i == 0 { assert v == 1; }
             assert j + 1u == v as uint;
             i += v;
@@ -1834,14 +1835,14 @@ mod tests {
     #[test]
     fn test_riter_empty() {
         let mut i = 0;
-        riter::<int>([], { |_v| i += 1 });
+        riter::<int>([]/~, { |_v| i += 1 });
         assert i == 0;
     }
 
     #[test]
     fn test_riter_nonempty() {
         let mut i = 0;
-        riter([1, 2, 3], { |v|
+        riter([1, 2, 3]/~, { |v|
             if i == 0 { assert v == 3; }
             i += v
         });
@@ -1851,7 +1852,7 @@ mod tests {
     #[test]
     fn test_riteri() {
         let mut i = 0;
-        riteri([0, 1, 2], { |j, v|
+        riteri([0, 1, 2]/~, { |j, v|
             if i == 0 { assert v == 2; }
             assert j == v as uint;
             i += v;
@@ -1861,56 +1862,57 @@ mod tests {
 
     #[test]
     fn test_permute() {
-        let mut results: [[int]];
+        let mut results: [[int]/~]/~;
 
-        results = [];
-        permute([]) {|v| results += [v]; }
-        assert results == [[]];
+        results = []/~;
+        permute([]/~) {|v| results += [v]/~; }
+        assert results == [[]/~]/~;
 
-        results = [];
-        permute([7]) {|v| results += [v]; }
-        assert results == [[7]];
+        results = []/~;
+        permute([7]/~) {|v| results += [v]/~; }
+        assert results == [[7]/~]/~;
 
-        results = [];
-        permute([1,1]) {|v| results += [v]; }
-        assert results == [[1,1],[1,1]];
+        results = []/~;
+        permute([1,1]/~) {|v| results += [v]/~; }
+        assert results == [[1,1]/~,[1,1]/~]/~;
 
-        results = [];
-        permute([5,2,0]) {|v| results += [v]; }
-        assert results == [[5,2,0],[5,0,2],[2,5,0],[2,0,5],[0,5,2],[0,2,5]];
+        results = []/~;
+        permute([5,2,0]/~) {|v| results += [v]/~; }
+        assert results ==
+            [[5,2,0]/~,[5,0,2]/~,[2,5,0]/~,[2,0,5]/~,[0,5,2]/~,[0,2,5]/~]/~;
     }
 
     #[test]
     fn test_any_and_all() {
-        assert (any([1u, 2u, 3u], is_three));
-        assert (!any([0u, 1u, 2u], is_three));
-        assert (any([1u, 2u, 3u, 4u, 5u], is_three));
-        assert (!any([1u, 2u, 4u, 5u, 6u], is_three));
+        assert (any([1u, 2u, 3u]/~, is_three));
+        assert (!any([0u, 1u, 2u]/~, is_three));
+        assert (any([1u, 2u, 3u, 4u, 5u]/~, is_three));
+        assert (!any([1u, 2u, 4u, 5u, 6u]/~, is_three));
 
-        assert (all([3u, 3u, 3u], is_three));
-        assert (!all([3u, 3u, 2u], is_three));
-        assert (all([3u, 3u, 3u, 3u, 3u], is_three));
-        assert (!all([3u, 3u, 0u, 1u, 2u], is_three));
+        assert (all([3u, 3u, 3u]/~, is_three));
+        assert (!all([3u, 3u, 2u]/~, is_three));
+        assert (all([3u, 3u, 3u, 3u, 3u]/~, is_three));
+        assert (!all([3u, 3u, 0u, 1u, 2u]/~, is_three));
     }
 
     #[test]
     fn test_any2_and_all2() {
 
-        assert (any2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
-        assert (any2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
-        assert (!any2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
-        assert (any2([2u, 4u, 6u], [2u, 4u], is_equal));
+        assert (any2([2u, 4u, 6u]/~, [2u, 4u, 6u]/~, is_equal));
+        assert (any2([1u, 2u, 3u]/~, [4u, 5u, 3u]/~, is_equal));
+        assert (!any2([1u, 2u, 3u]/~, [4u, 5u, 6u]/~, is_equal));
+        assert (any2([2u, 4u, 6u]/~, [2u, 4u]/~, is_equal));
 
-        assert (all2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
-        assert (!all2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
-        assert (!all2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
-        assert (!all2([2u, 4u, 6u], [2u, 4u], is_equal));
+        assert (all2([2u, 4u, 6u]/~, [2u, 4u, 6u]/~, is_equal));
+        assert (!all2([1u, 2u, 3u]/~, [4u, 5u, 3u]/~, is_equal));
+        assert (!all2([1u, 2u, 3u]/~, [4u, 5u, 6u]/~, is_equal));
+        assert (!all2([2u, 4u, 6u]/~, [2u, 4u]/~, is_equal));
     }
 
     #[test]
     fn test_zip_unzip() {
-        let v1 = [1, 2, 3];
-        let v2 = [4, 5, 6];
+        let v1 = [1, 2, 3]/~;
+        let v2 = [4, 5, 6]/~;
 
         let z1 = zip(v1, v2);
 
@@ -1927,9 +1929,9 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert position_elem([], 1) == none;
+        assert position_elem([]/~, 1) == none;
 
-        let v1 = [1, 2, 3, 3, 2, 5];
+        let v1 = [1, 2, 3, 3, 2, 5]/~;
         assert position_elem(v1, 1) == some(0u);
         assert position_elem(v1, 2) == some(1u);
         assert position_elem(v1, 5) == some(5u);
@@ -1941,19 +1943,19 @@ mod tests {
         fn less_than_three(&&i: int) -> bool { ret i < 3; }
         fn is_eighteen(&&i: int) -> bool { ret i == 18; }
 
-        assert position([], less_than_three) == none;
+        assert position([]/~, less_than_three) == none;
 
-        let v1 = [5, 4, 3, 2, 1];
+        let v1 = [5, 4, 3, 2, 1]/~;
         assert position(v1, less_than_three) == some(3u);
         assert position(v1, is_eighteen) == none;
     }
 
     #[test]
     fn test_position_between() {
-        assert position_between([], 0u, 0u, f) == none;
+        assert position_between([]/~, 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')]/~;
 
         assert position_between(v, 0u, 0u, f) == none;
         assert position_between(v, 0u, 1u, f) == none;
@@ -1978,11 +1980,11 @@ mod tests {
 
     #[test]
     fn test_find() {
-        assert find([], f) == none;
+        assert find([]/~, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
-        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')]/~;
 
         assert find(v, f) == some((1, 'b'));
         assert find(v, g) == none;
@@ -1990,10 +1992,10 @@ mod tests {
 
     #[test]
     fn test_find_between() {
-        assert find_between([], 0u, 0u, f) == none;
+        assert find_between([]/~, 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')]/~;
 
         assert find_between(v, 0u, 0u, f) == none;
         assert find_between(v, 0u, 1u, f) == none;
@@ -2018,11 +2020,11 @@ mod tests {
 
     #[test]
     fn test_rposition() {
-        assert find([], f) == none;
+        assert find([]/~, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
-        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')]/~;
 
         assert position(v, f) == some(1u);
         assert position(v, g) == none;
@@ -2030,10 +2032,10 @@ mod tests {
 
     #[test]
     fn test_rposition_between() {
-        assert rposition_between([], 0u, 0u, f) == none;
+        assert rposition_between([]/~, 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')]/~;
 
         assert rposition_between(v, 0u, 0u, f) == none;
         assert rposition_between(v, 0u, 1u, f) == none;
@@ -2058,11 +2060,11 @@ mod tests {
 
     #[test]
     fn test_rfind() {
-        assert rfind([], f) == none;
+        assert rfind([]/~, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
-        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')]/~;
 
         assert rfind(v, f) == some((3, 'b'));
         assert rfind(v, g) == none;
@@ -2070,10 +2072,10 @@ mod tests {
 
     #[test]
     fn test_rfind_between() {
-        assert rfind_between([], 0u, 0u, f) == none;
+        assert rfind_between([]/~, 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')]/~;
 
         assert rfind_between(v, 0u, 0u, f) == none;
         assert rfind_between(v, 0u, 1u, f) == none;
@@ -2098,121 +2100,123 @@ mod tests {
 
     #[test]
     fn reverse_and_reversed() {
-        let v: [mut int] = [mut 10, 20];
+        let v: [mut int]/~ = [mut 10, 20]/~;
         assert (v[0] == 10);
         assert (v[1] == 20);
         reverse(v);
         assert (v[0] == 20);
         assert (v[1] == 10);
-        let v2 = reversed::<int>([10, 20]);
+        let v2 = reversed::<int>([10, 20]/~);
         assert (v2[0] == 20);
         assert (v2[1] == 10);
         v[0] = 30;
         assert (v2[0] == 20);
         // Make sure they work with 0-length vectors too.
 
-        let v4 = reversed::<int>([]);
-        assert (v4 == []);
-        let v3: [mut int] = [mut];
+        let v4 = reversed::<int>([]/~);
+        assert (v4 == []/~);
+        let v3: [mut int]/~ = [mut]/~;
         reverse::<int>(v3);
     }
 
     #[test]
     fn reversed_mut() {
-        let v2 = reversed::<int>([mut 10, 20]);
+        let v2 = reversed::<int>([mut 10, 20]/~);
         assert (v2[0] == 20);
         assert (v2[1] == 10);
     }
 
     #[test]
     fn test_init() {
-        let v = init([1, 2, 3]);
-        assert v == [1, 2];
+        let v = init([1, 2, 3]/~);
+        assert v == [1, 2]/~;
     }
 
     #[test]
     fn test_split() {
         fn f(&&x: int) -> bool { x == 3 }
 
-        assert split([], f) == [];
-        assert split([1, 2], f) == [[1, 2]];
-        assert split([3, 1, 2], f) == [[], [1, 2]];
-        assert split([1, 2, 3], f) == [[1, 2], []];
-        assert split([1, 2, 3, 4, 3, 5], f) == [[1, 2], [4], [5]];
+        assert split([]/~, f) == []/~;
+        assert split([1, 2]/~, f) == [[1, 2]/~]/~;
+        assert split([3, 1, 2]/~, f) == [[]/~, [1, 2]/~]/~;
+        assert split([1, 2, 3]/~, f) == [[1, 2]/~, []/~]/~;
+        assert split([1, 2, 3, 4, 3, 5]/~, f) == [[1, 2]/~, [4]/~, [5]/~]/~;
     }
 
     #[test]
     fn test_splitn() {
         fn f(&&x: int) -> bool { x == 3 }
 
-        assert splitn([], 1u, f) == [];
-        assert splitn([1, 2], 1u, f) == [[1, 2]];
-        assert splitn([3, 1, 2], 1u, f) == [[], [1, 2]];
-        assert splitn([1, 2, 3], 1u, f) == [[1, 2], []];
-        assert splitn([1, 2, 3, 4, 3, 5], 1u, f) == [[1, 2], [4, 3, 5]];
+        assert splitn([]/~, 1u, f) == []/~;
+        assert splitn([1, 2]/~, 1u, f) == [[1, 2]/~]/~;
+        assert splitn([3, 1, 2]/~, 1u, f) == [[]/~, [1, 2]/~]/~;
+        assert splitn([1, 2, 3]/~, 1u, f) == [[1, 2]/~, []/~]/~;
+        assert splitn([1, 2, 3, 4, 3, 5]/~, 1u, f) ==
+                      [[1, 2]/~, [4, 3, 5]/~]/~;
     }
 
     #[test]
     fn test_rsplit() {
         fn f(&&x: int) -> bool { x == 3 }
 
-        assert rsplit([], f) == [];
-        assert rsplit([1, 2], f) == [[1, 2]];
-        assert rsplit([1, 2, 3], f) == [[1, 2], []];
-        assert rsplit([1, 2, 3, 4, 3, 5], f) == [[1, 2], [4], [5]];
+        assert rsplit([]/~, f) == []/~;
+        assert rsplit([1, 2]/~, f) == [[1, 2]/~]/~;
+        assert rsplit([1, 2, 3]/~, f) == [[1, 2]/~, []/~]/~;
+        assert rsplit([1, 2, 3, 4, 3, 5]/~, f) == [[1, 2]/~, [4]/~, [5]/~]/~;
     }
 
     #[test]
     fn test_rsplitn() {
         fn f(&&x: int) -> bool { x == 3 }
 
-        assert rsplitn([], 1u, f) == [];
-        assert rsplitn([1, 2], 1u, f) == [[1, 2]];
-        assert rsplitn([1, 2, 3], 1u, f) == [[1, 2], []];
-        assert rsplitn([1, 2, 3, 4, 3, 5], 1u, f) == [[1, 2, 3, 4], [5]];
+        assert rsplitn([]/~, 1u, f) == []/~;
+        assert rsplitn([1, 2]/~, 1u, f) == [[1, 2]/~]/~;
+        assert rsplitn([1, 2, 3]/~, 1u, f) == [[1, 2]/~, []/~]/~;
+        assert rsplitn([1, 2, 3, 4, 3, 5]/~, 1u, f) ==
+                       [[1, 2, 3, 4]/~, [5]/~]/~;
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_init_empty() {
-        init::<int>([]);
+        init::<int>([]/~);
     }
 
     #[test]
     fn test_concat() {
-        assert concat([[1], [2,3]]) == [1, 2, 3];
+        assert concat([[1]/~, [2,3]/~]/~) == [1, 2, 3]/~;
     }
 
     #[test]
     fn test_connect() {
-        assert connect([], 0) == [];
-        assert connect([[1], [2, 3]], 0) == [1, 0, 2, 3];
-        assert connect([[1], [2], [3]], 0) == [1, 0, 2, 0, 3];
+        assert connect([]/~, 0) == []/~;
+        assert connect([[1]/~, [2, 3]/~]/~, 0) == [1, 0, 2, 3]/~;
+        assert connect([[1]/~, [2]/~, [3]/~]/~, 0) == [1, 0, 2, 0, 3]/~;
     }
 
     #[test]
     fn test_windowed () {
-        assert [[1u,2u,3u],[2u,3u,4u],[3u,4u,5u],[4u,5u,6u]]
-              == windowed (3u, [1u,2u,3u,4u,5u,6u]);
+        assert [[1u,2u,3u]/~,[2u,3u,4u]/~,[3u,4u,5u]/~,[4u,5u,6u]/~]/~
+              == windowed (3u, [1u,2u,3u,4u,5u,6u]/~);
 
-        assert [[1u,2u,3u,4u],[2u,3u,4u,5u],[3u,4u,5u,6u]]
-              == windowed (4u, [1u,2u,3u,4u,5u,6u]);
+        assert [[1u,2u,3u,4u]/~,[2u,3u,4u,5u]/~,[3u,4u,5u,6u]/~]/~
+              == windowed (4u, [1u,2u,3u,4u,5u,6u]/~);
 
-        assert [] == windowed (7u, [1u,2u,3u,4u,5u,6u]);
+        assert []/~ == windowed (7u, [1u,2u,3u,4u,5u,6u]/~);
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_windowed_() {
-        let _x = windowed (0u, [1u,2u,3u,4u,5u,6u]);
+        let _x = windowed (0u, [1u,2u,3u,4u,5u,6u]/~);
     }
 
     #[test]
     fn to_mut_no_copy() {
         unsafe {
-            let x = [1, 2, 3];
+            let x = [1, 2, 3]/~;
             let addr = unsafe::to_ptr(x);
             let x_mut = to_mut(x);
             let addr_mut = unsafe::to_ptr(x_mut);
@@ -2223,7 +2227,7 @@ mod tests {
     #[test]
     fn from_mut_no_copy() {
         unsafe {
-            let x = [mut 1, 2, 3];
+            let x = [mut 1, 2, 3]/~;
             let addr = unsafe::to_ptr(x);
             let x_imm = from_mut(x);
             let addr_imm = unsafe::to_ptr(x_imm);
@@ -2233,24 +2237,24 @@ mod tests {
 
     #[test]
     fn test_unshift() {
-        let mut x = [1, 2, 3];
+        let mut x = [1, 2, 3]/~;
         unshift(x, 0);
-        assert x == [0, 1, 2, 3];
+        assert x == [0, 1, 2, 3]/~;
     }
 
     #[test]
     fn test_capacity() {
-        let mut v = [0u64];
+        let mut v = [0u64]/~;
         reserve(v, 10u);
         assert capacity(v) == 10u;
-        let mut v = [0u32];
+        let mut v = [0u32]/~;
         reserve(v, 10u);
         assert capacity(v) == 10u;
     }
 
     #[test]
     fn test_view() {
-        let v = [1, 2, 3, 4, 5];
+        let v = [1, 2, 3, 4, 5]/~;
         let v = view(v, 1u, 3u);
         assert(len(v) == 2u);
         assert(v[0] == 2);

@@ -1,5 +1,5 @@
 #[doc = "Sorting methods"];
-import vec::len;
+import vec::{len, push};
 import int::{eq, ord};
 
 export le;
@@ -15,18 +15,19 @@ Merge sort. Returns a new vector containing the sorted list.
 Has worst case O(n log n) performance, best case O(n), but
 is not space efficient. This is a stable sort.
 "]
-fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
+fn merge_sort<T: copy>(le: le<T>, v: [const T]/~) -> [T]/~ {
     type slice = (uint, uint);
 
     ret merge_sort_(le, v, (0u, len(v)));
 
-    fn merge_sort_<T: copy>(le: le<T>, v: [const T], slice: slice) -> [T] {
+    fn merge_sort_<T: copy>(le: le<T>, v: [const T]/~, slice: slice)
+        -> [T]/~ {
         let begin = tuple::first(slice);
         let end = tuple::second(slice);
 
         let v_len = end - begin;
-        if v_len == 0u { ret []; }
-        if v_len == 1u { ret [v[begin]]; }
+        if v_len == 0u { ret []/~; }
+        if v_len == 1u { ret [v[begin]]/~; }
 
         let mid = v_len / 2u + begin;
         let a = (begin, mid);
@@ -34,8 +35,8 @@ fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
         ret merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
     }
 
-    fn merge<T: copy>(le: le<T>, a: [T], b: [T]) -> [T] {
-        let mut rs = [];
+    fn merge<T: copy>(le: le<T>, a: [T]/~, b: [T]/~) -> [T]/~ {
+        let mut rs = []/~;
         vec::reserve(rs, len(a) + len(b));
         let a_len = len(a);
         let mut a_ix = 0u;
@@ -53,7 +54,7 @@ fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
     }
 }
 
-fn part<T: copy>(compare_func: le<T>, arr: [mut T], left: uint,
+fn part<T: copy>(compare_func: le<T>, arr: [mut T]/~, left: uint,
                 right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
@@ -70,7 +71,7 @@ fn part<T: copy>(compare_func: le<T>, arr: [mut T], left: uint,
     ret storage_index;
 }
 
-fn qsort<T: copy>(compare_func: le<T>, arr: [mut T], left: uint,
+fn qsort<T: copy>(compare_func: le<T>, arr: [mut T]/~, left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -89,13 +90,13 @@ Quicksort. Sorts a mut vector in place.
 Has worst case O(n^2) performance, average case O(n log n).
 This is an unstable sort.
 "]
-fn quick_sort<T: copy>(compare_func: le<T>, arr: [mut T]) {
+fn quick_sort<T: copy>(compare_func: le<T>, arr: [mut T]/~) {
     if len::<T>(arr) == 0u { ret; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
 fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
-                  arr: [mut T], left: int, right: int) {
+                  arr: [mut T]/~, left: int, right: int) {
     if right <= left { ret; }
     let v: T = arr[right];
     let mut i: int = left - 1;
@@ -145,14 +146,14 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
 #[doc = "
 Fancy quicksort. Sorts a mut vector in place.
 
-Based on algorithm presented by [Sedgewick and Bentley]
+Based on algorithm presented by [Sedgewick and Bentley]/~
 (http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf).
 According to these slides this is the algorithm of choice for
 'randomly ordered keys, abstract compare' & 'small number of key values'.
 
 This is an unstable sort.
 "]
-fn quick_sort3<T: copy ord eq>(arr: [mut T]) {
+fn quick_sort3<T: copy ord eq>(arr: [mut T]/~) {
     if len::<T>(arr) == 0u { ret; }
     qsort3::<T>({ |x, y| x.lt(y) }, { |x, y| x.eq(y) }, arr, 0,
                 (len::<T>(arr) as int) - 1);
@@ -160,7 +161,7 @@ fn quick_sort3<T: copy ord eq>(arr: [mut T]) {
 
 #[cfg(test)]
 mod test_qsort3 {
-    fn check_sort(v1: [mut int], v2: [mut int]) {
+    fn check_sort(v1: [mut int]/~, v2: [mut int]/~) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
         let mut i = 0u;
@@ -174,24 +175,24 @@ mod test_qsort3 {
     #[test]
     fn test() {
         {
-            let v1 = [mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = [mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let v1 = [mut 3, 7, 4, 5, 2, 9, 5, 8]/~;
+            let v2 = [mut 2, 3, 4, 5, 5, 7, 8, 9]/~;
             check_sort(v1, v2);
         }
         {
-            let v1 = [mut 1, 1, 1];
-            let v2 = [mut 1, 1, 1];
+            let v1 = [mut 1, 1, 1]/~;
+            let v2 = [mut 1, 1, 1]/~;
             check_sort(v1, v2);
         }
         {
-            let v1: [mut int] = [mut];
-            let v2: [mut int] = [mut];
+            let v1: [mut int]/~ = [mut]/~;
+            let v2: [mut int]/~ = [mut]/~;
             check_sort(v1, v2);
         }
-        { let v1 = [mut 9]; let v2 = [mut 9]; check_sort(v1, v2); }
+        { let v1 = [mut 9]/~; let v2 = [mut 9]/~; check_sort(v1, v2); }
         {
-            let v1 = [mut 9, 3, 3, 3, 9];
-            let v2 = [mut 3, 3, 3, 9, 9];
+            let v1 = [mut 9, 3, 3, 3, 9]/~;
+            let v2 = [mut 3, 3, 3, 9, 9]/~;
             check_sort(v1, v2);
         }
     }
@@ -199,7 +200,7 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-    fn check_sort(v1: [mut int], v2: [mut int]) {
+    fn check_sort(v1: [mut int]/~, v2: [mut int]/~) {
         let len = vec::len::<int>(v1);
         fn leual(&&a: int, &&b: int) -> bool { ret a <= b; }
         let f = leual;
@@ -215,24 +216,24 @@ mod test_qsort {
     #[test]
     fn test() {
         {
-            let v1 = [mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = [mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let v1 = [mut 3, 7, 4, 5, 2, 9, 5, 8]/~;
+            let v2 = [mut 2, 3, 4, 5, 5, 7, 8, 9]/~;
             check_sort(v1, v2);
         }
         {
-            let v1 = [mut 1, 1, 1];
-            let v2 = [mut 1, 1, 1];
+            let v1 = [mut 1, 1, 1]/~;
+            let v2 = [mut 1, 1, 1]/~;
             check_sort(v1, v2);
         }
         {
-            let v1: [mut int] = [mut];
-            let v2: [mut int] = [mut];
+            let v1: [mut int]/~ = [mut]/~;
+            let v2: [mut int]/~ = [mut]/~;
             check_sort(v1, v2);
         }
-        { let v1 = [mut 9]; let v2 = [mut 9]; check_sort(v1, v2); }
+        { let v1 = [mut 9]/~; let v2 = [mut 9]/~; check_sort(v1, v2); }
         {
-            let v1 = [mut 9, 3, 3, 3, 9];
-            let v2 = [mut 3, 3, 3, 9, 9];
+            let v1 = [mut 9, 3, 3, 3, 9]/~;
+            let v2 = [mut 3, 3, 3, 9, 9]/~;
             check_sort(v1, v2);
         }
     }
@@ -240,9 +241,9 @@ mod test_qsort {
     // Regression test for #750
     #[test]
     fn test_simple() {
-        let names = [mut 2, 1, 3];
+        let names = [mut 2, 1, 3]/~;
 
-        let expected = [1, 2, 3];
+        let expected = [1, 2, 3]/~;
 
         fn le(&&a: int, &&b: int) -> bool { int::le(a, b) }
         sort::quick_sort(le, names);
@@ -261,7 +262,7 @@ mod test_qsort {
 #[cfg(test)]
 mod tests {
 
-    fn check_sort(v1: [int], v2: [int]) {
+    fn check_sort(v1: [int]/~, v2: [int]/~) {
         let len = vec::len::<int>(v1);
         fn le(&&a: int, &&b: int) -> bool { ret a <= b; }
         let f = le;
@@ -277,16 +278,16 @@ mod tests {
     #[test]
     fn test() {
         {
-            let v1 = [3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = [2, 3, 4, 5, 5, 7, 8, 9];
+            let v1 = [3, 7, 4, 5, 2, 9, 5, 8]/~;
+            let v2 = [2, 3, 4, 5, 5, 7, 8, 9]/~;
             check_sort(v1, v2);
         }
-        { let v1 = [1, 1, 1]; let v2 = [1, 1, 1]; check_sort(v1, v2); }
-        { let v1: [int] = []; let v2: [int] = []; check_sort(v1, v2); }
-        { let v1 = [9]; let v2 = [9]; check_sort(v1, v2); }
+        { let v1 = [1, 1, 1]/~; let v2 = [1, 1, 1]/~; check_sort(v1, v2); }
+        { let v1:[int]/~ = []/~; let v2:[int]/~ = []/~; check_sort(v1, v2); }
+        { let v1 = [9]/~; let v2 = [9]/~; check_sort(v1, v2); }
         {
-            let v1 = [9, 3, 3, 3, 9];
-            let v2 = [3, 3, 3, 9, 9];
+            let v1 = [9, 3, 3, 3, 9]/~;
+            let v2 = [3, 3, 3, 9, 9]/~;
             check_sort(v1, v2);
         }
     }
@@ -294,9 +295,9 @@ mod tests {
     #[test]
     fn test_merge_sort_mutable() {
         fn le(&&a: int, &&b: int) -> bool { ret a <= b; }
-        let v1 = [mut 3, 2, 1];
+        let v1 = [mut 3, 2, 1]/~;
         let v2 = merge_sort(le, v1);
-        assert v2 == [1, 2, 3];
+        assert v2 == [1, 2, 3]/~;
     }
 }
 

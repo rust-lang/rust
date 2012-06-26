@@ -37,7 +37,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
                       ast::item_iface(_, _, _) {
                         let def_id = { crate: ast::local_crate,
                                       node: intrinsic_item.id };
-                        let substs = {self_r: none, self_ty: none, tps: []};
+                        let substs = {self_r: none, self_ty: none, tps: []/~};
                         let ty = ty::mk_iface(ccx.tcx, def_id, substs);
                         ccx.tcx.intrinsic_ifaces.insert
                             (intrinsic_item.ident, (def_id, ty));
@@ -96,8 +96,8 @@ impl of ast_conv for @crate_ctxt {
 
 fn get_enum_variant_types(ccx: @crate_ctxt,
                           enum_ty: ty::t,
-                          variants: [ast::variant],
-                          ty_params: [ast::ty_param],
+                          variants: [ast::variant]/~,
+                          ty_params: [ast::ty_param]/~,
                           rp: ast::region_param) {
     let tcx = ccx.tcx;
 
@@ -118,7 +118,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                             inputs: args,
                             output: enum_ty,
                             ret_style: ast::return_val,
-                            constraints: []})
+                            constraints: []/~})
         };
         let tpt = {bounds: ty_param_bounds(ccx, ty_params),
                    rp: rp,
@@ -130,7 +130,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
 
 fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
     fn store_methods<T>(ccx: @crate_ctxt, id: ast::node_id,
-                        stuff: [T], f: fn@(T) -> ty::method) {
+                        stuff: [T]/~, f: fn@(T) -> ty::method) {
         ty::store_iface_methods(ccx.tcx, id, @vec::map(stuff, f));
     }
 
@@ -224,11 +224,11 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
 }
 
 fn check_methods_against_iface(ccx: @crate_ctxt,
-                               tps: [ast::ty_param],
+                               tps: [ast::ty_param]/~,
                                rp: ast::region_param,
                                selfty: ty::t,
                                a_ifacety: @ast::iface_ref,
-                               ms: [converted_method]) {
+                               ms: [converted_method]/~) {
 
     let tcx = ccx.tcx;
     let (did, tpt) = instantiate_iface_ref(ccx, a_ifacety, rp);
@@ -259,7 +259,7 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
 
 fn convert_class_item(ccx: @crate_ctxt,
                       rp: ast::region_param,
-                      bounds: @[ty::param_bounds],
+                      bounds: @[ty::param_bounds]/~,
                       v: ast_util::ivar) {
     let tt = ccx.to_ty(type_rscope(rp), v.ty);
     write_ty_to_tcx(ccx.tcx, v.id, tt);
@@ -270,10 +270,10 @@ fn convert_class_item(ccx: @crate_ctxt,
 type converted_method = {mty: ty::method, id: ast::node_id, span: span};
 
 fn convert_methods(ccx: @crate_ctxt,
-                   ms: [@ast::method],
+                   ms: [@ast::method]/~,
                    rp: ast::region_param,
-                   rcvr_bounds: @[ty::param_bounds],
-                   self_ty: ty::t) -> [converted_method] {
+                   rcvr_bounds: @[ty::param_bounds]/~,
+                   self_ty: ty::t) -> [converted_method]/~ {
 
     let tcx = ccx.tcx;
     vec::map(ms) { |m|
@@ -344,7 +344,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
               inputs: t_args,
               output: t_res,
               ret_style: ast::return_val,
-              constraints: []}); // tjc TODO
+              constraints: []/~}); // tjc TODO
         write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
         tcx.tcache.insert(local_def(ctor.node.id),
                           {bounds: tpt.bounds,
@@ -549,26 +549,26 @@ fn ty_of_native_item(ccx: @crate_ctxt, it: @ast::native_item)
     }
 }
 fn ty_param_bounds(ccx: @crate_ctxt,
-                   params: [ast::ty_param]) -> @[ty::param_bounds] {
+                   params: [ast::ty_param]/~) -> @[ty::param_bounds]/~ {
 
     fn compute_bounds(ccx: @crate_ctxt,
                       param: ast::ty_param) -> ty::param_bounds {
         @vec::flat_map(*param.bounds) { |b|
             alt b {
-              ast::bound_send { [ty::bound_send] }
-              ast::bound_copy { [ty::bound_copy] }
-              ast::bound_const { [ty::bound_const] }
+              ast::bound_send { [ty::bound_send]/~ }
+              ast::bound_copy { [ty::bound_copy]/~ }
+              ast::bound_const { [ty::bound_const]/~ }
               ast::bound_iface(t) {
                 let ity = ast_ty_to_ty(ccx, empty_rscope, t);
                 alt ty::get(ity).struct {
                   ty::ty_iface(*) {
-                    [ty::bound_iface(ity)]
+                    [ty::bound_iface(ity)]/~
                   }
                   _ {
                     ccx.tcx.sess.span_err(
                         t.span, "type parameter bounds must be \
                                  interface types");
-                    []
+                    []/~
                   }
                 }
               }
@@ -590,7 +590,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
 
 fn ty_of_native_fn_decl(ccx: @crate_ctxt,
                         decl: ast::fn_decl,
-                        ty_params: [ast::ty_param],
+                        ty_params: [ast::ty_param]/~,
                         def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {
 
     let bounds = ty_param_bounds(ccx, ty_params);
@@ -603,14 +603,14 @@ fn ty_of_native_fn_decl(ccx: @crate_ctxt,
                                    inputs: input_tys,
                                    output: output_ty,
                                    ret_style: ast::return_val,
-                                   constraints: []});
+                                   constraints: []/~});
     let tpt = {bounds: bounds, rp: ast::rp_none, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
     ret tpt;
 }
 
-fn mk_ty_params(ccx: @crate_ctxt, atps: [ast::ty_param])
-    -> {bounds: @[ty::param_bounds], params: [ty::t]} {
+fn mk_ty_params(ccx: @crate_ctxt, atps: [ast::ty_param]/~)
+    -> {bounds: @[ty::param_bounds]/~, params: [ty::t]/~} {
 
     let mut i = 0u;
     let bounds = ty_param_bounds(ccx, atps);
@@ -622,8 +622,8 @@ fn mk_ty_params(ccx: @crate_ctxt, atps: [ast::ty_param])
      })}
 }
 
-fn mk_substs(ccx: @crate_ctxt, atps: [ast::ty_param], rp: ast::region_param)
-    -> {bounds: @[ty::param_bounds], substs: ty::substs} {
+fn mk_substs(ccx: @crate_ctxt, atps: [ast::ty_param]/~, rp: ast::region_param)
+    -> {bounds: @[ty::param_bounds]/~, substs: ty::substs} {
 
     let {bounds, params} = mk_ty_params(ccx, atps);
     let self_r = alt rp {

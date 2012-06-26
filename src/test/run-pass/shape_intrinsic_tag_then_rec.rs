@@ -16,7 +16,7 @@ enum opt_span {
 type span = {lo: uint, hi: uint, expanded_from: opt_span};
 type spanned<T> = { data: T, span: span };
 type ty_ = uint;
-type path_ = { global: bool, idents: [str], types: [@ty] };
+type path_ = { global: bool, idents: [str]/~, types: [@ty]/~ };
 type path = spanned<path_>;
 type ty = spanned<ty_>;
 

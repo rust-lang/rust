@@ -1,8 +1,8 @@
 fn two_args<T>(x: T, y: T) { }
 
 fn main() {
-    let x: [mut int] = [mut 3];
-    let y: [int] = [3];
+    let x: [mut int]/~ = [mut 3]/~;
+    let y: [int]/~ = [3]/~;
     let a: @mut int = @mut 3;
     let b: @int = @3;
 

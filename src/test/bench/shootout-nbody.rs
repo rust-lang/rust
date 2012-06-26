@@ -13,7 +13,7 @@ native mod libc {
     fn sqrt(n: float) -> float;
 }
 
-fn main(args: [str]) {
+fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
         ["", "4000000"]
     } else if args.len() <= 1u {
@@ -22,7 +22,7 @@ fn main(args: [str]) {
         args
     };
     let n = int::from_str(args[1]).get();
-    let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
+    let bodies: [Body::props]/~ = NBodySystem::MakeNBodySystem();
     io::println(#fmt("%f", NBodySystem::energy(bodies)));
     let mut i: int = 0;
     while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
@@ -34,11 +34,11 @@ fn main(args: [str]) {
 
 mod NBodySystem {
 
-    fn MakeNBodySystem() -> [Body::props] {
+    fn MakeNBodySystem() -> [Body::props]/~ {
         // these each return a Body::props
-        let bodies: [Body::props] =
+        let bodies: [Body::props]/~ =
             [Body::sun(), Body::jupiter(), Body::saturn(), Body::uranus(),
-             Body::neptune()];
+             Body::neptune()]/~;
 
         let mut px: float = 0.0;
         let mut py: float = 0.0;
@@ -59,7 +59,7 @@ mod NBodySystem {
         ret bodies;
     }
 
-    fn advance(bodies: [Body::props], dt: float) {
+    fn advance(bodies: [Body::props]/~, dt: float) {
 
         let mut i: int = 0;
         while i < 5 {
@@ -98,7 +98,7 @@ mod NBodySystem {
         b.z += dt * b.vz;
     }
 
-    fn energy(bodies: [Body::props]) -> float unsafe {
+    fn energy(bodies: [Body::props]/~) -> float unsafe {
         let mut dx: float;
         let mut dy: float;
         let mut dz: float;

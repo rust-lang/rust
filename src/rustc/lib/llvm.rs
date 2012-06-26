@@ -981,21 +981,22 @@ fn mk_type_names() -> type_names {
 }
 
 fn type_to_str(names: type_names, ty: TypeRef) -> str {
-    ret type_to_str_inner(names, [], ty);
+    ret type_to_str_inner(names, []/~, ty);
 }
 
-fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
+fn type_to_str_inner(names: type_names, outer0: [TypeRef]/~, ty: TypeRef) ->
    str {
     alt type_has_name(names, ty) {
       option::some(n) { ret n; }
       _ {}
     }
 
-    let outer = outer0 + [ty];
+    let outer = outer0 + [ty]/~;
 
     let kind = llvm::LLVMGetTypeKind(ty);
 
-    fn tys_str(names: type_names, outer: [TypeRef], tys: [TypeRef]) -> str {
+    fn tys_str(names: type_names, outer: [TypeRef]/~,
+               tys: [TypeRef]/~) -> str {
         let mut s: str = "";
         let mut first: bool = true;
         for tys.each {|t|
@@ -1021,7 +1022,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         let mut s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args = llvm::LLVMCountParamTypes(ty) as uint;
-        let args: [TypeRef] = vec::from_elem::<TypeRef>(n_args, 0 as TypeRef);
+        let args = vec::from_elem(n_args, 0 as TypeRef);
         unsafe {
             llvm::LLVMGetParamTypes(ty, vec::unsafe::to_ptr(args));
         }
@@ -1033,7 +1034,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       Struct {
         let mut s: str = "{";
         let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
-        let elts: [TypeRef] = vec::from_elem::<TypeRef>(n_elts, 0 as TypeRef);
+        let elts = vec::from_elem(n_elts, 0 as TypeRef);
         unsafe {
             llvm::LLVMGetStructElementTypes(ty, vec::unsafe::to_ptr(elts));
         }
@@ -1082,7 +1083,7 @@ fn float_width(llt: TypeRef) -> uint {
         };
 }
 
-fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef] unsafe {
+fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef]/~ unsafe {
     let args = vec::from_elem(llvm::LLVMCountParamTypes(fn_ty) as uint,
                              0 as TypeRef);
     llvm::LLVMGetParamTypes(fn_ty, vec::unsafe::to_ptr(args));

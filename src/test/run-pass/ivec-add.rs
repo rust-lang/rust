@@ -1,6 +1,6 @@
-fn double<T: copy>(a: T) -> [T] { ret [a] + [a]; }
+fn double<T: copy>(a: T) -> [T]/~ { ret [a]/~ + [a]/~; }
 
-fn double_int(a: int) -> [int] { ret [a] + [a]; }
+fn double_int(a: int) -> [int]/~ { ret [a]/~ + [a]/~; }
 
 fn main() {
     let mut d = double(1);

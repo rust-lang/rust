@@ -66,14 +66,14 @@ fn tzset() {
 }
 
 type tm = {
-    tm_sec: i32, // seconds after the minute [0-60]
-    tm_min: i32, // minutes after the hour [0-59]
-    tm_hour: i32, // hours after midnight [0-23]
-    tm_mday: i32, // days of the month [1-31]
-    tm_mon: i32, // months since January [0-11]
+    tm_sec: i32, // seconds after the minute [0-60]/~
+    tm_min: i32, // minutes after the hour [0-59]/~
+    tm_hour: i32, // hours after midnight [0-23]/~
+    tm_mday: i32, // days of the month [1-31]/~
+    tm_mon: i32, // months since January [0-11]/~
     tm_year: i32, // years since 1900
-    tm_wday: i32, // days since Sunday [0-6]
-    tm_yday: i32, // days since January 1 [0-365]
+    tm_wday: i32, // days since Sunday [0-6]/~
+    tm_yday: i32, // days since January 1 [0-365]/~
     tm_isdst: i32, // Daylight Savings Time flag
     tm_gmtoff: i32, // offset from UTC in seconds
     tm_zone: str, // timezone abbreviation
@@ -151,7 +151,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
         ret true;
     }
 
-    fn match_strs(s: str, pos: uint, strs: [(str, i32)])
+    fn match_strs(s: str, pos: uint, strs: [(str, i32)]/~)
       -> option<(i32, uint)> {
         let mut i = 0u;
         let len = vec::len(strs);
@@ -214,7 +214,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
                 ("Thursday", 4_i32),
                 ("Friday", 5_i32),
                 ("Saturday", 6_i32)
-            ]) {
+            ]/~) {
               some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
               none { err("Invalid day") }
             }
@@ -228,7 +228,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
                 ("Thu", 4_i32),
                 ("Fri", 5_i32),
                 ("Sat", 6_i32)
-            ]) {
+            ]/~) {
               some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
               none { err("Invalid day") }
             }
@@ -247,7 +247,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
                 ("October", 9_i32),
                 ("November", 10_i32),
                 ("December", 11_i32)
-            ]) {
+            ]/~) {
               some(item) { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
               none { err("Invalid month") }
             }
@@ -266,7 +266,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
                 ("Oct", 9_i32),
                 ("Nov", 10_i32),
                 ("Dec", 11_i32)
-            ]) {
+            ]/~) {
               some(item) { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
               none { err("Invalid month") }
             }
@@ -385,13 +385,13 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           }
           'n' { parse_char(s, pos, '\n') }
           'P' {
-            alt match_strs(s, pos, [("am", 0_i32), ("pm", 12_i32)]) {
+            alt match_strs(s, pos, [("am", 0_i32), ("pm", 12_i32)]/~) {
               some(item) { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
               none { err("Invalid hour") }
             }
           }
           'p' {
-            alt match_strs(s, pos, [("AM", 0_i32), ("PM", 12_i32)]) {
+            alt match_strs(s, pos, [("AM", 0_i32), ("PM", 12_i32)]/~) {
               some(item) { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
               none { err("Invalid hour") }
             }
@@ -1010,7 +1010,7 @@ mod tests {
             "Thursday",
             "Friday",
             "Saturday"
-        ].iter { |day| assert test(day, "%A"); }
+        ]/~.iter { |day| assert test(day, "%A"); }
 
         [
             "Sun",
@@ -1020,7 +1020,7 @@ mod tests {
             "Thu",
             "Fri",
             "Sat"
-        ].iter { |day| assert test(day, "%a"); }
+        ]/~.iter { |day| assert test(day, "%a"); }
 
         [
             "January",
@@ -1035,7 +1035,7 @@ mod tests {
             "October",
             "November",
             "December"
-        ].iter { |day| assert test(day, "%B"); }
+        ]/~.iter { |day| assert test(day, "%B"); }
 
         [
             "Jan",
@@ -1050,7 +1050,7 @@ mod tests {
             "Oct",
             "Nov",
             "Dec"
-        ].iter { |day| assert test(day, "%b"); }
+        ]/~.iter { |day| assert test(day, "%b"); }
 
         assert test("19", "%C");
         assert test("Fri Feb 13 23:31:30 2009", "%c");

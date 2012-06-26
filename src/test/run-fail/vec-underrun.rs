@@ -2,7 +2,7 @@
 
 // error-pattern:bounds check
 fn main() {
-    let v: [int] = [10, 20];
+    let v: [int]/~ = [10, 20]/~;
     let x: int = 0;
     assert (v[x] == 10);
     // Bounds-check failure.

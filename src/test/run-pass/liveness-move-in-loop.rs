@@ -1,11 +1,11 @@
 fn take(-x: int) -> int {x}
 
 fn the_loop() {
-    let mut list = [];
+    let mut list = []/~;
     loop {
         let x = 5;
         if x > 3 {
-            list += [take(x)];
+            list += [take(x)]/~;
         } else {
             break;
         }

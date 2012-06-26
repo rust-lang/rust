@@ -41,9 +41,9 @@ type fn_ident = option<ident>;
 #[auto_serialize]
 type path = {span: span,
              global: bool,
-             idents: [ident],
+             idents: [ident]/~,
              rp: option<@region>,
-             types: [@ty]};
+             types: [@ty]/~};
 
 #[auto_serialize]
 type crate_num = int;
@@ -66,7 +66,7 @@ enum ty_param_bound {
 }
 
 #[auto_serialize]
-type ty_param = {ident: ident, id: node_id, bounds: @[ty_param_bound]};
+type ty_param = {ident: ident, id: node_id, bounds: @[ty_param_bound]/~};
 
 #[auto_serialize]
 enum def {
@@ -92,19 +92,19 @@ enum def {
 
 // The set of meta_items that define the compilation environment of the crate,
 // used to drive conditional compilation
-type crate_cfg = [@meta_item];
+type crate_cfg = [@meta_item]/~;
 
 type crate = spanned<crate_>;
 
 type crate_ =
-    {directives: [@crate_directive],
+    {directives: [@crate_directive]/~,
      module: _mod,
-     attrs: [attribute],
+     attrs: [attribute]/~,
      config: crate_cfg};
 
 enum crate_directive_ {
-    cdir_src_mod(ident, [attribute]),
-    cdir_dir_mod(ident, [@crate_directive], [attribute]),
+    cdir_src_mod(ident, [attribute]/~),
+    cdir_dir_mod(ident, [@crate_directive]/~, [attribute]/~),
 
     // NB: cdir_view_item is *not* processed by the rest of the compiler, the
     // attached view_items are sunk into the crate's module during parsing,
@@ -124,7 +124,7 @@ type meta_item = spanned<meta_item_>;
 #[auto_serialize]
 enum meta_item_ {
     meta_word(ident),
-    meta_list(ident, [@meta_item]),
+    meta_list(ident, [@meta_item]/~),
     meta_name_value(ident, lit),
 }
 
@@ -132,8 +132,11 @@ enum meta_item_ {
 type blk = spanned<blk_>;
 
 #[auto_serialize]
-type blk_ = {view_items: [@view_item], stmts: [@stmt], expr: option<@expr>,
-             id: node_id, rules: blk_check_mode};
+type blk_ = {view_items: [@view_item]/~,
+             stmts: [@stmt]/~,
+             expr: option<@expr>,
+             id: node_id,
+             rules: blk_check_mode};
 
 #[auto_serialize]
 type pat = {id: node_id, node: pat_, span: span};
@@ -152,10 +155,10 @@ enum pat_ {
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
     pat_ident(@path, option<@pat>),
-    pat_enum(@path, option<[@pat]>), // "none" means a * pattern where
+    pat_enum(@path, option<[@pat]/~>), // "none" means a * pattern where
                                   // we don't bind the fields to names
-    pat_rec([field_pat], bool),
-    pat_tup([@pat]),
+    pat_rec([field_pat]/~, bool),
+    pat_tup([@pat]/~),
     pat_box(@pat),
     pat_uniq(@pat),
     pat_lit(@expr),
@@ -267,10 +270,10 @@ type local = spanned<local_>;
 type decl = spanned<decl_>;
 
 #[auto_serialize]
-enum decl_ { decl_local([@local]), decl_item(@item), }
+enum decl_ { decl_local([@local]/~), decl_item(@item), }
 
 #[auto_serialize]
-type arm = {pats: [@pat], guard: option<@expr>, body: blk};
+type arm = {pats: [@pat]/~, guard: option<@expr>, body: blk};
 
 #[auto_serialize]
 type field_ = {mutbl: mutability, ident: ident, expr: @expr};
@@ -293,10 +296,10 @@ enum alt_mode { alt_check, alt_exhaustive, }
 #[auto_serialize]
 enum expr_ {
     expr_vstore(@expr, vstore),
-    expr_vec([@expr], mutability),
-    expr_rec([field], option<@expr>),
-    expr_call(@expr, [@expr], bool), // True iff last argument is a block
-    expr_tup([@expr]),
+    expr_vec([@expr]/~, mutability),
+    expr_rec([field]/~, option<@expr>),
+    expr_call(@expr, [@expr]/~, bool), // True iff last argument is a block
+    expr_tup([@expr]/~),
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),
     expr_lit(@lit),
@@ -307,7 +310,7 @@ enum expr_ {
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
     expr_loop(blk),
-    expr_alt(@expr, [arm], alt_mode),
+    expr_alt(@expr, [arm]/~, alt_mode),
     expr_fn(proto, fn_decl, blk, capture_clause),
     expr_fn_block(fn_decl, blk, capture_clause),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
@@ -327,7 +330,7 @@ enum expr_ {
     expr_assign(@expr, @expr),
     expr_swap(@expr, @expr),
     expr_assign_op(binop, @expr, @expr),
-    expr_field(@expr, ident, [@ty]),
+    expr_field(@expr, ident, [@ty]/~),
     expr_index(@expr, @expr),
     expr_path(@path),
     expr_addr_of(mutability, @expr),
@@ -359,7 +362,7 @@ type capture_item = @{
 };
 
 #[auto_serialize]
-type capture_clause = @[capture_item];
+type capture_clause = @[capture_item]/~;
 
 /*
 // Says whether this is a block the user marked as
@@ -373,7 +376,7 @@ enum blk_sort {
 #[auto_serialize]
 enum token_tree {
     /* for macro invocations; parsing is the macro's job */
-    tt_delim([token_tree]),
+    tt_delim([token_tree]/~),
     tt_flat(span, token::token)
 }
 
@@ -384,7 +387,7 @@ type matcher = spanned<matcher_>;
 enum matcher_ {
     mtc_tok(token::token),
     /* body, separator, zero ok? : */
-    mtc_rep([matcher], option<token::token>, bool),
+    mtc_rep([matcher]/~, option<token::token>, bool),
     mtc_bb(ident, ident, uint)
 }
 
@@ -438,8 +441,8 @@ type ty_field_ = {ident: ident, mt: mt};
 type ty_field = spanned<ty_field_>;
 
 #[auto_serialize]
-type ty_method = {ident: ident, attrs: [attribute],
-                  decl: fn_decl, tps: [ty_param], span: span};
+type ty_method = {ident: ident, attrs: [attribute]/~,
+                  decl: fn_decl, tps: [ty_param]/~, span: span};
 
 #[auto_serialize]
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
@@ -478,11 +481,11 @@ enum ty_ {
     ty_vec(mt),
     ty_ptr(mt),
     ty_rptr(@region, mt),
-    ty_rec([ty_field]),
+    ty_rec([ty_field]/~),
     ty_fn(proto, fn_decl),
-    ty_tup([@ty]),
+    ty_tup([@ty]/~),
     ty_path(@path, node_id),
-    ty_constr(@ty, [@ty_constr]),
+    ty_constr(@ty, [@ty_constr]/~),
     ty_vstore(@ty, vstore),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
@@ -522,7 +525,7 @@ type constr_arg = spanned<fn_constr_arg>;
 
 #[auto_serialize]
 type constr_general_<ARG, ID> =
-    {path: @path, args: [@sp_constr_arg<ARG>], id: ID};
+    {path: @path, args: [@sp_constr_arg<ARG>]/~, id: ID};
 
 // In the front end, constraints have a node ID attached.
 // Typeck turns this to a def_id, using the output of resolve.
@@ -549,11 +552,11 @@ type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 
 #[auto_serialize]
 type fn_decl =
-    {inputs: [arg],
+    {inputs: [arg]/~,
      output: @ty,
      purity: purity,
      cf: ret_style,
-     constraints: [@constr]};
+     constraints: [@constr]/~};
 
 #[auto_serialize]
 enum purity {
@@ -571,14 +574,14 @@ enum ret_style {
 }
 
 #[auto_serialize]
-type method = {ident: ident, attrs: [attribute],
-               tps: [ty_param], decl: fn_decl, body: blk,
+type method = {ident: ident, attrs: [attribute]/~,
+               tps: [ty_param]/~, decl: fn_decl, body: blk,
                id: node_id, span: span, self_id: node_id,
                vis: visibility};  // always public, unless it's a
                                   // class method
 
 #[auto_serialize]
-type _mod = {view_items: [@view_item], items: [@item]};
+type _mod = {view_items: [@view_item]/~, items: [@item]/~};
 
 #[auto_serialize]
 enum native_abi {
@@ -589,14 +592,14 @@ enum native_abi {
 
 #[auto_serialize]
 type native_mod =
-    {view_items: [@view_item],
-     items: [@native_item]};
+    {view_items: [@view_item]/~,
+     items: [@native_item]/~};
 
 #[auto_serialize]
 type variant_arg = {ty: @ty, id: node_id};
 
 #[auto_serialize]
-type variant_ = {name: ident, attrs: [attribute], args: [variant_arg],
+type variant_ = {name: ident, attrs: [attribute]/~, args: [variant_arg]/~,
                  id: node_id, disr_expr: option<@expr>, vis: visibility};
 
 #[auto_serialize]
@@ -625,18 +628,18 @@ enum view_path_ {
     view_path_glob(@path, node_id),
 
     // foo::bar::{a,b,c}
-    view_path_list(@path, [path_list_ident], node_id)
+    view_path_list(@path, [path_list_ident]/~, node_id)
 }
 
 #[auto_serialize]
-type view_item = {node: view_item_, attrs: [attribute],
+type view_item = {node: view_item_, attrs: [attribute]/~,
                   vis: visibility, span: span};
 
 #[auto_serialize]
 enum view_item_ {
-    view_item_use(ident, [@meta_item], node_id),
-    view_item_import([@view_path]),
-    view_item_export([@view_path])
+    view_item_use(ident, [@meta_item]/~, node_id),
+    view_item_import([@view_path]/~),
+    view_item_export([@view_path]/~)
 }
 
 // Meta-data associated with an item
@@ -663,7 +666,7 @@ type iface_ref = {path: @path, id: node_id};
 enum visibility { public, private }
 
 #[auto_serialize]
-type item = {ident: ident, attrs: [attribute],
+type item = {ident: ident, attrs: [attribute]/~,
              id: node_id, node: item_,
              vis: visibility, span: span};
 
@@ -676,23 +679,23 @@ enum region_param {
 #[auto_serialize]
 enum item_ {
     item_const(@ty, @expr),
-    item_fn(fn_decl, [ty_param], blk),
+    item_fn(fn_decl, [ty_param]/~, blk),
     item_mod(_mod),
     item_native_mod(native_mod),
-    item_ty(@ty, [ty_param], region_param),
-    item_enum([variant], [ty_param], region_param),
-    item_class([ty_param], /* ty params for class */
-               [@iface_ref],   /* ifaces this class implements */
-               [@class_member], /* methods, etc. */
+    item_ty(@ty, [ty_param]/~, region_param),
+    item_enum([variant]/~, [ty_param]/~, region_param),
+    item_class([ty_param]/~, /* ty params for class */
+               [@iface_ref]/~,   /* ifaces this class implements */
+               [@class_member]/~, /* methods, etc. */
                                /* (not including ctor or dtor) */
                class_ctor,
                /* dtor is optional */
                option<class_dtor>,
                region_param
                ),
-    item_iface([ty_param], region_param, [ty_method]),
-    item_impl([ty_param], region_param, option<@iface_ref> /* iface */,
-              @ty /* self */, [@method]),
+    item_iface([ty_param]/~, region_param, [ty_method]/~),
+    item_impl([ty_param]/~, region_param, option<@iface_ref> /* iface */,
+              @ty /* self */, [@method]/~),
 }
 
 #[auto_serialize]
@@ -727,14 +730,14 @@ type class_dtor_ = {id: node_id,
 #[auto_serialize]
 type native_item =
     {ident: ident,
-     attrs: [attribute],
+     attrs: [attribute]/~,
      node: native_item_,
      id: node_id,
      span: span};
 
 #[auto_serialize]
 enum native_item_ {
-    native_item_fn(fn_decl, [ty_param]),
+    native_item_fn(fn_decl, [ty_param]/~),
 }
 
 // The data we save and restore about an inlined item or method.  This is not
@@ -745,8 +748,8 @@ enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_native(@native_item),
-    ii_ctor(class_ctor, ident, [ty_param], def_id /* parent id */),
-    ii_dtor(class_dtor, ident, [ty_param], def_id /* parent id */)
+    ii_ctor(class_ctor, ident, [ty_param]/~, def_id /* parent id */),
+    ii_dtor(class_dtor, ident, [ty_param]/~, def_id /* parent id */)
 }
 
 //

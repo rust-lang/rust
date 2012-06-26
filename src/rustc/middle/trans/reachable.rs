@@ -31,7 +31,7 @@ fn find_reachable(crate_mod: _mod, exp_map: resolve::exp_map,
     rmap
 }
 
-fn traverse_exports(cx: ctx, vis: [@view_item]) -> bool {
+fn traverse_exports(cx: ctx, vis: [@view_item]/~) -> bool {
     let mut found_export = false;
     for vec::each(vis) {|vi|
         alt vi.node {

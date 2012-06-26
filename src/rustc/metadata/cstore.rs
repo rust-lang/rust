@@ -40,7 +40,7 @@ type cnum_map = map::hashmap<ast::crate_num, ast::crate_num>;
 type mod_path_map = map::hashmap<ast::def_id, @str>;
 
 type crate_metadata = @{name: str,
-                        data: @[u8],
+                        data: @[u8]/~,
                         cnum_map: cnum_map,
                         cnum: ast::crate_num};
 
@@ -55,9 +55,9 @@ type cstore_private =
     @{metas: map::hashmap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
       mod_path_map: mod_path_map,
-      mut used_crate_files: [str],
-      mut used_libraries: [str],
-      mut used_link_args: [str]};
+      mut used_crate_files: [str]/~,
+      mut used_libraries: [str]/~,
+      mut used_link_args: [str]/~};
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
@@ -74,9 +74,9 @@ fn mk_cstore() -> cstore {
     ret private(@{metas: meta_cache,
                   use_crate_map: crate_map,
                   mod_path_map: mod_path_map,
-                  mut used_crate_files: [],
-                  mut used_libraries: [],
-                  mut used_link_args: []});
+                  mut used_crate_files: []/~,
+                  mut used_libraries: []/~,
+                  mut used_link_args: []/~});
 }
 
 fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {
@@ -113,11 +113,11 @@ fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
 
 fn add_used_crate_file(cstore: cstore, lib: str) {
     if !vec::contains(p(cstore).used_crate_files, lib) {
-        p(cstore).used_crate_files += [lib];
+        p(cstore).used_crate_files += [lib]/~;
     }
 }
 
-fn get_used_crate_files(cstore: cstore) -> [str] {
+fn get_used_crate_files(cstore: cstore) -> [str]/~ {
     ret p(cstore).used_crate_files;
 }
 
@@ -125,11 +125,11 @@ fn add_used_library(cstore: cstore, lib: str) -> bool {
     assert lib != "";
 
     if vec::contains(p(cstore).used_libraries, lib) { ret false; }
-    p(cstore).used_libraries += [lib];
+    p(cstore).used_libraries += [lib]/~;
     ret true;
 }
 
-fn get_used_libraries(cstore: cstore) -> [str] {
+fn get_used_libraries(cstore: cstore) -> [str]/~ {
     ret p(cstore).used_libraries;
 }
 
@@ -137,7 +137,7 @@ fn add_used_link_args(cstore: cstore, args: str) {
     p(cstore).used_link_args += str::split_char(args, ' ');
 }
 
-fn get_used_link_args(cstore: cstore) -> [str] {
+fn get_used_link_args(cstore: cstore) -> [str]/~ {
     ret p(cstore).used_link_args;
 }
 
@@ -153,15 +153,15 @@ fn find_use_stmt_cnum(cstore: cstore,
 
 // returns hashes of crates directly used by this crate. Hashes are
 // sorted by crate name.
-fn get_dep_hashes(cstore: cstore) -> [@str] {
+fn get_dep_hashes(cstore: cstore) -> [@str]/~ {
     type crate_hash = {name: @str, hash: @str};
-    let mut result = [];
+    let mut result = []/~;
 
     for p(cstore).use_crate_map.each_value {|cnum|
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         #debug("Add hash[%s]: %s", cdata.name, *hash);
-        result += [{name: @cdata.name, hash: hash}];
+        result += [{name: @cdata.name, hash: hash}]/~;
     };
     fn lteq(a: crate_hash, b: crate_hash) -> bool {
         ret *a.name <= *b.name;
@@ -175,9 +175,9 @@ fn get_dep_hashes(cstore: cstore) -> [@str] {
     ret vec::map(sorted, mapper);
 }
 
-fn get_path(cstore: cstore, d: ast::def_id) -> [ast::ident] {
+fn get_path(cstore: cstore, d: ast::def_id) -> [ast::ident]/~ {
     // let f = bind str::split_str(_, "::");
-    option::map_default(p(cstore).mod_path_map.find(d), [],
+    option::map_default(p(cstore).mod_path_map.find(d), []/~,
                         {|ds| str::split_str(*ds, "::").map({|x|@x})})
 }
 // Local Variables:

@@ -26,8 +26,8 @@ fn any<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
 }
 
 fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
-                                         prd: fn(A) -> bool) -> [A] {
-    let mut result = [];
+                                         prd: fn(A) -> bool) -> [A]/~ {
+    let mut result = []/~;
     self.size_hint().iter {|hint| vec::reserve(result, hint); }
     for self.each {|a|
         if prd(a) { vec::push(result, a); }
@@ -35,8 +35,8 @@ fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
     ret result;
 }
 
-fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> [B] {
-    let mut result = [];
+fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> [B]/~ {
+    let mut result = []/~;
     self.size_hint().iter {|hint| vec::reserve(result, hint); }
     for self.each {|a|
         vec::push(result, op(a));
@@ -45,9 +45,9 @@ fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> [B] {
 }
 
 fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
-    self: IA, op: fn(A) -> IB) -> [B] {
+    self: IA, op: fn(A) -> IB) -> [B]/~ {
 
-    let mut result = [];
+    let mut result = []/~;
     for self.each {|a|
         for op(a).each {|b|
             vec::push(result, b);
@@ -64,8 +64,8 @@ fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     ret b;
 }
 
-fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> [A] {
-    foldl::<A,[A],IA>(self, [], {|r, a| r + [a]})
+fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> [A]/~ {
+    foldl::<A,[A]/~,IA>(self, []/~, {|r, a| r + [a]/~})
 }
 
 fn contains<A,IA:base_iter<A>>(self: IA, x: A) -> bool {
@@ -135,17 +135,17 @@ fn test_enumerate() {
 
 #[test]
 fn test_map_and_to_vec() {
-    let a = bind vec::iter([0, 1, 2], _);
+    let a = bind vec::iter([0, 1, 2]/~, _);
     let b = bind map(a, {|i| 2*i}, _);
     let c = to_vec(b);
-    assert c == [0, 2, 4];
+    assert c == [0, 2, 4]/~;
 }
 
 #[test]
 fn test_map_directly_on_vec() {
-    let b = bind map([0, 1, 2], {|i| 2*i}, _);
+    let b = bind map([0, 1, 2]/~, {|i| 2*i}, _);
     let c = to_vec(b);
-    assert c == [0, 2, 4];
+    assert c == [0, 2, 4]/~;
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn test_filter_on_int_range() {
     }
 
     let l = to_vec(bind filter(bind int::range(0, 10, _), is_even, _));
-    assert l == [0, 2, 4, 6, 8];
+    assert l == [0, 2, 4, 6, 8]/~;
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn test_filter_on_uint_range() {
     }
 
     let l = to_vec(bind filter(bind uint::range(0u, 10u, _), is_even, _));
-    assert l == [0u, 2u, 4u, 6u, 8u];
+    assert l == [0u, 2u, 4u, 6u, 8u]/~;
 }
 
 #[test]
@@ -180,7 +180,7 @@ fn test_filter_map() {
 
     let l = to_vec(bind filter_map(
         bind int::range(0, 5, _), negativate_the_evens, _));
-    assert l == [0, -2, -4];
+    assert l == [0, -2, -4]/~;
 }
 
 #[test]
@@ -190,70 +190,70 @@ fn test_flat_map_with_option() {
         else { none }
     }
 
-    let a = bind vec::iter([0, 1, 2], _);
+    let a = bind vec::iter([0, 1, 2]/~, _);
     let b = bind flat_map(a, if_even, _);
     let c = to_vec(b);
-    assert c == [0, 2];
+    assert c == [0, 2]/~;
 }
 
 #[test]
 fn test_flat_map_with_list() {
-    fn repeat(&&i: int) -> [int] {
-        let mut r = [];
-        int::range(0, i) {|_j| r += [i]; }
+    fn repeat(&&i: int) -> [int]/~ {
+        let mut r = []/~;
+        int::range(0, i) {|_j| r += [i]/~; }
         r
     }
 
-    let a = bind vec::iter([0, 1, 2, 3], _);
+    let a = bind vec::iter([0, 1, 2, 3]/~, _);
     let b = bind flat_map(a, repeat, _);
     let c = to_vec(b);
     #debug["c = %?", c];
-    assert c == [1, 2, 2, 3, 3, 3];
+    assert c == [1, 2, 2, 3, 3, 3]/~;
 }
 
 #[test]
 fn test_repeat() {
-    let mut c = [], i = 0u;
+    let mut c = []/~, i = 0u;
     repeat(5u) {||
-        c += [(i * i)];
+        c += [(i * i)]/~;
         i += 1u;
     };
     #debug["c = %?", c];
-    assert c == [0u, 1u, 4u, 9u, 16u];
+    assert c == [0u, 1u, 4u, 9u, 16u]/~;
 }
 
 #[test]
 fn test_min() {
-    assert min([5, 4, 1, 2, 3]) == 1;
+    assert min([5, 4, 1, 2, 3]/~) == 1;
 }
 
 #[test]
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_min_empty() {
-    min::<int, [int]>([]);
+    min::<int, [int]/~>([]/~);
 }
 
 #[test]
 fn test_max() {
-    assert max([1, 2, 4, 2, 3]) == 4;
+    assert max([1, 2, 4, 2, 3]/~) == 4;
 }
 
 #[test]
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_max_empty() {
-    max::<int, [int]>([]);
+    max::<int, [int]/~>([]/~);
 }
 
 #[test]
 fn test_reversed() {
-    assert to_vec(bind reversed([1, 2, 3], _)) == [3, 2, 1];
+    assert to_vec(bind reversed([1, 2, 3]/~, _)) == [3, 2, 1]/~;
 }
 
 #[test]
 fn test_count() {
-    assert count([1, 2, 1, 2, 1], 1) == 3u;
+    assert count([1, 2, 1, 2, 1]/~, 1) == 3u;
 }
 
 #[test]
@@ -261,7 +261,7 @@ fn test_foldr() {
     fn sub(&&a: int, &&b: int) -> int {
         a - b
     }
-    let sum = foldr([1, 2, 3, 4], 0, sub);
+    let sum = foldr([1, 2, 3, 4]/~, 0, sub);
     assert sum == -2;
 }
 */

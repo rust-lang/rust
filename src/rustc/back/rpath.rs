@@ -13,12 +13,12 @@ pure fn not_win32(os: session::os) -> bool {
   }
 }
 
-fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
+fn get_rpath_flags(sess: session::session, out_filename: str) -> [str]/~ {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
     if os == session::os_win32 {
-        ret [];
+        ret []/~;
     }
 
     #debug("preparing the RPATH!");
@@ -29,7 +29,7 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
     let libs = cstore::get_used_crate_files(sess.cstore);
     // We don't currently rpath native libraries, but we know
     // where rustrt is and we know every rust program needs it
-    let libs = libs + [get_sysroot_absolute_rt_lib(sess)];
+    let libs = libs + [get_sysroot_absolute_rt_lib(sess)]/~;
 
     let target_triple = sess.opts.target_triple;
     let rpaths = get_rpaths(os, cwd, sysroot, output, libs, target_triple);
@@ -37,20 +37,20 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
 }
 
 fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::path {
-    let path = [sess.filesearch.sysroot()]
+    let path = [sess.filesearch.sysroot()]/~
         + filesearch::relative_target_lib_path(
             sess.opts.target_triple)
-        + [os::dll_filename("rustrt")];
+        + [os::dll_filename("rustrt")]/~;
     path::connect_many(path)
 }
 
-fn rpaths_to_flags(rpaths: [str]) -> [str] {
+fn rpaths_to_flags(rpaths: [str]/~) -> [str]/~ {
     vec::map(rpaths, { |rpath| #fmt("-Wl,-rpath,%s",rpath)})
 }
 
 fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
-              output: path::path, libs: [path::path],
-              target_triple: str) -> [str] {
+              output: path::path, libs: [path::path]/~,
+              target_triple: str) -> [str]/~ {
     #debug("cwd: %s", cwd);
     #debug("sysroot: %s", sysroot);
     #debug("output: %s", output);
@@ -70,9 +70,9 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
     let abs_rpaths = get_absolute_rpaths(cwd, libs);
 
     // And a final backup rpath to the global library location.
-    let fallback_rpaths = [get_install_prefix_rpath(cwd, target_triple)];
+    let fallback_rpaths = [get_install_prefix_rpath(cwd, target_triple)]/~;
 
-    fn log_rpaths(desc: str, rpaths: [str]) {
+    fn log_rpaths(desc: str, rpaths: [str]/~) {
         #debug("%s rpaths:", desc);
         for rpaths.each {|rpath|
             #debug("    %s", rpath);
@@ -93,7 +93,7 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
 fn get_rpaths_relative_to_output(os: session::os,
                                  cwd: path::path,
                                  output: path::path,
-                                 libs: [path::path]) -> [str] {
+                                 libs: [path::path]/~) -> [str]/~ {
     vec::map(libs, {|a|
         check not_win32(os);
         get_rpath_relative_to_output(os, cwd, output, a)
@@ -139,8 +139,8 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
         start_idx += 1u;
     }
 
-    let mut path = [];
-    for uint::range(start_idx, len1 - 1u) {|_i| path += [".."]; };
+    let mut path = []/~;
+    for uint::range(start_idx, len1 - 1u) {|_i| vec::push(path, ".."); };
 
     path += vec::slice(split2, start_idx, len2 - 1u);
 
@@ -151,7 +151,7 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     }
 }
 
-fn get_absolute_rpaths(cwd: path::path, libs: [path::path]) -> [str] {
+fn get_absolute_rpaths(cwd: path::path, libs: [path::path]/~) -> [str]/~ {
     vec::map(libs, {|a|get_absolute_rpath(cwd, a)})
 }
 
@@ -174,17 +174,17 @@ fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
         fail "rustc compiled without CFG_PREFIX environment variable";
     }
 
-    let path = [install_prefix]
+    let path = [install_prefix]/~
         + filesearch::relative_target_lib_path(target_triple);
     get_absolute(cwd, path::connect_many(path))
 }
 
-fn minimize_rpaths(rpaths: [str]) -> [str] {
+fn minimize_rpaths(rpaths: [str]/~) -> [str]/~ {
     let set = map::str_hash::<()>();
-    let mut minimized = [];
+    let mut minimized = []/~;
     for rpaths.each {|rpath|
         if !set.contains_key(rpath) {
-            minimized += [rpath];
+            minimized += [rpath]/~;
             set.insert(rpath, ());
         }
     }
@@ -195,8 +195,8 @@ fn minimize_rpaths(rpaths: [str]) -> [str] {
 mod test {
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags(["path1", "path2"]);
-        assert flags == ["-Wl,-rpath,path1", "-Wl,-rpath,path2"];
+        let flags = rpaths_to_flags(["path1", "path2"]/~);
+        assert flags == ["-Wl,-rpath,path1", "-Wl,-rpath,path2"]/~;
     }
 
     #[test]
@@ -230,15 +230,15 @@ mod test {
 
     #[test]
     fn test_minimize1() {
-        let res = minimize_rpaths(["rpath1", "rpath2", "rpath1"]);
-        assert res == ["rpath1", "rpath2"];
+        let res = minimize_rpaths(["rpath1", "rpath2", "rpath1"]/~);
+        assert res == ["rpath1", "rpath2"]/~;
     }
 
     #[test]
     fn test_minimize2() {
         let res = minimize_rpaths(["1a", "2", "2", "1a", "4a",
-                                   "1a", "2", "3", "4a", "3"]);
-        assert res == ["1a", "2", "4a", "3"];
+                                   "1a", "2", "3", "4a", "3"]/~);
+        assert res == ["1a", "2", "4a", "3"]/~;
     }
 
     #[test]

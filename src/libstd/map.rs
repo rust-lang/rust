@@ -86,7 +86,7 @@ mod chained {
 
     type t<K, V> = @{
         mut count: uint,
-        mut chains: [mut chain<K,V>],
+        mut chains: [mut chain<K,V>]/~,
         hasher: hashfn<K>,
         eqer: eqfn<K>
     };
@@ -259,7 +259,7 @@ mod chained {
         fn each_value(blk: fn(V) -> bool) { self.each { |_k, v| blk(v)} }
     }
 
-    fn chains<K,V>(nchains: uint) -> [mut chain<K,V>] {
+    fn chains<K,V>(nchains: uint) -> [mut chain<K,V>]/~ {
         ret vec::to_mut(vec::from_elem(nchains, absent));
     }
 
@@ -299,7 +299,7 @@ fn box_str_hash<V: copy>() -> hashmap<@str, V> {
 }
 
 #[doc = "Construct a hashmap for byte string keys"]
-fn bytes_hash<V: copy>() -> hashmap<[u8], V> {
+fn bytes_hash<V: copy>() -> hashmap<[u8]/~, V> {
     ret hashmap(vec::u8::hash, vec::u8::eq);
 }
 
@@ -323,10 +323,10 @@ fn set_add<K: const copy>(set: set<K>, key: K) -> bool {
 #[doc = "
 Convert a set into a vector.
 "]
-fn vec_from_set<T: copy>(s: set<T>) -> [T] {
-    let mut v = [];
+fn vec_from_set<T: copy>(s: set<T>) -> [T]/~ {
+    let mut v = []/~;
     s.each_key() {|k|
-        v += [k];
+        v += [k]/~;
         true
     };
     v
@@ -334,7 +334,7 @@ fn vec_from_set<T: copy>(s: set<T>) -> [T] {
 
 #[doc = "Construct a hashmap from a vector"]
 fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
-                                         items: [(K, V)]) -> hashmap<K, V> {
+                                         items: [(K, V)]/~) -> hashmap<K, V> {
     let map = hashmap(hasher, eqer);
     vec::iter(items) { |item|
         let (key, value) = item;
@@ -344,22 +344,22 @@ fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
 }
 
 #[doc = "Construct a hashmap from a vector with string keys"]
-fn hash_from_strs<V: copy>(items: [(str, V)]) -> hashmap<str, V> {
+fn hash_from_strs<V: copy>(items: [(str, V)]/~) -> hashmap<str, V> {
     hash_from_vec(str::hash, str::eq, items)
 }
 
 #[doc = "Construct a hashmap from a vector with byte keys"]
-fn hash_from_bytes<V: copy>(items: [([u8], V)]) -> hashmap<[u8], V> {
+fn hash_from_bytes<V: copy>(items: [([u8]/~, V)]/~) -> hashmap<[u8]/~, V> {
     hash_from_vec(vec::u8::hash, vec::u8::eq, items)
 }
 
 #[doc = "Construct a hashmap from a vector with int keys"]
-fn hash_from_ints<V: copy>(items: [(int, V)]) -> hashmap<int, V> {
+fn hash_from_ints<V: copy>(items: [(int, V)]/~) -> hashmap<int, V> {
     hash_from_vec(int::hash, int::eq, items)
 }
 
 #[doc = "Construct a hashmap from a vector with uint keys"]
-fn hash_from_uints<V: copy>(items: [(uint, V)]) -> hashmap<uint, V> {
+fn hash_from_uints<V: copy>(items: [(uint, V)]/~) -> hashmap<uint, V> {
     hash_from_vec(uint::hash, uint::eq, items)
 }
 
@@ -612,7 +612,7 @@ mod tests {
             ("a", 1),
             ("b", 2),
             ("c", 3)
-        ]);
+        ]/~);
         assert map.size() == 3u;
         assert map.get("a") == 1;
         assert map.get("b") == 2;

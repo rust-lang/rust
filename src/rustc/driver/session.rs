@@ -36,7 +36,7 @@ const trace: uint = 128u;
 // It should be removed
 const no_rt: uint = 256u;
 
-fn debugging_opts_map() -> [(str, str, uint)] {
+fn debugging_opts_map() -> [(str, str, uint)]/~ {
     [("ppregions", "prettyprint regions with \
                     internal repr details", ppregions),
      ("time-passes", "measure time of each rustc pass", time_passes),
@@ -48,7 +48,7 @@ fn debugging_opts_map() -> [(str, str, uint)] {
      ("no-verify", "skip LLVM verification", no_verify),
      ("trace", "emit trace logs", trace),
      ("no-rt", "do not link to the runtime", no_rt)
-    ]
+    ]/~
 }
 
 type options =
@@ -59,10 +59,10 @@ type options =
      optimize: uint,
      debuginfo: bool,
      extra_debuginfo: bool,
-     lint_opts: [(lint::lint, lint::level)],
+     lint_opts: [(lint::lint, lint::level)]/~,
      save_temps: bool,
      output_type: back::link::output_type,
-     addl_lib_search_paths: [str],
+     addl_lib_search_paths: [str]/~,
      maybe_sysroot: option<str>,
      target_triple: str,
      cfg: ast::crate_cfg,
@@ -72,7 +72,7 @@ type options =
      debugging_opts: uint,
     };
 
-type crate_metadata = {name: str, data: [u8]};
+type crate_metadata = {name: str, data: [u8]/~};
 
 type session = @{targ_cfg: @config,
                  opts: @options,
@@ -172,13 +172,13 @@ fn basic_options() -> @options {
         optimize: 0u,
         debuginfo: false,
         extra_debuginfo: false,
-        lint_opts: [],
+        lint_opts: []/~,
         save_temps: false,
         output_type: link::output_type_exe,
-        addl_lib_search_paths: [],
+        addl_lib_search_paths: []/~,
         maybe_sysroot: none,
         target_triple: driver::host_triple(),
-        cfg: [],
+        cfg: []/~,
         test: false,
         parse_only: false,
         no_trans: false,
@@ -238,14 +238,14 @@ mod test {
     }
 
     fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
-        let mut attrs = [];
-        if with_bin { attrs += [make_crate_type_attr("bin")]; }
-        if with_lib { attrs += [make_crate_type_attr("lib")]; }
+        let mut attrs = []/~;
+        if with_bin { attrs += [make_crate_type_attr("bin")]/~; }
+        if with_lib { attrs += [make_crate_type_attr("lib")]/~; }
         @ast_util::respan(ast_util::dummy_sp(), {
-            directives: [],
-            module: {view_items: [], items: []},
+            directives: []/~,
+            module: {view_items: []/~, items: []/~},
             attrs: attrs,
-            config: []
+            config: []/~
         })
     }
 

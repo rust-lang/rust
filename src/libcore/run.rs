@@ -62,8 +62,8 @@ Run a program, providing stdin, stdout and stderr handles
 
 The process id of the spawned process
 "]
-fn spawn_process(prog: str, args: [str],
-                 env: option<[(str,str)]>,
+fn spawn_process(prog: str, args: [str]/~,
+                 env: option<[(str,str)]/~>,
                  dir: option<str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
    -> pid_t {
@@ -77,36 +77,36 @@ fn spawn_process(prog: str, args: [str],
     }
 }
 
-fn with_argv<T>(prog: str, args: [str],
+fn with_argv<T>(prog: str, args: [str]/~,
                 cb: fn(**libc::c_char) -> T) -> T {
-    let mut argptrs = str::as_c_str(prog) {|b| [b] };
-    let mut tmps = [];
+    let mut argptrs = str::as_c_str(prog) {|b| [b]/~ };
+    let mut tmps = []/~;
     for vec::each(args) {|arg|
         let t = @arg;
-        tmps += [t];
-        argptrs += str::as_c_str(*t) {|b| [b] };
+        tmps += [t]/~;
+        argptrs += str::as_c_str(*t) {|b| [b]/~ };
     }
-    argptrs += [ptr::null()];
+    argptrs += [ptr::null()]/~;
     vec::as_buf(argptrs, cb)
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: option<[(str,str)]>,
+fn with_envp<T>(env: option<[(str,str)]/~>,
                 cb: fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     alt env {
       some(es) if !vec::is_empty(es) {
-        let mut tmps = [];
-        let mut ptrs = [];
+        let mut tmps = []/~;
+        let mut ptrs = []/~;
 
         for vec::each(es) {|e|
             let (k,v) = e;
             let t = @(#fmt("%s=%s", k, v));
             vec::push(tmps, t);
-            ptrs += str::as_c_str(*t) {|b| [b]};
+            ptrs += str::as_c_str(*t) {|b| [b]/~};
         }
-        ptrs += [ptr::null()];
+        ptrs += [ptr::null()]/~;
         vec::as_buf(ptrs) { |p|
             unsafe { cb(::unsafe::reinterpret_cast(p)) }
         }
@@ -118,7 +118,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: option<[(str,str)]>,
+fn with_envp<T>(env: option<[(str,str)]/~>,
                 cb: fn(*c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
@@ -126,15 +126,15 @@ fn with_envp<T>(env: option<[(str,str)]>,
     unsafe {
         alt env {
           some(es) if !vec::is_empty(es) {
-            let mut blk : [u8] = [];
+            let mut blk : [u8]/~ = []/~;
             for vec::each(es) {|e|
                 let (k,v) = e;
                 let t = #fmt("%s=%s", k, v);
-                let mut v : [u8] = ::unsafe::reinterpret_cast(t);
+                let mut v : [u8]/~ = ::unsafe::reinterpret_cast(t);
                 blk += v;
                 ::unsafe::forget(v);
             }
-            blk += [0_u8];
+            blk += [0_u8]/~;
             vec::as_buf(blk) {|p| cb(::unsafe::reinterpret_cast(p)) }
           }
           _ {
@@ -164,7 +164,7 @@ Spawns a process and waits for it to terminate
 
 The process id
 "]
-fn run_program(prog: str, args: [str]) -> int {
+fn run_program(prog: str, args: [str]/~) -> int {
     let pid = spawn_process(prog, args, none, none,
                             0i32, 0i32, 0i32);
     if pid == -1 as pid_t { fail; }
@@ -187,7 +187,7 @@ The class will ensure that file descriptors are closed properly.
 
 A class with a <program> field
 "]
-fn start_program(prog: str, args: [str]) -> program {
+fn start_program(prog: str, args: [str]/~) -> program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -271,7 +271,7 @@ contents of stdout and stderr.
 A record, {status: int, out: str, err: str} containing the exit code,
 the contents of stdout and the contents of stderr.
 "]
-fn program_output(prog: str, args: [str]) ->
+fn program_output(prog: str, args: [str]/~) ->
    {status: int, out: str, err: str} {
 
     let pipe_in = os::pipe();
@@ -397,9 +397,9 @@ mod tests {
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)
     fn test_leaks() {
-        run::run_program("echo", []);
-        run::start_program("echo", []);
-        run::program_output("echo", []);
+        run::run_program("echo", []/~);
+        run::start_program("echo", []/~);
+        run::program_output("echo", []/~);
     }
 
     #[test]
@@ -410,7 +410,7 @@ mod tests {
 
         let pid =
             run::spawn_process(
-                "cat", [], none, none,
+                "cat", []/~, none, none,
                 pipe_in.in, pipe_out.out, pipe_err.out);
         os::close(pipe_in.in);
         os::close(pipe_out.out);
@@ -430,7 +430,7 @@ mod tests {
 
     #[test]
     fn waitpid() {
-        let pid = run::spawn_process("false", [],
+        let pid = run::spawn_process("false", []/~,
                                      none, none,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);

@@ -30,7 +30,7 @@ enum seek_style { seek_set, seek_end, seek_cur, }
 // The raw underlying reader iface. All readers must implement this.
 iface reader {
     // FIXME (#2004): Seekable really should be orthogonal.
-    fn read_bytes(uint) -> [u8];
+    fn read_bytes(uint) -> [u8]/~;
     fn read_byte() -> int;
     fn unread_byte(int);
     fn eof() -> bool;
@@ -41,9 +41,9 @@ iface reader {
 // Generic utility functions defined on readers
 
 impl reader_util for reader {
-    fn read_chars(n: uint) -> [char] {
+    fn read_chars(n: uint) -> [char]/~ {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_buf(buf: [u8], &chars: [char]) -> (uint, uint) {
+        fn chars_from_buf(buf: [u8]/~, &chars: [char]/~) -> (uint, uint) {
             let mut i = 0u;
             while i < vec::len(buf) {
                 let b0 = buf[i];
@@ -52,7 +52,7 @@ impl reader_util for reader {
                 i += 1u;
                 assert (w > 0u);
                 if w == 1u {
-                    chars += [ b0 as char ];
+                    chars += [ b0 as char ]/~;
                     cont;
                 }
                 // can't satisfy this char with the existing data
@@ -71,12 +71,12 @@ impl reader_util for reader {
                 // See str::char_at
                 val += ((b0 << ((w + 1u) as u8)) as uint)
                     << (w - 1u) * 6u - w - 1u;
-                chars += [ val as char ];
+                chars += [ val as char ]/~;
             }
             ret (i, 0u);
         }
-        let mut buf: [u8] = [];
-        let mut chars: [char] = [];
+        let mut buf: [u8]/~ = []/~;
+        let mut chars: [char]/~ = []/~;
         // might need more bytes, but reading n will never over-read
         let mut nbread = n;
         while nbread > 0u {
@@ -110,20 +110,20 @@ impl reader_util for reader {
     }
 
     fn read_line() -> str {
-        let mut buf: [u8] = [];
+        let mut buf: [u8]/~ = []/~;
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
-            buf += [ch as u8];
+            buf += [ch as u8]/~;
         }
         str::from_bytes(buf)
     }
 
     fn read_c_str() -> str {
-        let mut buf: [u8] = [];
+        let mut buf: [u8]/~ = []/~;
         loop {
             let ch = self.read_byte();
-            if ch < 1 { break; } else { buf += [ch as u8]; }
+            if ch < 1 { break; } else { buf += [ch as u8]/~; }
         }
         str::from_bytes(buf)
     }
@@ -156,8 +156,8 @@ impl reader_util for reader {
         val
     }
 
-    fn read_whole_stream() -> [u8] {
-        let mut buf: [u8] = [];
+    fn read_whole_stream() -> [u8]/~ {
+        let mut buf: [u8]/~ = []/~;
         while !self.eof() { buf += self.read_bytes(2048u); }
         buf
     }
@@ -192,8 +192,8 @@ fn convert_whence(whence: seek_style) -> i32 {
 }
 
 impl of reader for *libc::FILE {
-    fn read_bytes(len: uint) -> [u8] {
-        let mut buf : [mut u8] = [mut];
+    fn read_bytes(len: uint) -> [u8]/~ {
+        let mut buf : [mut u8]/~ = [mut]/~;
         vec::reserve(buf, len);
         vec::as_mut_buf(buf) {|b|
             let read = libc::fread(b as *mut c_void, 1u as size_t,
@@ -216,7 +216,7 @@ impl of reader for *libc::FILE {
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
 impl <T: reader, C> of reader for {base: T, cleanup: C} {
-    fn read_bytes(len: uint) -> [u8] { self.base.read_bytes(len) }
+    fn read_bytes(len: uint) -> [u8]/~ { self.base.read_bytes(len) }
     fn read_byte() -> int { self.base.read_byte() }
     fn unread_byte(byte: int) { self.base.unread_byte(byte); }
     fn eof() -> bool { self.base.eof() }
@@ -260,10 +260,10 @@ fn file_reader(path: str) -> result<reader, str> {
 // Byte buffer readers
 
 // TODO: const u8, but this fails with rustboot.
-type byte_buf = {buf: [u8], mut pos: uint, len: uint};
+type byte_buf = {buf: [u8]/~, mut pos: uint, len: uint};
 
 impl of reader for byte_buf {
-    fn read_bytes(len: uint) -> [u8] {
+    fn read_bytes(len: uint) -> [u8]/~ {
         let rest = self.len - self.pos;
         let mut to_read = len;
         if rest < to_read { to_read = rest; }
@@ -286,19 +286,19 @@ impl of reader for byte_buf {
     fn tell() -> uint { self.pos }
 }
 
-fn bytes_reader(bytes: [u8]) -> reader {
+fn bytes_reader(bytes: [u8]/~) -> reader {
     bytes_reader_between(bytes, 0u, vec::len(bytes))
 }
 
-fn bytes_reader_between(bytes: [u8], start: uint, end: uint) -> reader {
+fn bytes_reader_between(bytes: [u8]/~, start: uint, end: uint) -> reader {
     {buf: bytes, mut pos: start, len: end} as reader
 }
 
-fn with_bytes_reader<t>(bytes: [u8], f: fn(reader) -> t) -> t {
+fn with_bytes_reader<t>(bytes: [u8]/~, f: fn(reader) -> t) -> t {
     f(bytes_reader(bytes))
 }
 
-fn with_bytes_reader_between<t>(bytes: [u8], start: uint, end: uint,
+fn with_bytes_reader_between<t>(bytes: [u8]/~, start: uint, end: uint,
                                 f: fn(reader) -> t) -> t {
     f(bytes_reader_between(bytes, start, end))
 }
@@ -402,7 +402,7 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
 }
 
 
-fn mk_file_writer(path: str, flags: [fileflag])
+fn mk_file_writer(path: str, flags: [fileflag]/~)
     -> result<writer, str> {
 
     #[cfg(windows)]
@@ -451,9 +451,9 @@ fn u64_to_le_bytes<T>(n: u64, size: uint, f: fn([u8]/&) -> T) -> T {
               (n >> 56) as u8]/&) }
       _ {
 
-        let mut bytes: [u8] = [], i = size, n = n;
+        let mut bytes: [u8]/~ = []/~, i = size, n = n;
         while i > 0u {
-            bytes += [(n & 255_u64) as u8];
+            bytes += [(n & 255_u64) as u8]/~;
             n >>= 8_u64;
             i -= 1u;
         }
@@ -481,11 +481,11 @@ fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn([u8]/&) -> T) -> T {
               (n >> 8) as u8,
               n as u8]/&) }
       _ {
-        let mut bytes: [u8] = [];
+        let mut bytes: [u8]/~ = []/~;
         let mut i = size;
         while i > 0u {
             let shift = ((i - 1u) * 8u) as u64;
-            bytes += [(n >> shift) as u8];
+            bytes += [(n >> shift) as u8]/~;
             i -= 1u;
         }
         f(bytes)
@@ -493,7 +493,7 @@ fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn([u8]/&) -> T) -> T {
     }
 }
 
-fn u64_from_be_bytes(data: [u8], start: uint, size: uint) -> u64 {
+fn u64_from_be_bytes(data: [u8]/~, start: uint, size: uint) -> u64 {
     let mut sz = size;
     assert (sz <= 8u);
     let mut val = 0_u64;
@@ -577,7 +577,7 @@ impl writer_util for writer {
     fn write_u8(n: u8) { self.write([n]/&) }
 }
 
-fn file_writer(path: str, flags: [fileflag]) -> result<writer, str> {
+fn file_writer(path: str, flags: [fileflag]/~) -> result<writer, str> {
     result::chain(mk_file_writer(path, flags), { |w| result::ok(w)})
 }
 
@@ -638,7 +638,7 @@ fn mem_buffer() -> mem_buffer {
     @{buf: dvec(), mut pos: 0u}
 }
 fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
-fn mem_buffer_buf(b: mem_buffer) -> [u8] { b.buf.get() }
+fn mem_buffer_buf(b: mem_buffer) -> [u8]/~ { b.buf.get() }
 fn mem_buffer_str(b: mem_buffer) -> str {
     str::from_bytes(b.buf.get())
 }
@@ -650,7 +650,7 @@ fn with_str_writer(f: fn(writer)) -> str {
     io::mem_buffer_str(buf)
 }
 
-fn with_buf_writer(f: fn(writer)) -> [u8] {
+fn with_buf_writer(f: fn(writer)) -> [u8]/~ {
     let buf = mem_buffer();
     let wr = mem_buffer_writer(buf);
     f(wr);
@@ -679,7 +679,7 @@ fn read_whole_file_str(file: str) -> result<str, str> {
 
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
-fn read_whole_file(file: str) -> result<[u8], str> {
+fn read_whole_file(file: str) -> result<[u8]/~, str> {
     result::chain(file_reader(file), { |rdr|
         result::ok(rdr.read_whole_stream())
     })
@@ -772,7 +772,7 @@ mod tests {
         {
             let out: io::writer =
                 result::get(
-                    io::file_writer(tmpfile, [io::create, io::truncate]));
+                    io::file_writer(tmpfile, [io::create, io::truncate]/~));
             out.write_str(frood);
         }
         let inp: io::reader = result::get(io::file_reader(tmpfile));
@@ -784,22 +784,22 @@ mod tests {
     #[test]
     fn test_readchars_empty() {
         let inp : io::reader = io::str_reader("");
-        let res : [char] = inp.read_chars(128u);
+        let res : [char]/~ = inp.read_chars(128u);
         assert(vec::len(res) == 0u);
     }
 
     #[test]
     fn test_readchars_wide() {
         let wide_test = "生锈的汤匙切肉汤hello生锈的汤匙切肉汤";
-        let ivals : [int] = [
+        let ivals : [int]/~ = [
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748,
             104, 101, 108, 108, 111,
             29983, 38152, 30340, 27748,
-            21273, 20999, 32905, 27748];
-        fn check_read_ln(len : uint, s: str, ivals: [int]) {
+            21273, 20999, 32905, 27748]/~;
+        fn check_read_ln(len : uint, s: str, ivals: [int]/~) {
             let inp : io::reader = io::str_reader(s);
-            let res : [char] = inp.read_chars(len);
+            let res : [char]/~ = inp.read_chars(len);
             if (len <= vec::len(ivals)) {
                 assert(vec::len(res) == len);
             }
@@ -841,7 +841,7 @@ mod tests {
 
     #[test]
     fn file_writer_bad_name() {
-        alt io::file_writer("?/?", []) {
+        alt io::file_writer("?/?", []/~) {
           result::err(e) {
             assert str::starts_with(e, "error opening ?/?");
           }
@@ -862,16 +862,16 @@ mod tests {
     #[test]
     fn mem_buffer_overwrite() {
         let mbuf = mem_buffer();
-        mbuf.write([0u8, 1u8, 2u8, 3u8]);
-        assert mem_buffer_buf(mbuf) == [0u8, 1u8, 2u8, 3u8];
+        mbuf.write([0u8, 1u8, 2u8, 3u8]/~);
+        assert mem_buffer_buf(mbuf) == [0u8, 1u8, 2u8, 3u8]/~;
         mbuf.seek(-2, seek_cur);
-        mbuf.write([4u8, 5u8, 6u8, 7u8]);
-        assert mem_buffer_buf(mbuf) == [0u8, 1u8, 4u8, 5u8, 6u8, 7u8];
+        mbuf.write([4u8, 5u8, 6u8, 7u8]/~);
+        assert mem_buffer_buf(mbuf) == [0u8, 1u8, 4u8, 5u8, 6u8, 7u8]/~;
         mbuf.seek(-2, seek_end);
-        mbuf.write([8u8]);
+        mbuf.write([8u8]/~);
         mbuf.seek(1, seek_set);
-        mbuf.write([9u8]);
-        assert mem_buffer_buf(mbuf) == [0u8, 9u8, 4u8, 5u8, 8u8, 7u8];
+        mbuf.write([9u8]/~);
+        assert mem_buffer_buf(mbuf) == [0u8, 9u8, 4u8, 5u8, 8u8, 7u8]/~;
     }
 }
 

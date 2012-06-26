@@ -116,10 +116,10 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     let mut frac = num - (trunc as float);
 
     // stack of digits
-    let mut fractionalParts = [];
+    let mut fractionalParts = []/~;
 
     // FIXME: (#2608)
-    // This used to return right away without rounding, as "[-]num",
+    // This used to return right away without rounding, as "[-]/~num",
     // but given epsilon like in f64.rs, I don't see how the comparison
     // to epsilon did much when only used there.
     //    if (frac < epsilon && !exact) || digits == 0u { ret accum; }
@@ -236,7 +236,7 @@ Leading and trailing whitespace are ignored.
 # Return value
 
 `none` if the string did not represent a valid number.  Otherwise, `some(n)`
-where `n` is the floating-point number represented by `[num]`.
+where `n` is the floating-point number represented by `[num]/~`.
 "]
 fn from_str(num: str) -> option<float> {
    if num == "inf" {
@@ -261,7 +261,7 @@ fn from_str(num: str) -> option<float> {
       _ { ret none; }
    }
 
-   //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
+   //Determine if first char is '-'/'+'. Set [pos]/~ and [neg]/~ accordingly.
    let mut neg = false;               //Sign of the result
    alt str::char_at(num, 0u) {
       '-' {
@@ -345,7 +345,7 @@ fn from_str(num: str) -> option<float> {
              pos = char_range.next;
           }
           let multiplier = pow_with_uint(10u, exponent);
-              //Note: not [int::pow], otherwise, we'll quickly
+              //Note: not [int::pow]/~, otherwise, we'll quickly
               //end up with a nice overflow
           if neg_exponent {
              total = total / multiplier;

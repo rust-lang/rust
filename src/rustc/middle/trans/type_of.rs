@@ -14,7 +14,8 @@ export type_of_fn_from_ty;
 export type_of_fn;
 export type_of_non_gc_box;
 
-fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
+fn type_of_explicit_args(cx: @crate_ctxt,
+                         inputs: [ty::arg]/~) -> [TypeRef]/~ {
     vec::map(inputs) {|arg|
         let arg_ty = arg.ty;
         let llty = type_of(cx, arg_ty);
@@ -25,14 +26,15 @@ fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
     }
 }
 
-fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg], output: ty::t) -> TypeRef {
-    let mut atys: [TypeRef] = [];
+fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg]/~,
+              output: ty::t) -> TypeRef {
+    let mut atys: [TypeRef]/~ = []/~;
 
     // Arg 0: Output pointer.
-    atys += [T_ptr(type_of(cx, output))];
+    atys += [T_ptr(type_of(cx, output))]/~;
 
     // Arg 1: Environment
-    atys += [T_opaque_box_ptr(cx)];
+    atys += [T_opaque_box_ptr(cx)]/~;
 
     // ... then explicit args.
     atys += type_of_explicit_args(cx, inputs);
@@ -115,12 +117,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
           ty::ty_evec(mt, ty::vstore_slice(_)) {
             T_struct([T_ptr(type_of(cx, mt.ty)),
-                      T_uint_ty(cx, ast::ty_u)])
+                      T_uint_ty(cx, ast::ty_u)]/~)
           }
 
           ty::ty_estr(ty::vstore_slice(_)) {
             T_struct([T_ptr(T_i8()),
-                      T_uint_ty(cx, ast::ty_u)])
+                      T_uint_ty(cx, ast::ty_u)]/~)
           }
 
           ty::ty_estr(ty::vstore_fixed(n)) {
@@ -132,10 +134,10 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           }
 
           ty::ty_rec(fields) {
-            let mut tys: [TypeRef] = [];
+            let mut tys: [TypeRef]/~ = []/~;
             for vec::each(fields) {|f|
                 let mt_ty = f.mt.ty;
-                tys += [type_of(cx, mt_ty)];
+                tys += [type_of(cx, mt_ty)]/~;
             }
             T_struct(tys)
           }
@@ -143,9 +145,9 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_iface(_, _) { T_opaque_iface(cx) }
           ty::ty_type { T_ptr(cx.tydesc_type) }
           ty::ty_tup(elts) {
-            let mut tys = [];
+            let mut tys = []/~;
             for vec::each(elts) {|elt|
-                tys += [type_of(cx, elt)];
+                tys += [type_of(cx, elt)]/~;
             }
             T_struct(tys)
           }
@@ -180,7 +182,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
             if ty::ty_dtor(cx.tcx, did) != none {
               // resource type
-              tys = [T_i8(), T_struct(tys)];
+              tys = [T_i8(), T_struct(tys)]/~;
             }
 
             common::set_struct_body(llty, tys);
@@ -213,13 +215,13 @@ fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
         let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
         let size = shape::static_size_of_enum(cx, t);
         if !degen {
-            [T_enum_discrim(cx), T_array(T_i8(), size)]
+            [T_enum_discrim(cx), T_array(T_i8(), size)]/~
         }
         else if size == 0u {
-            [T_enum_discrim(cx)]
+            [T_enum_discrim(cx)]/~
         }
         else {
-            [T_array(T_i8(), size)]
+            [T_array(T_i8(), size)]/~
         }
     };
 
@@ -250,7 +252,7 @@ fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> str {
 
 fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
     T_fn([T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))),
-          T_ptr(type_of(ccx, self_ty))],
+          T_ptr(type_of(ccx, self_ty))]/~,
          llvm::LLVMVoidType())
 }
 

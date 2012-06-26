@@ -39,7 +39,7 @@ impl of fake_ext_ctxt for fake_session {
 }
 
 fn mk_ctxt() -> fake_ext_ctxt {
-    let opts : fake_options = {cfg: []};
+    let opts : fake_options = {cfg: []/~};
     {opts: @opts, parse_sess: new_parse_sess()} as fake_ext_ctxt
 }
 

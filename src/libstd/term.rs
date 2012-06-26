@@ -23,18 +23,18 @@ const color_bright_magenta: u8 = 13u8;
 const color_bright_cyan: u8 = 14u8;
 const color_bright_white: u8 = 15u8;
 
-fn esc(writer: io::writer) { writer.write([0x1bu8, '[' as u8]); }
+fn esc(writer: io::writer) { writer.write([0x1bu8, '[' as u8]/~); }
 
 #[doc = "Reset the foreground and background colors to default"]
 fn reset(writer: io::writer) {
     esc(writer);
-    writer.write(['0' as u8, 'm' as u8]);
+    writer.write(['0' as u8, 'm' as u8]/~);
 }
 
 #[doc = "Returns true if the terminal supports color"]
 fn color_supported() -> bool {
     let supported_terms = ["xterm-color", "xterm",
-                           "screen-bce", "xterm-256color"];
+                           "screen-bce", "xterm-256color"]/~;
     ret alt os::getenv("TERM") {
           option::some(env) {
             for vec::each(supported_terms) {|term|
@@ -50,8 +50,8 @@ fn set_color(writer: io::writer, first_char: u8, color: u8) {
     assert (color < 16u8);
     esc(writer);
     let mut color = color;
-    if color >= 8u8 { writer.write(['1' as u8, ';' as u8]); color -= 8u8; }
-    writer.write([first_char, ('0' as u8) + color, 'm' as u8]);
+    if color >= 8u8 { writer.write(['1' as u8, ';' as u8]/~); color -= 8u8; }
+    writer.write([first_char, ('0' as u8) + color, 'm' as u8]/~);
 }
 
 #[doc = "Set the foreground color"]

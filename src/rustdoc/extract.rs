@@ -25,7 +25,7 @@ fn extract(
             doc::cratepage({
                 topmod: top_moddoc_from_crate(crate, default_name),
             })
-        ]
+        ]/~
     }
 }
 
@@ -41,10 +41,10 @@ fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
     {
         id: id,
         name: *name,
-        path: [],
+        path: []/~,
         brief: none,
         desc: none,
-        sections: [],
+        sections: []/~,
         reexport: false
     }
 }
@@ -148,7 +148,7 @@ fn should_extract_const_name_and_id() {
 
 fn enumdoc_from_enum(
     itemdoc: doc::itemdoc,
-    variants: [ast::variant]
+    variants: [ast::variant]/~
 ) -> doc::enumdoc {
     {
         item: itemdoc,
@@ -157,8 +157,8 @@ fn enumdoc_from_enum(
 }
 
 fn variantdocs_from_variants(
-    variants: [ast::variant]
-) -> [doc::variantdoc] {
+    variants: [ast::variant]/~
+) -> [doc::variantdoc]/~ {
     par::seqmap(variants, variantdoc_from_variant)
 }
 
@@ -185,7 +185,7 @@ fn should_extract_enum_variants() {
 
 fn ifacedoc_from_iface(
     itemdoc: doc::itemdoc,
-    methods: [ast::ty_method]
+    methods: [ast::ty_method]/~
 ) -> doc::ifacedoc {
     {
         item: itemdoc,
@@ -194,7 +194,7 @@ fn ifacedoc_from_iface(
                 name: *method.ident,
                 brief: none,
                 desc: none,
-                sections: [],
+                sections: []/~,
                 sig: none
             }
         }
@@ -215,7 +215,7 @@ fn should_extract_iface_methods() {
 
 fn impldoc_from_impl(
     itemdoc: doc::itemdoc,
-    methods: [@ast::method]
+    methods: [@ast::method]/~
 ) -> doc::impldoc {
     {
         item: itemdoc,
@@ -226,7 +226,7 @@ fn impldoc_from_impl(
                 name: *method.ident,
                 brief: none,
                 desc: none,
-                sections: [],
+                sections: []/~,
                 sig: none
             }
         }

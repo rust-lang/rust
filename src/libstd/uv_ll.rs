@@ -24,7 +24,7 @@ import libc::size_t;
 
 // libuv struct mappings
 type uv_ip4_addr = {
-    ip: [u8],
+    ip: [u8]/~,
     port: int
 };
 type uv_ip6_addr = uv_ip4_addr;
@@ -616,7 +616,7 @@ unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
 }
 
 unsafe fn write<T>(req: *uv_write_t, stream: *T,
-         buf_in: *[uv_buf_t], cb: *u8) -> libc::c_int {
+         buf_in: *[uv_buf_t]/~, cb: *u8) -> libc::c_int {
     let buf_ptr = vec::unsafe::to_ptr(*buf_in);
     let buf_cnt = vec::len(*buf_in) as i32;
     ret rustrt::rust_uv_write(req as *libc::c_void,
@@ -678,7 +678,7 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
 unsafe fn ip4_addr(ip: str, port: int)
 -> sockaddr_in {
     let mut addr_vec = str::bytes(ip);
-    addr_vec += [0u8]; // add null terminator
+    addr_vec += [0u8]/~; // add null terminator
     let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
     let ip_back = str::from_bytes(addr_vec);
     log(debug, #fmt("vec val: '%s' length: %u",
@@ -795,13 +795,13 @@ type uv_err_data = {
 mod test {
     enum tcp_read_data {
         tcp_read_eof,
-        tcp_read_more([u8]),
+        tcp_read_more([u8]/~),
         tcp_read_error
     }
 
     type request_wrapper = {
         write_req: *uv_write_t,
-        req_buf: *[uv_buf_t],
+        req_buf: *[uv_buf_t]/~,
         read_chan: *comm::chan<str>
     };
 
@@ -917,7 +917,7 @@ mod test {
         log(debug, #fmt("req_msg ptr: %u", req_msg_ptr as uint));
         let req_msg = [
             buf_init(req_msg_ptr, vec::len(req_str_bytes))
-        ];
+        ]/~;
         // this is the enclosing record, we'll pass a ptr to
         // this to C..
         let write_handle = write_t();
@@ -1115,7 +1115,7 @@ mod test {
         client: *uv_tcp_t,
         server: *uv_tcp_t,
         server_kill_msg: str,
-        server_resp_buf: *[uv_buf_t],
+        server_resp_buf: *[uv_buf_t]/~,
         server_chan: *comm::chan<str>,
         server_write_req: *uv_write_t
     };
@@ -1164,7 +1164,7 @@ mod test {
         log(debug, #fmt("resp_msg ptr: %u", resp_msg_ptr as uint));
         let resp_msg = [
             buf_init(resp_msg_ptr, vec::len(resp_str_bytes))
-        ];
+        ]/~;
 
         let continue_async_handle = async_t();
         let continue_async_handle_ptr =

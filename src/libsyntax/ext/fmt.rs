@@ -34,10 +34,11 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 // probably be factored out in common with other code that builds
 // expressions.  Also: Cleanup the naming of these functions.
 // NOTE: Moved many of the common ones to build.rs --kevina
-fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
+fn pieces_to_expr(cx: ext_ctxt, sp: span,
+                  pieces: [piece]/~, args: [@ast::expr]/~)
    -> @ast::expr {
-    fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {
-        ret [@"extfmt", @"rt", ident];
+    fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> [ast::ident]/~ {
+        ret [@"extfmt", @"rt", ident]/~;
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span,
                          ident: ast::ident) -> @ast::expr {
@@ -48,8 +49,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     // which tells the RT::conv* functions how to perform the conversion
 
     fn make_rt_conv_expr(cx: ext_ctxt, sp: span, cnv: conv) -> @ast::expr {
-        fn make_flags(cx: ext_ctxt, sp: span, flags: [flag]) -> @ast::expr {
-            let mut flagexprs: [@ast::expr] = [];
+        fn make_flags(cx: ext_ctxt, sp: span, flags: [flag]/~) -> @ast::expr {
+            let mut flagexprs: [@ast::expr]/~ = []/~;
             for flags.each {|f|
                 let mut fstr;
                 alt f {
@@ -59,7 +60,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
                   flag_sign_always { fstr = "flag_sign_always"; }
                   flag_alternate { fstr = "flag_alternate"; }
                 }
-                flagexprs += [make_rt_path_expr(cx, sp, @fstr)];
+                flagexprs += [make_rt_path_expr(cx, sp, @fstr)]/~;
             }
             ret mk_uniq_vec_e(cx, sp, flagexprs);
         }
@@ -71,7 +72,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
               count_is(c) {
                 let count_lit = mk_int(cx, sp, c);
                 let count_is_path = make_path_vec(cx, @"count_is");
-                let count_is_args = [count_lit];
+                let count_is_args = [count_lit]/~;
                 ret mk_call(cx, sp, count_is_path, count_is_args);
               }
               _ { cx.span_unimpl(sp, "unimplemented #fmt conversion"); }
@@ -99,7 +100,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
                          [{ident: @"flags", ex: flags_expr},
                           {ident: @"width", ex: width_expr},
                           {ident: @"precision", ex: precision_expr},
-                          {ident: @"ty", ex: ty_expr}]);
+                          {ident: @"ty", ex: ty_expr}]/~);
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
@@ -113,7 +114,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
         let fname = "conv_" + conv_type;
         let path = make_path_vec(cx, @fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
-        let args = [cnv_expr, arg];
+        let args = [cnv_expr, arg]/~;
         ret mk_call(cx, arg.span, path, args);
     }
     fn make_new_conv(cx: ext_ctxt, sp: span, cnv: conv, arg: @ast::expr) ->

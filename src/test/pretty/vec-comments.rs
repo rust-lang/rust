@@ -9,11 +9,11 @@ fn main() {
          // Comment
          1,
          // Comment
-         2];
+         2]/~;
     let v2 =
         [0, // Comment
          1, // Comment
-         2]; // Comment
+         2]/~; // Comment
     let v3 =
         [
          /* Comment */
@@ -21,9 +21,9 @@ fn main() {
          /* Comment */
          1,
          /* Comment */
-         2];
+         2]/~;
     let v4 =
         [0, /* Comment */
          1, /* Comment */
-         2]; /* Comment */
+         2]/~; /* Comment */
 }

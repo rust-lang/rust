@@ -1,10 +1,10 @@
 // error-pattern:fail
 
-fn fold_local() -> @[int]{
-    @[0,0,0,0,0,0]
+fn fold_local() -> @[int]/~{
+    @[0,0,0,0,0,0]/~
 }
 
-fn fold_remote() -> @[int]{
+fn fold_remote() -> @[int]/~{
     fail;
 }
 

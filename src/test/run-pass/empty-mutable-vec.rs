@@ -1,3 +1,3 @@
 
 
-fn main() { let v: [mut int] = [mut]; }
+fn main() { let v: [mut int]/~ = [mut]/~; }

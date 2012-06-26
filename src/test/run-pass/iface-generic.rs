@@ -12,20 +12,20 @@ impl of to_str for () {
 }
 
 iface map<T> {
-    fn map<U>(f: fn(T) -> U) -> [U];
+    fn map<U>(f: fn(T) -> U) -> [U]/~;
 }
-impl <T> of map<T> for [T] {
-    fn map<U>(f: fn(T) -> U) -> [U] {
-        let mut r = [];
-        for self.each {|x| r += [f(x)]; }
+impl <T> of map<T> for [T]/~ {
+    fn map<U>(f: fn(T) -> U) -> [U]/~ {
+        let mut r = []/~;
+        for self.each {|x| r += [f(x)]/~; }
         r
     }
 }
 
-fn foo<U, T: map<U>>(x: T) -> [str] {
+fn foo<U, T: map<U>>(x: T) -> [str]/~ {
     x.map({|_e| "hi" })
 }
-fn bar<U: to_str, T: map<U>>(x: T) -> [str] {
+fn bar<U: to_str, T: map<U>>(x: T) -> [str]/~ {
     x.map({|_e| _e.to_str() })
 }
 

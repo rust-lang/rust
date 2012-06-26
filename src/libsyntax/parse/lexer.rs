@@ -26,7 +26,7 @@ enum tt_frame_up { /* to break a circularity */
 /* TODO: figure out how to have a uniquely linked stack, and change to `~` */
 #[doc = "an unzipping of `token_tree`s"]
 type tt_frame = @{
-    readme: [ast::token_tree],
+    readme: [ast::token_tree]/~,
     mut idx: uint,
     up: tt_frame_up
 };
@@ -41,7 +41,7 @@ type tt_reader = @{
 };
 
 fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
-                 itr: @interner::interner<@str>, src: [ast::token_tree])
+                 itr: @interner::interner<@str>, src: [ast::token_tree]/~)
     -> tt_reader {
     let r = @{span_diagnostic: span_diagnostic, interner: itr,
               mut cur: @{readme: src, mut idx: 0u,

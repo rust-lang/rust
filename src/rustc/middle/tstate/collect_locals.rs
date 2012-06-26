@@ -10,12 +10,12 @@ import aux::*;
 import std::map::hashmap;
 import dvec::{dvec, extensions};
 
-type ctxt = {cs: @mut [sp_constr], tcx: ty::ctxt};
+type ctxt = {cs: @mut [sp_constr]/~, tcx: ty::ctxt};
 
 fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
     alt e.node {
-      expr_check(_, ch) { *cx.cs += [expr_to_constr(cx.tcx, ch)]; }
-      expr_if_check(ex, _, _) { *cx.cs += [expr_to_constr(cx.tcx, ex)]; }
+      expr_check(_, ch) { *cx.cs += [expr_to_constr(cx.tcx, ch)]/~; }
+      expr_if_check(ex, _, _) { *cx.cs += [expr_to_constr(cx.tcx, ex)]/~; }
 
       // If it's a call, generate appropriate instances of the
       // call's constraints.
@@ -24,7 +24,7 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
             let ct: sp_constr =
                 respan(c.span,
                        aux::substitute_constr_args(cx.tcx, operands, c));
-            *cx.cs += [ct];
+            *cx.cs += [ct]/~;
         }
       }
       _ { }
@@ -39,7 +39,7 @@ fn find_locals(tcx: ty::ctxt,
                f_body: blk,
                sp: span,
                id: node_id) -> ctxt {
-    let cx: ctxt = {cs: @mut [], tcx: tcx};
+    let cx: ctxt = {cs: @mut []/~, tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
     let visitor =
         @{visit_expr: collect_pred,
@@ -130,7 +130,7 @@ fn mk_fn_info(ccx: crate_ctxt,
         }
     }
 
-    let v: @mut [node_id] = @mut [];
+    let v: @mut [node_id]/~ = @mut []/~;
     let rslt =
         {constrs: res_map,
          num_constraints: next,

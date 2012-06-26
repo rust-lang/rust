@@ -7,11 +7,11 @@ export parser_attr;
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option<either<[ast::attribute], @ast::expr>>;
+type attr_or_ext = option<either<[ast::attribute]/~, @ast::expr>>;
 
 impl parser_attr for parser {
 
-    fn parse_outer_attrs_or_ext(first_item_attrs: [ast::attribute])
+    fn parse_outer_attrs_or_ext(first_item_attrs: [ast::attribute]/~)
         -> attr_or_ext
     {
         let expect_item_next = vec::is_not_empty(first_item_attrs);
@@ -21,7 +21,8 @@ impl parser_attr for parser {
                 self.bump();
                 let first_attr =
                     self.parse_attribute_naked(ast::attr_outer, lo);
-                ret some(left([first_attr] + self.parse_outer_attributes()));
+                ret some(left([first_attr]/~ +
+                              self.parse_outer_attributes()));
             } else if !(self.look_ahead(1u) == token::LT
                         || self.look_ahead(1u) == token::LBRACKET
                         || self.look_ahead(1u) == token::POUND
@@ -33,11 +34,11 @@ impl parser_attr for parser {
     }
 
     // Parse attributes that appear before an item
-    fn parse_outer_attributes() -> [ast::attribute] {
-        let mut attrs: [ast::attribute] = [];
+    fn parse_outer_attributes() -> [ast::attribute]/~ {
+        let mut attrs: [ast::attribute]/~ = []/~;
         while self.token == token::POUND
             && self.look_ahead(1u) == token::LBRACKET {
-            attrs += [self.parse_attribute(ast::attr_outer)];
+            attrs += [self.parse_attribute(ast::attr_outer)]/~;
         }
         ret attrs;
     }
@@ -64,9 +65,9 @@ impl parser_attr for parser {
     // is an inner attribute of the containing item or an outer attribute of
     // the first contained item until we see the semi).
     fn parse_inner_attrs_and_next() ->
-        {inner: [ast::attribute], next: [ast::attribute]} {
-        let mut inner_attrs: [ast::attribute] = [];
-        let mut next_outer_attrs: [ast::attribute] = [];
+        {inner: [ast::attribute]/~, next: [ast::attribute]/~} {
+        let mut inner_attrs: [ast::attribute]/~ = []/~;
+        let mut next_outer_attrs: [ast::attribute]/~ = []/~;
         while self.token == token::POUND {
             if self.look_ahead(1u) != token::LBRACKET {
                 // This is an extension
@@ -75,13 +76,13 @@ impl parser_attr for parser {
             let attr = self.parse_attribute(ast::attr_inner);
             if self.token == token::SEMI {
                 self.bump();
-                inner_attrs += [attr];
+                inner_attrs += [attr]/~;
             } else {
                 // It's not really an inner attribute
                 let outer_attr =
                     spanned(attr.span.lo, attr.span.hi,
                             {style: ast::attr_outer, value: attr.node.value});
-                next_outer_attrs += [outer_attr];
+                next_outer_attrs += [outer_attr]/~;
                 break;
             }
         }
@@ -110,15 +111,15 @@ impl parser_attr for parser {
         }
     }
 
-    fn parse_meta_seq() -> [@ast::meta_item] {
+    fn parse_meta_seq() -> [@ast::meta_item]/~ {
         ret self.parse_seq(token::LPAREN, token::RPAREN,
                            seq_sep_trailing_disallowed(token::COMMA),
                            {|p| p.parse_meta_item()}).node;
     }
 
-    fn parse_optional_meta() -> [@ast::meta_item] {
+    fn parse_optional_meta() -> [@ast::meta_item]/~ {
         alt self.token { token::LPAREN { ret self.parse_meta_seq(); }
-                         _ { ret []; } }
+                         _ { ret []/~; } }
     }
 }
 

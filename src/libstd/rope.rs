@@ -97,7 +97,7 @@ Add one char to the end of the rope
 * this function executes in near-constant time
 "]
 fn append_char(rope: rope, char: char) -> rope {
-    ret append_str(rope, @str::from_chars([char]));
+    ret append_str(rope, @str::from_chars([char]/~));
 }
 
 #[doc = "
@@ -118,7 +118,7 @@ Add one char to the beginning of the rope
 * this function executes in near-constant time
 "]
 fn prepend_char(rope: rope, char: char) -> rope {
-    ret prepend_str(rope, @str::from_chars([char]));
+    ret prepend_str(rope, @str::from_chars([char]/~));
 }
 
 #[doc = "
@@ -153,7 +153,7 @@ If the ropes are balanced initially and have the same height, the resulting
 rope remains balanced. However, this function does not take any further
 measure to ensure that the result is balanced.
 "]
-fn concat(v: [rope]) -> rope {
+fn concat(v: [rope]/~) -> rope {
     //Copy `v` into a mut vector
     let mut len = vec::len(v);
     if len == 0u { ret node::empty; }
@@ -752,7 +752,7 @@ mod node {
     * forest - The forest. This vector is progressively rewritten during
                execution and should be discarded as meaningless afterwards.
     "]
-    fn tree_from_forest_destructive(forest: [mut @node]) -> @node {
+    fn tree_from_forest_destructive(forest: [mut @node]/~) -> @node {
         let mut i;
         let mut len = vec::len(forest);
         while len > 1u {
@@ -805,7 +805,7 @@ mod node {
               option::none { break; }
               option::some(x) {
                 //TODO: Replace with memcpy or something similar
-                let mut local_buf: [u8] =
+                let mut local_buf: [u8]/~ =
                     unsafe::reinterpret_cast(*x.content);
                 let mut i = x.byte_offset;
                 while i < x.byte_len {
@@ -859,7 +859,7 @@ mod node {
     fn bal(node: @node) -> option<@node> {
         if height(node) < hint_max_node_height { ret option::none; }
         //1. Gather all leaves as a forest
-        let mut forest = [mut];
+        let mut forest = [mut]/~;
         let it = leaf_iterator::start(node);
         loop {
             alt (leaf_iterator::next(it)) {
@@ -1113,12 +1113,12 @@ mod node {
 
     mod leaf_iterator {
         type t = {
-            stack:            [mut @node],
+            stack:            [mut @node]/~,
             mut stackpos: int
         };
 
         fn empty() -> t {
-            let stack : [mut @node] = [mut];
+            let stack : [mut @node]/~ = [mut]/~;
             ret {stack: stack, mut stackpos: -1}
         }
 

@@ -26,8 +26,8 @@ fn no_ann() -> pp_ann {
 type ps =
     @{s: pp::printer,
       cm: option<codemap>,
-      comments: option<[comments::cmnt]>,
-      literals: option<[comments::lit]>,
+      comments: option<[comments::cmnt]/~>,
+      literals: option<[comments::lit]/~>,
       mut cur_cmnt: uint,
       mut cur_lit: uint,
       boxes: dvec<pp::breaks>,
@@ -46,8 +46,8 @@ fn end(s: ps) {
 fn rust_printer(writer: io::writer) -> ps {
     ret @{s: pp::mk_printer(writer, default_columns),
           cm: none::<codemap>,
-          comments: none::<[comments::cmnt]>,
-          literals: none::<[comments::lit]>,
+          comments: none::<[comments::cmnt]/~>,
+          literals: none::<[comments::lit]/~>,
           mut cur_cmnt: 0u,
           mut cur_lit: 0u,
           boxes: dvec(),
@@ -97,7 +97,7 @@ fn item_to_str(i: @ast::item) -> str { ret to_str(i, print_item); }
 
 fn attr_to_str(i: ast::attribute) -> str { ret to_str(i, print_attribute); }
 
-fn typarams_to_str(tps: [ast::ty_param]) -> str {
+fn typarams_to_str(tps: [ast::ty_param]/~) -> str {
     ret to_str(tps, print_type_params)
 }
 
@@ -106,7 +106,7 @@ fn path_to_str(&&p: @ast::path) -> str {
 }
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
-              params: [ast::ty_param]) -> str {
+              params: [ast::ty_param]/~) -> str {
     let buffer = io::mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
     print_fn(s, decl, name, params);
@@ -119,15 +119,15 @@ fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
 #[test]
 fn test_fun_to_str() {
     let decl: ast::fn_decl = {
-        inputs: [],
+        inputs: []/~,
         output: @{id: 0,
                   node: ast::ty_nil,
                   span: ast_util::dummy_sp()},
         purity: ast::impure_fn,
         cf: ast::return_val,
-        constraints: []
+        constraints: []/~
     };
-    assert fun_to_str(decl, "a", []) == "fn a()";
+    assert fun_to_str(decl, "a", []/~) == "fn a()";
 }
 
 fn block_to_str(blk: ast::blk) -> str {
@@ -158,8 +158,8 @@ fn variant_to_str(var: ast::variant) -> str {
 fn test_variant_to_str() {
     let var = ast_util::respan(ast_util::dummy_sp(), {
         name: "principle_skinner",
-        attrs: [],
-        args: [],
+        attrs: []/~,
+        args: []/~,
         id: 0,
         disr_expr: none
     });
@@ -254,7 +254,7 @@ fn synth_comment(s: ps, text: str) {
     word(s.s, "*/");
 }
 
-fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN)) {
+fn commasep<IN>(s: ps, b: breaks, elts: [IN]/~, op: fn(ps, IN)) {
     box(s, 0u, b);
     let mut first = true;
     for elts.each {|elt|
@@ -265,7 +265,7 @@ fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN)) {
 }
 
 
-fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN),
+fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN]/~, op: fn(ps, IN),
                      get_span: fn(IN) -> codemap::span) {
     box(s, 0u, b);
     let len = vec::len::<IN>(elts);
@@ -284,12 +284,12 @@ fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN),
     end(s);
 }
 
-fn commasep_exprs(s: ps, b: breaks, exprs: [@ast::expr]) {
+fn commasep_exprs(s: ps, b: breaks, exprs: [@ast::expr]/~) {
     fn expr_span(&&expr: @ast::expr) -> codemap::span { ret expr.span; }
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
-fn print_mod(s: ps, _mod: ast::_mod, attrs: [ast::attribute]) {
+fn print_mod(s: ps, _mod: ast::_mod, attrs: [ast::attribute]/~) {
     print_inner_attributes(s, attrs);
     for _mod.view_items.each {|vitem|
         print_view_item(s, vitem);
@@ -297,7 +297,7 @@ fn print_mod(s: ps, _mod: ast::_mod, attrs: [ast::attribute]) {
     for _mod.items.each {|item| print_item(s, item); }
 }
 
-fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
+fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]/~) {
     print_inner_attributes(s, attrs);
     for nmod.view_items.each {|vitem|
         print_view_item(s, vitem);
@@ -504,7 +504,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           hardbreak_if_not_bol(s);
           maybe_print_comment(s, ctor.span.lo);
           head(s, "new");
-          print_fn_args_and_ret(s, ctor.node.dec, []);
+          print_fn_args_and_ret(s, ctor.node.dec, []/~);
           space(s.s);
           print_block(s, ctor.node.body);
           option::iter(m_dtor) {|dtor|
@@ -626,7 +626,7 @@ fn print_method(s: ps, meth: @ast::method) {
     print_block_with_attrs(s, meth.body, meth.attrs);
 }
 
-fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {
+fn print_outer_attributes(s: ps, attrs: [ast::attribute]/~) {
     let mut count = 0;
     for attrs.each {|attr|
         alt attr.node.style {
@@ -637,7 +637,7 @@ fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {
     if count > 0 { hardbreak_if_not_bol(s); }
 }
 
-fn print_inner_attributes(s: ps, attrs: [ast::attribute]) {
+fn print_inner_attributes(s: ps, attrs: [ast::attribute]/~) {
     let mut count = 0;
     for attrs.each {|attr|
         alt attr.node.style {
@@ -685,7 +685,7 @@ fn print_block(s: ps, blk: ast::blk) {
     print_possibly_embedded_block(s, blk, block_normal, indent_unit);
 }
 
-fn print_block_with_attrs(s: ps, blk: ast::blk, attrs: [ast::attribute]) {
+fn print_block_with_attrs(s: ps, blk: ast::blk, attrs: [ast::attribute]/~) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs);
 }
 
@@ -694,11 +694,11 @@ enum embed_type { block_macro, block_block_fn, block_normal, }
 fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
                                  indented: uint) {
     print_possibly_embedded_block_(
-        s, blk, embedded, indented, []);
+        s, blk, embedded, indented, []/~);
 }
 
 fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
-                                  indented: uint, attrs: [ast::attribute]) {
+                                  indented: uint, attrs: [ast::attribute]/~) {
     alt blk.node.rules {
       ast::unchecked_blk { word(s.s, "unchecked"); }
       ast::unsafe_blk { word(s.s, "unsafe"); }
@@ -811,10 +811,10 @@ fn print_mac(s: ps, m: ast::mac) {
 
 fn print_vstore(s: ps, t: ast::vstore) {
     alt t {
-      ast::vstore_fixed(some(i)) { word_space(s, #fmt("/%u", i)); }
-      ast::vstore_fixed(none) { word_space(s, "/_"); }
-      ast::vstore_uniq { word_space(s, "/~"); }
-      ast::vstore_box { word_space(s, "/@"); }
+      ast::vstore_fixed(some(i)) { word(s.s, #fmt("/%u", i)); }
+      ast::vstore_fixed(none) { word(s.s, "/_"); }
+      ast::vstore_uniq { word(s.s, "/~"); }
+      ast::vstore_box { word(s.s, "/@"); }
       ast::vstore_slice(r) { word(s.s, "/"); print_region(s, r); }
     }
 }
@@ -1259,18 +1259,18 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
 }
 
 fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
-            typarams: [ast::ty_param]) {
+            typarams: [ast::ty_param]/~) {
     alt decl.purity {
       ast::impure_fn { head(s, "fn") }
       _ { head(s, purity_to_str(decl.purity) + " fn") }
     }
     word(s.s, *name);
     print_type_params(s, typarams);
-    print_fn_args_and_ret(s, decl, []);
+    print_fn_args_and_ret(s, decl, []/~);
 }
 
 fn print_fn_args(s: ps, decl: ast::fn_decl,
-                 cap_items: [ast::capture_item]) {
+                 cap_items: [ast::capture_item]/~) {
     commasep(s, inconsistent, decl.inputs, print_arg);
     if cap_items.is_not_empty() {
         let mut first = decl.inputs.is_empty();
@@ -1284,7 +1284,7 @@ fn print_fn_args(s: ps, decl: ast::fn_decl,
 }
 
 fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
-                         cap_items: [ast::capture_item]) {
+                         cap_items: [ast::capture_item]/~) {
     popen(s);
     print_fn_args(s, decl, cap_items);
     pclose(s);
@@ -1301,7 +1301,7 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
 }
 
 fn print_fn_block_args(s: ps, decl: ast::fn_decl,
-                       cap_items: [ast::capture_item]) {
+                       cap_items: [ast::capture_item]/~) {
     word(s.s, "|");
     print_fn_args(s, decl, cap_items);
     word(s.s, "|");
@@ -1329,7 +1329,7 @@ fn print_arg_mode(s: ps, m: ast::mode) {
     if ms != "" { word(s.s, ms); }
 }
 
-fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
+fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]/~) {
     if vec::len(*bounds) > 0u {
         word(s.s, ":");
         for vec::each(*bounds) {|bound|
@@ -1351,7 +1351,7 @@ fn print_region_param(s: ps, rp: ast::region_param) {
     }
 }
 
-fn print_type_params(s: ps, &&params: [ast::ty_param]) {
+fn print_type_params(s: ps, &&params: [ast::ty_param]/~) {
     if vec::len(params) > 0u {
         word(s.s, "<");
         fn printParam(s: ps, param: ast::ty_param) {
@@ -1408,7 +1408,7 @@ fn print_view_path(s: ps, &&vp: @ast::view_path) {
     }
 }
 
-fn print_view_paths(s: ps, vps: [@ast::view_path]) {
+fn print_view_paths(s: ps, vps: [@ast::view_path]/~) {
     commasep(s, inconsistent, vps, print_view_path);
 }
 
@@ -1480,7 +1480,7 @@ fn print_arg(s: ps, input: ast::arg) {
 
 fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
                decl: ast::fn_decl, id: option<ast::ident>,
-               tps: option<[ast::ty_param]>) {
+               tps: option<[ast::ty_param]/~>) {
     ibox(s, indent_unit);
     word(s.s, opt_proto_to_str(opt_proto));
     alt id { some(id) { word(s.s, " "); word(s.s, *id); } _ { } }
@@ -1682,7 +1682,8 @@ fn next_comment(s: ps) -> option<comments::cmnt> {
     }
 }
 
-fn constr_args_to_str<T>(f: fn@(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
+fn constr_args_to_str<T>(f: fn@(T) -> str,
+                         args: [@ast::sp_constr_arg<T>]/~) ->
    str {
     let mut comma = false;
     let mut s = "(";
@@ -1727,7 +1728,7 @@ fn ty_constr_to_str(&&c: @ast::ty_constr) -> str {
                                              c.node.args);
 }
 
-fn constrs_str<T>(constrs: [T], elt: fn(T) -> str) -> str {
+fn constrs_str<T>(constrs: [T]/~, elt: fn(T) -> str) -> str {
     let mut s = "", colon = true;
     for constrs.each {|c|
         if colon { s += " : "; colon = false; } else { s += ", "; }

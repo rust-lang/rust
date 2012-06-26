@@ -28,35 +28,35 @@ fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     let expr = ast::expr_unary(op, e);
     ret @{id: cx.next_id(), node: expr, span: sp};
 }
-fn mk_path(cx: ext_ctxt, sp: span, idents: [ast::ident]) ->
+fn mk_path(cx: ext_ctxt, sp: span, idents: [ast::ident]/~) ->
     @ast::expr {
     let path = @{span: sp, global: false, idents: idents,
-                 rp: none, types: []};
+                 rp: none, types: []/~};
     let pathexpr = ast::expr_path(path);
     ret @{id: cx.next_id(), node: pathexpr, span: sp};
 }
 fn mk_access_(cx: ext_ctxt, sp: span, p: @ast::expr, m: ast::ident)
     -> @ast::expr {
-    let expr = ast::expr_field(p, m, []);
+    let expr = ast::expr_field(p, m, []/~);
     ret @{id: cx.next_id(), node: expr, span: sp};
 }
-fn mk_access(cx: ext_ctxt, sp: span, p: [ast::ident], m: ast::ident)
+fn mk_access(cx: ext_ctxt, sp: span, p: [ast::ident]/~, m: ast::ident)
     -> @ast::expr {
     let pathexpr = mk_path(cx, sp, p);
     ret mk_access_(cx, sp, pathexpr, m);
 }
 fn mk_call_(cx: ext_ctxt, sp: span, fn_expr: @ast::expr,
-            args: [@ast::expr]) -> @ast::expr {
+            args: [@ast::expr]/~) -> @ast::expr {
     let callexpr = ast::expr_call(fn_expr, args, false);
     ret @{id: cx.next_id(), node: callexpr, span: sp};
 }
-fn mk_call(cx: ext_ctxt, sp: span, fn_path: [ast::ident],
-             args: [@ast::expr]) -> @ast::expr {
+fn mk_call(cx: ext_ctxt, sp: span, fn_path: [ast::ident]/~,
+             args: [@ast::expr]/~) -> @ast::expr {
     let pathexpr = mk_path(cx, sp, fn_path);
     ret mk_call_(cx, sp, pathexpr, args);
 }
 // e = expr, t = type
-fn mk_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]) ->
+fn mk_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]/~) ->
    @ast::expr {
     let vecexpr = ast::expr_vec(exprs, ast::m_imm);
     ret @{id: cx.next_id(), node: vecexpr, span: sp};
@@ -72,15 +72,15 @@ fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]/~) ->
 }
 
 fn mk_rec_e(cx: ext_ctxt, sp: span,
-            fields: [{ident: ast::ident, ex: @ast::expr}]) ->
+            fields: [{ident: ast::ident, ex: @ast::expr}]/~) ->
     @ast::expr {
-    let mut astfields: [ast::field] = [];
+    let mut astfields: [ast::field]/~ = []/~;
     for fields.each {|field|
         let ident = field.ident;
         let val = field.ex;
         let astfield =
             {node: {mutbl: ast::m_imm, ident: ident, expr: val}, span: sp};
-        astfields += [astfield];
+        astfields += [astfield]/~;
     }
     let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);
     ret @{id: cx.next_id(), node: recexpr, span: sp};

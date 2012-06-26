@@ -1,6 +1,6 @@
 // error-pattern:fail
 
-fn build() -> [int] {
+fn build() -> [int]/~ {
     fail;
 }
 

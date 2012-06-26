@@ -40,10 +40,10 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
         write_ty_to_tcx(tcx, id, t);
         alt fcx.opt_node_ty_substs(id) {
           some(substs) {
-            let mut new_tps = [];
+            let mut new_tps = []/~;
             for substs.tps.each {|subst|
                 alt resolve_type_vars_in_type(fcx, sp, subst) {
-                  some(t) { new_tps += [t]; }
+                  some(t) { new_tps += [t]/~; }
                   none { wbcx.success = false; ret none; }
                 }
             }

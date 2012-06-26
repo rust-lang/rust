@@ -292,27 +292,27 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     type provided_metas =
         {name: option<@str>,
          vers: option<@str>,
-         cmh_items: [@ast::meta_item]};
+         cmh_items: [@ast::meta_item]/~};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
         let mut name: option<@str> = none;
         let mut vers: option<@str> = none;
-        let mut cmh_items: [@ast::meta_item] = [];
+        let mut cmh_items: [@ast::meta_item]/~ = []/~;
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each {|meta|
             if *attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
-                  none { cmh_items += [meta]; }
+                  none { cmh_items += [meta]/~; }
                 }
             } else if *attr::get_meta_item_name(meta) == "vers" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { vers = some(v); }
-                  none { cmh_items += [meta]; }
+                  none { cmh_items += [meta]/~; }
                 }
-            } else { cmh_items += [meta]; }
+            } else { cmh_items += [meta]/~; }
         }
         ret {name: name, vers: vers, cmh_items: cmh_items};
     }
@@ -320,7 +320,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: ast::crate,
                               metas: provided_metas,
-                              dep_hashes: [@str]) -> str {
+                              dep_hashes: [@str]/~) -> str {
         fn len_and_str(s: str) -> str {
             ret #fmt["%u_%s", str::len(s), s];
         }
@@ -490,7 +490,7 @@ fn mangle(ss: path) -> str {
 }
 
 fn exported_name(path: path, hash: @str, vers: @str) -> str {
-    ret mangle(path + [path_name(hash)] + [path_name(vers)]);
+    ret mangle(path + [path_name(hash)]/~ + [path_name(vers)]/~);
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
@@ -503,12 +503,12 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
    str {
     let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    ret mangle([path_name(name), path_name(s), path_name(@hash)]);
+    ret mangle([path_name(name), path_name(s), path_name(@hash)]/~);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
                                         flav: @str) -> str {
-    ret mangle(path + [path_name(@ccx.names(*flav))]);
+    ret mangle(path + [path_name(@ccx.names(*flav))]/~);
 }
 
 fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
@@ -577,8 +577,8 @@ fn link_binary(sess: session,
     // The invocations of cc share some flags across platforms
 
     let mut cc_args =
-        [stage] + sess.targ_cfg.target_strs.cc_args +
-        ["-o", output, obj_filename];
+        [stage]/~ + sess.targ_cfg.target_strs.cc_args +
+        ["-o", output, obj_filename]/~;
 
     let mut lib_cmd;
     let os = sess.targ_cfg.os;
@@ -591,18 +591,18 @@ fn link_binary(sess: session,
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each {|cratepath|
         if str::ends_with(cratepath, ".rlib") {
-            cc_args += [cratepath];
+            cc_args += [cratepath]/~;
             cont;
         }
         let cratepath = cratepath;
         let dir = path::dirname(cratepath);
-        if dir != "" { cc_args += ["-L" + dir]; }
+        if dir != "" { cc_args += ["-L" + dir]/~; }
         let libarg = unlib(sess.targ_cfg, path::basename(cratepath));
-        cc_args += ["-l" + libarg];
+        cc_args += ["-l" + libarg]/~;
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each {|arg| cc_args += [arg]; }
+    for ula.each {|arg| cc_args += [arg]/~; }
 
     // # Native library linking
 
@@ -613,37 +613,37 @@ fn link_binary(sess: session,
     // forces to make sure that library can be found at runtime.
 
     let addl_paths = sess.opts.addl_lib_search_paths;
-    for addl_paths.each {|path| cc_args += ["-L" + path]; }
+    for addl_paths.each {|path| cc_args += ["-L" + path]/~; }
 
     // The names of the native libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each {|l| cc_args += ["-l" + l]; }
+    for used_libs.each {|l| cc_args += ["-l" + l]/~; }
 
     if sess.building_library {
-        cc_args += [lib_cmd];
+        cc_args += [lib_cmd]/~;
 
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
             cc_args += ["-Wl,-install_name,@rpath/"
-                        + path::basename(output)];
+                        + path::basename(output)]/~;
         }
     }
 
     if !sess.debugging_opt(session::no_rt) {
         // Always want the runtime linked in
-        cc_args += ["-lrustrt"];
+        cc_args += ["-lrustrt"]/~;
     }
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        cc_args += ["-lrt", "-ldl"];
+        cc_args += ["-lrt", "-ldl"]/~;
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
         // which lives in libm. Similar to above, on some linuxes we
         // have to be explicit about linking to it. See #2510
-        cc_args += ["-lm"];
+        cc_args += ["-lm"]/~;
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
@@ -653,7 +653,7 @@ fn link_binary(sess: session,
                     "-L/usr/local/lib/gcc44", "-lstdc++",
                     "-Wl,-z,origin",
                     "-Wl,-rpath,/usr/local/lib/gcc46",
-                    "-Wl,-rpath,/usr/local/lib/gcc44"];
+                    "-Wl,-rpath,/usr/local/lib/gcc44"]/~;
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the
@@ -661,11 +661,11 @@ fn link_binary(sess: session,
     // understand how to unwind our __morestack frame, so we have to turn it
     // off. This has impacted some other projects like GHC.
     if sess.targ_cfg.os == session::os_macos {
-        cc_args += ["-Wl,-no_compact_unwind"];
+        cc_args += ["-Wl,-no_compact_unwind"]/~;
     }
 
     // Stack growth requires statically linking a __morestack function
-    cc_args += ["-lmorestack"];
+    cc_args += ["-lmorestack"]/~;
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // native libraries might live, based on the addl_lib_search_paths
@@ -685,7 +685,7 @@ fn link_binary(sess: session,
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::os_macos {
-        run::run_program("dsymutil", [output]);
+        run::run_program("dsymutil", [output]/~);
     }
 
     // Remove the temporary object file if we aren't saving temps

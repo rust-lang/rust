@@ -134,7 +134,7 @@ fn get_lint_dict() -> lint_dict {
            desc: "implicit copies of non implicitly copyable data",
            default: warn})
 
-    ];
+    ]/~;
     hash_from_strs(v)
 }
 
@@ -206,7 +206,7 @@ impl methods for ctxt {
           current lint context, call the provided function, then reset the
           warnings in effect to their previous state.
     "]
-    fn with_warn_attrs(attrs: [ast::attribute], f: fn(ctxt)) {
+    fn with_warn_attrs(attrs: [ast::attribute]/~, f: fn(ctxt)) {
 
         let mut new_ctxt = self;
 
@@ -358,7 +358,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
     fn check_native_fn(cx: ty::ctxt, fn_id: ast::node_id,
                        decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs) {|a| a.ty };
-        for vec::each(tys + [decl.output]) {|ty|
+        for vec::each(tys + [decl.output]/~) {|ty|
             alt ty.node {
               ast::ty_path(_, id) {
                 alt cx.def_map.get(id) {
@@ -456,7 +456,7 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
               }
               ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
-              if ids == [@"str"] && (! uses_vstore.contains_key(t.id)) {
+              if ids == [@"str"]/~ && (! uses_vstore.contains_key(t.id)) {
                 cx.sess.span_lint(
                     old_strs, t.id, it.id,
                     t.span, "deprecated str type");
