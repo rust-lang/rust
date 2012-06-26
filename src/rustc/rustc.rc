@@ -43,7 +43,7 @@ mod middle {
         mod closure;
         mod tvec;
         mod impl;
-        mod native;
+        mod foreign;
         mod reflect;
         mod shape;
         mod debuginfo;

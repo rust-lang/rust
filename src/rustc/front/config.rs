@@ -26,7 +26,7 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
     let precursor =
         @{fold_mod: {|a,b|fold_mod(ctxt, a, b)},
           fold_block: fold::wrap({|a,b|fold_block(ctxt, a, b)}),
-          fold_native_mod: {|a,b|fold_native_mod(ctxt, a, b)}
+          fold_foreign_mod: {|a,b|fold_foreign_mod(ctxt, a, b)}
           with *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
@@ -47,16 +47,16 @@ fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
          items: vec::map(filtered_items, fld.fold_item)};
 }
 
-fn filter_native_item(cx: ctxt, &&item: @ast::native_item) ->
-   option<@ast::native_item> {
-    if native_item_in_cfg(cx, item) {
+fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
+   option<@ast::foreign_item> {
+    if foreign_item_in_cfg(cx, item) {
         option::some(item)
     } else { option::none }
 }
 
-fn fold_native_mod(cx: ctxt, nm: ast::native_mod,
-                   fld: fold::ast_fold) -> ast::native_mod {
-    let filter = {|a|filter_native_item(cx, a)};
+fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
+                   fld: fold::ast_fold) -> ast::foreign_mod {
+    let filter = {|a|filter_foreign_item(cx, a)};
     let filtered_items = vec::filter_map(nm.items, filter);
     ret {view_items: vec::map(nm.view_items, fld.fold_view_item),
          items: filtered_items};
@@ -94,7 +94,7 @@ fn item_in_cfg(cx: ctxt, item: @ast::item) -> bool {
     ret cx.in_cfg(item.attrs);
 }
 
-fn native_item_in_cfg(cx: ctxt, item: @ast::native_item) -> bool {
+fn foreign_item_in_cfg(cx: ctxt, item: @ast::foreign_item) -> bool {
     ret cx.in_cfg(item.attrs);
 }
 

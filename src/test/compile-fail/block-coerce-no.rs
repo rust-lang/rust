@@ -6,7 +6,7 @@ fn coerce(b: fn()) -> native fn() {
            g: fn()) -> native fn() { ret f(g); }
     fn fn_id(f: native fn()) -> native fn() { ret f }
     ret lol(fn_id, b);
-    //!^ ERROR mismatched types: expected `native fn(fn()) -> native fn()`
+    //!^ ERROR mismatched types: expected `extern fn(fn()) -> extern fn()`
 }
 
 fn main() {

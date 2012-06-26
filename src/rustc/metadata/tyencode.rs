@@ -333,7 +333,7 @@ fn enc_purity(w: io::writer, p: purity) {
       pure_fn { w.write_char('p'); }
       impure_fn { w.write_char('i'); }
       unsafe_fn { w.write_char('u'); }
-      crust_fn { w.write_char('c'); }
+      extern_fn { w.write_char('c'); }
     }
 }
 

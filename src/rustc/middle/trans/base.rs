@@ -221,18 +221,18 @@ fn get_simple_extern_fn(cx: block,
     ret get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
 }
 
-fn trans_native_call(cx: block, externs: hashmap<str, ValueRef>,
-                     llmod: ModuleRef, name: str, args: [ValueRef]/~) ->
+fn trans_foreign_call(cx: block, externs: hashmap<str, ValueRef>,
+                      llmod: ModuleRef, name: str, args: [ValueRef]/~) ->
    ValueRef {
-    let _icx = cx.insn_ctxt("trans_native_call");
+    let _icx = cx.insn_ctxt("trans_foreign_call");
     let n = args.len() as int;
-    let llnative: ValueRef =
+    let llforeign: ValueRef =
         get_simple_extern_fn(cx, externs, llmod, name, n);
     let mut call_args: [ValueRef]/~ = []/~;
     for vec::each(args) {|a|
         vec::push(call_args, a);
     }
-    ret Call(cx, llnative, call_args);
+    ret Call(cx, llforeign, call_args);
 }
 
 fn trans_free(cx: block, v: ValueRef) -> block {
@@ -2169,10 +2169,10 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       ast_map::node_item(i, pt) { (pt, i.ident, i.span) }
       ast_map::node_variant(v, enm, pt) { (pt, v.node.name, enm.span) }
       ast_map::node_method(m, _, pt) { (pt, m.ident, m.span) }
-      ast_map::node_native_item(i, ast::native_abi_rust_intrinsic, pt)
+      ast_map::node_foreign_item(i, ast::foreign_abi_rust_intrinsic, pt)
       { (pt, i.ident, i.span) }
-      ast_map::node_native_item(_, abi, _) {
-        // Natives don't have to be monomorphized.
+      ast_map::node_foreign_item(_, abi, _) {
+        // Foreign externs don't have to be monomorphized.
         ret {val: get_item_val(ccx, fn_id.node),
              must_cast: true};
       }
@@ -2223,9 +2223,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       ast_map::node_item(*) {
           ccx.tcx.sess.bug("Can't monomorphize this kind of item")
       }
-      ast_map::node_native_item(i, _, _) {
+      ast_map::node_foreign_item(i, _, _) {
           let d = mk_lldecl();
-          native::trans_intrinsic(ccx, d, i, pt, option::get(psubsts),
+          foreign::trans_intrinsic(ccx, d, i, pt, option::get(psubsts),
                                 ref_id);
           d
       }
@@ -2316,7 +2316,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             ccx.external.insert(fn_id, some(ctor.node.id));
             local_def(ctor.node.id)
           }
-          csearch::found(ast::ii_native(item)) {
+          csearch::found(ast::ii_foreign(item)) {
             ccx.external.insert(fn_id, some(item.id));
             local_def(item.id)
           }
@@ -2406,11 +2406,11 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
             ccx, node_id_type(bcx, id))));
     }
 
-    // FIXME: Need to support external crust functions (#1840)
+    // FIXME: Need to support extern-ABI functions (#1840)
     if fn_id.crate == ast::local_crate {
         alt bcx.tcx().def_map.find(id) {
-          some(ast::def_fn(_, ast::crust_fn)) {
-            // Crust functions are just opaque pointers
+          some(ast::def_fn(_, ast::extern_fn)) {
+            // Extern functions are just opaque pointers
             let val = PointerCast(bcx, val, T_ptr(T_i8()));
             ret lval_no_env(bcx, val, owned_imm);
           }
@@ -4899,10 +4899,10 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     };
     alt item.node {
       ast::item_fn(decl, tps, body) {
-        if decl.purity == ast::crust_fn  {
+        if decl.purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
-            native::trans_crust_fn(ccx, *path + [path_name(item.ident)]/~,
-                                   decl, body, llfndecl, item.id);
+            foreign::trans_extern_fn(ccx, *path + [path_name(item.ident)]/~,
+                                     decl, body, llfndecl, item.id);
         } else if tps.len() == 0u {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx, *path + [path_name(item.ident)]/~, decl, body,
@@ -4941,12 +4941,12 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         }
       }
       ast::item_const(_, expr) { trans_const(ccx, expr, item.id); }
-      ast::item_native_mod(native_mod) {
-        let abi = alt attr::native_abi(item.attrs) {
+      ast::item_foreign_mod(foreign_mod) {
+        let abi = alt attr::foreign_abi(item.attrs) {
           either::right(abi_) { abi_ }
           either::left(msg) { ccx.sess.span_fatal(item.span, msg) }
         };
-        native::trans_native_mod(ccx, native_mod, abi);
+        foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
       ast::item_class(tps, _ifaces, items, ctor, m_dtor, _) {
         if tps.len() == 0u {
@@ -5169,10 +5169,10 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 g
               }
               ast::item_fn(decl, _, _) {
-                let llfn = if decl.purity != ast::crust_fn {
+                let llfn = if decl.purity != ast::extern_fn {
                     register_fn(ccx, i.span, my_path, i.id)
                 } else {
-                    native::register_crust_fn(ccx, i.span, my_path, i.id)
+                    foreign::register_extern_fn(ccx, i.span, my_path, i.id)
                 };
                 set_inline_hint_if_appr(i.attrs, llfn);
                 llfn
@@ -5188,7 +5188,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             set_inline_hint_if_appr(m.attrs, llfn);
             llfn
           }
-          ast_map::node_native_item(ni, _, pth) {
+          ast_map::node_foreign_item(ni, _, pth) {
             exprt = true;
             register_fn(ccx, ni.span, *pth + [path_name(ni.ident)]/~, ni.id)
           }

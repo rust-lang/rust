@@ -67,7 +67,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     alt n {
       ast_map::node_item(item, _) { traverse_public_item(cx, item); }
       ast_map::node_method(_, impl_id, _) { traverse_def_id(cx, impl_id); }
-      ast_map::node_native_item(item, _, _) { cx.rmap.insert(item.id, ()); }
+      ast_map::node_foreign_item(item, _, _) { cx.rmap.insert(item.id, ()); }
       ast_map::node_variant(v, _, _) { cx.rmap.insert(v.node.id, ()); }
       // If it's a ctor, consider the parent reachable
       ast_map::node_ctor(_, _, _, parent_id, _) {
@@ -89,7 +89,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
     cx.rmap.insert(item.id, ());
     alt item.node {
       item_mod(m) { traverse_public_mod(cx, m); }
-      item_native_mod(nm) {
+      item_foreign_mod(nm) {
           if !traverse_exports(cx, nm.view_items) {
               for vec::each(nm.items) {|item| cx.rmap.insert(item.id, ()); }
           }

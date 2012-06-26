@@ -2611,7 +2611,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
         alt node {
           ast_map::node_item(item, path) {
             let item_elt = alt item.node {
-              item_mod(_) | item_native_mod(_) {
+              item_mod(_) | item_foreign_mod(_) {
                 ast_map::path_mod(item.ident)
               }
               _ {
@@ -2621,7 +2621,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             *path + [item_elt]/~
           }
 
-          ast_map::node_native_item(nitem, _, path) {
+          ast_map::node_foreign_item(nitem, _, path) {
             *path + [ast_map::path_name(nitem.ident)]/~
           }
 

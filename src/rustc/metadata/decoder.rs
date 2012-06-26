@@ -271,7 +271,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8]/~, did_: ast::def_id) ->
       'y' { ast::def_ty(did) }
       't' { ast::def_ty(did) }
       'm' { ast::def_mod(did) }
-      'n' { ast::def_native_mod(did) }
+      'n' { ast::def_foreign_mod(did) }
       'v' {
         let mut tid = option::get(item_parent_item(item));
         tid = {crate: cnum, node: tid.node};

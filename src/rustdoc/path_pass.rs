@@ -87,7 +87,7 @@ fn should_record_fn_paths() {
 }
 
 #[test]
-fn should_record_native_mod_paths() {
+fn should_record_foreign_mod_paths() {
     let source = "mod a { native mod b { } }";
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
@@ -97,7 +97,7 @@ fn should_record_native_mod_paths() {
 }
 
 #[test]
-fn should_record_native_fn_paths() {
+fn should_record_foreign_fn_paths() {
     let source = "native mod a { fn b(); }";
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");

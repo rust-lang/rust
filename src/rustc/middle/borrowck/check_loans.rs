@@ -91,7 +91,7 @@ impl methods for check_loan_ctxt {
           // default, but we must scan for requirements
           // imposed by the borrow check
           ast::pure_fn { some(pc_pure_fn) }
-          ast::crust_fn | ast::impure_fn { none }
+          ast::extern_fn | ast::impure_fn { none }
         };
 
         // scan to see if this scope or any enclosing scope requires
@@ -199,7 +199,7 @@ impl methods for check_loan_ctxt {
           ty::ty_fn(fn_ty) {
             alt fn_ty.purity {
               ast::pure_fn { ret; } // case (c) above
-              ast::impure_fn | ast::unsafe_fn | ast::crust_fn {
+              ast::impure_fn | ast::unsafe_fn | ast::extern_fn {
                 self.report_purity_error(
                     pc, callee_span,
                     #fmt["access to %s function",

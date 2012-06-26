@@ -48,7 +48,7 @@ type visitor<E> =
     // generic over constr and ty_constr
     @{visit_mod: fn@(_mod, span, node_id, E, vt<E>),
       visit_view_item: fn@(@view_item, E, vt<E>),
-      visit_native_item: fn@(@native_item, E, vt<E>),
+      visit_foreign_item: fn@(@foreign_item, E, vt<E>),
       visit_item: fn@(@item, E, vt<E>),
       visit_local: fn@(@local, E, vt<E>),
       visit_block: fn@(ast::blk, E, vt<E>),
@@ -66,7 +66,7 @@ type visitor<E> =
 fn default_visitor<E>() -> visitor<E> {
     ret @{visit_mod: {|a,b,c,d,e|visit_mod::<E>(a, b, c, d, e)},
           visit_view_item: {|a,b,c|visit_view_item::<E>(a, b, c)},
-          visit_native_item: {|a,b,c|visit_native_item::<E>(a, b, c)},
+          visit_foreign_item: {|a,b,c|visit_foreign_item::<E>(a, b, c)},
           visit_item: {|a,b,c|visit_item::<E>(a, b, c)},
           visit_local: {|a,b,c|visit_local::<E>(a, b, c)},
           visit_block: {|a,b,c|visit_block::<E>(a, b, c)},
@@ -121,9 +121,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
                    i.span, i.id, e, v);
       }
       item_mod(m) { v.visit_mod(m, i.span, i.id, e, v); }
-      item_native_mod(nm) {
+      item_foreign_mod(nm) {
         for nm.view_items.each {|vi| v.visit_view_item(vi, e, v); }
-        for nm.items.each {|ni| v.visit_native_item(ni, e, v); }
+        for nm.items.each {|ni| v.visit_foreign_item(ni, e, v); }
       }
       item_ty(t, tps, rp) {
         v.visit_ty(t, e, v);
@@ -247,9 +247,9 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     }
 }
 
-fn visit_native_item<E>(ni: @native_item, e: E, v: vt<E>) {
+fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     alt ni.node {
-      native_item_fn(fd, tps) {
+      foreign_item_fn(fd, tps) {
         v.visit_ty_params(tps, e, v);
         visit_fn_decl(fd, e, v);
       }
@@ -444,7 +444,7 @@ type simple_visitor =
     // generic over constr and ty_constr
     @{visit_mod: fn@(_mod, span, node_id),
       visit_view_item: fn@(@view_item),
-      visit_native_item: fn@(@native_item),
+      visit_foreign_item: fn@(@foreign_item),
       visit_item: fn@(@item),
       visit_local: fn@(@local),
       visit_block: fn@(ast::blk),
@@ -464,7 +464,7 @@ fn simple_ignore_ty(_t: @ty) {}
 fn default_simple_visitor() -> simple_visitor {
     ret @{visit_mod: fn@(_m: _mod, _sp: span, _id: node_id) { },
           visit_view_item: fn@(_vi: @view_item) { },
-          visit_native_item: fn@(_ni: @native_item) { },
+          visit_foreign_item: fn@(_ni: @foreign_item) { },
           visit_item: fn@(_i: @item) { },
           visit_local: fn@(_l: @local) { },
           visit_block: fn@(_b: ast::blk) { },
@@ -492,10 +492,10 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(vi);
         visit_view_item(vi, e, v);
     }
-    fn v_native_item(f: fn@(@native_item), ni: @native_item, &&e: (),
+    fn v_foreign_item(f: fn@(@foreign_item), ni: @foreign_item, &&e: (),
                      v: vt<()>) {
         f(ni);
-        visit_native_item(ni, e, v);
+        visit_foreign_item(ni, e, v);
     }
     fn v_item(f: fn@(@item), i: @item, &&e: (), v: vt<()>) {
         f(i);
@@ -565,8 +565,8 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                 visit_view_item: {|a,b,c|
                     v_view_item(v.visit_view_item, a, b, c)
                 },
-                visit_native_item:
-                    {|a,b,c|v_native_item(v.visit_native_item, a, b, c)},
+                visit_foreign_item:
+                    {|a,b,c|v_foreign_item(v.visit_foreign_item, a, b, c)},
                 visit_item: {|a,b,c|v_item(v.visit_item, a, b, c)},
                 visit_local: {|a,b,c|v_local(v.visit_local, a, b, c)},
                 visit_block: {|a,b,c|v_block(v.visit_block, a, b, c)},

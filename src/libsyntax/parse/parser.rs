@@ -147,7 +147,8 @@ class parser {
     fn get_id() -> node_id { next_node_id(self.sess) }
 
     fn parse_ty_fn(purity: ast::purity) -> ty_ {
-        let proto = if self.eat_keyword("native") {
+        let proto = if self.eat_keyword("native") ||
+            self.eat_keyword("extern") {
             self.expect_keyword("fn");
             ast::proto_bare
         } else {
@@ -413,7 +414,8 @@ class parser {
             self.parse_ty_fn(ast::unsafe_fn)
         } else if self.is_keyword("fn") {
             self.parse_ty_fn(ast::impure_fn)
-        } else if self.eat_keyword("native") {
+        } else if self.eat_keyword("native") ||
+            self.eat_keyword("extern") {
             self.expect_keyword("fn");
             ty_fn(proto_bare, self.parse_ty_fn_decl(ast::impure_fn))
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
@@ -2165,8 +2167,8 @@ class parser {
         (id, item_mod(m), some(inner_attrs.inner))
     }
 
-    fn parse_item_native_fn(+attrs: [attribute]/~,
-                            purity: purity) -> @native_item {
+    fn parse_item_foreign_fn(+attrs: [attribute]/~,
+                             purity: purity) -> @foreign_item {
         let lo = self.last_span.lo;
         let t = self.parse_fn_header();
         let (decl, _) = self.parse_fn_decl(purity, {|p| p.parse_arg()});
@@ -2174,7 +2176,7 @@ class parser {
         self.expect(token::SEMI);
         ret @{ident: t.ident,
               attrs: attrs,
-              node: native_item_fn(decl, t.tps),
+              node: foreign_item_fn(decl, t.tps),
               id: self.get_id(),
               span: mk_sp(lo, hi)};
     }
@@ -2191,35 +2193,35 @@ class parser {
         else { self.unexpected(); }
     }
 
-    fn parse_native_item(+attrs: [attribute]/~) ->
-        @native_item {
-        self.parse_item_native_fn(attrs, self.parse_fn_purity())
+    fn parse_foreign_item(+attrs: [attribute]/~) ->
+        @foreign_item {
+        self.parse_item_foreign_fn(attrs, self.parse_fn_purity())
     }
 
-    fn parse_native_mod_items(+first_item_attrs: [attribute]/~) ->
-        native_mod {
+    fn parse_foreign_mod_items(+first_item_attrs: [attribute]/~) ->
+        foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items} =
             self.parse_view(first_item_attrs, false);
-        let mut items: [@native_item]/~ = []/~;
+        let mut items: [@foreign_item]/~ = []/~;
         let mut initial_attrs = attrs_remaining;
         while self.token != token::RBRACE {
             let attrs = initial_attrs + self.parse_outer_attributes();
             initial_attrs = []/~;
-            vec::push(items, self.parse_native_item(attrs));
+            vec::push(items, self.parse_foreign_item(attrs));
         }
         ret {view_items: view_items,
              items: items};
     }
 
-    fn parse_item_native_mod() -> item_info {
+    fn parse_item_foreign_mod() -> item_info {
         self.expect_keyword("mod");
         let id = self.parse_ident();
         self.expect(token::LBRACE);
         let more_attrs = self.parse_inner_attrs_and_next();
-        let m = self.parse_native_mod_items(more_attrs.next);
+        let m = self.parse_foreign_mod_items(more_attrs.next);
         self.expect(token::RBRACE);
-        (id, item_native_mod(m), some(more_attrs.inner))
+        (id, item_foreign_mod(m), some(more_attrs.inner))
     }
 
     fn parse_type_decl() -> {lo: uint, ident: ident} {
@@ -2355,13 +2357,19 @@ class parser {
             self.bump();
             self.expect_keyword("fn");
             self.parse_item_fn(unsafe_fn)
+        } else if self.eat_keyword("extern") {
+            if self.eat_keyword("fn") {
+                self.parse_item_fn(extern_fn)
+            } else {
+                self.parse_item_foreign_mod()
+            }
         } else if self.eat_keyword("crust") {
             self.expect_keyword("fn");
-            self.parse_item_fn(crust_fn)
+            self.parse_item_fn(extern_fn)
         } else if self.eat_keyword("mod") {
             self.parse_item_mod()
         } else if self.eat_keyword("native") {
-            self.parse_item_native_mod()
+            self.parse_item_foreign_mod()
         } else if self.eat_keyword("type") {
             self.parse_item_type()
         } else if self.eat_keyword("enum") {

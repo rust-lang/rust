@@ -445,7 +445,7 @@ fn should_duplicate_reexported_impls_crate() {
 }
 
 #[test]
-fn should_duplicate_reexported_native_fns() {
+fn should_duplicate_reexported_foreign_fns() {
     let source = "native mod a { fn b(); } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);

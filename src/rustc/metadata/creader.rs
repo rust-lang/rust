@@ -116,17 +116,17 @@ fn visit_view_item(e: env, i: @ast::view_item) {
 
 fn visit_item(e: env, i: @ast::item) {
     alt i.node {
-      ast::item_native_mod(m) {
-        alt attr::native_abi(i.attrs) {
+      ast::item_foreign_mod(m) {
+        alt attr::foreign_abi(i.attrs) {
           either::right(abi) {
-            if abi != ast::native_abi_cdecl &&
-               abi != ast::native_abi_stdcall { ret; }
+            if abi != ast::foreign_abi_cdecl &&
+               abi != ast::foreign_abi_stdcall { ret; }
           }
           either::left(msg) { e.diag.span_fatal(i.span, msg); }
         }
 
         let cstore = e.cstore;
-        let native_name =
+        let foreign_name =
             alt attr::first_attr_value_str_by_name(i.attrs, "link_name") {
               some(nn) {
                 if *nn == "" {
@@ -140,11 +140,11 @@ fn visit_item(e: env, i: @ast::item) {
             };
         let mut already_added = false;
         if vec::len(attr::find_attrs_by_name(i.attrs, "nolink")) == 0u {
-            already_added = !cstore::add_used_library(cstore, *native_name);
+            already_added = !cstore::add_used_library(cstore, *foreign_name);
         }
         let link_args = attr::find_attrs_by_name(i.attrs, "link_args");
         if vec::len(link_args) > 0u && already_added {
-            e.diag.span_fatal(i.span, "library '" + *native_name +
+            e.diag.span_fatal(i.span, "library '" + *foreign_name +
                               "' already added: can't specify link_args.");
         }
         for link_args.each {|a|

@@ -157,7 +157,7 @@ mod test_other_forms {
     fn f() { }
 }
 
-mod test_native_items {
+mod test_foreign_items {
     #[abi = "cdecl"]
     native mod rustrt {
         #[attr];

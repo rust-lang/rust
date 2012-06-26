@@ -176,7 +176,7 @@ fn should_index_mod_contents_multi_page() {
 }
 
 #[test]
-fn should_index_native_mod_pages() {
+fn should_index_foreign_mod_pages() {
     let doc = test::mk_doc(
         config::doc_per_mod,
         "native mod a { }"
@@ -199,7 +199,7 @@ fn should_add_brief_desc_to_index() {
 }
 
 #[test]
-fn should_index_native_mod_contents() {
+fn should_index_foreign_mod_contents() {
     let doc = test::mk_doc(
         config::doc_per_crate,
         "native mod a { fn b(); }"

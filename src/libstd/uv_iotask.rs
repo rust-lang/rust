@@ -34,7 +34,7 @@ fn spawn_iotask(-builder: task::builder) -> iotask {
     set_opts(builder, {
         sched: some({
             mode: single_threaded,
-            native_stack_size: none
+            foreign_stack_size: none
         })
         with get_opts(builder)
     });

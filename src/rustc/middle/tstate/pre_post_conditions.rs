@@ -20,8 +20,8 @@ fn find_pre_post_mod(_m: _mod) -> _mod {
     fail;
 }
 
-fn find_pre_post_native_mod(_m: native_mod) -> native_mod {
-    #debug("implement find_pre_post_native_mod");
+fn find_pre_post_foreign_mod(_m: foreign_mod) -> foreign_mod {
+    #debug("implement find_pre_post_foreign_mod");
     fail;
 }
 
@@ -47,7 +47,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
         find_pre_post_fn(fcx, body);
       }
       item_mod(m) { find_pre_post_mod(m); }
-      item_native_mod(nm) { find_pre_post_native_mod(nm); }
+      item_foreign_mod(nm) { find_pre_post_foreign_mod(nm); }
       item_ty(*) | item_enum(*) | item_iface(*) { ret; }
       item_class(*) {
           fail "find_pre_post_item: shouldn't be called on item_class";

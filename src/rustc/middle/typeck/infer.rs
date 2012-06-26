@@ -179,7 +179,7 @@ import ty::{mk_fn, type_is_bot};
 import check::regionmanip::{replace_bound_regions_in_fn_ty};
 import driver::session::session;
 import util::common::{indent, indenter};
-import ast::{unsafe_fn, impure_fn, pure_fn, crust_fn};
+import ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 import ast::{m_const, m_imm, m_mutbl};
 
 export infer_ctxt;
@@ -2132,7 +2132,7 @@ impl of combine for lub {
         alt (f1, f2) {
           (unsafe_fn, _) | (_, unsafe_fn) {ok(unsafe_fn)}
           (impure_fn, _) | (_, impure_fn) {ok(impure_fn)}
-          (crust_fn, _) | (_, crust_fn) {ok(crust_fn)}
+          (extern_fn, _) | (_, extern_fn) {ok(extern_fn)}
           (pure_fn, pure_fn) {ok(pure_fn)}
         }
     }
@@ -2332,7 +2332,7 @@ impl of combine for glb {
     fn purities(f1: purity, f2: purity) -> cres<purity> {
         alt (f1, f2) {
           (pure_fn, _) | (_, pure_fn) {ok(pure_fn)}
-          (crust_fn, _) | (_, crust_fn) {ok(crust_fn)}
+          (extern_fn, _) | (_, extern_fn) {ok(extern_fn)}
           (impure_fn, _) | (_, impure_fn) {ok(impure_fn)}
           (unsafe_fn, unsafe_fn) {ok(unsafe_fn)}
         }

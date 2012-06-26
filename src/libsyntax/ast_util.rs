@@ -51,7 +51,7 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
 pure fn def_id_of_def(d: def) -> def_id {
     alt d {
       def_fn(id, _) | def_mod(id) |
-      def_native_mod(id) | def_const(id) |
+      def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
       def_use(id) | def_class(id) { id }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
@@ -321,7 +321,7 @@ impl inlined_item_methods for inlined_item {
     fn ident() -> ident {
         alt self {
           ii_item(i) { /* FIXME (#2543) */ copy i.ident }
-          ii_native(i) { /* FIXME (#2543) */ copy i.ident }
+          ii_foreign(i) { /* FIXME (#2543) */ copy i.ident }
           ii_method(_, m) { /* FIXME (#2543) */ copy m.ident }
           ii_ctor(_, nm, _, _) { /* FIXME (#2543) */ copy nm }
           ii_dtor(_, nm, _, _) { /* FIXME (#2543) */ copy nm }
@@ -331,7 +331,7 @@ impl inlined_item_methods for inlined_item {
     fn id() -> ast::node_id {
         alt self {
           ii_item(i) { i.id }
-          ii_native(i) { i.id }
+          ii_foreign(i) { i.id }
           ii_method(_, m) { m.id }
           ii_ctor(ctor, _, _, _) { ctor.node.id }
           ii_dtor(dtor, _, _, _) { dtor.node.id }
@@ -341,7 +341,7 @@ impl inlined_item_methods for inlined_item {
     fn accept<E>(e: E, v: visit::vt<E>) {
         alt self {
           ii_item(i) { v.visit_item(i, e, v) }
-          ii_native(i) { v.visit_native_item(i, e, v) }
+          ii_foreign(i) { v.visit_foreign_item(i, e, v) }
           ii_method(_, m) { visit::visit_method_helper(m, e, v) }
           ii_ctor(ctor, nm, tps, parent_id) {
               visit::visit_class_ctor_helper(ctor, nm, tps, parent_id, e, v);
@@ -419,7 +419,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             }
         },
 
-        visit_native_item: fn@(ni: @native_item) {
+        visit_foreign_item: fn@(ni: @foreign_item) {
             vfn(ni.id)
         },
 

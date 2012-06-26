@@ -241,8 +241,8 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_method(d, m) {
         ast::ii_method(d, fld.fold_method(m))
       }
-      ast::ii_native(i) {
-        ast::ii_native(fld.fold_native_item(i))
+      ast::ii_foreign(i) {
+        ast::ii_foreign(fld.fold_foreign_item(i))
       }
       ast::ii_ctor(ctor, nm, tps, parent_id) {
         let ctor_body = fld.fold_block(ctor.node.body);
@@ -275,8 +275,8 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
       ast::ii_method(d, m) {
         ast::ii_method(xcx.tr_def_id(d), fld.fold_method(m))
       }
-      ast::ii_native(i) {
-        ast::ii_native(fld.fold_native_item(i))
+      ast::ii_foreign(i) {
+        ast::ii_foreign(fld.fold_foreign_item(i))
       }
       ast::ii_ctor(ctor, nm, tps, parent_id) {
         let ctor_body = fld.fold_block(ctor.node.body);
@@ -310,7 +310,7 @@ impl of tr for ast::def {
           ast::def_fn(did, p) { ast::def_fn(did.tr(xcx), p) }
           ast::def_self(nid) { ast::def_self(xcx.tr_id(nid)) }
           ast::def_mod(did) { ast::def_mod(did.tr(xcx)) }
-          ast::def_native_mod(did) { ast::def_native_mod(did.tr(xcx)) }
+          ast::def_foreign_mod(did) { ast::def_foreign_mod(did.tr(xcx)) }
           ast::def_const(did) { ast::def_const(did.tr(xcx)) }
           ast::def_arg(nid, m) { ast::def_arg(xcx.tr_id(nid), m) }
           ast::def_local(nid, b) { ast::def_local(xcx.tr_id(nid), b) }

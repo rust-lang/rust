@@ -170,7 +170,7 @@ impl methods for reflector {
               ast::pure_fn { 0u }
               ast::unsafe_fn { 1u }
               ast::impure_fn { 2u }
-              ast::crust_fn { 3u }
+              ast::extern_fn { 3u }
             };
             let protoval = alt fty.proto {
               ast::proto_bare { 0u }

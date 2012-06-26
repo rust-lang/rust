@@ -51,9 +51,9 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
             ident: ident,
             node: ast::item_fn(decl, tys, _), _
           }, _) |
-          ast_map::node_native_item(@{
+          ast_map::node_foreign_item(@{
             ident: ident,
-            node: ast::native_item_fn(decl, tys), _
+            node: ast::foreign_item_fn(decl, tys), _
           }, _, _) {
             some(pprust::fun_to_str(decl, ident, tys))
           }
@@ -68,7 +68,7 @@ fn should_add_fn_sig() {
 }
 
 #[test]
-fn should_add_native_fn_sig() {
+fn should_add_foreign_fn_sig() {
     let doc = test::mk_doc("native mod a { fn a<T>() -> int; }");
     assert doc.cratemod().nmods()[0].fns[0].sig == some("fn a<T>() -> int");
 }

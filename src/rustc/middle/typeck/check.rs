@@ -391,9 +391,9 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, tps, rp, tpt_ty);
       }
-      ast::item_native_mod(m) {
-        if syntax::attr::native_abi(it.attrs) ==
-            either::right(ast::native_abi_rust_intrinsic) {
+      ast::item_foreign_mod(m) {
+        if syntax::attr::foreign_abi(it.attrs) ==
+            either::right(ast::foreign_abi_rust_intrinsic) {
             for m.items.each { |item|
                 check_intrinsic_type(ccx, item);
             }
@@ -2016,7 +2016,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
           }
         }
       }
-      ast::def_fn(id, ast::crust_fn) {
+      ast::def_fn(id, ast::extern_fn) {
         // Crust functions are just u8 pointers
         ret {
             bounds: @[]/~,
@@ -2054,7 +2054,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_ty_param(did, n) {
         ret no_params(ty::mk_param(fcx.ccx.tcx, n, did));
       }
-      ast::def_mod(*) | ast::def_native_mod(*) {
+      ast::def_mod(*) | ast::def_foreign_mod(*) {
         fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found module");
       }
       ast::def_use(*) {
@@ -2210,7 +2210,7 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
     }
 }
 
-fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
+fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
     fn param(ccx: @crate_ctxt, n: uint) -> ty::t {
         ty::mk_param(ccx.tcx, n, local_def(0))
     }

@@ -63,7 +63,7 @@ fn moddoc_from_mod(
                     moddoc_from_mod(itemdoc, m)
                 ))
               }
-              ast::item_native_mod(nm) {
+              ast::item_foreign_mod(nm) {
                 some(doc::nmodtag(
                     nmoddoc_from_mod(itemdoc, nm)
                 ))
@@ -109,14 +109,14 @@ fn moddoc_from_mod(
 
 fn nmoddoc_from_mod(
     itemdoc: doc::itemdoc,
-    module: ast::native_mod
+    module: ast::foreign_mod
 ) -> doc::nmoddoc {
     {
         item: itemdoc,
         fns: par::seqmap(module.items) {|item|
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
-              ast::native_item_fn(_, _) {
+              ast::foreign_item_fn(_, _) {
                 fndoc_from_fn(itemdoc)
               }
             }
@@ -290,13 +290,13 @@ mod test {
     }
 
     #[test]
-    fn extract_native_mods() {
+    fn extract_foreign_mods() {
         let doc = mk_doc("native mod a { }");
         assert doc.cratemod().nmods()[0].name() == "a";
     }
 
     #[test]
-    fn extract_fns_from_native_mods() {
+    fn extract_fns_from_foreign_mods() {
         let doc = mk_doc("native mod a { fn a(); }");
         assert doc.cratemod().nmods()[0].fns[0].name() == "a";
     }

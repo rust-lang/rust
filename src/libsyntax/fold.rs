@@ -21,7 +21,7 @@ iface ast_fold {
     fn fold_crate(crate) -> crate;
     fn fold_crate_directive(&&@crate_directive) -> @crate_directive;
     fn fold_view_item(&&@view_item) -> @view_item;
-    fn fold_native_item(&&@native_item) -> @native_item;
+    fn fold_foreign_item(&&@foreign_item) -> @foreign_item;
     fn fold_item(&&@item) -> @item;
     fn fold_class_item(&&@class_member) -> @class_member;
     fn fold_item_underscore(item_) -> item_;
@@ -36,7 +36,7 @@ iface ast_fold {
     fn fold_constr(&&@constr) -> @constr;
     fn fold_ty_constr(&&@ty_constr) -> @ty_constr;
     fn fold_mod(_mod) -> _mod;
-    fn fold_native_mod(native_mod) -> native_mod;
+    fn fold_foreign_mod(foreign_mod) -> foreign_mod;
     fn fold_variant(variant) -> variant;
     fn fold_ident(&&ident) -> ident;
     fn fold_path(&&@path) -> @path;
@@ -54,7 +54,7 @@ type ast_fold_precursor = @{
     fold_crate_directive: fn@(crate_directive_, span,
                               ast_fold) -> (crate_directive_, span),
     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
-    fold_native_item: fn@(&&@native_item, ast_fold) -> @native_item,
+    fold_foreign_item: fn@(&&@foreign_item, ast_fold) -> @foreign_item,
     fold_item: fn@(&&@item, ast_fold) -> @item,
     fold_class_item: fn@(&&@class_member, ast_fold) -> @class_member,
     fold_item_underscore: fn@(item_, ast_fold) -> item_,
@@ -70,7 +70,7 @@ type ast_fold_precursor = @{
     fold_ty_constr: fn@(ast::ty_constr_, span, ast_fold)
         -> (ty_constr_, span),
     fold_mod: fn@(_mod, ast_fold) -> _mod,
-    fold_native_mod: fn@(native_mod, ast_fold) -> native_mod,
+    fold_foreign_mod: fn@(foreign_mod, ast_fold) -> foreign_mod,
     fold_variant: fn@(variant_, span, ast_fold) -> (variant_, span),
     fold_ident: fn@(&&ident, ast_fold) -> ident,
     fold_path: fn@(path, ast_fold) -> path,
@@ -105,7 +105,7 @@ fn fold_attribute_(at: attribute, fld: ast_fold) ->
                 value: *fold_meta_item_(@at.node.value, fld)},
          span: fld.new_span(at.span)};
 }
-//used in noop_fold_native_item and noop_fold_fn_decl
+//used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
     ret {mode: a.mode,
          ty: fld.fold_ty(a.ty),
@@ -186,7 +186,8 @@ fn noop_fold_view_item(vi: view_item_, _fld: ast_fold) -> view_item_ {
 }
 
 
-fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
+fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
+    -> @foreign_item {
     let fold_arg = {|x|fold_arg_(x, fld)};
     let fold_attribute = {|x|fold_attribute_(x, fld)};
 
@@ -194,8 +195,8 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
           attrs: vec::map(ni.attrs, fold_attribute),
           node:
               alt ni.node {
-                native_item_fn(fdec, typms) {
-                  native_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
+                foreign_item_fn(fdec, typms) {
+                  foreign_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
                                   output: fld.fold_ty(fdec.output),
                                   purity: fdec.purity,
                                   cf: fdec.cf,
@@ -241,7 +242,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                       fld.fold_block(body))
           }
           item_mod(m) { item_mod(fld.fold_mod(m)) }
-          item_native_mod(nm) { item_native_mod(fld.fold_native_mod(nm)) }
+          item_foreign_mod(nm) { item_foreign_mod(fld.fold_foreign_mod(nm)) }
           item_ty(t, typms, rp) { item_ty(fld.fold_ty(t),
                                           fold_ty_params(typms, fld),
                                           rp) }
@@ -517,9 +518,9 @@ fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
          items: vec::map(m.items, fld.fold_item)};
 }
 
-fn noop_fold_native_mod(nm: native_mod, fld: ast_fold) -> native_mod {
+fn noop_fold_foreign_mod(nm: foreign_mod, fld: ast_fold) -> foreign_mod {
     ret {view_items: vec::map(nm.view_items, fld.fold_view_item),
-         items: vec::map(nm.items, fld.fold_native_item)}
+         items: vec::map(nm.items, fld.fold_foreign_item)}
 }
 
 fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
@@ -583,7 +584,7 @@ fn default_ast_fold() -> ast_fold_precursor {
     ret @{fold_crate: wrap(noop_fold_crate),
           fold_crate_directive: wrap(noop_fold_crate_directive),
           fold_view_item: noop_fold_view_item,
-          fold_native_item: noop_fold_native_item,
+          fold_foreign_item: noop_fold_foreign_item,
           fold_item: noop_fold_item,
           fold_class_item: noop_fold_class_item,
           fold_item_underscore: noop_fold_item_underscore,
@@ -598,7 +599,7 @@ fn default_ast_fold() -> ast_fold_precursor {
           fold_constr: wrap(noop_fold_constr),
           fold_ty_constr: wrap(noop_fold_ty_constr),
           fold_mod: noop_fold_mod,
-          fold_native_mod: noop_fold_native_mod,
+          fold_foreign_mod: noop_fold_foreign_mod,
           fold_variant: wrap(noop_fold_variant),
           fold_ident: noop_fold_ident,
           fold_path: noop_fold_path,
@@ -628,9 +629,9 @@ impl of ast_fold for ast_fold_precursor {
               vis: x.vis,
               span: self.new_span(x.span)};
     }
-    fn fold_native_item(&&x: @native_item)
-        -> @native_item {
-        ret self.fold_native_item(x, self as ast_fold);
+    fn fold_foreign_item(&&x: @foreign_item)
+        -> @foreign_item {
+        ret self.fold_foreign_item(x, self as ast_fold);
     }
     fn fold_item(&&i: @item) -> @item {
         ret self.fold_item(i, self as ast_fold);
@@ -699,9 +700,9 @@ impl of ast_fold for ast_fold_precursor {
     fn fold_mod(x: _mod) -> _mod {
         ret self.fold_mod(x, self as ast_fold);
     }
-    fn fold_native_mod(x: native_mod) ->
-       native_mod {
-        ret self.fold_native_mod(x, self as ast_fold);
+    fn fold_foreign_mod(x: foreign_mod) ->
+       foreign_mod {
+        ret self.fold_foreign_mod(x, self as ast_fold);
     }
     fn fold_variant(x: variant) ->
        variant {

@@ -438,7 +438,7 @@ fn parse_purity(c: char) -> purity {
       'u' {unsafe_fn}
       'p' {pure_fn}
       'i' {impure_fn}
-      'c' {crust_fn}
+      'c' {extern_fn}
     }
 }
 

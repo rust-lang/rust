@@ -355,7 +355,7 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
 
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
-    fn check_native_fn(cx: ty::ctxt, fn_id: ast::node_id,
+    fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
                        decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs) {|a| a.ty };
         for vec::each(tys + [decl.output]/~) {|ty|
@@ -385,12 +385,12 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
     }
 
     alt it.node {
-      ast::item_native_mod(nmod) if attr::native_abi(it.attrs) !=
-      either::right(ast::native_abi_rust_intrinsic) {
+      ast::item_foreign_mod(nmod) if attr::foreign_abi(it.attrs) !=
+      either::right(ast::foreign_abi_rust_intrinsic) {
         for nmod.items.each {|ni|
             alt ni.node {
-              ast::native_item_fn(decl, tps) {
-                check_native_fn(cx, it.id, decl);
+              ast::foreign_item_fn(decl, tps) {
+                check_foreign_fn(cx, it.id, decl);
               }
             }
         }

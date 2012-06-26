@@ -18,7 +18,7 @@ import type_of::*;
 import std::map::hashmap;
 import util::ppaux::ty_to_str;
 
-export link_name, trans_native_mod, register_crust_fn, trans_crust_fn,
+export link_name, trans_foreign_mod, register_extern_fn, trans_extern_fn,
        trans_intrinsic;
 
 enum x86_64_reg_class {
@@ -419,7 +419,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
     ret llfn;
 }
 
-fn link_name(i: @ast::native_item) -> str {
+fn link_name(i: @ast::foreign_item) -> str {
     alt attr::first_attr_value_str_by_name(i.attrs, "link_name") {
       none { ret *i.ident; }
       option::some(ln) { ret *ln; }
@@ -518,7 +518,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
                   arg_builder: wrap_arg_builder,
                   ret_builder: wrap_ret_builder) {
 
-    let _icx = ccx.insn_ctxt("native::build_wrap_fn_");
+    let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, []/~, llwrapfn, none);
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
@@ -575,21 +575,21 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
 // stack pointer appropriately to avoid a round of copies.  (In fact, the shim
 // function itself is unnecessary). We used to do this, in fact, and will
 // perhaps do so in the future.
-fn trans_native_mod(ccx: @crate_ctxt,
-                    native_mod: ast::native_mod, abi: ast::native_abi) {
+fn trans_foreign_mod(ccx: @crate_ctxt,
+                    foreign_mod: ast::foreign_mod, abi: ast::foreign_abi) {
 
-    let _icx = ccx.insn_ctxt("native::trans_native_mod");
+    let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
 
     fn build_shim_fn(ccx: @crate_ctxt,
-                     native_item: @ast::native_item,
+                     foreign_item: @ast::foreign_item,
                      tys: @c_stack_tys,
                      cc: lib::llvm::CallConv) -> ValueRef {
 
-        let _icx = ccx.insn_ctxt("native::build_shim_fn");
+        let _icx = ccx.insn_ctxt("foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> [ValueRef]/~ {
-            let _icx = bcx.insn_ctxt("native::shim::build_args");
+            let _icx = bcx.insn_ctxt("foreign::shim::build_args");
             let mut llargvals = []/~;
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
@@ -635,7 +635,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef, llretval: ValueRef)  {
-            let _icx = bcx.insn_ctxt("native::shim::build_ret");
+            let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
             alt tys.x86_64_tys {
                 some(x86_64) {
                     vec::iteri(x86_64.attrs) {|i, a|
@@ -676,7 +676,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
             }
         }
 
-        let lname = link_name(native_item);
+        let lname = link_name(foreign_item);
         let llbasefn = base_fn(ccx, lname, tys, cc);
         // Name the shim function
         let shim_name = lname + "__c_stack_shim";
@@ -703,7 +703,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
     // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
     // over the place
     fn build_direct_fn(ccx: @crate_ctxt, decl: ValueRef,
-                       item: @ast::native_item, tys: @c_stack_tys,
+                       item: @ast::foreign_item, tys: @c_stack_tys,
                        cc: lib::llvm::CallConv) {
         let fcx = new_fn_ctxt(ccx, []/~, decl, none);
         let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
@@ -726,11 +726,11 @@ fn trans_native_mod(ccx: @crate_ctxt,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
 
-        let _icx = ccx.insn_ctxt("native::build_wrap_fn");
+        let _icx = ccx.insn_ctxt("foreign::build_wrap_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("native::wrap::build_args");
+            let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
             let implicit_args = first_real_arg; // ret + env
@@ -745,7 +745,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
         fn build_ret(bcx: block, _tys: @c_stack_tys,
                      _llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("native::wrap::build_ret");
+            let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
             RetVoid(bcx);
         }
 
@@ -755,22 +755,22 @@ fn trans_native_mod(ccx: @crate_ctxt,
     }
 
     let mut cc = alt abi {
-      ast::native_abi_rust_intrinsic |
-      ast::native_abi_cdecl { lib::llvm::CCallConv }
-      ast::native_abi_stdcall { lib::llvm::X86StdcallCallConv }
+      ast::foreign_abi_rust_intrinsic |
+      ast::foreign_abi_cdecl { lib::llvm::CCallConv }
+      ast::foreign_abi_stdcall { lib::llvm::X86StdcallCallConv }
     };
 
-    for vec::each(native_mod.items) {|native_item|
-      alt native_item.node {
-        ast::native_item_fn(fn_decl, typarams) {
-          let id = native_item.id;
-          if abi != ast::native_abi_rust_intrinsic {
+    for vec::each(foreign_mod.items) {|foreign_item|
+      alt foreign_item.node {
+        ast::foreign_item_fn(fn_decl, typarams) {
+          let id = foreign_item.id;
+          if abi != ast::foreign_abi_rust_intrinsic {
               let llwrapfn = get_item_val(ccx, id);
               let tys = c_stack_tys(ccx, id);
-              if attr::attrs_contains_name(native_item.attrs, "rust_stack") {
-                  build_direct_fn(ccx, llwrapfn, native_item, tys, cc);
+              if attr::attrs_contains_name(foreign_item.attrs, "rust_stack") {
+                  build_direct_fn(ccx, llwrapfn, foreign_item, tys, cc);
               } else {
-                  let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
+                  let llshimfn = build_shim_fn(ccx, foreign_item, tys, cc);
                   build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
               }
           } else {
@@ -779,9 +779,9 @@ fn trans_native_mod(ccx: @crate_ctxt,
               if typarams.is_empty() {
                   let llwrapfn = get_item_val(ccx, id);
                   let path = alt ccx.tcx.items.find(id) {
-                      some(ast_map::node_native_item(_, _, pt)) { pt }
+                      some(ast_map::node_foreign_item(_, _, pt)) { pt }
                       _ {
-                          ccx.sess.span_bug(native_item.span,
+                          ccx.sess.span_bug(foreign_item.span,
                                             "can't find intrinsic path")
                       }
                   };
@@ -790,7 +790,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                       vtables: none,
                       bounds: @[]/~
                   };
-                  trans_intrinsic(ccx, llwrapfn, native_item,
+                  trans_intrinsic(ccx, llwrapfn, foreign_item,
                                   *path, psubsts, none);
               }
           }
@@ -799,7 +799,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
     }
 }
 
-fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
+fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                    path: ast_map::path, substs: param_substs,
                    ref_id: option<ast::node_id>) {
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
@@ -922,15 +922,15 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
     finish_fn(fcx, lltop);
 }
 
-fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
+fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                   body: ast::blk, llwrapfn: ValueRef, id: ast::node_id) {
 
-    let _icx = ccx.insn_ctxt("native::build_crust_fn");
+    let _icx = ccx.insn_ctxt("foreign::build_extern_fn");
 
     fn build_rust_fn(ccx: @crate_ctxt, path: ast_map::path,
                      decl: ast::fn_decl, body: ast::blk,
                      id: ast::node_id) -> ValueRef {
-        let _icx = ccx.insn_ctxt("native::crust::build_rust_fn");
+        let _icx = ccx.insn_ctxt("foreign::extern::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
             ccx, path + [ast_map::path_name(@"__rust_abi")]/~);
@@ -943,11 +943,11 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
 
-        let _icx = ccx.insn_ctxt("native::crust::build_shim_fn");
+        let _icx = ccx.insn_ctxt("foreign::extern::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> [ValueRef]/~ {
-            let _icx = bcx.insn_ctxt("native::crust::shim::build_args");
+            let _icx = bcx.insn_ctxt("foreign::crust::shim::build_args");
             let mut llargvals = []/~;
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
@@ -979,11 +979,11 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_wrap_fn(ccx: @crate_ctxt, llshimfn: ValueRef,
                      llwrapfn: ValueRef, tys: @c_stack_tys) {
 
-        let _icx = ccx.insn_ctxt("native::crust::build_wrap_fn");
+        let _icx = ccx.insn_ctxt("foreign::extern::build_wrap_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("native::crust::wrap::build_args");
+            let _icx = bcx.insn_ctxt("foreign::extern::wrap::build_args");
             alt tys.x86_64_tys {
                 option::some(x86_64) {
                     let mut atys = x86_64.arg_tys;
@@ -1037,7 +1037,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("native::crust::wrap::build_ret");
+            let _icx = bcx.insn_ctxt("foreign::extern::wrap::build_ret");
             alt tys.x86_64_tys {
                 option::some(x86_64) {
                     if x86_64.sret || !tys.ret_def {
@@ -1078,10 +1078,10 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     build_wrap_fn(ccx, llshimfn, llwrapfn, tys)
 }
 
-fn register_crust_fn(ccx: @crate_ctxt, sp: span,
+fn register_extern_fn(ccx: @crate_ctxt, sp: span,
                      path: ast_map::path, node_id: ast::node_id)
     -> ValueRef {
-    let _icx = ccx.insn_ctxt("native::register_crust_fn");
+    let _icx = ccx.insn_ctxt("foreign::register_extern_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);
     ret if ccx.sess.targ_cfg.arch == arch_x86_64 {
@@ -1098,16 +1098,16 @@ fn register_crust_fn(ccx: @crate_ctxt, sp: span,
     }
 }
 
-fn abi_of_native_fn(ccx: @crate_ctxt, i: @ast::native_item)
-    -> ast::native_abi {
+fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
+    -> ast::foreign_abi {
     alt attr::first_attr_value_str_by_name(i.attrs, "abi") {
       none {
         alt check ccx.tcx.items.get(i.id) {
-          ast_map::node_native_item(_, abi, _) { abi }
+          ast_map::node_foreign_item(_, abi, _) { abi }
         }
       }
       some(_) {
-        alt attr::native_abi(i.attrs) {
+        alt attr::foreign_abi(i.attrs) {
           either::right(abi) { abi }
           either::left(msg) { ccx.sess.span_fatal(i.span, msg); }
         }

@@ -297,12 +297,13 @@ fn print_mod(s: ps, _mod: ast::_mod, attrs: [ast::attribute]/~) {
     for _mod.items.each {|item| print_item(s, item); }
 }
 
-fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]/~) {
+fn print_foreign_mod(s: ps, nmod: ast::foreign_mod,
+                     attrs: [ast::attribute]/~) {
     print_inner_attributes(s, attrs);
     for nmod.view_items.each {|vitem|
         print_view_item(s, vitem);
     }
-    for nmod.items.each {|item| print_native_item(s, item); }
+    for nmod.items.each {|item| print_foreign_item(s, item); }
 }
 
 fn print_region(s: ps, region: @ast::region) {
@@ -388,12 +389,12 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
     end(s);
 }
 
-fn print_native_item(s: ps, item: @ast::native_item) {
+fn print_foreign_item(s: ps, item: @ast::foreign_item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     alt item.node {
-      ast::native_item_fn(decl, typarams) {
+      ast::foreign_item_fn(decl, typarams) {
         print_fn(s, decl, item.ident, typarams);
         end(s); // end head-ibox
         word(s.s, ";");
@@ -434,12 +435,12 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_mod(s, _mod, item.attrs);
         bclose(s, item.span);
       }
-      ast::item_native_mod(nmod) {
-        head(s, "native");
+      ast::item_foreign_mod(nmod) {
+        head(s, "extern");
         word_nbsp(s, "mod");
         word_nbsp(s, *item.ident);
         bopen(s);
-        print_native_mod(s, nmod, item.attrs);
+        print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
       }
       ast::item_ty(ty, params, rp) {
@@ -1753,7 +1754,7 @@ fn purity_to_str(p: ast::purity) -> str {
       ast::impure_fn {"impure"}
       ast::unsafe_fn {"unsafe"}
       ast::pure_fn {"pure"}
-      ast::crust_fn {"crust"}
+      ast::extern_fn {"extern"}
     }
 }
 
@@ -1766,7 +1767,7 @@ fn print_purity(s: ps, p: ast::purity) {
 
 fn proto_to_str(p: ast::proto) -> str {
     ret alt p {
-      ast::proto_bare { "native fn" }
+      ast::proto_bare { "extern fn" }
       ast::proto_any { "fn" }
       ast::proto_block { "fn&" }
       ast::proto_uniq { "fn~" }

@@ -149,13 +149,13 @@ fn should_remove_mods_from_containing_mods() {
 }
 
 #[test]
-fn should_make_a_page_for_every_native_mod() {
+fn should_make_a_page_for_every_foreign_mod() {
     let doc = test::mk_doc("native mod a { }");
     assert doc.pages.nmods()[0].name() == "a";
 }
 
 #[test]
-fn should_remove_native_mods_from_containing_mods() {
+fn should_remove_foreign_mods_from_containing_mods() {
     let doc = test::mk_doc("native mod a { }");
     assert vec::is_empty(doc.cratemod().nmods());
 }

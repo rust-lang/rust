@@ -18,7 +18,7 @@ fn run(i: int) {
     let opts = {
         sched: some({
             mode: task::osmain,
-            native_stack_size: none
+            foreign_stack_size: none
         })
         with task::get_opts(builder)
     };
@@ -30,7 +30,7 @@ fn run(i: int) {
         let opts = {
             sched: some({
                 mode: task::single_threaded,
-                native_stack_size: none
+                foreign_stack_size: none
             })
             with task::get_opts(builder)
         };

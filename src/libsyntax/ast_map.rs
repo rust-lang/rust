@@ -34,7 +34,7 @@ fn path_to_str(p: path) -> str {
 
 enum ast_node {
     node_item(@item, @path),
-    node_native_item(@native_item, native_abi, @path),
+    node_foreign_item(@foreign_item, foreign_abi, @path),
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
     node_variant(variant, @item, @path),
     node_expr(@expr),
@@ -104,8 +104,8 @@ fn map_decoded_item(diag: span_handler,
     // add it to the table now:
     alt ii {
       ii_item(*) | ii_ctor(*) | ii_dtor(*) { /* fallthrough */ }
-      ii_native(i) {
-        cx.map.insert(i.id, node_native_item(i, native_abi_rust_intrinsic,
+      ii_foreign(i) {
+        cx.map.insert(i.id, node_foreign_item(i, foreign_abi_rust_intrinsic,
                                              @path));
       }
       ii_method(impl_did, m) {
@@ -202,14 +202,14 @@ fn map_item(i: @item, cx: ctx, v: vt) {
                 extend(cx, i.ident)));
         }
       }
-      item_native_mod(nm) {
-        let abi = alt attr::native_abi(i.attrs) {
+      item_foreign_mod(nm) {
+        let abi = alt attr::foreign_abi(i.attrs) {
           either::left(msg) { cx.diag.span_fatal(i.span, msg); }
           either::right(abi) { abi }
         };
         for nm.items.each {|nitem|
             cx.map.insert(nitem.id,
-                          node_native_item(nitem, abi,
+                          node_foreign_item(nitem, abi,
                                            /* FIXME (#2543) */
                                            @copy cx.path));
         }
@@ -228,7 +228,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       _ { }
     }
     alt i.node {
-      item_mod(_) | item_native_mod(_) {
+      item_mod(_) | item_foreign_mod(_) {
         vec::push(cx.path, path_mod(i.ident));
       }
       _ { vec::push(cx.path, path_name(i.ident)); }
@@ -269,7 +269,7 @@ fn node_id_to_str(map: map, id: node_id) -> str {
       some(node_item(item, path)) {
         #fmt["item %s (id=%?)", path_ident_to_str(*path, item.ident), id]
       }
-      some(node_native_item(item, abi, path)) {
+      some(node_foreign_item(item, abi, path)) {
         #fmt["native item %s with abi %? (id=%?)",
              path_ident_to_str(*path, item.ident), abi, id]
       }

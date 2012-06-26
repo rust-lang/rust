@@ -120,7 +120,7 @@ native mod test {
     fn get_task_id();
 }
 
-fn test_native_fn() {
+fn test_foreign_fn() {
     assert test::unsupervise != test::get_task_id;
     assert test::unsupervise == test::unsupervise;
 }
@@ -157,6 +157,6 @@ fn main() {
     test_chan();
     test_ptr();
     test_fn();
-    test_native_fn();
+    test_foreign_fn();
     test_class();
 }

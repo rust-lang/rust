@@ -72,8 +72,9 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_variant(_, _, _) {
         for uint::range(0u, n_tps) {|n| cx.uses[n] |= use_repr;}
       }
-      ast_map::node_native_item(i@@{node: native_item_fn(_, _), _}, abi, _) {
-        if abi == native_abi_rust_intrinsic {
+      ast_map::node_foreign_item(i@@{node: foreign_item_fn(_, _), _},
+                                 abi, _) {
+        if abi == foreign_abi_rust_intrinsic {
             let flags = alt check *i.ident {
               "visit_ty" { 3u }
               "size_of" |  "pref_align_of" | "min_align_of" |

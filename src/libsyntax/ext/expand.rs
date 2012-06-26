@@ -129,7 +129,7 @@ fn expand_item(cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
     -> @ast::item
 {
     let is_mod = alt it.node {
-      ast::item_mod(_) | ast::item_native_mod(_) {true}
+      ast::item_mod(_) | ast::item_foreign_mod(_) {true}
       _ {false}
     };
     if is_mod { cx.mod_push(it.ident); }

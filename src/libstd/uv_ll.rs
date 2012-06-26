@@ -1314,80 +1314,80 @@ mod test {
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_tcp_t() {
-        let native_handle_size = rustrt::rust_uv_helper_uv_tcp_t_size();
+        let foreign_handle_size = rustrt::rust_uv_helper_uv_tcp_t_size();
         let rust_handle_size = sys::size_of::<uv_tcp_t>();
         let output = #fmt("uv_tcp_t -- native: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_connect_t() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_uv_connect_t_size();
         let rust_handle_size = sys::size_of::<uv_connect_t>();
         let output = #fmt("uv_connect_t -- native: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_buf_t() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_uv_buf_t_size();
         let rust_handle_size = sys::size_of::<uv_buf_t>();
         let output = #fmt("uv_buf_t -- native: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_write_t() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_uv_write_t_size();
         let rust_handle_size = sys::size_of::<uv_write_t>();
         let output = #fmt("uv_write_t -- native: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
 
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_sockaddr_in() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_sockaddr_in_size();
         let rust_handle_size = sys::size_of::<sockaddr_in>();
         let output = #fmt("sockaddr_in -- native: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
 
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_async_t() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_uv_async_t_size();
         let rust_handle_size = sys::size_of::<uv_async_t>();
         let output = #fmt("uv_async_t -- native: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
 
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_timer_t() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_uv_timer_t_size();
         let rust_handle_size = sys::size_of::<uv_timer_t>();
         let output = #fmt("uv_timer_t -- native: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
 }

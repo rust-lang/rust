@@ -73,7 +73,7 @@ enum def {
     def_fn(def_id, purity),
     def_self(node_id),
     def_mod(def_id),
-    def_native_mod(def_id),
+    def_foreign_mod(def_id),
     def_const(def_id),
     def_arg(node_id, mode),
     def_local(node_id, bool /* is_mutbl */),
@@ -563,7 +563,7 @@ enum purity {
     pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
     impure_fn, // declared with "fn"
-    crust_fn, // declared with "crust fn"
+    extern_fn, // declared with "crust fn"
 }
 
 #[auto_serialize]
@@ -584,16 +584,16 @@ type method = {ident: ident, attrs: [attribute]/~,
 type _mod = {view_items: [@view_item]/~, items: [@item]/~};
 
 #[auto_serialize]
-enum native_abi {
-    native_abi_rust_intrinsic,
-    native_abi_cdecl,
-    native_abi_stdcall,
+enum foreign_abi {
+    foreign_abi_rust_intrinsic,
+    foreign_abi_cdecl,
+    foreign_abi_stdcall,
 }
 
 #[auto_serialize]
-type native_mod =
+type foreign_mod =
     {view_items: [@view_item]/~,
-     items: [@native_item]/~};
+     items: [@foreign_item]/~};
 
 #[auto_serialize]
 type variant_arg = {ty: @ty, id: node_id};
@@ -681,7 +681,7 @@ enum item_ {
     item_const(@ty, @expr),
     item_fn(fn_decl, [ty_param]/~, blk),
     item_mod(_mod),
-    item_native_mod(native_mod),
+    item_foreign_mod(foreign_mod),
     item_ty(@ty, [ty_param]/~, region_param),
     item_enum([variant]/~, [ty_param]/~, region_param),
     item_class([ty_param]/~, /* ty params for class */
@@ -728,16 +728,16 @@ type class_dtor_ = {id: node_id,
                     body: blk};
 
 #[auto_serialize]
-type native_item =
+type foreign_item =
     {ident: ident,
      attrs: [attribute]/~,
-     node: native_item_,
+     node: foreign_item_,
      id: node_id,
      span: span};
 
 #[auto_serialize]
-enum native_item_ {
-    native_item_fn(fn_decl, [ty_param]/~),
+enum foreign_item_ {
+    foreign_item_fn(fn_decl, [ty_param]/~),
 }
 
 // The data we save and restore about an inlined item or method.  This is not
@@ -747,7 +747,7 @@ enum native_item_ {
 enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
-    ii_native(@native_item),
+    ii_foreign(@foreign_item),
     ii_ctor(class_ctor, ident, [ty_param]/~, def_id /* parent id */),
     ii_dtor(class_dtor, ident, [ty_param]/~, def_id /* parent id */)
 }

@@ -167,8 +167,8 @@ mod global_env {
                 sched:  some({
                     mode: task::single_threaded,
                     // FIXME (#2621): This would be a good place to use a
-                    // very small native stack
-                    native_stack_size: none
+                    // very small foreign stack
+                    foreign_stack_size: none
                 })
                 with task::get_opts(builder)
             });

@@ -79,7 +79,7 @@ fn test_in_fn_ctxt() {
     assert (i == 1);
 }
 
-mod test_native_items {
+mod test_foreign_items {
     #[abi = "cdecl"]
     native mod rustrt {
         #[cfg(bogus)]

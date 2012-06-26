@@ -126,8 +126,8 @@ fn add_to_index(ebml_w: ebml::writer, path: [ident]/~, &index: [entry<str>]/~,
                       pos: ebml_w.writer.tell()});
 }
 
-fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
-                                   path: [ident]/~, &index: [entry<str>]/~) {
+fn encode_foreign_module_item_paths(ebml_w: ebml::writer, nmod: foreign_mod,
+                                    path: [ident]/~, &index: [entry<str>]/~) {
     for nmod.items.each {|nitem|
         add_to_index(ebml_w, path, index, nitem.ident);
         encode_named_def_id(ebml_w, nitem.ident, local_def(nitem.id));
@@ -175,10 +175,10 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                                         index);
             }
           }
-          item_native_mod(nmod) {
+          item_foreign_mod(nmod) {
             ebml_w.wr_tag(tag_paths_data_mod) {||
               encode_name_and_def_id(ebml_w, it.ident, it.id);
-              encode_native_module_item_paths(ebml_w, nmod,
+              encode_foreign_module_item_paths(ebml_w, nmod,
                    path + [it.ident]/~, index);
             }
           }
@@ -517,7 +517,7 @@ fn purity_fn_family(p: purity) -> char {
       unsafe_fn { 'u' }
       pure_fn { 'p' }
       impure_fn { 'f' }
-      crust_fn { 'c' }
+      extern_fn { 'c' }
     }
 }
 
@@ -574,7 +574,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         add_to_index();
         encode_info_for_mod(ecx, ebml_w, m, item.id, path, item.ident);
       }
-      item_native_mod(_) {
+      item_foreign_mod(_) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -741,23 +741,23 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
     }
 }
 
-fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
-                               nitem: @native_item,
-                               index: @mut [entry<int>]/~,
-                               path: ast_map::path, abi: native_abi) {
+fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
+                                nitem: @foreign_item,
+                                index: @mut [entry<int>]/~,
+                                path: ast_map::path, abi: foreign_abi) {
     if !reachable(ecx, nitem.id) { ret; }
     vec::push(*index, {val: nitem.id, pos: ebml_w.writer.tell()});
 
     ebml_w.start_tag(tag_items_data_item);
     alt nitem.node {
-      native_item_fn(fn_decl, tps) {
+      foreign_item_fn(fn_decl, tps) {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, purity_fn_family(fn_decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
-        if abi == native_abi_rust_intrinsic {
+        if abi == foreign_abi_rust_intrinsic {
             ecx.encode_inlined_item(ecx, ebml_w, path,
-                                    ii_native(nitem));
+                                    ii_foreign(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }
@@ -799,11 +799,12 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
               }
             }
         },
-        visit_native_item: {|ni, cx, v, copy ebml_w|
-            visit::visit_native_item(ni, cx, v);
+        visit_foreign_item: {|ni, cx, v, copy ebml_w|
+            visit::visit_foreign_item(ni, cx, v);
             alt check ecx.tcx.items.get(ni.id) {
-              ast_map::node_native_item(_, abi, pt) {
-                encode_info_for_native_item(ecx, ebml_w, ni, index, *pt, abi);
+              ast_map::node_foreign_item(_, abi, pt) {
+                encode_info_for_foreign_item(ecx, ebml_w, ni,
+                                             index, *pt, abi);
               }
             }
         }

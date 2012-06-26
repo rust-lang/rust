@@ -36,7 +36,7 @@ enum scope {
     scope_item(@ast::item),
     scope_bare_fn(ast::fn_decl, node_id, [ast::ty_param]/~),
     scope_fn_expr(ast::fn_decl, node_id, [ast::ty_param]/~),
-    scope_native_item(@ast::native_item),
+    scope_foreign_item(@ast::foreign_item),
     scope_loop(@ast::local), // there's only 1 decl per loop.
     scope_block(ast::blk, @mut uint, @mut uint),
     scope_arm(ast::arm),
@@ -86,7 +86,7 @@ enum mod_index_entry {
     mie_view_item(ident, node_id, span),
     mie_import_ident(node_id, span),
     mie_item(@ast::item),
-    mie_native_item(@ast::native_item),
+    mie_foreign_item(@ast::foreign_item),
     mie_enum_variant(/* variant index */uint,
                      /*parts of enum item*/ [variant]/~,
                     node_id, span),
@@ -275,7 +275,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                                glob_imported_names: box_str_hash(),
                                path: path_from_scope(sc, *i.ident)});
           }
-          ast::item_native_mod(nmd) {
+          ast::item_foreign_mod(nmd) {
             e.mod_map.insert(i.id,
                              @{m: none::<ast::_mod>,
                                index: index_nmod(nmd),
@@ -413,7 +413,7 @@ fn resolve_iface_ref(p: @iface_ref, sc: scopes, e: @env) {
 fn resolve_names(e: @env, c: @ast::crate) {
     e.used_imports.track = true;
     let v =
-        @{visit_native_item: visit_native_item_with_scope,
+        @{visit_foreign_item: visit_foreign_item_with_scope,
           visit_item: {|a,b,c|walk_item(e, a, b, c)},
           visit_block: visit_block_with_scope,
           visit_decl: visit_decl_with_scope,
@@ -615,9 +615,9 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
     e.resolve_unexported = old_resolve_unexported;
 }
 
-fn visit_native_item_with_scope(ni: @ast::native_item, &&sc: scopes,
+fn visit_foreign_item_with_scope(ni: @ast::foreign_item, &&sc: scopes,
                                 v: vt<scopes>) {
-    visit::visit_native_item(ni, @cons(scope_native_item(ni), sc), v);
+    visit::visit_foreign_item(ni, @cons(scope_foreign_item(ni), sc), v);
 }
 
 fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
@@ -733,7 +733,7 @@ fn follow_import(e: env, &&sc: scopes, path: [ident]/~, sp: span) ->
     }
     if i == path_len {
        alt dcur {
-          some(ast::def_mod(_)) | some(ast::def_native_mod(_)) { ret dcur; }
+          some(ast::def_mod(_)) | some(ast::def_foreign_mod(_)) { ret dcur; }
           _ {
             e.sess.span_err(sp, str::connect(path.map({|x|*x}), "::") +
                             " does not name a module.");
@@ -799,7 +799,7 @@ fn resolve_import(e: env, n_id: node_id, name: ast::ident,
           cons(scope_item(@{node: item_mod(m), _}), _) {
             lst(id, m.view_items)
           }
-          cons(scope_item(@{node: item_native_mod(m), _}), _) {
+          cons(scope_item(@{node: item_foreign_mod(m), _}), _) {
             lst(id, m.view_items)
           }
           cons(scope_block(b, _, _), _) {
@@ -969,7 +969,7 @@ fn lookup_in_scope_strict(e: env, &&sc: scopes, sp: span, name: ident,
 
 fn scope_is_fn(sc: scope) -> bool {
     ret alt sc {
-      scope_bare_fn(_, _, _) | scope_native_item(_) { true }
+      scope_bare_fn(_, _, _) | scope_foreign_item(_) { true }
       _ { false }
     };
 }
@@ -1055,8 +1055,8 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
               ast::item_mod(_) {
                 ret lookup_in_local_mod(e, it.id, sp, name, ns, inside);
               }
-              ast::item_native_mod(m) {
-                ret lookup_in_local_native_mod(e, it.id, sp, name, ns);
+              ast::item_foreign_mod(m) {
+                ret lookup_in_local_foreign_mod(e, it.id, sp, name, ns);
               }
               ast::item_class(tps, _, members, ctor, _, _) {
                   if ns == ns_type {
@@ -1077,9 +1077,9 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
                 ret lookup_in_ty_params(e, name, tps);
             }
           }
-          scope_native_item(it) {
+          scope_foreign_item(it) {
             alt check it.node {
-              ast::native_item_fn(decl, ty_params) {
+              ast::foreign_item_fn(decl, ty_params) {
                 ret lookup_in_fn(e, name, decl, ty_params, ns);
               }
             }
@@ -1327,8 +1327,10 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
       ast::item_mod(_) {
         if ns == ns_module { ret some(ast::def_mod(local_def(i.id))); }
       }
-      ast::item_native_mod(_) {
-        if ns == ns_module { ret some(ast::def_native_mod(local_def(i.id))); }
+      ast::item_foreign_mod(_) {
+        if ns == ns_module {
+            ret some(ast::def_foreign_mod(local_def(i.id)));
+        }
       }
       ast::item_ty(*) | item_iface(*) | item_enum(*) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
@@ -1384,8 +1386,8 @@ fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
       ast::def_mod(defid) {
         ret lookup_in_local_mod(e, defid.node, sp, name, ns, dr);
       }
-      ast::def_native_mod(defid) {
-        ret lookup_in_local_native_mod(e, defid.node, sp, name, ns);
+      ast::def_foreign_mod(defid) {
+        ret lookup_in_local_foreign_mod(e, defid.node, sp, name, ns);
       }
       _ {
           // Precondition
@@ -1431,7 +1433,7 @@ fn lookup_import(e: env, n_id: node_id, ns: namespace) -> option<def> {
     }
 }
 
-fn lookup_in_local_native_mod(e: env, node_id: node_id, sp: span, id: ident,
+fn lookup_in_local_foreign_mod(e: env, node_id: node_id, sp: span, id: ident,
                               ns: namespace) -> option<def> {
     ret lookup_in_local_mod(e, node_id, sp, id, ns, inside);
 }
@@ -1572,11 +1574,11 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
             _ { ret none; }
          }
       }
-      mie_native_item(native_item) {
-        alt native_item.node {
-          ast::native_item_fn(decl, _) {
+      mie_foreign_item(foreign_item) {
+        alt foreign_item.node {
+          ast::foreign_item_fn(decl, _) {
             if ns == ns_val {
-                ret some(ast::def_fn(local_def(native_item.id),
+                ret some(ast::def_fn(local_def(foreign_item.id),
                                      decl.purity));
             }
           }
@@ -1634,7 +1636,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
     for md.items.each {|it|
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
-          ast::item_native_mod(_) | ast::item_ty(_, _, _) |
+          ast::item_foreign_mod(_) | ast::item_ty(_, _, _) |
           ast::item_impl(*) | ast::item_iface(*) {
             add_to_index(index, it.ident, mie_item(it));
           }
@@ -1658,13 +1660,13 @@ fn index_mod(md: ast::_mod) -> mod_index {
 }
 
 
-fn index_nmod(md: ast::native_mod) -> mod_index {
+fn index_nmod(md: ast::foreign_mod) -> mod_index {
     let index = box_str_hash::<@list<mod_index_entry>>();
 
     index_view_items(md.view_items, index);
 
     for md.items.each {|it|
-        add_to_index(index, it.ident, mie_native_item(it));
+        add_to_index(index, it.ident, mie_foreign_item(it));
     }
     ret index;
 }
@@ -1677,7 +1679,7 @@ fn ns_for_def(d: def) -> namespace {
       ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
       ast::def_upvar(_, _, _) { ns_val }
-      ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
+      ast::def_mod(_) | ast::def_foreign_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_)
       { ns_type }
@@ -1753,7 +1755,7 @@ fn mie_span(mie: mod_index_entry) -> span {
           mie_import_ident(_, span) { span }
           mie_item(item) { item.span }
           mie_enum_variant(_, _, _, span) { span }
-          mie_native_item(item) { item.span }
+          mie_foreign_item(item) { item.span }
         };
 }
 
@@ -1850,7 +1852,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                         add_name(values, v.span, v.node.name);
                     }
                   }
-                  ast::item_mod(_) | ast::item_native_mod(_) {
+                  ast::item_mod(_) | ast::item_foreign_mod(_) {
                     add_name(mods, it.span, it.ident);
                   }
                   ast::item_const(_, _) | ast::item_fn(*) {
@@ -2009,7 +2011,7 @@ fn check_exports(e: @env) {
                       _ { e.sess.span_bug(vi.span, "unresolved export"); }
                     }
                   }
-                  mie_item(@{id, _}) | mie_native_item(@{id, _}) |
+                  mie_item(@{id, _}) | mie_foreign_item(@{id, _}) |
                   mie_enum_variant(_, _, id, _) {
                     add_export(e, export_id, local_def(id), false);
                   }

@@ -413,7 +413,7 @@ fn should_not_write_index_if_no_entries() {
 }
 
 #[test]
-fn should_write_index_for_native_mods() {
+fn should_write_index_for_foreign_mods() {
     let markdown = test::render("native mod a { fn a(); }");
     assert str::contains(
         markdown,
@@ -434,20 +434,20 @@ fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
 }
 
 #[test]
-fn should_write_native_mods() {
+fn should_write_foreign_mods() {
     let markdown = test::render("#[doc = \"test\"] native mod a { }");
     assert str::contains(markdown, "Native module `a`");
     assert str::contains(markdown, "test");
 }
 
 #[test]
-fn should_write_native_fns() {
+fn should_write_foreign_fns() {
     let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
     assert str::contains(markdown, "test");
 }
 
 #[test]
-fn should_write_native_fn_headers() {
+fn should_write_foreign_fn_headers() {
     let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
     assert str::contains(markdown, "## Function `a`");
 }

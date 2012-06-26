@@ -54,7 +54,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_item: {|a|convert(ccx, a)},
-        visit_native_item: {|a|convert_native(ccx, a)}
+        visit_foreign_item: {|a|convert_foreign(ccx, a)}
         with *visit::default_simple_visitor()
     }));
 }
@@ -77,8 +77,8 @@ impl of ast_conv for @crate_ctxt {
               some(ast_map::node_item(item, _)) {
                 ty_of_item(self, item)
               }
-              some(ast_map::node_native_item(native_item, _, _)) {
-                ty_of_native_item(self, native_item)
+              some(ast_map::node_foreign_item(foreign_item, _, _)) {
+                ty_of_foreign_item(self, foreign_item)
               }
               x {
                 self.tcx.sess.bug(#fmt["unexpected sort of item \
@@ -296,7 +296,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
     let tcx = ccx.tcx;
     alt it.node {
       // These don't define types.
-      ast::item_native_mod(_) | ast::item_mod(_) {}
+      ast::item_foreign_mod(_) | ast::item_mod(_) {}
       ast::item_enum(variants, ty_params, rp) {
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
@@ -396,13 +396,13 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
       }
     }
 }
-fn convert_native(ccx: @crate_ctxt, i: @ast::native_item) {
+fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
     // As above, this call populates the type table with the converted
     // type of the native item. We simply write it into the node type
     // table.
-    let tpt = ty_of_native_item(ccx, i);
+    let tpt = ty_of_foreign_item(ccx, i);
     alt i.node {
-      ast::native_item_fn(_, _) {
+      ast::foreign_item_fn(_, _) {
         write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
         ccx.tcx.tcache.insert(local_def(i.id), tpt);
       }
@@ -535,15 +535,15 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
           ret tpt;
       }
       ast::item_impl(*) | ast::item_mod(_) |
-      ast::item_native_mod(_) { fail; }
+      ast::item_foreign_mod(_) { fail; }
     }
 }
 
-fn ty_of_native_item(ccx: @crate_ctxt, it: @ast::native_item)
+fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
     -> ty::ty_param_bounds_and_ty {
     alt it.node {
-      ast::native_item_fn(fn_decl, params) {
-        ret ty_of_native_fn_decl(ccx, fn_decl, params,
+      ast::foreign_item_fn(fn_decl, params) {
+        ret ty_of_foreign_fn_decl(ccx, fn_decl, params,
                                  local_def(it.id));
       }
     }
@@ -588,7 +588,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
     }
 }
 
-fn ty_of_native_fn_decl(ccx: @crate_ctxt,
+fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
                         decl: ast::fn_decl,
                         ty_params: [ast::ty_param]/~,
                         def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {

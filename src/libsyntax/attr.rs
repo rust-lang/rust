@@ -39,7 +39,7 @@ export sort_meta_items;
 export remove_meta_items_by_name;
 export find_linkage_attrs;
 export find_linkage_metas;
-export native_abi;
+export foreign_abi;
 export inline_attr;
 export find_inline_attr;
 export require_unique_names;
@@ -322,19 +322,19 @@ fn find_linkage_metas(attrs: [ast::attribute]/~) -> [@ast::meta_item]/~ {
     }
 }
 
-fn native_abi(attrs: [ast::attribute]/~) -> either<str, ast::native_abi> {
+fn foreign_abi(attrs: [ast::attribute]/~) -> either<str, ast::foreign_abi> {
     ret alt attr::first_attr_value_str_by_name(attrs, "abi") {
       option::none {
-        either::right(ast::native_abi_cdecl)
+        either::right(ast::foreign_abi_cdecl)
       }
       option::some(@"rust-intrinsic") {
-        either::right(ast::native_abi_rust_intrinsic)
+        either::right(ast::foreign_abi_rust_intrinsic)
       }
       option::some(@"cdecl") {
-        either::right(ast::native_abi_cdecl)
+        either::right(ast::foreign_abi_cdecl)
       }
       option::some(@"stdcall") {
-        either::right(ast::native_abi_stdcall)
+        either::right(ast::foreign_abi_stdcall)
       }
       option::some(t) {
         either::left("unsupported abi: " + *t)

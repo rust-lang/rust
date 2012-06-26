@@ -9,5 +9,5 @@ fn main() {
     }
 
     f(g);
-    //!^ ERROR mismatched types: expected `native fn(native fn(native fn()))`
+    //!^ ERROR mismatched types: expected `extern fn(extern fn(extern fn()))`
 }

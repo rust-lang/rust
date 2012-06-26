@@ -104,17 +104,17 @@ Scheduler configuration options
 
 * sched_mode - The operating mode of the scheduler
 
-* native_stack_size - The size of the native stack, in bytes
+* foreign_stack_size - The size of the foreign stack, in bytes
 
-    Rust code runs on Rust-specific stacks. When Rust code calls native code
-    (via functions in native modules) it switches to a typical, large stack
+    Rust code runs on Rust-specific stacks. When Rust code calls foreign code
+    (via functions in foreign modules) it switches to a typical, large stack
     appropriate for running code written in languages like C. By default these
-    native stacks have unspecified size, but with this option their size can
+    foreign stacks have unspecified size, but with this option their size can
     be precisely specified.
 "]
 type sched_opts = {
     mode: sched_mode,
-    native_stack_size: option<uint>
+    foreign_stack_size: option<uint>
 };
 
 #[doc = "
@@ -140,7 +140,7 @@ Task configuration options
     into a new scheduler with the specific properties required.
 
     This is of particular importance for libraries which want to call
-    into native code that blocks. Without doing so in a different
+    into foreign code that blocks. Without doing so in a different
     scheduler other tasks will be impeded or even blocked indefinitely.
 
 "]
@@ -408,7 +408,7 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
     set_opts(builder, {
         sched: some({
             mode: mode,
-            native_stack_size: none
+            foreign_stack_size: none
         })
         with get_opts(builder)
     });
@@ -542,8 +542,8 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
     }
 
     fn new_task_in_new_sched(opts: sched_opts) -> *rust_task {
-        if opts.native_stack_size != none {
-            fail "native_stack_size scheduler option unimplemented";
+        if opts.foreign_stack_size != none {
+            fail "foreign_stack_size scheduler option unimplemented";
         }
 
         let num_threads = alt opts.mode {
@@ -804,7 +804,7 @@ native mod testrt {
 #[test]
 fn test_spawn_sched_blocking() {
 
-    // Testing that a task in one scheduler can block natively
+    // Testing that a task in one scheduler can block in foreign code
     // without affecting other schedulers
     iter::repeat(20u) {||
 
@@ -947,7 +947,7 @@ fn test_osmain() {
     let opts = {
         sched: some({
             mode: osmain,
-            native_stack_size: none
+            foreign_stack_size: none
         })
         with get_opts(buildr)
     };
