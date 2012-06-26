@@ -306,13 +306,13 @@ mod v6 {
 #[cfg(test)]
 mod test {
     #[test]
-    fn test_ipv4_parse_and_format_ip() {
+    fn test_ip_ipv4_parse_and_format_ip() {
         let localhost_str = "127.0.0.1";
         assert (format_addr(v4::parse_addr(localhost_str))
                 == localhost_str)
     }
     #[test]
-    fn test_ipv6_parse_and_format_ip() {
+    fn test_ip_ipv6_parse_and_format_ip() {
         let localhost_str = "::1";
         let format_result = format_addr(v6::parse_addr(localhost_str));
         log(debug, #fmt("results: expected: '%s' actual: '%s'",
@@ -320,7 +320,7 @@ mod test {
         assert format_result == localhost_str;
     }
     #[test]
-    fn test_ipv4_bad_parse() {
+    fn test_ip_ipv4_bad_parse() {
         alt v4::try_parse_addr("b4df00d") {
           result::err(err_info) {
             log(debug, #fmt("got error as expected %?", err_info));
@@ -332,7 +332,7 @@ mod test {
         }
     }
     #[test]
-    fn test_ipv6_bad_parse() {
+    fn test_ip_ipv6_bad_parse() {
         alt v6::try_parse_addr("::,~2234k;") {
           result::err(err_info) {
             log(debug, #fmt("got error as expected %?", err_info));
@@ -344,7 +344,7 @@ mod test {
         }
     }
     #[test]
-    fn test_get_addr() {
+    fn test_ip_get_addr() {
         let localhost_name = "localhost";
         let iotask = uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
@@ -373,7 +373,7 @@ mod test {
         assert vec::len(results) > 0;
     }
     #[test]
-    fn test_get_addr_bad_input() {
+    fn test_ip_get_addr_bad_input() {
         let localhost_name = "sjkl234m,./sdf";
         let iotask = uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
