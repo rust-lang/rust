@@ -2055,7 +2055,7 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
 }
 
 fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
-    // FIXME[mono]/~ could do this recursively. is that worthwhile? (#2529)
+    // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
     alt ty::get(ty).struct {
       ty::ty_box(mt) { some(ty::mk_opaque_box(tcx)) }
       ty::ty_fn(fty) { some(ty::mk_fn(tcx, {purity: ast::impure_fn,

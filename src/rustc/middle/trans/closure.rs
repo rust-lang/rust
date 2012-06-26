@@ -136,7 +136,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
         }]/~;
     }
     let bound_data_ty = ty::mk_tup(tcx, bound_tys);
-    // FIXME[mono]/~ remove tuple of tydescs from closure types (#2531)
+    // FIXME[mono] remove tuple of tydescs from closure types (#2531)
     let cdata_ty = ty::mk_tup(tcx, [ty::mk_tup(tcx, []/~),
                                     bound_data_ty]/~);
     #debug["cdata_ty=%s", ty_to_str(tcx, cdata_ty)];

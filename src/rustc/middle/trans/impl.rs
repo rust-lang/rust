@@ -151,7 +151,7 @@ fn trans_iface_callee(bcx: block, val: ValueRef,
     let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0u, 0u]/~),
                                        T_ptr(T_ptr(T_vtable()))));
     let box = Load(bcx, GEPi(bcx, val, [0u, 1u]/~));
-    // FIXME[impl]/~ I doubt this is alignment-safe (#2534)
+    // FIXME[impl] I doubt this is alignment-safe (#2534)
     let self = GEPi(bcx, box, [0u, abi::box_field_body]/~);
     let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(box));
     let llfty = type_of::type_of_fn_from_ty(ccx, callee_ty);
