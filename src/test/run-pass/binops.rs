@@ -152,11 +152,11 @@ fn main() {
     test_bool();
     test_char();
     test_box();
-    test_port();
+    // FIXME: test_port causes valgrind errors (#2724)
+    //test_port();
     test_chan();
     test_ptr();
     test_fn();
     test_native_fn();
-    // FIXME: test_class causes valgrind errors (#2724)
-    //test_class();
+    test_class();
 }
