@@ -45,7 +45,7 @@ class tcp_socket {
   new(socket_data: @tcp_socket_data) { self.socket_data = socket_data; }
   drop {
     unsafe {
-        tear_down_socket_data(socket_data)
+        tear_down_socket_data(self.socket_data)
     }
   }
 }
@@ -56,8 +56,9 @@ A buffered wrapper for `net::tcp::tcp_socket`
 It is created with a call to `net::tcp::socket_buf()` and has impls that
 satisfy both the `io::reader` and `io::writer` ifaces.
 "]
-resource tcp_socket_buf(data: @tcp_buffered_socket_data) {
-    log(debug, #fmt("dtor for tcp_socket_buf.. %?", data));
+class tcp_socket_buf {
+  let data: @tcp_buffered_socket_data;
+  new(data: @tcp_buffered_socket_data) { self.data = data; }
 }
 
 #[doc="
@@ -305,7 +306,7 @@ fn write_future(sock: tcp_socket, raw_write_data: [u8]/~)
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     future_spawn {||
         let data_copy = copy(raw_write_data);
-        write_common_impl(socket_data_ptr, data_copy);
+        write_common_impl(socket_data_ptr, data_copy)
     }
 }
 
@@ -337,10 +338,10 @@ Stop reading from an open TCP connection; used with `read_start`
 * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
 "]
 fn read_stop(sock: tcp_socket,
-             -read_port: comm::port<result::result<[u8], tcp_err_data>>) ->
+             -read_port: comm::port<result::result<[u8]/~, tcp_err_data>>) ->
     result::result<(), tcp_err_data> unsafe {
     log(debug, #fmt("taking the read_port out of commission %?", read_port));
-    let socket_data = ptr::addr_of(**sock);
+    let socket_data = ptr::addr_of(*sock.socket_data);
     read_stop_common_impl(socket_data)
 }
 
@@ -735,7 +736,7 @@ or `io::writer`
 A buffered wrapper that you can cast as an `io::reader` or `io::writer`
 "]
 fn socket_buf(-sock: tcp_socket) -> tcp_socket_buf {
-    tcp_socket_buf(@{ sock: sock, mut buf: [] })
+    tcp_socket_buf(@{ sock: sock, mut buf: []/~ })
 }
 
 #[doc="
@@ -747,7 +748,7 @@ impl tcp_socket for tcp_socket {
         read_start(self)
     }
     fn read_stop(-read_port:
-                 comm::port<result::result<[u8], tcp_err_data>>) ->
+                 comm::port<result::result<[u8]/~, tcp_err_data>>) ->
         result::result<(), tcp_err_data> {
         read_stop(self, read_port)
     }
@@ -773,28 +774,28 @@ impl tcp_socket for tcp_socket {
 Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 "]
 impl tcp_socket_buf of io::reader for @tcp_socket_buf {
-    fn read_bytes(amt: uint) -> [u8] {
+    fn read_bytes(amt: uint) -> [u8]/~ {
         let has_amt_available =
-            vec::len((*self).buf) >= amt;
+            vec::len((*(self.data)).buf) >= amt;
         if has_amt_available {
             // no arbitrary-length shift in vec::?
-            let mut ret_buf = [];
+            let mut ret_buf = []/~;
             while vec::len(ret_buf) < amt {
-                ret_buf += [vec::shift((*self).buf)];
+                ret_buf += [vec::shift((*(self.data)).buf)]/~;
             }
             ret_buf
         }
         else {
-            let read_result = read((*self).sock, 0u);
+            let read_result = read((*(self.data)).sock, 0u);
             if read_result.is_err() {
                 let err_data = read_result.get_err();
                 log(debug, #fmt("ERROR sock_buf as io::reader.read err %? %?",
                                  err_data.err_name, err_data.err_msg));
-                []
+                []/~
             }
             else {
                 let new_chunk = result::unwrap(read_result);
-                (*self).buf += new_chunk;
+                (*(self.data)).buf += new_chunk;
                 self.read_bytes(amt)
             }
         }
@@ -803,7 +804,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
         self.read_bytes(1u)[0] as int
     }
     fn unread_byte(amt: int) {
-        vec::unshift((*self).buf, amt as u8);
+        vec::unshift((*(self.data)).buf, amt as u8);
     }
     fn eof() -> bool {
         false // noop
@@ -822,12 +823,9 @@ Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 "]
 impl tcp_socket_buf of io::writer for @tcp_socket_buf {
     fn write(data: [const u8]/&) unsafe {
-        let socket_data_ptr = ptr::addr_of(**((*self).sock));
-        let write_buf_vec = vec::unpack_const_slice(data) {|ptr, len|
-            [ uv::ll::buf_init(ptr as *u8, len) ]
-        };
-        let write_buf_vec_ptr = ptr::addr_of(write_buf_vec);
-        let w_result = write_common_impl(socket_data_ptr, write_buf_vec_ptr);
+        let socket_data_ptr = ptr::addr_of(*((*(self.data)).sock).socket_data);
+        let w_result = write_common_impl(socket_data_ptr,
+                                        vec::slice(data, 0, vec::len(data)));
         if w_result.is_err() {
             let err_data = w_result.get_err();
             log(debug, #fmt("ERROR sock_buf as io::writer.writer err: %? %?",
@@ -1233,7 +1231,7 @@ type tcp_socket_data = {
 
 type tcp_buffered_socket_data = {
     sock: tcp_socket,
-    mut buf: [u8]
+    mut buf: [u8]/~
 };
 
 //#[cfg(test)]

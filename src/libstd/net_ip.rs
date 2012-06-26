@@ -73,7 +73,7 @@ fn format_addr(ip: ip_addr) -> str {
 }
 
 type get_addr_data = {
-    output_ch: comm::chan<result::result<[ip_addr],ip_get_addr_err>>
+    output_ch: comm::chan<result::result<[ip_addr]/~,ip_get_addr_err>>
 };
 
 crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
@@ -83,7 +83,7 @@ crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
         *get_addr_data;
     if status == 0i32 {
         if res != (ptr::null::<addrinfo>()) {
-            let mut out_vec = [];
+            let mut out_vec = []/~;
             log(debug, #fmt("initial addrinfo: %?", res));
             let mut curr_addr = res;
             loop {
@@ -102,7 +102,7 @@ crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                         result::err(get_addr_unknown_error));
                     break;
                 };
-                out_vec += [new_ip_addr];
+                out_vec += [new_ip_addr]/~;
 
                 let next_addr = ll::get_next_addrinfo(curr_addr);
                 if next_addr == ptr::null::<addrinfo>() as *addrinfo {
@@ -144,7 +144,7 @@ enum ip_get_addr_err {
 #[doc="
 "]
 fn get_addr(++node: str, iotask: iotask)
-        -> result::result<[ip_addr], ip_get_addr_err> unsafe {
+        -> result::result<[ip_addr]/~, ip_get_addr_err> unsafe {
     comm::listen {|output_ch|
         str::unpack_slice(node) {|node_ptr, len|
             log(debug, #fmt("slice len %?", len));

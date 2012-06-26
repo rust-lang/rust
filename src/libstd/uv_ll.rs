@@ -765,7 +765,7 @@ unsafe fn ip4_addr(ip: str, port: int)
 unsafe fn ip6_addr(ip: str, port: int)
 -> sockaddr_in6 {
     let mut addr_vec = str::bytes(ip);
-    addr_vec += [0u8]; // add null terminator
+    addr_vec += [0u8]/~; // add null terminator
     let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
     let ip_back = str::from_bytes(addr_vec);
     log(debug, #fmt("vec val: '%s' length: %u",
@@ -775,8 +775,8 @@ unsafe fn ip6_addr(ip: str, port: int)
 }
 unsafe fn ip4_name(src: &sockaddr_in) -> str {
     // ipv4 addr max size: 15 + 1 trailing null byte
-    let dst: [u8] = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
-                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
+    let dst: [u8]/~ = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8]/~;
     let size = 16 as libc::size_t;
     vec::as_buf(dst) {|dst_buf|
         rustrt::rust_uv_ip4_name(src as *sockaddr_in,
@@ -792,12 +792,12 @@ unsafe fn ip4_name(src: &sockaddr_in) -> str {
 }
 unsafe fn ip6_name(src: &sockaddr_in6) -> str {
     // ipv6 addr max size: 45 + 1 trailing null byte
-    let dst: [u8] = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
-                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
-                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
-                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
-                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
-                     0u8,0u8,0u8,0u8,0u8,0u8];
+    let dst: [u8]/~ = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8]/~;
     let size = 46 as libc::size_t;
     vec::as_buf(dst) {|dst_buf|
         let result = rustrt::rust_uv_ip6_name(src as *sockaddr_in6,
