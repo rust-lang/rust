@@ -188,7 +188,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     alt i.node {
-      item_impl(_, _, _, ms) {
+      item_impl(_, opt_ir, _, ms) {
         let impl_did = ast_util::local_def(i.id);
         for ms.each |m| {
             map_method(impl_did, extend(cx, i.ident), m,
@@ -218,8 +218,14 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           let (_, ms) = ast_util::split_class_items(items);
           // Map trait refs to their parent classes. This is
           // so we can find the self_ty
-          do vec::iter(traits) |p| { cx.map.insert(p.id,
-                                  node_item(i, item_path)); };
+          do vec::iter(traits) |p| { cx.map.insert(p.ref_id,
+                                  node_item(i, item_path));
+                            // This is so we can look up the right things when
+                            // encoding/decoding
+                            cx.map.insert(p.impl_id,
+                                          node_item(i, item_path));
+
+                           };
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
            // only need to handle methods

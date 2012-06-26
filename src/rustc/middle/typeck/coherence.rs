@@ -128,7 +128,7 @@ class CoherenceChecker {
             }
             some(associated_trait) {
                 let def =
-                    self.crate_context.tcx.def_map.get(associated_trait.id);
+                  self.crate_context.tcx.def_map.get(associated_trait.ref_id);
                 let def_id = def_id_of_def(def);
 
                 let implementation_list;
@@ -349,7 +349,7 @@ class CoherenceChecker {
                                             let def_map = self.crate_context
                                                 .tcx.def_map;
                                             let trait_def =
-                                                def_map.get(trait_ref.id);
+                                                def_map.get(trait_ref.ref_id);
                                             let trait_id =
                                                 def_id_of_def(trait_def);
                                             if trait_id.crate != local_crate {

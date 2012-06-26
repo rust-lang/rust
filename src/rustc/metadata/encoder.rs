@@ -227,7 +227,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
 
 fn encode_trait_ref(ebml_w: ebml::writer, ecx: @encode_ctxt, t: @trait_ref) {
     ebml_w.start_tag(tag_impl_trait);
-    encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, t.id));
+    encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, t.ref_id));
     ebml_w.end_tag();
 }
 
@@ -392,6 +392,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     encode_family(ebml_w, 'm');
     encode_name(ebml_w, name);
     #debug("(encoding info for module) encoding info for module ID %d", id);
+    // the impl map contains ref_ids
     let impls = ecx.impl_map(id);
     for impls.each |i| {
         let (ident, did) = i;
@@ -415,6 +416,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
               }
               none {
                 // Must be a re-export, then!
+                // ...or an iface ref
                 ebml_w.wr_str(def_to_str(did));
               }
             };

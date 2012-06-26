@@ -2549,7 +2549,7 @@ fn impl_trait(cx: ctxt, id: ast::def_id) -> option<t> {
         #debug("(impl_trait) searching for trait impl %?", id);
         alt cx.items.find(id.node) {
            some(ast_map::node_item(@{node: ast::item_impl(
-               _, some(@{id: id, _}), _, _), _}, _)) {
+              _, some(@{ref_id: id, _}), _, _), _}, _)) {
               some(node_id_to_type(cx, id))
            }
            some(ast_map::node_item(@{node: ast::item_class(*),

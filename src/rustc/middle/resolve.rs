@@ -408,8 +408,11 @@ fn maybe_insert(e: @env, id: node_id, def: option<def>) {
 }
 
 fn resolve_trait_ref(p: @trait_ref, sc: scopes, e: @env) {
-    maybe_insert(e, p.id,
+    maybe_insert(e, p.ref_id,
        lookup_path_strict(*e, sc, p.path.span, p.path, ns_type));
+    maybe_insert(e, p.impl_id,
+       lookup_path_strict(*e, sc, p.path.span, p.path, ns_type));
+
 }
 
 fn resolve_names(e: @env, c: @ast::crate) {
@@ -440,8 +443,8 @@ fn resolve_names(e: @env, c: @ast::crate) {
           /* At this point, the code knows what traits the trait refs
              refer to, so it's possible to resolve them.
            */
-          ast::item_impl(_, ifce, _, _) {
-            ifce.iter(|p| resolve_trait_ref(p, sc, e))
+          ast::item_impl(_, t, _, _) {
+            t.iter(|p| resolve_trait_ref(p, sc, e));
           }
           ast::item_class(_, traits, _, _, _) {
             for traits.each |p| {
@@ -2290,7 +2293,7 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: ~[@_impl],
         do vec::iter(ifces) |p| {
             // The def_id, in this case, identifies the combination of
             // class and trait
-            vec::push(impls, @{did: local_def(p.id),
+            vec::push(impls, @{did: local_def(p.impl_id),
                                ident: i.ident,
                                methods: vec::map(mthds, |m| {
                                    @{did: local_def(m.id),

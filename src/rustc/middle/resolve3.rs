@@ -3241,7 +3241,7 @@ class Resolver {
 
                         #debug("(resolving class) found trait def: %?", def);
 
-                        self.record_def(interface.id, def);
+                        self.record_def(interface.ref_id, def);
 
                         // XXX: This is wrong but is needed for tests to
                         // pass.
@@ -3349,7 +3349,7 @@ class Resolver {
                                                    unknown interface");
                         }
                         some(def) {
-                            self.record_def(interface_reference.id, def);
+                            self.record_def(interface_reference.ref_id, def);
                         }
                     }
                 }

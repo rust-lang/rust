@@ -675,10 +675,15 @@ type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
 
 /*
   trait_refs appear in both impls and in classes that implement traits.
-  resolve maps each trait_ref's id to its defining trait.
+  resolve maps each trait_ref's ref_id to its defining trait; that's all
+  that the ref_id is for. The impl_id maps to the "self type" of this impl.
+  If this impl is an item_impl, the impl_id is redundant (it could be the
+  same as the impl's node id). If this impl is actually an impl_class, then
+  conceptually, the impl_id stands in for the pair of (this class, this
+  trait)
  */
 #[auto_serialize]
-type trait_ref = {path: @path, id: node_id};
+type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
 
 #[auto_serialize]
 enum visibility { public, private }
