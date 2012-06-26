@@ -324,17 +324,9 @@ extern "C" size_t
 rust_uv_helper_addrinfo_size() {
     return sizeof(addrinfo);
 }
-extern "C" unsigned long int
+extern "C" unsigned int
 rust_uv_helper_get_INADDR_NONE() {
     return INADDR_NONE;
-}
-extern "C" unsigned long int
-rust_uv_helper_get_AF_INET() {
-    return AF_INET;
-}
-extern "C" unsigned long int
-rust_uv_helper_get_AF_INET6() {
-    return AF_INET6;
 }
 
 extern "C" uv_stream_t*
@@ -518,8 +510,11 @@ rust_uv_freeaddrinfo(addrinfo* res) {
 }
 extern "C" bool
 rust_uv_is_ipv4_addrinfo(addrinfo* input) {
-    // if it aint AF_INET, it's AF_INET6
     return input->ai_family == AF_INET;
+}
+extern "C" bool
+rust_uv_is_ipv6_addrinfo(addrinfo* input) {
+    return input->ai_family == AF_INET6;
 }
 extern "C" addrinfo*
 rust_uv_get_next_addrinfo(addrinfo* input) {
