@@ -430,7 +430,7 @@ fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]/~) -> ValueRef {
 // in C_i32()
 fn GEPi(cx: block, base: ValueRef, ixs: [uint]/~) -> ValueRef {
     let mut v: [ValueRef]/~ = []/~;
-    for vec::each(ixs) {|i| v += [C_i32(i as i32)]/~; }
+    for vec::each(ixs) {|i| vec::push(v, C_i32(i as i32)); }
     count_insn(cx, "gepi");
     ret InBoundsGEP(cx, base, v);
 }

@@ -339,7 +339,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
       ast::ty_constr(t, cs) {
         let mut out_cs = []/~;
         for cs.each {|constr|
-            out_cs += [ty::ast_constr_to_constr(tcx, constr)]/~;
+            vec::push(out_cs, ty::ast_constr_to_constr(tcx, constr));
         }
         ty::mk_constr(tcx, ast_ty_to_ty(self, rscope, t), out_cs)
       }

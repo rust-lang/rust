@@ -782,12 +782,12 @@ fn resolve_import(e: env, n_id: node_id, name: ast::ident,
                       view_path_simple(_, _, id)
                       | view_path_glob(_, id) {
                         if id == my_id { found = true; }
-                        if found { imports += [id]/~; }
+                        if found { vec::push(imports, id); }
                       }
                       view_path_list(_, ids, _) {
                         for ids.each {|id|
                             if id.node.id == my_id { found = true; }
-                            if found { imports += [id.node.id]/~; }
+                            if found { vec::push(imports, id.node.id); }
                         }
                       }
                     }
@@ -1151,7 +1151,7 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
         } else if ns != ns_module {
                 left_fn = scope_is_fn(hd);
                 alt scope_closes(hd) {
-                  some(node_id) { closing += [node_id]/~; }
+                  some(node_id) { vec::push(closing, node_id); }
                   _ { }
                 }
             }
@@ -1421,7 +1421,7 @@ fn lookup_import(e: env, n_id: node_id, ns: namespace) -> option<def> {
       }
       resolved(val, typ, md, _, _, _) {
         if e.used_imports.track {
-            e.used_imports.data += [n_id]/~;
+            vec::push(e.used_imports.data, n_id);
         }
         ret alt ns { ns_val { val } ns_type { typ } ns_module { md } };
       }
@@ -1760,7 +1760,7 @@ fn mie_span(mie: mod_index_entry) -> span {
 fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
     fn typaram_names(tps: [ast::ty_param]/~) -> [ident]/~ {
         let mut x: [ast::ident]/~ = []/~;
-        for tps.each {|tp| x += [tp.ident]/~; }
+        for tps.each {|tp| vec::push(x, tp.ident); }
         ret x;
     }
     visit::visit_item(i, x, v);
@@ -2121,7 +2121,7 @@ fn check_exports(e: @env) {
                 if ! glob_is_re_exported.contains_key(id) { cont; }
                 iter_mod(*e, glob.def,
                          glob.path.span, outside) {|ident, def|
-                    _mod.globbed_exports += [ident]/~;
+                    vec::push(_mod.globbed_exports, ident);
                     maybe_add_reexport(e, id, some(def));
                 }
             }
@@ -2180,7 +2180,8 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
                         if vec::len(found) == 0u {
                             for vec::each(*level) {|imp|
                                 if imp.ident == pt.idents[0] {
-                                    found += [@{ident: name with *imp}]/~;
+                                    vec::push(found,
+                                              @{ident: name with *imp});
                                 }
                             }
                             if vec::len(found) > 0u { impls += found; }
@@ -2190,7 +2191,7 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
             } else {
                 lookup_imported_impls(e, id) {|is|
                     for vec::each(*is) {|i|
-                        impls += [@{ident: name with *i}]/~;
+                        vec::push(impls, @{ident: name with *i});
                     }
                 }
             }
@@ -2232,13 +2233,13 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl]/~,
              some(m) { is_exported(e, i.ident, m) }
              _ { true }
            } {
-            impls += [@{did: local_def(i.id),
+            vec::push(impls, @{did: local_def(i.id),
                         ident: i.ident,
                         methods: vec::map(mthds, {|m|
                             @{did: local_def(m.id),
                               n_tps: vec::len(m.tps),
                               ident: m.ident}
-                        })}]/~;
+                        })});
         }
       }
       ast::item_class(tps, ifces, items, _, _, _) {
@@ -2247,12 +2248,12 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl]/~,
           vec::iter(ifces) {|p|
               // The def_id, in this case, identifies the combination of
               // class and iface
-              impls += [@{did: local_def(p.id),
+              vec::push(impls, @{did: local_def(p.id),
                          ident: i.ident,
                          methods: vec::map(mthds, {|m|
                                       @{did: local_def(m.id),
                                           n_tps: n_tps + m.tps.len(),
-                                          ident: m.ident}})}]/~;
+                                          ident: m.ident}})});
           }
       }
       _ {}
@@ -2287,10 +2288,10 @@ fn find_impls_in_mod_by_id(e: env, defid: def_id, &impls: [@_impl]/~,
     alt name {
       some(n) {
         for vec::each(*cached) {|im|
-            if n == im.ident { impls += [im]/~; }
+            if n == im.ident { vec::push(impls, im); }
         }
       }
-      _ { impls += *cached; }
+      _ { vec::push_all(impls, *cached); }
     }
 }
 

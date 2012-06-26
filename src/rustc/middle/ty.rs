@@ -2281,7 +2281,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
     fn vars_in_type(ty: t) -> [tv_vid]/~ {
         let mut rslt = []/~;
         walk_ty(ty) {|ty|
-            alt get(ty).struct { ty_var(v) { rslt += [v]/~; } _ { } }
+            alt get(ty).struct { ty_var(v) { vec::push(rslt, v); } _ { } }
         }
         rslt
     }
@@ -2837,8 +2837,8 @@ fn class_field_tys(items: [@class_member]/~) -> [field_ty]/~ {
     for items.each {|it|
        alt it.node {
           instance_var(nm, _, cm, id, vis) {
-              rslt += [{ident: nm, id: ast_util::local_def(id),
-                        vis: vis, mutability: cm}]/~;
+              vec::push(rslt, {ident: nm, id: ast_util::local_def(id),
+                        vis: vis, mutability: cm});
           }
           class_method(_) { }
        }
@@ -2874,9 +2874,9 @@ fn class_item_fields(cx:ctxt, did: ast::def_id,
     for lookup_class_fields(cx, did).each {|f|
        // consider all instance vars mut, because the
        // constructor may mutate all vars
-       rslt += [{ident: f.ident, mt:
+       vec::push(rslt, {ident: f.ident, mt:
                {ty: lookup_field_type(cx, did, f.id, substs),
-                    mutbl: frob_mutability(f.mutability)}}]/~;
+                    mutbl: frob_mutability(f.mutability)}});
     }
     rslt
 }

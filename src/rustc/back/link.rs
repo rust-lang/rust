@@ -305,14 +305,14 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
             if *attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
-                  none { cmh_items += [meta]/~; }
+                  none { vec::push(cmh_items, meta); }
                 }
             } else if *attr::get_meta_item_name(meta) == "vers" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { vers = some(v); }
-                  none { cmh_items += [meta]/~; }
+                  none { vec::push(cmh_items, meta); }
                 }
-            } else { cmh_items += [meta]/~; }
+            } else { vec::push(cmh_items, meta); }
         }
         ret {name: name, vers: vers, cmh_items: cmh_items};
     }
@@ -591,18 +591,18 @@ fn link_binary(sess: session,
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each {|cratepath|
         if str::ends_with(cratepath, ".rlib") {
-            cc_args += [cratepath]/~;
+            vec::push(cc_args, cratepath);
             cont;
         }
         let cratepath = cratepath;
         let dir = path::dirname(cratepath);
-        if dir != "" { cc_args += ["-L" + dir]/~; }
+        if dir != "" { vec::push(cc_args, "-L" + dir); }
         let libarg = unlib(sess.targ_cfg, path::basename(cratepath));
-        cc_args += ["-l" + libarg]/~;
+        vec::push(cc_args, "-l" + libarg);
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each {|arg| cc_args += [arg]/~; }
+    for ula.each {|arg| vec::push(cc_args, arg); }
 
     // # Native library linking
 
@@ -613,47 +613,47 @@ fn link_binary(sess: session,
     // forces to make sure that library can be found at runtime.
 
     let addl_paths = sess.opts.addl_lib_search_paths;
-    for addl_paths.each {|path| cc_args += ["-L" + path]/~; }
+    for addl_paths.each {|path| vec::push(cc_args, "-L" + path); }
 
     // The names of the native libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each {|l| cc_args += ["-l" + l]/~; }
+    for used_libs.each {|l| vec::push(cc_args, "-l" + l); }
 
     if sess.building_library {
-        cc_args += [lib_cmd]/~;
+        vec::push(cc_args, lib_cmd);
 
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
-            cc_args += ["-Wl,-install_name,@rpath/"
-                        + path::basename(output)]/~;
+            vec::push(cc_args, "-Wl,-install_name,@rpath/"
+                      + path::basename(output));
         }
     }
 
     if !sess.debugging_opt(session::no_rt) {
         // Always want the runtime linked in
-        cc_args += ["-lrustrt"]/~;
+        vec::push(cc_args, "-lrustrt");
     }
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        cc_args += ["-lrt", "-ldl"]/~;
+        vec::push_all(cc_args, ["-lrt", "-ldl"]/~);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
         // which lives in libm. Similar to above, on some linuxes we
         // have to be explicit about linking to it. See #2510
-        cc_args += ["-lm"]/~;
+        vec::push(cc_args, "-lm");
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
-        cc_args += ["-pthread", "-lrt",
-                    "-L/usr/local/lib", "-lexecinfo",
-                    "-L/usr/local/lib/gcc46",
-                    "-L/usr/local/lib/gcc44", "-lstdc++",
-                    "-Wl,-z,origin",
-                    "-Wl,-rpath,/usr/local/lib/gcc46",
-                    "-Wl,-rpath,/usr/local/lib/gcc44"]/~;
+        vec::push_all(cc_args, ["-pthread", "-lrt",
+                                "-L/usr/local/lib", "-lexecinfo",
+                                "-L/usr/local/lib/gcc46",
+                                "-L/usr/local/lib/gcc44", "-lstdc++",
+                                "-Wl,-z,origin",
+                                "-Wl,-rpath,/usr/local/lib/gcc46",
+                                "-Wl,-rpath,/usr/local/lib/gcc44"]/~);
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the
@@ -661,15 +661,15 @@ fn link_binary(sess: session,
     // understand how to unwind our __morestack frame, so we have to turn it
     // off. This has impacted some other projects like GHC.
     if sess.targ_cfg.os == session::os_macos {
-        cc_args += ["-Wl,-no_compact_unwind"]/~;
+        vec::push(cc_args, "-Wl,-no_compact_unwind");
     }
 
     // Stack growth requires statically linking a __morestack function
-    cc_args += ["-lmorestack"]/~;
+    vec::push(cc_args, "-lmorestack");
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // native libraries might live, based on the addl_lib_search_paths
-    cc_args += rpath::get_rpath_flags(sess, output);
+    vec::push_all(cc_args, rpath::get_rpath_flags(sess, output));
 
     #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));
     // We run 'cc' here

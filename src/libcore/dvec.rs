@@ -218,7 +218,7 @@ impl extensions<A:copy> for dvec<A> {
             }
            };
 
-           for ts.each { |t| v += [t]/~ };
+           for ts.each { |t| vec::push(v, t) };
            v
         }
     }

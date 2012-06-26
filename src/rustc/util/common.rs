@@ -31,7 +31,7 @@ fn field_expr(f: ast::field) -> @ast::expr { ret f.node.expr; }
 
 fn field_exprs(fields: [ast::field]/~) -> [@ast::expr]/~ {
     let mut es = []/~;
-    for fields.each {|f| es += [f.node.expr]/~; }
+    for fields.each {|f| vec::push(es, f.node.expr); }
     ret es;
 }
 

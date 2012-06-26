@@ -43,7 +43,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
             let mut new_tps = []/~;
             for substs.tps.each {|subst|
                 alt resolve_type_vars_in_type(fcx, sp, subst) {
-                  some(t) { new_tps += [t]/~; }
+                  some(t) { vec::push(new_tps, t); }
                   none { wbcx.success = false; ret none; }
                 }
             }

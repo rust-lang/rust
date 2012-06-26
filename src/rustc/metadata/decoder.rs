@@ -67,7 +67,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]/~) -> bool, hash: uint) ->
     ebml::tagged_docs(bucket, belt) {|elt|
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
         if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
-            result += [ebml::doc_at(d.data, pos).doc]/~;
+            vec::push(result, ebml::doc_at(d.data, pos).doc);
         }
     };
     ret result;
@@ -170,7 +170,7 @@ fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
         let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx, {|did|
             translate_def_id(cdata, did)
         });
-        bounds += [bd]/~;
+        vec::push(bounds, bd);
     }
     @bounds
 }
@@ -199,7 +199,7 @@ fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> [ast::def_id]/~ {
     let v = tag_items_data_item_variant;
     ebml::tagged_docs(item, v) {|p|
         let ext = parse_def_id(ebml::doc_data(p));
-        ids += [{crate: cdata.cnum, node: ext.node}]/~;
+        vec::push(ids, {crate: cdata.cnum, node: ext.node});
     };
     ret ids;
 }
@@ -218,7 +218,7 @@ fn resolve_path(path: [ast::ident]/~, data: @[u8]/~) -> [ast::def_id]/~ {
     #debug("resolve_path: looking up %s", s);
     for lookup_hash(paths, eqer, hash_path(s)).each {|doc|
         let did_doc = ebml::get_doc(doc, tag_def_id);
-        result += [parse_def_id(ebml::doc_data(did_doc))]/~;
+        vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
     }
     ret result;
 }
@@ -235,10 +235,10 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
     ebml::docs(path_doc) {|tag, elt_doc|
         if tag == tag_path_elt_mod {
             let str = ebml::doc_as_str(elt_doc);
-            result += [ast_map::path_mod(@str)]/~;
+            vec::push(result, ast_map::path_mod(@str));
         } else if tag == tag_path_elt_name {
             let str = ebml::doc_as_str(elt_doc);
-            result += [ast_map::path_name(@str)]/~;
+            vec::push(result, ast_map::path_name(@str));
         } else {
             // ignore tag_path_len element
         }
@@ -407,7 +407,7 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let mut arg_tys: [ty::t]/~ = []/~;
         alt ty::get(ctor_ty).struct {
           ty::ty_fn(f) {
-            for f.inputs.each {|a| arg_tys += [a.ty]/~; }
+            for f.inputs.each {|a| vec::push(arg_tys, a.ty); }
           }
           _ { /* Nullary enum variant. */ }
         }
@@ -415,8 +415,8 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
           some(val) { disr_val = val; }
           _         { /* empty */ }
         }
-        infos += [@{args: arg_tys, ctor_ty: ctor_ty, name: name,
-                    id: did, disr_val: disr_val}]/~;
+        vec::push(infos, @{args: arg_tys, ctor_ty: ctor_ty, name: name,
+                           id: did, disr_val: disr_val});
         disr_val += 1;
     }
     ret infos;
@@ -432,10 +432,10 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     ebml::tagged_docs(item, tag_item_impl_method) {|doc|
         let m_did = parse_def_id(ebml::doc_data(doc));
         let mth_item = lookup_item(m_did.node, cdata.data);
-        rslt += [@{did: translate_def_id(cdata, m_did),
+        vec::push(rslt, @{did: translate_def_id(cdata, m_did),
                     /* FIXME (maybe #2323) tjc: take a look at this. */
                    n_tps: item_ty_param_count(mth_item) - base_tps,
-                   ident: item_name(mth_item)}]/~;
+                   ident: item_name(mth_item)});
     }
     rslt
 }
@@ -458,10 +458,10 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
         let nm = item_name(item);
         if alt name { some(n) { n == nm } none { true } } {
            let base_tps = item_ty_param_count(item);
-           result += [@{
+           vec::push(result, @{
                 did: local_did, ident: nm,
                 methods: item_impl_methods(impl_cdata, item, base_tps)
-            }]/~;
+            });
         };
     }
     @result
@@ -482,12 +482,12 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
             tcx.diag.handler().bug(
                 "get_iface_methods: id has non-function type");
         } };
-        result += [{ident: name, tps: bounds, fty: fty,
+        vec::push(result, {ident: name, tps: bounds, fty: fty,
                     purity: alt check item_family(mth) {
                       'u' { ast::unsafe_fn }
                       'f' { ast::impure_fn }
                       'p' { ast::pure_fn }
-                    }, vis: ast::public}]/~;
+                    }, vis: ast::public});
     }
     @result
 }
@@ -504,8 +504,8 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
           let name = item_name(an_item);
           let did = class_member_id(an_item, cdata);
           let mt = field_mutability(an_item);
-          result += [{ident: name, id: did, vis:
-                  family_to_visibility(f), mutability: mt}]/~;
+          vec::push(result, {ident: name, id: did, vis:
+                  family_to_visibility(f), mutability: mt});
        }
     }
     result
@@ -581,7 +581,7 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item]/~ {
     ebml::tagged_docs(md, tag_meta_item_word) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
-        items += [attr::mk_word_item(@n)]/~;
+        vec::push(items, attr::mk_word_item(@n));
     };
     ebml::tagged_docs(md, tag_meta_item_name_value) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
@@ -590,13 +590,13 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item]/~ {
         let v = str::from_bytes(ebml::doc_data(vd));
         // FIXME (#623): Should be able to decode meta_name_value variants,
         // but currently the encoder just drops them
-        items += [attr::mk_name_value_item_str(@n, v)]/~;
+        vec::push(items, attr::mk_name_value_item_str(@n, v));
     };
     ebml::tagged_docs(md, tag_meta_item_list) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
-        items += [attr::mk_list_item(@n, subitems)]/~;
+        vec::push(items, attr::mk_list_item(@n, subitems));
     };
     ret items;
 }
@@ -653,10 +653,10 @@ fn get_crate_deps(data: @[u8]/~) -> [crate_dep]/~ {
         str::from_bytes(ebml::doc_data(ebml::get_doc(doc, tag_)))
     }
     ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
-        deps += [{cnum: crate_num,
+        vec::push(deps, {cnum: crate_num,
                   name: @docstr(depdoc, tag_crate_dep_name),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
-                  hash: @docstr(depdoc, tag_crate_dep_hash)}]/~;
+                  hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
     };
     ret deps;
@@ -732,7 +732,7 @@ fn get_crate_module_paths(bytes: @[u8]/~) -> [(ast::def_id, str)]/~ {
         // Collect everything by now. There might be multiple
         // paths pointing to the same did. Those will be
         // unified later by using the mods map
-        res += [(did, path)]/~;
+        vec::push(res, (did, path));
     }
     ret vec::filter(res) {|x|
         let (_, xp) = x;

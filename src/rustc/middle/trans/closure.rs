@@ -128,12 +128,12 @@ fn mk_closure_tys(tcx: ty::ctxt,
 
     // Compute the closed over data
     for vec::each(bound_values) {|bv|
-        bound_tys += [alt bv {
+        vec::push(bound_tys, alt bv {
             env_copy(_, t, _) { t }
             env_move(_, t, _) { t }
             env_ref(_, t, _) { t }
             env_expr(_, t) { t }
-        }]/~;
+        });
     }
     let bound_data_ty = ty::mk_tup(tcx, bound_tys);
     // FIXME[mono] remove tuple of tydescs from closure types (#2531)
@@ -247,7 +247,7 @@ fn store_environment(bcx: block,
           env_expr(e, _) {
             bcx = base::trans_expr_save_in(bcx, e, bound_data);
             add_clean_temp_mem(bcx, bound_data, bound_tys[i]);
-            temp_cleanups += [bound_data]/~;
+            vec::push(temp_cleanups, bound_data);
           }
           env_copy(val, ty, owned) {
             let val1 = load_if_immediate(bcx, val, ty);
@@ -303,18 +303,18 @@ fn build_closure(bcx0: block,
           capture::cap_ref {
             assert ck == ty::ck_block;
             ty = ty::mk_mut_ptr(tcx, ty);
-            env_vals += [env_ref(lv.val, ty, lv.kind)]/~;
+            vec::push(env_vals, env_ref(lv.val, ty, lv.kind));
           }
           capture::cap_copy {
             let mv = alt check ccx.maps.last_use_map.find(id) {
               none { false }
               some(vars) { (*vars).contains(nid) }
             };
-            if mv { env_vals += [env_move(lv.val, ty, lv.kind)]/~; }
-            else { env_vals += [env_copy(lv.val, ty, lv.kind)]/~; }
+            if mv { vec::push(env_vals, env_move(lv.val, ty, lv.kind)); }
+            else { vec::push(env_vals, env_copy(lv.val, ty, lv.kind)); }
           }
           capture::cap_move {
-            env_vals += [env_move(lv.val, ty, lv.kind)]/~;
+            vec::push(env_vals, env_move(lv.val, ty, lv.kind));
           }
           capture::cap_drop {
             assert lv.kind == owned;
@@ -435,7 +435,7 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
     let ccx = cx.ccx();
     let mut bound: [@ast::expr]/~ = []/~;
     for vec::each(args) {|argopt|
-        alt argopt { none { } some(e) { bound += [e]/~; } }
+        alt argopt { none { } some(e) { vec::push(bound, e); } }
     }
     let mut bcx = f_res.bcx;
     if dest == ignore {
@@ -758,13 +758,13 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
               }
               ast::by_ref | ast::by_mutbl_ref | ast::by_move { }
             }
-            llargs += [val]/~;
+            vec::push(llargs, val);
             b += 1u;
           }
 
           // Arg will be provided when the thunk is invoked.
           none {
-            llargs += [llvm::LLVMGetParam(llthunk, a as c_uint)]/~;
+            vec::push(llargs, llvm::LLVMGetParam(llthunk, a as c_uint));
             a += 1u;
           }
         }

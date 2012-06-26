@@ -255,7 +255,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         /* copy */
 
         let mut args = operands;
-        args += [operator]/~;
+        vec::push(args, operator);
 
         find_pre_post_exprs(fcx, args, e.id);
         /* see if the call has any constraints on its type */
@@ -314,7 +314,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       }
       expr_rec(fields, maybe_base) {
         let mut es = field_exprs(fields);
-        alt maybe_base { none {/* no-op */ } some(b) { es += [b]/~; } }
+        alt maybe_base { none {/* no-op */ } some(b) { vec::push(es, b); } }
         find_pre_post_exprs(fcx, es, e.id);
       }
       expr_tup(elts) { find_pre_post_exprs(fcx, elts, e.id); }
@@ -398,7 +398,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
             ret block_pp(fcx.ccx, an_alt.body);
         }
         let mut alt_pps = []/~;
-        for alts.each {|a| alt_pps += [do_an_alt(fcx, a)]/~; }
+        for alts.each {|a| vec::push(alt_pps, do_an_alt(fcx, a)); }
         fn combine_pp(antec: pre_and_post, fcx: fn_ctxt, &&pp: pre_and_post,
                       &&next: pre_and_post) -> pre_and_post {
             union(pp.precondition, seq_preconds(fcx, [antec, next]/~));
@@ -555,20 +555,20 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     option::map::<@expr, ()>(b.node.expr, do_inner);
 
     let mut pps: [pre_and_post]/~ = []/~;
-    for b.node.stmts.each {|s| pps += [stmt_pp(fcx.ccx, *s)]/~; }
+    for b.node.stmts.each {|s| vec::push(pps, stmt_pp(fcx.ccx, *s)); }
     alt b.node.expr {
       none {/* no-op */ }
-      some(e) { pps += [expr_pp(fcx.ccx, e)]/~; }
+      some(e) { vec::push(pps, expr_pp(fcx.ccx, e)); }
     }
 
     let block_precond = seq_preconds(fcx, pps);
 
     let mut postconds = []/~;
-    for pps.each {|pp| postconds += [get_post(pp)]/~; }
+    for pps.each {|pp| vec::push(postconds, get_post(pp)); }
 
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */
-    postconds += [block_precond]/~;
+    vec::push(postconds, block_precond);
 
     let mut block_postcond = empty_poststate(nv);
     /* conservative approximation */

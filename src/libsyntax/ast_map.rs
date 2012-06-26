@@ -229,9 +229,9 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     }
     alt i.node {
       item_mod(_) | item_native_mod(_) {
-        cx.path += [path_mod(i.ident)]/~;
+        vec::push(cx.path, path_mod(i.ident));
       }
-      _ { cx.path += [path_name(i.ident)]/~; }
+      _ { vec::push(cx.path, path_name(i.ident)); }
     }
     visit::visit_item(i, cx, v);
     vec::pop(cx.path);

@@ -110,12 +110,12 @@ fn expand_nested_bindings(m: match, col: uint, val: ValueRef) -> match {
           ast::pat_ident(name, some(inner)) {
             let pats = vec::slice(br.pats, 0u, col) + [inner]/~ +
                 vec::slice(br.pats, col + 1u, br.pats.len());
-            result += [@{pats: pats,
+            vec::push(result, @{pats: pats,
                         bound: br.bound + [{ident: path_to_ident(name),
                                 val: val}]/~
-                         with *br}]/~;
+                         with *br});
           }
-          _ { result += [br]/~; }
+          _ { vec::push(result, br); }
         }
     }
     result
@@ -138,7 +138,7 @@ fn enter_match(dm: def_map, m: match, col: uint, val: ValueRef,
               }
               _ { br.bound }
             };
-            result += [@{pats: pats, bound: bound with *br}]/~;
+            vec::push(result, @{pats: pats, bound: bound with *br});
           }
           none { }
         }
@@ -196,7 +196,7 @@ fn enter_rec(dm: def_map, m: match, col: uint, fields: [ast::ident]/~,
                 for vec::each(fpats) {|fpat|
                     if str::eq(*fpat.ident, *fname) { pat = fpat.pat; break; }
                 }
-                pats += [pat]/~;
+                vec::push(pats, pat);
             }
             some(pats)
           }
@@ -293,7 +293,7 @@ fn collect_record_fields(m: match, col: uint) -> [ast::ident]/~ {
           ast::pat_rec(fs, _) {
             for vec::each(fs) {|f|
                 if !vec::any(fields, {|x| str::eq(*f.ident, *x)}) {
-                    fields += [f.ident]/~;
+                    vec::push(fields, f.ident);
                 }
             }
           }
@@ -404,8 +404,8 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
           _ { }
         }
         if !bcx.unreachable {
-            exits += [{bound: m[0].bound, from: bcx.llbb,
-                       to: data.bodycx.llbb}]/~;
+            vec::push(exits, {bound: m[0].bound, from: bcx.llbb,
+                       to: data.bodycx.llbb});
         }
         Br(bcx, data.bodycx.llbb);
         ret;
@@ -436,7 +436,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
         let mut rec_vals = []/~;
         for vec::each(rec_fields) {|field_name|
             let ix = option::get(ty::field_idx(field_name, fields));
-            rec_vals += [GEPi(bcx, val, [0u, ix]/~)]/~;
+            vec::push(rec_vals, GEPi(bcx, val, [0u, ix]/~));
         }
         compile_submatch(bcx, enter_rec(dm, m, col, rec_fields, val),
                          rec_vals + vals_left, chk, exits);
@@ -451,7 +451,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
         };
         let mut tup_vals = []/~, i = 0u;
         while i < n_tup_elts {
-            tup_vals += [GEPi(bcx, val, [0u, i]/~)]/~;
+            vec::push(tup_vals, GEPi(bcx, val, [0u, i]/~));
             i += 1u;
         }
         compile_submatch(bcx, enter_tup(dm, m, col, val, n_tup_elts),
@@ -604,7 +604,10 @@ fn make_phi_bindings(bcx: block, map: [exit_node]/~,
         for vec::each(map) {|ex|
             if ex.to as uint == our_block {
                 alt assoc(name, ex.bound) {
-                  some(val) { llbbs += [ex.from]/~; vals += [val]/~; }
+                  some(val) {
+                    vec::push(llbbs, ex.from);
+                    vec::push(vals, val);
+                  }
                   none { }
                 }
             }
@@ -644,12 +647,12 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm]/~,
     for vec::each(arms) {|a|
         let body = scope_block(bcx, a.body.info(), "case_body");
         let id_map = pat_util::pat_id_map(tcx.def_map, a.pats[0]);
-        bodies += [body]/~;
+        vec::push(bodies, body);
         for vec::each(a.pats) {|p|
-            match += [@{pats: [p]/~,
+            vec::push(match, @{pats: [p]/~,
                         bound: []/~,
                         data: @{bodycx: body, guard: a.guard,
-                                id_map: id_map}}]/~;
+                                id_map: id_map}});
         }
     }
 
@@ -680,10 +683,10 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm]/~,
         let id_map = pat_util::pat_id_map(tcx.def_map, a.pats[0]);
         if make_phi_bindings(body_cx, exit_map, id_map) {
             let arm_dest = dup_for_join(dest);
-            arm_dests += [arm_dest]/~;
+            vec::push(arm_dests, arm_dest);
             let mut arm_cx = trans_block(body_cx, a.body, arm_dest);
             arm_cx = trans_block_cleanups(arm_cx, body_cx);
-            arm_cxs += [arm_cx]/~;
+            vec::push(arm_cxs, arm_cx);
         }
         i += 1u;
     }

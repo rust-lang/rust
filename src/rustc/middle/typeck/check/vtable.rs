@@ -18,8 +18,8 @@ fn lookup_vtables(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
             alt bound {
               ty::bound_iface(i_ty) {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                result += [lookup_vtable(fcx, isc, sp, ty, i_ty,
-                                         allow_unsafe)]/~;
+                vec::push(result, lookup_vtable(fcx, isc, sp, ty, i_ty,
+                                         allow_unsafe));
               }
               _ {}
             }
@@ -144,7 +144,8 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                                       iface_tps, im.did);
                     let subres = lookup_vtables(fcx, isc, sp,
                                                 im_bs, substs_f, false);
-                    found += [vtable_static(im.did, substs_f.tps, subres)]/~;
+                    vec::push(found,
+                              vtable_static(im.did, substs_f.tps, subres));
                 }
 
                 alt found.len() {

@@ -102,7 +102,7 @@ impl ccx_icx for @crate_ctxt {
     fn insn_ctxt(s: str) -> icx_popper {
         #debug("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
-            *self.stats.llvm_insn_ctxt += [s]/~;
+            vec::push(*self.stats.llvm_insn_ctxt, s);
         }
         icx_popper(self)
     }
@@ -172,7 +172,7 @@ fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timespec,
                end: time::timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
         ((end.nsec as int) - (start.nsec as int)) / 1000000;
-    *ccx.stats.fn_times += [{ident: name, time: elapsed}]/~;
+    vec::push(*ccx.stats.fn_times, {ident: name, time: elapsed});
 }
 
 
@@ -236,7 +236,7 @@ fn trans_native_call(cx: block, externs: hashmap<str, ValueRef>,
         get_simple_extern_fn(cx, externs, llmod, name, n);
     let mut call_args: [ValueRef]/~ = []/~;
     for vec::each(args) {|a|
-        call_args += [a]/~;
+        vec::push(call_args, a);
     }
     ret Call(cx, llnative, call_args);
 }
@@ -2983,7 +2983,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
             // In the event that failure occurs before the call actually
             // happens, have to cleanup this copy:
             add_clean_temp_mem(bcx, val, arg.ty);
-            temp_cleanups += [val]/~;
+            vec::push(temp_cleanups, val);
           }
         }
     }
@@ -3095,10 +3095,10 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
       by_val(_) { alloc_ty(bcx, retty) }
     };
 
-    llargs += [llretslot]/~;
+    vec::push(llargs, llretslot);
 
     // Arg 1: Env (closure-bindings / self value)
-    llargs += [llenv]/~;
+    vec::push(llargs, llenv);
 
     // ... then explicit args.
 
@@ -3114,7 +3114,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
                                    e, temp_cleanups, if i == last { ret_flag }
                                    else { none }, 0u);
             bcx = r.bcx;
-            llargs += [r.val]/~;
+            vec::push(llargs, r.val);
         }
       }
       arg_vals(vs) {
@@ -3387,7 +3387,7 @@ fn trans_tup(bcx: block, elts: [@ast::expr]/~, dest: dest) -> block {
         let e_ty = expr_ty(bcx, e);
         bcx = trans_expr_save_in(bcx, e, dst);
         add_clean_temp_mem(bcx, dst, e_ty);
-        temp_cleanups += [dst]/~;
+        vec::push(temp_cleanups, dst);
     }
     for vec::each(temp_cleanups) {|cleanup| revoke_clean(bcx, cleanup); }
     ret bcx;
@@ -3419,7 +3419,7 @@ fn trans_rec(bcx: block, fields: [ast::field]/~,
         let dst = GEPi(bcx, addr, [0u, ix]/~);
         bcx = trans_expr_save_in(bcx, fld.node.expr, dst);
         add_clean_temp_mem(bcx, dst, ty_fields[ix].mt.ty);
-        temp_cleanups += [dst]/~;
+        vec::push(temp_cleanups, dst);
     }
     alt base {
       some(bexp) {
@@ -4264,7 +4264,7 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
             }
             let sub_cx = sub_block(bcx, "cleanup");
             Br(bcx, sub_cx.llbb);
-            inf.cleanup_paths += [{target: leave, dest: sub_cx.llbb}]/~;
+            vec::push(inf.cleanup_paths, {target: leave, dest: sub_cx.llbb});
             bcx = trans_block_cleanups_(sub_cx, cur, is_lpad);
           }
           _ {}
@@ -5059,7 +5059,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
         let mut args = [lloutputarg, llenvarg]/~;
         if takes_argv {
-            args += [llvm::LLVMGetParam(llfdecl, 2 as c_uint)]/~;
+            vec::push(args, llvm::LLVMGetParam(llfdecl, 2 as c_uint));
         }
         Call(bcx, main_llfn, args);
         build_return(bcx);
@@ -5369,10 +5369,10 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     for ccx.module_data.each {|key, val|
         let elt = C_struct([p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]/~);
-        elts += [elt]/~;
+        vec::push(elts, elt);
     };
     let term = C_struct([C_int(ccx, 0), C_int(ccx, 0)]/~);
-    elts += [term]/~;
+    vec::push(elts, term);
     llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     ret map;
 }
@@ -5410,10 +5410,10 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
         let cr = str::as_c_str(nm, {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
-        subcrates += [p2i(ccx, cr)]/~;
+        vec::push(subcrates, p2i(ccx, cr));
         i += 1;
     }
-    subcrates += [C_int(ccx, 0)]/~;
+    vec::push(subcrates, C_int(ccx, 0));
     llvm::LLVMSetInitializer(map, C_struct(
         [p2i(ccx, create_module_map(ccx)),
          C_array(ccx.int_type, subcrates)]/~));
@@ -5448,7 +5448,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
                     ast_map::path_to_str(*path)
                   }
                 };
-                reexports += [(path, def.id)]/~;
+                vec::push(reexports, (path, def.id));
             }
         }
         ret reexports;

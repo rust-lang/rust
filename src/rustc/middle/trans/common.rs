@@ -236,8 +236,8 @@ fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
            ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean({|a|base::drop_ty(a, val, ty)},
-                                cleanup_type)]/~;
+        vec::push(info.cleanups, clean({|a|base::drop_ty(a, val, ty)},
+                                cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -256,8 +256,8 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
         }
     }
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean_temp(val, {|a|do_drop(a, val, ty)},
-                                     cleanup_type)]/~;
+        vec::push(info.cleanups, clean_temp(val, {|a|do_drop(a, val, ty)},
+                                     cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -268,8 +268,9 @@ fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
            ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean_temp(val, {|a|base::drop_ty(a, val, ty)},
-                                     cleanup_type)]/~;
+        vec::push(info.cleanups,
+                  clean_temp(val, {|a|base::drop_ty(a, val, ty)},
+                             cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -277,8 +278,8 @@ fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
     let free_fn = if shared { {|a|base::trans_unique_free(a, ptr)} }
     else { {|a|base::trans_free(a, ptr)} };
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean_temp(ptr, free_fn,
-                                     normal_exit_and_unwind)]/~;
+        vec::push(info.cleanups, clean_temp(ptr, free_fn,
+                                     normal_exit_and_unwind));
         scope_clean_changed(info);
     }
 }
@@ -849,7 +850,7 @@ fn C_postr(s: str) -> ValueRef {
 fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let mut i = 0u;
     let mut elts: [ValueRef]/~ = []/~;
-    while i < size { elts += [C_u8(0u)]/~; i += 1u; }
+    while i < size { vec::push(elts, C_u8(0u)); i += 1u; }
     ret llvm::LLVMConstArray(T_i8(), vec::unsafe::to_ptr(elts),
                              elts.len() as c_uint);
 }

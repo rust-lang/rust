@@ -113,7 +113,7 @@ fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
 
 fn add_used_crate_file(cstore: cstore, lib: str) {
     if !vec::contains(p(cstore).used_crate_files, lib) {
-        p(cstore).used_crate_files += [lib]/~;
+        vec::push(p(cstore).used_crate_files, lib);
     }
 }
 
@@ -125,7 +125,7 @@ fn add_used_library(cstore: cstore, lib: str) -> bool {
     assert lib != "";
 
     if vec::contains(p(cstore).used_libraries, lib) { ret false; }
-    p(cstore).used_libraries += [lib]/~;
+    vec::push(p(cstore).used_libraries, lib);
     ret true;
 }
 
@@ -161,7 +161,7 @@ fn get_dep_hashes(cstore: cstore) -> [@str]/~ {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         #debug("Add hash[%s]: %s", cdata.name, *hash);
-        result += [{name: @cdata.name, hash: hash}]/~;
+        vec::push(result, {name: @cdata.name, hash: hash});
     };
     fn lteq(a: crate_hash, b: crate_hash) -> bool {
         ret *a.name <= *b.name;

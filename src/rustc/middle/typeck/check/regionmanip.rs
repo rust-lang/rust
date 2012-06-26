@@ -12,7 +12,7 @@ fn replace_bound_regions_in_fn_ty(
                                                   fn_ty: ty::fn_ty} {
 
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
-    for self_ty.each { |t| all_tys += [t]/~ }
+    for self_ty.each { |t| vec::push(all_tys, t) }
 
     #debug["replace_bound_regions_in_fn_ty(self_ty=%?, fn_ty=%s, all_tys=%?)",
            self_ty.map { |t| ty_to_str(tcx, t) },

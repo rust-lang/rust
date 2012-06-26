@@ -31,7 +31,7 @@ export rsplit;
 export rsplitn;
 export shift;
 export pop;
-export push;
+export push, push_all;
 export grow;
 export grow_fn;
 export grow_set;

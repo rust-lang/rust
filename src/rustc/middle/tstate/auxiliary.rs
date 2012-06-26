@@ -553,7 +553,7 @@ fn exprs_to_constr_args(tcx: ty::ctxt,
                         args: [@expr]/~) -> [@constr_arg_use]/~ {
     let f = {|a|expr_to_constr_arg(tcx, a)};
     let mut rslt: [@constr_arg_use]/~ = []/~;
-    for args.each {|e| rslt += [f(e)]/~; }
+    for args.each {|e| vec::push(rslt, f(e)); }
     rslt
 }
 
@@ -589,7 +589,7 @@ fn substitute_constr_args(cx: ty::ctxt, actuals: [@expr]/~, c: @ty::constr) ->
    tsconstr {
     let mut rslt: [@constr_arg_use]/~ = []/~;
     for c.node.args.each {|a|
-        rslt += [substitute_arg(cx, actuals, a)]/~;
+        vec::push(rslt, substitute_arg(cx, actuals, a));
     }
     ret {path: c.node.path,
          def_id: c.node.id,
@@ -668,7 +668,7 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
                 let old_bit_num = d.node.bit_num;
                 let newv = replace(subst, d);
                 alt find_instance_(newv, v) {
-                  some(d1) {res += [{from: old_bit_num, to: d1}]/~}
+                  some(d1) {vec::push(res, {from: old_bit_num, to: d1})}
                   _ {}
                 }
             } else {}
@@ -710,12 +710,12 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>]/~ {
         alt c.node {
           carg_ident(p) {
             alt find_in_subst(p.node, subst) {
-              some(newv) { rslt += [carg_ident(newv)]/~; }
-              _ { rslt += [c.node]/~; }
+              some(newv) { vec::push(rslt, carg_ident(newv)); }
+              _ { vec::push(rslt, c.node); }
             }
           }
           _ {
-            rslt += [c.node]/~;
+            vec::push(rslt, c.node);
           }
         }
     }
@@ -866,7 +866,9 @@ fn args_mention<T>(args: [@constr_arg_use]/~,
     ret false;
 }
 
-fn use_var(fcx: fn_ctxt, v: node_id) { *fcx.enclosing.used_vars += [v]/~; }
+fn use_var(fcx: fn_ctxt, v: node_id) {
+    vec::push(*fcx.enclosing.used_vars, v);
+}
 
 fn op_to_oper_ty(io: init_op) -> oper_type {
     alt io { init_move { oper_move } _ { oper_assign } }
@@ -924,14 +926,14 @@ type binding = {lhs: [dest]/~, rhs: option<initializer>};
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let mut lhs = []/~;
     pat_bindings(tcx.def_map, loc.node.pat) {|p_id, _s, name|
-      lhs += [local_dest({ident: path_to_ident(name), node: p_id})]/~;
+      vec::push(lhs, local_dest({ident: path_to_ident(name), node: p_id}));
     };
     {lhs: lhs, rhs: loc.node.init}
 }
 
 fn locals_to_bindings(tcx: ty::ctxt, locals: [@local]/~) -> [binding]/~ {
     let mut rslt = []/~;
-    for locals.each {|loc| rslt += [local_to_bindings(tcx, loc)]/~; }
+    for locals.each {|loc| vec::push(rslt, local_to_bindings(tcx, loc)); }
     ret rslt;
 }
 
@@ -941,7 +943,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [mode]/~ {
     alt ty::get(ty).struct {
       ty::ty_fn({inputs: args, _}) {
         let mut modes = []/~;
-        for args.each {|arg| modes += [arg.mode]/~; }
+        for args.each {|arg| vec::push(modes, arg.mode); }
         ret modes;
       }
       _ {

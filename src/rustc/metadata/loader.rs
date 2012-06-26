@@ -89,7 +89,7 @@ fn find_library_crate_aux(cx: ctxt,
                     option::none::<()>
                 } else {
                     #debug("found %s with matching metadata", path);
-                    matches += [{ident: path, data: cvec}]/~;
+                    vec::push(matches, {ident: path, data: cvec});
                     option::none::<()>
                 }
               }

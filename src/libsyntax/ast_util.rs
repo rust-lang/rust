@@ -298,13 +298,13 @@ fn split_class_items(cs: [@class_member]/~) -> ([ivar]/~, [@method]/~) {
     for cs.each {|c|
       alt c.node {
         instance_var(i, t, cm, id, vis) {
-          vs += [{ident: /* FIXME (#2543) */ copy i,
-                  ty: t,
-                  cm: cm,
-                  id: id,
-                  vis: vis}]/~;
+          vec::push(vs, {ident: /* FIXME (#2543) */ copy i,
+                         ty: t,
+                         cm: cm,
+                         id: id,
+                         vis: vis});
         }
-        class_method(m) { ms += [m]/~; }
+        class_method(m) { vec::push(ms, m); }
       }
     };
     (vs, ms)

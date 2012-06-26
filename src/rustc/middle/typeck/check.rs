@@ -1424,7 +1424,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         for elts.eachi {|i, e|
             check_expr(fcx, e, flds.map {|fs| fs[i]});
             let ety = fcx.expr_ty(e);
-            elt_ts += [ety]/~;
+            vec::push(elt_ts, ety);
         }
         let typ = ty::mk_tup(tcx, elt_ts);
         fcx.write_ty(id, typ);
@@ -1826,14 +1826,14 @@ fn check_enum_variants(ccx: @crate_ctxt,
             ccx.tcx.sess.span_err(v.span,
                                   "discriminator value already exists");
         }
-        disr_vals += [disr_val]/~;
+        vec::push(disr_vals, disr_val);
         let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
         let arg_tys = if v.node.args.len() > 0u {
             ty::ty_fn_args(ctor_ty).map {|a| a.ty }
           } else { []/~ };
-        variants += [@{args: arg_tys, ctor_ty: ctor_ty,
+        vec::push(variants, @{args: arg_tys, ctor_ty: ctor_ty,
               name: v.node.name, id: local_def(v.node.id),
-              disr_val: disr_val}]/~;
+              disr_val: disr_val});
         disr_val += 1;
     }
 
@@ -1913,7 +1913,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr]/~,
     for cs.each {|c|
         let mut c_args = []/~;
         for c.node.args.each {|a|
-            c_args += [
+            vec::push(c_args,
                  // "base" should not occur in a fn type thing, as of
                  // yet, b/c we don't allow constraints on the return type
 
@@ -1953,7 +1953,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr]/~,
                                        carg_ident index out of bounds");
                       }
                     }
-                  }]/~;
+                  });
         }
         let p_op: ast::expr_ = ast::expr_path(c.node.path);
         let oper: @ast::expr = @{id: c.node.id, node: p_op, span: c.span};

@@ -277,7 +277,7 @@ class parser {
         let mut constrs: [@constr_general<T>]/~ = []/~;
         loop {
             let constr = pser(self);
-            constrs += [constr]/~;
+            vec::push(constrs, constr);
             if self.token == token::COMMA { self.bump(); }
             else { ret constrs; }
         };
@@ -363,7 +363,7 @@ class parser {
                 let mut ts = [self.parse_ty(false)]/~;
                 while self.token == token::COMMA {
                     self.bump();
-                    ts += [self.parse_ty(false)]/~;
+                    vec::push(ts, self.parse_ty(false));
                 }
                 let t = if vec::len(ts) == 1u { ts[0].node }
                 else { ty_tup(ts) };
@@ -591,10 +591,10 @@ class parser {
                 && self.look_ahead(1u) == token::MOD_SEP;
 
             if is_not_last {
-                ids += [parse_ident(self)]/~;
+                vec::push(ids, parse_ident(self));
                 self.expect(token::MOD_SEP);
             } else {
-                ids += [parse_last_ident(self)]/~;
+                vec::push(ids, parse_last_ident(self));
                 break;
             }
         }
@@ -718,7 +718,7 @@ class parser {
             }
             let mut es = [self.parse_expr()]/~;
             while self.token == token::COMMA {
-                self.bump(); es += [self.parse_expr()]/~;
+                self.bump(); vec::push(es, self.parse_expr());
             }
             hi = self.span.hi;
             self.expect(token::RPAREN);
@@ -751,7 +751,7 @@ class parser {
                         // record ends by an optional trailing comma
                         break;
                     }
-                    fields += [self.parse_field(token::COLON)]/~;
+                    vec::push(fields, self.parse_field(token::COLON));
                 }
                 hi = self.span.hi;
                 self.expect(token::RBRACE);
@@ -1393,7 +1393,7 @@ class parser {
             if self.eat_keyword("if") { guard = some(self.parse_expr()); }
             if self.token == token::FAT_ARROW { self.bump(); }
             let blk = self.parse_block();
-            arms += [{pats: pats, guard: guard, body: blk}]/~;
+            vec::push(arms, {pats: pats, guard: guard, body: blk});
         }
         let mut hi = self.span.hi;
         self.bump();
@@ -1438,7 +1438,7 @@ class parser {
     fn parse_pats() -> [@pat]/~ {
         let mut pats = []/~;
         loop {
-            pats += [self.parse_pat()]/~;
+            vec::push(pats, self.parse_pat());
             if self.token == token::BINOP(token::OR) { self.bump(); }
             else { ret pats; }
         };
@@ -1499,7 +1499,7 @@ class parser {
                                node: pat_ident(fieldpath, none),
                                span: mk_sp(lo, hi)};
                 }
-                fields += [{ident: fieldname, pat: subpat}]/~;
+                vec::push(fields, {ident: fieldname, pat: subpat});
             }
             hi = self.span.hi;
             self.bump();
@@ -1517,7 +1517,7 @@ class parser {
                 let mut fields = [self.parse_pat()]/~;
                 while self.token == token::COMMA {
                     self.bump();
-                    fields += [self.parse_pat()]/~;
+                    vec::push(fields, self.parse_pat());
                 }
                 if vec::len(fields) == 1u { self.expect(token::COMMA); }
                 hi = self.span.hi;
@@ -1607,7 +1607,7 @@ class parser {
         let lo = self.span.lo;
         let mut locals = [self.parse_local(is_mutbl, true)]/~;
         while self.eat(token::COMMA) {
-            locals += [self.parse_local(is_mutbl, true)]/~;
+            vec::push(locals, self.parse_local(is_mutbl, true));
         }
         ret @spanned(lo, self.last_span.hi, decl_local(locals));
     }
@@ -1769,13 +1769,13 @@ class parser {
                                         but found '"
                                        + token_to_str(self.reader, t) + "'");
                         }
-                        stmts += [stmt]/~;
+                        vec::push(stmts, stmt);
                       }
                     }
                   }
 
                   _ { // All other kinds of statements:
-                    stmts += [stmt]/~;
+                    vec::push(stmts, stmt);
 
                     if classify::stmt_ends_with_semi(*stmt) {
                         self.expect(token::SEMI);
@@ -1964,7 +1964,7 @@ class parser {
         let mut meths = []/~;
         self.expect(token::LBRACE);
         while !self.eat(token::RBRACE) {
-            meths += [self.parse_method(public)]/~;
+            vec::push(meths, self.parse_method(public));
         }
         (ident, item_impl(tps, rp, ifce, ty, meths), none)
     }
@@ -2099,7 +2099,7 @@ class parser {
             self.expect(token::LBRACE);
             let mut results = []/~;
             while self.token != token::RBRACE {
-                results += [self.parse_single_class_item(private)]/~;
+                vec::push(results, self.parse_single_class_item(private));
             }
             self.bump();
             ret members(results);
@@ -2129,7 +2129,7 @@ class parser {
             #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
             let vis = self.parse_visibility(private);
             alt self.parse_item(attrs, vis) {
-              some(i) { items += [i]/~; }
+              some(i) { vec::push(items, i); }
               _ {
                 self.fatal("expected item but found '" +
                            token_to_str(self.reader, self.token) + "'");
@@ -2206,7 +2206,7 @@ class parser {
         while self.token != token::RBRACE {
             let attrs = initial_attrs + self.parse_outer_attributes();
             initial_attrs = []/~;
-            items += [self.parse_native_item(attrs)]/~;
+            vec::push(items, self.parse_native_item(attrs));
         }
         ret {view_items: view_items,
              items: items};
@@ -2285,7 +2285,7 @@ class parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     {|p| p.parse_ty(false)});
                 for arg_tys.each {|ty|
-                    args += [{ty: ty, id: self.get_id()}]/~;
+                    vec::push(args, {ty: ty, id: self.get_id()});
                 }
             } else if self.eat(token::EQ) {
                 have_disr = true;
@@ -2295,7 +2295,7 @@ class parser {
             let vr = {name: ident, attrs: variant_attrs,
                       args: args, id: self.get_id(),
                       disr_expr: disr_expr, vis: vis};
-            variants += [spanned(vlo, self.last_span.hi, vr)]/~;
+            vec::push(variants, spanned(vlo, self.last_span.hi, vr));
 
             if !self.eat(token::COMMA) { break; }
         }
@@ -2399,7 +2399,7 @@ class parser {
             while self.token == token::MOD_SEP {
                 self.bump();
                 let id = self.parse_ident();
-                path += [id]/~;
+                vec::push(path, id);
             }
             let path = @{span: mk_sp(lo, self.span.hi), global: false,
                          idents: path, rp: none, types: []/~};
@@ -2416,7 +2416,7 @@ class parser {
 
                   token::IDENT(i, _) {
                     self.bump();
-                    path += [self.get_str(i)]/~;
+                    vec::push(path, self.get_str(i));
                   }
 
                   // foo::bar::{a,b,c}
@@ -2459,7 +2459,7 @@ class parser {
         let mut vp = [self.parse_view_path()]/~;
         while self.token == token::COMMA {
             self.bump();
-            vp += [self.parse_view_path()]/~;
+            vec::push(vp, self.parse_view_path());
         }
         ret vp;
     }
@@ -2494,7 +2494,7 @@ class parser {
         let mut items = []/~;
         while if only_imports { self.is_keyword("import") }
         else { self.is_view_item() } {
-            items += [self.parse_view_item(attrs)]/~;
+            vec::push(items, self.parse_view_item(attrs));
             attrs = self.parse_outer_attributes();
         }
         {attrs_remaining: attrs, view_items: items}
@@ -2583,7 +2583,7 @@ class parser {
         let mut first_outer_attr = first_outer_attr;
         while self.token != term {
             let cdir = @self.parse_crate_directive(first_outer_attr);
-            cdirs += [cdir]/~;
+            vec::push(cdirs, cdir);
             first_outer_attr = []/~;
         }
         ret cdirs;

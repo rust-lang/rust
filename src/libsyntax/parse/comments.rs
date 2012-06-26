@@ -44,7 +44,7 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
 fn push_blank_line_comment(rdr: string_reader, &comments: [cmnt]/~) {
     #debug(">>> blank-line comment");
     let v: [str]/~ = []/~;
-    comments += [{style: blank_line, lines: v, pos: rdr.chpos}]/~;
+    vec::push(comments, {style: blank_line, lines: v, pos: rdr.chpos});
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: string_reader,
@@ -73,7 +73,7 @@ fn read_line_comments(rdr: string_reader, code_to_the_left: bool) -> cmnt {
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
         log(debug, line);
-        lines += [line]/~;
+        vec::push(lines, line);
         consume_non_eol_whitespace(rdr);
     }
     #debug("<<< line comments");
@@ -98,7 +98,7 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str]/~,
         } else { s1 = ""; }
     } else { s1 = s; }
     log(debug, "pushing line: " + s1);
-    lines += [s1]/~;
+    vec::push(lines, s1);
 }
 
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool) -> cmnt {
@@ -156,11 +156,11 @@ fn consume_comment(rdr: string_reader, code_to_the_left: bool,
                    &comments: [cmnt]/~) {
     #debug(">>> consume comment");
     if rdr.curr == '/' && nextch(rdr) == '/' {
-        comments += [read_line_comments(rdr, code_to_the_left)]/~;
+        vec::push(comments, read_line_comments(rdr, code_to_the_left));
     } else if rdr.curr == '/' && nextch(rdr) == '*' {
-        comments += [read_block_comment(rdr, code_to_the_left)]/~;
+        vec::push(comments, read_block_comment(rdr, code_to_the_left));
     } else if rdr.curr == '#' && nextch(rdr) == '!' {
-        comments += [read_shebang_comment(rdr, code_to_the_left)]/~;
+        vec::push(comments, read_shebang_comment(rdr, code_to_the_left));
     } else { fail; }
     #debug("<<< consume comment");
 }
