@@ -61,7 +61,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
                 }
                 flagexprs += [make_rt_path_expr(cx, sp, @fstr)];
             }
-            ret mk_vec_e(cx, sp, flagexprs);
+            ret mk_uniq_vec_e(cx, sp, flagexprs);
         }
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {

@@ -258,7 +258,7 @@ fn finish<T: qq_helper>
         rcall = mk_call(cx,sp,
                         [@"syntax", @"ext", @"qquote", @"replace"],
                         [pcall,
-                         mk_vec_e(cx,sp, qcx.gather.map_to_vec {|g|
+                         mk_uniq_vec_e(cx,sp, qcx.gather.map_to_vec {|g|
                              mk_call(cx,sp,
                                      [@"syntax", @"ext",
                                       @"qquote", @g.constr],

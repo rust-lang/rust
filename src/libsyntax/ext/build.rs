@@ -61,6 +61,16 @@ fn mk_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]) ->
     let vecexpr = ast::expr_vec(exprs, ast::m_imm);
     ret @{id: cx.next_id(), node: vecexpr, span: sp};
 }
+fn mk_vstore_e(cx: ext_ctxt, sp: span, expr: @ast::expr, vst: ast::vstore) ->
+   @ast::expr {
+    let vstoreexpr = ast::expr_vstore(expr, vst);
+    ret @{id: cx.next_id(), node: vstoreexpr, span: sp};
+}
+fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]/~) ->
+   @ast::expr {
+    mk_vstore_e(cx, sp, mk_vec_e(cx, sp, exprs), ast::vstore_uniq)
+}
+
 fn mk_rec_e(cx: ext_ctxt, sp: span,
             fields: [{ident: ast::ident, ex: @ast::expr}]) ->
     @ast::expr {

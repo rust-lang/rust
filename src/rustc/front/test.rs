@@ -265,8 +265,11 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
 
     let vec_mt: ast::mt = {ty: @test_desc_ty, mutbl: ast::m_imm};
 
+    let inner_ty = @{id: cx.sess.next_node_id(),
+                     node: ast::ty_vec(vec_mt),
+                     span: dummy_sp()};
     ret @{id: cx.sess.next_node_id(),
-          node: ast::ty_vec(vec_mt),
+          node: ast::ty_vstore(inner_ty, ast::vstore_uniq),
           span: dummy_sp()};
 }
 
@@ -277,8 +280,11 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
         descs += [mk_test_desc_rec(cx, test)];
     }
 
+    let inner_expr = @{id: cx.sess.next_node_id(),
+                       node: ast::expr_vec(descs, ast::m_imm),
+                       span: dummy_sp()};
     ret @{id: cx.sess.next_node_id(),
-          node: ast::expr_vec(descs, ast::m_imm),
+          node: ast::expr_vstore(inner_expr, ast::vstore_uniq),
           span: dummy_sp()};
 }
 
@@ -384,10 +390,14 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let str_ty = @{id: cx.sess.next_node_id(),
                    node: ast::ty_path(str_pt, cx.sess.next_node_id()),
                    span: dummy_sp()};
-    let args_mt: ast::mt = {ty: str_ty, mutbl: ast::m_imm};
-    let args_ty: ast::ty = {id: cx.sess.next_node_id(),
-                            node: ast::ty_vec(args_mt),
-                            span: dummy_sp()};
+    let args_mt = {ty: str_ty, mutbl: ast::m_imm};
+    let args_ty_inner = @{id: cx.sess.next_node_id(),
+                          node: ast::ty_vec(args_mt),
+                          span: dummy_sp()};
+    let args_ty = {id: cx.sess.next_node_id(),
+                   node: ast::ty_vstore(args_ty_inner, ast::vstore_uniq),
+                   span: dummy_sp()};
+
 
     let args_arg: ast::arg =
         {mode: ast::expl(ast::by_val),
