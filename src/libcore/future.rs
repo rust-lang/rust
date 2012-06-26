@@ -6,7 +6,7 @@ operations for working with them.
 
 ~~~
 let delayed_fib = future::spawn {|| fib(5000) };
-make_a_sandwitch();
+make_a_sandwich();
 io::println(#fmt(\"fib(5000) = %?\", delayed_fib.get()))
 ~~~
 "];
