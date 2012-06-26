@@ -368,5 +368,15 @@ mod test {
             log(debug, #fmt("test_get_addr: result %s: '%s'",
                             ipv_prefix, format_addr(r)));
         }
+        // at least one result.. this is going to vary from system
+        // to system, based on stuff like the contents of /etc/hosts
+        assert vec::len(results) > 0;
+    }
+    #[test]
+    fn test_get_addr_bad_input() {
+        let localhost_name = "sjkl234m,./sdf";
+        let iotask = uv::global_loop::get();
+        let ga_result = get_addr(localhost_name, iotask);
+        assert result::is_err(ga_result);
     }
 }
