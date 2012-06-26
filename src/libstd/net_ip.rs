@@ -91,10 +91,18 @@ crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                     ipv4(copy((
                         *ll::addrinfo_as_sockaddr_in(curr_addr))))
                 }
-                else {
+                else if ll::is_ipv6_addrinfo(curr_addr) {
                     ipv6(copy((
                         *ll::addrinfo_as_sockaddr_in6(curr_addr))))
+                }
+                else {
+                    log(debug, "curr_addr is not of family AF_INET or "+
+                        "AF_INET6. Error.");
+                    (*handle_data).output_ch.send(
+                        result::err(get_addr_unknown_error));
+                    break;
                 };
+                out_vec += [new_ip_addr];
 
                 let next_addr = ll::get_next_addrinfo(curr_addr);
                 if next_addr == ptr::null::<addrinfo>() as *addrinfo {
@@ -192,18 +200,58 @@ mod v4 {
           }
         }
     }
+    // the simple, old style numberic representation of
+    // ipv4
+    type ipv4_rep = { a: u8, b: u8, c: u8, d:u8 };
+    impl x for ipv4_rep {
+        // this is pretty dastardly, i know
+        unsafe fn as_u32() -> u32 {
+            *((ptr::addr_of(self)) as *u32)
+        }
+    }
+    fn parse_to_ipv4_rep(ip: str) -> result::result<ipv4_rep, str> {
+        let parts = vec::map(str::split_char(ip, '.'), {|s|
+            alt uint::from_str(s) {
+              some(n) if n <= 255u { n }
+              _ { 256u }
+            }
+        });
+        if vec::len(parts) != 4u {
+                result::err(#fmt("'%s' doesn't have 4 parts", ip))
+                }
+        else if vec::contains(parts, 256u) {
+                result::err(#fmt("invalid octal in addr '%s'", ip))
+                }
+        else {
+            result::ok({a: parts[0] as u8, b: parts[1] as u8,
+                        c: parts[2] as u8, d: parts[3] as u8})
+        }
+    }
     fn try_parse_addr(ip: str) -> result::result<ip_addr,parse_addr_err> {
         unsafe {
-            // need to figure out how to establish a parse failure..
+            let INADDR_NONE = ll::get_INADDR_NONE();
+            let ip_rep_result = parse_to_ipv4_rep(ip); 
+            if result::is_err(ip_rep_result) {
+                let err_str = result::get_err(ip_rep_result);
+                ret result::err({err_msg: err_str})
+            }
+            // ipv4_rep.as_u32 is unsafe :/
+            let input_is_inaddr_none =
+                result::get(ip_rep_result).as_u32() == INADDR_NONE;
+
             let new_addr = uv_ip4_addr(ip, 22);
             let reformatted_name = uv_ip4_name(&new_addr);
             log(debug, #fmt("try_parse_addr: input ip: %s reparsed ip: %s",
                             ip, reformatted_name));
-            // here we're going to
-            let inaddr_none_val = "255.255.255.255";
-            if ip != inaddr_none_val && reformatted_name == inaddr_none_val {
-                result::err({err_msg:#fmt("failed to parse '%s'",
-                                           ip)})
+            let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name); 
+            if result::is_err(ref_ip_rep_result) {
+                let err_str = result::get_err(ref_ip_rep_result);
+                ret result::err({err_msg: err_str})
+            }
+            if result::get(ref_ip_rep_result).as_u32() == INADDR_NONE &&
+                 !input_is_inaddr_none {
+                ret result::err(
+                    {err_msg: "uv_ip4_name produced invalid result."})
             }
             else {
                 result::ok(ipv4(copy(new_addr)))
