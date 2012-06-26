@@ -82,6 +82,7 @@ type options =
     // with additional crate configurations during the compile process
     {crate_type: crate_type,
      static: bool,
+     gc: bool,
      optimize: OptLevel,
      debuginfo: bool,
      extra_debuginfo: bool,
@@ -221,6 +222,7 @@ fn basic_options() -> @options {
     @{
         crate_type: session::lib_crate,
         static: false,
+        gc: false,
         optimize: No,
         debuginfo: false,
         extra_debuginfo: false,
