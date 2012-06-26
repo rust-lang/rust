@@ -4792,6 +4792,13 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                                   some(body.span));
     create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
 
+    // Set GC for function.
+    if ccx.sess.opts.gc {
+        do str::as_c_str("generic") |strategy| {
+            llvm::LLVMSetGC(fcx.llfn, strategy);
+        }
+    }
+
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
     let bcx_top = top_scope_block(fcx, body.info());

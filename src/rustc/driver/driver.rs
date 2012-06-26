@@ -421,6 +421,7 @@ fn build_session_options(matches: getopts::matches,
         session::unknown_crate
     };
     let static = opt_present(matches, ~"static");
+    let gc = opt_present(matches, ~"gc");
 
     let parse_only = opt_present(matches, ~"parse-only");
     let no_trans = opt_present(matches, ~"no-trans");
@@ -519,6 +520,7 @@ fn build_session_options(matches: getopts::matches,
     let sopts: @session::options =
         @{crate_type: crate_type,
           static: static,
+          gc: gc,
           optimize: opt_level,
           debuginfo: debuginfo,
           extra_debuginfo: extra_debuginfo,
