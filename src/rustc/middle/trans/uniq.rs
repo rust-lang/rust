@@ -5,19 +5,7 @@ import build::*;
 import base::*;
 import shape::llsize_of;
 
-export trans_uniq, make_free_glue, autoderef, duplicate;
-
-fn trans_uniq(bcx: block, contents: @ast::expr,
-              node_id: ast::node_id, dest: dest) -> block {
-    let _icx = bcx.insn_ctxt("uniq::trans_uniq");
-    let uniq_ty = node_id_type(bcx, node_id);
-    let contents_ty = content_ty(uniq_ty);
-    let {box, body} = malloc_unique(bcx, contents_ty);
-    add_clean_free(bcx, box, true);
-    let bcx = trans_expr_save_in(bcx, contents, body);
-    revoke_clean(bcx, box);
-    ret store_in_dest(bcx, box, dest);
-}
+export make_free_glue, autoderef, duplicate;
 
 fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
     -> block {

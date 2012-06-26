@@ -5,8 +5,7 @@ import back::abi;
 import base::{call_memmove,
               INIT, copy_val, load_if_immediate, get_tydesc,
               sub_block, do_spill_noroot,
-              dest, bcx_icx, non_gc_box_cast,
-              heap, heap_exchange, heap_shared};
+              dest, bcx_icx, non_gc_box_cast};
 import syntax::codemap::span;
 import shape::llsize_of;
 import build::*;
@@ -167,14 +166,14 @@ fn trans_evec(bcx: block, args: [@ast::expr]/~,
           ast::vstore_uniq {
             let {bcx, val} = alloc_vec(bcx, unit_ty, args.len(),
                                        heap_exchange);
-            add_clean_free(bcx, val, true);
+            add_clean_free(bcx, val, heap_exchange);
             let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
             {bcx: bcx, val: val, dataptr: dataptr}
           }
           ast::vstore_box {
             let {bcx, val} = alloc_vec(bcx, unit_ty, args.len(),
                                        heap_shared);
-            add_clean_free(bcx, val, true);
+            add_clean_free(bcx, val, heap_shared);
             let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
             {bcx: bcx, val: val, dataptr: dataptr}
           }

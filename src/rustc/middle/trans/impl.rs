@@ -285,7 +285,7 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
     let {box, body} = malloc_boxed(bcx, v_ty);
-    add_clean_free(bcx, box, false);
+    add_clean_free(bcx, box, heap_shared);
     let bcx = trans_expr_save_in(bcx, val, body);
     revoke_clean(bcx, box);
     let result = get_dest_addr(dest);

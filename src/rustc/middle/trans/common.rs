@@ -201,6 +201,12 @@ fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
     }
 }
 
+// Heap selectors. Indicate which heap something should go on.
+enum heap {
+    heap_shared,
+    heap_exchange,
+}
+
 enum cleantype {
     normal_exit_only,
     normal_exit_and_unwind
@@ -274,9 +280,11 @@ fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
         scope_clean_changed(info);
     }
 }
-fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
-    let free_fn = if shared { {|a|base::trans_unique_free(a, ptr)} }
-    else { {|a|base::trans_free(a, ptr)} };
+fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
+    let free_fn = alt heap {
+      heap_shared { {|a|base::trans_free(a, ptr)} }
+      heap_exchange { {|a|base::trans_unique_free(a, ptr)} }
+    };
     in_scope_cx(cx) {|info|
         vec::push(info.cleanups, clean_temp(ptr, free_fn,
                                      normal_exit_and_unwind));
