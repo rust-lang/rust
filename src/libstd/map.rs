@@ -326,7 +326,7 @@ Convert a set into a vector.
 fn vec_from_set<T: copy>(s: set<T>) -> [T]/~ {
     let mut v = []/~;
     s.each_key() {|k|
-        v += [k]/~;
+        vec::push(v, k);
         true
     };
     v

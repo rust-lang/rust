@@ -3,17 +3,25 @@
 use std;
 
 import std::time::precise_time_s;
+import std::map;
+import std::map::{map, hashmap};
 
 import io::{reader, reader_util};
 
-fn main() {
+fn main(argv: [str]/~) {
     #macro[
         [#bench[id],
-         run_test(#stringify(id), id)]
+         if tests.len() == 0 || vec::contains(tests, #stringify(id)) {
+             run_test(#stringify(id), id);
+         }
+        ]
     ];
+
+    let tests = vec::view(argv, 1, argv.len());
 
     #bench[shift_push];
     #bench[read_line];
+    #bench[str_set];
 }
 
 fn run_test(name: str, test: fn()) {
@@ -43,6 +51,24 @@ fn read_line() {
         let reader = result::get(io::file_reader(path));
         while !reader.eof() {
             reader.read_line();
+        }
+    }
+}
+
+fn str_set() {
+    let r = rand::rng();
+
+    let s = map::hashmap(str::hash, str::eq);
+
+    for int::range(0, 1000) {|_i|
+        map::set_add(s, r.gen_str(10));
+    }
+    
+    let mut found = 0;
+    for int::range(0, 1000) {|_i|
+        alt s.find(r.gen_str(10)) {
+          some(_) { found += 1; }
+          none { }
         }
     }
 }
