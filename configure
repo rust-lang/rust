@@ -311,8 +311,13 @@ fi
 step_msg "looking for build programs"
 
 probe_need CFG_PERL        perl
-probe_need CFG_PYTHON      python python2.6 python2 python3
 probe_need CFG_CURL        curl
+probe_need CFG_PYTHON      python2.7 python2.6 python2 python
+
+python_version=$($CFG_PYTHON -V 2>&1)
+if [ $(echo $python_version | grep -c '^Python 2\.[4567]') -ne 1 ]; then
+    err "Found $python_version, but LLVM requires Python 2.4-2.7"
+fi
 
 # If we have no git directory then we are probably a tarball distribution
 # and shouldn't attempt to load submodules
