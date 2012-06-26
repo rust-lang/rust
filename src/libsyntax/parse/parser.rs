@@ -373,10 +373,22 @@ class parser {
             }
         } else if self.token == token::AT {
             self.bump();
-            ty_box(self.parse_mt())
+            // HACK: turn @[...] into a []/@
+            alt self.parse_mt() {
+              {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
+                ty_vstore(t, vstore_box)
+              }
+              mt { ty_box(mt) }
+            }
         } else if self.token == token::TILDE {
             self.bump();
-            ty_uniq(self.parse_mt())
+            // HACK: turn ~[...] into a []/~
+            alt self.parse_mt() {
+              {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
+                ty_vstore(t, vstore_uniq)
+              }
+              mt { ty_uniq(mt) }
+            }
         } else if self.token == token::BINOP(token::STAR) {
             self.bump();
             ty_ptr(self.parse_mt())
@@ -406,8 +418,13 @@ class parser {
         } else if self.token == token::BINOP(token::AND) {
             self.bump();
             let region = self.parse_region_dot();
-            let mt = self.parse_mt();
-            ty_rptr(region, mt)
+            // HACK: turn &a.[...] into a []/&a
+            alt self.parse_mt() {
+              {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
+                ty_vstore(t, vstore_slice(region))
+              }
+              mt { ty_rptr(region, mt) }
+            }
         } else if self.eat_keyword("pure") {
             self.parse_ty_fn(ast::pure_fn)
         } else if self.eat_keyword("unsafe") {
@@ -1188,7 +1205,13 @@ class parser {
                 let m = self.parse_mutability();
                 let e = self.to_expr(self.parse_prefix_expr());
                 hi = e.span.hi;
-                ex = expr_addr_of(m, e);
+                // HACK: turn &[...] into [...]/&
+                ex = alt e.node {
+                  expr_vec(*) if m == m_imm {
+                    expr_vstore(e, vstore_slice(self.region_from_name(none)))
+                  }
+                  _ { expr_addr_of(m, e) }
+                };
               }
               _ { ret self.parse_dot_or_call_expr(); }
             }
@@ -1198,14 +1221,22 @@ class parser {
             let m = self.parse_mutability();
             let e = self.to_expr(self.parse_prefix_expr());
             hi = e.span.hi;
-            ex = expr_unary(box(m), e);
+            // HACK: turn @[...] into [...]/@
+            ex = alt e.node {
+              expr_vec(*) if m == m_imm { expr_vstore(e, vstore_box) }
+              _ { expr_unary(box(m), e) }
+            };
           }
           token::TILDE {
             self.bump();
             let m = self.parse_mutability();
             let e = self.to_expr(self.parse_prefix_expr());
             hi = e.span.hi;
-            ex = expr_unary(uniq(m), e);
+            // HACK: turn ~[...] into [...]/~
+            ex = alt e.node {
+              expr_vec(*) if m == m_imm { expr_vstore(e, vstore_uniq) }
+              _ { expr_unary(uniq(m), e) }
+            };
           }
           _ { ret self.parse_dot_or_call_expr(); }
         }
