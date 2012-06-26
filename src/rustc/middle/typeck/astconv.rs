@@ -134,7 +134,7 @@ fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy>(
     path: @ast::path,
     path_id: ast::node_id) -> ty_param_substs_and_ty {
 
-    // Lookup the polytype of the item and then substitute the provided types
+    // Look up the polytype of the item and then substitute the provided types
     // for any type/region parameters.
     let tcx = self.tcx();
     let {substs: substs, ty: ty} =
@@ -216,7 +216,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
       some(ty::atttce_resolved(ty)) { ret ty; }
       some(ty::atttce_unresolved) {
         tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
-                                          insert a enum in the cycle, \
+                                          insert an enum in the cycle, \
                                           if this is desired)");
       }
       none { /* go on */ }
