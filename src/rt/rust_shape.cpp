@@ -356,7 +356,7 @@ cmp::walk_struct2(const uint8_t *end_sp) {
 
 void
 cmp::walk_res2(const rust_fn *dtor, const uint8_t *end_sp) {
-    return cmp_two_pointers();
+    this->cmp_two_pointers();
 }
 
 void
