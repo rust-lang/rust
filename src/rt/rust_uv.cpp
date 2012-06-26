@@ -326,15 +326,15 @@ rust_uv_helper_addrinfo_size() {
 }
 extern "C" unsigned long int
 rust_uv_helper_get_INADDR_NONE() {
-	return INADDR_NONE;
+    return INADDR_NONE;
 }
 extern "C" unsigned long int
 rust_uv_helper_get_AF_INET() {
-	return AF_INET;
+    return AF_INET;
 }
 extern "C" unsigned long int
 rust_uv_helper_get_AF_INET6() {
-	return AF_INET6;
+    return AF_INET6;
 }
 
 extern "C" uv_stream_t*
@@ -479,11 +479,11 @@ rust_uv_ip6_addr(const char* ip, int port) {
 }
 extern "C" int
 rust_uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
-	return uv_ip4_name(src, dst, size);
+    return uv_ip4_name(src, dst, size);
 }
 extern "C" int
 rust_uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
-	return uv_ip6_name(src, dst, size);
+    return uv_ip6_name(src, dst, size);
 }
 
 extern "C" uintptr_t*
@@ -507,29 +507,29 @@ rust_uv_current_kernel_free(void* mem) {
 
 extern  "C" int
 rust_uv_getaddrinfo(uv_loop_t* loop, uv_getaddrinfo_t* handle,
-					uv_getaddrinfo_cb cb,
-					char* node, char* service,
-					addrinfo* hints) {
-	return uv_getaddrinfo(loop, handle, cb, node, service, hints);
+                    uv_getaddrinfo_cb cb,
+                    char* node, char* service,
+                    addrinfo* hints) {
+    return uv_getaddrinfo(loop, handle, cb, node, service, hints);
 }
 extern "C" void
 rust_uv_freeaddrinfo(addrinfo* res) {
-	uv_freeaddrinfo(res);
+    uv_freeaddrinfo(res);
 }
 extern "C" bool
 rust_uv_is_ipv4_addrinfo(addrinfo* input) {
-	// if it aint AF_INET, it's AF_INET6
-	return input->ai_family == AF_INET;
+    // if it aint AF_INET, it's AF_INET6
+    return input->ai_family == AF_INET;
 }
 extern "C" addrinfo*
 rust_uv_get_next_addrinfo(addrinfo* input) {
-	return input->ai_next;
+    return input->ai_next;
 }
 extern "C" sockaddr_in*
 rust_uv_addrinfo_as_sockaddr_in(addrinfo* input) {
-	return (sockaddr_in*)input->ai_addr;
+    return (sockaddr_in*)input->ai_addr;
 }
 extern "C" sockaddr_in6*
 rust_uv_addrinfo_as_sockaddr_in6(addrinfo* input) {
-	return (sockaddr_in6*)input->ai_addr;
+    return (sockaddr_in6*)input->ai_addr;
 }
