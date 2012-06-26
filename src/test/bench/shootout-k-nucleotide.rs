@@ -62,29 +62,32 @@ fn find(mm: hashmap<[u8]/~, uint>, key: str) -> uint {
 }
 
 // given a map, increment the counter for a key
-fn update_freq(mm: hashmap<[u8]/~, uint>, key: [u8]/~) {
-   alt mm.find(key) {
+fn update_freq(mm: hashmap<[u8]/~, uint>, key: [u8]/&) {
+    let key = vec::slice(key, 0, key.len());
+    alt mm.find(key) {
       option::none      { mm.insert(key, 1u      ); }
       option::some(val) { mm.insert(key, 1u + val); }
-   }
+    }
 }
 
 // given a [u8]/~, for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
-fn windows_with_carry(bb: [const u8]/~, nn: uint, it: fn(window: [u8]/~)) -> [u8]/~ {
+fn windows_with_carry(bb: [const u8]/~, nn: uint,
+                      it: fn(window: [u8]/&)) -> [u8]/~ {
    let mut ii = 0u;
 
    let len = vec::len(bb);
    while ii < len - (nn - 1u) {
-      it(vec::slice(bb, ii, ii+nn));
+      it(vec::view(bb, ii, ii+nn));
       ii += 1u;
    }
 
    ret vec::slice(bb, len - (nn - 1u), len); 
 }
 
-fn make_sequence_processor(sz: uint, from_parent: comm::port<[u8]/~>, to_parent: comm::chan<str>) {
+fn make_sequence_processor(sz: uint, from_parent: comm::port<[u8]/~>,
+                           to_parent: comm::chan<str>) {
    
    let freqs: hashmap<[u8]/~, uint> = map::bytes_hash();
    let mut carry: [u8]/~ = []/~;

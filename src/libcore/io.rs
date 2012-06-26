@@ -52,7 +52,7 @@ impl reader_util for reader {
                 i += 1u;
                 assert (w > 0u);
                 if w == 1u {
-                    chars += [ b0 as char ]/~;
+                    vec::push(chars,  b0 as char );
                     cont;
                 }
                 // can't satisfy this char with the existing data
@@ -71,7 +71,7 @@ impl reader_util for reader {
                 // See str::char_at
                 val += ((b0 << ((w + 1u) as u8)) as uint)
                     << (w - 1u) * 6u - w - 1u;
-                chars += [ val as char ]/~;
+                vec::push(chars,  val as char );
             }
             ret (i, 0u);
         }
@@ -86,7 +86,7 @@ impl reader_util for reader {
                 // we're split in a unicode char?
                 break;
             }
-            buf += data;
+            vec::push_all(buf, data);
             let (offset, nbreq) = chars_from_buf(buf, chars);
             let ncreq = n - vec::len(chars);
             // again we either know we need a certain number of bytes
@@ -110,11 +110,11 @@ impl reader_util for reader {
     }
 
     fn read_line() -> str {
-        let mut buf: [u8]/~ = []/~;
+        let mut buf = []/~;
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
-            buf += [ch as u8]/~;
+            vec::push(buf, ch as u8);
         }
         str::from_bytes(buf)
     }
@@ -123,7 +123,7 @@ impl reader_util for reader {
         let mut buf: [u8]/~ = []/~;
         loop {
             let ch = self.read_byte();
-            if ch < 1 { break; } else { buf += [ch as u8]/~; }
+            if ch < 1 { break; } else { vec::push(buf, ch as u8); }
         }
         str::from_bytes(buf)
     }
@@ -158,7 +158,7 @@ impl reader_util for reader {
 
     fn read_whole_stream() -> [u8]/~ {
         let mut buf: [u8]/~ = []/~;
-        while !self.eof() { buf += self.read_bytes(2048u); }
+        while !self.eof() { vec::push_all(buf, self.read_bytes(2048u)); }
         buf
     }
 
@@ -453,7 +453,7 @@ fn u64_to_le_bytes<T>(n: u64, size: uint, f: fn([u8]/&) -> T) -> T {
 
         let mut bytes: [u8]/~ = []/~, i = size, n = n;
         while i > 0u {
-            bytes += [(n & 255_u64) as u8]/~;
+            vec::push(bytes, (n & 255_u64) as u8);
             n >>= 8_u64;
             i -= 1u;
         }
@@ -485,7 +485,7 @@ fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn([u8]/&) -> T) -> T {
         let mut i = size;
         while i > 0u {
             let shift = ((i - 1u) * 8u) as u64;
-            bytes += [(n >> shift) as u8]/~;
+            vec::push(bytes, (n >> shift) as u8);
             i -= 1u;
         }
         f(bytes)

@@ -122,7 +122,7 @@ Convert a vector of bytes to a UTF-8 string
 
 Fails if invalid UTF-8
 "]
-pure fn from_bytes(vv: [u8]/~) -> str {
+pure fn from_bytes(+vv: [u8]/~) -> str {
     assert is_utf8(vv);
     ret unsafe { unsafe::from_bytes(vv) };
 }
@@ -1750,9 +1750,9 @@ mod unsafe {
 
    Does not verify that the vector contains valid UTF-8.
    "]
-   unsafe fn from_bytes(v: [const u8]/~) -> str {
+   unsafe fn from_bytes(+v: [const u8]/~) -> str {
        unsafe {
-           let mut vcopy = ::unsafe::transmute(copy v);
+           let mut vcopy = ::unsafe::transmute(v);
            vec::push(vcopy, 0u8);
            ::unsafe::transmute(vcopy)
        }

@@ -384,13 +384,12 @@ fn shift<T>(&v: [T]/~) -> T {
         let mut rr;
         {
             let vv = unsafe::to_ptr(vv);
-            let mut r <- *vv;
+            rr <- *vv;
 
             for uint::range(1u, ln) {|i|
                 let r <- *ptr::offset(vv, i);
                 push(v, r);
             }
-            rr <- r;
         }
         unsafe::set_len(vv, 0u);
 

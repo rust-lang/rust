@@ -161,7 +161,6 @@ impl extensions<A> for dvec<A> {
         vec::push(self.data, t);
     }
 
-
     #[doc = "Remove and return the first element"]
     fn shift() -> A {
         self.borrow { |v|
