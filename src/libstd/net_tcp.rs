@@ -164,16 +164,35 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
             alt input_ip {
               ipv4 {
                 log(debug, "dealing w/ ipv4 connection..");
-                let tcp_addr = ipv4_ip_addr_to_sockaddr_in(input_ip,
-                                                           port);
-                let tcp_addr_ptr = ptr::addr_of(tcp_addr);
                 let connect_req_ptr =
                     ptr::addr_of((*socket_data_ptr).connect_req);
-                alt uv::ll::tcp_connect(
-                    connect_req_ptr,
-                    stream_handle_ptr,
-                    tcp_addr_ptr,
-                    tcp_connect_on_connect_cb) {
+                let addr_str = ip::format_addr(input_ip);
+                let connect_result = alt input_ip {
+                  ip::ipv4(addr) {
+                    // have to "recreate" the sockaddr_in/6
+                    // since the ip_addr discards the port
+                    // info.. should probably add an additional
+                    // rust type that actually is closer to
+                    // what the libuv API expects (ip str + port num)
+                    log(debug, #fmt("addr: %?", addr));
+                    let in_addr = uv::ll::ip4_addr(addr_str, port as int);
+                    uv::ll::tcp_connect(
+                        connect_req_ptr,
+                        stream_handle_ptr,
+                        ptr::addr_of(in_addr),
+                        tcp_connect_on_connect_cb)
+                  }
+                  ip::ipv6(addr) {
+                    log(debug, #fmt("addr: %?", addr));
+                    let in_addr = uv::ll::ip6_addr(addr_str, port as int);
+                    uv::ll::tcp_connect6(
+                        connect_req_ptr,
+                        stream_handle_ptr,
+                        ptr::addr_of(in_addr),
+                        tcp_connect_on_connect_cb)
+                  }
+                };
+                alt connect_result {
                   0i32 {
                     log(debug, "tcp_connect successful");
                     // reusable data that we'll have for the
@@ -598,15 +617,27 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
         // nested within a comm::listen block)
         let loc_ip = copy(host_ip);
         iotask::interact(iotask) {|loop_ptr|
-            let tcp_addr = ipv4_ip_addr_to_sockaddr_in(loc_ip,
-                                                       port);
             alt uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
               0i32 {
                 uv::ll::set_data_for_uv_handle(
                     server_stream_ptr,
                     server_data_ptr);
-                alt uv::ll::tcp_bind(server_stream_ptr,
-                                     ptr::addr_of(tcp_addr)) {
+                let addr_str = ip::format_addr(loc_ip);
+                let bind_result = alt loc_ip {
+                  ip::ipv4(addr) {
+                    log(debug, #fmt("addr: %?", addr));
+                    let in_addr = uv::ll::ip4_addr(addr_str, port as int);
+                    uv::ll::tcp_bind(server_stream_ptr,
+                                     ptr::addr_of(in_addr))
+                  }
+                  ip::ipv6(addr) {
+                    log(debug, #fmt("addr: %?", addr));
+                    let in_addr = uv::ll::ip6_addr(addr_str, port as int);
+                    uv::ll::tcp_bind6(server_stream_ptr,
+                                     ptr::addr_of(in_addr))
+                  }
+                };
+                alt bind_result {
                   0i32 {
                     alt uv::ll::listen(server_stream_ptr,
                                        backlog as libc::c_int,
@@ -1204,19 +1235,6 @@ type tcp_buffered_socket_data = {
     sock: tcp_socket,
     mut buf: [u8]
 };
-
-// convert rust ip_addr to libuv's native representation
-fn ipv4_ip_addr_to_sockaddr_in(input_ip: ip::ip_addr,
-                               port: uint) -> uv::ll::sockaddr_in unsafe {
-    // FIXME (#2656): ipv6
-    let addr_str = ip::format_addr(input_ip);
-    alt input_ip {
-      ip::ipv4(addr) {
-        uv::ll::ip4_addr(addr_str, port as int)
-      }
-      _ { fail "only works w/ ipv4";}
-    }
-}
 
 //#[cfg(test)]
 mod test {

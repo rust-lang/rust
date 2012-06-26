@@ -230,7 +230,7 @@ mod v4 {
     fn try_parse_addr(ip: str) -> result::result<ip_addr,parse_addr_err> {
         unsafe {
             let INADDR_NONE = ll::get_INADDR_NONE();
-            let ip_rep_result = parse_to_ipv4_rep(ip); 
+            let ip_rep_result = parse_to_ipv4_rep(ip);
             if result::is_err(ip_rep_result) {
                 let err_str = result::get_err(ip_rep_result);
                 ret result::err({err_msg: err_str})
@@ -243,7 +243,7 @@ mod v4 {
             let reformatted_name = uv_ip4_name(&new_addr);
             log(debug, #fmt("try_parse_addr: input ip: %s reparsed ip: %s",
                             ip, reformatted_name));
-            let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name); 
+            let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name);
             if result::is_err(ref_ip_rep_result) {
                 let err_str = result::get_err(ref_ip_rep_result);
                 ret result::err({err_msg: err_str})

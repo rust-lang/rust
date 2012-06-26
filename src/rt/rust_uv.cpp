@@ -238,31 +238,35 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
         uv_tcp_t* tcp_ptr,
         uv_connect_cb cb,
         sockaddr_in* addr_ptr) {
-    rust_task* task = rust_get_current_task();
-    LOG(task, stdlib, "inside rust_uv_tcp_connect");
     // FIXME ref #2064
     sockaddr_in addr = *addr_ptr;
-    LOG(task, stdlib, "before tcp_connect .. port: %d",
-        addr.sin_port);
-    LOG(task, stdlib, "before tcp_connect.. tcp stream:" \
-        "%lu cb ptr: %lu",
-        (unsigned long int)tcp_ptr, (unsigned long int)cb);
     int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-    LOG(task, stdlib, "leaving rust_uv_tcp_connect.." \
-        "and result: %d",
-            result);
     return result;
 }
 
 extern "C" int
 rust_uv_tcp_bind(uv_tcp_t* tcp_server, sockaddr_in* addr_ptr) {
     // FIXME ref #2064
-    rust_task* task = rust_get_current_task();
     sockaddr_in addr = *addr_ptr;
-    LOG(task, stdlib, "before uv_tcp_bind .. tcp_server:" \
-        "%lu port: %d",
-            (unsigned long int)tcp_server, addr.sin_port);
     return uv_tcp_bind(tcp_server, addr);
+}
+extern "C" int
+rust_uv_tcp_connect6(uv_connect_t* connect_ptr,
+        uv_tcp_t* tcp_ptr,
+        uv_connect_cb cb,
+        sockaddr_in6* addr_ptr) {
+    // FIXME ref #2064
+    sockaddr_in6 addr = *addr_ptr;
+    int result = uv_tcp_connect6(connect_ptr, tcp_ptr, addr, cb);
+    return result;
+}
+
+extern "C" int
+rust_uv_tcp_bind6
+(uv_tcp_t* tcp_server, sockaddr_in6* addr_ptr) {
+    // FIXME ref #2064
+    sockaddr_in6 addr = *addr_ptr;
+    return uv_tcp_bind6(tcp_server, addr);
 }
 
 extern "C" int
@@ -328,7 +332,6 @@ extern "C" unsigned int
 rust_uv_helper_get_INADDR_NONE() {
     return INADDR_NONE;
 }
-
 extern "C" uv_stream_t*
 rust_uv_get_stream_handle_from_connect_req(uv_connect_t* connect) {
     return connect->handle;
