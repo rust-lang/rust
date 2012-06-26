@@ -542,6 +542,14 @@ native mod rustrt {
     // FIXME ref #2064
     fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
                         ++addr: *sockaddr_in) -> libc::c_int;
+    // FIXME ref #2064
+    fn rust_uv_tcp_connect6(connect_ptr: *uv_connect_t,
+                           tcp_handle_ptr: *uv_tcp_t,
+                           ++after_cb: *u8,
+                           ++addr: *sockaddr_in6) -> libc::c_int;
+    // FIXME ref #2064
+    fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t,
+                        ++addr: *sockaddr_in6) -> libc::c_int;
     fn rust_uv_listen(stream: *libc::c_void, backlog: libc::c_int,
                       cb: *u8) -> libc::c_int;
     fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
@@ -651,9 +659,24 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                                     after_connect_cb, addr_ptr);
 }
 // FIXME ref #2064
+unsafe fn tcp_connect6(connect_ptr: *uv_connect_t,
+                      tcp_handle_ptr: *uv_tcp_t,
+                      addr_ptr: *sockaddr_in6,
+                      ++after_connect_cb: *u8)
+-> libc::c_int {
+    ret rustrt::rust_uv_tcp_connect6(connect_ptr, tcp_handle_ptr,
+                                    after_connect_cb, addr_ptr);
+}
+// FIXME ref #2064
 unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
                    addr_ptr: *sockaddr_in) -> libc::c_int {
     ret rustrt::rust_uv_tcp_bind(tcp_server_ptr,
+                                 addr_ptr);
+}
+// FIXME ref #2064
+unsafe fn tcp_bind6(tcp_server_ptr: *uv_tcp_t,
+                   addr_ptr: *sockaddr_in6) -> libc::c_int {
+    ret rustrt::rust_uv_tcp_bind6(tcp_server_ptr,
                                  addr_ptr);
 }
 

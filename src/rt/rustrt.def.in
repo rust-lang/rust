@@ -116,6 +116,8 @@ rust_uv_ip6_addr
 rust_uv_ip6_name
 rust_uv_tcp_connect
 rust_uv_tcp_bind
+rust_uv_tcp_connect6
+rust_uv_tcp_bind6
 rust_uv_listen
 rust_uv_accept
 rust_uv_write
