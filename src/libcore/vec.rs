@@ -451,12 +451,20 @@ fn push_slow<T>(&v: [const T]/~, +initval: T) {
     }
 }
 
+// Unchecked vector indexing
+#[inline(always)]
+unsafe fn ref<T: copy>(v: [const T]/&, i: uint) -> T {
+    unpack_slice(v) {|p, _len|
+        *ptr::offset(p, i)
+    }
+}
+
 #[inline(always)]
 fn push_all<T: copy>(&v: [const T]/~, rhs: [const T]/&) {
     reserve(v, v.len() + rhs.len());
 
     for uint::range(0u, rhs.len()) {|i|
-        push(v, rhs[i]);
+        push(v, unsafe { ref(rhs, i) })
     }
 }
 
@@ -464,19 +472,9 @@ fn push_all<T: copy>(&v: [const T]/~, rhs: [const T]/&) {
 #[inline(always)]
 pure fn append<T: copy>(lhs: [T]/&, rhs: [const T]/&) -> [T]/~ {
     let mut v = []/~;
-    let mut i = 0u;
-    while i < lhs.len() {
-        unsafe { // This is impure, but it appears pure to the caller.
-            push(v, lhs[i]);
-        }
-        i += 1u;
-    }
-    i = 0u;
-    while i < rhs.len() {
-        unsafe { // This is impure, but it appears pure to the caller.
-            push(v, rhs[i]);
-        }
-        i += 1u;
+    unchecked {
+        push_all(v, lhs);
+        push_all(v, rhs);
     }
     ret v;
 }

@@ -1234,6 +1234,12 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         }
         accum
       }
+      ty_fn(fty) {
+        alt fty.proto {
+          proto_bare | proto_any | proto_block { false }
+          _ { true }
+        }
+      }
       _ { true }
     };
 

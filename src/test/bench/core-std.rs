@@ -22,6 +22,8 @@ fn main(argv: [str]/~) {
     #bench[shift_push];
     #bench[read_line];
     #bench[str_set];
+    #bench[vec_append];
+    #bench[vec_push_all];
 }
 
 fn run_test(name: str, test: fn()) {
@@ -69,6 +71,37 @@ fn str_set() {
         alt s.find(r.gen_str(10)) {
           some(_) { found += 1; }
           none { }
+        }
+    }
+}
+
+fn vec_append() {
+    let r = rand::rng();
+
+    let mut v = []/~;
+    for uint::range(0, 1500) {|i|
+        let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
+        if r.gen_bool() {
+            v += rv;
+        }
+        else {
+            v = rv + v;
+        }
+    }
+}
+
+fn vec_push_all() {
+    let r = rand::rng();
+
+    let mut v = []/~;
+    for uint::range(0, 1500) {|i|
+        let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
+        if r.gen_bool() {
+            vec::push_all(v, rv);
+        }
+        else {
+            v <-> rv;
+            vec::push_all(v, rv);
         }
     }
 }
