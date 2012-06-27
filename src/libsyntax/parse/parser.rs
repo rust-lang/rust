@@ -1122,7 +1122,7 @@ class parser {
             let rdr = lexer::new_tt_reader(self.reader.span_diag(),
                                            self.reader.interner(), none, tts)
                 as reader;
-            ext::earley_parser::parse(self.sess, self.cfg, rdr, ms);
+            ext::tt::earley_parser::parse(self.sess, self.cfg, rdr, ms);
           }
           _ { fail; }
         }

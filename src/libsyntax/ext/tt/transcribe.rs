@@ -1,7 +1,7 @@
 import util::interner::interner;
 import diagnostic::span_handler;
 import ast::{tt_delim,tt_flat,tt_dotdotdot,tt_interpolate,ident};
-import ext::earley_parser::arb_depth;
+import earley_parser::arb_depth;
 import codemap::span;
 import parse::token::{EOF,token};
 

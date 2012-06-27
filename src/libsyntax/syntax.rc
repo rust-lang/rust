@@ -65,9 +65,9 @@ mod ext {
     mod qquote;
     mod build;
 
-    mod earley_parser;
     mod tt {
         mod transcribe;
+        mod earley_parser;
     }
 
     mod fmt;
