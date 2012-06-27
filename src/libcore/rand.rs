@@ -204,7 +204,7 @@ impl extensions for rng {
         let mut r = []/~;
         for v.each {|item|
             for uint::range(0u, item.weight) {|_i|
-                r += [item.item]/~;
+                vec::push(r, item.item);
             }
         }
         r

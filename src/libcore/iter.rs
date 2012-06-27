@@ -65,7 +65,7 @@ fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
 }
 
 fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> [A]/~ {
-    foldl::<A,[A]/~,IA>(self, []/~, {|r, a| r + [a]/~})
+    foldl::<A,[A]/~,IA>(self, []/~, {|r, a| vec::append(r, [a]/~) })
 }
 
 fn contains<A,IA:base_iter<A>>(self: IA, x: A) -> bool {

@@ -150,7 +150,8 @@ impl extensions<A> for dvec<A> {
             let data_ptr: *() = unsafe::reinterpret_cast(data);
             if data_ptr.is_null() { fail "Recursive use of dvec"; }
             log(error, "a");
-            self.data <- [mut t]/~ + data;
+            self.data <- [mut t]/~;
+            vec::push_all_move(self.data, data);
             log(error, "b");
         }
     }

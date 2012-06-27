@@ -347,7 +347,7 @@ pure fn chars(s: str/&) -> [char]/~ {
     let len = len(s);
     while i < len {
         let {ch, next} = char_range_at(s, i);
-        buf += [ch]/~;
+        unchecked { vec::push(buf, ch); }
         i = next;
     }
     ret buf;
@@ -407,8 +407,9 @@ pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
         let mut i = 0u, start = 0u;
         while i < l && done < count {
             if s[i] == b {
-                if allow_empty || start < i {
-                    result += [unsafe { unsafe::slice_bytes(s, start, i) }]/~;
+                if allow_empty || start < i unchecked {
+                    vec::push(result,
+                              unsafe { unsafe::slice_bytes(s, start, i) });
                 }
                 start = i + 1u;
                 done += 1u;
@@ -416,7 +417,7 @@ pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
             i += 1u;
         }
         if allow_empty || start < l {
-            result += [unsafe { unsafe::slice_bytes(s, start, l) }]/~;
+            unsafe { vec::push(result, unsafe::slice_bytes(s, start, l) ) };
         }
         result
     } else {
@@ -450,16 +451,16 @@ pure fn split_inner(s: str/&, sepfn: fn(cc: char) -> bool, count: uint,
     while i < l && done < count {
         let {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
-            if allow_empty || start < i {
-                result += [unsafe { unsafe::slice_bytes(s, start, i) }]/~;
+            if allow_empty || start < i unchecked {
+                vec::push(result, unsafe { unsafe::slice_bytes(s, start, i)});
             }
             start = next;
             done += 1u;
         }
         i = next;
     }
-    if allow_empty || start < l {
-        result += [unsafe { unsafe::slice_bytes(s, start, l) }]/~;
+    if allow_empty || start < l unchecked {
+        vec::push(result, unsafe { unsafe::slice_bytes(s, start, l) });
     }
     result
 }
@@ -513,7 +514,7 @@ assert [\"\", \"XXX\", \"YYY\", \"\"] == split_str(\".XXX.YYY.\", \".\")
 pure fn split_str(s: str/&a, sep: str/&b) -> [str]/~ {
     let mut result = []/~;
     iter_between_matches(s, sep) {|from, to|
-        unsafe { result += [unsafe::slice_bytes(s, from, to)]/~; }
+        unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
     }
     result
 }
@@ -522,7 +523,7 @@ pure fn split_str_nonempty(s: str/&a, sep: str/&b) -> [str]/~ {
     let mut result = []/~;
     iter_between_matches(s, sep) {|from, to|
         if to > from {
-            unsafe { result += [unsafe::slice_bytes(s, from, to)]/~; }
+            unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
         }
     }
     result
@@ -1270,17 +1271,17 @@ pure fn to_utf16(s: str/&) -> [u16]/~ {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = cch as u32;
 
-        if (ch & 0xFFFF_u32) == ch {
+        if (ch & 0xFFFF_u32) == ch unchecked {
             // The BMP falls through (assuming non-surrogate, as it should)
             assert ch <= 0xD7FF_u32 || ch >= 0xE000_u32;
-            u += [ch as u16]/~
-        } else {
+            vec::push(u, ch as u16)
+        } else unchecked {
             // Supplementary planes break into surrogates.
             assert ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32;
             ch -= 0x1_0000_u32;
             let w1 = 0xD800_u16 | ((ch >> 10) as u16);
             let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            u += [w1, w2]/~
+            vec::push_all(u, [w1, w2]/~)
         }
     }
     ret u;
@@ -1788,7 +1789,7 @@ mod unsafe {
                    ptr::memcpy(vbuf, src, end - begin);
                }
                vec::unsafe::set_len(v, end - begin);
-               v += [0u8]/~;
+               vec::push(v, 0u8);
                ::unsafe::transmute(v)
            }
        }

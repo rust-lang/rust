@@ -88,7 +88,7 @@ mod ct {
         fn flush_buf(buf: str, &pieces: [piece]/~) -> str {
             if str::len(buf) > 0u {
                 let piece = piece_string(buf);
-                pieces += [piece]/~;
+                vec::push(pieces, piece);
             }
             ret "";
         }
@@ -108,7 +108,7 @@ mod ct {
                 } else {
                     buf = flush_buf(buf, pieces);
                     let rs = parse_conversion(s, i, lim, error);
-                    pieces += [rs.piece]/~;
+                    vec::push(pieces, rs.piece);
                     i = rs.next;
                 }
             } else { buf += curr; i += size; }
@@ -172,7 +172,7 @@ mod ct {
             let rest = next.flags;
             let j = next.next;
             let curr: [flag]/~ = [f]/~;
-            ret {flags: curr + rest, next: j};
+            ret {flags: vec::append(curr, rest), next: j};
         }
         let more = {|x|more_(x, s, i, lim)};
         let f = s[i];

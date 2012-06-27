@@ -26,7 +26,7 @@ fn lefts<T: copy, U>(eithers: [either<T, U>]/~) -> [T]/~ {
 
     let mut result: [T]/~ = []/~;
     for vec::each(eithers) {|elt|
-        alt elt { left(l) { result += [l]/~; } _ {/* fallthrough */ } }
+        alt elt { left(l) { vec::push(result, l); } _ {/* fallthrough */ } }
     }
     ret result;
 }
@@ -36,7 +36,7 @@ fn rights<T, U: copy>(eithers: [either<T, U>]/~) -> [U]/~ {
 
     let mut result: [U]/~ = []/~;
     for vec::each(eithers) {|elt|
-        alt elt { right(r) { result += [r]/~; } _ {/* fallthrough */ } }
+        alt elt { right(r) { vec::push(result, r); } _ {/* fallthrough */ } }
     }
     ret result;
 }
@@ -53,7 +53,10 @@ fn partition<T: copy, U: copy>(eithers: [either<T, U>]/~)
     let mut lefts: [T]/~ = []/~;
     let mut rights: [U]/~ = []/~;
     for vec::each(eithers) {|elt|
-        alt elt { left(l) { lefts += [l]/~; } right(r) { rights += [r]/~; } }
+        alt elt {
+          left(l) { vec::push(lefts, l); }
+          right(r) { vec::push(rights, r); }
+        }
     }
     ret {lefts: lefts, rights: rights};
 }

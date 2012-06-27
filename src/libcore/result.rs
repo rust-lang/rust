@@ -256,7 +256,7 @@ fn map_vec<T,U:copy,V:copy>(
     vec::reserve(vs, vec::len(ts));
     for vec::each(ts) {|t|
         alt op(t) {
-          ok(v) { vs += [v]/~; }
+          ok(v) { vec::push(vs, v); }
           err(u) { ret err(u); }
         }
     }
@@ -294,7 +294,7 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: [S]/~, ts: [T]/~,
     let mut i = 0u;
     while i < n {
         alt op(ss[i],ts[i]) {
-          ok(v) { vs += [v]/~; }
+          ok(v) { vec::push(vs, v); }
           err(u) { ret err(u); }
         }
         i += 1u;

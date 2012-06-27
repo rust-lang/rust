@@ -31,7 +31,7 @@ export rsplit;
 export rsplitn;
 export shift;
 export pop;
-export push, push_all;
+export push, push_all, push_all_move;
 export grow;
 export grow_fn;
 export grow_set;
@@ -468,6 +468,20 @@ fn push_all<T: copy>(&v: [const T]/~, rhs: [const T]/&) {
     }
 }
 
+#[inline(always)]
+fn push_all_move<T>(&v: [const T]/~, -rhs: [const T]/~) {
+    reserve(v, v.len() + rhs.len());
+    unsafe {
+        unpack_slice(rhs) {|p, len|
+            for uint::range(0, len) {|i|
+                let x <- *ptr::offset(p, i);
+                push(v, x);
+            }
+        }
+        unsafe::set_len(rhs, 0);
+    }
+}
+
 // Appending
 #[inline(always)]
 pure fn append<T: copy>(lhs: [T]/&, rhs: [const T]/&) -> [T]/~ {
@@ -577,7 +591,7 @@ of each result vector
 "]
 pure fn flat_map<T, U>(v: [T]/&, f: fn(T) -> [U]/~) -> [U]/~ {
     let mut result = []/~;
-    for each(v) {|elem| result += f(elem); }
+    for each(v) {|elem| unchecked{ push_all_move(result, f(elem)); } }
     ret result;
 }
 
@@ -649,7 +663,7 @@ pure fn connect<T: copy>(v: [[T]/~]/&, sep: T) -> [T]/~ {
     let mut first = true;
     for each(v) {|inner|
         if first { first = false; } else { unsafe { push(r, sep); } }
-        r += inner;
+        unchecked { push_all(r, inner) };
     }
     ret r;
 }
@@ -873,7 +887,13 @@ of the i-th tuple of the input vector.
 "]
 pure fn unzip<T: copy, U: copy>(v: [(T, U)]/&) -> ([T]/~, [U]/~) {
     let mut as = []/~, bs = []/~;
-    for each(v) {|p| let (a, b) = p; as += [a]/~; bs += [b]/~; }
+    for each(v) {|p|
+        let (a, b) = p;
+        unchecked {
+            vec::push(as, a);
+            vec::push(bs, b);
+        }
+    }
     ret (as, bs);
 }
 
@@ -888,7 +908,7 @@ pure fn zip<T: copy, U: copy>(v: [const T]/&, u: [const U]/&) -> [(T, U)]/~ {
     let sz = len(v);
     let mut i = 0u;
     assert sz == len(u);
-    while i < sz { zipped += [(v[i], u[i])]/~; i += 1u; }
+    while i < sz unchecked { vec::push(zipped, (v[i], u[i])); i += 1u; }
     ret zipped;
 }
 
@@ -914,12 +934,14 @@ fn reverse<T>(v: [mut T]/~) {
 
 
 #[doc = "Returns a vector with the order of elements reversed"]
-fn reversed<T: copy>(v: [const T]/&) -> [T]/~ {
+pure fn reversed<T: copy>(v: [const T]/&) -> [T]/~ {
     let mut rs: [T]/~ = []/~;
     let mut i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }
-    while i != 0u { rs += [v[i]]/~; i -= 1u; }
-    rs += [v[0]]/~;
+    unchecked {
+        while i != 0u { vec::push(rs, v[i]); i -= 1u; }
+        vec::push(rs, v[0]);
+    }
     ret rs;
 }
 
@@ -1063,18 +1085,21 @@ The total number of permutations produced is `len(v)!`.  If `v` contains
 repeated elements, then some permutations are repeated.
 "]
 pure fn permute<T: copy>(v: [T]/&, put: fn([T]/~)) {
-  let ln = len(v);
-  if ln == 0u {
-    put([]/~);
-  } else {
-    let mut i = 0u;
-    while i < ln {
-      let elt = v[i];
-      let rest = slice(v, 0u, i) + slice(v, i+1u, ln);
-      permute(rest) {|permutation| put([elt]/~ + permutation)}
-      i += 1u;
+    let ln = len(v);
+    if ln == 0u {
+        put([]/~);
+    } else {
+        let mut i = 0u;
+        while i < ln {
+            let elt = v[i];
+            let mut rest = slice(v, 0u, i);
+            unchecked {
+                push_all(rest, view(v, i+1u, ln));
+            }
+            permute(rest) {|permutation| put([elt]/~ + permutation)}
+            i += 1u;
+        }
     }
-  }
 }
 
 pure fn windowed<TT: copy>(nn: uint, xx: [TT]/&) -> [[TT]/~]/~ {
@@ -1082,8 +1107,8 @@ pure fn windowed<TT: copy>(nn: uint, xx: [TT]/&) -> [[TT]/~]/~ {
     assert 1u <= nn;
     vec::iteri (xx, {|ii, _x|
         let len = vec::len(xx);
-        if ii+nn <= len {
-            ww += [vec::slice(xx, ii, ii+nn)]/~;
+        if ii+nn <= len unchecked {
+            vec::push(ww, vec::slice(xx, ii, ii+nn));
         }
     });
     ret ww;
@@ -2195,10 +2220,10 @@ mod tests {
     #[test]
     fn test_windowed () {
         assert [[1u,2u,3u]/~,[2u,3u,4u]/~,[3u,4u,5u]/~,[4u,5u,6u]/~]/~
-              == windowed (3u, [1u,2u,3u,4u,5u,6u]/~);
+            == windowed (3u, [1u,2u,3u,4u,5u,6u]/~);
 
         assert [[1u,2u,3u,4u]/~,[2u,3u,4u,5u]/~,[3u,4u,5u,6u]/~]/~
-              == windowed (4u, [1u,2u,3u,4u,5u,6u]/~);
+            == windowed (4u, [1u,2u,3u,4u,5u,6u]/~);
 
         assert []/~ == windowed (7u, [1u,2u,3u,4u,5u,6u]/~);
     }

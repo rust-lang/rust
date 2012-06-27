@@ -83,10 +83,10 @@ fn with_argv<T>(prog: str, args: [str]/~,
     let mut tmps = []/~;
     for vec::each(args) {|arg|
         let t = @arg;
-        tmps += [t]/~;
-        argptrs += str::as_c_str(*t) {|b| [b]/~ };
+        vec::push(tmps, t);
+        vec::push_all(argptrs, str::as_c_str(*t) {|b| [b]/~ });
     }
-    argptrs += [ptr::null()]/~;
+    vec::push(argptrs, ptr::null());
     vec::as_buf(argptrs, cb)
 }
 
@@ -104,9 +104,9 @@ fn with_envp<T>(env: option<[(str,str)]/~>,
             let (k,v) = e;
             let t = @(#fmt("%s=%s", k, v));
             vec::push(tmps, t);
-            ptrs += str::as_c_str(*t) {|b| [b]/~};
+            vec::push_all(ptrs, str::as_c_str(*t) {|b| [b]/~});
         }
-        ptrs += [ptr::null()]/~;
+        vec::push(ptrs, ptr::null());
         vec::as_buf(ptrs) { |p|
             unsafe { cb(::unsafe::reinterpret_cast(p)) }
         }
