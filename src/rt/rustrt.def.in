@@ -167,3 +167,6 @@ rust_lock_cond_lock
 rust_unlock_cond_lock
 rust_wait_cond_lock
 rust_signal_cond_lock
+rust_get_task_local_data
+rust_set_task_local_data
+rust_task_local_data_atexit

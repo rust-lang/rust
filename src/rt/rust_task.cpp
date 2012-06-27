@@ -31,6 +31,8 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     propagate_failure(true),
     cc_counter(0),
     total_stack_sz(0),
+    task_local_data(NULL),
+    task_local_data_cleanup(NULL),
     state(state),
     cond(NULL),
     cond_name("none"),
@@ -113,6 +115,16 @@ cleanup_task(cleanup_args *args) {
             LOG(task, task, "Task killed during termination");
             threw_exception = true;
         }
+    }
+
+    // Clean up TLS. This will only be set if TLS was used to begin with.
+    // Because this is a crust function, it must be called from the C stack.
+    if (task->task_local_data_cleanup != NULL) {
+        // This assert should hold but it's not our job to ensure it (and
+        // the condition might change). Handled in libcore/task.rs.
+        // assert(task->task_local_data != NULL);
+        task->task_local_data_cleanup(task->task_local_data);
+        task->task_local_data = NULL;
     }
 
     // FIXME (#2676): For performance we should do the annihilator

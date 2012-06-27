@@ -914,7 +914,19 @@ rust_signal_cond_lock(rust_cond_lock *lock) {
     }
 }
 
-
+// set/get/atexit task_local_data can run on the rust stack for speed.
+extern "C" void *
+rust_get_task_local_data(rust_task *task) {
+    return task->task_local_data;
+}
+extern "C" void
+rust_set_task_local_data(rust_task *task, void *data) {
+    task->task_local_data = data;
+}
+extern "C" void
+rust_task_local_data_atexit(rust_task *task, void (*cleanup_fn)(void *data)) {
+    task->task_local_data_cleanup = cleanup_fn;
+}
 
 //
 // Local Variables:
