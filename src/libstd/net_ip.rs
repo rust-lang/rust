@@ -72,76 +72,26 @@ fn format_addr(ip: ip_addr) -> str {
     }
 }
 
-type get_addr_data = {
-    output_ch: comm::chan<result::result<[ip_addr]/~,ip_get_addr_err>>
-};
-
-crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
-                     res: *addrinfo) unsafe {
-    log(debug, "in get_addr_cb");
-    let handle_data = get_data_for_req(handle) as
-        *get_addr_data;
-    if status == 0i32 {
-        if res != (ptr::null::<addrinfo>()) {
-            let mut out_vec = []/~;
-            log(debug, #fmt("initial addrinfo: %?", res));
-            let mut curr_addr = res;
-            loop {
-                let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
-                    ipv4(copy((
-                        *ll::addrinfo_as_sockaddr_in(curr_addr))))
-                }
-                else if ll::is_ipv6_addrinfo(curr_addr) {
-                    ipv6(copy((
-                        *ll::addrinfo_as_sockaddr_in6(curr_addr))))
-                }
-                else {
-                    log(debug, "curr_addr is not of family AF_INET or "+
-                        "AF_INET6. Error.");
-                    (*handle_data).output_ch.send(
-                        result::err(get_addr_unknown_error));
-                    break;
-                };
-                out_vec += [new_ip_addr]/~;
-
-                let next_addr = ll::get_next_addrinfo(curr_addr);
-                if next_addr == ptr::null::<addrinfo>() as *addrinfo {
-                    log(debug, "null next_addr encountered. no mas");
-                    break;
-                }
-                else {
-                    curr_addr = next_addr;
-                    log(debug, #fmt("next_addr addrinfo: %?", curr_addr));
-                }
-            }
-            log(debug, #fmt("successful process addrinfo result, len: %?",
-                            vec::len(out_vec)));
-            (*handle_data).output_ch.send(result::ok(out_vec));
-        }
-        else {
-            log(debug, "addrinfo pointer is NULL");
-            (*handle_data).output_ch.send(
-                result::err(get_addr_unknown_error));
-        }
-    }
-    else {
-        log(debug, "status != 0 error in get_addr_cb");
-        (*handle_data).output_ch.send(
-            result::err(get_addr_unknown_error));
-    }
-    if res != (ptr::null::<addrinfo>()) {
-        uv_freeaddrinfo(res);
-    }
-    log(debug, "leaving get_addr_cb");
-}
-
 #[doc="
+Represents errors returned from `net::ip::get_addr()`
 "]
 enum ip_get_addr_err {
     get_addr_unknown_error
 }
 
 #[doc="
+Attempts name resolution on the provided `node` string
+
+# Arguments
+
+* `node` - a string representing some host address
+* `iotask` - a `uv::iotask` used to interact with the underlying event loop
+
+# Returns
+
+A `result<[ip_addr]/~, ip_get_addr_err>` instance that will contain
+a vector of `ip_addr` results, in the case of success, or an error
+object in the case of failure
 "]
 fn get_addr(++node: str, iotask: iotask)
         -> result::result<[ip_addr]/~, ip_get_addr_err> unsafe {
@@ -301,6 +251,69 @@ mod v6 {
             }
         }
     }
+}
+
+type get_addr_data = {
+    output_ch: comm::chan<result::result<[ip_addr]/~,ip_get_addr_err>>
+};
+
+crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
+                     res: *addrinfo) unsafe {
+    log(debug, "in get_addr_cb");
+    let handle_data = get_data_for_req(handle) as
+        *get_addr_data;
+    if status == 0i32 {
+        if res != (ptr::null::<addrinfo>()) {
+            let mut out_vec = []/~;
+            log(debug, #fmt("initial addrinfo: %?", res));
+            let mut curr_addr = res;
+            loop {
+                let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
+                    ipv4(copy((
+                        *ll::addrinfo_as_sockaddr_in(curr_addr))))
+                }
+                else if ll::is_ipv6_addrinfo(curr_addr) {
+                    ipv6(copy((
+                        *ll::addrinfo_as_sockaddr_in6(curr_addr))))
+                }
+                else {
+                    log(debug, "curr_addr is not of family AF_INET or "+
+                        "AF_INET6. Error.");
+                    (*handle_data).output_ch.send(
+                        result::err(get_addr_unknown_error));
+                    break;
+                };
+                out_vec += [new_ip_addr]/~;
+
+                let next_addr = ll::get_next_addrinfo(curr_addr);
+                if next_addr == ptr::null::<addrinfo>() as *addrinfo {
+                    log(debug, "null next_addr encountered. no mas");
+                    break;
+                }
+                else {
+                    curr_addr = next_addr;
+                    log(debug, #fmt("next_addr addrinfo: %?", curr_addr));
+                }
+            }
+            log(debug, #fmt("successful process addrinfo result, len: %?",
+                            vec::len(out_vec)));
+            (*handle_data).output_ch.send(result::ok(out_vec));
+        }
+        else {
+            log(debug, "addrinfo pointer is NULL");
+            (*handle_data).output_ch.send(
+                result::err(get_addr_unknown_error));
+        }
+    }
+    else {
+        log(debug, "status != 0 error in get_addr_cb");
+        (*handle_data).output_ch.send(
+            result::err(get_addr_unknown_error));
+    }
+    if res != (ptr::null::<addrinfo>()) {
+        uv_freeaddrinfo(res);
+    }
+    log(debug, "leaving get_addr_cb");
 }
 
 #[cfg(test)]
