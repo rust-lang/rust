@@ -106,13 +106,13 @@ fn create_lock() -> lock_and_signal {
 }
 
 impl methods for lock_and_signal {
-    fn lock<T>(f: fn() -> T) -> T {
+    unsafe fn lock<T>(f: fn() -> T) -> T {
         rustrt::rust_lock_cond_lock(self.lock);
         let _r = unlock(self.lock);
         f()
     }
 
-    fn lock_cond<T>(f: fn(condition) -> T) -> T {
+    unsafe fn lock_cond<T>(f: fn(condition) -> T) -> T {
         rustrt::rust_lock_cond_lock(self.lock);
         let _r = unlock(self.lock);
         f(condition_(self.lock))
