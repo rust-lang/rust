@@ -484,10 +484,9 @@ fn push_all_move<T>(&v: [const T]/~, -rhs: [const T]/~) {
 
 // Appending
 #[inline(always)]
-pure fn append<T: copy>(lhs: [T]/&, rhs: [const T]/&) -> [T]/~ {
-    let mut v = []/~;
+pure fn append<T: copy>(+lhs: [T]/~, rhs: [const T]/&) -> [T]/~ {
+    let mut v <- lhs;
     unchecked {
-        push_all(v, lhs);
         push_all(v, rhs);
     }
     ret v;

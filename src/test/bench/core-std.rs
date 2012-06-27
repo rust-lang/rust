@@ -22,6 +22,7 @@ fn main(argv: [str]/~) {
     #bench[shift_push];
     #bench[read_line];
     #bench[str_set];
+    #bench[vec_plus];
     #bench[vec_append];
     #bench[vec_push_all];
 }
@@ -75,11 +76,12 @@ fn str_set() {
     }
 }
 
-fn vec_append() {
+fn vec_plus() {
     let r = rand::rng();
 
-    let mut v = []/~;
-    for uint::range(0, 1500) {|i|
+    let mut v = []/~; 
+    let mut i = 0;
+    while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen_bool() {
             v += rv;
@@ -87,6 +89,24 @@ fn vec_append() {
         else {
             v = rv + v;
         }
+        i += 1;
+    }
+}
+
+fn vec_append() {
+    let r = rand::rng();
+
+    let mut v = []/~;
+    let mut i = 0;
+    while i < 1500 {
+        let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
+        if r.gen_bool() {
+            v = vec::append(v, rv);
+        }
+        else {
+            v = vec::append(rv, v);
+        }
+        i += 1;
     }
 }
 
