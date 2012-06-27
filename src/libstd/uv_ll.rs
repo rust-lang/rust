@@ -770,7 +770,7 @@ unsafe fn ip6_addr(ip: str, port: int)
 -> sockaddr_in6 {
     str::as_c_str(ip) {|ip_buf|
         rustrt::rust_uv_ip6_addr(ip_buf as *u8,
-                                 port as libc::c_int);
+                                 port as libc::c_int)
     }
 }
 unsafe fn ip4_name(src: &sockaddr_in) -> str {

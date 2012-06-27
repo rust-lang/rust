@@ -6,6 +6,7 @@ import ip = net_ip;
 import uv::iotask;
 import uv::iotask::iotask;
 import comm::methods;
+import future::future;
 import future_spawn = future::spawn;
 // FIXME #1935
 // should be able to, but can't atm, replace w/ result::{result, extensions};
