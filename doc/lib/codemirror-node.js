@@ -11,6 +11,7 @@ exports.splitLines = function(string){return string.split(/\r?\n/);};
 // Counts the column offset in a string, taking tabs into account.
 // Used mostly to find indentation.
 function countColumn(string, end) {
+  tabSize = 4;
   if (end == null) {
     end = string.search(/[^\s\u00a0]/);
     if (end == -1) end = string.length;

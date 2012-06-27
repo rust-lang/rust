@@ -351,7 +351,7 @@ Examples of integer literals of various forms:
 ~~~~
 123; 0xff00;                       // type determined by program context; 
                                    // defaults to int in absence of type
-				   // information
+                                   // information
 
 123u;                              // type uint
 123_u;                             // type uint
