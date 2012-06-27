@@ -374,11 +374,16 @@ enum blk_sort {
 */
 
 #[auto_serialize]
+#[doc="For macro invocations; parsing is delegated to the macro"]
 enum token_tree {
-    /* for macro invocations; parsing is the macro's job */
     tt_delim(~[token_tree]),
-    tt_flat(span, token::token)
+    tt_flat(span, token::token),
+    /* These only make sense for right-hand-sides of MBE macros*/
+    tt_dotdotdot(~[token_tree]),
+    tt_interpolate(ident)
 }
+
+
 
 #[auto_serialize]
 type matcher = spanned<matcher_>;

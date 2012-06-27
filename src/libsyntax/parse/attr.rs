@@ -1,6 +1,7 @@
 import either::{either, left, right};
 import ast_util::spanned;
-import common::{parser_common, seq_sep_trailing_disallowed};
+import common::*; //resolve bug?
+//import common::{parser_common, seq_sep_trailing_disallowed};
 
 export attr_or_ext;
 export parser_attr;

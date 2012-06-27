@@ -70,6 +70,7 @@ class parser {
     let mut buffer_start: int;
     let mut buffer_end: int;
     let mut restriction: restriction;
+    let mut quote_depth: uint; // not (yet) related to the quasiquoter
     let reader: reader;
     let keywords: hashmap<str, ()>;
     let restricted_keywords: hashmap<str, ()>;
@@ -94,6 +95,7 @@ class parser {
         self.buffer_start = 0;
         self.buffer_end = 0;
         self.restriction = UNRESTRICTED;
+        self.quote_depth = 0u;
         self.keywords = token::keyword_table();
         self.restricted_keywords = token::restricted_keyword_table();
     }
@@ -1067,6 +1069,11 @@ class parser {
         }
 
         fn parse_tt_flat(p: parser, delim_ok: bool) -> token_tree {
+            if p.eat_keyword("many") && p.quote_depth > 0u {
+                ret tt_dotdotdot(
+                    p.parse_seq(token::LPAREN, token::RPAREN, seq_sep_none(),
+                                |p| p.parse_token_tree()).node);
+            }
             alt p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
               if !delim_ok {
@@ -1075,6 +1082,11 @@ class parser {
               }
               token::EOF {
                 p.fatal("file ended in the middle of a macro invocation");
+              }
+              /* we ought to allow different depths of unquotation */
+              token::DOLLAR if p.quote_depth > 0u {
+                p.bump();
+                ret tt_interpolate(p.parse_ident());
               }
               _ { /* ok */ }
             }
@@ -1104,10 +1116,11 @@ class parser {
                                 common::seq_sep_none(),
                                 |p| p.parse_matcher(@mut 0u)).node;
         let tt = self.parse_token_tree();
+        //let tt_rhs = self.parse_token_tree();
         alt tt {
           tt_delim(tts) {
             let rdr = lexer::new_tt_reader(self.reader.span_diag(),
-                                           self.reader.interner(), tts)
+                                           self.reader.interner(), none, tts)
                 as reader;
             ext::earley_parser::parse(self.sess, self.cfg, rdr, ms);
           }

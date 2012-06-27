@@ -1,12 +1,15 @@
 // Earley-like parser for macros.
 import parse::token;
 import parse::token::{token, EOF, to_str, whole_nt};
-import parse::lexer::{reader, tt_reader, tt_reader_as_reader};
+import parse::lexer::*; //resolve bug?
+//import parse::lexer::{reader, tt_reader, tt_reader_as_reader};
 import parse::parser::{parser,SOURCE_FILE};
-import parse::common::parser_common;
+//import parse::common::parser_common;
+import parse::common::*; //resolve bug?
 import parse::parse_sess;
 import dvec::{dvec, extensions};
-import ast::{matcher, mtc_tok, mtc_rep, mtc_bb};
+import ast::{matcher, mtc_tok, mtc_rep, mtc_bb, ident};
+import std::map::{hashmap, box_str_hash};
 
 /* This is an Earley-like parser, without support for nonterminals.  This
 means that there are no completer or predictor rules, and therefore no need to
@@ -66,8 +69,31 @@ enum arb_depth { leaf(whole_nt), seq(~[@arb_depth]) }
 type earley_item = matcher_pos;
 
 
+fn nameize(&&p_s: parse_sess, ms: ~[matcher], &&res: ~[@arb_depth])
+    -> hashmap<ident,@arb_depth> {
+    fn n_rec(&&p_s: parse_sess, &&m: matcher, &&res: ~[@arb_depth],
+             &&ret_val: hashmap<ident, @arb_depth>) {
+        alt m {
+          {node: mtc_tok(_), span: _} { }
+          {node: mtc_rep(more_ms, _, _), span: _} {
+            for more_ms.each() |next_m| { n_rec(p_s, next_m, res, ret_val) };
+          }
+          {node: mtc_bb(bind_name, _, idx), span: sp} {
+            if ret_val.contains_key(bind_name) {
+                p_s.span_diagnostic.span_fatal(sp, "Duplicated bind name: "
+                                               + *bind_name)
+            }
+            ret_val.insert(bind_name, res[idx]);
+          }
+        }
+    }
+    let ret_val = box_str_hash::<@arb_depth>();
+    for ms.each() |m| { n_rec(p_s, m, res, ret_val) };
+    ret ret_val;
+}
+
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
-    -> ~[@arb_depth] {
+    -> hashmap<ident,@arb_depth> {
     let mut cur_eis = ~[];
     vec::push(cur_eis, new_matcher_pos(ms, none));
 
@@ -164,9 +190,9 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
         /* error messages here could be improved with links to orig. rules */
         if tok == EOF {
-            if eof_eis.len() == 1u {
-                let ret_val = vec::map(eof_eis[0u].matches, |dv| dv.pop());
-                ret ret_val; /* success */
+            if eof_eis.len() == 1u { /* success */
+                ret nameize(sess, ms,
+                            vec::map(eof_eis[0u].matches, |dv| dv.pop()));
             } else if eof_eis.len() > 1u {
                 rdr.fatal("Ambiguity: multiple successful parses");
             } else {

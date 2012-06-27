@@ -1,11 +1,11 @@
-import util::interner;
-import util::interner::intern;
-import diagnostic;
-import ast::{tt_delim,tt_flat};
+import util::interner::{interner,intern};
+import diagnostic::span_handler;
 import codemap::span;
+import ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
+                             tt_next_token};
 
 export reader, string_reader, new_string_reader, is_whitespace;
-export tt_reader,  new_tt_reader, dup_tt_reader;
+export tt_reader,  new_tt_reader;
 export nextch, is_eof, bump, get_str_from, new_low_level_string_reader;
 export string_reader_as_reader, tt_reader_as_reader;
 
@@ -13,91 +13,38 @@ iface reader {
     fn is_eof() -> bool;
     fn next_token() -> {tok: token::token, sp: span};
     fn fatal(str) -> !;
-    fn span_diag() -> diagnostic::span_handler;
-    fn interner() -> @interner::interner<@str>;
+    fn span_diag() -> span_handler;
+    fn interner() -> @interner<@str>;
     fn peek() -> {tok: token::token, sp: span};
     fn dup() -> reader;
 }
 
-enum tt_frame_up { /* to break a circularity */
-    tt_frame_up(option<tt_frame>)
-}
-
-/* FIXME (#2811): figure out how to have a uniquely linked stack,
-   and change to `~` */
-/// an unzipping of `token_tree`s
-type tt_frame = @{
-    readme: ~[ast::token_tree],
-    mut idx: uint,
-    up: tt_frame_up
-};
-
-type tt_reader = @{
-    span_diagnostic: diagnostic::span_handler,
-    interner: @interner::interner<@str>,
-    mut cur: tt_frame,
-    /* cached: */
-    mut cur_tok: token::token,
-    mut cur_span: span
-};
-
-fn new_tt_reader(span_diagnostic: diagnostic::span_handler,
-                 itr: @interner::interner<@str>, src: ~[ast::token_tree])
-    -> tt_reader {
-    let r = @{span_diagnostic: span_diagnostic, interner: itr,
-              mut cur: @{readme: src, mut idx: 0u,
-                         up: tt_frame_up(option::none)},
-              /* dummy values, never read: */
-              mut cur_tok: token::EOF,
-              mut cur_span: ast_util::mk_sp(0u,0u)
-             };
-    tt_next_token(r); /* get cur_tok and cur_span set up */
-    ret r;
-}
-
-pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
-    @{readme: f.readme, mut idx: f.idx,
-      up: alt f.up {
-        tt_frame_up(some(up_frame)) {
-          tt_frame_up(some(dup_tt_frame(up_frame)))
-        }
-        tt_frame_up(none) { tt_frame_up(none) }
-      }
-     }
-}
-
-pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
-    @{span_diagnostic: r.span_diagnostic, interner: r.interner,
-      mut cur: dup_tt_frame(r.cur),
-      mut cur_tok: r.cur_tok, mut cur_span: r.cur_span}
-}
-
 type string_reader = @{
-    span_diagnostic: diagnostic::span_handler,
+    span_diagnostic: span_handler,
     src: @str,
     mut col: uint,
     mut pos: uint,
     mut curr: char,
     mut chpos: uint,
     filemap: codemap::filemap,
-    interner: @interner::interner<@str>,
+    interner: @interner<@str>,
     /* cached: */
     mut peek_tok: token::token,
     mut peek_span: span
 };
 
-fn new_string_reader(span_diagnostic: diagnostic::span_handler,
+fn new_string_reader(span_diagnostic: span_handler,
                      filemap: codemap::filemap,
-                     itr: @interner::interner<@str>) -> string_reader {
+                     itr: @interner<@str>) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
     string_advance_token(r); /* fill in peek_* */
     ret r;
 }
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
-fn new_low_level_string_reader(span_diagnostic: diagnostic::span_handler,
+fn new_low_level_string_reader(span_diagnostic: span_handler,
                                filemap: codemap::filemap,
-                               itr: @interner::interner<@str>)
+                               itr: @interner<@str>)
     -> string_reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
@@ -131,8 +78,8 @@ impl string_reader_as_reader of reader for string_reader {
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
-    fn span_diag() -> diagnostic::span_handler { self.span_diagnostic }
-    fn interner() -> @interner::interner<@str> { self.interner }
+    fn span_diag() -> span_handler { self.span_diagnostic }
+    fn interner() -> @interner<@str> { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         {tok: self.peek_tok, sp: self.peek_span}
     }
@@ -153,8 +100,8 @@ impl tt_reader_as_reader of reader for tt_reader {
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(copy self.cur_span, m);
     }
-    fn span_diag() -> diagnostic::span_handler { self.span_diagnostic }
-    fn interner() -> @interner::interner<@str> { self.interner }
+    fn span_diag() -> span_handler { self.span_diagnostic }
+    fn interner() -> @interner<@str> { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         { tok: self.cur_tok, sp: self.cur_span }
     }
@@ -175,42 +122,6 @@ fn string_advance_token(&&r: string_reader) {
         r.peek_tok = next_token_inner(r);
         r.peek_span = ast_util::mk_sp(start_chpos, r.chpos);
     };
-
-}
-
-fn tt_next_token(&&r: tt_reader) -> {tok: token::token, sp: span} {
-    let ret_val = { tok: r.cur_tok, sp: r.cur_span };
-    if r.cur.idx >= vec::len(r.cur.readme) {
-        /* done with this set; pop */
-        alt r.cur.up {
-          tt_frame_up(none) {
-            r.cur_tok = token::EOF;
-            ret ret_val;
-          }
-          tt_frame_up(some(tt_f)) {
-            r.cur = tt_f;
-            /* the above `if` would need to be a `while` if we didn't know
-            that the last thing in a `tt_delim` is always a `tt_flat` */
-            r.cur.idx += 1u;
-          }
-        }
-    }
-    /* if `tt_delim`s could be 0-length, we'd need to be able to switch
-    between popping and pushing until we got to an actual `tt_flat` */
-    loop { /* because it's easiest, this handles `tt_delim` not starting
-    with a `tt_flat`, even though it won't happen */
-        alt copy r.cur.readme[r.cur.idx] {
-          tt_delim(tts) {
-            r.cur = @{readme: tts, mut idx: 0u,
-                      up: tt_frame_up(option::some(r.cur)) };
-          }
-          tt_flat(sp, tok) {
-            r.cur_span = sp; r.cur_tok = tok;
-            r.cur.idx += 1u;
-            ret ret_val;
-          }
-        }
-    }
 
 }
 
@@ -548,7 +459,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         let is_mod_name = c == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
-        ret token::IDENT(interner::intern(*rdr.interner,
+        ret token::IDENT(intern(*rdr.interner,
                                           @accum_str), is_mod_name);
     }
     if is_dec_digit(c) {
@@ -713,8 +624,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             }
         }
         bump(rdr);
-        ret token::LIT_STR(interner::intern(*rdr.interner,
-                                            @accum_str));
+        ret token::LIT_STR(intern(*rdr.interner, @accum_str));
       }
       '-' {
         if nextch(rdr) == '>' {

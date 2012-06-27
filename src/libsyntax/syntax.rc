@@ -66,6 +66,9 @@ mod ext {
     mod build;
 
     mod earley_parser;
+    mod tt {
+        mod transcribe;
+    }
 
     mod fmt;
     mod env;

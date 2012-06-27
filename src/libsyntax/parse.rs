@@ -13,8 +13,10 @@ export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_from_source_str;
 
 import parser::parser;
-import attr::parser_attr;
-import common::parser_common;
+//import attr::parser_attr;
+import attr::*; //resolve bug?
+//import common::parser_common;
+import common::*; //resolve bug?
 import ast::node_id;
 import util::interner;
 // FIXME (#1935): resolve badness
@@ -199,6 +201,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
 
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
                       tt: ~[ast::token_tree]) -> parser {
-    let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner, tt);
+    let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
+                                    none, tt);
     ret parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }
