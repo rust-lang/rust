@@ -823,7 +823,8 @@ Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 "]
 impl tcp_socket_buf of io::writer for @tcp_socket_buf {
     fn write(data: [const u8]/&) unsafe {
-        let socket_data_ptr = ptr::addr_of(*((*(self.data)).sock).socket_data);
+        let socket_data_ptr =
+            ptr::addr_of(*((*(self.data)).sock).socket_data);
         let w_result = write_common_impl(socket_data_ptr,
                                         vec::slice(data, 0, vec::len(data)));
         if w_result.is_err() {

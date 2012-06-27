@@ -459,7 +459,7 @@ extern "C" struct sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
     rust_task* task = rust_get_current_task();
     LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
-        "port %d", ip, port);
+        " port %d\n", ip, port);
     struct sockaddr_in addr = uv_ip4_addr(ip, port);
     LOG(task, stdlib, "after creating .. port: %d", addr.sin_port);
     return addr;
@@ -468,9 +468,8 @@ extern "C" struct sockaddr_in6
 rust_uv_ip6_addr(const char* ip, int port) {
     rust_task* task = rust_get_current_task();
     LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
-        "port %d", ip, port);
-    struct sockaddr_in6 addr = uv_ip6_addr(ip, port);
-    return addr;
+        " port %d\n", ip, port);
+    return uv_ip6_addr(ip, port);
 }
 extern "C" int
 rust_uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
@@ -478,7 +477,10 @@ rust_uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
 }
 extern "C" int
 rust_uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
-    return uv_ip6_name(src, dst, size);
+    int result = uv_ip6_name(src, dst, size);
+    printf("rust_uv_ip6_name: src ptr: %lu dst result: '%s'\n",
+        (unsigned long int)src, dst);
+    return result;
 }
 
 extern "C" uintptr_t*
