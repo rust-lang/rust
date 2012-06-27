@@ -20,11 +20,13 @@ fn mk_uint(cx: ext_ctxt, sp: span, u: uint) -> @ast::expr {
 fn mk_binary(cx: ext_ctxt, sp: span, op: ast::binop,
              lhs: @ast::expr, rhs: @ast::expr)
    -> @ast::expr {
+    cx.next_id(); // see ast_util::op_expr_callee_id
     let binexpr = ast::expr_binary(op, lhs, rhs);
     ret @{id: cx.next_id(), node: binexpr, span: sp};
 }
 fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     -> @ast::expr {
+    cx.next_id(); // see ast_util::op_expr_callee_id
     let expr = ast::expr_unary(op, e);
     ret @{id: cx.next_id(), node: expr, span: sp};
 }
