@@ -225,9 +225,17 @@ type sockaddr_in = {
 
 // unix size: 28 .. FIXME #1645
 // stuck with 32 becuse of rust padding structs?
+#[cfg(unix)]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8
+};
+#[cfg(windows)]
+type sockaddr_in6 = {
+    a0: *u8, a1: *u8,
+    a2: *u8, a3: *u8,
+    a4: *u8, a5: *u8,
+    a6: *u8, a7: *u8
 };
 
 // unix size: 28 .. FIXME #1645
@@ -753,25 +761,17 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
 }
 unsafe fn ip4_addr(ip: str, port: int)
 -> sockaddr_in {
-    let mut addr_vec = str::bytes(ip);
-    vec::push(addr_vec, 0u8); // add null terminator
-    let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
-    let ip_back = str::from_bytes(addr_vec);
-    log(debug, #fmt("vec val: '%s' length: %u",
-                     ip_back, vec::len(addr_vec)));
-    ret rustrt::rust_uv_ip4_addr(addr_vec_ptr,
-                                 port as libc::c_int);
+    str::as_c_str(ip) {|ip_buf|
+        rustrt::rust_uv_ip4_addr(ip_buf as *u8,
+                                 port as libc::c_int)
+    }
 }
 unsafe fn ip6_addr(ip: str, port: int)
 -> sockaddr_in6 {
-    let mut addr_vec = str::bytes(ip);
-    addr_vec += [0u8]/~; // add null terminator
-    let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
-    let ip_back = str::from_bytes(addr_vec);
-    log(debug, #fmt("vec val: '%s' length: %u",
-                     ip_back, vec::len(addr_vec)));
-    ret rustrt::rust_uv_ip6_addr(addr_vec_ptr,
+    str::as_c_str(ip) {|ip_buf|
+        rustrt::rust_uv_ip6_addr(ip_buf as *u8,
                                  port as libc::c_int);
+    }
 }
 unsafe fn ip4_name(src: &sockaddr_in) -> str {
     // ipv4 addr max size: 15 + 1 trailing null byte
@@ -800,7 +800,10 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> str {
                        0u8,0u8,0u8,0u8,0u8,0u8]/~;
     let size = 46 as libc::size_t;
     vec::as_buf(dst) {|dst_buf|
-        let result = rustrt::rust_uv_ip6_name(src as *sockaddr_in6,
+        let src_unsafe_ptr = src as *sockaddr_in6;
+        log(debug, #fmt("val of src *sockaddr_in6: %? sockaddr_in6: %?",
+                        src_unsafe_ptr, src));
+        let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,
                                               dst_buf, size);
         alt result {
           0i32 {
@@ -1536,7 +1539,7 @@ mod test {
         let native_handle_size =
             rustrt::rust_uv_helper_sockaddr_in6_size();
         let rust_handle_size = sys::size_of::<sockaddr_in6>();
-        let output = #fmt("sockaddr_in -- native: %u rust: %u",
+        let output = #fmt("sockaddr_in6 -- native: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
         // FIXME #1645 .. rust appears to pad structs to the nearest byte..?

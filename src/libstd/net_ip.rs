@@ -332,6 +332,7 @@ mod test {
         }
     }
     #[test]
+    #[ignore(target_os="win32")]
     fn test_ip_ipv6_bad_parse() {
         alt v6::try_parse_addr("::,~2234k;") {
           result::err(err_info) {
