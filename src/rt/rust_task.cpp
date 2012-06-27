@@ -289,9 +289,7 @@ void
 rust_task::begin_failure(char const *expr, char const *file, size_t line) {
 
     if (expr) {
-        // FIXME (#2678): Change this message to be
-        // 'task failed at ...'
-        LOG_ERR(this, task, "upcall fail '%s', %s:%" PRIdPTR,
+        LOG_ERR(this, task, "task failed at '%s', %s:%" PRIdPTR,
                 expr, file, line);
     }
 
