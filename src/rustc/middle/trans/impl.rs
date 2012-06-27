@@ -150,10 +150,10 @@ fn trans_iface_callee(bcx: block, val: ValueRef,
     let ccx = bcx.ccx();
     let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0u, 0u]/~),
                                        T_ptr(T_ptr(T_vtable()))));
-    let box = Load(bcx, GEPi(bcx, val, [0u, 1u]/~));
+    let llbox = Load(bcx, GEPi(bcx, val, [0u, 1u]/~));
     // FIXME[impl] I doubt this is alignment-safe (#2534)
-    let self = GEPi(bcx, box, [0u, abi::box_field_body]/~);
-    let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(box));
+    let self = GEPi(bcx, llbox, [0u, abi::box_field_body]/~);
+    let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(llbox));
     let llfty = type_of::type_of_fn_from_ty(ccx, callee_ty);
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
@@ -284,13 +284,13 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
-    let {box, body} = malloc_boxed(bcx, v_ty);
-    add_clean_free(bcx, box, heap_shared);
+    let {box: llbox, body: body} = malloc_boxed(bcx, v_ty);
+    add_clean_free(bcx, llbox, heap_shared);
     let bcx = trans_expr_save_in(bcx, val, body);
-    revoke_clean(bcx, box);
+    revoke_clean(bcx, llbox);
     let result = get_dest_addr(dest);
-    Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0u, 1u]/~),
-                                T_ptr(val_ty(box))));
+    Store(bcx, llbox, PointerCast(bcx, GEPi(bcx, result, [0u, 1u]/~),
+                                  T_ptr(val_ty(llbox))));
     let orig = ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);

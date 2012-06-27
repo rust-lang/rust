@@ -150,21 +150,21 @@ fn allocate_cbox(bcx: block,
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
-    fn nuke_ref_count(bcx: block, box: ValueRef) {
+    fn nuke_ref_count(bcx: block, llbox: ValueRef) {
         let _icx = bcx.insn_ctxt("closure::nuke_ref_count");
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx.ccx();
-        let box = PointerCast(bcx, box, T_opaque_box_ptr(ccx));
-        let ref_cnt = GEPi(bcx, box, [0u, abi::box_field_refcnt]/~);
+        let llbox = PointerCast(bcx, llbox, T_opaque_box_ptr(ccx));
+        let ref_cnt = GEPi(bcx, llbox, [0u, abi::box_field_refcnt]/~);
         let rc = C_int(ccx, 0x12345678);
         Store(bcx, rc, ref_cnt);
     }
 
     fn store_tydesc(bcx: block,
                     cdata_ty: ty::t,
-                    box: ValueRef,
+                    llbox: ValueRef,
                     &ti: option<@tydesc_info>) -> block {
-        let bound_tydesc = GEPi(bcx, box, [0u, abi::box_field_tydesc]/~);
+        let bound_tydesc = GEPi(bcx, llbox, [0u, abi::box_field_tydesc]/~);
         let td = base::get_tydesc(bcx.ccx(), cdata_ty, ti);
         Store(bcx, td, bound_tydesc);
         bcx
@@ -173,21 +173,21 @@ fn allocate_cbox(bcx: block,
     // Allocate and initialize the box:
     let mut ti = none;
     let mut temp_cleanups = []/~;
-    let (bcx, box) = alt ck {
+    let (bcx, llbox) = alt ck {
       ty::ck_box {
         get_tydesc(ccx, cdata_ty, ti);
-        let box = malloc_raw(bcx, cdata_ty, heap_shared);
-        (bcx, box)
+        let llbox = malloc_raw(bcx, cdata_ty, heap_shared);
+        (bcx, llbox)
       }
       ty::ck_uniq {
-        let box = malloc_raw(bcx, cdata_ty, heap_exchange);
-        (bcx, box)
+        let llbox = malloc_raw(bcx, cdata_ty, heap_exchange);
+        (bcx, llbox)
       }
       ty::ck_block {
         let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-        let box = base::alloc_ty(bcx, cbox_ty);
-        nuke_ref_count(bcx, box);
-        (bcx, box)
+        let llbox = base::alloc_ty(bcx, cbox_ty);
+        nuke_ref_count(bcx, llbox);
+        (bcx, llbox)
       }
     };
 
@@ -195,7 +195,7 @@ fn allocate_cbox(bcx: block,
     base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, ti);
     base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, ti);
 
-    ret (bcx, box, temp_cleanups);
+    ret (bcx, llbox, temp_cleanups);
 }
 
 type closure_result = {
