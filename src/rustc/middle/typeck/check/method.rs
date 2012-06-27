@@ -1,6 +1,8 @@
 /* Code to handle method lookups (which can be quite complex) */
 
+import syntax::ast::def_id;
 import syntax::ast_map;
+import syntax::ast_util::new_def_hash;
 import middle::typeck::infer::methods; // next_ty_vars
 import dvec::{dvec, extensions};
 
@@ -23,6 +25,7 @@ class lookup {
     let mut self_ty: ty::t;
     let mut derefs: uint;
     let candidates: dvec<candidate>;
+    let candidate_impls: hashmap<def_id, ()>;
     let supplied_tps: [ty::t]/~;
     let include_private: bool;
 
@@ -45,6 +48,7 @@ class lookup {
         self.self_ty = self_ty;
         self.derefs = 0u;
         self.candidates = dvec();
+        self.candidate_impls = new_def_hash();
         self.supplied_tps = supplied_tps;
         self.include_private = include_private;
     }
@@ -311,16 +315,19 @@ class lookup {
                     alt can_assign {
                       result::err(_) { /* keep looking */ }
                       result::ok(_) {
-                        let fty = self.ty_from_did(m.did);
-                        self.candidates.push(
-                            {self_ty: self.self_ty,
-                             self_substs: impl_substs,
-                             rcvr_ty: impl_ty,
-                             n_tps_m: m.n_tps,
-                             fty: fty,
-                             entry: {derefs: self.derefs,
-                                     origin: method_static(m.did)}});
-                        added_any = true;
+                        if !self.candidate_impls.contains_key(im.did) {
+                            let fty = self.ty_from_did(m.did);
+                            self.candidates.push(
+                                {self_ty: self.self_ty,
+                                 self_substs: impl_substs,
+                                 rcvr_ty: impl_ty,
+                                 n_tps_m: m.n_tps,
+                                 fty: fty,
+                                 entry: {derefs: self.derefs,
+                                         origin: method_static(m.did)}});
+                            self.candidate_impls.insert(im.did, ());
+                            added_any = true;
+                        }
                       }
                     }
                 }
