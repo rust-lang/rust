@@ -1,6 +1,6 @@
 #[doc = "Unsafe operations"];
 
-export reinterpret_cast, forget, transmute;
+export reinterpret_cast, forget, bump_box_refcount, transmute;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
@@ -27,6 +27,12 @@ reinterpret_cast on managed pointer types.
 #[inline(always)]
 unsafe fn forget<T>(-thing: T) { rusti::forget(thing); }
 
+#[doc = "Force-increment the reference count on a shared box. If used
+uncarefully, this can leak the box. Use this in conjunction with transmute
+and/or reinterpret_cast when such calls would otherwise scramble a box's
+reference count"]
+unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
+
 #[doc = "
 Transform a value of one type into a value of another type.
 Both types must have the same size and alignment.
@@ -47,6 +53,21 @@ mod tests {
     #[test]
     fn test_reinterpret_cast() {
         assert unsafe { reinterpret_cast(1) } == 1u;
+    }
+
+    #[test]
+    fn test_bump_box_refcount() {
+        unsafe {
+            let box = @"box box box";       // refcount 1
+            bump_box_refcount(box);         // refcount 2
+            let ptr: *int = transmute(box); // refcount 2
+            let _box1: @str = reinterpret_cast(ptr);
+            let _box2: @str = reinterpret_cast(ptr);
+            assert *_box1 == "box box box";
+            assert *_box2 == "box box box";
+            // Will destroy _box1 and _box2. Without the bump, this would
+            // use-after-free. With too many bumps, it would leak.
+        }
     }
 
     #[test]

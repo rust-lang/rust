@@ -23,6 +23,7 @@ spawn {||
 "];
 
 import result::result;
+import dvec::extensions;
 
 export task;
 export task_result;
@@ -52,6 +53,12 @@ export yield;
 export failing;
 export get_task;
 export unkillable;
+
+export local_data_key;
+export local_data_pop;
+export local_data_get;
+export local_data_set;
+export local_data_modify;
 
 /* Data types */
 
@@ -573,6 +580,187 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
 
 }
 
+/****************************************************************************
+ * Task local data management
+ *
+ * Allows storing boxes with arbitrary types inside, to be accessed anywhere
+ * within a task, keyed by a pointer to a global finaliser function. Useful
+ * for task-spawning metadata (tracking linked failure state), dynamic
+ * variables, and interfacing with foreign code with bad callback interfaces.
+ *
+ * To use, declare a monomorphic global function at the type to store, and use
+ * it as the 'key' when accessing. See the 'tls' tests below for examples.
+ *
+ * Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation magic.
+ ****************************************************************************/
+
+#[doc = "Indexes a task-local data slot. The function itself is used to
+automatically finalise stored values; also, its code pointer is used for
+comparison. Recommended use is to write an empty function for each desired
+task-local data slot (and use class destructors, instead of code inside the
+finaliser, if specific teardown is needed). DO NOT use multiple instantiations
+of a single polymorphic function to index data of different types; arbitrary
+type coercion is possible this way. The interface is safe as long as all key
+functions are monomorphic."]
+type local_data_key<T> = fn@(+@T);
+
+// We use dvec because it's the best data structure in core. If TLS is used
+// heavily in future, this could be made more efficient with a proper map.
+type task_local_element = (*libc::c_void, *libc::c_void, fn@(+*libc::c_void));
+// Has to be a pointer at the outermost layer; the native call returns void *.
+type task_local_map = @dvec::dvec<option<task_local_element>>;
+
+crust fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
+    assert !map_ptr.is_null();
+    // Get and keep the single reference that was created at the beginning.
+    let map: task_local_map = unsafe::reinterpret_cast(map_ptr);
+    for (*map).each {|entry|
+        alt entry {
+            // Finaliser drops data. We drop the finaliser implicitly here.
+            some((_key, data, finalise_fn)) { finalise_fn(data); }
+            none { }
+        }
+    }
+}
+
+// Gets the map from the runtime. Lazily initialises if not done so already.
+unsafe fn get_task_local_map(task: *rust_task) -> task_local_map {
+    // Relies on the runtime initialising the pointer to null.
+    // NOTE: The map's box lives in TLS invisibly referenced once. Each time
+    // we retrieve it for get/set, we make another reference, which get/set
+    // drop when they finish. No "re-storing after modifying" is needed.
+    let map_ptr = rustrt::rust_get_task_local_data(task);
+    if map_ptr.is_null() {
+        let map: task_local_map = @dvec::dvec();
+        // Use reinterpret_cast -- transmute would take map away from us also.
+        rustrt::rust_set_task_local_data(task, unsafe::reinterpret_cast(map));
+        rustrt::rust_task_local_data_atexit(task, cleanup_task_local_map);
+        // Also need to reference it an extra time to keep it for now.
+        unsafe::bump_box_refcount(map);
+        map
+    } else {
+        let map = unsafe::transmute(map_ptr);
+        unsafe::bump_box_refcount(map);
+        map
+    }
+}
+
+unsafe fn key_to_key_value<T>(key: local_data_key<T>) -> *libc::c_void {
+    // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
+    // Use reintepret_cast -- transmute would leak (forget) the closure.
+    let pair: (*libc::c_void, *libc::c_void) = unsafe::reinterpret_cast(key);
+    tuple::first(pair)
+}
+
+// If returning some(..), returns with @T with the map's reference. Careful!
+unsafe fn local_data_lookup<T>(map: task_local_map, key: local_data_key<T>)
+        -> option<(uint, *libc::c_void, fn@(+*libc::c_void))> {
+    let key_value = key_to_key_value(key);
+    let map_pos = (*map).position {|entry|
+        alt entry { some((k,_,_)) { k == key_value } none { false } }
+    };
+    map_pos.map {|index|
+        // .get() is guaranteed because of "none { false }" above.
+        let (_, data_ptr, finaliser) = (*map)[index].get();
+        (index, data_ptr, finaliser)
+    }
+}
+
+unsafe fn local_get_helper<T>(task: *rust_task, key: local_data_key<T>,
+                              do_pop: bool) -> option<@T> {
+    let map = get_task_local_map(task);
+    // Interpret our findings from the map
+    local_data_lookup(map, key).map {|result|
+        // A reference count magically appears on 'data' out of thin air.
+        // 'data' has the reference we originally stored it with. We either
+        // need to erase it from the map or artificially bump the count.
+        let (index, data_ptr, _) = result;
+        let data: @T = unsafe::transmute(data_ptr);
+        if do_pop {
+            (*map).set_elt(index, none);
+        } else {
+            unsafe::bump_box_refcount(data);
+        }
+        data
+    }
+}
+
+unsafe fn local_pop<T>(task: *rust_task,
+                       key: local_data_key<T>) -> option<@T> {
+    local_get_helper(task, key, true)
+}
+
+unsafe fn local_get<T>(task: *rust_task,
+                       key: local_data_key<T>) -> option<@T> {
+    local_get_helper(task, key, false)
+}
+
+unsafe fn local_set<T>(task: *rust_task, key: local_data_key<T>, -data: @T) {
+    let map = get_task_local_map(task);
+    // Store key+data as *voids. Data is invisibly referenced once; key isn't.
+    let keyval = key_to_key_value(key);
+    let data_ptr = unsafe::transmute(data);
+    // Finaliser is called at task exit to de-reference up remaining entries.
+    let finaliser: fn@(+*libc::c_void) = unsafe::reinterpret_cast(key);
+    // Construct new entry to store in the map.
+    let new_entry = some((keyval, data_ptr, finaliser));
+    // Find a place to put it.
+    alt local_data_lookup(map, key) {
+        some((index, old_data_ptr, old_finaliser)) {
+            // Key already had a value set, old_data_ptr, whose reference we
+            // need to drop. After that, overwriting its slot will be safe.
+            // (The heap-allocated finaliser will be freed in the overwrite.)
+            // FIXME(2734): just transmuting old_data_ptr to @T doesn't work,
+            // similarly to the sample there (but more our/unsafety's fault?).
+            old_finaliser(old_data_ptr);
+            (*map).set_elt(index, new_entry);
+        }
+        none {
+            // Find an empty slot. If not, grow the vector.
+            alt (*map).position({|x| x == none}) {
+                some(empty_index) {
+                    (*map).set_elt(empty_index, new_entry);
+                }
+                none {
+                    (*map).push(new_entry);
+                }
+            }
+        }
+    }
+}
+
+unsafe fn local_modify<T>(task: *rust_task, key: local_data_key<T>,
+                          modify_fn: fn(option<@T>) -> option<@T>) {
+    // Could be more efficient by doing the lookup work, but this is easy.
+    let newdata = modify_fn(local_pop(task, key));
+    if newdata.is_some() {
+        local_set(task, key, option::unwrap(newdata));
+    }
+}
+
+/* Exported interface for task-local data (plus local_data_key above). */
+#[doc = "Remove a task-local data value from the table, returning the
+reference that was originally created to insert it."]
+unsafe fn local_data_pop<T>(key: local_data_key<T>) -> option<@T> {
+    local_pop(rustrt::rust_get_task(), key)
+}
+#[doc = "Retrieve a task-local data value. It will also be kept alive in the
+table until explicitly removed."]
+unsafe fn local_data_get<T>(key: local_data_key<T>) -> option<@T> {
+    local_get(rustrt::rust_get_task(), key)
+}
+#[doc = "Store a value in task-local data. If this key already has a value,
+that value is overwritten (and its destructor is run)."]
+unsafe fn local_data_set<T>(key: local_data_key<T>, -data: @T) {
+    local_set(rustrt::rust_get_task(), key, data)
+}
+#[doc = "Modify a task-local data value. If the function returns 'none', the
+data is removed (and its reference dropped)."]
+unsafe fn local_data_modify<T>(key: local_data_key<T>,
+                               modify_fn: fn(option<@T>) -> option<@T>) {
+    local_modify(rustrt::rust_get_task(), key, modify_fn)
+}
+
 native mod rustrt {
     #[rust_stack]
     fn rust_task_yield(task: *rust_task, &killed: bool);
@@ -596,6 +784,13 @@ native mod rustrt {
     fn rust_osmain_sched_id() -> sched_id;
     fn rust_task_inhibit_kill();
     fn rust_task_allow_kill();
+
+    #[rust_stack]
+    fn rust_get_task_local_data(task: *rust_task) -> *libc::c_void;
+    #[rust_stack]
+    fn rust_set_task_local_data(task: *rust_task, map: *libc::c_void);
+    #[rust_stack]
+    fn rust_task_local_data_atexit(task: *rust_task, cleanup_fn: *u8);
 }
 
 
@@ -996,4 +1191,95 @@ fn test_unkillable() {
 
     // Now we can be killed
     po.recv();
+}
+
+#[test]
+fn test_tls_multitask() unsafe {
+    fn my_key(+_x: @str) { }
+    local_data_set(my_key, @"parent data");
+    task::spawn {||
+        assert local_data_get(my_key) == none; // TLS shouldn't carry over.
+        local_data_set(my_key, @"child data");
+        assert *(local_data_get(my_key).get()) == "child data";
+        // should be cleaned up for us
+    }
+    // Must work multiple times
+    assert *(local_data_get(my_key).get()) == "parent data";
+    assert *(local_data_get(my_key).get()) == "parent data";
+    assert *(local_data_get(my_key).get()) == "parent data";
+}
+
+#[test]
+fn test_tls_overwrite() unsafe {
+    fn my_key(+_x: @str) { }
+    local_data_set(my_key, @"first data");
+    local_data_set(my_key, @"next data"); // Shouldn't leak.
+    assert *(local_data_get(my_key).get()) == "next data";
+}
+
+#[test]
+fn test_tls_pop() unsafe {
+    fn my_key(+_x: @str) { }
+    local_data_set(my_key, @"weasel");
+    assert *(local_data_pop(my_key).get()) == "weasel";
+    // Pop must remove the data from the map.
+    assert local_data_pop(my_key) == none;
+}
+
+#[test]
+fn test_tls_modify() unsafe {
+    fn my_key(+_x: @str) { }
+    local_data_modify(my_key) {|data|
+        alt data {
+            some(@val) { fail "unwelcome value: " + val }
+            none       { some(@"first data") }
+        }
+    }
+    local_data_modify(my_key) {|data|
+        alt data {
+            some(@"first data") { some(@"next data") }
+            some(@val)          { fail "wrong value: " + val }
+            none                { fail "missing value" }
+        }
+    }
+    assert *(local_data_pop(my_key).get()) == "next data";
+}
+
+#[test]
+fn test_tls_crust_automorestack_memorial_bug() unsafe {
+    // This might result in a stack-canary clobber if the runtime fails to set
+    // sp_limit to 0 when calling the cleanup crust - it might automatically
+    // jump over to the rust stack, which causes next_c_sp to get recorded as
+    // something within a rust stack segment. Then a subsequent upcall (esp.
+    // for logging, think vsnprintf) would run on a stack smaller than 1 MB.
+    fn my_key(+_x: @str) { }
+    task::spawn {||
+        unsafe { local_data_set(my_key, @"hax"); }
+    }
+}
+
+#[test]
+fn test_tls_multiple_types() unsafe {
+    fn str_key(+_x: @str) { }
+    fn box_key(+_x: @@()) { }
+    fn int_key(+_x: @int) { }
+    task::spawn{||
+        local_data_set(str_key, @"string data");
+        local_data_set(box_key, @@());
+        local_data_set(int_key, @42);
+    }
+}
+
+#[test]
+fn test_tls_overwrite_multiple_types() unsafe {
+    fn str_key(+_x: @str) { }
+    fn box_key(+_x: @@()) { }
+    fn int_key(+_x: @int) { }
+    task::spawn{||
+        local_data_set(str_key, @"string data");
+        local_data_set(int_key, @42);
+        // This could cause a segfault if overwriting-destruction is done with
+        // the crazy polymorphic transmute rather than the provided finaliser.
+        local_data_set(int_key, @31337);
+    }
 }
