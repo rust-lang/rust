@@ -7,12 +7,12 @@ CodeMirror.defineMode("rust", function() {
     "let": "let", "fn": "fn", "for": "for", "alt": "alt", "iface": "iface",
     "impl": "impl", "type": "type", "enum": "enum", "mod": "mod",
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
-    "claim": "op", "native": "ignore", "unsafe": "ignore", "import": "else-style",
+    "claim": "op", "extern": "ignore", "unsafe": "ignore", "import": "else-style",
     "export": "else-style", "copy": "op", "log": "op", "log_err": "op",
     "use": "op", "bind": "op", "self": "atom"
   };
   var typeKeywords = function() {
-    var keywords = {"fn": "fn", "block": "fn", "obj": "obj"};
+    var keywords = {"fn": "fn"};
     var atoms = "bool uint int i8 i16 i32 i64 u8 u16 u32 u64 float f32 f64 str char".split(" ");
     for (var i = 0, e = atoms.length; i < e; ++i) keywords[atoms[i]] = "atom";
     return keywords;

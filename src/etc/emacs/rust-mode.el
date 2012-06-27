@@ -52,21 +52,21 @@
 (defvar rust-punc-chars "()[].,{}:;")
 (defvar rust-value-keywords
   (let ((table (make-hash-table :test 'equal)))
-    (dolist (word '("mod" "type" "resource" "fn" "enum" "iface" "impl"))
+    (dolist (word '("mod" "const" "class" "type"
+					"trait" "fn" "enum" "iface"
+					"impl"))
       (puthash word 'def table))
     (dolist (word '("assert"
-                    "be" "break"
-                    "check" "claim" "class" "const" "cont" "copy" "crust"
+                    "break"
+                    "check" "claim" "cont" "copy"
                     "drop"
-                    "else" "export"
+                    "else" "export" "extern"
                     "fail" "for"
                     "if" "import"
                     "let" "log" "loop"
-                    "mut"
-                    "native" "new"
+                    "new"
                     "pure"
                     "ret"
-                    "trait"
                     "unchecked" "unsafe"
                     "while"))
       (puthash word t table))

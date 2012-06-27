@@ -2106,7 +2106,7 @@ OpenSSL libraries installed, it should 'just work'.
 ~~~~ {.xfail-test}
 use std;
 
-native mod crypto {
+extern mod crypto {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
 
@@ -2128,20 +2128,23 @@ fn main(args: [str]) {
 }
 ~~~~
 
-## Native modules
+## Foreign modules
 
 Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
 
 ~~~~ {.xfail-test}
-native mod crypto {
+extern mod crypto {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
 ~~~~
 
-A `native` module declaration tells the compiler that the program
-should be linked with a library by that name, and that the given list
-of functions are available in that library.
+An `extern` module declaration containing function signatures introduces
+the functions listed as _foreign functions_, that are implemented in some
+other language (usually C) and accessed through Rust's foreign function
+interface (FFI). An extern module like this is called a foreign module, and
+implicitly tells the compiler to link with a library with the same name as
+the module, and that it will find the foreign functions in that library.
 
 In this case, it'll change the name `crypto` to a shared library name
 in a platform-specific way (`libcrypto.so` on Linux, for example), and
@@ -2150,38 +2153,38 @@ actual library, you can use the `"link_name"` attribute, like:
 
 ~~~~ {.xfail-test}
 #[link_name = "crypto"]
-native mod something {
+extern mod something {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
 ~~~~
 
-## Native calling conventions
+## Foreign calling conventions
 
-Most native C code use the cdecl calling convention, so that is what
-Rust uses by default when calling native functions. Some native functions,
-most notably the Windows API, use other calling conventions, so Rust
-provides a way to hint to the compiler which is expected by using
-the `"abi"` attribute:
+Most foreign code will be C code, which usually uses the `cdecl` calling
+convention, so that is what Rust uses by default when calling foreign
+functions. Some foreign functions, most notably the Windows API, use other
+calling conventions, so Rust provides a way to hint to the compiler which
+is expected by using the `"abi"` attribute:
 
 ~~~~
 #[cfg(target_os = "win32")]
 #[abi = "stdcall"]
-native mod kernel32 {
+extern mod kernel32 {
     fn SetEnvironmentVariableA(n: *u8, v: *u8) -> int;
 }
 ~~~~
 
-The `"abi"` attribute applies to a native mod (it can not be applied
+The `"abi"` attribute applies to a foreign module (it can not be applied
 to a single function within a module), and must be either `"cdecl"`
 or `"stdcall"`. Other conventions may be defined in the future.
 
 ## Unsafe pointers
 
-The native `SHA1` function is declared to take three arguments, and
+The foreign `SHA1` function is declared to take three arguments, and
 return a pointer.
 
 ~~~~ {.xfail-test}
-# native mod crypto {
+# extern mod crypto {
 fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 # }
 ~~~~
@@ -2295,7 +2298,7 @@ use std;
 type timeval = {mut tv_sec: uint,
                 mut tv_usec: uint};
 #[nolink]
-native mod libc {
+extern mod libc {
     fn gettimeofday(tv: *timeval, tz: *()) -> i32;
 }
 fn unix_time_in_microseconds() -> u64 unsafe {
@@ -2307,8 +2310,8 @@ fn unix_time_in_microseconds() -> u64 unsafe {
 # fn main() { assert #fmt("%?", unix_time_in_microseconds()) != ""; }
 ~~~~
 
-The `#[nolink]` attribute indicates that there's no native library to link
-in. The standard C library is already linked with Rust programs.
+The `#[nolink]` attribute indicates that there's no foreign library to
+link in. The standard C library is already linked with Rust programs.
 
 A `timeval`, in C, is a struct with two 32-bit integers. Thus, we
 define a record type with the same contents, and declare

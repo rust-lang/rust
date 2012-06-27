@@ -14,21 +14,21 @@ if !exists("main_syntax")
   let main_syntax='rust'
 endif
 
-syn keyword   rustKeyword     alt as assert be bind break
-syn keyword   rustKeyword     check claim cont const copy else export fail
-syn keyword   rustKeyword     for if impl import in inline lambda let log
-syn keyword   rustKeyword     loop mod mut mutable native note of prove pure
-syn keyword   rustKeyword     ret self syntax to unchecked
+syn keyword   rustKeyword     alt as assert break
+syn keyword   rustKeyword     check claim cont const copy else export extern fail
+syn keyword   rustKeyword     for if impl import in let log
+syn keyword   rustKeyword     loop mod mut of pure
+syn keyword   rustKeyword     ret self to unchecked
 syn keyword   rustKeyword     unsafe use while with
 " FIXME: Scoped impl's name is also fallen in this category
-syn keyword   rustKeyword     mod iface resource class enum type nextgroup=rustIdentifier skipwhite
+syn keyword   rustKeyword     mod iface trait class enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
 
 syn match     rustIdentifier  "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved words
-syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128 class trait
+syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128
 
 syn keyword   rustType        any int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str

@@ -23,8 +23,10 @@ Version 0.3  (June 2012) - not yet!
     * Type reflection
 
   * Removal of various obsolete features
-    * Keywords: be, prove, syntax, note, mutable, do, bind
-    * Constructs: do-while loops, fn binding, resources
+    * Keywords: 'be', 'prove', 'syntax', 'note', 'mutable',
+                'bind', 'crust', 'native' (now 'extern')
+    * Constructs: do-while loops ('do' repurposed),
+                  fn binding, resources
 
   * Compiler reorganization
     * Syntax-layer of compiler split into separate crate
@@ -39,7 +41,7 @@ Version 0.3  (June 2012) - not yet!
     * Extensive work on libuv interface
     * Much vector code moved to libraries
     * Syntax extensions: #line, #col, #file, #mod,
-      #stringify, #include, #include_str, #include_bin.
+      #stringify, #include, #include_str, #include_bin
 
   * Tool improvements
     * Cargo automatically resolves dependencies

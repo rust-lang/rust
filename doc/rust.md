@@ -210,17 +210,16 @@ The keywords in [source files](#source-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
 alt assert
-be break
-check claim class const cont copy crust
+break
+check claim class const cont copy
 drop
-else enum export
+else enum export extern
 fail false fn for
 if iface impl import
 let log loop
 mod mut
-native new
 pure
-resource ret
+ret
 true trait type
 unchecked unsafe
 while
@@ -575,7 +574,7 @@ of [attributes](#attributes) attached to it.
 
 ~~~~~~~~ {.ebnf .gram}
 item : mod_item | fn_item | type_item | enum_item
-     | res_item | iface_item | impl_item | native_mod_item ;
+     | res_item | iface_item | impl_item | foreign_mod_item ;
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in crate
@@ -1039,29 +1038,29 @@ Similarly, [interface](#interfaces) bounds can be specified for type
 parameters to allow methods of that interface to be called on values
 of that type.
 
-#### Crust functions
+#### Extern functions
 
-Crust functions are part of Rust's foreign function interface,
-providing the opposite functionality to [native modules](#native-modules).
-Whereas native modules allow Rust code to call foreign
-code, crust functions allow foreign code to call Rust code. They are
-defined the same as any other Rust function, except that they are
-prepended with the `crust` keyword.
+Extern functions are part of Rust's foreign function interface, providing
+the opposite functionality to [foreign modules](#foreign-modules). Whereas
+foreign modules allow Rust code to call foreign code, extern functions with
+bodies defined in Rust code _can be called by foreign code_. They are defined the
+same as any other Rust function, except that they are prepended with the
+`extern` keyword.
 
 ~~~
-crust fn new_vec() -> [int] { [] }
+extern fn new_vec() -> [int] { [] }
 ~~~
 
-Crust functions may not be called from Rust code, but their value
+Extern functions may not be called from Rust code, but their value
 may be taken as an unsafe `u8` pointer.
 
 ~~~
-# crust fn new_vec() -> [int] { [] }
+# extern fn new_vec() -> [int] { [] }
 let fptr: *u8 = new_vec;
 ~~~
 
-The primary motivation of crust functions is to create callbacks
-for native functions that expect to receive function pointers.
+The primary motivation of extern functions is to create callbacks
+for foreign functions that expect to receive function pointers.
 
 ### Type definitions
 
@@ -1298,49 +1297,51 @@ impl of seq<bool> for u32 {
 }
 ~~~~
 
-### Native modules
+### Foreign modules
 
 ~~~ {.ebnf .gram}
-native_mod_item : "native mod" ident '{' native_mod '} ;
-native_mod : [ native_fn ] * ;
+foreign_mod_item : "extern mod" ident '{' foreign_mod '} ;
+foreign_mod : [ foreign_fn ] * ;
 ~~~
 
-Native modules form the basis for Rust's foreign function interface. A native
-module describes functions in external, non-Rust libraries. Functions within
-native modules are declared the same as other Rust functions, with the exception
-that they may not have a body and are instead terminated by a semi-colon.
+Foreign modules form the basis for Rust's foreign function interface. A
+foreign module describes functions in external, non-Rust
+libraries. Functions within foreign modules are declared the same as other
+Rust functions, with the exception that they may not have a body and are
+instead terminated by a semi-colon.
 
 ~~~
 # import libc::{c_char, FILE};
 # #[nolink]
 
-native mod c {
+extern mod c {
     fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
 }
 ~~~
 
-Functions within native modules may be called by Rust code as it would any
+Functions within foreign modules may be called by Rust code as it would any
 normal function and the Rust compiler will automatically translate between
-the Rust ABI and the native ABI.
+the Rust ABI and the foreign ABI.
 
-The name of the native module has special meaning to the Rust compiler in
+The name of the foreign module has special meaning to the Rust compiler in
 that it will treat the module name as the name of a library to link to,
 performing the linking as appropriate for the target platform. The name
-given for the native module will be transformed in a platform-specific
-way to determine the name of the library. For example, on Linux the name
-of the native module is prefixed with 'lib' and suffixed with '.so', so
-the native mod 'rustrt' would be linked to a library named 'librustrt.so'.
+given for the foreign module will be transformed in a platform-specific way
+to determine the name of the library. For example, on Linux the name of the
+foreign module is prefixed with 'lib' and suffixed with '.so', so the
+foreign mod 'rustrt' would be linked to a library named 'librustrt.so'.
 
-A number of [attributes](#attributes) control the behavior of native mods.
+A number of [attributes](#attributes) control the behavior of foreign
+modules.
 
-By default native mods assume that the library they are calling use
-the standard C "cdecl" ABI. Other ABI's may be specified using the `abi`
+By default foreign modules assume that the library they are calling use the
+standard C "cdecl" ABI. Other ABI's may be specified using the `abi`
 attribute as in
 
 ~~~{.xfail-test}
 // Interface to the Windows API
 #[abi = "stdcall"]
-native mod kernel32 { }
+extern mod kernel32 { }
 ~~~
 
 The `link_name` attribute allows the default library naming behavior to
@@ -1348,13 +1349,13 @@ be overriden by explicitly specifying the name of the library.
 
 ~~~{.xfail-test}
 #[link_name = "crypto"]
-native mod mycrypto { }
+extern mod mycrypto { }
 ~~~
 
 The `nolink` attribute tells the Rust compiler not to perform any linking
-for the native module. This is particularly useful for creating native
-mods for libc, which tends to not follow standard library naming conventions
-and is linked to all Rust programs anyway.
+for the foreign module. This is particularly useful for creating foreign
+modules for libc, which tends to not follow standard library naming
+conventions and is linked to all Rust programs anyway.
 
 ## Attributes
 
@@ -1752,8 +1753,8 @@ A type cast expression is denoted with the binary operator `as`.
 Executing an `as` expression casts the value on the left-hand side to the type
 on the right-hand side.
 
-A numeric value can be cast to any numeric type.  A native pointer value can
-be cast to or from any integral type or native pointer type.  Any other cast
+A numeric value can be cast to any numeric type.  An unsafe pointer value can
+be cast to or from any integral type or unsafe pointer type.  Any other cast
 is unsupported and will fail to compile.
 
 An example of an `as` expression:

@@ -10,7 +10,7 @@
    * Managing the dynamically resizing list of Rust stack segments
 
    * Switching between running Rust code on the Rust segmented stack and
-   native C code on large stacks owned by the scheduler
+   foreign C code on large stacks owned by the scheduler
 
    The lifetime of a rust_task object closely mirrors that of a running Rust
    task object, but they are not identical. In particular, the rust_task is an

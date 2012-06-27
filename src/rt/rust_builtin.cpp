@@ -1,4 +1,4 @@
-/* Native builtins. */
+/* Foreign builtins. */
 
 #include "rust_sched_loop.h"
 #include "rust_task.h"
