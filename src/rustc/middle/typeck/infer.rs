@@ -664,10 +664,10 @@ impl unify_methods for infer_ctxt {
         vb: vals_and_bindings<V, T>, vid: V)
         -> node<V, T> {
 
-        alt vb.vals.find(vid.to_uint()) {
+        let vid_u = vid.to_uint();
+        alt vb.vals.find(vid_u) {
           none {
-            #error["failed lookup in infcx.get()"];
-            fail;
+            self.tcx.sess.bug(#fmt["failed lookup of vid `%u`", vid_u]);
           }
           some(var_val) {
             alt var_val {
