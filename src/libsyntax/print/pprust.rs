@@ -1539,8 +1539,8 @@ fn print_remaining_comments(s: ps) {
 fn print_literal(s: ps, &&lit: @ast::lit) {
     maybe_print_comment(s, lit.span.lo);
     alt next_lit(s, lit.span.lo) {
-      some(lt) {
-        word(s.s, lt.lit);
+      some(ltrl) {
+        word(s.s, ltrl.lit);
         ret;
       }
       _ {}
@@ -1589,10 +1589,10 @@ fn next_lit(s: ps, pos: uint) -> option<comments::lit> {
     alt s.literals {
       some(lits) {
         while s.cur_lit < vec::len(lits) {
-            let lt = lits[s.cur_lit];
-            if lt.pos > pos { ret none; }
+            let ltrl = lits[s.cur_lit];
+            if ltrl.pos > pos { ret none; }
             s.cur_lit += 1u;
-            if lt.pos == pos { ret some(lt); }
+            if ltrl.pos == pos { ret some(ltrl); }
         }
         ret none;
       }
