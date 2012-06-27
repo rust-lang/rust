@@ -265,8 +265,8 @@ mod test {
 
     fn macros() {
         #macro[
-            [#send[chan, data, ...],
-             chan.send()(chan, data, ...)]
+            [#send[chan, data],
+             chan.send()(chan, data)]
         ];
         #macro[
             [#recv[chan],
