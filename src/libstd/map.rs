@@ -45,6 +45,9 @@ iface map<K, V: copy> {
     "]
     fn get(K) -> V;
 
+    #[doc = "Like get, but as an operator."]
+    fn [](K) -> V;
+
     #[doc = "
     Get the value for the specified key. If the key does not exist in
     the map then returns none.
@@ -229,6 +232,10 @@ mod chained {
         }
 
         fn get(k: K) -> V {
+            option::get(self.find(k))
+        }
+
+        fn [](k: K) -> V {
             option::get(self.find(k))
         }
 

@@ -79,6 +79,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         contains_key(self, key)
     }
     fn get(&&key: uint) -> V { get(self, key) }
+    fn [](&&key: uint) -> V { get(self, key) }
     fn find(&&key: uint) -> option<V> { find(self, key) }
     fn rehash() { fail }
     fn each(it: fn(&&uint, V) -> bool) {
