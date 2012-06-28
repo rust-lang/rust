@@ -615,13 +615,6 @@ struct reset_args {
 
 void
 reset_stack_limit_on_c_stack(reset_args *args) {
-    rust_task *task = args->task;
-    uintptr_t sp = args->sp;
-    while (!sp_in_stk_seg(sp, task->stk)) {
-        task->stk = task->stk->prev;
-        assert(task->stk != NULL && "Failed to find the current stack");
-    }
-    task->record_stack_limit();
 }
 
 /*
@@ -632,12 +625,11 @@ when unwinding through __morestack).
 void
 rust_task::reset_stack_limit() {
     uintptr_t sp = get_sp();
-    // Have to do the rest on the C stack because it involves
-    // freeing stack segments, logging, etc.
-    // FIXME (#2679): This probably doesn't need to happen on the C
-    // stack now
-    reset_args ra = {this, sp};
-    call_on_c_stack(&ra, (void*)reset_stack_limit_on_c_stack);
+    while (!sp_in_stk_seg(sp, stk)) {
+        stk = stk->prev;
+        assert(stk != NULL && "Failed to find the current stack");
+    }
+    record_stack_limit();
 }
 
 void

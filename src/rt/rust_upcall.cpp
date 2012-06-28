@@ -36,8 +36,6 @@ call_upcall_on_c_stack(rust_task *task, void *args, void *fn_ptr) {
     task->call_on_c_stack(args, fn_ptr);
 }
 
-extern "C" void record_sp_limit(void *limit);
-
 /**********************************************************************
  * Switches to the C-stack and invokes |fn_ptr|, passing |args| as argument.
  * This is used by the C compiler to call foreign functions and by other
