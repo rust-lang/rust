@@ -51,8 +51,6 @@ MORESTACK:
 
         subq $184, %rsp
 
-	// FIXME: libgcc also saves rax. not sure if we need to (#2685)
-
 	// Save argument registers of the original function
 	movq %rdi,       (%rsp)
 	movq %rsi,      8(%rsp)
