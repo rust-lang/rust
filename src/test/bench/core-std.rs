@@ -11,9 +11,7 @@ import io::{reader, reader_util};
 fn main(argv: [str]/~) {
     #macro[
         [#bench[id],
-         if tests.len() == 0 || vec::contains(tests, #stringify(id)) {
-             run_test(#stringify(id), id);
-         }
+         maybe_run_test(argv, #stringify(id), id)
         ]
     ];
 
@@ -27,7 +25,16 @@ fn main(argv: [str]/~) {
     #bench[vec_push_all];
 }
 
-fn run_test(name: str, test: fn()) {
+fn maybe_run_test(argv: [str]/&, name: str, test: fn()) {
+    let mut run_test = false;
+
+    if os::getenv("RUST_BENCH").is_some() { run_test = true }
+    else if argv.len() > 0 {
+        run_test = argv.contains("all") || argv.contains(name)
+    }
+
+    if !run_test { ret }
+
     let start = precise_time_s();
     test();
     let stop = precise_time_s();
