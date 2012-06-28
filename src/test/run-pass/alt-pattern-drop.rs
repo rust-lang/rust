@@ -28,5 +28,7 @@ fn main() {
     foo(s); // ref up then down
 
     log(debug, sys::refcount(s));
-    assert (sys::refcount(s) == count);
+    let count2 = sys::refcount(s);
+    let _ = sys::refcount(s); // don't get bitten by last-use.
+    assert count == count2;
 }
