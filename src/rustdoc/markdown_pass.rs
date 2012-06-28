@@ -381,10 +381,10 @@ fn write_index(ctxt: ctxt, index: doc::index) {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
         if option::is_some(entry.brief) {
-            ctxt.w.write_line(#fmt("* [%s]/~(%s) - %s",
+            ctxt.w.write_line(#fmt("* [%s](%s) - %s",
                                    header, id, option::get(entry.brief)));
         } else {
-            ctxt.w.write_line(#fmt("* [%s]/~(%s)", header, id));
+            ctxt.w.write_line(#fmt("* [%s](%s)", header, id));
         }
     }
     ctxt.w.write_line("");
@@ -395,8 +395,8 @@ fn should_write_index() {
     let markdown = test::render("mod a { } mod b { }");
     assert str::contains(
         markdown,
-        "\n\n* [Module `a`]/~(#module-a)\n\
-         * [Module `b`]/~(#module-b)\n\n"
+        "\n\n* [Module `a`](#module-a)\n\
+         * [Module `b`](#module-b)\n\n"
     );
 }
 
@@ -417,7 +417,7 @@ fn should_write_index_for_foreign_mods() {
     let markdown = test::render("native mod a { fn a(); }");
     assert str::contains(
         markdown,
-        "\n\n* [Function `a`]/~(#function-a)\n\n"
+        "\n\n* [Function `a`](#function-a)\n\n"
     );
 }
 
