@@ -14,7 +14,8 @@ if !exists("main_syntax")
   let main_syntax='rust'
 endif
 
-syn keyword   rustKeyword     alt as assert break
+syn keyword   rustAssert      assert
+syn keyword   rustKeyword     alt as break
 syn keyword   rustKeyword     check claim cont const copy else export extern fail
 syn keyword   rustKeyword     for if impl import in let log
 syn keyword   rustKeyword     loop mod mut of pure
@@ -38,6 +39,8 @@ syn keyword   rustBoolean     true false
 syn match     rustItemPath    "\(\w\|::\)\+"
 
 syn region	  rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+
+
+syn region    rustAttribute   start="#\[" end="\]" contains=rustString
 
 " Number literals
 syn match     rustNumber      display "\<[0-9][0-9_]*\>"
@@ -69,11 +72,13 @@ syn keyword   rustTodo        TODO FIXME XXX NB
 hi def link rustHexNumber     rustNumber
 hi def link rustBinNumber     rustNumber
 
+" Recommend changing rustAssert to something else - I use ctermfg=yellow.
 hi def link rustString        String
 hi def link rustCharacter     Character
 hi def link rustNumber        Number
 hi def link rustBoolean       Boolean
 hi def link rustFloat         Float
+hi def link rustAssert        Keyword
 hi def link rustKeyword       Keyword
 hi def link rustIdentifier    Identifier
 hi def link rustFuncName      Function
@@ -81,6 +86,7 @@ hi def link rustComment       Comment
 hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
+hi def link rustAttribute     PreProc
 
 syn sync minlines=200
 syn sync maxlines=500
