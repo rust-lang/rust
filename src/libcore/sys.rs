@@ -20,7 +20,6 @@ type rust_cond_lock = *libc::c_void;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    pure fn refcount(t: *()) -> libc::intptr_t;
     fn unsupervise();
     pure fn shape_log_str(t: *sys::type_desc, data: *()) -> str;
 
@@ -71,10 +70,11 @@ pure fn pref_align_of<T>() -> uint {
     unchecked { rusti::pref_align_of::<T>() }
 }
 
-#[doc = "Returns the refcount of a shared box"]
-pure fn refcount<T>(t: @T) -> uint {
+#[doc = "Returns the refcount of a shared box (as just before calling this)"]
+pure fn refcount<T>(+t: @T) -> uint {
     unsafe {
-        ret rustrt::refcount(unsafe::reinterpret_cast(t)) as uint;
+        let ref_ptr: *uint = unsafe::reinterpret_cast(t);
+        *ref_ptr - 1
     }
 }
 

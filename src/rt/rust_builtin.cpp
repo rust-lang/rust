@@ -127,13 +127,6 @@ rust_env_pairs() {
 }
 #endif
 
-extern "C" CDECL intptr_t
-refcount(intptr_t *v) {
-    // Passed-in value has refcount 1 too high
-    // because it was ref'ed while making the call.
-    return (*v) - 1;
-}
-
 extern "C" CDECL void
 unsupervise() {
     rust_task *task = rust_get_current_task();

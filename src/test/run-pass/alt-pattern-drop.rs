@@ -1,14 +1,12 @@
 
 
 // -*- rust -*-
-use std;
-
-import std::dbg;
+import core::sys;
 
 enum t { make_t(@int), clam, }
 
 fn foo(s: @int) {
-    let count = dbg::refcount(s);
+    let count = sys::refcount(s);
     let x: t = make_t(s); // ref up
 
     alt x {
@@ -18,17 +16,17 @@ fn foo(s: @int) {
       }
       _ { #debug("?"); fail; }
     }
-    log(debug, dbg::refcount(s));
-    assert (dbg::refcount(s) == count + 1u);
+    log(debug, sys::refcount(s));
+    assert (sys::refcount(s) == count + 1u);
 }
 
 fn main() {
     let s: @int = @0; // ref up
 
-    let count = dbg::refcount(s);
+    let count = sys::refcount(s);
 
     foo(s); // ref up then down
 
-    log(debug, dbg::refcount(s));
-    assert (dbg::refcount(s) == count);
+    log(debug, sys::refcount(s));
+    assert (sys::refcount(s) == count);
 }

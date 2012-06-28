@@ -8,7 +8,6 @@ export debug_box;
 export debug_tag;
 export debug_fn;
 export ptr_cast;
-export refcount;
 export breakpoint;
 
 #[abi = "cdecl"]
@@ -46,11 +45,6 @@ unsafe fn ptr_cast<T, U>(x: @T) -> @U {
     reinterpret_cast(
         rustrt::debug_ptrcast(sys::get_type_desc::<T>(),
                               reinterpret_cast(x)))
-}
-
-fn refcount<T>(a: @T) -> uint unsafe {
-    let p: *uint = unsafe::reinterpret_cast(a);
-    ret *p;
 }
 
 #[doc = "Triggers a debugger breakpoint"]
