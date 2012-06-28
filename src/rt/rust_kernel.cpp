@@ -121,7 +121,9 @@ rust_kernel::get_scheduler_by_id(rust_sched_id id) {
 
 rust_scheduler *
 rust_kernel::get_scheduler_by_id_nolock(rust_sched_id id) {
-    assert(id != 0 && "invalid scheduler id");
+    if (id == 0) {
+        return NULL;
+    }
     sched_lock.must_have_lock();
     sched_map::iterator iter = sched_table.find(id);
     if (iter != sched_table.end()) {

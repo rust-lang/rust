@@ -630,7 +630,8 @@ extern "C" CDECL rust_task*
 rust_new_task_in_sched(rust_sched_id id) {
     rust_task *task = rust_get_current_task();
     rust_scheduler *sched = task->kernel->get_scheduler_by_id(id);
-    // FIXME (#2668): What if we didn't get the scheduler?
+    if (sched == NULL)
+        return NULL;
     return new_task_common(sched, task);
 }
 

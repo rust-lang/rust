@@ -538,6 +538,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             new_task_in_new_sched(sched_opts)
           }
         };
+        assert !new_task.is_null();
 
         option::iter(opts.notify_chan) {|c|
             // FIXME (#1087): Would like to do notification in Rust

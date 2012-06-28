@@ -95,6 +95,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     // Create the main scheduler and the main task
     rust_sched_id sched_id = kernel->create_scheduler(env->num_sched_threads);
     rust_scheduler *sched = kernel->get_scheduler_by_id(sched_id);
+    assert(sched != NULL);
     rust_task *root_task = sched->create_task(NULL, "main");
 
     // Build the command line arguments to pass to the root task
