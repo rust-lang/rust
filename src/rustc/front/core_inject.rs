@@ -41,7 +41,7 @@ fn inject_libcore_ref(sess: session,
                 vis: ast::public,
                 span: dummy_sp()};
 
-    let vis = [vi1, vi2]/~ + crate.node.module.view_items;
+    let vis = vec::append([vi1, vi2]/~, crate.node.module.view_items);
 
     ret @{node: {module: { view_items: vis with crate.node.module }
                  with crate.node} with *crate }

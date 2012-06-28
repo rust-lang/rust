@@ -39,16 +39,19 @@ fn mk_filesearch(maybe_sysroot: option<path>,
     impl of filesearch for filesearch_impl {
         fn sysroot() -> path { self.sysroot }
         fn lib_search_paths() -> [path]/~ {
-            self.addl_lib_search_paths
-                + [make_target_lib_path(self.sysroot, self.target_triple)]/~
-                + alt get_cargo_lib_path_nearest() {
-                  result::ok(p) { [p]/~ }
-                  result::err(p) { []/~ }
-                }
-                + alt get_cargo_lib_path() {
-                  result::ok(p) { [p]/~ }
-                  result::err(p) { []/~ }
-                }
+            let mut paths = self.addl_lib_search_paths;
+
+            vec::push(paths,
+                      make_target_lib_path(self.sysroot, self.target_triple));
+            alt get_cargo_lib_path_nearest() {
+              result::ok(p) { vec::push(paths, p) }
+              result::err(p) { }
+            }
+            alt get_cargo_lib_path() {
+              result::ok(p) { vec::push(paths, p) }
+              result::err(p) { }
+            }
+            paths
         }
         fn get_target_lib_path() -> path {
             make_target_lib_path(self.sysroot, self.target_triple)
@@ -91,7 +94,8 @@ fn relative_target_lib_path(target_triple: str) -> [path]/~ {
 
 fn make_target_lib_path(sysroot: path,
                         target_triple: str) -> path {
-    let path = [sysroot]/~ + relative_target_lib_path(target_triple);
+    let path = vec::append([sysroot]/~,
+                           relative_target_lib_path(target_triple));
     let path = path::connect_many(path);
     ret path;
 }

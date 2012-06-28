@@ -101,7 +101,7 @@ fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
     } else {
         []/~
     };
-    cache.insert(mdtag, existing + [val]/~);
+    cache.insert(mdtag, vec::append_one(existing, val));
 }
 
 type metadata<T> = {node: ValueRef, data: T};

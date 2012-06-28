@@ -131,8 +131,8 @@ fn run_compiler(args: [str]/~, demitter: diagnostic::emitter) {
         ret;
     }
 
-    let lint_flags = (getopts::opt_strs(match, "W")
-                      + getopts::opt_strs(match, "warn"));
+    let lint_flags = vec::append(getopts::opt_strs(match, "W"),
+                                 getopts::opt_strs(match, "warn"));
     if lint_flags.contains("help") {
         describe_warnings();
         ret;

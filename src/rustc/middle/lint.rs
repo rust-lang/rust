@@ -358,7 +358,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
                        decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs) {|a| a.ty };
-        for vec::each(tys + [decl.output]/~) {|ty|
+        for vec::each(vec::append_one(tys, decl.output)) {|ty|
             alt ty.node {
               ast::ty_path(_, id) {
                 alt cx.def_map.get(id) {

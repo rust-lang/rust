@@ -490,7 +490,9 @@ fn mangle(ss: path) -> str {
 }
 
 fn exported_name(path: path, hash: @str, vers: @str) -> str {
-    ret mangle(path + [path_name(hash)]/~ + [path_name(vers)]/~);
+    ret mangle(
+        vec::append_one(vec::append_one(path, path_name(hash)),
+                        path_name(vers)));
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
@@ -508,7 +510,7 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
                                         flav: @str) -> str {
-    ret mangle(path + [path_name(@ccx.names(*flav))]/~);
+    ret mangle(vec::append_one(path, path_name(@ccx.names(*flav))));
 }
 
 fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
@@ -577,8 +579,10 @@ fn link_binary(sess: session,
     // The invocations of cc share some flags across platforms
 
     let mut cc_args =
-        [stage]/~ + sess.targ_cfg.target_strs.cc_args +
-        ["-o", output, obj_filename]/~;
+        vec::append([stage]/~, sess.targ_cfg.target_strs.cc_args);
+    vec::push(cc_args, "-o");
+    vec::push(cc_args, output);
+    vec::push(cc_args, obj_filename);
 
     let mut lib_cmd;
     let os = sess.targ_cfg.os;

@@ -24,7 +24,7 @@ fn collect_ids_stmt(s: @stmt, rs: @mut [node_id]/~) {
 }
 
 fn collect_ids_local(tcx: ty::ctxt, l: @local, rs: @mut [node_id]/~) {
-    *rs += pat_binding_ids(tcx.def_map, l.node.pat);
+    vec::push_all(*rs, pat_binding_ids(tcx.def_map, l.node.pat));
 }
 
 fn node_ids_in_fn(tcx: ty::ctxt, body: blk, rs: @mut [node_id]/~) {

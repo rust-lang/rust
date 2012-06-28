@@ -29,7 +29,7 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str]/~ {
     let libs = cstore::get_used_crate_files(sess.cstore);
     // We don't currently rpath native libraries, but we know
     // where rustrt is and we know every rust program needs it
-    let libs = libs + [get_sysroot_absolute_rt_lib(sess)]/~;
+    let libs = vec::append_one(libs, get_sysroot_absolute_rt_lib(sess));
 
     let target_triple = sess.opts.target_triple;
     let rpaths = get_rpaths(os, cwd, sysroot, output, libs, target_triple);
@@ -37,10 +37,10 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str]/~ {
 }
 
 fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::path {
-    let path = [sess.filesearch.sysroot()]/~
-        + filesearch::relative_target_lib_path(
-            sess.opts.target_triple)
-        + [os::dll_filename("rustrt")]/~;
+    let mut path = vec::append([sess.filesearch.sysroot()]/~,
+                           filesearch::relative_target_lib_path(
+                               sess.opts.target_triple));
+    vec::push(path, os::dll_filename("rustrt"));
     path::connect_many(path)
 }
 
@@ -83,7 +83,9 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
     log_rpaths("absolute", abs_rpaths);
     log_rpaths("fallback", fallback_rpaths);
 
-    let rpaths = rel_rpaths + abs_rpaths + fallback_rpaths;
+    let mut rpaths = rel_rpaths;
+    vec::push_all(rpaths, abs_rpaths);
+    vec::push_all(rpaths, fallback_rpaths);
 
     // Remove duplicates
     let rpaths = minimize_rpaths(rpaths);
@@ -142,7 +144,7 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     let mut path = []/~;
     for uint::range(start_idx, len1 - 1u) {|_i| vec::push(path, ".."); };
 
-    path += vec::slice(split2, start_idx, len2 - 1u);
+    vec::push_all(path, vec::view(split2, start_idx, len2 - 1u));
 
     if check vec::is_not_empty(path) {
         ret path::connect_many(path);
@@ -174,8 +176,9 @@ fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
         fail "rustc compiled without CFG_PREFIX environment variable";
     }
 
-    let path = [install_prefix]/~
-        + filesearch::relative_target_lib_path(target_triple);
+    let path = vec::append(
+        [install_prefix]/~,
+        filesearch::relative_target_lib_path(target_triple));
     get_absolute(cwd, path::connect_many(path))
 }
 
@@ -184,7 +187,7 @@ fn minimize_rpaths(rpaths: [str]/~) -> [str]/~ {
     let mut minimized = []/~;
     for rpaths.each {|rpath|
         if !set.contains_key(rpath) {
-            minimized += [rpath]/~;
+            vec::push(minimized, rpath);
             set.insert(rpath, ());
         }
     }

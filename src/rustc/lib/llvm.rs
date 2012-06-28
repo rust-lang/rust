@@ -991,7 +991,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef]/~, ty: TypeRef) ->
       _ {}
     }
 
-    let outer = outer0 + [ty]/~;
+    let outer = vec::append_one(outer0, ty);
 
     let kind = llvm::LLVMGetTypeKind(ty);
 

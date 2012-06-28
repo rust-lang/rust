@@ -47,7 +47,7 @@ fn check_arms(tcx: ty::ctxt, arms: [arm]/~) {
               }
               _ {}
             }
-            if option::is_none(arm.guard) { seen += [v]/~; }
+            if option::is_none(arm.guard) { vec::push(seen, v); }
         }
     }
 }
@@ -220,7 +220,7 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
         let mut found = []/~;
         for m.each {|r|
             option::iter(pat_ctor_id(tcx, r[0])) {|id|
-                if !vec::contains(found, id) { found += [id]/~; }
+                if !vec::contains(found, id) { vec::push(found, id); }
             }
         }
         let variants = ty::enum_variants(tcx, eid);
@@ -274,14 +274,15 @@ fn specialize(tcx: ty::ctxt, r: [@pat]/~, ctor_id: ctor, arity: uint,
               left_ty: ty::t) -> option<[@pat]/~> {
     let r0 = raw_pat(r[0]);
     alt r0.node {
-      pat_wild { some(vec::from_elem(arity, wild()) + vec::tail(r)) }
+      pat_wild { some(vec::append(vec::from_elem(arity, wild()),
+                                  vec::tail(r))) }
       pat_ident(_, _) {
         alt tcx.def_map.find(r0.id) {
           some(def_variant(_, id)) {
             if variant(id) == ctor_id { some(vec::tail(r)) }
             else { none }
           }
-          _ { some(vec::from_elem(arity, wild()) + vec::tail(r)) }
+          _ { some(vec::append(vec::from_elem(arity, wild()), vec::tail(r))) }
         }
       }
       pat_enum(_, args) {
@@ -291,7 +292,7 @@ fn specialize(tcx: ty::ctxt, r: [@pat]/~, ctor_id: ctor, arity: uint,
               some(args) { args }
               none { vec::from_elem(arity, wild()) }
             };
-            some(args + vec::tail(r))
+            some(vec::append(args, vec::tail(r)))
           }
           def_variant(_, _) { none }
         }
@@ -305,10 +306,10 @@ fn specialize(tcx: ty::ctxt, r: [@pat]/~, ctor_id: ctor, arity: uint,
               some(f) { f.pat } _ { wild() }
             }
         });
-        some(args + vec::tail(r))
+        some(vec::append(args, vec::tail(r)))
       }
-      pat_tup(args) { some(args + vec::tail(r)) }
-      pat_box(a) | pat_uniq(a) { some([a]/~ + vec::tail(r)) }
+      pat_tup(args) { some(vec::append(args, vec::tail(r))) }
+      pat_box(a) | pat_uniq(a) { some(vec::append([a]/~, vec::tail(r))) }
       pat_lit(expr) {
         let e_v = eval_const_expr(tcx, expr);
         let match = alt check ctor_id {

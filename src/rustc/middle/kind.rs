@@ -274,7 +274,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                     let ifce_bounds =
                         ty::lookup_item_type(cx.tcx, ifce_id).bounds;
                     let mth = ty::iface_methods(cx.tcx, ifce_id)[n_mth];
-                    @(*ifce_bounds + *mth.tps)
+                    @(vec::append(*ifce_bounds, *mth.tps))
                   }
                 }
               }

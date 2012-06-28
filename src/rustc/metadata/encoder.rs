@@ -119,9 +119,11 @@ fn encode_enum_variant_paths(ebml_w: ebml::writer, variants: [variant]/~,
     }
 }
 
-fn add_to_index(ebml_w: ebml::writer, path: [ident]/~, &index: [entry<str>]/~,
+fn add_to_index(ebml_w: ebml::writer, path: [ident]/&, &index: [entry<str>]/~,
                 name: ident) {
-    let full_path = path + [name]/~;
+    let mut full_path = []/~;
+    vec::push_all(full_path, path);
+    vec::push(full_path, name);
     vec::push(index, {val: ast_util::path_name_i(full_path),
                       pos: ebml_w.writer.tell()});
 }
@@ -171,15 +173,16 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             ebml_w.wr_tag(tag_paths_data_mod) {||
                encode_name_and_def_id(ebml_w, it.ident, it.id);
                encode_module_item_paths(ebml_w, ecx, _mod,
-                                        path + [it.ident]/~,
+                                        vec::append_one(path, it.ident),
                                         index);
             }
           }
           item_foreign_mod(nmod) {
             ebml_w.wr_tag(tag_paths_data_mod) {||
               encode_name_and_def_id(ebml_w, it.ident, it.id);
-              encode_foreign_module_item_paths(ebml_w, nmod,
-                   path + [it.ident]/~, index);
+              encode_foreign_module_item_paths(
+                  ebml_w, nmod,
+                  vec::append_one(path, it.ident), index);
             }
           }
           item_ty(_, tps, _) {
@@ -197,7 +200,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 add_to_index(ebml_w, path, index, it.ident);
                 encode_named_def_id(ebml_w, it.ident,
                                     local_def(ctor.node.id));
-                encode_class_item_paths(ebml_w, items, path + [it.ident]/~,
+                encode_class_item_paths(ebml_w, items,
+                                        vec::append_one(path, it.ident),
                                         index);
             }
           }
@@ -451,11 +455,12 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
                 vec::push(*global_index,
                           {val: m.id, pos: ebml_w.writer.tell()});
-                let impl_path = path + [ast_map::path_name(m.ident)]/~;
+                let impl_path = vec::append_one(path,
+                                                ast_map::path_name(m.ident));
                 #debug("encode_info_for_class: doing %s %d", *m.ident, m.id);
                 encode_info_for_method(ecx, ebml_w, impl_path,
                                        should_inline(m.attrs), id, m,
-                                       class_tps + m.tps);
+                                       vec::append(class_tps, m.tps));
             }
             _ { /* don't encode private methods */ }
           }
@@ -709,11 +714,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
 
-        let impl_path = path + [ast_map::path_name(item.ident)]/~;
+        let impl_path = vec::append_one(path,
+                                        ast_map::path_name(item.ident));
         for methods.each {|m|
             vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx, ebml_w, impl_path,
-                   should_inline(m.attrs), item.id, m, tps + m.tps);
+                                   should_inline(m.attrs), item.id, m,
+                                   vec::append(tps, m.tps));
         }
       }
       item_iface(tps, rp, ms) {
@@ -786,8 +793,8 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                    item_class(tps, _, _, ctor, m_dtor, _) {
                    #debug("encoding info for ctor %s %d", *i.ident,
                           ctor.node.id);
-                   *index +=
-                       [{val: ctor.node.id, pos: ebml_w.writer.tell()}]/~;
+                   vec::push(*index,
+                             {val: ctor.node.id, pos: ebml_w.writer.tell()});
                    encode_info_for_fn(ecx, ebml_w, ctor.node.id, i.ident,
                       *pt, if tps.len() > 0u {
                              some(ii_ctor(ctor, i.ident, tps,
@@ -933,7 +940,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> [attribute]/~ {
                 attr::remove_meta_items_by_name(tmp, @"vers")
             };
 
-        let meta_items = [name_item, vers_item]/~ + other_items;
+        let meta_items = vec::append([name_item, vers_item]/~, other_items);
         let link_item = attr::mk_list_item(@"link", meta_items);
 
         ret attr::mk_attr(link_item);
@@ -942,18 +949,19 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> [attribute]/~ {
     let mut attrs: [attribute]/~ = []/~;
     let mut found_link_attr = false;
     for crate.node.attrs.each {|attr|
-        attrs +=
+        vec::push(
+            attrs,
             if *attr::get_attr_name(attr) != "link" {
-                [attr]/~
+                attr
             } else {
                 alt attr.node.value.node {
                   meta_list(n, l) {
                     found_link_attr = true;;
-                    [synthesize_link_attr(ecx, l)]/~
+                    synthesize_link_attr(ecx, l)
                   }
-                  _ { [attr]/~ }
+                  _ { attr }
                 }
-            };
+            });
     }
 
     if !found_link_attr { vec::push(attrs, synthesize_link_attr(ecx, []/~)); }
