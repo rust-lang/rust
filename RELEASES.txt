@@ -1,4 +1,4 @@
-Version 0.3  (June 2012) - not yet!
+Version 0.3  (July 2012) - not yet!
 -----------------------------------
 
    * ~1500 changes, numerous bugfixes
