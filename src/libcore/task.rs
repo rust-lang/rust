@@ -710,7 +710,7 @@ unsafe fn local_set<T>(task: *rust_task, key: local_data_key<T>, -data: @T) {
             // Key already had a value set, old_data_ptr, whose reference we
             // need to drop. After that, overwriting its slot will be safe.
             // (The heap-allocated finaliser will be freed in the overwrite.)
-            // FIXME(2734): just transmuting old_data_ptr to @T doesn't work,
+            // FIXME(#2734): just transmuting old_data_ptr to @T doesn't work,
             // similarly to the sample there (but more our/unsafety's fault?).
             old_finaliser(old_data_ptr);
             (*map).set_elt(index, new_entry);
