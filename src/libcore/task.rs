@@ -1283,3 +1283,23 @@ fn test_tls_overwrite_multiple_types() unsafe {
         local_data_set(int_key, @31337);
     }
 }
+
+#[test]
+#[should_fail]
+#[ignore(cfg(windows))]
+fn test_tls_cleanup_on_failure() unsafe {
+    fn str_key(+_x: @str) { }
+    fn box_key(+_x: @@()) { }
+    fn int_key(+_x: @int) { }
+    local_data_set(str_key, @"parent data");
+    local_data_set(box_key, @@());
+    task::spawn{|| // spawn_linked
+        local_data_set(str_key, @"string data");
+        local_data_set(box_key, @@());
+        local_data_set(int_key, @42);
+        fail;
+    }
+    // Not quite nondeterministic.
+    local_data_set(int_key, @31337);
+    fail;
+}
