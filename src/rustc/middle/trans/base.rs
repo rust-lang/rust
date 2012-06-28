@@ -242,7 +242,7 @@ fn trans_free(cx: block, v: ValueRef) -> block {
 }
 
 fn trans_unique_free(cx: block, v: ValueRef) -> block {
-    let _icx = cx.insn_ctxt("trans_shared_free");
+    let _icx = cx.insn_ctxt("trans_unique_free");
     Call(cx, cx.ccx().upcalls.exchange_free,
          ~[PointerCast(cx, v, T_ptr(T_i8()))]);
     ret cx;
@@ -422,12 +422,12 @@ fn get_tydesc(ccx: @crate_ctxt, t: ty::t,
 
 fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     alt ccx.tydescs.find(t) {
-      some(inf) { ret inf; }
-      none {
+      some(inf) { inf }
+      _ {
         ccx.stats.n_static_tydescs += 1u;
         let inf = declare_tydesc(ccx, t);
         ccx.tydescs.insert(t, inf);
-        ret inf;
+        inf
       }
     }
 }
@@ -490,16 +490,15 @@ fn note_unique_llvm_symbol(ccx: @crate_ctxt, sym: str) {
 // Generates the declaration for (but doesn't emit) a type descriptor.
 fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let _icx = ccx.insn_ctxt("declare_tydesc");
-    log(debug, "+++ declare_tydesc " + ty_to_str(ccx.tcx, t));
     let llty = type_of(ccx, t);
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
-    let mut name;
     //XXX this triggers duplicate LLVM symbols
-    if false /*ccx.sess.opts.debuginfo*/ {
-        name = mangle_internal_name_by_type_only(ccx, t, @"tydesc");
-    } else { name = mangle_internal_name_by_seq(ccx, @"tydesc"); }
+    let name = if false /*ccx.sess.opts.debuginfo*/ {
+        mangle_internal_name_by_type_only(ccx, t, @"tydesc")
+    } else { mangle_internal_name_by_seq(ccx, @"tydesc") };
     note_unique_llvm_symbol(ccx, name);
+    log(debug, #fmt("+++ declare_tydesc %s %s", ty_to_str(ccx.tcx, t), name));
     let gvar = str::as_c_str(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
     });
@@ -613,14 +612,14 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                             drop_glue, // drop_glue
                             free_glue, // free_glue
                             visit_glue, // visit_glue
-                            C_int(ccx, 0), // ununsed
-                            C_int(ccx, 0), // ununsed
-                            C_int(ccx, 0), // ununsed
-                            C_int(ccx, 0), // ununsed
+                            C_int(ccx, 0), // unused
+                            C_int(ccx, 0), // unused
+                            C_int(ccx, 0), // unused
+                            C_int(ccx, 0), // unused
                             C_shape(ccx, shape), // shape
                             shape_tables, // shape_tables
-                            C_int(ccx, 0), // ununsed
-                            C_int(ccx, 0)]); // unused
+                            C_int(ccx, 0), // unused
+                            C_int(ccx, 0)]/~); // unused
 
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
@@ -704,8 +703,10 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_opaque_box {
         let v = PointerCast(bcx, v, type_of(ccx, t));
-        let td = Load(bcx, GEPi(bcx, v, ~[0u, abi::box_field_tydesc]));
-        let valptr = GEPi(bcx, v, ~[0u, abi::box_field_body]);
+        let td = Load(bcx, GEPi(bcx, v, [0u, abi::box_field_tydesc]/~));
+        let valptr = GEPi(bcx, v, [0u, abi::box_field_body]/~);
+        // Generate code that, dynamically, indexes into the
+        // tydesc and calls the drop glue that got set dynamically
         call_tydesc_glue_full(bcx, valptr, td, abi::tydesc_field_drop_glue,
                               none);
         trans_free(bcx, v)
@@ -1194,6 +1195,7 @@ fn call_tydesc_glue_full(++cx: block, v: ValueRef, tydesc: ValueRef,
     let llfn = {
         alt static_glue_fn {
           none {
+            // Select out the glue function to call from the tydesc
             let llfnptr = GEPi(cx, tydesc, ~[0u, field]);
             Load(cx, llfnptr)
           }
@@ -2136,11 +2138,6 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
         }
     });
 
-    #debug["monomorphic_fn(fn_id=%? (%s), real_substs=%?, substs=%?",
-           fn_id, ty::item_path_str(ccx.tcx, fn_id),
-           real_substs.map({|s| ty_to_str(ccx.tcx, s)}),
-           substs.map({|s| ty_to_str(ccx.tcx, s)})];
-
     for real_substs.each() {|s| assert !ty::type_has_params(s); };
     for substs.each() {|s| assert !ty::type_has_params(s); };
 
@@ -2150,6 +2147,13 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
                 {|p| alt p { mono_precise(_, _) { false } _ { true } } }) {
         must_cast = true;
     }
+
+    #debug["monomorphic_fn(fn_id=%? (%s), real_substs=%?, substs=%?, \
+           hash_id = %?",
+           fn_id, ty::item_path_str(ccx.tcx, fn_id),
+           real_substs.map({|s| ty_to_str(ccx.tcx, s)}),
+           substs.map({|s| ty_to_str(ccx.tcx, s)}), hash_id];
+
     alt ccx.monomorphized.find(hash_id) {
       some(val) {
         ret {val: val, must_cast: must_cast};

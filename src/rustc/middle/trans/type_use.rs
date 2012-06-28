@@ -117,8 +117,14 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
     ty::maybe_walk_ty(ty) {|ty|
         if ty::type_has_params(ty) {
             alt ty::get(ty).struct {
-              ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _) |
-              ty::ty_box(_) | ty::ty_iface(_, _) { false }
+                /*
+                  This previously included ty_box -- that was wrong
+                  because if we cast an @T to an iface (for example) and return
+                  it, we depend on the drop glue for T (we have to write the
+                  right tydesc into the result)
+                 */
+              ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
+               | ty::ty_iface(_, _) { false }
               ty::ty_enum(did, substs) {
                 if option::is_none(list::find(enums_seen, {|id| id == did})) {
                     let seen = @cons(did, enums_seen);
@@ -151,9 +157,20 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_vec(_, _) |
       expr_rec(_, _) | expr_tup(_) |
       expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-      expr_cast(_, _) | expr_binary(add, _, _) |
+      expr_binary(add, _, _) |
       expr_copy(_) | expr_move(_, _) {
         node_type_needs(cx, use_repr, e.id);
+      }
+      expr_cast(base, _) {
+        let result_t = ty::node_id_to_type(cx.ccx.tcx, e.id);
+        alt ty::get(result_t).struct {
+            ty::ty_iface(*) {
+              // When we're casting to an iface, we need the
+              // tydesc for the expr that's being cast.
+              node_type_needs(cx, use_tydesc, base.id);
+            }
+            _ {}
+        }
       }
       expr_binary(op, lhs, _) {
         alt op {
