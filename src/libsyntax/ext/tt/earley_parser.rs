@@ -9,6 +9,7 @@ import parse::common::*; //resolve bug?
 import parse::parse_sess;
 import dvec::{dvec, extensions};
 import ast::{matcher, mtc_tok, mtc_rep, mtc_bb, ident};
+import ast_util::mk_sp;
 import std::map::{hashmap, box_str_hash};
 
 /* This is an Earley-like parser, without support for nonterminals.  This
@@ -39,7 +40,8 @@ type matcher_pos = ~{
     sep: option<token>,
     mut idx: uint,
     mut up: matcher_pos_up, // mutable for swapping only
-    matches: ~[dvec<@arb_depth>]
+    matches: ~[dvec<@arb_depth>],
+    sp_lo: uint,
 };
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
@@ -58,13 +60,15 @@ fn count_names(ms: &[matcher]) -> uint {
         }})
 }
 
-fn new_matcher_pos(ms: ~[matcher], sep: option<token>) -> matcher_pos {
+fn new_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
+    -> matcher_pos {
     ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(none),
-      matches: copy vec::from_fn(count_names(ms), |_i| dvec::dvec()) }
+      matches: copy vec::from_fn(count_names(ms), |_i| dvec::dvec()),
+      sp_lo: lo}
 }
 
 /* logically, an arb_depth should contain only one kind of nonterminal */
-enum arb_depth { leaf(whole_nt), seq(~[@arb_depth]) }
+enum arb_depth { leaf(whole_nt), seq(~[@arb_depth], codemap::span) }
 
 type earley_item = matcher_pos;
 
@@ -88,21 +92,21 @@ fn nameize(&&p_s: parse_sess, ms: ~[matcher], &&res: ~[@arb_depth])
         }
     }
     let ret_val = box_str_hash::<@arb_depth>();
-    for ms.each() |m| { n_rec(p_s, m, res, ret_val) };
+    for ms.each() |m| { n_rec(p_s, m, res, ret_val) }
     ret ret_val;
 }
 
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     -> hashmap<ident,@arb_depth> {
     let mut cur_eis = ~[];
-    vec::push(cur_eis, new_matcher_pos(ms, none));
+    vec::push(cur_eis, new_matcher_pos(ms, none, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
         let mut next_eis = ~[]; // or proceed normally
         let mut eof_eis = ~[];
 
-        let {tok: tok, sp: _} = rdr.peek();
+        let {tok: tok, sp: sp} = rdr.peek();
 
         /* we append new items to this while we go */
         while cur_eis.len() > 0u { /* for each Earley Item */
@@ -133,7 +137,8 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         // doing a lot of array work that will get thrown away
                         // most of the time.
                         for ei.matches.eachi() |idx, elt| {
-                            new_pos.matches[idx].push(@seq(elt.get()));
+                            new_pos.matches[idx]
+                                .push(@seq(elt.get(), mk_sp(ei.sp_lo,sp.hi)));
                         }
 
                         new_pos.idx += 1u;
@@ -176,7 +181,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     vec::push(cur_eis, ~{
                         elts: matchers, sep: sep, mut idx: 0u,
                         mut up: matcher_pos_up(some(ei_t)),
-                        matches: matches
+                        matches: matches, sp_lo: sp.lo
                     });
                   }
                   mtc_bb(_,_,_) { vec::push(bb_eis, ei) }
