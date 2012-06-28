@@ -21,8 +21,8 @@ impl parser_attr for parser {
                 self.bump();
                 let first_attr =
                     self.parse_attribute_naked(ast::attr_outer, lo);
-                ret some(left([first_attr]/~ +
-                              self.parse_outer_attributes()));
+                ret some(left(vec::append([first_attr]/~,
+                                          self.parse_outer_attributes())));
             } else if !(self.look_ahead(1u) == token::LT
                         || self.look_ahead(1u) == token::LBRACKET
                         || self.look_ahead(1u) == token::POUND
@@ -38,7 +38,7 @@ impl parser_attr for parser {
         let mut attrs: [ast::attribute]/~ = []/~;
         while self.token == token::POUND
             && self.look_ahead(1u) == token::LBRACKET {
-            attrs += [self.parse_attribute(ast::attr_outer)]/~;
+            vec::push(attrs, self.parse_attribute(ast::attr_outer));
         }
         ret attrs;
     }
@@ -76,13 +76,13 @@ impl parser_attr for parser {
             let attr = self.parse_attribute(ast::attr_inner);
             if self.token == token::SEMI {
                 self.bump();
-                inner_attrs += [attr]/~;
+                vec::push(inner_attrs, attr);
             } else {
                 // It's not really an inner attribute
                 let outer_attr =
                     spanned(attr.span.lo, attr.span.hi,
                             {style: ast::attr_outer, value: attr.node.value});
-                next_outer_attrs += [outer_attr]/~;
+                vec::push(next_outer_attrs, outer_attr);
                 break;
             }
         }

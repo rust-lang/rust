@@ -77,7 +77,7 @@ fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 // Get the meta_items from inside a vector of attributes
 fn attr_metas(attrs: [ast::attribute]/~) -> [@ast::meta_item]/~ {
     let mut mitems = []/~;
-    for attrs.each {|a| mitems += [attr_meta(a)]/~; }
+    for attrs.each {|a| vec::push(mitems, attr_meta(a)); }
     ret mitems;
 }
 
@@ -303,7 +303,7 @@ fn find_linkage_attrs(attrs: [ast::attribute]/~) -> [ast::attribute]/~ {
     let mut found = []/~;
     for find_attrs_by_name(attrs, "link").each {|attr|
         alt attr.node.value.node {
-          ast::meta_list(_, _) { found += [attr]/~ }
+          ast::meta_list(_, _) { vec::push(found, attr) }
           _ { #debug("ignoring link attribute that has incorrect type"); }
         }
     }

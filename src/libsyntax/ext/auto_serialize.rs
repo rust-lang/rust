@@ -103,12 +103,14 @@ fn expand(cx: ext_ctxt,
     vec::flat_map(in_items) {|in_item|
         alt in_item.node {
           ast::item_ty(ty, tps, _) {
-            [filter_attrs(in_item)]/~ + ty_fns(cx, in_item.ident, ty, tps)
+            vec::append([filter_attrs(in_item)]/~,
+                        ty_fns(cx, in_item.ident, ty, tps))
           }
 
           ast::item_enum(variants, tps, _) {
-            [filter_attrs(in_item)]/~ + enum_fns(cx, in_item.ident,
-                                               in_item.span, variants, tps)
+            vec::append([filter_attrs(in_item)]/~,
+                        enum_fns(cx, in_item.ident,
+                                 in_item.span, variants, tps))
           }
 
           _ {
@@ -126,7 +128,8 @@ impl helpers for ext_ctxt {
                    helper_name: str) -> @ast::path {
         let head = vec::init(base_path.idents);
         let tail = vec::last(base_path.idents);
-        self.path(base_path.span, head + [@(helper_name + "_" + *tail)]/~)
+        self.path(base_path.span,
+                  vec::append(head, [@(helper_name + "_" + *tail)]/~))
     }
 
     fn path(span: span, strs: [ast::ident]/~) -> @ast::path {
@@ -301,7 +304,7 @@ fn ser_path(cx: ext_ctxt, tps: ser_tps_map, path: @ast::path,
     [cx.stmt(
         cx.expr(
             path.span,
-            ast::expr_call(callee, [s, v]/~ + ty_args, false)))]/~
+            ast::expr_call(callee, vec::append([s, v]/~, ty_args), false)))]/~
 }
 
 fn ser_variant(cx: ext_ctxt,
@@ -502,15 +505,15 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
 
 
     let ser_inputs: [ast::arg]/~ =
-        [{mode: ast::expl(ast::by_ref),
-          ty: cx.ty_path(span, [@"__S"]/~, []/~),
-          ident: @"__s",
-          id: cx.next_id()},
-         {mode: ast::expl(ast::by_ref),
-          ty: v_ty,
-          ident: @"__v",
-          id: cx.next_id()}]/~
-        + tp_inputs;
+        vec::append([{mode: ast::expl(ast::by_ref),
+                      ty: cx.ty_path(span, [@"__S"]/~, []/~),
+                      ident: @"__s",
+                      id: cx.next_id()},
+                     {mode: ast::expl(ast::by_ref),
+                      ty: v_ty,
+                      ident: @"__v",
+                      id: cx.next_id()}]/~,
+                    tp_inputs);
 
     let tps_map = map::str_hash();
     vec::iter2(tps, tp_inputs) {|tp, arg|
@@ -531,10 +534,10 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
                                     []/~))]/~;
 
     let ser_tps: [ast::ty_param]/~ =
-        [{ident: @"__S",
-          id: cx.next_id(),
-          bounds: ser_bnds}]/~ +
-        vec::map(tps) {|tp| cx.clone_ty_param(tp) };
+        vec::append([{ident: @"__S",
+                      id: cx.next_id(),
+                      bounds: ser_bnds}]/~,
+                    vec::map(tps) {|tp| cx.clone_ty_param(tp) });
 
     let ser_output: @ast::ty = @{id: cx.next_id(),
                                  node: ast::ty_nil,
@@ -575,7 +578,8 @@ fn deser_path(cx: ext_ctxt, tps: deser_tps_map, path: @ast::path,
         cx.lambda(cx.expr_blk(dv_expr))
     };
 
-    cx.expr(path.span, ast::expr_call(callee, [d]/~ + ty_args, false))
+    cx.expr(path.span, ast::expr_call(callee, vec::append([d]/~, ty_args),
+                                      false))
 }
 
 fn deser_lambda(cx: ext_ctxt, tps: deser_tps_map, ty: @ast::ty,
@@ -712,11 +716,11 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
     #debug["tp_inputs = %?", tp_inputs];
 
     let deser_inputs: [ast::arg]/~ =
-        [{mode: ast::expl(ast::by_ref),
-          ty: cx.ty_path(span, [@"__D"]/~, []/~),
-          ident: @"__d",
-          id: cx.next_id()}]/~
-        + tp_inputs;
+        vec::append([{mode: ast::expl(ast::by_ref),
+                      ty: cx.ty_path(span, [@"__D"]/~, []/~),
+                      ident: @"__d",
+                      id: cx.next_id()}]/~,
+                    tp_inputs);
 
     let tps_map = map::str_hash();
     vec::iter2(tps, tp_inputs) {|tp, arg|
@@ -740,7 +744,9 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
           id: cx.next_id(),
           bounds: deser_bnds}]/~ + vec::map(tps) {|tp|
         let cloned = cx.clone_ty_param(tp);
-        {bounds: @(*cloned.bounds + [ast::bound_copy]/~) with cloned}
+        {bounds: @(vec::append(*cloned.bounds,
+                               [ast::bound_copy]/~))
+         with cloned}
     };
 
     let deser_blk = cx.expr_blk(f(cx, tps_map, #ast(expr){__d}));

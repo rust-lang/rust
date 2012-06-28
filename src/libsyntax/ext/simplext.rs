@@ -104,7 +104,7 @@ fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option<U>, v: [T]/~) ->
    option<[U]/~> {
     let mut res = []/~;
     for v.each {|elem|
-        alt f(elem) { none { ret none; } some(fv) { res += [fv]/~; } }
+        alt f(elem) { none { ret none; } some(fv) { vec::push(res, fv); } }
     }
     ret some(res);
 }
@@ -309,8 +309,8 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut [uint]/~,
                 /* Whew, we now know how how many times to repeat */
                 let mut idx: uint = 0u;
                 while idx < rc {
-                    *idx_path += [idx]/~;
-                    res += [recur(repeat_me)]/~; // whew!
+                    vec::push(*idx_path, idx);
+                    vec::push(res, recur(repeat_me)); // whew!
                     vec::pop(*idx_path);
                     idx += 1u;
                 }
@@ -318,7 +318,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut [uint]/~,
             }
           }
         }
-        res += vec::map(post, recur);
+        res = vec::append(res, vec::map(post, recur));
         ret res;
       }
     }
@@ -718,9 +718,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                       none { cx.span_fatal(mac.span,
                                            "macro must have arguments")}
                     };
-                    clauses +=
-                        [@{params: pattern_to_selectors(cx, arg),
-                           body: elts[1u]}]/~;
+                    vec::push(clauses,
+                              @{params: pattern_to_selectors(cx, arg),
+                                body: elts[1u]});
 
                     // FIXME (#2251): check duplicates (or just simplify
                     // the macro arg situation)

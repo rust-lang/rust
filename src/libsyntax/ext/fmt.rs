@@ -60,7 +60,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   flag_sign_always { fstr = "flag_sign_always"; }
                   flag_alternate { fstr = "flag_alternate"; }
                 }
-                flagexprs += [make_rt_path_expr(cx, sp, @fstr)]/~;
+                vec::push(flagexprs, make_rt_path_expr(cx, sp, @fstr));
             }
             ret mk_uniq_vec_e(cx, sp, flagexprs);
         }

@@ -28,8 +28,8 @@ fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive]/~,
     let mut view_items: [@ast::view_item]/~ = []/~;
     let mut items: [@ast::item]/~ = []/~;
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
-    ret ({view_items: view_items + cview_items,
-          items: items + citems},
+    ret ({view_items: vec::append(view_items, cview_items),
+          items: vec::append(items, citems)},
          cattrs);
 }
 
@@ -100,7 +100,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         let (p0, r0) =
             new_parser_etc_from_file(cx.sess, cx.cfg, full_path, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
-        let mod_attrs = attrs + inner_attrs.inner;
+        let mod_attrs = vec::append(attrs, inner_attrs.inner);
         let first_item_outer_attrs = inner_attrs.next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
 
@@ -110,7 +110,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = r0.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
-        items += [i]/~;
+        vec::push(items, i);
       }
       ast::cdir_dir_mod(id, cdirs, attrs) {
         let path = cdir_path_opt(id, attrs);
@@ -122,15 +122,15 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
             cx, cdirs, full_path, none);
         let i =
             @{ident: /* FIXME (#2543) */ copy id,
-              attrs: attrs + a0,
+              attrs: vec::append(attrs, a0),
               id: cx.sess.next_id,
               node: ast::item_mod(m0),
               vis: ast::public,
               span: cdir.span};
         cx.sess.next_id += 1;
-        items += [i]/~;
+        vec::push(items, i);
       }
-      ast::cdir_view_item(vi) { view_items += [vi]/~; }
+      ast::cdir_view_item(vi) { vec::push(view_items, vi); }
       ast::cdir_syntax(pth) { }
     }
 }

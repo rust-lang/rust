@@ -1030,7 +1030,9 @@ class parser {
                 let blk = self.parse_fn_block_expr();
                 alt e.node {
                   expr_call(f, args, false) {
-                    e = pexpr(@{node: expr_call(f, args + [blk]/~, true)
+                    e = pexpr(@{node: expr_call(f,
+                                                vec::append(args, [blk]/~),
+                                                true)
                                 with *self.to_expr(e)});
                   }
                   _ {
@@ -1088,10 +1090,13 @@ class parser {
         ret alt self.token {
           token::LPAREN | token::LBRACE | token::LBRACKET {
             let ket = flip(self.token);
-            tt_delim([parse_tt_flat(self, true)]/~ +
-                     self.parse_seq_to_before_end(ket, seq_sep_none(),
-                                                  {|p| p.parse_token_tree()})
-                     + [parse_tt_flat(self, true)]/~)
+            tt_delim(vec::append(
+                [parse_tt_flat(self, true)]/~,
+                vec::append(
+                    self.parse_seq_to_before_end(
+                        ket, seq_sep_none(),
+                        {|p| p.parse_token_tree()}),
+                    [parse_tt_flat(self, true)]/~)))
           }
           _ { parse_tt_flat(self, false) }
         };
@@ -1357,7 +1362,7 @@ class parser {
             let b_arg = vec::last(args);
             let last = self.mk_expr(b_arg.span.lo, b_arg.span.hi,
                                     ctor(b_arg));
-            @{node: expr_call(f, vec::init(args) + [last]/~, true)
+            @{node: expr_call(f, vec::append(vec::init(args), [last]/~), true)
               with *call}
           }
           _ {
@@ -1655,7 +1660,7 @@ class parser {
               }
             }
 
-            let item_attrs = first_item_attrs + item_attrs;
+            let item_attrs = vec::append(first_item_attrs, item_attrs);
 
             alt self.parse_item(item_attrs, public) {
               some(i) {
@@ -1914,7 +1919,7 @@ class parser {
         let tps = self.parse_ty_params();
         let (decl, _) = self.parse_fn_decl(pur, {|p| p.parse_arg()});
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
-        let attrs = attrs + inner_attrs;
+        let attrs = vec::append(attrs, inner_attrs);
         @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
           id: self.get_id(), span: mk_sp(lo, body.span.hi),
           self_id: self.get_id(), vis: pr}
@@ -2026,7 +2031,7 @@ class parser {
               dtor_decl(blk, s) {
                 the_dtor = some((blk, s));
               }
-              members(mms) { ms += mms; }
+              members(mms) { ms = vec::append(ms, mms); }
             }
         }
         let actual_dtor = option::map(the_dtor) {|dtor|
@@ -2127,7 +2132,10 @@ class parser {
         let mut first = true;
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
-            if first { attrs = attrs_remaining + attrs; first = false; }
+            if first {
+                attrs = vec::append(attrs_remaining, attrs);
+                first = false;
+            }
             #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
             let vis = self.parse_visibility(private);
             alt self.parse_item(attrs, vis) {
@@ -2206,7 +2214,8 @@ class parser {
         let mut items: [@foreign_item]/~ = []/~;
         let mut initial_attrs = attrs_remaining;
         while self.token != token::RBRACE {
-            let attrs = initial_attrs + self.parse_outer_attributes();
+            let attrs = vec::append(initial_attrs,
+                                    self.parse_outer_attributes());
             initial_attrs = []/~;
             vec::push(items, self.parse_foreign_item(attrs));
         }
@@ -2383,7 +2392,7 @@ class parser {
         } else { ret none; };
         some(self.mk_item(lo, self.last_span.hi, ident, item_, vis,
                           alt extra_attrs {
-                              some(as) { attrs + as }
+                              some(as) { vec::append(attrs, as) }
                               none { attrs }
                           }))
     }
@@ -2498,7 +2507,8 @@ class parser {
     fn parse_view(+first_item_attrs: [attribute]/~,
                   only_imports: bool) -> {attrs_remaining: [attribute]/~,
                                           view_items: [@view_item]/~} {
-        let mut attrs = first_item_attrs + self.parse_outer_attributes();
+        let mut attrs = vec::append(first_item_attrs,
+                                    self.parse_outer_attributes());
         let mut items = []/~;
         while if only_imports { self.is_keyword("import") }
         else { self.is_view_item() } {
@@ -2540,7 +2550,8 @@ class parser {
         crate_directive {
 
         // Collect the next attributes
-        let outer_attrs = first_outer_attr + self.parse_outer_attributes();
+        let outer_attrs = vec::append(first_outer_attr,
+                                      self.parse_outer_attributes());
         // In a crate file outer attributes are only going to apply to mods
         let expect_mod = vec::len(outer_attrs) > 0u;
 
@@ -2559,7 +2570,7 @@ class parser {
               token::LBRACE {
                 self.bump();
                 let inner_attrs = self.parse_inner_attrs_and_next();
-                let mod_attrs = outer_attrs + inner_attrs.inner;
+                let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
                 let next_outer_attr = inner_attrs.next;
                 let cdirs = self.parse_crate_directives(token::RBRACE,
                                                         next_outer_attr);

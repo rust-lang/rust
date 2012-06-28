@@ -82,7 +82,7 @@ fn mk_rec_e(cx: ext_ctxt, sp: span,
         let val = field.ex;
         let astfield =
             {node: {mutbl: ast::m_imm, ident: ident, expr: val}, span: sp};
-        astfields += [astfield]/~;
+        vec::push(astfields, astfield);
     }
     let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);
     ret @{id: cx.next_id(), node: recexpr, span: sp};

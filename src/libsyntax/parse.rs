@@ -84,7 +84,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     ret @ast_util::respan(ast_util::mk_sp(lo, hi),
                           {directives: cdirs,
                            module: m,
-                           attrs: crate_attrs + attrs,
+                           attrs: vec::append(crate_attrs, attrs),
                            config: /* FIXME (#2543) */ copy p.cfg});
 }
 

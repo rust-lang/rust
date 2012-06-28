@@ -1888,7 +1888,7 @@ mod tests {
         let mut results: [[int]/~]/~;
 
         results = []/~;
-        permute([]/~) {|v| results += [v]/~; }
+        permute([]/~) {|v| vec::push(results, v); }
         assert results == [[]/~]/~;
 
         results = []/~;
