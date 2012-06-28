@@ -117,6 +117,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         let args = [cnv_expr, arg]/~;
         ret mk_call(cx, arg.span, path, args);
     }
+
     fn make_new_conv(cx: ext_ctxt, sp: span, cnv: conv, arg: @ast::expr) ->
        @ast::expr {
         // FIXME: Move validation code into core::extfmt (Issue #2249)
@@ -243,13 +244,12 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
     let fmt_sp = args[0].span;
     let mut n = 0u;
-    let mut tmp_expr = mk_str(cx, sp, "");
-    let nargs = vec::len::<@ast::expr>(args);
+    let mut piece_exprs = []/~;
+    let nargs = args.len();
     for pieces.each {|pc|
         alt pc {
           piece_string(s) {
-            let s_expr = mk_str(cx, fmt_sp, s);
-            tmp_expr = mk_binary(cx, fmt_sp, ast::add, tmp_expr, s_expr);
+            vec::push(piece_exprs, mk_str(cx, fmt_sp, s));
           }
           piece_conv(conv) {
             n += 1u;
@@ -262,7 +262,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             log_conv(conv);
             let arg_expr = args[n];
             let c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
-            tmp_expr = mk_binary(cx, fmt_sp, ast::add, tmp_expr, c_expr);
+            vec::push(piece_exprs, c_expr);
           }
         }
     }
@@ -273,7 +273,9 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             (sp, #fmt["too many arguments to #fmt. found %u, expected %u",
                            nargs, expected_nargs]);
     }
-    ret tmp_expr;
+
+    let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
+    ret mk_call(cx, fmt_sp, [@"str", @"concat"]/~, [arg_vec]/~);
 }
 //
 // Local Variables:

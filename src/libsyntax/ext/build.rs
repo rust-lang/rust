@@ -72,6 +72,10 @@ fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]/~) ->
    @ast::expr {
     mk_vstore_e(cx, sp, mk_vec_e(cx, sp, exprs), ast::vstore_uniq)
 }
+fn mk_fixed_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]/~) ->
+   @ast::expr {
+    mk_vstore_e(cx, sp, mk_vec_e(cx, sp, exprs), ast::vstore_fixed(none))
+}
 
 fn mk_rec_e(cx: ext_ctxt, sp: span,
             fields: [{ident: ast::ident, ex: @ast::expr}]/~) ->
