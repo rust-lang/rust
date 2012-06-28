@@ -5,17 +5,17 @@ fn md4(msg: [u8]/~) -> {a: u32, b: u32, c: u32, d: u32} {
     let orig_len: u64 = (vec::len(msg) * 8u) as u64;
 
     // pad message
-    let mut msg = msg + [0x80u8]/~;
+    let mut msg = vec::append(msg, [0x80u8]/~);
     let mut bitlen = orig_len + 8u64;
     while (bitlen + 64u64) % 512u64 > 0u64 {
-        msg += [0u8]/~;
+        vec::push(msg, 0u8);
         bitlen += 8u64;
     }
 
     // append length
     let mut i = 0u64;
     while i < 8u64 {
-        msg += [(orig_len >> (i * 8u64)) as u8]/~;
+        vec::push(msg, (orig_len >> (i * 8u64)) as u8);
         i += 1u64;
     }
 

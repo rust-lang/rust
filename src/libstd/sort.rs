@@ -48,8 +48,8 @@ fn merge_sort<T: copy>(le: le<T>, v: [const T]/~) -> [T]/~ {
                 a_ix += 1u;
             } else { vec::push(rs, b[b_ix]); b_ix += 1u; }
         }
-        rs += vec::slice(a, a_ix, a_len);
-        rs += vec::slice(b, b_ix, b_len);
+        rs = vec::append(rs, vec::slice(a, a_ix, a_len));
+        rs = vec::append(rs, vec::slice(b, b_ix, b_len));
         ret rs;
     }
 }

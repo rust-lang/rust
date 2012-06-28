@@ -1094,8 +1094,10 @@ pure fn permute<T: copy>(v: [T]/&, put: fn([T]/~)) {
             let mut rest = slice(v, 0u, i);
             unchecked {
                 push_all(rest, view(v, i+1u, ln));
+                permute(rest) {|permutation|
+                    put(append([elt]/~, permutation))
+                }
             }
-            permute(rest) {|permutation| put([elt]/~ + permutation)}
             i += 1u;
         }
     }

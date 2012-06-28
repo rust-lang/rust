@@ -199,7 +199,7 @@ fn getopts(args: [str]/~, opts: [opt]/~) -> result unsafe {
         let cur = args[i];
         let curlen = str::len(cur);
         if !is_arg(cur) {
-            free += [cur]/~;
+            vec::push(free, cur);
         } else if str::eq(cur, "--") {
             let mut j = i + 1u;
             while j < l { vec::push(free, args[j]); j += 1u; }
@@ -223,7 +223,7 @@ fn getopts(args: [str]/~, opts: [opt]/~) -> result unsafe {
                 names = []/~;
                 while j < curlen {
                     let range = str::char_range_at(cur, j);
-                    names += [short(range.ch)]/~;
+                    vec::push(names, short(range.ch));
                     j = range.next;
                 }
             }
@@ -341,7 +341,7 @@ Used when an option accepts multiple values.
 fn opt_strs(m: match, nm: str) -> [str]/~ {
     let mut acc: [str]/~ = []/~;
     for vec::each(opt_vals(m, nm)) {|v|
-        alt v { val(s) { acc += [s]/~; } _ { } }
+        alt v { val(s) { vec::push(acc, s); } _ { } }
     }
     ret acc;
 }

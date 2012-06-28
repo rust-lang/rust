@@ -678,7 +678,7 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
 unsafe fn ip4_addr(ip: str, port: int)
 -> sockaddr_in {
     let mut addr_vec = str::bytes(ip);
-    addr_vec += [0u8]/~; // add null terminator
+    vec::push(addr_vec, 0u8); // add null terminator
     let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
     let ip_back = str::from_bytes(addr_vec);
     log(debug, #fmt("vec val: '%s' length: %u",

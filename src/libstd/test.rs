@@ -128,7 +128,7 @@ fn run_tests_console(opts: test_opts,
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line("");
-                st.failures += [copy test]/~;
+                vec::push(st.failures, copy test);
               }
               tr_ignored {
                 st.ignored += 1u;

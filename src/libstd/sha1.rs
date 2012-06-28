@@ -165,7 +165,7 @@ fn sha1() -> sha1 {
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
             let c = (hpart >> 8u32 & 0xFFu32) as u8;
             let d = (hpart & 0xFFu32) as u8;
-            rs += [a, b, c, d]/~;
+            rs = vec::append(rs, [a, b, c, d]/~);
         }
         ret rs;
     }
