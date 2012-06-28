@@ -42,6 +42,7 @@ class cat : map<int, bool> {
   }
   fn contains_key(&&k: int) -> bool { k <= self.meows }
   fn get(&&k:int) -> bool { k <= self.meows }
+  fn [](&&k:int) -> bool { k <= self.meows }
   fn find(&&k:int) -> option<bool> { some(self.get(k)) }
   fn remove(&&k:int) -> option<bool> { self.meows -= k; some(true) }
   fn each(f: fn(&&int, &&bool) -> bool) {
