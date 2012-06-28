@@ -863,7 +863,7 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
 
 // Folds types from the bottom up.
 fn fold_ty(cx: ctxt, t0: t, fldop: fn(t) -> t) -> t {
-    let sty = fold_sty(get(t0).struct) {|t| fold_ty(cx, t, fldop) };
+    let sty = fold_sty(get(t0).struct) {|t| fold_ty(cx, fldop(t), fldop) };
     fldop(mk_t(cx, sty))
 }
 
