@@ -64,14 +64,17 @@ const default_columns: uint = 78u;
 // copy forward.
 fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: str, in: io::reader,
-               out: io::writer, ann: pp_ann) {
+               out: io::writer, ann: pp_ann, is_expanded: bool) {
     let r = comments::gather_comments_and_literals(span_diagnostic,
                                                    filename, in);
     let s =
         @{s: pp::mk_printer(out, default_columns),
           cm: some(cm),
           comments: some(r.cmnts),
-          literals: some(r.lits),
+          // If the code is post expansion, don't use the table of
+          // literals, since it doesn't correspond with the literals
+          // in the AST anymore.
+          literals: if is_expanded { none } else { some(r.lits) },
           mut cur_cmnt: 0u,
           mut cur_lit: 0u,
           boxes: dvec(),

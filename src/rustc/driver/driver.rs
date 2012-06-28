@@ -310,22 +310,22 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     };
     let {crate, tcx} = compile_upto(sess, cfg, input, upto, none);
 
-    let mut ann: pprust::pp_ann = pprust::no_ann();
-    alt ppm {
+    let ann = alt ppm {
       ppm_typed {
-        ann = {pre: ann_paren_for_expr,
-               post: {|a|ann_typed_post(option::get(tcx), a)}};
+        {pre: ann_paren_for_expr,
+         post: {|a|ann_typed_post(option::get(tcx), a)}}
       }
       ppm_identified | ppm_expanded_identified {
-        ann = {pre: ann_paren_for_expr, post: ann_identified_post};
+        {pre: ann_paren_for_expr, post: ann_identified_post}
       }
-      ppm_expanded | ppm_normal {}
-    }
+      ppm_expanded | ppm_normal { pprust::no_ann() }
+    };
+    let is_expanded = upto != cu_parse;
     let src = codemap::get_filemap(sess.codemap, source_name(input)).src;
     io::with_str_reader(*src) { |rdr|
         pprust::print_crate(sess.codemap, sess.span_diagnostic, crate,
                             source_name(input),
-                            rdr, io::stdout(), ann);
+                            rdr, io::stdout(), ann, is_expanded);
     }
 }
 

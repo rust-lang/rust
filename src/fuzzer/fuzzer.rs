@@ -274,7 +274,8 @@ fn check_variants_T<T: copy>(
                         crate2,
                         filename,
                         io::str_reader(""), a,
-                        pprust::no_ann())});
+                        pprust::no_ann(),
+                        false)});
                 alt cx.mode {
                   tm_converge {
                     check_roundtrip_convergence(str3, 1u);
@@ -422,11 +423,12 @@ fn parse_and_print(code: @str) -> str {
         filename, code, []/~, sess);
     io::with_str_reader(*code) { |rdr|
         as_str({|a|pprust::print_crate(sess.cm,
-                                        sess.span_diagnostic,
-                                        crate,
-                                        filename,
-                                        rdr, a,
-                                       pprust::no_ann())})
+                                       sess.span_diagnostic,
+                                       crate,
+                                       filename,
+                                       rdr, a,
+                                       pprust::no_ann(),
+                                       false)})
     }
 }
 
@@ -566,11 +568,12 @@ fn check_variants(files: [str]/~, cx: context) {
         io::with_str_reader(*s) { |rdr|
             #error("%s",
                    as_str({|a|pprust::print_crate(sess.cm,
-                                                   sess.span_diagnostic,
-                                                   crate,
-                                                   file,
-                                                   rdr, a,
-                                                  pprust::no_ann())}));
+                                                  sess.span_diagnostic,
+                                                  crate,
+                                                  file,
+                                                  rdr, a,
+                                                  pprust::no_ann(),
+                                                  false)}));
         }
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
