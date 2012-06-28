@@ -5,6 +5,7 @@ import ptr::addr_of;
 import libc::size_t;
 
 export append;
+export append_one;
 export init_op;
 export is_empty;
 export is_not_empty;
@@ -490,6 +491,13 @@ pure fn append<T: copy>(+lhs: [T]/~, rhs: [const T]/&) -> [T]/~ {
         push_all(v, rhs);
     }
     ret v;
+}
+
+#[inline(always)]
+pure fn append_one<T>(+lhs: [T]/~, +x: T) -> [T]/~ {
+    let mut v <- lhs;
+    unchecked { push(v, x); }
+    v
 }
 
 #[inline(always)]

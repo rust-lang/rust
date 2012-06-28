@@ -57,7 +57,7 @@ type ctx = {map: map, mut path: path,
 type vt = visit::vt<ctx>;
 
 fn extend(cx: ctx, +elt: ident) -> @path {
-    @(cx.path + [path_name(elt)]/~)
+    @(vec::append(cx.path, [path_name(elt)]/~))
 }
 
 fn mk_ast_map_visitor() -> vt {

@@ -329,9 +329,11 @@ fn build_closure(bcx0: block,
           none { bcx.fcx.llretptr }
         };
         let nil_ret = PointerCast(bcx, our_ret, T_ptr(T_nil()));
-        env_vals +=
-            [env_ref(flagptr, ty::mk_mut_ptr(tcx, ty::mk_bool(tcx)), owned),
-             env_ref(nil_ret, ty::mk_nil_ptr(tcx), owned)]/~;
+        vec::push(env_vals,
+                  env_ref(flagptr,
+                          ty::mk_mut_ptr(tcx, ty::mk_bool(tcx)), owned));
+        vec::push(env_vals,
+                  env_ref(nil_ret, ty::mk_nil_ptr(tcx), owned));
     }
     ret store_environment(bcx, env_vals, ck);
 }
@@ -391,7 +393,7 @@ fn trans_expr_fn(bcx: block,
     let ccx = bcx.ccx(), bcx = bcx;
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
-    let sub_path = bcx.fcx.path + [path_name(@"anon")]/~;
+    let sub_path = vec::append_one(bcx.fcx.path, path_name(@"anon"));
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
@@ -475,7 +477,8 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
 
     // Actually construct the closure
     let {llbox, cdata_ty, bcx} = store_environment(
-        bcx, env_vals + vec::map(bound, {|x| env_expr(x, expr_ty(bcx, x))}),
+        bcx, vec::append(env_vals,
+                         vec::map(bound, {|x| env_expr(x, expr_ty(bcx, x))})),
         ty::ck_box);
 
     // Make thunk

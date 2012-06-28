@@ -108,12 +108,16 @@ fn expand_nested_bindings(m: match, col: uint, val: ValueRef) -> match {
     for vec::each(m) {|br|
       alt br.pats[col].node {
           ast::pat_ident(name, some(inner)) {
-            let pats = vec::slice(br.pats, 0u, col) + [inner]/~ +
-                vec::slice(br.pats, col + 1u, br.pats.len());
-            vec::push(result, @{pats: pats,
-                        bound: br.bound + [{ident: path_to_ident(name),
-                                val: val}]/~
-                         with *br});
+            let pats = vec::append(
+                vec::slice(br.pats, 0u, col),
+                vec::append([inner]/~,
+                            vec::view(br.pats, col + 1u, br.pats.len())));
+            vec::push(result,
+                      @{pats: pats,
+                        bound: vec::append(
+                            br.bound, [{ident: path_to_ident(name),
+                                        val: val}]/~)
+                                with *br});
           }
           _ { vec::push(result, br); }
         }
@@ -129,12 +133,14 @@ fn enter_match(dm: def_map, m: match, col: uint, val: ValueRef,
     for vec::each(m) {|br|
         alt e(br.pats[col]) {
           some(sub) {
-            let pats = sub + vec::slice(br.pats, 0u, col) +
-                vec::slice(br.pats, col + 1u, br.pats.len());
+            let pats = vec::append(
+                vec::append(sub, vec::view(br.pats, 0u, col)),
+                vec::view(br.pats, col + 1u, br.pats.len()));
             let self = br.pats[col];
             let bound = alt self.node {
               ast::pat_ident(name, none) if !pat_is_variant(dm, self) {
-                br.bound + [{ident: path_to_ident(name), val: val}]/~
+                vec::append(br.bound,
+                            [{ident: path_to_ident(name), val: val}]/~)
               }
               _ { br.bound }
             };
@@ -417,8 +423,8 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
                 expand_nested_bindings(m, col, val)
             } else { m };
 
-    let vals_left = vec::slice(vals, 0u, col) +
-        vec::slice(vals, col + 1u, vals.len());
+    let vals_left = vec::append(vec::slice(vals, 0u, col),
+                                vec::view(vals, col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
     for vec::each(m) {|br|
@@ -439,7 +445,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
             vec::push(rec_vals, GEPi(bcx, val, [0u, ix]/~));
         }
         compile_submatch(bcx, enter_rec(dm, m, col, rec_fields, val),
-                         rec_vals + vals_left, chk, exits);
+                         vec::append(rec_vals, vals_left), chk, exits);
         ret;
     }
 
@@ -455,7 +461,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
             i += 1u;
         }
         compile_submatch(bcx, enter_tup(dm, m, col, val, n_tup_elts),
-                         tup_vals + vals_left, chk, exits);
+                         vec::append(tup_vals, vals_left), chk, exits);
         ret;
     }
 
@@ -465,8 +471,8 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
         let box_no_addrspace = non_gc_box_cast(bcx, llbox);
         let unboxed =
             GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]/~);
-        compile_submatch(bcx, enter_box(dm, m, col, val), [unboxed]/~
-                         + vals_left, chk, exits);
+        compile_submatch(bcx, enter_box(dm, m, col, val),
+                         vec::append([unboxed]/~, vals_left), chk, exits);
         ret;
     }
 
@@ -476,7 +482,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
         let unboxed =
             GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]/~);
         compile_submatch(bcx, enter_uniq(dm, m, col, val),
-                         [unboxed]/~ + vals_left, chk, exits);
+                         vec::append([unboxed]/~, vals_left), chk, exits);
         ret;
     }
 
@@ -580,7 +586,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef]/~,
           lit(_) | range(_, _) { }
         }
         compile_submatch(opt_cx, enter_opt(tcx, m, opt, col, size, val),
-                         unpacked + vals_left, chk, exits);
+                         vec::append(unpacked, vals_left), chk, exits);
     }
 
     // Compile the fall-through case, if any

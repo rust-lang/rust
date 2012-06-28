@@ -37,7 +37,7 @@ fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg]/~,
     vec::push(atys, T_opaque_box_ptr(cx));
 
     // ... then explicit args.
-    atys += type_of_explicit_args(cx, inputs);
+    vec::push_all(atys, type_of_explicit_args(cx, inputs));
     ret T_fn(atys, llvm::LLVMVoidType());
 }
 

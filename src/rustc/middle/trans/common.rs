@@ -312,8 +312,10 @@ fn revoke_clean(cx: block, val: ValueRef) {
             alt cu { clean_temp(v, _, _) if v == val { true } _ { false } }
         })) {|i|
             info.cleanups =
-                vec::slice(info.cleanups, 0u, i) +
-                vec::slice(info.cleanups, i + 1u, info.cleanups.len());
+                vec::append(vec::slice(info.cleanups, 0u, i),
+                            vec::view(info.cleanups,
+                                      i + 1u,
+                                      info.cleanups.len()));
             scope_clean_changed(info);
         }
     }
@@ -706,7 +708,7 @@ fn T_box_header(cx: @crate_ctxt) -> TypeRef {
 }
 
 fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
-    ret T_struct(T_box_header_fields(cx) + [t]/~);
+    ret T_struct(vec::append(T_box_header_fields(cx), [t]/~));
 }
 
 fn T_box_ptr(t: TypeRef) -> TypeRef {
@@ -723,7 +725,7 @@ fn T_opaque_box_ptr(cx: @crate_ctxt) -> TypeRef {
 }
 
 fn T_unique(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
-    ret T_struct(T_box_header_fields(cx) + [t]/~);
+    ret T_struct(vec::append(T_box_header_fields(cx), [t]/~));
 }
 
 fn T_unique_ptr(t: TypeRef) -> TypeRef {

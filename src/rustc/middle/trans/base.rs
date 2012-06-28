@@ -2203,7 +2203,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
     }
     ccx.monomorphizing.insert(fn_id, depth + 1u);
 
-    let pt = *pt + [path_name(@ccx.names(*name))]/~;
+    let pt = vec::append(*pt, [path_name(@ccx.names(*name))]/~);
     let s = mangle_exported_name(ccx, pt, mono_ty);
 
     let mk_lldecl = {||
@@ -2346,8 +2346,9 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                 ty::lookup_item_type(ccx.tcx, impl_did);
             if (*impl_bnds).len() + mth.tps.len() == 0u {
                 let llfn = get_item_val(ccx, mth.id);
-                let path = ty::item_path(ccx.tcx, impl_did) +
-                    [path_name(mth.ident)]/~;
+                let path = vec::append(
+                    ty::item_path(ccx.tcx, impl_did),
+                    [path_name(mth.ident)]/~);
                 trans_fn(ccx, path, mth.decl, mth.body,
                          llfn, impl_self(impl_ty), none, mth.id);
             }
@@ -3113,7 +3114,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
         }
       }
       arg_vals(vs) {
-        llargs += vs;
+        vec::push_all(llargs, vs);
       }
     }
 
@@ -3867,10 +3868,11 @@ fn trans_log(log_ex: @ast::expr, lvl: @ast::expr,
        ret trans_expr(bcx, lvl, ignore);
     }
 
-    let modpath = [path_mod(ccx.link_meta.name)]/~ +
+    let modpath = vec::append(
+        [path_mod(ccx.link_meta.name)]/~,
         vec::filter(bcx.fcx.path, {|e|
             alt e { path_mod(_) { true } _ { false } }
-        });
+        }));
     let modname = path_str(modpath);
 
     let global = if ccx.module_data.contains_key(modname) {
@@ -4901,12 +4903,16 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_fn(decl, tps, body) {
         if decl.purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
-            foreign::trans_extern_fn(ccx, *path + [path_name(item.ident)]/~,
+            foreign::trans_extern_fn(ccx,
+                                     vec::append(
+                                         *path,
+                                         [path_name(item.ident)]/~),
                                      decl, body, llfndecl, item.id);
         } else if tps.len() == 0u {
             let llfndecl = get_item_val(ccx, item.id);
-            trans_fn(ccx, *path + [path_name(item.ident)]/~, decl, body,
-                     llfndecl, no_self, none, item.id);
+            trans_fn(ccx,
+                     vec::append(*path, [path_name(item.ident)]/~),
+                     decl, body, llfndecl, no_self, none, item.id);
         } else {
             for vec::each(body.node.stmts) {|stmt|
                 alt stmt.node {
@@ -5112,9 +5118,11 @@ fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
 }
 
 fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
-    *alt check ccx.tcx.items.get(i.id) {
-      ast_map::node_item(_, p) { p }
-    } + [path_name(i.ident)]/~
+    vec::append(
+        *alt check ccx.tcx.items.get(i.id) {
+            ast_map::node_item(_, p) { p }
+        },
+        [path_name(i.ident)]/~)
 }
 
 /* If there's already a symbol for the dtor with <id> and substs <substs>,
@@ -5125,9 +5133,10 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
   alt ccx.item_symbols.find(id) {
      some(s) { s }
      none if is_none(substs) {
-       let s = mangle_exported_name(ccx,
-                               path + [path_name(@ccx.names("dtor"))]/~,
-                               t);
+       let s = mangle_exported_name(
+           ccx,
+           vec::append(path, [path_name(@ccx.names("dtor"))]/~),
+           t);
        ccx.item_symbols.insert(id, s);
        s
      }
@@ -5137,8 +5146,11 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
        alt substs {
          some(ss) {
            let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, t);
-           mangle_exported_name(ccx, path +
-                           [path_name(@ccx.names("dtor"))]/~, mono_ty)
+           mangle_exported_name(
+               ccx,
+               vec::append(path,
+                           [path_name(@ccx.names("dtor"))]/~),
+               mono_ty)
          }
          none {
              ccx.sess.bug(#fmt("get_dtor_symbol: not monomorphizing and \
@@ -5157,7 +5169,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
         let mut exprt = false;
         let val = alt check ccx.tcx.items.get(id) {
           ast_map::node_item(i, pth) {
-            let my_path = *pth + [path_name(i.ident)]/~;
+            let my_path = vec::append(*pth, [path_name(i.ident)]/~);
             alt check i.node {
               ast::item_const(_, _) {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
@@ -5182,18 +5194,20 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
           ast_map::node_method(m, impl_id, pth) {
             exprt = true;
             let mty = ty::node_id_to_type(ccx.tcx, id);
-            let pth = *pth + [path_name(@ccx.names("meth")),
-                              path_name(m.ident)]/~;
+            let pth = vec::append(*pth, [path_name(@ccx.names("meth")),
+                                         path_name(m.ident)]/~);
             let llfn = register_fn_full(ccx, m.span, pth, id, mty);
             set_inline_hint_if_appr(m.attrs, llfn);
             llfn
           }
           ast_map::node_foreign_item(ni, _, pth) {
             exprt = true;
-            register_fn(ccx, ni.span, *pth + [path_name(ni.ident)]/~, ni.id)
+            register_fn(ccx, ni.span,
+                        vec::append(*pth, [path_name(ni.ident)]/~),
+                        ni.id)
           }
           ast_map::node_ctor(nm, tps, ctor, _, pt) {
-            let my_path = *pt + [path_name(nm)]/~;
+            let my_path = vec::append(*pt, [path_name(nm)]/~);
             register_fn(ccx, ctor.span, my_path, ctor.node.id)
           }
           ast_map::node_dtor(tps, dt, parent_id, pt) {
@@ -5219,7 +5233,9 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
 
           ast_map::node_variant(v, enm, pth) {
             assert v.node.args.len() != 0u;
-            let pth = *pth + [path_name(enm.ident), path_name(v.node.name)]/~;
+            let pth = vec::append(*pth,
+                                  [path_name(enm.ident),
+                                   path_name(v.node.name)]/~);
             let llfn = alt check enm.node {
               ast::item_enum(_, _, _) {
                 register_fn(ccx, v.span, pth, id)
@@ -5248,8 +5264,8 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
         let mut i = 0;
         let path = item_path(ccx, it);
         for vec::each(variants) {|variant|
-            let p = path + [path_name(variant.node.name),
-                            path_name(@"discrim")]/~;
+            let p = vec::append(path, [path_name(variant.node.name),
+                                       path_name(@"discrim")]/~);
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
             note_unique_llvm_symbol(ccx, s);
@@ -5454,7 +5470,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         let mut result = []/~;
         for list::each(cx.maps.impl_map.get(id)) {
             |impls|
-            result += (*impls).map({|i| (i.ident, i.did) });
+            vec::push_all(result, (*impls).map({|i| (i.ident, i.did) }));
         }
         ret result;
     }

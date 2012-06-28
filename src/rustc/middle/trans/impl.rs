@@ -19,11 +19,13 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: [@ast::method]/~, tps: [ast::ty_param]/~) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { ret; }
-    let sub_path = path + [path_name(name)]/~;
+    let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) {|m|
         if m.tps.len() == 0u {
             let llfn = get_item_val(ccx, m.id);
-            trans_fn(ccx, sub_path + [path_name(m.ident)]/~, m.decl, m.body,
+            trans_fn(ccx,
+                     vec::append_one(sub_path, path_name(m.ident)),
+                     m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)),
                      none, m.id);
         }
@@ -121,8 +123,10 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
         let n_m_tps = method_ty_param_count(ccx, mth_id, impl_did);
         let node_substs = node_id_type_params(bcx, callee_id);
-        let ty_substs = impl_substs +
-            vec::tailn(node_substs, node_substs.len() - n_m_tps);
+        let ty_substs
+            = vec::append(impl_substs,
+                          vec::tailn(node_substs,
+                                     node_substs.len() - n_m_tps));
         let {bcx, val} = trans_self_arg(bcx, base, derefs);
         let lval = lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
                                         some(sub_origins));
