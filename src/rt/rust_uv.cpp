@@ -238,31 +238,35 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
         uv_tcp_t* tcp_ptr,
         uv_connect_cb cb,
         sockaddr_in* addr_ptr) {
-    rust_task* task = rust_get_current_task();
-    LOG(task, stdlib, "inside rust_uv_tcp_connect");
     // FIXME ref #2064
     sockaddr_in addr = *addr_ptr;
-    LOG(task, stdlib, "before tcp_connect .. port: %d",
-        addr.sin_port);
-    LOG(task, stdlib, "before tcp_connect.. tcp stream:" \
-        "%lu cb ptr: %lu",
-        (unsigned long int)tcp_ptr, (unsigned long int)cb);
     int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-    LOG(task, stdlib, "leaving rust_uv_tcp_connect.." \
-        "and result: %d",
-            result);
     return result;
 }
 
 extern "C" int
 rust_uv_tcp_bind(uv_tcp_t* tcp_server, sockaddr_in* addr_ptr) {
     // FIXME ref #2064
-    rust_task* task = rust_get_current_task();
     sockaddr_in addr = *addr_ptr;
-    LOG(task, stdlib, "before uv_tcp_bind .. tcp_server:" \
-        "%lu port: %d",
-            (unsigned long int)tcp_server, addr.sin_port);
     return uv_tcp_bind(tcp_server, addr);
+}
+extern "C" int
+rust_uv_tcp_connect6(uv_connect_t* connect_ptr,
+        uv_tcp_t* tcp_ptr,
+        uv_connect_cb cb,
+        sockaddr_in6* addr_ptr) {
+    // FIXME ref #2064
+    sockaddr_in6 addr = *addr_ptr;
+    int result = uv_tcp_connect6(connect_ptr, tcp_ptr, addr, cb);
+    return result;
+}
+
+extern "C" int
+rust_uv_tcp_bind6
+(uv_tcp_t* tcp_server, sockaddr_in6* addr_ptr) {
+    // FIXME ref #2064
+    sockaddr_in6 addr = *addr_ptr;
+    return uv_tcp_bind6(tcp_server, addr);
 }
 
 extern "C" int
@@ -301,6 +305,10 @@ rust_uv_helper_sockaddr_in_size() {
     return sizeof(sockaddr_in);
 }
 extern "C" size_t
+rust_uv_helper_sockaddr_in6_size() {
+    return sizeof(sockaddr_in6);
+}
+extern "C" size_t
 rust_uv_helper_uv_async_t_size() {
     return sizeof(uv_async_t);
 }
@@ -308,7 +316,22 @@ extern "C" size_t
 rust_uv_helper_uv_timer_t_size() {
     return sizeof(uv_timer_t);
 }
-
+extern "C" size_t
+rust_uv_helper_addr_in_size() {
+    return sizeof(sockaddr_in6);
+}
+extern "C" size_t
+rust_uv_helper_uv_getaddrinfo_t_size() {
+    return sizeof(uv_getaddrinfo_t);
+}
+extern "C" size_t
+rust_uv_helper_addrinfo_size() {
+    return sizeof(addrinfo);
+}
+extern "C" unsigned int
+rust_uv_helper_get_INADDR_NONE() {
+    return INADDR_NONE;
+}
 extern "C" uv_stream_t*
 rust_uv_get_stream_handle_from_connect_req(uv_connect_t* connect) {
     return connect->handle;
@@ -436,10 +459,26 @@ extern "C" struct sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
     rust_task* task = rust_get_current_task();
     LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
-        "port %d", ip, port);
+        " port %d\n", ip, port);
     struct sockaddr_in addr = uv_ip4_addr(ip, port);
     LOG(task, stdlib, "after creating .. port: %d", addr.sin_port);
     return addr;
+}
+extern "C" struct sockaddr_in6
+rust_uv_ip6_addr(const char* ip, int port) {
+    rust_task* task = rust_get_current_task();
+    LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
+        " port %d\n", ip, port);
+    return uv_ip6_addr(ip, port);
+}
+extern "C" int
+rust_uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
+    return uv_ip4_name(src, dst, size);
+}
+extern "C" int
+rust_uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
+    int result = uv_ip6_name(src, dst, size);
+    return result;
 }
 
 extern "C" uintptr_t*
@@ -459,4 +498,36 @@ rust_uv_current_kernel_malloc(size_t size) {
 extern "C" void
 rust_uv_current_kernel_free(void* mem) {
     current_kernel_free(mem);
+}
+
+extern  "C" int
+rust_uv_getaddrinfo(uv_loop_t* loop, uv_getaddrinfo_t* handle,
+                    uv_getaddrinfo_cb cb,
+                    char* node, char* service,
+                    addrinfo* hints) {
+    return uv_getaddrinfo(loop, handle, cb, node, service, hints);
+}
+extern "C" void
+rust_uv_freeaddrinfo(addrinfo* res) {
+    uv_freeaddrinfo(res);
+}
+extern "C" bool
+rust_uv_is_ipv4_addrinfo(addrinfo* input) {
+    return input->ai_family == AF_INET;
+}
+extern "C" bool
+rust_uv_is_ipv6_addrinfo(addrinfo* input) {
+    return input->ai_family == AF_INET6;
+}
+extern "C" addrinfo*
+rust_uv_get_next_addrinfo(addrinfo* input) {
+    return input->ai_next;
+}
+extern "C" sockaddr_in*
+rust_uv_addrinfo_as_sockaddr_in(addrinfo* input) {
+    return (sockaddr_in*)input->ai_addr;
+}
+extern "C" sockaddr_in6*
+rust_uv_addrinfo_as_sockaddr_in6(addrinfo* input) {
+    return (sockaddr_in6*)input->ai_addr;
 }
