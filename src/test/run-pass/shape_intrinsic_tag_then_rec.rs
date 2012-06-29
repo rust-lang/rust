@@ -23,7 +23,7 @@ type ty = spanned<ty_>;
 fn main() {
     let sp: span = {lo: 57451u, hi: 57542u, expanded_from: os_none};
     let t: @ty = @{ data: 3u, span: sp };
-    let p_: path_ = { global: true, idents: ["hi"]/~, types: [t] };
+    let p_: path_ = { global: true, idents: ["hi"]/~, types: [t]/~ };
     let p: path = { data: p_, span: sp };
     let x = { sp: sp, path: p };
     log(error, x.path);

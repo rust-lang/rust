@@ -131,7 +131,7 @@ Rust program files are, by convention, given the extension `.rs`. Say
 we have a file `hello.rs` containing this program:
 
 ~~~~
-fn main(args: [str]) {
+fn main(args: ~[str]) {
     io::println("hello world from '" + args[0] + "'!");
 }
 ~~~~
@@ -322,10 +322,10 @@ annotation:
 
 ~~~~
 // The type of this vector will be inferred based on its use.
-let x = [];
+let x = ~[];
 # vec::map(x, fn&(&&_y:int) -> int { _y });
 // Explicitly say this is a vector of integers.
-let y: [int] = [];
+let y: ~[int] = ~[];
 ~~~~
 
 The basic types are written like this:
@@ -363,10 +363,10 @@ The basic types are written like this:
 These can be combined in composite types, which will be described in
 more detail later on (the `T`s here stand for any other type):
 
-`[T]`
+`~[T]`
   : Vector type.
 
-`[mut T]`
+`~[mut T]`
   : Mutable vector type.
 
 `(T1, T2)`
@@ -757,7 +757,7 @@ value.
 
 ~~~~
 log(warn, "hi");
-log(error, (1, [2.5, -1.8]));
+log(error, (1, ~[2.5, -1.8]));
 ~~~~
 
 The first argument is the log level (levels `debug`, `info`, `warn`,
@@ -939,7 +939,7 @@ closure, the closure need not be placed within parentheses. You could,
 for example, write...
 
 ~~~~
-let doubled = vec::map([1, 2, 3]) {|x| x*2};
+let doubled = vec::map(~[1, 2, 3]) {|x| x*2};
 ~~~~
 
 `vec::map` is a function in the core library that applies its last
@@ -955,7 +955,7 @@ iteration constructs. For example, this one iterates over a vector
 of integers backwards:
 
 ~~~~
-fn for_rev(v: [int], act: fn(int)) {
+fn for_rev(v: ~[int], act: fn(int)) {
     let mut i = vec::len(v);
     while (i > 0u) {
         i -= 1u;
@@ -967,8 +967,8 @@ fn for_rev(v: [int], act: fn(int)) {
 To run such an iteration, you could do this:
 
 ~~~~
-# fn for_rev(v: [int], act: fn(int)) {}
-for_rev([1, 2, 3], {|n| log(error, n); });
+# fn for_rev(v: ~[int], act: fn(int)) {}
+for_rev(~[1, 2, 3], {|n| log(error, n); });
 ~~~~
 
 Making use of the shorthand where a final closure argument can be
@@ -976,8 +976,8 @@ moved outside of the parentheses permits the following, which
 looks quite like a normal loop:
 
 ~~~~
-# fn for_rev(v: [int], act: fn(int)) {}
-for_rev([1, 2, 3]) {|n|
+# fn for_rev(v: ~[int], act: fn(int)) {}
+for_rev(~[1, 2, 3]) {|n|
     log(error, n);
 }
 ~~~~
@@ -992,7 +992,7 @@ To allow breaking out of loops, many iteration functions, such as
 `false` to break off iteration.
 
 ~~~~
-vec::each([2, 4, 8, 5, 16]) {|n|
+vec::each(~[2, 4, 8, 5, 16]) {|n|
     if n % 2 != 0 {
         io::println("found odd number!");
         false
@@ -1006,7 +1006,7 @@ return `true`, and `break` and `cont` can be used, much like in a
 `while` loop, to explicitly return `false` or `true`.
 
 ~~~~
-for vec::each([2, 4, 8, 5, 16]) {|n|
+for vec::each(~[2, 4, 8, 5, 16]) {|n|
     if n % 2 != 0 {
         io::println("found odd number!");
         break;
@@ -1020,7 +1020,7 @@ normally allowed in blocks, in a block that appears as the body of a
 function, not just the loop body.
 
 ~~~~
-fn contains(v: [int], elt: int) -> bool {
+fn contains(v: ~[int], elt: int) -> bool {
     for vec::each(v) {|x|
         if (x == elt) { ret true; }
     }
@@ -1057,7 +1057,7 @@ Fields that you want to mutate must be explicitly marked as such. For
 example...
 
 ~~~~
-type stack = {content: [int], mut head: uint};
+type stack = {content: ~[int], mut head: uint};
 ~~~~
 
 With such a type, you can do `mystack.head += 1u`. If `mut` were
@@ -1316,7 +1316,7 @@ fn increase_contents(pt: @mut int) {
 ## Vectors
 
 Rust vectors are always heap-allocated and unique. A value of type
-`[T]` is represented by a pointer to a section of heap memory
+`~[T]` is represented by a pointer to a section of heap memory
 containing any number of values of type `T`.
 
 NOTE: This uniqueness is turning out to be quite awkward in practice,
@@ -1326,37 +1326,42 @@ Vector literals are enclosed in square brackets. Dereferencing is done
 with square brackets (zero-based):
 
 ~~~~
-let myvec = [true, false, true, false];
+let myvec = ~[true, false, true, false];
 if myvec[1] { io::println("boom"); }
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
-The type written as `[mut T]` is a vector with mutable
-elements. Mutable vector literals are written `[mut]` (empty) or `[mut
+The type written as `~[mut T]` is a vector with mutable
+elements. Mutable vector literals are written `~[mut]` (empty) or `~[mut
 1, 2, 3]` (with elements).
 
 The `+` operator means concatenation when applied to vector types.
 Growing a vector in Rust is not as inefficient as it looks :
 
 ~~~~
-let mut myvec = [], i = 0;
+let mut myvec = ~[], i = 0;
 while i < 100 {
-    myvec += [i];
+    myvec += ~[i];
     i += 1;
 }
 ~~~~
 
 Because a vector is unique, replacing it with a longer one (which is
-what `+= [i]` does) is indistinguishable from appending to it
+what `+= ~[i]` does) is indistinguishable from appending to it
 in-place. Vector representations are optimized to grow
 logarithmically, so the above code generates about the same amount of
 copying and reallocation as `push` implementations in most other
 languages.
 
+NOTE: Actually, current, growing a vector is *exactly* as inefficient
+as it looks, since vector + has been moved to the libraries and rust's
+operator overloading support is insufficient to allow this
+optimization. Try using `vec::push`.
+
 ## Strings
 
 The `str` type in Rust is represented exactly the same way as a vector
-of bytes (`[u8]`), except that it is guaranteed to have a trailing
+of bytes (`~[u8]`), except that it is guaranteed to have a trailing
 null byte (for interoperability with C APIs).
 
 This sequence of bytes is interpreted as an UTF-8 encoded sequence of
@@ -1407,11 +1412,11 @@ very cheap, but you'll occasionally have to copy them to ensure
 safety.
 
 ~~~~
-let mut my_rec = {a: 4, b: [1, 2, 3]};
+let mut my_rec = {a: 4, b: ~[1, 2, 3]};
 alt my_rec {
   {a, b} {
     log(info, b); // This is okay
-    my_rec = {a: a + 1, b: b + [a]};
+    my_rec = {a: a + 1, b: b + ~[a]};
     log(info, b); // Here reference b has become invalid
   }
 }
@@ -1433,8 +1438,8 @@ are often useful. The first is by-mutable-pointer, written with a
 single `&`:
 
 ~~~~
-fn vec_push(&v: [int], elt: int) {
-    v += [elt];
+fn vec_push(&v: ~[int], elt: int) {
+    v += ~[elt];
 }
 ~~~~
 
@@ -1475,7 +1480,7 @@ they apply to.  Thus, Rust allows functions and datatypes to have type
 parameters.
 
 ~~~~
-fn for_rev<T>(v: [T], act: fn(T)) {
+fn for_rev<T>(v: ~[T], act: fn(T)) {
     let mut i = vec::len(v);
     while i > 0u {
         i -= 1u;
@@ -1483,9 +1488,9 @@ fn for_rev<T>(v: [T], act: fn(T)) {
     }
 }
 
-fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
-    let mut acc = [];
-    for v.each {|elt| acc += [f(elt)]; }
+fn map<T, U>(v: ~[T], f: fn(T) -> U) -> ~[U] {
+    let mut acc = ~[];
+    for v.each {|elt| vec::push(acc, f(elt)); }
     ret acc;
 }
 ~~~~
@@ -1505,7 +1510,7 @@ Generic `type` and `enum` declarations follow the same pattern:
 ~~~~
 type circular_buf<T> = {start: uint,
                         end: uint,
-                        buf: [mut T]};
+                        buf: ~[mut T]};
 
 enum option<T> { some(T), none }
 ~~~~
@@ -1573,9 +1578,9 @@ unless you explicitly declare that type parameter to have copyable
 
 ~~~~ {.ignore}
 // This does not compile
-fn head_bad<T>(v: [T]) -> T { v[0] }
+fn head_bad<T>(v: ~[T]) -> T { v[0] }
 // This does
-fn head<T: copy>(v: [T]) -> T { v[0] }
+fn head<T: copy>(v: ~[T]) -> T { v[0] }
 ~~~~
 
 When instantiating a generic function, you can only instantiate it
@@ -1601,7 +1606,7 @@ difficult. If you try this program:
 
 ~~~~{.xfail-test}
 fn plus1(x: int) -> int { x + 1 }
-vec::map([1, 2, 3], plus1);
+vec::map(~[1, 2, 3], plus1);
 ~~~~
 
 You will get an error message about argument passing styles
@@ -1615,7 +1620,7 @@ using the `&&` sigil:
 
 ~~~~
 fn plus1(&&x: int) -> int { x + 1 }
-vec::map([1, 2, 3], plus1);
+vec::map(~[1, 2, 3], plus1);
 ~~~~
 
 NOTE: This is inconvenient, and we are hoping to get rid of this
@@ -1961,7 +1966,7 @@ parameters.
 
 ~~~~
 # iface to_str { fn to_str() -> str; }
-fn comma_sep<T: to_str>(elts: [T]) -> str {
+fn comma_sep<T: to_str>(elts: ~[T]) -> str {
     let mut result = "", first = true;
     for elts.each {|elt|
         if first { first = false; }
@@ -1990,7 +1995,7 @@ iface seq<T> {
     fn len() -> uint;
     fn iter(fn(T));
 }
-impl <T> of seq<T> for [T] {
+impl <T> of seq<T> for ~[T] {
     fn len() -> uint { vec::len(self) }
     fn iter(b: fn(T)) {
         for self.each {|elt| b(elt); }
@@ -2012,7 +2017,7 @@ However, consider this function:
 
 ~~~~
 # iface drawable { fn draw(); }
-fn draw_all<T: drawable>(shapes: [T]) {
+fn draw_all<T: drawable>(shapes: ~[T]) {
     for shapes.each {|shape| shape.draw(); }
 }
 ~~~~
@@ -2026,7 +2031,7 @@ the function to be written simply like this:
 
 ~~~~
 # iface drawable { fn draw(); }
-fn draw_all(shapes: [drawable]) {
+fn draw_all(shapes: ~[drawable]) {
     for shapes.each {|shape| shape.draw(); }
 }
 ~~~~
@@ -2048,10 +2053,10 @@ to an interface type:
 # impl of drawable for int { fn draw() {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
-# fn draw_all(shapes: [drawable]) {}
+# fn draw_all(shapes: ~[drawable]) {}
 let c: circle = new_circle();
 let r: rectangle = new_rectangle();
-draw_all([c as drawable, r as drawable]);
+draw_all(~[c as drawable, r as drawable]);
 ~~~~
 
 This will store the value into a box, along with information about the
@@ -2110,7 +2115,7 @@ extern mod crypto {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
 
-fn as_hex(data: [u8]) -> str {
+fn as_hex(data: ~[u8]) -> str {
     let mut acc = "";
     for data.each {|byte| acc += #fmt("%02x", byte as uint); }
     ret acc;
@@ -2123,7 +2128,7 @@ fn sha1(data: str) -> str unsafe {
     ret as_hex(vec::unsafe::from_buf(hash, 20u));
 }
 
-fn main(args: [str]) {
+fn main(args: ~[str]) {
     io::println(sha1(args[1]));
 }
 ~~~~
@@ -2214,12 +2219,14 @@ The `sha1` function is the most obscure part of the program.
 
 ~~~~
 # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
-# fn as_hex(data: [u8]) -> str { "hi" }
-fn sha1(data: str) -> str unsafe {
-    let bytes = str::bytes(data);
-    let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
-                            vec::len(bytes), ptr::null());
-    ret as_hex(vec::unsafe::from_buf(hash, 20u));
+# fn as_hex(data: ~[u8]) -> str { "hi" }
+fn sha1(data: str) -> str {
+    unsafe {
+        let bytes = str::bytes(data);
+        let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
+                                vec::len(bytes), ptr::null());
+        ret as_hex(vec::unsafe::from_buf(hash, 20u));
+    }
 }
 ~~~~
 
@@ -2255,12 +2262,14 @@ Let's look at our `sha1` function again.
 
 ~~~~
 # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
-# fn as_hex(data: [u8]) -> str { "hi" }
-# fn x(data: str) -> str unsafe {
+# fn as_hex(data: ~[u8]) -> str { "hi" }
+# fn x(data: str) -> str {
+# unsafe {
 let bytes = str::bytes(data);
 let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                         vec::len(bytes), ptr::null());
 ret as_hex(vec::unsafe::from_buf(hash, 20u));
+# }
 # }
 ~~~~
 

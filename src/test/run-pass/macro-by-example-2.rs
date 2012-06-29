@@ -1,3 +1,9 @@
+// I can't for the life of me manage to untangle all of the brackets
+// in this test. I am just suppessing the old_vec diagnostic. This
+// doesn't actually care what sort of vector it uses, so if we change
+// what vectors mean, it shouldn't mind...
+#[warn(no_old_vecs)];
+
 fn main() {
     #macro[[#zip_or_unzip[[x, ...], [y, ...]], [[x, y], ...]],
            [#zip_or_unzip[[xx, yy], ...], [[xx, ...], [yy, ...]]]];

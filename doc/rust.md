@@ -1006,12 +1006,12 @@ declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
 ~~~~
-fn iter<T>(seq: [T], f: fn(T)) {
+fn iter<T>(seq: ~[T], f: fn(T)) {
     for seq.each {|elt| f(elt); }
 }
-fn map<T, U>(seq: [T], f: fn(T) -> U) -> [U] {
-    let mut acc = [];
-    for seq.each {|elt| acc += [f(elt)]; }
+fn map<T, U>(seq: ~[T], f: fn(T) -> U) -> ~[U] {
+    let mut acc = ~[];
+    for seq.each {|elt| vec::push(acc, f(elt)); }
     acc
 }
 ~~~~
@@ -1048,14 +1048,14 @@ same as any other Rust function, except that they are prepended with the
 `extern` keyword.
 
 ~~~
-extern fn new_vec() -> [int] { [] }
+extern fn new_vec() -> ~[int] { ~[] }
 ~~~
 
 Extern functions may not be called from Rust code, but their value
 may be taken as an unsafe `u8` pointer.
 
 ~~~
-# extern fn new_vec() -> [int] { [] }
+# extern fn new_vec() -> ~[int] { ~[] }
 let fptr: *u8 = new_vec;
 ~~~
 
@@ -1289,7 +1289,7 @@ specified, after the `impl` keyword.
 ~~~~
 # iface seq<T> { }
 
-impl <T> of seq<T> for [T] {
+impl <T> of seq<T> for ~[T] {
     /* ... */
 }
 impl of seq<bool> for u32 {
@@ -1615,9 +1615,9 @@ indicate that the elements of the resulting vector may be mutated.
 When no mutability is specified, the vector is immutable.
 
 ~~~~
-[1, 2, 3, 4];
-["a", "b", "c", "d"];
-[mut 0u8, 0u8, 0u8, 0u8];
+~[1, 2, 3, 4];
+~["a", "b", "c", "d"];
+~[mut 0u8, 0u8, 0u8, 0u8];
 ~~~~
 
 ### Index expressions
@@ -1640,9 +1640,9 @@ task in a _failing state_.
 # task::unsupervise(buildr);
 # task::run(buildr) {||
 
-[1, 2, 3, 4][0];
-[mut 'x', 'y'][1] = 'z';
-["a", "b"][10]; // fails
+(~[1, 2, 3, 4])[0];
+(~[mut 'x', 'y'])[1] = 'z';
+(~["a", "b"])[10]; // fails
 
 # }
 ~~~~
@@ -1760,10 +1760,10 @@ is unsupported and will fail to compile.
 An example of an `as` expression:
 
 ~~~~
-# fn sum(v: [float]) -> float { 0.0 }
-# fn len(v: [float]) -> int { 0 }
+# fn sum(v: ~[float]) -> float { 0.0 }
+# fn len(v: ~[float]) -> int { 0 }
 
-fn avg(v: [float]) -> float {
+fn avg(v: ~[float]) -> float {
   let sum: float = sum(v);
   let sz: float = len(v) as float;
   ret sum / sz;
@@ -1794,8 +1794,8 @@ expression. No allocation or destruction is entailed.
 An example of three different move expressions:
 
 ~~~~~~~~
-# let mut x = [mut 0];
-# let a = [mut 0];
+# let mut x = ~[mut 0];
+# let a = ~[mut 0];
 # let b = 0;
 # let y = {mut z: 0};
 # let c = 0;
@@ -1823,8 +1823,8 @@ expression. No allocation or destruction is entailed.
 An example of three different swap expressions:
 
 ~~~~~~~~
-# let mut x = [mut 0];
-# let mut a = [mut 0];
+# let mut x = ~[mut 0];
+# let mut a = ~[mut 0];
 # let i = 0;
 # let y = {mut z: 0};
 # let b = {mut c: 0};
@@ -1924,11 +1924,11 @@ argument to a function to be copied and passed by value.
 An example of a copy expression:
 
 ~~~~
-fn mutate(vec: [mut int]) {
+fn mutate(vec: ~[mut int]) {
    vec[0] = 10;
 }
 
-let v = [mut 1,2,3];
+let v = ~[mut 1,2,3];
 
 mutate(copy v);   // Pass a copy
 
@@ -2067,7 +2067,7 @@ An example a for loop:
 # fn bar(f: foo) { }
 # let a = 0, b = 0, c = 0;
 
-let v: [foo] = [a, b, c];
+let v: ~[foo] = ~[a, b, c];
 
 for v.each {|e|
     bar(e);
@@ -2272,12 +2272,12 @@ the `note` to the internal logging diagnostic buffer.
 An example of a `note` expression:
 
 ~~~~{.xfail-test}
-fn read_file_lines(path: str) -> [str] {
+fn read_file_lines(path: str) -> ~[str] {
     note path;
     let r: [str];
     let f: file = open_read(path);
     lines(f) {|s|
-        r += [s];
+        r += ~[s];
     }
     ret r;
 }
@@ -2707,7 +2707,7 @@ the kind of its member type, as with other simple structural types.
 An example of a vector type and its use:
 
 ~~~~
-let v: [int] = [7, 5, 3];
+let v: ~[int] = ~[7, 5, 3];
 let i: int = v[2];
 assert (i == 3);
 ~~~~
@@ -2719,8 +2719,8 @@ vector:
 
 
 ~~~~
-let mut v: [int] = [1, 2, 3];
-v += [4, 5, 6];
+let mut v: ~[int] = ~[1, 2, 3];
+v += ~[4, 5, 6];
 ~~~~
 
 Normal vector concatenation causes the allocation of a fresh vector to hold
