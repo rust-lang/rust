@@ -3,15 +3,10 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Last Change:  2010 Oct 13
 
-" Quit when a syntax file was already loaded
-if !exists("main_syntax")
-  if version < 600
-    syntax clear
-  elseif exists("b:current_syntax")
-    finish
-  endif
-  " we define it here so that included files can test for it
-  let main_syntax='rust'
+if version < 600
+  syntax clear
+elseif exists("b:current_syntax")
+  finish
 endif
 
 syn keyword   rustAssert      assert
