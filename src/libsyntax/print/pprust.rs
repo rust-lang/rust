@@ -879,6 +879,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             let blk_arg = vec::pop(base_args);
             alt blk_arg.node {
               ast::expr_loop_body(_) { word_nbsp(s, "for"); }
+              ast::expr_do_body(_) { word_nbsp(s, "do"); }
               _ {}
             }
             some(blk_arg)
