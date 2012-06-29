@@ -264,19 +264,17 @@ mod ct {
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it 0this way, I think.
 mod rt {
-    enum flag {
-        flag_left_justify,
-        flag_left_zero_pad,
-        flag_space_for_sign,
-        flag_sign_always,
-        flag_alternate,
-    }
+    const flag_none : u32 = 0u32;
+    const flag_left_justify   : u32 = 0b00000000000000000000000000000001u32;
+    const flag_left_zero_pad  : u32 = 0b00000000000000000000000000000010u32;
+    const flag_space_for_sign : u32 = 0b00000000000000000000000000000100u32;
+    const flag_sign_always    : u32 = 0b00000000000000000000000000001000u32;
+    const flag_alternate      : u32 = 0b00000000000000000000000000010000u32;
+
     enum count { count_is(int), count_implied, }
     enum ty { ty_default, ty_bits, ty_hex_upper, ty_hex_lower, ty_octal, }
 
-    // FIXME (#1993): May not want to use a vector here for flags; instead
-    // just use a bool per flag.
-    type conv = {flags: [flag]/~, width: count, precision: count, ty: ty};
+    type conv = {flags: u32, width: count, precision: count, ty: ty};
 
     fn conv_int(cv: conv, i: int) -> str {
         let radix = 10u;
@@ -307,7 +305,6 @@ mod rt {
         let s = if b { "true" } else { "false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
-
         ret conv_str(cv, s);
     }
     fn conv_char(cv: conv, c: char) -> str {
@@ -430,9 +427,8 @@ mod rt {
         }
         ret padstr + s;
     }
-    fn have_flag(flags: [flag]/~, f: flag) -> bool {
-        for vec::each(flags) {|candidate| if candidate == f { ret true; } }
-        ret false;
+    fn have_flag(flags: u32, f: u32) -> bool {
+        flags & f != 0
     }
 }
 

@@ -50,19 +50,19 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
 
     fn make_rt_conv_expr(cx: ext_ctxt, sp: span, cnv: conv) -> @ast::expr {
         fn make_flags(cx: ext_ctxt, sp: span, flags: [flag]/~) -> @ast::expr {
-            let mut flagexprs: [@ast::expr]/~ = []/~;
+            let mut tmp_expr = make_rt_path_expr(cx, sp, @"flag_none");
             for flags.each {|f|
-                let mut fstr;
-                alt f {
-                  flag_left_justify { fstr = "flag_left_justify"; }
-                  flag_left_zero_pad { fstr = "flag_left_zero_pad"; }
-                  flag_space_for_sign { fstr = "flag_space_for_sign"; }
-                  flag_sign_always { fstr = "flag_sign_always"; }
-                  flag_alternate { fstr = "flag_alternate"; }
-                }
-                vec::push(flagexprs, make_rt_path_expr(cx, sp, @fstr));
+                let fstr = alt f {
+                  flag_left_justify { "flag_left_justify" }
+                  flag_left_zero_pad { "flag_left_zero_pad" }
+                  flag_space_for_sign { "flag_space_for_sign" }
+                  flag_sign_always { "flag_sign_always" }
+                  flag_alternate { "flag_alternate" }
+                };
+                tmp_expr = mk_binary(cx, sp, ast::bitor, tmp_expr,
+                                     make_rt_path_expr(cx, sp, @fstr));
             }
-            ret mk_uniq_vec_e(cx, sp, flagexprs);
+            ret tmp_expr;
         }
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {
