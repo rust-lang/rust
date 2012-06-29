@@ -478,8 +478,6 @@ rust_uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
 extern "C" int
 rust_uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
     int result = uv_ip6_name(src, dst, size);
-    printf("rust_uv_ip6_name: src ptr: %lu dst result: '%s'\n",
-        (unsigned long int)src, dst);
     return result;
 }
 
