@@ -39,6 +39,7 @@ const coherence: uint = 512u;
 const borrowck_stats: uint = 1024u;
 const borrowck_note_pure: uint = 2048;
 const borrowck_note_loan: uint = 4096;
+const no_landing_pads: uint = 8192;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"ppregions", ~"prettyprint regions with \
@@ -58,7 +59,9 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"borrowck-note-pure", ~"note where purity is req'd",
       borrowck_note_pure),
      (~"borrowck-note-loan", ~"note where loans are req'd",
-      borrowck_note_loan)
+      borrowck_note_loan),
+     (~"no-landing-pads", ~"omit landing pads for unwinding",
+      no_landing_pads)
     ]
 }
 
