@@ -540,7 +540,7 @@ impl helpers for ebml::writer {
         e::write_type(ecx, self, ty)
     }
 
-    fn emit_tys(ecx: @e::encode_ctxt, tys: [ty::t]/~) {
+    fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]) {
         self.emit_from_vec(tys) {|ty|
             e::write_type(ecx, self, ty)
         }
@@ -741,11 +741,11 @@ impl decoder for ebml::ebml_deserializer {
             {|a|xcx.tr_def_id(a)})
     }
 
-    fn read_tys(xcx: extended_decode_ctxt) -> [ty::t]/~ {
+    fn read_tys(xcx: extended_decode_ctxt) -> ~[ty::t] {
         self.read_to_vec {|| self.read_ty(xcx) }
     }
 
-    fn read_bounds(xcx: extended_decode_ctxt) -> @[ty::param_bound]/~ {
+    fn read_bounds(xcx: extended_decode_ctxt) -> @~[ty::param_bound] {
         tydecode::parse_bounds_data(
             self.parent.data, self.pos, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
             {|a|xcx.tr_def_id(a)})
@@ -861,7 +861,7 @@ type fake_session = ();
 
 #[cfg(test)]
 impl of fake_ext_ctxt for fake_session {
-    fn cfg() -> ast::crate_cfg { []/~ }
+    fn cfg() -> ast::crate_cfg { ~[] }
     fn parse_sess() -> parse::parse_sess { parse::new_parse_sess(none) }
 }
 
@@ -924,13 +924,13 @@ fn test_simplification() {
     let item_in = ast::ii_item(#ast(item) {
         fn new_int_alist<B: copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-            ret {eq_fn: eq_int, mut data: []/~};
+            ret {eq_fn: eq_int, mut data: ~[]};
         }
     });
     let item_out = simplify_ast(item_in);
     let item_exp = ast::ii_item(#ast(item) {
         fn new_int_alist<B: copy>() -> alist<int, B> {
-            ret {eq_fn: eq_int, mut data: []/~};
+            ret {eq_fn: eq_int, mut data: ~[]};
         }
     });
     alt (item_out, item_exp) {

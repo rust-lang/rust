@@ -25,12 +25,12 @@ enum omnomnomy {
     #[doc = "Delicious sugar cookies"]
     cookie,
     #[doc = "It's pizza"]
-    pizza_pie([uint]/~)
+    pizza_pie(~[uint])
 }
 
 fn take_my_order_please(
     _waitress: waitress,
-    _order: [omnomnomy]/~
+    _order: ~[omnomnomy]
 ) -> uint {
 
     #[doc = "

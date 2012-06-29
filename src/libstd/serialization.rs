@@ -83,7 +83,7 @@ iface deserializer {
 //
 // In some cases, these should eventually be coded as traits.
 
-fn emit_from_vec<S: serializer, T>(s: S, v: [T]/~, f: fn(T)) {
+fn emit_from_vec<S: serializer, T>(s: S, v: ~[T], f: fn(T)) {
     s.emit_vec(vec::len(v)) {||
         vec::iteri(v) {|i,e|
             s.emit_vec_elt(i) {||
@@ -93,7 +93,7 @@ fn emit_from_vec<S: serializer, T>(s: S, v: [T]/~, f: fn(T)) {
     }
 }
 
-fn read_to_vec<D: deserializer, T: copy>(d: D, f: fn() -> T) -> [T]/~ {
+fn read_to_vec<D: deserializer, T: copy>(d: D, f: fn() -> T) -> ~[T] {
     d.read_vec {|len|
         vec::from_fn(len) {|i|
             d.read_vec_elt(i) {|| f() }
@@ -102,13 +102,13 @@ fn read_to_vec<D: deserializer, T: copy>(d: D, f: fn() -> T) -> [T]/~ {
 }
 
 impl serializer_helpers<S: serializer> for S {
-    fn emit_from_vec<T>(v: [T]/~, f: fn(T)) {
+    fn emit_from_vec<T>(v: ~[T], f: fn(T)) {
         emit_from_vec(self, v, f)
     }
 }
 
 impl deserializer_helpers<D: deserializer> for D {
-    fn read_to_vec<T: copy>(f: fn() -> T) -> [T]/~ {
+    fn read_to_vec<T: copy>(f: fn() -> T) -> ~[T] {
         read_to_vec(self, f)
     }
 }

@@ -17,7 +17,7 @@ export parse_bounds_data;
 // Callback to translate defs to strs or back:
 type conv_did = fn(ast::def_id) -> ast::def_id;
 
-type pstate = {data: @[u8]/~, crate: int, mut pos: uint, tcx: ty::ctxt};
+type pstate = {data: @~[u8], crate: int, mut pos: uint, tcx: ty::ctxt};
 
 fn peek(st: @pstate) -> char {
     st.data[st.pos] as char
@@ -50,7 +50,7 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
 }
 
 
-fn parse_ty_data(data: @[u8]/~, crate_num: int, pos: uint, tcx: ty::ctxt,
+fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                  conv: conv_did) -> ty::t {
     let st = @{data: data, crate: crate_num, mut pos: pos, tcx: tcx};
     parse_ty(st, conv)
@@ -65,8 +65,8 @@ fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
 
 fn parse_constrs_gen<T: copy>(st: @pstate, conv: conv_did,
                                        pser: fn(@pstate)
-  -> ast::constr_arg_general_<T>) -> [@ty::constr_general<T>]/~ {
-    let mut rslt: [@ty::constr_general<T>]/~ = []/~;
+  -> ast::constr_arg_general_<T>) -> ~[@ty::constr_general<T>] {
+    let mut rslt: ~[@ty::constr_general<T>] = ~[];
     alt peek(st) {
       ':' {
         loop {
@@ -80,16 +80,16 @@ fn parse_constrs_gen<T: copy>(st: @pstate, conv: conv_did,
     rslt
 }
 
-fn parse_constrs(st: @pstate, conv: conv_did) -> [@ty::constr]/~ {
+fn parse_constrs(st: @pstate, conv: conv_did) -> ~[@ty::constr] {
     parse_constrs_gen(st, conv, parse_constr_arg)
 }
 
-fn parse_ty_constrs(st: @pstate, conv: conv_did) -> [@ty::type_constr]/~ {
+fn parse_ty_constrs(st: @pstate, conv: conv_did) -> ~[@ty::type_constr] {
     parse_constrs_gen(st, conv, parse_ty_constr_arg)
 }
 
 fn parse_path(st: @pstate) -> @ast::path {
-    let mut idents: [ast::ident]/~ = []/~;
+    let mut idents: ~[ast::ident] = ~[];
     fn is_last(c: char) -> bool { ret c == '(' || c == ':'; }
     vec::push(idents, parse_ident_(st, is_last));
     loop {
@@ -99,7 +99,7 @@ fn parse_path(st: @pstate) -> @ast::path {
             if c == '(' {
                 ret @{span: ast_util::dummy_sp(),
                       global: false, idents: idents,
-                      rp: none, types: []/~};
+                      rp: none, types: ~[]};
             } else { vec::push(idents, parse_ident_(st, is_last)); }
           }
         }
@@ -143,7 +143,7 @@ fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
     -> @ty::constr_general<T> {
     // FIXME: use real spans and not a bogus one (#2407)
     let sp = ast_util::dummy_sp();
-    let mut args: [@sp_constr_arg<T>]/~ = []/~;
+    let mut args: ~[@sp_constr_arg<T>] = ~[];
     let pth = parse_path(st);
     let mut ignore: char = next(st);
     assert (ignore == '(');
@@ -467,7 +467,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
 
 
 // Rust metadata parsing
-fn parse_def_id(buf: [u8]/~) -> ast::def_id {
+fn parse_def_id(buf: ~[u8]) -> ast::def_id {
     let mut colon_idx = 0u;
     let len = vec::len(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
@@ -491,15 +491,15 @@ fn parse_def_id(buf: [u8]/~) -> ast::def_id {
     ret {crate: crate_num, node: def_num};
 }
 
-fn parse_bounds_data(data: @[u8]/~, start: uint,
+fn parse_bounds_data(data: @~[u8], start: uint,
                      crate_num: int, tcx: ty::ctxt, conv: conv_did)
-    -> @[ty::param_bound]/~ {
+    -> @~[ty::param_bound] {
     let st = @{data: data, crate: crate_num, mut pos: start, tcx: tcx};
     parse_bounds(st, conv)
 }
 
-fn parse_bounds(st: @pstate, conv: conv_did) -> @[ty::param_bound]/~ {
-    let mut bounds = []/~;
+fn parse_bounds(st: @pstate, conv: conv_did) -> @~[ty::param_bound] {
+    let mut bounds = ~[];
     loop {
         vec::push(bounds, alt check next(st) {
           'S' { ty::bound_send }

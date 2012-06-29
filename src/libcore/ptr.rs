@@ -149,8 +149,8 @@ fn test() {
         assert (p.fst == 50);
         assert (p.snd == 60);
 
-        let v0 = [32000u16, 32001u16, 32002u16]/~;
-        let v1 = [0u16, 0u16, 0u16]/~;
+        let v0 = ~[32000u16, 32001u16, 32002u16];
+        let v1 = ~[0u16, 0u16, 0u16];
 
         ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 1u),
                     ptr::offset(vec::unsafe::to_ptr(v0), 1u), 1u);
@@ -185,7 +185,7 @@ fn test_buf_len() {
     str::as_c_str(s0) {|p0|
         str::as_c_str(s1) {|p1|
             str::as_c_str(s2) {|p2|
-                let v = [p0, p1, p2, null()]/~;
+                let v = ~[p0, p1, p2, null()];
                 vec::as_buf(v) {|vp|
                     assert unsafe { buf_len(vp) } == 3u;
                 }

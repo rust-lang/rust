@@ -16,10 +16,10 @@ import comm::*;
 import int::abs;
 
 type node_id = i64;
-type graph = [[node_id]/~]/~;
-type bfs_result = [node_id]/~;
+type graph = ~[~[node_id]];
+type bfs_result = ~[node_id];
 
-fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)]/~ {
+fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
     let r = rand::xorshift();
 
     fn choose_edge(i: node_id, j: node_id, scale: uint, r: rand::rng)
@@ -65,7 +65,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> [(node_id, node_id)]/~ {
     }
 }
 
-fn make_graph(N: uint, edges: [(node_id, node_id)]/~) -> graph {
+fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     let graph = vec::from_fn(N) {|_i| 
         map::hashmap::<node_id, ()>({|x| x as uint }, {|x, y| x == y })
     };
@@ -82,7 +82,7 @@ fn make_graph(N: uint, edges: [(node_id, node_id)]/~) -> graph {
     }
 }
 
-fn gen_search_keys(graph: graph, n: uint) -> [node_id]/~ {
+fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
     let keys = map::hashmap::<node_id, ()>({|x| x as uint }, {|x, y| x == y });
     let r = rand::rng();
 
@@ -102,7 +102,7 @@ fn gen_search_keys(graph: graph, n: uint) -> [node_id]/~ {
 
 Nodes that are unreachable have a parent of -1."]
 fn bfs(graph: graph, key: node_id) -> bfs_result {
-    let marks : [mut node_id]/~ 
+    let marks : ~[mut node_id] 
         = vec::to_mut(vec::from_elem(vec::len(graph), -1i64));
 
     let Q = deque::create();
@@ -278,7 +278,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
 }
 
 #[doc="Performs at least some of the validation in the Graph500 spec."]
-fn validate(edges: [(node_id, node_id)]/~, 
+fn validate(edges: ~[(node_id, node_id)], 
             root: node_id, tree: bfs_result) -> bool {
     // There are 5 things to test. Below is code for each of them.
 
@@ -293,7 +293,7 @@ fn validate(edges: [(node_id, node_id)]/~,
     let mut status = true;
     let level = tree.map() {|parent| 
         let mut parent = parent;
-        let mut path = []/~;
+        let mut path = ~[];
 
         if parent == -1i64 {
             // This node was not in the tree.
@@ -371,11 +371,11 @@ fn validate(edges: [(node_id, node_id)]/~,
     true
 }
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "15", "48"]/~
+        ~["", "15", "48"]
     } else if args.len() <= 1u {
-        ["", "10", "16"]/~
+        ~["", "10", "16"]
     } else {
         args
     };

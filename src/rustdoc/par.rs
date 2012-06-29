@@ -1,14 +1,14 @@
 export anymap, seqmap, parmap;
 
-fn anymap<T:send, U:send>(v: [T]/~, f: fn~(T) -> U) -> [U]/~ {
+fn anymap<T:send, U:send>(v: ~[T], f: fn~(T) -> U) -> ~[U] {
     parmap(v, f)
 }
 
-fn seqmap<T, U>(v: [T]/~, f: fn(T) -> U) -> [U]/~ {
+fn seqmap<T, U>(v: ~[T], f: fn(T) -> U) -> ~[U] {
     vec::map(v, f)
 }
 
-fn parmap<T:send, U:send>(v: [T]/~, f: fn~(T) -> U) -> [U]/~ unsafe {
+fn parmap<T:send, U:send>(v: ~[T], f: fn~(T) -> U) -> ~[U] unsafe {
     let futures = vec::map(v) {|elt|
         let po = comm::port();
         let ch = comm::chan(po);
@@ -25,7 +25,7 @@ fn parmap<T:send, U:send>(v: [T]/~, f: fn~(T) -> U) -> [U]/~ unsafe {
 
 #[test]
 fn test_parallel_map() {
-    let i = [1, 2, 3, 4]/~;
+    let i = ~[1, 2, 3, 4];
     let j = parmap(i) {|e| e + 1 };
-    assert j == [2, 3, 4, 5]/~;
+    assert j == ~[2, 3, 4, 5];
 }

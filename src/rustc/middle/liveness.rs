@@ -220,9 +220,9 @@ class ir_maps {
     let live_node_map: hashmap<node_id, live_node>;
     let variable_map: hashmap<node_id, variable>;
     let field_map: hashmap<ident, variable>;
-    let capture_map: hashmap<node_id, @[capture_info]/~>;
-    let mut var_kinds: [var_kind]/~;
-    let mut lnks: [live_node_kind]/~;
+    let capture_map: hashmap<node_id, @~[capture_info]>;
+    let mut var_kinds: ~[var_kind];
+    let mut lnks: ~[live_node_kind];
 
     new(tcx: ty::ctxt, method_map: typeck::method_map,
         last_use_map: last_use_map) {
@@ -236,8 +236,8 @@ class ir_maps {
         self.variable_map = int_hash();
         self.capture_map = int_hash();
         self.field_map = box_str_hash();
-        self.var_kinds = []/~;
-        self.lnks = []/~;
+        self.var_kinds = ~[];
+        self.lnks = ~[];
     }
 
     fn add_live_node(lnk: live_node_kind) -> live_node {
@@ -297,11 +297,11 @@ class ir_maps {
         }
     }
 
-    fn set_captures(node_id: node_id, +cs: [capture_info]/~) {
+    fn set_captures(node_id: node_id, +cs: ~[capture_info]) {
         self.capture_map.insert(node_id, @cs);
     }
 
-    fn captures(expr: @expr) -> @[capture_info]/~ {
+    fn captures(expr: @expr) -> @~[capture_info] {
         alt self.capture_map.find(expr.id) {
           some(caps) {caps}
           none {
@@ -435,7 +435,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
         let proto = ty::ty_fn_proto(ty::expr_ty(self.tcx, expr));
         let cvs = capture::compute_capture_vars(self.tcx, expr.id,
                                                 proto, cap_clause);
-        let mut call_caps = []/~;
+        let mut call_caps = ~[];
         for cvs.each { |cv|
             alt relevant_def(cv.def) {
               some(rv) {
@@ -511,8 +511,8 @@ class liveness {
     let tcx: ty::ctxt;
     let ir: @ir_maps;
     let s: specials;
-    let successors: [mut live_node]/~;
-    let users: [mut users]/~;
+    let successors: ~[mut live_node];
+    let users: ~[mut users];
     let mut break_ln: live_node;
     let mut cont_ln: live_node;
 
@@ -887,7 +887,7 @@ class liveness {
         succ
     }
 
-    fn propagate_through_exprs(exprs: [@expr]/~,
+    fn propagate_through_exprs(exprs: ~[@expr],
                                succ: live_node) -> live_node {
         exprs.foldr(succ) { |expr, succ|
             self.propagate_through_expr(expr, succ)
@@ -1096,7 +1096,7 @@ class liveness {
           expr_log(_, l, r) |
           expr_index(l, r) |
           expr_binary(_, l, r) {
-            self.propagate_through_exprs([l, r]/~, succ)
+            self.propagate_through_exprs(~[l, r], succ)
           }
 
           expr_assert(e) |

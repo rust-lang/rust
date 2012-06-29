@@ -56,7 +56,7 @@ impl <A: to_str copy, B: to_str copy, C: to_str copy> of to_str for (A, B, C){
     }
 }
 
-impl <A: to_str> of to_str for [A]/~ {
+impl <A: to_str> of to_str for ~[A] {
     fn to_str() -> str {
         let mut acc = "[", first = true;
         for vec::each(self) {|elt|
@@ -98,12 +98,12 @@ mod tests {
     }
 
     fn test_vectors() {
-        let x: [int]/~ = []/~;
-        assert x.to_str() == "[]/~";
-        assert [1]/~.to_str() == "[1]/~";
-        assert [1, 2, 3]/~.to_str() == "[1, 2, 3]/~";
-        assert [[]/~, [1]/~, [1, 1]/~]/~.to_str() ==
-               "[[]/~, [1]/~, [1, 1]/~]/~";
+        let x: ~[int] = ~[];
+        assert x.to_str() == "~[]";
+        assert (~[1]).to_str() == "~[1]";
+        assert (~[1, 2, 3]).to_str() == "~[1, 2, 3]";
+        assert (~[~[], ~[1], ~[1, 1]]).to_str() ==
+               "~[~[], ~[1], ~[1, 1]]";
     }
 
     fn test_pointer_types() {

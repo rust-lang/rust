@@ -293,7 +293,7 @@ enum var_value<V:copy, T:copy> {
 
 type vals_and_bindings<V:copy, T:copy> = {
     vals: smallintmap<var_value<V, T>>,
-    mut bindings: [(V, var_value<V, T>)]/~
+    mut bindings: ~[(V, var_value<V, T>)]
 };
 
 enum node<V:copy, T:copy> = {
@@ -346,9 +346,9 @@ type fres<T> = result::result<T, fixup_err>;
 
 fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
     infer_ctxt(@{tcx: tcx,
-                 tvb: {vals: smallintmap::mk(), mut bindings: []/~},
-                 tvib: {vals: smallintmap::mk(), mut bindings: []/~},
-                 rb: {vals: smallintmap::mk(), mut bindings: []/~},
+                 tvb: {vals: smallintmap::mk(), mut bindings: ~[]},
+                 tvib: {vals: smallintmap::mk(), mut bindings: ~[]},
+                 rb: {vals: smallintmap::mk(), mut bindings: ~[]},
                  ty_var_counter: @mut 0u,
                  ty_var_integral_counter: @mut 0u,
                  region_var_counter: @mut 0u})}
@@ -556,8 +556,8 @@ impl transaction_methods for infer_ctxt {
 
         // TODO---could use a vec::clear() that ran destructors but kept
         // the vec at its currently allocated length
-        self.tvb.bindings = []/~;
-        self.rb.bindings = []/~;
+        self.tvb.bindings = ~[];
+        self.rb.bindings = ~[];
 
         ret r;
     }
@@ -604,7 +604,7 @@ impl methods for infer_ctxt {
         ty::mk_var(self.tcx, self.next_ty_var_id())
     }
 
-    fn next_ty_vars(n: uint) -> [ty::t]/~ {
+    fn next_ty_vars(n: uint) -> ~[ty::t] {
         vec::from_fn(n) {|_i| self.next_ty_var() }
     }
 
@@ -1041,7 +1041,7 @@ impl unify_methods for infer_ctxt {
     }
 
     fn constrvecs(
-        as: [@ty::type_constr]/~, bs: [@ty::type_constr]/~) -> ures {
+        as: ~[@ty::type_constr], bs: ~[@ty::type_constr]) -> ures {
 
         if check vec::same_length(as, bs) {
             iter_vec2(as, bs) {|a,b|
@@ -1082,8 +1082,8 @@ impl unify_methods for infer_ctxt {
 // resolution.  The first is a shallow resolution: this only resolves
 // one layer, but does not resolve any nested variables.  So, for
 // example, if we have two variables A and B, and the constraint that
-// A <: [B]/~ and B <: int, then shallow resolution on A would yield
-// [B]/~.  Deep resolution, on the other hand, would yield [int]/~.
+// A <: ~[B] and B <: int, then shallow resolution on A would yield
+// ~[B].  Deep resolution, on the other hand, would yield ~[int].
 //
 // But there is one more knob: the `force_level` variable controls
 // the behavior in the face of unconstrained type and region
@@ -1107,8 +1107,8 @@ type resolve_state = @{
     deep: bool,
     force_vars: force_level,
     mut err: option<fixup_err>,
-    mut r_seen: [region_vid]/~,
-    mut v_seen: [tv_vid]/~
+    mut r_seen: ~[region_vid],
+    mut v_seen: ~[tv_vid]
 };
 
 fn resolver(infcx: infer_ctxt, deep: bool, fvars: force_level)
@@ -1117,8 +1117,8 @@ fn resolver(infcx: infer_ctxt, deep: bool, fvars: force_level)
       deep: deep,
       force_vars: fvars,
       mut err: none,
-      mut r_seen: []/~,
-      mut v_seen: []/~}
+      mut r_seen: ~[],
+      mut v_seen: ~[]}
 }
 
 impl methods for resolve_state {
@@ -1308,14 +1308,14 @@ impl methods for resolve_state {
 //
 // Assuming we have a bound from both sides, we will then examine
 // these bounds and see if they have the form (@M_a T_a, &rb.M_b T_b)
-// (resp. ~M_a T_a, [M_a T_a]/~, etc).  If they do not, we fall back to
+// (resp. ~M_a T_a, ~[M_a T_a], etc).  If they do not, we fall back to
 // subtyping.
 //
 // If they *do*, then we know that the two types could never be
 // subtypes of one another.  We will then construct a type @const T_b
 // and ensure that type a is a subtype of that.  This allows for the
-// possibility of assigning from a type like (say) @[mut T1]/~ to a type
-// &[T2]/~ where T1 <: T2.  This might seem surprising, since the `@`
+// possibility of assigning from a type like (say) @~[mut T1] to a type
+// &~[T2] where T1 <: T2.  This might seem surprising, since the `@`
 // points at mutable memory but the `&` points at immutable memory.
 // This would in fact be unsound, except for the borrowck, which comes
 // later and guarantees that such mutability conversions are safe.
@@ -1533,7 +1533,7 @@ iface combine {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
-    fn tps(as: [ty::t]/~, bs: [ty::t]/~) -> cres<[ty::t]/~>;
+    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]>;
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>>;
     fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs>;
     fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty>;
@@ -1592,7 +1592,7 @@ fn super_substs<C:combine>(
 }
 
 fn super_tps<C:combine>(
-    self: C, as: [ty::t]/~, bs: [ty::t]/~) -> cres<[ty::t]/~> {
+    self: C, as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
 
     // Note: type parameters are always treated as *invariant*
     // (otherwise the type system would be unsound).  In the
@@ -1692,8 +1692,8 @@ fn super_vstores<C:combine>(
 fn super_fns<C:combine>(
     self: C, a_f: ty::fn_ty, b_f: ty::fn_ty) -> cres<ty::fn_ty> {
 
-    fn argvecs<C:combine>(self: C, a_args: [ty::arg]/~,
-                          b_args: [ty::arg]/~) -> cres<[ty::arg]/~> {
+    fn argvecs<C:combine>(self: C, a_args: ~[ty::arg],
+                          b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
 
         if check vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args) {|a, b| self.args(a, b) }
@@ -2061,7 +2061,7 @@ impl of combine for sub {
         super_substs(self, as, bs)
     }
 
-    fn tps(as: [ty::t]/~, bs: [ty::t]/~) -> cres<[ty::t]/~> {
+    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
         super_tps(self, as, bs)
     }
 
@@ -2247,7 +2247,7 @@ impl of combine for lub {
         super_substs(self, as, bs)
     }
 
-    fn tps(as: [ty::t]/~, bs: [ty::t]/~) -> cres<[ty::t]/~> {
+    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
         super_tps(self, as, bs)
     }
 
@@ -2446,7 +2446,7 @@ impl of combine for glb {
         super_substs(self, as, bs)
     }
 
-    fn tps(as: [ty::t]/~, bs: [ty::t]/~) -> cres<[ty::t]/~> {
+    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
         super_tps(self, as, bs)
     }
 

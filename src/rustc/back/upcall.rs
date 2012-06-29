@@ -33,9 +33,9 @@ fn declare_upcalls(targ_cfg: @session::config,
                    tydesc_type: TypeRef,
                    llmod: ModuleRef) -> @upcalls {
     fn decl(llmod: ModuleRef, prefix: str, name: str,
-            tys: [TypeRef]/~, rv: TypeRef) ->
+            tys: ~[TypeRef], rv: TypeRef) ->
        ValueRef {
-        let mut arg_tys: [TypeRef]/~ = []/~;
+        let mut arg_tys: ~[TypeRef] = ~[];
         for tys.each {|t| vec::push(arg_tys, t); }
         let fn_ty = T_fn(arg_tys, rv);
         ret base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
@@ -49,63 +49,63 @@ fn declare_upcalls(targ_cfg: @session::config,
     let int_t = T_int(targ_cfg);
     let size_t = T_size_t(targ_cfg);
 
-    ret @{_fail: dv("fail", [T_ptr(T_i8()),
+    ret @{_fail: dv("fail", ~[T_ptr(T_i8()),
                              T_ptr(T_i8()),
-                             size_t]/~),
-          trace: dv("trace", [T_ptr(T_i8()),
+                             size_t]),
+          trace: dv("trace", ~[T_ptr(T_i8()),
                               T_ptr(T_i8()),
-                              int_t]/~),
+                              int_t]),
           malloc:
               nothrow(d("malloc",
-                        [T_ptr(tydesc_type), int_t]/~,
+                        ~[T_ptr(tydesc_type), int_t],
                         T_ptr(T_i8()))),
           free:
-              nothrow(dv("free", [T_ptr(T_i8())]/~)),
+              nothrow(dv("free", ~[T_ptr(T_i8())])),
           exchange_malloc:
               nothrow(d("exchange_malloc",
-                        [T_ptr(tydesc_type), int_t]/~,
+                        ~[T_ptr(tydesc_type), int_t],
                         T_ptr(T_i8()))),
           exchange_free:
-              nothrow(dv("exchange_free", [T_ptr(T_i8())]/~)),
+              nothrow(dv("exchange_free", ~[T_ptr(T_i8())])),
           validate_box:
-              nothrow(dv("validate_box", [T_ptr(T_i8())]/~)),
+              nothrow(dv("validate_box", ~[T_ptr(T_i8())])),
           mark:
-              d("mark", [T_ptr(T_i8())]/~, int_t),
+              d("mark", ~[T_ptr(T_i8())], int_t),
           vec_grow:
-              nothrow(dv("vec_grow", [T_ptr(T_ptr(T_i8())), int_t]/~)),
+              nothrow(dv("vec_grow", ~[T_ptr(T_ptr(T_i8())), int_t])),
           str_new_uniq:
-              nothrow(d("str_new_uniq", [T_ptr(T_i8()), int_t]/~,
+              nothrow(d("str_new_uniq", ~[T_ptr(T_i8()), int_t],
                         T_ptr(T_i8()))),
           str_new_shared:
-              nothrow(d("str_new_shared", [T_ptr(T_i8()), int_t]/~,
+              nothrow(d("str_new_shared", ~[T_ptr(T_i8()), int_t],
                         T_ptr(T_i8()))),
           str_concat:
-              nothrow(d("str_concat", [T_ptr(T_i8()),
-                                       T_ptr(T_i8())]/~,
+              nothrow(d("str_concat", ~[T_ptr(T_i8()),
+                                       T_ptr(T_i8())],
                         T_ptr(T_i8()))),
           cmp_type:
               dv("cmp_type",
-                 [T_ptr(T_i1()), T_ptr(tydesc_type),
+                 ~[T_ptr(T_i1()), T_ptr(tydesc_type),
                   T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()),
                   T_ptr(T_i8()),
-                  T_i8()]/~),
+                  T_i8()]),
           log_type:
-              dv("log_type", [T_ptr(tydesc_type),
-                              T_ptr(T_i8()), T_i32()]/~),
+              dv("log_type", ~[T_ptr(tydesc_type),
+                              T_ptr(T_i8()), T_i32()]),
           alloc_c_stack:
-              d("alloc_c_stack", [size_t]/~, T_ptr(T_i8())),
+              d("alloc_c_stack", ~[size_t], T_ptr(T_i8())),
           call_shim_on_c_stack:
               d("call_shim_on_c_stack",
                 // arguments: void *args, void *fn_ptr
-                [T_ptr(T_i8()), T_ptr(T_i8())]/~,
+                ~[T_ptr(T_i8()), T_ptr(T_i8())],
                 int_t),
           call_shim_on_rust_stack:
               d("call_shim_on_rust_stack",
-                [T_ptr(T_i8()), T_ptr(T_i8())]/~, int_t),
+                ~[T_ptr(T_i8()), T_ptr(T_i8())], int_t),
           rust_personality:
-              nothrow(d("rust_personality", []/~, T_i32())),
+              nothrow(d("rust_personality", ~[], T_i32())),
           reset_stack_limit:
-              nothrow(dv("reset_stack_limit", []/~))
+              nothrow(dv("reset_stack_limit", ~[]))
          };
 }
 //

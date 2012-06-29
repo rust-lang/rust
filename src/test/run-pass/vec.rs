@@ -3,7 +3,7 @@
 
 // -*- rust -*-
 fn main() {
-    let v: [int]/~ = [10, 20]/~;
+    let v: ~[int] = ~[10, 20];
     assert (v[0] == 10);
     assert (v[1] == 20);
     let mut x: int = 0;

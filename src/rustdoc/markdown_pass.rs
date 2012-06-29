@@ -211,7 +211,7 @@ fn header_kind(doc: doc::itemtag) -> str {
 }
 
 fn header_name(doc: doc::itemtag) -> str {
-    let fullpath = str::connect(doc.path() + [doc.name()]/~, "::");
+    let fullpath = str::connect(doc.path() + ~[doc.name()], "::");
     alt doc {
       doc::modtag(_) if doc.id() != syntax::ast::crate_node_id {
         fullpath
@@ -275,7 +275,7 @@ fn should_write_full_path_to_mod() {
 fn write_common(
     ctxt: ctxt,
     desc: option<str>,
-    sections: [doc::section]/~
+    sections: ~[doc::section]
 ) {
     write_desc(ctxt, desc);
     write_sections(ctxt, sections);
@@ -294,7 +294,7 @@ fn write_desc(
     }
 }
 
-fn write_sections(ctxt: ctxt, sections: [doc::section]/~) {
+fn write_sections(ctxt: ctxt, sections: ~[doc::section]) {
     vec::iter(sections) {|section|
         write_section(ctxt, section);
     }
@@ -468,7 +468,7 @@ fn write_fnlike(
     ctxt: ctxt,
     sig: option<str>,
     desc: option<str>,
-    sections: [doc::section]/~
+    sections: ~[doc::section]
 ) {
     write_sig(ctxt, sig);
     write_common(ctxt, desc, sections);
@@ -512,18 +512,18 @@ fn should_insert_blank_line_after_fn_signature() {
 fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc("fn a() { }");
     let doc = {
-        pages: [
+        pages: ~[
             doc::cratepage({
                 topmod: {
-                    items: [doc::fntag({
+                    items: ~[doc::fntag({
                         sig: some("line 1\nline 2")
                         with doc.cratemod().fns()[0]
-                    })]/~
+                    })]
                     with doc.cratemod()
                 }
                 with doc.cratedoc()
             })
-        ]/~
+        ]
     };
     let markdown = test::write_markdown_str(doc);
     assert str::contains(markdown, "    line 1\n    line 2");
@@ -580,7 +580,7 @@ fn should_write_enum_description() {
 
 fn write_variants(
     ctxt: ctxt,
-    docs: [doc::variantdoc]/~
+    docs: ~[doc::variantdoc]
 ) {
     if vec::is_empty(docs) {
         ret;
@@ -644,7 +644,7 @@ fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
     write_methods(ctxt, doc.methods);
 }
 
-fn write_methods(ctxt: ctxt, docs: [doc::methoddoc]/~) {
+fn write_methods(ctxt: ctxt, docs: ~[doc::methoddoc]) {
     vec::iter(docs) {|doc| write_method(ctxt, doc) }
 }
 

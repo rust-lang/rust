@@ -1,8 +1,8 @@
-fn impure(_v: [int]/~) {
+fn impure(_v: ~[int]) {
 }
 
 fn main() {
-    let x = {mut f: [3]/~};
+    let x = {mut f: ~[3]};
 
     alt x {
       {f: v} => {

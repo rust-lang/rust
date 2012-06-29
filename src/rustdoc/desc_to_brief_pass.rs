@@ -161,11 +161,11 @@ fn first_sentence_(s: str) -> str {
     }
 }
 
-fn paragraphs(s: str) -> [str]/~ {
+fn paragraphs(s: str) -> ~[str] {
     let lines = str::lines_any(s);
     let mut whitespace_lines = 0;
     let mut accum = "";
-    let paras = vec::foldl([]/~, lines) {|paras, line|
+    let paras = vec::foldl(~[], lines) {|paras, line|
         let mut res = paras;
 
         if str::is_whitespace(line) {
@@ -173,7 +173,7 @@ fn paragraphs(s: str) -> [str]/~ {
         } else {
             if whitespace_lines > 0 {
                 if str::is_not_empty(accum) {
-                    res += [accum]/~;
+                    res += ~[accum];
                     accum = "";
                 }
             }
@@ -191,7 +191,7 @@ fn paragraphs(s: str) -> [str]/~ {
     };
 
     if str::is_not_empty(accum) {
-        paras + [accum]/~
+        paras + ~[accum]
     } else {
         paras
     }
@@ -200,13 +200,13 @@ fn paragraphs(s: str) -> [str]/~ {
 #[test]
 fn test_paragraphs_1() {
     let paras = paragraphs("1\n\n2");
-    assert paras == ["1", "2"]/~;
+    assert paras == ~["1", "2"];
 }
 
 #[test]
 fn test_paragraphs_2() {
     let paras = paragraphs("\n\n1\n1\n\n2\n\n");
-    assert paras == ["1\n1", "2"]/~;
+    assert paras == ~["1\n1", "2"];
 }
 
 #[test]

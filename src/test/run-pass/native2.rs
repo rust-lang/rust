@@ -24,4 +24,4 @@ native mod libc {
 #[nolink]
 native mod baz { }
 
-fn main(args: [str]/~) { }
+fn main(args: ~[str]) { }

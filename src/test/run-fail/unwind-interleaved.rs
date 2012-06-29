@@ -5,8 +5,8 @@ fn a() { }
 fn b() { fail; }
 
 fn main() {
-    let x = [0]/~;
+    let x = ~[0];
     a();
-    let y = [0]/~;
+    let y = ~[0];
     b();
 }

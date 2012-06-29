@@ -1,3 +1,3 @@
 fn main() {
-    let v = [,]/~; //! ERROR unexpected token: ','
+    let v = ~[,]; //! ERROR unexpected token: ','
 }

@@ -292,13 +292,13 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     type provided_metas =
         {name: option<@str>,
          vers: option<@str>,
-         cmh_items: [@ast::meta_item]/~};
+         cmh_items: ~[@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
         let mut name: option<@str> = none;
         let mut vers: option<@str> = none;
-        let mut cmh_items: [@ast::meta_item]/~ = []/~;
+        let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each {|meta|
@@ -320,7 +320,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: ast::crate,
                               metas: provided_metas,
-                              dep_hashes: [@str]/~) -> str {
+                              dep_hashes: ~[@str]) -> str {
         fn len_and_str(s: str) -> str {
             ret #fmt["%u_%s", str::len(s), s];
         }
@@ -505,7 +505,7 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
    str {
     let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    ret mangle([path_name(name), path_name(s), path_name(@hash)]/~);
+    ret mangle(~[path_name(name), path_name(s), path_name(@hash)]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
@@ -579,7 +579,7 @@ fn link_binary(sess: session,
     // The invocations of cc share some flags across platforms
 
     let mut cc_args =
-        vec::append([stage]/~, sess.targ_cfg.target_strs.cc_args);
+        vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
     vec::push(cc_args, "-o");
     vec::push(cc_args, output);
     vec::push(cc_args, obj_filename);
@@ -642,7 +642,7 @@ fn link_binary(sess: session,
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        vec::push_all(cc_args, ["-lrt", "-ldl"]/~);
+        vec::push_all(cc_args, ~["-lrt", "-ldl"]);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
         // which lives in libm. Similar to above, on some linuxes we
@@ -651,13 +651,13 @@ fn link_binary(sess: session,
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
-        vec::push_all(cc_args, ["-pthread", "-lrt",
+        vec::push_all(cc_args, ~["-pthread", "-lrt",
                                 "-L/usr/local/lib", "-lexecinfo",
                                 "-L/usr/local/lib/gcc46",
                                 "-L/usr/local/lib/gcc44", "-lstdc++",
                                 "-Wl,-z,origin",
                                 "-Wl,-rpath,/usr/local/lib/gcc46",
-                                "-Wl,-rpath,/usr/local/lib/gcc44"]/~);
+                                "-Wl,-rpath,/usr/local/lib/gcc44"]);
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the
@@ -689,7 +689,7 @@ fn link_binary(sess: session,
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::os_macos {
-        run::run_program("dsymutil", [output]/~);
+        run::run_program("dsymutil", ~[output]);
     }
 
     // Remove the temporary object file if we aren't saving temps

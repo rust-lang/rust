@@ -194,7 +194,7 @@ type borrowck_ctxt = @{tcx: ty::ctxt,
                        root_map: root_map,
                        mutbl_map: mutbl_map};
 
-// a map mapping id's of expressions of gc'd type (@T, []/@, etc) where
+// a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
 // must stay live.
 type root_map = hashmap<root_map_key, ast::node_id>;

@@ -10,23 +10,23 @@ export is_test_ignored;
 
 type test_props = {
     // Lines that should be expected, in order, on standard out
-    error_patterns: [str]/~,
+    error_patterns: ~[str],
     // Extra flags to pass to the compiler
     compile_flags: option<str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pp_exact: option<str>,
     // Modules from aux directory that should be compiled
-    aux_builds: [str]/~,
+    aux_builds: ~[str],
     // Environment settings to use during execution
-    exec_env: [(str,str)]/~
+    exec_env: ~[(str,str)]
 };
 
 // Load any test directives embedded in the file
 fn load_props(testfile: str) -> test_props {
-    let mut error_patterns = []/~;
-    let mut aux_builds = []/~;
-    let mut exec_env = []/~;
+    let mut error_patterns = ~[];
+    let mut aux_builds = ~[];
+    let mut exec_env = ~[];
     let mut compile_flags = option::none;
     let mut pp_exact = option::none;
     for iter_header(testfile) {|ln|

@@ -40,7 +40,7 @@ import lint::{non_implicitly_copyable_typarams,implicit_copies};
 // types.
 
 fn kind_to_str(k: kind) -> str {
-    let mut kinds = []/~;
+    let mut kinds = ~[];
     if ty::kind_lteq(kind_const(), k) {
         vec::push(kinds, "const");
     }
@@ -160,7 +160,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
         let cap_clause = alt fk {
           visit::fk_anon(_, cc) | visit::fk_fn_block(cc) { cc }
           visit::fk_item_fn(*) | visit::fk_method(*) |
-          visit::fk_ctor(*) | visit::fk_dtor(*) { @[]/~ }
+          visit::fk_ctor(*) | visit::fk_dtor(*) { @~[] }
         };
         let captured_vars = (*cap_clause).map { |cap_item|
             let cap_def = cx.tcx.def_map.get(cap_item.id);

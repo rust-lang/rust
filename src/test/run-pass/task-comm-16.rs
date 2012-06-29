@@ -25,7 +25,7 @@ fn test_rec() {
 fn test_vec() {
     let po = port();
     let ch = chan(po);
-    let v0: [int]/~ = [0, 1, 2]/~;
+    let v0: ~[int] = ~[0, 1, 2];
     send(ch, v0);
     let v1 = recv(po);
     assert (v1[0] == 0);

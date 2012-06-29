@@ -9,7 +9,7 @@ enum msg {
 fn calc(children: uint, parent_ch: comm::chan<msg>) {
     let port = comm::port();
     let chan = comm::chan(port);
-    let mut child_chs = []/~;
+    let mut child_chs = ~[];
     let mut sum = 0;
 
     iter::repeat (children) {||
@@ -45,11 +45,11 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
     comm::send(parent_ch, done(sum + 1));
 }
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "100000"]/~
+        ~["", "100000"]
     } else if args.len() <= 1u {
-        ["", "100"]/~
+        ~["", "100"]
     } else {
         args
     };

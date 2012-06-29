@@ -4,15 +4,15 @@ use std;
 import dvec::{dvec, extensions};
 import io::writer_util;
 
-fn collect_raw(num: uint) -> [uint]/~ {
-    let mut result = []/~;
+fn collect_raw(num: uint) -> ~[uint] {
+    let mut result = ~[];
     for uint::range(0u, num) { |i|
         vec::push(result, i);
     }
     ret result;
 }
 
-fn collect_dvec(num: uint) -> [mut uint]/~ {
+fn collect_dvec(num: uint) -> ~[mut uint] {
     let result = dvec();
     for uint::range(0u, num) { |i|
         result.push(i);
@@ -20,11 +20,11 @@ fn collect_dvec(num: uint) -> [mut uint]/~ {
     ret dvec::unwrap(result);
 }
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "50000000"]/~
+        ~["", "50000000"]
     } else if args.len() <= 1u {
-        ["", "100000"]/~
+        ~["", "100000"]
     } else {
         args
     };

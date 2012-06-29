@@ -21,15 +21,15 @@ type package = {
     method: str,
     description: str,
     ref: option<str>,
-    tags: [str]/~,
-    versions: [(str, str)]/~
+    tags: ~[str],
+    versions: ~[(str, str)]
 };
 
 type local_package = {
     name: str,
     metaname: str,
     version: str,
-    files: [str]/~
+    files: ~[str]
 };
 
 type source = @{
@@ -38,7 +38,7 @@ type source = @{
     mut method: str,
     mut key: option<str>,
     mut keyfp: option<str>,
-    mut packages: [mut package]/~
+    mut packages: ~[mut package]
 };
 
 type cargo = {
@@ -62,21 +62,21 @@ type crate = {
     desc: option<str>,
     sigs: option<str>,
     crate_type: option<str>,
-    deps: [str]/~
+    deps: ~[str]
 };
 
 type options = {
     test: bool,
     mode: mode,
-    free: [str]/~,
+    free: ~[str],
     help: bool,
 };
 
 enum mode { system_mode, user_mode, local_mode }
 
-fn opts() -> [getopts::opt]/~ {
-    [optflag("g"), optflag("G"), optflag("test"),
-     optflag("h"), optflag("help")]/~
+fn opts() -> ~[getopts::opt] {
+    ~[optflag("g"), optflag("G"), optflag("test"),
+     optflag("h"), optflag("help")]
 }
 
 fn info(msg: str) {
@@ -216,7 +216,7 @@ fn assume_source_method(url: str) -> str {
     "curl"
 }
 
-fn load_link(mis: [@ast::meta_item]/~) -> (option<str>,
+fn load_link(mis: ~[@ast::meta_item]) -> (option<str>,
                                          option<str>,
                                          option<str>) {
     let mut name = none;
@@ -240,7 +240,7 @@ fn load_link(mis: [@ast::meta_item]/~) -> (option<str>,
 
 fn load_crate(filename: str) -> option<crate> {
     let sess = parse::new_parse_sess(none);
-    let c = parse::parse_crate_from_crate_file(filename, []/~, sess);
+    let c = parse::parse_crate_from_crate_file(filename, ~[], sess);
 
     let mut name = none;
     let mut vers = none;
@@ -275,7 +275,7 @@ fn load_crate(filename: str) -> option<crate> {
     }
 
     type env = @{
-        mut deps: [str]/~
+        mut deps: ~[str]
     };
 
     fn goto_view_item(e: env, i: @ast::view_item) {
@@ -283,7 +283,7 @@ fn load_crate(filename: str) -> option<crate> {
             ast::view_item_use(ident, metas, id) {
                 let name_items = attr::find_meta_items_by_name(metas, "name");
                 let m = if name_items.is_empty() {
-                    metas + [attr::mk_name_value_item_str(@"name", *ident)]/~
+                    metas + ~[attr::mk_name_value_item_str(@"name", *ident)]
                 } else {
                     metas
                 };
@@ -326,7 +326,7 @@ fn load_crate(filename: str) -> option<crate> {
     }
 
     let e = @{
-        mut deps: []/~
+        mut deps: ~[]
     };
     let v = visit::mk_simple_visitor(@{
         visit_view_item: {|a|goto_view_item(e, a)},
@@ -424,7 +424,7 @@ fn parse_source(name: str, j: json::json) -> source {
                 mut method: method,
                 mut key: key,
                 mut keyfp: keyfp,
-                mut packages: [mut]/~ };
+                mut packages: ~[mut] };
         }
         _ { fail "needed dict value in source"; }
     };
@@ -498,7 +498,7 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
         _ { none }
     };
 
-    let mut tags = []/~;
+    let mut tags = ~[];
     alt p.find("tags") {
         some(json::list(js)) {
             for (*js).each {|j|
@@ -528,7 +528,7 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
         description: description,
         ref: ref,
         tags: tags,
-        versions: []/~
+        versions: ~[]
     };
 
     alt src.packages.position({ |pkg| pkg.uuid == uuid }) {
@@ -595,7 +595,7 @@ fn load_source_packages(c: cargo, src: source) {
     };
 }
 
-fn build_cargo_options(argv: [str]/~) -> options {
+fn build_cargo_options(argv: ~[str]) -> options {
     let match = alt getopts::getopts(argv, opts()) {
         result::ok(m) { m }
         result::err(f) {
@@ -699,19 +699,19 @@ fn for_each_package(c: cargo, b: fn(source, package)) {
 fn run_programs(buildpath: str) {
     let newv = os::list_dir_path(buildpath);
     for newv.each {|ct|
-        run::run_program(ct, []/~);
+        run::run_program(ct, ~[]);
     }
 }
 
 // Runs rustc in <path + subdir> with the given flags
 // and returns <path + subdir>
 fn run_in_buildpath(what: str, path: str, subdir: str, cf: str,
-                    extra_flags: [str]/~) -> option<str> {
+                    extra_flags: ~[str]) -> option<str> {
     let buildpath = path::connect(path, subdir);
     need_dir(buildpath);
     #debug("%s: %s -> %s", what, cf, buildpath);
     let p = run::program_output(rustc_sysroot(),
-                                ["--out-dir", buildpath, cf]/~ + extra_flags);
+                                ~["--out-dir", buildpath, cf] + extra_flags);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret none;
@@ -721,7 +721,7 @@ fn run_in_buildpath(what: str, path: str, subdir: str, cf: str,
 
 fn test_one_crate(_c: cargo, path: str, cf: str) {
   let buildpath = alt run_in_buildpath("testing", path, "/test", cf,
-                                       [ "--test"]/~) {
+                                       ~[ "--test"]) {
       none { ret; }
       some(bp) { bp }
   };
@@ -730,7 +730,7 @@ fn test_one_crate(_c: cargo, path: str, cf: str) {
 
 fn install_one_crate(c: cargo, path: str, cf: str) {
     let buildpath = alt run_in_buildpath("installing", path,
-                                         "/build", cf, []/~) {
+                                         "/build", cf, ~[]) {
       none { ret; }
       some(bp) { bp }
     };
@@ -758,7 +758,7 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
 fn rustc_sysroot() -> str {
     alt os::self_exe_path() {
         some(path) {
-            let path = [path, "..", "bin", "rustc"]/~;
+            let path = ~[path, "..", "bin", "rustc"];
             check vec::is_not_empty(path);
             let rustc = path::normalize(path::connect_many(path));
             #debug("  rustc: %s", rustc);
@@ -772,7 +772,7 @@ fn install_source(c: cargo, path: str) {
     #debug("source: %s", path);
     os::change_dir(path);
 
-    let mut cratefiles = []/~;
+    let mut cratefiles = ~[];
     for os::walk_dir(".") {|p|
         if str::ends_with(p, ".rc") {
             vec::push(cratefiles, p);
@@ -811,11 +811,11 @@ fn install_source(c: cargo, path: str) {
 }
 
 fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
-    run::program_output("git", ["clone", url, wd]/~);
+    run::program_output("git", ~["clone", url, wd]);
     if option::is_some(ref) {
         let r = option::get(ref);
         os::change_dir(wd);
-        run::run_program("git", ["checkout", r]/~);
+        run::run_program("git", ~["checkout", r]);
     }
 
     install_source(c, wd);
@@ -823,19 +823,19 @@ fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
 
 fn install_curl(c: cargo, wd: str, url: str) {
     let tarpath = path::connect(wd, "pkg.tar");
-    let p = run::program_output("curl", ["-f", "-s", "-o",
-                                         tarpath, url]/~);
+    let p = run::program_output("curl", ~["-f", "-s", "-o",
+                                         tarpath, url]);
     if p.status != 0 {
         fail #fmt["fetch of %s failed: %s", url, p.err];
     }
-    run::run_program("tar", ["-x", "--strip-components=1",
-                             "-C", wd, "-f", tarpath]/~);
+    run::run_program("tar", ~["-x", "--strip-components=1",
+                             "-C", wd, "-f", tarpath]);
     install_source(c, wd);
 }
 
 fn install_file(c: cargo, wd: str, path: str) {
-    run::program_output("tar", ["-x", "--strip-components=1",
-                             "-C", wd, "-f", path]/~);
+    run::program_output("tar", ~["-x", "--strip-components=1",
+                             "-C", wd, "-f", path]);
     install_source(c, wd);
 }
 
@@ -868,7 +868,7 @@ fn cargo_suggestion(c: cargo, fallback: fn())
 }
 
 fn install_uuid(c: cargo, wd: str, uuid: str) {
-    let mut ps = []/~;
+    let mut ps = ~[];
     for_each_package(c, { |s, p|
         if p.uuid == uuid {
             vec::grow(ps, 1u, (s.name, copy p));
@@ -892,7 +892,7 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
 }
 
 fn install_named(c: cargo, wd: str, name: str) {
-    let mut ps = []/~;
+    let mut ps = ~[];
     for_each_package(c, { |s, p|
         if p.name == name {
             vec::grow(ps, 1u, (s.name, copy p));
@@ -1082,7 +1082,7 @@ fn cmd_install(c: cargo) unsafe {
 
     if vec::len(c.opts.free) == 2u {
         let cwd = os::getcwd();
-        let status = run::run_program("cp", ["-R", cwd, wd]/~);
+        let status = run::run_program("cp", ~["-R", cwd, wd]);
 
         if status != 0 {
             fail #fmt("could not copy directory: %s", cwd);
@@ -1134,8 +1134,8 @@ fn sync_one_file(c: cargo, dir: str, src: source) -> bool {
 
     alt copy src.key {
         some(u) {
-            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
-                                                  u]/~);
+            let p = run::program_output("curl",  ~["-f", "-s", "-o", keyfile,
+                                                  u]);
             if p.status != 0 {
                 error(#fmt["fetch for source %s (key %s) failed", name, u]);
                 ret false;
@@ -1208,8 +1208,8 @@ fn sync_one_git(c: cargo, dir: str, src: source) -> bool {
             msg(name, insecure);
         }
         else {
-            let p = run::program_output("git", ["reset", "--hard",
-                                                "HEAD@{1}"]/~);
+            let p = run::program_output("git", ~["reset", "--hard",
+                                                "HEAD@{1}"]);
 
             if p.status != 0 {
                 msg(name, insecure);
@@ -1218,7 +1218,7 @@ fn sync_one_git(c: cargo, dir: str, src: source) -> bool {
     }
 
     if !os::path_exists(path::connect(dir, ".git")) {
-        let p = run::program_output("git", ["clone", url, dir]/~);
+        let p = run::program_output("git", ~["clone", url, dir]);
 
         if p.status != 0 {
             error(#fmt["fetch for source %s (url %s) failed", name, url]);
@@ -1231,7 +1231,7 @@ fn sync_one_git(c: cargo, dir: str, src: source) -> bool {
             ret false;
         }
 
-        let p = run::program_output("git", ["pull"]/~);
+        let p = run::program_output("git", ~["pull"]);
 
         if p.status != 0 {
             error(#fmt["fetch for source %s (url %s) failed", name, url]);
@@ -1243,8 +1243,8 @@ fn sync_one_git(c: cargo, dir: str, src: source) -> bool {
 
     alt copy src.key {
         some(u) {
-            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
-                                                  u]/~);
+            let p = run::program_output("curl",  ~["-f", "-s", "-o", keyfile,
+                                                  u]);
             if p.status != 0 {
                 error(#fmt["fetch for source %s (key %s) failed", name, u]);
                 rollback(name, dir, false);
@@ -1303,7 +1303,7 @@ fn sync_one_curl(c: cargo, dir: str, src: source) -> bool {
         url += "/packages.json";
     }
 
-    let p = run::program_output("curl", ["-f", "-s", "-o", pkgfile, url]/~);
+    let p = run::program_output("curl", ~["-f", "-s", "-o", pkgfile, url]);
 
     if p.status != 0 {
         error(#fmt["fetch for source %s (url %s) failed", name, url]);
@@ -1312,7 +1312,7 @@ fn sync_one_curl(c: cargo, dir: str, src: source) -> bool {
     if smart {
         url = src.url + "/source.json";
         let p =
-            run::program_output("curl", ["-f", "-s", "-o", srcfile, url]/~);
+            run::program_output("curl", ~["-f", "-s", "-o", srcfile, url]);
 
         if p.status == 0 {
             has_src_file = true;
@@ -1321,8 +1321,8 @@ fn sync_one_curl(c: cargo, dir: str, src: source) -> bool {
 
     alt copy src.key {
         some(u) {
-            let p = run::program_output("curl",  ["-f", "-s", "-o", keyfile,
-                                                  u]/~);
+            let p = run::program_output("curl",  ~["-f", "-s", "-o", keyfile,
+                                                  u]);
             if p.status != 0 {
                 error(#fmt["fetch for source %s (key %s) failed", name, u]);
                 ret false;
@@ -1340,8 +1340,8 @@ fn sync_one_curl(c: cargo, dir: str, src: source) -> bool {
                 url = src.url + ".sig";
             }
 
-            let mut p = run::program_output("curl", ["-f", "-s", "-o",
-                        sigfile, url]/~);
+            let mut p = run::program_output("curl", ~["-f", "-s", "-o",
+                        sigfile, url]);
             if p.status != 0 {
                 error(#fmt["fetch for source %s (sig %s) failed", name, url]);
                 ret false;
@@ -1358,8 +1358,8 @@ fn sync_one_curl(c: cargo, dir: str, src: source) -> bool {
             if smart && has_src_file {
                 url = src.url + "/source.json.sig";
 
-                p = run::program_output("curl", ["-f", "-s", "-o", srcsigfile,
-                                                     url]/~);
+                p = run::program_output("curl",
+                                        ~["-f", "-s", "-o", srcsigfile, url]);
                 if p.status != 0 {
                     error(#fmt["fetch for source %s (sig %s) failed",
                           name, url]);
@@ -1424,14 +1424,14 @@ fn cmd_init(c: cargo) {
     let destsrcfile = path::connect(c.root, "sources.json");
 
     let p =
-        run::program_output("curl", ["-f", "-s", "-o", srcfile, srcurl]/~);
+        run::program_output("curl", ~["-f", "-s", "-o", srcfile, srcurl]);
     if p.status != 0 {
         error(#fmt["fetch of sources.json failed: %s", p.out]);
         ret;
     }
 
     let p =
-        run::program_output("curl", ["-f", "-s", "-o", sigfile, sigurl]/~);
+        run::program_output("curl", ~["-f", "-s", "-o", sigfile, sigurl]);
     if p.status != 0 {
         error(#fmt["fetch of sources.json.sig failed: %s", p.out]);
         ret;
@@ -1533,7 +1533,7 @@ fn cmd_search(c: cargo) {
 fn install_to_dir(srcfile: str, destdir: str) {
     let newfile = path::connect(destdir, path::basename(srcfile));
 
-    let status = run::run_program("cp", ["-r", srcfile, newfile]/~);
+    let status = run::run_program("cp", ~["-r", srcfile, newfile]);
     if status == 0 {
         info(#fmt["installed: '%s'", newfile]);
     } else {
@@ -1650,7 +1650,7 @@ fn cmd_sources(c: cargo) {
                         mut method: assume_source_method(url),
                         mut key: none,
                         mut keyfp: none,
-                        mut packages: [mut]/~
+                        mut packages: ~[mut]
                     });
                     info(#fmt("added source: %s", name));
                 }
@@ -1868,7 +1868,7 @@ Commands:
     set-method      Change the method for a source.");
 }
 
-fn main(argv: [str]/~) {
+fn main(argv: ~[str]) {
     let o = build_cargo_options(argv);
 
     if vec::len(o.free) < 2u {

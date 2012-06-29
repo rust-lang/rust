@@ -214,8 +214,8 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
                            scope_b: ast::node_id) -> option<ast::node_id> {
 
     fn ancestors_of(region_map: region_map, scope: ast::node_id)
-                    -> [ast::node_id]/~ {
-        let mut result = [scope]/~;
+                    -> ~[ast::node_id] {
+        let mut result = ~[scope];
         let mut scope = scope;
         loop {
             alt region_map.find(scope) {
@@ -235,7 +235,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
     let mut a_index = vec::len(a_ancestors) - 1u;
     let mut b_index = vec::len(b_ancestors) - 1u;
 
-    // Here, [ab]/~_ancestors is a vector going from narrow to broad.
+    // Here, ~[ab]_ancestors is a vector going from narrow to broad.
     // The end of each vector will be the item where the scope is
     // defined; if there are any common ancestors, then the tails of
     // the vector will be the same.  So basically we want to walk

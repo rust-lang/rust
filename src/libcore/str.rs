@@ -122,7 +122,7 @@ Convert a vector of bytes to a UTF-8 string
 
 Fails if invalid UTF-8
 "]
-pure fn from_bytes(+vv: [u8]/~) -> str {
+pure fn from_bytes(+vv: ~[u8]) -> str {
     assert is_utf8(vv);
     ret unsafe { unsafe::from_bytes(vv) };
 }
@@ -136,7 +136,7 @@ Fails if invalid UTF-8
 "]
 pure fn from_byte(b: u8) -> str {
     assert b < 128u8;
-    let mut v = [b, 0u8]/~;
+    let mut v = ~[b, 0u8];
     unsafe { ::unsafe::transmute(v) }
 }
 
@@ -209,7 +209,7 @@ fn push_char(&s: str, ch: char) {
         }
 
         as_bytes(s) {|bytes|
-            let mut mut_bytes: [u8]/~ = ::unsafe::reinterpret_cast(bytes);
+            let mut mut_bytes: ~[u8] = ::unsafe::reinterpret_cast(bytes);
             vec::unsafe::set_len(mut_bytes, new_len + 1u);
             ::unsafe::forget(mut_bytes);
         }
@@ -224,7 +224,7 @@ pure fn from_char(ch: char) -> str {
 }
 
 #[doc = "Convert a vector of chars to a string"]
-pure fn from_chars(chs: [const char]/&) -> str {
+pure fn from_chars(chs: &[const char]) -> str {
     let mut buf = "";
     unchecked {
         reserve(buf, chs.len());
@@ -234,7 +234,7 @@ pure fn from_chars(chs: [const char]/&) -> str {
 }
 
 #[doc = "Concatenate a vector of strings"]
-pure fn concat(v: [const str]/&) -> str {
+pure fn concat(v: &[const str]) -> str {
     let mut s: str = "";
     for vec::each(v) {|ss| s += ss; }
     ret s;
@@ -243,7 +243,7 @@ pure fn concat(v: [const str]/&) -> str {
 #[doc = "
 Concatenate a vector of strings, placing a given separator between each
 "]
-pure fn connect(v: [const str]/&a, sep: str) -> str {
+pure fn connect(v: &[const str], sep: str) -> str {
     let mut s = "", first = true;
     for vec::each(v) {|ss|
         if first { first = false; } else { s += sep; }
@@ -322,10 +322,10 @@ Converts a string to a vector of bytes
 
 The result vector is not null-terminated.
 "]
-pure fn bytes(s: str) -> [u8]/~ {
+pure fn bytes(s: str) -> ~[u8] {
     unsafe {
         let mut s_copy = s;
-        let mut v: [u8]/~ = ::unsafe::transmute(s_copy);
+        let mut v: ~[u8] = ::unsafe::transmute(s_copy);
         vec::unsafe::set_len(v, len(s));
         ret v;
     }
@@ -335,15 +335,15 @@ pure fn bytes(s: str) -> [u8]/~ {
 Work with the string as a byte slice, not including trailing null.
 "]
 #[inline(always)]
-pure fn byte_slice<T>(s: str/&, f: fn([u8]/&) -> T) -> T {
+pure fn byte_slice<T>(s: str/&, f: fn(v: &[u8]) -> T) -> T {
     unpack_slice(s) {|p,n|
         unsafe { vec::unsafe::form_slice(p, n-1u, f) }
     }
 }
 
 #[doc = "Convert a string to a vector of characters"]
-pure fn chars(s: str/&) -> [char]/~ {
-    let mut buf = []/~, i = 0u;
+pure fn chars(s: str/&) -> ~[char] {
+    let mut buf = ~[], i = 0u;
     let len = len(s);
     while i < len {
         let {ch, next} = char_range_at(s, i);
@@ -378,7 +378,7 @@ pure fn slice(s: str/&, begin: uint, end: uint) -> str {
 #[doc = "
 Splits a string into substrings at each occurrence of a given character
 "]
-pure fn split_char(s: str/&, sep: char) -> [str]/~ {
+pure fn split_char(s: str/&, sep: char) -> ~[str] {
     split_char_inner(s, sep, len(s), true)
 }
 
@@ -388,22 +388,22 @@ character up to 'count' times
 
 The byte must be a valid UTF-8/ASCII byte
 "]
-pure fn splitn_char(s: str/&, sep: char, count: uint) -> [str]/~ {
+pure fn splitn_char(s: str/&, sep: char, count: uint) -> ~[str] {
     split_char_inner(s, sep, count, true)
 }
 
 #[doc = "
 Like `split_char`, but omits empty strings from the returned vector
 "]
-pure fn split_char_nonempty(s: str/&, sep: char) -> [str]/~ {
+pure fn split_char_nonempty(s: str/&, sep: char) -> ~[str] {
     split_char_inner(s, sep, len(s), false)
 }
 
 pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
-    -> [str]/~ {
+    -> ~[str] {
     if sep < 128u as char {
         let b = sep as u8, l = len(s);
-        let mut result = []/~, done = 0u;
+        let mut result = ~[], done = 0u;
         let mut i = 0u, start = 0u;
         while i < l && done < count {
             if s[i] == b {
@@ -427,7 +427,7 @@ pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
 
 
 #[doc = "Splits a string into substrings using a character function"]
-pure fn split(s: str/&, sepfn: fn(char) -> bool) -> [str]/~ {
+pure fn split(s: str/&, sepfn: fn(char) -> bool) -> ~[str] {
     split_inner(s, sepfn, len(s), true)
 }
 
@@ -435,19 +435,19 @@ pure fn split(s: str/&, sepfn: fn(char) -> bool) -> [str]/~ {
 Splits a string into substrings using a character function, cutting at
 most `count` times.
 "]
-pure fn splitn(s: str/&, sepfn: fn(char) -> bool, count: uint) -> [str]/~ {
+pure fn splitn(s: str/&, sepfn: fn(char) -> bool, count: uint) -> ~[str] {
     split_inner(s, sepfn, count, true)
 }
 
 #[doc = "Like `split`, but omits empty strings from the returned vector"]
-pure fn split_nonempty(s: str/&, sepfn: fn(char) -> bool) -> [str]/~ {
+pure fn split_nonempty(s: str/&, sepfn: fn(char) -> bool) -> ~[str] {
     split_inner(s, sepfn, len(s), false)
 }
 
 pure fn split_inner(s: str/&, sepfn: fn(cc: char) -> bool, count: uint,
-               allow_empty: bool) -> [str]/~ {
+               allow_empty: bool) -> ~[str] {
     let l = len(s);
-    let mut result = []/~, i = 0u, start = 0u, done = 0u;
+    let mut result = ~[], i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
         let {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
@@ -511,16 +511,16 @@ Splits a string into a vector of the substrings separated by a given string
 assert [\"\", \"XXX\", \"YYY\", \"\"] == split_str(\".XXX.YYY.\", \".\")
 ~~~
 "]
-pure fn split_str(s: str/&a, sep: str/&b) -> [str]/~ {
-    let mut result = []/~;
+pure fn split_str(s: str/&a, sep: str/&b) -> ~[str] {
+    let mut result = ~[];
     iter_between_matches(s, sep) {|from, to|
         unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
     }
     result
 }
 
-pure fn split_str_nonempty(s: str/&a, sep: str/&b) -> [str]/~ {
-    let mut result = []/~;
+pure fn split_str_nonempty(s: str/&a, sep: str/&b) -> ~[str] {
+    let mut result = ~[];
     iter_between_matches(s, sep) {|from, to|
         if to > from {
             unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
@@ -532,13 +532,13 @@ pure fn split_str_nonempty(s: str/&a, sep: str/&b) -> [str]/~ {
 #[doc = "
 Splits a string into a vector of the substrings separated by LF ('\\n')
 "]
-pure fn lines(s: str/&) -> [str]/~ { split_char(s, '\n') }
+pure fn lines(s: str/&) -> ~[str] { split_char(s, '\n') }
 
 #[doc = "
 Splits a string into a vector of the substrings separated by LF ('\\n')
 and/or CR LF ('\\r\\n')
 "]
-pure fn lines_any(s: str/&) -> [str]/~ {
+pure fn lines_any(s: str/&) -> ~[str] {
     vec::map(lines(s), {|s|
         let l = len(s);
         let mut cp = s;
@@ -552,7 +552,7 @@ pure fn lines_any(s: str/&) -> [str]/~ {
 #[doc = "
 Splits a string into a vector of the substrings separated by whitespace
 "]
-pure fn words(s: str/&) -> [str]/~ {
+pure fn words(s: str/&) -> ~[str] {
     split_nonempty(s, {|c| char::is_whitespace(c)})
 }
 
@@ -1226,7 +1226,7 @@ Section: Misc
 */
 
 #[doc = "Determines if a vector of bytes contains valid UTF-8"]
-pure fn is_utf8(v: [const u8]/&) -> bool {
+pure fn is_utf8(v: &[const u8]) -> bool {
     let mut i = 0u;
     let total = vec::len::<u8>(v);
     while i < total {
@@ -1244,7 +1244,7 @@ pure fn is_utf8(v: [const u8]/&) -> bool {
 }
 
 #[doc = "Determines if a vector of `u16` contains valid UTF-16"]
-pure fn is_utf16(v: [const u16]/&) -> bool {
+pure fn is_utf16(v: &[const u16]) -> bool {
     let len = vec::len(v);
     let mut i = 0u;
     while (i < len) {
@@ -1265,8 +1265,8 @@ pure fn is_utf16(v: [const u16]/&) -> bool {
 }
 
 #[doc = "Converts to a vector of `u16` encoded as UTF-16"]
-pure fn to_utf16(s: str/&) -> [u16]/~ {
-    let mut u = []/~;
+pure fn to_utf16(s: str/&) -> ~[u16] {
+    let mut u = ~[];
     chars_iter(s) {|cch|
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = cch as u32;
@@ -1281,13 +1281,13 @@ pure fn to_utf16(s: str/&) -> [u16]/~ {
             ch -= 0x1_0000_u32;
             let w1 = 0xD800_u16 | ((ch >> 10) as u16);
             let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            vec::push_all(u, [w1, w2]/~)
+            vec::push_all(u, ~[w1, w2])
         }
     }
     ret u;
 }
 
-pure fn utf16_chars(v: [const u16]/&, f: fn(char)) {
+pure fn utf16_chars(v: &[const u16], f: fn(char)) {
     let len = vec::len(v);
     let mut i = 0u;
     while (i < len && v[i] != 0u16) {
@@ -1312,7 +1312,7 @@ pure fn utf16_chars(v: [const u16]/&, f: fn(char)) {
 }
 
 
-pure fn from_utf16(v: [const u16]/&) -> str {
+pure fn from_utf16(v: &[const u16]) -> str {
     let mut buf = "";
     unchecked {
         reserve(buf, vec::len(v));
@@ -1569,9 +1569,9 @@ interop.
 let i = str::as_bytes(\"Hello World\") { |bytes| vec::len(bytes) };
 ~~~
 "]
-pure fn as_bytes<T>(s: str, f: fn([u8]/~) -> T) -> T {
+pure fn as_bytes<T>(s: str, f: fn(~[u8]) -> T) -> T {
     unsafe {
-        let v: *[u8]/~ = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let v: *~[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
         f(*v)
     }
 }
@@ -1724,7 +1724,7 @@ mod unsafe {
 
     #[doc = "Create a Rust string from a *u8 buffer of the given length"]
     unsafe fn from_buf_len(buf: *u8, len: uint) -> str {
-        let mut v: [u8]/~ = []/~;
+        let mut v: ~[u8] = ~[];
         vec::reserve(v, len + 1u);
         vec::as_buf(v) {|b| ptr::memcpy(b, buf, len); }
         vec::unsafe::set_len(v, len);
@@ -1751,7 +1751,7 @@ mod unsafe {
 
    Does not verify that the vector contains valid UTF-8.
    "]
-   unsafe fn from_bytes(+v: [const u8]/~) -> str {
+   unsafe fn from_bytes(+v: ~[const u8]) -> str {
        unsafe {
            let mut vcopy = ::unsafe::transmute(v);
            vec::push(vcopy, 0u8);
@@ -1764,7 +1764,7 @@ mod unsafe {
 
    Does not verify that the byte is valid UTF-8.
    "]
-   unsafe fn from_byte(u: u8) -> str { unsafe::from_bytes([u]/~) }
+   unsafe fn from_byte(u: u8) -> str { unsafe::from_bytes(~[u]) }
 
    #[doc = "
    Takes a bytewise (not UTF-8) slice from a string.
@@ -1781,7 +1781,7 @@ mod unsafe {
            assert (begin <= end);
            assert (end <= n);
 
-           let mut v = []/~;
+           let mut v = ~[];
            vec::reserve(v, end - begin + 1u);
            unsafe {
                vec::as_buf(v) { |vbuf|
@@ -1801,7 +1801,7 @@ mod unsafe {
    }
 
    #[doc = "Appends a vector of bytes to a string. (Not UTF-8 safe)."]
-   unsafe fn push_bytes(&s: str, bytes: [u8]/~) {
+   unsafe fn push_bytes(&s: str, bytes: ~[u8]) {
        for vec::each(bytes) {|byte| rustrt::rust_str_push(s, byte); }
    }
 
@@ -1840,7 +1840,7 @@ mod unsafe {
     #[test]
     fn test_from_buf_len() {
         unsafe {
-            let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8]/~;
+            let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = vec::unsafe::to_ptr(a);
             let c = from_buf_len(b, 3u);
             assert (c == "AAA");
@@ -1921,18 +1921,18 @@ impl extensions/& for str/& {
     fn slice(begin: uint, end: uint) -> str { slice(self, begin, end) }
     #[doc = "Splits a string into substrings using a character function"]
     #[inline]
-    fn split(sepfn: fn(char) -> bool) -> [str]/~ { split(self, sepfn) }
+    fn split(sepfn: fn(char) -> bool) -> ~[str] { split(self, sepfn) }
     #[doc = "
     Splits a string into substrings at each occurrence of a given character
     "]
     #[inline]
-    fn split_char(sep: char) -> [str]/~ { split_char(self, sep) }
+    fn split_char(sep: char) -> ~[str] { split_char(self, sep) }
     #[doc = "
     Splits a string into a vector of the substrings separated by a given
     string
     "]
     #[inline]
-    fn split_str(sep: str/&a) -> [str]/~ { split_str(self, sep) }
+    fn split_str(sep: str/&a) -> ~[str] { split_str(self, sep) }
     #[doc = "Returns true if one string starts with another"]
     #[inline]
     fn starts_with(needle: str/&a) -> bool { starts_with(self, needle) }
@@ -2033,79 +2033,79 @@ mod tests {
 
     #[test]
     fn test_split_char() {
-        fn t(s: str, c: char, u: [str]/~) {
+        fn t(s: str, c: char, u: ~[str]) {
             log(debug, "split_byte: " + s);
             let v = split_char(s, c);
             #debug("split_byte to: %?", v);
             assert vec::all2(v, u, { |a,b| a == b });
         }
-        t("abc.hello.there", '.', ["abc", "hello", "there"]/~);
-        t(".hello.there", '.', ["", "hello", "there"]/~);
-        t("...hello.there.", '.', ["", "", "", "hello", "there", ""]/~);
+        t("abc.hello.there", '.', ~["abc", "hello", "there"]);
+        t(".hello.there", '.', ~["", "hello", "there"]);
+        t("...hello.there.", '.', ~["", "", "", "hello", "there", ""]);
 
-        assert ["", "", "", "hello", "there", ""]/~
+        assert ~["", "", "", "hello", "there", ""]
             == split_char("...hello.there.", '.');
 
-        assert [""]/~ == split_char("", 'z');
-        assert ["",""]/~ == split_char("z", 'z');
-        assert ["ok"]/~ == split_char("ok", 'z');
+        assert ~[""] == split_char("", 'z');
+        assert ~["",""] == split_char("z", 'z');
+        assert ~["ok"] == split_char("ok", 'z');
     }
 
     #[test]
     fn test_split_char_2() {
         let data = "ประเทศไทย中华Việt Nam";
-        assert ["ประเทศไทย中华", "iệt Nam"]/~
+        assert ~["ประเทศไทย中华", "iệt Nam"]
             == split_char(data, 'V');
-        assert ["ประเ", "ศไ", "ย中华Việt Nam"]/~
+        assert ~["ประเ", "ศไ", "ย中华Việt Nam"]
             == split_char(data, 'ท');
     }
 
     #[test]
     fn test_splitn_char() {
-        fn t(s: str, c: char, n: uint, u: [str]/~) {
+        fn t(s: str, c: char, n: uint, u: ~[str]) {
             log(debug, "splitn_byte: " + s);
             let v = splitn_char(s, c, n);
             #debug("split_byte to: %?", v);
             #debug("comparing vs. %?", u);
             assert vec::all2(v, u, { |a,b| a == b });
         }
-        t("abc.hello.there", '.', 0u, ["abc.hello.there"]/~);
-        t("abc.hello.there", '.', 1u, ["abc", "hello.there"]/~);
-        t("abc.hello.there", '.', 2u, ["abc", "hello", "there"]/~);
-        t("abc.hello.there", '.', 3u, ["abc", "hello", "there"]/~);
-        t(".hello.there", '.', 0u, [".hello.there"]/~);
-        t(".hello.there", '.', 1u, ["", "hello.there"]/~);
-        t("...hello.there.", '.', 3u, ["", "", "", "hello.there."]/~);
-        t("...hello.there.", '.', 5u, ["", "", "", "hello", "there", ""]/~);
+        t("abc.hello.there", '.', 0u, ~["abc.hello.there"]);
+        t("abc.hello.there", '.', 1u, ~["abc", "hello.there"]);
+        t("abc.hello.there", '.', 2u, ~["abc", "hello", "there"]);
+        t("abc.hello.there", '.', 3u, ~["abc", "hello", "there"]);
+        t(".hello.there", '.', 0u, ~[".hello.there"]);
+        t(".hello.there", '.', 1u, ~["", "hello.there"]);
+        t("...hello.there.", '.', 3u, ~["", "", "", "hello.there."]);
+        t("...hello.there.", '.', 5u, ~["", "", "", "hello", "there", ""]);
 
-        assert [""]/~ == splitn_char("", 'z', 5u);
-        assert ["",""]/~ == splitn_char("z", 'z', 5u);
-        assert ["ok"]/~ == splitn_char("ok", 'z', 5u);
-        assert ["z"]/~ == splitn_char("z", 'z', 0u);
-        assert ["w.x.y"]/~ == splitn_char("w.x.y", '.', 0u);
-        assert ["w","x.y"]/~ == splitn_char("w.x.y", '.', 1u);
+        assert ~[""] == splitn_char("", 'z', 5u);
+        assert ~["",""] == splitn_char("z", 'z', 5u);
+        assert ~["ok"] == splitn_char("ok", 'z', 5u);
+        assert ~["z"] == splitn_char("z", 'z', 0u);
+        assert ~["w.x.y"] == splitn_char("w.x.y", '.', 0u);
+        assert ~["w","x.y"] == splitn_char("w.x.y", '.', 1u);
     }
 
     #[test]
     fn test_splitn_char_2 () {
         let data = "ประเทศไทย中华Việt Nam";
-        assert ["ประเทศไทย中", "Việt Nam"]/~
+        assert ~["ประเทศไทย中", "Việt Nam"]
             == splitn_char(data, '华', 1u);
 
-        assert ["", "", "XXX", "YYYzWWWz"]/~
+        assert ~["", "", "XXX", "YYYzWWWz"]
             == splitn_char("zzXXXzYYYzWWWz", 'z', 3u);
-        assert ["",""]/~ == splitn_char("z", 'z', 5u);
-        assert [""]/~ == splitn_char("", 'z', 5u);
-        assert ["ok"]/~ == splitn_char("ok", 'z', 5u);
+        assert ~["",""] == splitn_char("z", 'z', 5u);
+        assert ~[""] == splitn_char("", 'z', 5u);
+        assert ~["ok"] == splitn_char("ok", 'z', 5u);
     }
 
 
     #[test]
     fn test_splitn_char_3() {
         let data = "ประเทศไทย中华Việt Nam";
-        assert ["ประเทศไทย中华", "iệt Nam"]/~
+        assert ~["ประเทศไทย中华", "iệt Nam"]
             == splitn_char(data, 'V', 1u);
-        assert ["ประเ", "ศไทย中华Việt Nam"]/~
+        assert ~["ประเ", "ศไทย中华Việt Nam"]
             == splitn_char(data, 'ท', 1u);
 
     }
@@ -2126,40 +2126,40 @@ mod tests {
         t("::hello::there::", "::", 3, "");
 
         let data = "ประเทศไทย中华Việt Nam";
-        assert ["ประเทศไทย", "Việt Nam"]/~
+        assert ~["ประเทศไทย", "Việt Nam"]
             == split_str (data, "中华");
 
-        assert ["", "XXX", "YYY", ""]/~
+        assert ~["", "XXX", "YYY", ""]
             == split_str("zzXXXzzYYYzz", "zz");
 
-        assert ["zz", "zYYYz"]/~
+        assert ~["zz", "zYYYz"]
             == split_str("zzXXXzYYYz", "XXX");
 
 
-        assert ["", "XXX", "YYY", ""]/~ == split_str(".XXX.YYY.", ".");
-        assert [""]/~ == split_str("", ".");
-        assert ["",""]/~ == split_str("zz", "zz");
-        assert ["ok"]/~ == split_str("ok", "z");
-        assert ["","z"]/~ == split_str("zzz", "zz");
-        assert ["","","z"]/~ == split_str("zzzzz", "zz");
+        assert ~["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".");
+        assert ~[""] == split_str("", ".");
+        assert ~["",""] == split_str("zz", "zz");
+        assert ~["ok"] == split_str("ok", "z");
+        assert ~["","z"] == split_str("zzz", "zz");
+        assert ~["","","z"] == split_str("zzzzz", "zz");
     }
 
 
     #[test]
     fn test_split() {
         let data = "ประเทศไทย中华Việt Nam";
-        assert ["ประเทศไทย中", "Việt Nam"]/~
+        assert ~["ประเทศไทย中", "Việt Nam"]
             == split (data, {|cc| cc == '华'});
 
-        assert ["", "", "XXX", "YYY", ""]/~
+        assert ~["", "", "XXX", "YYY", ""]
             == split("zzXXXzYYYz", char::is_lowercase);
 
-        assert ["zz", "", "", "z", "", "", "z"]/~
+        assert ~["zz", "", "", "z", "", "", "z"]
             == split("zzXXXzYYYz", char::is_uppercase);
 
-        assert ["",""]/~ == split("z", {|cc| cc == 'z'});
-        assert [""]/~ == split("", {|cc| cc == 'z'});
-        assert ["ok"]/~ == split("ok", {|cc| cc == 'z'});
+        assert ~["",""] == split("z", {|cc| cc == 'z'});
+        assert ~[""] == split("", {|cc| cc == 'z'});
+        assert ~["ok"] == split("ok", {|cc| cc == 'z'});
     }
 
     #[test]
@@ -2167,34 +2167,34 @@ mod tests {
         let lf = "\nMary had a little lamb\nLittle lamb\n";
         let crlf = "\r\nMary had a little lamb\r\nLittle lamb\r\n";
 
-        assert ["", "Mary had a little lamb", "Little lamb", ""]/~
+        assert ~["", "Mary had a little lamb", "Little lamb", ""]
             == lines(lf);
 
-        assert ["", "Mary had a little lamb", "Little lamb", ""]/~
+        assert ~["", "Mary had a little lamb", "Little lamb", ""]
             == lines_any(lf);
 
-        assert ["\r", "Mary had a little lamb\r", "Little lamb\r", ""]/~
+        assert ~["\r", "Mary had a little lamb\r", "Little lamb\r", ""]
             == lines(crlf);
 
-        assert ["", "Mary had a little lamb", "Little lamb", ""]/~
+        assert ~["", "Mary had a little lamb", "Little lamb", ""]
             == lines_any(crlf);
 
-        assert [""]/~ == lines    ("");
-        assert [""]/~ == lines_any("");
-        assert ["",""]/~ == lines    ("\n");
-        assert ["",""]/~ == lines_any("\n");
-        assert ["banana"]/~ == lines    ("banana");
-        assert ["banana"]/~ == lines_any("banana");
+        assert ~[""] == lines    ("");
+        assert ~[""] == lines_any("");
+        assert ~["",""] == lines    ("\n");
+        assert ~["",""] == lines_any("\n");
+        assert ~["banana"] == lines    ("banana");
+        assert ~["banana"] == lines_any("banana");
     }
 
     #[test]
     fn test_words () {
         let data = "\nMary had a little lamb\nLittle lamb\n";
-        assert ["Mary","had","a","little","lamb","Little","lamb"]/~
+        assert ~["Mary","had","a","little","lamb","Little","lamb"]
             == words(data);
 
-        assert ["ok"]/~ == words("ok");
-        assert []/~ == words("");
+        assert ~["ok"] == words("ok");
+        assert ~[] == words("");
     }
 
     #[test]
@@ -2251,23 +2251,23 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        fn t(v: [str]/~, s: str) { assert (eq(concat(v), s)); }
-        t(["you", "know", "I'm", "no", "good"]/~, "youknowI'mnogood");
-        let v: [str]/~ = []/~;
+        fn t(v: ~[str], s: str) { assert (eq(concat(v), s)); }
+        t(~["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
+        let v: ~[str] = ~[];
         t(v, "");
-        t(["hi"]/~, "hi");
+        t(~["hi"], "hi");
     }
 
     #[test]
     fn test_connect() {
-        fn t(v: [str]/~, sep: str, s: str) {
+        fn t(v: ~[str], sep: str, s: str) {
             assert (eq(connect(v, sep), s));
         }
-        t(["you", "know", "I'm", "no", "good"]/~,
+        t(~["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
-        let v: [str]/~ = []/~;
+        let v: ~[str] = ~[];
         t(v, " ", "");
-        t(["hi"]/~, " ", "hi");
+        t(~["hi"], " ", "hi");
     }
 
     #[test]
@@ -2519,7 +2519,7 @@ mod tests {
 
     #[test]
     fn test_unsafe_from_bytes() {
-        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8]/~;
+        let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
         let b = unsafe { unsafe::from_bytes(a) };
         assert (b == "AAAAAAA");
     }
@@ -2527,7 +2527,7 @@ mod tests {
     #[test]
     fn test_from_bytes() {
         let ss = "ศไทย中华Việt Nam";
-        let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
+        let bb = ~[0xe0_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
                   0xe0_u8, 0xb8_u8, 0x97_u8,
                   0xe0_u8, 0xb8_u8, 0xa2_u8,
@@ -2536,7 +2536,7 @@ mod tests {
                   0x56_u8, 0x69_u8, 0xe1_u8,
                   0xbb_u8, 0x87_u8, 0x74_u8,
                   0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8]/~;
+                  0x6d_u8];
 
          assert ss == from_bytes(bb);
     }
@@ -2545,7 +2545,7 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_from_bytes_fail() {
-        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
+        let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
                   0xe0_u8, 0xb8_u8, 0x97_u8,
                   0xe0_u8, 0xb8_u8, 0xa2_u8,
@@ -2554,7 +2554,7 @@ mod tests {
                   0x56_u8, 0x69_u8, 0xe1_u8,
                   0xbb_u8, 0x87_u8, 0x74_u8,
                   0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8]/~;
+                  0x6d_u8];
 
          let _x = from_bytes(bb);
     }
@@ -2562,7 +2562,7 @@ mod tests {
     #[test]
     fn test_from_buf() {
         unsafe {
-            let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8]/~;
+            let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = vec::unsafe::to_ptr(a);
             let c = unsafe::from_buf(b);
             assert (c == "AAAAAAA");
@@ -2611,7 +2611,7 @@ mod tests {
     fn vec_str_conversions() {
         let s1: str = "All mimsy were the borogoves";
 
-        let v: [u8]/~ = bytes(s1);
+        let v: ~[u8] = bytes(s1);
         let s2: str = from_bytes(v);
         let mut i: uint = 0u;
         let n1: uint = len(s1);
@@ -2776,38 +2776,38 @@ mod tests {
     #[test]
     fn test_chars() {
         let ss = "ศไทย中华Việt Nam";
-        assert ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m']/~
+        assert ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m']
             == chars(ss);
     }
 
     #[test]
     fn test_utf16() {
         let pairs =
-            [("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n",
-              [0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
+            ~[("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n",
+              ~[0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
                0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
                0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
-               0xd800_u16, 0xdf30_u16, 0x000a_u16]/~),
+               0xd800_u16, 0xdf30_u16, 0x000a_u16]),
 
              ("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n",
-              [0xd801_u16, 0xdc12_u16, 0xd801_u16,
+              ~[0xd801_u16, 0xdc12_u16, 0xd801_u16,
                0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
                0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
                0xdc4b_u16, 0x0020_u16, 0xd801_u16, 0xdc0f_u16,
                0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
-               0x000a_u16]/~),
+               0x000a_u16]),
 
              ("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n",
-              [0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
+              ~[0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
                0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
                0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
                0x00b7_u16, 0xd800_u16, 0xdf0c_u16, 0xd800_u16,
                0xdf04_u16, 0xd800_u16, 0xdf15_u16, 0xd800_u16,
                0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
-               0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]/~),
+               0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
 
              ("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n",
-              [0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
+              ~[0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
                0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
                0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
                0x0020_u16, 0xd801_u16, 0xdc95_u16, 0xd801_u16,
@@ -2817,7 +2817,7 @@ mod tests {
                0xdc9c_u16, 0xd801_u16, 0xdc92_u16, 0xd801_u16,
                0xdc96_u16, 0xd801_u16, 0xdc86_u16, 0x0020_u16,
                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
-               0x000a_u16 ]/~) ]/~;
+               0x000a_u16 ]) ];
 
         for vec::each(pairs) {|p|
             let (s, u) = p;

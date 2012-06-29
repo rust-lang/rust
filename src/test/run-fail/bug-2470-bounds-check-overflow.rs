@@ -8,7 +8,7 @@ fn main() {
     // address of the 0th cell in the array (even though the index is
     // huge).
 
-    let x = [1u,2u,3u]/~;
+    let x = ~[1u,2u,3u];
     vec::unpack_slice(x) {|p, _len|
         let base = p as uint;                     // base = 0x1230 say
         let idx = base / sys::size_of::<uint>();  // idx  = 0x0246 say

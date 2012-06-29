@@ -1,11 +1,11 @@
-fn md4(msg: [u8]/~) -> {a: u32, b: u32, c: u32, d: u32} {
+fn md4(msg: ~[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
     // results.
     let orig_len: u64 = (vec::len(msg) * 8u) as u64;
 
     // pad message
-    let mut msg = vec::append(msg, [0x80u8]/~);
+    let mut msg = vec::append(msg, ~[0x80u8]);
     let mut bitlen = orig_len + 8u64;
     while (bitlen + 64u64) % 512u64 > 0u64 {
         vec::push(msg, 0u8);
@@ -82,7 +82,7 @@ fn md4(msg: [u8]/~) -> {a: u32, b: u32, c: u32, d: u32} {
     ret {a: a, b: b, c: c, d: d};
 }
 
-fn md4_str(msg: [u8]/~) -> str {
+fn md4_str(msg: ~[u8]) -> str {
     let {a, b, c, d} = md4(msg);
     fn app(a: u32, b: u32, c: u32, d: u32, f: fn(u32)) {
         f(a); f(b); f(c); f(d);

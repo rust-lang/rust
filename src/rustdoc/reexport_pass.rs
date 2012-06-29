@@ -21,7 +21,7 @@ fn mk_pass() -> pass {
 
 type def_set = map::set<ast::def_id>;
 type def_map = map::hashmap<ast::def_id, doc::itemtag>;
-type path_map = map::hashmap<str, [(str, doc::itemtag)]/~>;
+type path_map = map::hashmap<str, ~[(str, doc::itemtag)]>;
 
 fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
 
@@ -43,17 +43,17 @@ fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
 // to association lists. Yuck.
 fn to_assoc_list<K:copy, V:copy>(
     map: map::hashmap<K, V>
-) -> [(K, V)]/~ {
+) -> ~[(K, V)] {
 
-    let mut vec = []/~;
+    let mut vec = ~[];
     for map.each {|k, v|
-        vec += [(k, v)]/~;
+        vec += ~[(k, v)];
     }
     ret vec;
 }
 
 fn from_assoc_list<K:copy, V:copy>(
-    list: [(K, V)]/~,
+    list: ~[(K, V)],
     new_hash: fn() -> map::hashmap<K, V>
 ) -> map::hashmap<K, V> {
 
@@ -66,13 +66,13 @@ fn from_assoc_list<K:copy, V:copy>(
 }
 
 fn from_def_assoc_list<V:copy>(
-    list: [(ast::def_id, V)]/~
+    list: ~[(ast::def_id, V)]
 ) -> map::hashmap<ast::def_id, V> {
     from_assoc_list(list, ast_util::new_def_hash)
 }
 
 fn from_str_assoc_list<V:copy>(
-    list: [(str, V)]/~
+    list: ~[(str, V)]
 ) -> map::hashmap<str, V> {
     from_assoc_list(list, map::str_hash)
 }
@@ -96,10 +96,10 @@ fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
     from_def_assoc_list(assoc_list)
 }
 
-fn find_reexport_impls(ctxt: astsrv::ctxt) -> [ast::def_id]/~ {
-    let defs = @mut []/~;
+fn find_reexport_impls(ctxt: astsrv::ctxt) -> ~[ast::def_id] {
+    let defs = @mut ~[];
     for_each_reexported_impl(ctxt) {|_mod_id, i|
-        *defs += [i.did]/~
+        *defs += ~[i.did]
     }
     ret *defs;
 }
@@ -169,7 +169,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
     let assoc_list = astsrv::exec(srv) {|ctxt|
 
         let def_map = from_def_assoc_list(def_assoc_list);
-        let path_map = map::str_hash::<[(str,doc::itemtag)]/~>();
+        let path_map = map::str_hash::<~[(str,doc::itemtag)]>();
 
         for ctxt.exp_map.each {|exp_id, defs|
             let path = alt check ctxt.ast_map.get(exp_id) {
@@ -182,12 +182,12 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             };
             let modpath = ast_map::path_to_str(vec::init(*path));
 
-            let mut reexportdocs = []/~;
+            let mut reexportdocs = ~[];
             for defs.each {|def|
                 if !def.reexp { cont; }
                 alt def_map.find(def.id) {
                   some(itemtag) {
-                    reexportdocs += [(*name, itemtag)]/~;
+                    reexportdocs += ~[(*name, itemtag)];
                   }
                   _ {}
                 }
@@ -208,8 +208,8 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
         for find_reexport_impl_docs(ctxt, def_map).each {|elt|
             let (path, doc) = elt;
             let docs = alt path_map.find(path) {
-              some(docs) { docs + [(doc)]/~ }
-              none { [doc]/~ }
+              some(docs) { docs + ~[(doc)] }
+              none { ~[doc] }
             };
             path_map.insert(path, docs);
         }
@@ -223,8 +223,8 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
 fn find_reexport_impl_docs(
     ctxt: astsrv::ctxt,
     def_map: def_map
-) -> [(str, (str, doc::itemtag))]/~ {
-    let docs = @mut []/~;
+) -> ~[(str, (str, doc::itemtag))] {
+    let docs = @mut ~[];
 
     for_each_reexported_impl(ctxt) {|mod_id, i|
         let path = alt ctxt.ast_map.find(mod_id) {
@@ -245,7 +245,7 @@ fn find_reexport_impl_docs(
         let doc = alt check def_map.find(i.did) {
           some(doc) { doc }
         };
-        *docs += [(path, (ident, doc))]/~;
+        *docs += ~[(path, (ident, doc))];
     }
 
     ret *docs;
@@ -322,7 +322,7 @@ fn merge_reexports(
         let path = if is_topmod {
             doc.path()
         } else {
-            doc.path() + [doc.name()]/~
+            doc.path() + ~[doc.name()]
         };
 
         let new_items = get_new_items(path, fold.ctxt);
@@ -334,16 +334,16 @@ fn merge_reexports(
         }
     }
 
-    fn get_new_items(path: [str]/~, path_map: path_map) -> [doc::itemtag]/~ {
+    fn get_new_items(path: ~[str], path_map: path_map) -> ~[doc::itemtag] {
         #debug("looking for reexports in path %?", path);
         alt path_map.find(str::connect(path, "::")) {
           some(name_docs) {
-            vec::foldl([]/~, name_docs) {|v, name_doc|
+            vec::foldl(~[], name_docs) {|v, name_doc|
                 let (name, doc) = name_doc;
-                v + [reexport_doc(doc, name)]/~
+                v + ~[reexport_doc(doc, name)]
             }
           }
-          none { []/~ }
+          none { ~[] }
         }
     }
 

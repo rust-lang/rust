@@ -26,7 +26,7 @@ class lookup {
     let mut derefs: uint;
     let candidates: dvec<candidate>;
     let candidate_impls: hashmap<def_id, ()>;
-    let supplied_tps: [ty::t]/~;
+    let supplied_tps: ~[ty::t];
     let include_private: bool;
 
     new(fcx: @fn_ctxt,
@@ -36,7 +36,7 @@ class lookup {
         node_id: ast::node_id,      //node id where to store type of fn
         m_name: ast::ident,         //b in a.b(...)
         self_ty: ty::t,             //type of a in a.b(...)
-        supplied_tps: [ty::t]/~,      //Xs in a.b::<Xs>(...)
+        supplied_tps: ~[ty::t],      //Xs in a.b::<Xs>(...)
         include_private: bool) {
 
         self.fcx = fcx;

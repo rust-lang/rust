@@ -8,7 +8,7 @@ class foo {
 fn main() {
     let x = @mut 0;
     {
-        let l = [foo(x)]/&;
+        let l = &[foo(x)];
         assert *l[0].x == 0;
     }
     assert *x == 1;

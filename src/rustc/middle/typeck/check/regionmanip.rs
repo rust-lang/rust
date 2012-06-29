@@ -50,7 +50,7 @@ fn replace_bound_regions_in_fn_ty(
     fn create_bound_region_mapping(
         tcx: ty::ctxt,
         isr: isr_alist,
-        tys: [ty::t]/~,
+        tys: ~[ty::t],
         to_r: fn(ty::bound_region) -> ty::region) -> isr_alist {
 
         // Takes `isr` (described above), `to_r` (described above),

@@ -8,7 +8,7 @@ import std::map::{map, hashmap};
 
 import io::{reader, reader_util};
 
-fn main(argv: [str]/~) {
+fn main(argv: ~[str]) {
     #macro[
         [#bench[id],
          maybe_run_test(argv, #stringify(id), id)
@@ -25,7 +25,7 @@ fn main(argv: [str]/~) {
     #bench[vec_push_all];
 }
 
-fn maybe_run_test(argv: [str]/&, name: str, test: fn()) {
+fn maybe_run_test(argv: &[str], name: str, test: fn()) {
     let mut run_test = false;
 
     if os::getenv("RUST_BENCH").is_some() { run_test = true }
@@ -44,7 +44,7 @@ fn maybe_run_test(argv: [str]/&, name: str, test: fn()) {
 
 fn shift_push() {
     let mut v1 = vec::from_elem(30000, 1);
-    let mut v2 = []/~;
+    let mut v2 = ~[];
 
     while v1.len() > 0 {
         vec::push(v2, vec::shift(v1));
@@ -86,7 +86,7 @@ fn str_set() {
 fn vec_plus() {
     let r = rand::rng();
 
-    let mut v = []/~; 
+    let mut v = ~[]; 
     let mut i = 0;
     while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
@@ -103,7 +103,7 @@ fn vec_plus() {
 fn vec_append() {
     let r = rand::rng();
 
-    let mut v = []/~;
+    let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
@@ -120,7 +120,7 @@ fn vec_append() {
 fn vec_push_all() {
     let r = rand::rng();
 
-    let mut v = []/~;
+    let mut v = ~[];
     for uint::range(0, 1500) {|i|
         let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen_bool() {

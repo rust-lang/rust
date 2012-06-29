@@ -19,6 +19,6 @@ fn empty_pointy() -> @pointy {
 
 fn main()
 {
-    let v = [empty_pointy(), empty_pointy()]/~;
+    let v = ~[empty_pointy(), empty_pointy()];
     v[0].a = p(v[0]);
 }

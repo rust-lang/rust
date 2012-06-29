@@ -4,7 +4,7 @@ export strip_unconfigured_items;
 export metas_in_cfg;
 export strip_items;
 
-type in_cfg_pred = fn@([ast::attribute]/~) -> bool;
+type in_cfg_pred = fn@(~[ast::attribute]) -> bool;
 
 type ctxt = @{
     in_cfg: in_cfg_pred
@@ -100,11 +100,11 @@ fn foreign_item_in_cfg(cx: ctxt, item: @ast::foreign_item) -> bool {
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: ast::crate_cfg, attrs: [ast::attribute]/~) -> bool {
+fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
     metas_in_cfg(cfg, attr::attr_metas(attrs))
 }
 
-fn metas_in_cfg(cfg: ast::crate_cfg, metas: [@ast::meta_item]/~) -> bool {
+fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
 
     // The "cfg" attributes on the item
     let cfg_metas = attr::find_meta_items_by_name(metas, "cfg");

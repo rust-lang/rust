@@ -10,7 +10,7 @@ import aux::*;
 import std::map::hashmap;
 import dvec::{dvec, extensions};
 
-type ctxt = {cs: @mut [sp_constr]/~, tcx: ty::ctxt};
+type ctxt = {cs: @mut ~[sp_constr], tcx: ty::ctxt};
 
 fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
     alt e.node {
@@ -41,7 +41,7 @@ fn find_locals(tcx: ty::ctxt,
                f_body: blk,
                sp: span,
                id: node_id) -> ctxt {
-    let cx: ctxt = {cs: @mut []/~, tcx: tcx};
+    let cx: ctxt = {cs: @mut ~[], tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
     let visitor =
         @{visit_expr: collect_pred,
@@ -132,7 +132,7 @@ fn mk_fn_info(ccx: crate_ctxt,
         }
     }
 
-    let v: @mut [node_id]/~ = @mut []/~;
+    let v: @mut ~[node_id] = @mut ~[];
     let rslt =
         {constrs: res_map,
          num_constraints: next,

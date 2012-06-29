@@ -11,7 +11,7 @@ pure fn hash(&&x: int) -> uint { ret x as uint; }
 
 #[doc = "Returns `base` raised to the power of `exponent`"]
 fn pow(base: int, exponent: uint) -> int {
-    if exponent == 0u { ret 1; } //Not mathemtically true if [base == 0]/~
+    if exponent == 0u { ret 1; } //Not mathemtically true if ~[base == 0]
     if base     == 0  { ret 0; }
     let mut my_pow  = exponent;
     let mut acc     = 1;

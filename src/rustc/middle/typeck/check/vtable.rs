@@ -1,6 +1,6 @@
 import check::{fn_ctxt, impl_self_ty, methods};
 
-fn has_iface_bounds(tps: [ty::param_bounds]/~) -> bool {
+fn has_iface_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, {|bs|
         vec::any(*bs, {|b|
             alt b { ty::bound_iface(_) { true } _ { false } }
@@ -9,10 +9,10 @@ fn has_iface_bounds(tps: [ty::param_bounds]/~) -> bool {
 }
 
 fn lookup_vtables(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
-                  bounds: @[ty::param_bounds]/~, substs: ty::substs,
+                  bounds: @~[ty::param_bounds], substs: ty::substs,
                   allow_unsafe: bool) -> vtable_res {
     let tcx = fcx.ccx.tcx;
-    let mut result = []/~, i = 0u;
+    let mut result = ~[], i = 0u;
     for substs.tps.each {|ty|
         for vec::each(*bounds[i]) {|bound|
             alt bound {
@@ -105,7 +105,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
       }
 
       _ {
-        let mut found = []/~;
+        let mut found = ~[];
 
         for list::each(isc) {|impls|
             /* For each impl in scope... */
@@ -181,8 +181,8 @@ fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
     }
 }
 
-fn connect_iface_tps(fcx: @fn_ctxt, sp: span, impl_tys: [ty::t]/~,
-                     iface_tys: [ty::t]/~, impl_did: ast::def_id) {
+fn connect_iface_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
+                     iface_tys: ~[ty::t], impl_did: ast::def_id) {
     let tcx = fcx.ccx.tcx;
     let ity = option::get(ty::impl_iface(tcx, impl_did));
     let iface_ty = ty::subst_tps(tcx, impl_tys, ity);
@@ -252,7 +252,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
             Map this expression to that vtable (that is: "ex has
             vtable <vtable>")
             */
-            cx.vtable_map.insert(ex.id, @[vtable]/~);
+            cx.vtable_map.insert(ex.id, @~[vtable]);
           }
           _ {}
         }

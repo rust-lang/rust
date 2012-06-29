@@ -165,9 +165,9 @@ mod test {
         let repeat = 20u;
         let spec = {
 
-            [(1u,  20u),
+            ~[(1u,  20u),
              (10u, 10u),
-             (20u, 2u)]/~
+             (20u, 2u)]
 
         };
 

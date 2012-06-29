@@ -22,7 +22,7 @@ import io::{writer_util, reader_util};
 export grid_t, read_grid, solve_grid, write_grid;
 
 // internal type of sudoku grids
-type grid = [[mut u8]/~]/~;
+type grid = ~[~[mut u8]];
 
 // exported type of sudoku grids
 enum grid_t { grid_ctor(grid), }
@@ -92,11 +92,11 @@ fn solve_grid(g: grid_t) {
         }
     }
 
-    let mut work: [(u8, u8)]/~ = []/~; /* queue of uncolored fields */
+    let mut work: ~[(u8, u8)] = ~[]; /* queue of uncolored fields */
     for u8::range(0u8, 9u8) { |row|
         for u8::range(0u8, 9u8) { |col|
             let color = (*g)[row][col];
-            if color == 0u8 { work += [(row, col)]/~; }
+            if color == 0u8 { work += ~[(row, col)]; }
         }
     }
 
@@ -126,7 +126,7 @@ fn write_grid(f: io::writer, g: grid_t) {
      }
 }
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
         // (#571)

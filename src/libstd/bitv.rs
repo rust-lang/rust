@@ -22,7 +22,7 @@ export eq_vec;
 // for the case where nbits <= 32.
 
 #[doc = "The bitvector type"]
-type bitv = @{storage: [mut uint]/~, nbits: uint};
+type bitv = @{storage: ~[mut uint], nbits: uint};
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);
 
@@ -183,7 +183,7 @@ Converts the bitvector to a vector of uint with the same length.
 
 Each uint in the resulting vector has either value 0u or 1u.
 "]
-fn to_vec(v: bitv) -> [uint]/~ {
+fn to_vec(v: bitv) -> ~[uint] {
     let sub = {|x|init_to_vec(v, x)};
     ret vec::from_fn::<uint>(v.nbits, sub);
 }
@@ -225,7 +225,7 @@ Compare a bitvector to a vector of uint
 The uint vector is expected to only contain the values 0u and 1u. Both the
 bitvector and vector must have the same length
 "]
-fn eq_vec(v0: bitv, v1: [uint]/~) -> bool {
+fn eq_vec(v0: bitv, v1: ~[uint]) -> bool {
     assert (v0.nbits == vec::len::<uint>(v1));
     let len = v0.nbits;
     let mut i = 0u;
@@ -262,9 +262,9 @@ mod tests {
     fn test_1_element() {
         let mut act;
         act = bitv(1u, false);
-        assert (eq_vec(act, [0u]/~));
+        assert (eq_vec(act, ~[0u]));
         act = bitv(1u, true);
-        assert (eq_vec(act, [1u]/~));
+        assert (eq_vec(act, ~[1u]));
     }
 
     #[test]
@@ -273,11 +273,11 @@ mod tests {
         // all 0
 
         act = bitv(10u, false);
-        assert (eq_vec(act, [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u]/~));
+        assert (eq_vec(act, ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // all 1
 
         act = bitv(10u, true);
-        assert (eq_vec(act, [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u]/~));
+        assert (eq_vec(act, ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
         act = bitv(10u, false);
@@ -286,7 +286,7 @@ mod tests {
         set(act, 2u, true);
         set(act, 3u, true);
         set(act, 4u, true);
-        assert (eq_vec(act, [1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u]/~));
+        assert (eq_vec(act, ~[1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
         act = bitv(10u, false);
@@ -295,7 +295,7 @@ mod tests {
         set(act, 7u, true);
         set(act, 8u, true);
         set(act, 9u, true);
-        assert (eq_vec(act, [0u, 0u, 0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u]/~));
+        assert (eq_vec(act, ~[0u, 0u, 0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
         act = bitv(10u, false);
@@ -303,7 +303,7 @@ mod tests {
         set(act, 3u, true);
         set(act, 6u, true);
         set(act, 9u, true);
-        assert (eq_vec(act, [1u, 0u, 0u, 1u, 0u, 0u, 1u, 0u, 0u, 1u]/~));
+        assert (eq_vec(act, ~[1u, 0u, 0u, 1u, 0u, 0u, 1u, 0u, 0u, 1u]));
     }
 
     #[test]
@@ -313,16 +313,16 @@ mod tests {
 
         act = bitv(31u, false);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u]));
         // all 1
 
         act = bitv(31u, true);
         assert (eq_vec(act,
-                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u]/~));
+                        1u, 1u, 1u, 1u, 1u]));
         // mixed
 
         act = bitv(31u, false);
@@ -335,9 +335,9 @@ mod tests {
         set(act, 6u, true);
         set(act, 7u, true);
         assert (eq_vec(act,
-                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
+                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u]));
         // mixed
 
         act = bitv(31u, false);
@@ -350,9 +350,9 @@ mod tests {
         set(act, 22u, true);
         set(act, 23u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u]));
         // mixed
 
         act = bitv(31u, false);
@@ -364,9 +364,9 @@ mod tests {
         set(act, 29u, true);
         set(act, 30u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u]/~));
+                        1u, 1u, 1u, 1u, 1u]));
         // mixed
 
         act = bitv(31u, false);
@@ -374,9 +374,9 @@ mod tests {
         set(act, 17u, true);
         set(act, 30u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u]/~));
+                        0u, 0u, 0u, 0u, 1u]));
     }
 
     #[test]
@@ -386,16 +386,16 @@ mod tests {
 
         act = bitv(32u, false);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u, 0u]));
         // all 1
 
         act = bitv(32u, true);
         assert (eq_vec(act,
-                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u]/~));
+                        1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
         act = bitv(32u, false);
@@ -408,9 +408,9 @@ mod tests {
         set(act, 6u, true);
         set(act, 7u, true);
         assert (eq_vec(act,
-                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
+                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
         act = bitv(32u, false);
@@ -423,9 +423,9 @@ mod tests {
         set(act, 22u, true);
         set(act, 23u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
         act = bitv(32u, false);
@@ -438,9 +438,9 @@ mod tests {
         set(act, 30u, true);
         set(act, 31u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u]/~));
+                        1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
         act = bitv(32u, false);
@@ -449,9 +449,9 @@ mod tests {
         set(act, 30u, true);
         set(act, 31u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u, 1u]/~));
+                        0u, 0u, 0u, 0u, 1u, 1u]));
     }
 
     #[test]
@@ -461,16 +461,16 @@ mod tests {
 
         act = bitv(33u, false);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // all 1
 
         act = bitv(33u, true);
         assert (eq_vec(act,
-                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
+                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u, 1u]/~));
+                        1u, 1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
         act = bitv(33u, false);
@@ -483,9 +483,9 @@ mod tests {
         set(act, 6u, true);
         set(act, 7u, true);
         assert (eq_vec(act,
-                       [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
+                       ~[1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
         act = bitv(33u, false);
@@ -498,9 +498,9 @@ mod tests {
         set(act, 22u, true);
         set(act, 23u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 0u, 0u, 0u]/~));
+                        0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
         act = bitv(33u, false);
@@ -513,9 +513,9 @@ mod tests {
         set(act, 30u, true);
         set(act, 31u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u,
-                        1u, 1u, 1u, 1u, 1u, 1u, 0u]/~));
+                        1u, 1u, 1u, 1u, 1u, 1u, 0u]));
         // mixed
 
         act = bitv(33u, false);
@@ -525,9 +525,9 @@ mod tests {
         set(act, 31u, true);
         set(act, 32u, true);
         assert (eq_vec(act,
-                       [0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                       ~[0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
-                        0u, 0u, 0u, 0u, 1u, 1u, 1u]/~));
+                        0u, 0u, 0u, 0u, 1u, 1u, 1u]));
     }
 
     #[test]

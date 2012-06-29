@@ -30,7 +30,7 @@ enum json {
     num(float),
     string(@str),
     boolean(bool),
-    list(@[json]/~),
+    list(@~[json]),
     dict(map::hashmap<str, json>),
     null,
 }
@@ -383,7 +383,7 @@ impl parser for parser {
         self.bump();
         self.parse_whitespace();
 
-        let mut values = []/~;
+        let mut values = ~[];
 
         if self.ch == ']' {
             self.bump();
@@ -585,7 +585,7 @@ impl of to_json for @str {
 impl <A: to_json copy, B: to_json copy> of to_json for (A, B) {
     fn to_json() -> json {
         let (a, b) = self;
-        list(@[a.to_json(), b.to_json()]/~)
+        list(@~[a.to_json(), b.to_json()])
     }
 }
 
@@ -593,11 +593,11 @@ impl <A: to_json copy, B: to_json copy, C: to_json copy>
   of to_json for (A, B, C) {
     fn to_json() -> json {
         let (a, b, c) = self;
-        list(@[a.to_json(), b.to_json(), c.to_json()]/~)
+        list(@~[a.to_json(), b.to_json(), c.to_json()])
     }
 }
 
-impl <A: to_json> of to_json for [A]/~ {
+impl <A: to_json> of to_json for ~[A] {
     fn to_json() -> json { list(@self.map { |elt| elt.to_json() }) }
 }
 
@@ -632,7 +632,7 @@ impl of to_str::to_str for error {
 
 #[cfg(test)]
 mod tests {
-    fn mk_dict(items: [(str, json)]/~) -> json {
+    fn mk_dict(items: ~[(str, json)]) -> json {
         let d = map::str_hash();
 
         vec::iter(items) { |item|
@@ -670,26 +670,26 @@ mod tests {
 
     #[test]
     fn test_write_list() {
-        assert to_str(list(@[]/~)) == "[]";
-        assert to_str(list(@[boolean(true)]/~)) == "[true]";
-        assert to_str(list(@[
+        assert to_str(list(@~[])) == "[]";
+        assert to_str(list(@~[boolean(true)])) == "[true]";
+        assert to_str(list(@~[
             boolean(false),
             null,
-            list(@[string(@"foo\nbar"), num(3.5f)]/~)
-        ]/~)) == "[false, null, [\"foo\\nbar\", 3.5]]";
+            list(@~[string(@"foo\nbar"), num(3.5f)])
+        ])) == "[false, null, [\"foo\\nbar\", 3.5]]";
     }
 
     #[test]
     fn test_write_dict() {
-        assert to_str(mk_dict([]/~)) == "{}";
-        assert to_str(mk_dict([("a", boolean(true))]/~)) == "{ \"a\": true }";
-        assert to_str(mk_dict([
+        assert to_str(mk_dict(~[])) == "{}";
+        assert to_str(mk_dict(~[("a", boolean(true))])) == "{ \"a\": true }";
+        assert to_str(mk_dict(~[
             ("a", boolean(true)),
-            ("b", list(@[
-                mk_dict([("c", string(@"\x0c\r"))]/~),
-                mk_dict([("d", string(@""))]/~)
-            ]/~))
-        ]/~)) ==
+            ("b", list(@~[
+                mk_dict(~[("c", string(@"\x0c\r"))]),
+                mk_dict(~[("d", string(@""))])
+            ]))
+        ])) ==
             "{ " +
                 "\"a\": true, " +
                 "\"b\": [" +
@@ -709,7 +709,7 @@ mod tests {
             err({line: 1u, col: 6u, msg: @"trailing characters"});
         assert from_str("1a") ==
             err({line: 1u, col: 2u, msg: @"trailing characters"});
-        assert from_str("[]/~a") ==
+        assert from_str("[]a") ==
             err({line: 1u, col: 3u, msg: @"trailing characters"});
         assert from_str("{}a") ==
             err({line: 1u, col: 3u, msg: @"trailing characters"});
@@ -798,15 +798,15 @@ mod tests {
         assert from_str("[6 7]") ==
             err({line: 1u, col: 4u, msg: @"expecting ',' or ']'"});
 
-        assert from_str("[]") == ok(list(@[]/~));
-        assert from_str("[ ]") == ok(list(@[]/~));
-        assert from_str("[true]") == ok(list(@[boolean(true)]/~));
-        assert from_str("[ false ]") == ok(list(@[boolean(false)]/~));
-        assert from_str("[null]") == ok(list(@[null]/~));
-        assert from_str("[3, 1]") == ok(list(@[num(3f), num(1f)]/~));
-        assert from_str("\n[3, 2]\n") == ok(list(@[num(3f), num(2f)]/~));
+        assert from_str("[]") == ok(list(@~[]));
+        assert from_str("[ ]") == ok(list(@~[]));
+        assert from_str("[true]") == ok(list(@~[boolean(true)]));
+        assert from_str("[ false ]") == ok(list(@~[boolean(false)]));
+        assert from_str("[null]") == ok(list(@~[null]));
+        assert from_str("[3, 1]") == ok(list(@~[num(3f), num(1f)]));
+        assert from_str("\n[3, 2]\n") == ok(list(@~[num(3f), num(2f)]));
         assert from_str("[2, [4, 1]]") ==
-               ok(list(@[num(2f), list(@[num(4f), num(1f)]/~)]/~));
+               ok(list(@~[num(2f), list(@~[num(4f), num(1f)])]));
     }
 
     #[test]
@@ -835,23 +835,23 @@ mod tests {
         assert from_str("{\"a\":1,") ==
             err({line: 1u, col: 8u, msg: @"EOF while parsing object"});
 
-        assert eq(result::get(from_str("{}")), mk_dict([]/~));
+        assert eq(result::get(from_str("{}")), mk_dict(~[]));
         assert eq(result::get(from_str("{\"a\": 3}")),
-                  mk_dict([("a", num(3.0f))]/~));
+                  mk_dict(~[("a", num(3.0f))]));
 
         assert eq(result::get(from_str("{ \"a\": null, \"b\" : true }")),
-                  mk_dict([
+                  mk_dict(~[
                       ("a", null),
-                      ("b", boolean(true))]/~));
+                      ("b", boolean(true))]));
         assert eq(result::get(from_str("\n{ \"a\": null, \"b\" : true }\n")),
-                  mk_dict([
+                  mk_dict(~[
                       ("a", null),
-                      ("b", boolean(true))]/~));
+                      ("b", boolean(true))]));
         assert eq(result::get(from_str("{\"a\" : 1.0 ,\"b\": [ true ]}")),
-                  mk_dict([
+                  mk_dict(~[
                       ("a", num(1.0)),
-                      ("b", list(@[boolean(true)]/~))
-                  ]/~));
+                      ("b", list(@~[boolean(true)]))
+                  ]));
         assert eq(result::get(from_str(
                       "{" +
                           "\"a\": 1.0, " +
@@ -861,16 +861,16 @@ mod tests {
                               "{ \"c\": {\"d\": null} } " +
                           "]" +
                       "}")),
-                  mk_dict([
+                  mk_dict(~[
                       ("a", num(1.0f)),
-                      ("b", list(@[
+                      ("b", list(@~[
                           boolean(true),
                           string(@"foo\nbar"),
-                          mk_dict([
-                              ("c", mk_dict([("d", null)]/~))
-                          ]/~)
-                      ]/~))
-                  ]/~));
+                          mk_dict(~[
+                              ("c", mk_dict(~[("d", null)]))
+                          ])
+                      ]))
+                  ]));
     }
 
     #[test]

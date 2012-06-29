@@ -249,9 +249,9 @@ fn tritv_doesntcare(v: t) -> bool {
     ret true;
 }
 
-fn to_vec(v: t) -> [uint]/~ {
+fn to_vec(v: t) -> ~[uint] {
     let mut i: uint = 0u;
-    let mut rslt: [uint]/~ = []/~;
+    let mut rslt: ~[uint] = ~[];
     while i < v.nbits {
         vec::push(rslt,
                   alt tritv_get(v, i) {

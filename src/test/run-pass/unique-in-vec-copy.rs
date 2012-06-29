@@ -1,5 +1,5 @@
 fn main() {
-    let a = [~mut 10]/~;
+    let a = ~[~mut 10];
     let b = a;
 
     assert *a[0] == 10;

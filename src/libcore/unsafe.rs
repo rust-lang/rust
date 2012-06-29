@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn test_transmute2() {
         unsafe {
-            assert transmute("L") == [76u8, 0u8]/~;
+            assert transmute("L") == ~[76u8, 0u8];
         }
     }
 }

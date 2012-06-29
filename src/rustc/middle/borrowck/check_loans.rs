@@ -23,7 +23,7 @@ enum check_loan_ctxt = @{
     // we are in a ctor, we track the self id
     mut in_ctor: bool,
     mut declared_purity: ast::purity,
-    mut fn_args: @[ast::node_id]/~
+    mut fn_args: @~[ast::node_id]
 };
 
 // if we are enforcing purity, why are we doing so?
@@ -45,7 +45,7 @@ fn check_loans(bccx: borrowck_ctxt,
                                  reported: int_hash(),
                                  mut in_ctor: false,
                                  mut declared_purity: ast::impure_fn,
-                                 mut fn_args: @[]/~});
+                                 mut fn_args: @~[]});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
                             visit_local: check_loans_in_local,
                             visit_block: check_loans_in_block,
@@ -473,7 +473,7 @@ impl methods for check_loan_ctxt {
                   callee: option<@ast::expr>,
                   callee_id: ast::node_id,
                   callee_span: span,
-                  args: [@ast::expr]/~) {
+                  args: ~[@ast::expr]) {
         alt self.purity(expr.id) {
           none {}
           some(pc) {
@@ -618,7 +618,7 @@ fn check_loans_in_expr(expr: @ast::expr,
                         none,
                         ast_util::op_expr_callee_id(expr),
                         expr.span,
-                        [rval]/~);
+                        ~[rval]);
       }
       ast::expr_unary(*) | ast::expr_index(*)
       if self.bccx.method_map.contains_key(expr.id) {
@@ -626,7 +626,7 @@ fn check_loans_in_expr(expr: @ast::expr,
                         none,
                         ast_util::op_expr_callee_id(expr),
                         expr.span,
-                        []/~);
+                        ~[]);
       }
       _ { }
     }

@@ -30,18 +30,18 @@ fn inject_libcore_ref(sess: session,
     let n1 = sess.next_node_id();
     let n2 = sess.next_node_id();
 
-    let vi1 = @{node: ast::view_item_use(@"core", []/~, n1),
-                attrs: []/~,
+    let vi1 = @{node: ast::view_item_use(@"core", ~[], n1),
+                attrs: ~[],
                 vis: ast::public,
                 span: dummy_sp()};
     let vp = spanned(ast::view_path_glob(ident_to_path(dummy_sp(), @"core"),
                                          n2));
-    let vi2 = @{node: ast::view_item_import([vp]/~),
-                attrs: []/~,
+    let vi2 = @{node: ast::view_item_import(~[vp]),
+                attrs: ~[],
                 vis: ast::public,
                 span: dummy_sp()};
 
-    let vis = vec::append([vi1, vi2]/~, crate.node.module.view_items);
+    let vis = vec::append(~[vi1, vi2], crate.node.module.view_items);
 
     ret @{node: {module: { view_items: vis with crate.node.module }
                  with crate.node} with *crate }

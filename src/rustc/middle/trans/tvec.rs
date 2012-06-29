@@ -35,30 +35,30 @@ fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
 
 fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_fill");
-    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]/~))
+    Load(bcx, GEPi(bcx, vptr, ~[0u, abi::vec_elt_fill]))
 }
 fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
-    Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]/~));
+    Store(bcx, fill, GEPi(bcx, vptr, ~[0u, abi::vec_elt_fill]));
 }
 fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
-    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]/~))
+    Load(bcx, GEPi(bcx, vptr, ~[0u, abi::vec_elt_alloc]))
 }
 
 fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
-    non_gc_box_cast(bcx, GEPi(bcx, vptr, [0u, abi::box_field_body]/~))
+    non_gc_box_cast(bcx, GEPi(bcx, vptr, ~[0u, abi::box_field_body]))
 }
 
 fn get_dataptr(bcx: block, vptr: ValueRef)
     -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_dataptr");
-    GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u]/~)
+    GEPi(bcx, vptr, ~[0u, abi::vec_elt_elems, 0u])
 }
 
 fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
-    ret PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]/~), old_ty);
+    ret PointerCast(bcx, InBoundsGEP(bcx, bptr, ~[bytes]), old_ty);
 }
 
 fn alloc_raw(bcx: block, unit_ty: ty::t,
@@ -70,8 +70,8 @@ fn alloc_raw(bcx: block, unit_ty: ty::t,
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
     let {box, body} = base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
-    Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]/~));
-    Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]/~));
+    Store(bcx, fill, GEPi(bcx, body, ~[0u, abi::vec_elt_fill]));
+    Store(bcx, alloc, GEPi(bcx, body, ~[0u, abi::vec_elt_alloc]));
     ret {bcx: bcx, val: box};
 }
 fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
@@ -118,7 +118,7 @@ fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
     } else { bcx }
 }
 
-fn trans_evec(bcx: block, args: [@ast::expr]/~,
+fn trans_evec(bcx: block, args: ~[@ast::expr],
               vst: ast::vstore, id: ast::node_id, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_evec");
     let ccx = bcx.ccx();
@@ -163,10 +163,10 @@ fn trans_evec(bcx: block, args: [@ast::expr]/~,
 
             let len = Mul(bcx, n, unit_sz);
 
-            let p = base::alloca(bcx, T_struct([T_ptr(llunitty),
-                                                ccx.int_type]/~));
-            Store(bcx, vp, GEPi(bcx, p, [0u, abi::slice_elt_base]/~));
-            Store(bcx, len, GEPi(bcx, p, [0u, abi::slice_elt_len]/~));
+            let p = base::alloca(bcx, T_struct(~[T_ptr(llunitty),
+                                                ccx.int_type]));
+            Store(bcx, vp, GEPi(bcx, p, ~[0u, abi::slice_elt_base]));
+            Store(bcx, len, GEPi(bcx, p, ~[0u, abi::slice_elt_len]));
 
             {bcx: bcx, val: p, dataptr: vp}
           }
@@ -188,12 +188,12 @@ fn trans_evec(bcx: block, args: [@ast::expr]/~,
 
 
     // Store the individual elements.
-    let mut i = 0u, temp_cleanups = [val]/~;
+    let mut i = 0u, temp_cleanups = ~[val];
     #debug("trans_evec: v: %s, dataptr: %s",
            val_str(ccx.tn, val),
            val_str(ccx.tn, dataptr));
     for vec::each(args) {|e|
-        let lleltptr = InBoundsGEP(bcx, dataptr, [C_uint(ccx, i)]/~);
+        let lleltptr = InBoundsGEP(bcx, dataptr, ~[C_uint(ccx, i)]);
         bcx = base::trans_expr_save_in(bcx, e, lleltptr);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
         vec::push(temp_cleanups, lleltptr);
@@ -248,14 +248,14 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
 
     alt vstore {
       ty::vstore_fixed(n) {
-        let base = GEPi(cx, v, [0u, 0u]/~);
+        let base = GEPi(cx, v, ~[0u, 0u]);
         let n = if ty::type_is_str(e_ty) { n + 1u } else { n };
         let len = Mul(cx, C_uint(ccx, n), unit_sz);
         (base, len)
       }
       ty::vstore_slice(_) {
-        let base = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_base]/~));
-        let len = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_len]/~));
+        let base = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_base]));
+        let len = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_len]));
         (base, len)
       }
       ty::vstore_uniq | ty::vstore_box {
@@ -274,7 +274,7 @@ fn trans_estr(bcx: block, s: @str, vstore: ast::vstore,
     let c = alt vstore {
       ast::vstore_fixed(_)
       {
-        // "hello"/_  =>  "hello"/5  =>  [i8 x 6]/~ in llvm
+        // "hello"/_  =>  "hello"/5  =>  ~[i8 x 6] in llvm
         #debug("trans_estr: fixed: %s", *s);
         C_postr(*s)
       }
@@ -288,7 +288,7 @@ fn trans_estr(bcx: block, s: @str, vstore: ast::vstore,
       ast::vstore_uniq {
         let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
         let len = C_uint(ccx, str::len(*s));
-        let c = Call(bcx, ccx.upcalls.str_new_uniq, [cs, len]/~);
+        let c = Call(bcx, ccx.upcalls.str_new_uniq, ~[cs, len]);
         PointerCast(bcx, c,
                     T_unique_ptr(T_unique(ccx, T_vec(ccx, T_i8()))))
       }
@@ -296,7 +296,7 @@ fn trans_estr(bcx: block, s: @str, vstore: ast::vstore,
       ast::vstore_box {
         let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
         let len = C_uint(ccx, str::len(*s));
-        let c = Call(bcx, ccx.upcalls.str_new_shared, [cs, len]/~);
+        let c = Call(bcx, ccx.upcalls.str_new_shared, ~[cs, len]);
         PointerCast(bcx, c,
                     T_box_ptr(T_box(ccx, T_vec(ccx, T_i8()))))
       }
@@ -323,7 +323,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
     let opaque_lhs = PointerCast(bcx, lhsptr,
                                  T_ptr(T_ptr(T_i8())));
     Call(bcx, ccx.upcalls.vec_grow,
-         [opaque_lhs, new_fill]/~);
+         ~[opaque_lhs, new_fill]);
     // Was overwritten if we resized
     let lhs = Load(bcx, lhsptr);
     let rhs = Select(bcx, self_append, lhs, rhs);
@@ -339,14 +339,14 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
-        Store(bcx, InBoundsGEP(bcx, write_ptr, [C_int(ccx, 1)]/~),
+        Store(bcx, InBoundsGEP(bcx, write_ptr, ~[C_int(ccx, 1)]),
               write_ptr_ptr);
         bcx
     })
 }
 
 fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
-                        vals: [@ast::expr]/~) -> block {
+                        vals: ~[@ast::expr]) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_append_literal");
     let mut bcx = bcx, ccx = bcx.ccx();
     let elt_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
@@ -363,7 +363,7 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
         bcx = base::with_cond(bcx, do_grow) {|bcx|
             let pt = PointerCast(bcx, vptrptr,
                                  T_ptr(T_ptr(T_i8())));
-            Call(bcx, ccx.upcalls.vec_grow, [pt, new_fill]/~);
+            Call(bcx, ccx.upcalls.vec_grow, ~[pt, new_fill]);
             bcx
         };
         let vptr = get_bodyptr(bcx, Load(bcx, vptrptr));
@@ -386,7 +386,7 @@ fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
     if ty::get(vec_ty).struct == ty::ty_str {
         let lhs = PointerCast(bcx, lhs, T_ptr(T_i8()));
         let rhs = PointerCast(bcx, rhs, T_ptr(T_i8()));
-        let n = Call(bcx, ccx.upcalls.str_concat, [lhs, rhs]/~);
+        let n = Call(bcx, ccx.upcalls.str_concat, ~[lhs, rhs]);
         let n = PointerCast(
             bcx, n, T_unique_ptr(T_unique(ccx, T_vec(ccx, llunitty))));
         ret base::store_in_dest(bcx, n, dest);
@@ -407,7 +407,7 @@ fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
-        Store(bcx, InBoundsGEP(bcx, write_ptr, [C_int(ccx, 1)]/~),
+        Store(bcx, InBoundsGEP(bcx, write_ptr, ~[C_int(ccx, 1)]),
               write_ptr_ptr);
         ret bcx;
     };
@@ -437,7 +437,7 @@ fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     let header_cx = sub_block(bcx, "iter_vec_loop_header");
     Br(bcx, header_cx.llbb);
     let data_ptr =
-        Phi(header_cx, val_ty(data_ptr), [data_ptr]/~, [bcx.llbb]/~);
+        Phi(header_cx, val_ty(data_ptr), ~[data_ptr], ~[bcx.llbb]);
     let not_yet_at_end =
         ICmp(header_cx, lib::llvm::IntULT, data_ptr, data_end_ptr);
     let body_cx = sub_block(header_cx, "iter_vec_loop_body");
@@ -445,7 +445,7 @@ fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);
     let body_cx = f(body_cx, data_ptr, unit_ty);
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_cx, data_ptr,
-                                           [C_int(bcx.ccx(), 1)]/~),
+                                           ~[C_int(bcx.ccx(), 1)]),
                      body_cx.llbb);
     Br(body_cx, header_cx.llbb);
     ret next_cx;

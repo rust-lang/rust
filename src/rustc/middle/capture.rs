@@ -60,7 +60,7 @@ fn check_capture_clause(tcx: ty::ctxt,
 fn compute_capture_vars(tcx: ty::ctxt,
                         fn_expr_id: ast::node_id,
                         fn_proto: ast::proto,
-                        cap_clause: ast::capture_clause) -> [capture_var]/~ {
+                        cap_clause: ast::capture_clause) -> ~[capture_var] {
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let cap_map = map::int_hash();
 
@@ -119,7 +119,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
         }
     }
 
-    let mut result = []/~;
+    let mut result = ~[];
     for cap_map.each_value { |cap_var| vec::push(result, cap_var); }
     ret result;
 }

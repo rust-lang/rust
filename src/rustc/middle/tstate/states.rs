@@ -54,7 +54,7 @@ fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
     }
 }
 
-fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]/~) ->
+fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: ~[binding]) ->
    {changed: bool, post: poststate} {
     let mut changed = false;
     let mut post = tritv_clone(pres);
@@ -166,7 +166,7 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
 }
 
 fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
-                            id: node_id, ops: [init_op]/~, bs: [@expr]/~,
+                            id: node_id, ops: ~[init_op], bs: ~[@expr],
                             cf: ret_style) -> bool {
     let mut changed = find_pre_post_state_expr(fcx, pres, a);
     // FIXME (#2178): This could be a typestate constraint (except we're
@@ -183,7 +183,7 @@ fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
 }
 
 fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
-                             ops: [init_op]/~, es: [@expr]/~,
+                             ops: ~[init_op], es: ~[@expr],
                              cf: ret_style) -> bool {
     let rs = seq_states(fcx, pres, arg_bindings(ops, es));
     let mut changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
@@ -404,7 +404,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 
         /* conservative approximation: if a loop contains a break
            or cont, we assume nothing about the poststate */
-        /* which is still unsound -- see [Break-unsound]/~ */
+        /* which is still unsound -- see ~[Break-unsound] */
         if has_nonlocal_exits(body) {
             ret changed | set_poststate_ann(fcx.ccx, e.id, pres);
         } else {
@@ -423,7 +423,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         /* conservative approximation: if a loop contains a break
            or cont, we assume nothing about the poststate (so, we
            set all predicates to "don't know" */
-        /* which is still unsound -- see [Break-unsound]/~ */
+        /* which is still unsound -- see ~[Break-unsound] */
         if may_break(body) {
                 /* Only do this if there are *breaks* not conts.
                  An infinite loop with conts is still an infinite loop.

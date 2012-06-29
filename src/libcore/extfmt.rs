@@ -9,12 +9,12 @@ The 'fmt' extension is modeled on the posix printf system.
 
 A posix conversion ostensibly looks like this
 
-> %[parameter]/~[flags]/~[width]/~[.precision]/~[length]/~type
+> %~[parameter]~[flags]~[width]~[.precision]~[length]type
 
 Given the different numeric type bestiary we have, we omit the 'length'
 parameter and support slightly different conversions for 'type'
 
-> %[parameter]/~[flags]/~[width]/~[.precision]/~type
+> %~[parameter]~[flags]~[width]~[.precision]type
 
 we also only support translating-to-rust a tiny subset of the possible
 combinations at the moment.
@@ -71,7 +71,7 @@ mod ct {
     // A formatted conversion from an expression to a string
     type conv =
         {param: option<int>,
-         flags: [flag]/~,
+         flags: ~[flag],
          width: count,
          precision: count,
          ty: ty};
@@ -81,11 +81,11 @@ mod ct {
     enum piece { piece_string(str), piece_conv(conv), }
     type error_fn = fn@(str) -> ! ;
 
-    fn parse_fmt_string(s: str, error: error_fn) -> [piece]/~ {
-        let mut pieces: [piece]/~ = []/~;
+    fn parse_fmt_string(s: str, error: error_fn) -> ~[piece] {
+        let mut pieces: ~[piece] = ~[];
         let lim = str::len(s);
         let mut buf = "";
-        fn flush_buf(buf: str, &pieces: [piece]/~) -> str {
+        fn flush_buf(buf: str, &pieces: ~[piece]) -> str {
             if str::len(buf) > 0u {
                 let piece = piece_string(buf);
                 vec::push(pieces, piece);
@@ -162,16 +162,16 @@ mod ct {
             };
     }
     fn parse_flags(s: str, i: uint, lim: uint) ->
-       {flags: [flag]/~, next: uint} {
-        let noflags: [flag]/~ = []/~;
+       {flags: ~[flag], next: uint} {
+        let noflags: ~[flag] = ~[];
         if i >= lim { ret {flags: noflags, next: i}; }
 
         fn more_(f: flag, s: str, i: uint, lim: uint) ->
-           {flags: [flag]/~, next: uint} {
+           {flags: ~[flag], next: uint} {
             let next = parse_flags(s, i + 1u, lim);
             let rest = next.flags;
             let j = next.next;
-            let curr: [flag]/~ = [f]/~;
+            let curr: ~[flag] = ~[f];
             ret {flags: vec::append(curr, rest), next: j};
         }
         let more = {|x|more_(x, s, i, lim)};

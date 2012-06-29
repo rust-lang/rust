@@ -24,10 +24,10 @@ fn create<T: copy>() -> t<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: copy>(nelts: uint, lo: uint, -elts: [mut cell<T>]/~) ->
-       [mut cell<T>]/~ {
+    fn grow<T: copy>(nelts: uint, lo: uint, -elts: ~[mut cell<T>]) ->
+       ~[mut cell<T>] {
         assert (nelts == vec::len(elts));
-        let mut rv = [mut]/~;
+        let mut rv = ~[mut];
 
         let mut i = 0u;
         let nalloc = uint::next_power_of_two(nelts + 1u);

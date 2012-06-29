@@ -6,6 +6,6 @@ fn f<T: copy>(t: T) -> T {
 fn main() {
     let t = f(~100);
     assert t == ~100;
-    let t = f(~@[100]/~);
-    assert t == ~@[100]/~;
+    let t = f(~@~[100]);
+    assert t == ~@~[100];
 }

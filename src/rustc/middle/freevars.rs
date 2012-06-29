@@ -23,7 +23,7 @@ type freevar_entry = {
     def: ast::def, //< The variable being accessed free.
     span: span     //< First span where it is accessed (there can be multiple)
 };
-type freevar_info = @[@freevar_entry]/~;
+type freevar_info = @~[@freevar_entry];
 type freevar_map = hashmap<ast::node_id, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
@@ -34,7 +34,7 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
     -> freevar_info {
     let seen = int_hash();
-    let refs = @mut []/~;
+    let refs = @mut ~[];
 
     fn ignore_item(_i: @ast::item, &&_depth: int, _v: visit::vt<int>) { }
 

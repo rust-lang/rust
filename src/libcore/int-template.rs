@@ -66,7 +66,7 @@ Parse a buffer of bytes
 * buf - A byte buffer
 * radix - The base of the number
 "]
-fn parse_buf(buf: [u8]/~, radix: uint) -> option<T> {
+fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     if vec::len(buf) == 0u { ret none; }
     let mut i = vec::len(buf) - 1u;
     let mut start = 0u;
@@ -100,7 +100,7 @@ fn to_str(n: T, radix: uint) -> str {
     }
 }
 
-fn to_str_bytes<U>(n: T, radix: uint, f: fn([u8]/&) -> U) -> U {
+fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
     if n < 0 as T {
         uint::to_str_bytes(true, -n as uint, radix, f)
     } else {

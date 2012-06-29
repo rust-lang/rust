@@ -120,7 +120,7 @@ type method_map_entry = {
 type method_map = hashmap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
-type vtable_res = @[vtable_origin]/~;
+type vtable_res = @~[vtable_origin];
 
 enum vtable_origin {
     /*
@@ -128,7 +128,7 @@ enum vtable_origin {
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself
      */
-    vtable_static(ast::def_id, [ty::t]/~, vtable_res),
+    vtable_static(ast::def_id, ~[ty::t], vtable_res),
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
       fn foo<T: quux, baz, bar>(a: T) -- a's vtable would have a
@@ -142,7 +142,7 @@ enum vtable_origin {
       Dynamic vtable, comes from something known to have an interface
       type. def_id refers to the iface item, tys are the substs
      */
-    vtable_iface(ast::def_id, [ty::t]/~),
+    vtable_iface(ast::def_id, ~[ty::t]),
 }
 
 type vtable_map = hashmap<ast::node_id, vtable_res>;
@@ -163,7 +163,7 @@ fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
 }
 fn write_substs_to_tcx(tcx: ty::ctxt,
                        node_id: ast::node_id,
-                       +substs: [ty::t]/~) {
+                       +substs: ~[ty::t]) {
     if substs.len() > 0u {
         tcx.node_type_substs.insert(node_id, substs);
     }
@@ -183,7 +183,7 @@ fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id) -> ast::def {
 }
 
 fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
-    {bounds: @[]/~, rp: ast::rp_none, ty: t}
+    {bounds: @~[], rp: ast::rp_none, ty: t}
 }
 
 fn require_same_types(
@@ -259,7 +259,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
         if !ok {
                 tcx.sess.span_err(main_span,
                    #fmt("Wrong type in main function: found `%s`, \
-                   expecting `native fn([str]/~) -> ()` \
+                   expecting `native fn(~[str]) -> ()` \
                    or `native fn() -> ()`",
                          ty_to_str(tcx, main_t)));
          }

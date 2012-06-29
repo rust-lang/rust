@@ -21,22 +21,23 @@ import common::mode_pretty;
 import common::mode;
 import util::logv;
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     let config = parse_config(args);
     log_config(config);
     run_tests(config);
 }
 
-fn parse_config(args: [str]/~) -> config {
+fn parse_config(args: ~[str]) -> config {
     let opts =
-        [getopts::reqopt("compile-lib-path"), getopts::reqopt("run-lib-path"),
-         getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
-         getopts::reqopt("build-base"), getopts::reqopt("aux-base"),
-         getopts::reqopt("stage-id"),
-         getopts::reqopt("mode"), getopts::optflag("ignored"),
-         getopts::optopt("runtool"), getopts::optopt("rustcflags"),
-         getopts::optflag("verbose"),
-         getopts::optopt("logfile")]/~;
+        ~[getopts::reqopt("compile-lib-path"),
+          getopts::reqopt("run-lib-path"),
+          getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
+          getopts::reqopt("build-base"), getopts::reqopt("aux-base"),
+          getopts::reqopt("stage-id"),
+          getopts::reqopt("mode"), getopts::optflag("ignored"),
+          getopts::optopt("runtool"), getopts::optopt("rustcflags"),
+          getopts::optflag("verbose"),
+          getopts::optopt("logfile")];
 
     check (vec::is_not_empty(args));
     let args_ = vec::tail(args);
@@ -132,9 +133,9 @@ fn test_opts(config: config) -> test::test_opts {
     }
 }
 
-fn make_tests(config: config) -> [test::test_desc]/~ {
+fn make_tests(config: config) -> ~[test::test_desc] {
     #debug("making tests from %s", config.src_base);
-    let mut tests = []/~;
+    let mut tests = ~[];
     for os::list_dir_path(config.src_base).each {|file|
         let file = file;
         #debug("inspecting file %s", file);
@@ -148,8 +149,8 @@ fn make_tests(config: config) -> [test::test_desc]/~ {
 fn is_test(config: config, testfile: str) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
-        alt config.mode { mode_pretty { [".rs"]/~ } _ { [".rc", ".rs"]/~ } };
-    let invalid_prefixes = [".", "#", "~"]/~;
+        alt config.mode { mode_pretty { ~[".rs"] } _ { ~[".rc", ".rs"] } };
+    let invalid_prefixes = ~[".", "#", "~"];
     let name = path::basename(testfile);
 
     let mut valid = false;

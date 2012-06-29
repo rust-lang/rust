@@ -42,7 +42,7 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_freebsd { "x86_64-unknown-freebsd" }
         },
 
-        cc_args: ["-m64"]/~
+        cc_args: ~["-m64"]
     };
 }
 

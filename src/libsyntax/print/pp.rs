@@ -71,7 +71,7 @@ fn tok_str(++t: token) -> str {
     }
 }
 
-fn buf_str(toks: [mut token]/~, szs: [mut int]/~, left: uint, right: uint,
+fn buf_str(toks: ~[mut token], szs: ~[mut int], left: uint, right: uint,
            lim: uint) -> str {
     let n = vec::len(toks);
     assert (n == vec::len(szs));
@@ -100,9 +100,9 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     // fall behind.
     let n: uint = 3u * linewidth;
     #debug("mk_printer %u", linewidth);
-    let token: [mut token]/~ = vec::to_mut(vec::from_elem(n, EOF));
-    let size: [mut int]/~ = vec::to_mut(vec::from_elem(n, 0));
-    let scan_stack: [mut uint]/~ = vec::to_mut(vec::from_elem(n, 0u));
+    let token: ~[mut token] = vec::to_mut(vec::from_elem(n, EOF));
+    let size: ~[mut int] = vec::to_mut(vec::from_elem(n, 0));
+    let scan_stack: ~[mut uint] = vec::to_mut(vec::from_elem(n, 0u));
     @{out: out,
       buf_len: n,
       mut margin: linewidth as int,
@@ -206,8 +206,8 @@ type printer = @{
     mut space: int, // number of spaces left on line
     mut left: uint, // index of left side of input stream
     mut right: uint, // index of right side of input stream
-    token: [mut token]/~, // ring-buffr stream goes through
-    size: [mut int]/~, // ring-buffer of calculated sizes
+    token: ~[mut token], // ring-buffr stream goes through
+    size: ~[mut int], // ring-buffer of calculated sizes
     mut left_total: int, // running size of stream "...left"
     mut right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
@@ -216,7 +216,7 @@ type printer = @{
     // BEGIN (if there is any) on top of it. Stuff is flushed off the
     // bottom as it becomes irrelevant due to the primary ring-buffer
     // advancing.
-    mut scan_stack: [mut uint]/~,
+    mut scan_stack: ~[mut uint],
     mut scan_stack_empty: bool, // top==bottom disambiguator
     mut top: uint, // index of top of scan_stack
     mut bottom: uint, // index of bottom of scan_stack
@@ -231,7 +231,7 @@ impl printer for printer {
     // be very careful with this!
     fn replace_last_token(t: token) { self.token[self.right] = t; }
     fn pretty_print(t: token) {
-        #debug("pp [%u,%u]/~", self.left, self.right);
+        #debug("pp ~[%u,%u]", self.left, self.right);
         alt t {
           EOF {
             if !self.scan_stack_empty {
@@ -248,17 +248,17 @@ impl printer for printer {
                 self.left = 0u;
                 self.right = 0u;
             } else { self.advance_right(); }
-            #debug("pp BEGIN/buffer [%u,%u]/~", self.left, self.right);
+            #debug("pp BEGIN/buffer ~[%u,%u]", self.left, self.right);
             self.token[self.right] = t;
             self.size[self.right] = -self.right_total;
             self.scan_push(self.right);
           }
           END {
             if self.scan_stack_empty {
-                #debug("pp END/print [%u,%u]/~", self.left, self.right);
+                #debug("pp END/print ~[%u,%u]", self.left, self.right);
                 self.print(t, 0);
             } else {
-                #debug("pp END/buffer [%u,%u]/~", self.left, self.right);
+                #debug("pp END/buffer ~[%u,%u]", self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = t;
                 self.size[self.right] = -1;
@@ -272,7 +272,7 @@ impl printer for printer {
                 self.left = 0u;
                 self.right = 0u;
             } else { self.advance_right(); }
-            #debug("pp BREAK/buffer [%u,%u]/~", self.left, self.right);
+            #debug("pp BREAK/buffer ~[%u,%u]", self.left, self.right);
             self.check_stack(0);
             self.scan_push(self.right);
             self.token[self.right] = t;
@@ -281,10 +281,10 @@ impl printer for printer {
           }
           STRING(s, len) {
             if self.scan_stack_empty {
-                #debug("pp STRING/print [%u,%u]/~", self.left, self.right);
+                #debug("pp STRING/print ~[%u,%u]", self.left, self.right);
                 self.print(t, len);
             } else {
-                #debug("pp STRING/buffer [%u,%u]/~", self.left, self.right);
+                #debug("pp STRING/buffer ~[%u,%u]", self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = t;
                 self.size[self.right] = len;
@@ -295,7 +295,7 @@ impl printer for printer {
         }
     }
     fn check_stream() {
-        #debug("check_stream [%u, %u]/~ with left_total=%d, right_total=%d",
+        #debug("check_stream ~[%u, %u] with left_total=%d, right_total=%d",
                self.left, self.right, self.left_total, self.right_total);
         if self.right_total - self.left_total > self.space {
             #debug("scan window is %d, longer than space on line (%d)",
@@ -347,7 +347,7 @@ impl printer for printer {
         assert (self.right != self.left);
     }
     fn advance_left(++x: token, L: int) {
-        #debug("advnce_left [%u,%u]/~, sizeof(%u)=%d", self.left, self.right,
+        #debug("advnce_left ~[%u,%u], sizeof(%u)=%d", self.left, self.right,
                self.left, L);
         if L >= 0 {
             self.print(x, L);

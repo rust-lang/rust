@@ -12,7 +12,7 @@ type macro_def = {ident: ast::ident, ext: syntax_extension};
 type macro_definer =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
 type item_decorator =
-    fn@(ext_ctxt, span, ast::meta_item, [@ast::item]/~) -> [@ast::item]/~;
+    fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
 type syntax_expander_tt = {expander: syntax_expander_tt_, span: option<span>};
 type syntax_expander_tt_ = fn@(ext_ctxt, span, ast::token_tree) -> @ast::expr;
@@ -72,7 +72,7 @@ iface ext_ctxt {
     fn backtrace() -> expn_info;
     fn mod_push(mod_name: ast::ident);
     fn mod_pop();
-    fn mod_path() -> [ast::ident]/~;
+    fn mod_path() -> ~[ast::ident];
     fn bt_push(ei: codemap::expn_info_);
     fn bt_pop();
     fn span_fatal(sp: span, msg: str) -> !;
@@ -88,7 +88,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
     type ctxt_repr = {parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
                       mut backtrace: expn_info,
-                      mut mod_path: [ast::ident]/~};
+                      mut mod_path: ~[ast::ident]};
     impl of ext_ctxt for ctxt_repr {
         fn codemap() -> codemap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
@@ -97,7 +97,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn backtrace() -> expn_info { self.backtrace }
         fn mod_push(i: ast::ident) { vec::push(self.mod_path, i); }
         fn mod_pop() { vec::pop(self.mod_path); }
-        fn mod_path() -> [ast::ident]/~ { ret self.mod_path; }
+        fn mod_path() -> ~[ast::ident] { ret self.mod_path; }
         fn bt_push(ei: codemap::expn_info_) {
             alt ei {
               expanded_from({call_site: cs, callie: callie}) {
@@ -145,7 +145,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         parse_sess: parse_sess,
         cfg: cfg,
         mut backtrace: none,
-        mut mod_path: []/~
+        mut mod_path: ~[]
     };
     ret imp as ext_ctxt
 }
@@ -174,12 +174,12 @@ fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
 }
 
 fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                       min: uint, name: str) -> [@ast::expr]/~ {
+                       min: uint, name: str) -> ~[@ast::expr] {
     ret get_mac_args(cx, sp, arg, min, none, name);
 }
 
 fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                min: uint, max: option<uint>, name: str) -> [@ast::expr]/~ {
+                min: uint, max: option<uint>, name: str) -> ~[@ast::expr] {
     alt arg {
       some(expr) {
         alt expr.node {

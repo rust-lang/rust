@@ -109,7 +109,7 @@ fn describe_debug_flags() {
     }
 }
 
-fn run_compiler(args: [str]/~, demitter: diagnostic::emitter) {
+fn run_compiler(args: ~[str], demitter: diagnostic::emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
 
@@ -243,14 +243,12 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                     diagnostic::error);
 
                 for [
-
                     "the compiler hit an unexpected failure path. \
                      this is a bug",
                     "try running with RUST_LOG=rustc=0,::rt::backtrace \
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
-
-                ]/~.each {|note|
+                ]/_.each {|note|
                     diagnostic::emit(none, note, diagnostic::note)
                 }
             }
@@ -260,7 +258,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
     }
 }
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     monitor {|demitter|
         run_compiler(args, demitter);
     }

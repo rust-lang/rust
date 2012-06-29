@@ -88,7 +88,7 @@ Parse a buffer of bytes
 
 `buf` must not be empty
 "]
-fn parse_buf(buf: [u8]/~, radix: uint) -> option<T> {
+fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     if vec::len(buf) == 0u { ret none; }
     let mut i = vec::len(buf) - 1u;
     let mut power = 1u as T;
@@ -140,7 +140,7 @@ fn to_str(num: T, radix: uint) -> str {
 
 #[doc = "Low-level helper routine for string conversion."]
 fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
-                   f: fn([u8]/&) -> U) -> U {
+                   f: fn(v: &[u8]) -> U) -> U {
 
     #[inline(always)]
     fn digit(n: T) -> u8 {

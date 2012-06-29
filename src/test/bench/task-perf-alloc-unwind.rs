@@ -36,7 +36,7 @@ enum st {
         fn_box: fn@() -> @nillist,
         fn_unique: fn~() -> ~nillist,
         tuple: (@nillist, ~nillist),
-        vec: [@nillist]/~,
+        vec: ~[@nillist],
         res: r
     })
 }
@@ -62,7 +62,7 @@ fn recurse_or_fail(depth: int, st: option<st>) {
                 fn_box: fn@() -> @nillist { @nil::<()> },
                 fn_unique: fn~() -> ~nillist { ~nil::<()> },
                 tuple: (@nil, ~nil),
-                vec: [@nil]/~,
+                vec: ~[@nil],
                 res: r(@nil)
             })
           }
@@ -77,7 +77,7 @@ fn recurse_or_fail(depth: int, st: option<st>) {
                 fn_unique: fn~() -> ~nillist { ~cons((), @*fn_unique()) },
                 tuple: (@cons((), first(st.tuple)),
                         ~cons((), @*second(st.tuple))),
-                vec: st.vec + [@cons((), st.vec.last())]/~,
+                vec: st.vec + ~[@cons((), st.vec.last())],
                 res: r(@cons((), st.res._l))
             })
           }

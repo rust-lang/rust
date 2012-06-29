@@ -35,11 +35,11 @@ type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 // modules within this file.
 
 // ebml reading
-type doc = {data: @[u8]/~, start: uint, end: uint};
+type doc = {data: @~[u8], start: uint, end: uint};
 
 type tagged_doc = {tag: uint, doc: doc};
 
-fn vuint_at(data: [u8]/&, start: uint) -> {val: uint, next: uint} {
+fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     let a = data[start];
     if a & 0x80u8 != 0u8 {
         ret {val: (a & 0x7fu8) as uint, next: start + 1u};
@@ -62,11 +62,11 @@ fn vuint_at(data: [u8]/&, start: uint) -> {val: uint, next: uint} {
     } else { #error("vint too big"); fail; }
 }
 
-fn doc(data: @[u8]/~) -> doc {
+fn doc(data: @~[u8]) -> doc {
     ret {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
-fn doc_at(data: @[u8]/~, start: uint) -> tagged_doc {
+fn doc_at(data: @~[u8], start: uint) -> tagged_doc {
     let elt_tag = vuint_at(*data, start);
     let elt_size = vuint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
@@ -119,7 +119,7 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
     }
 }
 
-fn doc_data(d: doc) -> [u8]/~ { vec::slice::<u8>(*d.data, d.start, d.end) }
+fn doc_data(d: doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
 
 fn doc_as_str(d: doc) -> str { ret str::from_bytes(doc_data(d)); }
 
@@ -149,23 +149,23 @@ fn doc_as_i32(d: doc) -> i32 { doc_as_u32(d) as i32 }
 fn doc_as_i64(d: doc) -> i64 { doc_as_u64(d) as i64 }
 
 // ebml writing
-type writer = {writer: io::writer, mut size_positions: [uint]/~};
+type writer = {writer: io::writer, mut size_positions: ~[uint]};
 
 fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
     alt size {
       1u {
-        w.write([0x80u8 | (n as u8)]/&);
+        w.write(&[0x80u8 | (n as u8)]);
       }
       2u {
-        w.write([0x40u8 | ((n >> 8_u) as u8), n as u8]/&);
+        w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]);
       }
       3u {
-        w.write([0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
-                 n as u8]/&);
+        w.write(&[0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
+                 n as u8]);
       }
       4u {
-        w.write([0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
-                 (n >> 8_u) as u8, n as u8]/&);
+        w.write(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
+                 (n >> 8_u) as u8, n as u8]);
       }
       _ { fail #fmt("vint to write too big: %?", n); }
     };
@@ -180,7 +180,7 @@ fn write_vuint(w: io::writer, n: uint) {
 }
 
 fn writer(w: io::writer) -> writer {
-    let size_positions: [uint]/~ = []/~;
+    let size_positions: ~[uint] = ~[];
     ret {writer: w, mut size_positions: size_positions};
 }
 
@@ -194,7 +194,7 @@ impl writer for writer {
 
         // Write a placeholder four-byte size.
         vec::push(self.size_positions, self.writer.tell());
-        let zeroes: [u8]/& = [0u8, 0u8, 0u8, 0u8]/&;
+        let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
         self.writer.write(zeroes);
     }
 
@@ -215,7 +215,7 @@ impl writer for writer {
         self.end_tag();
     }
 
-    fn wr_tagged_bytes(tag_id: uint, b: [u8]/&) {
+    fn wr_tagged_bytes(tag_id: uint, b: &[u8]) {
         write_vuint(self.writer, tag_id);
         write_vuint(self.writer, vec::len(b));
         self.writer.write(b);
@@ -240,7 +240,7 @@ impl writer for writer {
     }
 
     fn wr_tagged_u8(tag_id: uint, v: u8) {
-        self.wr_tagged_bytes(tag_id, [v]/&);
+        self.wr_tagged_bytes(tag_id, &[v]);
     }
 
     fn wr_tagged_i64(tag_id: uint, v: i64) {
@@ -262,7 +262,7 @@ impl writer for writer {
     }
 
     fn wr_tagged_i8(tag_id: uint, v: i8) {
-        self.wr_tagged_bytes(tag_id, [v as u8]/&);
+        self.wr_tagged_bytes(tag_id, &[v as u8]);
     }
 
     fn wr_tagged_str(tag_id: uint, v: str) {
@@ -275,7 +275,7 @@ impl writer for writer {
         self.wr_tagged_bytes(tag_id, str::bytes(v));
     }
 
-    fn wr_bytes(b: [u8]/&) {
+    fn wr_bytes(b: &[u8]) {
         #debug["Write %u bytes", vec::len(b)];
         self.writer.write(b);
     }

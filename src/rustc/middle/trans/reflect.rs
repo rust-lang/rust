@@ -12,7 +12,7 @@ import util::ppaux::ty_to_str;
 
 enum reflector = {
     visitor_val: ValueRef,
-    visitor_methods: @[ty::method]/~,
+    visitor_methods: @~[ty::method],
     mut bcx: block
 };
 
@@ -31,15 +31,15 @@ impl methods for reflector {
         do_spill_noroot(self.bcx, ss)
     }
 
-    fn c_size_and_align(t: ty::t) -> [ValueRef]/~ {
+    fn c_size_and_align(t: ty::t) -> ~[ValueRef] {
         let tr = type_of::type_of(self.bcx.ccx(), t);
         let s = shape::llsize_of_real(self.bcx.ccx(), tr);
         let a = shape::llalign_of_min(self.bcx.ccx(), tr);
-        ret [self.c_uint(s),
-             self.c_uint(a)]/~;
+        ret ~[self.c_uint(s),
+             self.c_uint(a)];
     }
 
-    fn visit(ty_name: str, args: [ValueRef]/~) {
+    fn visit(ty_name: str, args: ~[ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = option::get(ty::method_idx(@("visit_" + ty_name),
                                                  *self.visitor_methods));
@@ -69,35 +69,35 @@ impl methods for reflector {
                              abi::tydesc_field_visit_glue);
     }
 
-    fn bracketed_t(bracket_name: str, t: ty::t, extra: [ValueRef]/~) {
+    fn bracketed_t(bracket_name: str, t: ty::t, extra: ~[ValueRef]) {
         self.visit("enter_" + bracket_name, extra);
         self.visit_tydesc(t);
         self.visit("leave_" + bracket_name, extra);
     }
 
-    fn bracketed_mt(bracket_name: str, mt: ty::mt, extra: [ValueRef]/~) {
+    fn bracketed_mt(bracket_name: str, mt: ty::mt, extra: ~[ValueRef]) {
         self.bracketed_t(bracket_name, mt.ty,
-                         vec::append([self.c_uint(mt.mutbl as uint)]/~,
+                         vec::append(~[self.c_uint(mt.mutbl as uint)],
                                      extra));
     }
 
     fn vstore_name_and_extra(t: ty::t,
                              vstore: ty::vstore,
-                             f: fn(str,[ValueRef]/~)) {
+                             f: fn(str,~[ValueRef])) {
         alt vstore {
           ty::vstore_fixed(n) {
-            let extra = vec::append([self.c_uint(n)]/~,
+            let extra = vec::append(~[self.c_uint(n)],
                                     self.c_size_and_align(t));
             f("fixed", extra)
           }
-          ty::vstore_slice(_) { f("slice", []/~) }
-          ty::vstore_uniq { f("uniq", []/~);}
-          ty::vstore_box { f("box", []/~); }
+          ty::vstore_slice(_) { f("slice", ~[]) }
+          ty::vstore_uniq { f("uniq", ~[]);}
+          ty::vstore_box { f("box", ~[]); }
         }
     }
 
     fn leaf(name: str) {
-        self.visit(name, []/~);
+        self.visit(name, ~[]);
     }
 
     // Entrypoint
@@ -127,7 +127,7 @@ impl methods for reflector {
           ty::ty_float(ast::ty_f64) { self.leaf("f64") }
           ty::ty_str { self.leaf("str") }
 
-          ty::ty_vec(mt) { self.bracketed_mt("vec", mt, []/~) }
+          ty::ty_vec(mt) { self.bracketed_mt("vec", mt, ~[]) }
           ty::ty_estr(vst) {
             self.vstore_name_and_extra(t, vst) {|name, extra|
                 self.visit("estr_" + name, extra)
@@ -138,29 +138,29 @@ impl methods for reflector {
                 self.bracketed_mt("evec_" + name, mt, extra)
             }
           }
-          ty::ty_box(mt) { self.bracketed_mt("box", mt, []/~) }
-          ty::ty_uniq(mt) { self.bracketed_mt("uniq", mt, []/~) }
-          ty::ty_ptr(mt) { self.bracketed_mt("ptr", mt, []/~) }
-          ty::ty_rptr(_, mt) { self.bracketed_mt("rptr", mt, []/~) }
+          ty::ty_box(mt) { self.bracketed_mt("box", mt, ~[]) }
+          ty::ty_uniq(mt) { self.bracketed_mt("uniq", mt, ~[]) }
+          ty::ty_ptr(mt) { self.bracketed_mt("ptr", mt, ~[]) }
+          ty::ty_rptr(_, mt) { self.bracketed_mt("rptr", mt, ~[]) }
 
           ty::ty_rec(fields) {
-            let extra = (vec::append([self.c_uint(vec::len(fields))]/~,
+            let extra = (vec::append(~[self.c_uint(vec::len(fields))],
                                      self.c_size_and_align(t)));
             self.visit("enter_rec", extra);
             for fields.eachi {|i, field|
                 self.bracketed_mt("rec_field", field.mt,
-                                  [self.c_uint(i),
-                                   self.c_slice(*field.ident)]/~);
+                                  ~[self.c_uint(i),
+                                   self.c_slice(*field.ident)]);
             }
             self.visit("leave_rec", extra);
           }
 
           ty::ty_tup(tys) {
-            let extra = (vec::append([self.c_uint(vec::len(tys))]/~,
+            let extra = (vec::append(~[self.c_uint(vec::len(tys))],
                                      self.c_size_and_align(t)));
             self.visit("enter_tup", extra);
             for tys.eachi {|i, t|
-                self.bracketed_t("tup_field", t, [self.c_uint(i)]/~);
+                self.bracketed_t("tup_field", t, ~[self.c_uint(i)]);
             }
             self.visit("leave_tup", extra);
           }
@@ -185,10 +185,10 @@ impl methods for reflector {
               ast::noreturn { 0u }
               ast::return_val { 1u }
             };
-            let extra = [self.c_uint(pureval),
+            let extra = ~[self.c_uint(pureval),
                          self.c_uint(protoval),
                          self.c_uint(vec::len(fty.inputs)),
-                         self.c_uint(retval)]/~;
+                         self.c_uint(retval)];
             self.visit("enter_fn", extra);
             for fty.inputs.eachi {|i, arg|
                 let modeval = alt arg.mode {
@@ -204,11 +204,11 @@ impl methods for reflector {
                   }
                 };
                 self.bracketed_t("fn_input", arg.ty,
-                                 [self.c_uint(i),
-                                  self.c_uint(modeval)]/~);
+                                 ~[self.c_uint(i),
+                                  self.c_uint(modeval)]);
             }
             self.bracketed_t("fn_output", fty.output,
-                             [self.c_uint(retval)]/~);
+                             ~[self.c_uint(retval)]);
             self.visit("leave_fn", extra);
           }
 
@@ -216,14 +216,14 @@ impl methods for reflector {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let fields = ty::class_items_as_fields(tcx, did, substs);
-            let extra = vec::append([self.c_uint(vec::len(fields))]/~,
+            let extra = vec::append(~[self.c_uint(vec::len(fields))],
                                     self.c_size_and_align(t));
 
             self.visit("enter_class", extra);
             for fields.eachi {|i, field|
                 self.bracketed_mt("class_field", field.mt,
-                                  [self.c_uint(i),
-                                   self.c_slice(*field.ident)]/~);
+                                  ~[self.c_uint(i),
+                                   self.c_slice(*field.ident)]);
             }
             self.visit("leave_class", extra);
           }
@@ -236,19 +236,19 @@ impl methods for reflector {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let variants = ty::substd_enum_variants(tcx, did, substs);
-            let extra = vec::append([self.c_uint(vec::len(variants))]/~,
+            let extra = vec::append(~[self.c_uint(vec::len(variants))],
                                     self.c_size_and_align(t));
 
             self.visit("enter_enum", extra);
             for variants.eachi {|i, v|
-                let extra = [self.c_uint(i),
+                let extra = ~[self.c_uint(i),
                              self.c_int(v.disr_val),
                              self.c_uint(vec::len(v.args)),
-                             self.c_slice(*v.name)]/~;
+                             self.c_slice(*v.name)];
                 self.visit("enter_enum_variant", extra);
                 for v.args.eachi {|j, a|
                     self.bracketed_t("enum_variant_field", a,
-                                     [self.c_uint(j)]/~);
+                                     ~[self.c_uint(j)]);
                 }
                 self.visit("leave_enum_variant", extra);
             }
@@ -259,20 +259,20 @@ impl methods for reflector {
           ty::ty_iface(_, _) { self.leaf("iface") }
           ty::ty_var(_) { self.leaf("var") }
           ty::ty_var_integral(_) { self.leaf("var_integral") }
-          ty::ty_param(n, _) { self.visit("param", [self.c_uint(n)]/~) }
+          ty::ty_param(n, _) { self.visit("param", ~[self.c_uint(n)]) }
           ty::ty_self { self.leaf("self") }
           ty::ty_type { self.leaf("type") }
           ty::ty_opaque_box { self.leaf("opaque_box") }
-          ty::ty_constr(t, _) { self.bracketed_t("constr", t, []/~) }
+          ty::ty_constr(t, _) { self.bracketed_t("constr", t, ~[]) }
           ty::ty_opaque_closure_ptr(ck) {
             let ckval = alt ck {
               ty::ck_block { 0u }
               ty::ck_box { 1u }
               ty::ck_uniq { 2u }
             };
-            self.visit("closure_ptr", [self.c_uint(ckval)]/~)
+            self.visit("closure_ptr", ~[self.c_uint(ckval)])
           }
-          ty::ty_unboxed_vec(mt) { self.bracketed_mt("vec", mt, []/~) }
+          ty::ty_unboxed_vec(mt) { self.bracketed_mt("vec", mt, ~[]) }
         }
     }
 }

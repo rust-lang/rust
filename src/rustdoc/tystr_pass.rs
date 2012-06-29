@@ -151,8 +151,8 @@ fn fold_iface(
 fn merge_methods(
     srv: astsrv::srv,
     item_id: doc::ast_id,
-    docs: [doc::methoddoc]/~
-) -> [doc::methoddoc]/~ {
+    docs: ~[doc::methoddoc]
+) -> ~[doc::methoddoc] {
     par::anymap(docs) {|doc|
         {
             sig: get_method_sig(srv, item_id, doc.name)

@@ -17,7 +17,7 @@ import io::writer_util;
 import std::map::hashmap;
 
 type cmplx = {re: f64, im: f64};
-type line = {i: uint, b: [u8]/~};
+type line = {i: uint, b: ~[u8]};
 
 impl arith for cmplx {
     fn *(x: cmplx) -> cmplx {
@@ -65,7 +65,7 @@ fn fillbyte(x: cmplx, incr: f64) -> u8 {
 
 fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 {
-    let mut crv = []/~;
+    let mut crv = ~[];
     let incr = 2f64/(size as f64);
     let y = incr*(i as f64) - 1f64;
     let xincr = 8f64*incr;
@@ -80,7 +80,7 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 type devnull = {dn: int};
 
 impl of io::writer for devnull {
-    fn write(_b: [const u8]/&) {}
+    fn write(_b: &[const u8]) {}
     fn seek(_i: int, _s: io::seek_style) {}
     fn tell() -> uint {0_u}
     fn flush() -> int {0}
@@ -101,7 +101,7 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
         _ {
             result::get(
                 io::file_writer(path,
-                [io::create, io::truncate]/~))
+                ~[io::create, io::truncate]))
         }
     };
     cout.write_line("P4");
@@ -121,7 +121,7 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
                     #debug("WS %u", prev);
                     // FIXME (#2280): this temporary shouldn't be
                     // necessary, but seems to be, for borrowing.
-                    let v : [u8]/~ = lines.get(prev);
+                    let v : ~[u8] = lines.get(prev);
                     cout.write(v);
                     done += 1_u;
                     lines.remove(prev);
@@ -140,9 +140,9 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     }
 }
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "4000", "10"]/~
+        ~["", "4000", "10"]
     } else {
         args
     };

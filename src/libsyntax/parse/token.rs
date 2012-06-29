@@ -248,7 +248,7 @@ fn keyword_table() -> hashmap<str, ()> {
 #[doc = "Keywords that may be used as identifiers"]
 fn contextual_keyword_table() -> hashmap<str, ()> {
     let words = str_hash();
-    let keys = [
+    let keys = ~[
         "as",
         "else",
         "move",
@@ -260,7 +260,7 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
         "with",
         /* temp */
         "sep", "many", "at_least_one", "parse"
-    ]/~;
+    ];
     for keys.each {|word|
         words.insert(word, ());
     }
@@ -282,7 +282,7 @@ Reasons:
 "]
 fn restricted_keyword_table() -> hashmap<str, ()> {
     let words = str_hash();
-    let keys = [
+    let keys = ~[
         "alt",
         "assert",
         "break",
@@ -298,7 +298,7 @@ fn restricted_keyword_table() -> hashmap<str, ()> {
         "true", "trait", "type",
         "unchecked", "unsafe",
         "while"
-    ]/~;
+    ];
     for keys.each {|word|
         words.insert(word, ());
     }

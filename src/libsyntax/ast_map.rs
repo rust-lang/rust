@@ -7,7 +7,7 @@ import ast_util::inlined_item_methods;
 import diagnostic::span_handler;
 
 enum path_elt { path_mod(ident), path_name(ident) }
-type path = [path_elt]/~;
+type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */
 fn path_to_str_with_sep(p: path, sep: str) -> str {
@@ -45,9 +45,9 @@ enum ast_node {
     node_local(uint),
     // Constructor for a class
     // def_id is parent id
-    node_ctor(ident, [ty_param]/~, @class_ctor, def_id, @path),
+    node_ctor(ident, ~[ty_param], @class_ctor, def_id, @path),
     // Destructor for a class
-    node_dtor([ty_param]/~, @class_dtor, def_id, @path),
+    node_dtor(~[ty_param], @class_dtor, def_id, @path),
     node_block(blk),
 }
 
@@ -57,7 +57,7 @@ type ctx = {map: map, mut path: path,
 type vt = visit::vt<ctx>;
 
 fn extend(cx: ctx, +elt: ident) -> @path {
-    @(vec::append(cx.path, [path_name(elt)]/~))
+    @(vec::append(cx.path, ~[path_name(elt)]))
 }
 
 fn mk_ast_map_visitor() -> vt {
@@ -75,7 +75,7 @@ fn mk_ast_map_visitor() -> vt {
 
 fn map_crate(diag: span_handler, c: crate) -> map {
     let cx = {map: std::map::int_hash(),
-              mut path: []/~,
+              mut path: ~[],
               mut local_id: 0u,
               diag: diag};
     visit::visit_crate(c, cx, mk_ast_map_visitor());

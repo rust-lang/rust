@@ -10,7 +10,7 @@ import std::map::hashmap;
 import std::sort;
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: hashmap<[u8]/~, uint>, total: uint) -> str { 
+fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> str { 
    fn pct(xx: uint, yy: uint) -> float {
       ret (xx as float) * 100f / (yy as float);
    }
@@ -28,14 +28,14 @@ fn sort_and_fmt(mm: hashmap<[u8]/~, uint>, total: uint) -> str {
    }
 
    // sort by key, then by value
-   fn sortKV<TT: copy, UU: copy>(orig: [(TT,UU)]/~) -> [(TT,UU)]/~ {
+   fn sortKV<TT: copy, UU: copy>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
       ret sort::merge_sort(le_by_val, sort::merge_sort(le_by_key, orig));
    }
 
-   let mut pairs = []/~;
+   let mut pairs = ~[];
 
    // map -> [(k,%)]
-   mm.each(fn&(key: [u8]/~, val: uint) -> bool {
+   mm.each(fn&(key: ~[u8], val: uint) -> bool {
       vec::push(pairs, (key, pct(val, total)));
       ret true;
    });
@@ -44,7 +44,7 @@ fn sort_and_fmt(mm: hashmap<[u8]/~, uint>, total: uint) -> str {
    
    let mut buffer = "";
 
-   pairs_sorted.each(fn&(kv: ([u8]/~, float)) -> bool unsafe {
+   pairs_sorted.each(fn&(kv: (~[u8], float)) -> bool unsafe {
       let (k,v) = kv;
       buffer += (#fmt["%s %0.3f\n", str::to_upper(str::unsafe::from_bytes(k)), v]);
       ret true;
@@ -54,7 +54,7 @@ fn sort_and_fmt(mm: hashmap<[u8]/~, uint>, total: uint) -> str {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: hashmap<[u8]/~, uint>, key: str) -> uint {
+fn find(mm: hashmap<~[u8], uint>, key: str) -> uint {
    alt mm.find(str::bytes(str::to_lower(key))) {
       option::none      { ret 0u; }
       option::some(num) { ret num; }
@@ -62,7 +62,7 @@ fn find(mm: hashmap<[u8]/~, uint>, key: str) -> uint {
 }
 
 // given a map, increment the counter for a key
-fn update_freq(mm: hashmap<[u8]/~, uint>, key: [u8]/&) {
+fn update_freq(mm: hashmap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len());
     alt mm.find(key) {
       option::none      { mm.insert(key, 1u      ); }
@@ -70,11 +70,11 @@ fn update_freq(mm: hashmap<[u8]/~, uint>, key: [u8]/&) {
     }
 }
 
-// given a [u8]/~, for each window call a function
+// given a ~[u8], for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
-fn windows_with_carry(bb: [const u8]/~, nn: uint,
-                      it: fn(window: [u8]/&)) -> [u8]/~ {
+fn windows_with_carry(bb: ~[const u8], nn: uint,
+                      it: fn(window: &[u8])) -> ~[u8] {
    let mut ii = 0u;
 
    let len = vec::len(bb);
@@ -86,19 +86,19 @@ fn windows_with_carry(bb: [const u8]/~, nn: uint,
    ret vec::slice(bb, len - (nn - 1u), len); 
 }
 
-fn make_sequence_processor(sz: uint, from_parent: comm::port<[u8]/~>,
+fn make_sequence_processor(sz: uint, from_parent: comm::port<~[u8]>,
                            to_parent: comm::chan<str>) {
    
-   let freqs: hashmap<[u8]/~, uint> = map::bytes_hash();
-   let mut carry: [u8]/~ = []/~;
+   let freqs: hashmap<~[u8], uint> = map::bytes_hash();
+   let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
 
-   let mut line: [u8]/~;
+   let mut line: ~[u8];
 
    loop {
 
       line = comm::recv(from_parent);
-      if line == []/~ { break; }
+      if line == ~[] { break; }
 
       carry = windows_with_carry(carry + line, sz, { |window|
          update_freq(freqs, window);
@@ -122,7 +122,7 @@ fn make_sequence_processor(sz: uint, from_parent: comm::port<[u8]/~>,
 }
 
 // given a FASTA file on stdin, process sequence THREE
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
    let rdr = if os::getenv("RUST_BENCH").is_some() {
        // FIXME: Using this compile-time env variable is a crummy way to
        // get to this massive data set, but #include_bin chokes on it (#2598)
@@ -138,10 +138,10 @@ fn main(args: [str]/~) {
 
 
    // initialize each sequence sorter
-   let sizes = [1u,2u,3u,4u,6u,12u,18u]/~;
+   let sizes = ~[1u,2u,3u,4u,6u,12u,18u];
    let from_child = vec::map (sizes, { |_sz|     comm::port() });
    let to_parent  = vec::mapi(sizes, { |ii, _sz| comm::chan(from_child[ii]) });
-   let to_child   = vec::mapi(sizes, fn@(ii: uint, sz: uint) -> comm::chan<[u8]/~> {
+   let to_child   = vec::mapi(sizes, fn@(ii: uint, sz: uint) -> comm::chan<~[u8]> {
       ret task::spawn_listener { |from_parent|
          make_sequence_processor(sz, from_parent, to_parent[ii]);
       };
@@ -187,7 +187,7 @@ fn main(args: [str]/~) {
 
    // finish...
    for sizes.eachi { |ii, _sz|
-      comm::send(to_child[ii], []/~);
+      comm::send(to_child[ii], ~[]);
    }
 
    // now fetch and print result messages

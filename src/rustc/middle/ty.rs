@@ -172,15 +172,15 @@ type arg = {mode: ast::mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
 
-type param_bounds = @[param_bound]/~;
+type param_bounds = @~[param_bound];
 
 type method = {ident: ast::ident,
-               tps: @[param_bounds]/~,
+               tps: @~[param_bounds],
                fty: fn_ty,
                purity: ast::purity,
                vis: ast::visibility};
 
-type constr_table = hashmap<ast::node_id, [constr]/~>;
+type constr_table = hashmap<ast::node_id, ~[constr]>;
 
 type mt = {ty: t, mutbl: ast::mutability};
 
@@ -234,7 +234,7 @@ type ctxt =
       // of this node.  This only applies to nodes that refer to entities
       // parameterized by type parameters, such as generic fns, types, or
       // other items.
-      node_type_substs: hashmap<node_id, [t]/~>,
+      node_type_substs: hashmap<node_id, ~[t]>,
 
       items: ast_map::map,
       intrinsic_ifaces: hashmap<ast::ident, (ast::def_id, t)>,
@@ -246,8 +246,8 @@ type ctxt =
       needs_unwind_cleanup_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, ast_ty_to_ty_cache_entry>,
-      enum_var_cache: hashmap<def_id, @[variant_info]/~>,
-      iface_method_cache: hashmap<def_id, @[method]/~>,
+      enum_var_cache: hashmap<def_id, @~[variant_info]>,
+      iface_method_cache: hashmap<def_id, @~[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
       inferred_modes: hashmap<ast::node_id, ast::mode>,
       // maps the id of borrowed expr to scope of borrowed ptr
@@ -305,10 +305,10 @@ enum closure_kind {
 
 type fn_ty = {purity: ast::purity,
               proto: ast::proto,
-              inputs: [arg]/~,
+              inputs: ~[arg],
               output: t,
               ret_style: ret_style,
-              constraints: [@constr]/~};
+              constraints: ~[@constr]};
 
 // See discussion at head of region.rs
 enum region {
@@ -340,7 +340,7 @@ type opt_region = option<region>;
 type substs = {
     self_r: opt_region,
     self_ty: option<ty::t>,
-    tps: [t]/~
+    tps: ~[t]
 };
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -361,18 +361,18 @@ enum sty {
     ty_evec(mt, vstore),
     ty_ptr(mt),
     ty_rptr(region, mt),
-    ty_rec([field]/~),
+    ty_rec(~[field]),
     ty_fn(fn_ty),
     ty_iface(def_id, substs),
     ty_class(def_id, substs),
-    ty_tup([t]/~),
+    ty_tup(~[t]),
 
     ty_var(tv_vid), // type variable during typechecking
     ty_var_integral(tvi_vid), // type variable during typechecking, for
                               // integral types only
     ty_param(uint, def_id), // type parameter
     ty_self, // special, implicit `self` type parameter
-    ty_constr(t, [@type_constr]/~),
+    ty_constr(t, ~[@type_constr]),
 
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
@@ -471,7 +471,7 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     kind
 }
 
-type ty_param_bounds_and_ty = {bounds: @[param_bounds]/~,
+type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
                                rp: ast::region_param,
                                ty: t};
 
@@ -691,13 +691,13 @@ fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
 }
 
 
-fn mk_rec(cx: ctxt, fs: [field]/~) -> t { mk_t(cx, ty_rec(fs)) }
+fn mk_rec(cx: ctxt, fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
 
-fn mk_constr(cx: ctxt, t: t, cs: [@type_constr]/~) -> t {
+fn mk_constr(cx: ctxt, t: t, cs: ~[@type_constr]) -> t {
     mk_t(cx, ty_constr(t, cs))
 }
 
-fn mk_tup(cx: ctxt, ts: [t]/~) -> t { mk_t(cx, ty_tup(ts)) }
+fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
 fn mk_fn(cx: ctxt, fty: fn_ty) -> t { mk_t(cx, ty_fn(fty)) }
 
@@ -992,7 +992,7 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
 }
 
 // Substitute *only* type parameters.  Used in trans where regions are erased.
-fn subst_tps(cx: ctxt, tps: [t]/~, typ: t) -> t {
+fn subst_tps(cx: ctxt, tps: ~[t], typ: t) -> t {
     if tps.len() == 0u { ret typ; }
     let tb = ty::get(typ);
     if !tbox_has_flag(tb, has_params) { ret typ; }
@@ -1603,7 +1603,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
 // True if instantiating an instance of `ty` requires an instance of `r_ty`.
 fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
-    fn type_requires(cx: ctxt, seen: @mut [def_id]/~,
+    fn type_requires(cx: ctxt, seen: @mut ~[def_id],
                      r_ty: t, ty: t) -> bool {
         #debug["type_requires(%s, %s)?",
                ty_to_str(cx, r_ty),
@@ -1621,7 +1621,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         ret r;
     }
 
-    fn subtypes_require(cx: ctxt, seen: @mut [def_id]/~,
+    fn subtypes_require(cx: ctxt, seen: @mut ~[def_id],
                         r_ty: t, ty: t) -> bool {
         #debug["subtypes_require(%s, %s)?",
                ty_to_str(cx, r_ty),
@@ -1718,7 +1718,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         ret r;
     }
 
-    let seen = @mut []/~;
+    let seen = @mut ~[];
     !subtypes_require(cx, seen, r_ty, r_ty)
 }
 
@@ -1987,7 +1987,7 @@ fn hash_type_structure(st: sty) -> uint {
         (h << 2u) + (did.node as uint)
     }
     fn hash_subty(id: uint, subty: t) -> uint { (id << 2u) + type_id(subty) }
-    fn hash_subtys(id: uint, subtys: [t]/~) -> uint {
+    fn hash_subtys(id: uint, subtys: ~[t]) -> uint {
         let mut h = id;
         for subtys.each {|s| h = (h << 2u) + type_id(s) }
         h
@@ -2108,8 +2108,8 @@ fn arg_eq<T>(eq: fn(T, T) -> bool,
 }
 
 fn args_eq<T>(eq: fn(T, T) -> bool,
-              a: [@sp_constr_arg<T>]/~,
-              b: [@sp_constr_arg<T>]/~) -> bool {
+              a: ~[@sp_constr_arg<T>],
+              b: ~[@sp_constr_arg<T>]) -> bool {
     let mut i: uint = 0u;
     for a.each {|arg|
         if !arg_eq(eq, arg, b[i]) { ret false; }
@@ -2124,7 +2124,7 @@ fn constr_eq(c: @constr, d: @constr) -> bool {
             args_eq(eq_int, c.node.args, d.node.args);
 }
 
-fn constrs_eq(cs: [@constr]/~, ds: [@constr]/~) -> bool {
+fn constrs_eq(cs: ~[@constr], ds: ~[@constr]) -> bool {
     if vec::len(cs) != vec::len(ds) { ret false; }
     let mut i = 0u;
     for cs.each {|c| if !constr_eq(c, ds[i]) { ret false; } i += 1u; }
@@ -2139,9 +2139,9 @@ fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     }
 }
 
-fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> [t]/~ {
+fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
     alt cx.node_type_substs.find(id) {
-      none { ret []/~; }
+      none { ret ~[]; }
       some(ts) { ret ts; }
     }
 }
@@ -2151,7 +2151,7 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 }
 
 // Type accessors for substructures of types
-fn ty_fn_args(fty: t) -> [arg]/~ {
+fn ty_fn_args(fty: t) -> ~[arg] {
     alt get(fty).struct {
       ty_fn(f) { f.inputs }
       _ { fail "ty_fn_args() called on non-fn type"; }
@@ -2187,7 +2187,7 @@ fn is_fn_ty(fty: t) -> bool {
 }
 
 // Returns a vec of all the input and output types of fty.
-fn tys_in_fn_ty(fty: fn_ty) -> [t]/~ {
+fn tys_in_fn_ty(fty: fn_ty) -> ~[t] {
     vec::append_one(fty.inputs.map({|a| a.ty}), fty.output)
 }
 
@@ -2237,7 +2237,7 @@ fn expr_ty(cx: ctxt, expr: @ast::expr) -> t {
 }
 
 fn expr_ty_params_and_ty(cx: ctxt,
-                         expr: @ast::expr) -> {params: [t]/~, ty: t} {
+                         expr: @ast::expr) -> {params: ~[t], ty: t} {
     ret {params: node_id_to_type_params(cx, expr.id),
          ty: node_id_to_type(cx, expr.id)};
 }
@@ -2264,7 +2264,7 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     }
 }
 
-fn field_idx(id: ast::ident, fields: [field]/~) -> option<uint> {
+fn field_idx(id: ast::ident, fields: ~[field]) -> option<uint> {
     let mut i = 0u;
     for fields.each {|f| if f.ident == id { ret some(i); } i += 1u; }
     ret none;
@@ -2276,13 +2276,13 @@ fn get_field(rec_ty: t, id: ast::ident) -> field {
     }
 }
 
-fn get_fields(rec_ty:t) -> [field]/~ {
+fn get_fields(rec_ty:t) -> ~[field] {
     alt check get(rec_ty).struct {
       ty_rec(fields) { fields }
     }
 }
 
-fn method_idx(id: ast::ident, meths: [method]/~) -> option<uint> {
+fn method_idx(id: ast::ident, meths: ~[method]) -> option<uint> {
     let mut i = 0u;
     for meths.each {|m| if m.ident == id { ret some(i); } i += 1u; }
     ret none;
@@ -2292,8 +2292,8 @@ fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
 
     // Returns a vec of all the type variables occurring in `ty`. It may
     // contain duplicates.  (Integral type vars aren't counted.)
-    fn vars_in_type(ty: t) -> [tv_vid]/~ {
-        let mut rslt = []/~;
+    fn vars_in_type(ty: t) -> ~[tv_vid] {
+        let mut rslt = ~[];
         walk_ty(ty) {|ty|
             alt get(ty).struct { ty_var(v) { vec::push(rslt, v); } _ { } }
         }
@@ -2516,11 +2516,11 @@ fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
-fn store_iface_methods(cx: ctxt, id: ast::node_id, ms: @[method]/~) {
+fn store_iface_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
     cx.iface_method_cache.insert(ast_util::local_def(id), ms);
 }
 
-fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method]/~ {
+fn iface_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     alt cx.iface_method_cache.find(id) {
       some(ms) { ret ms; }
       _ {}
@@ -2568,12 +2568,12 @@ fn ty_to_def_id(ty: t) -> option<ast::def_id> {
 }
 
 // Enum information
-type variant_info = @{args: [t]/~, ctor_ty: t, name: ast::ident,
+type variant_info = @{args: ~[t], ctor_ty: t, name: ast::ident,
                       id: ast::def_id, disr_val: int};
 
 fn substd_enum_variants(cx: ctxt,
                         id: ast::def_id,
-                        substs: substs) -> [variant_info]/~ {
+                        substs: substs) -> ~[variant_info] {
     vec::map(*enum_variants(cx, id)) { |variant_info|
         let substd_args = vec::map(variant_info.args) {|aty|
             subst(cx, substs, aty)
@@ -2661,7 +2661,7 @@ fn enum_is_univariant(cx: ctxt, id: ast::def_id) -> bool {
     vec::len(*enum_variants(cx, id)) == 1u
 }
 
-fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info]/~ {
+fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
     alt cx.enum_var_cache.find(id) {
       some(variants) { ret variants; }
       _ { /* fallthrough */ }
@@ -2683,7 +2683,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info]/~ {
                 let arg_tys = {
                     if vec::len(variant.node.args) > 0u {
                         ty_fn_args(ctor_ty).map { |a| a.ty }
-                    } else { []/~ }
+                    } else { ~[] }
                 };
                 alt variant.node.disr_expr {
                   some (ex) {
@@ -2767,7 +2767,7 @@ fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
 
 // Look up the list of field names and IDs for a given class
 // Fails if the id is not bound to a class.
-fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty]/~ {
+fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
   if did.crate == ast::local_crate {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) {
@@ -2798,7 +2798,7 @@ fn lookup_class_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
     }
 }
 
-fn lookup_public_fields(cx: ctxt, did: ast::def_id) -> [field_ty]/~ {
+fn lookup_public_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
     vec::filter(lookup_class_fields(cx, did), is_public)
 }
 
@@ -2812,7 +2812,7 @@ pure fn is_public(f: field_ty) -> bool {
 // Look up the list of method names and IDs for a given class
 // Fails if the id is not bound to a class.
 fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
-    : is_local(did) -> [{name: ident, id: node_id, vis: visibility}]/~ {
+    : is_local(did) -> ~[{name: ident, id: node_id, vis: visibility}] {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(@{node: item_class(_,_,items,_,_,_), _}, _)) {
          let (_,ms) = split_class_items(items);
@@ -2847,8 +2847,8 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
     }
 }
 
-fn class_field_tys(items: [@class_member]/~) -> [field_ty]/~ {
-    let mut rslt = []/~;
+fn class_field_tys(items: ~[@class_member]) -> ~[field_ty] {
+    let mut rslt = ~[];
     for items.each {|it|
        alt it.node {
           instance_var(nm, _, cm, id, vis) {
@@ -2868,14 +2868,14 @@ fn class_field_tys(items: [@class_member]/~) -> [field_ty]/~ {
 // mutable, regardless of how they were declared. It's meant to
 // be used in trans.
 fn class_items_as_mutable_fields(cx:ctxt, did: ast::def_id,
-                         substs: substs) -> [field]/~ {
+                         substs: substs) -> ~[field] {
     class_item_fields(cx, did, substs, {|_mt| m_mutbl})
 }
 
 // Same as class_items_as_mutable_fields, but doesn't change
 // mutability.
 fn class_items_as_fields(cx:ctxt, did: ast::def_id,
-                         substs: substs) -> [field]/~ {
+                         substs: substs) -> ~[field] {
     class_item_fields(cx, did, substs, {|mt| alt mt {
       class_mutable { m_mutbl }
       class_immutable { m_imm }}})
@@ -2884,8 +2884,8 @@ fn class_items_as_fields(cx:ctxt, did: ast::def_id,
 
 fn class_item_fields(cx:ctxt, did: ast::def_id,
   substs: substs, frob_mutability: fn(class_mutability) -> mutability)
-    -> [field]/~ {
-    let mut rslt = []/~;
+    -> ~[field] {
+    let mut rslt = ~[];
     for lookup_class_fields(cx, did).each {|f|
        // consider all instance vars mut, because the
        // constructor may mutate all vars
@@ -2954,18 +2954,18 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     const t: bool = true;
     const f: bool = false;
 
-    let tbl = [
+    let tbl = ~[
     /*.          add,     shift,   bit
       .             sub,     rel,     logic
       .                mult,    eq,         */
-    /*other*/   [f, f, f, f, t, t, f, f]/~,
-    /*bool*/    [f, f, f, f, t, t, t, t]/~,
-    /*int*/     [t, t, t, t, t, t, t, f]/~,
-    /*float*/   [t, t, t, f, t, t, f, f]/~,
-    /*str*/     [t, f, f, f, t, t, f, f]/~,
-    /*vec*/     [t, f, f, f, t, t, f, f]/~,
-    /*bot*/     [f, f, f, f, t, t, f, f]/~,
-    /*struct*/  [t, t, t, t, t, t, t, t]/~]/~;
+    /*other*/   ~[f, f, f, f, t, t, f, f],
+    /*bool*/    ~[f, f, f, f, t, t, t, t],
+    /*int*/     ~[t, t, t, t, t, t, t, f],
+    /*float*/   ~[t, t, t, f, t, t, f, f],
+    /*str*/     ~[t, f, f, f, t, t, f, f],
+    /*vec*/     ~[t, f, f, f, t, t, f, f],
+    /*bot*/     ~[f, f, f, f, t, t, f, f],
+    /*struct*/  ~[t, t, t, t, t, t, t, t]];
 
     ret tbl[tycat(ty)][opcat(op)];
 }
@@ -2988,7 +2988,7 @@ fn ast_constr_to_constr<T>(tcx: ctxt, c: @ast::constr_general<T>) ->
     }
 }
 
-fn ty_params_to_tys(tcx: ty::ctxt, tps: [ast::ty_param]/~) -> [t]/~ {
+fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {
     vec::from_fn(tps.len(), {|i|
                 ty::mk_param(tcx, i, ast_util::local_def(tps[i].id))
         })

@@ -92,12 +92,12 @@ mod map_reduce {
 
     fn start_mappers<K1: copy send, K2: copy send, V: copy send>(
         map: mapper<K1, K2, V>,
-        ctrl: chan<ctrl_proto<K2, V>>, inputs: [K1]/~)
-        -> [joinable_task]/~
+        ctrl: chan<ctrl_proto<K2, V>>, inputs: ~[K1])
+        -> ~[joinable_task]
     {
-        let mut tasks = []/~;
+        let mut tasks = ~[];
         for inputs.each {|i|
-            tasks += [spawn_joinable {|| map_task(map, ctrl, i)}]/~;
+            tasks += ~[spawn_joinable {|| map_task(map, ctrl, i)}];
         }
         ret tasks;
     }
@@ -176,7 +176,7 @@ mod map_reduce {
     fn map_reduce<K1: copy send, K2: copy send, V: copy send>(
         map: mapper<K1, K2, V>,
         reduce: reducer<K2, V>,
-        inputs: [K1]/~)
+        inputs: ~[K1])
     {
         let ctrl = port();
 
@@ -207,9 +207,9 @@ mod map_reduce {
                     let p = port();
                     let ch = chan(p);
                     let r = reduce, kk = k;
-                    tasks += [
+                    tasks += ~[
                         spawn_joinable {|| reduce_task(r, kk, ch) }
-                    ]/~;
+                    ];
                     c = recv(p);
                     treemap::insert(reducers, k, c);
                   }
@@ -229,7 +229,7 @@ mod map_reduce {
     }
 }
 
-fn main(argv: [str]/~) {
+fn main(argv: ~[str]) {
     if vec::len(argv) < 2u {
         let out = io::stdout();
 

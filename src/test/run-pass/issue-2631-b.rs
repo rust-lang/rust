@@ -10,7 +10,7 @@ import std::map::str_hash;
 import dvec;
 
 fn main() {
-  let v = [mut @"hi"]/~;
+  let v = ~[mut @"hi"];
   let m: req::header_map = str_hash();
   m.insert("METHOD", @dvec::from_vec(v));
   request::<int>(m);

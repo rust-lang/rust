@@ -119,7 +119,7 @@ fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
 }
 
 fn parse_item_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
-                              +attrs: [ast::attribute]/~,
+                              +attrs: ~[ast::attribute],
                               vis: ast::visibility,
                               sess: parse_sess) -> option<@ast::item> {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
@@ -198,7 +198,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: str,
 }
 
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
-                      tt: [ast::token_tree]/~) -> parser {
+                      tt: ~[ast::token_tree]) -> parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner, tt);
     ret parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }

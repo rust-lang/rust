@@ -64,7 +64,7 @@ fn lli64(val: int) -> ValueRef {
 fn lli1(bval: bool) -> ValueRef {
     C_bool(bval)
 }
-fn llmdnode(elems: [ValueRef]/~) -> ValueRef unsafe {
+fn llmdnode(elems: ~[ValueRef]) -> ValueRef unsafe {
     llvm::LLVMMDNode(vec::unsafe::to_ptr(elems),
                      vec::len(elems) as libc::c_uint)
 }
@@ -99,7 +99,7 @@ fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
     let existing = if cache.contains_key(mdtag) {
         cache.get(mdtag)
     } else {
-        []/~
+        ~[]
     };
     cache.insert(mdtag, vec::append_one(existing, val));
 }
@@ -115,7 +115,7 @@ type block_md = {start: codemap::loc, end: codemap::loc};
 type argument_md = {id: ast::node_id};
 type retval_md = {id: ast::node_id};
 
-type metadata_cache = hashmap<int, [debug_metadata]/~>;
+type metadata_cache = hashmap<int, ~[debug_metadata]>;
 
 enum debug_metadata {
     file_metadata(@metadata<file_md>),
@@ -173,7 +173,7 @@ fn create_compile_unit(cx: @crate_ctxt)
 
     let (_, work_dir) = get_file_path_and_dir(cx.sess.working_dir,
                                               crate_name);
-    let unit_metadata = [lltag(tg),
+    let unit_metadata = ~[lltag(tg),
                          llunused(),
                          lli32(DW_LANG_RUST),
                          llstr(crate_name),
@@ -183,7 +183,7 @@ fn create_compile_unit(cx: @crate_ctxt)
                          lli1(cx.sess.opts.optimize != 0u),
                          llstr(""), // flags (???)
                          lli32(0) // runtime version (???)
-                        ]/~;
+                        ];
     let unit_node = llmdnode(unit_metadata);
     add_named_metadata(cx, "llvm.dbg.cu", unit_node);
     let mdval = @{node: unit_node, data: {name: crate_name}};
@@ -217,10 +217,10 @@ fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
     let (file_path, work_dir) = get_file_path_and_dir(cx.sess.working_dir,
                                                       full_path);
     let unit_node = create_compile_unit(cx).node;
-    let file_md = [lltag(tg),
+    let file_md = ~[lltag(tg),
                    llstr(file_path),
                    llstr(work_dir),
-                   unit_node]/~;
+                   unit_node];
     let val = llmdnode(file_md);
     let mdval = @{node: val, data: {path: full_path}};
     update_cache(cache, tg, file_metadata(mdval));
@@ -262,13 +262,13 @@ fn create_block(cx: block) -> @metadata<block_md> {
       option::some(v) { vec::len(v) as int }
       option::none { 0 }
     };
-    let lldata = [lltag(tg),
+    let lldata = ~[lltag(tg),
                   parent,
                   lli32(start.line as int),
                   lli32(start.col as int),
                   file_node.node,
                   lli32(unique_id)
-                 ]/~;
+                 ];
     let val = llmdnode(lldata);
     let mdval = @{node: val, data: {start: start, end: end}};
     //update_cache(cache, tg, block_metadata(mdval));
@@ -319,7 +319,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     let file_node = create_file(cx, fname);
     let cu_node = create_compile_unit(cx);
     let (size, align) = size_and_align_of(cx, t);
-    let lldata = [lltag(tg),
+    let lldata = ~[lltag(tg),
                   cu_node.node,
                   llstr(name),
                   file_node.node,
@@ -328,7 +328,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
                   lli64(align * 8), // alignment in bits
                   lli64(0), //XXX offset?
                   lli32(0), //XXX flags?
-                  lli32(encoding)]/~;
+                  lli32(encoding)];
     let llnode = llmdnode(lldata);
     let mdval = @{node: llnode, data: {hash: ty::type_id(t)}};
     update_cache(cache, tg, tydesc_metadata(mdval));
@@ -362,7 +362,7 @@ type struct_ctxt = {
     file: ValueRef,
     name: str,
     line: int,
-    mut members: [ValueRef]/~,
+    mut members: ~[ValueRef],
     mut total_size: int,
     align: int
 };
@@ -378,7 +378,7 @@ fn create_structure(file: @metadata<file_md>, name: str, line: int)
     let cx = @{file: file.node,
                name: name,
                line: line,
-               mut members: []/~,
+               mut members: ~[],
                mut total_size: 0,
                align: 64 //XXX different alignment per arch?
               };
@@ -388,7 +388,7 @@ fn create_structure(file: @metadata<file_md>, name: str, line: int)
 fn create_derived_type(type_tag: int, file: ValueRef, name: str, line: int,
                        size: int, align: int, offset: int, ty: ValueRef)
     -> ValueRef {
-    let lldata = [lltag(type_tag),
+    let lldata = ~[lltag(type_tag),
                   file,
                   llstr(name),
                   file,
@@ -397,7 +397,7 @@ fn create_derived_type(type_tag: int, file: ValueRef, name: str, line: int,
                   lli64(align),
                   lli64(offset),
                   lli32(0),
-                  ty]/~;
+                  ty];
     ret llmdnode(lldata);
 }
 
@@ -409,7 +409,7 @@ fn add_member(cx: @struct_ctxt, name: str, line: int, size: int, align: int,
     cx.total_size += size * 8;
 }
 
-fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field]/~,
+fn create_record(cx: @crate_ctxt, t: ty::t, fields: ~[ast::ty_field],
                  span: span) -> @metadata<tydesc_md> {
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
@@ -461,9 +461,9 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
 fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
                          size: int, align: int, offset: int,
                          derived: option<ValueRef>,
-                         members: option<[ValueRef]/~>)
+                         members: option<~[ValueRef]>)
     -> ValueRef {
-    let lldata = [lltag(type_tag),
+    let lldata = ~[lltag(type_tag),
                   file,
                   llstr(name), // type name
                   file, // source file definition
@@ -484,7 +484,7 @@ fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
                   },
                   lli32(0),  // runtime language
                   llnull()
-                 ]/~;
+                 ];
     ret llmdnode(lldata);
 }
 
@@ -501,12 +501,12 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
     add_member(scx, "alloc", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
-    let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(0)]/~);
+    let subrange = llmdnode(~[lltag(SubrangeTag), lli64(0), lli64(0)]);
     let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
     let data_ptr = create_composite_type(ArrayTypeTag, "", file_node.node, 0,
                                          arr_size, arr_align, 0,
                                          option::some(elem_ty_md.node),
-                                         option::some([subrange]/~));
+                                         option::some(~[subrange]));
     add_member(scx, "data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
@@ -548,7 +548,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
           ty::ty_uniq(mt) { ast::ty_uniq({ty: t_to_ty(cx, mt.ty, span),
                                           mutbl: mt.mutbl}) }
           ty::ty_rec(fields) {
-            let fs = []/~;
+            let fs = ~[];
             for field in fields {
                 vec::push(fs, {node: {ident: field.ident,
                                mt: {ty: t_to_ty(cx, field.mt.ty, span),
@@ -623,14 +623,14 @@ fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
 
 fn create_var(type_tag: int, context: ValueRef, name: str, file: ValueRef,
               line: int, ret_ty: ValueRef) -> ValueRef {
-    let lldata = [lltag(type_tag),
+    let lldata = ~[lltag(type_tag),
                   context,
                   llstr(name),
                   file,
                   lli32(line),
                   ret_ty,
                   lli32(0)
-                 ]/~;
+                 ];
     ret llmdnode(lldata);
 }
 
@@ -678,7 +678,7 @@ fn create_local_var(bcx: block, local: @ast::local)
         }
       }
     };
-    let declargs = [llmdnode([llptr]/~), mdnode]/~;
+    let declargs = ~[llmdnode(~[llptr]), mdnode];
     trans::build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
                        declargs);
     ret mdval;
@@ -709,7 +709,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let llptr = alt fcx.llargs.get(arg.id) {
       local_mem(v) | local_imm(v) { v }
     };
-    let declargs = [llmdnode([llptr]/~), mdnode]/~;
+    let declargs = ~[llmdnode(~[llptr]), mdnode];
     trans::build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
                        declargs);
     ret mdval;
@@ -722,10 +722,10 @@ fn update_source_pos(cx: block, s: span) {
     let cm = cx.sess().codemap;
     let blockmd = create_block(cx);
     let loc = codemap::lookup_char_pos(cm, s.lo);
-    let scopedata = [lli32(loc.line as int),
+    let scopedata = ~[lli32(loc.line as int),
                      lli32(loc.col as int),
                      blockmd.node,
-                     llnull()]/~;
+                     llnull()];
     let dbgscope = llmdnode(scopedata);
     llvm::LLVMSetCurrentDebugLocation(trans::build::B(cx), dbgscope);
 }
@@ -796,9 +796,9 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     };
     let sub_node = create_composite_type(SubroutineTag, "", file_node, 0, 0,
                                          0, 0, option::none,
-                                         option::some([ty_node]/~));
+                                         option::some(~[ty_node]));
 
-    let fn_metadata = [lltag(SubprogramTag),
+    let fn_metadata = ~[lltag(SubprogramTag),
                        llunused(),
                        file_node,
                        llstr(*ident),
@@ -818,7 +818,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
                        //list of template params
                        //func decl descriptor
                        //list of func vars
-                      ]/~;
+                      ];
     let val = llmdnode(fn_metadata);
     add_named_metadata(cx, "llvm.dbg.sp", val);
     let mdval = @{node: val, data: {id: id}};

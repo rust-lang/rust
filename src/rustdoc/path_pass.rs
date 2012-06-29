@@ -13,14 +13,14 @@ fn mk_pass() -> pass {
 
 type ctxt = {
     srv: astsrv::srv,
-    mut path: [str]/~
+    mut path: ~[str]
 };
 
 #[warn(no_non_implicitly_copyable_typarams)]
 fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let ctxt = {
         srv: srv,
-        mut path: []/~
+        mut path: ~[]
     };
     let fold = fold::fold({
         fold_item: fold_item,
@@ -70,9 +70,9 @@ fn should_record_mod_paths() {
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert doc.cratemod().mods()[0].mods()[0].mods()[0].path()
-            == ["a", "b"]/~;
+            == ~["a", "b"];
         assert doc.cratemod().mods()[0].mods()[1].mods()[0].path()
-            == ["a", "d"]/~;
+            == ~["a", "d"];
     }
 }
 
@@ -82,7 +82,7 @@ fn should_record_fn_paths() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
-        assert doc.cratemod().mods()[0].fns()[0].path() == ["a"]/~;
+        assert doc.cratemod().mods()[0].fns()[0].path() == ~["a"];
     }
 }
 
@@ -92,7 +92,7 @@ fn should_record_foreign_mod_paths() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
-        assert doc.cratemod().mods()[0].nmods()[0].path() == ["a"]/~;
+        assert doc.cratemod().mods()[0].nmods()[0].path() == ~["a"];
     }
 }
 
@@ -102,6 +102,6 @@ fn should_record_foreign_fn_paths() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
-        assert doc.cratemod().nmods()[0].fns[0].path() == ["a"]/~;
+        assert doc.cratemod().nmods()[0].fns[0].path() == ~["a"];
     }
 }

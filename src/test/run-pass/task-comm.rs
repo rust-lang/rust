@@ -38,11 +38,11 @@ fn test00() {
 
     let mut i: int = 0;
 
-    let mut results = []/~;
+    let mut results = ~[];
     while i < number_of_tasks {
         i = i + 1;
         let builder = task::builder();
-        results += [task::future_result(builder)]/~;
+        results += ~[task::future_result(builder)];
         task::run(builder) {|copy i|
             test00_start(ch, i, number_of_messages);
         }
@@ -125,11 +125,11 @@ fn test06() {
 
     let mut i: int = 0;
 
-    let mut results = []/~;
+    let mut results = ~[];
     while i < number_of_tasks {
         i = i + 1;
         let builder = task::builder();
-        results += [task::future_result(builder)]/~;
+        results += ~[task::future_result(builder)];
         task::run(builder) {|copy i|
             test06_start(i);
         };

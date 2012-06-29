@@ -1,7 +1,7 @@
 // FIXME: un-xfail after snapshot
 // xfail-test
 
-enum my_visitor = @{ mut types: [str]/~ };
+enum my_visitor = @{ mut types: ~[str] };
 
 impl of intrinsic::ty_visitor for my_visitor {
     fn visit_bot() -> bool {
@@ -139,14 +139,14 @@ impl of intrinsic::ty_visitor for my_visitor {
 }
 
 fn main() {
-    let v = my_visitor(@{mut types: []/~});
+    let v = my_visitor(@{mut types: ~[]});
     let vv = v as intrinsic::ty_visitor;
 
     intrinsic::visit_ty::<bool>(vv);
     intrinsic::visit_ty::<int>(vv);
     intrinsic::visit_ty::<i8>(vv);
     intrinsic::visit_ty::<i16>(vv);
-    intrinsic::visit_ty::<[int]/~>(vv);
+    intrinsic::visit_ty::<~[int]>(vv);
 
     for (copy v.types).each {|s|
         io::println(#fmt("type: %s", s));

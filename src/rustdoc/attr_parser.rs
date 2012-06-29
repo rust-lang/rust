@@ -20,7 +20,7 @@ type crate_attrs = {
 #[cfg(test)]
 mod test {
 
-    fn parse_attributes(source: str) -> [ast::attribute]/~ {
+    fn parse_attributes(source: str) -> ~[ast::attribute] {
         import syntax::parse;
         import parse::parser;
         import parse::attr::parser_attr;
@@ -29,14 +29,14 @@ mod test {
 
         let parse_sess = syntax::parse::new_parse_sess(none);
         let parser = parse::new_parser_from_source_str(
-            parse_sess, []/~, "-", codemap::fss_none, @source);
+            parse_sess, ~[], "-", codemap::fss_none, @source);
 
         parser.parse_outer_attributes()
     }
 }
 
 fn doc_meta(
-    attrs: [ast::attribute]/~
+    attrs: ~[ast::attribute]
 ) -> option<@ast::meta_item> {
 
     #[doc =
@@ -55,7 +55,7 @@ fn doc_meta(
     }
 }
 
-fn parse_crate(attrs: [ast::attribute]/~) -> crate_attrs {
+fn parse_crate(attrs: ~[ast::attribute]) -> crate_attrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
     {
@@ -88,7 +88,7 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     assert attrs.name == none;
 }
 
-fn parse_desc(attrs: [ast::attribute]/~) -> option<str> {
+fn parse_desc(attrs: ~[ast::attribute]) -> option<str> {
     alt doc_meta(attrs) {
       some(meta) {
         attr::get_meta_item_value_str(meta).map({|x|*x})
@@ -113,7 +113,7 @@ fn parse_desc_should_parse_simple_doc_attributes() {
     assert attrs == some("basic");
 }
 
-fn parse_hidden(attrs: [ast::attribute]/~) -> bool {
+fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
     alt doc_meta(attrs) {
       some(meta) {
         alt attr::get_meta_item_list(meta) {

@@ -132,7 +132,7 @@ fn pandoc_header_id(header: str) -> str {
 #[test]
 fn should_remove_punctuation_from_headers() {
     assert pandoc_header_id("impl foo of bar<A>") == "impl-foo-of-bara";
-    assert pandoc_header_id("fn@([~A]/~)") == "fna";
+    assert pandoc_header_id("fn@(~[~A])") == "fna";
 }
 
 #[test]

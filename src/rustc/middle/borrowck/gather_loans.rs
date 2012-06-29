@@ -86,7 +86,7 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // passing the buck onto us to enforce this)
                 //
                 // FIXME (#2493): this handling is not really adequate.
-                // For example, if there is a type like, {f: [int]/~}, we
+                // For example, if there is a type like, {f: ~[int]}, we
                 // will ignore it, but we ought to be requiring it to be
                 // immutable (whereas something like {f:int} would be
                 // fine).
@@ -280,7 +280,7 @@ impl methods for gather_loan_ctxt {
           }
           none {
             self.req_maps.req_loan_map.insert(
-                scope_id, @dvec::from_vec([mut loans]/~));
+                scope_id, @dvec::from_vec(~[mut loans]));
           }
         }
     }

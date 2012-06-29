@@ -5,7 +5,7 @@
 
 use core;
 
-fn last<T: copy>(v: [const T]/~) -> core::option<T> {
+fn last<T: copy>(v: ~[const T]) -> core::option<T> {
     fail;
 }
 

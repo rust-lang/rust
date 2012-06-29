@@ -48,26 +48,26 @@ type could only produce 47 million pushes/second.
 
 "]
 type dvec<A> = {
-    mut data: [mut A]/~
+    mut data: ~[mut A]
 };
 
 #[doc = "Creates a new, empty dvec"]
 fn dvec<A>() -> dvec<A> {
-    {mut data: [mut]/~}
+    {mut data: ~[mut]}
 }
 
 #[doc = "Creates a new dvec with a single element"]
 fn from_elt<A>(+e: A) -> dvec<A> {
-    {mut data: [mut e]/~}
+    {mut data: ~[mut e]}
 }
 
 #[doc = "Creates a new dvec with the contents of a vector"]
-fn from_vec<A>(+v: [mut A]/~) -> dvec<A> {
+fn from_vec<A>(+v: ~[mut A]) -> dvec<A> {
     {mut data: v}
 }
 
 #[doc = "Consumes the vector and returns its contents"]
-fn unwrap<A>(-d: dvec<A>) -> [mut A]/~ {
+fn unwrap<A>(-d: dvec<A>) -> ~[mut A] {
     let {data: v} <- d;
     ret v;
 }
@@ -83,7 +83,7 @@ impl private_methods<A> for dvec<A> {
     }
 
     #[inline(always)]
-    fn borrow<B>(f: fn(-[mut A]/~) -> B) -> B {
+    fn borrow<B>(f: fn(-~[mut A]) -> B) -> B {
         unsafe {
             let mut data = unsafe::reinterpret_cast(null::<()>());
             data <-> self.data;
@@ -94,7 +94,7 @@ impl private_methods<A> for dvec<A> {
     }
 
     #[inline(always)]
-    fn return(-data: [mut A]/~) {
+    fn return(-data: ~[mut A]) {
         unsafe {
             self.data <- data;
         }
@@ -113,7 +113,7 @@ impl extensions<A> for dvec<A> {
 
     "]
     #[inline(always)]
-    fn swap(f: fn(-[mut A]/~) -> [mut A]/~) {
+    fn swap(f: fn(-~[mut A]) -> ~[mut A]) {
         self.borrow { |v| self.return(f(v)) }
     }
 
@@ -127,7 +127,7 @@ impl extensions<A> for dvec<A> {
     }
 
     #[doc = "Overwrite the current contents"]
-    fn set(+w: [mut A]/~) {
+    fn set(+w: ~[mut A]) {
         self.check_not_borrowed();
         self.data <- w;
     }
@@ -150,7 +150,7 @@ impl extensions<A> for dvec<A> {
             let data_ptr: *() = unsafe::reinterpret_cast(data);
             if data_ptr.is_null() { fail "Recursive use of dvec"; }
             log(error, "a");
-            self.data <- [mut t]/~;
+            self.data <- ~[mut t];
             vec::push_all_move(self.data, data);
             log(error, "b");
         }
@@ -179,14 +179,14 @@ impl extensions<A:copy> for dvec<A> {
 
         Equivalent to `append_iter()` but potentially more efficient.
     "]
-    fn push_all(ts: [const A]/&) {
+    fn push_all(ts: &[const A]) {
         self.push_slice(ts, 0u, vec::len(ts));
     }
 
     #[doc = "
         Appends elements from `from_idx` to `to_idx` (exclusive)
     "]
-    fn push_slice(ts: [const A]/&, from_idx: uint, to_idx: uint) {
+    fn push_slice(ts: &[const A], from_idx: uint, to_idx: uint) {
         self.swap { |v|
             let mut v <- v;
             let new_len = vec::len(v) + to_idx - from_idx;
@@ -228,7 +228,7 @@ impl extensions<A:copy> for dvec<A> {
 
         See `unwrap()` if you do not wish to copy the contents.
     "]
-    fn get() -> [A]/~ {
+    fn get() -> ~[A] {
         self.borrow { |v|
             let w = vec::from_mut(copy v);
             self.return(v);

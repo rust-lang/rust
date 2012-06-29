@@ -10,11 +10,11 @@ class notify {
     let ch: comm::chan<bool>; let v: @mut bool;
     new(ch: comm::chan<bool>, v: @mut bool) { self.ch = ch; self.v = v; }
     drop {
-        #error["notify: task=%? v=%x unwinding=%b b=%b",
+        #error~["notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),
                ptr::addr_of(*(self.v)) as uint,
                task::failing(),
-               *(self.v)]/~;
+               *(self.v)];
         let b = *(self.v);
         comm::send(self.ch, b);
     }
@@ -24,9 +24,9 @@ fn joinable(f: fn~()) -> comm::port<bool> {
     fn wrapper(+pair: (comm::chan<bool>, fn())) {
         let (c, f) = pair;
         let b = @mut false;
-        #error["wrapper: task=%? allocated v=%x",
+        #error~["wrapper: task=%? allocated v=%x",
                task::get_task(),
-               ptr::addr_of(*b) as uint]/~;
+               ptr::addr_of(*b) as uint];
         let _r = notify(c, b);
         f();
         *b = true;

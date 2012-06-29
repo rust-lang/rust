@@ -6,7 +6,7 @@ fn foo(cond: bool) {
     let mut x; //! ERROR foo
 
     if cond {
-        x = [1,2,3]/&blk;
+        x = &[1,2,3]blk;
     }
 }
 

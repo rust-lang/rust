@@ -4,4 +4,4 @@ mod baz { }
 mod zed {
     fn bar() { #debug("bar3"); }
 }
-fn main(args: [str]/~) { bar(); }
+fn main(args: ~[str]) { bar(); }

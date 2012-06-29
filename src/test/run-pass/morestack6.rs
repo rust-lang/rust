@@ -46,14 +46,14 @@ fn runtest2(f: fn~(), frame_backoff: u32, last_stk: *u8) -> u32 {
 }
 
 fn main() {
-    let fns = [
+    let fns = ~[
         calllink01,
         calllink02,
         calllink03,
         calllink08,
         calllink09,
         calllink10
-    ]/~;
+    ];
     let rng = rand::rng();
     for fns.each {|f|
         let sz = rng.next() % 256u32 + 256u32;

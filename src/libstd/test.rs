@@ -49,7 +49,7 @@ type test_desc = {
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: [str]/~, tests: [test_desc]/~) {
+fn test_main(args: ~[str], tests: ~[test_desc]) {
     let opts =
         alt parse_opts(args) {
           either::left(o) { o }
@@ -64,9 +64,9 @@ type test_opts = {filter: option<str>, run_ignored: bool,
 type opt_res = either<test_opts, str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: [str]/~) -> opt_res {
+fn parse_opts(args: ~[str]) -> opt_res {
     let args_ = vec::tail(args);
-    let opts = [getopts::optflag("ignored"), getopts::optopt("logfile")]/~;
+    let opts = ~[getopts::optflag("ignored"), getopts::optopt("logfile")];
     let match =
         alt getopts::getopts(args_, opts) {
           ok(m) { m }
@@ -97,11 +97,11 @@ type console_test_state =
       mut passed: uint,
       mut failed: uint,
       mut ignored: uint,
-      mut failures: [test_desc]/~};
+      mut failures: ~[test_desc]};
 
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
-                     tests: [test_desc]/~) -> bool {
+                     tests: ~[test_desc]) -> bool {
 
     fn callback(event: testevent, st: console_test_state) {
         alt event {
@@ -142,7 +142,7 @@ fn run_tests_console(opts: test_opts,
 
     let log_out = alt opts.logfile {
         some(path) {
-            alt io::file_writer(path, [io::create, io::truncate]/~) {
+            alt io::file_writer(path, ~[io::create, io::truncate]) {
                 result::ok(w) { some(w) }
                 result::err(s) {
                     fail(#fmt("can't open output file: %s", s))
@@ -160,7 +160,7 @@ fn run_tests_console(opts: test_opts,
           mut passed: 0u,
           mut failed: 0u,
           mut ignored: 0u,
-          mut failures: []/~};
+          mut failures: ~[]};
 
     run_tests(opts, tests, {|x|callback(x, st)});
 
@@ -250,7 +250,7 @@ fn should_sort_failures_before_printing_them() {
           mut passed: 0u,
           mut failed: 0u,
           mut ignored: 0u,
-          mut failures: [test_b, test_a]/~};
+          mut failures: ~[test_b, test_a]};
 
     print_failures(st);
 
@@ -264,14 +264,14 @@ fn should_sort_failures_before_printing_them() {
 fn use_color() -> bool { ret get_concurrency() == 1u; }
 
 enum testevent {
-    te_filtered([test_desc]/~),
+    te_filtered(~[test_desc]),
     te_wait(test_desc),
     te_result(test_desc, test_result),
 }
 
 type monitor_msg = (test_desc, test_result);
 
-fn run_tests(opts: test_opts, tests: [test_desc]/~,
+fn run_tests(opts: test_opts, tests: ~[test_desc],
              callback: fn@(testevent)) {
 
     let mut filtered_tests = filter_tests(opts, tests);
@@ -329,7 +329,7 @@ fn get_concurrency() -> uint {
 
 #[warn(no_non_implicitly_copyable_typarams)]
 fn filter_tests(opts: test_opts,
-                tests: [test_desc]/~) -> [test_desc]/~ {
+                tests: ~[test_desc]) -> ~[test_desc] {
     let mut filtered = copy tests;
 
     // Remove tests that don't match the test filter
@@ -482,7 +482,7 @@ mod tests {
 
     #[test]
     fn first_free_arg_should_be_a_filter() {
-        let args = ["progname", "filter"]/~;
+        let args = ~["progname", "filter"];
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in first_free_arg_should_be_a_filter"; } };
         assert (str::eq("filter", option::get(opts.filter)));
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn parse_ignored_flag() {
-        let args = ["progname", "filter", "--ignored"]/~;
+        let args = ~["progname", "filter", "--ignored"];
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in parse_ignored_flag"; } };
         assert (opts.run_ignored);
@@ -504,8 +504,8 @@ mod tests {
         let opts = {filter: option::none, run_ignored: true,
             logfile: option::none};
         let tests =
-            [{name: "1", fn: fn~() { }, ignore: true, should_fail: false},
-             {name: "2", fn: fn~() { }, ignore: false, should_fail: false}]/~;
+            ~[{name: "1", fn: fn~() { }, ignore: true, should_fail: false},
+             {name: "2", fn: fn~() { }, ignore: false, should_fail: false}];
         let filtered = filter_tests(opts, tests);
 
         assert (vec::len(filtered) == 1u);
@@ -519,31 +519,31 @@ mod tests {
             logfile: option::none};
 
         let names =
-            ["sha1::test", "int::test_to_str", "int::test_pow",
+            ~["sha1::test", "int::test_to_str", "int::test_pow",
              "test::do_not_run_ignored_tests",
              "test::ignored_tests_result_in_ignored",
              "test::first_free_arg_should_be_a_filter",
              "test::parse_ignored_flag", "test::filter_for_ignored_option",
-             "test::sort_tests"]/~;
+             "test::sort_tests"];
         let tests =
         {
         let testfn = fn~() { };
-        let mut tests = []/~;
+        let mut tests = ~[];
         for vec::each(names) {|name|
             let test = {name: name, fn: copy testfn, ignore: false,
                         should_fail: false};
-            tests += [test]/~;
+            tests += ~[test];
         }
         tests
     };
     let filtered = filter_tests(opts, tests);
 
     let expected =
-        ["int::test_pow", "int::test_to_str", "sha1::test",
+        ~["int::test_pow", "int::test_to_str", "sha1::test",
          "test::do_not_run_ignored_tests", "test::filter_for_ignored_option",
          "test::first_free_arg_should_be_a_filter",
          "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
-         "test::sort_tests"]/~;
+         "test::sort_tests"];
 
     let pairs = vec::zip(expected, filtered);
 

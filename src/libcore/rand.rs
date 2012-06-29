@@ -7,9 +7,9 @@ enum rctx {}
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rand_seed() -> [u8]/~;
+    fn rand_seed() -> ~[u8];
     fn rand_new() -> *rctx;
-    fn rand_new_seeded(seed: [u8]/~) -> *rctx;
+    fn rand_new_seeded(seed: ~[u8]) -> *rctx;
     fn rand_next(c: *rctx) -> u32;
     fn rand_free(c: *rctx);
 }
@@ -151,19 +151,19 @@ impl extensions for rng {
     }
 
     #[doc = "Return a random byte string of the specified length"]
-    fn gen_bytes(len: uint) -> [u8]/~ {
+    fn gen_bytes(len: uint) -> ~[u8] {
         vec::from_fn(len) {|_i|
             self.gen_u8()
         }
     }
 
     #[doc = "Choose an item randomly, failing if values is empty"]
-    fn choose<T:copy>(values: [T]/~) -> T {
+    fn choose<T:copy>(values: ~[T]) -> T {
         self.choose_option(values).get()
     }
 
     #[doc = "Choose some(item) randomly, returning none if values is empty"]
-    fn choose_option<T:copy>(values: [T]/~) -> option<T> {
+    fn choose_option<T:copy>(values: ~[T]) -> option<T> {
         if values.is_empty() {
             none
         } else {
@@ -173,13 +173,13 @@ impl extensions for rng {
 
     #[doc = "Choose an item respecting the relative weights, failing if \
              the sum of the weights is 0"]
-    fn choose_weighted<T: copy>(v : [weighted<T>]/~) -> T {
+    fn choose_weighted<T: copy>(v : ~[weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
     #[doc = "Choose some(item) respecting the relative weights, returning \
              none if the sum of the weights is 0"]
-    fn choose_weighted_option<T:copy>(v: [weighted<T>]/~) -> option<T> {
+    fn choose_weighted_option<T:copy>(v: ~[weighted<T>]) -> option<T> {
         let mut total = 0u;
         for v.each {|item|
             total += item.weight;
@@ -200,8 +200,8 @@ impl extensions for rng {
 
     #[doc = "Return a vec containing copies of the items, in order, where \
              the weight of the item determines how many copies there are"]
-    fn weighted_vec<T:copy>(v: [weighted<T>]/~) -> [T]/~ {
-        let mut r = []/~;
+    fn weighted_vec<T:copy>(v: ~[weighted<T>]) -> ~[T] {
+        let mut r = ~[];
         for v.each {|item|
             for uint::range(0u, item.weight) {|_i|
                 vec::push(r, item.item);
@@ -211,14 +211,14 @@ impl extensions for rng {
     }
 
     #[doc = "Shuffle a vec"]
-    fn shuffle<T:copy>(values: [T]/~) -> [T]/~ {
+    fn shuffle<T:copy>(values: ~[T]) -> ~[T] {
         let mut m = vec::to_mut(values);
         self.shuffle_mut(m);
         ret vec::from_mut(m);
     }
 
     #[doc = "Shuffle a mutable vec in place"]
-    fn shuffle_mut<T>(&&values: [mut T]/~) {
+    fn shuffle_mut<T>(&&values: ~[mut T]) {
         let mut i = values.len();
         while i >= 2u {
             // invariant: elements with index >= i have been locked in place.
@@ -241,7 +241,7 @@ impl of rng for @rand_res {
 }
 
 #[doc = "Create a new random seed for seeded_rng"]
-fn seed() -> [u8]/~ {
+fn seed() -> ~[u8] {
     rustrt::rand_seed()
 }
 
@@ -254,7 +254,7 @@ fn rng() -> rng {
          generator constructed with a given seed will generate the same \
          sequence of values as all other generators constructed with the \
          same seed. The seed may be any length."]
-fn seeded_rng(seed: [u8]/~) -> rng {
+fn seeded_rng(seed: ~[u8]) -> rng {
     @rand_res(rustrt::rand_new_seeded(seed)) as rng
 }
 
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
-        let seed = [2u8, 32u8, 4u8, 32u8, 51u8]/~;
+        let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
         let ra = rand::seeded_rng(seed);
         let rb = rand::seeded_rng(seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn rng_seeded_custom_seed2() {
-        let seed = [2u8, 32u8, 4u8, 32u8, 51u8]/~;
+        let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
         let ra = rand::seeded_rng(seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
@@ -387,56 +387,56 @@ mod tests {
     #[test]
     fn choose() {
         let r = rand::rng();
-        assert r.choose([1, 1, 1]/~) == 1;
+        assert r.choose(~[1, 1, 1]) == 1;
     }
 
     #[test]
     fn choose_option() {
         let r = rand::rng();
-        assert r.choose_option([]/~) == none::<int>;
-        assert r.choose_option([1, 1, 1]/~) == some(1);
+        assert r.choose_option(~[]) == none::<int>;
+        assert r.choose_option(~[1, 1, 1]) == some(1);
     }
 
     #[test]
     fn choose_weighted() {
         let r = rand::rng();
-        assert r.choose_weighted([{weight: 1u, item: 42}]/~) == 42;
-        assert r.choose_weighted([
+        assert r.choose_weighted(~[{weight: 1u, item: 42}]) == 42;
+        assert r.choose_weighted(~[
             {weight: 0u, item: 42},
             {weight: 1u, item: 43}
-        ]/~) == 43;
+        ]) == 43;
     }
 
     #[test]
     fn choose_weighted_option() {
         let r = rand::rng();
-        assert r.choose_weighted_option([{weight: 1u, item: 42}]/~) ==
+        assert r.choose_weighted_option(~[{weight: 1u, item: 42}]) ==
                some(42);
-        assert r.choose_weighted_option([
+        assert r.choose_weighted_option(~[
             {weight: 0u, item: 42},
             {weight: 1u, item: 43}
-        ]/~) == some(43);
-        assert r.choose_weighted_option([]/~) == none::<int>;
+        ]) == some(43);
+        assert r.choose_weighted_option(~[]) == none::<int>;
     }
 
     #[test]
     fn weighted_vec() {
         let r = rand::rng();
-        let empty: [int]/~ = []/~;
-        assert r.weighted_vec([]/~) == empty;
-        assert r.weighted_vec([
+        let empty: ~[int] = ~[];
+        assert r.weighted_vec(~[]) == empty;
+        assert r.weighted_vec(~[
             {weight: 0u, item: 3u},
             {weight: 1u, item: 2u},
             {weight: 2u, item: 1u}
-        ]/~) == [2u, 1u, 1u]/~;
+        ]) == ~[2u, 1u, 1u];
     }
 
     #[test]
     fn shuffle() {
         let r = rand::rng();
-        let empty: [int]/~ = []/~;
-        assert r.shuffle([]/~) == empty;
-        assert r.shuffle([1, 1, 1]/~) == [1, 1, 1]/~;
+        let empty: ~[int] = ~[];
+        assert r.shuffle(~[]) == empty;
+        assert r.shuffle(~[1, 1, 1]) == ~[1, 1, 1];
     }
 }
 

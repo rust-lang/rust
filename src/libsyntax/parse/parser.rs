@@ -52,10 +52,10 @@ enum pexpr {
  */
 enum class_contents { ctor_decl(fn_decl, blk, codemap::span),
                       dtor_decl(blk, codemap::span),
-                      members([@class_member]/~) }
+                      members(~[@class_member]) }
 
 type arg_or_capture_item = either<arg, capture_item>;
-type item_info = (ident, item_, option<[attribute]/~>);
+type item_info = (ident, item_, option<~[attribute]>);
 
 class parser {
     let sess: parse_sess;
@@ -178,14 +178,14 @@ class parser {
         // functions can't have constrained types. Not sure whether
         // that would be desirable anyway. See bug for the story on
         // constrained types.
-        let constrs: [@constr]/~ = []/~;
+        let constrs: ~[@constr] = ~[];
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ret {inputs: inputs, output: ret_ty,
              purity: purity, cf: ret_style,
              constraints: constrs};
     }
 
-    fn parse_ty_methods() -> [ty_method]/~ {
+    fn parse_ty_methods() -> ~[ty_method] {
         self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
                                  seq_sep_none()) { |p|
             let attrs = p.parse_outer_attributes();
@@ -217,7 +217,7 @@ class parser {
 
     // if i is the jth ident in args, return j
     // otherwise, fail
-    fn ident_index(args: [arg]/~, i: ident) -> uint {
+    fn ident_index(args: ~[arg], i: ident) -> uint {
         let mut j = 0u;
         for args.each {|a| if a.ident == i { ret j; } j += 1u; }
         self.fatal("unbound variable `" + *i + "` in constraint arg");
@@ -237,7 +237,7 @@ class parser {
         ret @{node: carg, span: sp};
     }
 
-    fn parse_constr_arg(args: [arg]/~) -> @constr_arg {
+    fn parse_constr_arg(args: ~[arg]) -> @constr_arg {
         let sp = self.span;
         let mut carg = carg_base;
         if self.token == token::BINOP(token::STAR) {
@@ -249,7 +249,7 @@ class parser {
         ret @{node: carg, span: sp};
     }
 
-    fn parse_ty_constr(fn_args: [arg]/~) -> @constr {
+    fn parse_ty_constr(fn_args: ~[arg]) -> @constr {
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
         let args = self.parse_unspanned_seq(
@@ -263,7 +263,7 @@ class parser {
     fn parse_constr_in_type() -> @ty_constr {
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
-        let args: [@ty_constr_arg]/~ = self.parse_unspanned_seq(
+        let args: ~[@ty_constr_arg] = self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA),
             {|p| p.parse_type_constr_arg()});
@@ -274,8 +274,8 @@ class parser {
 
 
     fn parse_constrs<T: copy>(pser: fn(parser) -> @constr_general<T>) ->
-        [@constr_general<T>]/~ {
-        let mut constrs: [@constr_general<T>]/~ = []/~;
+        ~[@constr_general<T>] {
+        let mut constrs: ~[@constr_general<T>] = ~[];
         loop {
             let constr = pser(self);
             vec::push(constrs, constr);
@@ -284,7 +284,7 @@ class parser {
         };
     }
 
-    fn parse_type_constraints() -> [@ty_constr]/~ {
+    fn parse_type_constraints() -> ~[@ty_constr] {
         ret self.parse_constrs({|p| p.parse_constr_in_type()});
     }
 
@@ -361,7 +361,7 @@ class parser {
                 self.bump();
                 ty_nil
             } else {
-                let mut ts = [self.parse_ty(false)]/~;
+                let mut ts = ~[self.parse_ty(false)];
                 while self.token == token::COMMA {
                     self.bump();
                     vec::push(ts, self.parse_ty(false));
@@ -373,7 +373,7 @@ class parser {
             }
         } else if self.token == token::AT {
             self.bump();
-            // HACK: turn @[...] into a []/@
+            // HACK: turn @[...] into a @-evec
             alt self.parse_mt() {
               {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
                 ty_vstore(t, vstore_box)
@@ -382,7 +382,7 @@ class parser {
             }
         } else if self.token == token::TILDE {
             self.bump();
-            // HACK: turn ~[...] into a []/~
+            // HACK: turn ~[...] into a ~-evec
             alt self.parse_mt() {
               {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
                 ty_vstore(t, vstore_uniq)
@@ -418,7 +418,7 @@ class parser {
         } else if self.token == token::BINOP(token::AND) {
             self.bump();
             let region = self.parse_region_dot();
-            // HACK: turn &a.[...] into a []/&a
+            // HACK: turn &a.[...] into a &a-evec
             alt self.parse_mt() {
               {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
                 ty_vstore(t, vstore_slice(region))
@@ -603,7 +603,7 @@ class parser {
 
         let lo = self.span.lo;
         let global = self.eat(token::MOD_SEP);
-        let mut ids = []/~;
+        let mut ids = ~[];
         loop {
             let is_not_last =
                 self.look_ahead(2u) != token::LT
@@ -618,7 +618,7 @@ class parser {
             }
         }
         @{span: mk_sp(lo, self.last_span.hi), global: global,
-          idents: ids, rp: none, types: []/~}
+          idents: ids, rp: none, types: ~[]}
     }
 
     fn parse_value_path() -> @path {
@@ -659,7 +659,7 @@ class parser {
                 self.parse_seq_lt_gt(some(token::COMMA),
                                      {|p| p.parse_ty(false)})
             } else {
-                {node: []/~, span: path.span}
+                {node: ~[], span: path.span}
             }
         };
 
@@ -735,7 +735,7 @@ class parser {
                 let lit = @spanned(lo, hi, lit_nil);
                 ret self.mk_pexpr(lo, hi, expr_lit(lit));
             }
-            let mut es = [self.parse_expr()]/~;
+            let mut es = ~[self.parse_expr()];
             while self.token == token::COMMA {
                 self.bump(); vec::push(es, self.parse_expr());
             }
@@ -753,7 +753,7 @@ class parser {
             if self.is_keyword("mut") ||
                 is_plain_ident(self.token)
                 && self.look_ahead(1u) == token::COLON {
-                let mut fields = [self.parse_field(token::COLON)]/~;
+                let mut fields = ~[self.parse_field(token::COLON)];
                 let mut base = none;
                 while self.token != token::RBRACE {
                     // optional comma before "with"
@@ -1017,7 +1017,7 @@ class parser {
                         self.expect(token::LT);
                         self.parse_seq_to_gt(some(token::COMMA),
                                              {|p| p.parse_ty(false)})
-                    } else { []/~ };
+                    } else { ~[] };
                     e = self.mk_pexpr(lo, hi, expr_field(self.to_expr(e),
                                                          self.get_str(i),
                                                          tys));
@@ -1048,14 +1048,14 @@ class parser {
                 alt e.node {
                   expr_call(f, args, false) {
                     e = pexpr(@{node: expr_call(f,
-                                                vec::append(args, [blk]/~),
+                                                vec::append(args, ~[blk]),
                                                 true)
                                 with *self.to_expr(e)});
                   }
                   _ {
                     e = self.mk_pexpr(lo, self.last_span.hi,
                                       expr_call(self.to_expr(e),
-                                                [blk]/~, true));
+                                                ~[blk], true));
                   }
                 }
               }
@@ -1108,12 +1108,12 @@ class parser {
           token::LPAREN | token::LBRACE | token::LBRACKET {
             let ket = flip(self.token);
             tt_delim(vec::append(
-                [parse_tt_flat(self, true)]/~,
+                ~[parse_tt_flat(self, true)],
                 vec::append(
                     self.parse_seq_to_before_end(
                         ket, seq_sep_none(),
                         {|p| p.parse_token_tree()}),
-                    [parse_tt_flat(self, true)]/~)))
+                    ~[parse_tt_flat(self, true)])))
           }
           _ { parse_tt_flat(self, false) }
         };
@@ -1205,7 +1205,7 @@ class parser {
                 let m = self.parse_mutability();
                 let e = self.to_expr(self.parse_prefix_expr());
                 hi = e.span.hi;
-                // HACK: turn &[...] into [...]/&
+                // HACK: turn &[...] into a &-evec
                 ex = alt e.node {
                   expr_vec(*) if m == m_imm {
                     expr_vstore(e, vstore_slice(self.region_from_name(none)))
@@ -1221,7 +1221,7 @@ class parser {
             let m = self.parse_mutability();
             let e = self.to_expr(self.parse_prefix_expr());
             hi = e.span.hi;
-            // HACK: turn @[...] into [...]/@
+            // HACK: turn @[...] into a @-evec
             ex = alt e.node {
               expr_vec(*) if m == m_imm { expr_vstore(e, vstore_box) }
               _ { expr_unary(box(m), e) }
@@ -1232,7 +1232,7 @@ class parser {
             let m = self.parse_mutability();
             let e = self.to_expr(self.parse_prefix_expr());
             hi = e.span.hi;
-            // HACK: turn ~[...] into [...]/~
+            // HACK: turn ~[...] into a ~-evec
             ex = alt e.node {
               expr_vec(*) if m == m_imm { expr_vstore(e, vstore_uniq) }
               _ { expr_unary(uniq(m), e) }
@@ -1393,7 +1393,7 @@ class parser {
             let b_arg = vec::last(args);
             let last = self.mk_expr(b_arg.span.lo, b_arg.span.hi,
                                     ctor(b_arg));
-            @{node: expr_call(f, vec::append(vec::init(args), [last]/~), true)
+            @{node: expr_call(f, vec::append(vec::init(args), ~[last]), true)
               with *call}
           }
           _ {
@@ -1424,7 +1424,7 @@ class parser {
         else { alt_exhaustive };
         let discriminant = self.parse_expr();
         self.expect(token::LBRACE);
-        let mut arms: [arm]/~ = []/~;
+        let mut arms: ~[arm] = ~[];
         while self.token != token::RBRACE {
             let pats = self.parse_pats();
             let mut guard = none;
@@ -1473,8 +1473,8 @@ class parser {
         }
     }
 
-    fn parse_pats() -> [@pat]/~ {
-        let mut pats = []/~;
+    fn parse_pats() -> ~[@pat] {
+        let mut pats = ~[];
         loop {
             vec::push(pats, self.parse_pat());
             if self.token == token::BINOP(token::OR) { self.bump(); }
@@ -1502,7 +1502,7 @@ class parser {
           }
           token::LBRACE {
             self.bump();
-            let mut fields = []/~;
+            let mut fields = ~[];
             let mut etc = false;
             let mut first = true;
             while self.token != token::RBRACE {
@@ -1552,7 +1552,7 @@ class parser {
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
-                let mut fields = [self.parse_pat()]/~;
+                let mut fields = ~[self.parse_pat()];
                 while self.token == token::COMMA {
                     self.bump();
                     vec::push(fields, self.parse_pat());
@@ -1587,7 +1587,7 @@ class parser {
             } else {
                 let enum_path = self.parse_path_with_tps(true);
                 hi = enum_path.span.hi;
-                let mut args: [@pat]/~ = []/~;
+                let mut args: ~[@pat] = ~[];
                 let mut star_pat = false;
                 alt self.token {
                   token::LPAREN {
@@ -1643,7 +1643,7 @@ class parser {
     fn parse_let() -> @decl {
         let is_mutbl = self.eat_keyword("mut");
         let lo = self.span.lo;
-        let mut locals = [self.parse_local(is_mutbl, true)]/~;
+        let mut locals = ~[self.parse_local(is_mutbl, true)];
         while self.eat(token::COMMA) {
             vec::push(locals, self.parse_local(is_mutbl, true));
         }
@@ -1667,8 +1667,8 @@ class parser {
               span: mk_sp(lo, self.last_span.hi)};
     }
 
-    fn parse_stmt(+first_item_attrs: [attribute]/~) -> @stmt {
-        fn check_expected_item(p: parser, current_attrs: [attribute]/~) {
+    fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
+        fn check_expected_item(p: parser, current_attrs: ~[attribute]) {
             // If we have attributes then we should have an item
             if vec::is_not_empty(current_attrs) {
                 p.fatal("expected item");
@@ -1684,7 +1684,7 @@ class parser {
         } else {
             let mut item_attrs;
             alt self.parse_outer_attrs_or_ext(first_item_attrs) {
-              none { item_attrs = []/~; }
+              none { item_attrs = ~[]; }
               some(left(attrs)) { item_attrs = attrs; }
               some(right(ext)) {
                 ret @spanned(lo, ext.span.hi, stmt_expr(ext, self.get_id()));
@@ -1725,14 +1725,14 @@ class parser {
     }
 
     fn parse_inner_attrs_and_block(parse_attrs: bool)
-        -> ([attribute]/~, blk) {
+        -> (~[attribute], blk) {
 
         fn maybe_parse_inner_attrs_and_next(p: parser, parse_attrs: bool) ->
-            {inner: [attribute]/~, next: [attribute]/~} {
+            {inner: ~[attribute], next: ~[attribute]} {
             if parse_attrs {
                 p.parse_inner_attrs_and_next()
             } else {
-                {inner: []/~, next: []/~}
+                {inner: ~[], next: ~[]}
             }
         }
 
@@ -1767,12 +1767,12 @@ class parser {
     // necessary, and this should take a qualifier.
     // some blocks start with "#{"...
     fn parse_block_tail(lo: uint, s: blk_check_mode) -> blk {
-        self.parse_block_tail_(lo, s, []/~)
+        self.parse_block_tail_(lo, s, ~[])
     }
 
     fn parse_block_tail_(lo: uint, s: blk_check_mode,
-                         +first_item_attrs: [attribute]/~) -> blk {
-        let mut stmts = []/~;
+                         +first_item_attrs: ~[attribute]) -> blk {
+        let mut stmts = ~[];
         let mut expr = none;
         let {attrs_remaining, view_items} =
             self.parse_view(first_item_attrs, true);
@@ -1789,7 +1789,7 @@ class parser {
               }
               _ {
                 let stmt = self.parse_stmt(initial_attrs);
-                initial_attrs = []/~;
+                initial_attrs = ~[];
                 alt stmt.node {
                   stmt_expr(e, stmt_id) { // Expression without semicolon:
                     alt self.token {
@@ -1831,7 +1831,7 @@ class parser {
     }
 
     fn parse_ty_param() -> ty_param {
-        let mut bounds = []/~;
+        let mut bounds = ~[];
         let ident = self.parse_ident();
         if self.eat(token::COLON) {
             while self.token != token::COMMA && self.token != token::GT {
@@ -1846,17 +1846,17 @@ class parser {
         ret {ident: ident, id: self.get_id(), bounds: @bounds};
     }
 
-    fn parse_ty_params() -> [ty_param]/~ {
+    fn parse_ty_params() -> ~[ty_param] {
         if self.eat(token::LT) {
             self.parse_seq_to_gt(some(token::COMMA), {|p| p.parse_ty_param()})
-        } else { []/~ }
+        } else { ~[] }
     }
 
     fn parse_fn_decl(purity: purity,
                      parse_arg_fn: fn(parser) -> arg_or_capture_item)
         -> (fn_decl, capture_clause) {
 
-        let args_or_capture_items: [arg_or_capture_item]/~ =
+        let args_or_capture_items: ~[arg_or_capture_item] =
             self.parse_unspanned_seq(
                 token::LPAREN, token::RPAREN,
                 seq_sep_trailing_disallowed(token::COMMA), parse_arg_fn);
@@ -1867,7 +1867,7 @@ class parser {
         // Use the args list to translate each bound variable
         // mentioned in a constraint to an arg index.
         // Seems weird to do this in the parser, but I'm not sure how else to.
-        let mut constrs = []/~;
+        let mut constrs = ~[];
         if self.token == token::COLON {
             self.bump();
             constrs = self.parse_constrs({|p| p.parse_ty_constr(inputs) });
@@ -1883,7 +1883,7 @@ class parser {
     fn parse_fn_block_decl() -> (fn_decl, capture_clause) {
         let inputs_captures = {
             if self.eat(token::OROR) {
-                []/~
+                ~[]
             } else {
                 self.parse_unspanned_seq(
                     token::BINOP(token::OR), token::BINOP(token::OR),
@@ -1900,11 +1900,11 @@ class parser {
               output: output,
               purity: impure_fn,
               cf: return_val,
-              constraints: []/~},
+              constraints: ~[]},
              @either::rights(inputs_captures));
     }
 
-    fn parse_fn_header() -> {ident: ident, tps: [ty_param]/~} {
+    fn parse_fn_header() -> {ident: ident, tps: ~[ty_param]} {
         let id = self.parse_value_ident();
         let ty_params = self.parse_ty_params();
         ret {ident: id, tps: ty_params};
@@ -1912,7 +1912,7 @@ class parser {
 
     fn mk_item(lo: uint, hi: uint, +ident: ident,
                +node: item_, vis: visibility,
-               +attrs: [attribute]/~) -> @item {
+               +attrs: ~[attribute]) -> @item {
         ret @{ident: ident,
               attrs: attrs,
               id: self.get_id(),
@@ -1965,9 +1965,9 @@ class parser {
     }
 
     // Parses three variants (with the region/type params always optional):
-    //    impl /&<T: copy> of to_str for [T]/~ { ... }
-    //    impl name/&<T> of to_str for [T]/~ { ... }
-    //    impl name/&<T> for [T]/~ { ... }
+    //    impl /&<T: copy> of to_str for ~[T] { ... }
+    //    impl name/&<T> of to_str for ~[T] { ... }
+    //    impl name/&<T> for ~[T] { ... }
     fn parse_item_impl() -> item_info {
         fn wrap_path(p: parser, pt: @path) -> @ty {
             @{id: p.get_id(), node: ty_path(pt, p.get_id()), span: pt.span}
@@ -1979,7 +1979,7 @@ class parser {
                 (none, self.parse_region_param(), self.parse_ty_params())
             }
             else if self.is_keyword("of") {
-                (none, rp_none, []/~)
+                (none, rp_none, ~[])
             } else {
                 let id = self.parse_ident();
                 let rp = self.parse_region_param();
@@ -1999,7 +1999,7 @@ class parser {
         };
         self.expect_keyword("for");
         let ty = self.parse_ty(false);
-        let mut meths = []/~;
+        let mut meths = ~[];
         self.expect(token::LBRACE);
         while !self.eat(token::RBRACE) {
             vec::push(meths, self.parse_method(public));
@@ -2012,7 +2012,7 @@ class parser {
     // the return type of the ctor function.
     fn ident_to_path_tys(i: ident,
                          rp: region_param,
-                         typarams: [ty_param]/~) -> @path {
+                         typarams: ~[ty_param]) -> @path {
         let s = self.last_span;
 
         // Hack.  But then, this whole function is in service of a hack.
@@ -2021,7 +2021,7 @@ class parser {
           rp_self { some(self.region_from_name(some(@"self"))) }
         };
 
-        @{span: s, global: false, idents: [i]/~,
+        @{span: s, global: false, idents: ~[i],
           rp: a_r,
           types: vec::map(typarams, {|tp|
               @{id: self.get_id(),
@@ -2035,7 +2035,7 @@ class parser {
           id: self.get_id()}
     }
 
-    fn parse_iface_ref_list() -> [@iface_ref]/~ {
+    fn parse_iface_ref_list() -> ~[@iface_ref] {
         self.parse_seq_to_before_end(
             token::LBRACE, seq_sep_trailing_disallowed(token::COMMA),
             {|p| p.parse_iface_ref()})
@@ -2046,11 +2046,11 @@ class parser {
         let rp = self.parse_region_param();
         let ty_params = self.parse_ty_params();
         let class_path = self.ident_to_path_tys(class_name, rp, ty_params);
-        let ifaces : [@iface_ref]/~ = if self.eat(token::COLON)
+        let ifaces : ~[@iface_ref] = if self.eat(token::COLON)
             { self.parse_iface_ref_list() }
-        else { []/~ };
+        else { ~[] };
         self.expect(token::LBRACE);
-        let mut ms: [@class_member]/~ = []/~;
+        let mut ms: ~[@class_member] = ~[];
         let ctor_id = self.get_id();
         let mut the_ctor : option<(fn_decl, blk, codemap::span)> = none;
         let mut the_dtor : option<(blk, codemap::span)> = none;
@@ -2135,7 +2135,7 @@ class parser {
         }
         else if self.eat_keyword("priv") {
             self.expect(token::LBRACE);
-            let mut results = []/~;
+            let mut results = ~[];
             while self.token != token::RBRACE {
                 vec::push(results, self.parse_single_class_item(private));
             }
@@ -2144,7 +2144,7 @@ class parser {
         }
         else {
             // Probably need to parse attrs
-            ret members([self.parse_single_class_item(public)]/~);
+            ret members(~[self.parse_single_class_item(public)]);
         }
     }
 
@@ -2155,11 +2155,11 @@ class parser {
     }
 
     fn parse_mod_items(term: token::token,
-                       +first_item_attrs: [attribute]/~) -> _mod {
+                       +first_item_attrs: ~[attribute]) -> _mod {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items} =
             self.parse_view(first_item_attrs, false);
-        let mut items: [@item]/~ = []/~;
+        let mut items: ~[@item] = ~[];
         let mut first = true;
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
@@ -2206,7 +2206,7 @@ class parser {
         (id, item_mod(m), some(inner_attrs.inner))
     }
 
-    fn parse_item_foreign_fn(+attrs: [attribute]/~,
+    fn parse_item_foreign_fn(+attrs: ~[attribute],
                              purity: purity) -> @foreign_item {
         let lo = self.last_span.lo;
         let t = self.parse_fn_header();
@@ -2232,22 +2232,22 @@ class parser {
         else { self.unexpected(); }
     }
 
-    fn parse_foreign_item(+attrs: [attribute]/~) ->
+    fn parse_foreign_item(+attrs: ~[attribute]) ->
         @foreign_item {
         self.parse_item_foreign_fn(attrs, self.parse_fn_purity())
     }
 
-    fn parse_foreign_mod_items(+first_item_attrs: [attribute]/~) ->
+    fn parse_foreign_mod_items(+first_item_attrs: ~[attribute]) ->
         foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items} =
             self.parse_view(first_item_attrs, false);
-        let mut items: [@foreign_item]/~ = []/~;
+        let mut items: ~[@foreign_item] = ~[];
         let mut initial_attrs = attrs_remaining;
         while self.token != token::RBRACE {
             let attrs = vec::append(initial_attrs,
                                     self.parse_outer_attributes());
-            initial_attrs = []/~;
+            initial_attrs = ~[];
             vec::push(items, self.parse_foreign_item(attrs));
         }
         ret {view_items: view_items,
@@ -2293,7 +2293,7 @@ class parser {
         let id = self.parse_ident();
         let rp = self.parse_region_param();
         let ty_params = self.parse_ty_params();
-        let mut variants: [variant]/~ = []/~;
+        let mut variants: ~[variant] = ~[];
         // Newtype syntax
         if self.token == token::EQ {
             self.check_restricted_keywords_(*id);
@@ -2303,12 +2303,12 @@ class parser {
             let variant =
                 spanned(ty.span.lo, ty.span.hi,
                         {name: id,
-                         attrs: []/~,
-                         args: [{ty: ty, id: self.get_id()}]/~,
+                         attrs: ~[],
+                         args: ~[{ty: ty, id: self.get_id()}],
                          id: self.get_id(),
                          disr_expr: none,
                          vis: public});
-            ret (id, item_enum([variant]/~, ty_params, rp), none);
+            ret (id, item_enum(~[variant], ty_params, rp), none);
         }
         self.expect(token::LBRACE);
 
@@ -2319,7 +2319,7 @@ class parser {
             let vlo = self.span.lo;
             let vis = self.parse_visibility(default_vis);
             let ident = self.parse_value_ident();
-            let mut args = []/~, disr_expr = none;
+            let mut args = ~[], disr_expr = none;
             if self.token == token::LPAREN {
                 all_nullary = false;
                 let arg_tys = self.parse_unspanned_seq(
@@ -2380,7 +2380,7 @@ class parser {
         }
     }
 
-    fn parse_item(+attrs: [attribute]/~, vis: visibility)
+    fn parse_item(+attrs: ~[attribute], vis: visibility)
         -> option<@item> {
         let lo = self.span.lo;
         let (ident, item_, extra_attrs) = if self.eat_keyword("const") {
@@ -2437,20 +2437,20 @@ class parser {
     fn parse_view_path() -> @view_path {
         let lo = self.span.lo;
         let first_ident = self.parse_ident();
-        let mut path = [first_ident]/~;
+        let mut path = ~[first_ident];
         #debug("parsed view_path: %s", *first_ident);
         alt self.token {
           token::EQ {
             // x = foo::bar
             self.bump();
-            path = [self.parse_ident()]/~;
+            path = ~[self.parse_ident()];
             while self.token == token::MOD_SEP {
                 self.bump();
                 let id = self.parse_ident();
                 vec::push(path, id);
             }
             let path = @{span: mk_sp(lo, self.span.hi), global: false,
-                         idents: path, rp: none, types: []/~};
+                         idents: path, rp: none, types: ~[]};
             ret @spanned(lo, self.span.hi,
                          view_path_simple(first_ident, path, self.get_id()));
           }
@@ -2475,7 +2475,7 @@ class parser {
                         {|p| p.parse_path_list_ident()});
                     let path = @{span: mk_sp(lo, self.span.hi),
                                  global: false, idents: path,
-                                 rp: none, types: []/~};
+                                 rp: none, types: ~[]};
                     ret @spanned(lo, self.span.hi,
                                  view_path_list(path, idents, self.get_id()));
                   }
@@ -2485,7 +2485,7 @@ class parser {
                     self.bump();
                     let path = @{span: mk_sp(lo, self.span.hi),
                                  global: false, idents: path,
-                                 rp: none, types: []/~};
+                                 rp: none, types: ~[]};
                     ret @spanned(lo, self.span.hi,
                                  view_path_glob(path, self.get_id()));
                   }
@@ -2498,13 +2498,13 @@ class parser {
         }
         let last = path[vec::len(path) - 1u];
         let path = @{span: mk_sp(lo, self.span.hi), global: false,
-                     idents: path, rp: none, types: []/~};
+                     idents: path, rp: none, types: ~[]};
         ret @spanned(lo, self.span.hi,
                      view_path_simple(last, path, self.get_id()));
     }
 
-    fn parse_view_paths() -> [@view_path]/~ {
-        let mut vp = [self.parse_view_path()]/~;
+    fn parse_view_paths() -> ~[@view_path] {
+        let mut vp = ~[self.parse_view_path()];
         while self.token == token::COMMA {
             self.bump();
             vec::push(vp, self.parse_view_path());
@@ -2521,7 +2521,7 @@ class parser {
             || self.token_is_keyword("export", tok)
     }
 
-    fn parse_view_item(+attrs: [attribute]/~) -> @view_item {
+    fn parse_view_item(+attrs: ~[attribute]) -> @view_item {
         let lo = self.span.lo, vis = self.parse_visibility(private);
         let node = if self.eat_keyword("use") {
             self.parse_use()
@@ -2535,12 +2535,12 @@ class parser {
           vis: vis, span: mk_sp(lo, self.last_span.hi)}
     }
 
-    fn parse_view(+first_item_attrs: [attribute]/~,
-                  only_imports: bool) -> {attrs_remaining: [attribute]/~,
-                                          view_items: [@view_item]/~} {
+    fn parse_view(+first_item_attrs: ~[attribute],
+                  only_imports: bool) -> {attrs_remaining: ~[attribute],
+                                          view_items: ~[@view_item]} {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
-        let mut items = []/~;
+        let mut items = ~[];
         while if only_imports { self.is_keyword("import") }
         else { self.is_view_item() } {
             vec::push(items, self.parse_view_item(attrs));
@@ -2556,7 +2556,7 @@ class parser {
         let first_item_outer_attrs = crate_attrs.next;
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
         ret @spanned(lo, self.span.lo,
-                     {directives: []/~,
+                     {directives: ~[],
                       module: m,
                       attrs: crate_attrs.inner,
                       config: self.cfg});
@@ -2577,7 +2577,7 @@ class parser {
     //
     // Each directive imperatively extends its environment with 0 or more
     // items.
-    fn parse_crate_directive(first_outer_attr: [attribute]/~) ->
+    fn parse_crate_directive(first_outer_attr: ~[attribute]) ->
         crate_directive {
 
         // Collect the next attributes
@@ -2619,8 +2619,8 @@ class parser {
     }
 
     fn parse_crate_directives(term: token::token,
-                              first_outer_attr: [attribute]/~) ->
-        [@crate_directive]/~ {
+                              first_outer_attr: ~[attribute]) ->
+        ~[@crate_directive] {
 
         // This is pretty ugly. If we have an outer attribute then we can't
         // accept seeing the terminator next, so if we do see it then fail the
@@ -2629,12 +2629,12 @@ class parser {
             self.expect_keyword("mod");
         }
 
-        let mut cdirs: [@crate_directive]/~ = []/~;
+        let mut cdirs: ~[@crate_directive] = ~[];
         let mut first_outer_attr = first_outer_attr;
         while self.token != term {
             let cdir = @self.parse_crate_directive(first_outer_attr);
             vec::push(cdirs, cdir);
-            first_outer_attr = []/~;
+            first_outer_attr = ~[];
         }
         ret cdirs;
     }

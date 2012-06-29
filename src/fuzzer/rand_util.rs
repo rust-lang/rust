@@ -8,7 +8,7 @@ fn under(r : rand::rng, n : uint) -> uint {
 }
 
 // random choice from a vec
-fn choice<T: copy>(r : rand::rng, v : [T]/~) -> T {
+fn choice<T: copy>(r : rand::rng, v : ~[T]) -> T {
     assert vec::len(v) != 0u; v[under(r, vec::len(v))]
 }
 
@@ -16,7 +16,7 @@ fn choice<T: copy>(r : rand::rng, v : [T]/~) -> T {
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
 
 // shuffle a vec in place
-fn shuffle<T>(r : rand::rng, &v : [mut T]/~) {
+fn shuffle<T>(r : rand::rng, &v : ~[mut T]) {
     let i = vec::len(v);
     while i >= 2u {
         // Loop invariant: elements with index >= i have been locked in place.
@@ -26,20 +26,20 @@ fn shuffle<T>(r : rand::rng, &v : [mut T]/~) {
 }
 
 // create a shuffled copy of a vec
-fn shuffled<T: copy>(r : rand::rng, v : [T]/~) -> [T]/~ {
+fn shuffled<T: copy>(r : rand::rng, v : ~[T]) -> ~[T] {
     let w = vec::to_mut(v);
     shuffle(r, w);
     vec::from_mut(w) // Shouldn't this happen automatically?
 }
 
 // sample from a population without replacement
-//fn sample<T>(r : rand::rng, pop : [T]/~, k : uint) -> [T]/~ { fail }
+//fn sample<T>(r : rand::rng, pop : ~[T], k : uint) -> ~[T] { fail }
 
 // Two ways to make a weighted choice.
 // * weighted_choice is O(number of choices) time
 // * weighted_vec is O(total weight) space
 type weighted<T> = { weight: uint, item: T };
-fn weighted_choice<T: copy>(r : rand::rng, v : [weighted<T>]/~) -> T {
+fn weighted_choice<T: copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
     assert vec::len(v) != 0u;
     let total = 0u;
     for {weight: weight, item: _} in v {
@@ -57,8 +57,8 @@ fn weighted_choice<T: copy>(r : rand::rng, v : [weighted<T>]/~) -> T {
     core::unreachable();
 }
 
-fn weighted_vec<T: copy>(v : [weighted<T>]/~) -> [T]/~ {
-    let r = []/~;
+fn weighted_vec<T: copy>(v : ~[weighted<T>]) -> ~[T] {
+    let r = ~[];
     for {weight: weight, item: item} in v {
         let i = 0u;
         while i < weight {
@@ -74,19 +74,19 @@ fn main()
     let r = rand::mk_rng();
 
     log(error, under(r, 5u));
-    log(error, choice(r, [10, 20, 30]/~));
+    log(error, choice(r, ~[10, 20, 30]));
     log(error, if unlikely(r, 5u) { "unlikely" } else { "likely" });
 
-    let a = [mut 1, 2, 3]/~;
+    let a = ~[mut 1, 2, 3];
     shuffle(r, a);
     log(error, a);
 
     let i = 0u;
-    let v = [
+    let v = ~[
         {weight:1u, item:"low"},
         {weight:8u, item:"middle"},
         {weight:1u, item:"high"}
-    ]/~;
+    ];
     let w = weighted_vec(v);
 
     while i < 1000u {

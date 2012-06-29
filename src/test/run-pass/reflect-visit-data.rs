@@ -250,50 +250,50 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     }
 
     fn visit_enter_vec(mtbl: uint) -> bool {
-        self.align_to::<[u8]/~>();
+        self.align_to::<~[u8]>();
         if ! self.inner.visit_enter_vec(mtbl) { ret false; }
         true
     }
 
     fn visit_leave_vec(mtbl: uint) -> bool {
         if ! self.inner.visit_leave_vec(mtbl) { ret false; }
-        self.bump_past::<[u8]/~>();
+        self.bump_past::<~[u8]>();
         true
     }
 
     fn visit_enter_evec_box(mtbl: uint) -> bool {
-        self.align_to::<[u8]/@>();
+        self.align_to::<@[u8]>();
         if ! self.inner.visit_enter_evec_box(mtbl) { ret false; }
         true
     }
 
     fn visit_leave_evec_box(mtbl: uint) -> bool {
         if ! self.inner.visit_leave_evec_box(mtbl) { ret false; }
-        self.bump_past::<[u8]/@>();
+        self.bump_past::<@[u8]>();
         true
     }
 
     fn visit_enter_evec_uniq(mtbl: uint) -> bool {
-        self.align_to::<[u8]/~>();
+        self.align_to::<~[u8]>();
         if ! self.inner.visit_enter_evec_uniq(mtbl) { ret false; }
         true
     }
 
     fn visit_leave_evec_uniq(mtbl: uint) -> bool {
         if ! self.inner.visit_leave_evec_uniq(mtbl) { ret false; }
-        self.bump_past::<[u8]/~>();
+        self.bump_past::<~[u8]>();
         true
     }
 
     fn visit_enter_evec_slice(mtbl: uint) -> bool {
-        self.align_to::<[u8]/&static>();
+        self.align_to::<&[u8]static>();
         if ! self.inner.visit_enter_evec_slice(mtbl) { ret false; }
         true
     }
 
     fn visit_leave_evec_slice(mtbl: uint) -> bool {
         if ! self.inner.visit_leave_evec_slice(mtbl) { ret false; }
-        self.bump_past::<[u8]/&static>();
+        self.bump_past::<&[u8]static>();
         true
     }
 
@@ -547,7 +547,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
 enum my_visitor = @{
     mut ptr1: *c_void,
     mut ptr2: *c_void,
-    mut vals: [str]/~
+    mut vals: ~[str]
 };
 
 impl extra_methods for my_visitor {
@@ -572,7 +572,7 @@ impl of ty_visitor for my_visitor {
     fn visit_bool() -> bool {
 /*
         self.get::<bool>() {|b|
-            self.vals += [bool::to_str(b)]/~;
+            self.vals += ~[bool::to_str(b)];
         }
 */
         true
@@ -580,7 +580,7 @@ impl of ty_visitor for my_visitor {
     fn visit_int() -> bool {
 /*
         self.get::<int>() {|i|
-            self.vals += [int::to_str(i, 10u)]/~;
+            self.vals += ~[int::to_str(i, 10u)];
         }
 */
         true
@@ -699,7 +699,7 @@ fn main() {
     let p = ptr::addr_of(r) as *c_void;
     let u = my_visitor(@{mut ptr1: p,
                          mut ptr2: p,
-                         mut vals: []/~});
+                         mut vals: ~[]});
     let v = ptr_visit_adaptor({inner: u});
     let vv = v as intrinsic::ty_visitor;
     intrinsic::visit_ty::<(int,int,int,bool,bool)>(vv);

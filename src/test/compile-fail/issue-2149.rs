@@ -1,5 +1,5 @@
-impl monad<A> for [A]/~ {
-    fn bind<B>(f: fn(A) -> [B]/~) {
+impl monad<A> for ~[A] {
+    fn bind<B>(f: fn(A) -> ~[B]) {
         let mut r = fail;
         for self.each {|elt| r += f(elt); }
         //!^ WARNING unreachable expression

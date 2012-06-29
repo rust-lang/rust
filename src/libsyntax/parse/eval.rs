@@ -8,25 +8,25 @@ type ctx =
       cfg: ast::crate_cfg};
 
 fn eval_crate_directives(cx: ctx,
-                         cdirs: [@ast::crate_directive]/~,
+                         cdirs: ~[@ast::crate_directive],
                          prefix: str,
-                         &view_items: [@ast::view_item]/~,
-                         &items: [@ast::item]/~) {
+                         &view_items: ~[@ast::view_item],
+                         &items: ~[@ast::item]) {
     for cdirs.each {|sub_cdir|
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
 }
 
-fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive]/~,
+fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
                                 prefix: str, suffix: option<str>)
-    -> (ast::_mod, [ast::attribute]/~) {
+    -> (ast::_mod, ~[ast::attribute]) {
     #debug("eval crate prefix: %s", prefix);
     #debug("eval crate suffix: %s",
            option::get_default(suffix, "none"));
     let (cview_items, citems, cattrs)
         = parse_companion_mod(cx, prefix, suffix);
-    let mut view_items: [@ast::view_item]/~ = []/~;
-    let mut items: [@ast::item]/~ = []/~;
+    let mut view_items: ~[@ast::view_item] = ~[];
+    let mut items: ~[@ast::item] = ~[];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
     ret ({view_items: vec::append(view_items, cview_items),
           items: vec::append(items, citems)},
@@ -44,7 +44,7 @@ We build the path to the companion mod by combining the prefix and the
 optional suffix then adding the .rs extension.
 */
 fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
-    -> ([@ast::view_item]/~, [@ast::item]/~, [ast::attribute]/~) {
+    -> (~[@ast::view_item], ~[@ast::item], ~[ast::attribute]) {
 
     fn companion_file(+prefix: str, suffix: option<str>) -> str {
         ret alt suffix {
@@ -74,11 +74,11 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         ret (m0.view_items, m0.items, inner_attrs.inner);
     } else {
-        ret ([]/~, []/~, []/~);
+        ret (~[], ~[], ~[]);
     }
 }
 
-fn cdir_path_opt(id: ast::ident, attrs: [ast::attribute]/~) -> @str {
+fn cdir_path_opt(id: ast::ident, attrs: ~[ast::attribute]) -> @str {
     alt ::attr::first_attr_value_str_by_name(attrs, "path") {
       some(d) {
         ret d;
@@ -88,8 +88,8 @@ fn cdir_path_opt(id: ast::ident, attrs: [ast::attribute]/~) -> @str {
 }
 
 fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
-                        &view_items: [@ast::view_item]/~,
-                        &items: [@ast::item]/~) {
+                        &view_items: ~[@ast::view_item],
+                        &items: ~[@ast::item]) {
     alt cdir.node {
       ast::cdir_src_mod(id, attrs) {
         let file_path = cdir_path_opt(@(*id + ".rs"), attrs);

@@ -64,7 +64,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     }
 }
 
-fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]/~) {
+fn sectionalize(desc: option<str>) -> (option<str>, ~[doc::section]) {
 
     #[doc = "
 
@@ -85,20 +85,20 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]/~) {
     "];
 
     if option::is_none(desc) {
-        ret (none, []/~);
+        ret (none, ~[]);
     }
 
     let lines = str::lines(option::get(desc));
 
     let mut new_desc = none::<str>;
     let mut current_section = none;
-    let mut sections = []/~;
+    let mut sections = ~[];
 
     for lines.each {|line|
         alt parse_header(line) {
           some(header) {
             if option::is_some(current_section) {
-                sections += [option::get(current_section)]/~;
+                sections += ~[option::get(current_section)];
             }
             current_section = some({
                 header: header,
@@ -129,7 +129,7 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]/~) {
     }
 
     if option::is_some(current_section) {
-        sections += [option::get(current_section)]/~;
+        sections += ~[option::get(current_section)];
     }
 
     (new_desc, sections)

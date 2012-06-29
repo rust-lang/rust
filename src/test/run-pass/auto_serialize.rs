@@ -58,7 +58,7 @@ type some_rec = {v: uint_vec};
 enum an_enum = some_rec;
 
 #[auto_serialize]
-type uint_vec = [uint]/~;
+type uint_vec = ~[uint];
 
 #[auto_serialize]
 type point = {x: uint, y: uint};
@@ -91,7 +91,7 @@ fn main() {
                        deserialize_spanned_uint,
                        serialize_spanned_uint);
 
-    test_ser_and_deser(an_enum({v: [1u, 2u, 3u]/~}),
+    test_ser_and_deser(an_enum({v: ~[1u, 2u, 3u]}),
                        "an_enum({v: [1u, 2u, 3u]})",
                        serialize_an_enum,
                        deserialize_an_enum,
@@ -103,7 +103,7 @@ fn main() {
                        deserialize_point,
                        serialize_point);
 
-    test_ser_and_deser([1u, 2u, 3u]/~,
+    test_ser_and_deser(~[1u, 2u, 3u],
                        "[1u, 2u, 3u]",
                        serialize_uint_vec,
                        deserialize_uint_vec,

@@ -1,7 +1,7 @@
 // -*- rust -*-
-fn foo(c: [int]/~) {
+fn foo(c: ~[int]) {
     let a: int = 5;
-    let mut b: [int]/~ = []/~;
+    let mut b: ~[int] = ~[];
 
 
     alt none::<int> {
@@ -9,7 +9,7 @@ fn foo(c: [int]/~) {
         for c.each {|i|
             log(debug, a);
             let a = 17;
-            b += [a]/~;
+            b += ~[a];
         }
       }
       _ { }
@@ -18,4 +18,4 @@ fn foo(c: [int]/~) {
 
 enum t<T> { none, some(T), }
 
-fn main() { let x = 10; let x = x + 20; assert (x == 30); foo([]/~); }
+fn main() { let x = 10; let x = x + 20; assert (x == 30); foo(~[]); }

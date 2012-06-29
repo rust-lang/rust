@@ -12,7 +12,7 @@ fn inject_intrinsic(sess: session,
     let item = parse::parse_item_from_source_str("<intrinsic>",
                                                  intrinsic_module,
                                                  sess.opts.cfg,
-                                                 []/~, ast::public,
+                                                 ~[], ast::public,
                                                  sess.parse_sess);
     let item =
         alt item {
@@ -22,7 +22,7 @@ fn inject_intrinsic(sess: session,
           }
         };
 
-    let items = vec::append([item]/~, crate.node.module.items);
+    let items = vec::append(~[item], crate.node.module.items);
 
     ret @{node: {module: { items: items with crate.node.module }
                  with crate.node} with *crate }

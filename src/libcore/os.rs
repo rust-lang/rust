@@ -40,19 +40,19 @@ export walk_dir;
 export as_c_charp, fill_charp_buf;
 
 native mod rustrt {
-    fn rust_env_pairs() -> [str]/~;
+    fn rust_env_pairs() -> ~[str];
     fn rust_getcwd() -> str;
     fn rust_path_is_dir(path: *libc::c_char) -> c_int;
     fn rust_path_exists(path: *libc::c_char) -> c_int;
-    fn rust_list_files(path: str) -> [str]/~;
+    fn rust_list_files(path: str) -> ~[str];
     fn rust_process_wait(handle: c_int) -> c_int;
     fn last_os_error() -> str;
     fn rust_set_exit_status(code: libc::intptr_t);
 }
 
 
-fn env() -> [(str,str)]/~ {
-    let mut pairs = []/~;
+fn env() -> ~[(str,str)] {
+    let mut pairs = ~[];
     for vec::each(rustrt::rust_env_pairs()) {|p|
         let vs = str::splitn_char(p, '=', 1u);
         assert vec::len(vs) == 2u;
@@ -116,7 +116,7 @@ mod win32 {
     fn as_utf16_p<T>(s: str, f: fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
-        t += [0u16]/~;
+        t += ~[0u16];
         vec::as_buf(t, f)
     }
 }
@@ -371,9 +371,9 @@ fn self_exe_path() -> option<path> {
             import libc::funcs::bsd44::*;
             import libc::consts::os::extra::*;
             fill_charp_buf() {|buf, sz|
-                let mib = [CTL_KERN as c_int,
+                let mib = ~[CTL_KERN as c_int,
                            KERN_PROC as c_int,
-                           KERN_PROC_PATHNAME as c_int, -1 as c_int]/~;
+                           KERN_PROC_PATHNAME as c_int, -1 as c_int];
                 sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
                        buf as *mut c_void, ptr::mut_addr_of(sz),
                        ptr::null(), 0u as size_t) == (0 as c_int)
@@ -553,7 +553,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
 }
 
 #[doc = "Lists the contents of a directory"]
-fn list_dir(p: path) -> [str]/~ {
+fn list_dir(p: path) -> ~[str] {
 
     #[cfg(unix)]
     fn star(p: str) -> str { p }
@@ -579,7 +579,7 @@ Lists the contents of a directory
 
 This version prepends each entry with the directory.
 "]
-fn list_dir_path(p: path) -> [str]/~ {
+fn list_dir_path(p: path) -> ~[str] {
     let mut p = p;
     let pl = str::len(p);
     if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
@@ -670,7 +670,7 @@ fn copy_file(from: path, to: path) -> bool {
             fclose(istream);
             ret false;
         }
-        let mut buf : [mut u8]/~ = [mut]/~;
+        let mut buf : ~[mut u8] = ~[mut];
         let bufsize = 8192u;
         vec::reserve(buf, bufsize);
         let mut done = false;
@@ -978,7 +978,7 @@ mod tests {
       };
       assert (ostream as uint != 0u);
       let s = "hello";
-      let mut buf = vec::to_mut(str::bytes(s) + [0 as u8]/~);
+      let mut buf = vec::to_mut(str::bytes(s) + ~[0 as u8]);
       vec::as_mut_buf(buf) {|b|
           assert (libc::fwrite(b as *c_void, 1u as size_t,
                                (str::len(s) + 1u) as size_t, ostream)
@@ -989,7 +989,7 @@ mod tests {
         fail (#fmt("%s doesn't exist", in));
       }
       assert(rs);
-      let rslt = run::run_program("diff", [in, out]/~);
+      let rslt = run::run_program("diff", ~[in, out]);
       assert (rslt == 0);
       assert (remove_file(in));
       assert (remove_file(out));

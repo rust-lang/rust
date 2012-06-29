@@ -4,4 +4,4 @@ import zed::baz;
 mod zed {
     fn bar() { #debug("bar"); }
 }
-fn main(args: [str]/~) { bar(); }
+fn main(args: ~[str]) { bar(); }
