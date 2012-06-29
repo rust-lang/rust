@@ -2,6 +2,7 @@ import base::*;
 import ast;
 import codemap::span;
 import print::pprust;
+import build::{mk_lit,mk_uniq_vec_e};
 
 export expand_line;
 export expand_col;
@@ -17,7 +18,7 @@ fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "line");
     let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret make_new_lit(cx, sp, ast::lit_uint(loc.line as u64, ast::ty_u));
+    ret mk_lit(cx, sp, ast::lit_uint(loc.line as u64, ast::ty_u));
 }
 
 /* #col(): expands to the current column number */
@@ -25,7 +26,7 @@ fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "col");
     let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret make_new_lit(cx, sp, ast::lit_uint(loc.col as u64, ast::ty_u));
+    ret mk_lit(cx, sp, ast::lit_uint(loc.col as u64, ast::ty_u));
 }
 
 /* #file(): expands to the current filename */
@@ -36,19 +37,19 @@ fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
     let { file: @{ name: filename, _ }, _ } =
         codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret make_new_lit(cx, sp, ast::lit_str(@filename));
+    ret mk_lit(cx, sp, ast::lit_str(@filename));
 }
 
 fn expand_stringify(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                     _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "stringify");
-    ret make_new_lit(cx, sp, ast::lit_str(@pprust::expr_to_str(args[0])));
+    ret mk_lit(cx, sp, ast::lit_str(@pprust::expr_to_str(args[0])));
 }
 
 fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
     -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
-    ret make_new_lit(cx, sp, ast::lit_str(
+    ret mk_lit(cx, sp, ast::lit_str(
         @str::connect(cx.mod_path().map({|x|*x}), "::")));
 }
 
@@ -76,7 +77,7 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
       }
     }
 
-    ret make_new_lit(cx, sp, ast::lit_str(@result::unwrap(res)));
+    ret mk_lit(cx, sp, ast::lit_str(@result::unwrap(res)));
 }
 
 fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
@@ -88,9 +89,9 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     alt io::read_whole_file(res_rel_file(cx, sp, file)) {
       result::ok(src) {
         let u8_exprs = vec::map(src) { |char: u8|
-            make_new_lit(cx, sp, ast::lit_uint(char as u64, ast::ty_u8))
+            mk_lit(cx, sp, ast::lit_uint(char as u64, ast::ty_u8))
         };
-        ret make_new_expr(cx, sp, ast::expr_vec(u8_exprs, ast::m_imm));
+        ret mk_uniq_vec_e(cx, sp, u8_exprs);
       }
       result::err(e) {
         cx.parse_sess().span_diagnostic.handler().fatal(e)

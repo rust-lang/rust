@@ -173,17 +173,6 @@ fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
     }
 }
 
-fn make_new_lit(cx: ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
-   @ast::expr {
-    let sp_lit = @{node: lit, span: sp};
-    ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
-}
-
-fn make_new_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
-    @ast::expr {
-    ret @{id: cx.next_id(), node: expr, span: sp};
-}
-
 fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                        min: uint, name: str) -> [@ast::expr]/~ {
     ret get_mac_args(cx, sp, arg, min, none, name);
