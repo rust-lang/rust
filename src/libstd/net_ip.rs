@@ -358,6 +358,7 @@ mod test {
         }
     }
     #[test]
+    #[ignore(reason = "valgrind says it's leaky")]
     fn test_ip_get_addr() {
         let localhost_name = "localhost";
         let iotask = uv::global_loop::get();
@@ -387,6 +388,7 @@ mod test {
         assert vec::len(results) > 0;
     }
     #[test]
+    #[ignore(reason = "valgrind says it's leaky")]
     fn test_ip_get_addr_bad_input() {
         let localhost_name = "sjkl234m,./sdf";
         let iotask = uv::global_loop::get();

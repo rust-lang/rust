@@ -1592,7 +1592,7 @@ mod test {
         assert (4u+native_handle_size as uint) == rust_handle_size;
     }
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
+    #[ignore(reason = "questionable size calculations")]
     fn test_uv_ll_struct_size_addr_in() {
         let native_handle_size =
             rustrt::rust_uv_helper_addr_in_size();
@@ -1630,6 +1630,7 @@ mod test {
 
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
+    #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
         let native_handle_size =
             rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
@@ -1641,6 +1642,8 @@ mod test {
     }
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
+    #[ignore(cfg(target_os = "macos"))]
+    #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_addrinfo() {
         let native_handle_size =
             rustrt::rust_uv_helper_addrinfo_size();
