@@ -225,12 +225,12 @@ type sockaddr_in = {
 
 // unix size: 28 .. FIXME #1645
 // stuck with 32 becuse of rust padding structs?
-#[cfg(unix)]
+#[cfg(target_arch="x86_64")]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8
 };
-#[cfg(windows)]
+#[cfg(target_arch="x86")]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8,
@@ -240,16 +240,59 @@ type sockaddr_in6 = {
 
 // unix size: 28 .. FIXME #1645
 // stuck with 32 becuse of rust padding structs?
-type addr_in = {
-    a0: *u8, a1: *u8,
-    a2: *u8, a3: *u8
-};
+type addr_in = addr_in_impl::addr_in;
+#[cfg(unix)]
+mod addr_in_impl {
+    #[cfg(target_arch="x86_64")]
+    type addr_in = {
+        a0: *u8, a1: *u8,
+        a2: *u8, a3: *u8
+    };
+    #[cfg(target_arch="x86")]
+    type addr_in = {
+        a0: *u8, a1: *u8,
+        a2: *u8, a3: *u8,
+        a4: *u8, a5: *u8,
+        a6: *u8, a7: *u8,
+    };
+}
+#[cfg(windows)]
+mod addr_in_impl {
+    type addr_in = {
+        a0: *u8, a1: *u8,
+        a2: *u8, a3: *u8
+    };
+}
 
-// unix size: 48
-type addrinfo = {
-    a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-    a04: *u8, a05: *u8
-};
+// unix size: 48, 32bit: 32
+type addrinfo = addrinfo_impl::addrinfo;
+#[cfg(target_os="linux")]
+mod addrinfo_impl {
+    #[cfg(target_arch="x86_64")]
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8
+    };
+    #[cfg(target_arch="x86")]
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8, a06: *u8, a07: *u8
+    };
+}
+#[cfg(target_os="macos")]
+mod addrinfo_impl {
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8
+    };
+}
+#[cfg(windows)]
+mod addrinfo_impl {
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8
+    };
+}
 
 // unix size: 72
 type uv_getaddrinfo_t = {
