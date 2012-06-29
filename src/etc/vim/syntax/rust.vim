@@ -20,7 +20,8 @@ syn keyword   rustKeyword     check claim cont const copy else export extern fai
 syn keyword   rustKeyword     for if impl import in let log
 syn keyword   rustKeyword     loop mod mut of pure
 syn keyword   rustKeyword     ret self to unchecked
-syn keyword   rustKeyword     unsafe use while with
+syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
+syn keyword   rustKeyword     use while with
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod iface trait class enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
@@ -36,9 +37,19 @@ syn keyword   rustType        f64 i8 i16 i32 i64 str
 
 syn keyword   rustBoolean     true false
 
-syn match     rustItemPath    "\(\w\|::\)\+"
+syn keyword   rustConstant    some none       " option
+" syn keyword   rustConstant    left right      " either
+" syn keyword   rustConstant    ok err          " result
+" syn keyword   rustConstant    success failure " task
+" syn keyword   rustConstant    cons nil        " list
+" syn keyword   rustConstant    empty node      " tree
 
-syn region	  rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+
+" If foo::bar changes to foo.bar, change this ("::" to "\.").
+" If foo::bar changes to Foo::bar, change this (first "\w" to "\u").
+syn match     rustModPath     "\w\(\w\)*::"he=e-2,me=e-2
+syn match     rustModPathSep  "::"
+
+syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString
 
@@ -72,21 +83,25 @@ syn keyword   rustTodo        TODO FIXME XXX NB
 hi def link rustHexNumber     rustNumber
 hi def link rustBinNumber     rustNumber
 
-" Recommend changing rustAssert to something else - I use ctermfg=yellow.
 hi def link rustString        String
 hi def link rustCharacter     Character
 hi def link rustNumber        Number
 hi def link rustBoolean       Boolean
+hi def link rustConstant      Constant
 hi def link rustFloat         Float
 hi def link rustAssert        Keyword
 hi def link rustKeyword       Keyword
 hi def link rustIdentifier    Identifier
+hi def link rustModPath       Include
 hi def link rustFuncName      Function
 hi def link rustComment       Comment
 hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
+" Other Suggestions:
+" hi def link rustModPathSep    Conceal
+" hi rustAssert ctermfg=yellow
 
 syn sync minlines=200
 syn sync maxlines=500
