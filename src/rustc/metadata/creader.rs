@@ -164,7 +164,7 @@ fn metas_with(ident: ast::ident, key: ast::ident,
                     metas: [@ast::meta_item]/~) -> [@ast::meta_item]/~ {
     let name_items = attr::find_meta_items_by_name(metas, *key);
     if name_items.is_empty() {
-        metas + [attr::mk_name_value_item_str(key, *ident)]/~
+        vec::append_one(metas, attr::mk_name_value_item_str(key, *ident))
     } else {
         metas
     }

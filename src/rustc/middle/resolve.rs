@@ -243,7 +243,8 @@ fn map_crate(e: @env, c: @ast::crate) {
               ast::view_path_list(mod_path, idents, _) {
                 for idents.each {|ident|
                     let t = todo(ident.node.name,
-                                 @(mod_path.idents + [ident.node.name]/~),
+                                 @(vec::append_one(mod_path.idents,
+                                                   ident.node.name)),
                                  ident.span, sc);
                     e.imports.insert(ident.node.id, t);
                 }
@@ -305,7 +306,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                       }
                       scope_block(b, _, _) {
                         let globs = alt e.block_map.find(b.node.id) {
-                          some(globs) { globs + [glob]/~ }
+                          some(globs) { vec::append_one(globs, glob) }
                           none { [glob]/~ }
                         };
                         e.block_map.insert(b.node.id, globs);
@@ -557,7 +558,8 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
         v.visit_ty(sty, sc, v);
         for methods.each {|m|
             v.visit_ty_params(m.tps, sc, v);
-            let msc = @cons(scope_method(m.self_id, tps + m.tps), sc);
+            let msc = @cons(scope_method(m.self_id, vec::append(tps, m.tps)),
+                            sc);
             v.visit_fn(visit::fk_method(m.ident, []/~, m),
                        m.decl, m.body, m.span, m.id, msc, v);
         }
@@ -567,7 +569,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
         let isc = @cons(scope_method(i.id, tps), sc);
         for methods.each {|m|
             v.visit_ty_params(m.tps, isc, v);
-            let msc = @cons(scope_method(i.id, tps + m.tps), sc);
+            let msc = @cons(scope_method(i.id, vec::append(tps, m.tps)), sc);
             for m.decl.inputs.each {|a| v.visit_ty(a.ty, msc, v); }
             v.visit_ty(m.decl.output, msc, v);
         }
@@ -600,7 +602,8 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
         for members.each {|cm|
             alt cm.node {
               class_method(m) {
-                  let msc = @cons(scope_method(m.self_id, tps + m.tps),
+                  let msc = @cons(scope_method(m.self_id,
+                                               vec::append(tps, m.tps)),
                                   class_scope);
                   visit_fn_with_scope(e,
                      visit::fk_item_fn(m.ident, tps), m.decl, m.body,
@@ -911,7 +914,8 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
             path = @(e.mod_map.get(did.node).path + *path);
         } else if did.node != ast::crate_node_id {
             let paths = e.ext_map.get(did);
-            path = @str::connect((paths + [path]/~).map({|x|*x}), "::");
+            path = @str::connect(vec::append_one(paths, path).map({|x|*x}),
+                                 "::");
         }
       }
     }
@@ -1372,7 +1376,7 @@ fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
         if !is_none(cached) { ret cached; }
         let mut path = [name]/~;
         if defid.node != ast::crate_node_id {
-            path = cstore::get_path(e.cstore, defid) + path;
+            path = vec::append(cstore::get_path(e.cstore, defid), path);
         }
         alt lookup_external(e, defid.crate, path, ns) {
            some(df) {
@@ -1990,7 +1994,8 @@ fn check_exports(e: @env) {
           some(f) { f } none { []/~ }
         };
         e.exp_map.insert(export_id,
-                         found + [{reexp: reexp, id: target_id}]/~);
+                         vec::append_one(found,
+                                         {reexp: reexp, id: target_id}));
     }
 
     fn check_export(e: @env, ident: ident, _mod: @indexed_mod,
@@ -2186,7 +2191,9 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
                                               @{ident: name with *imp});
                                 }
                             }
-                            if vec::len(found) > 0u { impls += found; }
+                            if vec::len(found) > 0u {
+                                vec::push_all(impls, found);
+                            }
                         }
                     }
                 }
@@ -2201,7 +2208,9 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
 
           ast::view_path_list(base, names, _) {
             for names.each {|nm|
-                lookup_imported_impls(e, nm.node.id) {|is| impls += *is; }
+                lookup_imported_impls(e, nm.node.id) {|is|
+                    vec::push_all(impls, *is);
+                }
             }
           }
 

@@ -611,9 +611,9 @@ fn get_attributes(md: ebml::doc) -> [ast::attribute]/~ {
             // an attribute
             assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items[0];
-            attrs +=
-                [{node: {style: ast::attr_outer, value: *meta_item},
-                  span: ast_util::dummy_sp()}]/~;
+            vec::push(attrs,
+                      {node: {style: ast::attr_outer, value: *meta_item},
+                       span: ast_util::dummy_sp()});
         };
       }
       option::none { }

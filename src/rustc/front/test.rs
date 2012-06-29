@@ -98,7 +98,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
    @ast::item {
 
-    cx.path += [i.ident]/~;
+    vec::push(cx.path, i.ident);
     #debug("current path: %s", ast_util::path_name_i(cx.path));
 
     if is_test_fn(i) {
@@ -161,7 +161,7 @@ fn should_fail(i: @ast::item) -> bool {
 
 fn add_test_module(cx: test_ctxt, m: ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
-    ret {items: m.items + [testmod]/~ with m};
+    ret {items: vec::append_one(m.items, testmod) with m};
 }
 
 /*
@@ -252,7 +252,8 @@ fn mk_path(cx: test_ctxt, path: [ast::ident]/~) -> [ast::ident]/~ {
           _ { false }
         }
     };
-    (if is_std { []/~ } else { [@"std"]/~ }) + path
+    if is_std { path }
+    else { vec::append([@"std"]/~, path) }
 }
 
 // The ast::ty of [std::test::test_desc]/~
@@ -278,7 +279,7 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
     #debug("building test vector from %u tests", cx.testfns.len());
     let mut descs = []/~;
     for cx.testfns.each {|test|
-        descs += [mk_test_desc_rec(cx, test)]/~;
+        vec::push(descs, mk_test_desc_rec(cx, test));
     }
 
     let inner_expr = @{id: cx.sess.next_node_id(),

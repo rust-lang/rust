@@ -73,7 +73,7 @@ fn build_configuration(sess: session, argv0: str, input: input) ->
                 [attr::mk_word_item(@"test")]/~
             } else { []/~ }
         };
-    ret user_cfg + gen_cfg + default_cfg;
+    ret vec::append(vec::append(user_cfg, gen_cfg), default_cfg);
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -414,8 +414,8 @@ fn build_session_options(match: getopts::match,
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
 
-    let lint_flags = (getopts::opt_strs(match, "W")
-                      + getopts::opt_strs(match, "warn"));
+    let lint_flags = vec::append(getopts::opt_strs(match, "W"),
+                                 getopts::opt_strs(match, "warn"));
     let lint_dict = lint::get_lint_dict();
     let lint_opts = vec::map(lint_flags) {|flag|
         alt lint::lookup_lint(lint_dict, flag) {

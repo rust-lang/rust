@@ -2188,7 +2188,7 @@ fn is_fn_ty(fty: t) -> bool {
 
 // Returns a vec of all the input and output types of fty.
 fn tys_in_fn_ty(fty: fn_ty) -> [t]/~ {
-    fty.inputs.map({|a| a.ty}) + [fty.output]/~
+    vec::append_one(fty.inputs.map({|a| a.ty}), fty.output)
 }
 
 // Just checks whether it's a fn that returns bool,
@@ -2624,26 +2624,27 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
                 ast_map::path_name(item.ident)
               }
             };
-            *path + [item_elt]/~
+            vec::append_one(*path, item_elt)
           }
 
           ast_map::node_foreign_item(nitem, _, path) {
-            *path + [ast_map::path_name(nitem.ident)]/~
+            vec::append_one(*path, ast_map::path_name(nitem.ident))
           }
 
           ast_map::node_method(method, _, path) {
-            *path + [ast_map::path_name(method.ident)]/~
+            vec::append_one(*path, ast_map::path_name(method.ident))
           }
 
           ast_map::node_variant(variant, _, path) {
-            vec::init(*path) + [ast_map::path_name(variant.node.name)]/~
+            vec::append_one(vec::init(*path),
+                            ast_map::path_name(variant.node.name))
           }
 
           ast_map::node_ctor(nm, _, _, _, path) {
-              *path + [ast_map::path_name(nm)]/~
+            vec::append_one(*path, ast_map::path_name(nm))
           }
           ast_map::node_dtor(_, _, _, path) {
-              *path + [ast_map::path_name(@"dtor")]/~
+            vec::append_one(*path, ast_map::path_name(@"dtor"))
           }
 
 

@@ -382,11 +382,11 @@ fn x86_64_tys(atys: [TypeRef]/~,
                                        StructRetAttribute);
     let sret = option::is_some(ret_attr);
     if sret {
-        arg_tys = [ret_ty]/~ + arg_tys;
+        arg_tys = vec::append([ret_ty]/~, arg_tys);
         ret_ty = { cast:  false,
                    ty: T_void()
                  };
-        attrs = [ret_attr]/~ + attrs;
+        attrs = vec::append([ret_attr]/~, attrs);
     } else if !ret_def {
         ret_ty = { cast: false,
                    ty: T_void()
@@ -450,7 +450,7 @@ fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
 fn c_stack_tys(ccx: @crate_ctxt,
                id: ast::node_id) -> @c_stack_tys {
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, id);
-    let bundle_ty = T_struct(llargtys + [T_ptr(llretty)]/~);
+    let bundle_ty = T_struct(vec::append_one(llargtys, T_ptr(llretty)));
     let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
     let x86_64 = if ccx.sess.targ_cfg.arch == arch_x86_64 {
         option::some(x86_64_tys(llargtys, llretty, ret_def))
@@ -933,7 +933,7 @@ fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let _icx = ccx.insn_ctxt("foreign::extern::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
-            ccx, path + [ast_map::path_name(@"__rust_abi")]/~);
+            ccx, vec::append_one(path, ast_map::path_name(@"__rust_abi")));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id);
@@ -970,7 +970,8 @@ fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         }
 
         let shim_name = link::mangle_internal_name_by_path(
-            ccx, path + [ast_map::path_name(@"__rust_stack_shim")]/~);
+            ccx, vec::append_one(path,
+                                 ast_map::path_name(@"__rust_stack_shim")));
         ret build_shim_fn_(ccx, shim_name, llrustfn, tys,
                            lib::llvm::CCallConv,
                            build_args, build_ret);

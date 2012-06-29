@@ -22,7 +22,7 @@ fn inject_intrinsic(sess: session,
           }
         };
 
-    let items = [item]/~ + crate.node.module.items;
+    let items = vec::append([item]/~, crate.node.module.items);
 
     ret @{node: {module: { items: items with crate.node.module }
                  with crate.node} with *crate }

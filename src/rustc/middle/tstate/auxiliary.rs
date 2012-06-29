@@ -474,11 +474,11 @@ fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> option<def> {
 fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint]/~ {
     let mut rslt: [norm_constraint]/~ = []/~;
     for (*c.descs).each {|pd|
-        rslt +=
-            [{bit_num: pd.node.bit_num,
-              c: respan(pd.span, {path: c.path,
-                                  def_id: id,
-                                  args: pd.node.args})}]/~;
+        vec::push(rslt,
+                  {bit_num: pd.node.bit_num,
+                   c: respan(pd.span, {path: c.path,
+                                       def_id: id,
+                                       args: pd.node.args})});
     }
     ret rslt;
 }
@@ -489,7 +489,7 @@ fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint]/~ {
 fn constraints(fcx: fn_ctxt) -> [norm_constraint]/~ {
     let mut rslt: [norm_constraint]/~ = []/~;
     for fcx.enclosing.constrs.each {|key, val|
-        rslt += norm_a_constraint(key, val);
+        vec::push_all(rslt, norm_a_constraint(key, val));
     };
     ret rslt;
 }
@@ -887,22 +887,23 @@ fn args_to_constr_args(tcx: ty::ctxt, args: [arg]/~,
     let mut actuals: [@constr_arg_use]/~ = []/~;
     let num_args = vec::len(args);
     for indices.each {|a|
-        actuals +=
-            [@respan(a.span,
-                     alt a.node {
-                       carg_base { carg_base }
-                       carg_ident(i) {
-                         if i < num_args {
-                             carg_ident({ident: args[i].ident,
-                                         node: args[i].id})
-                         } else {
-                             tcx.sess.span_bug(a.span,
-                                               "index out of bounds in \
-                  constraint arg");
-                         }
-                       }
-                       carg_lit(l) { carg_lit(l) }
-                     })]/~;
+        vec::push(
+            actuals,
+            @respan(a.span,
+                    alt a.node {
+                        carg_base { carg_base }
+                        carg_ident(i) {
+                            if i < num_args {
+                                carg_ident({ident: args[i].ident,
+                                            node: args[i].id})
+                            } else {
+                                tcx.sess.span_bug(a.span,
+                                                  "index out of bounds in \
+                                                   constraint arg");
+                            }
+                        }
+                        carg_lit(l) { carg_lit(l) }
+                    }));
     }
     ret actuals;
 }

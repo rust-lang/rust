@@ -221,7 +221,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
             alt region_map.find(scope) {
                 none { ret result; }
                 some(superscope) {
-                    result += [superscope]/~;
+                    vec::push(result, superscope);
                     scope = superscope;
                 }
             }

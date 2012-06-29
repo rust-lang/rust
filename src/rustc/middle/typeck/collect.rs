@@ -204,7 +204,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         let substs = {
             self_r: some(dummy_self_r),
             self_ty: some(self_ty),
-            tps: if_substs.tps + dummy_tps
+            tps: vec::append(if_substs.tps, dummy_tps)
         };
         let if_fty = ty::mk_fn(tcx, if_m.fty);
         ty::subst(tcx, substs, if_fty)
@@ -286,7 +286,7 @@ fn convert_methods(ccx: @crate_ctxt,
 
             // n.b.: the type of a method is parameterized by both
             // the tps on the receiver and those on the method itself
-            {bounds: @(*rcvr_bounds + *bounds), rp: rp, ty: fty});
+            {bounds: @(vec::append(*rcvr_bounds, *bounds)), rp: rp, ty: fty});
         write_ty_to_tcx(tcx, m.id, fty);
         {mty: mty, id: m.id, span: m.span}
     }

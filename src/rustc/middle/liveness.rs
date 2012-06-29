@@ -242,7 +242,7 @@ class ir_maps {
 
     fn add_live_node(lnk: live_node_kind) -> live_node {
         let ln = live_node(self.num_live_nodes);
-        self.lnks += [lnk]/~;
+        vec::push(self.lnks, lnk);
         self.num_live_nodes += 1u;
 
         #debug["%s is of kind %?", ln.to_str(), lnk];
@@ -259,7 +259,7 @@ class ir_maps {
 
     fn add_variable(vk: var_kind) -> variable {
         let v = variable(self.num_vars);
-        self.var_kinds += [vk]/~;
+        vec::push(self.var_kinds, vk);
         self.num_vars += 1u;
 
         alt vk {
@@ -444,7 +444,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
                   cap_move | cap_drop {true} // var must be dead afterwards
                   cap_copy | cap_ref {false} // var can still be used
                 };
-                call_caps += [{ln: cv_ln, is_move: is_move, rv: rv}]/~;
+                vec::push(call_caps, {ln: cv_ln, is_move: is_move, rv: rv});
               }
               none {}
             }

@@ -77,7 +77,8 @@ impl methods for reflector {
 
     fn bracketed_mt(bracket_name: str, mt: ty::mt, extra: [ValueRef]/~) {
         self.bracketed_t(bracket_name, mt.ty,
-                         [self.c_uint(mt.mutbl as uint)]/~ + extra);
+                         vec::append([self.c_uint(mt.mutbl as uint)]/~,
+                                     extra));
     }
 
     fn vstore_name_and_extra(t: ty::t,
@@ -85,7 +86,8 @@ impl methods for reflector {
                              f: fn(str,[ValueRef]/~)) {
         alt vstore {
           ty::vstore_fixed(n) {
-            let extra = [self.c_uint(n)]/~ + self.c_size_and_align(t);
+            let extra = vec::append([self.c_uint(n)]/~,
+                                    self.c_size_and_align(t));
             f("fixed", extra)
           }
           ty::vstore_slice(_) { f("slice", []/~) }
@@ -142,8 +144,8 @@ impl methods for reflector {
           ty::ty_rptr(_, mt) { self.bracketed_mt("rptr", mt, []/~) }
 
           ty::ty_rec(fields) {
-            let extra = ([self.c_uint(vec::len(fields))]/~
-                         + self.c_size_and_align(t));
+            let extra = (vec::append([self.c_uint(vec::len(fields))]/~,
+                                     self.c_size_and_align(t)));
             self.visit("enter_rec", extra);
             for fields.eachi {|i, field|
                 self.bracketed_mt("rec_field", field.mt,
@@ -154,8 +156,8 @@ impl methods for reflector {
           }
 
           ty::ty_tup(tys) {
-            let extra = ([self.c_uint(vec::len(tys))]/~
-                         + self.c_size_and_align(t));
+            let extra = (vec::append([self.c_uint(vec::len(tys))]/~,
+                                     self.c_size_and_align(t)));
             self.visit("enter_tup", extra);
             for tys.eachi {|i, t|
                 self.bracketed_t("tup_field", t, [self.c_uint(i)]/~);
@@ -214,8 +216,8 @@ impl methods for reflector {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let fields = ty::class_items_as_fields(tcx, did, substs);
-            let extra = ([self.c_uint(vec::len(fields))]/~
-                         + self.c_size_and_align(t));
+            let extra = vec::append([self.c_uint(vec::len(fields))]/~,
+                                    self.c_size_and_align(t));
 
             self.visit("enter_class", extra);
             for fields.eachi {|i, field|
@@ -234,8 +236,8 @@ impl methods for reflector {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let variants = ty::substd_enum_variants(tcx, did, substs);
-            let extra = ([self.c_uint(vec::len(variants))]/~
-                         + self.c_size_and_align(t));
+            let extra = vec::append([self.c_uint(vec::len(variants))]/~,
+                                    self.c_size_and_align(t));
 
             self.visit("enter_enum", extra);
             for variants.eachi {|i, v|

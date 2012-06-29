@@ -133,7 +133,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         alt ident { some(i) { s += " "; s += *i; } _ { } }
         s += "(";
         let mut strs = []/~;
-        for inputs.each {|a| strs += [fn_input_to_str(cx, a)]/~; }
+        for inputs.each {|a| vec::push(strs, fn_input_to_str(cx, a)); }
         s += str::connect(strs, ", ");
         s += ")";
         if ty::get(output).struct != ty_nil {
@@ -190,12 +190,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_type { "type" }
       ty_rec(elems) {
         let mut strs: [str]/~ = []/~;
-        for elems.each {|fld| strs += [field_to_str(cx, fld)]/~; }
+        for elems.each {|fld| vec::push(strs, field_to_str(cx, fld)); }
         "{" + str::connect(strs, ",") + "}"
       }
       ty_tup(elems) {
         let mut strs = []/~;
-        for elems.each {|elem| strs += [ty_to_str(cx, elem)]/~; }
+        for elems.each {|elem| vec::push(strs, ty_to_str(cx, elem)); }
         "(" + str::connect(strs, ",") + ")"
       }
       ty_fn(f) {
