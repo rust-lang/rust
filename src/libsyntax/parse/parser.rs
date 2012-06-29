@@ -1040,26 +1040,6 @@ class parser {
                 e = self.mk_pexpr(lo, hi, nd);
               }
 
-              // expr {|| ... }
-              token::LBRACE if (token::is_bar(self.look_ahead(1u))
-                                && self.permits_call()) {
-                self.bump();
-                let blk = self.parse_fn_block_expr();
-                alt e.node {
-                  expr_call(f, args, false) {
-                    e = pexpr(@{node: expr_call(f,
-                                                vec::append(args, ~[blk]),
-                                                true)
-                                with *self.to_expr(e)});
-                  }
-                  _ {
-                    e = self.mk_pexpr(lo, self.last_span.hi,
-                                      expr_call(self.to_expr(e),
-                                                ~[blk], true));
-                  }
-                }
-              }
-
               // expr[...]
               token::LBRACKET {
                 self.bump();
@@ -1387,16 +1367,27 @@ class parser {
     fn parse_sugary_call_expr(keyword: str,
                               ctor: fn(+@expr) -> expr_) -> @expr {
         let lo = self.last_span;
-        let call = self.parse_expr_res(RESTRICT_STMT_EXPR);
-        alt call.node {
-          expr_call(f, args, true) {
-            let b_arg = vec::last(args);
-            let last = self.mk_expr(b_arg.span.lo, b_arg.span.hi,
-                                    ctor(b_arg));
-            @{node: expr_call(f, vec::append(vec::init(args), ~[last]), true)
-              with *call}
+        let e = self.parse_expr_res(RESTRICT_STMT_EXPR);
+        alt e.node {
+          expr_call(f, args, false) {
+            self.expect(token::LBRACE);
+            let block = self.parse_fn_block_expr();
+            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                    ctor(block));
+            let args = vec::append(args, ~[last_arg]);
+            @{node: expr_call(f, args, true)
+              with *e}
+          }
+          expr_path(*) | expr_field(*) | expr_call(*) {
+            self.expect(token::LBRACE);
+            let block = self.parse_fn_block_expr();
+            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                    ctor(block));
+            self.mk_expr(lo.lo, last_arg.span.hi,
+                         expr_call(e, ~[last_arg], true))
           }
           _ {
+            self.warn(#fmt("unexpected sugary call %?", e.node));
             self.span_fatal(
                 lo, #fmt("`%s` must be followed by a block call", keyword));
           }
