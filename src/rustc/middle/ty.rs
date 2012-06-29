@@ -1569,7 +1569,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         let mut lowest = kind_top();
         let variants = enum_variants(cx, did);
         if vec::len(*variants) == 0u {
-            lowest = kind_noncopyable();
+            lowest = kind_send_only();
         } else {
             for vec::each(*variants) {|variant|
                 for variant.args.each {|aty|
