@@ -60,9 +60,9 @@ fn run(args: [str]/~) {
 
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "1000000", "10000"]
+        ["", "1000000", "10000"]/~
     } else if args.len() <= 1u {
-        ["", "10000", "4"]
+        ["", "10000", "4"]/~
     } else {
         args
     };        

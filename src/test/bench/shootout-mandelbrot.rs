@@ -142,7 +142,7 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
 
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "4000", "10"]
+        ["", "4000", "10"]/~
     } else {
         args
     };

@@ -42,9 +42,9 @@ fn eval_AtA_times_u(u: [const float]/~, AtAu: [mut float]/~) {
 
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "2000"]
+        ["", "2000"]/~
     } else if args.len() <= 1u {
-        ["", "1000"]
+        ["", "1000"]/~
     } else {
         args
     };

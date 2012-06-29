@@ -10,9 +10,9 @@ fn g() { }
 
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "400"]
+        ["", "400"]/~
     } else if args.len() <= 1u {
-        ["", "10"]
+        ["", "10"]/~
     } else {
         args
     };

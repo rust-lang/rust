@@ -187,7 +187,7 @@ fn main(args: [str]/~) {
 
    // finish...
    for sizes.eachi { |ii, _sz|
-      comm::send(to_child[ii], []);
+      comm::send(to_child[ii], []/~);
    }
 
    // now fetch and print result messages

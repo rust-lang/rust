@@ -24,9 +24,9 @@ fn bottom_up_tree(arena: &a.arena::arena, item: int, depth: int) -> &a.tree {
 
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "17"]
+        ["", "17"]/~
     } else if args.len() <= 1u {
-        ["", "8"]
+        ["", "8"]/~
     } else {
         args
     };

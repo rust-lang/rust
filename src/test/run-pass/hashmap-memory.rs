@@ -94,5 +94,5 @@ mod map_reduce {
 }
 
 fn main() {
-    map_reduce::map_reduce(["../src/test/run-pass/hashmap-memory.rs"]);
+    map_reduce::map_reduce(["../src/test/run-pass/hashmap-memory.rs"]/~);
 }

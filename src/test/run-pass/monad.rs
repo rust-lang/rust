@@ -22,6 +22,6 @@ fn transform(x: option<int>) -> option<str> {
 fn main() {
     assert transform(some(10)) == some("11");
     assert transform(none) == none;
-    assert ["hi"].bind {|x| [x, x + "!"]}.bind {|x| [x, x + "?"]} ==
-        ["hi", "hi?", "hi!", "hi!?"];
+    assert ["hi"]/~.bind {|x| [x, x + "!"]/~}.bind {|x| [x, x + "?"]/~} ==
+        ["hi", "hi?", "hi!", "hi!?"]/~;
 }

@@ -77,9 +77,9 @@ fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
         // alioth tests k-nucleotide with this data at 25,000,000
-        ["", "5000000"]
+        ["", "5000000"]/~
     } else if args.len() <= 1u {
-        ["", "1000"]
+        ["", "1000"]/~
     } else {
         args
     };

@@ -14,9 +14,9 @@ fn ack(m: int, n: int) -> int {
 
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "12"]
+        ["", "12"]/~
     } else if args.len() <= 1u {
-        ["", "8"]
+        ["", "8"]/~
     } else {
         args
     };

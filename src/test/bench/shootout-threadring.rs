@@ -39,9 +39,9 @@ fn roundtrip(id: int, p: comm::port<int>, ch: comm::chan<int>) {
 
 fn main(args: [str]/~) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "2000000"]
+        ["", "2000000"]/~
     } else if args.len() <= 1u {
-        ["", "1000"]
+        ["", "1000"]/~
     } else {
         args
     };
