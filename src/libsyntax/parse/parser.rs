@@ -1070,9 +1070,10 @@ class parser {
 
         fn parse_tt_flat(p: parser, delim_ok: bool) -> token_tree {
             if p.eat_keyword("many") && p.quote_depth > 0u {
-                ret tt_dotdotdot(
-                    p.parse_seq(token::LPAREN, token::RPAREN, seq_sep_none(),
-                                |p| p.parse_token_tree()).node);
+                let seq = p.parse_seq(token::LPAREN, token::RPAREN,
+                                      seq_sep_none(),
+                                      |p| p.parse_token_tree());
+                ret tt_dotdotdot(seq.span, seq.node);
             }
             alt p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
@@ -1086,7 +1087,8 @@ class parser {
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if p.quote_depth > 0u {
                 p.bump();
-                ret tt_interpolate(p.parse_ident());
+                let sp = p.span;
+                ret tt_interpolate(sp, p.parse_ident());
               }
               _ { /* ok */ }
             }

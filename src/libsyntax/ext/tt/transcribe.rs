@@ -1,9 +1,10 @@
 import util::interner::interner;
 import diagnostic::span_handler;
-import ast::{tt_delim,tt_flat,tt_dotdotdot,tt_interpolate,ident};
-import earley_parser::arb_depth;
+import ast::{token_tree,tt_delim,tt_flat,tt_dotdotdot,tt_interpolate,ident};
+import earley_parser::{arb_depth,seq,leaf};
 import codemap::span;
-import parse::token::{EOF,token};
+import parse::token::{EOF,ACTUALLY,token};
+import std::map::{hashmap,box_str_hash};
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
 
@@ -14,8 +15,9 @@ enum tt_frame_up { /* to break a circularity */
 /* TODO: figure out how to have a uniquely linked stack, and change to `~` */
 ///an unzipping of `token_tree`s
 type tt_frame = @{
-    readme: [ast::token_tree]/~,
+    readme: ~[ast::token_tree],
     mut idx: uint,
+    dotdotdoted: bool,
     up: tt_frame_up
 };
 
@@ -25,6 +27,8 @@ type tt_reader = @{
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
     interpolations: std::map::hashmap<ident, @arb_depth>,
+    mut repeat_idx: ~[mut uint],
+    mut repeat_len: ~[uint],
     /* cached: */
     mut cur_tok: token,
     mut cur_span: span
@@ -35,15 +39,16 @@ type tt_reader = @{
  *  should) be none. */
 fn new_tt_reader(span_diagnostic: span_handler, itr: @interner<@str>,
                  interp: option<std::map::hashmap<ident,@arb_depth>>,
-                 src: [ast::token_tree]/~)
+                 src: ~[ast::token_tree])
     -> tt_reader {
     let r = @{span_diagnostic: span_diagnostic, interner: itr,
-              mut cur: @{readme: src, mut idx: 0u,
+              mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          up: tt_frame_up(option::none)},
               interpolations: alt interp { /* just a convienience */
                 none { std::map::box_str_hash::<@arb_depth>() }
                 some(x) { x }
               },
+              mut repeat_idx: ~[mut], mut repeat_len: ~[],
               /* dummy values, never read: */
               mut cur_tok: EOF,
               mut cur_span: ast_util::mk_sp(0u,0u)
@@ -53,7 +58,7 @@ fn new_tt_reader(span_diagnostic: span_handler, itr: @interner<@str>,
 }
 
 pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
-    @{readme: f.readme, mut idx: f.idx,
+    @{readme: f.readme, mut idx: f.idx, dotdotdoted: f.dotdotdoted,
       up: alt f.up {
         tt_frame_up(some(up_frame)) {
           tt_frame_up(some(dup_tt_frame(up_frame)))
@@ -67,34 +72,98 @@ pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
     @{span_diagnostic: r.span_diagnostic, interner: r.interner,
       mut cur: dup_tt_frame(r.cur),
       interpolations: r.interpolations,
+      mut repeat_idx: copy r.repeat_idx, mut repeat_len: copy r.repeat_len,
       mut cur_tok: r.cur_tok, mut cur_span: r.cur_span}
+}
+
+
+pure fn lookup_cur_ad_by_ad(r: tt_reader, start: @arb_depth) -> @arb_depth {
+    pure fn red(&&ad: @arb_depth, &&idx: uint) -> @arb_depth {
+        alt *ad {
+          leaf(_) { ad /* end of the line; duplicate henceforth */ }
+          seq(ads, _) { ads[idx] }
+        }
+    }
+    vec::foldl(start, r.repeat_idx, red)
+}
+
+fn lookup_cur_ad(r: tt_reader, name: ident) -> @arb_depth {
+    lookup_cur_ad_by_ad(r, r.interpolations.get(name))
+}
+enum lis {
+    lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(str)
+}
+
+fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
+    fn lis_merge(lhs: lis, rhs: lis) -> lis {
+        alt lhs {
+          lis_unconstrained { rhs }
+          lis_contradiction(_) { lhs }
+          lis_constraint(l_len, l_id) {
+            alt rhs {
+              lis_unconstrained { lhs }
+              lis_contradiction(_) { rhs }
+              lis_constraint(r_len, _) if l_len == r_len { lhs }
+              lis_constraint(r_len, r_id) {
+                lis_contradiction(#fmt["Inconsistent lockstep iteration: \
+                                        '%s' has %u items, but '%s' has %u",
+                                       *l_id, l_len, *r_id, r_len])
+              }
+            }
+          }
+        }
+    }
+    alt t {
+      tt_delim(tts) | tt_dotdotdot(_, tts) {
+        vec::foldl(lis_unconstrained, tts, {|lis, tt|
+            lis_merge(lis, lockstep_iter_size(tt, r)) })
+      }
+      tt_flat(*) { lis_unconstrained }
+      tt_interpolate(_, name) {
+        alt *lookup_cur_ad(r, name) {
+          leaf(_) { lis_unconstrained }
+          seq(ads, _) { lis_constraint(ads.len(), name) }
+        }
+      }
+    }
 }
 
 
 fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
     let ret_val = { tok: r.cur_tok, sp: r.cur_span };
     if r.cur.idx >= vec::len(r.cur.readme) {
-        /* done with this set; pop */
-        alt r.cur.up {
-          tt_frame_up(none) {
-            r.cur_tok = EOF;
-            ret ret_val;
-          }
-          tt_frame_up(some(tt_f)) {
-            r.cur = tt_f;
-            /* the above `if` would need to be a `while` if we didn't know
-            that the last thing in a `tt_delim` is always a `tt_flat` */
-            r.cur.idx += 1u;
-          }
+        /* done with this set; pop or repeat? */
+        if ! r.cur.dotdotdoted
+            || r.repeat_idx.last() == r.repeat_len.last() - 1 {
+            if r.cur.dotdotdoted {
+                vec::pop(r.repeat_idx); vec::pop(r.repeat_len);
+            }
+            alt r.cur.up {
+              tt_frame_up(none) {
+                r.cur_tok = EOF;
+                ret ret_val;
+              }
+              tt_frame_up(some(tt_f)) {
+                r.cur = tt_f;
+                /* the outermost `if` would need to be a `while` if we
+                didn't know that the last thing in a `tt_delim` is always
+                a `tt_flat`, and that a `tt_dotdotdot` is never empty */
+                r.cur.idx += 1u;
+              }
+            }
+
+        } else {
+            r.cur.idx = 0u;
+            r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
         }
     }
     /* if `tt_delim`s could be 0-length, we'd need to be able to switch
     between popping and pushing until we got to an actual `tt_flat` */
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_flat`, even though it won't happen */
-        alt copy r.cur.readme[r.cur.idx] {
+        alt r.cur.readme[r.cur.idx] {
           tt_delim(tts) {
-            r.cur = @{readme: tts, mut idx: 0u,
+            r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: false,
                       up: tt_frame_up(option::some(r.cur)) };
           }
           tt_flat(sp, tok) {
@@ -102,11 +171,39 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             r.cur.idx += 1u;
             ret ret_val;
           }
-          tt_dotdotdot(tts) {
-            fail;
+          tt_dotdotdot(sp, tts) {
+            alt lockstep_iter_size(tt_dotdotdot(sp, tts), r) {
+              lis_unconstrained {
+                r.span_diagnostic.span_fatal(
+                    copy r.cur_span, /* blame macro writer */
+                    "attempted to repeat an expression containing no syntax \
+                     variables matched as repeating at this depth");
+              }
+              lis_contradiction(msg) { /* blame macro invoker */
+                r.span_diagnostic.span_fatal(sp, msg);
+              }
+              lis_constraint(len, _) {
+                vec::push(r.repeat_len, len);
+                vec::push(r.repeat_idx, 0u);
+                r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
+                      up: tt_frame_up(option::some(r.cur)) };
+              }
+            }
           }
-          tt_interpolate(ident) {
-            fail;
+          // TODO: think about span stuff here
+          tt_interpolate(sp, ident) {
+            alt *lookup_cur_ad(r, ident) {
+              leaf(w_nt) {
+                r.cur_span = sp; r.cur_tok = ACTUALLY(w_nt);
+                ret ret_val;
+              }
+              seq(*) {
+                r.span_diagnostic.span_fatal(
+                    copy r.cur_span, /* blame the macro writer */
+                    #fmt["variable '%s' is still repeating at this depth",
+                         *ident]);
+              }
+            }
           }
         }
     }

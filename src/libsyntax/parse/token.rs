@@ -78,7 +78,8 @@ enum token {
     IDENT(str_num, bool),
     UNDERSCORE,
 
-    //ACTUALLY(whole_nonterminal),
+    /* For interpolation */
+    ACTUALLY(whole_nt),
 
     DOC_COMMENT(str_num),
     EOF,
@@ -181,6 +182,15 @@ fn to_str(in: interner<@str>, t: token) -> str {
       /* Other */
       DOC_COMMENT(s) { *interner::get(in, s) }
       EOF { "<eof>" }
+      ACTUALLY(w_nt) {
+        "an interpolated " +
+            alt w_nt {
+              w_item(*) { "item" } w_block(*) { "block" }
+              w_stmt(*) { "statement" } w_pat(*) { "pattern" }
+              w_expr(*) { "expression" } w_ty(*) { "type" }
+              w_ident(*) { "identifier" } w_path(*) { "path" }
+        }
+      }
     }
 }
 
