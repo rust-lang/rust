@@ -173,6 +173,12 @@ mod dvec_iter {
     #[path = "dvec.rs"]
     mod inst;
 }
+mod dlist;
+#[path="iter-trait"]
+mod dlist_iter {
+    #[path ="dlist.rs"]
+    mod inst;
+}
 
 // Concurrency
 mod arc;
