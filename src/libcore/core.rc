@@ -39,7 +39,7 @@ export float, f32, f64;
 export box, char, str, ptr, vec, bool;
 export either, option, result, iter;
 export libc, os, io, run, rand, sys, unsafe, logging;
-export arc, newcomm, comm, task, future;
+export arc, newcomm, comm, task, future, pipes;
 export extfmt;
 export tuple;
 export to_str, to_bytes;
@@ -187,7 +187,9 @@ mod newcomm;
 mod comm;
 mod task;
 mod future;
-
+// TODO: remove the conditionals once a new snapshot happens
+#[cfg(stage1)]
+mod pipes;
 
 // Runtime and language-primitive support
 

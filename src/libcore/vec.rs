@@ -1163,7 +1163,6 @@ pure fn unpack_mut_slice<T,U>(s: &[mut T],
 impl extensions<T: copy> for ~[T] {
     #[inline(always)]
     pure fn +(rhs: &[const T]) -> ~[T] {
-he pretty printer is unhappy.
         append(self, rhs)
     }
 }
