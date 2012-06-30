@@ -10,6 +10,7 @@ elseif exists("b:current_syntax")
 endif
 
 syn keyword   rustAssert      assert
+syn match     rustAssert      "assert\(\w\)*"
 syn keyword   rustKeyword     alt as break
 syn keyword   rustKeyword     check claim cont const copy else export extern fail
 syn keyword   rustKeyword     do for if impl import in let log
@@ -33,9 +34,9 @@ syn keyword   rustType        f64 i8 i16 i32 i64 str
 syn keyword   rustBoolean     true false
 
 syn keyword   rustConstant    some none       " option
-" syn keyword   rustConstant    left right      " either
-" syn keyword   rustConstant    ok err          " result
-" syn keyword   rustConstant    success failure " task
+syn keyword   rustConstant    left right      " either
+syn keyword   rustConstant    ok err          " result
+syn keyword   rustConstant    success failure " task
 " syn keyword   rustConstant    cons nil        " list
 " syn keyword   rustConstant    empty node      " tree
 
