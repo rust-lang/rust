@@ -34,6 +34,8 @@ for t in os.listdir(run_pass):
                 take_args[t] = True
             if "main(args: [str])" in s:
                 take_args[t] = True
+            if "main(args: ~[str])" in s:
+                take_args[t] = True
         f.close()
 
 stage2_tests.sort()
