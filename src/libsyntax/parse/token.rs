@@ -80,6 +80,7 @@ enum token {
 
     //ACTUALLY(whole_nonterminal),
 
+    DOC_COMMENT(str_num),
     EOF,
 }
 
@@ -170,11 +171,15 @@ fn to_str(in: interner<@str>, t: token) -> str {
             + str::escape_default(*interner::get(in, s))
             + "\""
       }
+
       /* Name components */
       IDENT(s, _) {
         *interner::get(in, s)
       }
       UNDERSCORE { "_" }
+
+      /* Other */
+      DOC_COMMENT(s) { *interner::get(in, s) }
       EOF { "<eof>" }
     }
 }

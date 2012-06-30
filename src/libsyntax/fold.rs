@@ -102,7 +102,8 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
 fn fold_attribute_(at: attribute, fld: ast_fold) ->
    attribute {
     ret {node: {style: at.node.style,
-                value: *fold_meta_item_(@at.node.value, fld)},
+                value: *fold_meta_item_(@at.node.value, fld),
+                is_sugared_doc: at.node.is_sugared_doc },
          span: fld.new_span(at.span)};
 }
 //used in noop_fold_foreign_item and noop_fold_fn_decl

@@ -652,8 +652,9 @@ type attribute = spanned<attribute_>;
 #[auto_serialize]
 enum attr_style { attr_outer, attr_inner, }
 
+// doc-comments are promoted to attributes that have is_sugared_doc = true
 #[auto_serialize]
-type attribute_ = {style: attr_style, value: meta_item};
+type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
 
 /*
   iface_refs appear in both impls and in classes that implement ifaces.
