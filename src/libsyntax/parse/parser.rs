@@ -30,6 +30,7 @@ enum restriction {
     RESTRICT_STMT_EXPR,
     RESTRICT_NO_CALL_EXPRS,
     RESTRICT_NO_BAR_OP,
+    RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
 
 enum file_type { CRATE_FILE, SOURCE_FILE, }
@@ -776,11 +777,13 @@ class parser {
                 self.expect(token::RBRACE);
                 ex = expr_rec(fields, base);
             } else if token::is_bar(self.token) {
-                ret pexpr(self.parse_fn_block_expr());
+                ret pexpr(self.parse_fn_block_expr_old());
             } else {
                 let blk = self.parse_block_tail(lo, default_blk);
                 ret self.mk_pexpr(blk.span.lo, blk.span.hi, expr_block(blk));
             }
+        } else if token::is_bar(self.token) {
+            ret pexpr(self.parse_lambda_expr());
         } else if self.eat_keyword("new") {
             self.expect(token::LPAREN);
             let r = self.parse_expr();
@@ -1234,7 +1237,14 @@ class parser {
         if self.expr_is_complete(plhs) { ret lhs; }
         let peeked = self.token;
         if peeked == token::BINOP(token::OR) &&
-            self.restriction == RESTRICT_NO_BAR_OP { ret lhs; }
+            (self.restriction == RESTRICT_NO_BAR_OP ||
+             self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) {
+            ret lhs;
+        }
+        if peeked == token::OROR &&
+            self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP {
+            ret lhs;
+        }
         let cur_opt   = token_to_binop(peeked);
         alt cur_opt {
           some(cur_op) {
@@ -1347,12 +1357,44 @@ class parser {
                          expr_fn(proto, decl, body, capture_clause));
     }
 
-    fn parse_fn_block_expr() -> @expr {
+    fn parse_fn_block_expr_old() -> @expr {
         let lo = self.last_span.lo;
         let (decl, captures) = self.parse_fn_block_decl();
         let body = self.parse_block_tail(lo, default_blk);
         ret self.mk_expr(lo, body.span.hi,
                          expr_fn_block(decl, body, captures));
+    }
+
+    // `|args| { ... }` like in `do` expressions
+    fn parse_lambda_block_expr() -> @expr {
+        self.parse_lambda_expr_({||
+            let blk = self.parse_block();
+            self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk))
+        })
+    }
+
+    // `|args| expr`
+    fn parse_lambda_expr() -> @expr {
+        self.parse_lambda_expr_({|| self.parse_expr()})
+    }
+
+    fn parse_lambda_expr_(parse_body: fn&() -> @expr) -> @expr {
+        if self.token == token::LBRACE {
+            // Old style lambdas `{|args| ... }`
+            self.expect(token::LBRACE);
+            ret self.parse_fn_block_expr_old();
+        } else {
+            let lo = self.last_span.lo;
+            // New style lambdas `|args| expr`
+            let (decl, captures) = self.parse_fn_block_decl();
+            let body = parse_body();
+            let fakeblock = {view_items: ~[], stmts: ~[], expr: some(body),
+                             id: self.get_id(), rules: default_blk};
+            let fakeblock = spanned(body.span.lo, body.span.hi,
+                                    fakeblock);
+            ret self.mk_expr(lo, body.span.hi,
+                             expr_fn_block(decl, fakeblock, captures));
+        }
     }
 
     fn parse_else_expr() -> @expr {
@@ -1367,11 +1409,19 @@ class parser {
     fn parse_sugary_call_expr(keyword: str,
                               ctor: fn(+@expr) -> expr_) -> @expr {
         let lo = self.last_span;
-        let e = self.parse_expr_res(RESTRICT_STMT_EXPR);
+        // Parse the callee `foo` in
+        //    for foo || {
+        //    for foo.bar || {
+        // etc, or the portion of the call expression before the lambda in
+        //    for foo() || {
+        // or
+        //    for foo.bar(a) || {
+        // Turn on the restriction to stop at | or || so we can parse
+        // them as the lambda arguments
+        let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
         alt e.node {
           expr_call(f, args, false) {
-            self.expect(token::LBRACE);
-            let block = self.parse_fn_block_expr();
+            let block = self.parse_lambda_block_expr();
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));
             let args = vec::append(args, ~[last_arg]);
@@ -1379,15 +1429,17 @@ class parser {
               with *e}
           }
           expr_path(*) | expr_field(*) | expr_call(*) {
-            self.expect(token::LBRACE);
-            let block = self.parse_fn_block_expr();
+            let block = self.parse_lambda_block_expr();
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));
             self.mk_expr(lo.lo, last_arg.span.hi,
                          expr_call(e, ~[last_arg], true))
           }
           _ {
-            self.warn(#fmt("unexpected sugary call %?", e.node));
+            // There may be other types of expressions that can
+            // represent the callee in `for` and `do` expressions
+            // but they aren't represented by tests
+            #debug("sugary call on %?", e.node);
             self.span_fatal(
                 lo, #fmt("`%s` must be followed by a block call", keyword));
           }
