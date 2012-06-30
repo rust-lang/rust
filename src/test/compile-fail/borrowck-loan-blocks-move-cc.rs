@@ -5,7 +5,7 @@ fn borrow(v: &int, f: fn(x: &int)) {
 fn box_imm() {
     let mut v = ~3;
     let _w = &mut v; //! NOTE loan of mutable local variable granted here
-    do task::spawn { |move v|
+    do task::spawn |move v| {
         //!^ ERROR moving out of mutable local variable prohibited due to outstanding loan
         #debug["v=%d", *v];
     }

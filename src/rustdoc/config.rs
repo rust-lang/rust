@@ -59,7 +59,7 @@ fn usage() {
 
     println("Usage: rustdoc ~[options] <cratefile>\n");
     println("Options:\n");
-    for opts().each {|opt|
+    for opts().each |opt| {
         println(#fmt("    %s", tuple::second(opt)));
     }
     println("");
@@ -122,20 +122,20 @@ fn config_from_opts(
 
     let config = default_config(input_crate);
     let result = result::ok(config);
-    let result = do result::chain(result) {|config|
+    let result = do result::chain(result) |config| {
         let output_dir = getopts::opt_maybe_str(match, opt_output_dir());
         result::ok({
             output_dir: option::get_default(output_dir, config.output_dir)
             with config
         })
     };
-    let result = do result::chain(result) {|config|
+    let result = do result::chain(result) |config| {
         let output_format = getopts::opt_maybe_str(
             match, opt_output_format());
         do option::map_default(output_format, result::ok(config))
-           {|output_format|
+            |output_format| {
             do result::chain(parse_output_format(output_format))
-                {|output_format|
+                |output_format| {
 
                 result::ok({
                     output_format: output_format
@@ -144,11 +144,12 @@ fn config_from_opts(
             }
         }
     };
-    let result = do result::chain(result) {|config|
+    let result = do result::chain(result) |config| {
         let output_style = getopts::opt_maybe_str(match, opt_output_style());
         do option::map_default(output_style, result::ok(config))
-          {|output_style|
-            do result::chain(parse_output_style(output_style)) {|output_style|
+            |output_style| {
+            do result::chain(parse_output_style(output_style))
+                |output_style| {
                 result::ok({
                     output_style: output_style
                     with config
@@ -156,11 +157,11 @@ fn config_from_opts(
             }
         }
     };
-    let result = do result::chain(result) {|config|
+    let result = do result::chain(result) |config| {
         let pandoc_cmd = getopts::opt_maybe_str(match, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
             config, pandoc_cmd, program_output);
-        do result::chain(pandoc_cmd) {|pandoc_cmd|
+        do result::chain(pandoc_cmd) |pandoc_cmd| {
             result::ok({
                 pandoc_cmd: pandoc_cmd
                 with config
@@ -207,7 +208,7 @@ fn maybe_find_pandoc(
       }
     };
 
-    let pandoc = do vec::find(possible_pandocs) {|pandoc|
+    let pandoc = do vec::find(possible_pandocs) |pandoc| {
         let output = program_output(pandoc, ~["--version"]);
         #debug("testing pandoc cmd %s: %?", pandoc, output);
         output.status == 0

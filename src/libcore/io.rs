@@ -195,7 +195,7 @@ impl of reader for *libc::FILE {
     fn read_bytes(len: uint) -> ~[u8] {
         let mut buf : ~[mut u8] = ~[mut];
         vec::reserve(buf, len);
-        do vec::as_mut_buf(buf) {|b|
+        do vec::as_mut_buf(buf) |b| {
             let read = libc::fread(b as *mut c_void, 1u as size_t,
                                    len as size_t, self);
             unsafe { vec::unsafe::set_len(buf, read as uint) };
@@ -245,10 +245,10 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
 fn stdin() -> reader { rustrt::rust_get_stdin() as reader }
 
 fn file_reader(path: str) -> result<reader, str> {
-    let f = os::as_c_charp(path, {|pathbuf|
-        os::as_c_charp("r", {|modebuf|
+    let f = os::as_c_charp(path, |pathbuf| {
+        os::as_c_charp("r", |modebuf|
             libc::fopen(pathbuf, modebuf)
-        })
+        )
     });
     ret if f as uint == 0u { result::err("error opening " + path) }
     else {
@@ -308,7 +308,7 @@ fn str_reader(s: str) -> reader {
 }
 
 fn with_str_reader<T>(s: str, f: fn(reader) -> T) -> T {
-    do str::as_bytes(s) { |bytes|
+    do str::as_bytes(s) |bytes| {
         with_bytes_reader_between(bytes, 0u, str::len(s), f)
     }
 }
@@ -334,7 +334,7 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
 
 impl of writer for *libc::FILE {
     fn write(v: &[const u8]) {
-        do vec::unpack_const_slice(v) {|vbuf, len|
+        do vec::unpack_const_slice(v) |vbuf, len| {
             let nout = libc::fwrite(vbuf as *c_void, len as size_t,
                                     1u as size_t, self);
             if nout < 1 as size_t {
@@ -363,7 +363,7 @@ fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
 impl of writer for fd_t {
     fn write(v: &[const u8]) {
         let mut count = 0u;
-        do vec::unpack_const_slice(v) {|vbuf, len|
+        do vec::unpack_const_slice(v) |vbuf, len| {
             while count < len {
                 let vb = ptr::const_offset(vbuf, count) as *c_void;
                 let nout = libc::write(self, vb, len as size_t);
@@ -412,7 +412,7 @@ fn mk_file_writer(path: str, flags: ~[fileflag])
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-    for vec::each(flags) {|f|
+    for vec::each(flags) |f| {
         alt f {
           append { fflags |= O_APPEND as c_int; }
           create { fflags |= O_CREAT as c_int; }
@@ -420,7 +420,7 @@ fn mk_file_writer(path: str, flags: ~[fileflag])
           no_flag { }
         }
     }
-    let fd = do os::as_c_charp(path) {|pathbuf|
+    let fd = do os::as_c_charp(path) |pathbuf| {
         libc::open(pathbuf, fflags,
                    (S_IRUSR | S_IWUSR) as c_int)
     };
@@ -514,78 +514,78 @@ impl writer_util for writer {
             self.write_str(str::from_char(ch));
         }
     }
-    fn write_str(s: str/&) { str::byte_slice(s, {|v| self.write(v); }) }
+    fn write_str(s: str/&) { str::byte_slice(s, |v| self.write(v)) }
     fn write_line(s: str/&) {
         self.write_str(s);
         self.write_str("\n"/&);
     }
     fn write_int(n: int) {
-        int::to_str_bytes(n, 10u, {|buf| self.write(buf) })
+        int::to_str_bytes(n, 10u, |buf| self.write(buf))
     }
     fn write_uint(n: uint) {
-        uint::to_str_bytes(false, n, 10u, {|buf| self.write(buf) })
+        uint::to_str_bytes(false, n, 10u, |buf| self.write(buf))
     }
     fn write_le_uint(n: uint, size: uint) {
-        u64_to_le_bytes(n as u64, size, {|v| self.write(v) })
+        u64_to_le_bytes(n as u64, size, |v| self.write(v))
     }
     fn write_le_int(n: int, size: uint) {
-        u64_to_le_bytes(n as u64, size, {|v| self.write(v) })
+        u64_to_le_bytes(n as u64, size, |v| self.write(v))
     }
     fn write_be_uint(n: uint, size: uint) {
-        u64_to_be_bytes(n as u64, size, {|v| self.write(v) })
+        u64_to_be_bytes(n as u64, size, |v| self.write(v))
     }
     fn write_be_int(n: int, size: uint) {
-        u64_to_be_bytes(n as u64, size, {|v| self.write(v) })
+        u64_to_be_bytes(n as u64, size, |v| self.write(v))
     }
     fn write_be_u64(n: u64) {
-        u64_to_be_bytes(n, 8u, {|v| self.write(v) })
+        u64_to_be_bytes(n, 8u, |v| self.write(v))
     }
     fn write_be_u32(n: u32) {
-        u64_to_be_bytes(n as u64, 4u, {|v| self.write(v) })
+        u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
     fn write_be_u16(n: u16) {
-        u64_to_be_bytes(n as u64, 2u, {|v| self.write(v) })
+        u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
     fn write_be_i64(n: i64) {
-        u64_to_be_bytes(n as u64, 8u, {|v| self.write(v) })
+        u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
     }
     fn write_be_i32(n: i32) {
-        u64_to_be_bytes(n as u64, 4u, {|v| self.write(v) })
+        u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
     fn write_be_i16(n: i16) {
-        u64_to_be_bytes(n as u64, 2u, {|v| self.write(v) })
+        u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
     fn write_le_u64(n: u64) {
-        u64_to_le_bytes(n, 8u, {|v| self.write(v) })
+        u64_to_le_bytes(n, 8u, |v| self.write(v))
     }
     fn write_le_u32(n: u32) {
-        u64_to_le_bytes(n as u64, 4u, {|v| self.write(v) })
+        u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
     fn write_le_u16(n: u16) {
-        u64_to_le_bytes(n as u64, 2u, {|v| self.write(v) })
+        u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
     fn write_le_i64(n: i64) {
-        u64_to_le_bytes(n as u64, 8u, {|v| self.write(v) })
+        u64_to_le_bytes(n as u64, 8u, |v| self.write(v))
     }
     fn write_le_i32(n: i32) {
-        u64_to_le_bytes(n as u64, 4u, {|v| self.write(v) })
+        u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
     fn write_le_i16(n: i16) {
-        u64_to_le_bytes(n as u64, 2u, {|v| self.write(v) })
+        u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     fn write_u8(n: u8) { self.write(&[n]) }
 }
 
 fn file_writer(path: str, flags: ~[fileflag]) -> result<writer, str> {
-    result::chain(mk_file_writer(path, flags), { |w| result::ok(w)})
+    result::chain(mk_file_writer(path, flags), |w| result::ok(w))
 }
 
 
 // FIXME: fileflags // #2004
 fn buffered_file_writer(path: str) -> result<writer, str> {
-    let f = do os::as_c_charp(path) {|pathbuf|
-        do os::as_c_charp("w") {|modebuf|
+    let f = do os::as_c_charp(path) |pathbuf| {
+        do os::as_c_charp("w") |modebuf| {
             libc::fopen(pathbuf, modebuf)
         }
     };
@@ -672,7 +672,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
 }
 
 fn read_whole_file_str(file: str) -> result<str, str> {
-    result::chain(read_whole_file(file), { |bytes|
+    result::chain(read_whole_file(file), |bytes| {
         result::ok(str::from_bytes(bytes))
     })
 }
@@ -680,7 +680,7 @@ fn read_whole_file_str(file: str) -> result<str, str> {
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
 fn read_whole_file(file: str) -> result<~[u8], str> {
-    result::chain(file_reader(file), { |rdr|
+    result::chain(file_reader(file), |rdr| {
         result::ok(rdr.read_whole_stream())
     })
 }
@@ -804,7 +804,7 @@ mod tests {
                 assert(vec::len(res) == len);
             }
             assert(vec::slice(ivals, 0u, vec::len(res)) ==
-                   vec::map(res, {|x| x as int}));
+                   vec::map(res, |x| x as int));
         }
         let mut i = 0u;
         while i < 8u {

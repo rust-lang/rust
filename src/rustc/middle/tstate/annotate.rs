@@ -29,17 +29,17 @@ fn collect_ids_local(tcx: ty::ctxt, l: @local, rs: @mut ~[node_id]) {
 
 fn node_ids_in_fn(tcx: ty::ctxt, body: blk, rs: @mut ~[node_id]) {
     let collect_ids =
-        visit::mk_simple_visitor(@{visit_expr: {|a|collect_ids_expr(a, rs)},
-                                   visit_block: {|a|collect_ids_block(a, rs)},
-                                   visit_stmt: {|a|collect_ids_stmt(a, rs)},
-                                   visit_local: {|a|
-                                       collect_ids_local(tcx, a, rs)}
+        visit::mk_simple_visitor(@{visit_expr: |a| collect_ids_expr(a, rs),
+                                   visit_block: |a| collect_ids_block(a, rs),
+                                   visit_stmt: |a| collect_ids_stmt(a, rs),
+                                   visit_local: |a|
+                                       collect_ids_local(tcx, a, rs)
                                    with *visit::default_simple_visitor()});
     collect_ids.visit_block(body, (), collect_ids);
 }
 
 fn init_vecs(ccx: crate_ctxt, node_ids: ~[node_id], len: uint) {
-    for node_ids.each {|i|
+    for node_ids.each |i| {
         log(debug, int::str(i) + " |-> " + uint::str(len));
         add_node(ccx, i, empty_ann(len));
     }
@@ -61,7 +61,7 @@ fn annotate_in_fn(ccx: crate_ctxt, _fk: visit::fn_kind, _decl: fn_decl,
 fn annotate_crate(ccx: crate_ctxt, crate: crate) {
     let do_ann =
         visit::mk_simple_visitor(
-            @{visit_fn: {|a,b,c,d,e|annotate_in_fn(ccx, a, b, c, d, e)}
+            @{visit_fn: |a,b,c,d,e| annotate_in_fn(ccx, a, b, c, d, e)
               with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), do_ann);
 }

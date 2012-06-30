@@ -3,7 +3,7 @@
 export mk_pass;
 
 fn mk_pass() -> pass {
-    do sort_pass::mk_pass("sort_item_type") { |item1, item2|
+    do sort_pass::mk_pass("sort_item_type") |item1, item2| {
         fn score(item: doc::itemtag) -> int {
             alt item {
               doc::consttag(_) { 0 }
@@ -32,7 +32,7 @@ fn test() {
          iface iiface { fn a(); } \
          impl iimpl for int { fn a() { } } \
          type itype = int;";
-    do astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, "");
         let doc = mk_pass().f(srv, doc);
         assert doc.cratemod().items[0].name() == "iconst";

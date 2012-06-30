@@ -8,7 +8,7 @@ fn main() {
     //let bt0 = sys::frame_address();
     //#debug["%?", bt0];
 
-    do 3u.to(10u) {|i|
+    do 3u.to(10u) |i| {
         io::print(#fmt["%u\n", i]);
 
         //let bt1 = sys::frame_address();

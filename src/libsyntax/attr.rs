@@ -77,7 +77,7 @@ fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 // Get the meta_items from inside a vector of attributes
 fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     let mut mitems = ~[];
-    for attrs.each {|a| vec::push(mitems, attr_meta(a)); }
+    for attrs.each |a| { vec::push(mitems, attr_meta(a)); }
     ret mitems;
 }
 
@@ -179,7 +179,7 @@ comparison is performed structurally.
 fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item) -> bool {
     #debug("looking for %s",
            print::pprust::meta_item_to_str(*needle));
-    for haystack.each {|item|
+    for haystack.each |item| {
         #debug("looking in %s",
                print::pprust::meta_item_to_str(*item));
         if eq(item, needle) { #debug("found it!"); ret true; }
@@ -289,8 +289,7 @@ fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
 fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ast::ident) ->
    ~[@ast::meta_item] {
 
-    ret vec::filter_map(items, {
-        |item|
+    ret vec::filter_map(items, |item| {
         if get_meta_item_name(item) != name {
             option::some(/* FIXME (#2543) */ copy item)
         } else {
@@ -301,7 +300,7 @@ fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ast::ident) ->
 
 fn find_linkage_attrs(attrs: ~[ast::attribute]) -> ~[ast::attribute] {
     let mut found = ~[];
-    for find_attrs_by_name(attrs, "link").each {|attr|
+    for find_attrs_by_name(attrs, "link").each |attr| {
         alt attr.node.value.node {
           ast::meta_list(_, _) { vec::push(found, attr) }
           _ { #debug("ignoring link attribute that has incorrect type"); }
@@ -315,7 +314,7 @@ From a list of crate attributes get only the meta_items that impact crate
 linkage
 "]
 fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
-    do find_linkage_attrs(attrs).flat_map {|attr|
+    do find_linkage_attrs(attrs).flat_map |attr| {
         alt check attr.node.value.node {
           ast::meta_list(_, items) { /* FIXME (#2543) */ copy items }
         }
@@ -351,7 +350,7 @@ enum inline_attr {
 #[doc = "True if something like #[inline] is found in the list of attrs."]
 fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
     // TODO---validate the usage of #[inline] and #[inline(always)]
-    do vec::foldl(ia_none, attrs) {|ia,attr|
+    do vec::foldl(ia_none, attrs) |ia,attr| {
         alt attr.node.value.node {
           ast::meta_word(@"inline") { ia_hint }
           ast::meta_list(@"inline", items) {
@@ -370,7 +369,7 @@ fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
 fn require_unique_names(diagnostic: span_handler,
                         metas: ~[@ast::meta_item]) {
     let map = map::str_hash();
-    for metas.each {|meta|
+    for metas.each |meta| {
         let name = get_meta_item_name(meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)

@@ -53,16 +53,16 @@ class cat : map<int, bool> {
     }
   }
   fn each_key(&&f: fn(&&int) -> bool) {
-    for self.each {|k, _v| if !f(k) { break; } cont;};
+    for self.each |k, _v| { if !f(k) { break; } cont;};
   }
   fn each_value(&&f: fn(&&bool) -> bool) {
-    for self.each {|_k, v| if !f(v) { break; } cont;};
+    for self.each |_k, v| { if !f(v) { break; } cont;};
   }
 }
 
 fn main() {
   let nyan : cat = cat(0, 2, "nyan");
-  for uint::range(1u, 5u) {|_i| nyan.speak(); }
+  for uint::range(1u, 5u) |_i| { nyan.speak(); }
   // cat returns true if uint input is greater than
   // the number of meows so far
   assert(nyan.get(1));

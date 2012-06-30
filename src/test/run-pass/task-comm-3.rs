@@ -34,7 +34,7 @@ fn test00() {
     while i < number_of_tasks {
         let builder = task::builder();
         results += ~[task::future_result(builder)];
-        do task::run(builder) {|copy i|
+        do task::run(builder) |copy i| {
             test00_start(ch, i, number_of_messages)
         }
         i = i + 1;
@@ -42,7 +42,7 @@ fn test00() {
 
     // Read from spawned tasks...
     let mut sum = 0;
-    for results.each {|r|
+    for results.each |r| {
         i = 0;
         while i < number_of_messages {
             let value = recv(po);
@@ -52,7 +52,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for results.each {|r| future::get(r); }
+    for results.each |r| { future::get(r); }
 
     #debug("Completed: Final number is: ");
     log(error, sum);

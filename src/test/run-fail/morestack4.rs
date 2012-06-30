@@ -20,7 +20,7 @@ class and_then_get_big_again {
 }
 
 fn main() {
-    do task::spawn {||
+    do task::spawn || {
         getbig_and_fail(1);
     };
 }

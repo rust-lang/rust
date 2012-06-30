@@ -254,7 +254,7 @@ fn map_vec<T,U:copy,V:copy>(
 
     let mut vs: ~[V] = ~[];
     vec::reserve(vs, vec::len(ts));
-    for vec::each(ts) {|t|
+    for vec::each(ts) |t| {
         alt op(t) {
           ok(v) { vec::push(vs, v); }
           err(u) { ret err(u); }
@@ -362,33 +362,33 @@ mod tests {
     #[test]
     fn test_impl_iter() {
         let mut valid = false;
-        ok::<str, str>("a").iter({ |_x| valid = true; });
+        ok::<str, str>("a").iter(|_x| valid = true);
         assert valid;
 
-        err::<str, str>("b").iter({ |_x| valid = false; });
+        err::<str, str>("b").iter(|_x| valid = false);
         assert valid;
     }
 
     #[test]
     fn test_impl_iter_err() {
         let mut valid = true;
-        ok::<str, str>("a").iter_err({ |_x| valid = false; });
+        ok::<str, str>("a").iter_err(|_x| valid = false);
         assert valid;
 
         valid = false;
-        err::<str, str>("b").iter_err({ |_x| valid = true; });
+        err::<str, str>("b").iter_err(|_x| valid = true);
         assert valid;
     }
 
     #[test]
     fn test_impl_map() {
-        assert ok::<str, str>("a").map({ |_x| "b" }) == ok("b");
-        assert err::<str, str>("a").map({ |_x| "b" }) == err("a");
+        assert ok::<str, str>("a").map(|_x| "b") == ok("b");
+        assert err::<str, str>("a").map(|_x| "b") == err("a");
     }
 
     #[test]
     fn test_impl_map_err() {
-        assert ok::<str, str>("a").map_err({ |_x| "b" }) == ok("a");
-        assert err::<str, str>("a").map_err({ |_x| "b" }) == err("b");
+        assert ok::<str, str>("a").map_err(|_x| "b") == ok("a");
+        assert err::<str, str>("a").map_err(|_x| "b") == err("b");
     }
 }

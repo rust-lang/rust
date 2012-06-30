@@ -45,7 +45,7 @@ fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::path {
 }
 
 fn rpaths_to_flags(rpaths: ~[str]) -> ~[str] {
-    vec::map(rpaths, { |rpath| #fmt("-Wl,-rpath,%s",rpath)})
+    vec::map(rpaths, |rpath| #fmt("-Wl,-rpath,%s",rpath) )
 }
 
 fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
@@ -55,7 +55,7 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
     #debug("sysroot: %s", sysroot);
     #debug("output: %s", output);
     #debug("libs:");
-    for libs.each {|libpath|
+    for libs.each |libpath| {
         #debug("    %s", libpath);
     }
     #debug("target_triple: %s", target_triple);
@@ -74,7 +74,7 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
 
     fn log_rpaths(desc: str, rpaths: ~[str]) {
         #debug("%s rpaths:", desc);
-        for rpaths.each {|rpath|
+        for rpaths.each |rpath| {
             #debug("    %s", rpath);
         }
     }
@@ -96,7 +96,7 @@ fn get_rpaths_relative_to_output(os: session::os,
                                  cwd: path::path,
                                  output: path::path,
                                  libs: ~[path::path]) -> ~[str] {
-    vec::map(libs, {|a|
+    vec::map(libs, |a| {
         check not_win32(os);
         get_rpath_relative_to_output(os, cwd, output, a)
     })
@@ -142,7 +142,7 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     }
 
     let mut path = ~[];
-    for uint::range(start_idx, len1 - 1u) {|_i| vec::push(path, ".."); };
+    for uint::range(start_idx, len1 - 1u) |_i| { vec::push(path, ".."); };
 
     vec::push_all(path, vec::view(split2, start_idx, len2 - 1u));
 
@@ -154,7 +154,7 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
 }
 
 fn get_absolute_rpaths(cwd: path::path, libs: ~[path::path]) -> ~[str] {
-    vec::map(libs, {|a|get_absolute_rpath(cwd, a)})
+    vec::map(libs, |a| get_absolute_rpath(cwd, a) )
 }
 
 fn get_absolute_rpath(cwd: path::path, &&lib: path::path) -> str {
@@ -185,7 +185,7 @@ fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
 fn minimize_rpaths(rpaths: ~[str]) -> ~[str] {
     let set = map::str_hash::<()>();
     let mut minimized = ~[];
-    for rpaths.each {|rpath|
+    for rpaths.each |rpath| {
         if !set.contains_key(rpath) {
             vec::push(minimized, rpath);
             set.insert(rpath, ());

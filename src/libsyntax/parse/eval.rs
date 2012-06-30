@@ -12,7 +12,7 @@ fn eval_crate_directives(cx: ctx,
                          prefix: str,
                          &view_items: ~[@ast::view_item],
                          &items: ~[@ast::item]) {
-    for cdirs.each {|sub_cdir|
+    for cdirs.each |sub_cdir| {
         eval_crate_directive(cx, sub_cdir, prefix, view_items, items);
     }
 }

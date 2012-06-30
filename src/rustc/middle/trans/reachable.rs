@@ -33,11 +33,11 @@ fn find_reachable(crate_mod: _mod, exp_map: resolve::exp_map,
 
 fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
     let mut found_export = false;
-    for vec::each(vis) {|vi|
+    for vec::each(vis) |vi| {
         alt vi.node {
           view_item_export(vps) {
             found_export = true;
-            for vec::each(vps) {|vp|
+            for vec::each(vps) |vp| {
                 alt vp.node {
                   view_path_simple(_, _, id) | view_path_glob(_, id) |
                   view_path_list(_, _, id) {
@@ -53,8 +53,8 @@ fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
 }
 
 fn traverse_export(cx: ctx, exp_id: node_id) {
-    do option::iter(cx.exp_map.find(exp_id)) {|defs|
-        for vec::each(defs) {|def| traverse_def_id(cx, def.id); }
+    do option::iter(cx.exp_map.find(exp_id)) |defs| {
+        for vec::each(defs) |def| { traverse_def_id(cx, def.id); }
     }
 }
 
@@ -80,7 +80,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
 fn traverse_public_mod(cx: ctx, m: _mod) {
     if !traverse_exports(cx, m.view_items) {
         // No exports, so every local item is exported
-        for vec::each(m.items) {|item| traverse_public_item(cx, item); }
+        for vec::each(m.items) |item| { traverse_public_item(cx, item); }
     }
 }
 
@@ -91,7 +91,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       item_mod(m) { traverse_public_mod(cx, m); }
       item_foreign_mod(nm) {
           if !traverse_exports(cx, nm.view_items) {
-              for vec::each(nm.items) {|item| cx.rmap.insert(item.id, ()); }
+              for vec::each(nm.items) |item| { cx.rmap.insert(item.id, ()); }
           }
       }
       item_fn(_, tps, blk) {
@@ -101,7 +101,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
       }
       item_impl(tps, _, _, _, ms) {
-        for vec::each(ms) {|m|
+        for vec::each(ms) |m| {
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
                 cx.rmap.insert(m.id, ());
@@ -111,14 +111,14 @@ fn traverse_public_item(cx: ctx, item: @item) {
       }
       item_class(tps, _ifaces, items, ctor, m_dtor, _) {
         cx.rmap.insert(ctor.node.id, ());
-        do option::iter(m_dtor) {|dtor|
+        do option::iter(m_dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
             // dtors don't have attrs
             if tps.len() > 0u {
                 traverse_inline_body(cx, dtor.node.body);
             }
         }
-        for vec::each(items) {|item|
+        for vec::each(items) |item| {
             alt item.node {
               class_method(m) {
                 cx.rmap.insert(m.id, ());
@@ -156,7 +156,7 @@ fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
           some(d) { traverse_def_id(cx, def_id_of_def(d)); }
           none    { /* do nothing -- but should we fail here? */ }
         }
-        for p.types.each {|t| v.visit_ty(t, cx, v); };
+        for p.types.each |t| { v.visit_ty(t, cx, v); };
       }
       _ { visit::visit_ty(ty, cx, v); }
     }
@@ -201,8 +201,8 @@ fn traverse_inline_body(cx: ctx, body: blk) {
 
 fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
     visit::visit_mod(crate_mod, ast_util::dummy_sp(), 0, cx, visit::mk_vt(@{
-        visit_expr: {|_e, _cx, _v|},
-        visit_item: {|i, cx, v|
+        visit_expr: |_e, _cx, _v| { },
+        visit_item: |i, cx, v| {
             visit::visit_item(i, cx, v);
             alt i.node {
               item_class(_, _, _, _, some(_), _) {

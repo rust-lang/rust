@@ -7,7 +7,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     cx.print_backtrace();
     io::stdout().write_line(
         str::connect(vec::map(args,
-                              {|&&ex| print::pprust::expr_to_str(ex)}), ", ")
+                              |&&ex| print::pprust::expr_to_str(ex)), ", ")
     );
 
     //trivial expression

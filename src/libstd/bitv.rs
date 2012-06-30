@@ -45,7 +45,7 @@ fn process(v0: bitv, v1: bitv, op: fn(uint, uint) -> uint) -> bool {
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
     let mut changed = false;
-    for uint::range(0u, len) {|i|
+    for uint::range(0u, len) |i| {
         let w0 = v0.storage[i];
         let w1 = v1.storage[i];
         let w = op(w0, w1);
@@ -89,7 +89,7 @@ fn assign(v0: bitv, v1: bitv) -> bool {
 fn clone(v: bitv) -> bitv {
     let storage = vec::to_mut(vec::from_elem(v.nbits / uint_bits + 1u, 0u));
     let len = vec::len(v.storage);
-    for uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
+    for uint::range(0u, len) |i| { storage[i] = v.storage[i]; };
     ret @{storage: storage, nbits: v.nbits};
 }
 
@@ -113,22 +113,22 @@ contain identical elements.
 fn equal(v0: bitv, v1: bitv) -> bool {
     if v0.nbits != v1.nbits { ret false; }
     let len = vec::len(v1.storage);
-    for uint::iterate(0u, len) {|i|
+    for uint::iterate(0u, len) |i| {
         if v0.storage[i] != v1.storage[i] { ret false; }
     }
 }
 
 #[doc = "Set all bits to 0"]
 #[inline(always)]
-fn clear(v: bitv) { for each_storage(v) {|w| w = 0u } }
+fn clear(v: bitv) { for each_storage(v) |w| { w = 0u } }
 
 #[doc = "Set all bits to 1"]
 #[inline(always)]
-fn set_all(v: bitv) { for each_storage(v) {|w| w = !0u } }
+fn set_all(v: bitv) { for each_storage(v) |w| { w = !0u } }
 
 #[doc = "Invert all bits"]
 #[inline(always)]
-fn invert(v: bitv) { for each_storage(v) {|w| w = !w } }
+fn invert(v: bitv) { for each_storage(v) |w| { w = !w } }
 
 #[doc = "
 Calculate the difference between two bitvectors
@@ -163,14 +163,14 @@ fn set(v: bitv, i: uint, x: bool) {
 
 #[doc = "Returns true if all bits are 1"]
 fn is_true(v: bitv) -> bool {
-    for each(v) {|i| if !i { ret false; } }
+    for each(v) |i| { if !i { ret false; } }
     ret true;
 }
 
 
 #[doc = "Returns true if all bits are 0"]
 fn is_false(v: bitv) -> bool {
-    for each(v) {|i| if i { ret false; } }
+    for each(v) |i| { if i { ret false; } }
     ret true;
 }
 
@@ -184,7 +184,7 @@ Converts the bitvector to a vector of uint with the same length.
 Each uint in the resulting vector has either value 0u or 1u.
 "]
 fn to_vec(v: bitv) -> ~[uint] {
-    let sub = {|x|init_to_vec(v, x)};
+    let sub = |x| init_to_vec(v, x);
     ret vec::from_fn::<uint>(v.nbits, sub);
 }
 
@@ -199,7 +199,7 @@ fn each(v: bitv, f: fn(bool) -> bool) {
 
 #[inline(always)]
 fn each_storage(v: bitv, op: fn(&uint) -> bool) {
-    for uint::range(0u, vec::len(v.storage)) {|i|
+    for uint::range(0u, vec::len(v.storage)) |i| {
         let mut w = v.storage[i];
         let b = !op(w);
         v.storage[i] = w;
@@ -215,7 +215,7 @@ is either '0' or '1'.
 "]
 fn to_str(v: bitv) -> str {
     let mut rs = "";
-    for each(v) {|i| if i { rs += "1"; } else { rs += "0"; } }
+    for each(v) |i| { if i { rs += "1"; } else { rs += "0"; } }
     ret rs;
 }
 

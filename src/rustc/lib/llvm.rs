@@ -1029,7 +1029,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
                tys: ~[TypeRef]) -> str {
         let mut s: str = "";
         let mut first: bool = true;
-        for tys.each {|t|
+        for tys.each |t| {
             if first { first = false; } else { s += ", "; }
             s += type_to_str_inner(names, outer, t);
         }
@@ -1079,7 +1079,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
       }
       Pointer {
         let mut i: uint = 0u;
-        for outer0.each {|tout|
+        for outer0.each |tout| {
             i += 1u;
             if tout as int == ty as int {
                 let n: uint = vec::len::<TypeRef>(outer0) - i;
@@ -1133,7 +1133,7 @@ type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
 
 fn mk_target_data(string_rep: str) -> target_data {
     let lltd =
-        str::as_c_str(string_rep, {|buf| llvm::LLVMCreateTargetData(buf) });
+        str::as_c_str(string_rep, |buf| llvm::LLVMCreateTargetData(buf) );
     ret {lltd: lltd, dtor: @target_data_res(lltd)};
 }
 

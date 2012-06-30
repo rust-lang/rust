@@ -9,7 +9,7 @@ fn test00() {
     let i: int = 0;
     let builder = task::builder();
     let r = task::future_result(builder);
-    task::run(builder, {|| start(i); });
+    task::run(builder, || start(i) );
 
     // Sleep long enough for the task to finish.
     let mut i = 0;

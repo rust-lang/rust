@@ -6,7 +6,7 @@ fn main() {
     assert (i == 10);
     loop { i += 1; if i == 20 { break; } }
     assert (i == 20);
-    for vec::each(~[1, 2, 3, 4, 5, 6]) {|x|
+    for vec::each(~[1, 2, 3, 4, 5, 6]) |x| {
         if x == 3 { break; } assert (x <= 3);
     }
     i = 0;
@@ -16,7 +16,7 @@ fn main() {
         i += 1; if i % 2 == 0 { cont; } assert (i % 2 != 0); 
         if i >= 10 { break; }
     }
-    for vec::each(~[1, 2, 3, 4, 5, 6]) {|x|
+    for vec::each(~[1, 2, 3, 4, 5, 6]) |x| {
         if x % 2 == 0 { cont; }
         assert (x % 2 != 0);
     }

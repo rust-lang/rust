@@ -12,6 +12,6 @@ fn main() {
     assert (f1(a, b, c) == 6);
     assert (a.x == 0);
     assert (b == 10);
-    assert (f2(a.x, {|x| a.x = 50; }) == 0);
+    assert (f2(a.x, |x| a.x = 50 ) == 0);
     assert (a.x == 50);
 }

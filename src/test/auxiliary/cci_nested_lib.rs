@@ -9,7 +9,7 @@ fn alist_add<A: copy, B: copy>(lst: alist<A,B>, k: A, v: B) {
 
 fn alist_get<A: copy, B: copy>(lst: alist<A,B>, k: A) -> B {
     let eq_fn = lst.eq_fn;
-    for lst.data.each {|entry|
+    for lst.data.each |entry| {
         if eq_fn(entry.key, k) { ret entry.value; }
     }
     fail;

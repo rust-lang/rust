@@ -142,7 +142,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
 
     fn match_str(s: str, pos: uint, needle: str) -> bool {
         let mut i = pos;
-        for str::each(needle) {|ch|
+        for str::each(needle) |ch| {
             if s[i] != ch {
                 ret false;
             }
@@ -283,21 +283,21 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           }
           'c' {
             parse_type(s, pos, 'a', tm)
-                .chain({ |pos| parse_char(s, pos, ' ') })
-                .chain({ |pos| parse_type(s, pos, 'b', tm) })
-                .chain({ |pos| parse_char(s, pos, ' ') })
-                .chain({ |pos| parse_type(s, pos, 'e', tm) })
-                .chain({ |pos| parse_char(s, pos, ' ') })
-                .chain({ |pos| parse_type(s, pos, 'T', tm) })
-                .chain({ |pos| parse_char(s, pos, ' ') })
-                .chain({ |pos| parse_type(s, pos, 'Y', tm) })
+                .chain(|pos| parse_char(s, pos, ' '))
+                .chain(|pos| parse_type(s, pos, 'b', tm))
+                .chain(|pos| parse_char(s, pos, ' '))
+                .chain(|pos| parse_type(s, pos, 'e', tm))
+                .chain(|pos| parse_char(s, pos, ' '))
+                .chain(|pos| parse_type(s, pos, 'T', tm))
+                .chain(|pos| parse_char(s, pos, ' '))
+                .chain(|pos| parse_type(s, pos, 'Y', tm))
           }
           'D' | 'x' {
             parse_type(s, pos, 'm', tm)
-                .chain({ |pos| parse_char(s, pos, '/') })
-                .chain({ |pos| parse_type(s, pos, 'd', tm) })
-                .chain({ |pos| parse_char(s, pos, '/') })
-                .chain({ |pos| parse_type(s, pos, 'y', tm) })
+                .chain(|pos| parse_char(s, pos, '/'))
+                .chain(|pos| parse_type(s, pos, 'd', tm))
+                .chain(|pos| parse_char(s, pos, '/'))
+                .chain(|pos| parse_type(s, pos, 'y', tm))
           }
           'd' {
             alt match_digits(s, pos, 2u, false) {
@@ -313,10 +313,10 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           }
           'F' {
             parse_type(s, pos, 'Y', tm)
-                .chain({ |pos| parse_char(s, pos, '-') })
-                .chain({ |pos| parse_type(s, pos, 'm', tm) })
-                .chain({ |pos| parse_char(s, pos, '-') })
-                .chain({ |pos| parse_type(s, pos, 'd', tm) })
+                .chain(|pos| parse_char(s, pos, '-'))
+                .chain(|pos| parse_type(s, pos, 'm', tm))
+                .chain(|pos| parse_char(s, pos, '-'))
+                .chain(|pos| parse_type(s, pos, 'd', tm))
           }
           'H' {
             // FIXME (#2350): range check.
@@ -398,17 +398,17 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           }
           'R' {
             parse_type(s, pos, 'H', tm)
-                .chain({ |pos| parse_char(s, pos, ':') })
-                .chain({ |pos| parse_type(s, pos, 'M', tm) })
+                .chain(|pos| parse_char(s, pos, ':'))
+                .chain(|pos| parse_type(s, pos, 'M', tm))
           }
           'r' {
             parse_type(s, pos, 'I', tm)
-                .chain({ |pos| parse_char(s, pos, ':') })
-                .chain({ |pos| parse_type(s, pos, 'M', tm) })
-                .chain({ |pos| parse_char(s, pos, ':') })
-                .chain({ |pos| parse_type(s, pos, 'S', tm) })
-                .chain({ |pos| parse_char(s, pos, ' ') })
-                .chain({ |pos| parse_type(s, pos, 'p', tm) })
+                .chain(|pos| parse_char(s, pos, ':'))
+                .chain(|pos| parse_type(s, pos, 'M', tm))
+                .chain(|pos| parse_char(s, pos, ':'))
+                .chain(|pos| parse_type(s, pos, 'S', tm))
+                .chain(|pos| parse_char(s, pos, ' '))
+                .chain(|pos| parse_type(s, pos, 'p', tm))
           }
           'S' {
             // FIXME (#2350): range check.
@@ -424,10 +424,10 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           //'s' {}
           'T' | 'X' {
             parse_type(s, pos, 'H', tm)
-                .chain({ |pos| parse_char(s, pos, ':') })
-                .chain({ |pos| parse_type(s, pos, 'M', tm) })
-                .chain({ |pos| parse_char(s, pos, ':') })
-                .chain({ |pos| parse_type(s, pos, 'S', tm) })
+                .chain(|pos| parse_char(s, pos, ':'))
+                .chain(|pos| parse_type(s, pos, 'M', tm))
+                .chain(|pos| parse_char(s, pos, ':'))
+                .chain(|pos| parse_type(s, pos, 'S', tm))
           }
           't' { parse_char(s, pos, '\t') }
           'u' {
@@ -443,10 +443,10 @@ fn strptime(s: str, format: str) -> result<tm, str> {
           }
           'v' {
             parse_type(s, pos, 'e', tm)
-                .chain({ |pos| parse_char(s, pos, '-') })
-                .chain({ |pos| parse_type(s, pos, 'b', tm) })
-                .chain({ |pos| parse_char(s, pos, '-') })
-                .chain({ |pos| parse_type(s, pos, 'Y', tm) })
+                .chain(|pos| parse_char(s, pos, '-'))
+                .chain(|pos| parse_type(s, pos, 'b', tm))
+                .chain(|pos| parse_char(s, pos, '-'))
+                .chain(|pos| parse_type(s, pos, 'Y', tm))
           }
           //'W' {}
           'w' {
@@ -526,7 +526,7 @@ fn strptime(s: str, format: str) -> result<tm, str> {
         }
     }
 
-    do io::with_str_reader(format) { |rdr|
+    do io::with_str_reader(format) |rdr| {
         let tm = {
             mut tm_sec: 0_i32,
             mut tm_min: 0_i32,
@@ -738,7 +738,7 @@ fn strftime(format: str, tm: tm) -> str {
 
     let mut buf = "";
 
-    do io::with_str_reader(format) { |rdr|
+    do io::with_str_reader(format) |rdr| {
         while !rdr.eof() {
             alt rdr.read_char() {
                 '%' { buf += parse_type(rdr.read_char(), tm); }
@@ -1002,7 +1002,7 @@ mod tests {
             }
         }
 
-        do [
+        [
             "Sunday",
             "Monday",
             "Tuesday",
@@ -1010,9 +1010,9 @@ mod tests {
             "Thursday",
             "Friday",
             "Saturday"
-        ]/_.iter { |day| assert test(day, "%A"); }
+        ]/_.iter(|day| assert test(day, "%A"));
 
-        do [
+        [
             "Sun",
             "Mon",
             "Tue",
@@ -1020,9 +1020,9 @@ mod tests {
             "Thu",
             "Fri",
             "Sat"
-        ]/_.iter { |day| assert test(day, "%a"); }
+        ]/_.iter(|day| assert test(day, "%a"));
 
-        do [
+        [
             "January",
             "February",
             "March",
@@ -1035,9 +1035,9 @@ mod tests {
             "October",
             "November",
             "December"
-        ]/_.iter { |day| assert test(day, "%B"); }
+        ]/_.iter(|day| assert test(day, "%B"));
 
-        do [
+        [
             "Jan",
             "Feb",
             "Mar",
@@ -1050,7 +1050,7 @@ mod tests {
             "Oct",
             "Nov",
             "Dec"
-        ]/_.iter { |day| assert test(day, "%b"); }
+        ]/_.iter(|day| assert test(day, "%b"));
 
         assert test("19", "%C");
         assert test("Fri Feb 13 23:31:30 2009", "%c");

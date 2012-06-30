@@ -13,7 +13,7 @@ fn check_alt(fcx: @fn_ctxt,
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
-    for arms.each {|arm|
+    for arms.each |arm| {
         let pcx = {
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
@@ -22,12 +22,12 @@ fn check_alt(fcx: @fn_ctxt,
             pat_region: ty::re_scope(expr.id)
         };
 
-        for arm.pats.each {|p| check_pat(pcx, p, pattern_ty);}
+        for arm.pats.each |p| { check_pat(pcx, p, pattern_ty);}
     }
     // Now typecheck the blocks.
     let mut result_ty = fcx.infcx.next_ty_var();
     let mut arm_non_bot = false;
-    for arms.each {|arm|
+    for arms.each |arm| {
         alt arm.guard {
           some(e) { check_expr_with(fcx, e, ty::mk_bool(tcx)); }
           none { }
@@ -79,7 +79,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             let vinfo =
                 ty::enum_variant_with_id(
                     tcx, v_def_ids.enm, v_def_ids.var);
-            vinfo.args.map({ |t| ty::subst(tcx, expected_substs, t) })
+            vinfo.args.map(|t| { ty::subst(tcx, expected_substs, t) })
         };
         let arg_len = arg_types.len(), subpats_len = alt subpats {
             none { arg_len }
@@ -96,8 +96,8 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                 tcx.sess.span_fatal(pat.span, s);
             }
 
-            do option::iter(subpats) {|pats|
-                do vec::iter2(pats, arg_types) {|subpat, arg_ty|
+            do option::iter(subpats) |pats| {
+                do vec::iter2(pats, arg_types) |subpat, arg_ty| {
                   check_pat(pcx, subpat, arg_ty);
                 }
             };
@@ -143,7 +143,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         #debug["pat_range ending type: %?", e_ty];
         if !require_same_types(
             tcx, some(fcx.infcx), pat.span, b_ty, e_ty,
-            {|| "mismatched types in range" }) {
+            || "mismatched types in range") {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
@@ -197,8 +197,8 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fn matches(name: ast::ident, f: ty::field) -> bool {
             ret str::eq(*name, *f.ident);
         }
-        for fields.each {|f|
-            alt vec::find(ex_fields, {|a|matches(f.ident, a)}) {
+        for fields.each |f| {
+            alt vec::find(ex_fields, |a| matches(f.ident, a)) {
               some(field) {
                 check_pat(pcx, f.pat, field.mt.ty);
               }
@@ -230,7 +230,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                       fields", vec::len(ex_elts), e_count]);
         }
         let mut i = 0u;
-        for elts.each {|elt|
+        for elts.each |elt| {
             check_pat(pcx, elt, ex_elts[i]);
             i += 1u;
         }

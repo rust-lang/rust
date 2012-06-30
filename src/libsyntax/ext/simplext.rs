@@ -74,7 +74,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
    {pre: ~[@expr], rep: option<@expr>, post: ~[@expr]} {
     let mut idx: uint = 0u;
     let mut res = none;
-    for elts.each {|elt|
+    for elts.each |elt| {
         alt elt.node {
           expr_mac(m) {
             alt m.node {
@@ -103,7 +103,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
 fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option<U>, v: ~[T]) ->
    option<~[U]> {
     let mut res = ~[];
-    for v.each {|elem|
+    for v.each |elem| {
         alt f(elem) { none { ret none; } some(fv) { vec::push(res, fv); } }
     }
     ret some(res);
@@ -113,7 +113,7 @@ fn a_d_map(ad: arb_depth<matchable>, f: selector) -> match_result {
     alt ad {
       leaf(x) { ret f(x); }
       seq(ads, span) {
-        alt option_flatten_map({|x| a_d_map(x, f)}, *ads) {
+        alt option_flatten_map(|x| a_d_map(x, f), *ads) {
           none { ret none; }
           some(ts) { ret some(seq(@ts, span)); }
         }
@@ -128,7 +128,7 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
               some(matches) { a_d_map(matches, s2) }
             }
     }
-    ret {|x|scomp(s1, s2, x)};
+    ret { |x| scomp(s1, s2, x) };
 }
 
 
@@ -164,11 +164,11 @@ selectors. */
 fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
     let res = box_str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
-    for b.literal_ast_matchers.each {|sel|
+    for b.literal_ast_matchers.each |sel| {
         alt sel(match_expr(e)) { none { ret none; } _ { } }
     }
     let mut never_mind: bool = false;
-    for b.real_binders.each {|key, val|
+    for b.real_binders.each |key, val| {
         alt val(match_expr(e)) {
           none { never_mind = true; }
           some(mtc) { res.insert(key, mtc); }
@@ -190,22 +190,22 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     }
     let afp = default_ast_fold();
     let f_pre =
-        @{fold_ident: {|x,y|transcribe_ident(cx, b, idx_path, x, y)},
-          fold_path: {|x,y|transcribe_path(cx, b, idx_path, x, y)},
-          fold_expr: {|x,y,z|
+        @{fold_ident: |x,y|transcribe_ident(cx, b, idx_path, x, y),
+          fold_path: |x,y|transcribe_path(cx, b, idx_path, x, y),
+          fold_expr: |x,y,z|
               transcribe_expr(cx, b, idx_path, x, y, z, afp.fold_expr)
-          },
-          fold_ty: {|x,y,z|
+          ,
+          fold_ty: |x,y,z|
               transcribe_type(cx, b, idx_path,
                               x, y, z, afp.fold_ty)
-          },
-          fold_block: {|x,y,z|
+          ,
+          fold_block: |x,y,z|
               transcribe_block(cx, b, idx_path, x, y, z, afp.fold_block)
-          },
-          map_exprs: {|x,y|
+          ,
+          map_exprs: |x,y|
               transcribe_exprs(cx, b, idx_path, x, y)
-          },
-          new_id: {|x|new_id(x, cx)}
+          ,
+          new_id: |x|new_id(x, cx)
           with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
@@ -217,7 +217,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
 fn follow(m: arb_depth<matchable>, idx_path: @mut ~[uint]) ->
    arb_depth<matchable> {
     let mut res: arb_depth<matchable> = m;
-    for vec::each(*idx_path) {|idx|
+    for vec::each(*idx_path) |idx| {
         res = alt res {
           leaf(_) { ret res;/* end of the line */ }
           seq(new_ms, _) { new_ms[idx] }
@@ -255,11 +255,11 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
     // using fold is a hack: we want visit, but it doesn't hit idents ) :
     // solve this with macros
     let f_pre =
-        @{fold_ident: {|x,y|mark_ident(x, y, b, idents)}
+        @{fold_ident: |x,y|mark_ident(x, y, b, idents)
           with *default_ast_fold()};
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
-    for idents.each_key {|x| it(x); };
+    for idents.each_key |x| { it(x); };
 }
 
 
@@ -276,7 +276,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
             let mut repeat: option<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
-            do free_vars(b, repeat_me) {|fv|
+            do free_vars(b, repeat_me) |fv| {
                 let cur_pos = follow(b.get(fv), idx_path);
                 alt cur_pos {
                   leaf(_) { }
@@ -481,7 +481,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                       _ { cx.bug("broken traversal in p_t_s_r") }
                     }
             }
-            b.literal_ast_matchers.push({|x|select(cx, x, e)});
+            b.literal_ast_matchers.push(|x| select(cx, x, e));
           }
         }
       }
@@ -523,7 +523,7 @@ fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
         if b.real_binders.contains_key(p_id) {
             cx.span_fatal(p.span, "duplicate binding identifier");
         }
-        b.real_binders.insert(p_id, compose_sels(s, {|x|select(cx, x)}));
+        b.real_binders.insert(p_id, compose_sels(s, |x| select(cx, x)));
       }
       none { }
     }
@@ -568,7 +568,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
                           _ { none }
                         }
                 }
-                let final_step = {|x|select_pt_1(cx, x, select_pt_2)};
+                let final_step = |x| select_pt_1(cx, x, select_pt_2);
                 b.real_binders.insert(id, compose_sels(s, final_step));
               }
               none { no_des(cx, pth.span, "under `#<>`"); }
@@ -588,7 +588,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
                       _ { none }
                     }
             }
-            let final_step = {|x|select_pt_1(cx, x, select_pt_2)};
+            let final_step = |x| select_pt_1(cx, x, select_pt_2);
             b.real_binders.insert(id, compose_sels(s, final_step));
           }
           none { no_des(cx, blk.span, "under `#{}`"); }
@@ -625,7 +625,7 @@ fn p_t_s_r_ellipses(cx: ext_ctxt, repeat_me: @expr, offset: uint, s: selector,
             }
     }
     p_t_s_rec(cx, match_expr(repeat_me),
-              compose_sels(s, {|x|select(cx, repeat_me, offset, x)}), b);
+              compose_sels(s, |x| select(cx, repeat_me, offset, x)), b);
 }
 
 
@@ -649,7 +649,7 @@ fn p_t_s_r_length(cx: ext_ctxt, len: uint, at_least: bool, s: selector,
             }
     }
     b.literal_ast_matchers.push(
-        compose_sels(s, {|x|len_select(cx, x, at_least, len)}));
+        compose_sels(s, |x| len_select(cx, x, at_least, len)));
 }
 
 fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: ~[@expr], _repeat_after: bool,
@@ -670,7 +670,7 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: ~[@expr], _repeat_after: bool,
                 }
         }
         p_t_s_rec(cx, match_expr(elts[idx]),
-                  compose_sels(s, {|x, copy idx|select(cx, x, idx)}), b);
+                  compose_sels(s, |x, copy idx| select(cx, x, idx)), b);
         idx += 1u;
     }
 }
@@ -681,7 +681,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 
     let mut macro_name: option<@str> = none;
     let mut clauses: ~[@clause] = ~[];
-    for args.each {|arg|
+    for args.each |arg| {
         alt arg.node {
           expr_vec(elts, mutbl) {
             if vec::len(elts) != 2u {
@@ -745,9 +745,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
         }
     }
 
-    let ext = {|a,b,c,d, move clauses|
-        generic_extension(a,b,c,d,clauses)
-    };
+    let ext = |a,b,c,d, move clauses| generic_extension(a,b,c,d,clauses);
 
     ret {ident:
              alt macro_name {
@@ -766,7 +764,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
           some(arg) { arg }
           none { cx.span_fatal(sp, "macro must have arguments")}
         };
-        for clauses.each {|c|
+        for clauses.each |c| {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body); }
               none { cont; }

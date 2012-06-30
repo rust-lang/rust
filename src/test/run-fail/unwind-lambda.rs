@@ -6,7 +6,7 @@ fn main() {
 
     fn@(tasties: @str, macerate: fn(str)) {
         macerate(*tasties);
-    } (carrots, { |food|
+    } (carrots, |food| {
         let mush = food + cheese;
         let f = fn@() {
             let chew = mush + cheese;

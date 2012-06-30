@@ -155,7 +155,7 @@ This is an unstable sort.
 "]
 fn quick_sort3<T: copy ord eq>(arr: ~[mut T]) {
     if len::<T>(arr) == 0u { ret; }
-    qsort3::<T>({ |x, y| x.lt(y) }, { |x, y| x.eq(y) }, arr, 0,
+    qsort3::<T>(|x, y| x.lt(y), |x, y| x.eq(y), arr, 0,
                 (len::<T>(arr) as int) - 1);
 }
 
@@ -251,7 +251,7 @@ mod test_qsort {
         let immut_names = vec::from_mut(names);
 
         let pairs = vec::zip(expected, immut_names);
-        for vec::each(pairs) {|p|
+        for vec::each(pairs) |p| {
             let (a, b) = p;
             #debug("%d %d", a, b);
             assert (a == b);

@@ -109,9 +109,7 @@ impl methods<T: send> for exclusive<T> {
             unsafe::reinterpret_cast(self.data);
         let r = {
             let rec: &ex_data<T> = &(*ptr).data;
-            rec.lock.lock_cond({|c|
-                f(c, &rec.data)
-            })
+            rec.lock.lock_cond(|c| f(c, &rec.data))
         };
         unsafe::forget(ptr);
         r
@@ -135,7 +133,7 @@ fn shared_arc<T: send const>(-data: T) -> shared_arc<T> {
     let a = arc::arc(data);
     let p = port();
     let c = chan(p);
-    do task::spawn() {|move a|
+    do task::spawn() |move a| {
         let mut live = true;
         let terminate = port();
         let get = port();
@@ -174,7 +172,7 @@ mod tests {
         let p = port();
         let c = chan(p);
 
-        do task::spawn() {||
+        do task::spawn() || {
             let p = port();
             c.send(chan(p));
 
@@ -200,7 +198,7 @@ mod tests {
         let p = port();
         let c = chan(p);
 
-        do task::spawn() {||
+        do task::spawn() || {
             let arc_v = get_arc(arc_c);
             let v = *get(&arc_v);
             assert v[2] == 3;
@@ -221,20 +219,20 @@ mod tests {
 
         let total = exclusive(~mut 0u);
 
-        for uint::range(0u, num_tasks) {|_i|
+        for uint::range(0u, num_tasks) |_i| {
             let total = total.clone();
-            futures += ~[future::spawn({||
-                for uint::range(0u, count) {|_i|
-                    do total.with {|_cond, count|
+            futures += ~[future::spawn(|| {
+                for uint::range(0u, count) |_i| {
+                    do total.with |_cond, count| {
                         **count += 1u;
                     }
                 }
             })];
         };
 
-        for futures.each {|f| f.get() };
+        for futures.each |f| { f.get() }
 
-        do total.with {|_cond, total|
+        do total.with |_cond, total| {
             assert **total == num_tasks * count
         };
     }

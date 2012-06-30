@@ -70,9 +70,9 @@ fn mk_filesearch(maybe_sysroot: option<path>,
 
 fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     let mut rslt = none;
-    for filesearch.lib_search_paths().each {|lib_search_path|
+    for filesearch.lib_search_paths().each |lib_search_path| {
         #debug("searching %s", lib_search_path);
-        for os::list_dir_path(lib_search_path).each {|path|
+        for os::list_dir_path(lib_search_path).each |path| {
             #debug("testing %s", path);
             let maybe_picked = pick(path);
             if option::is_some(maybe_picked) {
@@ -134,7 +134,7 @@ fn get_cargo_root() -> result<path, str> {
 }
 
 fn get_cargo_root_nearest() -> result<path, str> {
-    do result::chain(get_cargo_root()) { |p|
+    do result::chain(get_cargo_root()) |p| {
         let cwd = os::getcwd();
         let mut dirname = path::dirname(cwd);
         let mut dirpath = path::split(dirname);
@@ -158,13 +158,13 @@ fn get_cargo_root_nearest() -> result<path, str> {
 }
 
 fn get_cargo_lib_path() -> result<path, str> {
-    do result::chain(get_cargo_root()) { |p|
+    do result::chain(get_cargo_root()) |p| {
         result::ok(path::connect(p, libdir()))
     }
 }
 
 fn get_cargo_lib_path_nearest() -> result<path, str> {
-    do result::chain(get_cargo_root_nearest()) { |p|
+    do result::chain(get_cargo_root_nearest()) |p| {
         result::ok(path::connect(p, libdir()))
     }
 }

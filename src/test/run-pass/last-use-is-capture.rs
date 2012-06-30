@@ -4,5 +4,5 @@ fn main() {
     fn invoke(f: fn@()) { f(); }
     let k = ~22;
     let _u = {a: k};
-    invoke({||log(error, k);})
+    invoke(|| log(error, k) )
 }

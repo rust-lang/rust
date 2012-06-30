@@ -37,7 +37,7 @@ fn next_byte(st: @pstate) -> u8 {
 
 fn parse_ident(st: @pstate, last: char) -> ast::ident {
     fn is_last(b: char, c: char) -> bool { ret c == b; }
-    ret parse_ident_(st, {|a|is_last(last, a)});
+    ret parse_ident_(st, |a| is_last(last, a) );
 }
 
 fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
@@ -192,9 +192,9 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
 }
 
 fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
-    let self_r = parse_opt(st, {|| parse_region(st) });
+    let self_r = parse_opt(st, || parse_region(st) );
 
-    let self_ty = parse_opt(st, {|| parse_ty(st, conv) });
+    let self_ty = parse_opt(st, || parse_ty(st, conv) );
 
     assert next(st) == '[';
     let mut params: [ty::t]/~ = []/~;

@@ -10,5 +10,5 @@ fn f() {
 fn main() {
     let builder = task::builder();
     task::unsupervise(builder);
-    task::run(builder, {|| f(); });
+    task::run(builder, || f() );
 }

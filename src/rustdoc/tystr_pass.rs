@@ -45,7 +45,7 @@ fn fold_fn(
 }
 
 fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
-    do astsrv::exec(srv) {|ctxt|
+    do astsrv::exec(srv) |ctxt| {
         alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
@@ -80,7 +80,7 @@ fn fold_const(
     let srv = fold.ctxt;
 
     {
-        sig: some(do astsrv::exec(srv) {|ctxt|
+        sig: some(do astsrv::exec(srv) |ctxt| {
             alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
@@ -107,14 +107,14 @@ fn fold_enum(
     let srv = fold.ctxt;
 
     {
-        variants: do par::anymap(doc.variants) {|variant|
-            let sig = do astsrv::exec(srv) {|ctxt|
+        variants: do par::anymap(doc.variants) |variant| {
+            let sig = do astsrv::exec(srv) |ctxt| {
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _, _), _
                   }, _) {
                     let ast_variant = option::get(
-                        do vec::find(ast_variants) {|v|
+                        do vec::find(ast_variants) |v| {
                             *v.node.name == variant.name
                         });
 
@@ -153,7 +153,7 @@ fn merge_methods(
     item_id: doc::ast_id,
     docs: ~[doc::methoddoc]
 ) -> ~[doc::methoddoc] {
-    do par::anymap(docs) {|doc|
+    do par::anymap(docs) |doc| {
         {
             sig: get_method_sig(srv, item_id, doc.name)
             with doc
@@ -166,12 +166,12 @@ fn get_method_sig(
     item_id: doc::ast_id,
     method_name: str
 ) -> option<str> {
-    do astsrv::exec(srv) {|ctxt|
+    do astsrv::exec(srv) |ctxt| {
         alt check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_iface(_, _, methods), _
           }, _) {
-            alt check vec::find(methods, {|method|
+            alt check vec::find(methods, |method| {
                 *method.ident == method_name
             }) {
                 some(method) {
@@ -186,7 +186,7 @@ fn get_method_sig(
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, _, methods), _
           }, _) {
-            alt check vec::find(methods, {|method|
+            alt check vec::find(methods, |method| {
                 *method.ident == method_name
             }) {
                 some(method) {
@@ -216,12 +216,12 @@ fn fold_impl(
 
     let srv = fold.ctxt;
 
-    let (iface_ty, self_ty) = do astsrv::exec(srv) {|ctxt|
+    let (iface_ty, self_ty) = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
             node: ast::item_impl(_, _, iface_ty, self_ty, _), _
           }, _) {
-            let iface_ty = option::map(iface_ty, {|p|
+            let iface_ty = option::map(iface_ty, |p| {
                 pprust::path_to_str(p.path)
             });
             (iface_ty, some(pprust::ty_to_str(self_ty)))
@@ -271,7 +271,7 @@ fn fold_type(
     let srv = fold.ctxt;
 
     {
-        sig: do astsrv::exec(srv) {|ctxt|
+        sig: do astsrv::exec(srv) |ctxt| {
             alt ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 ident: ident,
@@ -300,7 +300,7 @@ fn should_add_type_signatures() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "");
             run(srv, doc)
         }

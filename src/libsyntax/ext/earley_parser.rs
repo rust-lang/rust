@@ -47,7 +47,7 @@ fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
 }
 
 fn count_names(ms: &[matcher]) -> uint {
-    vec::foldl(0u, ms, {|ct, m|
+    vec::foldl(0u, ms, |ct, m| {
         ct + alt m.node {
           mtc_tok(_) { 0u }
           mtc_rep(more_ms, _, _) { count_names(more_ms) }
@@ -57,7 +57,7 @@ fn count_names(ms: &[matcher]) -> uint {
 
 fn new_matcher_pos(ms: ~[matcher], sep: option<token>) -> matcher_pos {
     ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(none),
-      matches: copy vec::from_fn(count_names(ms), {|_i| dvec::dvec()}) }
+      matches: copy vec::from_fn(count_names(ms), |_i| dvec::dvec()) }
 }
 
 /* logically, an arb_depth should contain only one kind of nonterminal */
@@ -106,7 +106,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         // I bet this is a perf problem: we're preemptively
                         // doing a lot of array work that will get thrown away
                         // most of the time.
-                        for ei.matches.eachi() { |idx, elt|
+                        for ei.matches.eachi() |idx, elt| {
                             new_pos.matches[idx].push(@seq(elt.get()));
                         }
 
@@ -145,7 +145,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     }
 
                     let matches = vec::map(ei.matches, // fresh, same size:
-                                           {|_m| dvec::<@arb_depth>()});
+                                           |_m| dvec::<@arb_depth>());
                     let ei_t <- ei;
                     vec::push(cur_eis, ~{
                         elts: matchers, sep: sep, mut idx: 0u,
@@ -165,7 +165,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
         /* error messages here could be improved with links to orig. rules */
         if tok == EOF {
             if eof_eis.len() == 1u {
-                let ret_val = vec::map(eof_eis[0u].matches, {|dv| dv.pop()});
+                let ret_val = vec::map(eof_eis[0u].matches, |dv| dv.pop());
                 ret ret_val; /* success */
             } else if eof_eis.len() > 1u {
                 rdr.fatal("Ambiguity: multiple successful parses");
@@ -175,7 +175,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
-                let nts = str::connect(vec::map(bb_eis, {|ei|
+                let nts = str::connect(vec::map(bb_eis, |ei| {
                     alt ei.elts[ei.idx].node
                         { mtc_bb(_,name,_) { *name } _ { fail; } }
                 }), " or ");

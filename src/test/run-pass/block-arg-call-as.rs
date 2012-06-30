@@ -17,10 +17,10 @@ fn asAny( f : fn()->uint ) -> uint {
 }
 
 fn main() {
-   let x = asSendfn({|| 22u});
+   let x = asSendfn(|| 22u);
    assert(x == 22u);
-   let x = asLambda({|| 22u});
+   let x = asLambda(|| 22u);
    assert(x == 22u);
-   let x = asBlock({|| 22u});
+   let x = asBlock(|| 22u);
    assert(x == 22u);
 }

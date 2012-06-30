@@ -82,7 +82,7 @@ fn parse_cfgspecs(cfgspecs: ~[str]) -> ast::crate_cfg {
     // varieties of meta_item here. At the moment we just support the
     // meta_word variant.
     let mut words = ~[];
-    for cfgspecs.each {|s| vec::push(words, attr::mk_word_item(@s)); }
+    for cfgspecs.each |s| { vec::push(words, attr::mk_word_item(@s)); }
     ret words;
 }
 
@@ -131,95 +131,111 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     -> {crate: @ast::crate, tcx: option<ty::ctxt>} {
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, "parsing",
-                         {||parse_input(sess, cfg, input)});
+                         ||parse_input(sess, cfg, input) );
     if upto == cu_parse { ret {crate: crate, tcx: none}; }
 
     sess.building_library = session::building_library(
         sess.opts.crate_type, crate, sess.opts.test);
 
-    crate =
-        time(time_passes, "configuration",
-             {|copy crate|front::config::strip_unconfigured_items(crate)});
-    crate =
-        time(time_passes, "maybe building test harness",
-             {|copy crate|front::test::modify_for_testing(sess, crate)});
-    crate =
-        time(time_passes, "expansion",
-             {|copy crate|syntax::ext::expand::expand_crate(
-                 sess.parse_sess, sess.opts.cfg, crate)});
+    crate = time(time_passes, "configuration", |copy crate| {
+        front::config::strip_unconfigured_items(crate)
+    });
+
+    crate = time(time_passes, "maybe building test harness", |copy crate| {
+        front::test::modify_for_testing(sess, crate)
+    });
+
+    crate = time(time_passes, "expansion", |copy crate| {
+        syntax::ext::expand::expand_crate(
+            sess.parse_sess, sess.opts.cfg, crate)
+    });
 
     if upto == cu_expand { ret {crate: crate, tcx: none}; }
 
-    crate =
-        time(time_passes, "intrinsic injection", {|copy crate|
-            front::intrinsic_inject::inject_intrinsic(sess, crate)
-        });
+    crate = time(time_passes, "intrinsic injection", |copy crate| {
+        front::intrinsic_inject::inject_intrinsic(sess, crate)
+    });
 
-    crate =
-        time(time_passes, "core injection", {|copy crate|
-            front::core_inject::maybe_inject_libcore_ref(sess, crate)
-        });
+    crate = time(time_passes, "core injection", |copy crate| {
+        front::core_inject::maybe_inject_libcore_ref(sess, crate)
+    });
 
-    time(time_passes, "building warning settings table", {|copy crate|
+    time(time_passes, "building warning settings table", |copy crate| {
         lint::build_settings_crate(sess, crate)
     });
 
-    let ast_map =
-        time(time_passes, "ast indexing", {|copy crate|
+    let ast_map = time(time_passes, "ast indexing", |copy crate| {
             syntax::ast_map::map_crate(sess.diagnostic(), *crate)
         });
-    time(time_passes, "external crate/lib resolution", {|copy crate|
+
+    time(time_passes, "external crate/lib resolution", |copy crate| {
         creader::read_crates(
             sess.diagnostic(), *crate, sess.cstore,
             sess.filesearch,
             session::sess_os_to_meta_os(sess.targ_cfg.os),
             sess.opts.static)
     });
-    let {def_map, exp_map, impl_map} =
-        time(time_passes, "resolution", {|copy crate|
-            resolve::resolve_crate(sess, ast_map, crate)
-        });
-    let freevars =
-        time(time_passes, "freevar finding", {|copy crate|
-            freevars::annotate_freevars(def_map, crate)
-        });
-    let region_map =
-        time(time_passes, "region resolution", {|copy crate|
-            middle::region::resolve_crate(sess, def_map, crate)
-        });
+
+    let { def_map, exp_map, impl_map
+        } = time(time_passes, "resolution", |copy crate| {
+        resolve::resolve_crate(sess, ast_map, crate)
+    });
+
+    let freevars = time(time_passes, "freevar finding", |copy crate| {
+        freevars::annotate_freevars(def_map, crate)
+    });
+
+    let region_map = time(time_passes, "region resolution", |copy crate| {
+        middle::region::resolve_crate(sess, def_map, crate)
+    });
+
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars, region_map);
-    let (method_map, vtable_map) =
-        time(time_passes, "typechecking", {|copy crate|
-            typeck::check_crate(ty_cx, impl_map, crate)
-        });
-    time(time_passes, "const checking", {|copy crate|
+
+    let ( method_map, vtable_map
+        ) = time(time_passes, "typechecking", |copy crate| {
+        typeck::check_crate(ty_cx, impl_map, crate)
+    });
+
+    time(time_passes, "const checking", |copy crate| {
         middle::check_const::check_crate(
             sess, crate, ast_map, def_map, method_map, ty_cx)
     });
 
     if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx)}; }
 
-    time(time_passes, "block-use checking",
-         {|copy crate|middle::block_use::check_crate(ty_cx, crate)});
-    time(time_passes, "loop checking",
-         {|copy crate|middle::check_loop::check_crate(ty_cx, crate)});
-    time(time_passes, "alt checking",
-         {|copy crate|middle::check_alt::check_crate(ty_cx, crate)});
-    let last_use_map =
-        time(time_passes, "liveness checking", {|copy crate|
-            middle::liveness::check_crate(ty_cx, method_map, crate)
-        });
-    time(time_passes, "typestate checking",
-         {|copy crate|middle::tstate::ck::check_crate(ty_cx, crate)});
-    let (root_map, mutbl_map) = time(
-        time_passes, "borrow checking",
-        {|copy crate|middle::borrowck::check_crate(ty_cx, method_map,
-                                         last_use_map, crate)});
-    time(time_passes, "kind checking", {|copy crate|
+    time(time_passes, "block-use checking", |copy crate| {
+        middle::block_use::check_crate(ty_cx, crate)
+    });
+
+    time(time_passes, "loop checking", |copy crate| {
+        middle::check_loop::check_crate(ty_cx, crate)
+    });
+
+    time(time_passes, "alt checking", |copy crate| {
+        middle::check_alt::check_crate(ty_cx, crate)
+    });
+
+    let last_use_map = time(time_passes, "liveness checking", |copy crate| {
+        middle::liveness::check_crate(ty_cx, method_map, crate)
+    });
+
+    time(time_passes, "typestate checking", |copy crate| {
+        middle::tstate::ck::check_crate(ty_cx, crate)
+    });
+
+    let ( root_map, mutbl_map
+        ) = time(time_passes, "borrow checking", |copy crate| {
+        middle::borrowck::check_crate(ty_cx, method_map,
+                                      last_use_map, crate)
+    });
+
+    time(time_passes, "kind checking", |copy crate| {
         kind::check_crate(ty_cx, method_map, last_use_map, crate)
     });
-    time(time_passes, "lint checking",
-         {|copy crate|lint::check_crate(ty_cx, crate)});
+
+    time(time_passes, "lint checking", |copy crate| {
+        lint::check_crate(ty_cx, crate)
+    });
 
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
@@ -229,13 +245,14 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 impl_map: impl_map, method_map: method_map,
                 vtable_map: vtable_map};
 
-    let (llmod, link_meta) =
-        time(time_passes, "translation",
-             {|copy crate|trans::base::trans_crate(
-                 sess, crate, ty_cx, outputs.obj_filename,
-                 exp_map, maps)});
-    time(time_passes, "LLVM passes",
-         {||link::write::run_passes(sess, llmod, outputs.obj_filename)});
+    let (llmod, link_meta) = time(time_passes, "translation", |copy crate| {
+        trans::base::trans_crate(sess, crate, ty_cx, outputs.obj_filename,
+                                 exp_map, maps)
+    });
+
+    time(time_passes, "LLVM passes", || {
+        link::write::run_passes(sess, llmod, outputs.obj_filename)
+    });
 
     let stop_after_codegen =
         sess.opts.output_type != link::output_type_exe ||
@@ -243,9 +260,11 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     if stop_after_codegen { ret {crate: crate, tcx: some(ty_cx)}; }
 
-    time(time_passes, "linking",
-         {||link::link_binary(sess, outputs.obj_filename,
-                              outputs.out_filename, link_meta)});
+    time(time_passes, "linking", || {
+        link::link_binary(sess, outputs.obj_filename,
+                          outputs.out_filename, link_meta)
+    });
+
     ret {crate: crate, tcx: some(ty_cx)};
 }
 
@@ -313,7 +332,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     let ann = alt ppm {
       ppm_typed {
         {pre: ann_paren_for_expr,
-         post: {|a|ann_typed_post(option::get(tcx), a)}}
+         post: |a| ann_typed_post(option::get(tcx), a) }
       }
       ppm_identified | ppm_expanded_identified {
         {pre: ann_paren_for_expr, post: ann_identified_post}
@@ -322,7 +341,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     };
     let is_expanded = upto != cu_parse;
     let src = codemap::get_filemap(sess.codemap, source_name(input)).src;
-    do io::with_str_reader(*src) { |rdr|
+    do io::with_str_reader(*src) |rdr| {
         pprust::print_crate(sess.codemap, sess.span_diagnostic, crate,
                             source_name(input),
                             rdr, io::stdout(), ann, is_expanded);
@@ -417,7 +436,7 @@ fn build_session_options(match: getopts::match,
     let lint_flags = vec::append(getopts::opt_strs(match, "W"),
                                  getopts::opt_strs(match, "warn"));
     let lint_dict = lint::get_lint_dict();
-    let lint_opts = do vec::map(lint_flags) {|flag|
+    let lint_opts = do vec::map(lint_flags) |flag| {
         alt lint::lookup_lint(lint_dict, flag) {
           (flag, none) {
             early_error(demitter, #fmt("unknown warning: %s", flag))
@@ -429,9 +448,9 @@ fn build_session_options(match: getopts::match,
     let mut debugging_opts = 0u;
     let debug_flags = getopts::opt_strs(match, "Z");
     let debug_map = session::debugging_opts_map();
-    for debug_flags.each { |debug_flag|
+    for debug_flags.each |debug_flag| {
         let mut this_bit = 0u;
-        for debug_map.each { |pair|
+        for debug_map.each |pair| {
             let (name, _, bit) = pair;
             if name == debug_flag { this_bit = bit; break; }
         }

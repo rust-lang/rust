@@ -82,7 +82,7 @@ fn write_markdown(
     doc: doc::doc,
     +writer_factory: writer_factory
 ) {
-    do par::anymap(doc.pages) {|page|
+    do par::anymap(doc.pages) |page| {
         let ctxt = {
             w: writer_factory(page)
         };
@@ -115,7 +115,7 @@ fn should_request_new_writer_for_each_page() {
     let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
     write_markdown(doc, writer_factory);
     // We expect two pages to have been written
-    do iter::repeat(2u) {||
+    do iter::repeat(2u) || {
         comm::recv(po);
     }
 }
@@ -146,7 +146,7 @@ fn should_write_title_for_each_page() {
         "#[link(name = \"core\")]; mod a { }");
     let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
     write_markdown(doc, writer_factory);
-    do iter::repeat(2u) {||
+    do iter::repeat(2u) || {
         let (page, markdown) = comm::recv(po);
         alt page {
           doc::cratepage(_) {
@@ -295,7 +295,7 @@ fn write_desc(
 }
 
 fn write_sections(ctxt: ctxt, sections: ~[doc::section]) {
-    do vec::iter(sections) {|section|
+    do vec::iter(sections) |section| {
         write_section(ctxt, section);
     }
 }
@@ -325,7 +325,7 @@ fn write_mod_contents(
         write_index(ctxt, option::get(doc.index));
     }
 
-    for doc.items.each {|itemtag|
+    for doc.items.each |itemtag| {
         write_item(ctxt, itemtag);
     }
 }
@@ -377,7 +377,7 @@ fn write_index(ctxt: ctxt, index: doc::index) {
         ret;
     }
 
-    for index.entries.each {|entry|
+    for index.entries.each |entry| {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
         if option::is_some(entry.brief) {
@@ -427,7 +427,7 @@ fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
         write_index(ctxt, option::get(doc.index));
     }
 
-    for doc.fns.each {|fndoc|
+    for doc.fns.each |fndoc| {
         write_item_header(ctxt, doc::fntag(fndoc));
         write_fn(ctxt, fndoc);
     }
@@ -486,7 +486,7 @@ fn write_sig(ctxt: ctxt, sig: option<str>) {
 
 fn code_block_indent(s: str) -> str {
     let lines = str::lines_any(s);
-    let indented = par::seqmap(lines, { |line| #fmt("    %s", line) });
+    let indented = par::seqmap(lines, |line| #fmt("    %s", line) );
     str::connect(indented, "\n")
 }
 
@@ -588,7 +588,7 @@ fn write_variants(
 
     write_header_(ctxt, h4, "Variants");
 
-    vec::iter(docs, {|variant| write_variant(ctxt, variant) });
+    vec::iter(docs, |variant| write_variant(ctxt, variant) );
 
     ctxt.w.write_line("");
 }
@@ -645,7 +645,7 @@ fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
 }
 
 fn write_methods(ctxt: ctxt, docs: ~[doc::methoddoc]) {
-    do vec::iter(docs) {|doc| write_method(ctxt, doc) }
+    do vec::iter(docs) |doc| { write_method(ctxt, doc) }
 }
 
 fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
@@ -760,7 +760,7 @@ mod test {
     }
 
     fn create_doc_srv(source: str) -> (astsrv::srv, doc::doc) {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
 
             let config = {
                 output_style: config::doc_per_crate

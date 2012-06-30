@@ -33,7 +33,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     #debug["req_loans_in_expr(ex=%s)", pprust::expr_to_str(ex)];
 
     // If this expression is borrowed, have to ensure it remains valid:
-    for tcx.borrowings.find(ex.id).each { |borrow|
+    for tcx.borrowings.find(ex.id).each |borrow| {
         let cmt = self.bccx.cat_borrow_of_expr(ex);
         let scope_r = ty::re_scope(borrow.scope_id);
         self.guarantee_valid(cmt, borrow.mutbl, scope_r);
@@ -56,7 +56,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       ast::expr_call(f, args, _) {
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         let scope_r = ty::re_scope(ex.id);
-        do vec::iter2(args, arg_tys) { |arg, arg_ty|
+        do vec::iter2(args, arg_tys) |arg, arg_ty| {
             alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
               ast::by_mutbl_ref {
                 let arg_cmt = self.bccx.cat_expr(arg);
@@ -114,8 +114,8 @@ fn req_loans_in_expr(ex: @ast::expr,
 
       ast::expr_alt(ex_v, arms, _) {
         let cmt = self.bccx.cat_expr(ex_v);
-        for arms.each { |arm|
-            for arm.pats.each { |pat|
+        for arms.each |arm| {
+            for arm.pats.each |pat| {
                 self.gather_pat(cmt, pat, arm.body.node.id, ex.id);
             }
         }
@@ -215,7 +215,7 @@ impl methods for gather_loan_ctxt {
             };
 
             let result = {
-                do self.check_mutbl(req_mutbl, cmt).chain { |_ok|
+                do self.check_mutbl(req_mutbl, cmt).chain |_ok| {
                     self.bccx.preserve(cmt, opt_scope_id)
                 }
             };
@@ -345,7 +345,7 @@ impl methods for gather_loan_ctxt {
                                          not variant", e])}
             };
 
-            for subpats.each { |subpat|
+            for subpats.each |subpat| {
                 let subcmt = self.bccx.cat_variant(subpat, enum_did, cmt);
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
             }
@@ -375,14 +375,14 @@ impl methods for gather_loan_ctxt {
 
             self.guarantee_valid(cmt1, m_const, arm_scope);
 
-            for o_pat.each { |p|
+            for o_pat.each |p| {
                 self.gather_pat(cmt, p, arm_id, alt_id);
             }
           }
 
           ast::pat_rec(field_pats, _) {
             // {f1: p1, ..., fN: pN}
-            for field_pats.each { |fp|
+            for field_pats.each |fp| {
                 let cmt_field = self.bccx.cat_field(fp.pat, cmt, fp.ident);
                 self.gather_pat(cmt_field, fp.pat, arm_id, alt_id);
             }
@@ -390,7 +390,7 @@ impl methods for gather_loan_ctxt {
 
           ast::pat_tup(subpats) {
             // (p1, ..., pN)
-            for subpats.each { |subpat|
+            for subpats.each |subpat| {
                 let subcmt = self.bccx.cat_tuple_elt(subpat, cmt);
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
             }

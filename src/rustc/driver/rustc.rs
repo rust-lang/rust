@@ -80,7 +80,7 @@ Options:
 fn describe_warnings() {
     let lint_dict = lint::get_lint_dict();
     let mut max_key = 0u;
-    for lint_dict.each_key {|k| max_key = uint::max(k.len(), max_key); }
+    for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
     fn padded(max: uint, s: str) -> str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
@@ -89,7 +89,7 @@ fn describe_warnings() {
                      padded(max_key, "name"), "default", "meaning"));
     io::println(#fmt("    %s  %7.7s  %s\n",
                      padded(max_key, "----"), "-------", "-------"));
-    for lint_dict.each {|k, v|
+    for lint_dict.each |k, v| {
         let k = str::replace(k, "_", "-");
         io::println(#fmt("    %s  %7.7s  %s",
                          padded(max_key, k),
@@ -103,7 +103,7 @@ fn describe_warnings() {
 
 fn describe_debug_flags() {
     io::println(#fmt("\nAvailable debug options:\n"));
-    for session::debugging_opts_map().each { |pair|
+    for session::debugging_opts_map().each |pair| {
         let (name, desc, _) = pair;
         io::println(#fmt("    -Z%-20s -- %s", name, desc));
     }
@@ -169,7 +169,7 @@ fn run_compiler(args: ~[str], demitter: diagnostic::emitter) {
     let pretty =
         option::map(getopts::opt_default(match, "pretty",
                                          "normal"),
-                    {|a|parse_pretty(sess, a)});
+                    |a| parse_pretty(sess, a) );
     alt pretty {
       some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, input, ppm); ret; }
       none::<pp_mode> {/* continue */ }
@@ -211,7 +211,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
     let p = comm::port();
     let ch = comm::chan(p);
 
-    alt do task::try  {||
+    alt do task::try  || {
 
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
@@ -248,7 +248,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                     "try running with RUST_LOG=rustc=0,::rt::backtrace \
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
-                ]/_.each {|note|
+                ]/_.each |note| {
                     diagnostic::emit(none, note, diagnostic::note)
                 }
             }
@@ -259,7 +259,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 }
 
 fn main(args: ~[str]) {
-    do monitor {|demitter|
+    do monitor |demitter| {
         run_compiler(args, demitter);
     }
 }

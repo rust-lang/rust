@@ -96,7 +96,7 @@ fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @str {
 fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
                   data: crate_metadata) {
     p(cstore).metas.insert(cnum, data);
-    do vec::iter(decoder::get_crate_module_paths(data.data)) {|dp|
+    do vec::iter(decoder::get_crate_module_paths(data.data)) |dp| {
         let (did, path) = dp;
         let d = {crate: cnum, node: did.node};
         p(cstore).mod_path_map.insert(d, @path);
@@ -108,7 +108,7 @@ fn have_crate_data(cstore: cstore, cnum: ast::crate_num) -> bool {
 }
 
 fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
-    for p(cstore).metas.each {|k,v| i(k, v);};
+    for p(cstore).metas.each |k,v| { i(k, v);};
 }
 
 fn add_used_crate_file(cstore: cstore, lib: str) {
@@ -157,7 +157,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[@str] {
     type crate_hash = {name: @str, hash: @str};
     let mut result = ~[];
 
-    for p(cstore).use_crate_map.each_value {|cnum|
+    for p(cstore).use_crate_map.each_value |cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         #debug("Add hash[%s]: %s", cdata.name, *hash);
@@ -168,7 +168,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[@str] {
     }
     let sorted = std::sort::merge_sort(lteq, result);
     #debug("sorted:");
-    for sorted.each {|x|
+    for sorted.each |x| {
         #debug("  hash[%s]: %s", *x.name, *x.hash);
     }
     fn mapper(ch: crate_hash) -> @str { ret ch.hash; }
@@ -178,7 +178,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[@str] {
 fn get_path(cstore: cstore, d: ast::def_id) -> ~[ast::ident] {
     // let f = bind str::split_str(_, "::");
     option::map_default(p(cstore).mod_path_map.find(d), ~[],
-                        {|ds| str::split_str(*ds, "::").map({|x|@x})})
+                        |ds| str::split_str(*ds, "::").map(|x| @x ) )
 }
 // Local Variables:
 // mode: rust

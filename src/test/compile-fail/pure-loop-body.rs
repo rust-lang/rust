@@ -7,13 +7,13 @@ pure fn range(from: uint, to: uint, f: fn(uint) -> bool) {
 }
 
 pure fn range2(from: uint, to: uint, f: fn(uint)) {
-    for range(from, to) { |i|
+    for range(from, to) |i| {
         f(i*2u);
     }
 }
 
 pure fn range3(from: uint, to: uint, f: {x: fn(uint)}) {
-    for range(from, to) { |i|
+    for range(from, to) |i| {
         f.x(i*2u); //! ERROR access to impure function prohibited
     }
 }

@@ -42,7 +42,7 @@ fn fold_crate(
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_crate(fold, doc);
 
-    let attrs = do astsrv::exec(srv) {|ctxt|
+    let attrs = do astsrv::exec(srv) |ctxt| {
         let attrs = ctxt.ast.node.attrs;
         attr_parser::parse_crate(attrs)
     };
@@ -74,7 +74,7 @@ fn fold_item(
 
     let desc = if doc.id == ast::crate_node_id {
         // This is the top-level mod, use the crate attributes
-        do astsrv::exec(srv) {|ctxt|
+        do astsrv::exec(srv) |ctxt| {
             attr_parser::parse_desc(ctxt.ast.node.attrs)
         }
     } else {
@@ -91,7 +91,7 @@ fn parse_item_attrs<T:send>(
     srv: astsrv::srv,
     id: doc::ast_id,
     +parse_attrs: fn~(~[ast::attribute]) -> T) -> T {
-    do astsrv::exec(srv) {|ctxt|
+    do astsrv::exec(srv) |ctxt| {
         let attrs = alt ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) { item.attrs }
           ast_map::node_foreign_item(item, _, _) { item.attrs }
@@ -143,14 +143,14 @@ fn fold_enum(
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: do par::anymap(doc.variants) {|variant|
-            let desc = do astsrv::exec(srv) {|ctxt|
+        variants: do par::anymap(doc.variants) |variant| {
+            let desc = do astsrv::exec(srv) |ctxt| {
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _, _), _
                   }, _) {
                     let ast_variant = option::get(
-                        vec::find(ast_variants, {|v|
+                        vec::find(ast_variants, |v| {
                             *v.node.name == variant.name
                         }));
 
@@ -201,19 +201,19 @@ fn merge_method_attrs(
 ) -> ~[doc::methoddoc] {
 
     // Create an assoc list from method name to attributes
-    let attrs: ~[(str, option<str>)] = do astsrv::exec(srv) {|ctxt|
+    let attrs: ~[(str, option<str>)] = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_iface(_, _, methods), _
           }, _) {
-            par::seqmap(methods, {|method|
+            par::seqmap(methods, |method| {
                 (*method.ident, attr_parser::parse_desc(method.attrs))
             })
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, _, methods), _
           }, _) {
-            par::seqmap(methods, {|method|
+            par::seqmap(methods, |method| {
                 (*method.ident, attr_parser::parse_desc(method.attrs))
             })
           }
@@ -221,7 +221,7 @@ fn merge_method_attrs(
         }
     };
 
-    do vec::map2(docs, attrs) {|doc, attrs|
+    do vec::map2(docs, attrs) |doc, attrs| {
         assert doc.name == tuple::first(attrs);
         let desc = tuple::second(attrs);
 
@@ -282,7 +282,7 @@ fn should_extract_impl_method_docs() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "");
             run(srv, doc)
         }

@@ -9,7 +9,7 @@ fn main(args: ~[str]) {
 
     let n = uint::from_str(args[1]).get();
 
-    for uint::range(0u, n) {|i|
+    for uint::range(0u, n) |i| {
         let x = uint::to_str(i, 10u);
         log(debug, x);
     }

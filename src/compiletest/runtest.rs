@@ -199,7 +199,7 @@ fn check_error_patterns(props: test_props,
     let mut next_err_idx = 0u;
     let mut next_err_pat = props.error_patterns[next_err_idx];
     let mut done = false;
-    for str::split_char(procres.stderr, '\n').each {|line|
+    for str::split_char(procres.stderr, '\n').each |line| {
         if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -220,7 +220,7 @@ fn check_error_patterns(props: test_props,
         fatal_procres(#fmt["error pattern '%s' not found!",
                            missing_patterns[0]], procres);
     } else {
-        for missing_patterns.each {|pattern|
+        for missing_patterns.each |pattern| {
             error(#fmt["error pattern '%s' not found!", pattern]);
         }
         fatal_procres("multiple error patterns not found", procres);
@@ -239,7 +239,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
         fatal("process did not return an error status");
     }
 
-    let prefixes = vec::map(expected_errors, {|ee|
+    let prefixes = vec::map(expected_errors, |ee| {
         #fmt("%s:%u:", testfile, ee.line)
     });
 
@@ -249,9 +249,9 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for str::split_char(procres.stderr, '\n').each {|line|
+    for str::split_char(procres.stderr, '\n').each |line| {
         let mut was_expected = false;
-        for vec::eachi(expected_errors) {|i, ee|
+        for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
                 #debug["prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line];
@@ -277,7 +277,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
         }
     }
 
-    for uint::range(0u, vec::len(found_flags)) {|i|
+    for uint::range(0u, vec::len(found_flags)) |i| {
         if !found_flags[i] {
             let ee = expected_errors[i];
             fatal_procres(#fmt["expected %s on line %u not found: %s",
@@ -321,11 +321,11 @@ fn compose_and_run_compiler(
 
     let extra_link_args = ~["-L", aux_output_dir_name(config, testfile)];
 
-    do vec::iter(props.aux_builds) {|rel_ab|
+    do vec::iter(props.aux_builds) |rel_ab| {
         let abs_ab = path::connect(config.aux_base, rel_ab);
         let aux_args =
             make_compile_args(config, props, ~["--lib"] + extra_link_args,
-                              {|a,b|make_lib_name(a, b, testfile)}, abs_ab);
+                              |a,b| make_lib_name(a, b, testfile), abs_ab);
         let auxres = compose_and_run(config, abs_ab, aux_args, ~[],
                                      config.compile_lib_path, option::none);
         if auxres.status != 0 {

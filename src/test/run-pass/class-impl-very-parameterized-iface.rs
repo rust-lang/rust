@@ -77,21 +77,21 @@ class cat<T: copy> : map<int, T> {
   }
 
   fn each_key(&&f: fn(&&int) -> bool) {
-    for self.each {|k, _v| if !f(k) { break; } cont;};
+    for self.each |k, _v| { if !f(k) { break; } cont;};
   }
   fn each_value(&&f: fn(&&T) -> bool) {
-    for self.each {|_k, v| if !f(v) { break; } cont;};
+    for self.each |_k, v| { if !f(v) { break; } cont;};
   }
 }
 
 
 fn main() {
   let nyan : cat<str> = cat(0, 2, "nyan");
-  for uint::range(1u, 5u) {|_i| nyan.speak(); }
+  for uint::range(1u, 5u) |_i| { nyan.speak(); }
   assert(nyan.find(1) == some("nyan"));
   assert(nyan.find(10) == none);
   let spotty : cat<cat_type> = cat(2, 57, tuxedo);
-  for uint::range(0u, 6u) {|_i| spotty.speak(); }
+  for uint::range(0u, 6u) |_i| { spotty.speak(); }
   assert(spotty.size() == 8u);
   assert(spotty.contains_key(2));
   assert(spotty.get(3) == tuxedo);

@@ -10,7 +10,7 @@ fn goodfail() {
 }
 
 fn main() {
-    task::spawn({|| goodfail(); });
+    task::spawn(|| goodfail() );
     let po = comm::port();
     // We shouldn't be able to get past this recv since there's no
     // message available

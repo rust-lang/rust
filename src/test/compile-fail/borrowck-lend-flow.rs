@@ -62,7 +62,7 @@ fn while_aliased_mut_cond(cond: bool, cond2: bool) {
 fn loop_in_block() {
     let mut v = ~3, w = ~4;
     let mut _x = &mut w;
-    for uint::range(0u, 10u) {|_i|
+    for uint::range(0u, 10u) |_i| {
         borrow(v); //! ERROR loan of mutable variable declared in an outer block as immutable conflicts with prior loan
         _x = &mut v; //! NOTE prior loan as mutable granted here
     }
@@ -76,7 +76,7 @@ fn at_most_once_block() {
 
     let mut v = ~3, w = ~4;
     let mut _x = &mut w;
-    do at_most_once {||
+    do at_most_once || {
         borrow(v); //! ERROR loan of mutable variable declared in an outer block as immutable conflicts with prior loan
         _x = &mut v; //! NOTE prior loan as mutable granted here
     }

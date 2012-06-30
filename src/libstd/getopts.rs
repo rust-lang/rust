@@ -145,7 +145,7 @@ fn name_str(nm: name) -> str {
 }
 
 fn find_opt(opts: ~[opt], nm: name) -> option<uint> {
-    vec::position(opts, { |opt| opt.name == nm })
+    vec::position(opts, |opt| opt.name == nm)
 }
 
 #[doc = "
@@ -228,7 +228,7 @@ fn getopts(args: ~[str], opts: ~[opt]) -> result unsafe {
                 }
             }
             let mut name_pos = 0u;
-            for vec::each(names) {|nm|
+            for vec::each(names) |nm| {
                 name_pos += 1u;
                 let optid = alt find_opt(opts, nm) {
                   some(id) { id }
@@ -297,7 +297,7 @@ fn opt_present(m: match, nm: str) -> bool {
 
 #[doc = "Returns true if any of several options were matched"]
 fn opts_present(m: match, names: ~[str]) -> bool {
-    for vec::each(names) {|nm|
+    for vec::each(names) |nm| {
         alt find_opt(m.opts, mkname(nm)) {
           some(_) { ret true; }
           _ { }
@@ -323,7 +323,7 @@ Fails if the no option was provided from the given list, or if the no such
 option took an argument
 "]
 fn opts_str(m: match, names: ~[str]) -> str {
-    for vec::each(names) {|nm|
+    for vec::each(names) |nm| {
         alt opt_val(m, nm) {
           val(s) { ret s }
           _ {  }
@@ -340,7 +340,7 @@ Used when an option accepts multiple values.
 "]
 fn opt_strs(m: match, nm: str) -> ~[str] {
     let mut acc: ~[str] = ~[];
-    for vec::each(opt_vals(m, nm)) {|v|
+    for vec::each(opt_vals(m, nm)) |v| {
         alt v { val(s) { vec::push(acc, s); } _ { } }
     }
     ret acc;

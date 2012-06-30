@@ -18,6 +18,6 @@ fn main() {
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
     let ch = comm::chan(p);
-    let child = task::spawn({|| start(ch, 10); });
+    let child = task::spawn(|| start(ch, 10) );
     let c = comm::recv(p);
 }

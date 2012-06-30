@@ -51,7 +51,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     fn make_rt_conv_expr(cx: ext_ctxt, sp: span, cnv: conv) -> @ast::expr {
         fn make_flags(cx: ext_ctxt, sp: span, flags: ~[flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, @"flag_none");
-            for flags.each {|f|
+            for flags.each |f| {
                 let fstr = alt f {
                   flag_left_justify { "flag_left_justify" }
                   flag_left_zero_pad { "flag_left_zero_pad" }
@@ -136,7 +136,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           option::none { }
           _ { cx.span_unimpl(sp, unsupported); }
         }
-        for cnv.flags.each {|f|
+        for cnv.flags.each |f| {
             alt f {
               flag_left_justify { }
               flag_sign_always {
@@ -191,7 +191,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           some(p) { log(debug, "param: " + int::to_str(p, 10u)); }
           _ { #debug("param: none"); }
         }
-        for c.flags.each {|f|
+        for c.flags.each |f| {
             alt f {
               flag_left_justify { #debug("flag: left justify"); }
               flag_left_zero_pad { #debug("flag: left zero pad"); }
@@ -246,7 +246,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     let mut n = 0u;
     let mut piece_exprs = ~[];
     let nargs = args.len();
-    for pieces.each {|pc|
+    for pieces.each |pc| {
         alt pc {
           piece_string(s) {
             vec::push(piece_exprs, mk_str(cx, fmt_sp, s));

@@ -31,8 +31,8 @@ fn read_crates(diag: span_handler, crate: ast::crate,
               mut next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
-                                       {|a|visit_view_item(e, a)},
-                                   visit_item: {|a|visit_item(e, a)}
+                                       |a| visit_view_item(e, a),
+                                   visit_item: |a| visit_item(e, a)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);
@@ -48,14 +48,14 @@ type cache_entry = {
 
 fn dump_crates(crate_cache: dvec<cache_entry>) {
     #debug("resolved crates:");
-    for crate_cache.each {|entry|
+    for crate_cache.each |entry| {
         #debug("cnum: %?", entry.cnum);
         #debug("span: %?", entry.span);
         #debug("hash: %?", entry.hash);
         let attrs = ~[
             attr::mk_attr(attr::mk_list_item(@"link", *entry.metas))
         ];
-        for attr::find_linkage_attrs(attrs).each {|attr|
+        for attr::find_linkage_attrs(attrs).each |attr| {
             #debug("meta: %s", pprust::attr_to_str(attr));
         }
     }
@@ -68,7 +68,7 @@ fn warn_if_multiple_versions(diag: span_handler,
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(*crate_cache.last().metas);
         let {lefts: matches, rights: non_matches} =
-            partition(crate_cache.map_to_vec({|entry|
+            partition(crate_cache.map_to_vec(|entry| {
                 let othername = loader::crate_name_from_metas(*entry.metas);
                 if name == othername {
                     left(entry)
@@ -82,7 +82,7 @@ fn warn_if_multiple_versions(diag: span_handler,
         if matches.len() != 1u {
             diag.handler().warn(
                 #fmt("using multiple versions of crate `%s`", *name));
-            for matches.each {|match|
+            for matches.each |match| {
                 diag.span_note(match.span, "used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(@"link", *match.metas))
@@ -147,7 +147,7 @@ fn visit_item(e: env, i: @ast::item) {
             e.diag.span_fatal(i.span, "library '" + *foreign_name +
                               "' already added: can't specify link_args.");
         }
-        for link_args.each {|a|
+        for link_args.each |a| {
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
               some(linkarg) {
                 cstore::add_used_link_args(cstore, *linkarg);
@@ -178,7 +178,7 @@ fn metas_with_ident(ident: ast::ident,
 fn existing_match(e: env, metas: ~[@ast::meta_item], hash: str) ->
     option<int> {
 
-    for e.crate_cache.each {|c|
+    for e.crate_cache.each |c| {
         if loader::metadata_matches(*c.metas, metas)
             && (hash.is_empty() || *c.hash == hash) {
             ret some(c.cnum);
@@ -246,7 +246,7 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let cnum_map = int_hash::<ast::crate_num>();
-    for decoder::get_crate_deps(cdata).each {|dep|
+    for decoder::get_crate_deps(cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
         let cmetas = metas_with(dep.vers, @"vers", ~[]);

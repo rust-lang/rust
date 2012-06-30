@@ -22,7 +22,7 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
       // If it's a call, generate appropriate instances of the
       // call's constraints.
       expr_call(operator, operands, _) {
-        for constraints_expr(cx.tcx, operator).each {|c|
+        for constraints_expr(cx.tcx, operator).each |c| {
             let ct: sp_constr =
                 respan(c.span,
                        aux::substitute_constr_args(cx.tcx, operands, c));
@@ -126,7 +126,7 @@ fn mk_fn_info(ccx: crate_ctxt,
         }
         /* if this function has any constraints, instantiate them to the
         argument names and add them */
-        for f_decl.constraints.each {|c|
+        for f_decl.constraints.each |c| {
             let sc = ast_constr_to_sp_constr(cx.tcx, f_decl.inputs, c);
             next = add_constraint(cx.tcx, sc, next, res_map);
         }
@@ -150,9 +150,7 @@ fn mk_fn_info(ccx: crate_ctxt,
 fn mk_f_to_fn_info(ccx: crate_ctxt, c: @crate) {
     let visitor =
         visit::mk_simple_visitor(@{
-            visit_fn: {|a,b,c,d,e|
-                mk_fn_info(ccx, a, b, c, d, e)
-            }
+            visit_fn: |a,b,c,d,e| mk_fn_info(ccx, a, b, c, d, e)
             with *visit::default_simple_visitor()});
     visit::visit_crate(*c, (), visitor);
 }

@@ -45,9 +45,9 @@ fn generate_test_harness(sess: session::session,
           testfns: dvec()};
 
     let precursor =
-        @{fold_crate: fold::wrap({|a,b|fold_crate(cx, a, b)}),
-          fold_item: {|a,b|fold_item(cx, a, b)},
-          fold_mod: {|a,b|fold_mod(cx, a, b)} with *fold::default_ast_fold()};
+        @{fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
+          fold_item: |a,b| fold_item(cx, a, b),
+          fold_mod: |a,b| fold_mod(cx, a, b) with *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
@@ -57,7 +57,7 @@ fn generate_test_harness(sess: session::session,
 fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
-    do config::strip_items(crate) {|attrs|
+    do config::strip_items(crate) |attrs| {
         !attr::contains_name(attr::attr_metas(attrs), "test")
     }
 }
@@ -147,7 +147,7 @@ fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
     let ignoreattrs = attr::find_attrs_by_name(i.attrs, "ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
     let cfg_metas = vec::concat(vec::filter_map(ignoreitems,
-        {|&&i| attr::get_meta_item_list(i)}));
+        |&&i| attr::get_meta_item_list(i) ));
     ret if vec::is_not_empty(ignoreitems) {
         config::metas_in_cfg(cx.crate.node.config, cfg_metas)
     } else {
@@ -278,7 +278,7 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
 fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
     #debug("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
-    for cx.testfns.each {|test|
+    for cx.testfns.each |test| {
         vec::push(descs, mk_test_desc_rec(cx, test));
     }
 

@@ -31,7 +31,7 @@ fn field_expr(f: ast::field) -> @ast::expr { ret f.node.expr; }
 
 fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
     let mut es = ~[];
-    for fields.each {|f| vec::push(es, f.node.expr); }
+    for fields.each |f| { vec::push(es, f.node.expr); }
     ret es;
 }
 
@@ -39,8 +39,8 @@ fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
 // of b -- skipping any inner loops (loop, while, loop_body)
 fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     let rs = @mut false;
-    let visit_expr = {|e: @ast::expr, &&flag: @mut bool,
-                       v: visit::vt<@mut bool>|
+    let visit_expr =
+        |e: @ast::expr, &&flag: @mut bool, v: visit::vt<@mut bool>| {
         *flag |= p(e.node);
         alt e.node {
           // Skip inner loops, since a break in the inner loop isn't a
@@ -56,13 +56,13 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
 }
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {
-    do loop_query(b) {|e| alt e {
+    do loop_query(b) |e| { alt e {
       ast::expr_break | ast::expr_cont { true }
       _ { false }}}
 }
 
 fn may_break(b: ast::blk) -> bool {
-    do loop_query(b) {|e| alt e {
+    do loop_query(b) |e| { alt e {
       ast::expr_break { true }
       _ { false }}}
 }

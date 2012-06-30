@@ -30,7 +30,7 @@ fn run(
 }
 
 fn maybe_apply_op(op: op, s: option<str>) -> option<str> {
-    option::map(s, {|s| op(s) })
+    option::map(s, |s| op(s) )
 }
 
 fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
@@ -45,11 +45,9 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
 }
 
 fn apply_to_sections(op: op, sections: ~[doc::section]) -> ~[doc::section] {
-    par::anymap(sections, {|section, copy op|
-        {
-            header: op(section.header),
-            body: op(section.body)
-        }
+    par::anymap(sections, |section, copy op| {
+        header: op(section.header),
+        body: op(section.body)
     })
 }
 
@@ -57,7 +55,7 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: do par::anymap(doc.variants) {|variant, copy fold|
+        variants: do par::anymap(doc.variants) |variant, copy fold| {
             {
                 desc: maybe_apply_op(fold.ctxt, variant.desc)
                 with variant
@@ -77,7 +75,7 @@ fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
 }
 
 fn apply_to_methods(op: op, docs: ~[doc::methoddoc]) -> ~[doc::methoddoc] {
-    do par::anymap(docs) {|doc, copy op|
+    do par::anymap(docs) |doc, copy op| {
         {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
@@ -253,12 +251,12 @@ fn should_execute_on_impl_method_section_bodies() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);
             let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
             let doc = sectionalize_pass::mk_pass().f(srv, doc);
-            mk_pass("", {|s| str::trim(s)}).f(srv, doc)
+            mk_pass("", |s| str::trim(s) ).f(srv, doc)
         }
     }
 }

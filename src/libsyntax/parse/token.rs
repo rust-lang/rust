@@ -238,10 +238,10 @@ in positions that might otherwise contain _value identifiers_.
 "]
 fn keyword_table() -> hashmap<str, ()> {
     let keywords = str_hash();
-    for contextual_keyword_table().each_key {|word|
+    for contextual_keyword_table().each_key |word| {
         keywords.insert(word, ());
     }
-    for restricted_keyword_table().each_key {|word|
+    for restricted_keyword_table().each_key |word| {
         keywords.insert(word, ());
     }
     keywords
@@ -263,7 +263,7 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
         /* temp */
         "sep", "many", "at_least_one", "parse"
     ];
-    for keys.each {|word|
+    for keys.each |word| {
         words.insert(word, ());
     }
     words
@@ -301,7 +301,7 @@ fn restricted_keyword_table() -> hashmap<str, ()> {
         "unchecked", "unsafe",
         "while"
     ];
-    for keys.each {|word|
+    for keys.each |word| {
         words.insert(word, ());
     }
     words

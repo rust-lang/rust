@@ -158,13 +158,13 @@ fn concat(v: ~[rope]) -> rope {
     let mut len = vec::len(v);
     if len == 0u { ret node::empty; }
     let ropes = vec::to_mut(vec::from_elem(len, v[0]));
-    for uint::range(1u, len) {|i|
+    for uint::range(1u, len) |i| {
        ropes[i] = v[i];
     }
 
     //Merge progresively
     while len > 1u {
-        for uint::range(0u, len/2u) {|i|
+        for uint::range(0u, len/2u) |i| {
             ropes[i] = append_rope(ropes[2u*i], ropes[2u*i+1u]);
         }
         if len%2u != 0u {
@@ -397,7 +397,7 @@ Loop through a rope, char by char, until the end.
 * it - A block to execute with each consecutive character of the rope.
 "]
 fn iter_chars(rope: rope, it: fn(char)) {
-    do loop_chars(rope) {|x|
+    do loop_chars(rope) |x| {
         it(x);
         true
     };
@@ -1038,11 +1038,11 @@ mod node {
     }
 
     fn loop_chars(node: @node, it: fn(char) -> bool) -> bool {
-        ret loop_leaves(node, {|leaf|
+        ret loop_leaves(node,|leaf| {
             str::all_between(*leaf.content,
                              leaf.byte_offset,
                              leaf.byte_len, it)
-        })
+        });
     }
 
     #[doc ="
@@ -1350,19 +1350,19 @@ mod tests {
     fn char_at1() {
         //Generate a large rope
         let mut r = of_str(@ "123456789");
-        for uint::range(0u, 10u){|_i|
+        for uint::range(0u, 10u) |_i| {
             r = append_rope(r, r);
         }
 
         //Copy it in the slowest possible way
         let mut r2 = empty();
-        for uint::range(0u, char_len(r)){|i|
+        for uint::range(0u, char_len(r)) |i| {
             r2 = append_char(r2, char_at(r, i));
         }
         assert eq(r, r2);
 
         let mut r3 = empty();
-        for uint::range(0u, char_len(r)){|i|
+        for uint::range(0u, char_len(r)) |i| {
             r3 = prepend_char(r3, char_at(r, char_len(r) - i - 1u));
         }
         assert eq(r, r3);
@@ -1383,7 +1383,7 @@ mod tests {
         //Generate a reasonable rope
         let chunk = of_str(@ "123456789");
         let mut r = empty();
-        for uint::range(0u, 10u){|_i|
+        for uint::range(0u, 10u) |_i| {
             r = append_rope(r, chunk);
         }
 

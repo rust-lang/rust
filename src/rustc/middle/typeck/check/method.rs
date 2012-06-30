@@ -105,7 +105,7 @@ class lookup {
                 self.expr.span,
                 "multiple applicable methods in scope");
 
-            for self.candidates.eachi { |i, candidate|
+            for self.candidates.eachi |i, candidate| {
                 alt candidate.entry.origin {
                   method_static(did) {
                     self.report_static_candidate(i, did);
@@ -163,7 +163,7 @@ class lookup {
         let tcx = self.tcx();
         let mut iface_bnd_idx = 0u; // count only iface bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
-        for vec::each(*bounds) {|bound|
+        for vec::each(*bounds) |bound| {
             let (iid, bound_substs) = alt bound {
               ty::bound_copy | ty::bound_send | ty::bound_const {
                 cont; /* ok */
@@ -176,7 +176,7 @@ class lookup {
             };
 
             let ifce_methods = ty::iface_methods(tcx, iid);
-            alt vec::position(*ifce_methods, {|m| m.ident == self.m_name}) {
+            alt vec::position(*ifce_methods, |m| m.ident == self.m_name) {
               none {
                 /* check next bound */
                 iface_bnd_idx += 1u;
@@ -210,7 +210,7 @@ class lookup {
         #debug["method_from_iface"];
 
         let ms = *ty::iface_methods(self.tcx(), did);
-        for ms.eachi {|i, m|
+        for ms.eachi |i, m| {
             if m.ident != self.m_name { cont; }
 
             let m_fty = ty::mk_fn(self.tcx(), m.fty);
@@ -246,7 +246,7 @@ class lookup {
 
         let ms = *ty::iface_methods(self.tcx(), did);
 
-        for ms.each {|m|
+        for ms.each |m| {
             if m.ident != self.m_name { cont; }
 
             if m.vis == ast::private && !self.include_private {
@@ -296,10 +296,10 @@ class lookup {
 
         #debug["method_from_scope"];
 
-        for list::each(impls_vecs) {|impls|
-            for vec::each(*impls) {|im|
+        for list::each(impls_vecs) |impls| {
+            for vec::each(*impls) |im| {
                 // Check whether this impl has a method with the right name.
-                for im.methods.find({|m| m.ident == self.m_name}).each {|m|
+                for im.methods.find(|m| m.ident == self.m_name).each |m| {
 
                     // determine the `self` of the impl with fresh
                     // variables for each parameter:

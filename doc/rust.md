@@ -1007,11 +1007,11 @@ the function name.
 
 ~~~~
 fn iter<T>(seq: ~[T], f: fn(T)) {
-    for seq.each {|elt| f(elt); }
+    for seq.each |elt| { f(elt); }
 }
 fn map<T, U>(seq: ~[T], f: fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
-    for seq.each {|elt| vec::push(acc, f(elt)); }
+    for seq.each |elt| { vec::push(acc, f(elt)); }
     acc
 }
 ~~~~
@@ -1638,7 +1638,7 @@ task in a _failing state_.
 ~~~~
 # let buildr = task::builder();
 # task::unsupervise(buildr);
-# do task::run(buildr) {||
+# do task::run(buildr) || {
 
 (~[1, 2, 3, 4])[0];
 (~[mut 'x', 'y'])[1] = 'z';
@@ -2069,7 +2069,7 @@ An example a for loop:
 
 let v: ~[foo] = ~[a, b, c];
 
-for v.each {|e|
+for v.each |e| {
     bar(e);
 }
 ~~~~
@@ -2276,7 +2276,7 @@ fn read_file_lines(path: str) -> ~[str] {
     note path;
     let r: [str];
     let f: file = open_read(path);
-    lines(f) {|s|
+    lines(f) |s| {
         r += ~[s];
     }
     ret r;
@@ -3365,7 +3365,7 @@ An example of a `spawn` call:
 let po = comm::port();
 let ch = comm::chan(po);
 
-do task::spawn {||
+do task::spawn || {
     // let task run, do other things
     // ...
     comm::send(ch, true);

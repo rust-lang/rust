@@ -10,7 +10,7 @@ export make_free_glue, autoderef, duplicate;
 fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
     -> block {
     let _icx = bcx.insn_ctxt("uniq::make_free_glue");
-    do with_cond(bcx, IsNotNull(bcx, vptr)) {|bcx|
+    do with_cond(bcx, IsNotNull(bcx, vptr)) |bcx| {
         let content_ty = content_ty(t);
         let body_ptr = opaque_box_body(bcx, content_ty, vptr);
         let bcx = drop_ty(bcx, body_ptr, content_ty);

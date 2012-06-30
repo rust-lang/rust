@@ -28,7 +28,7 @@ type nominal_id = @{did: ast::def_id, parent_id: option<ast::def_id>,
 fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
                  parent_id: option<ast::def_id>,
                  tps: ~[ty::t]) -> nominal_id {
-    let tps_norm = tps.map({ |t| ty::normalize_ty(tcx, t) });
+    let tps_norm = tps.map(|t| ty::normalize_ty(tcx, t));
     @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 
@@ -38,7 +38,7 @@ fn hash_nominal_id(&&ri: nominal_id) -> uint {
     h += ri.did.crate as uint;
     h *= 33u;
     h += ri.did.node as uint;
-    for vec::each(ri.tps) {|t|
+    for vec::each(ri.tps) |t| {
         h *= 33u;
         h += ty::type_id(t);
     }
@@ -49,7 +49,7 @@ fn eq_nominal_id(&&mi: nominal_id, &&ni: nominal_id) -> bool {
     if mi.did != ni.did {
         false
     } else {
-        do vec::all2(mi.tps, ni.tps) { |m_tp, n_tp|
+        do vec::all2(mi.tps, ni.tps) |m_tp, n_tp| {
             ty::type_id(m_tp) == ty::type_id(n_tp)
         }
     }
@@ -101,7 +101,7 @@ fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
    ValueRef {
     let llglobal =
         str::as_c_str(name,
-                    {|buf|
+                      |buf| {
                         lib::llvm::llvm::LLVMAddGlobal(ccx.llmod,
                                                        val_ty(llval), buf)
                     });
@@ -137,7 +137,7 @@ enum enum_kind {
 
 fn enum_kind(ccx: @crate_ctxt, did: ast::def_id) -> enum_kind {
     let variants = ty::enum_variants(ccx.tcx, did);
-    if vec::any(*variants, {|v| vec::len(v.args) > 0u}) {
+    if vec::any(*variants, |v| vec::len(v.args) > 0u) {
         if vec::len(*variants) == 1u { tk_newtype }
         else { tk_complex }
     } else {
@@ -185,7 +185,7 @@ fn s_send_tydesc(_tcx: ty_ctxt) -> u8 {
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     let llshapetablesty = trans::common::T_named_struct("shapes");
-    let llshapetables = str::as_c_str("shapes", {|buf|
+    let llshapetables = str::as_c_str("shapes", |buf| {
         lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
     });
 
@@ -315,7 +315,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
 
       ty::ty_rec(fields) {
         let mut s = ~[shape_struct], sub = ~[];
-        for vec::each(fields) {|f|
+        for vec::each(fields) |f| {
             sub += shape_of(ccx, f.mt.ty);
         }
         add_substr(s, sub);
@@ -323,7 +323,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
       }
       ty::ty_tup(elts) {
         let mut s = ~[shape_struct], sub = ~[];
-        for vec::each(elts) {|elt|
+        for vec::each(elts) |elt| {
             sub += shape_of(ccx, elt);
         }
         add_substr(s, sub);
@@ -338,7 +338,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
             ~[shape_res]
           }
         else { ~[shape_struct] }, sub = ~[];
-        do option::iter(m_dtor_did) {|dtor_did|
+        do option::iter(m_dtor_did) |dtor_did| {
           let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
           let id = interner::intern(ccx.shape_cx.resources, ri);
           add_u16(s, id as u16);
@@ -347,7 +347,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
           // hasn't changed since we started monomorphizing.
           add_u16(s, 0_u16);
         };
-        for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each {|f|
+        for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each |f| {
            sub += shape_of(ccx, f.mt.ty);
         }
         add_substr(s, sub);
@@ -376,7 +376,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
 
 fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info) -> ~[u8] {
     let mut s = ~[];
-    for vec::each(v.args) {|t| s += shape_of(ccx, t); }
+    for vec::each(v.args) |t| { s += shape_of(ccx, t); }
     ret s;
 }
 
@@ -391,7 +391,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     while i < ccx.shape_cx.tag_order.len() {
         let {did, substs} = ccx.shape_cx.tag_order[i];
         let variants = @ty::substd_enum_variants(ccx.tcx, did, substs);
-        do vec::iter(*variants) {|v|
+        do vec::iter(*variants) |v| {
             offsets += ~[vec::len(data) as u16];
 
             let variant_shape = shape_of_variant(ccx, v);
@@ -414,7 +414,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     let data_sz = vec::len(data) as u16;
 
     let mut inf_sz = 0u16;
-    for enum_variants.each { |variants|
+    for enum_variants.each |variants| {
         let num_variants = vec::len(*variants) as u16;
         add_u16(header, header_sz + inf_sz);
         inf_sz += 2u16 * (num_variants + 2u16) + 3u16;
@@ -426,7 +426,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
     let mut lv_table = ~[];
     let mut i = 0u;
-    for enum_variants.each { |variants|
+    for enum_variants.each |variants| {
         add_u16(inf, vec::len(*variants) as u16);
 
         // Construct the largest-variants table.
@@ -435,11 +435,11 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
         let lv = largest_variants(ccx, variants);
         add_u16(lv_table, vec::len(lv) as u16);
-        for vec::each(lv) {|v| add_u16(lv_table, v as u16); }
+        for vec::each(lv) |v| { add_u16(lv_table, v as u16); }
 
         // Determine whether the enum has dynamic size.
-        assert !vec::any(*variants, {|v|
-            vec::any(v.args, {|t| ty::type_has_params(t)})
+        assert !vec::any(*variants, |v| {
+            vec::any(v.args, |t| ty::type_has_params(t))
         });
 
         // If we can, write in the static size and alignment of the enum.
@@ -451,7 +451,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
         inf += ~[size_align.align];
 
         // Now write in the offset of each variant.
-        for vec::each(*variants) {|_v|
+        for vec::each(*variants) |_v| {
             add_u16(inf, header_sz + inf_sz + offsets[i]);
             i += 1u;
         }
@@ -478,10 +478,10 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
         // variant that contains (T,T) must be as least as large as
         // any variant that contains just T.
         let mut ranges = ~[];
-        for vec::each(*variants) {|variant|
+        for vec::each(*variants) |variant| {
             let mut bounded = true;
             let mut min_size = 0u, min_align = 0u;
-            for vec::each(variant.args) {|elem_t|
+            for vec::each(variant.args) |elem_t| {
                 if ty::type_has_params(elem_t) {
                     // NB: We could do better here; this causes us to
                     // conservatively assume that (int, T) has minimum size 0,
@@ -501,7 +501,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
         // Initialize the candidate set to contain all variants.
         let mut candidates = ~[mut];
-        for vec::each(*variants) {|_v| candidates += ~[mut true]; }
+        for vec::each(*variants) |_v| { candidates += ~[mut true]; }
 
         // Do a pairwise comparison among all variants still in the
         // candidate set.  Throw out any variant that we know has size
@@ -548,10 +548,10 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
         -> size_align {
         let mut max_size = 0u16;
         let mut max_align = 1u8;
-        for vec::each(largest_variants) {|vid|
+        for vec::each(largest_variants) |vid| {
             // We increment a "virtual data pointer" to compute the size.
             let mut lltys = ~[];
-            for vec::each(variants[vid].args) {|typ|
+            for vec::each(variants[vid].args) |typ| {
                 lltys += ~[type_of::type_of(ccx, typ)];
             }
 
@@ -580,10 +580,10 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut dtors = ~[];
     let len = interner::len(ccx.shape_cx.resources);
-    for uint::range(0u, len) {|i|
+    for uint::range(0u, len) |i| {
         let ri = interner::get(ccx.shape_cx.resources, i);
-        for ri.tps.each() {|s| assert !ty::type_has_params(s); }
-        do option::iter(ri.parent_id) {|id|
+        for ri.tps.each() |s| { assert !ty::type_has_params(s); }
+        do option::iter(ri.parent_id) |id| {
             dtors += ~[trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];
         }
     }
@@ -694,7 +694,7 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
         // Compute max(variant sizes).
         let mut max_size = 0u;
         let variants = ty::enum_variants(cx.tcx, tid);
-        for vec::each(*variants) {|variant|
+        for vec::each(*variants) |variant| {
             let tup_ty = simplify_type(cx.tcx,
                                        ty::mk_tup(cx.tcx, variant.args));
             // Perform any type parameter substitutions.
@@ -742,7 +742,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
                                         ty::mk_u8(tcx),
                                         mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +
-              do ty::lookup_class_fields(tcx, did).map {|f|
+                do ty::lookup_class_fields(tcx, did).map |f| {
                  let t = ty::lookup_field_type(tcx, did, f.id, substs);
                  {ident: f.ident,
                   mt: {ty: simplify_type(tcx, t), mutbl: ast::m_const}}
@@ -752,5 +752,5 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           _ { typ }
         }
     }
-    ty::fold_ty(tcx, typ, {|t| simplifier(tcx, t) })
+    ty::fold_ty(tcx, typ, |t| simplifier(tcx, t))
 }

@@ -28,11 +28,11 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     // FIXME (#2592): hooking into the "intrinsic" root module is crude.
     // There ought to be a better approach. Attributes?
 
-    for crate.node.module.items.each {|crate_item|
+    for crate.node.module.items.each |crate_item| {
         if *crate_item.ident == "intrinsic" {
             alt crate_item.node {
               ast::item_mod(m) {
-                for m.items.each {|intrinsic_item|
+                for m.items.each |intrinsic_item| {
                     alt intrinsic_item.node {
                       ast::item_iface(_, _, _) {
                         let def_id = { crate: ast::local_crate,
@@ -53,8 +53,8 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     }
 
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-        visit_item: {|a|convert(ccx, a)},
-        visit_foreign_item: {|a|convert_foreign(ccx, a)}
+        visit_item: |a|convert(ccx, a),
+        visit_foreign_item: |a|convert_foreign(ccx, a)
         with *visit::default_simple_visitor()
     }));
 }
@@ -102,14 +102,14 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
 
     // Create a set of parameter types shared among all the variants.
-    for variants.each {|variant|
+    for variants.each |variant| {
         // Nullary enum constructors get turned into constants; n-ary enum
         // constructors get turned into functions.
         let result_ty = if vec::len(variant.node.args) == 0u {
             enum_ty
         } else {
             let rs = type_rscope(rp);
-            let args = variant.node.args.map({ |va|
+            let args = variant.node.args.map(|va| {
                 let arg_ty = ccx.to_ty(rs, va.ty);
                 {mode: ast::expl(ast::by_copy), ty: arg_ty}
             });
@@ -137,7 +137,7 @@ fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
     let tcx = ccx.tcx;
     alt check tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_iface(_, rp, ms), _}, _) {
-        store_methods::<ast::ty_method>(ccx, id, ms, {|m|
+        store_methods::<ast::ty_method>(ccx, id, ms, |m| {
             ty_of_ty_method(ccx, m, rp)
         });
       }
@@ -145,7 +145,7 @@ fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
         let (_,ms) = split_class_items(its);
         // All methods need to be stored, since lookup_method
         // relies on the same method cache for self-calls
-        store_methods::<@ast::method>(ccx, id, ms, {|m|
+        store_methods::<@ast::method>(ccx, id, ms, |m| {
             ty_of_method(ccx, m, rp)
         });
       }
@@ -196,7 +196,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
     let if_fty = {
-        let dummy_tps = do vec::from_fn((*if_m.tps).len()) { |i|
+        let dummy_tps = do vec::from_fn((*if_m.tps).len()) |i| {
             // hack: we don't know the def id of the impl tp, but it
             // is not important for unification
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
@@ -211,13 +211,13 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     };
     require_same_types(
         tcx, none, sp, impl_fty, if_fty,
-        {|| "method `" + *if_m.ident + "` has an incompatible type"});
+        || "method `" + *if_m.ident + "` has an incompatible type");
     ret;
 
     // Replaces bound references to the self region with `with_r`.
     fn replace_bound_self(tcx: ty::ctxt, ty: ty::t,
                           with_r: ty::region) -> ty::t {
-        do ty::fold_regions(tcx, ty) { |r, _in_fn|
+        do ty::fold_regions(tcx, ty) |r, _in_fn| {
             if r == ty::re_bound(ty::br_self) {with_r} else {r}
         }
     }
@@ -235,8 +235,8 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
     if did.crate == ast::local_crate {
         ensure_iface_methods(ccx, did.node);
     }
-    for vec::each(*ty::iface_methods(tcx, did)) {|if_m|
-        alt vec::find(ms, {|m| if_m.ident == m.mty.ident}) {
+    for vec::each(*ty::iface_methods(tcx, did)) |if_m| {
+        alt vec::find(ms, |m| if_m.ident == m.mty.ident) {
           some({mty: m, id, span}) {
             if m.purity != if_m.purity {
                 ccx.tcx.sess.span_err(
@@ -276,7 +276,7 @@ fn convert_methods(ccx: @crate_ctxt,
                    self_ty: ty::t) -> ~[converted_method] {
 
     let tcx = ccx.tcx;
-    do vec::map(ms) { |m|
+    do vec::map(ms) |m| {
         write_ty_to_tcx(tcx, m.self_id, self_ty);
         let bounds = ty_param_bounds(ccx, m.tps);
         let mty = ty_of_method(ccx, m, rp);
@@ -313,7 +313,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                            ty: selfty});
 
         let cms = convert_methods(ccx, ms, rp, i_bounds, selfty);
-        for ifce.each { |t|
+        for ifce.each |t| {
             check_methods_against_iface(ccx, tps, rp, selfty, t, cms);
         }
       }
@@ -330,8 +330,8 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
         // Write the ctor type
-        let t_args = ctor.node.dec.inputs.map({|a|
-                           ty_of_arg(ccx, type_rscope(rp), a, none)});
+        let t_args = ctor.node.dec.inputs.map(
+            |a| ty_of_arg(ccx, type_rscope(rp), a, none) );
         let t_res = ty::mk_class(tcx, local_def(it.id),
                                  {self_r: alt rp {
                        ast::rp_none { none }
@@ -350,7 +350,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                           {bounds: tpt.bounds,
                            rp: rp,
                            ty: t_ctor});
-        do option::iter(m_dtor) {|dtor|
+        do option::iter(m_dtor) |dtor| {
             // Write the dtor type
             let t_dtor = ty::mk_fn(
                 tcx,
@@ -366,13 +366,13 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
 
         // Write the type of each of the members
         let (fields, methods) = split_class_items(members);
-        for fields.each {|f|
+        for fields.each |f| {
            convert_class_item(ccx, rp, tpt.bounds, f);
         }
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let selfty = ty::mk_class(tcx, local_def(it.id), substs);
         let cms = convert_methods(ccx, methods, rp, bounds, selfty);
-        for ifaces.each { |ifce|
+        for ifaces.each |ifce| {
             check_methods_against_iface(ccx, tps, rp, selfty, ifce, cms);
 
             // FIXME #2434---this is somewhat bogus, but it seems that
@@ -553,7 +553,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
 
     fn compute_bounds(ccx: @crate_ctxt,
                       param: ast::ty_param) -> ty::param_bounds {
-        @do vec::flat_map(*param.bounds) { |b|
+        @do vec::flat_map(*param.bounds) |b| {
             alt b {
               ast::bound_send { ~[ty::bound_send] }
               ast::bound_copy { ~[ty::bound_copy] }
@@ -576,7 +576,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
         }
     }
 
-    @do params.map { |param|
+    @do params.map |param| {
         alt ccx.tcx.ty_param_bounds.find(param.id) {
           some(bs) { bs }
           none {
@@ -595,7 +595,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
 
     let bounds = ty_param_bounds(ccx, ty_params);
     let rb = in_binding_rscope(empty_rscope);
-    let input_tys = decl.inputs.map({ |a| ty_of_arg(ccx, rb, a, none) });
+    let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, rb, a, none) );
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
     let t_fn = ty::mk_fn(ccx.tcx, {purity: decl.purity,
@@ -615,7 +615,7 @@ fn mk_ty_params(ccx: @crate_ctxt, atps: ~[ast::ty_param])
     let mut i = 0u;
     let bounds = ty_param_bounds(ccx, atps);
     {bounds: bounds,
-     params: vec::map(atps, {|atp|
+     params: vec::map(atps, |atp| {
          let t = ty::mk_param(ccx.tcx, i, local_def(atp.id));
          i += 1u;
          t

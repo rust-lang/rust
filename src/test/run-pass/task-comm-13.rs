@@ -12,6 +12,6 @@ fn main() {
     #debug("Check that we don't deadlock.");
     let p = comm::port::<int>();
     let ch = comm::chan(p);
-    task::try({|| start(ch, 0, 10) });
+    task::try(|| start(ch, 0, 10) );
     #debug("Joined task");
 }

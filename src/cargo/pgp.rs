@@ -90,7 +90,7 @@ fn verify(root: str, data: str, sig: str, keyfp: str) -> bool {
     let p = gpg(~["--homedir", path, "--with-fingerprint", "--verify", sig,
                  data]);
     let res = "Primary key fingerprint: " + keyfp;
-    for str::split_char(p.err, '\n').each {|line|
+    for str::split_char(p.err, '\n').each |line| {
         if line == res { ret true; }
     }
     ret false;

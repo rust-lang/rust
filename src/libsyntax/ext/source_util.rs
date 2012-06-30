@@ -50,7 +50,7 @@ fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
     -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
     ret mk_lit(cx, sp, ast::lit_str(
-        @str::connect(cx.mod_path().map({|x|*x}), "::")));
+        @str::connect(cx.mod_path().map(|x|*x), "::")));
 }
 
 fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
@@ -88,7 +88,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     alt io::read_whole_file(res_rel_file(cx, sp, file)) {
       result::ok(src) {
-        let u8_exprs = vec::map(src, { |char: u8|
+        let u8_exprs = vec::map(src, |char: u8| {
             mk_lit(cx, sp, ast::lit_uint(char as u64, ast::ty_u8))
         });
         ret mk_uniq_vec_e(cx, sp, u8_exprs);

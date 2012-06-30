@@ -211,10 +211,10 @@ impl methods for ctxt {
         let mut new_ctxt = self;
 
         let metas = attr::attr_metas(attr::find_attrs_by_name(attrs, "warn"));
-        for metas.each {|meta|
+        for metas.each |meta| {
             alt meta.node {
               ast::meta_list(_, metas) {
-                for metas.each {|meta|
+                for metas.each |meta| {
                     alt meta.node {
                       ast::meta_word(lintname) {
                         alt lookup_lint(self.dict, *lintname) {
@@ -273,7 +273,7 @@ fn lookup_lint(dict: lint_dict, s: str)
 }
 
 fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
-    do cx.with_warn_attrs(i.attrs) {|cx|
+    do cx.with_warn_attrs(i.attrs) |cx| {
         if !cx.is_default {
             cx.sess.warning_settings.settings_map.insert(i.id, cx.curr);
         }
@@ -289,17 +289,17 @@ fn build_settings_crate(sess: session::session, crate: @ast::crate) {
               sess: sess};
 
     // Install defaults.
-    for cx.dict.each {|_k, spec| cx.set_level(spec.lint, spec.default); }
+    for cx.dict.each |_k, spec| { cx.set_level(spec.lint, spec.default); }
 
     // Install command-line options, overriding defaults.
-    for sess.opts.lint_opts.each {|pair|
+    for sess.opts.lint_opts.each |pair| {
         let (lint,level) = pair;
         cx.set_level(lint, level);
     }
 
-    do cx.with_warn_attrs(crate.node.attrs) {|cx|
+    do cx.with_warn_attrs(crate.node.attrs) |cx| {
         // Copy out the default settings
-        for cx.curr.each {|k, v|
+        for cx.curr.each |k, v| {
             sess.warning_settings.default_settings.insert(k, v);
         }
 
@@ -327,7 +327,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
 // not traverse into subitems, since that is handled by the outer
 // lint visitor.
 fn item_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
-    visit::mk_vt(@{visit_item: {|_i, _e, _v| } with **v})
+    visit::mk_vt(@{visit_item: |_i, _e, _v| { } with **v})
 }
 
 fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
@@ -357,8 +357,8 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
                        decl: ast::fn_decl) {
-        let tys = vec::map(decl.inputs, {|a| a.ty });
-        for vec::each(vec::append_one(tys, decl.output)) {|ty|
+        let tys = vec::map(decl.inputs, |a| a.ty );
+        for vec::each(vec::append_one(tys, decl.output)) |ty| {
             alt ty.node {
               ast::ty_path(_, id) {
                 alt cx.def_map.get(id) {
@@ -387,7 +387,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
     alt it.node {
       ast::item_foreign_mod(nmod) if attr::foreign_abi(it.attrs) !=
       either::right(ast::foreign_abi_rust_intrinsic) {
-        for nmod.items.each {|ni|
+        for nmod.items.each |ni| {
             alt ni.node {
               ast::foreign_item_fn(decl, tps) {
                 check_foreign_fn(cx, it.id, decl);

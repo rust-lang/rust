@@ -19,7 +19,7 @@ fn count(n: uint) -> uint {
 fn main() {
     // Make sure we're on a task with small Rust stacks (main currently
     // has a large stack)
-    do task::spawn {||
+    do task::spawn || {
         let result = count(1000u);
         #debug("result = %?", result);
         assert result == 1000u;

@@ -140,7 +140,7 @@ mod tests {
         assert mem as int != 0;
 
         ret unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
-                                     {||free(mem)}) };
+                                     ||free(mem)) };
     }
 
     #[test]

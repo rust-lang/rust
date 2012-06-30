@@ -8,7 +8,7 @@ fn broken() -> int {
         y += ~[&mut z];
         x += 1;
     }
-    vec::foldl(0, y, {|v, p| v + *p })
+    vec::foldl(0, y, |v, p| v + *p )
     //!^ ERROR reference is not valid
     //!^^ ERROR reference is not valid
     //!^^^ ERROR reference is not valid

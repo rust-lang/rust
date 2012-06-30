@@ -11,6 +11,6 @@ fn child() { fail; }
 
 fn main() {
     let p = port::<int>();
-    task::spawn({|| child(); });
+    task::spawn(|| child() );
     task::yield();
 }

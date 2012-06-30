@@ -251,8 +251,8 @@ fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
            cx.to_str(), val_str(cx.ccx().tn, val),
            ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
-    do in_scope_cx(cx) {|info|
-        vec::push(info.cleanups, clean({|a|base::drop_ty(a, val, ty)},
+    do in_scope_cx(cx) |info| {
+        vec::push(info.cleanups, clean(|a| base::drop_ty(a, val, ty),
                                 cleanup_type));
         scope_clean_changed(info);
     }
@@ -271,8 +271,8 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
             ret base::drop_ty(bcx, val, ty);
         }
     }
-    do in_scope_cx(cx) {|info|
-        vec::push(info.cleanups, clean_temp(val, {|a|do_drop(a, val, ty)},
+    do in_scope_cx(cx) |info| {
+        vec::push(info.cleanups, clean_temp(val, |a| do_drop(a, val, ty),
                                      cleanup_type));
         scope_clean_changed(info);
     }
@@ -283,19 +283,19 @@ fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
            cx.to_str(), val_str(cx.ccx().tn, val),
            ty_to_str(cx.ccx().tcx, ty)];
     let cleanup_type = cleanup_type(cx.tcx(), ty);
-    do in_scope_cx(cx) {|info|
+    do in_scope_cx(cx) |info| {
         vec::push(info.cleanups,
-                  clean_temp(val, {|a|base::drop_ty(a, val, ty)},
+                  clean_temp(val, |a| base::drop_ty(a, val, ty),
                              cleanup_type));
         scope_clean_changed(info);
     }
 }
 fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
     let free_fn = alt heap {
-      heap_shared { {|a|base::trans_free(a, ptr)} }
-      heap_exchange { {|a|base::trans_unique_free(a, ptr)} }
+      heap_shared { |a| base::trans_free(a, ptr) }
+      heap_exchange { |a| base::trans_unique_free(a, ptr) }
     };
-    do in_scope_cx(cx) {|info|
+    do in_scope_cx(cx) |info| {
         vec::push(info.cleanups, clean_temp(ptr, free_fn,
                                      normal_exit_and_unwind));
         scope_clean_changed(info);
@@ -307,10 +307,10 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: block, val: ValueRef) {
-    do in_scope_cx(cx) {|info|
-        do option::iter(vec::position(info.cleanups, {|cu|
+    do in_scope_cx(cx) |info| {
+        do option::iter(vec::position(info.cleanups, |cu| {
             alt cu { clean_temp(v, _, _) if v == val { true } _ { false } }
-        })) {|i|
+        })) |i| {
             info.cleanups =
                 vec::append(vec::slice(info.cleanups, 0u, i),
                             vec::view(info.cleanups,
@@ -361,7 +361,7 @@ impl node_info for ast::blk {
 
 impl node_info for option<@ast::expr> {
     fn info() -> option<node_info> {
-        self.chain({ |s| s.info() })
+        self.chain(|s| s.info())
     }
 }
 
@@ -592,7 +592,7 @@ fn T_struct(elts: ~[TypeRef]) -> TypeRef unsafe {
 
 fn T_named_struct(name: str) -> TypeRef {
     let c = llvm::LLVMGetGlobalContext();
-    ret str::as_c_str(name, {|buf| llvm::LLVMStructCreateNamed(c, buf) });
+    ret str::as_c_str(name, |buf| llvm::LLVMStructCreateNamed(c, buf));
 }
 
 fn set_struct_body(t: TypeRef, elts: ~[TypeRef]) unsafe {
@@ -800,7 +800,7 @@ fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
 }
 
 fn C_floating(s: str, t: TypeRef) -> ValueRef {
-    ret str::as_c_str(s, {|buf| llvm::LLVMConstRealOfString(t, buf) });
+    ret str::as_c_str(s, |buf| llvm::LLVMConstRealOfString(t, buf));
 }
 
 fn C_nil() -> ValueRef {
@@ -840,12 +840,12 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
       none { }
     }
 
-    let sc = do str::as_c_str(s) {|buf|
+    let sc = do str::as_c_str(s) |buf| {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
         str::as_c_str(cx.names("str"),
-                    {|buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf) });
+                    |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
     lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
@@ -862,7 +862,7 @@ fn C_estr_slice(cx: @crate_ctxt, s: str) -> ValueRef {
 
 // Returns a Plain Old LLVM String:
 fn C_postr(s: str) -> ValueRef {
-    ret do str::as_c_str(s) {|buf|
+    ret do str::as_c_str(s) |buf| {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
 }
@@ -898,7 +898,7 @@ fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let llglobal = str::as_c_str(ccx.names("shape"), {|buf|
+    let llglobal = str::as_c_str(ccx.names("shape"), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llshape);
@@ -920,12 +920,12 @@ enum mono_param_id {
 type mono_id = @{def: ast::def_id, params: ~[mono_param_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let mut h = syntax::ast_util::hash_def(mi.def);
-    for vec::each(mi.params) {|param|
+    for vec::each(mi.params) |param| {
         h = h * alt param {
           mono_precise(ty, vts) {
             let mut h = ty::type_id(ty);
-            do option::iter(vts) {|vts|
-                for vec::each(vts) {|vt| h += hash_mono_id(vt); }
+            do option::iter(vts) |vts| {
+                for vec::each(vts) |vt| { h += hash_mono_id(vt); }
             }
             h
           }
@@ -954,7 +954,7 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 
 fn path_str(p: path) -> str {
     let mut r = "", first = true;
-    for vec::each(p) {|e|
+    for vec::each(p) |e| {
         alt e { ast_map::path_name(s) | ast_map::path_mod(s) {
           if first { first = false; }
           else { r += "::"; }
@@ -980,7 +980,7 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let params = ty::node_id_to_type_params(tcx, id);
     alt bcx.fcx.param_substs {
       some(substs) {
-        vec::map(params, {|t| ty::subst_tps(tcx, substs.tys, t) })
+        vec::map(params, |t| ty::subst_tps(tcx, substs.tys, t))
       }
       _ { params }
     }

@@ -81,7 +81,7 @@ fn mk_rec_e(cx: ext_ctxt, sp: span,
             fields: ~[{ident: ast::ident, ex: @ast::expr}]) ->
     @ast::expr {
     let mut astfields: ~[ast::field] = ~[];
-    for fields.each {|field|
+    for fields.each |field| {
         let ident = field.ident;
         let val = field.ex;
         let astfield =

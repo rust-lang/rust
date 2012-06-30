@@ -65,7 +65,7 @@ pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
 #[test]
 fn test_bool_from_str() {
-    do all_values { |v|
+    do all_values |v| {
         assert some(v) == from_str(bool::to_str(v))
     }
 }
@@ -78,7 +78,7 @@ fn test_bool_to_str() {
 
 #[test]
 fn test_bool_to_bit() {
-    do all_values { |v|
+    do all_values |v| {
         assert to_bit(v) == if is_true(v) { 1u8 } else { 0u8 };
     }
 }

@@ -48,7 +48,7 @@ const DW_ATE_unsigned: int = 0x07;
 const DW_ATE_unsigned_char: int = 0x08;
 
 fn llstr(s: str) -> ValueRef {
-    str::as_c_str(s, {|sbuf|
+    str::as_c_str(s, |sbuf| {
         llvm::LLVMMDString(sbuf, str::len(s) as libc::c_uint)
     })
 }
@@ -76,7 +76,7 @@ fn llnull() -> ValueRef unsafe {
 }
 
 fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
-    str::as_c_str(name, {|sbuf|
+    str::as_c_str(name, |sbuf| {
         llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, val)
     })
 }
@@ -150,7 +150,7 @@ fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
                            eq: fn(md: T) -> bool) -> option<T> unsafe {
     if cache.contains_key(mdtag) {
         let items = cache.get(mdtag);
-        for items.each {|item|
+        for items.each |item| {
             let md: T = md_from_metadata::<T>(item);
             if eq(md) {
                 ret option::some(md);
@@ -166,7 +166,7 @@ fn create_compile_unit(cx: @crate_ctxt)
     let crate_name = option::get(cx.dbg_cx).crate_file;
     let tg = CompileUnitTag;
     alt cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
-                        {|md| md.data.name == crate_name}) {
+                        |md| md.data.name == crate_name) {
       option::some(md) { ret md; }
       option::none {}
     }
@@ -209,7 +209,7 @@ fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
     alt cached_metadata::<@metadata<file_md>>(
-        cache, tg, {|md| md.data.path == full_path}) {
+        cache, tg, |md| md.data.path == full_path) {
         option::some(md) { ret md; }
         option::none {}
     }
@@ -286,7 +286,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
     alt cached_metadata::<@metadata<tydesc_md>>(
-        cache, tg, {|md| ty::type_id(t) == md.data.hash}) {
+        cache, tg, |md| ty::type_id(t) == md.data.hash) {
       option::some(md) { ret md; }
       option::none {}
     }
@@ -417,7 +417,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: ~[ast::ty_field],
                                option::get(cx.dbg_cx).names("rec"),
                                line_from_span(cx.sess.codemap,
                                               span) as int);
-    for fields.each {|field|
+    for fields.each |field| {
         let field_t = ty::get_field(t, field.node.ident).mt.ty;
         let ty_md = create_ty(cx, field_t, field.node.mt.ty);
         let (size, align) = size_and_align_of(cx, field_t);
@@ -640,7 +640,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     let cache = get_cache(cx);
     let tg = AutoVariableTag;
     alt cached_metadata::<@metadata<local_var_md>>(
-        cache, tg, {|md| md.data.id == local.node.id}) {
+        cache, tg, |md| md.data.id == local.node.id) {
       option::some(md) { ret md; }
       option::none {}
     }
@@ -690,7 +690,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let cache = get_cache(cx);
     let tg = ArgVariableTag;
     alt cached_metadata::<@metadata<argument_md>>(
-        cache, ArgVariableTag, {|md| md.data.id == arg.id}) {
+        cache, ArgVariableTag, |md| md.data.id == arg.id) {
       option::some(md) { ret md; }
       option::none {}
     }
@@ -778,7 +778,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
 
     let cache = get_cache(cx);
     alt cached_metadata::<@metadata<subprogram_md>>(
-        cache, SubprogramTag, {|md| md.data.id == id}) {
+        cache, SubprogramTag, |md| md.data.id == id) {
       option::some(md) { ret md; }
       option::none {}
     }

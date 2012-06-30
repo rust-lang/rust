@@ -8,8 +8,8 @@ fn main() {
 
     let x = ~2;
     let y = ptr::addr_of(*x) as uint;
-    let lam_copy: fn@() -> uint = { |copy x| ptr::addr_of(*x) as uint };
-    let lam_move: fn@() -> uint = { |move x| ptr::addr_of(*x) as uint };
+    let lam_copy: fn@() -> uint = |copy x| ptr::addr_of(*x) as uint;
+    let lam_move: fn@() -> uint = |move x| ptr::addr_of(*x) as uint;
     assert lam_copy() != y;
     assert lam_move() == y;
 
@@ -22,8 +22,8 @@ fn main() {
 
     let x = ~4;
     let y = ptr::addr_of(*x) as uint;
-    let lam_copy: fn~() -> uint = { |copy x| ptr::addr_of(*x) as uint };
-    let lam_move: fn~() -> uint = { |move x| ptr::addr_of(*x) as uint };
+    let lam_copy: fn~() -> uint = |copy x| ptr::addr_of(*x) as uint;
+    let lam_move: fn~() -> uint = |move x| ptr::addr_of(*x) as uint;
     assert lam_copy() != y;
     assert lam_move() == y;
 }

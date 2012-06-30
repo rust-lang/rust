@@ -66,7 +66,7 @@ j    Fails if the string is not a valid IPv4 address
         }
     }
     fn try_parse_addr(ip: str) -> result::result<ip_addr,parse_addr_err> {
-        let parts = vec::map(str::split_char(ip, '.'), {|s|
+        let parts = vec::map(str::split_char(ip, '.'), |s| {
             alt uint::from_str(s) {
               some(n) if n <= 255u { n }
               _ { 256u }

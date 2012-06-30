@@ -83,57 +83,57 @@ fn mk_fold<T:copy>(
 fn default_any_fold<T:send copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
-        {|f, d| default_seq_fold_doc(f, d)},
-        {|f, d| default_seq_fold_crate(f, d)},
-        {|f, d| default_seq_fold_item(f, d)},
-        {|f, d| default_any_fold_mod(f, d)},
-        {|f, d| default_any_fold_nmod(f, d)},
-        {|f, d| default_seq_fold_fn(f, d)},
-        {|f, d| default_seq_fold_const(f, d)},
-        {|f, d| default_seq_fold_enum(f, d)},
-        {|f, d| default_seq_fold_iface(f, d)},
-        {|f, d| default_seq_fold_impl(f, d)},
-        {|f, d| default_seq_fold_type(f, d)}
+        |f, d| default_seq_fold_doc(f, d),
+        |f, d| default_seq_fold_crate(f, d),
+        |f, d| default_seq_fold_item(f, d),
+        |f, d| default_any_fold_mod(f, d),
+        |f, d| default_any_fold_nmod(f, d),
+        |f, d| default_seq_fold_fn(f, d),
+        |f, d| default_seq_fold_const(f, d),
+        |f, d| default_seq_fold_enum(f, d),
+        |f, d| default_seq_fold_iface(f, d),
+        |f, d| default_seq_fold_impl(f, d),
+        |f, d| default_seq_fold_type(f, d)
     )
 }
 
 fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
-        {|f, d| default_seq_fold_doc(f, d)},
-        {|f, d| default_seq_fold_crate(f, d)},
-        {|f, d| default_seq_fold_item(f, d)},
-        {|f, d| default_seq_fold_mod(f, d)},
-        {|f, d| default_seq_fold_nmod(f, d)},
-        {|f, d| default_seq_fold_fn(f, d)},
-        {|f, d| default_seq_fold_const(f, d)},
-        {|f, d| default_seq_fold_enum(f, d)},
-        {|f, d| default_seq_fold_iface(f, d)},
-        {|f, d| default_seq_fold_impl(f, d)},
-        {|f, d| default_seq_fold_type(f, d)}
+        |f, d| default_seq_fold_doc(f, d),
+        |f, d| default_seq_fold_crate(f, d),
+        |f, d| default_seq_fold_item(f, d),
+        |f, d| default_seq_fold_mod(f, d),
+        |f, d| default_seq_fold_nmod(f, d),
+        |f, d| default_seq_fold_fn(f, d),
+        |f, d| default_seq_fold_const(f, d),
+        |f, d| default_seq_fold_enum(f, d),
+        |f, d| default_seq_fold_iface(f, d),
+        |f, d| default_seq_fold_impl(f, d),
+        |f, d| default_seq_fold_type(f, d)
     )
 }
 
 fn default_par_fold<T:send copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
-        {|f, d| default_seq_fold_doc(f, d)},
-        {|f, d| default_seq_fold_crate(f, d)},
-        {|f, d| default_seq_fold_item(f, d)},
-        {|f, d| default_par_fold_mod(f, d)},
-        {|f, d| default_par_fold_nmod(f, d)},
-        {|f, d| default_seq_fold_fn(f, d)},
-        {|f, d| default_seq_fold_const(f, d)},
-        {|f, d| default_seq_fold_enum(f, d)},
-        {|f, d| default_seq_fold_iface(f, d)},
-        {|f, d| default_seq_fold_impl(f, d)},
-        {|f, d| default_seq_fold_type(f, d)}
+        |f, d| default_seq_fold_doc(f, d),
+        |f, d| default_seq_fold_crate(f, d),
+        |f, d| default_seq_fold_item(f, d),
+        |f, d| default_par_fold_mod(f, d),
+        |f, d| default_par_fold_nmod(f, d),
+        |f, d| default_seq_fold_fn(f, d),
+        |f, d| default_seq_fold_const(f, d),
+        |f, d| default_seq_fold_enum(f, d),
+        |f, d| default_seq_fold_iface(f, d),
+        |f, d| default_seq_fold_impl(f, d),
+        |f, d| default_seq_fold_type(f, d)
     )
 }
 
 fn default_seq_fold_doc<T>(fold: fold<T>, doc: doc::doc) -> doc::doc {
     {
-        pages: do par::seqmap(doc.pages) {|page|
+        pages: do par::seqmap(doc.pages) |page| {
             alt page {
               doc::cratepage(doc) {
                 doc::cratepage(fold.fold_crate(fold, doc))
@@ -169,7 +169,7 @@ fn default_any_fold_mod<T:send copy>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: par::anymap(doc.items, {|itemtag, copy fold|
+        items: par::anymap(doc.items, |itemtag, copy fold| {
             fold_itemtag(fold, itemtag)
         })
         with doc
@@ -182,7 +182,7 @@ fn default_seq_fold_mod<T>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: par::seqmap(doc.items, {|itemtag|
+        items: par::seqmap(doc.items, |itemtag| {
             fold_itemtag(fold, itemtag)
         })
         with doc
@@ -195,7 +195,7 @@ fn default_par_fold_mod<T:send copy>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: par::parmap(doc.items, {|itemtag, copy fold|
+        items: par::parmap(doc.items, |itemtag, copy fold| {
             fold_itemtag(fold, itemtag)
         })
         with doc
@@ -208,7 +208,7 @@ fn default_any_fold_nmod<T:send copy>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: par::anymap(doc.fns, {|fndoc, copy fold|
+        fns: par::anymap(doc.fns, |fndoc, copy fold| {
             fold.fold_fn(fold, fndoc)
         })
         with doc
@@ -221,7 +221,7 @@ fn default_seq_fold_nmod<T>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: par::seqmap(doc.fns, {|fndoc|
+        fns: par::seqmap(doc.fns, |fndoc| {
             fold.fold_fn(fold, fndoc)
         })
         with doc
@@ -234,7 +234,7 @@ fn default_par_fold_nmod<T:send copy>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: par::parmap(doc.fns, {|fndoc, copy fold|
+        fns: par::parmap(doc.fns, |fndoc, copy fold| {
             fold.fold_fn(fold, fndoc)
         })
         with doc

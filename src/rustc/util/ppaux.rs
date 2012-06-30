@@ -98,7 +98,7 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> str {
 
 fn tys_to_str(cx: ctxt, ts: ~[t]) -> str {
     let mut rs = "";
-    for ts.each {|t| rs += ty_to_str(cx, t); }
+    for ts.each |t| { rs += ty_to_str(cx, t); }
     rs
 }
 
@@ -133,7 +133,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         alt ident { some(i) { s += " "; s += *i; } _ { } }
         s += "(";
         let mut strs = ~[];
-        for inputs.each {|a| vec::push(strs, fn_input_to_str(cx, a)); }
+        for inputs.each |a| { vec::push(strs, fn_input_to_str(cx, a)); }
         s += str::connect(strs, ", ");
         s += ")";
         if ty::get(output).struct != ty_nil {
@@ -156,7 +156,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     }
 
     // if there is an id, print that instead of the structural type:
-    for ty::type_def_id(typ).each { |def_id|
+    for ty::type_def_id(typ).each |def_id| {
         // note that this typedef cannot have type parameters
         ret ast_map::path_to_str(ty::item_path(cx, def_id));
     }
@@ -190,12 +190,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_type { "type" }
       ty_rec(elems) {
         let mut strs: ~[str] = ~[];
-        for elems.each {|fld| vec::push(strs, field_to_str(cx, fld)); }
+        for elems.each |fld| { vec::push(strs, field_to_str(cx, fld)); }
         "{" + str::connect(strs, ",") + "}"
       }
       ty_tup(elems) {
         let mut strs = ~[];
-        for elems.each {|elem| vec::push(strs, ty_to_str(cx, elem)); }
+        for elems.each |elem| { vec::push(strs, ty_to_str(cx, elem)); }
         "(" + str::connect(strs, ",") + ")"
       }
       ty_fn(f) {
@@ -244,7 +244,7 @@ fn parameterized(cx: ctxt,
     };
 
     if vec::len(tps) > 0u {
-        let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
+        let strs = vec::map(tps, |t| ty_to_str(cx, t) );
         #fmt["%s%s<%s>", base, r_str, str::connect(strs, ",")]
     } else {
         #fmt["%s%s", base, r_str]
@@ -265,7 +265,7 @@ fn constr_to_str(c: @constr) -> str {
 fn constrs_str(constrs: ~[@constr]) -> str {
     let mut s = "";
     let mut colon = true;
-    for constrs.each {|c|
+    for constrs.each |c| {
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += constr_to_str(c);
     }

@@ -11,6 +11,6 @@ fn coerce(b: fn()) -> native fn() {
 
 fn main() {
     let i = 8;
-    let f = coerce({|| log(error, i); });
+    let f = coerce(|| log(error, i) );
     f();
 }

@@ -61,10 +61,10 @@ mod map_reduce {
     fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: ~[str]) ->
        ~[future::future<task::task_result>] {
         let mut results = ~[];
-        for inputs.each {|i|
+        for inputs.each |i| {
             let builder = task::builder();
             results += ~[task::future_result(builder)];
-            do task::run(builder) {|| map_task(ctrl, i)}
+            task::run(builder, || map_task(ctrl, i));
         }
         ret results;
     }
@@ -91,9 +91,9 @@ mod map_reduce {
             send(c, emit_val(val));
         }
 
-        map(input, {|a,b|emit(intermediates, ctrl, a, b)});
+        map(input, |a,b| emit(intermediates, ctrl, a, b) );
 
-        for intermediates.each_value {|v| send(v, release); }
+        for intermediates.each_value |v| { send(v, release); }
 
         send(ctrl, mapper_done);
     }
@@ -125,7 +125,7 @@ mod map_reduce {
             ret none;
         }
 
-        reduce(key, {||get(p, state)});
+        reduce(key, || get(p, state) );
     }
 
     fn map_reduce(-inputs: ~[str]) {
@@ -162,7 +162,7 @@ mod map_reduce {
                     let ch = chan(p);
                     let builder = task::builder();
                     results += ~[task::future_result(builder)];
-                    task::run(builder, {||reduce_task(k, ch)});
+                    task::run(builder, || reduce_task(k, ch) );
                     c = recv(p);
                     reducers.insert(k, c);
                   }
@@ -172,9 +172,9 @@ mod map_reduce {
             }
         }
 
-        for reducers.each_value {|v| send(v, done); }
+        for reducers.each_value |v| { send(v, done); }
 
-        for results.each {|r| future::get(r); }
+        for results.each |r| { future::get(r); }
     }
 }
 

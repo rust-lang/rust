@@ -117,7 +117,7 @@ fn is_uuid(id: str) -> bool {
     let parts = str::split_str(id, "-");
     if vec::len(parts) == 5u {
         let mut correct = 0u;
-        for vec::eachi(parts) { |i, part|
+        for vec::eachi(parts) |i, part| {
             fn is_hex_digit(ch: char) -> bool {
                 ('0' <= ch && ch <= '9') ||
                 ('a' <= ch && ch <= 'f') ||
@@ -222,7 +222,7 @@ fn load_link(mis: ~[@ast::meta_item]) -> (option<str>,
     let mut name = none;
     let mut vers = none;
     let mut uuid = none;
-    for mis.each {|a|
+    for mis.each |a| {
         alt a.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) {
                 alt *v {
@@ -249,7 +249,7 @@ fn load_crate(filename: str) -> option<crate> {
     let mut sigs = none;
     let mut crate_type = none;
 
-    for c.node.attrs.each {|a|
+    for c.node.attrs.each |a| {
         alt a.node.value.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) {
                 alt *v {
@@ -291,7 +291,7 @@ fn load_crate(filename: str) -> option<crate> {
                 let mut attr_vers = "";
                 let mut attr_from = "";
 
-                for m.each { |item|
+              for m.each |item| {
                     alt attr::get_meta_item_value_str(item) {
                         some(value) {
                             let name = attr::get_meta_item_name(item);
@@ -329,8 +329,8 @@ fn load_crate(filename: str) -> option<crate> {
         mut deps: ~[]
     };
     let v = visit::mk_simple_visitor(@{
-        visit_view_item: {|a|goto_view_item(e, a)},
-        visit_item: {|a|goto_item(e, a)},
+        visit_view_item: |a| goto_view_item(e, a),
+        visit_item: |a| goto_item(e, a),
         with *visit::default_simple_visitor()
     });
 
@@ -435,7 +435,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     let c = io::read_whole_file_str(filename);
     alt json::from_str(result::get(c)) {
         ok(json::dict(j)) {
-            for j.each { |k, v|
+          for j.each |k, v| {
                 sources.insert(k, parse_source(k, v));
                 #debug("source: %s", k);
             }
@@ -501,7 +501,7 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
     let mut tags = ~[];
     alt p.find("tags") {
         some(json::list(js)) {
-            for (*js).each {|j|
+          for (*js).each |j| {
                 alt j {
                     json::string(j) { vec::grow(tags, 1u, *j); }
                     _ { }
@@ -531,7 +531,7 @@ fn load_one_source_package(src: source, p: map::hashmap<str, json::json>) {
         versions: ~[]
     };
 
-    alt src.packages.position({ |pkg| pkg.uuid == uuid }) {
+    alt src.packages.position(|pkg| pkg.uuid == uuid ) {
       some(idx) {
         src.packages[idx] = newpkg;
         log(debug, "  updated package: " + src.name + "/" + name);
@@ -573,7 +573,7 @@ fn load_source_packages(c: cargo, src: source) {
     let pkgstr = io::read_whole_file_str(pkgfile);
     alt json::from_str(result::get(pkgstr)) {
         ok(json::list(js)) {
-            for (*js).each {|j|
+          for (*js).each |j| {
                 alt j {
                     json::dict(p) {
                         load_one_source_package(src, p);
@@ -667,7 +667,7 @@ fn configure(opts: options) -> cargo {
     need_dir(c.libdir);
     need_dir(c.bindir);
 
-    for sources.each_key { |k|
+    for sources.each_key |k| {
         let mut s = sources.get(k);
         load_source_packages(c, s);
         sources.insert(k, s);
@@ -685,11 +685,11 @@ fn configure(opts: options) -> cargo {
 }
 
 fn for_each_package(c: cargo, b: fn(source, package)) {
-    for c.sources.each_value {|v|
+    for c.sources.each_value |v| {
         // FIXME (#2280): this temporary shouldn't be
         // necessary, but seems to be, for borrowing.
         let pks = copy v.packages;
-        for vec::each(pks) {|p|
+        for vec::each(pks) |p| {
             b(v, p);
         }
     }
@@ -698,7 +698,7 @@ fn for_each_package(c: cargo, b: fn(source, package)) {
 // Runs all programs in directory <buildpath>
 fn run_programs(buildpath: str) {
     let newv = os::list_dir_path(buildpath);
-    for newv.each {|ct|
+    for newv.each |ct| {
         run::run_program(ct, ~[]);
     }
 }
@@ -736,7 +736,7 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
     };
     let newv = os::list_dir_path(buildpath);
     let exec_suffix = os::exe_suffix();
-    for newv.each {|ct|
+    for newv.each |ct| {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {
@@ -773,7 +773,7 @@ fn install_source(c: cargo, path: str) {
     os::change_dir(path);
 
     let mut cratefiles = ~[];
-    for os::walk_dir(".") {|p|
+    for os::walk_dir(".") |p| {
         if str::ends_with(p, ".rc") {
             vec::push(cratefiles, p);
         }
@@ -783,11 +783,11 @@ fn install_source(c: cargo, path: str) {
         fail "this doesn't look like a rust package (no .rc files)";
     }
 
-    for cratefiles.each {|cf|
+    for cratefiles.each |cf| {
         alt load_crate(cf) {
             none { cont; }
             some(crate) {
-                for crate.deps.each { |query|
+              for crate.deps.each |query| {
                     // TODO: handle cyclic dependencies
 
                     let wd_base = c.workdir + path::path_sep();
@@ -869,7 +869,7 @@ fn cargo_suggestion(c: cargo, fallback: fn())
 
 fn install_uuid(c: cargo, wd: str, uuid: str) {
     let mut ps = ~[];
-    for_each_package(c, { |s, p|
+    for_each_package(c, |s, p| {
         if p.uuid == uuid {
             vec::grow(ps, 1u, (s.name, copy p));
         }
@@ -879,13 +879,13 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
         install_package(c, sname, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, { ||
+        cargo_suggestion(c, || {
             error("can't find package: " + uuid);
         });
         ret;
     }
     error("found multiple packages:");
-    for ps.each {|elt|
+    for ps.each |elt| {
         let (sname,p) = copy elt;
         info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
     }
@@ -893,7 +893,7 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
 
 fn install_named(c: cargo, wd: str, name: str) {
     let mut ps = ~[];
-    for_each_package(c, { |s, p|
+    for_each_package(c, |s, p| {
         if p.name == name {
             vec::grow(ps, 1u, (s.name, copy p));
         }
@@ -903,13 +903,13 @@ fn install_named(c: cargo, wd: str, name: str) {
         install_package(c, sname, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        cargo_suggestion(c, { ||
+        cargo_suggestion(c, || {
             error("can't find package: " + name);
         });
         ret;
     }
     error("found multiple packages:");
-    for ps.each {|elt|
+    for ps.each |elt| {
         let (sname,p) = copy elt;
         info("  " + sname + "/" + p.uuid + " (" + p.name + ")");
     }
@@ -919,7 +919,7 @@ fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
     alt c.sources.find(src) {
       some(s) {
         let packages = copy s.packages;
-        if vec::any(packages, { |p|
+        if vec::any(packages, |p| {
             if p.uuid == uuid {
                 install_package(c, src, wd, p);
                 true
@@ -935,7 +935,7 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     alt c.sources.find(src) {
         some(s) {
           let packages = copy s.packages;
-          if vec::any(packages, { |p|
+          if vec::any(packages, |p| {
                 if p.name == name {
                     install_package(c, src, wd, p);
                     true
@@ -962,7 +962,7 @@ fn cmd_uninstall(c: cargo) {
     // cache instead of looking for it (binaries can be uninstalled by
     // name only)
     if is_uuid(target) {
-        for os::list_dir(lib).each { |file|
+        for os::list_dir(lib).each |file| {
             alt str::find_str(file, "-" + target + "-") {
                 some(idx) {
                     let full = path::normalize(path::connect(lib, file));
@@ -979,7 +979,7 @@ fn cmd_uninstall(c: cargo) {
 
         error("can't find package with uuid: " + target);
     } else {
-        for os::list_dir(lib).each { |file|
+        for os::list_dir(lib).each |file| {
             alt str::find_str(file, "lib" + target + "-") {
                 some(idx) {
                     let full = path::normalize(path::connect(lib,
@@ -994,7 +994,7 @@ fn cmd_uninstall(c: cargo) {
                 none { cont; }
             }
         }
-        for os::list_dir(bin).each { |file|
+        for os::list_dir(bin).each |file| {
             alt str::find_str(file, target) {
                 some(idx) {
                     let full = path::normalize(path::connect(bin, file));
@@ -1065,7 +1065,7 @@ fn install_query(c: cargo, wd: str, target: str) {
     // a bit of a hack. It should be cleaned up in the future.
 
     if target == c.current_install {
-        for c.dep_cache.each { |k, _v|
+        for c.dep_cache.each |k, _v| {
             c.dep_cache.remove(k);
         }
 
@@ -1101,7 +1101,7 @@ fn cmd_install(c: cargo) unsafe {
 }
 
 fn sync(c: cargo) {
-    for c.sources.each_key { |k|
+    for c.sources.each_key |k| {
         let mut s = c.sources.get(k);
         sync_one(c, s);
         c.sources.insert(k, s);
@@ -1464,15 +1464,13 @@ fn print_pkg(s: source, p: package) {
 fn print_source(s: source) {
     info(s.name + " (" + s.url + ")");
 
-    let pks = sort::merge_sort({ |a, b|
-        a < b
-    }, copy s.packages);
+    let pks = sort::merge_sort(|a, b| a < b, copy s.packages);
     let l = vec::len(pks);
 
-    print(io::with_str_writer({ |writer|
+    print(io::with_str_writer(|writer| {
         let mut list = "   >> ";
 
-        do vec::iteri(pks) { |i, pk|
+        do vec::iteri(pks) |i, pk| {
             if str::len(list) > 78u {
                 writer.write_line(list);
                 list = "   >> ";
@@ -1488,7 +1486,7 @@ fn cmd_list(c: cargo) {
     sync(c);
 
     if vec::len(c.opts.free) >= 3u {
-        do vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) { |name|
+        do vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) |name| {
             if !valid_pkg_name(name) {
                 error(#fmt("'%s' is an invalid source name", name));
             } else {
@@ -1503,7 +1501,7 @@ fn cmd_list(c: cargo) {
             }
         }
     } else {
-        for c.sources.each_value { |v|
+        for c.sources.each_value |v| {
             print_source(v);
         }
     }
@@ -1520,9 +1518,9 @@ fn cmd_search(c: cargo) {
     let mut n = 0;
     let name = c.opts.free[2];
     let tags = vec::slice(c.opts.free, 3u, vec::len(c.opts.free));
-    for_each_package(c, { |s, p|
+    for_each_package(c, |s, p| {
         if (str::contains(p.name, name) || name == "*") &&
-            vec::all(tags, { |t| vec::contains(p.tags, t) }) {
+            vec::all(tags, |t| vec::contains(p.tags, t) ) {
             print_pkg(s, p);
             n += 1;
         }
@@ -1569,7 +1567,7 @@ fn dump_sources(c: cargo) {
             let hash = map::str_hash();
             let root = json::dict(hash);
 
-            for c.sources.each { |k, v|
+          for c.sources.each |k, v| {
                 let chash = map::str_hash();
                 let child = json::dict(chash);
 
@@ -1608,7 +1606,7 @@ fn copy_warn(srcfile: str, destfile: str) {
 
 fn cmd_sources(c: cargo) {
     if vec::len(c.opts.free) < 3u {
-        for c.sources.each_value { |v|
+        for c.sources.each_value |v| {
             info(#fmt("%s (%s) via %s",
                       copy v.name, copy v.url, copy v.method));
         }
@@ -1619,7 +1617,7 @@ fn cmd_sources(c: cargo) {
 
     alt action {
         "clear" {
-            for c.sources.each_key { |k|
+          for c.sources.each_key |k| {
                 c.sources.remove(k);
             }
 

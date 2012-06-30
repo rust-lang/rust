@@ -69,8 +69,7 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
     let incr = 2f64/(size as f64);
     let y = incr*(i as f64) - 1f64;
     let xincr = 8f64*incr;
-    for uint::range(0_u, size/8_u) {
-        |j|
+    for uint::range(0_u, size/8_u) |j| {
         let x = {re: xincr*(j as f64) - 1.5f64, im: y};
         vec::push(crv, fillbyte(x, incr));
     };
@@ -158,12 +157,12 @@ fn main(args: ~[str]) {
 
     let writep = comm::port();
     let writech = comm::chan(writep);
-    do task::spawn {||
+    do task::spawn || {
         writer(path, writech, size);
     };
     let ch = comm::recv(writep);
-    for uint::range(0_u, size) {|j|
-        do task::spawn {|| chanmb(j, size, ch);};
+    for uint::range(0_u, size) |j| {
+        task::spawn(|| chanmb(j, size, ch) );
         if j % yieldevery == 0_u {
             #debug("Y %u", j);
             task::yield();

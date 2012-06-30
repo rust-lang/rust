@@ -38,9 +38,9 @@ fn check_capture_clause(tcx: ty::ctxt,
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let seen_defs = map::int_hash();
 
-    for (*cap_clause).each { |cap_item|
+    for (*cap_clause).each |cap_item| {
         let cap_def = tcx.def_map.get(cap_item.id);
-        if !vec::any(*freevars, {|fv| fv.def == cap_def}) {
+        if !vec::any(*freevars, |fv| fv.def == cap_def ) {
             tcx.sess.span_warn(
                 cap_item.span,
                 #fmt("captured variable '%s' not used in closure",
@@ -66,7 +66,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
 
     // first add entries for anything explicitly named in the cap clause
 
-    for (*cap_clause).each { |cap_item|
+    for (*cap_clause).each |cap_item| {
         #debug("Doing capture var: %s (%?)",
                *cap_item.name, cap_item.id);
 
@@ -75,7 +75,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
         if cap_item.is_move {
             // if we are moving the value in, but it's not actually used,
             // must drop it.
-            if vec::any(*freevars, {|fv| fv.def == cap_def}) {
+            if vec::any(*freevars, |fv| fv.def == cap_def ) {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
                                             cap_item: some(cap_item),
@@ -89,7 +89,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
         } else {
             // if we are copying the value in, but it's not actually used,
             // just ignore it.
-            if vec::any(*freevars, {|fv| fv.def == cap_def}) {
+            if vec::any(*freevars, |fv| fv.def == cap_def ) {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
                                             cap_item: some(cap_item),
@@ -106,7 +106,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
       ast::proto_bare | ast::proto_box | ast::proto_uniq { cap_copy }
     };
 
-    do vec::iter(*freevars) { |fvar|
+    do vec::iter(*freevars) |fvar| {
         let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
         alt cap_map.find(fvar_def_id) {
           option::some(_) { /* was explicitly named, do nothing */ }
@@ -120,6 +120,6 @@ fn compute_capture_vars(tcx: ty::ctxt,
     }
 
     let mut result = ~[];
-    for cap_map.each_value { |cap_var| vec::push(result, cap_var); }
+    for cap_map.each_value |cap_var| { vec::push(result, cap_var); }
     ret result;
 }

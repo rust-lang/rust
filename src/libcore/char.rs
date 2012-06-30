@@ -140,7 +140,7 @@ fn escape_unicode(c: char) -> str {
     assert str::len(s) <= pad;
     let mut out = "\\";
     out += str::from_char(c);
-    for uint::range(str::len(s), pad) {|_i| out += "0"; }
+    for uint::range(str::len(s), pad) |_i| { out += "0"; }
     out += s;
     ret out;
 }

@@ -41,7 +41,7 @@ unsafe fn chan_from_global_ptr<T: send>(
 
         let setup_po = comm::port();
         let setup_ch = comm::chan(setup_po);
-        let setup_ch = do task::run_listener(builder()) {|setup_po|
+        let setup_ch = do task::run_listener(builder()) |setup_po| {
             let po = comm::port::<T>();
             let ch = comm::chan(po);
             comm::send(setup_ch, ch);
@@ -92,7 +92,7 @@ fn test_from_global_chan1() {
 
     // Create the global channel, attached to a new task
     let ch = unsafe {
-        do chan_from_global_ptr(globchanp, task::builder) {|po|
+        do chan_from_global_ptr(globchanp, task::builder) |po| {
             let ch = comm::recv(po);
             comm::send(ch, true);
             let ch = comm::recv(po);
@@ -106,7 +106,7 @@ fn test_from_global_chan1() {
 
     // This one just reuses the previous channel
     let ch = unsafe {
-        do chan_from_global_ptr(globchanp, task::builder) {|po|
+        do chan_from_global_ptr(globchanp, task::builder) |po| {
             let ch = comm::recv(po);
             comm::send(ch, false);
         }
@@ -121,7 +121,7 @@ fn test_from_global_chan1() {
 #[test]
 fn test_from_global_chan2() {
 
-    do iter::repeat(100u) {||
+    do iter::repeat(100u) || {
         // The global channel
         let globchan = 0u;
         let globchanp = ptr::addr_of(globchan);
@@ -131,13 +131,13 @@ fn test_from_global_chan2() {
 
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
-        for uint::range(0u, 10u) {|i|
-            do task::spawn {||
+        for uint::range(0u, 10u) |i| {
+            do task::spawn || {
                 let ch = unsafe {
                     do chan_from_global_ptr(
-                        globchanp, task::builder) {|po|
+                        globchanp, task::builder) |po| {
 
-                        for uint::range(0u, 10u) {|_j|
+                        for uint::range(0u, 10u) |_j| {
                             let ch = comm::recv(po);
                             comm::send(ch, {i});
                         }
@@ -153,7 +153,7 @@ fn test_from_global_chan2() {
         }
         // There should be only one winner
         let mut winners = 0u;
-        for uint::range(0u, 10u) {|_i|
+        for uint::range(0u, 10u) |_i| {
             let res = comm::recv(resultpo);
             if res { winners += 1u };
         }
@@ -200,9 +200,9 @@ unsafe fn weaken_task(f: fn(comm::port<()>)) {
 
 #[test]
 fn test_weaken_task_then_unweaken() {
-    do task::try {||
+    do task::try || {
         unsafe {
-            do weaken_task {|_po|
+            do weaken_task |_po| {
             }
         }
     };
@@ -212,9 +212,9 @@ fn test_weaken_task_then_unweaken() {
 fn test_weaken_task_wait() {
     let builder = task::builder();
     task::unsupervise(builder);
-    do task::run(builder) {||
+    do task::run(builder) || {
         unsafe {
-            do weaken_task {|po|
+            do weaken_task |po| {
                 comm::recv(po);
             }
         }
@@ -224,18 +224,18 @@ fn test_weaken_task_wait() {
 #[test]
 fn test_weaken_task_stress() {
     // Create a bunch of weak tasks
-    do iter::repeat(100u) {||
-        do task::spawn {||
+    do iter::repeat(100u) || {
+        do task::spawn || {
             unsafe {
-                do weaken_task {|_po|
+                do weaken_task |_po| {
                 }
             }
         }
         let builder = task::builder();
         task::unsupervise(builder);
-        do task::run(builder) {||
+        do task::run(builder) || {
             unsafe {
-                do weaken_task {|po|
+                do weaken_task |po| {
                     // Wait for it to tell us to die
                     comm::recv(po);
                 }
@@ -247,9 +247,9 @@ fn test_weaken_task_stress() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_weaken_task_fail() {
-    let res = do task::try {||
+    let res = do task::try || {
         unsafe {
-            do weaken_task {|_po|
+            do weaken_task |_po| {
                 fail;
             }
         }

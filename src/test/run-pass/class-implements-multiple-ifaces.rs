@@ -19,7 +19,7 @@ iface bitey {
 }
 
 fn vec_includes<T>(xs: ~[T], x: T) -> bool {
-  for each(xs) {|y| if y == x { ret true; }}
+  for each(xs) |y| { if y == x { ret true; }}
   ret false;
 }
 
@@ -53,7 +53,7 @@ class cat : noisy, scratchy, bitey {
       let t : hashmap<body_part, uint> =
         hashmap::<body_part, uint>(hsher, eqer);
       self.bite_counts = t;
-      do iter(~[finger, toe, nose, ear]) {|p|
+     do iter(~[finger, toe, nose, ear]) |p| {
           self.bite_counts.insert(p, 0u);
       };
     }
@@ -64,7 +64,7 @@ class cat : noisy, scratchy, bitey {
     let all = ~[chair, couch, bed];
     log(error, self.scratched);
     let mut rslt = none;
-    for each(all) {|thing| if !self.scratched.contains(thing) {
+    for each(all) |thing| { if !self.scratched.contains(thing) {
           self.scratched.push(thing);
           ret some(thing); }}
     rslt
@@ -73,7 +73,7 @@ class cat : noisy, scratchy, bitey {
     #error("In bite()");
     let all = ~[toe, nose, ear];
     let mut min = finger;
-    do iter(all) {|next|
+    do iter(all) |next| {
       #debug("min = %?", min);
         if self.bite_counts.get(next) < self.bite_counts.get(min) {
             min = next;
@@ -85,7 +85,7 @@ class cat : noisy, scratchy, bitey {
 }
 
 fn annoy_neighbors<T: noisy>(critter: T) {
-  for uint::range(0u, 10u) {|i|
+  for uint::range(0u, 10u) |i| {
       let what = critter.speak();
       #debug("%u %d", i, what);
   }
@@ -97,7 +97,7 @@ fn bite_everything<T: bitey>(critter: T) -> bool {
     let part = critter.bite();
     #debug("%? %?", left, part);
     if vec_includes(left, part) {
-        left = vec::filter(left, {|p| p != part});
+        left = vec::filter(left, |p| p != part );
     }
     else {
       ret false;

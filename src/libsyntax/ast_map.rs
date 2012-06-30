@@ -11,7 +11,7 @@ type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */
 fn path_to_str_with_sep(p: path, sep: str) -> str {
-    let strs = do vec::map(p) {|e|
+    let strs = do vec::map(p) |e| {
         alt e {
           path_mod(s) { /* FIXME (#2543) */ copy *s }
           path_name(s) { /* FIXME (#2543) */ copy *s }
@@ -119,7 +119,7 @@ fn map_decoded_item(diag: span_handler,
 
 fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
           sp: codemap::span, id: node_id, cx: ctx, v: vt) {
-    for decl.inputs.each {|a|
+    for decl.inputs.each |a| {
         cx.map.insert(a.id,
                       node_arg(/* FIXME (#2543) */
                           copy a, cx.local_id));
@@ -156,7 +156,7 @@ fn map_block(b: blk, cx: ctx, v: vt) {
 }
 
 fn number_pat(cx: ctx, pat: @pat) {
-    do ast_util::walk_pat(pat) {|p|
+    do ast_util::walk_pat(pat) |p| {
         alt p.node {
           pat_ident(_, _) {
             cx.map.insert(p.id, node_local(cx.local_id));
@@ -190,13 +190,13 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     alt i.node {
       item_impl(_, _, _, _, ms) {
         let impl_did = ast_util::local_def(i.id);
-        for ms.each {|m|
+        for ms.each |m| {
             map_method(impl_did, extend(cx, i.ident), m,
                        cx);
         }
       }
       item_enum(vs, _, _) {
-        for vs.each {|v|
+        for vs.each |v| {
             cx.map.insert(v.node.id, node_variant(
                 /* FIXME (#2543) */ copy v, i,
                 extend(cx, i.ident)));
@@ -207,7 +207,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           either::left(msg) { cx.diag.span_fatal(i.span, msg); }
           either::right(abi) { abi }
         };
-        for nm.items.each {|nitem|
+        for nm.items.each |nitem| {
             cx.map.insert(nitem.id,
                           node_foreign_item(nitem, abi,
                                            /* FIXME (#2543) */
@@ -218,12 +218,12 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           let (_, ms) = ast_util::split_class_items(items);
           // Map iface refs to their parent classes. This is
           // so we can find the self_ty
-          do vec::iter(ifces) {|p| cx.map.insert(p.id,
+          do vec::iter(ifces) |p| { cx.map.insert(p.id,
                                   node_item(i, item_path)); };
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
            // only need to handle methods
-          do vec::iter(ms) {|m| map_method(d_id, p, m, cx); }
+          do vec::iter(ms) |m| { map_method(d_id, p, m, cx); }
       }
       _ { }
     }
@@ -240,7 +240,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
     alt vi.node {
       view_item_export(vps) {
-        for vps.each {|vp|
+        for vps.each |vp| {
             let (id, name) = alt vp.node {
               view_path_simple(nm, _, id) {
                 (id, /* FIXME (#2543) */ copy nm)

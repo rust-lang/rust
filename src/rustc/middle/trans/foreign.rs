@@ -67,7 +67,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
         let n = llvm::LLVMCountStructElementTypes(ty);
         let elts = vec::from_elem(n as uint, ptr::null());
-        do vec::as_buf(elts) {|buf|
+        do vec::as_buf(elts) |buf| {
             llvm::LLVMGetStructElementTypes(ty, buf);
         }
         ret elts;
@@ -82,7 +82,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             2 /* float */ { 4u }
             3 /* double */ { 8u }
             10 /* struct */ {
-                do vec::foldl(0u, struct_tys(ty)) {|a, t|
+              do vec::foldl(0u, struct_tys(ty)) |a, t| {
                     uint::max(a, ty_align(t))
                 }
             }
@@ -105,7 +105,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             2 /* float */ { 4u }
             3 /* double */ { 8u }
             10 /* struct */ {
-                do vec::foldl(0u, struct_tys(ty)) {|s, t|
+              do vec::foldl(0u, struct_tys(ty)) |s, t| {
                     s + ty_size(t)
                 }
             }
@@ -122,7 +122,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn all_mem(cls: ~[mut x86_64_reg_class]) {
-        for uint::range(0u, cls.len()) { |i|
+        for uint::range(0u, cls.len()) |i| {
             cls[i] = memory_class;
         }
     }
@@ -159,7 +159,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             classify(T_i64(), cls, i, off);
         } else {
             let mut field_off = off;
-            for vec::each(tys) {|ty|
+            for vec::each(tys) |ty| {
                 field_off = align(field_off, ty);
                 classify(ty, cls, i, field_off);
                 field_off += ty_size(ty);
@@ -279,7 +279,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
 fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
     fn llvec_len(cls: ~[x86_64_reg_class]) -> uint {
         let mut len = 1u;
-        for vec::each(cls) {|c|
+        for vec::each(cls) |c| {
             if c != sseup_class {
                 break;
             }
@@ -375,7 +375,7 @@ fn x86_64_tys(atys: ~[TypeRef],
 
     let mut arg_tys = ~[];
     let mut attrs = ~[];
-    for vec::each(atys) {|t|
+    for vec::each(atys) |t| {
         let (ty, attr) = x86_64_ty(t, is_pass_byval, ByValAttribute);
         vec::push(arg_tys, ty);
         vec::push(attrs, attr);
@@ -404,12 +404,12 @@ fn x86_64_tys(atys: ~[TypeRef],
 
 fn decl_x86_64_fn(tys: x86_64_tys,
                   decl: fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
-    let atys = vec::map(tys.arg_tys, {|t| t.ty });
+    let atys = vec::map(tys.arg_tys, |t| t.ty);
     let rty = tys.ret_ty.ty;
     let fnty = T_fn(atys, rty);
     let llfn = decl(fnty);
 
-    do vec::iteri(tys.attrs) {|i, a|
+    do vec::iteri(tys.attrs) |i, a| {
         alt a {
             option::some(attr) {
                 let llarg = get_param(llfn, i);
@@ -640,7 +640,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
             let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
             alt tys.x86_64_tys {
                 some(x86_64) {
-                    do vec::iteri(x86_64.attrs) {|i, a|
+                  do vec::iteri(x86_64.attrs) |i, a| {
                         alt a {
                             some(attr) {
                                 llvm::LLVMAddInstrAttribute(
@@ -691,7 +691,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
         // Declare the "prototype" for the base function F:
         alt tys.x86_64_tys {
           some(x86_64) {
-            do decl_x86_64_fn(x86_64) {|fnty|
+            do decl_x86_64_fn(x86_64) |fnty| {
                 decl_fn(ccx.llmod, lname, cc, fnty)
             }
           }
@@ -712,7 +712,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
         let llbasefn = base_fn(ccx, link_name(item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
-        let args = vec::from_fn(ty::ty_fn_args(ty).len(), {|i|
+        let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
             get_param(decl, i + first_real_arg)
         });
         let retval = Call(bcx, llbasefn, args);
@@ -762,7 +762,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
       ast::foreign_abi_stdcall { lib::llvm::X86StdcallCallConv }
     };
 
-    for vec::each(foreign_mod.items) {|foreign_item|
+    for vec::each(foreign_mod.items) |foreign_item| {
       alt foreign_item.node {
         ast::foreign_item_fn(fn_decl, typarams) {
           let id = foreign_item.id;
@@ -974,12 +974,10 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             constraints: ~[]
         });
         bcx = trans_call_inner(bcx, none, fty, ty::mk_nil(bcx.tcx()),
-                               { |bcx|
-                                   lval_no_env(
-                                       bcx,
-                                       get_param(decl, first_real_arg),
-                                       temporary)
-                               },
+                               |bcx| lval_no_env(
+                                   bcx,
+                                   get_param(decl, first_real_arg),
+                                   temporary),
                                arg_vals(~[frameaddress_val]), ignore);
       }
     }
@@ -1091,7 +1089,7 @@ fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                 _ {
                     let llretptr = alloca(bcx, tys.ret_ty);
                     let n = vec::len(tys.arg_tys);
-                    for uint::range(0u, n) {|i|
+                  for uint::range(0u, n) |i| {
                         let llargval = get_param(llwrapfn, i);
                         store_inbounds(bcx, llargval, llargbundle,
                                                       ~[0u, i]);
@@ -1153,7 +1151,7 @@ fn register_extern_fn(ccx: @crate_ctxt, sp: span,
     ret if ccx.sess.targ_cfg.arch == arch_x86_64 {
         let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
         let x86_64 = x86_64_tys(llargtys, llretty, ret_def);
-        do decl_x86_64_fn(x86_64) {|fnty|
+        do decl_x86_64_fn(x86_64) |fnty| {
             register_fn_fuller(ccx, sp, path, node_id,
                                t, lib::llvm::CCallConv, fnty)
         }

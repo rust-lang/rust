@@ -53,7 +53,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
           fail "find_pre_post_item: shouldn't be called on item_class";
       }
       item_impl(_, _, _, _, ms) {
-        for ms.each {|m| find_pre_post_method(ccx, m); }
+        for ms.each |m| { find_pre_post_method(ccx, m); }
       }
     }
 }
@@ -68,12 +68,12 @@ fn find_pre_post_exprs(fcx: fn_ctxt, args: ~[@expr], id: node_id) {
         #debug["find_pre_post_exprs: oper = %s", expr_to_str(args[0])];
     }
     fn do_one(fcx: fn_ctxt, e: @expr) { find_pre_post_expr(fcx, e); }
-    for args.each {|e| do_one(fcx, e); }
+    for args.each |e| { do_one(fcx, e); }
 
     fn get_pp(ccx: crate_ctxt, &&e: @expr) -> pre_and_post {
         ret expr_pp(ccx, e);
     }
-    let pps = vec::map(args, {|a|get_pp(fcx.ccx, a)});
+    let pps = vec::map(args, |a| get_pp(fcx.ccx, a) );
 
     set_pre_and_post(fcx.ccx, id, seq_preconds(fcx, pps),
                      seq_postconds(fcx, vec::map(pps, get_post)));
@@ -230,7 +230,7 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
 
 fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: ~[mode],
                         operands: ~[@expr]) {
-    do vec::iteri(modes) {|i,mode|
+    do vec::iteri(modes) |i,mode| {
         alt ty::resolved_mode(fcx.ccx.tcx, mode) {
           by_move { forget_in_postcond(fcx, parent.id, operands[i].id); }
           by_ref | by_val | by_mutbl_ref | by_copy { }
@@ -259,7 +259,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 
         find_pre_post_exprs(fcx, args, e.id);
         /* see if the call has any constraints on its type */
-        for constraints_expr(fcx.ccx.tcx, operator).each {|c|
+        for constraints_expr(fcx.ccx.tcx, operator).each |c| {
             let i =
                 bit_num(fcx, substitute_constr_args(fcx.ccx.tcx, args, c));
             require(i, expr_pp(fcx.ccx, e));
@@ -295,12 +295,12 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
         find_pre_post_expr_fn_upvars(fcx, e);
 
-        for (*cap_clause).each { |cap_item|
+        for (*cap_clause).each |cap_item| {
             let d = local_node_id_to_local_def_id(fcx, cap_item.id);
-            option::iter(d, { |id| use_var(fcx, id) });
+            option::iter(d, |id| use_var(fcx, id) );
         }
 
-        for (*cap_clause).each { |cap_item|
+        for (*cap_clause).each |cap_item| {
             if cap_item.is_move {
                 log(debug, ("forget_in_postcond: ", cap_item));
                 forget_in_postcond(fcx, e.id, cap_item.id);
@@ -398,7 +398,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
             ret block_pp(fcx.ccx, an_alt.body);
         }
         let mut alt_pps = ~[];
-        for alts.each {|a| vec::push(alt_pps, do_an_alt(fcx, a)); }
+        for alts.each |a| { vec::push(alt_pps, do_an_alt(fcx, a)); }
         fn combine_pp(antec: pre_and_post, fcx: fn_ctxt, &&pp: pre_and_post,
                       &&next: pre_and_post) -> pre_and_post {
             union(pp.precondition, seq_preconds(fcx, ~[antec, next]));
@@ -409,7 +409,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         let e_pp =
             {precondition: empty_prestate(num_local_vars),
              postcondition: false_postcond(num_local_vars)};
-        let g = {|a,b|combine_pp(antec_pp, fcx, a, b)};
+        let g = |a,b| combine_pp(antec_pp, fcx, a, b);
         let alts_overall_pp =
             vec::foldl(e_pp, alt_pps, g);
         set_pre_and_post(fcx.ccx, e.id, alts_overall_pp.precondition,
@@ -457,14 +457,14 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
         alt adecl.node {
           decl_local(alocals) {
             let prev_pp = empty_pre_post(num_constraints(fcx.enclosing));
-            for alocals.each {|alocal|
+            for alocals.each |alocal| {
                 alt alocal.node.init {
                   some(an_init) {
                     /* LHS always becomes initialized,
                      whether or not this is a move */
                     find_pre_post_expr(fcx, an_init.expr);
                     do pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
-                        {|p_id, _s, _n|
+                        |p_id, _s, _n| {
                         copy_pre_post(fcx.ccx, p_id, an_init.expr);
                     };
                     /* Inherit ann from initializer, and add var being
@@ -478,7 +478,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                     }
 
                     do pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
-                        {|p_id, _s, n|
+                        |p_id, _s, n| {
                         let ident = path_to_ident(n);
                         alt p {
                           some(p) {
@@ -506,7 +506,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                   }
                   none {
                     do pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
-                        {|p_id, _s, _n|
+                        |p_id, _s, _n| {
                         clear_pp(node_id_to_ts_ann(fcx.ccx, p_id).conditions);
                     };
                     clear_pp(node_id_to_ts_ann(fcx.ccx, id).conditions);
@@ -549,13 +549,13 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     fn do_one_(fcx: fn_ctxt, s: @stmt) {
         find_pre_post_stmt(fcx, *s);
     }
-    for b.node.stmts.each {|s| do_one_(fcx, s); }
+    for b.node.stmts.each |s| { do_one_(fcx, s); }
     fn do_inner_(fcx: fn_ctxt, &&e: @expr) { find_pre_post_expr(fcx, e); }
-    let do_inner = {|a|do_inner_(fcx, a)};
+    let do_inner = |a| do_inner_(fcx, a);
     option::map::<@expr, ()>(b.node.expr, do_inner);
 
     let mut pps: ~[pre_and_post] = ~[];
-    for b.node.stmts.each {|s| vec::push(pps, stmt_pp(fcx.ccx, *s)); }
+    for b.node.stmts.each |s| { vec::push(pps, stmt_pp(fcx.ccx, *s)); }
     alt b.node.expr {
       none {/* no-op */ }
       some(e) { vec::push(pps, expr_pp(fcx.ccx, e)); }
@@ -564,7 +564,7 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     let block_precond = seq_preconds(fcx, pps);
 
     let mut postconds = ~[];
-    for pps.each {|pp| vec::push(postconds, get_post(pp)); }
+    for pps.each |pp| { vec::push(postconds, get_post(pp)); }
 
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */

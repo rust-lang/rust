@@ -69,18 +69,16 @@ mod write {
               output_type_bitcode {
                 if opts.optimize != 0u {
                     let filename = mk_intermediate_name(output, "no-opt.bc");
-                    str::as_c_str(filename,
-                                {|buf|
-                                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                                });
+                    str::as_c_str(filename, |buf| {
+                        llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                    });
                 }
               }
               _ {
                 let filename = mk_intermediate_name(output, "bc");
-                str::as_c_str(filename,
-                            {|buf|
-                                llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                            });
+                str::as_c_str(filename, |buf| {
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                });
               }
             }
         }
@@ -151,18 +149,17 @@ mod write {
 
                 let filename = mk_intermediate_name(output, "opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                str::as_c_str(filename,
-                            {|buf|
-                                llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                            });
+                str::as_c_str(filename, |buf| {
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf)
+                });
                 pm = mk_pass_manager();
                 // Save the assembly file if -S is used
 
                 if opts.output_type == output_type_assembly {
                     let _: () = str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
-                        {|buf_t|
-                            str::as_c_str(output, {|buf_o|
+                        |buf_t| {
+                            str::as_c_str(output, |buf_o| {
                                 llvm::LLVMRustWriteOutputFile(
                                     pm.llpm,
                                     llmod,
@@ -170,7 +167,9 @@ mod write {
                                     buf_o,
                                     lib::llvm::AssemblyFile as c_uint,
                                     CodeGenOptLevel,
-                                    true)})});
+                                    true)
+                            })
+                        });
                 }
 
 
@@ -178,37 +177,39 @@ mod write {
                 // This .o is needed when an exe is built
                 if opts.output_type == output_type_object ||
                        opts.output_type == output_type_exe {
-                    let _: () =
-                        str::as_c_str(
-                            sess.targ_cfg.target_strs.target_triple,
-                            {|buf_t|
-                                str::as_c_str(output, {|buf_o|
-                                    llvm::LLVMRustWriteOutputFile(
-                                        pm.llpm,
-                                        llmod,
-                                        buf_t,
-                                        buf_o,
-                                        lib::llvm::ObjectFile as c_uint,
-                                        CodeGenOptLevel,
-                                        true)})});
-                }
-            } else {
-                // If we aren't saving temps then just output the file
-                // type corresponding to the '-c' or '-S' flag used
-
-                let _: () =
-                    str::as_c_str(
+                    let _: () = str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
-                        {|buf_t|
-                            str::as_c_str(output, {|buf_o|
+                        |buf_t| {
+                            str::as_c_str(output, |buf_o| {
                                 llvm::LLVMRustWriteOutputFile(
                                     pm.llpm,
                                     llmod,
                                     buf_t,
                                     buf_o,
-                                    FileType as c_uint,
+                                    lib::llvm::ObjectFile as c_uint,
                                     CodeGenOptLevel,
-                                    true)})});
+                                    true)
+                            })
+                        });
+                }
+            } else {
+                // If we aren't saving temps then just output the file
+                // type corresponding to the '-c' or '-S' flag used
+
+                let _: () = str::as_c_str(
+                    sess.targ_cfg.target_strs.target_triple,
+                    |buf_t| {
+                        str::as_c_str(output, |buf_o| {
+                            llvm::LLVMRustWriteOutputFile(
+                                pm.llpm,
+                                llmod,
+                                buf_t,
+                                buf_o,
+                                FileType as c_uint,
+                                CodeGenOptLevel,
+                                true)
+                        })
+                    });
             }
             // Clean up and return
 
@@ -219,14 +220,14 @@ mod write {
 
         if opts.output_type == output_type_llvm_assembly {
             // Given options "-S --emit-llvm": output LLVM assembly
-            str::as_c_str(output, {|buf_o|
+            str::as_c_str(output, |buf_o| {
                 llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o)});
         } else {
             // If only a bitcode file is asked for by using the '--emit-llvm'
             // flag, then output it here
             llvm::LLVMRunPassManager(pm.llpm, llmod);
             str::as_c_str(output,
-                        {|buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) });
+                        |buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) );
         }
 
         llvm::LLVMDisposeModule(llmod);
@@ -301,7 +302,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
         let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
-        for linkage_metas.each {|meta|
+        for linkage_metas.each |meta| {
             if *attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
@@ -332,7 +333,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
         let cmh_items = attr::sort_meta_items(metas.cmh_items);
 
         sha.reset();
-        for cmh_items.each {|m_|
+        for cmh_items.each |m_| {
             let m = m_;
             alt m.node {
               ast::meta_name_value(key, value) {
@@ -347,7 +348,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
             }
         }
 
-        for dep_hashes.each {|dh|
+        for dep_hashes.each |dh| {
             sha.input_str(len_and_str(*dh));
         }
 
@@ -443,7 +444,7 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
 // gas doesn't!
 fn sanitize(s: str) -> str {
     let mut result = "";
-    do str::chars_iter(s) {|c|
+    do str::chars_iter(s) |c| {
         alt c {
           '@' { result += "_sbox_"; }
           '~' { result += "_ubox_"; }
@@ -479,7 +480,7 @@ fn mangle(ss: path) -> str {
 
     let mut n = "_ZN"; // Begin name-sequence.
 
-    for ss.each {|s|
+    for ss.each |s| {
         alt s { path_name(s) | path_mod(s) {
           let sani = sanitize(*s);
           n += #fmt["%u%s", str::len(sani), sani];
@@ -593,7 +594,7 @@ fn link_binary(sess: session,
     // # Crate linking
 
     let cstore = sess.cstore;
-    for cstore::get_used_crate_files(cstore).each {|cratepath|
+    for cstore::get_used_crate_files(cstore).each |cratepath| {
         if str::ends_with(cratepath, ".rlib") {
             vec::push(cc_args, cratepath);
             cont;
@@ -606,7 +607,7 @@ fn link_binary(sess: session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each {|arg| vec::push(cc_args, arg); }
+    for ula.each |arg| { vec::push(cc_args, arg); }
 
     // # Native library linking
 
@@ -617,11 +618,11 @@ fn link_binary(sess: session,
     // forces to make sure that library can be found at runtime.
 
     let addl_paths = sess.opts.addl_lib_search_paths;
-    for addl_paths.each {|path| vec::push(cc_args, "-L" + path); }
+    for addl_paths.each |path| { vec::push(cc_args, "-L" + path); }
 
     // The names of the native libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each {|l| vec::push(cc_args, "-l" + l); }
+    for used_libs.each |l| { vec::push(cc_args, "-l" + l); }
 
     if sess.building_library {
         vec::push(cc_args, lib_cmd);

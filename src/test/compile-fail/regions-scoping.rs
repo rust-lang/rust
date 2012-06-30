@@ -24,19 +24,19 @@ fn nested(x: &x.int) {  // (1)
                                         //!^ ERROR mismatched types: expected `&x.int` but found `&y.int`
             fail;
         }
-    ) {|foo|
+    ) |foo| {
 
-        let a: &x.int = foo(x, x, { |_x, _y, z| z });
-        let b: &x.int = foo(x, a, { |_x, _y, z| z });
-        let c: &x.int = foo(a, a, { |_x, _y, z| z });
+        let a: &x.int = foo(x, x, |_x, _y, z| z );
+        let b: &x.int = foo(x, a, |_x, _y, z| z );
+        let c: &x.int = foo(a, a, |_x, _y, z| z );
 
         let z = 3i;
-        let d: &x.int = foo(x, x, { |_x, _y, z| z });
-        let e: &x.int = foo(x, &z, { |_x, _y, z| z });
-        let f: &x.int = foo(&z, &z, { |_x, _y, z| z }); //! ERROR mismatched types: expected `&x.int` but found
+        let d: &x.int = foo(x, x, |_x, _y, z| z );
+        let e: &x.int = foo(x, &z, |_x, _y, z| z );
+        let f: &x.int = foo(&z, &z, |_x, _y, z| z ); //! ERROR mismatched types: expected `&x.int` but found
 
-        foo(x, &z, { |x, _y, _z| x }); //! ERROR mismatched types: expected `&z.int` but found `&x.int`
-        foo(x, &z, { |_x, y, _z| y }); //! ERROR mismatched types: expected `&z.int` but found `&<block at
+        foo(x, &z, |x, _y, _z| x ); //! ERROR mismatched types: expected `&z.int` but found `&x.int`
+        foo(x, &z, |_x, y, _z| y ); //! ERROR mismatched types: expected `&z.int` but found `&<block at
     }
 }
 

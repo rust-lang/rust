@@ -47,7 +47,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
     alt ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).struct {
       ty::ty_fn({inputs, _}) {
-        for vec::each(inputs) {|arg|
+        for vec::each(inputs) |arg| {
             if arg.mode == expl(by_val) { type_needs(cx, use_repr, arg.ty); }
         }
       }
@@ -70,7 +70,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         handle_body(cx, body);
       }
       ast_map::node_variant(_, _, _) {
-        for uint::range(0u, n_tps) {|n| cx.uses[n] |= use_repr;}
+        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
       }
       ast_map::node_foreign_item(i@@{node: foreign_item_fn(_, _), _},
                                  abi, _) {
@@ -89,7 +89,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
               }
               "forget" | "addr_of" { 0u }
             };
-            for uint::range(0u, n_tps) {|n| cx.uses[n] |= flags;}
+            for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
       }
       ast_map::node_ctor(_, _, ctor, _, _){
@@ -108,13 +108,13 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 fn type_needs(cx: ctx, use: uint, ty: ty::t) {
     let mut done = true;
     // Optimization -- don't descend type if all params already have this use
-    for vec::each(cx.uses) {|u| if u & use != use { done = false } }
+    for vec::each(cx.uses) |u| { if u & use != use { done = false } }
     if !done { type_needs_inner(cx, use, ty, @nil); }
 }
 
 fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                     enums_seen: @list<def_id>) {
-    do ty::maybe_walk_ty(ty) {|ty|
+    do ty::maybe_walk_ty(ty) |ty| {
         if ty::type_has_params(ty) {
             alt ty::get(ty).struct {
                 /*
@@ -126,10 +126,10 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
                | ty::ty_iface(_, _) { false }
               ty::ty_enum(did, substs) {
-                if option::is_none(list::find(enums_seen, {|id| id == did})) {
+                if option::is_none(list::find(enums_seen, |id| id == did)) {
                     let seen = @cons(did, enums_seen);
-                    for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) {|v|
-                        for vec::each(v.args) {|aty|
+                    for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
+                        for vec::each(v.args) |aty| {
                             let t = ty::subst(cx.ccx.tcx, substs, aty);
                             type_needs_inner(cx, use, t, seen);
                         }
@@ -181,18 +181,19 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_path(_) {
-        do cx.ccx.tcx.node_type_substs.find(e.id).iter {|ts|
+        do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
-            vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts, {|uses, subst|
-                type_needs(cx, uses, subst)
-            })
+            vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts,
+                       |uses, subst| {
+                           type_needs(cx, uses, subst)
+                       })
         }
       }
       expr_fn(*) | expr_fn_block(*) {
         alt ty::ty_fn_proto(ty::expr_ty(cx.ccx.tcx, e)) {
           proto_bare | proto_any | proto_uniq {}
           proto_box | proto_block {
-            for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) {|fv|
+            for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) |fv| {
                 let node_id = ast_util::def_id_of_def(fv.def).node;
                 node_type_needs(cx, use_repr, node_id);
             }
@@ -209,12 +210,12 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        do option::iter(cx.ccx.maps.method_map.find(e.id)) {|mth|
+        do option::iter(cx.ccx.maps.method_map.find(e.id)) |mth| {
             alt mth.origin {
               typeck::method_static(did) {
-                do option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
+                do option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) |ts| {
                     do vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
-                        {|uses, subst| type_needs(cx, uses, subst)}
+                        |uses, subst| { type_needs(cx, uses, subst)}
                 }
               }
               typeck::method_param({param_num: param, _}) {
@@ -231,7 +232,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         node_type_needs(cx, use_repr, v.id);
       }
       expr_call(f, _, _) {
-        vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)), {|a|
+        vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)), |a| {
             alt a.mode {
               expl(by_move) | expl(by_copy) | expl(by_val) {
                 type_needs(cx, use_repr, a.ty);
@@ -251,25 +252,25 @@ fn mark_for_expr(cx: ctx, e: @expr) {
 
 fn handle_body(cx: ctx, body: blk) {
     let v = visit::mk_vt(@{
-        visit_expr: {|e, cx, v|
+        visit_expr: |e, cx, v| {
             visit::visit_expr(e, cx, v);
             mark_for_expr(cx, e);
         },
-        visit_local: {|l, cx, v|
+        visit_local: |l, cx, v| {
             visit::visit_local(l, cx, v);
             node_type_needs(cx, use_repr, l.node.id);
         },
-        visit_pat: {|p, cx, v|
+        visit_pat: |p, cx, v| {
             visit::visit_pat(p, cx, v);
             node_type_needs(cx, use_repr, p.id);
         },
-        visit_block: {|b, cx, v|
+        visit_block: |b, cx, v| {
             visit::visit_block(b, cx, v);
-            do option::iter(b.node.expr) {|e|
+            do option::iter(b.node.expr) |e| {
                 node_type_needs(cx, use_repr, e.id);
             }
         },
-        visit_item: {|_i, _cx, _v|}
+        visit_item: |_i, _cx, _v| { }
         with *visit::default_visitor()
     });
     v.visit_block(body, cx, v);

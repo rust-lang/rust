@@ -41,7 +41,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
         alt fcx.opt_node_ty_substs(id) {
           some(substs) {
             let mut new_tps = ~[];
-            for substs.tps.each {|subst|
+            for substs.tps.each |subst| {
                 alt resolve_type_vars_in_type(fcx, sp, subst) {
                   some(t) { vec::push(new_tps, t); }
                   none { wbcx.success = false; ret none; }
@@ -83,7 +83,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     alt e.node {
       ast::expr_fn(_, decl, _, _) |
       ast::expr_fn_block(decl, _, _) {
-        do vec::iter(decl.inputs) {|input|
+        do vec::iter(decl.inputs) |input| {
             let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 
             // Just in case we never constrained the mode to anything,
@@ -176,7 +176,7 @@ fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
     visit.visit_block(blk, wbcx, visit);
-    for decl.inputs.each {|arg|
+    for decl.inputs.each |arg| {
         resolve_type_vars_for_node(wbcx, arg.ty.span, arg.id);
     }
     ret wbcx.success;

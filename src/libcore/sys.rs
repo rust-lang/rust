@@ -183,16 +183,16 @@ mod tests {
         let lock = arc::arc(create_lock());
         let lock2 = arc::clone(&lock);
 
-        do task::spawn {|move lock2|
+        do task::spawn |move lock2| {
             let lock = arc::get(&lock2);
-            do (*lock).lock_cond {|c|
+            do (*lock).lock_cond |c| {
                 c.wait();
             }
         }
 
         let mut signaled = false;
         while !signaled {
-            do (*arc::get(&lock)).lock_cond {|c|
+            do (*arc::get(&lock)).lock_cond |c| {
                 signaled = c.signal()
             }
         }

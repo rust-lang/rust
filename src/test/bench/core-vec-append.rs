@@ -6,7 +6,7 @@ import io::writer_util;
 
 fn collect_raw(num: uint) -> ~[uint] {
     let mut result = ~[];
-    for uint::range(0u, num) { |i|
+    for uint::range(0u, num) |i| {
         vec::push(result, i);
     }
     ret result;
@@ -14,7 +14,7 @@ fn collect_raw(num: uint) -> ~[uint] {
 
 fn collect_dvec(num: uint) -> ~[mut uint] {
     let result = dvec();
-    for uint::range(0u, num) { |i|
+    for uint::range(0u, num) |i| {
         result.push(i);
     }
     ret dvec::unwrap(result);
@@ -37,9 +37,9 @@ fn main(args: ~[str]) {
 
     // check each vector
     assert raw_v.len() == max;
-    for raw_v.eachi { |i, v| assert i == v; }
+    for raw_v.eachi |i, v| { assert i == v; }
     assert dvec_v.len() == max;
-    for dvec_v.eachi { |i, v| assert i == v; }
+    for dvec_v.eachi |i, v| { assert i == v; }
 
     let raw = mid - start;
     let dvec = end - mid;

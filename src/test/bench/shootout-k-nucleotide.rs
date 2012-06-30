@@ -100,7 +100,7 @@ fn make_sequence_processor(sz: uint, from_parent: comm::port<~[u8]>,
       line = comm::recv(from_parent);
       if line == ~[] { break; }
 
-      carry = windows_with_carry(carry + line, sz, { |window|
+       carry = windows_with_carry(carry + line, sz, |window| {
          update_freq(freqs, window);
          total += 1u;
       });
@@ -139,10 +139,10 @@ fn main(args: ~[str]) {
 
    // initialize each sequence sorter
    let sizes = ~[1u,2u,3u,4u,6u,12u,18u];
-   let from_child = vec::map (sizes, { |_sz|     comm::port() });
-   let to_parent  = vec::mapi(sizes, { |ii, _sz| comm::chan(from_child[ii]) });
+   let from_child = vec::map (sizes, |_sz| comm::port() );
+   let to_parent  = vec::mapi(sizes, |ii, _sz| comm::chan(from_child[ii]) );
    let to_child   = vec::mapi(sizes, fn@(ii: uint, sz: uint) -> comm::chan<~[u8]> {
-      ret do task::spawn_listener { |from_parent|
+       ret do task::spawn_listener |from_parent| {
          make_sequence_processor(sz, from_parent, to_parent[ii]);
       };
    });
@@ -174,7 +174,7 @@ fn main(args: ~[str]) {
          (_, true) {
             let line_bytes = str::bytes(line);
 
-            for sizes.eachi { |ii, _sz|
+           for sizes.eachi |ii, _sz| {
                let mut lb = line_bytes;
                comm::send(to_child[ii], lb);
             }
@@ -186,12 +186,12 @@ fn main(args: ~[str]) {
    }
 
    // finish...
-   for sizes.eachi { |ii, _sz|
+    for sizes.eachi |ii, _sz| {
       comm::send(to_child[ii], ~[]);
    }
 
    // now fetch and print result messages
-   for sizes.eachi { |ii, _sz|
+    for sizes.eachi |ii, _sz| {
       io::println(comm::recv(from_child[ii]));
    }
 }

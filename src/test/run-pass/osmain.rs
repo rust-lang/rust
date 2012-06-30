@@ -24,7 +24,7 @@ fn run(i: int) {
     };
     task::set_opts(builder, opts);
     task::unsupervise(builder);
-    do task::run(builder) {||
+    do task::run(builder) || {
         task::yield();
         let builder = task::builder();
         let opts = {
@@ -36,7 +36,7 @@ fn run(i: int) {
         };
         task::set_opts(builder, opts);
         task::unsupervise(builder);
-        do task::run(builder) {||
+        do task::run(builder) || {
             task::yield();
             run(i - 1);
             task::yield();

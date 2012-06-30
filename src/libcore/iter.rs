@@ -5,21 +5,21 @@ iface base_iter<A> {
 
 fn eachi<A,IA:base_iter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     let mut i = 0u;
-    for self.each {|a|
+    for self.each |a| {
         if !blk(i, a) { break; }
         i += 1u;
     }
 }
 
 fn all<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
-    for self.each {|a|
+    for self.each |a| {
         if !blk(a) { ret false; }
     }
     ret true;
 }
 
 fn any<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
-    for self.each {|a|
+    for self.each |a| {
         if blk(a) { ret true; }
     }
     ret false;
@@ -28,8 +28,8 @@ fn any<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
 fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
                                          prd: fn(A) -> bool) -> ~[A] {
     let mut result = ~[];
-    self.size_hint().iter({|hint| vec::reserve(result, hint); });
-    for self.each {|a|
+    self.size_hint().iter(|hint| vec::reserve(result, hint));
+    for self.each |a| {
         if prd(a) { vec::push(result, a); }
     }
     ret result;
@@ -37,8 +37,8 @@ fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
 
 fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
     let mut result = ~[];
-    self.size_hint().iter({|hint| vec::reserve(result, hint); });
-    for self.each {|a|
+    self.size_hint().iter(|hint| vec::reserve(result, hint));
+    for self.each |a| {
         vec::push(result, op(a));
     }
     ret result;
@@ -48,8 +48,8 @@ fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
     self: IA, op: fn(A) -> IB) -> ~[B] {
 
     let mut result = ~[];
-    for self.each {|a|
-        for op(a).each {|b|
+    for self.each |a| {
+        for op(a).each |b| {
             vec::push(result, b);
         }
     }
@@ -58,25 +58,25 @@ fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
 
 fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     let mut b <- b0;
-    for self.each {|a|
+    for self.each |a| {
         b = blk(b, a);
     }
     ret b;
 }
 
 fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> ~[A] {
-    foldl::<A,~[A],IA>(self, ~[], {|r, a| vec::append(r, ~[a]) })
+    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(r, ~[a]))
 }
 
 fn contains<A,IA:base_iter<A>>(self: IA, x: A) -> bool {
-    for self.each {|a|
+    for self.each |a| {
         if a == x { ret true; }
     }
     ret false;
 }
 
 fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
-    do foldl(self, 0u) {|count, value|
+    do foldl(self, 0u) |count, value| {
         if value == x {
             count + 1u
         } else {
@@ -88,7 +88,7 @@ fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
 fn position<A,IA:base_iter<A>>(self: IA, f: fn(A) -> bool)
         -> option<uint> {
     let mut i = 0;
-    for self.each {|a|
+    for self.each |a| {
         if f(a) { ret some(i); }
         i += 1;
     }
@@ -108,7 +108,7 @@ fn repeat(times: uint, blk: fn()) {
 }
 
 fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
-    alt do foldl::<A,option<A>,IA>(self, none) {|a, b|
+    alt do foldl::<A,option<A>,IA>(self, none) |a, b| {
         alt a {
           some(a_) if a_ < b {
             // FIXME (#2005): Not sure if this is successfully optimized to
@@ -124,7 +124,7 @@ fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
 }
 
 fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
-    alt do foldl::<A,option<A>,IA>(self, none) {|a, b|
+    alt do foldl::<A,option<A>,IA>(self, none) |a, b| {
         alt a {
           some(a_) if a_ > b {
             // FIXME (#2005): Not sure if this is successfully optimized to

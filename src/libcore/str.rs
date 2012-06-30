@@ -154,7 +154,7 @@ fn push_char(&s: str, ch: char) {
         let new_len = len + nb;
         reserve_at_least(s, new_len);
         let off = len;
-        do as_buf(s) {|buf|
+        do as_buf(s) |buf| {
             let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
             if nb == 1u {
                 *ptr::mut_offset(buf, off) =
@@ -208,7 +208,7 @@ fn push_char(&s: str, ch: char) {
             *ptr::mut_offset(buf, off + nb) = 0u8;
         }
 
-        do as_bytes(s) {|bytes|
+        do as_bytes(s) |bytes| {
             let mut mut_bytes: ~[u8] = ::unsafe::reinterpret_cast(bytes);
             vec::unsafe::set_len(mut_bytes, new_len + 1u);
             ::unsafe::forget(mut_bytes);
@@ -228,7 +228,7 @@ pure fn from_chars(chs: &[const char]) -> str {
     let mut buf = "";
     unchecked {
         reserve(buf, chs.len());
-        for vec::each(chs) {|ch| push_char(buf, ch); }
+        for vec::each(chs) |ch| { push_char(buf, ch); }
     }
     ret buf;
 }
@@ -236,7 +236,7 @@ pure fn from_chars(chs: &[const char]) -> str {
 #[doc = "Concatenate a vector of strings"]
 pure fn concat(v: &[const str]) -> str {
     let mut s: str = "";
-    for vec::each(v) {|ss| s += ss; }
+    for vec::each(v) |ss| { s += ss; }
     ret s;
 }
 
@@ -245,7 +245,7 @@ Concatenate a vector of strings, placing a given separator between each
 "]
 pure fn connect(v: &[const str], sep: str) -> str {
     let mut s = "", first = true;
-    for vec::each(v) {|ss|
+    for vec::each(v) |ss| {
         if first { first = false; } else { s += sep; }
         s += ss;
     }
@@ -289,7 +289,7 @@ fn unshift_char(&s: str, ch: char) { s = from_char(ch) + s; }
 
 #[doc = "Returns a string with leading whitespace removed"]
 pure fn trim_left(+s: str) -> str {
-    alt find(s, {|c| !char::is_whitespace(c)}) {
+    alt find(s, |c| !char::is_whitespace(c)) {
       none { "" }
       some(first) {
         if first == 0u { s }
@@ -300,7 +300,7 @@ pure fn trim_left(+s: str) -> str {
 
 #[doc = "Returns a string with trailing whitespace removed"]
 pure fn trim_right(+s: str) -> str {
-    alt rfind(s, {|c| !char::is_whitespace(c)}) {
+    alt rfind(s, |c| !char::is_whitespace(c)) {
       none { "" }
       some(last) {
         let {next, _} = char_range_at(s, last);
@@ -336,7 +336,7 @@ Work with the string as a byte slice, not including trailing null.
 "]
 #[inline(always)]
 pure fn byte_slice<T>(s: str/&, f: fn(v: &[u8]) -> T) -> T {
-    do unpack_slice(s) {|p,n|
+    do unpack_slice(s) |p,n| {
         unsafe { vec::unsafe::form_slice(p, n-1u, f) }
     }
 }
@@ -421,7 +421,7 @@ pure fn split_char_inner(s: str/&, sep: char, count: uint, allow_empty: bool)
         }
         result
     } else {
-        splitn(s, {|cur| cur == sep}, count)
+        splitn(s, |cur| cur == sep, count)
     }
 }
 
@@ -495,7 +495,7 @@ pure fn iter_matches(s: str/&a, sep: str/&b, f: fn(uint, uint)) {
 
 pure fn iter_between_matches(s: str/&a, sep: str/&b, f: fn(uint, uint)) {
     let mut last_end = 0u;
-    do iter_matches(s, sep) {|from, to|
+    do iter_matches(s, sep) |from, to| {
         f(last_end, from);
         last_end = to;
     }
@@ -513,7 +513,7 @@ assert [\"\", \"XXX\", \"YYY\", \"\"] == split_str(\".XXX.YYY.\", \".\")
 "]
 pure fn split_str(s: str/&a, sep: str/&b) -> ~[str] {
     let mut result = ~[];
-    do iter_between_matches(s, sep) {|from, to|
+    do iter_between_matches(s, sep) |from, to| {
         unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
     }
     result
@@ -521,7 +521,7 @@ pure fn split_str(s: str/&a, sep: str/&b) -> ~[str] {
 
 pure fn split_str_nonempty(s: str/&a, sep: str/&b) -> ~[str] {
     let mut result = ~[];
-    do iter_between_matches(s, sep) {|from, to|
+    do iter_between_matches(s, sep) |from, to| {
         if to > from {
             unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
         }
@@ -539,7 +539,7 @@ Splits a string into a vector of the substrings separated by LF ('\\n')
 and/or CR LF ('\\r\\n')
 "]
 pure fn lines_any(s: str/&) -> ~[str] {
-    vec::map(lines(s), {|s|
+    vec::map(lines(s), |s| {
         let l = len(s);
         let mut cp = s;
         if l > 0u && s[l - 1u] == '\r' as u8 {
@@ -553,21 +553,21 @@ pure fn lines_any(s: str/&) -> ~[str] {
 Splits a string into a vector of the substrings separated by whitespace
 "]
 pure fn words(s: str/&) -> ~[str] {
-    split_nonempty(s, {|c| char::is_whitespace(c)})
+    split_nonempty(s, |c| char::is_whitespace(c))
 }
 
 #[doc = "Convert a string to lowercase. ASCII only"]
 pure fn to_lower(s: str/&) -> str {
-    map(s, {|c|
-        unchecked{(libc::tolower(c as libc::c_char)) as char}
-    })
+    map(s,
+        |c| unchecked{(libc::tolower(c as libc::c_char)) as char}
+    )
 }
 
 #[doc = "Convert a string to uppercase. ASCII only"]
 pure fn to_upper(s: str/&) -> str {
-    map(s, {|c|
-        unchecked{(libc::toupper(c as libc::c_char)) as char}
-    })
+    map(s,
+        |c| unchecked{(libc::toupper(c as libc::c_char)) as char}
+    )
 }
 
 #[doc = "
@@ -585,7 +585,7 @@ The original string with all occurances of `from` replaced with `to`
 "]
 pure fn replace(s: str, from: str, to: str) -> str {
     let mut result = "", first = true;
-    do iter_between_matches(s, from) {|start, end|
+    do iter_between_matches(s, from) |start, end| {
         if first { first = false; } else { result += to; }
         unsafe { result += unsafe::slice_bytes(s, start, end); }
     }
@@ -622,7 +622,7 @@ pure fn hash(&&s: str) -> uint {
     // djb hash.
     // FIXME: replace with murmur. (see #859 and #1616)
     let mut u: uint = 5381u;
-    for each(s) {|c| u *= 33u; u += c as uint; }
+    for each(s) |c| { u *= 33u; u += c as uint; }
     ret u;
 }
 
@@ -643,7 +643,7 @@ Return true if a predicate matches any character (and false if it
 matches none or there are no characters)
 "]
 pure fn any(ss: str/&, pred: fn(char) -> bool) -> bool {
-    !all(ss, {|cc| !pred(cc)})
+    !all(ss, |cc| !pred(cc))
 }
 
 #[doc = "Apply a function to each character"]
@@ -651,7 +651,7 @@ pure fn map(ss: str/&, ff: fn(char) -> char) -> str {
     let mut result = "";
     unchecked {
         reserve(result, len(ss));
-        do chars_iter(ss) {|cc|
+        do chars_iter(ss) |cc| {
             str::push_char(result, ff(cc));
         }
     }
@@ -807,7 +807,7 @@ pure fn find_char_between(s: str/&, c: char, start: uint, end: uint)
         }
         ret none;
     } else {
-        find_between(s, start, end, {|x| x == c})
+        find_between(s, start, end, |x| x == c)
     }
 }
 
@@ -886,7 +886,7 @@ pure fn rfind_char_between(s: str/&, c: char, start: uint, end: uint)
         }
         ret none;
     } else {
-        rfind_between(s, start, end, {|x| x == c})
+        rfind_between(s, start, end, |x| x == c)
     }
 }
 
@@ -1051,7 +1051,7 @@ pure fn rfind_between(s: str/&, start: uint, end: uint, f: fn(char) -> bool)
 // Utility used by various searching functions
 pure fn match_at(haystack: str/&a, needle: str/&b, at: uint) -> bool {
     let mut i = at;
-    for each(needle) {|c| if haystack[i] != c { ret false; } i += 1u; }
+    for each(needle) |c| { if haystack[i] != c { ret false; } i += 1u; }
     ret true;
 }
 
@@ -1215,7 +1215,7 @@ fn is_alphanumeric(s: str/&) -> bool {
 Returns the string length/size in bytes not counting the null terminator
 "]
 pure fn len(s: str/&) -> uint {
-    do unpack_slice(s) { |_p, n| n - 1u }
+    do unpack_slice(s) |_p, n| { n - 1u }
 }
 
 #[doc = "Returns the number of characters that a string holds"]
@@ -1267,7 +1267,7 @@ pure fn is_utf16(v: &[const u16]) -> bool {
 #[doc = "Converts to a vector of `u16` encoded as UTF-16"]
 pure fn to_utf16(s: str/&) -> ~[u16] {
     let mut u = ~[];
-    do chars_iter(s) {|cch|
+    do chars_iter(s) |cch| {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = cch as u32;
 
@@ -1316,7 +1316,7 @@ pure fn from_utf16(v: &[const u16]) -> str {
     let mut buf = "";
     unchecked {
         reserve(buf, vec::len(v));
-        do utf16_chars(v) {|ch| push_char(buf, ch); }
+        utf16_chars(v, |ch| push_char(buf, ch));
     }
     ret buf;
 }
@@ -1539,7 +1539,7 @@ Loop through a substring, char by char
 "]
 pure fn any_between(s: str/&, start: uint, end: uint,
                     it: fn(char) -> bool) -> bool {
-    !all_between(s, start, end, {|c| !it(c)})
+    !all_between(s, start, end, |c| !it(c))
 }
 
 // UTF-8 tags and ranges
@@ -1583,7 +1583,7 @@ Allows for unsafe manipulation of strings, which is useful for native
 interop.
 "]
 pure fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T {
-    as_bytes(s, { |v| unsafe { vec::as_buf(v, f) } })
+    as_bytes(s, |v| unsafe { vec::as_buf(v, f) })
 }
 
 #[doc = "
@@ -1599,7 +1599,7 @@ let s = str::as_buf(\"PATH\", { |path_buf| libc::getenv(path_buf) });
 ~~~
 "]
 pure fn as_c_str<T>(s: str, f: fn(*libc::c_char) -> T) -> T {
-    as_buf(s, {|buf| f(buf as *libc::c_char) })
+    as_buf(s, |buf| f(buf as *libc::c_char))
 }
 
 
@@ -1671,7 +1671,7 @@ Returns the number of single-byte characters the string can hold without
 reallocating
 "]
 pure fn capacity(&&s: str) -> uint {
-    do as_bytes(s) {|buf|
+    do as_bytes(s) |buf| {
         let vcap = vec::capacity(buf);
         assert vcap > 0u;
         vcap - 1u
@@ -1683,7 +1683,7 @@ pure fn escape_default(s: str/&) -> str {
     let mut out: str = "";
     unchecked {
         reserve_at_least(out, str::len(s));
-        do chars_iter(s) {|c| out += char::escape_default(c); }
+        chars_iter(s, |c| out += char::escape_default(c));
     }
     ret out;
 }
@@ -1693,7 +1693,7 @@ pure fn escape_unicode(s: str/&) -> str {
     let mut out: str = "";
     unchecked {
         reserve_at_least(out, str::len(s));
-        do chars_iter(s) {|c| out += char::escape_unicode(c); }
+        chars_iter(s, |c| out += char::escape_unicode(c));
     }
     ret out;
 }
@@ -1726,7 +1726,7 @@ mod unsafe {
     unsafe fn from_buf_len(buf: *u8, len: uint) -> str {
         let mut v: ~[u8] = ~[];
         vec::reserve(v, len + 1u);
-        do vec::as_buf(v) {|b| ptr::memcpy(b, buf, len); }
+        vec::as_buf(v, |b| ptr::memcpy(b, buf, len));
         vec::unsafe::set_len(v, len);
         vec::push(v, 0u8);
 
@@ -1777,14 +1777,14 @@ mod unsafe {
    If end is greater than the length of the string.
    "]
    unsafe fn slice_bytes(s: str/&, begin: uint, end: uint) -> str {
-       do unpack_slice(s) { |sbuf, n|
+       do unpack_slice(s) |sbuf, n| {
            assert (begin <= end);
            assert (end <= n);
 
            let mut v = ~[];
            vec::reserve(v, end - begin + 1u);
            unsafe {
-               do vec::as_buf(v) { |vbuf|
+               do vec::as_buf(v) |vbuf| {
                    let src = ptr::offset(sbuf, begin);
                    ptr::memcpy(vbuf, src, end - begin);
                }
@@ -1802,7 +1802,7 @@ mod unsafe {
 
    #[doc = "Appends a vector of bytes to a string. (Not UTF-8 safe)."]
    unsafe fn push_bytes(&s: str, bytes: ~[u8]) {
-       for vec::each(bytes) {|byte| rustrt::rust_str_push(s, byte); }
+       for vec::each(bytes) |byte| { rustrt::rust_str_push(s, byte); }
    }
 
    #[doc = "
@@ -2037,7 +2037,7 @@ mod tests {
             log(debug, "split_byte: " + s);
             let v = split_char(s, c);
             #debug("split_byte to: %?", v);
-            assert vec::all2(v, u, { |a,b| a == b });
+            assert vec::all2(v, u, |a,b| a == b);
         }
         t("abc.hello.there", '.', ~["abc", "hello", "there"]);
         t(".hello.there", '.', ~["", "hello", "there"]);
@@ -2067,7 +2067,7 @@ mod tests {
             let v = splitn_char(s, c, n);
             #debug("split_byte to: %?", v);
             #debug("comparing vs. %?", u);
-            assert vec::all2(v, u, { |a,b| a == b });
+            assert vec::all2(v, u, |a,b| a == b);
         }
         t("abc.hello.there", '.', 0u, ~["abc.hello.there"]);
         t("abc.hello.there", '.', 1u, ~["abc", "hello.there"]);
@@ -2149,7 +2149,7 @@ mod tests {
     fn test_split() {
         let data = "ประเทศไทย中华Việt Nam";
         assert ~["ประเทศไทย中", "Việt Nam"]
-            == split (data, {|cc| cc == '华'});
+            == split (data, |cc| cc == '华');
 
         assert ~["", "", "XXX", "YYY", ""]
             == split("zzXXXzYYYz", char::is_lowercase);
@@ -2157,9 +2157,9 @@ mod tests {
         assert ~["zz", "", "", "z", "", "", "z"]
             == split("zzXXXzYYYz", char::is_uppercase);
 
-        assert ~["",""] == split("z", {|cc| cc == 'z'});
-        assert ~[""] == split("", {|cc| cc == 'z'});
-        assert ~["ok"] == split("ok", {|cc| cc == 'z'});
+        assert ~["",""] == split("z", |cc| cc == 'z');
+        assert ~[""] == split("", |cc| cc == 'z');
+        assert ~["ok"] == split("ok", |cc| cc == 'z');
     }
 
     #[test]
@@ -2284,9 +2284,9 @@ mod tests {
 
     #[test]
     fn test_to_lower() {
-        assert "" == map("", {|c| libc::tolower(c as c_char) as char});
+        assert "" == map("", |c| libc::tolower(c as c_char) as char);
         assert "ymca" == map("YMCA",
-                             {|c| libc::tolower(c as c_char) as char});
+                             |c| libc::tolower(c as c_char) as char);
     }
 
     #[test]
@@ -2574,13 +2574,13 @@ mod tests {
     #[should_fail]
     fn test_as_bytes_fail() {
         // Don't double free
-        do as_bytes("") {|_bytes| fail }
+        as_bytes::<()>("", |_bytes| fail );
     }
 
     #[test]
     fn test_as_buf() {
         let a = "Abcdefg";
-        let b = as_buf(a, {|buf|
+        let b = as_buf(a, |buf| {
             assert unsafe { *buf } == 65u8;
             100
         });
@@ -2590,7 +2590,7 @@ mod tests {
     #[test]
     fn test_as_buf_small() {
         let a = "A";
-        let b = as_buf(a, {|buf|
+        let b = as_buf(a, |buf| {
             assert unsafe { *buf } == 65u8;
             100
         });
@@ -2601,7 +2601,7 @@ mod tests {
     fn test_as_buf2() {
         unsafe {
             let s = "hello";
-            let sb = as_buf(s, {|b| b });
+            let sb = as_buf(s, |b| b);
             let s_cstr = unsafe::from_buf(sb);
             assert (eq(s_cstr, s));
         }
@@ -2647,7 +2647,7 @@ mod tests {
     #[test]
     fn test_chars_iter() {
         let mut i = 0;
-        do chars_iter("x\u03c0y") {|ch|
+        do chars_iter("x\u03c0y") |ch| {
             alt check i {
               0 { assert ch == 'x'; }
               1 { assert ch == '\u03c0'; }
@@ -2656,14 +2656,14 @@ mod tests {
             i += 1;
         }
 
-        do chars_iter("") {|_ch| fail; } // should not fail
+        chars_iter("", |_ch| fail ); // should not fail
     }
 
     #[test]
     fn test_bytes_iter() {
         let mut i = 0;
 
-        do bytes_iter("xyz") {|bb|
+        do bytes_iter("xyz") |bb| {
             alt check i {
               0 { assert bb == 'x' as u8; }
               1 { assert bb == 'y' as u8; }
@@ -2672,7 +2672,7 @@ mod tests {
             i += 1;
         }
 
-        do bytes_iter("") {|bb| assert bb == 0u8; }
+        bytes_iter("", |bb| assert bb == 0u8);
     }
 
     #[test]
@@ -2681,7 +2681,7 @@ mod tests {
 
         let mut ii = 0;
 
-        do split_char_iter(data, ' ') {|xx|
+        do split_char_iter(data, ' ') |xx| {
             alt ii {
               0 { assert "\nMary" == xx; }
               1 { assert "had"    == xx; }
@@ -2699,7 +2699,7 @@ mod tests {
 
         let mut ii = 0;
 
-        do splitn_char_iter(data, ' ', 2u) {|xx|
+        do splitn_char_iter(data, ' ', 2u) |xx| {
             alt ii {
               0 { assert "\nMary" == xx; }
               1 { assert "had"    == xx; }
@@ -2716,7 +2716,7 @@ mod tests {
 
         let mut ii = 0;
 
-        do words_iter(data) {|ww|
+        do words_iter(data) |ww| {
             alt ii {
               0 { assert "Mary"   == ww; }
               1 { assert "had"    == ww; }
@@ -2727,7 +2727,7 @@ mod tests {
             ii += 1;
         }
 
-        do words_iter("") {|_x| fail; } // should not fail
+        words_iter("", |_x| fail); // should not fail
     }
 
     #[test]
@@ -2736,7 +2736,7 @@ mod tests {
 
         let mut ii = 0;
 
-        do lines_iter(lf) {|x|
+        do lines_iter(lf) |x| {
             alt ii {
                 0 { assert "" == x; }
                 1 { assert "Mary had a little lamb" == x; }
@@ -2750,9 +2750,8 @@ mod tests {
 
     #[test]
     fn test_map() {
-        assert "" == map("", {|c| libc::toupper(c as c_char) as char});
-        assert "YMCA" == map("ymca", {|c| libc::toupper(c as c_char)
-              as char});
+        assert "" == map("", |c| libc::toupper(c as c_char) as char);
+        assert "YMCA" == map("ymca", |c| libc::toupper(c as c_char) as char);
     }
 
     #[test]
@@ -2819,7 +2818,7 @@ mod tests {
                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                0x000a_u16 ]) ];
 
-        for vec::each(pairs) {|p|
+        for vec::each(pairs) |p| {
             let (s, u) = p;
             assert to_utf16(s) == u;
             assert from_utf16(u) == s;
@@ -2832,7 +2831,7 @@ mod tests {
     fn test_each_char() {
         let s = "abc";
         let mut found_b = false;
-        for each_char(s) {|ch|
+        for each_char(s) |ch| {
             if ch == 'b' {
                 found_b = true;
                 break;
@@ -2844,7 +2843,7 @@ mod tests {
     #[test]
     fn test_unpack_slice() {
         let a = "hello";
-        do unpack_slice(a) {|buf, len|
+        do unpack_slice(a) |buf, len| {
             unsafe {
                 assert a[0] == 'h' as u8;
                 assert *buf == 'h' as u8;

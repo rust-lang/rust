@@ -84,9 +84,9 @@ iface deserializer {
 // In some cases, these should eventually be coded as traits.
 
 fn emit_from_vec<S: serializer, T>(s: S, v: ~[T], f: fn(T)) {
-    do s.emit_vec(vec::len(v)) {||
-        do vec::iteri(v) {|i,e|
-            do s.emit_vec_elt(i) {||
+    do s.emit_vec(vec::len(v)) || {
+        do vec::iteri(v) |i,e| {
+            do s.emit_vec_elt(i) || {
                 f(e)
             }
         }
@@ -94,9 +94,9 @@ fn emit_from_vec<S: serializer, T>(s: S, v: ~[T], f: fn(T)) {
 }
 
 fn read_to_vec<D: deserializer, T: copy>(d: D, f: fn() -> T) -> ~[T] {
-    do d.read_vec {|len|
-        do vec::from_fn(len) {|i|
-            do d.read_vec_elt(i) {|| f() }
+    do d.read_vec |len| {
+        do vec::from_fn(len) |i| {
+            d.read_vec_elt(i, || f())
         }
     }
 }
@@ -234,16 +234,16 @@ fn deserialize_bool<D: deserializer>(d: D) -> bool {
 }
 
 fn serialize_option<S: serializer,T>(s: S, v: option<T>, st: fn(T)) {
-    do s.emit_enum("option") {||
+    do s.emit_enum("option") || {
         alt v {
           none {
-            do s.emit_enum_variant("none", 0u, 0u) {||
+            do s.emit_enum_variant("none", 0u, 0u) || {
             }
           }
 
           some(v) {
-            do s.emit_enum_variant("some", 1u, 1u) {||
-                do s.emit_enum_variant_arg(0u) {||
+            do s.emit_enum_variant("some", 1u, 1u) || {
+                do s.emit_enum_variant_arg(0u) || {
                     st(v)
                 }
             }
@@ -254,14 +254,14 @@ fn serialize_option<S: serializer,T>(s: S, v: option<T>, st: fn(T)) {
 
 fn deserialize_option<D: deserializer,T: copy>(d: D, st: fn() -> T)
     -> option<T> {
-    do d.read_enum("option") {||
-        do d.read_enum_variant {|i|
+    do d.read_enum("option") || {
+        do d.read_enum_variant |i| {
             alt check i {
               0u { // none
                 none
               }
               1u { // some(v)
-                some(d.read_enum_variant_arg(0u, {||
+                some(d.read_enum_variant_arg(0u, || {
                     st()
                 }))
               }

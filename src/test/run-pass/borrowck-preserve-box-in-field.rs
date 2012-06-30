@@ -9,7 +9,7 @@ fn borrow(x: &int, f: fn(x: &int)) {
 
 fn main() {
     let mut x = @{f: ~3};
-    do borrow(x.f) {|b_x|
+    do borrow(x.f) |b_x| {
         assert *b_x == 3;
         assert ptr::addr_of(*x.f) == ptr::addr_of(*b_x);
         x = @{f: ~4};

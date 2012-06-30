@@ -87,20 +87,20 @@ fn encode_name_and_def_id(ebml_w: ebml::writer, nm: ident,
 }
 
 fn encode_region_param(ebml_w: ebml::writer, rp: region_param) {
-    do ebml_w.wr_tag(tag_region_param) {||
+    do ebml_w.wr_tag(tag_region_param) || {
         serialize_region_param(ebml_w, rp)
     }
 }
 
 fn encode_named_def_id(ebml_w: ebml::writer, name: ident, id: def_id) {
-    do ebml_w.wr_tag(tag_paths_data_item) {||
+    do ebml_w.wr_tag(tag_paths_data_item) || {
         encode_name(ebml_w, name);
         encode_def_id(ebml_w, id);
     }
 }
 
 fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
-    do ebml_w.wr_tag(tag_class_mut) {||
+    do ebml_w.wr_tag(tag_class_mut) || {
         ebml_w.writer.write(&[alt mt { class_immutable { 'i' }
                 class_mutable { 'm' } } as u8]);
         }
@@ -110,9 +110,9 @@ type entry<T> = {val: T, pos: uint};
 
 fn encode_enum_variant_paths(ebml_w: ebml::writer, variants: ~[variant],
                             path: ~[ident], &index: ~[entry<str>]) {
-    for variants.each {|variant|
+    for variants.each |variant| {
         add_to_index(ebml_w, path, index, variant.node.name);
-        do ebml_w.wr_tag(tag_paths_data_item) {||
+        do ebml_w.wr_tag(tag_paths_data_item) || {
             encode_name(ebml_w, variant.node.name);
             encode_def_id(ebml_w, local_def(variant.node.id));
         }
@@ -130,7 +130,7 @@ fn add_to_index(ebml_w: ebml::writer, path: &[ident], &index: ~[entry<str>],
 
 fn encode_foreign_module_item_paths(ebml_w: ebml::writer, nmod: foreign_mod,
                                     path: ~[ident], &index: ~[entry<str>]) {
-    for nmod.items.each {|nitem|
+    for nmod.items.each |nitem| {
         add_to_index(ebml_w, path, index, nitem.ident);
         encode_named_def_id(ebml_w, nitem.ident, local_def(nitem.id));
     }
@@ -138,7 +138,7 @@ fn encode_foreign_module_item_paths(ebml_w: ebml::writer, nmod: foreign_mod,
 
 fn encode_class_item_paths(ebml_w: ebml::writer,
      items: ~[@class_member], path: ~[ident], &index: ~[entry<str>]) {
-    for items.each {|it|
+    for items.each |it| {
      alt ast_util::class_member_visibility(it) {
           private { cont; }
           public {
@@ -156,7 +156,7 @@ fn encode_class_item_paths(ebml_w: ebml::writer,
 fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             module: _mod, path: ~[ident],
                             &index: ~[entry<str>]) {
-    for module.items.each {|it|
+    for module.items.each |it| {
         if !reachable(ecx, it.id) ||
            !ast_util::is_exported(it.ident, module) { cont; }
         if !ast_util::is_item_impl(it) {
@@ -170,7 +170,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             encode_named_def_id(ebml_w, it.ident, local_def(it.id));
           }
           item_mod(_mod) {
-            do ebml_w.wr_tag(tag_paths_data_mod) {||
+            do ebml_w.wr_tag(tag_paths_data_mod) || {
                encode_name_and_def_id(ebml_w, it.ident, it.id);
                encode_module_item_paths(ebml_w, ecx, _mod,
                                         vec::append_one(path, it.ident),
@@ -178,7 +178,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             }
           }
           item_foreign_mod(nmod) {
-            do ebml_w.wr_tag(tag_paths_data_mod) {||
+            do ebml_w.wr_tag(tag_paths_data_mod) || {
               encode_name_and_def_id(ebml_w, it.ident, it.id);
               encode_foreign_module_item_paths(
                   ebml_w, nmod,
@@ -186,15 +186,15 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             }
           }
           item_ty(_, tps, _) {
-            do ebml_w.wr_tag(tag_paths_data_item) {||
+            do ebml_w.wr_tag(tag_paths_data_item) || {
               encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
           }
           item_class(_, _, items, ctor, m_dtor, _) {
-            do ebml_w.wr_tag(tag_paths_data_item) {||
+            do ebml_w.wr_tag(tag_paths_data_item) || {
                 encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
-            do ebml_w.wr_tag(tag_paths) {||
+            do ebml_w.wr_tag(tag_paths) || {
                 // We add the same ident twice: for the
                 // class and for its ctor
                 add_to_index(ebml_w, path, index, it.ident);
@@ -206,13 +206,13 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             }
           }
           item_enum(variants, _, _) {
-              do ebml_w.wr_tag(tag_paths_data_item) {||
+            do ebml_w.wr_tag(tag_paths_data_item) || {
                   encode_name_and_def_id(ebml_w, it.ident, it.id);
               }
               encode_enum_variant_paths(ebml_w, variants, path, index);
           }
           item_iface(*) {
-              do ebml_w.wr_tag(tag_paths_data_item) {||
+            do ebml_w.wr_tag(tag_paths_data_item) || {
                   encode_name_and_def_id(ebml_w, it.ident, it.id);
               }
           }
@@ -240,7 +240,7 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
 
 fn encode_reexport_paths(ebml_w: ebml::writer,
                          ecx: @encode_ctxt, &index: ~[entry<str>]) {
-    for ecx.reexports.each {|reexport|
+    for ecx.reexports.each |reexport| {
         let (path, def_id) = reexport;
         vec::push(index, {val: path, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_paths_data_item);
@@ -265,9 +265,9 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
     let ty_str_ctxt = @{diag: ecx.diag,
                         ds: def_to_str,
                         tcx: ecx.tcx,
-                        reachable: {|a|reachable(ecx, a)},
+                        reachable: |a| reachable(ecx, a),
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
-    for params.each {|param|
+    for params.each |param| {
         ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
         let bs = ecx.tcx.ty_param_bounds.get(param.id);
         tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, bs);
@@ -286,7 +286,7 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
         @{diag: ecx.diag,
           ds: def_to_str,
           tcx: ecx.tcx,
-          reachable: {|a|reachable(ecx, a)},
+          reachable: |a| reachable(ecx, a),
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
@@ -335,7 +335,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
     let mut disr_val = 0;
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx, {crate: local_crate, node: id});
-    for variants.each {|variant|
+    for variants.each |variant| {
         vec::push(*index, {val: variant.node.id, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
@@ -372,9 +372,9 @@ fn encode_path(ebml_w: ebml::writer,
         ebml_w.wr_tagged_str(tag, *name);
     }
 
-    do ebml_w.wr_tag(tag_path) {||
+    do ebml_w.wr_tag(tag_path) || {
         ebml_w.wr_tagged_u32(tag_path_len, (vec::len(path) + 1u) as u32);
-        do vec::iter(path) {|pe| encode_path_elt(ebml_w, pe); }
+        do vec::iter(path) |pe| { encode_path_elt(ebml_w, pe); }
         encode_path_elt(ebml_w, name);
     }
 }
@@ -386,7 +386,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     encode_family(ebml_w, 'm');
     encode_name(ebml_w, name);
     let impls = ecx.impl_map(id);
-    for impls.each {|i|
+    for impls.each |i| {
         let (ident, did) = i;
         if ast_util::is_exported(ident, md) {
             ebml_w.start_tag(tag_mod_impl);
@@ -432,7 +432,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
        may have fields with the same name */
     let index = @mut ~[];
     let tcx = ecx.tcx;
-    for items.each {|ci|
+    for items.each |ci| {
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
       alt ci.node {
@@ -547,7 +547,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                      index: @mut ~[entry<int>]) {
         vec::push(*index, {val: item.id, pos: ebml_w.writer.tell()});
     }
-    let add_to_index = {|copy ebml_w|add_to_index_(item, ebml_w, index)};
+    let add_to_index = |copy ebml_w| add_to_index_(item, ebml_w, index);
 
     alt item.node {
       item_const(_, _) {
@@ -602,13 +602,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       }
       item_enum(variants, tps, rp) {
         add_to_index();
-        do ebml_w.wr_tag(tag_items_data_item) {||
+        do ebml_w.wr_tag(tag_items_data_item) || {
             encode_def_id(ebml_w, local_def(item.id));
             encode_family(ebml_w, 't');
             encode_type_param_bounds(ebml_w, ecx, tps);
             encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
             encode_name(ebml_w, item.ident);
-            for variants.each {|v|
+            for variants.each |v| {
                 encode_variant_id(ebml_w, local_def(v.node.id));
             }
             ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
@@ -626,7 +626,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         let idx = encode_info_for_class(ecx, ebml_w, item.id, path, tps,
                                           items, index);
         /* Encode the dtor */
-        do option::iter(m_dtor) {|dtor|
+        do option::iter(m_dtor) |dtor| {
             vec::push(*index, {val: dtor.node.id, pos: ebml_w.writer.tell()});
           encode_info_for_fn(ecx, ebml_w, dtor.node.id, @(*item.ident
                              + "_dtor"), path, if tps.len() > 0u {
@@ -646,13 +646,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ebml_w, rp);
-        for ifaces.each {|t|
+        for ifaces.each |t| {
            encode_iface_ref(ebml_w, ecx, t);
         }
         /* Encode the dtor */
         /* Encode id for dtor */
-        do option::iter(m_dtor) {|dtor|
-            do ebml_w.wr_tag(tag_item_dtor) {||
+        do option::iter(m_dtor) |dtor| {
+            do ebml_w.wr_tag(tag_item_dtor) || {
                 encode_def_id(ebml_w, local_def(dtor.node.id));
             }
         };
@@ -661,14 +661,14 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
          for methods, write all the stuff get_iface_method
         needs to know*/
         let (fs,ms) = ast_util::split_class_items(items);
-        for fs.each {|f|
+        for fs.each |f| {
            ebml_w.start_tag(tag_item_field);
            encode_visibility(ebml_w, f.vis);
            encode_name(ebml_w, f.ident);
            encode_def_id(ebml_w, local_def(f.id));
            ebml_w.end_tag();
         }
-        for ms.each {|m|
+        for ms.each |m| {
            alt m.vis {
               private { /* do nothing */ }
               public {
@@ -703,12 +703,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
-        for methods.each {|m|
+        for methods.each |m| {
             ebml_w.start_tag(tag_item_impl_method);
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
             ebml_w.end_tag();
         }
-        do option::iter(ifce) {|t|
+        do option::iter(ifce) |t| {
            encode_iface_ref(ebml_w, ecx, t)
         };
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
@@ -716,7 +716,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
         let impl_path = vec::append_one(path,
                                         ast_map::path_name(item.ident));
-        for methods.each {|m|
+        for methods.each |m| {
             vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx, ebml_w, impl_path,
                                    should_inline(m.attrs), item.id, m,
@@ -733,7 +733,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         let mut i = 0u;
-        for vec::each(*ty::iface_methods(tcx, local_def(item.id))) {|mty|
+        for vec::each(*ty::iface_methods(tcx, local_def(item.id))) |mty| {
             ebml_w.start_tag(tag_item_iface_method);
             encode_name(ebml_w, mty.ident);
             encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
@@ -782,8 +782,8 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     encode_info_for_mod(ecx, ebml_w, crate.node.module,
                         crate_node_id, ~[], @"");
     visit::visit_crate(*crate, (), visit::mk_vt(@{
-        visit_expr: {|_e, _cx, _v|},
-        visit_item: {|i, cx, v, copy ebml_w|
+        visit_expr: |_e, _cx, _v| { },
+        visit_item: |i, cx, v, copy ebml_w| {
             visit::visit_item(i, cx, v);
             alt check ecx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) {
@@ -806,7 +806,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
               }
             }
         },
-        visit_foreign_item: {|ni, cx, v, copy ebml_w|
+        visit_foreign_item: |ni, cx, v, copy ebml_w| {
             visit::visit_foreign_item(ni, cx, v);
             alt check ecx.tcx.items.get(ni.id) {
               ast_map::node_foreign_item(_, abi, pt) {
@@ -827,14 +827,14 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
 fn create_index<T: copy>(index: ~[entry<T>], hash_fn: fn@(T) -> uint) ->
    ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
-    for uint::range(0u, 256u) {|_i| vec::push(buckets, @mut ~[]); };
-    for index.each {|elt|
+    for uint::range(0u, 256u) |_i| { vec::push(buckets, @mut ~[]); };
+    for index.each |elt| {
         let h = hash_fn(elt.val);
         vec::push(*buckets[h % 256u], elt);
     }
 
     let mut buckets_frozen = ~[];
-    for buckets.each {|bucket|
+    for buckets.each |bucket| {
         vec::push(buckets_frozen, @*bucket);
     }
     ret buckets_frozen;
@@ -846,10 +846,10 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
     ebml_w.start_tag(tag_index);
     let mut bucket_locs: ~[uint] = ~[];
     ebml_w.start_tag(tag_index_buckets);
-    for buckets.each {|bucket|
+    for buckets.each |bucket| {
         vec::push(bucket_locs, ebml_w.writer.tell());
         ebml_w.start_tag(tag_index_buckets_bucket);
-        for vec::each(*bucket) {|elt|
+        for vec::each(*bucket) |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
             writer.write_be_uint(elt.pos, 4u);
             write_fn(writer, elt.val);
@@ -859,7 +859,7 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
     }
     ebml_w.end_tag();
     ebml_w.start_tag(tag_index_table);
-    for bucket_locs.each {|pos| writer.write_be_uint(pos, 4u); }
+    for bucket_locs.each |pos| { writer.write_be_uint(pos, 4u); }
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
@@ -899,7 +899,7 @@ fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
         ebml_w.start_tag(tag_meta_item_name);
         ebml_w.writer.write(str::bytes(*name));
         ebml_w.end_tag();
-        for items.each {|inner_item|
+        for items.each |inner_item| {
             encode_meta_item(ebml_w, *inner_item);
         }
         ebml_w.end_tag();
@@ -909,7 +909,7 @@ fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
 
 fn encode_attributes(ebml_w: ebml::writer, attrs: ~[attribute]) {
     ebml_w.start_tag(tag_attributes);
-    for attrs.each {|attr|
+    for attrs.each |attr| {
         ebml_w.start_tag(tag_attribute);
         encode_meta_item(ebml_w, attr.node.value);
         ebml_w.end_tag();
@@ -948,7 +948,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
 
     let mut attrs: ~[attribute] = ~[];
     let mut found_link_attr = false;
-    for crate.node.attrs.each {|attr|
+    for crate.node.attrs.each |attr| {
         vec::push(
             attrs,
             if *attr::get_attr_name(attr) != "link" {
@@ -977,7 +977,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
 
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps: ~[mut numdep] = ~[mut];
-        do cstore::iter_crate_data(cstore) {|key, val|
+        do cstore::iter_crate_data(cstore) |key, val| {
             let dep = {cnum: key, name: @val.name,
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
@@ -990,7 +990,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
-        for deps.each {|n|
+        for deps.each |n| {
             assert (n.cnum == expected_cnum);
             expected_cnum += 1;
         }
@@ -1004,7 +1004,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
     // FIXME (#2166): This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     ebml_w.start_tag(tag_crate_deps);
-    for get_ordered_deps(cstore).each {|dep|
+    for get_ordered_deps(cstore).each |dep| {
         encode_crate_dep(ebml_w, dep);
     }
     ebml_w.end_tag();
@@ -1081,7 +1081,7 @@ fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> str {
     let cx = @{diag: tcx.diag,
                ds: def_to_str,
                tcx: tcx,
-               reachable: {|_id| false},
+               reachable: |_id| false,
                abbrevs: tyencode::ac_no_abbrevs};
     let buf = io::mem_buffer();
     tyencode::enc_ty(io::mem_buffer_writer(buf), cx, t);

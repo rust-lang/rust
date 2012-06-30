@@ -6,7 +6,7 @@ import task::*;
 fn main() {
     let builder = task::builder();
     let result = task::future_result(builder);
-    task::run(builder, {|| child(); });
+    task::run(builder, || child() );
     #error("1");
     yield();
     future::get(result);

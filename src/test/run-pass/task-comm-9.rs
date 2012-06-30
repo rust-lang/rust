@@ -18,7 +18,7 @@ fn test00() {
 
     let builder = task::builder();
     let r = task::future_result(builder);
-    do task::run(builder) {||
+    do task::run(builder) || {
         test00_start(ch, number_of_messages);
     }
 

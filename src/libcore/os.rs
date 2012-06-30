@@ -53,7 +53,7 @@ native mod rustrt {
 
 fn env() -> ~[(str,str)] {
     let mut pairs = ~[];
-    for vec::each(rustrt::rust_env_pairs()) {|p|
+    for vec::each(rustrt::rust_env_pairs()) |p| {
         let vs = str::splitn_char(p, '=', 1u);
         assert vec::len(vs) == 2u;
         vec::push(pairs, (vs[0], vs[1]));
@@ -64,13 +64,13 @@ fn env() -> ~[(str,str)] {
 const tmpbuf_sz : uint = 1000u;
 
 fn as_c_charp<T>(s: str, f: fn(*c_char) -> T) -> T {
-    str::as_c_str(s, {|b| f(b as *c_char) })
+    str::as_c_str(s, |b| f(b as *c_char))
 }
 
 fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     -> option<str> {
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
-    do vec::as_mut_buf(buf) { |b|
+    do vec::as_mut_buf(buf) |b| {
         if f(b, tmpbuf_sz as size_t) unsafe {
             some(str::unsafe::from_buf(b as *u8))
         } else {
@@ -95,7 +95,7 @@ mod win32 {
         let mut done = false;
         while !done {
             let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
-            do vec::as_mut_buf(buf) {|b|
+            do vec::as_mut_buf(buf) |b| {
                 let k : dword = f(b, tmpbuf_sz as dword);
                 if k == (0 as dword) {
                     done = true;
@@ -160,7 +160,7 @@ mod global_env {
 
     fn get_global_env_chan() -> comm::chan<msg> {
         let global_ptr = rustrt::rust_global_env_chan_ptr();
-        let builder_fn = {||
+        let builder_fn = || {
             let builder = task::builder();
             task::unsupervise(builder);
             task::set_opts(builder, {
@@ -182,7 +182,7 @@ mod global_env {
 
     fn global_env_task(msg_po: comm::port<msg>) {
         unsafe {
-            do priv::weaken_task {|weak_po|
+            do priv::weaken_task |weak_po| {
                 loop {
                     alt comm::select2(msg_po, weak_po) {
                       either::left(msg_getenv(n, resp_ch)) {
@@ -220,8 +220,8 @@ mod global_env {
             import libc::types::os::arch::extra::*;
             import libc::funcs::extra::kernel32::*;
             import win32::*;
-            do as_utf16_p(n) {|u|
-                do fill_utf16_buf_and_decode() {|buf, sz|
+            do as_utf16_p(n) |u| {
+                do fill_utf16_buf_and_decode() |buf, sz| {
                     GetEnvironmentVariableW(u, buf, sz)
                 }
             }
@@ -233,8 +233,8 @@ mod global_env {
 
             // FIXME: remove this when export globs work properly. #1238
             import libc::funcs::posix01::unistd::setenv;
-            do str::as_c_str(n) {|nbuf|
-                do str::as_c_str(v) {|vbuf|
+            do str::as_c_str(n) |nbuf| {
+                do str::as_c_str(v) |vbuf| {
                     setenv(nbuf, vbuf, 1i32);
                 }
             }
@@ -246,8 +246,8 @@ mod global_env {
             // FIXME: remove imports when export globs work properly. #1238
             import libc::funcs::extra::kernel32::*;
             import win32::*;
-            do as_utf16_p(n) {|nbuf|
-                do as_utf16_p(v) {|vbuf|
+            do as_utf16_p(n) |nbuf| {
+                do as_utf16_p(v) |vbuf| {
                     SetEnvironmentVariableW(nbuf, vbuf);
                 }
             }
@@ -257,7 +257,7 @@ mod global_env {
 }
 
 fn fdopen(fd: c_int) -> *FILE {
-    ret do as_c_charp("r") {|modebuf|
+    ret do as_c_charp("r") |modebuf| {
         libc::fdopen(fd, modebuf)
     };
 }
@@ -370,7 +370,7 @@ fn self_exe_path() -> option<path> {
         unsafe {
             import libc::funcs::bsd44::*;
             import libc::consts::os::extra::*;
-            do fill_charp_buf() {|buf, sz|
+            do fill_charp_buf() |buf, sz| {
                 let mib = ~[CTL_KERN as c_int,
                            KERN_PROC as c_int,
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
@@ -384,8 +384,8 @@ fn self_exe_path() -> option<path> {
     #[cfg(target_os = "linux")]
     fn load_self() -> option<path> {
         import libc::funcs::posix01::unistd::readlink;
-        do fill_charp_buf() {|buf, sz|
-            do as_c_charp("/proc/self/exe") { |proc_self_buf|
+        do fill_charp_buf() |buf, sz| {
+            do as_c_charp("/proc/self/exe") |proc_self_buf| {
                 readlink(proc_self_buf, buf, sz) != (-1 as ssize_t)
             }
         }
@@ -395,7 +395,7 @@ fn self_exe_path() -> option<path> {
     fn load_self() -> option<path> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::*;
-        do fill_charp_buf() {|buf, sz|
+        do fill_charp_buf() |buf, sz| {
             _NSGetExecutablePath(buf, ptr::mut_addr_of(sz as u32))
                 == (0 as c_int)
         }
@@ -407,12 +407,12 @@ fn self_exe_path() -> option<path> {
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
         import win32::*;
-        do fill_utf16_buf_and_decode() {|buf, sz|
+        do fill_utf16_buf_and_decode() |buf, sz| {
             GetModuleFileNameW(0u as dword, buf, sz)
         }
     }
 
-    do option::map(load_self()) {|pth|
+    do option::map(load_self()) |pth| {
         path::dirname(pth) + path::path_sep()
     }
 }
@@ -452,7 +452,7 @@ fn homedir() -> option<path> {
 
     #[cfg(windows)]
     fn secondary() -> option<path> {
-        do option::chain(getenv("USERPROFILE")) {|p|
+        do option::chain(getenv("USERPROFILE")) |p| {
             if !str::is_empty(p) {
                 some(p)
             } else {
@@ -469,7 +469,7 @@ fn walk_dir(p: path, f: fn(path) -> bool) {
 
     fn walk_dir_(p: path, f: fn(path) -> bool) -> bool {
         let mut keepgoing = true;
-        do list_dir(p).each {|q|
+        do list_dir(p).each |q| {
             let path = path::connect(p, q);
             if !f(path) {
                 keepgoing = false;
@@ -493,14 +493,14 @@ fn walk_dir(p: path, f: fn(path) -> bool) {
 
 #[doc = "Indicates whether a path represents a directory"]
 fn path_is_dir(p: path) -> bool {
-    do str::as_c_str(p) {|buf|
+    do str::as_c_str(p) |buf| {
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
 #[doc = "Indicates whether a path exists"]
 fn path_exists(p: path) -> bool {
-    do str::as_c_str(p) {|buf|
+    do str::as_c_str(p) |buf| {
         rustrt::rust_path_exists(buf) != 0 as c_int
     }
 }
@@ -537,7 +537,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
         import libc::funcs::extra::kernel32::*;
         import win32::*;
         // FIXME: turn mode into something useful? #2623
-        do as_utf16_p(p) {|buf|
+        do as_utf16_p(p) |buf| {
             CreateDirectoryW(buf, unsafe { unsafe::reinterpret_cast(0) })
                 != (0 as BOOL)
         }
@@ -545,7 +545,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
 
     #[cfg(unix)]
     fn mkdir(p: path, mode: c_int) -> bool {
-        do as_c_charp(p) {|c|
+        do as_c_charp(p) |c| {
             libc::mkdir(c, mode as mode_t) == (0 as c_int)
         }
     }
@@ -568,7 +568,7 @@ fn list_dir(p: path) -> ~[str] {
         }
     }
 
-    do rustrt::rust_list_files(star(p)).filter {|filename|
+    do rustrt::rust_list_files(star(p)).filter |filename| {
         !str::eq(filename, ".") && !str::eq(filename, "..")
     }
 }
@@ -585,7 +585,7 @@ fn list_dir_path(p: path) -> ~[str] {
                     && p[pl - 1u] as char != path::consts::alt_path_sep) {
         p += path::path_sep();
     }
-    os::list_dir(p).map({|f| p + f})
+    os::list_dir(p).map(|f| p + f)
 }
 
 #[doc = "Removes a directory at the specified path"]
@@ -598,14 +598,14 @@ fn remove_dir(p: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(p) {|buf|
+        ret do as_utf16_p(p) |buf| {
             RemoveDirectoryW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
     fn rmdir(p: path) -> bool {
-        ret do as_c_charp(p) {|buf|
+        ret do as_c_charp(p) |buf| {
             libc::rmdir(buf) == (0 as c_int)
         };
     }
@@ -620,14 +620,14 @@ fn change_dir(p: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(p) {|buf|
+        ret do as_utf16_p(p) |buf| {
             SetCurrentDirectoryW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
     fn chdir(p: path) -> bool {
-        ret do as_c_charp(p) {|buf|
+        ret do as_c_charp(p) |buf| {
             libc::chdir(buf) == (0 as c_int)
         };
     }
@@ -643,8 +643,8 @@ fn copy_file(from: path, to: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(from) {|fromp|
-            do as_utf16_p(to) {|top|
+        ret do as_utf16_p(from) |fromp| {
+            do as_utf16_p(to) |top| {
                 CopyFileW(fromp, top, (0 as BOOL)) != (0 as BOOL)
             }
         }
@@ -652,16 +652,16 @@ fn copy_file(from: path, to: path) -> bool {
 
     #[cfg(unix)]
     fn do_copy_file(from: path, to: path) -> bool {
-        let istream = do as_c_charp(from) {|fromp|
-            do as_c_charp("rb") {|modebuf|
+        let istream = do as_c_charp(from) |fromp| {
+            do as_c_charp("rb") |modebuf| {
                 libc::fopen(fromp, modebuf)
             }
         };
         if istream as uint == 0u {
             ret false;
         }
-        let ostream = do as_c_charp(to) {|top|
-            do as_c_charp("w+b") {|modebuf|
+        let ostream = do as_c_charp(to) |top| {
+            do as_c_charp("w+b") |modebuf| {
                 libc::fopen(top, modebuf)
             }
         };
@@ -675,7 +675,7 @@ fn copy_file(from: path, to: path) -> bool {
         let mut done = false;
         let mut ok = true;
         while !done {
-          do vec::as_mut_buf(buf) {|b|
+            do vec::as_mut_buf(buf) |b| {
               let nread = libc::fread(b as *mut c_void, 1u as size_t,
                                       bufsize as size_t,
                                       istream);
@@ -707,14 +707,14 @@ fn remove_file(p: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(p) {|buf|
+        ret do as_utf16_p(p) |buf| {
             DeleteFileW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
     fn unlink(p: path) -> bool {
-        ret do as_c_charp(p) {|buf|
+        ret do as_c_charp(p) |buf| {
             libc::unlink(buf) == (0 as c_int)
         };
     }
@@ -850,7 +850,7 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert vec::len(e) > 0u;
-        for vec::each(e) {|p|
+        for vec::each(e) |p| {
             let (n, v) = p;
             log(debug, n);
             let v2 = getenv(n);
@@ -894,7 +894,7 @@ mod tests {
         setenv("HOME", "");
         assert os::homedir() == none;
 
-        option::iter(oldhome, {|s| setenv("HOME", s)});
+        option::iter(oldhome, |s| setenv("HOME", s));
     }
 
     #[test]
@@ -924,9 +924,9 @@ mod tests {
         setenv("USERPROFILE", "/home/PaloAlto");
         assert os::homedir() == some("/home/MountainView");
 
-        option::iter(oldhome, {|s| setenv("HOME", s)});
+        option::iter(oldhome, |s| setenv("HOME", s));
         option::iter(olduserprofile,
-                               {|s| setenv("USERPROFILE", s)});
+                               |s| setenv("USERPROFILE", s));
     }
 
     // Issue #712
@@ -939,7 +939,7 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert (vec::len(dirs) > 0u);
 
-        for vec::each(dirs) {|dir| log(debug, dir); }
+        for vec::each(dirs) |dir| { log(debug, dir); }
     }
 
     #[test]
@@ -970,15 +970,15 @@ mod tests {
       let out = tempdir + path::path_sep() + "out.txt";
 
       /* Write the temp input file */
-      let ostream = do as_c_charp(in) {|fromp|
-            do as_c_charp("w+b") {|modebuf|
+        let ostream = do as_c_charp(in) |fromp| {
+            do as_c_charp("w+b") |modebuf| {
                 libc::fopen(fromp, modebuf)
             }
       };
       assert (ostream as uint != 0u);
       let s = "hello";
       let mut buf = vec::to_mut(str::bytes(s) + ~[0 as u8]);
-      do vec::as_mut_buf(buf) {|b|
+      do vec::as_mut_buf(buf) |b| {
           assert (libc::fwrite(b as *c_void, 1u as size_t,
                                (str::len(s) + 1u) as size_t, ostream)
                   == buf.len() as size_t)};

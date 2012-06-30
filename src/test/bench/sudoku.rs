@@ -51,7 +51,7 @@ fn solve_grid(g: grid_t) {
         if start_color < 10u8 {
             // colors not yet used
             let avail = bitv::bitv(10u, false);
-            for u8::range(start_color, 10u8) { |color|
+            for u8::range(start_color, 10u8) |color| {
                 bitv::set(avail, color as uint, true);
             }
 
@@ -59,7 +59,7 @@ fn solve_grid(g: grid_t) {
             drop_colors(g, avail, row, col);
 
             // find first remaining color that is available
-            for uint::range(1u, 10u) {|i|
+            for uint::range(1u, 10u) |i| {
                 if bitv::get(avail, i) {
                     g[row][col] = i as u8;
                     ret true;
@@ -77,9 +77,9 @@ fn solve_grid(g: grid_t) {
             if color != 0u8 { bitv::set(colors, color as uint, false); }
         }
 
-        let it = {|a,b|drop_color(g, avail, a, b)};
+        let it = |a,b| drop_color(g, avail, a, b);
 
-        for u8::range(0u8, 9u8) { |idx|
+        for u8::range(0u8, 9u8) |idx| {
             it(idx, col); /* check same column fields */
             it(row, idx); /* check same row fields */
         }
@@ -87,14 +87,14 @@ fn solve_grid(g: grid_t) {
         // check same block fields
         let row0 = (row / 3u8) * 3u8;
         let col0 = (col / 3u8) * 3u8;
-        for u8::range(row0, row0 + 3u8) { |alt_row|
-            for u8::range(col0, col0 + 3u8) { |alt_col| it(alt_row, alt_col); }
+        for u8::range(row0, row0 + 3u8) |alt_row| {
+            for u8::range(col0, col0 + 3u8) |alt_col| { it(alt_row, alt_col); }
         }
     }
 
     let mut work: ~[(u8, u8)] = ~[]; /* queue of uncolored fields */
-    for u8::range(0u8, 9u8) { |row|
-        for u8::range(0u8, 9u8) { |col|
+    for u8::range(0u8, 9u8) |row| {
+        for u8::range(0u8, 9u8) |col| {
             let color = (*g)[row][col];
             if color == 0u8 { work += ~[(row, col)]; }
         }
@@ -117,9 +117,9 @@ fn solve_grid(g: grid_t) {
 }
 
 fn write_grid(f: io::writer, g: grid_t) {
-    for u8::range(0u8, 9u8) { |row|
+    for u8::range(0u8, 9u8) |row| {
         f.write_str(#fmt("%u", (*g)[row][0] as uint));
-        for u8::range(1u8, 9u8) { |col|
+        for u8::range(1u8, 9u8) |col| {
             f.write_str(#fmt(" %u", (*g)[row][col] as uint));
         }
         f.write_char('\n');
@@ -130,7 +130,7 @@ fn main(args: ~[str]) {
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
         // (#571)
-        let g = vec::from_fn(10u, {|_i|
+        let g = vec::from_fn(10u, |_i| {
             vec::to_mut(vec::from_elem(10u, 0 as u8))
         });
         g[0][1] = 4u8;

@@ -8,9 +8,9 @@ fn start(+token: int) {
 
     let p = comm::port();
     let mut ch = comm::chan(p);
-    for int::range(2, n_threads + 1) { |i|
+    for int::range(2, n_threads + 1) |i| {
         let id = n_threads + 2 - i;
-        let to_child = do task::spawn_listener::<int> {|p, copy ch|
+        let to_child = do task::spawn_listener::<int> |p, copy ch| {
             roundtrip(id, p, ch)
         };
         ch = to_child;

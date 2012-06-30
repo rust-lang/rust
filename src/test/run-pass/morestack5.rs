@@ -12,7 +12,7 @@ fn getbig(&&i: int) {
 fn main() {
     let mut sz = 400u;
     while sz < 500u {
-        task::try({|| getbig(200) });
+        task::try(|| getbig(200) );
         sz += 1u;
     }
 }

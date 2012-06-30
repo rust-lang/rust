@@ -58,14 +58,14 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: ~[binding]) ->
    {changed: bool, post: poststate} {
     let mut changed = false;
     let mut post = tritv_clone(pres);
-    for bindings.each {|b|
+    for bindings.each |b| {
         alt b.rhs {
           some(an_init) {
             // an expression, with or without a destination
             changed |=
                 find_pre_post_state_expr(fcx, post, an_init.expr) || changed;
             post = tritv_clone(expr_poststate(fcx.ccx, an_init.expr));
-            for b.lhs.each {|d|
+            for b.lhs.each |d| {
                 alt an_init.expr.node {
                   expr_path(p) {
                     handle_move_or_copy(fcx, post, p, an_init.expr.id, d,
@@ -271,7 +271,7 @@ fn find_pre_post_state_cap_clause(fcx: fn_ctxt, e_id: node_id,
     let ccx = fcx.ccx;
     let pres_changed = set_prestate_ann(ccx, e_id, pres);
     let post = tritv_clone(pres);
-    for (*cap_clause).each { |cap_item|
+    for (*cap_clause).each |cap_item| {
         if cap_item.is_move {
             forget_in_poststate(fcx, post, cap_item.id);
         }
@@ -332,10 +332,11 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 
         let base_pres = alt vec::last_opt(exs) { none { pres }
                           some(f) { expr_poststate(fcx.ccx, f) }};
-        option::iter(maybe_base, {|base|
+        option::iter(maybe_base, |base| {
             changed |= find_pre_post_state_expr(fcx, base_pres, base) |
-              set_poststate_ann(fcx.ccx, e.id,
-                                expr_poststate(fcx.ccx, base))});
+                set_poststate_ann(fcx.ccx, e.id,
+                                  expr_poststate(fcx.ccx, base))
+        });
         ret changed;
       }
       expr_tup(elts) {
@@ -449,7 +450,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let mut a_post;
         if vec::len(alts) > 0u {
             a_post = false_postcond(num_constrs);
-            for alts.each {|an_alt|
+            for alts.each |an_alt| {
                 alt an_alt.guard {
                   some(e) {
                     changed |= find_pre_post_state_expr(fcx, e_post, e);
@@ -483,8 +484,10 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let post = false_postcond(num_constrs);
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
                 set_poststate_ann(fcx.ccx, e.id, post) |
-                option::map_default(maybe_fail_val, false, {|fail_val|
-                        find_pre_post_state_expr(fcx, pres, fail_val)});
+                option::map_default(
+                    maybe_fail_val, false,
+                    |fail_val|
+                    find_pre_post_state_expr(fcx, pres, fail_val) );
       }
       expr_check(_, p) {
         /* predicate p holds after this expression executes */
@@ -563,7 +566,7 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
      initializes.  Then <pres> becomes the new poststate. */
 
     let mut changed = false;
-    for b.node.stmts.each {|s|
+    for b.node.stmts.each |s| {
         changed |= find_pre_post_state_stmt(fcx, pres, s);
         pres = stmt_poststate(fcx.ccx, *s);
     }
@@ -591,7 +594,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
 
     // Instantiate any constraints on the arguments so we can use them
     let block_pre = block_prestate(fcx.ccx, f_body);
-    for f_decl.constraints.each {|c|
+    for f_decl.constraints.each |c| {
         let tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f_decl.inputs, c);
         set_in_prestate_constr(fcx, tsc, block_pre);
     }

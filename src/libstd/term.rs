@@ -37,7 +37,7 @@ fn color_supported() -> bool {
                            "screen-bce", "xterm-256color"];
     ret alt os::getenv("TERM") {
           option::some(env) {
-            for vec::each(supported_terms) {|term|
+            for vec::each(supported_terms) |term| {
                 if str::eq(term, env) { ret true; }
             }
             false

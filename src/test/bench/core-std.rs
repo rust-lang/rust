@@ -57,7 +57,7 @@ fn read_line() {
         "src/test/bench/shootout-k-nucleotide.data"
     );
 
-    for int::range(0, 3) {|_i|
+    for int::range(0, 3) |_i| {
         let reader = result::get(io::file_reader(path));
         while !reader.eof() {
             reader.read_line();
@@ -70,12 +70,12 @@ fn str_set() {
 
     let s = map::hashmap(str::hash, str::eq);
 
-    for int::range(0, 1000) {|_i|
+    for int::range(0, 1000) |_i| {
         map::set_add(s, r.gen_str(10));
     }
     
     let mut found = 0;
-    for int::range(0, 1000) {|_i|
+    for int::range(0, 1000) |_i| {
         alt s.find(r.gen_str(10)) {
           some(_) { found += 1; }
           none { }
@@ -121,7 +121,7 @@ fn vec_push_all() {
     let r = rand::rng();
 
     let mut v = ~[];
-    for uint::range(0, 1500) {|i|
+    for uint::range(0, 1500) |i| {
         let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen_bool() {
             vec::push_all(v, rv);

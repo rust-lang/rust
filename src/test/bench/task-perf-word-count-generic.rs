@@ -32,10 +32,10 @@ import comm::methods;
 
 // These used to be in task, but they disappeard.
 type joinable_task = port<()>;
-fn spawn_joinable(f: fn~()) -> joinable_task {
+fn spawn_joinable(+f: fn~()) -> joinable_task {
     let p = port();
     let c = chan(p);
-    do task::spawn() {||
+    do task::spawn() |move f| {
         f();
         c.send(());
     }
@@ -96,8 +96,8 @@ mod map_reduce {
         -> ~[joinable_task]
     {
         let mut tasks = ~[];
-        for inputs.each {|i|
-            tasks += ~[spawn_joinable({|| map_task(map, ctrl, i)})];
+        for inputs.each |i| {
+            tasks += ~[spawn_joinable(|| map_task(map, ctrl, i) )];
         }
         ret tasks;
     }
@@ -170,7 +170,7 @@ mod map_reduce {
             ret none;
         }
 
-        reduce(key, {||get(p, ref_count, is_done)});
+        reduce(key, || get(p, ref_count, is_done) );
     }
 
     fn map_reduce<K1: copy send, K2: copy send, V: copy send>(
@@ -208,7 +208,7 @@ mod map_reduce {
                     let ch = chan(p);
                     let r = reduce, kk = k;
                     tasks += ~[
-                        spawn_joinable({|| reduce_task(r, kk, ch) })
+                        spawn_joinable(|| reduce_task(r, kk, ch) )
                     ];
                     c = recv(p);
                     treemap::insert(reducers, k, c);
@@ -225,7 +225,7 @@ mod map_reduce {
         }
         treemap::traverse(reducers, finish);
 
-        for tasks.each {|t| join(t); }
+        for tasks.each |t| { join(t); }
     }
 }
 

@@ -45,7 +45,7 @@ impl methods for reflector {
                                                  *self.visitor_methods));
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
-        let get_lval = {|bcx|
+        let get_lval = |bcx| {
             let callee =
                 impl::trans_iface_callee(bcx, v, mth_ty, mth_idx);
             #debug("calling mth ty %s, lltype %s",
@@ -55,7 +55,7 @@ impl methods for reflector {
         };
         #debug("passing %u args:", vec::len(args));
         let bcx = self.bcx;
-        for args.eachi {|i, a|
+        for args.eachi |i, a| {
             #debug("arg %u: %s", i, val_str(bcx.ccx().tn, a));
         }
         self.bcx =
@@ -129,12 +129,12 @@ impl methods for reflector {
 
           ty::ty_vec(mt) { self.bracketed_mt("vec", mt, ~[]) }
           ty::ty_estr(vst) {
-            do self.vstore_name_and_extra(t, vst) {|name, extra|
+            do self.vstore_name_and_extra(t, vst) |name, extra| {
                 self.visit("estr_" + name, extra)
             }
           }
           ty::ty_evec(mt, vst) {
-            do self.vstore_name_and_extra(t, vst) {|name, extra|
+            do self.vstore_name_and_extra(t, vst) |name, extra| {
                 self.bracketed_mt("evec_" + name, mt, extra)
             }
           }
@@ -147,7 +147,7 @@ impl methods for reflector {
             let extra = (vec::append(~[self.c_uint(vec::len(fields))],
                                      self.c_size_and_align(t)));
             self.visit("enter_rec", extra);
-            for fields.eachi {|i, field|
+            for fields.eachi |i, field| {
                 self.bracketed_mt("rec_field", field.mt,
                                   ~[self.c_uint(i),
                                    self.c_slice(*field.ident)]);
@@ -159,7 +159,7 @@ impl methods for reflector {
             let extra = (vec::append(~[self.c_uint(vec::len(tys))],
                                      self.c_size_and_align(t)));
             self.visit("enter_tup", extra);
-            for tys.eachi {|i, t|
+            for tys.eachi |i, t| {
                 self.bracketed_t("tup_field", t, ~[self.c_uint(i)]);
             }
             self.visit("leave_tup", extra);
@@ -190,7 +190,7 @@ impl methods for reflector {
                          self.c_uint(vec::len(fty.inputs)),
                          self.c_uint(retval)];
             self.visit("enter_fn", extra);
-            for fty.inputs.eachi {|i, arg|
+            for fty.inputs.eachi |i, arg| {
                 let modeval = alt arg.mode {
                   ast::infer(_) { 0u }
                   ast::expl(e) {
@@ -220,7 +220,7 @@ impl methods for reflector {
                                     self.c_size_and_align(t));
 
             self.visit("enter_class", extra);
-            for fields.eachi {|i, field|
+            for fields.eachi |i, field| {
                 self.bracketed_mt("class_field", field.mt,
                                   ~[self.c_uint(i),
                                    self.c_slice(*field.ident)]);
@@ -240,13 +240,13 @@ impl methods for reflector {
                                     self.c_size_and_align(t));
 
             self.visit("enter_enum", extra);
-            for variants.eachi {|i, v|
+            for variants.eachi |i, v| {
                 let extra = ~[self.c_uint(i),
                              self.c_int(v.disr_val),
                              self.c_uint(vec::len(v.args)),
                              self.c_slice(*v.name)];
                 self.visit("enter_enum_variant", extra);
-                for v.args.eachi {|j, a|
+                for v.args.eachi |j, a| {
                     self.bracketed_t("enum_variant_field", a,
                                      ~[self.c_uint(j)]);
                 }

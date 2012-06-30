@@ -120,9 +120,9 @@ impl methods for check_loan_ctxt {
         let req_loan_map = self.req_maps.req_loan_map;
 
         loop {
-            for req_loan_map.find(scope_id).each { |loanss|
-                for (*loanss).each { |loans|
-                    for (*loans).each { |loan|
+            for req_loan_map.find(scope_id).each |loanss| {
+                for (*loanss).each |loans| {
+                    for (*loans).each |loan| {
                         if !f(loan) { ret; }
                     }
                 }
@@ -138,7 +138,7 @@ impl methods for check_loan_ctxt {
     fn walk_loans_of(scope_id: ast::node_id,
                      lp: @loan_path,
                      f: fn(loan) -> bool) {
-        for self.walk_loans(scope_id) { |loan|
+        for self.walk_loans(scope_id) |loan| {
             if loan.lp == lp {
                 if !f(loan) { ret; }
             }
@@ -160,7 +160,7 @@ impl methods for check_loan_ctxt {
         #debug["check_pure_callee_or_arg(pc=%?, expr=%?, \
                 callee_id=%d, ty=%s)",
                pc,
-               opt_expr.map({|e| pprust::expr_to_str(e)}),
+               opt_expr.map(|e| pprust::expr_to_str(e) ),
                callee_id,
                ty_to_str(self.tcx(), ty::node_id_to_type(tcx, callee_id))];
 
@@ -244,9 +244,9 @@ impl methods for check_loan_ctxt {
         };
 
         let par_scope_id = self.tcx().region_map.get(scope_id);
-        for self.walk_loans(par_scope_id) { |old_loan|
-            for (*new_loanss).each { |new_loans|
-                for (*new_loans).each { |new_loan|
+        for self.walk_loans(par_scope_id) |old_loan| {
+            for (*new_loanss).each |new_loans| {
+                for (*new_loans).each |new_loan| {
                     if old_loan.lp != new_loan.lp { cont; }
                     alt (old_loan.mutbl, new_loan.mutbl) {
                       (m_const, _) | (_, m_const) |
@@ -333,7 +333,7 @@ impl methods for check_loan_ctxt {
         // which will be checked for compat separately in
         // check_for_conflicting_loans()
         if at != at_mutbl_ref {
-            for cmt.lp.each { |lp|
+            for cmt.lp.each |lp| {
                 self.check_for_loan_conflicting_with_assignment(
                     at, ex, cmt, lp);
             }
@@ -348,7 +348,7 @@ impl methods for check_loan_ctxt {
         cmt: cmt,
         lp: @loan_path) {
 
-        for self.walk_loans_of(ex.id, lp) { |loan|
+        for self.walk_loans_of(ex.id, lp) |loan| {
             alt loan.mutbl {
               m_mutbl | m_const { /*ok*/ }
               m_imm {
@@ -439,7 +439,7 @@ impl methods for check_loan_ctxt {
           none { ret; }
           some(lp) { lp }
         };
-        for self.walk_loans_of(cmt.id, lp) { |loan|
+        for self.walk_loans_of(cmt.id, lp) |loan| {
             self.bccx.span_err(
                 cmt.span,
                 #fmt["moving out of %s prohibited due to outstanding loan",
@@ -461,7 +461,7 @@ impl methods for check_loan_ctxt {
           none { ret; }
           some(lp) { lp }
         };
-        for self.walk_loans_of(cmt.id, lp) { |_loan|
+        for self.walk_loans_of(cmt.id, lp) |_loan| {
             #debug["Removing last use entry %? due to outstanding loan",
                    expr.id];
             self.bccx.last_use_map.remove(expr.id);
@@ -479,7 +479,7 @@ impl methods for check_loan_ctxt {
           some(pc) {
             self.check_pure_callee_or_arg(
                 pc, callee, callee_id, callee_span);
-            for args.each { |arg|
+            for args.each |arg| {
                 self.check_pure_callee_or_arg(
                     pc, some(arg), arg.id, arg.span);
             }
@@ -488,7 +488,7 @@ impl methods for check_loan_ctxt {
         let arg_tys =
             ty::ty_fn_args(
                 ty::node_id_to_type(self.tcx(), callee_id));
-        do vec::iter2(args, arg_tys) { |arg, arg_ty|
+        do vec::iter2(args, arg_tys) |arg, arg_ty| {
             alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
               ast::by_move {
                 self.check_move_out(arg);
@@ -508,9 +508,9 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      visitor: visit::vt<check_loan_ctxt>) {
 
     #debug["purity on entry=%?", copy self.declared_purity];
-    do save_and_restore(self.in_ctor) {||
-        do save_and_restore(self.declared_purity) {||
-            do save_and_restore(self.fn_args) {||
+    do save_and_restore(self.in_ctor) || {
+        do save_and_restore(self.declared_purity) || {
+            do save_and_restore(self.fn_args) || {
                 let is_stack_closure = self.is_stack_closure(id);
 
                 // In principle, we could consider fk_anon(*) or
@@ -523,7 +523,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                   visit::fk_ctor(*) {
                     self.in_ctor = true;
                     self.declared_purity = decl.purity;
-                    self.fn_args = @decl.inputs.map({|i| i.id});
+                    self.fn_args = @decl.inputs.map(|i| i.id );
                   }
                   visit::fk_anon(*) |
                   visit::fk_fn_block(*) if is_stack_closure {
@@ -535,7 +535,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                   visit::fk_dtor(*) {
                     self.in_ctor = false;
                     self.declared_purity = decl.purity;
-                    self.fn_args = @decl.inputs.map({|i| i.id});
+                    self.fn_args = @decl.inputs.map(|i| i.id );
                   }
                 }
 
@@ -582,7 +582,7 @@ fn check_loans_in_expr(expr: @ast::expr,
       }
       ast::expr_fn(_, _, _, cap_clause) |
       ast::expr_fn_block(_, _, cap_clause) {
-        for (*cap_clause).each { |cap_item|
+        for (*cap_clause).each |cap_item| {
             if cap_item.is_move {
                 let def = self.tcx().def_map.get(cap_item.id);
 
@@ -637,7 +637,7 @@ fn check_loans_in_expr(expr: @ast::expr,
 fn check_loans_in_block(blk: ast::blk,
                         &&self: check_loan_ctxt,
                         vt: visit::vt<check_loan_ctxt>) {
-    do save_and_restore(self.declared_purity) {||
+    do save_and_restore(self.declared_purity) || {
         self.check_for_conflicting_loans(blk.node.id);
 
         alt blk.node.rules {

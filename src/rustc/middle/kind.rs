@@ -101,7 +101,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
-        for fv.each { |fv|
+        for fv.each |fv| {
             check_imm_free_var(cx, fv.def, fv.span);
         }
     }
@@ -113,7 +113,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
 
         // check that only immutable variables are implicitly copied in
-        for fv.each { |fv|
+        for fv.each |fv| {
             check_imm_free_var(cx, fv.def, fv.span);
         }
     }
@@ -150,7 +150,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
 
     // Find the check function that enforces the appropriate bounds for this
     // kind of function:
-    do with_appropriate_checker(cx, fn_id) { |chk|
+    do with_appropriate_checker(cx, fn_id) |chk| {
 
         // Begin by checking the variables in the capture clause, if any.
         // Here we slightly abuse the map function to both check and report
@@ -162,7 +162,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
           visit::fk_item_fn(*) | visit::fk_method(*) |
           visit::fk_ctor(*) | visit::fk_dtor(*) { @~[] }
         };
-        let captured_vars = do (*cap_clause).map { |cap_item|
+        let captured_vars = do (*cap_clause).map |cap_item| {
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
@@ -172,7 +172,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
 
         // Iterate over any free variables that may not have appeared in the
         // capture list.  Ensure that they too are of the appropriate kind.
-        for vec::each(*freevars::get_freevars(cx.tcx, fn_id)) {|fv|
+        for vec::each(*freevars::get_freevars(cx.tcx, fn_id)) |fv| {
             let id = ast_util::def_id_of_def(fv.def).node;
 
             // skip over free variables that appear in the cap clause
@@ -217,7 +217,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         check_copy_ex(cx, rs, false);
       }
       expr_rec(fields, def) {
-        for fields.each {|field| maybe_copy(cx, field.node.expr); }
+        for fields.each |field| { maybe_copy(cx, field.node.expr); }
         alt def {
           some(ex) {
             // All noncopyable fields must be overridden
@@ -226,8 +226,8 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
               ty::ty_rec(f) { f }
               _ { cx.tcx.sess.span_bug(ex.span, "bad expr type in record"); }
             };
-            for ty_fields.each {|tf|
-                if !vec::any(fields, {|f| f.node.ident == tf.ident}) &&
+            for ty_fields.each |tf| {
+                if !vec::any(fields, |f| f.node.ident == tf.ident ) &&
                     !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
                     cx.tcx.sess.span_err(ex.span,
                                          "copying a noncopyable value");
@@ -238,11 +238,11 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_tup(exprs) | expr_vec(exprs, _) {
-        for exprs.each {|expr| maybe_copy(cx, expr); }
+        for exprs.each |expr| { maybe_copy(cx, expr); }
       }
       expr_call(f, args, _) {
         let mut i = 0u;
-        for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each {|arg_t|
+        for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each |arg_t| {
             alt ty::arg_mode(cx.tcx, arg_t) {
               by_copy { maybe_copy(cx, args[i]); }
               by_ref | by_val | by_mutbl_ref | by_move { }
@@ -251,7 +251,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_path(_) | expr_field(_, _, _) {
-        do option::iter(cx.tcx.node_type_substs.find(e.id)) {|ts|
+        do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {
             let bounds = alt check e.node {
               expr_path(_) {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
@@ -286,7 +286,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                   %s (%u tys), declared = %? (%u tys)",
                   tys_to_str(cx.tcx, ts), ts.len(), *bounds, (*bounds).len());
             }
-            do vec::iter2(ts, *bounds) {|ty, bound|
+            do vec::iter2(ts, *bounds) |ty, bound| {
                 check_bounds(cx, e.id, e.span, ty, bound)
             }
         }
@@ -299,7 +299,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     alt stmt.node {
       stmt_decl(@{node: decl_local(locals), _}, _) {
-        for locals.each {|local|
+        for locals.each |local| {
             alt local.node.init {
               some({op: init_assign, expr}) { maybe_copy(cx, expr); }
               _ {}
@@ -314,10 +314,10 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
 fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
     alt aty.node {
       ty_path(_, id) {
-        do option::iter(cx.tcx.node_type_substs.find(id)) {|ts|
+        do option::iter(cx.tcx.node_type_substs.find(id)) |ts| {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
-            do vec::iter2(ts, *bounds) {|ty, bound|
+            do vec::iter2(ts, *bounds) |ty, bound| {
                 check_bounds(cx, aty.id, aty.span, ty, bound)
             }
         }

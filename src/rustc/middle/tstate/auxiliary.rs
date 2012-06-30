@@ -37,7 +37,7 @@ fn def_id_to_str(d: def_id) -> str {
 fn comma_str(args: ~[@constr_arg_use]) -> str {
     let mut rslt = "";
     let mut comma = false;
-    for args.each {|a|
+    for args.each |a| {
         if comma { rslt += ", "; } else { comma = true; }
         alt a.node {
           carg_base { rslt += "*"; }
@@ -58,7 +58,7 @@ fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> str {
 fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
     let mut s = "";
     let mut comma = false;
-    for constraints(fcx).each {|p|
+    for constraints(fcx).each |p| {
         alt tritv_get(v, p.bit_num) {
           dont_care { }
           tt {
@@ -79,7 +79,7 @@ fn log_tritv(fcx: fn_ctxt, v: tritv::t) {
 fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
    -> str {
     let mut s = "";
-    for constraints(fcx).each {|c|
+    for constraints(fcx).each |c| {
         if tritv_get(expected, c.bit_num) == ttrue &&
                tritv_get(actual, c.bit_num) != ttrue {
             s = constraint_to_str(fcx.ccx.tcx, c.c);
@@ -95,7 +95,7 @@ fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) {
 
 fn tos(v: ~[uint]) -> str {
     let mut rslt = "";
-    for v.each {|i|
+    for v.each |i| {
         if i == 0u {
             rslt += "0";
         } else if i == 1u { rslt += "1"; } else { rslt += "?"; }
@@ -473,7 +473,7 @@ fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> option<def> {
 
 fn norm_a_constraint(id: def_id, c: constraint) -> ~[norm_constraint] {
     let mut rslt: ~[norm_constraint] = ~[];
-    for (*c.descs).each {|pd|
+    for (*c.descs).each |pd| {
         vec::push(rslt,
                   {bit_num: pd.node.bit_num,
                    c: respan(pd.span, {path: c.path,
@@ -488,7 +488,7 @@ fn norm_a_constraint(id: def_id, c: constraint) -> ~[norm_constraint] {
 // non-exhaustive match in trans.
 fn constraints(fcx: fn_ctxt) -> ~[norm_constraint] {
     let mut rslt: ~[norm_constraint] = ~[];
-    for fcx.enclosing.constrs.each {|key, val|
+    for fcx.enclosing.constrs.each |key, val| {
         vec::push_all(rslt, norm_a_constraint(key, val));
     };
     ret rslt;
@@ -500,7 +500,7 @@ fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
               occ: ~[@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",
            constr_args_to_str(fn@(i: inst) -> str { ret *i.ident; }, occ));
-    for (*occs).each {|pd|
+    for (*occs).each |pd| {
         log(debug,
                  "match_args: candidate " + pred_args_to_str(pd));
         fn eq(p: inst, q: inst) -> bool { ret p.node == q.node; }
@@ -551,9 +551,9 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
 
 fn exprs_to_constr_args(tcx: ty::ctxt,
                         args: ~[@expr]) -> ~[@constr_arg_use] {
-    let f = {|a|expr_to_constr_arg(tcx, a)};
+    let f = |a| expr_to_constr_arg(tcx, a);
     let mut rslt: ~[@constr_arg_use] = ~[];
-    for args.each {|e| vec::push(rslt, f(e)); }
+    for args.each |e| { vec::push(rslt, f(e)); }
     rslt
 }
 
@@ -588,7 +588,7 @@ fn pred_args_to_str(p: pred_args) -> str {
 fn substitute_constr_args(cx: ty::ctxt, actuals: ~[@expr], c: @ty::constr) ->
    tsconstr {
     let mut rslt: ~[@constr_arg_use] = ~[];
-    for c.node.args.each {|a|
+    for c.node.args.each |a| {
         vec::push(rslt, substitute_arg(cx, actuals, a));
     }
     ret {path: c.node.path,
@@ -616,7 +616,7 @@ fn pred_args_matches(pattern: ~[constr_arg_general_<inst>],
                      desc: pred_args) ->
    bool {
     let mut i = 0u;
-    for desc.node.args.each {|c|
+    for desc.node.args.each |c| {
         let n = pattern[i];
         alt c.node {
           carg_ident(p) {
@@ -641,7 +641,7 @@ fn pred_args_matches(pattern: ~[constr_arg_general_<inst>],
 fn find_instance_(pattern: ~[constr_arg_general_<inst>],
                   descs: ~[pred_args]) ->
    option<uint> {
-    for descs.each {|d|
+    for descs.each |d| {
         if pred_args_matches(pattern, d) { ret some(d.node.bit_num); }
     }
     ret none;
@@ -661,9 +661,9 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
 
     if vec::len(subst) == 0u { ret ~[]; }
     let mut res = ~[];
-    do (*c.descs).swap { |v|
+    do (*c.descs).swap |v| {
         let v <- vec::from_mut(v);
-        for v.each { |d|
+        for v.each |d| {
             if args_mention(d.node.args, find_in_subst_bool, subst) {
                 let old_bit_num = d.node.bit_num;
                 let newv = replace(subst, d);
@@ -679,7 +679,7 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
 }
 
 fn find_in_subst(id: node_id, s: subst) -> option<inst> {
-    for s.each {|p|
+    for s.each |p| {
         if id == p.from.node { ret some(p.to); }
     }
     ret none;
@@ -691,7 +691,7 @@ fn find_in_subst_bool(s: subst, id: node_id) -> bool {
 
 fn insts_to_str(stuff: ~[constr_arg_general_<inst>]) -> str {
     let mut rslt = "<";
-    for stuff.each {|i|
+    for stuff.each |i| {
         rslt +=
             " " +
                 alt i {
@@ -706,7 +706,7 @@ fn insts_to_str(stuff: ~[constr_arg_general_<inst>]) -> str {
 
 fn replace(subst: subst, d: pred_args) -> ~[constr_arg_general_<inst>] {
     let mut rslt: ~[constr_arg_general_<inst>] = ~[];
-    for d.node.args.each {|c|
+    for d.node.args.each |c| {
         alt c.node {
           carg_ident(p) {
             alt find_in_subst(p.node, subst) {
@@ -727,7 +727,7 @@ enum if_ty { if_check, plain_if, }
 
 fn for_constraints_mentioning(fcx: fn_ctxt, id: node_id,
                               f: fn(norm_constraint)) {
-    for constraints(fcx).each {|c|
+    for constraints(fcx).each |c| {
         if constraint_mentions(fcx, c, id) { f(c); }
     };
 }
@@ -805,11 +805,11 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
     }
 
 
-    for fcx.enclosing.constrs.each_value {|val|
+    for fcx.enclosing.constrs.each_value |val| {
         // replace any occurrences of the src def_id with the
         // dest def_id
         let insts = find_instances(fcx, subst, val);
-        for insts.each {|p|
+        for insts.each |p| {
             if bitvectors::promises_(p.from, src_post) {
                 set_in_poststate_(p.to, target_post);
             }
@@ -821,8 +821,8 @@ fn forget_in_postcond(fcx: fn_ctxt, parent_exp: node_id, dead_v: node_id) {
     // In the postcondition given by parent_exp, clear the bits
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
-    do option::iter(d) {|d_id|
-        do for_constraints_mentioning(fcx, d_id) {|c|
+    do option::iter(d) |d_id| {
+        do for_constraints_mentioning(fcx, d_id) |c| {
                 #debug("clearing constraint %u %s",
                        c.bit_num,
                        constraint_to_str(fcx.ccx.tcx, c.c));
@@ -838,8 +838,8 @@ fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
     let mut changed = false;
-    do option::iter(d) {|d_id|
-        do for_constraints_mentioning(fcx, d_id) {|c|
+    do option::iter(d) |d_id| {
+        do for_constraints_mentioning(fcx, d_id) |c| {
                 changed |= clear_in_poststate_(c.bit_num, p);
         }
     }
@@ -847,7 +847,7 @@ fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
 }
 
 fn any_eq(v: ~[node_id], d: node_id) -> bool {
-    for v.each {|i| if i == d { ret true; } }
+    for v.each |i| { if i == d { ret true; } }
     false
 }
 
@@ -860,7 +860,7 @@ fn args_mention<T>(args: ~[@constr_arg_use],
                    q: fn(~[T], node_id) -> bool,
                    s: ~[T]) -> bool {
 
-    for args.each {|a|
+    for args.each |a| {
         alt a.node { carg_ident(p1) { if q(s, p1.node) { ret true; } } _ { } }
     }
     ret false;
@@ -886,7 +886,7 @@ fn args_to_constr_args(tcx: ty::ctxt, args: ~[arg],
     -> ~[@constr_arg_use] {
     let mut actuals: ~[@constr_arg_use] = ~[];
     let num_args = vec::len(args);
-    for indices.each {|a|
+    for indices.each |a| {
         vec::push(
             actuals,
             @respan(a.span,
@@ -926,7 +926,7 @@ type binding = {lhs: ~[dest], rhs: option<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let mut lhs = ~[];
-    do pat_bindings(tcx.def_map, loc.node.pat) {|p_id, _s, name|
+    do pat_bindings(tcx.def_map, loc.node.pat) |p_id, _s, name| {
       vec::push(lhs, local_dest({ident: path_to_ident(name), node: p_id}));
     };
     {lhs: lhs, rhs: loc.node.init}
@@ -934,7 +934,7 @@ fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
 
 fn locals_to_bindings(tcx: ty::ctxt, locals: ~[@local]) -> ~[binding] {
     let mut rslt = ~[];
-    for locals.each {|loc| vec::push(rslt, local_to_bindings(tcx, loc)); }
+    for locals.each |loc| { vec::push(rslt, local_to_bindings(tcx, loc)); }
     ret rslt;
 }
 
@@ -944,7 +944,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
     alt ty::get(ty).struct {
       ty::ty_fn({inputs: args, _}) {
         let mut modes = ~[];
-        for args.each {|arg| vec::push(modes, arg.mode); }
+        for args.each |arg| { vec::push(modes, arg.mode); }
         ret modes;
       }
       _ {
@@ -956,7 +956,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
 }
 
 fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> ~[init_op] {
-    do vec::map(callee_modes(fcx, callee)) {|m|
+    do vec::map(callee_modes(fcx, callee)) |m| {
         alt ty::resolved_mode(fcx.ccx.tcx, m) {
           by_move { init_move }
           by_copy | by_ref | by_val | by_mutbl_ref { init_assign }
@@ -967,7 +967,7 @@ fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> ~[init_op] {
 fn arg_bindings(ops: ~[init_op], es: ~[@expr]) -> ~[binding] {
     let mut bindings: ~[binding] = ~[];
     let mut i = 0u;
-    for ops.each {|op|
+    for ops.each |op| {
         vec::push(bindings,
                   {lhs: ~[call], rhs: some({op: op, expr: es[i]})});
         i += 1u;

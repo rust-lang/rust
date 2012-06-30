@@ -31,11 +31,11 @@ fn run_passes(
     )];
 
     let mut passno = 0;
-    do vec::foldl(doc, passes) {|doc, pass|
+    do vec::foldl(doc, passes) |doc, pass| {
         log(debug, #fmt("pass #%d", passno));
         passno += 1;
         log(debug, doc);
-        do time(pass.name) {||
+        do time(pass.name) || {
             pass.f(srv, doc)
         }
     }
@@ -82,7 +82,7 @@ fn test_run_passes() {
         }
     }
     let source = "";
-    do astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) |srv| {
         let passes = ~[
             {
                 name: "",
@@ -129,11 +129,11 @@ fn time<T>(what: str, f: fn() -> T) -> T {
 fn run(config: config::config) {
 
     let source_file = config.input_crate;
-    do astsrv::from_file(source_file) {|srv|
-        do time("wait_ast") {||
-            do astsrv::exec(srv) {|_ctxt| () }
+    do astsrv::from_file(source_file) |srv| {
+        do time("wait_ast") || {
+            do astsrv::exec(srv) |_ctxt| { }
         };
-        let doc = time("extract", {||
+        let doc = time("extract", || {
             let default_name = source_file;
             extract::from_srv(srv, default_name)
         });

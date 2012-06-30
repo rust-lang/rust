@@ -19,7 +19,7 @@ fn main() {
     assert d.get() == exp;
     assert d.len() == exp.len();
 
-    for d.eachi { |i, e|
+    for d.eachi |i, e| {
         assert e == exp[i];
     }
 

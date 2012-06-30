@@ -12,8 +12,8 @@ fn a(c: chan<int>) { send(c, 10); }
 fn main() {
     let p = port();
     let ch = chan(p);
-    task::spawn({|| a(ch); });
-    task::spawn({|| a(ch); });
+    task::spawn(|| a(ch) );
+    task::spawn(|| a(ch) );
     let mut n: int = 0;
     n = recv(p);
     n = recv(p);

@@ -6,7 +6,7 @@ fn foo(c: ~[int]) {
 
     alt none::<int> {
       some::<int>(_) {
-        for c.each {|i|
+        for c.each |i| {
             log(debug, a);
             let a = 17;
             b += ~[a];

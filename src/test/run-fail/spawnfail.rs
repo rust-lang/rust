@@ -8,5 +8,5 @@ fn main() {
     fn f() {
         fail;
     }
-    task::spawn({|| f(); });
+    task::spawn(|| f() );
 }

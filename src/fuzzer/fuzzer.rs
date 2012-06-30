@@ -25,7 +25,7 @@ fn find_rust_files(&files: ~[str], path: str) {
     } else if os::path_is_dir(path)
         && !contains(path, "compile-fail")
         && !contains(path, "build") {
-        for os::list_dir_path(path).each {|p|
+        for os::list_dir_path(path).each |p| {
             find_rust_files(files, p);
         }
     }
@@ -139,8 +139,8 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
     let exprs = @mut ~[];
     let tys = @mut ~[];
     let v = visit::mk_simple_visitor(@{
-        visit_expr: {|a|stash_expr_if(safe_to_steal_expr, exprs, a, tm)},
-        visit_ty: {|a|stash_ty_if(safe_to_steal_ty, tys, a, tm)}
+        visit_expr: |a| stash_expr_if(safe_to_steal_expr, exprs, a, tm),
+        visit_ty: |a| stash_ty_if(safe_to_steal_ty, tys, a, tm)
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(crate, (), v);
@@ -187,10 +187,12 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint,
             fold::noop_fold_expr(original, fld)
         }
     }
-    let afp =
-        @{fold_expr: fold::wrap({|a,b|
-        fold_expr_rep(j, i, newexpr.node, a, b, tm)})
-          with *fold::default_ast_fold()};
+    let afp = @{
+        fold_expr: fold::wrap(|a,b| {
+            fold_expr_rep(j, i, newexpr.node, a, b, tm)
+        })
+        with *fold::default_ast_fold()
+    };
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
     *crate2
@@ -210,9 +212,10 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty,
             newty_
         } else { fold::noop_fold_ty(original, fld) }
     }
-    let afp =
-        @{fold_ty: fold::wrap({|a,b|fold_ty_rep(j, i, newty.node, a, b, tm)})
-         with *fold::default_ast_fold()};
+    let afp = @{
+        fold_ty: fold::wrap(|a,b| fold_ty_rep(j, i, newty.node, a, b, tm) )
+        with *fold::default_ast_fold()
+    };
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
     *crate2
@@ -235,7 +238,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
                          filename: str, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
-                                  {|a|safe_to_use_expr(a, cx.mode)});
+                                  |a| safe_to_use_expr(a, cx.mode) );
     check_variants_T(crate, codemap, filename, "expr",
                      extra_exprs + stolen.exprs, pprust::expr_to_str,
                      replace_expr_in_crate, cx);
@@ -259,23 +262,23 @@ fn check_variants_T<T: copy>(
     let L = vec::len(things);
 
     if L < 100u {
-        do under(uint::min(L, 20u)) {|i|
+        do under(uint::min(L, 20u)) |i| {
             log(error, "Replacing... #" + uint::str(i));
-            do under(uint::min(L, 30u)) {|j|
+            do under(uint::min(L, 30u)) |j| {
                 log(error, "With... " + stringifier(@things[j]));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
                 let handler = diagnostic::mk_handler(none);
                 let str3 =
-                    @as_str({|a|pprust::print_crate(
+                    @as_str(|a|pprust::print_crate(
                         codemap,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
                         io::str_reader(""), a,
                         pprust::no_ann(),
-                        false)});
+                        false));
                 alt cx.mode {
                   tm_converge {
                     check_roundtrip_convergence(str3, 1u);
@@ -421,14 +424,14 @@ fn parse_and_print(code: @str) -> str {
     write_file(filename, *code);
     let crate = parse::parse_crate_from_source_str(
         filename, code, ~[], sess);
-    io::with_str_reader(*code, { |rdr|
-        as_str({|a|pprust::print_crate(sess.cm,
+    io::with_str_reader(*code, |rdr| {
+        as_str(|a| pprust::print_crate(sess.cm,
                                        sess.span_diagnostic,
                                        crate,
                                        filename,
                                        rdr, a,
                                        pprust::no_ann(),
-                                       false)})
+                                       false) )
     })
 }
 
@@ -441,7 +444,7 @@ fn has_raw_pointers(c: ast::crate) -> bool {
         }
     }
     let v =
-        visit::mk_simple_visitor(@{visit_ty: {|a|visit_ty(has_rp, a)}
+        visit::mk_simple_visitor(@{visit_ty: |a| visit_ty(has_rp, a)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(c, (), v);
     ret *has_rp;
@@ -455,7 +458,7 @@ fn content_is_dangerous_to_run(code: str) -> bool {
          "unsafe",
          "log"];    // python --> rust pipe deadlock?
 
-    for dangerous_patterns.each {|p| if contains(code, p) { ret true; } }
+    for dangerous_patterns.each |p| { if contains(code, p) { ret true; } }
     ret false;
 }
 
@@ -463,7 +466,7 @@ fn content_is_dangerous_to_compile(code: str) -> bool {
     let dangerous_patterns =
         ~["xfail-test"];
 
-    for dangerous_patterns.each {|p| if contains(code, p) { ret true; } }
+    for dangerous_patterns.each |p| { if contains(code, p) { ret true; } }
     ret false;
 }
 
@@ -479,7 +482,7 @@ fn content_might_not_converge(code: str) -> bool {
          "\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
         ];
 
-    for confusing_patterns.each {|p| if contains(code, p) { ret true; } }
+    for confusing_patterns.each |p| { if contains(code, p) { ret true; } }
     ret false;
 }
 
@@ -493,7 +496,7 @@ fn file_might_not_converge(filename: str) -> bool {
     ];
 
 
-    for confusing_files.each {|f| if contains(filename, f) { ret true; } }
+    for confusing_files.each |f| { if contains(filename, f) { ret true; } }
 
     ret false;
 }
@@ -527,7 +530,7 @@ fn check_roundtrip_convergence(code: @str, maxIters: uint) {
 
 fn check_convergence(files: ~[str]) {
     #error("pp convergence tests: %u files", vec::len(files));
-    for files.each {|file|
+    for files.each |file| {
         if !file_might_not_converge(file) {
             let s = @result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
@@ -541,7 +544,7 @@ fn check_convergence(files: ~[str]) {
 }
 
 fn check_variants(files: ~[str], cx: context) {
-    for files.each {|file|
+    for files.each |file| {
         if cx.mode == tm_converge && file_might_not_converge(file) {
             #error("Skipping convergence test based on\
                     file_might_not_converge");
@@ -565,15 +568,15 @@ fn check_variants(files: ~[str], cx: context) {
             parse::parse_crate_from_source_str(
                 file,
                 s, ~[], sess);
-        io::with_str_reader(*s, { |rdr|
+        io::with_str_reader(*s, |rdr| {
             #error("%s",
-                   as_str({|a|pprust::print_crate(sess.cm,
+                   as_str(|a| pprust::print_crate(sess.cm,
                                                   sess.span_diagnostic,
                                                   crate,
                                                   file,
                                                   rdr, a,
                                                   pprust::no_ann(),
-                                                  false)}))
+                                                  false) ))
         });
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }

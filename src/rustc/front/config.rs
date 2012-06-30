@@ -13,7 +13,7 @@ type ctxt = @{
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
 fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
-    do strip_items(crate) {|attrs|
+    do strip_items(crate) |attrs| {
         in_cfg(crate.node.config, attrs)
     }
 }
@@ -24,9 +24,9 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
     let ctxt = @{in_cfg: in_cfg};
 
     let precursor =
-        @{fold_mod: {|a,b|fold_mod(ctxt, a, b)},
-          fold_block: fold::wrap({|a,b|fold_block(ctxt, a, b)}),
-          fold_foreign_mod: {|a,b|fold_foreign_mod(ctxt, a, b)}
+        @{fold_mod: |a,b| fold_mod(ctxt, a, b),
+          fold_block: fold::wrap(|a,b| fold_block(ctxt, a, b) ),
+          fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b)
           with *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
@@ -41,7 +41,7 @@ fn filter_item(cx: ctxt, &&item: @ast::item) ->
 
 fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
-    let filter = {|a|filter_item(cx, a)};
+    let filter = |a| filter_item(cx, a);
     let filtered_items = vec::filter_map(m.items, filter);
     ret {view_items: vec::map(m.view_items, fld.fold_view_item),
          items: vec::map(filtered_items, fld.fold_item)};
@@ -56,7 +56,7 @@ fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
 
 fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
                    fld: fold::ast_fold) -> ast::foreign_mod {
-    let filter = {|a|filter_foreign_item(cx, a)};
+    let filter = |a| filter_foreign_item(cx, a);
     let filtered_items = vec::filter_map(nm.items, filter);
     ret {view_items: vec::map(nm.view_items, fld.fold_view_item),
          items: filtered_items};
@@ -81,7 +81,7 @@ fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
 
 fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
-    let filter = {|a|filter_stmt(cx, a)};
+    let filter = |a| filter_stmt(cx, a);
     let filtered_stmts = vec::filter_map(b.stmts, filter);
     ret {view_items: b.view_items,
          stmts: vec::map(filtered_stmts, fld.fold_stmt),
@@ -113,12 +113,12 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
     // so we can match against them. This is the list of configurations for
     // which the item is valid
     let cfg_metas = vec::concat(vec::filter_map(cfg_metas,
-        {|&&i| attr::get_meta_item_list(i)}));
+        |&&i| attr::get_meta_item_list(i) ));
 
     let has_cfg_metas = vec::len(cfg_metas) > 0u;
     if !has_cfg_metas { ret true; }
 
-    for cfg_metas.each {|cfg_mi|
+    for cfg_metas.each |cfg_mi| {
         if attr::contains(cfg, cfg_mi) { ret true; }
     }
 

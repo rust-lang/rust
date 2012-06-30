@@ -66,7 +66,7 @@ fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
 #[test]
 fn should_record_mod_paths() {
     let source = "mod a { mod b { mod c { } } mod d { mod e { } } }";
-    do astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert doc.cratemod().mods()[0].mods()[0].mods()[0].path()
@@ -79,7 +79,7 @@ fn should_record_mod_paths() {
 #[test]
 fn should_record_fn_paths() {
     let source = "mod a { fn b() { } }";
-    do astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert doc.cratemod().mods()[0].fns()[0].path() == ~["a"];
@@ -89,7 +89,7 @@ fn should_record_fn_paths() {
 #[test]
 fn should_record_foreign_mod_paths() {
     let source = "mod a { native mod b { } }";
-    do astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert doc.cratemod().mods()[0].nmods()[0].path() == ~["a"];
@@ -99,7 +99,7 @@ fn should_record_foreign_mod_paths() {
 #[test]
 fn should_record_foreign_fn_paths() {
     let source = "native mod a { fn b(); }";
-    do astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert doc.cratemod().nmods()[0].fns[0].path() == ~["a"];

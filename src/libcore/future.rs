@@ -64,7 +64,7 @@ fn from_port<A:send>(-port: comm::port<A>) -> future<A> {
     waiting for the result to be received on the port.
     "];
 
-    do from_fn {||
+    do from_fn || {
         comm::recv(port)
     }
 }
@@ -93,7 +93,7 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
 
     let mut po = comm::port();
     let ch = comm::chan(po);
-    do task::spawn {||
+    do task::spawn || {
         comm::send(ch, blk())
     };
     from_port(po)
@@ -102,7 +102,7 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
 fn get<A:copy>(future: future<A>) -> A {
     #[doc = "Get the value of the future"];
 
-    do with(future) {|v| v }
+    do with(future) |v| { v }
 }
 
 fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
@@ -150,18 +150,18 @@ fn test_iface_get() {
 #[test]
 fn test_with() {
     let f = from_value("nail");
-    assert with(f, {|v| v}) == "nail";
+    assert with(f, |v| v) == "nail";
 }
 
 #[test]
 fn test_iface_with() {
     let f = from_value("kale");
-    assert f.with({|v| v}) == "kale";
+    assert f.with(|v| v) == "kale";
 }
 
 #[test]
 fn test_spawn() {
-    let f = spawn({|| "bale" });
+    let f = spawn(|| "bale");
     assert get(f) == "bale";
 }
 
@@ -169,6 +169,6 @@ fn test_spawn() {
 #[should_fail]
 #[ignore(cfg(target_os = "win32"))]
 fn test_futurefail() {
-    let f = spawn({|| fail });
+    let f = spawn(|| fail);
     let _x: str = get(f);
 }

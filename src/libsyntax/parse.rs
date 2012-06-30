@@ -37,8 +37,8 @@ fn new_parse_sess(demitter: option<emitter>) -> parse_sess {
     ret @{cm: cm,
           mut next_id: 1,
           span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-          interner: @interner::mk::<@str>({|x|str::hash(*x)},
-                                          {|x,y|str::eq(*x, *y)}),
+          interner: @interner::mk::<@str>(|x| str::hash(*x),
+                                          |x,y| str::eq(*x, *y)),
           mut chpos: 0u, mut byte_pos: 0u};
 }
 
@@ -47,8 +47,8 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
     ret @{cm: cm,
           mut next_id: 1,
           span_diagnostic: sh,
-          interner: @interner::mk::<@str>({|x|str::hash(*x)},
-                                          {|x,y|str::eq(*x, *y)}),
+          interner: @interner::mk::<@str>(|x| str::hash(*x),
+                                          |x,y| str::eq(*x, *y)),
           mut chpos: 0u, mut byte_pos: 0u};
 }
 

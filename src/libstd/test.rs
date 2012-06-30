@@ -162,7 +162,7 @@ fn run_tests_console(opts: test_opts,
           mut ignored: 0u,
           mut failures: ~[]};
 
-    run_tests(opts, tests, {|x|callback(x, st)});
+    run_tests(opts, tests, |x| callback(x, st));
 
     assert (st.passed + st.failed + st.ignored == st.total);
     let success = st.failed == 0u;
@@ -216,9 +216,9 @@ fn run_tests_console(opts: test_opts,
 fn print_failures(st: console_test_state) {
     st.out.write_line("\nfailures:");
     let failures = copy st.failures;
-    let failures = vec::map(failures, {|test| test.name});
+    let failures = vec::map(failures, |test| test.name);
     let failures = sort::merge_sort(str::le, failures);
-    for vec::each(failures) {|name|
+    for vec::each(failures) |name| {
         st.out.write_line(#fmt["    %s", name]);
     }
 }
@@ -349,7 +349,7 @@ fn filter_tests(opts: test_opts,
             } else { ret option::none; }
         }
 
-        let filter = {|x|filter_fn(x, filter_str)};
+        let filter = |x| filter_fn(x, filter_str);
 
         vec::filter_map(filtered, filter)
     };
@@ -367,7 +367,7 @@ fn filter_tests(opts: test_opts,
             } else { ret option::none; }
         };
 
-        vec::filter_map(filtered, {|x|filter(x)})
+        vec::filter_map(filtered, |x| filter(x))
     };
 
     // Sort the tests alphabetically
@@ -376,7 +376,7 @@ fn filter_tests(opts: test_opts,
             fn lteq(t1: test_desc, t2: test_desc) -> bool {
                 str::le(t1.name, t2.name)
             }
-        sort::merge_sort({|x,y|lteq(x, y)}, filtered)
+        sort::merge_sort(|x,y| lteq(x, y), filtered)
         };
 
     ret filtered;
@@ -390,7 +390,7 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
         ret;
     }
 
-    do task::spawn {||
+    do task::spawn || {
         let testfn = copy test.fn;
         let mut builder = task::builder();
         let result_future = task::future_result(builder);
@@ -529,7 +529,7 @@ mod tests {
         {
         let testfn = fn~() { };
         let mut tests = ~[];
-        for vec::each(names) {|name|
+            for vec::each(names) |name| {
             let test = {name: name, fn: copy testfn, ignore: false,
                         should_fail: false};
             tests += ~[test];
@@ -547,7 +547,7 @@ mod tests {
 
     let pairs = vec::zip(expected, filtered);
 
-    for vec::each(pairs) {|p| let (a, b) = copy p; assert (a == b.name); }
+    for vec::each(pairs) |p| { let (a, b) = copy p; assert (a == b.name); }
 }
 }
 

@@ -152,7 +152,7 @@ impl extensions for rng {
 
     #[doc = "Return a random byte string of the specified length"]
     fn gen_bytes(len: uint) -> ~[u8] {
-        do vec::from_fn(len) {|_i|
+        do vec::from_fn(len) |_i| {
             self.gen_u8()
         }
     }
@@ -181,7 +181,7 @@ impl extensions for rng {
              none if the sum of the weights is 0"]
     fn choose_weighted_option<T:copy>(v: ~[weighted<T>]) -> option<T> {
         let mut total = 0u;
-        for v.each {|item|
+        for v.each |item| {
             total += item.weight;
         }
         if total == 0u {
@@ -189,7 +189,7 @@ impl extensions for rng {
         }
         let chosen = self.gen_uint_range(0u, total);
         let mut so_far = 0u;
-        for v.each {|item|
+        for v.each |item| {
             so_far += item.weight;
             if so_far > chosen {
                 ret some(item.item);
@@ -202,8 +202,8 @@ impl extensions for rng {
              the weight of the item determines how many copies there are"]
     fn weighted_vec<T:copy>(v: ~[weighted<T>]) -> ~[T] {
         let mut r = ~[];
-        for v.each {|item|
-            for uint::range(0u, item.weight) {|_i|
+        for v.each |item| {
+            for uint::range(0u, item.weight) |_i| {
                 vec::push(r, item.item);
             }
         }

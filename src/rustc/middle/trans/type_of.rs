@@ -16,7 +16,7 @@ export type_of_non_gc_box;
 
 fn type_of_explicit_args(cx: @crate_ctxt,
                          inputs: ~[ty::arg]) -> ~[TypeRef] {
-    do vec::map(inputs) {|arg|
+    do vec::map(inputs) |arg| {
         let arg_ty = arg.ty;
         let llty = type_of(cx, arg_ty);
         alt ty::resolved_mode(cx.tcx, arg.mode) {
@@ -135,7 +135,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
           ty::ty_rec(fields) {
             let mut tys: ~[TypeRef] = ~[];
-            for vec::each(fields) {|f|
+            for vec::each(fields) |f| {
                 let mt_ty = f.mt.ty;
                 vec::push(tys, type_of(cx, mt_ty));
             }
@@ -146,7 +146,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_type { T_ptr(cx.tydesc_type) }
           ty::ty_tup(elts) {
             let mut tys = ~[];
-            for vec::each(elts) {|elt|
+            for vec::each(elts) |elt| {
                 vec::push(tys, type_of(cx, elt));
             }
             T_struct(tys)
@@ -175,7 +175,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_class(did, ts) {
             // Only instance vars are record fields at runtime.
             let fields = lookup_class_fields(cx.tcx, did);
-            let mut tys = do vec::map(fields) {|f|
+            let mut tys = do vec::map(fields) |f| {
                 let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
                 type_of(cx, t)
             };

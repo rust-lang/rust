@@ -1,8 +1,8 @@
 import check::{fn_ctxt, impl_self_ty, methods};
 
 fn has_iface_bounds(tps: ~[ty::param_bounds]) -> bool {
-    vec::any(tps, {|bs|
-        vec::any(*bs, {|b|
+    vec::any(tps, |bs| {
+        vec::any(*bs, |b| {
             alt b { ty::bound_iface(_) { true } _ { false } }
         })
     })
@@ -13,8 +13,8 @@ fn lookup_vtables(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                   allow_unsafe: bool) -> vtable_res {
     let tcx = fcx.ccx.tcx;
     let mut result = ~[], i = 0u;
-    for substs.tps.each {|ty|
-        for vec::each(*bounds[i]) {|bound|
+    for substs.tps.each |ty| {
+        for vec::each(*bounds[i]) |bound| {
             alt bound {
               ty::bound_iface(i_ty) {
                 let i_ty = ty::subst(tcx, substs, i_ty);
@@ -65,7 +65,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
     alt ty::get(ty).struct {
       ty::ty_param(n, did) {
         let mut n_bound = 0u;
-        for vec::each(*tcx.ty_param_bounds.get(did.node)) { |bound|
+        for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
             alt bound {
               ty::bound_send | ty::bound_copy | ty::bound_const {
                 /* ignore */
@@ -88,7 +88,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
       ty::ty_iface(did, substs) if iface_id == did {
         relate_iface_tys(fcx, sp, iface_ty, ty);
         if !allow_unsafe {
-            for vec::each(*ty::iface_methods(tcx, did)) {|m|
+            for vec::each(*ty::iface_methods(tcx, did)) |m| {
                 if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
                     tcx.sess.span_err(
                         sp, "a boxed iface with self types may not be \
@@ -107,9 +107,9 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
       _ {
         let mut found = ~[];
 
-        for list::each(isc) {|impls|
+        for list::each(isc) |impls| {
             /* For each impl in scope... */
-                for vec::each(*impls) {|im|
+            for vec::each(*impls) |im| {
                     // im = one specific impl
                     // find the iface that im implements (if any)
                     let of_ty = alt ty::impl_iface(tcx, im.did) {
@@ -189,7 +189,7 @@ fn connect_iface_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
     alt check ty::get(iface_ty).struct {
       ty::ty_iface(_, substs) {
         vec::iter2(substs.tps, iface_tys,
-                   {|a, b| demand::suptype(fcx, sp, a, b);});
+                   |a, b| demand::suptype(fcx, sp, a, b));
       }
     }
 }

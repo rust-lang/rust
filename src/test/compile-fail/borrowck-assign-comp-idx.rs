@@ -17,7 +17,7 @@ fn b() {
 
     let mut p = ~[mut 1];
 
-    do borrow(p) {|| //! NOTE loan of mutable vec content granted here
+    do borrow(p) || { //! NOTE loan of mutable vec content granted here
         p[0] = 5; //! ERROR assigning to mutable vec content prohibited due to outstanding loan
     }
 }
@@ -26,7 +26,7 @@ fn c() {
     // Legal because the scope of the borrow does not include the
     // modification:
     let mut p = ~[mut 1];
-    borrow(p, {||});
+    borrow(p, ||{});
     p[0] = 5;
 }
 

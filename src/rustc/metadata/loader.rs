@@ -73,7 +73,7 @@ fn find_library_crate_aux(cx: ctxt,
     let suffix: str = nn.suffix;
 
     let mut matches = ~[];
-    filesearch::search(filesearch, { |path|
+    filesearch::search(filesearch, |path| {
         #debug("inspecting file %s", path);
         let f: str = path::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
@@ -109,7 +109,7 @@ fn find_library_crate_aux(cx: ctxt,
         cx.diag.span_err(
             cx.span, #fmt("multiple matching crates for `%s`", *crate_name));
         cx.diag.handler().note("candidates:");
-        for matches.each {|match|
+        for matches.each |match| {
             cx.diag.handler().note(#fmt("path: %s", match.ident));
             let attrs = decoder::get_crate_attributes(match.data);
             note_linkage_attrs(cx.diag, attrs);
@@ -135,7 +135,7 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @str {
 }
 
 fn note_linkage_attrs(diag: span_handler, attrs: ~[ast::attribute]) {
-    for attr::find_linkage_attrs(attrs).each {|attr|
+    for attr::find_linkage_attrs(attrs).each |attr| {
         diag.handler().note(#fmt("meta: %s", pprust::attr_to_str(attr)));
     }
 }
@@ -158,11 +158,11 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
            vec::len(local_metas), vec::len(extern_metas));
 
     #debug("crate metadata:");
-    for extern_metas.each {|have|
+    for extern_metas.each |have| {
         #debug("  %s", pprust::meta_item_to_str(*have));
     }
 
-    for local_metas.each {|needed|
+    for local_metas.each |needed| {
         #debug("looking for %s", pprust::meta_item_to_str(*needed));
         if !attr::contains(extern_metas, needed) {
             #debug("missing %s", pprust::meta_item_to_str(*needed));
@@ -174,7 +174,7 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
 
 fn get_metadata_section(os: os,
                         filename: str) -> option<@~[u8]> unsafe {
-    let mb = str::as_c_str(filename, {|buf|
+    let mb = str::as_c_str(filename, |buf| {
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
     if mb as int == 0 { ret option::none::<@~[u8]>; }

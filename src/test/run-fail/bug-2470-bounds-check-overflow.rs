@@ -9,7 +9,7 @@ fn main() {
     // huge).
 
     let x = ~[1u,2u,3u];
-    do vec::unpack_slice(x) {|p, _len|
+    do vec::unpack_slice(x) |p, _len| {
         let base = p as uint;                     // base = 0x1230 say
         let idx = base / sys::size_of::<uint>();  // idx  = 0x0246 say
         #error("ov1 base = 0x%x", base);

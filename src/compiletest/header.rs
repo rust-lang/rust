@@ -29,7 +29,7 @@ fn load_props(testfile: str) -> test_props {
     let mut exec_env = ~[];
     let mut compile_flags = option::none;
     let mut pp_exact = option::none;
-    for iter_header(testfile) {|ln|
+    for iter_header(testfile) |ln| {
         alt parse_error_pattern(ln) {
           option::some(ep) { vec::push(error_patterns, ep) }
           option::none { }
@@ -43,11 +43,11 @@ fn load_props(testfile: str) -> test_props {
             pp_exact = parse_pp_exact(ln, testfile);
         }
 
-        do option::iter(parse_aux_build(ln)) {|ab|
+        do option::iter(parse_aux_build(ln)) |ab| {
             vec::push(aux_builds, ab);
         }
 
-        do option::iter(parse_exec_env(ln)) {|ee|
+        do option::iter(parse_exec_env(ln)) |ee| {
             vec::push(exec_env, ee);
         }
     };
@@ -62,7 +62,7 @@ fn load_props(testfile: str) -> test_props {
 
 fn is_test_ignored(config: config, testfile: str) -> bool {
     let mut found = false;
-    for iter_header(testfile) {|ln|
+    for iter_header(testfile) |ln| {
         if parse_name_directive(ln, "xfail-test") { ret true; }
         if parse_name_directive(ln, xfail_target()) { ret true; }
         if config.mode == common::mode_pretty &&
@@ -104,7 +104,7 @@ fn parse_compile_flags(line: str) -> option<str> {
 }
 
 fn parse_exec_env(line: str) -> option<(str, str)> {
-    do parse_name_value_directive(line, "exec-env").map {|nv|
+    do parse_name_value_directive(line, "exec-env").map |nv| {
         // nv is either FOO or FOO=BAR
         let strs = str::splitn_char(nv, '=', 1u);
         alt strs.len() {

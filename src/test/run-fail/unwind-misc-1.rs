@@ -17,7 +17,7 @@ fn main() {
 
     let map = map::hashmap(hash, eq);
     let mut arr = ~[];
-    for uint::range(0u, 10u) {|i|
+    for uint::range(0u, 10u) |i| {
         arr += ~[@"key stuff"];
         map.insert(arr, arr + ~[@"value stuff"]);
     }

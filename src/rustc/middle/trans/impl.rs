@@ -20,7 +20,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { ret; }
     let sub_path = vec::append_one(path, path_name(name));
-    for vec::each(methods) {|m|
+    for vec::each(methods) |m| {
         if m.tps.len() == 0u {
             let llfn = get_item_val(ccx, m.id);
             trans_fn(ccx,
@@ -77,7 +77,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
 
 fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
     -> ast::def_id {
-  local_def(option::get(vec::find(ms, {|m| m.ident == name})).id)
+  local_def(option::get(vec::find(ms, |m| m.ident == name)).id)
 }
 
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
@@ -170,9 +170,9 @@ fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
     let mut vtable_off = n_bound, i = 0u;
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    for vec::each(*ps.bounds) {|bounds|
+    for vec::each(*ps.bounds) |bounds| {
         if i >= n_param { break; }
-        for vec::each(*bounds) {|bound|
+        for vec::each(*bounds) |bound| {
             alt bound { ty::bound_iface(_) { vtable_off += 1u; } _ {} }
         }
         i += 1u;
@@ -182,7 +182,7 @@ fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
 
 fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
     -> typeck::vtable_res {
-    @vec::map(*vts, {|d| resolve_vtable_in_fn_ctxt(fcx, d)})
+    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, d))
 }
 
 fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
@@ -191,9 +191,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
       typeck::vtable_static(iid, tys, sub) {
         let tys = alt fcx.param_substs {
           some(substs) {
-            vec::map(tys, {|t|
-                ty::subst_tps(fcx.ccx.tcx, substs.tys, t)
-            })
+            vec::map(tys, |t| ty::subst_tps(fcx.ccx.tcx, substs.tys, t))
           }
           _ { tys }
         };
@@ -219,7 +217,7 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
       }
       typeck::vtable_iface(iface_id, substs) {
         @{def: iface_id,
-          params: vec::map(substs, {|t| mono_precise(t, none)})}
+          params: vec::map(substs, |t| mono_precise(t, none))}
       }
     }
 }
@@ -242,7 +240,7 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
 fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
     let _icx = ccx.insn_ctxt("impl::make_vtable");
     let tbl = C_struct(ptrs);
-    let vt_gvar = str::as_c_str(ccx.names("vtable"), {|buf|
+    let vt_gvar = str::as_c_str(ccx.names("vtable"), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
     });
     llvm::LLVMSetInitializer(vt_gvar, tbl);
@@ -258,9 +256,9 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
     let ifce_id = expect(ccx.sess,
                          ty::ty_to_def_id(option::get(ty::impl_iface(tcx,
                                                              impl_id))),
-                         {|| "make_impl_vtable: non-iface-type implemented"});
+                         || "make_impl_vtable: non-iface-type implemented");
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
-    make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), {|im|
+    make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), |im| {
         let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             C_null(T_ptr(T_nil()))

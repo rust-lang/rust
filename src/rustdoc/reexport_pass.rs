@@ -46,7 +46,7 @@ fn to_assoc_list<K:copy, V:copy>(
 ) -> ~[(K, V)] {
 
     let mut vec = ~[];
-    for map.each {|k, v|
+    for map.each |k, v| {
         vec += ~[(k, v)];
     }
     ret vec;
@@ -58,7 +58,7 @@ fn from_assoc_list<K:copy, V:copy>(
 ) -> map::hashmap<K, V> {
 
     let map = new_hash();
-    do vec::iter(list) {|elt|
+    do vec::iter(list) |elt| {
         let (k, v) = elt;
         map.insert(k, v);
     }
@@ -78,16 +78,16 @@ fn from_str_assoc_list<V:copy>(
 }
 
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
-    let assoc_list = do astsrv::exec(srv) {|ctxt|
+    let assoc_list = do astsrv::exec(srv) |ctxt| {
         let def_set = ast_util::new_def_hash();
-        for ctxt.exp_map.each {|_id, defs|
-            for defs.each {|def|
+        for ctxt.exp_map.each |_id, defs| {
+            for defs.each |def| {
                 if def.reexp {
                     def_set.insert(def.id, ());
                 }
             }
         }
-        for find_reexport_impls(ctxt).each {|def|
+        for find_reexport_impls(ctxt).each |def| {
             def_set.insert(def, ());
         }
         to_assoc_list(def_set)
@@ -98,7 +98,7 @@ fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
 
 fn find_reexport_impls(ctxt: astsrv::ctxt) -> ~[ast::def_id] {
     let defs = @mut ~[];
-    do for_each_reexported_impl(ctxt) {|_mod_id, i|
+    do for_each_reexported_impl(ctxt) |_mod_id, i| {
         *defs += ~[i.did]
     }
     ret *defs;
@@ -136,7 +136,7 @@ fn build_reexport_def_map(
     fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
         let doc = fold::default_seq_fold_mod(fold, doc);
 
-        for doc.items.each {|item|
+        for doc.items.each |item| {
             let def_id = ast_util::local_def(item.id());
             if fold.ctxt.def_set.contains_key(def_id) {
                 fold.ctxt.def_map.insert(def_id, item);
@@ -149,7 +149,7 @@ fn build_reexport_def_map(
     fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
         let doc = fold::default_seq_fold_nmod(fold, doc);
 
-        for doc.fns.each {|fndoc|
+        for doc.fns.each |fndoc| {
             let def_id = ast_util::local_def(fndoc.id());
             if fold.ctxt.def_set.contains_key(def_id) {
                 fold.ctxt.def_map.insert(def_id, doc::fntag(fndoc));
@@ -166,12 +166,12 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
     let def_assoc_list = to_assoc_list(def_map);
     #debug("def_map: %?", def_assoc_list);
 
-    let assoc_list = do astsrv::exec(srv) {|ctxt|
+    let assoc_list = do astsrv::exec(srv) |ctxt| {
 
         let def_map = from_def_assoc_list(def_assoc_list);
         let path_map = map::str_hash::<~[(str,doc::itemtag)]>();
 
-        for ctxt.exp_map.each {|exp_id, defs|
+        for ctxt.exp_map.each |exp_id, defs| {
             let path = alt check ctxt.ast_map.get(exp_id) {
               ast_map::node_export(_, path) { path }
             };
@@ -183,7 +183,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             let modpath = ast_map::path_to_str(vec::init(*path));
 
             let mut reexportdocs = ~[];
-            for defs.each {|def|
+            for defs.each |def| {
                 if !def.reexp { cont; }
                 alt def_map.find(def.id) {
                   some(itemtag) {
@@ -194,8 +194,8 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             }
 
             if reexportdocs.len() > 0u {
-                do option::iter(path_map.find(modpath)) {|docs|
-                    reexportdocs = docs + vec::filter(reexportdocs, {|x|
+                do option::iter(path_map.find(modpath)) |docs| {
+                    reexportdocs = docs + vec::filter(reexportdocs, |x| {
                         !vec::contains(docs, x)
                     });
                 }
@@ -205,7 +205,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             }
         }
 
-        for find_reexport_impl_docs(ctxt, def_map).each {|elt|
+        for find_reexport_impl_docs(ctxt, def_map).each |elt| {
             let (path, doc) = elt;
             let docs = alt path_map.find(path) {
               some(docs) { docs + ~[(doc)] }
@@ -226,7 +226,7 @@ fn find_reexport_impl_docs(
 ) -> ~[(str, (str, doc::itemtag))] {
     let docs = @mut ~[];
 
-    do for_each_reexported_impl(ctxt) {|mod_id, i|
+    do for_each_reexported_impl(ctxt) |mod_id, i| {
         let path = alt ctxt.ast_map.find(mod_id) {
           some(ast_map::node_item(item, path)) {
             let path = ast_map::path_to_str(*path);
@@ -256,7 +256,7 @@ fn for_each_reexported_impl(
     f: fn@(ast::node_id, resolve::_impl)
 ) {
     let visitor = @{
-        visit_mod: {|a,b,c|visit_mod(ctxt, f, a, b, c)}
+        visit_mod: |a,b,c| visit_mod(ctxt, f, a, b, c)
         with *visit::default_simple_visitor()
     };
     let visitor = visit::mk_simple_visitor(visitor);
@@ -272,7 +272,7 @@ fn for_each_reexported_impl(
         let all_impls = all_impls(m);
         alt check *ctxt.impl_map.get(mod_id) {
           list::cons(impls, @list::nil) {
-            for vec::each(*impls) {|i|
+            for vec::each(*impls) |i| {
                 // This impl is not an item in the current mod
                 if !all_impls.contains_key(i.did) {
                     // Ignore external impls because I don't
@@ -289,7 +289,7 @@ fn for_each_reexported_impl(
 
 fn all_impls(m: ast::_mod) -> map::set<ast::def_id> {
     let all_impls = ast_util::new_def_hash();
-    for m.items.each {|item|
+    for m.items.each |item| {
         alt item.node {
           ast::item_impl(_, _, _, _, _) {
             all_impls.insert(ast_util::local_def(item.id), ());
@@ -338,7 +338,7 @@ fn merge_reexports(
         #debug("looking for reexports in path %?", path);
         alt path_map.find(str::connect(path, "::")) {
           some(name_docs) {
-            do vec::foldl(~[], name_docs) {|v, name_doc|
+            do vec::foldl(~[], name_docs) |v, name_doc| {
                 let (name, doc) = name_doc;
                 v + ~[reexport_doc(doc, name)]
             }
@@ -462,7 +462,7 @@ fn should_duplicate_multiple_reexported_items() {
                   import a::b; import a::c; \
                   export b; export c; \
                   }";
-    do astsrv::from_str(source) {|srv|
+    do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, "");
         let doc = path_pass::mk_pass().f(srv, doc);
         let doc = run(srv, doc);
@@ -484,7 +484,7 @@ fn should_rename_items_reexported_with_different_names() {
 #[test]
 fn should_reexport_in_topmod() {
     fn mk_doc(source: str) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "core");
             let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)
@@ -515,7 +515,7 @@ fn should_not_reexport_multiple_times() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "");
             let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)

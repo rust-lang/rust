@@ -115,10 +115,10 @@ fn enc_opt<T>(w: io::writer, t: option<T>, enc_f: fn(T)) {
 }
 
 fn enc_substs(w: io::writer, cx: @ctxt, substs: ty::substs) {
-    do enc_opt(w, substs.self_r) { |r| enc_region(w, cx, r) }
-    do enc_opt(w, substs.self_ty) { |t| enc_ty(w, cx, t) }
+    do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
+    do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
-    for substs.tps.each { |t| enc_ty(w, cx, t); }
+    for substs.tps.each |t| { enc_ty(w, cx, t); }
     w.write_char(']');
 }
 
@@ -231,7 +231,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_tup(ts) {
         w.write_str("T["/&);
-        for ts.each {|t| enc_ty(w, cx, t); }
+        for ts.each |t| { enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_box(mt) { w.write_char('@'); enc_mt(w, cx, mt); }
@@ -255,7 +255,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_unboxed_vec(mt) { w.write_char('U'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
         w.write_str("R["/&);
-        for fields.each {|field|
+        for fields.each |field| {
             w.write_str(*field.ident);
             w.write_char('=');
             enc_mt(w, cx, field.mt);
@@ -290,7 +290,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_constr(ty, cs) {
         w.write_str("A["/&);
         enc_ty(w, cx, ty);
-        for cs.each {|tc| enc_ty_constr(w, cx, tc); }
+        for cs.each |tc| { enc_ty_constr(w, cx, tc); }
         w.write_char(']');
       }
       ty::ty_opaque_box { w.write_char('B'); }
@@ -341,13 +341,13 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     enc_proto(w, ft.proto);
     enc_purity(w, ft.purity);
     w.write_char('[');
-    for ft.inputs.each {|arg|
+    for ft.inputs.each |arg| {
         enc_mode(w, cx, arg.mode);
         enc_ty(w, cx, arg.ty);
     }
     w.write_char(']');
     let mut colon = true;
-    for ft.constraints.each {|c|
+    for ft.constraints.each |c| {
         if colon {
             w.write_char(':');
             colon = false;
@@ -368,7 +368,7 @@ fn enc_constr_gen<T>(w: io::writer, cx: @ctxt,
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
     let mut semi = false;
-    for c.node.args.each {|a|
+    for c.node.args.each |a| {
         if semi { w.write_char(';'); } else { semi = true; }
         write_arg(a);
     }
@@ -376,7 +376,7 @@ fn enc_constr_gen<T>(w: io::writer, cx: @ctxt,
 }
 
 fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
-    enc_constr_gen(w, cx, c, {|a|
+    enc_constr_gen(w, cx, c, |a| {
       alt a.node {
         carg_base     { w.write_char('*'); }
         carg_ident(i) { w.write_uint(i); }
@@ -386,7 +386,7 @@ fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
 }
 
 fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
-    enc_constr_gen(w, cx, c, {|a|
+    enc_constr_gen(w, cx, c, |a| {
       alt a.node {
         carg_base     { w.write_char('*'); }
         carg_ident(p) { w.write_str(path_to_str(p)); }
@@ -396,7 +396,7 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
 }
 
 fn enc_bounds(w: io::writer, cx: @ctxt, bs: @~[ty::param_bound]) {
-    for vec::each(*bs) {|bound|
+    for vec::each(*bs) |bound| {
         alt bound {
           ty::bound_send { w.write_char('S'); }
           ty::bound_copy { w.write_char('C'); }

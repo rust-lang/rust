@@ -19,7 +19,7 @@ fn a() {
     p.impurem();
 
     // But in this case we do not honor the loan:
-    do p.blockm {||  //! NOTE loan of mutable local variable granted here
+    do p.blockm || { //! NOTE loan of mutable local variable granted here
         p.x = 10; //! ERROR assigning to mutable field prohibited due to outstanding loan
     }
 }

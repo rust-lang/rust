@@ -1,7 +1,7 @@
 impl monad<A> for ~[A] {
     fn bind<B>(f: fn(A) -> ~[B]) -> ~[B] {
         let mut r = ~[];
-        for self.each {|elt| r += f(elt); }
+        for self.each |elt| { r += f(elt); }
         r
     }
 }
@@ -16,12 +16,12 @@ impl monad<A> for option<A> {
 }
 
 fn transform(x: option<int>) -> option<str> {
-    x.bind({|n| some(n + 1)}).bind({|n| some(int::str(n))})
+    x.bind(|n| some(n + 1) ).bind(|n| some(int::str(n)) )
 }
 
 fn main() {
     assert transform(some(10)) == some("11");
     assert transform(none) == none;
-    assert (~["hi"]).bind({|x| ~[x, x + "!"]}).bind({|x| ~[x, x + "?"]}) ==
+    assert (~["hi"]).bind(|x| ~[x, x + "!"] ).bind(|x| ~[x, x + "?"] ) ==
         ~["hi", "hi?", "hi!", "hi!?"];
 }

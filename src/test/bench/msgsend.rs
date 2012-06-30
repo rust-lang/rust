@@ -30,7 +30,7 @@ fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
 fn run(args: ~[str]) {
     let from_child = comm::port();
     let to_parent = comm::chan(from_child);
-    let to_child = do task::spawn_listener {|po|
+    let to_child = do task::spawn_listener |po| {
         server(po, to_parent);
     };
     let size = option::get(uint::from_str(args[1]));
@@ -38,16 +38,16 @@ fn run(args: ~[str]) {
     let start = std::time::precise_time_s();
     let to_child = to_child;
     let mut worker_results = ~[];
-    for uint::range(0u, workers) {|_i|
+    for uint::range(0u, workers) |_i| {
         let builder = task::builder();
         vec::push(worker_results, task::future_result(builder));
-        do task::run(builder) {||
-            for uint::range(0u, size / workers) {|_i|
+        do task::run(builder) || {
+            for uint::range(0u, size / workers) |_i| {
                 comm::send(to_child, bytes(100u));
             }
         };
     }
-    vec::iter(worker_results, {|r| future::get(r); });
+    vec::iter(worker_results, |r| { future::get(r); } );
     comm::send(to_child, stop);
     let result = comm::recv(from_child);
     let end = std::time::precise_time_s();

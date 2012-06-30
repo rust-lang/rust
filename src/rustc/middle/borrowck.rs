@@ -450,7 +450,7 @@ impl to_str_methods for borrowck_ctxt {
              self.cat_to_repr(cmt.cat),
              cmt.id,
              self.mut_to_str(cmt.mutbl),
-             cmt.lp.map_default("none", { |p| self.lp_to_str(p) }),
+             cmt.lp.map_default("none", |p| self.lp_to_str(p) ),
              ty_to_str(self.tcx, cmt.ty)]
     }
 

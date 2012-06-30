@@ -20,13 +20,13 @@ fn supervisor() {
     // Unsupervise this task so the process doesn't return a failure status as
     // a result of the main task being killed.
     let f = supervised;
-    task::try({|| supervised() });
+    task::try(|| supervised() );
 }
 
 fn main() {
     let builder = task::builder();
     task::unsupervise(builder);
-    task::run(builder, {|| supervisor(); })
+    task::run(builder, || supervisor() )
 }
 
 // Local Variables:

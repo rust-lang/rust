@@ -8,7 +8,7 @@ fn iter<T>(v: ~[T], it: fn(T) -> bool) {
 
 fn find_pos<T>(n: T, h: ~[T]) -> option<uint> {
     let mut i = 0u;
-    for iter(h) {|e|
+    for iter(h) |e| {
         if e == n { ret some(i); }
         i += 1u;
     }
@@ -17,8 +17,8 @@ fn find_pos<T>(n: T, h: ~[T]) -> option<uint> {
 
 fn bail_deep(x: ~[~[bool]]) {
     let mut seen = false;
-    for iter(x) {|x|
-        for iter(x) {|x|
+    for iter(x) |x| {
+        for iter(x) |x| {
             assert !seen;
             if x { seen = true; ret; }
         }
@@ -27,8 +27,8 @@ fn bail_deep(x: ~[~[bool]]) {
 }
 
 fn ret_deep() -> str {
-    for iter(~[1, 2]) {|e|
-        for iter(~[3, 4]) {|x|
+    for iter(~[1, 2]) |e| {
+        for iter(~[3, 4]) |x| {
             if e + x > 4 { ret "hi"; }
         }
     }
@@ -37,7 +37,7 @@ fn ret_deep() -> str {
 
 fn main() {
     let mut last = 0;
-    for vec::all(~[1, 2, 3, 4, 5, 6, 7]) {|e|
+    for vec::all(~[1, 2, 3, 4, 5, 6, 7]) |e| {
         last = e;
         if e == 5 { break; }
         if e % 2 == 1 { cont; }

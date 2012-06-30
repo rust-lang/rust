@@ -10,6 +10,6 @@ fn start(c: comm::chan<comm::chan<int>>) {
 fn main() {
     let p = comm::port();
     let ch = comm::chan(p);
-    let child = task::spawn({|| start(ch); });
+    let child = task::spawn(|| start(ch) );
     let c = comm::recv(p);
 }

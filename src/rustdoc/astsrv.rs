@@ -60,7 +60,7 @@ fn from_file<T>(file: str, owner: srv_owner<T>) -> T {
 fn run<T>(owner: srv_owner<T>, source: str, +parse: parser) -> T {
 
     let srv_ = srv({
-        ch: do task::spawn_listener {|po|
+        ch: do task::spawn_listener |po| {
             act(po, source, parse);
         }
     });
@@ -199,8 +199,8 @@ fn build_error_handlers(
 #[test]
 fn should_prune_unconfigured_items() {
     let source = "#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
-    do from_str(source) {|srv|
-        do exec(srv) {|ctxt|
+    do from_str(source) |srv| {
+        do exec(srv) |ctxt| {
             assert vec::is_empty(ctxt.ast.node.module.items);
         }
     }
@@ -209,8 +209,8 @@ fn should_prune_unconfigured_items() {
 #[test]
 fn srv_should_build_ast_map() {
     let source = "fn a() { }";
-    do from_str(source) {|srv|
-        do exec(srv) {|ctxt|
+    do from_str(source) |srv| {
+        do exec(srv) |ctxt| {
             assert ctxt.ast_map.size() != 0u
         };
     }
@@ -219,8 +219,8 @@ fn srv_should_build_ast_map() {
 #[test]
 fn srv_should_build_reexport_map() {
     let source = "import a::b; export b; mod a { mod b { } }";
-    do from_str(source) {|srv|
-        do exec(srv) {|ctxt|
+    do from_str(source) |srv| {
+        do exec(srv) |ctxt| {
             assert ctxt.exp_map.size() != 0u
         };
     }
@@ -232,14 +232,14 @@ fn srv_should_resolve_external_crates() {
                   fn f() -> std::sha1::sha1 {\
                   std::sha1::mk_sha1() }";
     // Just testing that resolve doesn't crash
-    from_str(source, {|_srv| })
+    from_str(source, |_srv| { } )
 }
 
 #[test]
 fn srv_should_resolve_core_crate() {
     let source = "fn a() -> option { fail }";
     // Just testing that resolve doesn't crash
-    from_str(source, {|_srv| })
+    from_str(source, |_srv| { } )
 }
 
 #[test]
@@ -247,26 +247,26 @@ fn srv_should_resolve_non_existant_imports() {
     // We want to ignore things we can't resolve. Shouldn't
     // need to be able to find external crates to create docs.
     let source = "import wooboo; fn a() { }";
-    from_str(source, {|_srv| })
+    from_str(source, |_srv| { } )
 }
 
 #[test]
 fn srv_should_resolve_non_existant_uses() {
     let source = "use forble; fn a() { }";
-    from_str(source, {|_srv| })
+    from_str(source, |_srv| { } )
 }
 
 #[test]
 fn should_ignore_external_import_paths_that_dont_exist() {
     let source = "use forble; import forble::bippy;";
-    from_str(source, {|_srv| })
+    from_str(source, |_srv| { } )
 }
 
 #[test]
 fn srv_should_return_request_result() {
     let source = "fn a() { }";
-    do from_str(source) {|srv|
-        let result = exec(srv, {|_ctxt| 1000});
+    do from_str(source) |srv| {
+        let result = exec(srv, |_ctxt| 1000 );
         assert result == 1000;
     }
 }

@@ -151,7 +151,7 @@ mod chained {
             let n_old_chains = vec::len(self.chains);
             let n_new_chains: uint = uint::next_power_of_two(n_old_chains+1u);
             let new_chains = chains(n_new_chains);
-            for self.each_entry {|entry|
+            for self.each_entry |entry| {
                 let idx = entry.hash % n_new_chains;
                 entry.next = new_chains[idx];
                 new_chains[idx] = present(entry);
@@ -256,14 +256,14 @@ mod chained {
         }
 
         fn each(blk: fn(K,V) -> bool) {
-            for self.each_entry { |entry|
+            for self.each_entry |entry| {
                 if !blk(entry.key, copy entry.value) { break; }
             }
         }
 
-        fn each_key(blk: fn(K) -> bool) { self.each({ |k, _v| blk(k)}) }
+        fn each_key(blk: fn(K) -> bool) { self.each(|k, _v| blk(k)) }
 
-        fn each_value(blk: fn(V) -> bool) { self.each({ |_k, v| blk(v)}) }
+        fn each_value(blk: fn(V) -> bool) { self.each(|_k, v| blk(v)) }
     }
 
     fn chains<K,V>(nchains: uint) -> ~[mut chain<K,V>] {
@@ -302,7 +302,7 @@ fn str_hash<V: copy>() -> hashmap<str, V> {
 
 #[doc = "Construct a hashmap for boxed string keys"]
 fn box_str_hash<V: copy>() -> hashmap<@str, V> {
-    ret hashmap({|x: @str|str::hash(*x)}, {|x,y|str::eq(*x,*y)});
+    ret hashmap(|x: @str| str::hash(*x), |x,y| str::eq(*x,*y));
 }
 
 #[doc = "Construct a hashmap for byte string keys"]
@@ -332,7 +332,7 @@ Convert a set into a vector.
 "]
 fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
     let mut v = ~[];
-    do s.each_key() {|k|
+    do s.each_key() |k| {
         vec::push(v, k);
         true
     };
@@ -343,7 +343,7 @@ fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
 fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
                                          items: ~[(K, V)]) -> hashmap<K, V> {
     let map = hashmap(hasher, eqer);
-    do vec::iter(items) { |item|
+    do vec::iter(items) |item| {
         let (key, value) = item;
         map.insert(key, value);
     }

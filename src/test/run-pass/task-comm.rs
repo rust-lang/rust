@@ -43,17 +43,17 @@ fn test00() {
         i = i + 1;
         let builder = task::builder();
         results += ~[task::future_result(builder)];
-        do task::run(builder) {|copy i|
+        do task::run(builder) |copy i| {
             test00_start(ch, i, number_of_messages);
         }
     }
     let mut sum: int = 0;
-    for results.each {|r|
+    for results.each |r| {
         i = 0;
         while i < number_of_messages { sum += recv(po); i = i + 1; }
     }
 
-    for results.each {|r| future::get(r); }
+    for results.each |r| { future::get(r); }
 
     #debug("Completed: Final number is: ");
     assert (sum ==
@@ -89,7 +89,7 @@ fn test04_start() {
 fn test04() {
     #debug("Spawning lots of tasks.");
     let mut i: int = 4;
-    while i > 0 { i = i - 1; task::spawn({|| test04_start(); }); }
+    while i > 0 { i = i - 1; task::spawn(|| test04_start() ); }
     #debug("Finishing up.");
 }
 
@@ -104,7 +104,7 @@ fn test05_start(ch: chan<int>) {
 fn test05() {
     let po = comm::port();
     let ch = chan(po);
-    task::spawn({|| test05_start(ch); });
+    task::spawn(|| test05_start(ch) );
     let mut value: int;
     value = recv(po);
     value = recv(po);
@@ -130,13 +130,13 @@ fn test06() {
         i = i + 1;
         let builder = task::builder();
         results += ~[task::future_result(builder)];
-        do task::run(builder) {|copy i|
+        do task::run(builder) |copy i| {
             test06_start(i);
         };
     }
 
 
-    for results.each {|r| future::get(r); }
+    for results.each |r| { future::get(r); }
 }
 
 

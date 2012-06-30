@@ -32,7 +32,7 @@ fn run(
 
     let result_port = comm::port();
     let result_chan = comm::chan(result_port);
-    let page_chan = do task::spawn_listener {|page_port|
+    let page_chan = do task::spawn_listener |page_port| {
         comm::send(result_chan, make_doc_from_pages(page_port));
     };
 
@@ -106,7 +106,7 @@ fn fold_mod(
 
 fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
     {
-        items: do vec::filter(doc.items) {|item|
+        items: do vec::filter(doc.items) |item| {
             alt item {
               doc::modtag(_) { false }
               doc::nmodtag(_) { false }
@@ -166,7 +166,7 @@ mod test {
         output_style: config::output_style,
         source: str
     ) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "");
             run(srv, doc, output_style)
         }

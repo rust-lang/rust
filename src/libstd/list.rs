@@ -11,7 +11,7 @@ enum list<T> {
 
 #[doc = "Create a list from a vector"]
 fn from_vec<T: copy>(v: ~[T]) -> @list<T> {
-    vec::foldr(v, @nil::<T>, { |h, t| @cons(h, t) })
+    vec::foldr(v, @nil::<T>, |h, t| @cons(h, t))
 }
 
 #[doc = "
@@ -29,7 +29,7 @@ accumulated result.
 "]
 fn foldl<T: copy, U>(z: T, ls: @list<U>, f: fn(T, U) -> T) -> T {
     let mut accum: T = z;
-    do iter(ls) {|elt| accum = f(accum, elt);}
+    do iter(ls) |elt| { accum = f(accum, elt);}
     accum
 }
 
@@ -55,7 +55,7 @@ fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
 
 #[doc = "Returns true if a list contains an element with the given value"]
 fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
-    for each(ls) { |e|
+    for each(ls) |e| {
         if e == elt { ret true; }
     }
     ret false;
@@ -77,7 +77,7 @@ pure fn is_not_empty<T: copy>(ls: @list<T>) -> bool {
 #[doc = "Returns the length of a list"]
 fn len<T>(ls: @list<T>) -> uint {
     let mut count = 0u;
-    iter(ls, {|_e| count += 1u;});
+    iter(ls, |_e| count += 1u);
     count
 }
 

@@ -62,7 +62,7 @@ fn exported_items_from_mod(
     srv: astsrv::srv,
     doc: doc::moddoc
 ) -> ~[doc::itemtag] {
-    exported_items_from(srv, doc, {|a,b|
+    exported_items_from(srv, doc, |a,b| {
         is_exported_from_mod(a, doc.id(), b)
     })
 }
@@ -72,7 +72,7 @@ fn exported_items_from(
     doc: doc::moddoc,
     is_exported: fn(astsrv::srv, str) -> bool
 ) -> ~[doc::itemtag] {
-    do vec::filter_map(doc.items) { |itemtag|
+    do vec::filter_map(doc.items) |itemtag| {
         let itemtag = alt itemtag {
           doc::enumtag(enumdoc) {
             // Also need to check variant exportedness
@@ -97,7 +97,7 @@ fn exported_variants_from(
     doc: doc::enumdoc,
     is_exported: fn(astsrv::srv, str) -> bool
 ) -> ~[doc::variantdoc] {
-    do vec::filter_map(doc.variants) { |doc|
+    do vec::filter_map(doc.variants) |doc| {
         if is_exported(srv, doc.name) {
             some(doc)
         } else {
@@ -111,7 +111,7 @@ fn is_exported_from_mod(
     mod_id: doc::ast_id,
     item_name: str
 ) -> bool {
-    do astsrv::exec(srv) {|ctxt|
+    do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(mod_id) {
           ast_map::node_item(item, _) {
             alt item.node {
@@ -132,7 +132,7 @@ fn is_exported_from_crate(
     srv: astsrv::srv,
     item_name: str
 ) -> bool {
-    do astsrv::exec(srv) {|ctxt|
+    do astsrv::exec(srv) |ctxt| {
         ast_util::is_exported(@item_name, ctxt.ast.node.module)
     }
 }
@@ -223,7 +223,7 @@ fn should_prune_unexported_types() {
 #[test]
 fn should_not_prune_reexports() {
     fn mk_doc(source: str) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "");
             let doc = reexport_pass::mk_pass().f(srv, doc);
             run(srv, doc)
@@ -238,7 +238,7 @@ fn should_not_prune_reexports() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
-        do astsrv::from_str(source) {|srv|
+        do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, "");
             run(srv, doc)
         }

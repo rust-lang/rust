@@ -125,7 +125,7 @@ mod tests {
         fn t(n: @mut int, &&k: int, &&_v: ()) {
             assert (*n == k); *n += 1;
         }
-        traverse(m, {|x,y|t(n, x, y)});
+        traverse(m, |x,y| t(n, x, y));
     }
 
     #[test]

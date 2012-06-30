@@ -9,7 +9,7 @@ fn pairs(it: fn((int, int))) {
 fn main() {
     let mut i: int = 10;
     let mut j: int = 0;
-    do pairs() {|p|
+    do pairs() |p| {
         let (_0, _1) = p;
         log(debug, _0);
         log(debug, _1);

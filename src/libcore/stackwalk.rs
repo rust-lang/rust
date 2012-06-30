@@ -18,7 +18,7 @@ fn walk_stack(visit: fn(frame) -> bool) {
 
     #debug("beginning stack walk");
 
-    do frame_address { |frame_pointer|
+    do frame_address |frame_pointer| {
         let mut frame_address: *word = unsafe {
             reinterpret_cast(frame_pointer)
         };
@@ -44,7 +44,7 @@ fn walk_stack(visit: fn(frame) -> bool) {
 
 #[test]
 fn test_simple() {
-    for walk_stack { |_frame|
+    for walk_stack |_frame| {
     }
 }
 
@@ -53,7 +53,7 @@ fn test_simple_deep() {
     fn run(i: int) {
         if i == 0 { ret }
 
-        for walk_stack { |_frame|
+        for walk_stack |_frame| {
             unsafe {
                 breakpoint();
             }

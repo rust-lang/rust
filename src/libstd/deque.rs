@@ -57,7 +57,7 @@ fn create<T: copy>() -> t<T> {
                 self.lo = self.elts.len() - 1u;
             } else { self.lo -= 1u; }
             if self.lo == self.hi {
-                self.elts.swap({ |v| grow(self.nelts, oldlo, v) });
+                self.elts.swap(|v| grow(self.nelts, oldlo, v));
                 self.lo = self.elts.len() - 1u;
                 self.hi = self.nelts;
             }
@@ -66,7 +66,7 @@ fn create<T: copy>() -> t<T> {
         }
         fn add_back(t: T) {
             if self.lo == self.hi && self.nelts != 0u {
-                self.elts.swap({ |v| grow(self.nelts, self.lo, v) });
+                self.elts.swap(|v| grow(self.nelts, self.lo, v));
                 self.lo = 0u;
                 self.hi = self.nelts;
             }
@@ -292,7 +292,7 @@ mod tests {
                                     two(17, 42));
 
         #debug("*** test parameterized: taggypar<int>");
-        let eq4: eqfn<taggypar<int>> = {|x,y|taggypareq::<int>(x, y)};
+        let eq4: eqfn<taggypar<int>> = |x,y| taggypareq::<int>(x, y);
         test_parameterized::<taggypar<int>>(eq4, onepar::<int>(1),
                                             twopar::<int>(1, 2),
                                             threepar::<int>(1, 2, 3),

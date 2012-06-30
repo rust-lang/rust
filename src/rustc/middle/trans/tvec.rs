@@ -124,7 +124,7 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     if dest == base::ignore {
-        for vec::each(args) {|arg|
+        for vec::each(args) |arg| {
             bcx = base::trans_expr(bcx, arg, base::ignore);
         }
         ret bcx;
@@ -192,7 +192,7 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
     #debug("trans_evec: v: %s, dataptr: %s",
            val_str(ccx.tn, val),
            val_str(ccx.tn, dataptr));
-    for vec::each(args) {|e|
+    for vec::each(args) |e| {
         let lleltptr = InBoundsGEP(bcx, dataptr, ~[C_uint(ccx, i)]);
         bcx = base::trans_expr_save_in(bcx, e, lleltptr);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
@@ -200,7 +200,7 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
         i += 1u;
     }
 
-    for vec::each(temp_cleanups) {|cln| revoke_clean(bcx, cln); }
+    for vec::each(temp_cleanups) |cln| { revoke_clean(bcx, cln); }
 
     alt vst {
       ast::vstore_fixed(_) {
@@ -335,7 +335,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
     if strings { lhs_off = Sub(bcx, lhs_off, C_int(ccx, 1)); }
     let write_ptr = pointer_add(bcx, lhs_data, lhs_off);
     let write_ptr_ptr = do_spill_noroot(bcx, write_ptr);
-    iter_vec_uniq(bcx, rhs, vec_ty, rfill, {|bcx, addr, _ty|
+    iter_vec_uniq(bcx, rhs, vec_ty, rfill, |bcx, addr, _ty| {
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
@@ -353,14 +353,14 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
     let elt_llty = type_of::type_of(ccx, elt_ty);
     let elt_sz = shape::llsize_of(ccx, elt_llty);
     let scratch = base::alloca(bcx, elt_llty);
-    for vec::each(vals) {|val|
+    for vec::each(vals) |val| {
         bcx = base::trans_expr_save_in(bcx, val, scratch);
         let vptr = get_bodyptr(bcx, Load(bcx, vptrptr));
         let old_fill = get_fill(bcx, vptr);
         let new_fill = Add(bcx, old_fill, elt_sz);
         let do_grow = ICmp(bcx, lib::llvm::IntUGT, new_fill,
                            get_alloc(bcx, vptr));
-        bcx = do base::with_cond(bcx, do_grow) {|bcx|
+        bcx = do base::with_cond(bcx, do_grow) |bcx| {
             let pt = PointerCast(bcx, vptrptr,
                                  T_ptr(T_ptr(T_i8())));
             Call(bcx, ccx.upcalls.vec_grow, ~[pt, new_fill]);

@@ -7,6 +7,6 @@ fn eat_tup(_r: ~@(int, fn@({x: int, y: int}) -> int)) {}
 fn eat_rec(_r: @~{a: int, b: fn@({x: int, y: int}) -> int}) {}
 
 fn main() {
-    eat_tup(~@(10, {|a| a.x}));
-    eat_rec(@~{a: 10, b: {|a| a.x}});
+    eat_tup(~@(10, |a| a.x ));
+    eat_rec(@~{a: 10, b: |a| a.x });
 }

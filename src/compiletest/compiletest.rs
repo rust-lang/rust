@@ -136,7 +136,7 @@ fn test_opts(config: config) -> test::test_opts {
 fn make_tests(config: config) -> ~[test::test_desc] {
     #debug("making tests from %s", config.src_base);
     let mut tests = ~[];
-    for os::list_dir_path(config.src_base).each {|file|
+    for os::list_dir_path(config.src_base).each |file| {
         let file = file;
         #debug("inspecting file %s", file);
         if is_test(config, file) {
@@ -155,11 +155,11 @@ fn is_test(config: config, testfile: str) -> bool {
 
     let mut valid = false;
 
-    for valid_extensions.each {|ext|
+    for valid_extensions.each |ext| {
         if str::ends_with(name, ext) { valid = true; }
     }
 
-    for invalid_prefixes.each {|pre|
+    for invalid_prefixes.each |pre| {
         if str::starts_with(name, pre) { valid = false; }
     }
 
@@ -181,9 +181,7 @@ fn make_test_name(config: config, testfile: str) -> str {
 }
 
 fn make_test_closure(config: config, testfile: str) -> test::test_fn {
-    ret {||
-        runtest::run(config, copy testfile);
-    };
+    fn~() { runtest::run(config, copy testfile) }
 }
 
 // Local Variables:

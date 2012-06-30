@@ -851,9 +851,7 @@ full access to its environment.
 fn call_closure_with_ten(b: fn(int)) { b(10); }
 
 let x = 20;    
-call_closure_with_ten({|arg|
-    #info("x=%d, arg=%d", x, arg);
-});
+call_closure_with_ten(|arg| #info("x=%d, arg=%d", x, arg) );
 ~~~~
 
 This defines a function that accepts a closure, and then calls it with
@@ -910,7 +908,7 @@ that callers have the flexibility to pass whatever they want.
 
 ~~~~
 fn call_twice(f: fn()) { f(); f(); }
-call_twice({|| "I am a stack closure"; });
+call_twice(|| { "I am a stack closure"; } );
 call_twice(fn@() { "I am a boxed closure"; });
 fn bare_function() { "I am a plain function"; }
 call_twice(bare_function);
@@ -926,7 +924,7 @@ them. Unique closures mostly exist for spawning new [tasks](#tasks).
 
 ### Do syntax
 
-The compact syntax used for stack closures (`{|arg1, arg2| body}`) can
+The compact syntax used for stack closures (`|arg1, arg2| body`) can
 also be used to express boxed and unique closures in situations where
 the closure style can be unambiguously derived from the context. Most
 notably, when calling a higher-order function you do not have to use
@@ -953,7 +951,7 @@ To run such an iteration, you could do this:
 
 ~~~~
 # fn for_rev(v: ~[int], act: fn(int)) {}
-for_rev(~[1, 2, 3], {|n| log(error, n); });
+for_rev(~[1, 2, 3], |n| log(error, n) );
 ~~~~
 
 Because this is such a common pattern Rust has a special form
@@ -962,7 +960,7 @@ structure:
 
 ~~~~
 # fn for_rev(v: [int], act: fn(int)) {}
-do for_rev(~[1, 2, 3]) {|n|
+do for_rev(~[1, 2, 3]) |n| {
     log(error, n);
 }
 ~~~~
@@ -980,7 +978,7 @@ To allow breaking out of loops, many iteration functions, such as
 `false` to break off iteration.
 
 ~~~~
-vec::each(~[2, 4, 8, 5, 16], {|n|
+vec::each(~[2, 4, 8, 5, 16], |n| {
     if n % 2 != 0 {
         io::println("found odd number!");
         false
@@ -994,7 +992,7 @@ return `true`, and `break` and `cont` can be used, much like in a
 `while` loop, to explicitly return `false` or `true`.
 
 ~~~~
-for vec::each(~[2, 4, 8, 5, 16]) {|n|
+for vec::each(~[2, 4, 8, 5, 16]) |n| {
     if n % 2 != 0 {
         io::println("found odd number!");
         break;
@@ -1009,7 +1007,7 @@ function, not just the loop body.
 
 ~~~~
 fn contains(v: ~[int], elt: int) -> bool {
-    for vec::each(v) {|x|
+    for vec::each(v) |x| {
         if (x == elt) { ret true; }
     }
     false
@@ -1478,7 +1476,7 @@ fn for_rev<T>(v: ~[T], act: fn(T)) {
 
 fn map<T, U>(v: ~[T], f: fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
-    for v.each {|elt| vec::push(acc, f(elt)); }
+    for v.each |elt| { vec::push(acc, f(elt)); }
     ret acc;
 }
 ~~~~
@@ -1956,7 +1954,7 @@ parameters.
 # iface to_str { fn to_str() -> str; }
 fn comma_sep<T: to_str>(elts: ~[T]) -> str {
     let mut result = "", first = true;
-    for elts.each {|elt|
+    for elts.each |elt| {
         if first { first = false; }
         else { result += ", "; }
         result += elt.to_str();
@@ -1986,7 +1984,7 @@ iface seq<T> {
 impl <T> of seq<T> for ~[T] {
     fn len() -> uint { vec::len(self) }
     fn iter(b: fn(T)) {
-        for self.each {|elt| b(elt); }
+        for self.each |elt| { b(elt); }
     }
 }
 ~~~~
@@ -2006,7 +2004,7 @@ However, consider this function:
 ~~~~
 # iface drawable { fn draw(); }
 fn draw_all<T: drawable>(shapes: ~[T]) {
-    for shapes.each {|shape| shape.draw(); }
+    for shapes.each |shape| { shape.draw(); }
 }
 ~~~~
 
@@ -2020,7 +2018,7 @@ the function to be written simply like this:
 ~~~~
 # iface drawable { fn draw(); }
 fn draw_all(shapes: ~[drawable]) {
-    for shapes.each {|shape| shape.draw(); }
+    for shapes.each |shape| { shape.draw(); }
 }
 ~~~~
 
@@ -2105,7 +2103,7 @@ extern mod crypto {
 
 fn as_hex(data: ~[u8]) -> str {
     let mut acc = "";
-    for data.each {|byte| acc += #fmt("%02x", byte as uint); }
+    for data.each |byte| { acc += #fmt("%02x", byte as uint); }
     ret acc;
 }
 
@@ -2338,7 +2336,7 @@ module `task`.  Let's begin with the simplest one, `task::spawn()`:
 
 ~~~~
 let some_value = 22;
-do task::spawn {||
+do task::spawn || {
     io::println("This executes in the child task.");
     io::println(#fmt("%d", some_value));
 }
@@ -2364,7 +2362,7 @@ in parallel.  We might write something like:
 # fn some_other_expensive_computation() {}
 let port = comm::port::<int>();
 let chan = comm::chan::<int>(port);
-do task::spawn {||
+do task::spawn || {
     let result = some_expensive_computation();
     comm::send(chan, result);
 }
@@ -2395,7 +2393,7 @@ The next statement actually spawns the child:
 # fn some_expensive_computation() -> int { 42 }
 # let port = comm::port::<int>();
 # let chan = comm::chan::<int>(port);
-do task::spawn {||
+do task::spawn || {
     let result = some_expensive_computation();
     comm::send(chan, result);
 }
@@ -2458,7 +2456,7 @@ Here is the code for the parent task:
 fn main() {
     let from_child = comm::port();
     let to_parent = comm::chan(from_child);
-    let to_child = do task::spawn_listener {|from_parent|
+    let to_child = do task::spawn_listener |from_parent| {
         stringifier(from_parent, to_parent);
     };
     comm::send(to_child, 22u);

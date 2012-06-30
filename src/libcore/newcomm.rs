@@ -31,7 +31,7 @@ fn chan<T: send>(p: port<T>) -> chan<T> {
 
 fn send<T: send>(c: chan<T>, -x: T) {
     let mut x <- some(x);
-    do (*c).with {|cond, data|
+    do (*c).with |cond, data| {
         let mut xx = none;
         xx <-> x;
         (*data).push(option::unwrap(xx));
@@ -40,7 +40,7 @@ fn send<T: send>(c: chan<T>, -x: T) {
 }
 
 fn recv<T: send>(p: port<T>) -> T {
-    do (*p).with {|cond, data|
+    do (*p).with |cond, data| {
         if (*data).len() == 0u {
             cond.wait();
         }

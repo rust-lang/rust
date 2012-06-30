@@ -25,7 +25,7 @@ pure fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
 pure fn path_name_i(idents: ~[ident]) -> str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map({|i|*i}), "::")
+    str::connect(idents.map(|i|*i), "::")
 }
 
 pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
@@ -152,11 +152,11 @@ pure fn float_ty_to_str(t: float_ty) -> str {
 fn is_exported(i: ident, m: _mod) -> bool {
     let mut local = false;
     let mut parent_enum : option<ident> = none;
-    for m.items.each {|it|
+    for m.items.each |it| {
         if it.ident == i { local = true; }
         alt it.node {
           item_enum(variants, _, _) {
-            for variants.each {|v|
+            for variants.each |v| {
                 if v.node.name == i {
                    local = true;
                    parent_enum = some(/* FIXME (#2543) */ copy it.ident);
@@ -168,11 +168,11 @@ fn is_exported(i: ident, m: _mod) -> bool {
         if local { break; }
     }
     let mut has_explicit_exports = false;
-    for m.view_items.each {|vi|
+    for m.view_items.each |vi| {
         alt vi.node {
           view_item_export(vps) {
             has_explicit_exports = true;
-            for vps.each {|vp|
+            for vps.each |vp| {
                 alt vp.node {
                   ast::view_path_simple(id, _, _) {
                     if id == i { ret true; }
@@ -187,7 +187,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
                   ast::view_path_list(path, ids, _) {
                     if vec::len(path.idents) == 1u {
                         if i == path.idents[0] { ret true; }
-                        for ids.each {|id|
+                        for ids.each |id| {
                             if id.node.name == i { ret true; }
                         }
                     } else {
@@ -288,14 +288,16 @@ type ivar = {ident: ident, ty: @ty, cm: class_mutability,
              id: node_id, vis: visibility};
 
 fn public_methods(ms: ~[@method]) -> ~[@method] {
-    vec::filter(ms, {|m| alt m.vis {
+    vec::filter(ms,
+                |m| alt m.vis {
                     public { true }
-                    _   { false }}})
+                    _   { false }
+                })
 }
 
 fn split_class_items(cs: ~[@class_member]) -> (~[ivar], ~[@method]) {
     let mut vs = ~[], ms = ~[];
-    for cs.each {|c|
+    for cs.each |c| {
       alt c.node {
         instance_var(i, t, cm, id, vis) {
           vec::push(vs, {ident: /* FIXME (#2543) */ copy i,
@@ -408,7 +410,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             alt vi.node {
               view_item_use(_, _, id) { vfn(id) }
               view_item_import(vps) | view_item_export(vps) {
-                do vec::iter(vps) {|vp|
+                do vec::iter(vps) |vp| {
                     alt vp.node {
                       view_path_simple(_, _, id) { vfn(id) }
                       view_path_glob(_, id) { vfn(id) }
@@ -426,7 +428,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_item: fn@(i: @item) {
             vfn(i.id);
             alt i.node {
-              item_enum(vs, _, _) { for vs.each {|v| vfn(v.node.id); } }
+              item_enum(vs, _, _) { for vs.each |v| { vfn(v.node.id); } }
               _ {}
             }
         },
@@ -473,7 +475,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_ty_params: fn@(ps: ~[ty_param]) {
-            vec::iter(ps, {|p| vfn(p.id) })
+            vec::iter(ps, |p| vfn(p.id))
         },
 
         visit_constr: fn@(_p: @path, _sp: span, id: node_id) {
@@ -486,33 +488,33 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
             alt fk {
               visit::fk_ctor(nm, tps, self_id, parent_id) {
-                vec::iter(tps, {|tp| vfn(tp.id)});
+                vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);
                 vfn(parent_id.node);
               }
               visit::fk_dtor(tps, self_id, parent_id) {
-                vec::iter(tps, {|tp| vfn(tp.id)});
+                vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);
                 vfn(parent_id.node);
               }
               visit::fk_item_fn(_, tps) {
-                vec::iter(tps, {|tp| vfn(tp.id)});
+                vec::iter(tps, |tp| vfn(tp.id));
               }
               visit::fk_method(_, tps, m) {
                 vfn(m.self_id);
-                vec::iter(tps, {|tp| vfn(tp.id)});
+                vec::iter(tps, |tp| vfn(tp.id));
               }
               visit::fk_anon(_, capture_clause)
               | visit::fk_fn_block(capture_clause) {
-                for vec::each(*capture_clause) {|clause|
+                for vec::each(*capture_clause) |clause| {
                     vfn(clause.id);
                 }
               }
             }
 
-            do vec::iter(d.inputs) {|arg|
+            do vec::iter(d.inputs) |arg| {
                 vfn(arg.id)
             }
         },
@@ -536,7 +538,7 @@ fn visit_ids_for_inlined_item(item: inlined_item, vfn: fn@(node_id)) {
 fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
     let min = @mut int::max_value;
     let max = @mut int::min_value;
-    do visit_ids_fn { |id|
+    do visit_ids_fn |id| {
         *min = int::min(*min, id);
         *max = int::max(*max, id + 1);
     }
@@ -544,7 +546,7 @@ fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
 }
 
 fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
-    compute_id_range({ |f| visit_ids_for_inlined_item(item, f) })
+    compute_id_range(|f| visit_ids_for_inlined_item(item, f))
 }
 
 pure fn is_item_impl(item: @ast::item) -> bool {
@@ -558,8 +560,12 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     alt pat.node {
       pat_ident(pth, some(p)) { walk_pat(p, it); }
-      pat_rec(fields, _) { for fields.each {|f| walk_pat(f.pat, it); } }
-      pat_enum(_, some(s)) | pat_tup(s) { for s.each {|p| walk_pat(p, it); } }
+      pat_rec(fields, _) {
+        for fields.each |f| { walk_pat(f.pat, it); }
+      }
+      pat_enum(_, some(s)) | pat_tup(s) {
+        for s.each |p| { walk_pat(p, it); }
+      }
       pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
       pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _)
         | pat_enum(_, _) {}

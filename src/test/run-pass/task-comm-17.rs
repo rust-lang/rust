@@ -9,5 +9,5 @@ fn f() {
 }
 
 fn main() {
-    task::spawn({|| f() });
+    task::spawn(|| f() );
 }

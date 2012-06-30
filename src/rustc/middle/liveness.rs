@@ -351,7 +351,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 
     #debug["creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint];
 
-    for decl.inputs.each { |arg|
+    for decl.inputs.each |arg| {
         #debug["adding argument %d", arg.id];
         let mode = ty::resolved_mode(self.tcx, arg.mode);
         (*fn_maps).add_variable(vk_arg(arg.id, arg.ident, mode));
@@ -397,7 +397,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 }
 
 fn add_class_fields(self: @ir_maps, did: def_id) {
-    for ty::lookup_class_fields(self.tcx, did).each { |field_ty|
+    for ty::lookup_class_fields(self.tcx, did).each |field_ty| {
         assert field_ty.id.crate == local_crate;
         let var = (*self).add_variable(vk_field(field_ty.ident));
         self.field_map.insert(field_ty.ident, var);
@@ -406,7 +406,7 @@ fn add_class_fields(self: @ir_maps, did: def_id) {
 
 fn visit_local(local: @local, &&self: @ir_maps, vt: vt<@ir_maps>) {
     let def_map = self.tcx.def_map;
-    do pat_util::pat_bindings(def_map, local.node.pat) { |p_id, sp, path|
+    do pat_util::pat_bindings(def_map, local.node.pat) |p_id, sp, path| {
         #debug["adding local variable %d", p_id];
         let name = ast_util::path_to_ident(path);
         (*self).add_live_node_for_node(p_id, lnk_vdef(sp));
@@ -436,7 +436,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
         let cvs = capture::compute_capture_vars(self.tcx, expr.id,
                                                 proto, cap_clause);
         let mut call_caps = ~[];
-        for cvs.each { |cv|
+        for cvs.each |cv| {
             alt relevant_def(cv.def) {
               some(rv) {
                 let cv_ln = (*self).add_live_node(lnk_freevar(cv.span));
@@ -560,9 +560,9 @@ class liveness {
         alt expr.node {
           expr_path(_) {
             let def = self.tcx.def_map.get(expr.id);
-            relevant_def(def).map({ |rdef|
-                self.variable_from_rdef(rdef, expr.span)
-            })
+            relevant_def(def).map(
+                |rdef| self.variable_from_rdef(rdef, expr.span)
+            )
           }
           _ {none}
         }
@@ -576,9 +576,9 @@ class liveness {
                              span: span) -> option<variable> {
         alt self.tcx.def_map.find(node_id) {
           some(def) {
-            relevant_def(def).map({ |rdef|
-              self.variable_from_rdef(rdef, span)
-            })
+            relevant_def(def).map(
+                |rdef| self.variable_from_rdef(rdef, span)
+            )
           }
           none {
             self.tcx.sess.span_bug(
@@ -589,7 +589,7 @@ class liveness {
 
     fn pat_bindings(pat: @pat, f: fn(live_node, variable, span)) {
         let def_map = self.tcx.def_map;
-        do pat_util::pat_bindings(def_map, pat) {|p_id, sp, _n|
+        do pat_util::pat_bindings(def_map, pat) |p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
             f(ln, var, sp);
@@ -635,7 +635,7 @@ class liveness {
 
     fn indices(ln: live_node, op: fn(uint)) {
         let node_base_idx = self.idx(ln, variable(0u));
-        for uint::range(0u, self.ir.num_vars) { |var_idx|
+        for uint::range(0u, self.ir.num_vars) |var_idx| {
             op(node_base_idx + var_idx)
         }
     }
@@ -644,7 +644,7 @@ class liveness {
                 op: fn(uint, uint)) {
         let node_base_idx = self.idx(ln, variable(0u));
         let succ_base_idx = self.idx(succ_ln, variable(0u));
-        for uint::range(0u, self.ir.num_vars) { |var_idx|
+        for uint::range(0u, self.ir.num_vars) |var_idx| {
             op(node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
@@ -653,7 +653,7 @@ class liveness {
                   ln: live_node,
                   test: fn(uint) -> live_node) {
         let node_base_idx = self.idx(ln, variable(0u));
-        for uint::range(0u, self.ir.num_vars) { |var_idx|
+        for uint::range(0u, self.ir.num_vars) |var_idx| {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 wr.write_str(" ");
@@ -663,15 +663,15 @@ class liveness {
     }
 
     fn ln_str(ln: live_node) -> str {
-        do io::with_str_writer { |wr|
+        do io::with_str_writer |wr| {
             wr.write_str("[ln(");
             wr.write_uint(*ln);
             wr.write_str(") of kind ");
             wr.write_str(#fmt["%?", copy self.ir.lnks[*ln]]);
             wr.write_str(" reads");
-            self.write_vars(wr, ln, {|idx| self.users[idx].reader});
+            self.write_vars(wr, ln, |idx| self.users[idx].reader );
             wr.write_str("  writes");
-            self.write_vars(wr, ln, {|idx| self.users[idx].writer});
+            self.write_vars(wr, ln, |idx| self.users[idx].writer );
             wr.write_str(" ");
             wr.write_str(" precedes ");
             wr.write_str((copy self.successors[*ln]).to_str());
@@ -695,8 +695,8 @@ class liveness {
     fn init_from_succ(ln: live_node, succ_ln: live_node) {
         // more efficient version of init_empty() / merge_from_succ()
         self.successors[*ln] = succ_ln;
-        self.indices2(ln, succ_ln, { |idx, succ_idx|
-            self.users[idx] = self.users[succ_idx];
+        self.indices2(ln, succ_ln, |idx, succ_idx| {
+            self.users[idx] = self.users[succ_idx]
         });
         #debug["init_from_succ(ln=%s, succ=%s)",
                self.ln_str(ln), self.ln_str(succ_ln)];
@@ -707,7 +707,7 @@ class liveness {
         if ln == succ_ln { ret false; }
 
         let mut changed = false;
-        do self.indices2(ln, succ_ln) { |idx, succ_idx|
+        do self.indices2(ln, succ_ln) |idx, succ_idx| {
             changed |= copy_if_invalid(copy self.users[succ_idx].reader,
                                        self.users[idx].reader);
             changed |= copy_if_invalid(copy self.users[succ_idx].writer,
@@ -776,14 +776,14 @@ class liveness {
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
         let entry_ln: live_node =
-            self.with_loop_nodes(self.s.exit_ln, self.s.exit_ln, {||
+            self.with_loop_nodes(self.s.exit_ln, self.s.exit_ln, || {
                 self.propagate_through_fn_block(decl, body)
             });
 
         // hack to skip the loop unless #debug is enabled:
         #debug["^^ liveness computation results for body %d (entry=%s)",
                {
-                   for uint::range(0u, self.ir.num_live_nodes) { |ln_idx|
+                   for uint::range(0u, self.ir.num_live_nodes) |ln_idx| {
                        #debug["%s", self.ln_str(live_node(ln_idx))];
                    }
                    body.node.id
@@ -795,7 +795,7 @@ class liveness {
 
     fn propagate_through_fn_block(decl: fn_decl, blk: blk) -> live_node {
         // inputs passed by & mode should be considered live on exit:
-        for decl.inputs.each { |arg|
+        for decl.inputs.each |arg| {
             alt ty::resolved_mode(self.tcx, arg.mode) {
               by_mutbl_ref | by_ref | by_val {
                 // These are "non-owned" modes, so register a read at
@@ -816,7 +816,7 @@ class liveness {
         self.acc(self.s.exit_ln, self.s.self_var, ACC_READ);
 
         // in a ctor, there is an implicit use of self.f for all fields f:
-        for self.ir.field_map.each_value { |var|
+        for self.ir.field_map.each_value |var| {
             self.acc(self.s.exit_ln, var, ACC_READ|ACC_USE);
         }
 
@@ -832,7 +832,7 @@ class liveness {
 
     fn propagate_through_block(blk: blk, succ: live_node) -> live_node {
         let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
-        do blk.node.stmts.foldr(succ) { |stmt, succ|
+        do blk.node.stmts.foldr(succ) |stmt, succ| {
             self.propagate_through_stmt(stmt, succ)
         }
     }
@@ -852,7 +852,7 @@ class liveness {
     fn propagate_through_decl(decl: @decl, succ: live_node) -> live_node {
         alt decl.node {
           decl_local(locals) {
-            do locals.foldr(succ) { |local, succ|
+            do locals.foldr(succ) |local, succ| {
                 self.propagate_through_local(local, succ)
             }
           }
@@ -877,9 +877,9 @@ class liveness {
         // initialization, which is mildly more complex than checking
         // once at the func header but otherwise equivalent.
 
-        let opt_init = local.node.init.map({ |i| i.expr });
+        let opt_init = local.node.init.map(|i| i.expr );
         let mut succ = self.propagate_through_opt_expr(opt_init, succ);
-        do self.pat_bindings(local.node.pat) { |ln, var, _sp|
+        do self.pat_bindings(local.node.pat) |ln, var, _sp| {
             self.init_from_succ(ln, succ);
             self.define(ln, var);
             succ = ln;
@@ -889,14 +889,14 @@ class liveness {
 
     fn propagate_through_exprs(exprs: ~[@expr],
                                succ: live_node) -> live_node {
-        do exprs.foldr(succ) { |expr, succ|
+        do exprs.foldr(succ) |expr, succ| {
             self.propagate_through_expr(expr, succ)
         }
     }
 
     fn propagate_through_opt_expr(opt_expr: option<@expr>,
                                   succ: live_node) -> live_node {
-        do opt_expr.foldl(succ) { |succ, expr|
+        do opt_expr.foldl(succ) |succ, expr| {
             self.propagate_through_expr(expr, succ)
         }
     }
@@ -930,7 +930,7 @@ class liveness {
             // the construction of a closure itself is not important,
             // but we have to consider the closed over variables.
             let caps = (*self.ir).captures(expr);
-            do (*caps).foldr(succ) { |cap, succ|
+            do (*caps).foldr(succ) |cap, succ| {
                 self.init_from_succ(cap.ln, succ);
                 let var = self.variable_from_rdef(cap.rv, expr.span);
                 self.acc(cap.ln, var, ACC_READ | ACC_USE);
@@ -987,7 +987,7 @@ class liveness {
             let ln = self.live_node(expr.id, expr.span);
             self.init_empty(ln, succ);
             let mut first_merge = true;
-            for arms.each { |arm|
+            for arms.each |arm| {
                 let arm_succ =
                     self.propagate_through_opt_expr(
                         arm.guard,
@@ -1063,7 +1063,7 @@ class liveness {
 
           expr_rec(fields, with_expr) {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
-            do fields.foldr(succ) { |field, succ|
+            do fields.foldr(succ) |field, succ| {
                 self.propagate_through_expr(field.node.expr, succ)
             }
           }
@@ -1241,7 +1241,7 @@ class liveness {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
                 self.init_from_succ(ln, succ);
-                for self.ir.field_map.each_value { |var|
+                for self.ir.field_map.each_value |var| {
                     self.acc(ln, var, acc);
                 }
             }
@@ -1273,7 +1273,7 @@ class liveness {
             alt def {
               def_self(_) {
                 // Note: the field_map is empty unless we are in a ctor
-                ret self.ir.field_map.find(fld).map({ |var|
+                ret self.ir.field_map.find(fld).map(|var| {
                     let ln = self.live_node(expr.id, expr.span);
                     (ln, var)
                 });
@@ -1320,7 +1320,7 @@ class liveness {
             first_merge = false;
         }
         let cond_ln = self.propagate_through_opt_expr(cond, ln);
-        let body_ln = self.with_loop_nodes(succ, ln, {||
+        let body_ln = self.with_loop_nodes(succ, ln, || {
             self.propagate_through_block(body, cond_ln)
         });
 
@@ -1328,7 +1328,7 @@ class liveness {
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
             assert cond_ln == self.propagate_through_opt_expr(cond, ln);
-            assert body_ln == self.with_loop_nodes(succ, ln, {||
+            assert body_ln == self.with_loop_nodes(succ, ln, || {
                 self.propagate_through_block(body, cond_ln)
             });
         }
@@ -1373,7 +1373,7 @@ fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
         // should not be live at this point.
 
         #debug["check_local() with no initializer"];
-        do (*self).pat_bindings(local.node.pat) { |ln, var, sp|
+        do (*self).pat_bindings(local.node.pat) |ln, var, sp| {
             if !self.warn_about_unused(sp, ln, var) {
                 alt (*self).live_on_exit(ln, var) {
                   none { /* not live: good */ }
@@ -1394,7 +1394,7 @@ fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
 fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
     alt expr.node {
       expr_path(_) {
-        for (*self).variable_from_def_map(expr.id, expr.span).each { |var|
+        for (*self).variable_from_def_map(expr.id, expr.span).each |var| {
             let ln = (*self).live_node(expr.id, expr.span);
             self.consider_last_use(expr, ln, var);
         }
@@ -1404,7 +1404,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
 
       expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
         let caps = (*self.ir).captures(expr);
-        for (*caps).each { |cap|
+        for (*caps).each |cap| {
             let var = (*self).variable_from_rdef(cap.rv, expr.span);
             self.consider_last_use(expr, cap.ln, var);
             if cap.is_move {
@@ -1438,7 +1438,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_call(f, args, _) {
         let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
         vt.visit_expr(f, self, vt);
-        do vec::iter2(args, targs) { |arg_expr, arg_ty|
+        do vec::iter2(args, targs) |arg_expr, arg_ty| {
             alt ty::resolved_mode(self.tcx, arg_ty.mode) {
               by_val | by_copy | by_ref | by_mutbl_ref{
                 vt.visit_expr(arg_expr, self, vt);
@@ -1480,7 +1480,7 @@ enum read_kind {
 
 impl check_methods for @liveness {
     fn check_fields(sp: span, entry_ln: live_node) {
-        for self.ir.field_map.each { |nm, var|
+        for self.ir.field_map.each |nm, var| {
             alt (*self).live_on_entry(entry_ln, var) {
               none { /* ok */ }
               some(lnk_exit) {
@@ -1621,7 +1621,7 @@ impl check_methods for @liveness {
     }
 
     fn check_for_reassignments_in_pat(pat: @pat) {
-        do (*self).pat_bindings(pat) { |ln, var, sp|
+        do (*self).pat_bindings(pat) |ln, var, sp| {
             self.check_for_reassignment(ln, var, sp);
         }
     }
@@ -1728,7 +1728,7 @@ impl check_methods for @liveness {
     }
 
     fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: live_node) {
-        for decl.inputs.each { |arg|
+        for decl.inputs.each |arg| {
             let var = (*self).variable(arg.id, arg.ty.span);
             alt ty::resolved_mode(self.tcx, arg.mode) {
               by_mutbl_ref {
@@ -1752,7 +1752,7 @@ impl check_methods for @liveness {
     }
 
     fn warn_about_unused_or_dead_vars_in_pat(pat: @pat) {
-        do (*self).pat_bindings(pat) { |ln, var, sp|
+        do (*self).pat_bindings(pat) |ln, var, sp| {
             if !self.warn_about_unused(sp, ln, var) {
                 self.warn_about_dead_assign(sp, ln, var);
             }
@@ -1761,7 +1761,7 @@ impl check_methods for @liveness {
 
     fn warn_about_unused(sp: span, ln: live_node, var: variable) -> bool {
         if !(*self).used_on_entry(ln, var) {
-            for self.should_warn(var).each { |name|
+            for self.should_warn(var).each |name| {
 
                 // annoying: for parameters in funcs like `fn(x: int)
                 // {ret}`, there is only one node, so asking about
@@ -1788,7 +1788,7 @@ impl check_methods for @liveness {
 
     fn warn_about_dead_assign(sp: span, ln: live_node, var: variable) {
         if (*self).live_on_exit(ln, var).is_none() {
-            for self.should_warn(var).each { |name|
+            for self.should_warn(var).each |name| {
                 self.tcx.sess.span_warn(
                     sp,
                     #fmt["value assigned to `%s` is never read", *name]);

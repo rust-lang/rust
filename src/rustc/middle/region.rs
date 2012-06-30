@@ -332,7 +332,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
         // although the capture items are not expressions per se, they
         // do get "evaluated" in some sense as copies or moves of the
         // relevant variables so we parent them like an expression
-        for (*cap_clause).each { |cap_item|
+        for (*cap_clause).each |cap_item| {
             record_parent(cx, cap_item.id);
         }
         visit::visit_expr(expr, cx, visitor);
@@ -375,7 +375,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
             fn_cx.parent: %?",
            body.node.id, cx.parent, fn_cx.parent];
 
-    for decl.inputs.each { |input|
+    for decl.inputs.each |input| {
         cx.region_map.insert(input.id, body.node.id);
     }
 

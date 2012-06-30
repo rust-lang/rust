@@ -61,9 +61,9 @@ fn path_is_absolute(p: str) -> bool {
 fn path_sep() -> str { ret str::from_char(consts::path_sep); }
 
 fn split_dirname_basename (pp: path) -> {dirname: str, basename: str} {
-    alt str::rfind(pp, {|ch|
+    alt str::rfind(pp, |ch|
         ch == consts::path_sep || ch == consts::alt_path_sep
-    }) {
+    ) {
       some(i) {
         {dirname: str::slice(pp, 0u, i),
          basename: str::slice(pp, i + 1u, str::len(pp))}
@@ -145,7 +145,7 @@ the first element of the returned vector will be the drive letter
 followed by a colon.
 "]
 fn split(p: path) -> ~[path] {
-    str::split_nonempty(p, {|c|
+    str::split_nonempty(p, |c| {
         c == consts::path_sep || c == consts::alt_path_sep
     })
 }
@@ -235,13 +235,12 @@ fn normalize(p: path) -> path {
     ret s;
 
     fn strip_dots(s: ~[path]) -> ~[path] {
-        vec::filter_map(s, { |elem|
+        vec::filter_map(s, |elem|
             if elem == "." {
                 option::none
             } else {
                 option::some(elem)
-            }
-        })
+            })
     }
 
     fn rollup_doubledots(s: ~[path]) -> ~[path] {

@@ -58,7 +58,7 @@ fn contains_key<T: copy>(self: smallintmap<T>, key: uint) -> bool {
 impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn size() -> uint {
         let mut sz = 0u;
-        for self.v.each {|item|
+        for self.v.each |item| {
             alt item { some(_) { sz += 1u; } _ {} }
         }
         sz
@@ -102,7 +102,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         }
     }
     fn each_value(it: fn(V) -> bool) {
-        self.each({|_i, v| it(v)});
+        self.each(|_i, v| it(v));
     }
 }
 

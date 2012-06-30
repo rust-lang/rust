@@ -26,7 +26,7 @@ type aminoacids = {ch: char, prob: u32};
 fn make_cumulative(aa: ~[aminoacids]) -> ~[aminoacids] {
     let mut cp: u32 = 0u32;
     let mut ans: ~[aminoacids] = ~[];
-    for aa.each {|a| cp += a.prob; ans += ~[{ch: a.ch, prob: cp}]; }
+    for aa.each |a| { cp += a.prob; ans += ~[{ch: a.ch, prob: cp}]; }
     ret ans;
 }
 
@@ -47,7 +47,7 @@ fn make_random_fasta(wr: io::writer, id: str, desc: str, genelist: ~[aminoacids]
     wr.write_line(">" + id + " " + desc);
     let rng = @{mut last: std::rand::rng().next()};
     let mut op: str = "";
-    for uint::range(0u, n as uint) {|_i|
+    for uint::range(0u, n as uint) |_i| {
         str::push_char(op, select_random(myrandom_next(rng, 100u32),
                                          genelist));
         if str::len(op) >= LINE_LENGTH() {
@@ -62,7 +62,7 @@ fn make_repeat_fasta(wr: io::writer, id: str, desc: str, s: str, n: int) unsafe 
     wr.write_line(">" + id + " " + desc);
     let mut op: str = "";
     let sl: uint = str::len(s);
-    for uint::range(0u, n as uint) {|i|
+    for uint::range(0u, n as uint) |i| {
         str::unsafe::push_byte(op, s[i % sl]);
         if str::len(op) >= LINE_LENGTH() {
             wr.write_line(op);

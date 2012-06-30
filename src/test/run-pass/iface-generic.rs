@@ -17,16 +17,16 @@ iface map<T> {
 impl <T> of map<T> for ~[T] {
     fn map<U>(f: fn(T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.each {|x| r += ~[f(x)]; }
+        for self.each |x| { r += ~[f(x)]; }
         r
     }
 }
 
 fn foo<U, T: map<U>>(x: T) -> ~[str] {
-    x.map({|_e| "hi" })
+    x.map(|_e| "hi" )
 }
 fn bar<U: to_str, T: map<U>>(x: T) -> ~[str] {
-    x.map({|_e| _e.to_str() })
+    x.map(|_e| _e.to_str() )
 }
 
 fn main() {

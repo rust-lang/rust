@@ -54,7 +54,7 @@ fn to_writer(wr: io::writer, j: json) {
       list(v) {
         wr.write_char('[');
         let mut first = true;
-        for (*v).each { |item|
+        for (*v).each |item| {
             if !first {
                 wr.write_str(", ");
             }
@@ -71,7 +71,7 @@ fn to_writer(wr: io::writer, j: json) {
 
         wr.write_str("{ ");
         let mut first = true;
-        for d.each { |key, value|
+        for d.each |key, value| {
             if !first {
                 wr.write_str(", ");
             }
@@ -90,7 +90,7 @@ fn to_writer(wr: io::writer, j: json) {
 
 fn escape_str(s: str) -> str {
     let mut escaped = "\"";
-    do str::chars_iter(s) { |c|
+    do str::chars_iter(s) |c| {
         alt c {
           '"' { escaped += "\\\""; }
           '\\' { escaped += "\\\\"; }
@@ -110,7 +110,7 @@ fn escape_str(s: str) -> str {
 
 #[doc = "Serializes a json value into a string"]
 fn to_str(j: json) -> str {
-    io::with_str_writer({ |wr| to_writer(wr, j) })
+    io::with_str_writer(|wr| to_writer(wr, j))
 }
 
 type parser = {
@@ -186,7 +186,7 @@ impl parser for parser {
     }
 
     fn parse_ident(ident: str, value: json) -> result<json, error> {
-        if str::all(ident, { |c| c == self.next_char() }) {
+        if str::all(ident, |c| c == self.next_char()) {
             self.bump();
             ok(value)
         } else {
@@ -487,7 +487,7 @@ fn eq(value0: json, value1: json) -> bool {
       (dict(d0), dict(d1)) {
           if d0.size() == d1.size() {
               let mut equal = true;
-              for d0.each { |k, v0|
+              for d0.each |k, v0| {
                   alt d1.find(k) {
                     some(v1) {
                         if !eq(v0, v1) { equal = false; } }
@@ -598,13 +598,13 @@ impl <A: to_json copy, B: to_json copy, C: to_json copy>
 }
 
 impl <A: to_json> of to_json for ~[A] {
-    fn to_json() -> json { list(@self.map({ |elt| elt.to_json() })) }
+    fn to_json() -> json { list(@self.map(|elt| elt.to_json())) }
 }
 
 impl <A: to_json copy> of to_json for hashmap<str, A> {
     fn to_json() -> json {
         let d = map::str_hash();
-        for self.each() { |key, value|
+        for self.each() |key, value| {
             d.insert(copy key, value.to_json());
         }
         dict(d)
@@ -635,7 +635,7 @@ mod tests {
     fn mk_dict(items: ~[(str, json)]) -> json {
         let d = map::str_hash();
 
-        do vec::iter(items) { |item|
+        do vec::iter(items) |item| {
             let (key, value) = copy item;
             d.insert(key, value);
         };

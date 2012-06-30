@@ -55,7 +55,7 @@ fn visit_local(l: @ast::local, &&rcx: rcx, v: rvt) {
     }
 
     v.visit_ty(l.node.ty, rcx, v);
-    for l.node.init.each { |i|
+    for l.node.init.each |i| {
         v.visit_expr(i.expr, rcx, v);
     }
 }
@@ -134,8 +134,8 @@ fn visit_node(id: ast::node_id, span: span, rcx: rcx) -> bool {
     let e = rcx.errors_reported;
     ty::walk_regions_and_ty(
         tcx, ty,
-        { |r| constrain_region(rcx, encl_region, span, r); },
-        { |t| ty::type_has_regions(t) });
+        |r| constrain_region(rcx, encl_region, span, r),
+        |t| ty::type_has_regions(t));
     ret (e == rcx.errors_reported);
 
     fn constrain_region(rcx: rcx,

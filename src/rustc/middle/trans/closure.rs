@@ -127,7 +127,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
     let mut bound_tys = ~[];
 
     // Compute the closed over data
-    for vec::each(bound_values) {|bv|
+    for vec::each(bound_values) |bv| {
         vec::push(bound_tys, alt bv {
             env_copy(_, t, _) { t }
             env_move(_, t, _) { t }
@@ -233,7 +233,7 @@ fn store_environment(bcx: block,
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    do vec::iteri(bound_values) { |i, bv|
+    do vec::iteri(bound_values) |i, bv| {
         #debug["Copy %s into closure", ev_to_str(ccx, bv)];
 
         if !ccx.sess.no_asm_comments() {
@@ -275,7 +275,7 @@ fn store_environment(bcx: block,
           }
         }
     }
-    for vec::each(temp_cleanups) {|cleanup| revoke_clean(bcx, cleanup); }
+    for vec::each(temp_cleanups) |cleanup| { revoke_clean(bcx, cleanup); }
 
     ret {llbox: llbox, cdata_ty: cdata_ty, bcx: bcx};
 }
@@ -294,7 +294,7 @@ fn build_closure(bcx0: block,
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // Package up the captured upvars
-    do vec::iter(cap_vars) { |cap_var|
+    do vec::iter(cap_vars) |cap_var| {
         #debug["Building closure: captured variable %?", cap_var];
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
@@ -323,7 +323,7 @@ fn build_closure(bcx0: block,
           }
         }
     }
-    do option::iter(include_ret_handle) {|flagptr|
+    do option::iter(include_ret_handle) |flagptr| {
         let our_ret = alt bcx.fcx.loop_ret {
           some({retptr, _}) { retptr }
           none { bcx.fcx.llretptr }
@@ -354,7 +354,7 @@ fn load_environment(fcx: fn_ctxt,
 
     // Populate the upvars from the environment.
     let mut i = 0u;
-    do vec::iter(cap_vars) { |cap_var|
+    do vec::iter(cap_vars) |cap_var| {
         alt cap_var.mode {
           capture::cap_drop { /* ignore */ }
           _ {
@@ -404,10 +404,10 @@ fn trans_expr_fn(bcx: block,
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
                                                    ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
-                      bcx.fcx.param_substs, id, {|fcx|
+                      bcx.fcx.param_substs, id, |fcx| {
             load_environment(fcx, cdata_ty, cap_vars,
                              option::is_some(ret_handle), ck);
-        }, {|bcx|
+                      }, |bcx| {
             if option::is_some(is_loop_body) {
                 Store(bcx, C_bool(true), bcx.fcx.llretptr);
             }
@@ -421,7 +421,7 @@ fn trans_expr_fn(bcx: block,
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {
         trans_closure(ccx, sub_path, decl, body, llfn, no_self, none,
-                      id, {|_fcx|}, {|_bcx|});
+                      id, |_fcx| { }, |_bcx| { });
         C_null(T_opaque_box_ptr(ccx))
       }
     };
@@ -436,12 +436,12 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
     let _icx = cx.insn_ctxt("closure::trans_bind1");
     let ccx = cx.ccx();
     let mut bound: ~[@ast::expr] = ~[];
-    for vec::each(args) {|argopt|
+    for vec::each(args) |argopt| {
         alt argopt { none { } some(e) { vec::push(bound, e); } }
     }
     let mut bcx = f_res.bcx;
     if dest == ignore {
-        for vec::each(bound) {|ex| bcx = trans_expr(bcx, ex, ignore); }
+        for vec::each(bound) |ex| { bcx = trans_expr(bcx, ex, ignore); }
         ret bcx;
     }
 
@@ -478,7 +478,9 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
     // Actually construct the closure
     let {llbox, cdata_ty, bcx} = store_environment(
         bcx, vec::append(env_vals,
-                         vec::map(bound, {|x| env_expr(x, expr_ty(bcx, x))})),
+                         vec::map(bound, |x| {
+                             env_expr(x, expr_ty(bcx, x))
+                         })),
         ty::ck_box);
 
     // Make thunk
@@ -504,7 +506,7 @@ fn make_fn_glue(
     let fn_env = fn@(ck: ty::closure_kind) -> block {
         let box_cell_v = GEPi(cx, v, ~[0u, abi::fn_field_box]);
         let box_ptr_v = Load(cx, box_cell_v);
-        do with_cond(cx, IsNotNull(cx, box_ptr_v)) {|bcx|
+        do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
             let closure_ty = ty::mk_opaque_closure_ptr(tcx, ck);
             glue_fn(bcx, box_cell_v, closure_ty)
         }
@@ -537,7 +539,7 @@ fn make_opaque_cbox_take_glue(
     let ccx = bcx.ccx(), tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
-    do with_cond(bcx, IsNotNull(bcx, cbox_in)) {|bcx|
+    do with_cond(bcx, IsNotNull(bcx, cbox_in)) |bcx| {
         // Load the size from the type descr found in the cbox
         let cbox_in = PointerCast(bcx, cbox_in, llopaquecboxty);
         let tydescptr = GEPi(bcx, cbox_in, ~[0u, abi::box_field_tydesc]);
@@ -599,7 +601,7 @@ fn make_opaque_cbox_free_glue(
     }
 
     let ccx = bcx.ccx();
-    do with_cond(bcx, IsNotNull(bcx, cbox)) {|bcx|
+    do with_cond(bcx, IsNotNull(bcx, cbox)) |bcx| {
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
         let cbox = PointerCast(bcx, cbox, T_opaque_cbox_ptr(ccx));
@@ -740,7 +742,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     let mut a: uint = first_real_arg; // retptr, env come first
     let mut b: uint = starting_idx;
     let mut outgoing_arg_index: uint = 0u;
-    for vec::each(args) {|arg|
+    for vec::each(args) |arg| {
         let out_arg = outgoing_args[outgoing_arg_index];
         alt arg {
           // Arg provided at binding time; thunk copies it from

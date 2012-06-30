@@ -32,15 +32,15 @@ fn fib(n: int) -> int {
         } else {
             let p = port();
             let ch = chan(p);
-            task::spawn({|| pfib(ch, n - 1); });
-            task::spawn({|| pfib(ch, n - 2); });
+            task::spawn(|| pfib(ch, n - 1) );
+            task::spawn(|| pfib(ch, n - 2) );
             send(c, recv(p) + recv(p));
         }
     }
 
     let p = port();
     let ch = chan(p);
-    let t = task::spawn({|| pfib(ch, n); });
+    let t = task::spawn(|| pfib(ch, n) );
     ret recv(p);
 }
 
@@ -70,12 +70,12 @@ fn stress_task(&&id: int) {
 
 fn stress(num_tasks: int) {
     let mut results = ~[];
-    for range(0, num_tasks) {|i|
+    for range(0, num_tasks) |i| {
         let builder = task::builder();
         results += ~[task::future_result(builder)];
-        task::run(builder, {|| stress_task(i); });
+        task::run(builder, || stress_task(i) );
     }
-    for results.each {|r| future::get(r); }
+    for results.each |r| { future::get(r); }
 }
 
 fn main(args: ~[str]) {
@@ -99,8 +99,8 @@ fn main(args: ~[str]) {
 
         let out = io::stdout();
 
-        for range(1, max + 1) {|n|
-            for range(0, num_trials) {|i|
+        for range(1, max + 1) |n| {
+            for range(0, num_trials) |i| {
                 let start = time::precise_time_ns();
                 let fibn = fib(n);
                 let stop = time::precise_time_ns();

@@ -12,13 +12,13 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
     let mut child_chs = ~[];
     let mut sum = 0;
 
-    do iter::repeat (children) {||
-        do task::spawn {||
+    do iter::repeat (children) || {
+        do task::spawn || {
             calc(0u, chan);
         };
     }
 
-    do iter::repeat (children) {||
+    do iter::repeat (children) || {
         alt check comm::recv(port) {
           ready(child_ch) {
             vec::push(child_chs, child_ch);
@@ -30,13 +30,13 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
 
     alt check comm::recv(port) {
         start {
-          do vec::iter (child_chs) { |child_ch|
+          do vec::iter (child_chs) |child_ch| {
               comm::send(child_ch, start);
           }
         }
     }
 
-    do iter::repeat (children) {||
+    do iter::repeat (children) || {
         alt check comm::recv(port) {
           done(child_sum) { sum += child_sum; }
         }
@@ -57,7 +57,7 @@ fn main(args: ~[str]) {
     let children = uint::from_str(args[1]).get();
     let port = comm::port();
     let chan = comm::chan(port);
-    do task::spawn {||
+    do task::spawn || {
         calc(children, chan);
     };
     alt check comm::recv(port) {

@@ -162,7 +162,7 @@ class parser {
     fn parse_ty_fn_decl(purity: ast::purity) -> fn_decl {
         let inputs = do self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
-            seq_sep_trailing_disallowed(token::COMMA)) { |p|
+            seq_sep_trailing_disallowed(token::COMMA)) |p| {
             let mode = p.parse_arg_mode();
             let name = if is_plain_ident(p.token)
                 && p.look_ahead(1u) == token::COLON {
@@ -188,7 +188,7 @@ class parser {
 
     fn parse_ty_methods() -> ~[ty_method] {
         do self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
-                                 seq_sep_none()) { |p|
+                                    seq_sep_none()) |p| {
             let attrs = p.parse_outer_attributes();
             let flo = p.span.lo;
             let pur = p.parse_fn_purity();
@@ -220,7 +220,7 @@ class parser {
     // otherwise, fail
     fn ident_index(args: ~[arg], i: ident) -> uint {
         let mut j = 0u;
-        for args.each {|a| if a.ident == i { ret j; } j += 1u; }
+        for args.each |a| { if a.ident == i { ret j; } j += 1u; }
         self.fatal("unbound variable `" + *i + "` in constraint arg");
     }
 
@@ -256,7 +256,7 @@ class parser {
         let args = self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA),
-            {|p| p.parse_constr_arg(fn_args)});
+            |p| p.parse_constr_arg(fn_args));
         ret @spanned(lo, self.span.hi,
                      {path: path, args: args, id: self.get_id()});
     }
@@ -267,7 +267,7 @@ class parser {
         let args: ~[@ty_constr_arg] = self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA),
-            {|p| p.parse_type_constr_arg()});
+            |p| p.parse_type_constr_arg());
         let hi = self.span.lo;
         let tc: ty_constr_ = {path: path, args: args, id: self.get_id()};
         ret @spanned(lo, hi, tc);
@@ -286,7 +286,7 @@ class parser {
     }
 
     fn parse_type_constraints() -> ~[@ty_constr] {
-        ret self.parse_constrs({|p| p.parse_constr_in_type()});
+        ret self.parse_constrs(|p| p.parse_constr_in_type());
     }
 
     fn parse_ret_ty() -> (ret_style, @ty) {
@@ -397,7 +397,7 @@ class parser {
             let elems = self.parse_unspanned_seq(
                 token::LBRACE, token::RBRACE,
                 seq_sep_trailing_allowed(token::COMMA),
-                {|p| p.parse_ty_field()});
+                |p| p.parse_ty_field());
             if vec::len(elems) == 0u {
                 self.unexpected_last(token::RBRACE);
             }
@@ -495,11 +495,11 @@ class parser {
     }
 
     fn parse_arg_or_capture_item() -> arg_or_capture_item {
-        self.parse_capture_item_or({|p| p.parse_arg() })
+        self.parse_capture_item_or(|p| p.parse_arg())
     }
 
     fn parse_fn_block_arg() -> arg_or_capture_item {
-        do self.parse_capture_item_or {|p|
+        do self.parse_capture_item_or |p| {
             let m = p.parse_arg_mode();
             let i = p.parse_value_ident();
             let t = if p.eat(token::COLON) {
@@ -594,8 +594,8 @@ class parser {
     }
 
     fn parse_path_without_tps() -> @path {
-        self.parse_path_without_tps_({|p| p.parse_ident()},
-                                     {|p| p.parse_ident()})
+        self.parse_path_without_tps_(|p| p.parse_ident(),
+                                     |p| p.parse_ident())
     }
 
     fn parse_path_without_tps_(
@@ -623,8 +623,8 @@ class parser {
     }
 
     fn parse_value_path() -> @path {
-        self.parse_path_without_tps_({|p| p.parse_ident()},
-                                     {|p| p.parse_value_ident()})
+        self.parse_path_without_tps_(|p| p.parse_ident(),
+                                     |p| p.parse_value_ident())
     }
 
     fn parse_path_with_tps(colons: bool) -> @path {
@@ -658,7 +658,7 @@ class parser {
         let tps = {
             if self.token == token::LT {
                 self.parse_seq_lt_gt(some(token::COMMA),
-                                     {|p| p.parse_ty(false)})
+                                     |p| p.parse_ty(false))
             } else {
                 {node: ~[], span: path.span}
             }
@@ -820,7 +820,7 @@ class parser {
             let mutbl = self.parse_mutability();
             let es = self.parse_seq_to_end(
                 token::RBRACKET, seq_sep_trailing_allowed(token::COMMA),
-                {|p| p.parse_expr()});
+                |p| p.parse_expr());
             hi = self.span.hi;
             ex = expr_vec(es, mutbl);
         } else if self.token == token::POUND
@@ -968,10 +968,10 @@ class parser {
             let es =
                 if self.token == token::LPAREN {
                     self.parse_unspanned_seq(token::LPAREN, token::RPAREN,
-                                             sep, {|p| p.parse_expr()})
+                                             sep, |p| p.parse_expr())
                 } else {
                     self.parse_unspanned_seq(token::LBRACKET, token::RBRACKET,
-                                             sep, {|p| p.parse_expr()})
+                                             sep, |p| p.parse_expr())
                 };
             let hi = self.span.hi;
             e = some(self.mk_expr(lo, hi, expr_vec(es, m_imm)));
@@ -1019,7 +1019,7 @@ class parser {
                     let tys = if self.eat(token::MOD_SEP) {
                         self.expect(token::LT);
                         self.parse_seq_to_gt(some(token::COMMA),
-                                             {|p| p.parse_ty(false)})
+                                             |p| p.parse_ty(false))
                     } else { ~[] };
                     e = self.mk_pexpr(lo, hi, expr_field(self.to_expr(e),
                                                          self.get_str(i),
@@ -1036,7 +1036,7 @@ class parser {
                 let es = self.parse_unspanned_seq(
                     token::LPAREN, token::RPAREN,
                     seq_sep_trailing_disallowed(token::COMMA),
-                    {|p| p.parse_expr()});
+                    |p| p.parse_expr());
                 hi = self.span.hi;
 
                 let nd = expr_call(self.to_expr(e), es, false);
@@ -1095,7 +1095,7 @@ class parser {
                 vec::append(
                     self.parse_seq_to_before_end(
                         ket, seq_sep_none(),
-                        {|p| p.parse_token_tree()}),
+                        |p| p.parse_token_tree()),
                     ~[parse_tt_flat(self, true)])))
           }
           _ { parse_tt_flat(self, false) }
@@ -1106,7 +1106,7 @@ class parser {
     fn parse_tt_mac_demo() -> @expr {
         let ms = self.parse_seq(token::LBRACE, token::RBRACE,
                                 common::seq_sep_none(),
-                                {|p| p.parse_matcher(@mut 0u)}).node;
+                                |p| p.parse_matcher(@mut 0u)).node;
         let tt = self.parse_token_tree();
         alt tt {
           tt_delim(tts) {
@@ -1131,7 +1131,7 @@ class parser {
             self.bump();
             let ms = (self.parse_seq(token::LPAREN, token::RPAREN,
                                      common::seq_sep_none(),
-                                     {|p| p.parse_matcher(name_idx)}).node);
+                                     |p| p.parse_matcher(name_idx)).node);
             if ms.len() == 0u {
                 self.fatal("repetition body must be nonempty");
             }
@@ -1350,7 +1350,7 @@ class parser {
         // the future, just have to change parse_arg to parse_fn_block_arg.
         let (decl, capture_clause) =
             self.parse_fn_decl(impure_fn,
-                               {|p| p.parse_arg_or_capture_item()});
+                               |p| p.parse_arg_or_capture_item());
 
         let body = self.parse_block();
         ret self.mk_expr(lo, body.span.hi,
@@ -1367,7 +1367,7 @@ class parser {
 
     // `|args| { ... }` like in `do` expressions
     fn parse_lambda_block_expr() -> @expr {
-        self.parse_lambda_expr_({||
+        self.parse_lambda_expr_(|| {
             let blk = self.parse_block();
             self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk))
         })
@@ -1375,7 +1375,7 @@ class parser {
 
     // `|args| expr`
     fn parse_lambda_expr() -> @expr {
-        self.parse_lambda_expr_({|| self.parse_expr()})
+        self.parse_lambda_expr_(|| self.parse_expr())
     }
 
     fn parse_lambda_expr_(parse_body: fn&() -> @expr) -> @expr {
@@ -1645,7 +1645,7 @@ class parser {
                         args = self.parse_unspanned_seq(
                             token::LPAREN, token::RPAREN,
                             seq_sep_trailing_disallowed(token::COMMA),
-                            {|p| p.parse_pat()});
+                            |p| p.parse_pat());
                         hi = self.span.hi;
                       }
                     }
@@ -1891,7 +1891,7 @@ class parser {
 
     fn parse_ty_params() -> ~[ty_param] {
         if self.eat(token::LT) {
-            self.parse_seq_to_gt(some(token::COMMA), {|p| p.parse_ty_param()})
+            self.parse_seq_to_gt(some(token::COMMA), |p| p.parse_ty_param())
         } else { ~[] }
     }
 
@@ -1913,7 +1913,7 @@ class parser {
         let mut constrs = ~[];
         if self.token == token::COLON {
             self.bump();
-            constrs = self.parse_constrs({|p| p.parse_ty_constr(inputs) });
+            constrs = self.parse_constrs(|p| p.parse_ty_constr(inputs));
         }
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ret ({inputs: inputs,
@@ -1931,7 +1931,7 @@ class parser {
                 self.parse_unspanned_seq(
                     token::BINOP(token::OR), token::BINOP(token::OR),
                     seq_sep_trailing_disallowed(token::COMMA),
-                    {|p| p.parse_fn_block_arg()})
+                    |p| p.parse_fn_block_arg())
             }
         };
         let output = if self.eat(token::RARROW) {
@@ -1966,7 +1966,7 @@ class parser {
 
     fn parse_item_fn(purity: purity) -> item_info {
         let t = self.parse_fn_header();
-        let (decl, _) = self.parse_fn_decl(purity, {|p| p.parse_arg()});
+        let (decl, _) = self.parse_fn_decl(purity, |p| p.parse_arg());
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         (t.ident, item_fn(decl, t.tps, body), some(inner_attrs))
     }
@@ -1991,7 +1991,7 @@ class parser {
         let lo = self.span.lo, pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
-        let (decl, _) = self.parse_fn_decl(pur, {|p| p.parse_arg()});
+        let (decl, _) = self.parse_fn_decl(pur, |p| p.parse_arg());
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let attrs = vec::append(attrs, inner_attrs);
         @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
@@ -2066,7 +2066,7 @@ class parser {
 
         @{span: s, global: false, idents: ~[i],
           rp: a_r,
-          types: vec::map(typarams, {|tp|
+          types: vec::map(typarams, |tp| {
               @{id: self.get_id(),
                 node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
                 span: s}})
@@ -2081,7 +2081,7 @@ class parser {
     fn parse_iface_ref_list() -> ~[@iface_ref] {
         self.parse_seq_to_before_end(
             token::LBRACE, seq_sep_trailing_disallowed(token::COMMA),
-            {|p| p.parse_iface_ref()})
+            |p| p.parse_iface_ref())
     }
 
     fn parse_item_class() -> item_info {
@@ -2108,7 +2108,7 @@ class parser {
               members(mms) { ms = vec::append(ms, mms); }
             }
         }
-        let actual_dtor = do option::map(the_dtor) {|dtor|
+        let actual_dtor = do option::map(the_dtor) |dtor| {
             let (d_body, d_s) = dtor;
             {node: {id: self.get_id(),
                     self_id: self.get_id(),
@@ -2151,7 +2151,7 @@ class parser {
     fn parse_ctor(result_ty: ast::ty_) -> class_contents {
         // FIXME (#2660): Can ctors/dtors have attrs?
         let lo = self.last_span.lo;
-        let (decl_, _) = self.parse_fn_decl(impure_fn, {|p| p.parse_arg()});
+        let (decl_, _) = self.parse_fn_decl(impure_fn, |p| p.parse_arg());
         let decl = {output: @{id: self.get_id(),
                               node: result_ty, span: decl_.output.span}
                     with decl_};
@@ -2253,7 +2253,7 @@ class parser {
                              purity: purity) -> @foreign_item {
         let lo = self.last_span.lo;
         let t = self.parse_fn_header();
-        let (decl, _) = self.parse_fn_decl(purity, {|p| p.parse_arg()});
+        let (decl, _) = self.parse_fn_decl(purity, |p| p.parse_arg());
         let mut hi = self.span.hi;
         self.expect(token::SEMI);
         ret @{ident: t.ident,
@@ -2368,8 +2368,8 @@ class parser {
                 let arg_tys = self.parse_unspanned_seq(
                     token::LPAREN, token::RPAREN,
                     seq_sep_trailing_disallowed(token::COMMA),
-                    {|p| p.parse_ty(false)});
-                for arg_tys.each {|ty|
+                    |p| p.parse_ty(false));
+                for arg_tys.each |ty| {
                     vec::push(args, {ty: ty, id: self.get_id()});
                 }
             } else if self.eat(token::EQ) {
@@ -2515,7 +2515,7 @@ class parser {
                     let idents = self.parse_unspanned_seq(
                         token::LBRACE, token::RBRACE,
                         seq_sep_trailing_allowed(token::COMMA),
-                        {|p| p.parse_path_list_ident()});
+                        |p| p.parse_path_list_ident());
                     let path = @{span: mk_sp(lo, self.span.hi),
                                  global: false, idents: path,
                                  rp: none, types: ~[]};
