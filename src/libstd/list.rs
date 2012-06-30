@@ -10,7 +10,7 @@ enum list<T> {
 }
 
 #[doc = "Create a list from a vector"]
-fn from_vec<T: copy>(v: ~[T]) -> @list<T> {
+fn from_vec<T: copy>(v: &[T]) -> @list<T> {
     vec::foldr(v, @nil::<T>, |h, t| @cons(h, t))
 }
 
