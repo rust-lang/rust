@@ -6,8 +6,8 @@ fn main() {
 
     alt x {
       {f: v} => {
-        impure(v); //! ERROR illegal borrow unless pure: unique value in aliasable, mutable location
-        //!^ NOTE impure due to access to impure function
+        impure(v); //~ ERROR illegal borrow unless pure: unique value in aliasable, mutable location
+        //~^ NOTE impure due to access to impure function
       }
     }
 }

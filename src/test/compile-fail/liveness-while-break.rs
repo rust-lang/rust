@@ -4,7 +4,7 @@ fn test(cond: bool) {
         v = 3;
         break;
     }
-    #debug["%d", v]; //! ERROR use of possibly uninitialized variable: `v`
+    #debug["%d", v]; //~ ERROR use of possibly uninitialized variable: `v`
 }
 
 fn main() {

@@ -23,7 +23,7 @@ fn set_box_impl<T>(b: box_impl<@const T>, v: @const T) {
 fn main() {
     let b = box_impl::<@int>({mut f: @3});
     set_box_iface(b as box_iface::<@int>, @mut 5);
-    //!^ ERROR values differ in mutability
+    //~^ ERROR values differ in mutability
     set_box_impl(b, @mut 5);
-    //!^ ERROR values differ in mutability
+    //~^ ERROR values differ in mutability
 }

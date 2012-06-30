@@ -18,11 +18,11 @@ fn b() {
 
     // Here I create an outstanding loan and check that we get conflicts:
 
-    &mut p; //! NOTE prior loan as mutable granted here
-    //!^ NOTE prior loan as mutable granted here
+    &mut p; //~ NOTE prior loan as mutable granted here
+    //~^ NOTE prior loan as mutable granted here
 
-    p + 3; //! ERROR loan of mutable local variable as immutable conflicts with prior loan
-    p * 3; //! ERROR loan of mutable local variable as immutable conflicts with prior loan
+    p + 3; //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+    p * 3; //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
 }
 
 fn c() {
@@ -35,8 +35,8 @@ fn c() {
 
 
     // ...but not impure fns
-    *q * 3; //! ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
-    //!^ NOTE impure due to access to impure function
+    *q * 3; //~ ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
+    //~^ NOTE impure due to access to impure function
 }
 
 fn main() {

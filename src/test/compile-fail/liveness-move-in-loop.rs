@@ -7,8 +7,8 @@ fn main() {
         loop {
             loop {
                 loop {
-                    x <- y; //! ERROR use of moved variable
-                    //!^ NOTE move of variable occurred here
+                    x <- y; //~ ERROR use of moved variable
+                    //~^ NOTE move of variable occurred here
 
                     copy x;
                 }

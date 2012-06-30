@@ -40,7 +40,7 @@ fn main() {
     let abc = #ast{23};
     check_pp(abc,  pprust::print_expr, "23");
 
-    let expr3 = #ast{2 - $(abcd) + 7}; //! ERROR unresolved name: abcd
+    let expr3 = #ast{2 - $(abcd) + 7}; //~ ERROR unresolved name: abcd
     check_pp(expr3,  pprust::print_expr, "2 - 23 + 7");
 }
 

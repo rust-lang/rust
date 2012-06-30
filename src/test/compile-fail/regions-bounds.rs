@@ -7,20 +7,20 @@ iface an_iface/& { }
 class a_class/& { let x:int; new(x:int) { self.x = x; } }
 
 fn a_fn1(e: an_enum/&a) -> an_enum/&b {
-    ret e; //! ERROR mismatched types: expected `an_enum/&b` but found `an_enum/&a`
+    ret e; //~ ERROR mismatched types: expected `an_enum/&b` but found `an_enum/&a`
 }
 
 fn a_fn2(e: an_iface/&a) -> an_iface/&b {
-    ret e; //! ERROR mismatched types: expected `an_iface/&b` but found `an_iface/&a`
+    ret e; //~ ERROR mismatched types: expected `an_iface/&b` but found `an_iface/&a`
 }
 
 fn a_fn3(e: a_class/&a) -> a_class/&b {
-    ret e; //! ERROR mismatched types: expected `a_class/&b` but found `a_class/&a`
+    ret e; //~ ERROR mismatched types: expected `a_class/&b` but found `a_class/&a`
 }
 
 fn a_fn4(e: int/&a) -> int/&b {
-    //!^ ERROR Region parameters are not allowed on this type.
-    //!^^ ERROR Region parameters are not allowed on this type.
+    //~^ ERROR Region parameters are not allowed on this type.
+    //~^^ ERROR Region parameters are not allowed on this type.
     ret e;
 }
 

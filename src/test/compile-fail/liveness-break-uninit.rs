@@ -3,10 +3,10 @@ fn foo() -> int {
 
     loop {
         break;
-        x = 0;  //! WARNING unreachable statement
+        x = 0;  //~ WARNING unreachable statement
     }
 
-    log(debug, x); //! ERROR use of possibly uninitialized variable: `x`
+    log(debug, x); //~ ERROR use of possibly uninitialized variable: `x`
 
     ret 17;
 }

@@ -20,12 +20,12 @@ fn compute(x: &ast) -> uint {
 fn map_nums(x: &ast, f: fn(uint) -> uint) -> &ast {
     alt *x {
       num(x) {
-        ret &num(f(x)); //! ERROR mismatched types: expected `&ast/&` but found
+        ret &num(f(x)); //~ ERROR mismatched types: expected `&ast/&` but found
       }
       add(x, y) {
         let m_x = map_nums(x, f);
         let m_y = map_nums(y, f);
-        ret &add(m_x, m_y);  //! ERROR mismatched types: expected `&ast/&` but found
+        ret &add(m_x, m_y);  //~ ERROR mismatched types: expected `&ast/&` but found
       }
     }
 }

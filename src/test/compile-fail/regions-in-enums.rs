@@ -1,13 +1,13 @@
 enum no0 {
-    x0(&uint) //! ERROR to use region types here, the containing type must be declared with a region bound
+    x0(&uint) //~ ERROR to use region types here, the containing type must be declared with a region bound
 }
 
 enum no1 {
-    x1(&self.uint) //! ERROR to use region types here, the containing type must be declared with a region bound
+    x1(&self.uint) //~ ERROR to use region types here, the containing type must be declared with a region bound
 }
 
 enum no2 {
-    x2(&foo.uint) //! ERROR named regions other than `self` are not allowed as part of a type declaration
+    x2(&foo.uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
 }
 
 enum yes0/& {
@@ -19,7 +19,7 @@ enum yes1/& {
 }
 
 enum yes2/& {
-    x5(&foo.uint) //! ERROR named regions other than `self` are not allowed as part of a type declaration
+    x5(&foo.uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
 }
 
 fn main() {}

@@ -18,5 +18,5 @@ fn main() {
     let g: @const int = r();
 
     // Bad.
-    let h: @int = r(); //! ERROR (values differ in mutability)
+    let h: @int = r(); //~ ERROR (values differ in mutability)
 }

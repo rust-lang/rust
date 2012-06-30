@@ -8,7 +8,7 @@ fn main() {
     fn foo(c: color) {
         alt c {
           rgb(_, _) { }
-          //!^ ERROR this pattern has 2 fields, but the corresponding variant has 3 fields
+          //~^ ERROR this pattern has 2 fields, but the corresponding variant has 3 fields
           cmyk(_, _, _, _) { }
           no_color { }
         }

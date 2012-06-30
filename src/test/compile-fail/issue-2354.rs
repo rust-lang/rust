@@ -4,7 +4,7 @@
   near the corresponding open brace. But currently it's reported at the end.
   xfailed for now (see Issue #2354)
  */
-fn foo() { //! ERROR this open brace is not closed
+fn foo() { //~ ERROR this open brace is not closed
   alt some(x) {
       some(y) { fail; }
       none    { fail; }

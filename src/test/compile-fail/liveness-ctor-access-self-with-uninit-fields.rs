@@ -3,7 +3,7 @@ class cat {
   fn meow() {}
   new() {
      self.meow();
-     //!^ ERROR use of possibly uninitialized field: `self.how_hungry`
+     //~^ ERROR use of possibly uninitialized field: `self.how_hungry`
   }
 }
 

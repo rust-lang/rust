@@ -6,6 +6,6 @@ fn force(f: fn()) { f(); }
 fn main() {
     let x: int = 4;
     force(fn&() {
-        even(x); //! ERROR unsatisfied precondition
+        even(x); //~ ERROR unsatisfied precondition
     });
 }

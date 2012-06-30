@@ -4,7 +4,7 @@ import core::task::task;
 
 fn bar(x: uint) -> task {
     ret x;
-    //!^ ERROR mismatched types: expected `core::task::task`
+    //~^ ERROR mismatched types: expected `core::task::task`
 }
 
 fn main() {
