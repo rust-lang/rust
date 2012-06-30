@@ -619,7 +619,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                             C_shape(ccx, shape), // shape
                             shape_tables, // shape_tables
                             C_int(ccx, 0), // unused
-                            C_int(ccx, 0)]/~); // unused
+                             C_int(ccx, 0)]); // unused
 
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
@@ -703,8 +703,8 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_opaque_box {
         let v = PointerCast(bcx, v, type_of(ccx, t));
-        let td = Load(bcx, GEPi(bcx, v, [0u, abi::box_field_tydesc]/~));
-        let valptr = GEPi(bcx, v, [0u, abi::box_field_body]/~);
+        let td = Load(bcx, GEPi(bcx, v, ~[0u, abi::box_field_tydesc]));
+        let valptr = GEPi(bcx, v, ~[0u, abi::box_field_body]);
         // Generate code that, dynamically, indexes into the
         // tydesc and calls the drop glue that got set dynamically
         call_tydesc_glue_full(bcx, valptr, td, abi::tydesc_field_drop_glue,

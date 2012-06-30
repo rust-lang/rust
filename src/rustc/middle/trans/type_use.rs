@@ -118,10 +118,10 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
         if ty::type_has_params(ty) {
             alt ty::get(ty).struct {
                 /*
-                  This previously included ty_box -- that was wrong
-                  because if we cast an @T to an iface (for example) and return
-                  it, we depend on the drop glue for T (we have to write the
-                  right tydesc into the result)
+                 This previously included ty_box -- that was wrong
+                 because if we cast an @T to an iface (for example) and return
+                 it, we depend on the drop glue for T (we have to write the
+                 right tydesc into the result)
                  */
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
                | ty::ty_iface(_, _) { false }
