@@ -776,8 +776,6 @@ class parser {
                 hi = self.span.hi;
                 self.expect(token::RBRACE);
                 ex = expr_rec(fields, base);
-            } else if token::is_bar(self.token) {
-                ret pexpr(self.parse_fn_block_expr_old());
             } else {
                 let blk = self.parse_block_tail(lo, default_blk);
                 ret self.mk_pexpr(blk.span.lo, blk.span.hi, expr_block(blk));
@@ -1357,14 +1355,6 @@ class parser {
                          expr_fn(proto, decl, body, capture_clause));
     }
 
-    fn parse_fn_block_expr_old() -> @expr {
-        let lo = self.last_span.lo;
-        let (decl, captures) = self.parse_fn_block_decl();
-        let body = self.parse_block_tail(lo, default_blk);
-        ret self.mk_expr(lo, body.span.hi,
-                         expr_fn_block(decl, body, captures));
-    }
-
     // `|args| { ... }` like in `do` expressions
     fn parse_lambda_block_expr() -> @expr {
         self.parse_lambda_expr_(|| {
@@ -1379,22 +1369,16 @@ class parser {
     }
 
     fn parse_lambda_expr_(parse_body: fn&() -> @expr) -> @expr {
-        if self.token == token::LBRACE {
-            // Old style lambdas `{|args| ... }`
-            self.expect(token::LBRACE);
-            ret self.parse_fn_block_expr_old();
-        } else {
-            let lo = self.last_span.lo;
-            // New style lambdas `|args| expr`
-            let (decl, captures) = self.parse_fn_block_decl();
-            let body = parse_body();
-            let fakeblock = {view_items: ~[], stmts: ~[], expr: some(body),
-                             id: self.get_id(), rules: default_blk};
-            let fakeblock = spanned(body.span.lo, body.span.hi,
-                                    fakeblock);
-            ret self.mk_expr(lo, body.span.hi,
-                             expr_fn_block(decl, fakeblock, captures));
-        }
+        let lo = self.last_span.lo;
+        // New style lambdas `|args| expr`
+        let (decl, captures) = self.parse_fn_block_decl();
+        let body = parse_body();
+        let fakeblock = {view_items: ~[], stmts: ~[], expr: some(body),
+                         id: self.get_id(), rules: default_blk};
+        let fakeblock = spanned(body.span.lo, body.span.hi,
+                                fakeblock);
+        ret self.mk_expr(lo, body.span.hi,
+                         expr_fn_block(decl, fakeblock, captures));
     }
 
     fn parse_else_expr() -> @expr {
