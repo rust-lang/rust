@@ -198,6 +198,8 @@ pure fn can_begin_expr(t: token) -> bool {
       BINOP(MINUS) { true }
       BINOP(STAR) { true }
       BINOP(AND) { true }
+      BINOP(OR) { true } // in lambda syntax
+      OROR { true } // in lambda syntax
       MOD_SEP { true }
       _ { false }
     }
