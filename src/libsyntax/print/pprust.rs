@@ -976,13 +976,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, body);
       }
       ast::expr_fn_block(decl, body, cap_clause) {
-        // containing cbox, will be closed by print-block at }
-        cbox(s, indent_unit);
-        // head-box, will be closed by print-block at start
-        ibox(s, 0u);
-        word(s.s, "{");
         print_fn_block_args(s, decl, *cap_clause);
-        print_possibly_embedded_block(s, body, block_block_fn, indent_unit);
+        // The parser always adds an extra implicit block around lambdas
+        assert body.node.stmts.is_empty();
+        assert body.node.expr.is_some();
+        space(s.s);
+        print_expr(s, body.node.expr.get());
       }
       ast::expr_loop_body(body) {
         print_expr(s, body);
