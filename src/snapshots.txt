@@ -1,3 +1,6 @@
+S 2012-06-30 4d692a2
+  freebsd-x86_64 3b605f4ef772dac2940c43f032000907d219760d
+
 S 2012-06-28 7aa43b2
   macos-i386 9c1373ffdfb409d7ade9ed560bcbdf0c26eede51
   macos-x86_64 1ce9c1cd10d0eb06daca0c796bab8efa2af8c59e
