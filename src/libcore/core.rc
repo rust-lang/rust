@@ -187,8 +187,6 @@ mod newcomm;
 mod comm;
 mod task;
 mod future;
-// TODO: remove the conditionals once a new snapshot happens
-#[cfg(stage1)]
 mod pipes;
 
 // Runtime and language-primitive support

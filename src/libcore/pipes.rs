@@ -197,7 +197,7 @@ fn spawn_service<T: send>(
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
     let server = ~mut some(server);
-    task::spawn() {|move service|
+    do task::spawn |move service| {
         let mut server_ = none;
         server_ <-> *server;
         service(option::unwrap(server_))

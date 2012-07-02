@@ -48,9 +48,7 @@ fn main() {
          chan.recv()(chan)]
     ];
 
-    let c = pipes::spawn_service(oneshot::init) {|p|
-        #recv(p);
-    };
+    let c = pipes::spawn_service(oneshot::init, |p| { #recv(p); });
 
     let iotask = uv::global_loop::get();
     sleep(iotask, 5000);

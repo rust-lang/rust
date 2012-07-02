@@ -210,7 +210,7 @@ mod pingpong {
 
     impl abominable for client::ping {
         fn send() -> fn@(-client::ping, ping) -> client::pong {
-            {|pipe, data|
+            |pipe, data| {
                 let p = pipes::packet();
                 pipes::send(pipe, pingpong::ping_message(p));
                 pipes::recv_packet(p)
@@ -220,7 +220,7 @@ mod pingpong {
 
     impl abominable for client::pong {
         fn recv() -> fn@(-client::pong) -> (client::ping, pong) {
-            {|pipe|
+            |pipe| {
                 let packet = pipes::recv(pipe);
                 if packet == none {
                     fail "sender closed the connection"
@@ -238,7 +238,7 @@ mod pingpong {
 
     impl abominable for server::ping {
         fn recv() -> fn@(-server::ping) -> (server::pong, ping) {
-            {|pipe|
+            |pipe| {
                 let packet = pipes::recv(pipe);
                 if packet == none {
                     fail "sender closed the connection"
@@ -251,7 +251,7 @@ mod pingpong {
 
     impl abominable for server::pong {
         fn send() -> fn@(-server::pong, pong) -> server::ping {
-            {|pipe, data|
+            |pipe, data| {
                 let p = pipes::packet();
                 pipes::send(pipe, pingpong::pong_message(p));
                 pipes::recv_packet(p)
@@ -294,12 +294,12 @@ fn main() {
     let client_ = ~mut some(client_);
     let server_ = ~mut some(server_);
 
-    task::spawn {|move client_|
+    do task::spawn |move client_| {
         let mut client__ = none;
         *client_ <-> client__;
         test::client(option::unwrap(client__));
     };
-    task::spawn {|move server_|
+    do task::spawn |move server_| {
         let mut server_ˊ = none;
         *server_ <-> server_ˊ;
         test::server(option::unwrap(server_ˊ));

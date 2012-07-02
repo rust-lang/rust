@@ -60,7 +60,7 @@ fn thread_ring(i: uint,
     let mut num_chan <- some(num_chan);
     let mut num_port <- some(num_port);
     // Send/Receive lots of messages.
-    for uint::range(0u, count) {|j|
+    for uint::range(0u, count) |j| {
         //#error("task %?, iter %?", i, j);
         let mut num_chan2 = none;
         let mut num_port2 = none;
@@ -97,13 +97,13 @@ fn main(args: [str]/~) {
     // create the ring
     let mut futures = []/~;
 
-    for uint::range(1u, num_tasks) {|i|
+    for uint::range(1u, num_tasks) |i| {
         //#error("spawning %?", i);
         let (new_chan, num_port) = ring::init();
         let num_chan2 = ~mut none;
         *num_chan2 <-> num_chan;
         let num_port = ~mut some(num_port);
-        futures += [future::spawn {|move num_chan2, move num_port|
+        futures += [future::spawn(|move num_chan2, move num_port| {
             let mut num_chan = none;
             num_chan <-> *num_chan2;
             let mut num_port1 = none;
@@ -111,7 +111,7 @@ fn main(args: [str]/~) {
             thread_ring(i, msg_per_task,
                         option::unwrap(num_chan),
                         option::unwrap(num_port1))
-        }]/~;
+        })]/~;
         num_chan = some(new_chan);
     };
 
@@ -119,7 +119,7 @@ fn main(args: [str]/~) {
     thread_ring(0u, msg_per_task, option::unwrap(num_chan), num_port);
 
     // synchronize
-    for futures.each {|f| f.get() };
+    for futures.each |f| { f.get() };
 
     let stop = time::precise_time_s();
 
