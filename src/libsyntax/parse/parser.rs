@@ -1357,21 +1357,47 @@ class parser {
 
     // `|args| { ... }` like in `do` expressions
     fn parse_lambda_block_expr() -> @expr {
-        self.parse_lambda_expr_(|| {
-            let blk = self.parse_block();
-            self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk))
-        })
+        self.parse_lambda_expr_(
+            || {
+                alt self.token {
+                  token::BINOP(token::OR) | token::OROR {
+                    self.parse_fn_block_decl()
+                  }
+                  _ {
+                    // No argument list - `do foo {`
+                    ({
+                        {
+                            inputs: ~[],
+                            output: @{
+                                id: self.get_id(),
+                                node: ty_infer,
+                                span: self.span
+                            },
+                            purity: impure_fn,
+                            cf: return_val,
+                            constraints: ~[]
+                        }
+                    },
+                    @~[])
+                  }
+                }
+            },
+            || {
+                let blk = self.parse_block();
+                self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk))
+            })
     }
 
     // `|args| expr`
     fn parse_lambda_expr() -> @expr {
-        self.parse_lambda_expr_(|| self.parse_expr())
+        self.parse_lambda_expr_(|| self.parse_fn_block_decl(),
+                                || self.parse_expr())
     }
 
-    fn parse_lambda_expr_(parse_body: fn&() -> @expr) -> @expr {
+    fn parse_lambda_expr_(parse_decl: fn&() -> (fn_decl, capture_clause),
+                          parse_body: fn&() -> @expr) -> @expr {
         let lo = self.last_span.lo;
-        // New style lambdas `|args| expr`
-        let (decl, captures) = self.parse_fn_block_decl();
+        let (decl, captures) = parse_decl();
         let body = parse_body();
         let fakeblock = {view_items: ~[], stmts: ~[], expr: some(body),
                          id: self.get_id(), rules: default_blk};
