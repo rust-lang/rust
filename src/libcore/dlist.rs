@@ -590,7 +590,7 @@ mod tests {
         l.assert_consistent(); assert l.pop().get() == 3;
         l.assert_consistent(); assert l.is_empty();
     }
-    #[test] #[should_fail]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_asymmetric_link() {
         let l = create::<int>();
         let one = l.push_n(1);
@@ -598,7 +598,7 @@ mod tests {
         two.prev = none;
         l.assert_consistent();
     }
-    #[test] #[should_fail]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_cyclic_list() {
         let l = create::<int>();
         let one = l.push_n(1);
@@ -608,32 +608,32 @@ mod tests {
         one.prev = some(three);
         l.assert_consistent();
     }
-    #[test] #[should_fail]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_headless() {
         create::<int>().head();
     }
-    #[test] #[should_fail]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_already_present_before() {
         let l = create::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_before(two, one);
     }
-    #[test] #[should_fail]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_already_present_after() {
         let l = create::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_after(one, two);
     }
-    #[test] #[should_fail]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_before_orphan() {
         let l = create::<int>();
         let one = create_node(1);
         let two = create_node(2);
         l.insert_n_before(one, two);
     }
-    #[test] #[should_fail]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_after_orphan() {
         let l = create::<int>();
         let one = create_node(1);
