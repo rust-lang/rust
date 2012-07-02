@@ -4,9 +4,9 @@ fn impure(_i: int) {}
 fn foo(v: &const option<int>) {
     alt *v {
       some(i) {
-        //!^ ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
+        //~^ ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
         unchecked {
-            impure(i); //! NOTE impure due to access to impure function
+            impure(i); //~ NOTE impure due to access to impure function
         }
       }
       none {

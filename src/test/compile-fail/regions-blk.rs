@@ -7,7 +7,7 @@ fn foo(cond: bool) {
         z = &x;
     } else {
         let w: &blk.int = &x;
-        z = w; //! ERROR mismatched types
+        z = w; //~ ERROR mismatched types
     }
 }
 

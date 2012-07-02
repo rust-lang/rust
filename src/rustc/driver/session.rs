@@ -233,7 +233,8 @@ mod test {
                 ast::meta_name_value(
                     @"crate_type",
                     ast_util::respan(ast_util::dummy_sp(),
-                                     ast::lit_str(@t))))
+                                     ast::lit_str(@t)))),
+            is_sugared_doc: false
         })
     }
 

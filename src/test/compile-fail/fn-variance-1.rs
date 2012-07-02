@@ -7,11 +7,11 @@ fn apply<T>(t: T, f: fn(T)) {
 }
 
 fn main() {
-    apply(@3, takes_mut); //! ERROR (values differ in mutability)
+    apply(@3, takes_mut); //~ ERROR (values differ in mutability)
     apply(@3, takes_const);
     apply(@3, takes_imm);
 
     apply(@mut 3, takes_mut);
     apply(@mut 3, takes_const);
-    apply(@mut 3, takes_imm); //! ERROR (values differ in mutability)
+    apply(@mut 3, takes_imm); //~ ERROR (values differ in mutability)
 }

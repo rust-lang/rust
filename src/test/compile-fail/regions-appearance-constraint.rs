@@ -17,7 +17,7 @@ fn testfn(cond: bool) {
     let mut y = @4;
 
     let mut a = &*x;
-    //!^ ERROR reference is not valid outside of its lifetime
+    //~^ ERROR reference is not valid outside of its lifetime
 
     let mut exp = 3;
     if cond {

@@ -1,3 +1,3 @@
-type foo/& = {f: int}; //! ERROR lifetime `self` unused
+type foo/& = {f: int}; //~ ERROR lifetime `self` unused
 
 fn main() {}

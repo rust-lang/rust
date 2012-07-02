@@ -8,5 +8,5 @@ fn main() {
         v[0] = [3]
     }
 
-    f(v); //! ERROR (values differ in mutability)
+    f(v); //~ ERROR (values differ in mutability)
 }

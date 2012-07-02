@@ -6,6 +6,6 @@ fn my_fail() -> ! { fail; }
 fn main() {
     alt true { false { my_fail(); } true { } }
 
-    log(debug, x); //! ERROR unresolved name: x
+    log(debug, x); //~ ERROR unresolved name: x
     let x: int;
 }

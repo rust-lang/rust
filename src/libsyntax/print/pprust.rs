@@ -647,7 +647,9 @@ fn print_inner_attributes(s: ps, attrs: ~[ast::attribute]) {
         alt attr.node.style {
           ast::attr_inner {
             print_attribute(s, attr);
-            word(s.s, ";");
+            if !attr.node.is_sugared_doc {
+                word(s.s, ";");
+            }
             count += 1;
           }
           _ {/* fallthrough */ }
@@ -659,9 +661,15 @@ fn print_inner_attributes(s: ps, attrs: ~[ast::attribute]) {
 fn print_attribute(s: ps, attr: ast::attribute) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, attr.span.lo);
-    word(s.s, "#[");
-    print_meta_item(s, @attr.node.value);
-    word(s.s, "]");
+    if attr.node.is_sugared_doc {
+        let meta = attr::attr_meta(attr);
+        let comment = attr::get_meta_item_value_str(meta).get();
+        word(s.s, *comment);
+    } else {
+        word(s.s, "#[");
+        print_meta_item(s, @attr.node.value);
+        word(s.s, "]");
+    }
 }
 
 

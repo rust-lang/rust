@@ -6,10 +6,10 @@ fn foo() -> int {
 
     loop {
         break;
-        check is_even(x); //! WARNING unreachable statement
+        check is_even(x); //~ WARNING unreachable statement
     }
 
-    even(x); //! ERROR unsatisfied precondition
+    even(x); //~ ERROR unsatisfied precondition
     ret 17;
 }
 

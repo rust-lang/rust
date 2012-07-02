@@ -1,3 +1,3 @@
 fn main() {
-    let _foo = ~[]; //! ERROR unconstrained type
+    let _foo = ~[]; //~ ERROR unconstrained type
 }

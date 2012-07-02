@@ -11,5 +11,5 @@ class cat {
 
 fn main() {
   let nyan : cat = cat(52u, 99);
-  nyan.speak = fn@() { #debug["meow"]; }; //! ERROR assigning to method
+  nyan.speak = fn@() { #debug["meow"]; }; //~ ERROR assigning to method
 }

@@ -15,12 +15,12 @@ impl foo for point {
 pure fn a(p: point) -> int { p + 3 }
 
 pure fn b(p: point) -> int { p * 3 }
-//!^ ERROR access to impure function prohibited in pure context
+//~^ ERROR access to impure function prohibited in pure context
 
 pure fn c(p: point) -> int { p[3] }
-//!^ ERROR access to impure function prohibited in pure context
+//~^ ERROR access to impure function prohibited in pure context
 
 pure fn d(p: point) -> int { -p }
-//!^ ERROR access to impure function prohibited in pure context
+//~^ ERROR access to impure function prohibited in pure context
 
 fn main() {}

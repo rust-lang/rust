@@ -12,7 +12,7 @@ class cat {
   new(in_x : uint, in_y : int) {
     let foo;
     self.meows = in_x + (in_y as uint);
-    self.how_hungry = foo; //! ERROR use of possibly uninitialized variable: `foo`
+    self.how_hungry = foo; //~ ERROR use of possibly uninitialized variable: `foo`
   }
 }
 

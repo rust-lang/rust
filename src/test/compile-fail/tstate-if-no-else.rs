@@ -6,5 +6,5 @@ fn foo(x: int) { log(debug, x); }
 fn main() {
 	let x: int = 10;
         if 1 > 2 { check is_even(x); }
-        even(x); //! ERROR unsatisfied precondition
+        even(x); //~ ERROR unsatisfied precondition
 }

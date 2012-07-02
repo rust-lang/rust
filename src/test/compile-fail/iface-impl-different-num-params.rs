@@ -3,7 +3,7 @@ iface foo {
 }
 impl of foo for int {
     fn bar() -> int {
-        //!^ ERROR method `bar` has 0 parameters but the iface has 1
+        //~^ ERROR method `bar` has 0 parameters but the iface has 1
         self
     }
 }
