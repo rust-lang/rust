@@ -59,7 +59,7 @@
     (dolist (word '("assert"
                     "break"
                     "check" "claim" "cont" "copy"
-                    "drop"
+                    "do" "drop"
                     "else" "export" "extern"
                     "fail" "for"
                     "if" "import"
