@@ -5,8 +5,8 @@ fn want_slice(v: &[int]) -> int {
 }
 
 fn has_mut_vec(+v: @~[mut int]) -> int {
-    want_slice(*v) //! ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
-        //!^ NOTE impure due to access to impure function
+    want_slice(*v) //~ ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
+        //~^ NOTE impure due to access to impure function
 }
 
 fn main() {

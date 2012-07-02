@@ -12,6 +12,6 @@ fn main() {
     // shortcoming of the current inference algorithm.  These errors
     // are *not* desirable.
 
-    two_args(x, y); //! ERROR (values differ in mutability)
-    two_args(a, b); //! ERROR (values differ in mutability)
+    two_args(x, y); //~ ERROR (values differ in mutability)
+    two_args(a, b); //~ ERROR (values differ in mutability)
 }

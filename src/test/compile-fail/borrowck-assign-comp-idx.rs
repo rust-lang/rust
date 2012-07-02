@@ -4,9 +4,9 @@ fn a() {
     let mut p = ~[mut 1];
 
     // Create an immutable pointer into p's contents:
-    let _q: &int = &p[0]; //! NOTE loan of mutable vec content granted here
+    let _q: &int = &p[0]; //~ NOTE loan of mutable vec content granted here
 
-    p[0] = 5; //! ERROR assigning to mutable vec content prohibited due to outstanding loan
+    p[0] = 5; //~ ERROR assigning to mutable vec content prohibited due to outstanding loan
 }
 
 fn borrow(_x: &[int], _f: fn()) {}
@@ -17,8 +17,8 @@ fn b() {
 
     let mut p = ~[mut 1];
 
-    do borrow(p) || { //! NOTE loan of mutable vec content granted here
-        p[0] = 5; //! ERROR assigning to mutable vec content prohibited due to outstanding loan
+    do borrow(p) || { //~ NOTE loan of mutable vec content granted here
+        p[0] = 5; //~ ERROR assigning to mutable vec content prohibited due to outstanding loan
     }
 }
 

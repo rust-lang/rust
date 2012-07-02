@@ -10,7 +10,7 @@ fn main() {
                 check is_even(x);
                 even(x); // OK
                 loop {
-                    even(x); //! ERROR unsatisfied precondition
+                    even(x); //~ ERROR unsatisfied precondition
                     x = 11; 
                 }
             }

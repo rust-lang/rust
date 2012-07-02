@@ -7,7 +7,7 @@ class socket {
 
     fn set_identity()  {
         do closure || {
-        setsockopt_bytes(self.sock) //! ERROR copying a noncopyable value
+        setsockopt_bytes(self.sock) //~ ERROR copying a noncopyable value
       } 
     }
 }

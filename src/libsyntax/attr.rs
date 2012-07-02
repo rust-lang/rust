@@ -4,7 +4,8 @@ import std::map;
 import std::map::hashmap;
 import either::either;
 import diagnostic::span_handler;
-import ast_util::dummy_spanned;
+import ast_util::{spanned, dummy_spanned};
+import parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 // Constructors
 export mk_name_value_item_str;
@@ -12,10 +13,12 @@ export mk_name_value_item;
 export mk_list_item;
 export mk_word_item;
 export mk_attr;
+export mk_sugared_doc_attr;
 
 // Conversion
 export attr_meta;
 export attr_metas;
+export desugar_doc_attr;
 
 // Accessors
 export get_attr_name;
@@ -66,9 +69,19 @@ fn mk_word_item(+name: ast::ident) -> @ast::meta_item {
 }
 
 fn mk_attr(item: @ast::meta_item) -> ast::attribute {
-    ret dummy_spanned({style: ast::attr_inner, value: *item});
+    ret dummy_spanned({style: ast::attr_inner, value: *item,
+                       is_sugared_doc: false});
 }
 
+fn mk_sugared_doc_attr(text: str, lo: uint, hi: uint) -> ast::attribute {
+    let lit = spanned(lo, hi, ast::lit_str(@text));
+    let attr = {
+        style: doc_comment_style(text),
+        value: spanned(lo, hi, ast::meta_name_value(@"doc", lit)),
+        is_sugared_doc: true
+    };
+    ret spanned(lo, hi, attr);
+}
 
 /* Conversion */
 
@@ -81,6 +94,16 @@ fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     ret mitems;
 }
 
+fn desugar_doc_attr(attr: ast::attribute) -> ast::attribute {
+    if attr.node.is_sugared_doc {
+        let comment = get_meta_item_value_str(@attr.node.value).get();
+        let meta = mk_name_value_item_str(@"doc",
+                                     strip_doc_comment_decoration(*comment));
+        ret mk_attr(meta);
+    } else {
+        attr
+    }
+}
 
 /* Accessors */
 

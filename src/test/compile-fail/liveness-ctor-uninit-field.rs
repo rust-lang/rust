@@ -6,7 +6,7 @@ class cat {
   new() {
      self.a = 3;
      self.b = self.a;
-     self.a += self.c; //! ERROR use of possibly uninitialized field: `self.c`
+     self.a += self.c; //~ ERROR use of possibly uninitialized field: `self.c`
   }
 }
 

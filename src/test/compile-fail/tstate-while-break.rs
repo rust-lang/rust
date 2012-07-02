@@ -7,7 +7,7 @@ fn test(cond: bool) {
         check is_even(v);
         break;
     }
-    even(v); //! ERROR unsatisfied precondition
+    even(v); //~ ERROR unsatisfied precondition
 }
 
 fn main() {

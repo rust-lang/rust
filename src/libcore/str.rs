@@ -58,8 +58,8 @@ export
    all, any,
    all_between, any_between,
    map,
-   each,
-   each_char,
+   each, eachi,
+   each_char, each_chari,
    bytes_iter,
    chars_iter,
    split_char_iter,
@@ -73,7 +73,7 @@ export
    find_char, find_char_from, find_char_between,
    rfind_char, rfind_char_from, rfind_char_between,
    find_str, find_str_from, find_str_between,
-   contains,
+   contains, contains_char,
    starts_with,
    ends_with,
 
@@ -672,9 +672,15 @@ pure fn bytes_iter(ss: str/&, it: fn(u8)) {
 #[doc = "Iterate over the bytes in a string"]
 #[inline(always)]
 pure fn each(s: str/&, it: fn(u8) -> bool) {
+    eachi(s, |_i, b| it(b) )
+}
+
+#[doc = "Iterate over the bytes in a string, with indices"]
+#[inline(always)]
+pure fn eachi(s: str/&, it: fn(uint, u8) -> bool) {
     let mut i = 0u, l = len(s);
     while (i < l) {
-        if !it(s[i]) { break; }
+        if !it(i, s[i]) { break; }
         i += 1u;
     }
 }
@@ -682,12 +688,19 @@ pure fn each(s: str/&, it: fn(u8) -> bool) {
 #[doc = "Iterates over the chars in a string"]
 #[inline(always)]
 pure fn each_char(s: str/&, it: fn(char) -> bool) {
-    let mut pos = 0u;
+    each_chari(s, |_i, c| it(c))
+}
+
+#[doc = "Iterates over the chars in a string, with indices"]
+#[inline(always)]
+pure fn each_chari(s: str/&, it: fn(uint, char) -> bool) {
+    let mut pos = 0u, ch_pos = 0u;
     let len = len(s);
     while pos < len {
         let {ch, next} = char_range_at(s, pos);
         pos = next;
-        if !it(ch) { break; }
+        if !it(ch_pos, ch) { break; }
+        ch_pos += 1u;
     }
 }
 
@@ -1144,6 +1157,18 @@ Returns true if one string contains another
 "]
 pure fn contains(haystack: str/&a, needle: str/&b) -> bool {
     option::is_some(find_str(haystack, needle))
+}
+
+#[doc = "
+Returns true if a string contains a char.
+
+# Arguments
+
+* haystack - The string to look in
+* needle - The char to look for
+"]
+pure fn contains_char(haystack: str/&, needle: char) -> bool {
+    option::is_some(find_char(haystack, needle))
 }
 
 #[doc = "
@@ -1879,12 +1904,21 @@ impl extensions/& for str/& {
     #[doc = "Returns true if one string contains another"]
     #[inline]
     fn contains(needle: str/&a) -> bool { contains(self, needle) }
+    #[doc = "Returns true if a string contains a char"]
+    #[inline]
+    fn contains_char(needle: char) -> bool { contains_char(self, needle) }
     #[doc = "Iterate over the bytes in a string"]
     #[inline]
     fn each(it: fn(u8) -> bool) { each(self, it) }
+    #[doc = "Iterate over the bytes in a string, with indices"]
+    #[inline]
+    fn eachi(it: fn(uint, u8) -> bool) { eachi(self, it) }
     #[doc = "Iterate over the chars in a string"]
     #[inline]
     fn each_char(it: fn(char) -> bool) { each_char(self, it) }
+    #[doc = "Iterate over the chars in a string, with indices"]
+    #[inline]
+    fn each_chari(it: fn(uint, char) -> bool) { each_chari(self, it) }
     #[doc = "Returns true if one string ends with another"]
     #[inline]
     fn ends_with(needle: str/&) -> bool { ends_with(self, needle) }
@@ -2642,6 +2676,14 @@ mod tests {
         assert  contains(data, "ะเ");
         assert  contains(data, "中华");
         assert !contains(data, "ไท华");
+    }
+
+    #[test]
+    fn test_contains_char() {
+        assert contains_char("abc", 'b');
+        assert contains_char("a", 'a');
+        assert !contains_char("abc", 'd');
+        assert !contains_char("", 'a');
     }
 
     #[test]

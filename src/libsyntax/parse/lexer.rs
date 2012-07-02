@@ -161,7 +161,11 @@ impl tt_reader_as_reader of reader for tt_reader {
 }
 
 fn string_advance_token(&&r: string_reader) {
-    consume_whitespace_and_comments(r);
+    for consume_whitespace_and_comments(r).each |comment| {
+        r.peek_tok = comment.tok;
+        r.peek_span = comment.sp;
+        ret;
+    }
 
     if is_eof(r) {
         r.peek_tok = token::EOF;
@@ -277,22 +281,41 @@ fn is_hex_digit(c: char) -> bool {
 
 fn is_bin_digit(c: char) -> bool { ret c == '0' || c == '1'; }
 
-fn consume_whitespace_and_comments(rdr: string_reader) {
+// might return a sugared-doc-attr
+fn consume_whitespace_and_comments(rdr: string_reader)
+                                -> option<{tok: token::token, sp: span}> {
     while is_whitespace(rdr.curr) { bump(rdr); }
     ret consume_any_line_comment(rdr);
 }
 
-fn consume_any_line_comment(rdr: string_reader) {
+// might return a sugared-doc-attr
+fn consume_any_line_comment(rdr: string_reader)
+                                -> option<{tok: token::token, sp: span}> {
     if rdr.curr == '/' {
         alt nextch(rdr) {
           '/' {
-            while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
-            // Restart whitespace munch.
-
-            ret consume_whitespace_and_comments(rdr);
+            bump(rdr);
+            bump(rdr);
+            // line comments starting with "///" or "//!" are doc-comments
+            if rdr.curr == '/' || rdr.curr == '!' {
+                let start_chpos = rdr.chpos - 2u;
+                let mut acc = "//";
+                while rdr.curr != '\n' && !is_eof(rdr) {
+                    str::push_char(acc, rdr.curr);
+                    bump(rdr);
+                }
+                ret some({
+                    tok: token::DOC_COMMENT(intern(*rdr.interner, @acc)),
+                    sp: ast_util::mk_sp(start_chpos, rdr.chpos)
+                });
+            } else {
+                while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
+                // Restart whitespace munch.
+                ret consume_whitespace_and_comments(rdr);
+            }
           }
           '*' { bump(rdr); bump(rdr); ret consume_block_comment(rdr); }
-          _ { ret; }
+          _ {}
         }
     } else if rdr.curr == '#' {
         if nextch(rdr) == '!' {
@@ -305,9 +328,34 @@ fn consume_any_line_comment(rdr: string_reader) {
             }
         }
     }
+    ret none;
 }
 
-fn consume_block_comment(rdr: string_reader) {
+// might return a sugared-doc-attr
+fn consume_block_comment(rdr: string_reader)
+                                -> option<{tok: token::token, sp: span}> {
+
+    // block comments starting with "/**" or "/*!" are doc-comments
+    if rdr.curr == '*' || rdr.curr == '!' {
+        let start_chpos = rdr.chpos - 2u;
+        let mut acc = "/*";
+        while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
+            str::push_char(acc, rdr.curr);
+            bump(rdr);
+        }
+        if is_eof(rdr) {
+            rdr.fatal("unterminated block doc-comment");
+        } else {
+            acc += "*/";
+            bump(rdr);
+            bump(rdr);
+            ret some({
+                tok: token::DOC_COMMENT(intern(*rdr.interner, @acc)),
+                sp: ast_util::mk_sp(start_chpos, rdr.chpos)
+            });
+        }
+    }
+
     let mut level: int = 1;
     while level > 0 {
         if is_eof(rdr) { rdr.fatal("unterminated block comment"); }

@@ -14,7 +14,7 @@ fn main() {
 
     // in these cases we pass through a box, so the mut
     // of the box is dominant
-    p.x.a = 2;     //! ERROR assigning to immutable field
-    p.y.a = 2;     //! ERROR assigning to const field
+    p.x.a = 2;     //~ ERROR assigning to immutable field
+    p.y.a = 2;     //~ ERROR assigning to const field
     p.z.a = 2;
 }

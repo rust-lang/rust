@@ -30,74 +30,74 @@ fn add(i: ~[int], m: ~[mut int], c: ~[const int]) {
        m + c,
        c);
 
-   add(m + ~[3], //! ERROR mismatched types
+   add(m + ~[3], //~ ERROR mismatched types
        m + ~[3],
        m + ~[3]);
 
    add(i + ~[3],
-       i + ~[3], //! ERROR mismatched types
+       i + ~[3], //~ ERROR mismatched types
        i + ~[3]);
 
-   add(c + ~[3], //! ERROR mismatched types
-                //!^ ERROR binary operation + cannot be applied
-       c + ~[3], //! ERROR binary operation + cannot be applied
-                //!^ mismatched types
+   add(c + ~[3], //~ ERROR mismatched types
+                //~^ ERROR binary operation + cannot be applied
+       c + ~[3], //~ ERROR binary operation + cannot be applied
+                //~^ mismatched types
        ~[3]);
 
-   add(m + ~[mut 3], //! ERROR mismatched types
+   add(m + ~[mut 3], //~ ERROR mismatched types
        m + ~[mut 3],
        m + ~[mut 3]);
 
    add(i + ~[mut 3],
-       i + ~[mut 3], //! ERROR mismatched types
+       i + ~[mut 3], //~ ERROR mismatched types
        i + ~[mut 3]);
 
-   add(c + ~[mut 3], //! ERROR binary operation + cannot be applied
-                    //!^ mismatched types
-       c + ~[mut 3], //! ERROR binary operation + cannot be applied
-                    //!^ mismatched types
+   add(c + ~[mut 3], //~ ERROR binary operation + cannot be applied
+                    //~^ mismatched types
+       c + ~[mut 3], //~ ERROR binary operation + cannot be applied
+                    //~^ mismatched types
        ~[mut 3]);
 
-   add(m + i, //! ERROR mismatched types
+   add(m + i, //~ ERROR mismatched types
        m + i,
        m + i);
 
    add(i + i,
-       i + i, //! ERROR mismatched types
+       i + i, //~ ERROR mismatched types
        i + i);
 
-   add(c + i, //! ERROR binary operation + cannot be applied
-              //!^ ERROR mismatched types
-       c + i, //! ERROR binary operation + cannot be applied
-              //!^ ERROR mismatched types
+   add(c + i, //~ ERROR binary operation + cannot be applied
+              //~^ ERROR mismatched types
+       c + i, //~ ERROR binary operation + cannot be applied
+              //~^ ERROR mismatched types
        i);
 
-   add(m + m, //! ERROR mismatched types
+   add(m + m, //~ ERROR mismatched types
        m + m,
        m + m);
 
    add(i + m,
-       i + m, //! ERROR mismatched types
+       i + m, //~ ERROR mismatched types
        i + m);
 
-   add(c + m, //! ERROR binary operation + cannot be applied
-              //!^ ERROR mismatched types
-       c + m, //! ERROR binary operation + cannot be applied
-              //!^ ERROR mismatched types
+   add(c + m, //~ ERROR binary operation + cannot be applied
+              //~^ ERROR mismatched types
+       c + m, //~ ERROR binary operation + cannot be applied
+              //~^ ERROR mismatched types
        m);
 
-   add(m + c, //! ERROR mismatched types
+   add(m + c, //~ ERROR mismatched types
        m + c,
        m + c);
 
    add(i + c,
-       i + c, //! ERROR mismatched types
+       i + c, //~ ERROR mismatched types
        i + c);
 
-   add(c + c, //! ERROR binary operation + cannot be applied
-              //!^ ERROR mismatched types
-       c + c, //! ERROR binary operation + cannot be applied
-              //!^ ERROR mismatched types
+   add(c + c, //~ ERROR binary operation + cannot be applied
+              //~^ ERROR mismatched types
+       c + c, //~ ERROR binary operation + cannot be applied
+              //~^ ERROR mismatched types
        c);
 }
 

@@ -14,7 +14,7 @@ pure fn range2(from: uint, to: uint, f: fn(uint)) {
 
 pure fn range3(from: uint, to: uint, f: {x: fn(uint)}) {
     for range(from, to) |i| {
-        f.x(i*2u); //! ERROR access to impure function prohibited
+        f.x(i*2u); //~ ERROR access to impure function prohibited
     }
 }
 

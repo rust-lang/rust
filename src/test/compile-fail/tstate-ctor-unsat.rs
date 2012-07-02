@@ -15,7 +15,7 @@ class cat {
   new(in_x : uint, in_y : int) {
     let foo = 3;
     self.meows = in_x + (in_y as uint);
-    self.how_hungry = even(foo); //! ERROR unsatisfied precondition
+    self.how_hungry = even(foo); //~ ERROR unsatisfied precondition
   }
 }
 

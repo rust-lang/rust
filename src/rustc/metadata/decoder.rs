@@ -613,7 +613,8 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
             assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items[0];
             vec::push(attrs,
-                      {node: {style: ast::attr_outer, value: *meta_item},
+                      {node: {style: ast::attr_outer, value: *meta_item,
+                              is_sugared_doc: false},
                        span: ast_util::dummy_sp()});
         };
       }

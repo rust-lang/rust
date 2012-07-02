@@ -33,8 +33,8 @@ fn match_const_reg_unused(v: &const option<int>) {
 
 fn match_const_reg_impure(v: &const option<int>) {
     alt *v {
-      some(i) {impure(i)} //! ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
-      //!^ NOTE impure due to access to impure function
+      some(i) {impure(i)} //~ ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
+      //~^ NOTE impure due to access to impure function
       none {}
     }
 }

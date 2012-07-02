@@ -19,8 +19,8 @@ fn a() {
     p.impurem();
 
     // But in this case we do not honor the loan:
-    do p.blockm || { //! NOTE loan of mutable local variable granted here
-        p.x = 10; //! ERROR assigning to mutable field prohibited due to outstanding loan
+    do p.blockm || { //~ NOTE loan of mutable local variable granted here
+        p.x = 10; //~ ERROR assigning to mutable field prohibited due to outstanding loan
     }
 }
 
@@ -29,11 +29,11 @@ fn b() {
 
     // Here I create an outstanding loan and check that we get conflicts:
 
-    &mut p; //! NOTE prior loan as mutable granted here
-    //!^ NOTE prior loan as mutable granted here
+    &mut p; //~ NOTE prior loan as mutable granted here
+    //~^ NOTE prior loan as mutable granted here
 
-    p.purem(); //! ERROR loan of mutable local variable as immutable conflicts with prior loan
-    p.impurem(); //! ERROR loan of mutable local variable as immutable conflicts with prior loan
+    p.purem(); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+    p.impurem(); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
 }
 
 fn c() {
@@ -45,8 +45,8 @@ fn c() {
     (*q).purem();
 
     // ...but not impure fns
-    (*q).impurem(); //! ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
-    //!^ NOTE impure due to access to impure function
+    (*q).impurem(); //~ ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
+    //~^ NOTE impure due to access to impure function
 }
 
 fn main() {

@@ -2,7 +2,7 @@
 // with lifetime r, and a is a pointer with unspecified lifetime.
 fn not_ok_1(a: &uint) {
     let mut g: fn@(x: &uint) = fn@(x: &r.uint) {};
-    //!^ ERROR mismatched types
+    //~^ ERROR mismatched types
     g(a);
 }
 
@@ -11,7 +11,7 @@ fn not_ok_1(a: &uint) {
 fn not_ok_2(s: &s.uint)
 {
     let mut g: fn@(x: &uint) = fn@(x: &r.uint) {};
-    //!^ ERROR mismatched types
+    //~^ ERROR mismatched types
     g(s);
 }
 

@@ -19,20 +19,20 @@ pure fn range3(from: uint, to: uint, f: fn(uint)) {
 }
 
 pure fn range4(from: uint, to: uint) {
-    range(from, to, print) //! ERROR access to impure function prohibited in pure context
+    range(from, to, print) //~ ERROR access to impure function prohibited in pure context
 }
 
 pure fn range5(from: uint, to: uint, x: {f: fn(uint)}) {
-    range(from, to, x.f) //! ERROR access to impure function prohibited in pure context
+    range(from, to, x.f) //~ ERROR access to impure function prohibited in pure context
 }
 
 pure fn range6(from: uint, to: uint, x: @{f: fn(uint)}) {
-    range(from, to, x.f) //! ERROR access to impure function prohibited in pure context
+    range(from, to, x.f) //~ ERROR access to impure function prohibited in pure context
 }
 
 pure fn range7(from: uint, to: uint) {
     do range(from, to) |i| {
-        print(i); //! ERROR access to impure function prohibited in pure context
+        print(i); //~ ERROR access to impure function prohibited in pure context
     }
 }
 

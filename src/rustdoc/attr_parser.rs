@@ -44,7 +44,10 @@ fn doc_meta(
        doc attribute"];
 
     let doc_attrs = attr::find_attrs_by_name(attrs, "doc");
-    let doc_metas = attr::attr_metas(doc_attrs);
+    let doc_metas = do doc_attrs.map |attr| {
+        attr::attr_meta(attr::desugar_doc_attr(attr))
+    };
+
     if vec::is_not_empty(doc_metas) {
         if vec::len(doc_metas) != 1u {
             #warn("ignoring %u doc attributes", vec::len(doc_metas) - 1u);

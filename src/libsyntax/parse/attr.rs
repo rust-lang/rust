@@ -15,7 +15,8 @@ impl parser_attr for parser {
         -> attr_or_ext
     {
         let expect_item_next = vec::is_not_empty(first_item_attrs);
-        if self.token == token::POUND {
+        alt self.token {
+          token::POUND {
             let lo = self.span.lo;
             if self.look_ahead(1u) == token::LBRACKET {
                 self.bump();
@@ -30,15 +31,40 @@ impl parser_attr for parser {
                 self.bump();
                 ret some(right(self.parse_syntax_ext_naked(lo)));
             } else { ret none; }
-        } else { ret none; }
+        }
+        token::DOC_COMMENT(_) {
+          ret some(left(self.parse_outer_attributes()));
+        }
+        _ {
+          ret none;
+        }
+      }
     }
 
     // Parse attributes that appear before an item
     fn parse_outer_attributes() -> ~[ast::attribute] {
         let mut attrs: ~[ast::attribute] = ~[];
-        while self.token == token::POUND
-            && self.look_ahead(1u) == token::LBRACKET {
-            vec::push(attrs, self.parse_attribute(ast::attr_outer));
+        loop {
+            alt copy self.token {
+              token::POUND {
+                if self.look_ahead(1u) != token::LBRACKET {
+                    break;
+                }
+                attrs += [self.parse_attribute(ast::attr_outer)]/~;
+              }
+              token::DOC_COMMENT(s) {
+                let attr = ::attr::mk_sugared_doc_attr(
+                        *self.get_str(s), self.span.lo, self.span.hi);
+                if attr.node.style != ast::attr_outer {
+                  self.fatal("expected outer comment");
+                }
+                attrs += [attr]/~;
+                self.bump();
+              }
+              _ {
+                break;
+              }
+            }
         }
         ret attrs;
     }
@@ -55,7 +81,8 @@ impl parser_attr for parser {
         let meta_item = self.parse_meta_item();
         self.expect(token::RBRACKET);
         let mut hi = self.span.hi;
-        ret spanned(lo, hi, {style: style, value: *meta_item});
+        ret spanned(lo, hi, {style: style, value: *meta_item,
+                             is_sugared_doc: false});
     }
 
     // Parse attributes that appear after the opening of an item, each
@@ -68,22 +95,41 @@ impl parser_attr for parser {
         {inner: ~[ast::attribute], next: ~[ast::attribute]} {
         let mut inner_attrs: ~[ast::attribute] = ~[];
         let mut next_outer_attrs: ~[ast::attribute] = ~[];
-        while self.token == token::POUND {
-            if self.look_ahead(1u) != token::LBRACKET {
-                // This is an extension
-                break;
-            }
-            let attr = self.parse_attribute(ast::attr_inner);
-            if self.token == token::SEMI {
+        loop {
+            alt copy self.token {
+              token::POUND {
+                if self.look_ahead(1u) != token::LBRACKET {
+                    // This is an extension
+                    break;
+                }
+                let attr = self.parse_attribute(ast::attr_inner);
+                if self.token == token::SEMI {
+                    self.bump();
+                    inner_attrs += [attr]/~;
+                } else {
+                    // It's not really an inner attribute
+                    let outer_attr =
+                        spanned(attr.span.lo, attr.span.hi,
+                            {style: ast::attr_outer, value: attr.node.value,
+                             is_sugared_doc: false});
+                    next_outer_attrs += [outer_attr]/~;
+                    break;
+                }
+              }
+              token::DOC_COMMENT(s) {
+                let attr = ::attr::mk_sugared_doc_attr(
+                        *self.get_str(s), self.span.lo, self.span.hi);
                 self.bump();
-                vec::push(inner_attrs, attr);
-            } else {
-                // It's not really an inner attribute
-                let outer_attr =
-                    spanned(attr.span.lo, attr.span.hi,
-                            {style: ast::attr_outer, value: attr.node.value});
-                vec::push(next_outer_attrs, outer_attr);
+                if attr.node.style == ast::attr_inner {
+                  inner_attrs += [attr]/~;
+                } else {
+                  next_outer_attrs += [attr]/~;
+                  break;
+                }
+              }
+              _ {
                 break;
+              }
             }
         }
         ret {inner: inner_attrs, next: next_outer_attrs};

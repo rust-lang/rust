@@ -7,7 +7,7 @@ fn has_same_region(f: fn(x: &a.int, g: fn(y: &a.int))) {
     // accept any region.  That is, the type that `has_same_region`
     // expects is *not* a subtype of the type that `wants_two_regions`
     // expects.
-    wants_two_regions(f); //! ERROR mismatched types
+    wants_two_regions(f); //~ ERROR mismatched types
 }
 
 fn wants_two_regions(_f: fn(x: &int, g: fn(y: &int))) {

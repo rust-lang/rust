@@ -9,6 +9,6 @@ fn main() {
     let origin: point;
     origin = {x: 0, y: 0};
     let right: point = {x: 10 with tested(origin)};
-        //!^ ERROR precondition
+        //~^ ERROR precondition
     copy right;
 }
