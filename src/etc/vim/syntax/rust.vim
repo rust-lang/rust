@@ -13,7 +13,7 @@ syn keyword   rustAssert      assert
 syn match     rustAssert      "assert\(\w\)*"
 syn keyword   rustKeyword     alt as break
 syn keyword   rustKeyword     check claim cont const copy else export extern fail
-syn keyword   rustKeyword     do for if impl import in let log
+syn keyword   rustKeyword     do drop for if impl import in let log
 syn keyword   rustKeyword     loop mod mut of pure
 syn keyword   rustKeyword     ret self to unchecked
 syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
@@ -45,7 +45,7 @@ syn keyword   rustConstant    success failure " task
 syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
 syn match     rustModPathSep  "::"
 
-syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+
+syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString
 
