@@ -1286,6 +1286,7 @@ mod test {
             }
             #[test]
             #[ignore(cfg(target_os = "linux"))]
+            #[ignore(cfg(windows), reason = "deadlocking bots")]
             fn test_gl_tcp_server_access_denied() unsafe {
                 impl_gl_tcp_ipv4_server_access_denied();
             }
