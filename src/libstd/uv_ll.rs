@@ -280,6 +280,7 @@ mod addrinfo_impl {
     };
 }
 #[cfg(target_os="macos")]
+#[cfg(target_os="freebsd")]
 mod addrinfo_impl {
     type addrinfo = {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
