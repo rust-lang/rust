@@ -495,16 +495,10 @@ let s = "a\
 
 ## Operators
 
-Rust's set of operators contains very few surprises. The main
-difference with C is that `++` and `--` are missing, and that the
-logical bitwise operators have higher precedence—in C, `x & 2 > 0`
-comes out as `x & (2 > 0)`, in Rust, it means `(x & 2) > 0`, which is
-more likely to be what you expect (unless you are a C veteran).
-
-Thus, binary arithmetic is done with `*`, `/`, `%`, `+`, and `-`
-(multiply, divide, remainder, plus, minus). `-` is also a unary prefix
-operator (there are no unary postfix operators in Rust) that does
-negation.
+Rust's set of operators contains very few surprises. Binary arithmetic
+is done with `*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder,
+plus, minus). `-` is also a unary prefix operator (there are no unary
+postfix operators in Rust) that does negation.
 
 Binary shifting is done with `>>` (shift right), and `<<` (shift
 left). Shift right is arithmetic if the value is signed and logical if
@@ -527,6 +521,11 @@ let x: float = 4.0;
 let y: uint = x as uint;
 assert y == 4u;
 ~~~~
+
+The main difference with C is that `++` and `--` are missing, and that
+the logical bitwise operators have higher precedence — in C, `x & 2 > 0`
+comes out as `x & (2 > 0)`, in Rust, it means `(x & 2) > 0`, which is
+more likely to be what you expect (unless you are a C veteran).
 
 ## Attributes
 
@@ -850,24 +849,23 @@ fn bar() -> int {
 }
 ~~~~
 
-Rust also supports _closures_, functions that can
-access variables in the enclosing scope.
+Rust also supports _closures_, functions that can access variables in
+the enclosing scope.
 
 ~~~~
+# import println = io::println;
 fn call_closure_with_ten(b: fn(int)) { b(10); }
 
-let x = 20;
-let closure = |arg| #info("x=%d, arg=%d", x, arg);
+let captured_var = 20;
+let closure = |arg| println(#fmt("captured_var=%d, arg=%d", captured_var, arg));
 
 call_closure_with_ten(closure);
 ~~~~
 
-A closure is defined by listing the arguments, between bars, followed
-by an expression that acts as the function body. The types of the
-arguments are generally omitted, as is the return type, because
-the compiler can almost always infer them. In the rare case where
-the compiler needs assistance though, the arguments and return
-types may be annotated.
+The types of the arguments are generally omitted, as is the return
+type, because the compiler can almost always infer them. In the rare
+case where the compiler needs assistance though, the arguments and
+return types may be annotated.
 
 ~~~~
 # type mygoodness = fn(str) -> str; type what_the = int;
@@ -875,8 +873,8 @@ let bloop = |well, oh: mygoodness| -> what_the { fail oh(well) };
 ~~~~
 
 There are several forms of closure, each with its own role. The most
-common, called a _stack closure_ and written `&fn()` has direct access
-to local variables in the enclosing scope.
+common, called a _stack closure_, has type `fn&` and can directly
+access local variables in the enclosing scope.
 
 ~~~~
 let mut max = 0;
@@ -888,9 +886,8 @@ allocated on the call stack and refers by pointer to captured
 locals. To ensure that stack closures never outlive the local
 variables to which they refer, they can only be used in argument
 position and cannot be stored in structures nor returned from
-functions.  Despite the usage limitations stack closures are used
+functions. Despite the usage limitations stack closures are used
 pervasively in Rust code.
-
 
 ### Boxed closures
 
@@ -922,6 +919,19 @@ fn main() {
 }
 ~~~~
 
+This example uses the long closure syntax, `fn@(s: str) ...`,
+making the fact that we are declaring a box closure explicit. In
+practice boxed closures are usually defined with the short closure
+syntax introduced earlier, in which case the compiler will infer
+the type of closure. Thus our boxed closure example could also
+be written:
+
+~~~~
+fn mk_appender(suffix: str) -> fn@(str) -> str {
+    ret |s| s + suffix;
+}
+~~~~
+
 ### Closure compatibility
 
 A nice property of Rust closures is that you can pass any kind of
@@ -946,17 +956,10 @@ Unique closures, written `fn~` in analogy to the `~` pointer type (see
 next section), hold on to things that can safely be sent between
 processes. They copy the values they close over, much like boxed
 closures, but they also 'own' them—meaning no other code can access
-them. Unique closures mostly exist for spawning new [tasks](#tasks).
+them. Unique closures are used in concurrent code, particularly
+for spawning [tasks](#tasks).
 
 ### Do syntax
-
-The compact syntax used for stack closures (`|arg1, arg2| body`) can
-also be used to express boxed and unique closures in situations where
-the closure style can be unambiguously derived from the context. Most
-notably, when calling a higher-order function you do not have to use
-the long-hand syntax for the function you're passing, since the
-compiler can look at the argument type to find out what the parameter
-types are.
 
 Because closures in Rust are so versatile, they are used often, and in
 particular, functions taking closures are used as control structures
@@ -997,16 +1000,36 @@ of the parenthesis where it looks visually more like a typical block
 of code. The `do` expression is purely syntactic sugar for a call
 that takes a final closure argument.
 
-# For loops
+### For loops
 
-To allow breaking out of loops, many iteration functions, such as
-`vec::each`, take a function that returns a boolean, and can return
-`false` to break off iteration.
+`for` loops, like `do` expressions, allow functions to be used as
+as control structures. `for` loops can be used to treat functions
+with the proper signature as looping constructs, supporting
+`break`, `cont` and early returns.
+
+Take for example this `each` function that iterates over a vector,
+breaking early when the iteratee returns `false`:
 
 ~~~~
-vec::each(~[2, 4, 8, 5, 16], |n| {
+fn each<T>(v: &[T], f: fn(T) -> bool) {
+   let mut n = 0;
+   while n < v.len() {
+       if !f(v[n]) {
+           break;
+       }
+       n += 1;
+   }
+}
+~~~~
+
+And using this function to iterate over a vector:
+
+~~~~
+# import each = vec::each;
+# import println = io::println;
+each(~[2, 4, 8, 5, 16], |n| {
     if n % 2 != 0 {
-        io::println("found odd number!");
+        println("found odd number!");
         false
     } else { true }
 });
@@ -1018,9 +1041,11 @@ return `true`, and `break` and `cont` can be used, much like in a
 `while` loop, to explicitly return `false` or `true`.
 
 ~~~~
-for vec::each(~[2, 4, 8, 5, 16]) |n| {
+# import each = vec::each;
+# import println = io::println;
+for each(~[2, 4, 8, 5, 16]) |n| {
     if n % 2 != 0 {
-        io::println("found odd number!");
+        println("found odd number!");
         break;
     }
 }
@@ -1032,13 +1057,15 @@ normally allowed in blocks, in a block that appears as the body of a
 function, not just the loop body.
 
 ~~~~
+# import each = vec::each;
 fn contains(v: ~[int], elt: int) -> bool {
-    for vec::each(v) |x| {
+    for each(v) |x| {
         if (x == elt) { ret true; }
     }
     false
 }
 ~~~~
+
 
 # Datatypes
 
@@ -2579,6 +2606,8 @@ fn divide(a: float, b: float) -> float {
 #[test]
 #[should_fail]
 fn divide_by_zero() { divide(1f, 0f); }
+
+# fn main() { }
 ~~~~
 
 To disable a test completely, add an `#[ignore]` attribute. Running a

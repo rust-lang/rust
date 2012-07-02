@@ -50,11 +50,7 @@ while cur < len(lines):
                 block += re.sub("^# ", "", line)
         if not ignore:
             if not re.search(r"\bfn main\b", block):
-                if re.search(
-                    r"(^|\n) *(native|use|mod|import|export)\b", block):
-                    block += "\nfn main() {}\n"
-                else:
-                    block = "fn main() {\n" + block + "\n}\n"
+                block = "fn main() {\n" + block + "\n}\n"
             if not re.search(r"\buse std\b", block):
                 block = "use std;\n" + block;
             if xfail:
