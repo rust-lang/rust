@@ -75,7 +75,7 @@ builds require that:
   * You can at least execute snapshot binaries of one of the forms we
     offer them in. Currently we build and test snapshots on:
     * Windows (7, server 2008 r2) x86 only
-    * Linux 2.6.x (various distributions) x86 and x86-64
+    * Linux (various distributions) x86 and x86-64
     * OSX 10.6 ("Snow leopard") or 10.7 ("Lion") x86 and x86-64
 
 You may find other platforms work, but these are our "tier 1" supported
@@ -97,9 +97,9 @@ Windows requires some extra steps: please see the
 [getting started][wiki-get-started] page on the Rust wiki.
 
 ~~~~ {.notrust}
-$ wget http://dl.rust-lang.org/dist/rust-0.1.tar.gz
-$ tar -xzf rust-0.1.tar.gz
-$ cd rust-0.1
+$ wget http://dl.rust-lang.org/dist/rust-0.3.tar.gz
+$ tar -xzf rust-0.3.tar.gz
+$ cd rust-0.3
 $ ./configure
 $ make && make install
 ~~~~
@@ -535,16 +535,12 @@ information that can serve a variety of purposes. One of those is
 conditional compilation:
 
 ~~~~
-#[cfg(target_os = "win32")]
+#[cfg(windows)]
 fn register_win_service() { /* ... */ }
 ~~~~
 
 This will cause the function to vanish without a trace during
-compilation on a non-Windows platform, much like `#ifdef` in C (it
-allows `cfg(flag=value)` and `cfg(flag)` forms, where the second
-simply checks whether the configuration flag is defined at all). Flags
-for `target_os` and `target_arch` are set by the compiler. It is
-possible to set additional flags with the `--cfg` command-line option.
+compilation on a non-Windows platform, much like `#ifdef` in C.
 
 Attributes are always wrapped in hash-braces (`#[attr]`). Inside the
 braces, a small minilanguage is supported, whose interpretation
@@ -554,8 +550,8 @@ framework](#testing)). A name-value pair can be provided using an `=`
 character followed by a literal (as in `#[license = "BSD"]`, which is
 a valid way to annotate a Rust program as being released under a
 BSD-style license). Finally, you can have a name followed by a
-comma-separated list of nested attributes, as in the `cfg` example
-above, or in this [crate](#modules-and-crates) metadata declaration:
+comma-separated list of nested attributes, as in this
+[crate](#modules-and-crates) metadata declaration:
 
 ~~~~ {.ignore}
 #[link(name = "std",
@@ -593,6 +589,7 @@ compile-time.
 ~~~~
 io::println(#env("PATH"));
 ~~~~
+
 # Control structures
 
 ## Conditionals
@@ -723,7 +720,7 @@ while cake_amount > 0 {
 
 ~~~~
 let mut x = 5;
-while true {
+loop {
     x += x - 3;
     if x % 5 == 0 { break; }
     io::println(int::str(x));
@@ -795,7 +792,9 @@ their arguments are also lazily evaluated.
 The keyword `assert`, followed by an expression with boolean type,
 will check that the given expression results in `true`, and cause a
 failure otherwise. It is typically used to double-check things that
-*should* hold at a certain point in a program.
+*should* hold at a certain point in a program. `assert` statements are
+always active; there is no way to build Rust code with assertions
+disabled.
 
 ~~~~
 let mut x = 100;
@@ -805,7 +804,7 @@ assert x == 10;
 
 # Functions
 
-Functions (like all other static declarations, such as `type`) can be
+Like all other static declarations, such as `type`, functions can be
 declared both at the top level and inside other functions (or modules,
 which we'll come back to in moment).
 
@@ -838,34 +837,60 @@ let dir = if can_go_left() { left }
 
 ## Closures
 
-Named functions, like those in the previous section, do not close over
-their environment. Rust also includes support for closures, which are
-functions that can access variables in the scope in which they are
-created.
+Named functions, like those in the previous section, may not refer
+to local variables decalared outside the function - they do not
+close over their environment. For example you couldn't write the
+following:
 
-There are several forms of closures, each with its own role. The most
-common type is called a 'stack closure'; this is a closure which has
-full access to its environment.
+~~~~ {.ignore}
+let foo = 10;
+
+fn bar() -> int {
+   ret foo; // `bar` cannot refer to `foo`
+}
+~~~~
+
+Rust also supports _closures_, functions that can
+access variables in the enclosing scope.
 
 ~~~~
 fn call_closure_with_ten(b: fn(int)) { b(10); }
 
-let x = 20;    
-call_closure_with_ten(|arg| #info("x=%d, arg=%d", x, arg) );
+let x = 20;
+let closure = |arg| #info("x=%d, arg=%d", x, arg);
+
+call_closure_with_ten(closure);
 ~~~~
 
-This defines a function that accepts a closure, and then calls it with
-a simple stack closure that executes a log statement, accessing both
-its argument and the variable `x` from its environment.
+A closure is defined by listing the arguments, between bars, followed
+by an expression that acts as the function body. The types of the
+arguments are generally omitted, as is the return type, because
+the compiler can almost always infer them. In the rare case where
+the compiler needs assistance though, the arguments and return
+types may be annotated.
 
-Stack closures are called stack closures because they directly access
-the stack frame in which they are created.  This makes them very
-lightweight to construct and lets them modify local variables from the
-enclosing scope, but it also makes it unsafe for the closure to
-survive the scope in which it was created.  To prevent them from being
-used after the creating scope has returned, stack closures can only be
-used in a restricted way: they are allowed to appear in function
-argument position and in call position, but nowhere else.
+~~~~
+# type mygoodness = fn(str) -> str; type what_the = int;
+let bloop = |well, oh: mygoodness| -> what_the { fail oh(well) };
+~~~~
+
+There are several forms of closure, each with its own role. The most
+common, called a _stack closure_ and written `&fn()` has direct access
+to local variables in the enclosing scope.
+
+~~~~
+let mut max = 0;
+[1, 2, 3].map(|x| if x > max { max = x });
+~~~~
+
+Stack closures are very efficient because their environment is
+allocated on the call stack and refers by pointer to captured
+locals. To ensure that stack closures never outlive the local
+variables to which they refer, they can only be used in argument
+position and cannot be stored in structures nor returned from
+functions.  Despite the usage limitations stack closures are used
+pervasively in Rust code.
+
 
 ### Boxed closures
 
@@ -908,7 +933,8 @@ that callers have the flexibility to pass whatever they want.
 
 ~~~~
 fn call_twice(f: fn()) { f(); f(); }
-call_twice(|| { "I am a stack closure"; } );
+call_twice(|| { "I am an inferred stack closure"; } );
+call_twice(fn&() { "I am also a stack closure"; } );
 call_twice(fn@() { "I am a boxed closure"; });
 fn bare_function() { "I am a plain function"; }
 call_twice(bare_function);

@@ -1,7 +1,7 @@
 CodeMirror.defineMode("rust", function() {
   var indentUnit = 4, altIndentUnit = 2;
   var valKeywords = {
-    "if": "if-style", "while": "if-style", "else": "else-style",
+    "if": "if-style", "while": "if-style", "loop": "if-style", "else": "else-style",
     "do": "else-style", "ret": "else-style", "fail": "else-style",
     "break": "atom", "cont": "atom", "const": "let", "resource": "fn",
     "let": "let", "fn": "fn", "for": "for", "alt": "alt", "iface": "iface",
