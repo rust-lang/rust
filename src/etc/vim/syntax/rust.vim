@@ -12,7 +12,7 @@ endif
 syn keyword   rustAssert      assert
 syn keyword   rustKeyword     alt as break
 syn keyword   rustKeyword     check claim cont const copy else export extern fail
-syn keyword   rustKeyword     for if impl import in let log
+syn keyword   rustKeyword     do for if impl import in let log
 syn keyword   rustKeyword     loop mod mut of pure
 syn keyword   rustKeyword     ret self to unchecked
 syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
