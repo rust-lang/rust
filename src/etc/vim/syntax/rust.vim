@@ -42,7 +42,7 @@ syn keyword   rustConstant    success failure " task
 
 " If foo::bar changes to foo.bar, change this ("::" to "\.").
 " If foo::bar changes to Foo::bar, change this (first "\w" to "\u").
-syn match     rustModPath     "\w\(\w\)*::"he=e-2,me=e-2
+syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
 syn match     rustModPathSep  "::"
 
 syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+
