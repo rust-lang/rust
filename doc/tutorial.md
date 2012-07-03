@@ -6,17 +6,10 @@
 
 This is a tutorial for the Rust programming language. It assumes the
 reader is familiar with the basic concepts of programming, and has
-programmed in one or more other languages before. The tutorial covers
+programmed in one or more other languages before. It will often make
+comparisons to other languages in the C family. The tutorial covers
 the whole language, though not with the depth and precision of the
 [language reference](rust.html).
-
-## Disclaimer
-
-Rust is a language under development. The general flavor of the
-language has settled, but details will continue to change as it is
-further refined. Nothing in this tutorial is final, and though we try
-to keep it updated, it is possible that the text occasionally does not
-reflect the actual state of the language.
 
 ## First Impressions
 
@@ -57,6 +50,14 @@ all snippets constitute whole programs. For brevity, we'll often show
 fragments of programs that don't compile on their own. To try them
 out, you might have to wrap them in `fn main() { ... }`, and make sure
 they don't contain references to things that aren't actually defined.
+
+## Disclaimer
+
+Rust is a language under development. The general flavor of the
+language has settled, but details will continue to change as it is
+further refined. Nothing in this tutorial is final, and though we try
+to keep it updated, it is possible that the text occasionally does not
+reflect the actual state of the language.
 
 # Getting started
 
