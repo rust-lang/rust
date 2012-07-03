@@ -497,8 +497,7 @@ let s = "a\
 
 Rust's set of operators contains very few surprises. Binary arithmetic
 is done with `*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder,
-plus, minus). `-` is also a unary prefix operator (there are no unary
-postfix operators in Rust) that does negation.
+plus, minus). `-` is also a unary prefix operator that does negation.
 
 Binary shifting is done with `>>` (shift right), and `<<` (shift
 left). Shift right is arithmetic if the value is signed and logical if
@@ -909,8 +908,7 @@ returns it from a function, and then calls it:
 use std;
 
 fn mk_appender(suffix: str) -> fn@(str) -> str {
-    let f = fn@(s: str) -> str { s + suffix };
-    ret f;
+    ret fn@(s: str) -> str { s + suffix };
 }
 
 fn main() {
@@ -932,6 +930,15 @@ fn mk_appender(suffix: str) -> fn@(str) -> str {
 }
 ~~~~
 
+### Unique closures
+
+Unique closures, written `fn~` in analogy to the `~` pointer type (see
+next section), hold on to things that can safely be sent between
+processes. They copy the values they close over, much like boxed
+closures, but they also 'own' them—meaning no other code can access
+them. Unique closures are used in concurrent code, particularly
+for spawning [tasks](#tasks).
+
 ### Closure compatibility
 
 A nice property of Rust closures is that you can pass any kind of
@@ -946,25 +953,17 @@ fn call_twice(f: fn()) { f(); f(); }
 call_twice(|| { "I am an inferred stack closure"; } );
 call_twice(fn&() { "I am also a stack closure"; } );
 call_twice(fn@() { "I am a boxed closure"; });
+call_twice(fn~() { "I am a unique closure"; });
 fn bare_function() { "I am a plain function"; }
 call_twice(bare_function);
 ~~~~
 
-### Unique closures
-
-Unique closures, written `fn~` in analogy to the `~` pointer type (see
-next section), hold on to things that can safely be sent between
-processes. They copy the values they close over, much like boxed
-closures, but they also 'own' them—meaning no other code can access
-them. Unique closures are used in concurrent code, particularly
-for spawning [tasks](#tasks).
-
 ### Do syntax
 
-Because closures in Rust are so versatile, they are used often, and in
-particular, functions taking closures are used as control structures
-in much the same way as `if` or `loop`. For example, this one iterates
-over a vector of integers backwards:
+Because closures in Rust are frequently used in combination with
+higher-order functions to simulate control structures like `if` and
+`loop`. For example, this one iterates over a vector of integers
+backwards:
 
 ~~~~
 fn for_rev(v: ~[int], act: fn(int)) {
@@ -976,11 +975,16 @@ fn for_rev(v: ~[int], act: fn(int)) {
 }
 ~~~~
 
-To run such an iteration, you could do this:
+To run such an iteration on a block of code, you could call
+it with a closure containing a block of code.
 
 ~~~~
 # fn for_rev(v: ~[int], act: fn(int)) {}
-for_rev(~[1, 2, 3], |n| log(error, n) );
+# fn do_some_work(i: int) { }
+for_rev(~[1, 2, 3], |n| {
+    #debug("%i", n);
+    do_some_work(n);
+});
 ~~~~
 
 Because this is such a common pattern Rust has a special form
@@ -989,8 +993,10 @@ structure:
 
 ~~~~
 # fn for_rev(v: [int], act: fn(int)) {}
+# fn do_some_work(i: int) { }
 do for_rev(~[1, 2, 3]) |n| {
-    log(error, n);
+    #debug("%i", n);
+    do_some_work(n);
 }
 ~~~~
 
