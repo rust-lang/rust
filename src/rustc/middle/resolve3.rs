@@ -395,10 +395,10 @@ pure fn is_none<T>(x: option<T>) -> bool {
     bound to.
 "]
 class NameBindings {
-    let mut module_def: ModuleDef;      ///< Meaning in the module namespace.
-    let mut type_def: option<def>;      ///< Meaning in the type namespace.
-    let mut value_def: option<def>;     ///< Meaning in the value namespace.
-    let mut impl_defs: ~[@Impl];        ///< Meaning in the impl namespace.
+    let mut module_def: ModuleDef;      //< Meaning in the module namespace.
+    let mut type_def: option<def>;      //< Meaning in the type namespace.
+    let mut value_def: option<def>;     //< Meaning in the value namespace.
+    let mut impl_defs: ~[@Impl];        //< Meaning in the impl namespace.
 
     new() {
         self.module_def = NoModuleDef;
