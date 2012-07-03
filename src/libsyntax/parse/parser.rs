@@ -149,8 +149,7 @@ class parser {
     fn get_id() -> node_id { next_node_id(self.sess) }
 
     fn parse_ty_fn(purity: ast::purity) -> ty_ {
-        let proto = if self.eat_keyword("native") ||
-            self.eat_keyword("extern") {
+        let proto = if self.eat_keyword("extern") {
             self.expect_keyword("fn");
             ast::proto_bare
         } else {
@@ -433,8 +432,7 @@ class parser {
             self.parse_ty_fn(ast::unsafe_fn)
         } else if self.is_keyword("fn") {
             self.parse_ty_fn(ast::impure_fn)
-        } else if self.eat_keyword("native") ||
-            self.eat_keyword("extern") {
+        } else if self.eat_keyword("extern") {
             self.expect_keyword("fn");
             ty_fn(proto_bare, self.parse_ty_fn_decl(ast::impure_fn))
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
@@ -2457,13 +2455,8 @@ class parser {
             } else {
                 self.parse_item_foreign_mod()
             }
-        } else if self.eat_keyword("crust") {
-            self.expect_keyword("fn");
-            self.parse_item_fn(extern_fn)
         } else if self.eat_keyword("mod") {
             self.parse_item_mod()
-        } else if self.eat_keyword("native") {
-            self.parse_item_foreign_mod()
         } else if self.eat_keyword("type") {
             self.parse_item_type()
         } else if self.eat_keyword("enum") {
