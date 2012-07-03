@@ -1580,29 +1580,29 @@ mod test {
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_sockaddr_in6() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_sockaddr_in6_size();
         let rust_handle_size = sys::size_of::<sockaddr_in6>();
         let output = #fmt("sockaddr_in6 -- foreign: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         // FIXME #1645 .. rust appears to pad structs to the nearest byte..?
         // .. can't get the uv::ll::sockaddr_in6 to == 28 :/
         // .. so the type always appears to be 32 in size.. which is
         // good, i guess.. better too big than too little
-        assert (4u+native_handle_size as uint) == rust_handle_size;
+        assert (4u+foreign_handle_size as uint) == rust_handle_size;
     }
     #[test]
     #[ignore(reason = "questionable size calculations")]
     fn test_uv_ll_struct_size_addr_in() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_addr_in_size();
         let rust_handle_size = sys::size_of::<addr_in>();
         let output = #fmt("addr_in -- foreign: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         // FIXME #1645 .. see note above about struct padding
-        assert (4u+native_handle_size as uint) == rust_handle_size;
+        assert (4u+foreign_handle_size as uint) == rust_handle_size;
     }
 
     #[test]
@@ -1633,25 +1633,25 @@ mod test {
     #[ignore(cfg(target_os = "freebsd"))]
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
         let rust_handle_size = sys::size_of::<uv_getaddrinfo_t>();
         let output = #fmt("uv_getaddrinfo_t -- foreign: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     #[ignore(cfg(target_os = "macos"))]
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_addrinfo() {
-        let native_handle_size =
+        let foreign_handle_size =
             rustrt::rust_uv_helper_addrinfo_size();
         let rust_handle_size = sys::size_of::<addrinfo>();
         let output = #fmt("addrinfo -- foreign: %u rust: %u",
-                          native_handle_size as uint, rust_handle_size);
+                          foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
-        assert native_handle_size as uint == rust_handle_size;
+        assert foreign_handle_size as uint == rust_handle_size;
     }
 }
