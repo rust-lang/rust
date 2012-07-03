@@ -88,13 +88,13 @@ enum notification {
 
 #[doc = "Scheduler modes"]
 enum sched_mode {
-    #[doc = "All tasks run in the same OS thread"]
+    #[doc = "1:N -- All tasks run in the same OS thread"]
     single_threaded,
-    #[doc = "Tasks are distributed among available CPUs"]
+    #[doc = "M:N -- Tasks are distributed among available CPUs"]
     thread_per_core,
-    #[doc = "Each task runs in its own OS thread"]
+    #[doc = "N:N -- Each task runs in its own OS thread"]
     thread_per_task,
-    #[doc = "Tasks are distributed among a fixed number of OS threads"]
+    #[doc = "?:N -- Tasks are distributed among a fixed number of OS threads"]
     manual_threads(uint),
     #[doc = "
     Tasks are scheduled on the main OS thread
@@ -168,7 +168,7 @@ Provides detailed control over the properties and behavior of new tasks.
 // it only applies to a single task, so then you have to maintain some
 // potentially tricky state to ensure that everything behaves correctly
 // when you try to reuse the builder to spawn a new task. We'll just
-// sidestep that whole issue by making builder's uncopyable and making
+// sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
 enum builder {
     builder_({
