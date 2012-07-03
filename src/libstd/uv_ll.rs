@@ -1016,12 +1016,12 @@ mod test {
         read_chan: *comm::chan<str>
     };
 
-    crust fn after_close_cb(handle: *libc::c_void) {
+    extern fn after_close_cb(handle: *libc::c_void) {
         log(debug, #fmt("after uv_close! handle ptr: %?",
                         handle));
     }
 
-    crust fn on_alloc_cb(handle: *libc::c_void,
+    extern fn on_alloc_cb(handle: *libc::c_void,
                          ++suggested_size: libc::size_t)
         -> uv_buf_t unsafe {
         log(debug, "on_alloc_cb!");
@@ -1033,7 +1033,7 @@ mod test {
         ret buf_init(char_ptr, suggested_size as uint);
     }
 
-    crust fn on_read_cb(stream: *uv_stream_t,
+    extern fn on_read_cb(stream: *uv_stream_t,
                         nread: libc::ssize_t,
                         ++buf: uv_buf_t) unsafe {
         let nread = nread as int;
@@ -1067,7 +1067,7 @@ mod test {
         log(debug, "CLIENT exiting on_read_cb");
     }
 
-    crust fn on_write_complete_cb(write_req: *uv_write_t,
+    extern fn on_write_complete_cb(write_req: *uv_write_t,
                                   status: libc::c_int) unsafe {
         log(debug, #fmt("CLIENT beginning on_write_complete_cb status: %d",
                          status as int));
@@ -1079,7 +1079,7 @@ mod test {
                          result as int));
     }
 
-    crust fn on_connect_cb(connect_req_ptr: *uv_connect_t,
+    extern fn on_connect_cb(connect_req_ptr: *uv_connect_t,
                                  status: libc::c_int) unsafe {
         log(debug, #fmt("beginning on_connect_cb .. status: %d",
                          status as int));
@@ -1184,12 +1184,12 @@ mod test {
 
     }
 
-    crust fn server_after_close_cb(handle: *libc::c_void) unsafe {
+    extern fn server_after_close_cb(handle: *libc::c_void) unsafe {
         log(debug, #fmt("SERVER server stream closed, should exit.. h: %?",
                    handle));
     }
 
-    crust fn client_stream_after_close_cb(handle: *libc::c_void)
+    extern fn client_stream_after_close_cb(handle: *libc::c_void)
         unsafe {
         log(debug, "SERVER: closed client stream, now closing server stream");
         let client_data = get_data_for_uv_handle(
@@ -1199,7 +1199,7 @@ mod test {
                       server_after_close_cb);
     }
 
-    crust fn after_server_resp_write(req: *uv_write_t) unsafe {
+    extern fn after_server_resp_write(req: *uv_write_t) unsafe {
         let client_stream_ptr =
             get_stream_handle_from_write_req(req);
         log(debug, "SERVER: resp sent... closing client stream");
@@ -1207,7 +1207,7 @@ mod test {
                       client_stream_after_close_cb)
     }
 
-    crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
+    extern fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
                                nread: libc::ssize_t,
                                ++buf: uv_buf_t) unsafe {
         let nread = nread as int;
@@ -1268,7 +1268,7 @@ mod test {
         log(debug, "SERVER exiting on_read_cb");
     }
 
-    crust fn server_connection_cb(server_stream_ptr:
+    extern fn server_connection_cb(server_stream_ptr:
                                     *uv_stream_t,
                                   status: libc::c_int) unsafe {
         log(debug, "client connecting!");
@@ -1335,12 +1335,12 @@ mod test {
         continue_chan: *comm::chan<bool>
     };
 
-    crust fn async_close_cb(handle: *libc::c_void) {
+    extern fn async_close_cb(handle: *libc::c_void) {
         log(debug, #fmt("SERVER: closing async cb... h: %?",
                    handle));
     }
 
-    crust fn continue_async_cb(async_handle: *uv_async_t,
+    extern fn continue_async_cb(async_handle: *uv_async_t,
                                status: libc::c_int) unsafe {
         // once we're in the body of this callback,
         // the tcp server's loop is set up, so we

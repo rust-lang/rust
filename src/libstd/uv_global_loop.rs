@@ -116,7 +116,7 @@ fn spawn_loop() -> iotask unsafe {
 
 #[cfg(test)]
 mod test {
-    crust fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
+    extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
             timer_ptr as *libc::c_void) as *comm::chan<bool>;
         let exit_ch = *exit_ch_ptr;
@@ -124,7 +124,7 @@ mod test {
         log(debug, #fmt("EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
                        exit_ch_ptr));
     }
-    crust fn simple_timer_cb(timer_ptr: *ll::uv_timer_t,
+    extern fn simple_timer_cb(timer_ptr: *ll::uv_timer_t,
                              _status: libc::c_int) unsafe {
         log(debug, "in simple timer cb");
         ll::timer_stop(timer_ptr);

@@ -1009,7 +1009,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt("foreign::crust::shim::build_args");
+            let _icx = bcx.insn_ctxt("foreign::extern::shim::build_args");
             let mut llargvals = ~[];
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);

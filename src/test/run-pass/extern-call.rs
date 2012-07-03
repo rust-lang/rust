@@ -3,7 +3,7 @@ extern mod rustrt {
                      data: libc::uintptr_t) -> libc::uintptr_t;
 }
 
-crust fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
+extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     if data == 1u {
         data
     } else {

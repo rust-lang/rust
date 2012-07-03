@@ -1031,13 +1031,13 @@ type tcp_listen_fc_data = {
     mut active: bool
 };
 
-crust fn tcp_lfc_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
+extern fn tcp_lfc_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
     let server_data_ptr = uv::ll::get_data_for_uv_handle(
         handle) as *tcp_listen_fc_data;
     comm::send((*server_data_ptr).stream_closed_ch, ());
 }
 
-crust fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
+extern fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
                                      status: libc::c_int) unsafe {
     let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
         as *tcp_listen_fc_data;
@@ -1094,7 +1094,7 @@ impl of to_tcp_err_iface for uv::ll::uv_err_data {
     }
 }
 
-crust fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
+extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
                     nread: libc::ssize_t,
                     ++buf: uv::ll::uv_buf_t) unsafe {
     log(debug, #fmt("entering on_tcp_read_cb stream: %? nread: %?",
@@ -1128,7 +1128,7 @@ crust fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
     log(debug, "exiting on_tcp_read_cb");
 }
 
-crust fn on_alloc_cb(handle: *libc::c_void,
+extern fn on_alloc_cb(handle: *libc::c_void,
                      ++suggested_size: size_t)
     -> uv::ll::uv_buf_t unsafe {
     log(debug, "tcp read on_alloc_cb!");
@@ -1144,7 +1144,7 @@ type tcp_socket_close_data = {
     closed_ch: comm::chan<()>
 };
 
-crust fn tcp_socket_dtor_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
+extern fn tcp_socket_dtor_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
     let data = uv::ll::get_data_for_uv_handle(handle)
         as *tcp_socket_close_data;
     let closed_ch = (*data).closed_ch;
@@ -1152,7 +1152,7 @@ crust fn tcp_socket_dtor_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
     log(debug, "tcp_socket_dtor_close_cb exiting..");
 }
 
-crust fn tcp_write_complete_cb(write_req: *uv::ll::uv_write_t,
+extern fn tcp_write_complete_cb(write_req: *uv::ll::uv_write_t,
                               status: libc::c_int) unsafe {
     let write_data_ptr = uv::ll::get_data_for_req(write_req)
         as *write_req_data;
@@ -1178,18 +1178,18 @@ type connect_req_data = {
     closed_signal_ch: comm::chan<()>
 };
 
-crust fn stream_error_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
+extern fn stream_error_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
     let data = uv::ll::get_data_for_uv_handle(handle) as
         *connect_req_data;
     comm::send((*data).closed_signal_ch, ());
     log(debug, #fmt("exiting steam_error_close_cb for %?", handle));
 }
 
-crust fn tcp_connect_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
+extern fn tcp_connect_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
     log(debug, #fmt("closed client tcp handle %?", handle));
 }
 
-crust fn tcp_connect_on_connect_cb(connect_req_ptr: *uv::ll::uv_connect_t,
+extern fn tcp_connect_on_connect_cb(connect_req_ptr: *uv::ll::uv_connect_t,
                                    status: libc::c_int) unsafe {
     let conn_data_ptr = (uv::ll::get_data_for_req(connect_req_ptr)
                       as *connect_req_data);

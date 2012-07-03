@@ -1,13 +1,9 @@
-// error-pattern:explicit failure
-// Testing that runtime failure doesn't cause callbacks to abort abnormally.
-// Instead the failure will be delivered after the callbacks return.
-
 extern mod rustrt {
     fn rust_dbg_call(cb: *u8,
                      data: libc::uintptr_t) -> libc::uintptr_t;
 }
 
-crust fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
+extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     if data == 1u {
         data
     } else {
@@ -25,7 +21,7 @@ fn main() {
         do task::spawn || {
             let result = count(5u);
             #debug("result = %?", result);
-            fail;
+            assert result == 16u;
         };
     }
 }

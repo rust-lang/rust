@@ -2031,7 +2031,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         }
       }
       ast::def_fn(id, ast::extern_fn) {
-        // Crust functions are just u8 pointers
+        // extern functions are just u8 pointers
         ret {
             bounds: @~[],
             rp: ast::rp_none,

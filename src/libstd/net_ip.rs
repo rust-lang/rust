@@ -257,7 +257,7 @@ type get_addr_data = {
     output_ch: comm::chan<result::result<[ip_addr]/~,ip_get_addr_err>>
 };
 
-crust fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
+extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                      res: *addrinfo) unsafe {
     log(debug, "in get_addr_cb");
     let handle_data = get_data_for_req(handle) as

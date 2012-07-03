@@ -1,11 +1,11 @@
-crust fn f() {
+extern fn f() {
 }
 
-crust fn g() {
+extern fn g() {
 }
 
 fn main() {
-    // Crust functions are *u8 types
+    // extern functions are *u8 types
     let a: *u8 = f;
     let b: *u8 = f;
     let c: *u8 = g;

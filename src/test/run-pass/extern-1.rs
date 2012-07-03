@@ -1,4 +1,4 @@
-crust fn f() {
+extern fn f() {
 }
 
 fn main() {

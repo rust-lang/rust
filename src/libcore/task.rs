@@ -612,7 +612,7 @@ type task_local_element = (*libc::c_void, *libc::c_void, fn@(+*libc::c_void));
 // Has to be a pointer at outermost layer; the foreign call returns void *.
 type task_local_map = @dvec::dvec<option<task_local_element>>;
 
-crust fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
+extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();
     // Get and keep the single reference that was created at the beginning.
     let map: task_local_map = unsafe::reinterpret_cast(map_ptr);
@@ -1250,7 +1250,7 @@ fn test_tls_modify() unsafe {
 #[test]
 fn test_tls_crust_automorestack_memorial_bug() unsafe {
     // This might result in a stack-canary clobber if the runtime fails to set
-    // sp_limit to 0 when calling the cleanup crust - it might automatically
+    // sp_limit to 0 when calling the cleanup extern - it might automatically
     // jump over to the rust stack, which causes next_c_sp to get recorded as
     // something within a rust stack segment. Then a subsequent upcall (esp.
     // for logging, think vsnprintf) would run on a stack smaller than 1 MB.

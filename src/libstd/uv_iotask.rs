@@ -148,10 +148,10 @@ fn send_msg(iotask: iotask,
 }
 
 #[doc ="Dispatch all pending messages"]
-crust fn wake_up_cb(async_handle: *ll::uv_async_t,
+extern fn wake_up_cb(async_handle: *ll::uv_async_t,
                     status: int) unsafe {
 
-    log(debug, #fmt("wake_up_cb crust.. handle: %? status: %?",
+    log(debug, #fmt("wake_up_cb extern.. handle: %? status: %?",
                      async_handle, status));
 
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
@@ -176,7 +176,7 @@ fn begin_teardown(data: *iotask_loop_data) unsafe {
     ll::close(async_handle as *c_void, tear_down_close_cb);
 }
 
-crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
+extern fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
     let loop_ptr = ll::get_loop_for_uv_handle(handle);
     let loop_refs = ll::loop_refcount(loop_ptr);
     log(debug, #fmt("tear_down_close_cb called, closing handle at %? refs %?",
@@ -186,13 +186,13 @@ crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
 
 #[cfg(test)]
 mod test {
-    crust fn async_close_cb(handle: *ll::uv_async_t) unsafe {
+    extern fn async_close_cb(handle: *ll::uv_async_t) unsafe {
         log(debug, #fmt("async_close_cb handle %?", handle));
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)
                         as *ah_data)).exit_ch;
         comm::send(exit_ch, ());
     }
-    crust fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int)
+    extern fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int)
         unsafe {
         log(debug, #fmt("async_handle_cb handle %? status %?",handle,status));
         ll::close(handle, async_close_cb);
@@ -231,11 +231,11 @@ mod test {
         ret comm::recv(iotask_port);
     }
 
-    crust fn lifetime_handle_close(handle: *libc::c_void) unsafe {
+    extern fn lifetime_handle_close(handle: *libc::c_void) unsafe {
         log(debug, #fmt("lifetime_handle_close ptr %?", handle));
     }
 
-    crust fn lifetime_async_callback(handle: *libc::c_void,
+    extern fn lifetime_async_callback(handle: *libc::c_void,
                                      status: libc::c_int) {
         log(debug, #fmt("lifetime_handle_close ptr %? status %?",
                         handle, status));

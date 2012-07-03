@@ -116,7 +116,7 @@ fn recv_timeout<T: copy send>(iotask: iotask,
 }
 
 // INTERNAL API
-crust fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
+extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
                                 status: libc::c_int) unsafe {
     log(debug, #fmt("delayed_send_cb handle %? status %?", handle, status));
     let timer_done_ch =
@@ -133,7 +133,7 @@ crust fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
     }
 }
 
-crust fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
+extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
     log(debug, #fmt("delayed_send_close_cb handle %?", handle));
     let timer_done_ch =
         *(uv::ll::get_data_for_uv_handle(handle) as *comm::chan<()>);
