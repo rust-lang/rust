@@ -14,6 +14,7 @@ io::println(#fmt(\"fib(5000) = %?\", delayed_fib.get()))
 import either::either;
 
 export future;
+export extensions;
 export from_value;
 export from_port;
 export from_fn;
@@ -27,7 +28,7 @@ enum future<A> = {
 };
 
 #[doc = "Methods on the `future` type"]
-impl future<A:copy send> for future<A> {
+impl extensions<A:copy send> for future<A> {
 
     fn get() -> A {
         #[doc = "Get the value of the future"];

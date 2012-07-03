@@ -6,8 +6,8 @@ import ip = net_ip;
 import uv::iotask;
 import uv::iotask::iotask;
 import comm::methods;
-import future::future;
 import future_spawn = future::spawn;
+import future::extensions;
 // FIXME #1935
 // should be able to, but can't atm, replace w/ result::{result, extensions};
 import result::*;
@@ -303,7 +303,7 @@ A `future` value that, once the `write` operation completes, resolves to a
 value as the `err` variant
 "]
 fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
-    -> future<result::result<(), tcp_err_data>> unsafe {
+    -> future::future<result::result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     do future_spawn || {
         let data_copy = copy(raw_write_data);
@@ -395,7 +395,7 @@ Otherwise, use the blocking `tcp::read` function instead.
 read attempt. Pass `0u` to wait indefinitely
 "]
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
-    -> future<result::result<~[u8],tcp_err_data>> {
+    -> future::future<result::result<~[u8],tcp_err_data>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     do future_spawn || {
         read_common_impl(socket_data, timeout_msecs)
