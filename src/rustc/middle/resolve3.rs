@@ -380,6 +380,17 @@ class Module {
     }
 }
 
+pure fn is_crate_root(module: @Module) -> bool {
+    alt module.def_id {
+        none => {
+            ret false;
+        }
+        some(def_id) => {
+            ret def_id.crate == 0 && def_id.node == 0;
+        }
+    }
+}
+
 // XXX: This is a workaround due to is_none in the standard library mistakenly
 // requiring a T:copy.
 
@@ -2802,6 +2813,20 @@ class Resolver {
             }
 
             item_fn(fn_decl, ty_params, block) {
+                // If this is the main function, we must record it in the
+                // session.
+                //
+                // For speed, we put the string comparison last in this chain
+                // of conditionals.
+
+                if !self.session.building_library &&
+                        is_none(self.session.main_fn) &&
+                        is_crate_root(self.current_module) &&
+                        str::eq(*item.ident, "main") {
+
+                    self.session.main_fn = some((item.id, item.span));
+                }
+
                 self.resolve_function(NormalRibKind,
                                       some(@fn_decl),
                                       HasTypeParameters(&ty_params,
