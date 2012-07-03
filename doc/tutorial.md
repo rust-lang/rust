@@ -13,9 +13,8 @@ the whole language, though not with the depth and precision of the
 
 ## First Impressions
 
-Though syntax is something you get used to, an initial encounter with
-a language can be made easier if the notation looks familiar. Rust is
-a curly-brace language in the tradition of C, C++, and JavaScript.
+As a curly-brace language in the tradition of C, C++, and JavaScript,
+Rust looks a lot like other languages you may be familiar with.
 
 ~~~~
 fn fac(n: int) -> int {
