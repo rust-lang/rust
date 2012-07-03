@@ -223,10 +223,82 @@ type sockaddr_in = {
     mut sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8)
 };
 
-// unix size: 28 .. make due w/ 32
+// unix size: 28 .. FIXME #1645
+// stuck with 32 becuse of rust padding structs?
+#[cfg(target_arch="x86_64")]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
-    a2: *u8, a3: (u8, u8, u8, u8)
+    a2: *u8, a3: *u8
+};
+#[cfg(target_arch="x86")]
+type sockaddr_in6 = {
+    a0: *u8, a1: *u8,
+    a2: *u8, a3: *u8,
+    a4: *u8, a5: *u8,
+    a6: *u8, a7: *u8
+};
+
+// unix size: 28 .. FIXME #1645
+// stuck with 32 becuse of rust padding structs?
+type addr_in = addr_in_impl::addr_in;
+#[cfg(unix)]
+mod addr_in_impl {
+    #[cfg(target_arch="x86_64")]
+    type addr_in = {
+        a0: *u8, a1: *u8,
+        a2: *u8, a3: *u8
+    };
+    #[cfg(target_arch="x86")]
+    type addr_in = {
+        a0: *u8, a1: *u8,
+        a2: *u8, a3: *u8,
+        a4: *u8, a5: *u8,
+        a6: *u8, a7: *u8,
+    };
+}
+#[cfg(windows)]
+mod addr_in_impl {
+    type addr_in = {
+        a0: *u8, a1: *u8,
+        a2: *u8, a3: *u8
+    };
+}
+
+// unix size: 48, 32bit: 32
+type addrinfo = addrinfo_impl::addrinfo;
+#[cfg(target_os="linux")]
+mod addrinfo_impl {
+    #[cfg(target_arch="x86_64")]
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8
+    };
+    #[cfg(target_arch="x86")]
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8, a06: *u8, a07: *u8
+    };
+}
+#[cfg(target_os="macos")]
+#[cfg(target_os="freebsd")]
+mod addrinfo_impl {
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8
+    };
+}
+#[cfg(windows)]
+mod addrinfo_impl {
+    type addrinfo = {
+        a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+        a04: *u8, a05: *u8
+    };
+}
+
+// unix size: 72
+type uv_getaddrinfo_t = {
+    a00: *u8, a01: *u8, a02: *u8, a03: *u8, a04: *u8, a05: *u8,
+    a06: *u8, a07: *u8, a08: *u8
 };
 
 mod uv_ll_struct_stubgen {
@@ -474,10 +546,18 @@ mod uv_ll_struct_stubgen {
             a12: 0 as *u8
         };
     }
+    fn gen_stub_uv_getaddrinfo_t() -> uv_getaddrinfo_t {
+        {
+            a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
+            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8, a07: 0 as *u8,
+            a08: 0 as *u8
+        }
+    }
 }
 
 #[nolink]
 native mod rustrt {
+    // libuv public API
     fn rust_uv_loop_new() -> *libc::c_void;
     fn rust_uv_loop_delete(lp: *libc::c_void);
     fn rust_uv_loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int;
@@ -500,6 +580,12 @@ native mod rustrt {
     fn rust_uv_err_name(err: *uv_err_t) -> *libc::c_char;
     fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
         -> sockaddr_in;
+    fn rust_uv_ip6_addr(ip: *u8, port: libc::c_int)
+        -> sockaddr_in6;
+    fn rust_uv_ip4_name(src: *sockaddr_in, dst: *u8, size: libc::size_t)
+        -> libc::c_int;
+    fn rust_uv_ip6_name(src: *sockaddr_in6, dst: *u8, size: libc::size_t)
+        -> libc::c_int;
     // FIXME ref #2064
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
@@ -508,6 +594,14 @@ native mod rustrt {
     // FIXME ref #2064
     fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
                         ++addr: *sockaddr_in) -> libc::c_int;
+    // FIXME ref #2064
+    fn rust_uv_tcp_connect6(connect_ptr: *uv_connect_t,
+                           tcp_handle_ptr: *uv_tcp_t,
+                           ++after_cb: *u8,
+                           ++addr: *sockaddr_in6) -> libc::c_int;
+    // FIXME ref #2064
+    fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t,
+                        ++addr: *sockaddr_in6) -> libc::c_int;
     fn rust_uv_listen(stream: *libc::c_void, backlog: libc::c_int,
                       cb: *u8) -> libc::c_int;
     fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
@@ -527,7 +621,22 @@ native mod rustrt {
         repeat: libc::c_uint) -> libc::c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
 
+    fn rust_uv_getaddrinfo(loop_ptr: *libc::c_void,
+                           handle: *uv_getaddrinfo_t,
+                           cb: *u8,
+                           node_name_ptr: *u8,
+                           service_name_ptr: *u8,
+                           // should probably only pass ptr::null()
+                           hints: *addrinfo) -> libc::c_int;
+    fn rust_uv_freeaddrinfo(res: *addrinfo);
+
     // data accessors/helpers for rust-mapped uv structs
+    fn rust_uv_helper_get_INADDR_NONE() -> u32;
+    fn rust_uv_is_ipv4_addrinfo(input: *addrinfo) -> bool;
+    fn rust_uv_is_ipv6_addrinfo(input: *addrinfo) -> bool;
+    fn rust_uv_get_next_addrinfo(input: *addrinfo) -> *addrinfo;
+    fn rust_uv_addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in;
+    fn rust_uv_addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6;
     fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
     fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
     fn rust_uv_get_stream_handle_from_connect_req(
@@ -558,8 +667,12 @@ native mod rustrt {
     fn rust_uv_helper_uv_write_t_size() -> libc::c_uint;
     fn rust_uv_helper_uv_err_t_size() -> libc::c_uint;
     fn rust_uv_helper_sockaddr_in_size() -> libc::c_uint;
+    fn rust_uv_helper_sockaddr_in6_size() -> libc::c_uint;
     fn rust_uv_helper_uv_async_t_size() -> libc::c_uint;
     fn rust_uv_helper_uv_timer_t_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_getaddrinfo_t_size() -> libc::c_uint;
+    fn rust_uv_helper_addrinfo_size() -> libc::c_uint;
+    fn rust_uv_helper_addr_in_size() -> libc::c_uint;
 }
 
 unsafe fn loop_new() -> *libc::c_void {
@@ -598,9 +711,24 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                                     after_connect_cb, addr_ptr);
 }
 // FIXME ref #2064
+unsafe fn tcp_connect6(connect_ptr: *uv_connect_t,
+                      tcp_handle_ptr: *uv_tcp_t,
+                      addr_ptr: *sockaddr_in6,
+                      ++after_connect_cb: *u8)
+-> libc::c_int {
+    ret rustrt::rust_uv_tcp_connect6(connect_ptr, tcp_handle_ptr,
+                                    after_connect_cb, addr_ptr);
+}
+// FIXME ref #2064
 unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
                    addr_ptr: *sockaddr_in) -> libc::c_int {
     ret rustrt::rust_uv_tcp_bind(tcp_server_ptr,
+                                 addr_ptr);
+}
+// FIXME ref #2064
+unsafe fn tcp_bind6(tcp_server_ptr: *uv_tcp_t,
+                   addr_ptr: *sockaddr_in6) -> libc::c_int {
+    ret rustrt::rust_uv_tcp_bind6(tcp_server_ptr,
                                  addr_ptr);
 }
 
@@ -677,14 +805,59 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
 }
 unsafe fn ip4_addr(ip: str, port: int)
 -> sockaddr_in {
-    let mut addr_vec = str::bytes(ip);
-    vec::push(addr_vec, 0u8); // add null terminator
-    let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
-    let ip_back = str::from_bytes(addr_vec);
-    log(debug, #fmt("vec val: '%s' length: %u",
-                     ip_back, vec::len(addr_vec)));
-    ret rustrt::rust_uv_ip4_addr(addr_vec_ptr,
-                                 port as libc::c_int);
+    do str::as_c_str(ip) |ip_buf| {
+        rustrt::rust_uv_ip4_addr(ip_buf as *u8,
+                                 port as libc::c_int)
+    }
+}
+unsafe fn ip6_addr(ip: str, port: int)
+-> sockaddr_in6 {
+    do str::as_c_str(ip) |ip_buf| {
+        rustrt::rust_uv_ip6_addr(ip_buf as *u8,
+                                 port as libc::c_int)
+    }
+}
+unsafe fn ip4_name(src: &sockaddr_in) -> str {
+    // ipv4 addr max size: 15 + 1 trailing null byte
+    let dst: [u8]/~ = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                     0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8]/~;
+    let size = 16 as libc::size_t;
+    do vec::as_buf(dst) |dst_buf| {
+        rustrt::rust_uv_ip4_name(src as *sockaddr_in,
+                                              dst_buf, size);
+        // seems that checking the result of uv_ip4_name
+        // doesn't work too well..
+        // you're stuck looking at the value of dst_buf
+        // to see if it is the string representation of
+        // INADDR_NONE (0xffffffff or 255.255.255.255 on
+        // many platforms)
+        str::unsafe::from_buf(dst_buf)
+    }
+}
+unsafe fn ip6_name(src: &sockaddr_in6) -> str {
+    // ipv6 addr max size: 45 + 1 trailing null byte
+    let dst: [u8]/~ = [0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
+                       0u8,0u8,0u8,0u8,0u8,0u8]/~;
+    let size = 46 as libc::size_t;
+    do vec::as_buf(dst) |dst_buf| {
+        let src_unsafe_ptr = src as *sockaddr_in6;
+        log(debug, #fmt("val of src *sockaddr_in6: %? sockaddr_in6: %?",
+                        src_unsafe_ptr, src));
+        let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,
+                                              dst_buf, size);
+        alt result {
+          0i32 {
+            str::unsafe::from_buf(dst_buf)
+          }
+          _ {
+            ""
+          }
+        }
+    }
 }
 
 unsafe fn timer_init(loop_ptr: *libc::c_void,
@@ -698,6 +871,22 @@ unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
 }
 unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
     ret rustrt::rust_uv_timer_stop(timer_ptr);
+}
+unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
+                           handle: *uv_getaddrinfo_t,
+                           cb: *u8,
+                           node_name_ptr: *u8,
+                           service_name_ptr: *u8,
+                           hints: *addrinfo) -> libc::c_int {
+    rustrt::rust_uv_getaddrinfo(loop_ptr,
+                           handle,
+                           cb,
+                           node_name_ptr,
+                           service_name_ptr,
+                           hints)
+}
+unsafe fn freeaddrinfo(res: *addrinfo) {
+    rustrt::rust_uv_freeaddrinfo(res);
 }
 
 // libuv struct initializers
@@ -715,6 +904,9 @@ unsafe fn async_t() -> uv_async_t {
 }
 unsafe fn timer_t() -> uv_timer_t {
     ret uv_ll_struct_stubgen::gen_stub_uv_timer_t();
+}
+unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
+    ret uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
 }
 
 // data access helpers
@@ -790,6 +982,25 @@ type uv_err_data = {
     err_name: str,
     err_msg: str
 };
+
+unsafe fn is_ipv4_addrinfo(input: *addrinfo) -> bool {
+    rustrt::rust_uv_is_ipv4_addrinfo(input)
+}
+unsafe fn is_ipv6_addrinfo(input: *addrinfo) -> bool {
+    rustrt::rust_uv_is_ipv6_addrinfo(input)
+}
+unsafe fn get_INADDR_NONE() -> u32 {
+    rustrt::rust_uv_helper_get_INADDR_NONE()
+}
+unsafe fn get_next_addrinfo(input: *addrinfo) -> *addrinfo {
+    rustrt::rust_uv_get_next_addrinfo(input)
+}
+unsafe fn addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in {
+    rustrt::rust_uv_addrinfo_as_sockaddr_in(input)
+}
+unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
+    rustrt::rust_uv_addrinfo_as_sockaddr_in6(input)
+}
 
 #[cfg(test)]
 mod test {
@@ -1366,6 +1577,33 @@ mod test {
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
     }
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    fn test_uv_ll_struct_size_sockaddr_in6() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_sockaddr_in6_size();
+        let rust_handle_size = sys::size_of::<sockaddr_in6>();
+        let output = #fmt("sockaddr_in6 -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        // FIXME #1645 .. rust appears to pad structs to the nearest byte..?
+        // .. can't get the uv::ll::sockaddr_in6 to == 28 :/
+        // .. so the type always appears to be 32 in size.. which is
+        // good, i guess.. better too big than too little
+        assert (4u+native_handle_size as uint) == rust_handle_size;
+    }
+    #[test]
+    #[ignore(reason = "questionable size calculations")]
+    fn test_uv_ll_struct_size_addr_in() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_addr_in_size();
+        let rust_handle_size = sys::size_of::<addr_in>();
+        let output = #fmt("addr_in -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        // FIXME #1645 .. see note above about struct padding
+        assert (4u+native_handle_size as uint) == rust_handle_size;
+    }
 
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
@@ -1389,5 +1627,31 @@ mod test {
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
+    }
+
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    #[ignore(cfg(target_os = "win32"))]
+    fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
+        let rust_handle_size = sys::size_of::<uv_getaddrinfo_t>();
+        let output = #fmt("uv_getaddrinfo_t -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        assert native_handle_size as uint == rust_handle_size;
+    }
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    #[ignore(cfg(target_os = "macos"))]
+    #[ignore(cfg(target_os = "win32"))]
+    fn test_uv_ll_struct_size_addrinfo() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_addrinfo_size();
+        let rust_handle_size = sys::size_of::<addrinfo>();
+        let output = #fmt("addrinfo -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        assert native_handle_size as uint == rust_handle_size;
     }
 }
