@@ -973,11 +973,25 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ {}
         }
         check_expr(fcx, rhs, none);
+
         tcx.sess.span_err(
             ex.span, "binary operation " + ast_util::binop_to_str(op) +
             " cannot be applied to type `" +
             fcx.infcx.ty_to_str(lhs_resolved_t) +
             "`");
+
+        // If the or operator is used it might be that the user forgot to
+        // supply the do keyword.  Let's be more helpful in that situation.
+        if op == ast::or {
+          alt ty::get(lhs_resolved_t).struct {
+            ty::ty_fn(f) {
+              tcx.sess.span_note(
+                  ex.span, "did you forget the 'do' keyword for the call?");
+            }
+            _ {}
+          }
+        }
+
         (lhs_resolved_t, false)
     }
     fn check_user_unop(fcx: @fn_ctxt, op_str: str, mname: str,
