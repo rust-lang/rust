@@ -782,6 +782,7 @@ extern mod rustrt {
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
 
     fn get_task_id() -> task_id;
+    #[rust_stack]
     fn rust_get_task() -> *rust_task;
 
     fn new_task() -> *rust_task;

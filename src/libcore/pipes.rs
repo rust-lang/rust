@@ -11,7 +11,7 @@ enum state {
 
 type packet<T: send> = {
     mut state: state,
-    mut blocked_task: option<task::task>,
+    mut blocked_task: option<*rust_task>,
     mut payload: option<T>
 };
 
@@ -29,6 +29,19 @@ native mod rusti {
     fn atomic_xchng(&dst: int, src: int) -> int;
     fn atomic_xchng_acq(&dst: int, src: int) -> int;
     fn atomic_xchng_rel(&dst: int, src: int) -> int;
+}
+
+type rust_task = libc::c_void;
+
+native mod rustrt {
+    #[rust_stack]
+    fn rust_get_task() -> *rust_task;
+
+    #[rust_stack]
+    fn task_clear_event_reject(task: *rust_task);
+
+    fn task_wait_event(this: *rust_task) -> *libc::c_void;
+    fn task_signal_event(target: *rust_task, event: *libc::c_void);
 }
 
 // We should consider moving this to core::unsafe, although I
@@ -54,8 +67,8 @@ fn swap_state_rel(&dst: state, src: state) -> state {
 }
 
 fn send<T: send>(-p: send_packet<T>, -payload: T) {
-    let p = p.unwrap();
-    let p = unsafe { uniquify(p) };
+    let p_ = p.unwrap();
+    let p = unsafe { uniquify(p_) };
     assert (*p).payload == none;
     (*p).payload <- some(payload);
     let old_state = swap_state_rel((*p).state, full);
@@ -68,8 +81,13 @@ fn send<T: send>(-p: send_packet<T>, -payload: T) {
       }
       full { fail "duplicate send" }
       blocked {
-        // TODO: once the target will actually block, tell the
-        // scheduler to wake it up.
+        #debug("waking up task for %?", p_);
+        alt p.blocked_task {
+          some(task) {
+            rustrt::task_signal_event(task, p_ as *libc::c_void);
+          }
+          none { fail "blocked packet has no task" }
+        }
 
         // The receiver will eventually clean this up.
         unsafe { forget(p); }
@@ -82,16 +100,32 @@ fn send<T: send>(-p: send_packet<T>, -payload: T) {
 }
 
 fn recv<T: send>(-p: recv_packet<T>) -> option<T> {
-    let p = p.unwrap();
-    let p = unsafe { uniquify(p) };
+    let p_ = p.unwrap();
+    let p = unsafe { uniquify(p_) };
+    let this = rustrt::rust_get_task();
+    rustrt::task_clear_event_reject(this);
+    p.blocked_task = some(this);
     loop {
         let old_state = swap_state_acq((*p).state,
                                        blocked);
+        #debug("%?", old_state);
         alt old_state {
-          empty | blocked { task::yield(); }
+          empty {
+            #debug("no data available on %?, going to sleep.", p_);
+            rustrt::task_wait_event(this);
+            #debug("woke up, p.state = %?", p.state);
+            if p.state == full {
+                let mut payload = none;
+                payload <-> (*p).payload;
+                p.state = terminated;
+                ret some(option::unwrap(payload))
+            }
+          }
+          blocked { fail "blocking on already blocked packet" }
           full {
             let mut payload = none;
             payload <-> (*p).payload;
+            p.state = terminated;
             ret some(option::unwrap(payload))
           }
           terminated {

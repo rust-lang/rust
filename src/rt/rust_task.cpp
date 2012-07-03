@@ -36,6 +36,8 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     state(state),
     cond(NULL),
     cond_name("none"),
+    event_reject(false),
+    event(NULL),
     killed(false),
     reentered_rust_stack(false),
     disallow_kill(0),
@@ -407,13 +409,20 @@ rust_task::free(void *p)
 void
 rust_task::transition(rust_task_state src, rust_task_state dst,
                       rust_cond *cond, const char* cond_name) {
+    scoped_lock with(state_lock);
+    transition_locked(src, dst, cond, cond_name);
+}
+
+void rust_task::transition_locked(rust_task_state src, rust_task_state dst,
+                                  rust_cond *cond, const char* cond_name) {
+    state_lock.must_have_lock();
     sched_loop->transition(this, src, dst, cond, cond_name);
 }
 
 void
 rust_task::set_state(rust_task_state state,
                      rust_cond *cond, const char* cond_name) {
-    scoped_lock with(state_lock);
+    state_lock.must_have_lock();
     this->state = state;
     this->cond = cond;
     this->cond_name = cond_name;
@@ -422,7 +431,11 @@ rust_task::set_state(rust_task_state state,
 bool
 rust_task::block(rust_cond *on, const char* name) {
     scoped_lock with(kill_lock);
+    return block_locked(on, name);
+}
 
+bool
+rust_task::block_locked(rust_cond *on, const char* name) {
     if (must_fail_from_being_killed_unlocked()) {
         // We're already going to die. Don't block. Tell the task to fail
         return false;
@@ -433,19 +446,25 @@ rust_task::block(rust_cond *on, const char* name) {
     assert(cond == NULL && "Cannot block an already blocked task.");
     assert(on != NULL && "Cannot block on a NULL object.");
 
-    transition(task_state_running, task_state_blocked, on, name);
+    transition_locked(task_state_running, task_state_blocked, on, name);
 
     return true;
 }
 
 void
 rust_task::wakeup(rust_cond *from) {
+    scoped_lock with(state_lock);
+    wakeup_locked(from);
+}
+
+void
+rust_task::wakeup_locked(rust_cond *from) {
     assert(cond != NULL && "Cannot wake up unblocked task.");
     LOG(this, task, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
                         (uintptr_t) cond, (uintptr_t) from);
     assert(cond == from && "Cannot wake up blocked task on wrong condition.");
 
-    transition(task_state_blocked, task_state_running, NULL, "none");
+    transition_locked(task_state_blocked, task_state_running, NULL, "none");
 }
 
 void
@@ -691,6 +710,34 @@ rust_task::allow_kill() {
     scoped_lock with(kill_lock);
     assert(disallow_kill > 0 && "Illegal allow_kill(): already killable!");
     disallow_kill--;
+}
+
+void *
+rust_task::wait_event() {
+    scoped_lock with(state_lock);
+
+    if(!event_reject) {
+        block_locked(&event_cond, "waiting on event");
+        bool killed = false;
+        state_lock.unlock();
+        yield(&killed);
+        state_lock.lock();
+        // TODO: what is the right thing to do if we are killed?
+    }
+
+    event_reject = false;
+    return event;
+}
+
+void
+rust_task::signal_event(void *event) {
+    scoped_lock with(state_lock);
+
+    this->event = event;
+    event_reject = true;
+    if(task_state_blocked == state) {
+        wakeup_locked(&event_cond);
+    }
 }
 
 //

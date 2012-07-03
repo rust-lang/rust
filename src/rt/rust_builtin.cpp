@@ -922,6 +922,26 @@ rust_task_local_data_atexit(rust_task *task, void (*cleanup_fn)(void *data)) {
     task->task_local_data_cleanup = cleanup_fn;
 }
 
+extern "C" void
+task_clear_event_reject(rust_task *task) {
+    task->clear_event_reject();
+}
+
+// Waits on an event, returning the pointer to the event that unblocked this
+// task.
+extern "C" void *
+task_wait_event(rust_task *task) {
+    // TODO: we should assert that the passed in task is the currently running
+    // task. We wouldn't want to wait some other task.
+
+    return task->wait_event();
+}
+
+extern "C" void
+task_signal_event(rust_task *target, void *event) {
+    target->signal_event(event);
+}
+
 //
 // Local Variables:
 // mode: C++

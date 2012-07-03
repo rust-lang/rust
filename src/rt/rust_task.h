@@ -175,6 +175,10 @@ private:
     rust_cond *cond;
     const char *cond_name;
 
+    bool event_reject;
+    rust_cond event_cond;
+    void *event;
+
     // Protects the killed flag, disallow_kill flag, reentered_rust_stack
     lock_and_signal kill_lock;
     // Indicates that the task was killed and needs to unwind
@@ -205,6 +209,8 @@ private:
 
     void transition(rust_task_state src, rust_task_state dst,
                     rust_cond *cond, const char* cond_name);
+    void transition_locked(rust_task_state src, rust_task_state dst,
+                           rust_cond *cond, const char* cond_name);
 
     bool must_fail_from_being_killed_unlocked();
     // Called by rust_task_fail to unwind on failure
@@ -220,6 +226,9 @@ private:
                                char const *expr,
                                char const *file,
                                size_t line);
+
+    bool block_locked(rust_cond *on, const char* name);
+    void wakeup_locked(rust_cond *from);
 
 public:
 
@@ -302,6 +311,13 @@ public:
     rust_task_state get_state() { return state; }
     rust_cond *get_cond() { return cond; }
     const char *get_cond_name() { return cond_name; }
+
+    void clear_event_reject() {
+        this->event_reject = false;
+    }
+
+    void *wait_event();
+    void signal_event(void *event);
 
     void cleanup_after_turn();
 
