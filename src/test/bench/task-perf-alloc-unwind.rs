@@ -17,7 +17,7 @@ fn main() {
 }
 
 fn run(repeat: int, depth: int) {
-    do iter::repeat(repeat as uint) || {
+    for iter::repeat(repeat as uint) || {
         #debug("starting %.4f", precise_time_s());
         do task::try || {
             recurse_or_fail(depth, none)

@@ -364,16 +364,16 @@ fn test_select2_rendezvous() {
     let ch_a = chan(po_a);
     let ch_b = chan(po_b);
 
-    do iter::repeat(10u) || {
+    for iter::repeat(10u) || {
         do task::spawn || {
-            iter::repeat(10u, || task::yield());
+            for iter::repeat(10u) { task::yield() }
             send(ch_a, "a");
         };
 
         assert select2(po_a, po_b) == either::left("a");
 
         do task::spawn || {
-            iter::repeat(10u, || task::yield());
+            for iter::repeat(10u) { task::yield() }
             send(ch_b, "b");
         };
 
@@ -391,14 +391,14 @@ fn test_select2_stress() {
     let msgs = 100u;
     let times = 4u;
 
-    do iter::repeat(times) || {
+    for iter::repeat(times) || {
         do task::spawn || {
-            do iter::repeat(msgs) || {
+            for iter::repeat(msgs) || {
                 send(ch_a, "a")
             }
         };
         do task::spawn || {
-            do iter::repeat(msgs) || {
+            for iter::repeat(msgs) || {
                 send(ch_b, "b")
             }
         };
@@ -406,7 +406,7 @@ fn test_select2_stress() {
 
     let mut as = 0;
     let mut bs = 0;
-    do iter::repeat(msgs * times * 2u) || {
+    for iter::repeat(msgs * times * 2u) || {
         alt check select2(po_a, po_b) {
           either::left("a") { as += 1 }
           either::right("b") { bs += 1 }
@@ -473,7 +473,7 @@ fn test_listen() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_port_detach_fail() {
-    do iter::repeat(100u) || {
+    for iter::repeat(100u) || {
         let builder = task::builder();
         task::unsupervise(builder);
         do task::run(builder) || {

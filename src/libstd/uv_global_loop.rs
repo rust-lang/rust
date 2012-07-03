@@ -191,13 +191,13 @@ mod test {
         let exit_po = comm::port::<()>();
         let exit_ch = comm::chan(exit_po);
         let cycles = 5000u;
-        do iter::repeat(cycles) || {
+        for iter::repeat(cycles) || {
             task::spawn_sched(task::manual_threads(1u), || {
                 impl_uv_hl_simple_timer(hl_loop);
                 comm::send(exit_ch, ());
             });
         };
-        do iter::repeat(cycles) || {
+        for iter::repeat(cycles) || {
             comm::recv(exit_po);
         };
         log(debug, "test_stress_gl_uv_global_loop_high_level_global_timer"+

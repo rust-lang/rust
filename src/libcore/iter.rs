@@ -99,10 +99,10 @@ fn position<A,IA:base_iter<A>>(self: IA, f: fn(A) -> bool)
 // iter interface, such as would provide "reach" in addition to "each". as is,
 // it would have to be implemented with foldr, which is too inefficient.
 
-fn repeat(times: uint, blk: fn()) {
+fn repeat(times: uint, blk: fn() -> bool) {
     let mut i = 0u;
     while i < times {
-        blk();
+        if !blk() { break }
         i += 1u;
     }
 }

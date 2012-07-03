@@ -121,7 +121,7 @@ fn test_from_global_chan1() {
 #[test]
 fn test_from_global_chan2() {
 
-    do iter::repeat(100u) || {
+    for iter::repeat(100u) || {
         // The global channel
         let globchan = 0u;
         let globchanp = ptr::addr_of(globchan);
@@ -224,7 +224,7 @@ fn test_weaken_task_wait() {
 #[test]
 fn test_weaken_task_stress() {
     // Create a bunch of weak tasks
-    do iter::repeat(100u) || {
+    for iter::repeat(100u) || {
         do task::spawn || {
             unsafe {
                 do weaken_task |_po| {

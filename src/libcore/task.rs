@@ -1003,7 +1003,7 @@ fn test_spawn_sched_blocking() {
 
     // Testing that a task in one scheduler can block in foreign code
     // without affecting other schedulers
-    do iter::repeat(20u) || {
+    for iter::repeat(20u) || {
 
         let start_po = comm::port();
         let start_ch = comm::chan(start_po);
@@ -1168,7 +1168,7 @@ fn test_unkillable() {
 
     // We want to do this after failing
     do spawn || {
-        iter::repeat(10u, yield);
+        for iter::repeat(10u) { yield() }
         ch.send(());
     }
 

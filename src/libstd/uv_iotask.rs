@@ -255,13 +255,13 @@ mod test {
         // called, at least.
         let work_exit_po = comm::port::<()>();
         let work_exit_ch = comm::chan(work_exit_po);
-        do iter::repeat(7u) || {
+        for iter::repeat(7u) || {
             do task::spawn_sched(task::manual_threads(1u)) || {
                 impl_uv_iotask_async(iotask);
                 comm::send(work_exit_ch, ());
             };
         };
-        do iter::repeat(7u) || {
+        for iter::repeat(7u) || {
             comm::recv(work_exit_po);
         };
         log(debug, "sending teardown_loop msg..");
