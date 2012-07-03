@@ -37,7 +37,7 @@ Options:
     -c                 Compile and assemble, but do not link
     --cfg <cfgspec>    Configure the compilation environment
     --emit-llvm        Produce an LLVM bitcode file
-    -g                 Produce debug info
+    -g                 Produce debug info (experimental)
     --gc               Garbage collect shared data (experimental/temporary)
     -h --help          Display this message
     -L <path>          Add a directory to the library search path
