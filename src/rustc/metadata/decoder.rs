@@ -59,7 +59,7 @@ export translate_def_id;
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
 
-fn lookup_hash(d: ebml::doc, eq_fn: fn@(~[u8]) -> bool, hash: uint) ->
+fn lookup_hash(d: ebml::doc, eq_fn: fn@(x:&[u8]) -> bool, hash: uint) ->
    ~[ebml::doc] {
     let index = ebml::get_doc(d, tag_index);
     let table = ebml::get_doc(index, tag_index_table);
@@ -72,7 +72,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@(~[u8]) -> bool, hash: uint) ->
     let belt = tag_index_buckets_bucket_elt;
     do ebml::tagged_docs(bucket, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
-        if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
+        if eq_fn(vec::view::<u8>(*elt.data, elt.start + 4u, elt.end)) {
             vec::push(result, ebml::doc_at(d.data, pos).doc);
         }
     };
@@ -80,8 +80,9 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@(~[u8]) -> bool, hash: uint) ->
 }
 
 fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
-    fn eq_item(bytes: ~[u8], item_id: int) -> bool {
-        ret io::u64_from_be_bytes(bytes, 0u, 4u) as int == item_id;
+    fn eq_item(bytes: &[u8], item_id: int) -> bool {
+        ret io::u64_from_be_bytes(vec::slice(bytes, 0u, 4u), 0u, 4u) as int
+            == item_id;
     }
     let eqer = |a| eq_item(a, item_id);
     let found = lookup_hash(items, eqer, hash_node_id(item_id));
@@ -215,8 +216,21 @@ fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> ~[ast::def_id] {
 // Given a path and serialized crate metadata, returns the IDs of the
 // definitions the path may refer to.
 fn resolve_path(path: ~[ast::ident], data: @~[u8]) -> ~[ast::def_id] {
-    fn eq_item(data: ~[u8], s: str) -> bool {
-        ret str::eq(str::from_bytes(data), s);
+    fn eq_item(data: &[u8], s: str) -> bool {
+        // XXX: Use string equality.
+        let data_len = data.len();
+        let s_len = s.len();
+        if data_len != s_len {
+            ret false;
+        }
+        let mut i = 0;
+        while i < data_len {
+            if data[i] != s[i] {
+                ret false;
+            }
+            i += 1;
+        }
+        ret true;
     }
     let s = ast_util::path_name_i(path);
     let md = ebml::doc(data);
