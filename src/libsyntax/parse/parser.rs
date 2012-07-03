@@ -16,8 +16,6 @@ import ast::*;
 
 export file_type;
 export parser;
-export parse_expr;
-export parse_pat;
 export CRATE_FILE;
 export SOURCE_FILE;
 
