@@ -682,11 +682,9 @@ fn print_stmt(s: ps, st: ast::stmt) {
       ast::stmt_expr(expr, _) {
         space_if_not_bol(s);
         print_expr(s, expr);
-      }
-      ast::stmt_semi(expr, _) {
-        space_if_not_bol(s);
-        print_expr(s, expr);
-        word(s.s, ";");
+        if expr_requires_semi_to_be_stmt(expr) {
+            word(s.s, ";");
+        }
       }
     }
     if parse::classify::stmt_ends_with_semi(st) { word(s.s, ";"); }

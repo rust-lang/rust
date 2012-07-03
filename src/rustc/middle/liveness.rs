@@ -843,7 +843,7 @@ class liveness {
             ret self.propagate_through_decl(decl, succ);
           }
 
-          stmt_expr(expr, _) | stmt_semi(expr, _) {
+          stmt_expr(expr, _) {
             ret self.propagate_through_expr(expr, succ);
           }
         }

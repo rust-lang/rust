@@ -243,12 +243,7 @@ type stmt = spanned<stmt_>;
 #[auto_serialize]
 enum stmt_ {
     stmt_decl(@decl, node_id),
-
-    // expr without trailing semi-colon (must have unit type):
     stmt_expr(@expr, node_id),
-
-    // expr with trailing semi-colon (may have any type):
-    stmt_semi(@expr, node_id),
 }
 
 #[auto_serialize]

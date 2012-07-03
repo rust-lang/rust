@@ -405,7 +405,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_stmt: fn@(s: @ast::stmt) {
             alt s.node {
-              ast::stmt_semi(@{id: id,
+              ast::stmt_expr(@{id: id,
                                node: ast::expr_path(@path),
                                span: _}, _) {
                 cx.sess.span_lint(

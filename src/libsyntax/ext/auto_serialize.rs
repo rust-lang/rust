@@ -206,7 +206,7 @@ impl helpers for ext_ctxt {
     }
 
     fn stmt(expr: @ast::expr) -> @ast::stmt {
-        @{node: ast::stmt_semi(expr, self.next_id()),
+        @{node: ast::stmt_expr(expr, self.next_id()),
           span: expr.span}
     }
 
