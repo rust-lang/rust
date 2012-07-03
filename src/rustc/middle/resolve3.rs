@@ -24,6 +24,7 @@ import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
 import syntax::ast::{view_item_import, view_item_use, view_path_glob};
 import syntax::ast::{view_path_list, view_path_simple};
 import syntax::ast_util::{def_id_of_def, local_def, new_def_hash, walk_pat};
+import syntax::attr::{attr_metas, contains_name};
 import syntax::codemap::span;
 import syntax::visit::{default_visitor, fk_method, mk_vt, visit_block};
 import syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
@@ -125,11 +126,6 @@ enum ResolveResult<T> {
     Success(T)      // Successfully resolved the import.
 }
 
-enum PrivacyFilter {
-    PrivateOrPublic,    //< Will match both public and private items.
-    PublicOnly          //< Will match only public items.
-}
-
 enum TypeParameters/& {
     NoTypeParameters,               //< No type parameters.
     HasTypeParameters(&~[ty_param], //< Type parameters.
@@ -159,6 +155,18 @@ enum RibKind {
     // We passed through a function scope at the given node ID. Translate
     // upvars as appropriate.
     FunctionRibKind(node_id)
+}
+
+// The X-ray flag indicates that a context has the X-ray privilege, which
+// allows it to reference private names. Currently, this is used for the test
+// runner.
+//
+// XXX: The X-ray flag is kind of questionable in the first place. It might
+// be better to introduce an expr_xray_path instead.
+
+enum XrayFlag {
+    NoXray,     //< Private items cannot be accessed.
+    Xray        //< Private items can be accessed.
 }
 
 // FIXME (issue #2550): Should be a class but then it becomes not implicitly
@@ -380,17 +388,6 @@ class Module {
     }
 }
 
-pure fn is_crate_root(module: @Module) -> bool {
-    alt module.def_id {
-        none => {
-            ret false;
-        }
-        some(def_id) => {
-            ret def_id.crate == 0 && def_id.node == 0;
-        }
-    }
-}
-
 // XXX: This is a workaround due to is_none in the standard library mistakenly
 // requiring a T:copy.
 
@@ -566,6 +563,10 @@ class Resolver {
     // The current set of local scopes, for types.
     let type_ribs: @dvec<@Rib>;
 
+    // Whether the current context is an X-ray context. An X-ray context is
+    // allowed to access private names of any module.
+    let mut xray_context: XrayFlag;
+
     // The atom for the keyword "self".
     let self_atom: Atom;
 
@@ -598,6 +599,7 @@ class Resolver {
         self.current_module = (*self.graph_root).get_module();
         self.value_ribs = @dvec();
         self.type_ribs = @dvec();
+        self.xray_context = NoXray;
 
         self.self_atom = (*self.atom_table).intern(@"self");
         self.primitive_type_table = @PrimitiveTypeTable(self.atom_table);
@@ -1442,7 +1444,10 @@ class Resolver {
                                                        import_directive);
         } else {
             // First, resolve the module path for the directive, if necessary.
-            alt self.resolve_module_path_for_import(module, module_path) {
+            alt self.resolve_module_path_for_import(module,
+                                                    module_path,
+                                                    NoXray) {
+
                 Failed {
                     resolution_result = Failed;
                 }
@@ -1869,8 +1874,10 @@ class Resolver {
 
     fn resolve_module_path_from_root(module: @Module,
                                      module_path: @dvec<Atom>,
-                                     index: uint)
+                                     index: uint,
+                                     xray: XrayFlag)
                                   -> ResolveResult<@Module> {
+
         let mut search_module = module;
         let mut index = index;
         let module_path_len = (*module_path).len();
@@ -1882,7 +1889,7 @@ class Resolver {
         while index < module_path_len {
             let name = (*module_path).get_elt(index);
             alt self.resolve_name_in_module(search_module, name, ModuleNS,
-                                            PublicOnly) {
+                                            xray) {
 
                 Failed {
                     // XXX: span_err
@@ -1925,7 +1932,8 @@ class Resolver {
         the given module.
     "]
     fn resolve_module_path_for_import(module: @Module,
-                                      module_path: @dvec<Atom>)
+                                      module_path: @dvec<Atom>,
+                                      xray: XrayFlag)
                                    -> ResolveResult<@Module> {
 
         let module_path_len = (*module_path).len();
@@ -1961,7 +1969,8 @@ class Resolver {
 
         ret self.resolve_module_path_from_root(search_module,
                                                module_path,
-                                               1u);
+                                               1u,
+                                               xray);
     }
 
     fn resolve_item_in_lexical_scope(module: @Module,
@@ -2030,7 +2039,7 @@ class Resolver {
 
             // Resolve the name in the parent module.
             alt self.resolve_name_in_module(search_module, name, namespace,
-                                            PrivateOrPublic) {
+                                            Xray) {
                 Failed {
                     // Continue up the search chain.
                 }
@@ -2092,16 +2101,14 @@ class Resolver {
     fn resolve_name_in_module(module: @Module,
                               name: Atom,
                               namespace: Namespace,
-                              privacy_filter: PrivacyFilter)
+                              xray: XrayFlag)
                            -> ResolveResult<Target> {
 
         #debug("(resolving name in module) resolving '%s' in '%s'",
                *(*self.atom_table).atom_to_str(name),
                self.module_to_str(module));
 
-        if privacy_filter == PublicOnly &&
-                !self.name_is_exported(module, name) {
-
+        if xray == NoXray && !self.name_is_exported(module, name) {
             #debug("(resolving name in module) name '%s' is unexported",
                    *(*self.atom_table).atom_to_str(name));
             ret Failed;
@@ -2711,6 +2718,13 @@ class Resolver {
     fn resolve_item(item: @item, visitor: ResolveVisitor) {
         #debug("(resolving item) resolving %s", *item.ident);
 
+        // Items with the !resolve_unexported attribute are X-ray contexts.
+        // This is used to allow the test runner to run unexported tests.
+        let orig_xray_flag = self.xray_context;
+        if contains_name(attr_metas(item.attrs), "!resolve_unexported") {
+            self.xray_context = Xray;
+        }
+
         alt item.node {
             item_enum(_, type_parameters, _) |
             item_ty(_, type_parameters, _) {
@@ -2821,7 +2835,6 @@ class Resolver {
 
                 if !self.session.building_library &&
                         is_none(self.session.main_fn) &&
-                        is_crate_root(self.current_module) &&
                         str::eq(*item.ident, "main") {
 
                     self.session.main_fn = some((item.id, item.span));
@@ -2842,10 +2855,11 @@ class Resolver {
                 visit_item(item, (), visitor);
             }
         }
+
+        self.xray_context = orig_xray_flag;
     }
 
     fn with_type_parameter_rib(type_parameters: TypeParameters, f: fn()) {
-
         alt type_parameters {
             HasTypeParameters(type_parameters, node_id, initial_index)
                     if (*type_parameters).len() >= 1u {
@@ -3496,11 +3510,15 @@ class Resolver {
         }
 
         if path.global {
-            ret self.resolve_crate_relative_path(path, namespace);
+            ret self.resolve_crate_relative_path(path,
+                                                 self.xray_context,
+                                                 namespace);
         }
 
         if path.idents.len() > 1u {
-            ret self.resolve_module_relative_path(path, namespace);
+            ret self.resolve_module_relative_path(path,
+                                                  self.xray_context,
+                                                  namespace);
         }
 
         ret self.resolve_identifier(path.idents.last(),
@@ -3593,14 +3611,17 @@ class Resolver {
         ret module_path_atoms;
     }
 
-    fn resolve_module_relative_path(path: @path, namespace: Namespace)
+    fn resolve_module_relative_path(path: @path,
+                                    +xray: XrayFlag,
+                                    namespace: Namespace)
                                  -> option<def> {
 
         let module_path_atoms = self.intern_module_part_of_path(path);
 
         let mut containing_module;
         alt self.resolve_module_path_for_import(self.current_module,
-                                                module_path_atoms) {
+                                                module_path_atoms,
+                                                xray) {
 
             Failed {
                 self.session.span_err(path.span,
@@ -3640,7 +3661,9 @@ class Resolver {
         }
     }
 
-    fn resolve_crate_relative_path(path: @path, namespace: Namespace)
+    fn resolve_crate_relative_path(path: @path,
+                                   +xray: XrayFlag,
+                                   namespace: Namespace)
                                 -> option<def> {
 
         let module_path_atoms = self.intern_module_part_of_path(path);
@@ -3650,7 +3673,8 @@ class Resolver {
         let mut containing_module;
         alt self.resolve_module_path_from_root(root_module,
                                                module_path_atoms,
-                                               0u) {
+                                               0u,
+                                               xray) {
 
             Failed {
                 self.session.span_err(path.span,
