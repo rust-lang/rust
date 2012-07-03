@@ -162,7 +162,7 @@ fn get_arc<T: send const>(c: get_chan<T>) -> arc::arc<T> {
 #[cfg(test)]
 mod tests {
     import comm::*;
-    import future::future;
+    import future::extensions;
 
     #[test]
     fn manually_share_arc() {
