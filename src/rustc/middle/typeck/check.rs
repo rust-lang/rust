@@ -30,7 +30,7 @@ can be broken down into several distinct phases:
   final assignments of the various region variables if there is some
   flexibility.
 
-- vtable: find and records the impls to use for each iface bound that
+- vtable: find and records the impls to use for each trait bound that
   appears on a type parameter.
 
 - writeback: writes the final types within a function body, replacing
@@ -358,7 +358,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| { check_method(ccx, m, self_ty);}
       }
-      ast::item_class(tps, ifaces, members, ctor, m_dtor, rp) {
+      ast::item_class(tps, traits, members, ctor, m_dtor, rp) {
           let tcx = ccx.tcx;
           let class_t = ty::node_id_to_type(tcx, it.id);
           // typecheck the ctor
@@ -1090,8 +1090,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       // Something of a hack: special rules for comparison operators that
       // simply unify LHS and RHS.  This helps with inference as LHS and RHS
       // do not need to be "resolvable".  Some tests, particularly those with
-      // complicated iface requirements, fail without this---I think this code
-      // can be removed if we improve iface resolution to be more eager when
+      // complicated trait requirements, fail without this---I think this code
+      // can be removed if we improve trait resolution to be more eager when
       // possible.
       ast::expr_binary(ast::eq, lhs, rhs) |
       ast::expr_binary(ast::ne, lhs, rhs) |
@@ -1392,7 +1392,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         alt ty::get(t_1).struct {
           // This will be looked up later on
-          ty::ty_iface(*) {}
+          ty::ty_trait(*) {}
 
           _ {
             if ty::type_is_nil(t_e) {
@@ -1518,7 +1518,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
           ty::ty_class(base_id, substs) {
               // This is just for fields -- the same code handles
-              // methods in both classes and ifaces
+              // methods in both classes and traits
 
               // (1) verify that the class id actually has a field called
               // field
@@ -2259,9 +2259,9 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       }
 
       "visit_ty" {
-        assert ccx.tcx.intrinsic_ifaces.contains_key(@"ty_visitor");
-        let (_, visitor_iface) = ccx.tcx.intrinsic_ifaces.get(@"ty_visitor");
-        (1u, ~[arg(ast::by_ref, visitor_iface)], ty::mk_nil(tcx))
+        assert ccx.tcx.intrinsic_traits.contains_key(@"ty_visitor");
+        let (_, visitor_trait) = ccx.tcx.intrinsic_traits.get(@"ty_visitor");
+        (1u, ~[arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
       }
       "frame_address" {
         let fty = ty::mk_fn(ccx.tcx, {

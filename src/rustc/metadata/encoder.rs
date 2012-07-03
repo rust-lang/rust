@@ -211,7 +211,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
               }
               encode_enum_variant_paths(ebml_w, variants, path, index);
           }
-          item_iface(*) {
+          item_trait(*) {
             do ebml_w.wr_tag(tag_paths_data_item) {
                   encode_name_and_def_id(ebml_w, it.ident, it.id);
               }
@@ -221,8 +221,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
     }
 }
 
-fn encode_iface_ref(ebml_w: ebml::writer, ecx: @encode_ctxt, t: @iface_ref) {
-    ebml_w.start_tag(tag_impl_iface);
+fn encode_trait_ref(ebml_w: ebml::writer, ecx: @encode_ctxt, t: @trait_ref) {
+    ebml_w.start_tag(tag_impl_trait);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, t.id));
     ebml_w.end_tag();
 }
@@ -396,7 +396,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
             ebml_w.start_tag(tag_mod_impl);
             alt ecx.tcx.items.find(did.node) {
               some(ast_map::node_item(it@@{node: cl@item_class(*),_},_)) {
-            /* If did stands for an iface
+            /* If did stands for a trait
             ref, we need to map it to its parent class */
                 ebml_w.wr_str(def_to_str(local_def(it.id)));
               }
@@ -622,7 +622,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps, ifaces, items, ctor, m_dtor, rp) {
+      item_class(tps, traits, items, ctor, m_dtor, rp) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -650,8 +650,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ebml_w, rp);
-        for ifaces.each |t| {
-           encode_iface_ref(ebml_w, ecx, t);
+        for traits.each |t| {
+           encode_trait_ref(ebml_w, ecx, t);
         }
         /* Encode the dtor */
         /* Encode id for dtor */
@@ -662,7 +662,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         };
 
         /* Encode def_ids for each field and method
-         for methods, write all the stuff get_iface_method
+         for methods, write all the stuff get_trait_method
         needs to know*/
         let (fs,ms) = ast_util::split_class_items(items);
         for fs.each |f| {
@@ -677,8 +677,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
               private { /* do nothing */ }
               public {
                 /* Write the info that's needed when viewing this class
-                   as an iface */
-                ebml_w.start_tag(tag_item_iface_method);
+                   as a trait */
+                ebml_w.start_tag(tag_item_trait_method);
                 encode_family(ebml_w, purity_fn_family(m.decl.purity));
                 encode_name(ebml_w, m.ident);
                 encode_type_param_bounds(ebml_w, ecx, m.tps);
@@ -713,7 +713,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             ebml_w.end_tag();
         }
         do option::iter(ifce) |t| {
-           encode_iface_ref(ebml_w, ecx, t)
+           encode_trait_ref(ebml_w, ecx, t)
         };
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
@@ -727,7 +727,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                                    vec::append(tps, m.tps));
         }
       }
-      item_iface(tps, rp, ms) {
+      item_trait(tps, rp, ms) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -737,8 +737,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         let mut i = 0u;
-        for vec::each(*ty::iface_methods(tcx, local_def(item.id))) |mty| {
-            ebml_w.start_tag(tag_item_iface_method);
+        for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
+            ebml_w.start_tag(tag_item_trait_method);
             encode_name(ebml_w, mty.ident);
             encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
             encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));

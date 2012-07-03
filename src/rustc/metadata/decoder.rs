@@ -22,7 +22,7 @@ export get_symbol;
 export get_enum_variants;
 export get_type;
 export get_type_param_count;
-export get_impl_iface;
+export get_impl_trait;
 export get_class_method;
 export get_impl_method;
 export lookup_def;
@@ -35,7 +35,7 @@ export get_crate_deps;
 export get_crate_hash;
 export get_crate_vers;
 export get_impls_for_mod;
-export get_iface_methods;
+export get_trait_methods;
 export get_crate_module_paths;
 export def_like;
 export dl_def;
@@ -164,10 +164,10 @@ fn item_type(item_id: ast::def_id, item: ebml::doc,
     } else { t }
 }
 
-fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
+fn item_impl_trait(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> option<ty::t> {
     let mut result = none;
-    do ebml::tagged_docs(item, tag_impl_iface) |ity| {
+    do ebml::tagged_docs(item, tag_impl_trait) |ity| {
         result = some(doc_type(ity, tcx, cdata));
     };
     result
@@ -328,9 +328,9 @@ fn get_type_param_count(data: @~[u8], id: ast::node_id) -> uint {
     item_ty_param_count(lookup_item(id, data))
 }
 
-fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+fn get_impl_trait(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> option<ty::t> {
-    item_impl_iface(lookup_item(id, cdata.data), tcx, cdata)
+    item_impl_trait(lookup_item(id, cdata.data), tcx, cdata)
 }
 
 fn get_impl_method(cdata: cmd, id: ast::node_id,
@@ -354,7 +354,7 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
             some(it) { it }
             none { fail (#fmt("get_class_method: class id not found \
              when looking up method %s", *name)) }};
-    do ebml::tagged_docs(cls_items, tag_item_iface_method) |mid| {
+    do ebml::tagged_docs(cls_items, tag_item_trait_method) |mid| {
         let m_did = class_member_id(mid, cdata);
         if item_name(mid) == name {
             found = some(m_did);
@@ -601,20 +601,20 @@ fn get_impls_for_mod(cdata: cmd,
     @result
 }
 
-/* Works for both classes and ifaces */
-fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+/* Works for both classes and traits */
+fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> @~[ty::method] {
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
-    do ebml::tagged_docs(item, tag_item_iface_method) |mth| {
+    do ebml::tagged_docs(item, tag_item_trait_method) |mth| {
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
         let fty = alt ty::get(ty).struct { ty::ty_fn(f) { f }
           _ {
             tcx.diag.handler().bug(
-                "get_iface_methods: id has non-function type");
+                "get_trait_methods: id has non-function type");
         } };
         vec::push(result, {ident: name, tps: bounds, fty: fty,
                     purity: alt check item_family(mth) {
@@ -703,7 +703,7 @@ fn item_family_to_str(fam: char) -> str {
       'n' { ret "foreign mod"; }
       'v' { ret "enum"; }
       'i' { ret "impl"; }
-      'I' { ret "iface"; }
+      'I' { ret "trait"; }
       'C' { ret "class"; }
       'g' { ret "public field"; }
       'j' { ret "private field"; }

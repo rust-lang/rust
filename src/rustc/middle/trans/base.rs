@@ -652,7 +652,7 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, take_ty)
       }
-      ty::ty_iface(_, _) {
+      ty::ty_trait(_, _) {
         let llbox = Load(bcx, GEPi(bcx, v, ~[0u, 1u]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
@@ -682,10 +682,10 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
-    assert bcx.ccx().tcx.intrinsic_ifaces.contains_key(@"ty_visitor");
-    let (iid, ty) = bcx.ccx().tcx.intrinsic_ifaces.get(@"ty_visitor");
+    assert bcx.ccx().tcx.intrinsic_traits.contains_key(@"ty_visitor");
+    let (iid, ty) = bcx.ccx().tcx.intrinsic_traits.get(@"ty_visitor");
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
-    bcx = reflect::emit_calls_to_iface_visit_ty(bcx, t, v, iid);
+    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, iid);
     build_return(bcx);
 }
 
@@ -808,7 +808,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v0, t, drop_ty)
       }
-      ty::ty_iface(_, _) {
+      ty::ty_trait(_, _) {
         let llbox = Load(bcx, GEPi(bcx, v0, ~[0u, 1u]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
@@ -2063,7 +2063,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
                                             output: ty::mk_nil(tcx),
                                             ret_style: ast::return_val,
                                             constraints: ~[]})) }
-      ty::ty_iface(_, _) { some(ty::mk_fn(tcx, {purity: ast::impure_fn,
+      ty::ty_trait(_, _) { some(ty::mk_fn(tcx, {purity: ast::impure_fn,
                                                 proto: ast::proto_box,
                                                 inputs: ~[],
                                                 output: ty::mk_nil(tcx),
@@ -2085,7 +2085,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
             let mut v = ~[];
             for vec::each(*bounds) |bound| {
                 alt bound {
-                  ty::bound_iface(_) {
+                  ty::bound_trait(_) {
                     vec::push(v, impl::vtable_id(ccx, vts[i]));
                     i += 1u;
                   }
@@ -2822,7 +2822,7 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
     let ccx = cx.ccx();
     let t_out = node_id_type(cx, id);
     alt ty::get(t_out).struct {
-      ty::ty_iface(_, _) { ret impl::trans_cast(cx, e, id, dest); }
+      ty::ty_trait(_, _) { ret impl::trans_cast(cx, e, id, dest); }
       _ {}
     }
     let e_res = trans_temp_expr(cx, e);
@@ -4964,7 +4964,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
-      ast::item_class(tps, _ifaces, items, ctor, m_dtor, _) {
+      ast::item_class(tps, _traits, items, ctor, m_dtor, _) {
         if tps.len() == 0u {
           let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
                          vtables: none,

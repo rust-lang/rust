@@ -34,12 +34,12 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
               ast::item_mod(m) {
                 for m.items.each |intrinsic_item| {
                     alt intrinsic_item.node {
-                      ast::item_iface(_, _, _) {
+                      ast::item_trait(_, _, _) {
                         let def_id = { crate: ast::local_crate,
                                       node: intrinsic_item.id };
                         let substs = {self_r: none, self_ty: none, tps: ~[]};
-                        let ty = ty::mk_iface(ccx.tcx, def_id, substs);
-                        ccx.tcx.intrinsic_ifaces.insert
+                        let ty = ty::mk_trait(ccx.tcx, def_id, substs);
+                        ccx.tcx.intrinsic_traits.insert
                             (intrinsic_item.ident, (def_id, ty));
                       }
                       _ { }
@@ -128,15 +128,15 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
     }
 }
 
-fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
+fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
     fn store_methods<T>(ccx: @crate_ctxt, id: ast::node_id,
                         stuff: ~[T], f: fn@(T) -> ty::method) {
-        ty::store_iface_methods(ccx.tcx, id, @vec::map(stuff, f));
+        ty::store_trait_methods(ccx.tcx, id, @vec::map(stuff, f));
     }
 
     let tcx = ccx.tcx;
     alt check tcx.items.get(id) {
-      ast_map::node_item(@{node: ast::item_iface(_, rp, ms), _}, _) {
+      ast_map::node_item(@{node: ast::item_trait(_, rp, ms), _}, _) {
         store_methods::<ast::ty_method>(ccx, id, ms, |m| {
             ty_of_ty_method(ccx, m, rp)
         });
@@ -154,14 +154,14 @@ fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
 
 /**
  * Checks that a method from an impl/class conforms to the signature of
- * the same method as declared in the iface.
+ * the same method as declared in the trait.
  *
  * # Parameters
  *
  * - impl_m: the method in the impl
  * - impl_tps: the type params declared on the impl itself (not the method!)
- * - if_m: the method in the iface
- * - if_substs: the substitutions used on the type of the iface
+ * - if_m: the method in the trait
+ * - if_substs: the substitutions used on the type of the trait
  * - self_ty: the self type of the impl
  */
 fn compare_impl_method(tcx: ty::ctxt, sp: span,
@@ -184,10 +184,10 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         ret;
     }
 
-    // Perform substitutions so that the iface/impl methods are expressed
+    // Perform substitutions so that the trait/impl methods are expressed
     // in terms of the same set of type/region parameters:
-    // - replace iface type parameters with those from `if_substs`
-    // - replace method parameters on the iface with fresh, dummy parameters
+    // - replace trait type parameters with those from `if_substs`
+    // - replace method parameters on the trait with fresh, dummy parameters
     //   that correspond to the parameters we will find on the impl
     // - replace self region with a fresh, dummy region
     let dummy_self_r = ty::re_free(0, ty::br_self);
@@ -223,25 +223,25 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     }
 }
 
-fn check_methods_against_iface(ccx: @crate_ctxt,
+fn check_methods_against_trait(ccx: @crate_ctxt,
                                tps: ~[ast::ty_param],
                                rp: ast::region_param,
                                selfty: ty::t,
-                               a_ifacety: @ast::iface_ref,
+                               a_trait_ty: @ast::trait_ref,
                                ms: ~[converted_method]) {
 
     let tcx = ccx.tcx;
-    let (did, tpt) = instantiate_iface_ref(ccx, a_ifacety, rp);
+    let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp);
     if did.crate == ast::local_crate {
-        ensure_iface_methods(ccx, did.node);
+        ensure_trait_methods(ccx, did.node);
     }
-    for vec::each(*ty::iface_methods(tcx, did)) |if_m| {
+    for vec::each(*ty::trait_methods(tcx, did)) |if_m| {
         alt vec::find(ms, |m| if_m.ident == m.mty.ident) {
           some({mty: m, id, span}) {
             if m.purity != if_m.purity {
                 ccx.tcx.sess.span_err(
                     span, #fmt["method `%s`'s purity \
-                                not match the iface method's \
+                                not match the trait method's \
                                 purity", *m.ident]);
             }
             compare_impl_method(
@@ -250,7 +250,7 @@ fn check_methods_against_iface(ccx: @crate_ctxt,
           }
           none {
             tcx.sess.span_err(
-                a_ifacety.path.span,
+                a_trait_ty.path.span,
                 #fmt["missing method `%s`", *if_m.ident]);
           }
         } // alt
@@ -314,17 +314,17 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
 
         let cms = convert_methods(ccx, ms, rp, i_bounds, selfty);
         for ifce.each |t| {
-            check_methods_against_iface(ccx, tps, rp, selfty, t, cms);
+            check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
         }
       }
-      ast::item_iface(*) {
+      ast::item_trait(*) {
         let tpt = ty_of_item(ccx, it);
-        #debug["item_iface(it.id=%d, tpt.ty=%s)",
+        #debug["item_trait(it.id=%d, tpt.ty=%s)",
                it.id, ty_to_str(tcx, tpt.ty)];
         write_ty_to_tcx(tcx, it.id, tpt.ty);
-        ensure_iface_methods(ccx, it.id);
+        ensure_trait_methods(ccx, it.id);
       }
-      ast::item_class(tps, ifaces, members, ctor, m_dtor, rp) {
+      ast::item_class(tps, traits, members, ctor, m_dtor, rp) {
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
@@ -362,7 +362,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                                rp: rp,
                                ty: t_dtor});
         };
-        ensure_iface_methods(ccx, it.id);
+        ensure_trait_methods(ccx, it.id);
 
         // Write the type of each of the members
         let (fields, methods) = split_class_items(members);
@@ -372,16 +372,16 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let selfty = ty::mk_class(tcx, local_def(it.id), substs);
         let cms = convert_methods(ccx, methods, rp, bounds, selfty);
-        for ifaces.each |ifce| {
-            check_methods_against_iface(ccx, tps, rp, selfty, ifce, cms);
+        for traits.each |ifce| {
+            check_methods_against_trait(ccx, tps, rp, selfty, ifce, cms);
 
             // FIXME #2434---this is somewhat bogus, but it seems that
-            // the id of iface_ref is also the id of the impl, and so
+            // the id of trait_ref is also the id of the impl, and so
             // we want to store the "self type" of the impl---in this
             // case, the class.  The reason I say this is somewhat
             // bogus (and should be refactored) is that the tcache
             // stores the class type for ifce.id but the node_type
-            // table stores the iface type. Weird. Probably just
+            // table stores the trait type. Weird. Probably just
             // adding a "self type" table rather than overloading the
             // tcache would be ok, or else adding more than one id.
             tcx.tcache.insert(local_def(ifce.id), tpt);
@@ -427,16 +427,16 @@ fn ty_of_ty_method(self: @crate_ctxt,
      tps: ty_param_bounds(self, m.tps),
      fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare,
                                  m.decl, none),
-     // assume public, because this is only invoked on iface methods
+     // assume public, because this is only invoked on trait methods
      purity: m.decl.purity, vis: ast::public}
 }
 
 /*
-  Instantiates the path for the given iface reference, assuming that
-  it's bound to a valid iface type. Returns the def_id for the defining
-  iface. Fails if the type is a type other than an iface type.
+  Instantiates the path for the given trait reference, assuming that
+  it's bound to a valid trait type. Returns the def_id for the defining
+  trait. Fails if the type is a type other than an trait type.
  */
-fn instantiate_iface_ref(ccx: @crate_ctxt, t: @ast::iface_ref,
+fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref,
                          rp: ast::region_param)
     -> (ast::def_id, ty_param_substs_and_ty) {
 
@@ -449,7 +449,7 @@ fn instantiate_iface_ref(ccx: @crate_ctxt, t: @ast::iface_ref,
       ast::def_ty(t_id) {
         let tpt = astconv::ast_path_to_ty(ccx, rscope, t_id, t.path, t.id);
         alt ty::get(tpt.ty).struct {
-           ty::ty_iface(*) {
+           ty::ty_trait(*) {
               (t_id, tpt)
            }
            _ { sess.span_fatal(sp, err); }
@@ -520,9 +520,9 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_iface(tps, rp, ms) {
+      ast::item_trait(tps, rp, ms) {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let t = ty::mk_iface(tcx, local_def(it.id), substs);
+        let t = ty::mk_trait(tcx, local_def(it.id), substs);
         let tpt = {bounds: bounds, rp: rp, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
@@ -558,11 +558,11 @@ fn ty_param_bounds(ccx: @crate_ctxt,
               ast::bound_send { ~[ty::bound_send] }
               ast::bound_copy { ~[ty::bound_copy] }
               ast::bound_const { ~[ty::bound_const] }
-              ast::bound_iface(t) {
+              ast::bound_trait(t) {
                 let ity = ast_ty_to_ty(ccx, empty_rscope, t);
                 alt ty::get(ity).struct {
-                  ty::ty_iface(*) {
-                    ~[ty::bound_iface(ity)]
+                  ty::ty_trait(*) {
+                    ~[ty::bound_trait(ity)]
                   }
                   _ {
                     ccx.tcx.sess.span_err(

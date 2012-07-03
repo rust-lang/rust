@@ -202,9 +202,9 @@ fn should_prune_unexported_variants() {
 }
 
 #[test]
-fn should_prune_unexported_ifaces_from_top_mod() {
+fn should_prune_unexported_traits_from_top_mod() {
     let doc = test::mk_doc("export a; mod a { } iface b { fn c(); }");
-    assert vec::is_empty(doc.cratemod().ifaces());
+    assert vec::is_empty(doc.cratemod().traits());
 }
 
 #[test]

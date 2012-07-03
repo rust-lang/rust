@@ -83,9 +83,9 @@ fn moddoc_from_mod(
                     enumdoc_from_enum(itemdoc, variants)
                 ))
               }
-              ast::item_iface(_, _, methods) {
-                some(doc::ifacetag(
-                    ifacedoc_from_iface(itemdoc, methods)
+              ast::item_trait(_, _, methods) {
+                some(doc::traittag(
+                    traitdoc_from_trait(itemdoc, methods)
                 ))
               }
               ast::item_impl(_, _, _, _, methods) {
@@ -183,10 +183,10 @@ fn should_extract_enum_variants() {
     assert doc.cratemod().enums()[0].variants[0].name == "v";
 }
 
-fn ifacedoc_from_iface(
+fn traitdoc_from_trait(
     itemdoc: doc::itemdoc,
     methods: ~[ast::ty_method]
-) -> doc::ifacedoc {
+) -> doc::traitdoc {
     {
         item: itemdoc,
         methods: do par::seqmap(methods) |method| {
@@ -202,15 +202,15 @@ fn ifacedoc_from_iface(
 }
 
 #[test]
-fn should_extract_ifaces() {
-    let doc = test::mk_doc("iface i { fn f(); }");
-    assert doc.cratemod().ifaces()[0].name() == "i";
+fn should_extract_traits() {
+    let doc = test::mk_doc("trait i { fn f(); }");
+    assert doc.cratemod().traits()[0].name() == "i";
 }
 
 #[test]
-fn should_extract_iface_methods() {
-    let doc = test::mk_doc("iface i { fn f(); }");
-    assert doc.cratemod().ifaces()[0].methods[0].name == "f";
+fn should_extract_trait_methods() {
+    let doc = test::mk_doc("trait i { fn f(); }");
+    assert doc.cratemod().traits()[0].methods[0].name == "f";
 }
 
 fn impldoc_from_impl(
@@ -219,7 +219,7 @@ fn impldoc_from_impl(
 ) -> doc::impldoc {
     {
         item: itemdoc,
-        iface_ty: none,
+        trait_ty: none,
         self_ty: none,
         methods: do par::seqmap(methods) |method| {
             {

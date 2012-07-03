@@ -62,7 +62,7 @@ enum ty_param_bound {
     bound_copy,
     bound_send,
     bound_const,
-    bound_iface(@ty),
+    bound_trait(@ty),
 }
 
 #[auto_serialize]
@@ -657,11 +657,11 @@ enum attr_style { attr_outer, attr_inner, }
 type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
 
 /*
-  iface_refs appear in both impls and in classes that implement ifaces.
-  resolve maps each iface_ref's id to its defining iface.
+  trait_refs appear in both impls and in classes that implement traits.
+  resolve maps each trait_ref's id to its defining trait.
  */
 #[auto_serialize]
-type iface_ref = {path: @path, id: node_id};
+type trait_ref = {path: @path, id: node_id};
 
 #[auto_serialize]
 enum visibility { public, private }
@@ -686,7 +686,7 @@ enum item_ {
     item_ty(@ty, ~[ty_param], region_param),
     item_enum(~[variant], ~[ty_param], region_param),
     item_class(~[ty_param], /* ty params for class */
-               ~[@iface_ref],   /* ifaces this class implements */
+               ~[@trait_ref],   /* traits this class implements */
                ~[@class_member], /* methods, etc. */
                                /* (not including ctor or dtor) */
                class_ctor,
@@ -694,8 +694,8 @@ enum item_ {
                option<class_dtor>,
                region_param
                ),
-    item_iface(~[ty_param], region_param, ~[ty_method]),
-    item_impl(~[ty_param], region_param, option<@iface_ref> /* iface */,
+    item_trait(~[ty_param], region_param, ~[ty_method]),
+    item_impl(~[ty_param], region_param, option<@trait_ref> /* trait */,
               @ty /* self */, ~[@method]),
 }
 

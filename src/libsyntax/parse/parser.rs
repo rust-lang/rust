@@ -1892,7 +1892,7 @@ class parser {
                 else if self.eat_keyword("const") {
                     push(bounds, bound_const)
                 }
-                else { push(bounds, bound_iface(self.parse_ty(false))); }
+                else { push(bounds, bound_trait(self.parse_ty(false))); }
             }
         }
         ret {ident: ident, id: self.get_id(), bounds: @bounds};
@@ -2008,12 +2008,12 @@ class parser {
           self_id: self.get_id(), vis: pr}
     }
 
-    fn parse_item_iface() -> item_info {
+    fn parse_item_trait() -> item_info {
         let ident = self.parse_ident();
         let rp = self.parse_region_param();
         let tps = self.parse_ty_params();
         let meths = self.parse_ty_methods();
-        (ident, item_iface(tps, rp, meths), none)
+        (ident, item_trait(tps, rp, meths), none)
     }
 
     // Parses three variants (with the region/type params always optional):
@@ -2082,15 +2082,15 @@ class parser {
          }
     }
 
-    fn parse_iface_ref() -> @iface_ref {
+    fn parse_trait_ref() -> @trait_ref {
         @{path: self.parse_path_with_tps(false),
           id: self.get_id()}
     }
 
-    fn parse_iface_ref_list() -> ~[@iface_ref] {
+    fn parse_trait_ref_list() -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
             token::LBRACE, seq_sep_trailing_disallowed(token::COMMA),
-            |p| p.parse_iface_ref())
+            |p| p.parse_trait_ref())
     }
 
     fn parse_item_class() -> item_info {
@@ -2098,8 +2098,8 @@ class parser {
         let rp = self.parse_region_param();
         let ty_params = self.parse_ty_params();
         let class_path = self.ident_to_path_tys(class_name, rp, ty_params);
-        let ifaces : ~[@iface_ref] = if self.eat(token::COLON)
-            { self.parse_iface_ref_list() }
+        let traits : ~[@trait_ref] = if self.eat(token::COLON)
+            { self.parse_trait_ref_list() }
         else { ~[] };
         self.expect(token::LBRACE);
         let mut ms: ~[@class_member] = ~[];
@@ -2127,7 +2127,7 @@ class parser {
         alt the_ctor {
           some((ct_d, ct_b, ct_s)) {
             (class_name,
-             item_class(ty_params, ifaces, ms, {
+             item_class(ty_params, traits, ms, {
                  node: {id: ctor_id,
                         self_id: self.get_id(),
                         dec: ct_d,
@@ -2462,7 +2462,9 @@ class parser {
         } else if self.eat_keyword("enum") {
             self.parse_item_enum(vis)
         } else if self.eat_keyword("iface") {
-            self.parse_item_iface()
+            self.parse_item_trait()
+        } else if self.eat_keyword("trait") {
+            self.parse_item_trait()
         } else if self.eat_keyword("impl") {
             self.parse_item_impl()
         } else if self.eat_keyword("class") {

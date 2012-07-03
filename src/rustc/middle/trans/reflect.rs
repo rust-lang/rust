@@ -47,7 +47,7 @@ impl methods for reflector {
         let v = self.visitor_val;
         let get_lval = |bcx| {
             let callee =
-                impl::trans_iface_callee(bcx, v, mth_ty, mth_idx);
+                impl::trans_trait_callee(bcx, v, mth_ty, mth_idx);
             #debug("calling mth ty %s, lltype %s",
                    ty_to_str(bcx.ccx().tcx, mth_ty),
                    val_str(bcx.ccx().tn, callee.val));
@@ -256,7 +256,7 @@ impl methods for reflector {
           }
 
           // Miscallaneous extra types
-          ty::ty_iface(_, _) { self.leaf("iface") }
+          ty::ty_trait(_, _) { self.leaf("trait") }
           ty::ty_var(_) { self.leaf("var") }
           ty::ty_var_integral(_) { self.leaf("var_integral") }
           ty::ty_param(n, _) { self.visit("param", ~[self.c_uint(n)]) }
@@ -278,13 +278,13 @@ impl methods for reflector {
 }
 
 // Emit a sequence of calls to visit_ty::visit_foo
-fn emit_calls_to_iface_visit_ty(bcx: block, t: ty::t,
+fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
                                 visitor_val: ValueRef,
                                 visitor_iid: def_id) -> block {
 
     let r = reflector({
         visitor_val: visitor_val,
-        visitor_methods: ty::iface_methods(bcx.tcx(), visitor_iid),
+        visitor_methods: ty::trait_methods(bcx.tcx(), visitor_iid),
         mut bcx: bcx
     });
 

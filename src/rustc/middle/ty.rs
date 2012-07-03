@@ -69,7 +69,7 @@ export subst, subst_tps, substs_is_noop, substs_to_str, substs;
 export t;
 export new_ty_hash;
 export enum_variants, substd_enum_variants, enum_is_univariant;
-export iface_methods, store_iface_methods, impl_iface;
+export trait_methods, store_trait_methods, impl_trait;
 export enum_variant_with_id;
 export ty_dtor;
 export ty_param_bounds_and_ty;
@@ -92,7 +92,7 @@ export ty_evec, mk_evec;
 export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
 export vstore, vstore_fixed, vstore_uniq, vstore_box, vstore_slice;
 export ty_nil, mk_nil, type_is_nil;
-export ty_iface, mk_iface;
+export ty_trait, mk_trait;
 export ty_param, mk_param, ty_params_to_tys;
 export ty_ptr, mk_ptr, mk_mut_ptr, mk_imm_ptr, mk_nil_ptr, type_is_unsafe_ptr;
 export ty_rptr, mk_rptr;
@@ -154,7 +154,7 @@ export closure_kind;
 export ck_block;
 export ck_box;
 export ck_uniq;
-export param_bound, param_bounds, bound_copy, bound_send, bound_iface;
+export param_bound, param_bounds, bound_copy, bound_send, bound_trait;
 export param_bounds_to_kind;
 export default_arg_mode_for_ty;
 export item_path;
@@ -240,7 +240,7 @@ type ctxt =
       node_type_substs: hashmap<node_id, ~[t]>,
 
       items: ast_map::map,
-      intrinsic_ifaces: hashmap<ast::ident, (ast::def_id, t)>,
+      intrinsic_traits: hashmap<ast::ident, (ast::def_id, t)>,
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
@@ -250,7 +250,7 @@ type ctxt =
       kind_cache: hashmap<t, kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, ast_ty_to_ty_cache_entry>,
       enum_var_cache: hashmap<def_id, @~[variant_info]>,
-      iface_method_cache: hashmap<def_id, @~[method]>,
+      trait_method_cache: hashmap<def_id, @~[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
       inferred_modes: hashmap<ast::node_id, ast::mode>,
       // maps the id of borrowed expr to scope of borrowed ptr
@@ -366,7 +366,7 @@ enum sty {
     ty_rptr(region, mt),
     ty_rec(~[field]),
     ty_fn(fn_ty),
-    ty_iface(def_id, substs),
+    ty_trait(def_id, substs),
     ty_class(def_id, substs),
     ty_tup(~[t]),
 
@@ -426,7 +426,7 @@ enum param_bound {
     bound_copy,
     bound_send,
     bound_const,
-    bound_iface(t),
+    bound_trait(t),
 }
 
 enum tv_vid = uint;
@@ -468,7 +468,7 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
           }
           bound_send { kind = raise_kind(kind, kind_send_only()); }
           bound_const { kind = raise_kind(kind, kind_const()); }
-          bound_iface(_) {}
+          bound_trait(_) {}
         }
     }
     kind
@@ -519,7 +519,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       node_types: @smallintmap::mk(),
       node_type_substs: map::int_hash(),
       items: amap,
-      intrinsic_ifaces: map::box_str_hash(),
+      intrinsic_traits: map::box_str_hash(),
       freevars: freevars,
       tcache: ast_util::new_def_hash(),
       rcache: mk_rcache(),
@@ -530,7 +530,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       ast_ty_to_ty_cache: map::hashmap(
           ast_util::hash_ty, ast_util::eq_ty),
       enum_var_cache: new_def_hash(),
-      iface_method_cache: new_def_hash(),
+      trait_method_cache: new_def_hash(),
       ty_param_bounds: map::int_hash(),
       inferred_modes: map::int_hash(),
       borrowings: map::int_hash(),
@@ -578,7 +578,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_param(_, _) { flags |= has_params as uint; }
       ty_var(_) | ty_var_integral(_) { flags |= needs_infer as uint; }
       ty_self { flags |= has_self as uint; }
-      ty_enum(_, substs) | ty_class(_, substs) | ty_iface(_, substs) {
+      ty_enum(_, substs) | ty_class(_, substs) | ty_trait(_, substs) {
         flags |= sflags(substs);
       }
       ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_evec(m, _) |
@@ -704,8 +704,8 @@ fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
 fn mk_fn(cx: ctxt, fty: fn_ty) -> t { mk_t(cx, ty_fn(fty)) }
 
-fn mk_iface(cx: ctxt, did: ast::def_id, substs: substs) -> t {
-    mk_t(cx, ty_iface(did, substs))
+fn mk_trait(cx: ctxt, did: ast::def_id, substs: substs) -> t {
+    mk_t(cx, ty_trait(did, substs))
 }
 
 fn mk_class(cx: ctxt, class_id: ast::def_id, substs: substs) -> t {
@@ -775,7 +775,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, substs) | ty_class(_, substs) |
-      ty_iface(_, substs) {
+      ty_trait(_, substs) {
         for substs.tps.each |subty| { maybe_walk_ty(subty, f); }
       }
       ty_rec(fields) {
@@ -824,8 +824,8 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       ty_enum(tid, substs) {
         ty_enum(tid, fold_substs(substs, fldop))
       }
-      ty_iface(did, substs) {
-        ty_iface(did, fold_substs(substs, fldop))
+      ty_trait(did, substs) {
+        ty_trait(did, fold_substs(substs, fldop))
       }
       ty_rec(fields) {
         let new_fields = do vec::map(fields) |fl| {
@@ -924,8 +924,8 @@ fn fold_regions_and_ty(
       ty_class(def_id, substs) {
         ty::mk_class(cx, def_id, fold_substs(substs, fldr, fldt))
       }
-      ty_iface(def_id, substs) {
-        ty::mk_iface(cx, def_id, fold_substs(substs, fldr, fldt))
+      ty_trait(def_id, substs) {
+        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt))
       }
       sty @ ty_fn(_) {
         fold_sty_to_ty(cx, sty, |t| fldfnt(t))
@@ -1074,7 +1074,7 @@ fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
 fn type_is_structural(ty: t) -> bool {
     alt get(ty).struct {
       ty_rec(_) | ty_class(*) | ty_tup(_) | ty_enum(*) | ty_fn(_) |
-      ty_iface(*) | ty_evec(_, vstore_fixed(_))
+      ty_trait(*) | ty_evec(_, vstore_fixed(_))
       | ty_estr(vstore_fixed(_)) { true }
       _ { false }
     }
@@ -1497,7 +1497,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
             else { kind_implicitly_copyable() }
         }
       }
-      ty_iface(_, _) { kind_implicitly_copyable() }
+      ty_trait(_, _) { kind_implicitly_copyable() }
       ty_rptr(_, _) { kind_implicitly_copyable() }
 
       // Unique boxes and vecs have the kind of their contained type,
@@ -1669,7 +1669,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             }
           }
 
-          ty_iface(_, _) {
+          ty_trait(_, _) {
             false
           }
 
@@ -1834,7 +1834,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
       ty_estr(vstore_uniq) | ty_estr(vstore_box) |
       ty_evec(_, vstore_uniq) | ty_evec(_, vstore_box) |
-      ty_iface(_, _) | ty_rptr(_,_) | ty_opaque_box { result = false; }
+      ty_trait(_, _) | ty_rptr(_,_) | ty_opaque_box { result = false; }
       // Structural types
       ty_enum(did, substs) {
         let variants = enum_variants(cx, did);
@@ -2066,7 +2066,7 @@ fn hash_type_structure(st: sty) -> uint {
         h
       }
       ty_uniq(mt) { hash_subty(37u, mt.ty) }
-      ty_iface(did, substs) {
+      ty_trait(did, substs) {
         let mut h = hash_def(40u, did);
         hash_substs(h, substs)
       }
@@ -2402,7 +2402,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> str {
       ty_rptr(_, _) { "&-ptr" }
       ty_rec(_) { "record" }
       ty_fn(_) { "fn" }
-      ty_iface(id, _) { #fmt["iface %s", item_path_str(cx, id)] }
+      ty_trait(id, _) { #fmt["trait %s", item_path_str(cx, id)] }
       ty_class(id, _) { #fmt["class %s", item_path_str(cx, id)] }
       ty_tup(_) { "tuple" }
       ty_var(_) { "variable" }
@@ -2513,25 +2513,25 @@ fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
-fn store_iface_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
-    cx.iface_method_cache.insert(ast_util::local_def(id), ms);
+fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
+    cx.trait_method_cache.insert(ast_util::local_def(id), ms);
 }
 
-fn iface_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
-    alt cx.iface_method_cache.find(id) {
+fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
+    alt cx.trait_method_cache.find(id) {
       some(ms) { ret ms; }
       _ {}
     }
     // Local interfaces are supposed to have been added explicitly.
     assert id.crate != ast::local_crate;
-    let result = csearch::get_iface_methods(cx, id);
-    cx.iface_method_cache.insert(id, result);
+    let result = csearch::get_trait_methods(cx, id);
+    cx.trait_method_cache.insert(id, result);
     result
 }
 
-fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
+fn impl_trait(cx: ctxt, id: ast::def_id) -> option<t> {
     if id.crate == ast::local_crate {
-        #debug("(impl_iface) searching for iface impl %?", id);
+        #debug("(impl_trait) searching for trait impl %?", id);
         alt cx.items.find(id.node) {
            some(ast_map::node_item(@{node: ast::item_impl(
               _, _, some(@{id: id, _}), _, _), _}, _)) {
@@ -2540,13 +2540,13 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
            some(ast_map::node_item(@{node: ast::item_class(_, _, _, _, _, _),
                            _},_)) {
              alt cx.def_map.find(id.node) {
-               some(def_ty(iface_id)) {
+               some(def_ty(trait_id)) {
                    // XXX: Doesn't work cross-crate.
-                   #debug("(impl_iface) found iface id %?", iface_id);
-                   some(node_id_to_type(cx, iface_id.node))
+                   #debug("(impl_trait) found trait id %?", trait_id);
+                   some(node_id_to_type(cx, trait_id.node))
                }
                some(x) {
-                 cx.sess.bug(#fmt("impl_iface: iface ref is in iface map \
+                 cx.sess.bug(#fmt("impl_trait: trait ref is in trait map \
                                    but is bound to %?", x));
                }
                none {
@@ -2557,13 +2557,13 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
            _ { none }
         }
     } else {
-        csearch::get_impl_iface(cx, id)
+        csearch::get_impl_trait(cx, id)
     }
 }
 
 fn ty_to_def_id(ty: t) -> option<ast::def_id> {
     alt get(ty).struct {
-      ty_iface(id, _) | ty_class(id, _) | ty_enum(id, _) {
+      ty_trait(id, _) | ty_class(id, _) | ty_enum(id, _) {
         some(id)
       }
       _ { none }

@@ -9,7 +9,7 @@ fn mk_pass() -> pass {
               doc::consttag(_) { 0 }
               doc::tytag(_) { 1 }
               doc::enumtag(_) { 2 }
-              doc::ifacetag(_) { 3 }
+              doc::traittag(_) { 3 }
               doc::impltag(_) { 4 }
               doc::fntag(_) { 5 }
               doc::modtag(_) { 6 }

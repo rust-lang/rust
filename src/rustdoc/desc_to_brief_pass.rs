@@ -20,7 +20,7 @@ fn run(
 ) -> doc::doc {
     let fold = fold::fold({
         fold_item: fold_item,
-        fold_iface: fold_iface,
+        fold_trait: fold_trait,
         fold_impl: fold_impl
         with *fold::default_any_fold(())
     });
@@ -36,8 +36,8 @@ fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
     }
 }
 
-fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
-    let doc =fold::default_seq_fold_iface(fold, doc);
+fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
+    let doc =fold::default_seq_fold_trait(fold, doc);
 
     {
         methods: par::anymap(doc.methods, |doc| {
@@ -67,9 +67,9 @@ fn should_promote_desc() {
 }
 
 #[test]
-fn should_promote_iface_method_desc() {
+fn should_promote_trait_method_desc() {
     let doc = test::mk_doc("iface i { #[doc = \"desc\"] fn a(); }");
-    assert doc.cratemod().ifaces()[0].methods[0].brief == some("desc");
+    assert doc.cratemod().traits()[0].methods[0].brief == some("desc");
 }
 
 #[test]

@@ -494,14 +494,14 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps, ifaces, items, ctor, m_dtor, rp) {
+      ast::item_class(tps, traits, items, ctor, m_dtor, rp) {
           head(s, "class");
           word_nbsp(s, *item.ident);
           print_region_param(s, rp);
           print_type_params(s, tps);
-          if vec::len(ifaces) != 0u {
+          if vec::len(traits) != 0u {
               word_space(s, ":");
-              commasep(s, inconsistent, ifaces, |s, p|
+              commasep(s, inconsistent, traits, |s, p|
                   print_path(s, p.path, false));
           }
           bopen(s);
@@ -579,7 +579,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_iface(tps, rp, methods) {
+      ast::item_trait(tps, rp, methods) {
         head(s, "iface");
         word(s.s, *item.ident);
         print_region_param(s, rp);
@@ -1350,7 +1350,7 @@ fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
               ast::bound_copy { word(s.s, "copy"); }
               ast::bound_send { word(s.s, "send"); }
               ast::bound_const { word(s.s, "const"); }
-              ast::bound_iface(t) { print_type(s, t); }
+              ast::bound_trait(t) { print_type(s, t); }
             }
         }
     }

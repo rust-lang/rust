@@ -530,7 +530,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
     }
 
     let ser_bnds = @~[
-        ast::bound_iface(cx.ty_path(span,
+        ast::bound_trait(cx.ty_path(span,
                                     ~[@"std", @"serialization",
                                      @"serializer"],
                                     ~[]))];
@@ -736,7 +736,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
     }
 
     let deser_bnds = @~[
-        ast::bound_iface(cx.ty_path(
+        ast::bound_trait(cx.ty_path(
             span,
             ~[@"std", @"serialization", @"deserializer"],
             ~[]))];

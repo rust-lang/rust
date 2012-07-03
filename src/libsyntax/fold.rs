@@ -142,7 +142,7 @@ fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
 fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
     alt tpb {
       bound_copy | bound_send | bound_const { tpb }
-      bound_iface(ty) { bound_iface(fld.fold_ty(ty)) }
+      bound_trait(ty) { bound_trait(fld.fold_ty(ty)) }
     }
 }
 
@@ -252,7 +252,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                       fold_ty_params(typms, fld),
                       r)
           }
-          item_class(typms, ifaces, items, ctor, m_dtor, rp) {
+          item_class(typms, traits, items, ctor, m_dtor, rp) {
               let ctor_body = fld.fold_block(ctor.node.body);
               let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
               let ctor_id   = fld.new_id(ctor.node.id);
@@ -264,7 +264,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                     with dtor}};
               item_class(
                   /* FIXME (#2543) */ copy typms,
-                  vec::map(ifaces, |p| fold_iface_ref(p, fld)),
+                  vec::map(traits, |p| fold_trait_ref(p, fld)),
                   vec::map(items, fld.fold_class_item),
                   {node: {body: ctor_body,
                           dec: ctor_decl,
@@ -274,19 +274,19 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_impl(tps, rp, ifce, ty, methods) {
               item_impl(fold_ty_params(tps, fld),
                         rp,
-                        ifce.map(|p| fold_iface_ref(p, fld)),
+                        ifce.map(|p| fold_trait_ref(p, fld)),
                         fld.fold_ty(ty),
                         vec::map(methods, fld.fold_method))
           }
-          item_iface(tps, rp, methods) {
-            item_iface(fold_ty_params(tps, fld),
+          item_trait(tps, rp, methods) {
+            item_trait(fold_ty_params(tps, fld),
                        rp,
                        /* FIXME (#2543) */ copy methods)
           }
         };
 }
 
-fn fold_iface_ref(&&p: @iface_ref, fld: ast_fold) -> @iface_ref {
+fn fold_trait_ref(&&p: @trait_ref, fld: ast_fold) -> @trait_ref {
     @{path: fld.fold_path(p.path), id: fld.new_id(p.id)}
 }
 

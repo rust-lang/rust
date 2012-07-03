@@ -198,7 +198,7 @@ fn header_kind(doc: doc::itemtag) -> str {
       doc::enumtag(_) {
         "Enum"
       }
-      doc::ifacetag(_) {
+      doc::traittag(_) {
         "Interface"
       }
       doc::impltag(doc) {
@@ -222,9 +222,9 @@ fn header_name(doc: doc::itemtag) -> str {
       doc::impltag(doc) {
         assert option::is_some(doc.self_ty);
         let self_ty = option::get(doc.self_ty);
-        alt doc.iface_ty {
-          some(iface_ty) {
-            #fmt("%s of %s for %s", doc.name(), iface_ty, self_ty)
+        alt doc.trait_ty {
+          some(trait_ty) {
+            #fmt("%s of %s for %s", doc.name(), trait_ty, self_ty)
           }
           none {
             #fmt("%s for %s", doc.name(), self_ty)
@@ -349,7 +349,7 @@ fn write_item_(ctxt: ctxt, doc: doc::itemtag, write_header: bool) {
       doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
       doc::consttag(constdoc) { write_const(ctxt, constdoc) }
       doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
-      doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
+      doc::traittag(traitdoc) { write_trait(ctxt, traitdoc) }
       doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
       doc::tytag(tydoc) { write_type(ctxt, tydoc) }
     }
@@ -639,7 +639,7 @@ fn should_write_variant_list_with_signatures() {
          \n* `c(int)` - a\n\n");
 }
 
-fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
+fn write_trait(ctxt: ctxt, doc: doc::traitdoc) {
     write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
@@ -659,27 +659,27 @@ fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
 }
 
 #[test]
-fn should_write_iface_header() {
+fn should_write_trait_header() {
     let markdown = test::render("iface i { fn a(); }");
     assert str::contains(markdown, "## Interface `i`");
 }
 
 #[test]
-fn should_write_iface_desc() {
+fn should_write_trait_desc() {
     let markdown = test::render(
         "#[doc = \"desc\"] iface i { fn a(); }");
     assert str::contains(markdown, "desc");
 }
 
 #[test]
-fn should_write_iface_method_header() {
+fn should_write_trait_method_header() {
     let markdown = test::render(
         "iface i { fn a(); }");
     assert str::contains(markdown, "### Method `a`");
 }
 
 #[test]
-fn should_write_iface_method_signature() {
+fn should_write_trait_method_signature() {
     let markdown = test::render(
         "iface i { fn a(); }");
     assert str::contains(markdown, "\n    fn a()");
@@ -697,7 +697,7 @@ fn should_write_impl_header() {
 }
 
 #[test]
-fn should_write_impl_header_with_iface() {
+fn should_write_impl_header_with_trait() {
     let markdown = test::render("impl i of j for int { fn a() { } }");
     assert str::contains(markdown, "## Implementation `i of j for int`");
 }

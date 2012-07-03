@@ -265,16 +265,16 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                     // and then the method bounds themselves...
                     ty::lookup_item_type(cx.tcx, did).bounds
                   }
-                  typeck::method_param({iface_id:ifce_id,
+                  typeck::method_param({trait_id:trt_id,
                                         method_num:n_mth, _}) |
-                  typeck::method_iface(ifce_id, n_mth) {
-                    // ...iface methods bounds, in contrast, include only the
+                  typeck::method_trait(trt_id, n_mth) {
+                    // ...trait methods bounds, in contrast, include only the
                     // method bounds, so we must preprend the tps from the
-                    // iface itself.  This ought to be harmonized.
-                    let ifce_bounds =
-                        ty::lookup_item_type(cx.tcx, ifce_id).bounds;
-                    let mth = ty::iface_methods(cx.tcx, ifce_id)[n_mth];
-                    @(vec::append(*ifce_bounds, *mth.tps))
+                    // trait itself.  This ought to be harmonized.
+                    let trt_bounds =
+                        ty::lookup_item_type(cx.tcx, trt_id).bounds;
+                    let mth = ty::trait_methods(cx.tcx, trt_id)[n_mth];
+                    @(vec::append(*trt_bounds, *mth.tps))
                   }
                 }
               }

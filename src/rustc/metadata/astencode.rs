@@ -380,8 +380,8 @@ impl of tr for method_origin {
           typeck::method_param(did, m, p, b) {
             typeck::method_param(did.tr(xcx), m, p, b)
           }
-          typeck::method_iface(did, m) {
-            typeck::method_iface(did.tr(xcx), m)
+          typeck::method_trait(did, m) {
+            typeck::method_trait(did.tr(xcx), m)
           }
         }
     }
@@ -441,8 +441,8 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
                 }
             }
           }
-          typeck::vtable_iface(def_id, tys) {
-            ebml_w.emit_enum_variant("vtable_iface", 1u, 3u) {||
+          typeck::vtable_trait(def_id, tys) {
+            ebml_w.emit_enum_variant("vtable_trait", 1u, 3u) {||
                 ebml_w.emit_enum_variant_arg(0u) {||
                     ebml_w.emit_def_id(def_id)
                 }
@@ -490,7 +490,7 @@ impl helpers for ebml::ebml_deserializer {
                     )
                   }
                   2u {
-                    typeck::vtable_iface(
+                    typeck::vtable_trait(
                         self.read_enum_variant_arg(0u) {||
                             self.read_def_id(xcx)
                         },

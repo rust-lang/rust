@@ -290,7 +290,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let def = parse_def(st, conv);
         let substs = parse_substs(st, conv);
         assert next(st) == ']';
-        ret ty::mk_iface(st.tcx, def, substs);
+        ret ty::mk_trait(st.tcx, def, substs);
       }
       'p' {
         let did = parse_def(st, conv);
@@ -505,7 +505,7 @@ fn parse_bounds(st: @pstate, conv: conv_did) -> @~[ty::param_bound] {
           'S' { ty::bound_send }
           'C' { ty::bound_copy }
           'K' { ty::bound_const }
-          'I' { ty::bound_iface(parse_ty(st, conv)) }
+          'I' { ty::bound_trait(parse_ty(st, conv)) }
           '.' { break; }
         });
     }

@@ -22,7 +22,7 @@ fn run(
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
-        fold_iface: fold_iface,
+        fold_trait: fold_trait,
         fold_impl: fold_impl,
         fold_type: fold_type
         with *fold::default_any_fold(srv)
@@ -137,10 +137,10 @@ fn should_add_variant_sigs() {
     assert doc.cratemod().enums()[0].variants[0].sig == some("b(int)");
 }
 
-fn fold_iface(
+fn fold_trait(
     fold: fold::fold<astsrv::srv>,
-    doc: doc::ifacedoc
-) -> doc::ifacedoc {
+    doc: doc::traitdoc
+) -> doc::traitdoc {
     {
         methods: merge_methods(fold.ctxt, doc.id(), doc.methods)
         with doc
@@ -168,7 +168,7 @@ fn get_method_sig(
     do astsrv::exec(srv) |ctxt| {
         alt check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_iface(_, _, methods), _
+            node: ast::item_trait(_, _, methods), _
           }, _) {
             alt check vec::find(methods, |method| {
                 *method.ident == method_name
@@ -202,9 +202,9 @@ fn get_method_sig(
 }
 
 #[test]
-fn should_add_iface_method_sigs() {
+fn should_add_trait_method_sigs() {
     let doc = test::mk_doc("iface i { fn a<T>() -> int; }");
-    assert doc.cratemod().ifaces()[0].methods[0].sig
+    assert doc.cratemod().traits()[0].methods[0].sig
         == some("fn a<T>() -> int");
 }
 
@@ -215,22 +215,22 @@ fn fold_impl(
 
     let srv = fold.ctxt;
 
-    let (iface_ty, self_ty) = do astsrv::exec(srv) |ctxt| {
+    let (trait_ty, self_ty) = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, iface_ty, self_ty, _), _
+            node: ast::item_impl(_, _, trait_ty, self_ty, _), _
           }, _) {
-            let iface_ty = option::map(iface_ty, |p| {
+            let trait_ty = option::map(trait_ty, |p| {
                 pprust::path_to_str(p.path)
             });
-            (iface_ty, some(pprust::ty_to_str(self_ty)))
+            (trait_ty, some(pprust::ty_to_str(self_ty)))
           }
           _ { fail "expected impl" }
         }
     };
 
     {
-        iface_ty: iface_ty,
+        trait_ty: trait_ty,
         self_ty: self_ty,
         methods: merge_methods(fold.ctxt, doc.id(), doc.methods)
         with doc
@@ -238,15 +238,15 @@ fn fold_impl(
 }
 
 #[test]
-fn should_add_impl_iface_ty() {
+fn should_add_impl_trait_ty() {
     let doc = test::mk_doc("impl i of j for int { fn a<T>() { } }");
-    assert doc.cratemod().impls()[0].iface_ty == some("j");
+    assert doc.cratemod().impls()[0].trait_ty == some("j");
 }
 
 #[test]
-fn should_not_add_impl_iface_ty_if_none() {
+fn should_not_add_impl_trait_ty_if_none() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
-    assert doc.cratemod().impls()[0].iface_ty == none;
+    assert doc.cratemod().impls()[0].trait_ty == none;
 }
 
 #[test]

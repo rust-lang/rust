@@ -21,10 +21,10 @@ export lookup_defs;
 export lookup_method_purity;
 export get_enum_variants;
 export get_impls_for_mod;
-export get_iface_methods;
+export get_trait_methods;
 export each_path;
 export get_type;
-export get_impl_iface;
+export get_impl_trait;
 export get_impl_method;
 export get_item_path;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
@@ -133,10 +133,10 @@ fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
     }
 }
 
-fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
+fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_iface_methods(cdata, def.node, tcx)
+    decoder::get_trait_methods(cdata, def.node, tcx)
 }
 
 fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {
@@ -171,12 +171,12 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     ret {bounds: @~[], rp: ast::rp_none, ty: ty};
 }
 
-// Given a def_id for an impl or class, return the iface it implements,
-// or none if it's not for an impl or for a class that implements ifaces
-fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id) -> option<ty::t> {
+// Given a def_id for an impl or class, return the trait it implements,
+// or none if it's not for an impl or for a class that implements traits
+fn get_impl_trait(tcx: ty::ctxt, def: ast::def_id) -> option<ty::t> {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_impl_iface(cdata, def.node, tcx)
+    decoder::get_impl_trait(cdata, def.node, tcx)
 }
 
 fn get_impl_method(cstore: cstore::cstore,
@@ -186,8 +186,8 @@ fn get_impl_method(cstore: cstore::cstore,
     decoder::get_impl_method(cdata, def.node, mname)
 }
 
-/* Because classes use the iface format rather than the impl format
-   for their methods (so that get_iface_methods can be reused to get
+/* Because classes use the trait format rather than the impl format
+   for their methods (so that get_trait_methods can be reused to get
    class methods), classes require a slightly different version of
    get_impl_method. Sigh. */
 fn get_class_method(cstore: cstore::cstore,

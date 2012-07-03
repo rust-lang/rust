@@ -64,8 +64,8 @@ class lookup {
               ty::ty_param(n, did) {
                 self.add_candidates_from_param(n, did);
               }
-              ty::ty_iface(did, substs) {
-                self.add_candidates_from_iface(did, substs);
+              ty::ty_trait(did, substs) {
+                self.add_candidates_from_trait(did, substs);
               }
               ty::ty_class(did, substs) {
                 self.add_candidates_from_class(did, substs);
@@ -111,10 +111,10 @@ class lookup {
                     self.report_static_candidate(i, did);
                   }
                   method_param(p) {
-                    self.report_param_candidate(i, p.iface_id);
+                    self.report_param_candidate(i, p.trait_id);
                   }
-                  method_iface(did, _) {
-                    self.report_iface_candidate(i, did);
+                  method_trait(did, _) {
+                    self.report_trait_candidate(i, did);
                   }
                 }
             }
@@ -148,11 +148,11 @@ class lookup {
                  ty::item_path_str(self.tcx(), did)]);
     }
 
-    fn report_iface_candidate(idx: uint, did: ast::def_id) {
+    fn report_trait_candidate(idx: uint, did: ast::def_id) {
         self.tcx().sess.span_note(
             self.expr.span,
             #fmt["candidate #%u derives from the type of the receiver, \
-                  which is the iface `%s`",
+                  which is the trait `%s`",
                  (idx+1u),
                  ty::item_path_str(self.tcx(), did)]);
     }
@@ -161,25 +161,25 @@ class lookup {
         #debug["candidates_from_param"];
 
         let tcx = self.tcx();
-        let mut iface_bnd_idx = 0u; // count only iface bounds
+        let mut trait_bnd_idx = 0u; // count only trait bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
         for vec::each(*bounds) |bound| {
             let (iid, bound_substs) = alt bound {
               ty::bound_copy | ty::bound_send | ty::bound_const {
                 cont; /* ok */
               }
-              ty::bound_iface(bound_t) {
+              ty::bound_trait(bound_t) {
                 alt check ty::get(bound_t).struct {
-                  ty::ty_iface(i, substs) { (i, substs) }
+                  ty::ty_trait(i, substs) { (i, substs) }
                 }
               }
             };
 
-            let ifce_methods = ty::iface_methods(tcx, iid);
+            let ifce_methods = ty::trait_methods(tcx, iid);
             alt vec::position(*ifce_methods, |m| m.ident == self.m_name) {
               none {
                 /* check next bound */
-                iface_bnd_idx += 1u;
+                trait_bnd_idx += 1u;
               }
 
               some(pos) {
@@ -187,7 +187,7 @@ class lookup {
                 // generic parameter itself.  Note that this is the only case
                 // where this replacement is necessary: in all other cases, we
                 // are either invoking a method directly from an impl or class
-                // (where the self type is not permitted), or from a iface
+                // (where the self type is not permitted), or from a trait
                 // type (in which case methods that refer to self are not
                 // permitted).
                 let substs = {self_ty: some(self.self_ty)
@@ -195,21 +195,21 @@ class lookup {
 
                 self.add_candidates_from_m(
                     substs, ifce_methods[pos],
-                    method_param({iface_id:iid,
+                    method_param({trait_id:iid,
                                   method_num:pos,
                                   param_num:n,
-                                  bound_num:iface_bnd_idx}));
+                                  bound_num:trait_bnd_idx}));
               }
             }
         }
 
     }
 
-    fn add_candidates_from_iface(did: ast::def_id, iface_substs: ty::substs) {
+    fn add_candidates_from_trait(did: ast::def_id, trait_substs: ty::substs) {
 
-        #debug["method_from_iface"];
+        #debug["method_from_trait"];
 
-        let ms = *ty::iface_methods(self.tcx(), did);
+        let ms = *ty::trait_methods(self.tcx(), did);
         for ms.eachi |i, m| {
             if m.ident != self.m_name { cont; }
 
@@ -226,17 +226,17 @@ class lookup {
                 self.tcx().sess.span_err(
                     self.expr.span,
                     "can not call a generic method through a \
-                     boxed iface");
+                     boxed trait");
             }
 
             // Note: although it is illegal to invoke a method that uses self
-            // through a iface instance, we use a dummy subst here so that we
+            // through a trait instance, we use a dummy subst here so that we
             // can soldier on with the compilation.
             let substs = {self_ty: some(self.self_ty)
-                          with iface_substs};
+                          with trait_substs};
 
             self.add_candidates_from_m(
-                substs, m, method_iface(did, i));
+                substs, m, method_trait(did, i));
         }
     }
 
@@ -244,7 +244,7 @@ class lookup {
 
         #debug["method_from_class"];
 
-        let ms = *ty::iface_methods(self.tcx(), did);
+        let ms = *ty::trait_methods(self.tcx(), did);
 
         for ms.each |m| {
             if m.ident != self.m_name { cont; }
@@ -275,7 +275,7 @@ class lookup {
         if did.crate == ast::local_crate {
             alt check self.tcx().items.get(did.node) {
               ast_map::node_method(m, _, _) {
-                // NDM iface/impl regions
+                // NDM trait/impl regions
                 let mt = ty_of_method(self.fcx.ccx, m, ast::rp_none);
                 ty::mk_fn(self.tcx(), {proto: ast::proto_box with mt.fty})
               }

@@ -22,7 +22,7 @@ fn run(
     let fold = fold::fold({
         fold_item: fold_item,
         fold_enum: fold_enum,
-        fold_iface: fold_iface,
+        fold_trait: fold_trait,
         fold_impl: fold_impl
         with *fold::default_any_fold(op)
     });
@@ -65,8 +65,8 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     }
 }
 
-fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
-    let doc = fold::default_seq_fold_iface(fold, doc);
+fn fold_trait(fold: fold::fold<op>, doc: doc::traitdoc) -> doc::traitdoc {
+    let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
         methods: apply_to_methods(fold.ctxt, doc.methods)
@@ -113,31 +113,31 @@ fn should_execute_op_on_variant_desc() {
 }
 
 #[test]
-fn should_execute_op_on_iface_brief() {
+fn should_execute_op_on_trait_brief() {
     let doc = test::mk_doc(
         "#[doc = \" a \"] iface i { fn a(); }");
-    assert doc.cratemod().ifaces()[0].brief() == some("a");
+    assert doc.cratemod().traits()[0].brief() == some("a");
 }
 
 #[test]
-fn should_execute_op_on_iface_desc() {
+fn should_execute_op_on_trait_desc() {
     let doc = test::mk_doc(
         "#[doc = \" a \"] iface i { fn a(); }");
-    assert doc.cratemod().ifaces()[0].desc() == some("a");
+    assert doc.cratemod().traits()[0].desc() == some("a");
 }
 
 #[test]
-fn should_execute_op_on_iface_method_brief() {
+fn should_execute_op_on_trait_method_brief() {
     let doc = test::mk_doc(
         "iface i { #[doc = \" a \"] fn a(); }");
-    assert doc.cratemod().ifaces()[0].methods[0].brief == some("a");
+    assert doc.cratemod().traits()[0].methods[0].brief == some("a");
 }
 
 #[test]
-fn should_execute_op_on_iface_method_desc() {
+fn should_execute_op_on_trait_method_desc() {
     let doc = test::mk_doc(
         "iface i { #[doc = \" a \"] fn a(); }");
-    assert doc.cratemod().ifaces()[0].methods[0].desc == some("a");
+    assert doc.cratemod().traits()[0].methods[0].desc == some("a");
 }
 
 #[test]
@@ -203,26 +203,26 @@ fn should_execute_on_item_section_bodies() {
 }
 
 #[test]
-fn should_execute_on_iface_method_section_headers() {
+fn should_execute_on_trait_method_section_headers() {
     let doc = test::mk_doc(
         "iface i {
          #[doc = \"\
          # Header    \n\
          Body\"]\
          fn a(); }");
-    assert doc.cratemod().ifaces()[0].methods[0].sections[0].header
+    assert doc.cratemod().traits()[0].methods[0].sections[0].header
         == "Header";
 }
 
 #[test]
-fn should_execute_on_iface_method_section_bodies() {
+fn should_execute_on_trait_method_section_bodies() {
     let doc = test::mk_doc(
         "iface i {
          #[doc = \"\
          # Header\n\
          Body     \"]\
          fn a(); }");
-    assert doc.cratemod().ifaces()[0].methods[0].sections[0].body == "Body";
+    assert doc.cratemod().traits()[0].methods[0].sections[0].body == "Body";
 }
 
 #[test]

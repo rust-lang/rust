@@ -5,7 +5,7 @@ typeck.rs, an introduction
 The type checker is responsible for:
 
 1. Determining the type of each expression
-2. Resolving methods and ifaces
+2. Resolving methods and traits
 3. Guaranteeing that most type rules are met ("most?", you say, "why most?"
    Well, dear reader, read on)
 
@@ -81,28 +81,28 @@ enum method_origin {
     // fully statically resolved method
     method_static(ast::def_id),
 
-    // method invoked on a type parameter with a bounded iface
+    // method invoked on a type parameter with a bounded trait
     method_param(method_param),
 
-    // method invoked on a boxed iface
-    method_iface(ast::def_id, uint),
+    // method invoked on a boxed trait
+    method_trait(ast::def_id, uint),
 }
 
 // details for a method invoked with a receiver whose type is a type parameter
-// with a bounded iface.
+// with a bounded trait.
 #[auto_serialize]
 type method_param = {
-    // the iface containing the method to be invoked
-    iface_id: ast::def_id,
+    // the trait containing the method to be invoked
+    trait_id: ast::def_id,
 
-    // index of the method to be invoked amongst the iface's methods
+    // index of the method to be invoked amongst the trait's methods
     method_num: uint,
 
     // index of the type parameter (from those that are in scope) that is
     // the type of the receiver
     param_num: uint,
 
-    // index of the bound for this type parameter which specifies the iface
+    // index of the bound for this type parameter which specifies the trait
     bound_num: uint
 };
 
@@ -140,9 +140,9 @@ enum vtable_origin {
     vtable_param(uint, uint),
     /*
       Dynamic vtable, comes from something known to have an interface
-      type. def_id refers to the iface item, tys are the substs
+      type. def_id refers to the trait item, tys are the substs
      */
-    vtable_iface(ast::def_id, ~[ty::t]),
+    vtable_trait(ast::def_id, ~[ty::t]),
 }
 
 type vtable_map = hashmap<ast::node_id, vtable_res>;

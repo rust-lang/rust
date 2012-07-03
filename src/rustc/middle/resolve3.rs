@@ -2,7 +2,7 @@ import driver::session::session;
 import metadata::csearch::{each_path, get_impls_for_mod, lookup_defs};
 import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
-import syntax::ast::{_mod, arm, blk, bound_const, bound_copy, bound_iface};
+import syntax::ast::{_mod, arm, blk, bound_const, bound_copy, bound_trait};
 import syntax::ast::{bound_send, capture_clause, class_ctor, class_dtor};
 import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
@@ -12,9 +12,9 @@ import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_new, expr_path};
 import syntax::ast::{expr_unary, fn_decl, foreign_item, foreign_item_fn};
-import syntax::ast::{ident, iface_ref, impure_fn, instance_var, item};
+import syntax::ast::{ident, trait_ref, impure_fn, instance_var, item};
 import syntax::ast::{item_class, item_const, item_enum, item_fn};
-import syntax::ast::{item_foreign_mod, item_iface, item_impl, item_mod};
+import syntax::ast::{item_foreign_mod, item_trait, item_impl, item_mod};
 import syntax::ast::{item_ty, local, local_crate, method, node_id, pat};
 import syntax::ast::{pat_enum, pat_ident, path, prim_ty, stmt_decl, ty};
 import syntax::ast::{ty_bool, ty_char, ty_constr, ty_f, ty_f32, ty_f64};
@@ -867,7 +867,7 @@ class Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_iface(*) {
+            item_trait(*) {
                 (*name_bindings).define_type(def_ty(local_def(item.id)));
                 visit_item(item, new_parent, visitor);
             }
@@ -1233,7 +1233,7 @@ class Resolver {
 
     fn build_reduced_graph_for_impls_in_external_module(module: @Module) {
         // XXX: This is really unfortunate. decoder::each_path can produce
-        // false positives, since, in the crate metadata, an iface named 'bar'
+        // false positives, since, in the crate metadata, a trait named 'bar'
         // in module 'foo' defining a method named 'baz' will result in the
         // creation of a (bogus) path entry named 'foo::bar::baz', and we will
         // create a module node for "bar". We can identify these fake modules
@@ -2747,7 +2747,7 @@ class Resolver {
                                             visitor);
             }
 
-            item_iface(type_parameters, _, methods) {
+            item_trait(type_parameters, _, methods) {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
@@ -3013,7 +3013,7 @@ class Resolver {
                     bound_copy | bound_send | bound_const {
                         // Nothing to do.
                     }
-                    bound_iface(interface_type) {
+                    bound_trait(interface_type) {
                         self.resolve_type(interface_type, visitor);
                     }
                 }
@@ -3023,14 +3023,14 @@ class Resolver {
 
     fn resolve_class(id: node_id,
                      type_parameters: @~[ty_param],
-                     interfaces: ~[@iface_ref],
+                     interfaces: ~[@trait_ref],
                      class_members: ~[@class_member],
                      constructor: class_ctor,
                      optional_destructor: option<class_dtor>,
                      visitor: ResolveVisitor) {
 
         // Add a type into the def map. This is needed to prevent an ICE in
-        // ty::impl_iface.
+        // ty::impl_trait.
 
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = (*type_parameters).len();
@@ -3055,7 +3055,7 @@ class Resolver {
                         // definition of the interface into the definition
                         // map.
 
-                        #debug("(resolving class) found iface def: %?", def);
+                        #debug("(resolving class) found trait def: %?", def);
 
                         self.record_def(interface.id, def);
 
@@ -3122,7 +3122,7 @@ class Resolver {
     fn resolve_implementation(id: node_id,
                               span: span,
                               type_parameters: ~[ty_param],
-                              interface_reference: option<@iface_ref>,
+                              interface_reference: option<@trait_ref>,
                               self_type: @ty,
                               methods: ~[@method],
                               visitor: ResolveVisitor) {

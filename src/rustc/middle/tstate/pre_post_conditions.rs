@@ -48,7 +48,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       }
       item_mod(m) { find_pre_post_mod(m); }
       item_foreign_mod(nm) { find_pre_post_foreign_mod(nm); }
-      item_ty(*) | item_enum(*) | item_iface(*) { ret; }
+      item_ty(*) | item_enum(*) | item_trait(*) { ret; }
       item_class(*) {
           fail "find_pre_post_item: shouldn't be called on item_class";
       }

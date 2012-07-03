@@ -1781,10 +1781,10 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_iface(a_id, a_substs), ty::ty_iface(b_id, b_substs))
+      (ty::ty_trait(a_id, a_substs), ty::ty_trait(b_id, b_substs))
       if a_id == b_id {
         do self.substs(a_substs, b_substs).chain |substs| {
-            ok(ty::mk_iface(tcx, a_id, substs))
+            ok(ty::mk_trait(tcx, a_id, substs))
         }
       }
 

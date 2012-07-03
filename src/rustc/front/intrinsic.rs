@@ -106,7 +106,7 @@ mod intrinsic {
         fn visit_leave_fn(purity: uint, proto: uint,
                           n_inputs: uint, retstyle: uint) -> bool;
 
-        fn visit_iface() -> bool;
+        fn visit_trait() -> bool;
         fn visit_enter_res() -> bool;
         fn visit_leave_res() -> bool;
         fn visit_var() -> bool;

@@ -121,7 +121,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, _ifaces, items, ctor, m_dtor, _) {
+      item_class(tps, _traits, items, ctor, m_dtor, _) {
         cx.rmap.insert(ctor.node.id, ());
         do option::iter(m_dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
@@ -147,7 +147,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
         traverse_ty(t, cx, mk_ty_visitor());
       }
       item_const(*) |
-      item_enum(*) | item_iface(*) {}
+      item_enum(*) | item_trait(*) {}
     }
 }
 

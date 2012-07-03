@@ -12,7 +12,7 @@ fn mk_pass() -> pass {
 fn run(_srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let fold = fold::fold({
         fold_item: fold_item,
-        fold_iface: fold_iface,
+        fold_trait: fold_trait,
         fold_impl: fold_impl
         with *fold::default_any_fold(())
     });
@@ -30,8 +30,8 @@ fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
     }
 }
 
-fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
-    let doc = fold::default_seq_fold_iface(fold, doc);
+fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
+    let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
         methods: do par::anymap(doc.methods) |method| {
@@ -202,14 +202,14 @@ fn should_eliminate_desc_if_it_is_just_whitespace() {
 }
 
 #[test]
-fn should_sectionalize_iface_methods() {
+fn should_sectionalize_trait_methods() {
     let doc = test::mk_doc(
         "iface i {
          #[doc = \"\
          # Header\n\
          Body\"]\
          fn a(); }");
-    assert doc.cratemod().ifaces()[0].methods[0].sections.len() == 1u;
+    assert doc.cratemod().traits()[0].methods[0].sections.len() == 1u;
 }
 
 #[test]

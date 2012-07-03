@@ -21,7 +21,7 @@
  * region, or `type_rscope`, which permits the self region if the type in
  * question is parameterized by a region.
  *
- * Unlike the `ast_conv` iface, the region scope can change as we descend
+ * Unlike the `ast_conv` trait, the region scope can change as we descend
  * the type.  This is to accommodate the fact that (a) fn types are binding
  * scopes and (b) the default region may change.  To understand case (a),
  * consider something like:
@@ -304,8 +304,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             ty::mk_param(tcx, n, id)
           }
           ast::def_self(_) {
-            // n.b.: resolve guarantees that the self type only appears in an
-            // iface, which we rely upon in various places when creating
+            // n.b.: resolve guarantees that the self type only appears in a
+            // trait, which we rely upon in various places when creating
             // substs
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             ty::mk_self(tcx)

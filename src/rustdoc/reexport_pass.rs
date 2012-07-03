@@ -374,8 +374,8 @@ fn merge_reexports(
                 with doc
             })
           }
-          doc::ifacetag(doc @ {item, _}) {
-            doc::ifacetag({
+          doc::traittag(doc @ {item, _}) {
+            doc::traittag({
                 item: reexport(item, name)
                 with doc
             })

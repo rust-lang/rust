@@ -783,7 +783,7 @@ fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
     ret T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
 
-fn T_opaque_iface(cx: @crate_ctxt) -> TypeRef {
+fn T_opaque_trait(cx: @crate_ctxt) -> TypeRef {
     T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
 }
 

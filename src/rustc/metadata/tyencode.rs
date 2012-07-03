@@ -222,7 +222,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_substs(w, cx, substs);
         w.write_char(']');
       }
-      ty::ty_iface(def, substs) {
+      ty::ty_trait(def, substs) {
         w.write_str("x["/&);
         w.write_str(cx.ds(def));
         w.write_char('|');
@@ -401,7 +401,7 @@ fn enc_bounds(w: io::writer, cx: @ctxt, bs: @~[ty::param_bound]) {
           ty::bound_send { w.write_char('S'); }
           ty::bound_copy { w.write_char('C'); }
           ty::bound_const { w.write_char('K'); }
-          ty::bound_iface(tp) {
+          ty::bound_trait(tp) {
             w.write_char('I');
             enc_ty(w, cx, tp);
           }

@@ -143,19 +143,19 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, ifaces, members, ctor, m_dtor, _) {
+      item_class(tps, traits, members, ctor, m_dtor, _) {
           v.visit_ty_params(tps, e, v);
           for members.each |m| {
              v.visit_class_item(m, e, v);
           }
-          for ifaces.each |p| { visit_path(p.path, e, v); }
+          for traits.each |p| { visit_path(p.path, e, v); }
           visit_class_ctor_helper(ctor, i.ident, tps,
                                   ast_util::local_def(i.id), e, v);
           do option::iter(m_dtor) |dtor| {
                   visit_class_dtor_helper(dtor, tps,
                      ast_util::local_def(i.id), e, v)};
       }
-      item_iface(tps, _rp, methods) {
+      item_trait(tps, _rp, methods) {
         v.visit_ty_params(tps, e, v);
         for methods.each |m| {
             for m.decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
@@ -260,7 +260,7 @@ fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
     for tps.each |tp| {
         for vec::each(*tp.bounds) |bound| {
             alt bound {
-              bound_iface(t) { v.visit_ty(t, e, v); }
+              bound_trait(t) { v.visit_ty(t, e, v); }
               bound_copy | bound_send | bound_const { }
             }
         }

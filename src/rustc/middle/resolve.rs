@@ -406,7 +406,7 @@ fn maybe_insert(e: @env, id: node_id, def: option<def>) {
     }
 }
 
-fn resolve_iface_ref(p: @iface_ref, sc: scopes, e: @env) {
+fn resolve_trait_ref(p: @trait_ref, sc: scopes, e: @env) {
     maybe_insert(e, p.id,
        lookup_path_strict(*e, sc, p.path.span, p.path, ns_type));
 }
@@ -436,15 +436,15 @@ fn resolve_names(e: @env, c: @ast::crate) {
     fn walk_item(e: @env, i: @ast::item, &&sc: scopes, v: vt<scopes>) {
         visit_item_with_scope(e, i, sc, v);
         alt i.node {
-          /* At this point, the code knows what ifaces the iface refs
+          /* At this point, the code knows what traits the trait refs
              refer to, so it's possible to resolve them.
            */
           ast::item_impl(_, _, ifce, _, _) {
-            ifce.iter(|p| resolve_iface_ref(p, sc, e))
+            ifce.iter(|p| resolve_trait_ref(p, sc, e))
           }
-          ast::item_class(_, ifaces, _, _, _, _) {
-            for ifaces.each |p| {
-               resolve_iface_ref(p, sc, e);
+          ast::item_class(_, traits, _, _, _, _) {
+            for traits.each |p| {
+               resolve_trait_ref(p, sc, e);
             }
           }
           _ {}
@@ -485,7 +485,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
             e.current_tp = some(current);
             for vec::each(*tp.bounds) |bound| {
                 alt bound {
-                  bound_iface(t) { v.visit_ty(t, sc, v); }
+                  bound_trait(t) { v.visit_ty(t, sc, v); }
                   _ {}
                 }
             }
@@ -564,7 +564,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
                        m.decl, m.body, m.span, m.id, msc, v);
         }
       }
-      ast::item_iface(tps, _, methods) {
+      ast::item_trait(tps, _, methods) {
         v.visit_ty_params(tps, sc, v);
         let isc = @cons(scope_method(i.id, tps), sc);
         for methods.each |m| {
@@ -574,14 +574,14 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
             v.visit_ty(m.decl.output, msc, v);
         }
       }
-      ast::item_class(tps, ifaces, members, ctor, m_dtor, _) {
+      ast::item_class(tps, traits, members, ctor, m_dtor, _) {
         v.visit_ty_params(tps, sc, v);
         let class_scope = @cons(scope_item(i), sc);
         /* visit the constructor... */
         let ctor_scope = @cons(scope_method(ctor.node.self_id, tps),
                                class_scope);
-        /* visit the iface refs in the class scope */
-        for ifaces.each |p| {
+        /* visit the trait refs in the class scope */
+        for traits.each |p| {
             visit::visit_path(p.path, class_scope, v);
         }
         visit_fn_with_scope(e, visit::fk_ctor(i.ident, tps, ctor.node.self_id,
@@ -1048,7 +1048,7 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
               ast::item_enum(_, tps, _) | ast::item_ty(_, tps, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
-              ast::item_iface(tps, _, _) {
+              ast::item_trait(tps, _, _) {
                 if ns == ns_type {
                     if *name == "self" {
                         ret some(def_self(it.id));
@@ -1336,7 +1336,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
             ret some(ast::def_foreign_mod(local_def(i.id)));
         }
       }
-      ast::item_ty(*) | item_iface(*) | item_enum(*) {
+      ast::item_ty(*) | item_trait(*) | item_enum(*) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
       ast::item_class(_, _, _members, ct, _, _) {
@@ -1641,7 +1641,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
           ast::item_foreign_mod(_) | ast::item_ty(_, _, _) |
-          ast::item_impl(*) | ast::item_iface(*) {
+          ast::item_impl(*) | ast::item_trait(*) {
             add_to_index(index, it.ident, mie_item(it));
           }
           ast::item_enum(variants, _, _) {
@@ -1780,7 +1780,7 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
         ensure_unique(*e, i.span, ty_params, |tp| tp.ident,
                       "type parameter");
       }
-      ast::item_iface(_, _, methods) {
+      ast::item_trait(_, _, methods) {
         ensure_unique(*e, i.span, methods, |m| m.ident,
                       "method");
       }
@@ -1862,7 +1862,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                   ast::item_const(_, _) | ast::item_fn(*) {
                     add_name(values, it.span, it.ident);
                   }
-                  ast::item_ty(*) | ast::item_iface(*) {
+                  ast::item_ty(*) | ast::item_trait(*) {
                     add_name(types, it.span, it.ident);
                   }
                   _ { }
@@ -2146,7 +2146,7 @@ type method_info = {did: def_id, n_tps: uint, ident: ast::ident};
    * did: the def id of the class or impl item
    * ident: the name of the impl, unless it has no name (as in
    "impl of X") in which case the ident
-   is the ident of the iface that's being implemented
+   is the ident of the trait that's being implemented
    * methods: the item's methods
 */
 type _impl = {did: def_id, ident: ast::ident, methods: ~[@method_info]};
@@ -2258,7 +2258,7 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: ~[@_impl],
           let n_tps = tps.len();
         do vec::iter(ifces) |p| {
             // The def_id, in this case, identifies the combination of
-            // class and iface
+            // class and trait
             vec::push(impls, @{did: local_def(p.id),
                                ident: i.ident,
                                methods: vec::map(mthds, |m| {

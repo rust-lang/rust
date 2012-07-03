@@ -27,7 +27,7 @@ fn run(
         fold_crate: fold_crate,
         fold_item: fold_item,
         fold_enum: fold_enum,
-        fold_iface: fold_iface,
+        fold_trait: fold_trait,
         fold_impl: fold_impl
         with *fold::default_any_fold(srv)
     });
@@ -181,12 +181,12 @@ fn should_extract_variant_docs() {
     assert doc.cratemod().enums()[0].variants[0].desc == some("c");
 }
 
-fn fold_iface(
+fn fold_trait(
     fold: fold::fold<astsrv::srv>,
-    doc: doc::ifacedoc
-) -> doc::ifacedoc {
+    doc: doc::traitdoc
+) -> doc::traitdoc {
     let srv = fold.ctxt;
-    let doc = fold::default_seq_fold_iface(fold, doc);
+    let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
         methods: merge_method_attrs(srv, doc.id(), doc.methods)
@@ -204,7 +204,7 @@ fn merge_method_attrs(
     let attrs: ~[(str, option<str>)] = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_iface(_, _, methods), _
+            node: ast::item_trait(_, _, methods), _
           }, _) {
             par::seqmap(methods, |method| {
                 (*method.ident, attr_parser::parse_desc(method.attrs))
@@ -233,19 +233,19 @@ fn merge_method_attrs(
 }
 
 #[test]
-fn should_extract_iface_docs() {
+fn should_extract_trait_docs() {
     let doc = test::mk_doc("#[doc = \"whatever\"] iface i { fn a(); }");
-    assert doc.cratemod().ifaces()[0].desc() == some("whatever");
+    assert doc.cratemod().traits()[0].desc() == some("whatever");
 }
 
 #[test]
-fn should_extract_iface_method_docs() {
+fn should_extract_trait_method_docs() {
     let doc = test::mk_doc(
         "iface i {\
          #[doc = \"desc\"]\
          fn f(a: bool) -> bool;\
          }");
-    assert doc.cratemod().ifaces()[0].methods[0].desc == some("desc");
+    assert doc.cratemod().traits()[0].methods[0].desc == some("desc");
 }
 
 

@@ -33,7 +33,7 @@ enum itemtag {
     consttag(constdoc),
     fntag(fndoc),
     enumtag(enumdoc),
-    ifacetag(ifacedoc),
+    traittag(traitdoc),
     impltag(impldoc),
     tytag(tydoc)
 }
@@ -81,7 +81,7 @@ type variantdoc = {
     sig: option<str>
 };
 
-type ifacedoc = {
+type traitdoc = {
     item: itemdoc,
     methods: ~[methoddoc]
 };
@@ -96,7 +96,7 @@ type methoddoc = {
 
 type impldoc = {
     item: itemdoc,
-    iface_ty: option<str>,
+    trait_ty: option<str>,
     self_ty: option<str>,
     methods: ~[methoddoc]
 };
@@ -187,10 +187,10 @@ impl util for moddoc {
         }
     }
 
-    fn ifaces() -> ~[ifacedoc] {
+    fn traits() -> ~[traitdoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              ifacetag(ifacedoc) { some(ifacedoc) }
+              traittag(traitdoc) { some(traitdoc) }
               _ { none }
             }
         }
@@ -262,10 +262,10 @@ impl util for ~[page] {
         }
     }
 
-    fn ifaces() -> ~[ifacedoc] {
+    fn traits() -> ~[traitdoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(ifacetag(ifacedoc)) { some(ifacedoc) }
+              itempage(traittag(traitdoc)) { some(traitdoc) }
               _ { none }
             }
         }
@@ -302,7 +302,7 @@ impl of item for itemtag {
           doc::fntag(doc) { doc.item }
           doc::consttag(doc) { doc.item }
           doc::enumtag(doc) { doc.item }
-          doc::ifacetag(doc) { doc.item }
+          doc::traittag(doc) { doc.item }
           doc::impltag(doc) { doc.item }
           doc::tytag(doc) { doc.item }
         }
@@ -325,7 +325,7 @@ impl of item for enumdoc {
     fn item() -> itemdoc { self.item }
 }
 
-impl of item for ifacedoc {
+impl of item for traitdoc {
     fn item() -> itemdoc { self.item }
 }
 
