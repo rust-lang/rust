@@ -14,7 +14,7 @@ syn match     rustAssert      "assert\(\w\)*"
 syn keyword   rustKeyword     alt as break
 syn keyword   rustKeyword     check claim cont const copy else export extern fail
 syn keyword   rustKeyword     do drop for if impl import in let log
-syn keyword   rustKeyword     loop mod mut of pure
+syn keyword   rustKeyword     loop mod mut new of pure
 syn keyword   rustKeyword     ret self to unchecked
 syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
 syn keyword   rustKeyword     use while with
