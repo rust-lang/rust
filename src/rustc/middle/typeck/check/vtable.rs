@@ -115,66 +115,66 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
         for list::each(isc) |impls| {
             /* For each impl in scope... */
             for vec::each(*impls) |im| {
-                    // im = one specific impl
-                    // find the iface that im implements (if any)
-                    let of_ty = alt ty::impl_iface(tcx, im.did) {
-                      some(of_ty) { of_ty }
-                      _ { cont; }
-                    };
+                // im = one specific impl
+                // find the iface that im implements (if any)
+                let of_ty = alt ty::impl_iface(tcx, im.did) {
+                  some(of_ty) { of_ty }
+                  _ { cont; }
+                };
 
-                    // it must have the same id as the expected one
-                    alt ty::get(of_ty).struct {
-                      ty::ty_iface(id, _) if id != iface_id { cont; }
-                      _ { /* ok */ }
-                    }
-
-                    // check whether the type unifies with the type
-                    // that the impl is for, and continue if not
-                    let {substs: substs, ty: for_ty} =
-                        impl_self_ty(fcx, im.did);
-                    let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                    alt fcx.mk_subty(ty, for_ty) {
-                      result::err(_) { cont; }
-                      result::ok(()) { }
-                    }
-
-                    // check that desired iface type unifies
-                    #debug("(checking vtable) @2 relating iface ty %s to \
-                            of_ty %s",
-                            fcx.infcx.ty_to_str(iface_ty),
-                            fcx.infcx.ty_to_str(of_ty));
-                    let of_ty = ty::subst(tcx, substs, of_ty);
-                    relate_iface_tys(fcx, sp, iface_ty, of_ty);
-
-                    // recursively process the bounds
-                    let iface_tps = iface_substs.tps;
-                    let substs_f = fixup_substs(fcx, sp, iface_id, substs);
-                    connect_iface_tps(fcx, sp, substs_f.tps,
-                                      iface_tps, im.did);
-                    let subres = lookup_vtables(fcx, isc, sp,
-                                                im_bs, substs_f, false);
-                    vec::push(found,
-                              vtable_static(im.did, substs_f.tps, subres));
+                // it must have the same id as the expected one
+                alt ty::get(of_ty).struct {
+                  ty::ty_iface(id, _) if id != iface_id { cont; }
+                  _ { /* ok */ }
                 }
 
-                alt found.len() {
-                  0u { /* fallthrough */ }
-                  1u { ret found[0]; }
-                  _ {
-                    fcx.ccx.tcx.sess.span_err(
-                        sp, "multiple applicable methods in scope");
-                    ret found[0];
-                  }
+                // check whether the type unifies with the type
+                // that the impl is for, and continue if not
+                let {substs: substs, ty: for_ty} =
+                    impl_self_ty(fcx, im.did);
+                let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
+                alt fcx.mk_subty(ty, for_ty) {
+                  result::err(_) { cont; }
+                  result::ok(()) { }
                 }
+
+                // check that desired iface type unifies
+                #debug("(checking vtable) @2 relating iface ty %s to \
+                        of_ty %s",
+                       fcx.infcx.ty_to_str(iface_ty),
+                       fcx.infcx.ty_to_str(of_ty));
+                let of_ty = ty::subst(tcx, substs, of_ty);
+                relate_iface_tys(fcx, sp, iface_ty, of_ty);
+
+                // recursively process the bounds
+                let iface_tps = iface_substs.tps;
+                let substs_f = fixup_substs(fcx, sp, iface_id, substs);
+                connect_iface_tps(fcx, sp, substs_f.tps,
+                                  iface_tps, im.did);
+                let subres = lookup_vtables(fcx, isc, sp,
+                                            im_bs, substs_f, false);
+                vec::push(found,
+                          vtable_static(im.did, substs_f.tps, subres));
             }
-          }
-        }
 
-        tcx.sess.span_fatal(
-            sp, "failed to find an implementation of interface " +
-            ty_to_str(tcx, iface_ty) + " for " +
-            ty_to_str(tcx, ty));
+            alt found.len() {
+              0u { /* fallthrough */ }
+              1u { ret found[0]; }
+              _ {
+                fcx.ccx.tcx.sess.span_err(
+                    sp, "multiple applicable methods in scope");
+                ret found[0];
+              }
+            }
+        }
+      }
     }
+
+    tcx.sess.span_fatal(
+        sp, "failed to find an implementation of interface " +
+        ty_to_str(tcx, iface_ty) + " for " +
+        ty_to_str(tcx, ty));
+}
 
 fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
     let tcx = fcx.ccx.tcx;
