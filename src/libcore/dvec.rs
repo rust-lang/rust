@@ -10,6 +10,7 @@ import unsafe::reinterpret_cast;
 import ptr::{null, extensions};
 
 export dvec;
+export from_elt;
 export from_vec;
 export extensions;
 export unwrap;
