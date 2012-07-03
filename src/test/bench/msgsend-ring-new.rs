@@ -6,6 +6,7 @@
 
 import newcomm::*;
 import future::future;
+import future::extensions;
 
 use std;
 import std::time;
