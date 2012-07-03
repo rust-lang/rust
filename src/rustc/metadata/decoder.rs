@@ -675,14 +675,14 @@ fn item_family_to_str(fam: char) -> str {
       'f' { ret "fn"; }
       'u' { ret "unsafe fn"; }
       'p' { ret "pure fn"; }
-      'F' { ret "native fn"; }
-      'U' { ret "unsafe native fn"; }
-      'P' { ret "pure native fn"; }
+      'F' { ret "foreign fn"; }
+      'U' { ret "unsafe foreign fn"; }
+      'P' { ret "pure foreign fn"; }
       'y' { ret "type"; }
-      'T' { ret "native type"; }
+      'T' { ret "foreign type"; }
       't' { ret "type"; }
       'm' { ret "mod"; }
-      'n' { ret "native mod"; }
+      'n' { ret "foreign mod"; }
       'v' { ret "enum"; }
       'i' { ret "impl"; }
       'I' { ret "iface"; }

@@ -121,7 +121,7 @@ mod intrinsic {
     }
 
     #[abi = "rust-intrinsic"]
-    native mod rusti {
+    extern mod rusti {
         fn visit_ty<T>(&&tv: ty_visitor);
     }
 }

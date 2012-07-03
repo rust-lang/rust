@@ -14,7 +14,7 @@ import libc::consts::os::extra::*;
 type fd_t = c_int;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn rust_get_stdin() -> *libc::FILE;
     fn rust_get_stdout() -> *libc::FILE;
     fn rust_get_stderr() -> *libc::FILE;
@@ -377,11 +377,11 @@ impl of writer for fd_t {
         }
     }
     fn seek(_offset: int, _whence: seek_style) {
-        #error("need 64-bit native calls for seek, sorry");
+        #error("need 64-bit foreign calls for seek, sorry");
         fail;
     }
     fn tell() -> uint {
-        #error("need 64-bit native calls for tell, sorry");
+        #error("need 64-bit foreign calls for tell, sorry");
         fail;
     }
     fn flush() -> int { 0 }

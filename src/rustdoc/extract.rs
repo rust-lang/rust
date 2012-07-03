@@ -291,13 +291,13 @@ mod test {
 
     #[test]
     fn extract_foreign_mods() {
-        let doc = mk_doc("native mod a { }");
+        let doc = mk_doc("extern mod a { }");
         assert doc.cratemod().nmods()[0].name() == "a";
     }
 
     #[test]
     fn extract_fns_from_foreign_mods() {
-        let doc = mk_doc("native mod a { fn a(); }");
+        let doc = mk_doc("extern mod a { fn a(); }");
         assert doc.cratemod().nmods()[0].fns[0].name() == "a";
     }
 

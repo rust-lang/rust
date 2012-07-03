@@ -39,7 +39,7 @@ export walk_dir;
 // FIXME: move these to str perhaps? #2620
 export as_c_charp, fill_charp_buf;
 
-native mod rustrt {
+extern mod rustrt {
     fn rust_env_pairs() -> ~[str];
     fn rust_getcwd() -> str;
     fn rust_path_is_dir(path: *libc::c_char) -> c_int;
@@ -135,7 +135,7 @@ mod global_env {
     export getenv;
     export setenv;
 
-    native mod rustrt {
+    extern mod rustrt {
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
     }
 

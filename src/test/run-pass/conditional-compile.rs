@@ -5,14 +5,14 @@ const b: bool = true;
 
 #[cfg(bogus)]
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     // This symbol doesn't exist and would be a link error if this
     // module was translated
     fn bogus();
 }
 
 #[abi = "cdecl"]
-native mod rustrt { }
+extern mod rustrt { }
 
 #[cfg(bogus)]
 type t = int;
@@ -81,7 +81,7 @@ fn test_in_fn_ctxt() {
 
 mod test_foreign_items {
     #[abi = "cdecl"]
-    native mod rustrt {
+    extern mod rustrt {
         #[cfg(bogus)]
         fn vec_from_buf_shared();
         fn vec_from_buf_shared();

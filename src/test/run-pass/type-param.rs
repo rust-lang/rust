@@ -1,5 +1,5 @@
 
 
-type lteq<T> = native fn(T) -> bool;
+type lteq<T> = extern fn(T) -> bool;
 
 fn main(args: ~[str]) { }

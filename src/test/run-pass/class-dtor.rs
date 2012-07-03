@@ -1,7 +1,7 @@
 class cat {
-  let done : native fn(uint);
+  let done : extern fn(uint);
   let meows : uint;
-  new(done: native fn(uint)) {
+  new(done: extern fn(uint)) {
     self.meows = 0u;
     self.done = done;
   }

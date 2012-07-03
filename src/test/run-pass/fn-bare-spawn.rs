@@ -1,6 +1,6 @@
 // This is what the signature to spawn should look like with bare functions
 
-fn spawn<T: send>(val: T, f: native fn(T)) {
+fn spawn<T: send>(val: T, f: extern fn(T)) {
     f(val);
 }
 

@@ -1,7 +1,7 @@
 // xfail-fast Does not work with main in a submodule
 
 #[abi = "rust-intrinsic"]
-native mod rusti {
+extern mod rusti {
     fn pref_align_of<T>() -> uint;
     fn min_align_of<T>() -> uint;
 }

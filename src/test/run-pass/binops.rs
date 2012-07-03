@@ -115,7 +115,7 @@ fn test_fn() {
 
 #[abi = "cdecl"]
 #[nolink]
-native mod test {
+extern mod test {
     fn unsupervise();
     fn get_task_id();
 }

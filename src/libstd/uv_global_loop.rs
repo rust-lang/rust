@@ -12,7 +12,7 @@ import priv::{chan_from_global_ptr, weaken_task};
 import comm::{port, chan, methods, select2, listen};
 import either::{left, right};
 
-native mod rustrt {
+extern mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
 }
 

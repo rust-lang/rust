@@ -1,6 +1,6 @@
 #[doc = "
 
-Validates all used crates and native libraries and loads their metadata
+Validates all used crates and extern libraries and loads their metadata
 
 "];
 
@@ -17,7 +17,7 @@ import dvec::{dvec, extensions};
 
 export read_crates;
 
-// Traverses an AST, reading all the information about use'd crates and native
+// Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
 fn read_crates(diag: span_handler, crate: ast::crate,
                cstore: cstore::cstore, filesearch: filesearch,

@@ -106,7 +106,7 @@ type indexed_mod = {
     path: str
 };
 
-/* native modules can't contain enums, and we don't store their ASTs because
+/* foreign modules can't contain enums, and we don't store their ASTs because
    we only need to look at them to determine exports, which they can't
    control.*/
 
@@ -1481,7 +1481,7 @@ fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
                      module %d not in mod_map", node_id)); }
     };
     if dr == outside && !is_exported(e, id, inf) {
-        // if we're in a native mod, then dr==inside, so inf.m is some _mod
+        // if we're in a foreign mod, then dr==inside, so inf.m is some _mod
         ret none; // name is not visible
     }
     alt inf.index.find(id) {

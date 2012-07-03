@@ -22,7 +22,7 @@ export tr_ignored;
 export run_tests_console;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn sched_threads() -> libc::size_t;
 }
 

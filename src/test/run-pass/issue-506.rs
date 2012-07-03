@@ -6,7 +6,7 @@ use std;
 import task;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn rust_task_allow_kill();
 }
 

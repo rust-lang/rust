@@ -25,7 +25,7 @@ fn mk_pass() -> pass {
 fn test() {
     let source =
         "mod imod { } \
-         native mod inmod { } \
+         extern mod inmod { } \
          const iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \

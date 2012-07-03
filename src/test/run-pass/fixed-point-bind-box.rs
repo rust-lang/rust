@@ -1,8 +1,8 @@
-fn fix_help<A, B>(f: native fn(fn@(A) -> B, A) -> B, x: A) -> B {
+fn fix_help<A, B>(f: extern fn(fn@(A) -> B, A) -> B, x: A) -> B {
     ret f({|a|fix_help(f, a)}, x);
 }
 
-fn fix<A, B>(f: native fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
+fn fix<A, B>(f: extern fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
     ret {|a|fix_help(f, a)};
 }
 

@@ -4913,7 +4913,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_fn(decl, tps, body) {
         if decl.purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
-            foreign::trans_extern_fn(ccx,
+            foreign::trans_foreign_fn(ccx,
                                      vec::append(
                                          *path,
                                          ~[path_name(item.ident)]),
@@ -5194,7 +5194,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 let llfn = if decl.purity != ast::extern_fn {
                     register_fn(ccx, i.span, my_path, i.id)
                 } else {
-                    foreign::register_extern_fn(ccx, i.span, my_path, i.id)
+                    foreign::register_foreign_fn(ccx, i.span, my_path, i.id)
                 };
                 set_inline_hint_if_appr(i.attrs, llfn);
                 llfn

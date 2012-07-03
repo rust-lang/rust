@@ -3,13 +3,13 @@
 
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
-native mod rustrt1 {
+extern mod rustrt1 {
     fn last_os_error() -> str;
 }
 
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
-native mod rustrt2 {
+extern mod rustrt2 {
     fn last_os_error() -> str;
 }
 

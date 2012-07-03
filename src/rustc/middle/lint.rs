@@ -87,7 +87,7 @@ fn get_lint_dict() -> lint_dict {
     let v = ~[
         ("ctypes",
          @{lint: ctypes,
-           desc: "proper use of core::libc types in native modules",
+           desc: "proper use of core::libc types in foreign modules",
            default: warn}),
 
         ("unused_imports",
@@ -368,14 +368,14 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
-                        "found rust type `int` in native module, while \
+                        "found rust type `int` in foreign module, while \
                          libc::c_int or libc::c_long should be used");
                   }
                   ast::def_prim_ty(ast::ty_uint(ast::ty_u)) {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
-                        "found rust type `uint` in native module, while \
+                        "found rust type `uint` in foreign module, while \
                          libc::c_uint or libc::c_ulong should be used");
                   }
                   _ { }

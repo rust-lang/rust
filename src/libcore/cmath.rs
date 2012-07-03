@@ -17,7 +17,7 @@ import libc::c_double;
 
 #[link_name = "m"]
 #[abi = "cdecl"]
-native mod c_double {
+extern mod c_double {
 
     // Alpabetically sorted by link_name
 
@@ -95,7 +95,7 @@ native mod c_double {
 
 #[link_name = "m"]
 #[abi = "cdecl"]
-native mod c_float {
+extern mod c_float {
 
     // Alpabetically sorted by link_name
 

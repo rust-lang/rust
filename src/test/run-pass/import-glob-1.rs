@@ -22,7 +22,7 @@ mod a2 {
     //   |   |   |
     #[abi = "cdecl"]
     #[nolink]
-    native mod b1 {
+    extern mod b1 {
         //   |   |   |
         import a1::b2::*;
         //   | <-/  -/

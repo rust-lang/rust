@@ -32,7 +32,7 @@ export len;
 export ptr;
 
 #[doc = "
-The type representing a native chunk of memory
+The type representing a foreign chunk of memory
 
 Wrapped in a enum for opacity; FIXME #818 when it is possible to have
 truly opaque types, this should be revisited.
@@ -57,11 +57,11 @@ class dtor_res {
  */
 
 #[doc = "
-Create a `c_vec` from a native buffer with a given length.
+Create a `c_vec` from a foreign buffer with a given length.
 
 # Arguments
 
-* base - A native pointer to a buffer
+* base - A foreign pointer to a buffer
 * len - The number of elements in the buffer
 "]
 unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
@@ -73,12 +73,12 @@ unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
 }
 
 #[doc = "
-Create a `c_vec` from a native buffer, with a given length,
+Create a `c_vec` from a foreign buffer, with a given length,
 and a function to run upon destruction.
 
 # Arguments
 
-* base - A native pointer to a buffer
+* base - A foreign pointer to a buffer
 * len - The number of elements in the buffer
 * dtor - A function to run when the value is destructed, useful
          for freeing the buffer, etc.

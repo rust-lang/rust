@@ -85,7 +85,7 @@ export u8;
 export extensions;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn vec_reserve_shared(++t: *sys::type_desc,
                           ++v: **unsafe::vec_repr,
                           ++n: libc::size_t);
@@ -95,7 +95,7 @@ native mod rustrt {
 }
 
 #[abi = "rust-intrinsic"]
-native mod rusti {
+extern mod rusti {
     fn move_val_init<T>(&dst: T, -src: T);
 }
 
@@ -1125,8 +1125,8 @@ pure fn windowed<TT: copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
 #[doc = "
 Work with the buffer of a vector.
 
-Allows for unsafe manipulation of vector contents, which is useful for native
-interop.
+Allows for unsafe manipulation of vector contents, which is useful for
+foreign interop.
 "]
 fn as_buf<E,T>(v: &[E], f: fn(*E) -> T) -> T {
     unpack_slice(v, |buf, _len| f(buf))

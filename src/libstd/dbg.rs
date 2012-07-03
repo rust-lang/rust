@@ -11,7 +11,7 @@ export ptr_cast;
 export breakpoint;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn debug_tydesc(td: *sys::type_desc);
     fn debug_opaque(td: *sys::type_desc, x: *());
     fn debug_box(td: *sys::type_desc, x: *());

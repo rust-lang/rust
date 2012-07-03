@@ -1,4 +1,4 @@
-// error-pattern:expected function or native function but found *u8
+// error-pattern:expected function or foreign function but found *u8
 crust fn f() {
 }
 

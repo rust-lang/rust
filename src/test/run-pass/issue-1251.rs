@@ -1,6 +1,6 @@
 #[link(name = "unsupervise")];
 
-native mod rustrt {
+extern mod rustrt {
       fn unsupervise();
 }
 

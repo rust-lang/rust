@@ -446,7 +446,7 @@ fn should_duplicate_reexported_impls_crate() {
 
 #[test]
 fn should_duplicate_reexported_foreign_fns() {
-    let source = "native mod a { fn b(); } \
+    let source = "extern mod a { fn b(); } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
     assert doc.cratemod().mods()[0].fns()[0].name() == "b";

@@ -2,7 +2,7 @@
 // Issue #2303
 
 #[abi = "rust-intrinsic"]
-native mod rusti {
+extern mod rusti {
     fn pref_align_of<T>() -> uint;
     fn min_align_of<T>() -> uint;
 }

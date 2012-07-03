@@ -5,7 +5,7 @@ use std;
 import task;
 import std::rand;
 
-native mod rustrt {
+extern mod rustrt {
     fn debug_get_stk_seg() -> *u8;
 
     fn unsupervise();

@@ -1,6 +1,6 @@
 class finish<T: copy> {
-  let arg: {val: T, fin: native fn(T)};
-  new(arg: {val: T, fin: native fn(T)}) {
+  let arg: {val: T, fin: extern fn(T)};
+  new(arg: {val: T, fin: extern fn(T)}) {
     self.arg = arg;
   }
   drop { self.arg.fin(self.arg.val); }

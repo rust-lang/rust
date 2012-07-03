@@ -1,5 +1,5 @@
 //error-pattern:libc::c_int or libc::c_long should be used
-native mod xx {
+extern mod xx {
   fn strlen(str: *u8) -> uint;
   fn foo(x: int, y: uint);
 }

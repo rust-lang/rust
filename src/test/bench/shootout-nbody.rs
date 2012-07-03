@@ -9,7 +9,7 @@ use std;
 // stub. Kind of shocking. Might be able to make it faster still with
 // an llvm intrinsic.
 #[nolink]
-native mod libc {
+extern mod libc {
     fn sqrt(n: float) -> float;
 }
 

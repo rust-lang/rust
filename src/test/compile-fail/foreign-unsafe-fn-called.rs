@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 #[abi = "cdecl"]
-native mod test {
+extern mod test {
     unsafe fn free();
 }
 

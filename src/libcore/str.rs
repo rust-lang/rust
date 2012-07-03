@@ -106,7 +106,7 @@ export
    extensions;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
     fn str_reserve_shared(&ss: str, nn: libc::size_t);
 }
@@ -1585,7 +1585,7 @@ const tag_six_b: uint = 252u;
 #[doc = "
 Work with the byte buffer of a string.
 
-Allows for unsafe manipulation of strings, which is useful for native
+Allows for unsafe manipulation of strings, which is useful for foreign
 interop.
 
 # Example
@@ -1604,7 +1604,7 @@ pure fn as_bytes<T>(s: str, f: fn(~[u8]) -> T) -> T {
 #[doc = "
 Work with the byte buffer of a string.
 
-Allows for unsafe manipulation of strings, which is useful for native
+Allows for unsafe manipulation of strings, which is useful for foreign
 interop.
 "]
 pure fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T {
@@ -1614,7 +1614,7 @@ pure fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T {
 #[doc = "
 Work with the byte buffer of a string as a null-terminated C string.
 
-Allows for unsafe manipulation of strings, which is useful for native
+Allows for unsafe manipulation of strings, which is useful for foreign
 interop, without copying the original string.
 
 # Example

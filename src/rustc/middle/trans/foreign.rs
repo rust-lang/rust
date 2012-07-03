@@ -19,7 +19,7 @@ import type_of::*;
 import std::map::hashmap;
 import util::ppaux::ty_to_str;
 
-export link_name, trans_foreign_mod, register_extern_fn, trans_extern_fn,
+export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
        trans_intrinsic;
 
 enum x86_64_reg_class {
@@ -541,7 +541,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
     Unreachable(ret_cx);
 }
 
-// For each native function F, we generate a wrapper function W and a shim
+// For each foreign function F, we generate a wrapper function W and a shim
 // function S that all work together.  The wrapper function W is the function
 // that other rust code actually invokes.  Its job is to marshall the
 // arguments into a struct.  It then uses a small bit of assembly to switch
@@ -549,7 +549,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
 // unpacks the arguments from the struct and invokes the actual function F
 // according to its specified calling convention.
 //
-// Example: Given a native c-stack function F(x: X, y: Y) -> Z,
+// Example: Given a foreign c-stack function F(x: X, y: Y) -> Z,
 // we generate a wrapper function W that looks like:
 //
 //    void W(Z* dest, void *env, X x, Y y) {
@@ -984,15 +984,15 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
     finish_fn(fcx, lltop);
 }
 
-fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
+fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                   body: ast::blk, llwrapfn: ValueRef, id: ast::node_id) {
 
-    let _icx = ccx.insn_ctxt("foreign::build_extern_fn");
+    let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @crate_ctxt, path: ast_map::path,
                      decl: ast::fn_decl, body: ast::blk,
                      id: ast::node_id) -> ValueRef {
-        let _icx = ccx.insn_ctxt("foreign::extern::build_rust_fn");
+        let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
             ccx, vec::append_one(path, ast_map::path_name(@"__rust_abi")));
@@ -1005,7 +1005,7 @@ fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
 
-        let _icx = ccx.insn_ctxt("foreign::extern::build_shim_fn");
+        let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> ~[ValueRef] {
@@ -1042,11 +1042,11 @@ fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_wrap_fn(ccx: @crate_ctxt, llshimfn: ValueRef,
                      llwrapfn: ValueRef, tys: @c_stack_tys) {
 
-        let _icx = ccx.insn_ctxt("foreign::extern::build_wrap_fn");
+        let _icx = ccx.insn_ctxt("foreign::foreign::build_wrap_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::extern::wrap::build_args");
+            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
             alt tys.x86_64_tys {
                 option::some(x86_64) {
                     let mut atys = x86_64.arg_tys;
@@ -1100,7 +1100,7 @@ fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::extern::wrap::build_ret");
+            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
             alt tys.x86_64_tys {
                 option::some(x86_64) {
                     if x86_64.sret || !tys.ret_def {
@@ -1137,14 +1137,14 @@ fn trans_extern_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     let llrustfn = build_rust_fn(ccx, path, decl, body, id);
     // The internal shim function - runs on the Rust stack
     let llshimfn = build_shim_fn(ccx, path, llrustfn, tys);
-    // The external C function - runs on the C stack
+    // The foreign C function - runs on the C stack
     build_wrap_fn(ccx, llshimfn, llwrapfn, tys)
 }
 
-fn register_extern_fn(ccx: @crate_ctxt, sp: span,
+fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
                      path: ast_map::path, node_id: ast::node_id)
     -> ValueRef {
-    let _icx = ccx.insn_ctxt("foreign::register_extern_fn");
+    let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);
     ret if ccx.sess.targ_cfg.arch == arch_x86_64 {

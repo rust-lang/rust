@@ -9,7 +9,7 @@ export arc, get, clone, shared_arc, get_arc;
 export exclusive, methods;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     #[rust_stack]
     fn rust_atomic_increment(p: &mut libc::intptr_t)
         -> libc::intptr_t;

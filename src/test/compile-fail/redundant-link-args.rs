@@ -8,10 +8,10 @@
 
 #[link_name= "m"]
 #[link_args="-foo"]             // this could have been elided.
-native mod m1 {
+extern mod m1 {
 }
 
 #[link_name= "m"]
 #[link_args="-bar"]             // this is the actual error trigger.
-native mod m2 {
+extern mod m2 {
 }

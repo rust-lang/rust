@@ -609,7 +609,7 @@ fn link_binary(sess: session,
     let ula = cstore::get_used_link_args(cstore);
     for ula.each |arg| { vec::push(cc_args, arg); }
 
-    // # Native library linking
+    // # Extern library linking
 
     // User-supplied library search paths (-L on the cammand line) These are
     // the same paths used to find Rust crates, so some of them may have been
@@ -620,7 +620,7 @@ fn link_binary(sess: session,
     let addl_paths = sess.opts.addl_lib_search_paths;
     for addl_paths.each |path| { vec::push(cc_args, "-L" + path); }
 
-    // The names of the native libraries
+    // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
     for used_libs.each |l| { vec::push(cc_args, "-l" + l); }
 
@@ -673,7 +673,7 @@ fn link_binary(sess: session,
     vec::push(cc_args, "-lmorestack");
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
-    // native libraries might live, based on the addl_lib_search_paths
+    // extern libraries might live, based on the addl_lib_search_paths
     vec::push_all(cc_args, rpath::get_rpath_flags(sess, output));
 
     #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));

@@ -4,7 +4,7 @@ mod spam {
 }
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     import spam::{ham, eggs};
     export ham;
     export eggs;

@@ -187,7 +187,7 @@ fn header_kind(doc: doc::itemtag) -> str {
         }
       }
       doc::nmodtag(_) {
-        "Native module"
+        "Foreign module"
       }
       doc::fntag(_) {
         "Function"
@@ -414,7 +414,7 @@ fn should_not_write_index_if_no_entries() {
 
 #[test]
 fn should_write_index_for_foreign_mods() {
-    let markdown = test::render("native mod a { fn a(); }");
+    let markdown = test::render("extern mod a { fn a(); }");
     assert str::contains(
         markdown,
         "\n\n* [Function `a`](#function-a)\n\n"
@@ -435,20 +435,20 @@ fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
 
 #[test]
 fn should_write_foreign_mods() {
-    let markdown = test::render("#[doc = \"test\"] native mod a { }");
-    assert str::contains(markdown, "Native module `a`");
+    let markdown = test::render("#[doc = \"test\"] extern mod a { }");
+    assert str::contains(markdown, "Foreign module `a`");
     assert str::contains(markdown, "test");
 }
 
 #[test]
 fn should_write_foreign_fns() {
-    let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
+    let markdown = test::render("extern mod a { #[doc = \"test\"] fn a(); }");
     assert str::contains(markdown, "test");
 }
 
 #[test]
 fn should_write_foreign_fn_headers() {
-    let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
+    let markdown = test::render("extern mod a { #[doc = \"test\"] fn a(); }");
     assert str::contains(markdown, "## Function `a`");
 }
 

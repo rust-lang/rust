@@ -34,7 +34,7 @@ fn walk_stack(visit: fn(frame) -> bool) {
                 if *frame_address == 0u {
                     #debug("encountered task_start_wrapper. ending walk");
                     // This is the task_start_wrapper_frame. There is
-                    // no stack beneath it and it is a native frame.
+                    // no stack beneath it and it is a foreign frame.
                     break;
                 }
             }
@@ -72,11 +72,11 @@ fn frame_address(f: fn(*u8)) {
     rusti::frame_address(f)
 }
 
-native mod rustrt {
+extern mod rustrt {
     fn rust_dbg_breakpoint();
 }
 
 #[abi = "rust-intrinsic"]
-native mod rusti {
+extern mod rusti {
     fn frame_address(f: fn(*u8));
 }

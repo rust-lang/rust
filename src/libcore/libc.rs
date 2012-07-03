@@ -731,7 +731,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod ctype {
+        extern mod ctype {
             fn isalnum(c: c_int) -> c_int;
             fn isalpha(c: c_int) -> c_int;
             fn iscntrl(c: c_int) -> c_int;
@@ -749,7 +749,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod stdio {
+        extern mod stdio {
 
             fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
             fn freopen(filename: *c_char, mode: *c_char,
@@ -793,7 +793,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod stdlib {
+        extern mod stdlib {
             fn abs(i: c_int) -> c_int;
             fn labs(i: c_long) -> c_long;
             // Omitted: div, ldiv (return type incomplete).
@@ -818,7 +818,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod string {
+        extern mod string {
 
             fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
             fn strncpy(dst: *c_char, src: *c_char, n: size_t) -> *c_char;
@@ -856,7 +856,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod stat {
+        extern mod stat {
             #[link_name = "_chmod"]
             fn chmod(path: *c_char, mode: c_int) -> c_int;
 
@@ -866,7 +866,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod stdio {
+        extern mod stdio {
             #[link_name = "_popen"]
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
 
@@ -882,7 +882,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod fcntl {
+        extern mod fcntl {
             #[link_name = "_open"]
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
 
@@ -892,13 +892,13 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod dirent {
+        extern mod dirent {
             // Not supplied at all.
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod unistd {
+        extern mod unistd {
             #[link_name = "_access"]
             fn access(path: *c_char, amode: c_int) -> c_int;
 
@@ -966,7 +966,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod stat {
+        extern mod stat {
             fn chmod(path: *c_char, mode: mode_t) -> c_int;
             fn fchmod(fd: c_int, mode: mode_t) -> c_int;
             fn mkdir(path: *c_char, mode: mode_t) -> c_int;
@@ -975,7 +975,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod stdio {
+        extern mod stdio {
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
             fn pclose(stream: *FILE) -> c_int;
             fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
@@ -984,7 +984,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod fcntl {
+        extern mod fcntl {
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
             fn creat(path: *c_char, mode: mode_t) -> c_int;
             fn fcntl(fd: c_int, cmd: c_int) -> c_int;
@@ -992,7 +992,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod dirent {
+        extern mod dirent {
             fn opendir(dirname: *c_char) -> *DIR;
             fn closedir(dirp: *DIR) -> c_int;
             fn readdir(dirp: *DIR) -> *dirent;
@@ -1003,7 +1003,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod unistd {
+        extern mod unistd {
             fn access(path: *c_char, amode: c_int) -> c_int;
             fn alarm(seconds: c_uint) -> c_uint;
             fn chdir(dir: *c_char) -> c_int;
@@ -1056,7 +1056,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod unistd {
+        extern mod unistd {
             fn readlink(path: *c_char, buf: *mut c_char,
                         bufsz: size_t) -> ssize_t;
 
@@ -1073,7 +1073,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        native mod wait {
+        extern mod wait {
             fn waitpid(pid: pid_t, status: *mut c_int,
                        options: c_int) -> pid_t;
         }
@@ -1082,7 +1082,7 @@ mod funcs {
     #[cfg(target_os = "win32")]
     mod posix01 {
         #[nolink]
-        native mod unistd { }
+        extern mod unistd { }
     }
 
 
@@ -1092,7 +1092,7 @@ mod funcs {
     #[cfg(target_os = "freebsd")]
     mod posix08 {
         #[nolink]
-        native mod unistd { }
+        extern mod unistd { }
     }
 
 
@@ -1100,7 +1100,7 @@ mod funcs {
     #[cfg(target_os = "freebsd")]
     #[nolink]
     #[abi = "cdecl"]
-    native mod bsd44 {
+    extern mod bsd44 {
 
         fn sysctl(name: *c_int, namelen: c_uint,
                   oldp: *mut c_void, oldlenp: *mut size_t,
@@ -1124,7 +1124,7 @@ mod funcs {
     #[cfg(target_os = "macos")]
     #[nolink]
     #[abi = "cdecl"]
-    native mod extra {
+    extern mod extra {
         fn _NSGetExecutablePath(buf: *mut c_char,
                                 bufsize: *mut u32) -> c_int;
     }
@@ -1141,7 +1141,7 @@ mod funcs {
         import types::os::arch::extra::*;
 
         #[abi = "stdcall"]
-        native mod kernel32 {
+        extern mod kernel32 {
             fn GetEnvironmentVariableW(n: LPCWSTR,
                                        v: LPWSTR,
                                        nsize: DWORD) -> DWORD;
@@ -1165,7 +1165,7 @@ mod funcs {
 
         #[abi = "cdecl"]
         #[nolink]
-        native mod msvcrt {
+        extern mod msvcrt {
             #[link_name = "_commit"]
             fn commit(fd: c_int) -> c_int;
         }

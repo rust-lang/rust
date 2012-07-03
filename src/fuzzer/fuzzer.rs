@@ -454,7 +454,7 @@ fn content_is_dangerous_to_run(code: str) -> bool {
     let dangerous_patterns =
         ~["xfail-test",
          "import",  // espeically fs, run
-         "native",
+         "extern",
          "unsafe",
          "log"];    // python --> rust pipe deadlock?
 

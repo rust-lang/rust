@@ -29,7 +29,7 @@ mod map_reduce {
 
     type putter = fn@(str, str);
 
-    type mapper = native fn(str, putter);
+    type mapper = extern fn(str, putter);
 
     enum ctrl_proto { find_reducer(~[u8], chan<int>), mapper_done, }
 

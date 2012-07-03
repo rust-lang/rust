@@ -2,7 +2,7 @@
 #[warn(err_ctypes)];
 
 #[nolink]
-native mod libc {
+extern mod libc {
     fn malloc(size: int) -> *u8;
 }
 

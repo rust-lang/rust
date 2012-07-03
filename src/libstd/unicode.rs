@@ -148,7 +148,7 @@ mod icu {
 
     #[link_name = "icuuc"]
     #[abi = "cdecl"]
-    native mod libicu {
+    extern mod libicu {
         pure fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
         pure fn u_isdigit(c: UChar32) -> UBool;
         pure fn u_islower(c: UChar32) -> UBool;

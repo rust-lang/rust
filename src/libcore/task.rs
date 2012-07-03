@@ -609,7 +609,7 @@ type local_data_key<T> = fn@(+@T);
 // We use dvec because it's the best data structure in core. If TLS is used
 // heavily in future, this could be made more efficient with a proper map.
 type task_local_element = (*libc::c_void, *libc::c_void, fn@(+*libc::c_void));
-// Has to be a pointer at the outermost layer; the native call returns void *.
+// Has to be a pointer at outermost layer; the foreign call returns void *.
 type task_local_map = @dvec::dvec<option<task_local_element>>;
 
 crust fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
@@ -763,7 +763,7 @@ unsafe fn local_data_modify<T>(key: local_data_key<T>,
     local_modify(rustrt::rust_get_task(), key, modify_fn)
 }
 
-native mod rustrt {
+extern mod rustrt {
     #[rust_stack]
     fn rust_task_yield(task: *rust_task, &killed: bool);
 
@@ -989,7 +989,7 @@ fn test_spawn_sched_childs_on_same_sched() {
 
 #[nolink]
 #[cfg(test)]
-native mod testrt {
+extern mod testrt {
     fn rust_dbg_lock_create() -> *libc::c_void;
     fn rust_dbg_lock_destroy(lock: *libc::c_void);
     fn rust_dbg_lock_lock(lock: *libc::c_void);

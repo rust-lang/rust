@@ -69,7 +69,7 @@ fn should_add_fn_sig() {
 
 #[test]
 fn should_add_foreign_fn_sig() {
-    let doc = test::mk_doc("native mod a { fn a<T>() -> int; }");
+    let doc = test::mk_doc("extern mod a { fn a<T>() -> int; }");
     assert doc.cratemod().nmods()[0].fns[0].sig == some("fn a<T>() -> int");
 }
 

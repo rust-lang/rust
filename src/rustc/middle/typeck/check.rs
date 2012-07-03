@@ -403,7 +403,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                 if (*tpt.bounds).is_not_empty() {
                     ccx.tcx.sess.span_err(
                         item.span,
-                        #fmt["native items may not have type parameters"]);
+                        #fmt["foreign items may not have type parameters"]);
                 }
             }
         }
@@ -740,8 +740,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 // really hard due to the way that expr_bind() is
                 // written.
                 fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
-                                                 expected function or native \
-                                                 function but found "
+                                            expected function or foreign \
+                                            function but found "
                                             + fcx.infcx.ty_to_str(in_fty));
               }
             };

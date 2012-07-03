@@ -1,5 +1,5 @@
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn unsupervise();
 }
 

@@ -3,7 +3,7 @@
 export console_on, console_off;
 
 #[nolink]
-native mod rustrt {
+extern mod rustrt {
     fn rust_log_console_on();
     fn rust_log_console_off();
 }

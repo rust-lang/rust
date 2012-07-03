@@ -87,7 +87,7 @@ enum rust_port {}
 type port_id = int;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
 
     fn new_port(unit_sz: libc::size_t) -> *rust_port;
     fn del_port(po: *rust_port);
@@ -100,7 +100,7 @@ native mod rustrt {
 }
 
 #[abi = "rust-intrinsic"]
-native mod rusti {
+extern mod rusti {
     fn init<T>() -> T;
 }
 

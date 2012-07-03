@@ -270,7 +270,7 @@ fn node_id_to_str(map: map, id: node_id) -> str {
         #fmt["item %s (id=%?)", path_ident_to_str(*path, item.ident), id]
       }
       some(node_foreign_item(item, abi, path)) {
-        #fmt["native item %s with abi %? (id=%?)",
+        #fmt["foreign item %s with abi %? (id=%?)",
              path_ident_to_str(*path, item.ident), abi, id]
       }
       some(node_method(m, impl_did, path)) {

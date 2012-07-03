@@ -398,7 +398,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
 }
 fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
     // As above, this call populates the type table with the converted
-    // type of the native item. We simply write it into the node type
+    // type of the foreign item. We simply write it into the node type
     // table.
     let tpt = ty_of_foreign_item(ccx, i);
     alt i.node {

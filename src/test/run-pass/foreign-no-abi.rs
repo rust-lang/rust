@@ -1,6 +1,6 @@
 // ABI is cdecl by default
 
-native mod rustrt {
+extern mod rustrt {
     fn unsupervise();
 }
 

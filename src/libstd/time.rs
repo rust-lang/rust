@@ -17,7 +17,7 @@ export
     strptime;
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn get_time(&sec: i64, &nsec: i32);
     fn precise_time_ns(&ns: u64);
 

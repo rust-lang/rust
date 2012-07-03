@@ -170,7 +170,7 @@ enum mutability { m_mutbl, m_imm, m_const, }
 
 #[auto_serialize]
 enum proto {
-    proto_bare,    // native fn
+    proto_bare,    // foreign fn
     proto_any,     // fn
     proto_uniq,    // fn~
     proto_box,     // fn@

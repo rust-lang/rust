@@ -556,7 +556,7 @@ mod uv_ll_struct_stubgen {
 }
 
 #[nolink]
-native mod rustrt {
+extern mod rustrt {
     // libuv public API
     fn rust_uv_loop_new() -> *libc::c_void;
     fn rust_uv_loop_delete(lp: *libc::c_void);
@@ -705,7 +705,7 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                       addr_ptr: *sockaddr_in,
                       ++after_connect_cb: *u8)
 -> libc::c_int {
-    log(debug, #fmt("b4 native tcp_connect--addr port: %u cb: %u",
+    log(debug, #fmt("b4 foreign tcp_connect--addr port: %u cb: %u",
                     (*addr_ptr).sin_port as uint, after_connect_cb as uint));
     ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                     after_connect_cb, addr_ptr);
@@ -1527,7 +1527,7 @@ mod test {
     fn test_uv_ll_struct_size_uv_tcp_t() {
         let foreign_handle_size = rustrt::rust_uv_helper_uv_tcp_t_size();
         let rust_handle_size = sys::size_of::<uv_tcp_t>();
-        let output = #fmt("uv_tcp_t -- native: %u rust: %u",
+        let output = #fmt("uv_tcp_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
@@ -1538,7 +1538,7 @@ mod test {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_connect_t_size();
         let rust_handle_size = sys::size_of::<uv_connect_t>();
-        let output = #fmt("uv_connect_t -- native: %u rust: %u",
+        let output = #fmt("uv_connect_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
@@ -1549,7 +1549,7 @@ mod test {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_buf_t_size();
         let rust_handle_size = sys::size_of::<uv_buf_t>();
-        let output = #fmt("uv_buf_t -- native: %u rust: %u",
+        let output = #fmt("uv_buf_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
@@ -1560,7 +1560,7 @@ mod test {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_write_t_size();
         let rust_handle_size = sys::size_of::<uv_write_t>();
-        let output = #fmt("uv_write_t -- native: %u rust: %u",
+        let output = #fmt("uv_write_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
@@ -1572,7 +1572,7 @@ mod test {
         let foreign_handle_size =
             rustrt::rust_uv_helper_sockaddr_in_size();
         let rust_handle_size = sys::size_of::<sockaddr_in>();
-        let output = #fmt("sockaddr_in -- native: %u rust: %u",
+        let output = #fmt("sockaddr_in -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
@@ -1583,7 +1583,7 @@ mod test {
         let native_handle_size =
             rustrt::rust_uv_helper_sockaddr_in6_size();
         let rust_handle_size = sys::size_of::<sockaddr_in6>();
-        let output = #fmt("sockaddr_in6 -- native: %u rust: %u",
+        let output = #fmt("sockaddr_in6 -- foreign: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
         // FIXME #1645 .. rust appears to pad structs to the nearest byte..?
@@ -1598,7 +1598,7 @@ mod test {
         let native_handle_size =
             rustrt::rust_uv_helper_addr_in_size();
         let rust_handle_size = sys::size_of::<addr_in>();
-        let output = #fmt("addr_in -- native: %u rust: %u",
+        let output = #fmt("addr_in -- foreign: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
         // FIXME #1645 .. see note above about struct padding
@@ -1611,7 +1611,7 @@ mod test {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_async_t_size();
         let rust_handle_size = sys::size_of::<uv_async_t>();
-        let output = #fmt("uv_async_t -- native: %u rust: %u",
+        let output = #fmt("uv_async_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
@@ -1623,7 +1623,7 @@ mod test {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_timer_t_size();
         let rust_handle_size = sys::size_of::<uv_timer_t>();
-        let output = #fmt("uv_timer_t -- native: %u rust: %u",
+        let output = #fmt("uv_timer_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert foreign_handle_size as uint == rust_handle_size;
@@ -1636,7 +1636,7 @@ mod test {
         let native_handle_size =
             rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
         let rust_handle_size = sys::size_of::<uv_getaddrinfo_t>();
-        let output = #fmt("uv_getaddrinfo_t -- native: %u rust: %u",
+        let output = #fmt("uv_getaddrinfo_t -- foreign: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert native_handle_size as uint == rust_handle_size;
@@ -1649,7 +1649,7 @@ mod test {
         let native_handle_size =
             rustrt::rust_uv_helper_addrinfo_size();
         let rust_handle_size = sys::size_of::<addrinfo>();
-        let output = #fmt("addrinfo -- native: %u rust: %u",
+        let output = #fmt("addrinfo -- foreign: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert native_handle_size as uint == rust_handle_size;

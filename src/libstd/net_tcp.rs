@@ -28,7 +28,7 @@ export listen, accept;
 export connect;
 
 #[nolink]
-native mod rustrt {
+extern mod rustrt {
     fn rust_uv_current_kernel_malloc(size: libc::c_uint) -> *libc::c_void;
     fn rust_uv_current_kernel_free(mem: *libc::c_void);
     fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;

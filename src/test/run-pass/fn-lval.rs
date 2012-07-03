@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-fn foo(f: native fn(int) -> int) { }
+fn foo(f: extern fn(int) -> int) { }
 
 fn id(x: int) -> int { ret x; }
 

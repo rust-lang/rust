@@ -2,10 +2,10 @@
 // other tycons.
 
 fn main() {
-    fn f(f: native fn(native fn(native fn()))) {
+    fn f(f: extern fn(extern fn(extern fn()))) {
     }
 
-    fn g(f: native fn(fn())) {
+    fn g(f: extern fn(fn())) {
     }
 
     f(g);

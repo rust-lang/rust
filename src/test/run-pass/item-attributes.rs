@@ -30,7 +30,7 @@ mod test_single_attr_outer {
 
     #[attr = "val"]
     #[abi = "cdecl"]
-    native mod rustrt { }
+    extern mod rustrt { }
 }
 
 mod test_multi_attr_outer {
@@ -50,7 +50,7 @@ mod test_multi_attr_outer {
     #[attr1 = "val"]
     #[attr2 = "val"]
     #[abi = "cdecl"]
-    native mod rustrt { }
+    extern mod rustrt { }
 
     #[attr1 = "val"]
     #[attr2 = "val"]
@@ -74,7 +74,7 @@ mod test_stmt_single_attr_outer {
 
         #[attr = "val"]
         #[abi = "cdecl"]
-        native mod rustrt {
+        extern mod rustrt {
         }
         */
     }
@@ -101,7 +101,7 @@ mod test_stmt_multi_attr_outer {
         #[attr1 = "val"]
         #[attr2 = "val"]
         #[abi = "cdecl"]
-        native mod rustrt {
+        extern mod rustrt {
         }
         */
     }
@@ -159,7 +159,7 @@ mod test_other_forms {
 
 mod test_foreign_items {
     #[abi = "cdecl"]
-    native mod rustrt {
+    extern mod rustrt {
         #[attr];
 
         #[attr]

@@ -1,5 +1,5 @@
 #[abi = "rust-intrinsic"]
-native mod rusti {
+extern mod rusti {
     fn frame_address(f: fn(*u8));
 }
 

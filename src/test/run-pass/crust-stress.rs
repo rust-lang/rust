@@ -1,7 +1,7 @@
 // This creates a bunch of yielding tasks that run concurrently
 // while holding onto C stacks
 
-native mod rustrt {
+extern mod rustrt {
     fn rust_dbg_call(cb: *u8,
                      data: libc::uintptr_t) -> libc::uintptr_t;
 }

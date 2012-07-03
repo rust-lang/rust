@@ -1,7 +1,7 @@
 
 
 fn test_fn() {
-    type t = native fn() -> int;
+    type t = extern fn() -> int;
     fn ten() -> int { ret 10; }
     let rs: t = { ten };
     assert (rs() == 10);

@@ -4,7 +4,7 @@
 enum void { }
 
 #[nolink]
-native mod bindgen {
+extern mod bindgen {
     fn printf(++v: void);
 }
 

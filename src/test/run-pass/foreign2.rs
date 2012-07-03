@@ -1,27 +1,27 @@
 
 
 #[abi = "cdecl"]
-native mod rustrt {
+extern mod rustrt {
     fn unsupervise();
 }
 
 #[abi = "cdecl"]
 #[nolink]
-native mod bar { }
+extern mod bar { }
 
 #[abi = "cdecl"]
 #[nolink]
-native mod zed { }
+extern mod zed { }
 
 #[abi = "cdecl"]
 #[nolink]
-native mod libc {
+extern mod libc {
     fn write(fd: int, buf: *u8,
              count: core::libc::size_t) -> core::libc::ssize_t;
 }
 
 #[abi = "cdecl"]
 #[nolink]
-native mod baz { }
+extern mod baz { }
 
 fn main(args: ~[str]) { }
