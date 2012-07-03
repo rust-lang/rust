@@ -7,6 +7,10 @@ Version 0.3  (June 2012) - not yet!
       * Integer-literal suffix inference
       * Per-module control over warnings, errors
       * #[cfg(windows)] and #[cfg(unix)] attributes
+      * Documentation comments
+      * More compact closure syntax
+      * 'do' expressions for treating higher-order functions
+        as control structures
 
    * *-patterns (wildcard extended to all constructor fields)
 
