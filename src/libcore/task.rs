@@ -308,11 +308,21 @@ fn future_result(builder: builder) -> future::future<task_result> {
 fn future_task(builder: builder) -> future::future<task> {
     //! Get a future representing the handle to the new task
 
-    let mut po = comm::port();
-    let ch = comm::chan(po);
-    do add_wrapper(builder) |body| {
-        fn~() {
-            comm::send(ch, get_task());
+    import future::future_pipe;
+
+    let (po, ch) = future_pipe::init();
+
+    let ch = ~mut some(ch);
+
+    do add_wrapper(builder) |body, move ch| {
+        let ch = { let mut t = none;
+                  t <-> *ch;
+                  ~mut t};
+        fn~(move ch) {
+            let mut po = none;
+            po <-> *ch;
+            future_pipe::server::completed(option::unwrap(po),
+                                           get_task());
             body();
         }
     }

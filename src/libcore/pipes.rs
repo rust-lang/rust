@@ -239,3 +239,22 @@ fn spawn_service<T: send>(
 
     client
 }
+
+fn spawn_service_recv<T: send>(
+    init: native fn() -> (recv_packet<T>, send_packet<T>),
+    +service: fn~(+send_packet<T>))
+    -> recv_packet<T>
+{
+    let (client, server) = init();
+
+    // This is some nasty gymnastics required to safely move the pipe
+    // into a new task.
+    let server = ~mut some(server);
+    do task::spawn |move service| {
+        let mut server_ = none;
+        server_ <-> *server;
+        service(option::unwrap(server_))
+    }
+
+    client
+}
