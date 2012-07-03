@@ -1114,22 +1114,36 @@ class parser {
 
     /* temporary */
     fn parse_tt_mac_demo() -> @expr {
+
+        let name_idx = @mut 0u;
         let ms = self.parse_seq(token::LBRACE, token::RBRACE,
                                 common::seq_sep_none(),
-                                |p| p.parse_matcher(@mut 0u)).node;
-        let tt = self.parse_token_tree();
-        //let tt_rhs = self.parse_token_tree();
-        alt tt {
-          tt_delim(tts) {
+                                |p| p.parse_matcher(name_idx)).node;
+        self.quote_depth += 1u;
+        let tt_rhs= self.parse_token_tree();
+        self.quote_depth -= 1u;
+        let tt_readme = self.parse_token_tree();
+        alt (tt_readme, tt_rhs) {
+          (tt_delim(tts), tt_delim(tts_rhs)) {
             let rdr = lexer::new_tt_reader(self.reader.span_diag(),
                                            self.reader.interner(), none, tts)
                 as reader;
-            ext::tt::earley_parser::parse(self.sess, self.cfg, rdr, ms);
+
+            let matches = ext::tt::earley_parser::parse
+                (self.sess, self.cfg, rdr, ms);
+
+            let transcriber = ext::tt::transcribe::new_tt_reader
+                (self.reader.span_diag(), self.reader.interner(),
+                 some(matches), tts_rhs);
+            let res_parser = parser(self.sess, self.cfg,
+                                    transcriber as reader,
+                                    SOURCE_FILE);
+
+            ret res_parser.parse_expr();
           }
           _ { fail; }
         }
 
-        ret self.mk_expr(0u, 0u, expr_break);
     }
 
     fn parse_matcher(name_idx: @mut uint) -> matcher {
