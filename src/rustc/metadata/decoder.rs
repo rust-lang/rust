@@ -451,6 +451,9 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
 
     // Next, go through all the paths. We will find items that we didn't know
     // about before (reexports in particular).
+    //
+    // XXX: This is broken; the paths are actually hierarchical.
+
     let outer_paths = ebml::get_doc(root, tag_paths);
     let inner_paths = ebml::get_doc(outer_paths, tag_paths);
     do ebml::tagged_docs(inner_paths, tag_paths_data_item) |path_doc| {
