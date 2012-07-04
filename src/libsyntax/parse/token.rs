@@ -94,7 +94,7 @@ enum whole_nt {
     w_pat( @ast::pat),
     w_expr(@ast::expr),
     w_ty(  @ast::ty),
-    w_ident(ast::ident),
+    w_ident(str_num, bool),
     w_path(@ast::path),
 }
 

@@ -1,7 +1,7 @@
 import result::result;
 import either::{either, left, right};
 import std::map::{hashmap, str_hash};
-import token::{can_begin_expr, is_ident, is_plain_ident};
+import token::{can_begin_expr, is_ident, is_plain_ident, ACTUALLY};
 import codemap::{span,fss_none};
 import util::interner;
 import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
@@ -58,6 +58,78 @@ enum class_contents { ctor_decl(fn_decl, blk, codemap::span),
 
 type arg_or_capture_item = either<arg, capture_item>;
 type item_info = (ident, item_, option<~[attribute]>);
+
+fn dummy() {
+
+/* We need to position the macros to capture the ACTUALLY tokens before they
+get bumped away. So two bumps in a row is bad. (the first lookahead also
+counts as a bump).
+
+Events happen L to R; 'B' indicates a bump before hand:
+           ._____________________________.________________________.
+           ↓                            B|                        |
+   parse_expr -> parse_expr_res -> parse_assign_expr              |
+                                    ↓                             |
+                            parse_binops -> parse_more_binops     |
+                             ↓             B↓                    B|
+                            parse_prefix_expr B-> parse_dot_or_call_expr
+                             B|_↑                  ↓
+                                                  parse_bottom_expr
+                                                  B↓
+                                            ⋯->parse_ident
+...so we've hit parse_prefix_expr, parse_more_binops, and parse_bottom_expr.
+*/
+
+    #macro[[#maybe_whole_item[p],
+            alt copy p.token {
+                ACTUALLY(token::w_item(i)) { p.bump(); ret i; }
+                _ {} }]];
+    #macro[[#maybe_whole_block[p],
+            alt copy p.token {
+                ACTUALLY(token::w_block(b)) { p.bump(); ret b; }
+                _ {} }]];
+    #macro[[#maybe_whole_stmt[p],
+            alt copy p.token {
+                ACTUALLY(token::w_stmt(s)) { p.bump(); ret s; }
+                _ {} }]];
+    #macro[[#maybe_whole_pat[p],
+            alt copy p.token {
+                ACTUALLY(token::w_pat(pt)) { p.bump(); ret pt; }
+                _ {} }]];
+    #macro[[#maybe_whole_expr[p],
+            alt copy p.token {
+                ACTUALLY(token::w_expr(e)) {
+                    p.bump();
+                    ret e;
+                }
+                ACTUALLY(token::w_path(pt)) {
+                    p.bump();
+                    ret p.mk_expr(p.span.lo, p.span.lo,
+                                  expr_path(pt));
+                }
+                _ {} }]];
+    #macro[[#maybe_whole_expr_pexpr[p], /* ack! */
+            alt copy p.token {
+                ACTUALLY(token::w_expr(e)) {
+                    p.bump();
+                    ret pexpr(e);
+                }
+                ACTUALLY(token::w_path(pt)) {
+                    p.bump();
+                    ret p.mk_pexpr(p.span.lo, p.span.lo,
+                                   expr_path(pt));
+                }
+                _ {} }]];
+    #macro[[#maybe_whole_ty[p],
+            alt copy p.token {
+                ACTUALLY(token::w_ty(t)) { p.bump(); ret t; }
+                _ {} }]];
+    /* ident is handled by common.rs */
+    #macro[[#maybe_whole_path[p],
+            alt p.token {
+                ACTUALLY(token::w_path(pt)) { p.bump(); ret pt; }
+                _ {} }]];
+}
 
 class parser {
     let sess: parse_sess;
@@ -718,6 +790,7 @@ class parser {
     }
 
     fn parse_bottom_expr() -> pexpr {
+        #maybe_whole_expr_pexpr[self];
         let lo = self.span.lo;
         let mut hi = self.span.hi;
 
@@ -1181,6 +1254,7 @@ class parser {
 
 
     fn parse_prefix_expr() -> pexpr {
+        #maybe_whole_expr_pexpr[self];
         let lo = self.span.lo;
         let mut hi;
 
@@ -1258,6 +1332,7 @@ class parser {
 
     fn parse_more_binops(plhs: pexpr, min_prec: uint) ->
         @expr {
+        #maybe_whole_expr[self];
         let lhs = self.to_expr(plhs);
         if self.expr_is_complete(plhs) { ret lhs; }
         let peeked = self.token;

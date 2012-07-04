@@ -459,8 +459,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         let is_mod_name = c == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
-        ret token::IDENT(intern(*rdr.interner,
-                                          @accum_str), is_mod_name);
+        ret token::IDENT(intern(*rdr.interner, @accum_str), is_mod_name);
     }
     if is_dec_digit(c) {
         ret scan_number(c, rdr);

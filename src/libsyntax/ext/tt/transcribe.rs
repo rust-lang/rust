@@ -3,7 +3,7 @@ import diagnostic::span_handler;
 import ast::{token_tree,tt_delim,tt_flat,tt_dotdotdot,tt_interpolate,ident};
 import earley_parser::{arb_depth,seq,leaf};
 import codemap::span;
-import parse::token::{EOF,ACTUALLY,token};
+import parse::token::{EOF,ACTUALLY,IDENT,token,w_ident};
 import std::map::{hashmap,box_str_hash};
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
@@ -193,8 +193,17 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
           // TODO: think about span stuff here
           tt_interpolate(sp, ident) {
             alt *lookup_cur_ad(r, ident) {
+              /* sidestep the interpolation tricks for ident because
+              (a) idents can be in lots of places, so it'd be a pain
+              (b) we actually can, since it's a token. */
+              leaf(w_ident(sn,b)) {
+                r.cur_span = sp; r.cur_tok = IDENT(sn,b);
+                r.cur.idx += 1u;
+                ret ret_val;
+              }
               leaf(w_nt) {
                 r.cur_span = sp; r.cur_tok = ACTUALLY(w_nt);
+                r.cur.idx += 1u;
                 ret ret_val;
               }
               seq(*) {

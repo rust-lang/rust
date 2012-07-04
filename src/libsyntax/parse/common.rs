@@ -50,6 +50,8 @@ impl parser_common for parser {
     fn parse_ident() -> ast::ident {
         alt copy self.token {
           token::IDENT(i, _) { self.bump(); ret self.get_str(i); }
+          token::ACTUALLY(token::w_ident(*)) { self.bug(
+              "ident interpolation not converted to real token"); }
           _ { self.fatal("expecting ident, found "
                       + token_to_str(self.reader, self.token)); }
         }

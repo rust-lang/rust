@@ -259,7 +259,11 @@ fn parse_nt(p: parser, name: str) -> whole_nt {
       "expr" { token::w_expr(p.parse_expr()) }
       "ty" { token::w_ty(p.parse_ty(false /* no need to disambiguate*/)) }
       // this could be handled like a token, since it is one
-      "ident" { token::w_ident(p.parse_ident()) }
+      "ident" { alt copy p.token {
+          token::IDENT(sn,b) { p.bump(); token::w_ident(sn,b) }
+          _ { p.fatal("expected ident, found "
+                      + token::to_str(*p.reader.interner(), copy p.token)) }
+      } }
       "path" { token::w_path(p.parse_path_with_tps(false)) }
       _ { p.fatal("Unsupported builtin nonterminal parser: " + name)}
     }
