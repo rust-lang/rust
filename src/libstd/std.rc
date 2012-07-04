@@ -6,7 +6,7 @@
 #[comment = "The Rust standard library"];
 #[license = "MIT"];
 #[crate_type = "lib"];
-#[doc = "The Rust standard library"];
+//! The Rust standard library
 
 #[no_core];
 

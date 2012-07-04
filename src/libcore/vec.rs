@@ -1,4 +1,4 @@
-#[doc = "Vectors"];
+//! Vectors
 
 import option::{some, none};
 import ptr::addr_of;
@@ -99,35 +99,35 @@ extern mod rusti {
     fn move_val_init<T>(&dst: T, -src: T);
 }
 
-#[doc = "A function used to initialize the elements of a vector"]
+/// A function used to initialize the elements of a vector
 type init_op<T> = fn(uint) -> T;
 
-#[doc = "Returns true if a vector contains no elements"]
+/// Returns true if a vector contains no elements
 pure fn is_empty<T>(v: &[const T]) -> bool {
     unpack_const_slice(v, |_p, len| len == 0u)
 }
 
-#[doc = "Returns true if a vector contains some elements"]
+/// Returns true if a vector contains some elements
 pure fn is_not_empty<T>(v: &[const T]) -> bool {
     unpack_const_slice(v, |_p, len| len > 0u)
 }
 
-#[doc = "Returns true if two vectors have the same length"]
+/// Returns true if two vectors have the same length
 pure fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
     len(xs) == len(ys)
 }
 
-#[doc = "
-Reserves capacity for exactly `n` elements in the given vector.
-
-If the capacity for `v` is already equal to or greater than the requested
-capacity, then no action is taken.
-
-# Arguments
-
-* v - A vector
-* n - The number of elements to reserve space for
-"]
+/**
+ * Reserves capacity for exactly `n` elements in the given vector.
+ *
+ * If the capacity for `v` is already equal to or greater than the requested
+ * capacity, then no action is taken.
+ *
+ * # Arguments
+ *
+ * * v - A vector
+ * * n - The number of elements to reserve space for
+ */
 fn reserve<T>(&v: ~[const T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     if capacity(v) < n {
@@ -137,28 +137,26 @@ fn reserve<T>(&v: ~[const T], n: uint) {
     }
 }
 
-#[doc = "
-Reserves capacity for at least `n` elements in the given vector.
-
-This function will over-allocate in order to amortize the allocation costs
-in scenarios where the caller may need to repeatedly reserve additional
-space.
-
-If the capacity for `v` is already equal to or greater than the requested
-capacity, then no action is taken.
-
-# Arguments
-
-* v - A vector
-* n - The number of elements to reserve space for
-"]
+/**
+ * Reserves capacity for at least `n` elements in the given vector.
+ *
+ * This function will over-allocate in order to amortize the allocation costs
+ * in scenarios where the caller may need to repeatedly reserve additional
+ * space.
+ *
+ * If the capacity for `v` is already equal to or greater than the requested
+ * capacity, then no action is taken.
+ *
+ * # Arguments
+ *
+ * * v - A vector
+ * * n - The number of elements to reserve space for
+ */
 fn reserve_at_least<T>(&v: ~[const T], n: uint) {
     reserve(v, uint::next_power_of_two(n));
 }
 
-#[doc = "
-Returns the number of elements the vector can hold without reallocating
-"]
+/// Returns the number of elements the vector can hold without reallocating
 #[inline(always)]
 pure fn capacity<T>(&&v: ~[const T]) -> uint {
     unsafe {
@@ -167,18 +165,18 @@ pure fn capacity<T>(&&v: ~[const T]) -> uint {
     }
 }
 
-#[doc = "Returns the length of a vector"]
+/// Returns the length of a vector
 #[inline(always)]
 pure fn len<T>(&&v: &[const T]) -> uint {
     unpack_const_slice(v, |_p, len| len)
 }
 
-#[doc = "
-Creates and initializes an immutable vector.
-
-Creates an immutable vector of size `n_elts` and initializes the elements
-to the value returned by the function `op`.
-"]
+/**
+ * Creates and initializes an immutable vector.
+ *
+ * Creates an immutable vector of size `n_elts` and initializes the elements
+ * to the value returned by the function `op`.
+ */
 pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts);}
@@ -187,12 +185,12 @@ pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> ~[T] {
     ret v;
 }
 
-#[doc = "
-Creates and initializes an immutable vector.
-
-Creates an immutable vector of size `n_elts` and initializes the elements
-to the value `t`.
-"]
+/**
+ * Creates and initializes an immutable vector.
+ *
+ * Creates an immutable vector of size `n_elts` and initializes the elements
+ * to the value `t`.
+ */
 pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts)}
@@ -203,56 +201,56 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
     ret v;
 }
 
-#[doc = "Produces a mut vector from an immutable vector."]
+/// Produces a mut vector from an immutable vector.
 fn to_mut<T>(+v: ~[T]) -> ~[mut T] {
     unsafe { ::unsafe::transmute(v) }
 }
 
-#[doc = "Produces an immutable vector from a mut vector."]
+/// Produces an immutable vector from a mut vector.
 fn from_mut<T>(+v: ~[mut T]) -> ~[T] {
     unsafe { ::unsafe::transmute(v) }
 }
 
 // Accessors
 
-#[doc = "Returns the first element of a vector"]
+/// Returns the first element of a vector
 pure fn head<T: copy>(v: &[const T]) -> T { v[0] }
 
-#[doc = "Returns a vector containing all but the first element of a slice"]
+/// Returns a vector containing all but the first element of a slice
 pure fn tail<T: copy>(v: &[const T]) -> ~[T] {
     ret slice(v, 1u, len(v));
 }
 
-#[doc = "Returns a vector containing all but the first `n` \
-         elements of a slice"]
+/**
+ * Returns a vector containing all but the first `n` \
+ * elements of a slice
+ */
 pure fn tailn<T: copy>(v: &[const T], n: uint) -> ~[T] {
     slice(v, n, len(v))
 }
 
-#[doc = "Returns a vector containing all but the last element of a slice"]
+/// Returns a vector containing all but the last element of a slice
 pure fn init<T: copy>(v: &[const T]) -> ~[T] {
     assert len(v) != 0u;
     slice(v, 0u, len(v) - 1u)
 }
 
-#[doc = "
-Returns the last element of the slice `v`, failing if the slice is empty.
-"]
+/// Returns the last element of the slice `v`, failing if the slice is empty.
 pure fn last<T: copy>(v: &[const T]) -> T {
     if len(v) == 0u { fail "last_unsafe: empty vector" }
     v[len(v) - 1u]
 }
 
-#[doc = "
-Returns `some(x)` where `x` is the last element of the slice `v`,
-or `none` if the vector is empty.
-"]
+/**
+ * Returns `some(x)` where `x` is the last element of the slice `v`,
+ * or `none` if the vector is empty.
+ */
 pure fn last_opt<T: copy>(v: &[const T]) -> option<T> {
     if len(v) == 0u { ret none; }
     some(v[len(v) - 1u])
 }
 
-#[doc = "Returns a copy of the elements from [`start`..`end`) from `v`."]
+/// Returns a copy of the elements from [`start`..`end`) from `v`.
 pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     assert (start <= end);
     assert (end <= len(v));
@@ -263,7 +261,7 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     ret result;
 }
 
-#[doc = "Return a slice that points into another slice."]
+/// Return a slice that points into another slice.
 pure fn view<T: copy>(v: &[const T], start: uint, end: uint) -> &a.[T] {
     assert (start <= end);
     assert (end <= len(v));
@@ -275,9 +273,7 @@ pure fn view<T: copy>(v: &[const T], start: uint, end: uint) -> &a.[T] {
     }
 }
 
-#[doc = "
-Split the vector `v` by applying each element against the predicate `f`.
-"]
+/// Split the vector `v` by applying each element against the predicate `f`.
 fn split<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { ret ~[] }
@@ -297,10 +293,10 @@ fn split<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     result
 }
 
-#[doc = "
-Split the vector `v` by applying each element against the predicate `f` up
-to `n` times.
-"]
+/**
+ * Split the vector `v` by applying each element against the predicate `f` up
+ * to `n` times.
+ */
 fn splitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { ret ~[] }
@@ -323,10 +319,10 @@ fn splitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     result
 }
 
-#[doc = "
-Reverse split the vector `v` by applying each element against the predicate
-`f`.
-"]
+/**
+ * Reverse split the vector `v` by applying each element against the predicate
+ * `f`.
+ */
 fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { ret ~[] }
@@ -346,10 +342,10 @@ fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     reversed(result)
 }
 
-#[doc = "
-Reverse split the vector `v` by applying each element against the predicate
-`f` up to `n times.
-"]
+/**
+ * Reverse split the vector `v` by applying each element against the predicate
+ * `f` up to `n times.
+ */
 fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { ret ~[] }
@@ -374,7 +370,7 @@ fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
 
 // Mutators
 
-#[doc = "Removes the first element from a vector and return it"]
+/// Removes the first element from a vector and return it
 fn shift<T>(&v: ~[T]) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
@@ -399,7 +395,7 @@ fn shift<T>(&v: ~[T]) -> T {
     }
 }
 
-#[doc = "Prepend an element to the vector"]
+/// Prepend an element to the vector
 fn unshift<T>(&v: ~[T], +x: T) {
     let mut vv = ~[x];
     v <-> vv;
@@ -408,7 +404,7 @@ fn unshift<T>(&v: ~[T], +x: T) {
     }
 }
 
-#[doc = "Remove the last element from a vector and return it"]
+/// Remove the last element from a vector and return it
 fn pop<T>(&v: ~[const T]) -> T {
     let ln = len(v);
     assert ln > 0u;
@@ -420,7 +416,7 @@ fn pop<T>(&v: ~[const T]) -> T {
     }
 }
 
-#[doc = "Append an element to a vector"]
+/// Append an element to a vector
 #[inline(always)]
 fn push<T>(&v: ~[const T], +initval: T) {
     unsafe {
@@ -519,15 +515,15 @@ pure fn append_mut<T: copy>(lhs: &[mut T], rhs: &[const T]) -> ~[mut T] {
     ret v;
 }
 
-#[doc = "
-Expands a vector in place, initializing the new elements to a given value
-
-# Arguments
-
-* v - The vector to grow
-* n - The number of elements to add
-* initval - The value for the new elements
-"]
+/**
+ * Expands a vector in place, initializing the new elements to a given value
+ *
+ * # Arguments
+ *
+ * * v - The vector to grow
+ * * n - The number of elements to add
+ * * initval - The value for the new elements
+ */
 fn grow<T: copy>(&v: ~[const T], n: uint, initval: T) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
@@ -535,33 +531,33 @@ fn grow<T: copy>(&v: ~[const T], n: uint, initval: T) {
     while i < n { push(v, initval); i += 1u; }
 }
 
-#[doc = "
-Expands a vector in place, initializing the new elements to the result of
-a function
-
-Function `init_op` is called `n` times with the values [0..`n`)
-
-# Arguments
-
-* v - The vector to grow
-* n - The number of elements to add
-* init_op - A function to call to retreive each appended element's
-            value
-"]
+/**
+ * Expands a vector in place, initializing the new elements to the result of
+ * a function
+ *
+ * Function `init_op` is called `n` times with the values [0..`n`)
+ *
+ * # Arguments
+ *
+ * * v - The vector to grow
+ * * n - The number of elements to add
+ * * init_op - A function to call to retreive each appended element's
+ *             value
+ */
 fn grow_fn<T>(&v: ~[const T], n: uint, op: init_op<T>) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
     while i < n { push(v, op(i)); i += 1u; }
 }
 
-#[doc = "
-Sets the value of a vector element at a given index, growing the vector as
-needed
-
-Sets the element at position `index` to `val`. If `index` is past the end
-of the vector, expands the vector by replicating `initval` to fill the
-intervening space.
-"]
+/**
+ * Sets the value of a vector element at a given index, growing the vector as
+ * needed
+ *
+ * Sets the element at position `index` to `val`. If `index` is past the end
+ * of the vector, expands the vector by replicating `initval` to fill the
+ * intervening space.
+ */
 #[inline(always)]
 fn grow_set<T: copy>(&v: ~[mut T], index: uint, initval: T, val: T) {
     if index >= len(v) { grow(v, index - len(v) + 1u, initval); }
@@ -571,9 +567,7 @@ fn grow_set<T: copy>(&v: ~[mut T], index: uint, initval: T, val: T) {
 
 // Functional utilities
 
-#[doc = "
-Apply a function to each element of a vector and return the results
-"]
+/// Apply a function to each element of a vector and return the results
 pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> ~[U] {
     let mut result = ~[];
     unchecked{reserve(result, len(v));}
@@ -581,9 +575,7 @@ pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> ~[U] {
     ret result;
 }
 
-#[doc = "
-Apply a function to each element of a vector and return the results
-"]
+/// Apply a function to each element of a vector and return the results
 pure fn mapi<T, U>(v: &[T], f: fn(uint, T) -> U) -> ~[U] {
     let mut result = ~[];
     unchecked{reserve(result, len(v));}
@@ -591,19 +583,17 @@ pure fn mapi<T, U>(v: &[T], f: fn(uint, T) -> U) -> ~[U] {
     ret result;
 }
 
-#[doc = "
-Apply a function to each element of a vector and return a concatenation
-of each result vector
-"]
+/**
+ * Apply a function to each element of a vector and return a concatenation
+ * of each result vector
+ */
 pure fn flat_map<T, U>(v: &[T], f: fn(T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
     for each(v) |elem| { unchecked{ push_all_move(result, f(elem)); } }
     ret result;
 }
 
-#[doc = "
-Apply a function to each pair of elements and return the results
-"]
+/// Apply a function to each pair of elements and return the results
 pure fn map2<T: copy, U: copy, V>(v0: &[T], v1: &[U],
                                   f: fn(T, U) -> V) -> ~[V] {
     let v0_len = len(v0);
@@ -617,12 +607,12 @@ pure fn map2<T: copy, U: copy, V>(v0: &[T], v1: &[U],
     ret u;
 }
 
-#[doc = "
-Apply a function to each element of a vector and return the results
-
-If function `f` returns `none` then that element is excluded from
-the resulting vector.
-"]
+/**
+ * Apply a function to each element of a vector and return the results
+ *
+ * If function `f` returns `none` then that element is excluded from
+ * the resulting vector.
+ */
 pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> option<U>)
     -> ~[U] {
     let mut result = ~[];
@@ -635,13 +625,13 @@ pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> option<U>)
     ret result;
 }
 
-#[doc = "
-Construct a new vector from the elements of a vector for which some predicate
-holds.
-
-Apply function `f` to each element of `v` and return a vector containing
-only those elements for which `f` returned true.
-"]
+/**
+ * Construct a new vector from the elements of a vector for which some
+ * predicate holds.
+ *
+ * Apply function `f` to each element of `v` and return a vector containing
+ * only those elements for which `f` returned true.
+ */
 pure fn filter<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
@@ -650,20 +640,18 @@ pure fn filter<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[T] {
     ret result;
 }
 
-#[doc = "
-Concatenate a vector of vectors.
-
-Flattens a vector of vectors of T into a single vector of T.
-"]
+/**
+ * Concatenate a vector of vectors.
+ *
+ * Flattens a vector of vectors of T into a single vector of T.
+ */
 pure fn concat<T: copy>(v: &[[T]/~]) -> ~[T] {
     let mut r = ~[];
     for each(v) |inner| { unsafe { push_all(r, inner); } }
     ret r;
 }
 
-#[doc = "
-Concatenate a vector of vectors, placing a given separator between each
-"]
+/// Concatenate a vector of vectors, placing a given separator between each
 pure fn connect<T: copy>(v: &[[T]/~], sep: T) -> ~[T] {
     let mut r: ~[T] = ~[];
     let mut first = true;
@@ -674,7 +662,7 @@ pure fn connect<T: copy>(v: &[[T]/~], sep: T) -> ~[T] {
     ret r;
 }
 
-#[doc = "Reduce a vector from left to right"]
+/// Reduce a vector from left to right
 pure fn foldl<T: copy, U>(z: T, v: &[U], p: fn(T, U) -> T) -> T {
     let mut accum = z;
     do iter(v) |elt| {
@@ -683,7 +671,7 @@ pure fn foldl<T: copy, U>(z: T, v: &[U], p: fn(T, U) -> T) -> T {
     ret accum;
 }
 
-#[doc = "Reduce a vector from right to left"]
+/// Reduce a vector from right to left
 pure fn foldr<T, U: copy>(v: &[T], z: U, p: fn(T, U) -> U) -> U {
     let mut accum = z;
     do riter(v) |elt| {
@@ -692,21 +680,21 @@ pure fn foldr<T, U: copy>(v: &[T], z: U, p: fn(T, U) -> U) -> U {
     ret accum;
 }
 
-#[doc = "
-Return true if a predicate matches any elements
-
-If the vector contains no elements then false is returned.
-"]
+/**
+ * Return true if a predicate matches any elements
+ *
+ * If the vector contains no elements then false is returned.
+ */
 pure fn any<T>(v: &[T], f: fn(T) -> bool) -> bool {
     for each(v) |elem| { if f(elem) { ret true; } }
     ret false;
 }
 
-#[doc = "
-Return true if a predicate matches any elements in both vectors.
-
-If the vectors contains no elements then false is returned.
-"]
+/**
+ * Return true if a predicate matches any elements in both vectors.
+ *
+ * If the vectors contains no elements then false is returned.
+ */
 pure fn any2<T, U>(v0: &[T], v1: &[U],
                    f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
@@ -719,31 +707,31 @@ pure fn any2<T, U>(v0: &[T], v1: &[U],
     ret false;
 }
 
-#[doc = "
-Return true if a predicate matches all elements
-
-If the vector contains no elements then true is returned.
-"]
+/**
+ * Return true if a predicate matches all elements
+ *
+ * If the vector contains no elements then true is returned.
+ */
 pure fn all<T>(v: &[T], f: fn(T) -> bool) -> bool {
     for each(v) |elem| { if !f(elem) { ret false; } }
     ret true;
 }
 
-#[doc = "
-Return true if a predicate matches all elements
-
-If the vector contains no elements then true is returned.
-"]
+/**
+ * Return true if a predicate matches all elements
+ *
+ * If the vector contains no elements then true is returned.
+ */
 pure fn alli<T>(v: &[T], f: fn(uint, T) -> bool) -> bool {
     for eachi(v) |i, elem| { if !f(i, elem) { ret false; } }
     ret true;
 }
 
-#[doc = "
-Return true if a predicate matches all elements in both vectors.
-
-If the vectors are not the same size then false is returned.
-"]
+/**
+ * Return true if a predicate matches all elements in both vectors.
+ *
+ * If the vectors are not the same size then false is returned.
+ */
 pure fn all2<T, U>(v0: &[T], v1: &[U],
                    f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
@@ -753,88 +741,88 @@ pure fn all2<T, U>(v0: &[T], v1: &[U],
     ret true;
 }
 
-#[doc = "Return true if a vector contains an element with the given value"]
+/// Return true if a vector contains an element with the given value
 pure fn contains<T>(v: &[T], x: T) -> bool {
     for each(v) |elt| { if x == elt { ret true; } }
     ret false;
 }
 
-#[doc = "Returns the number of elements that are equal to a given value"]
+/// Returns the number of elements that are equal to a given value
 pure fn count<T>(v: &[T], x: T) -> uint {
     let mut cnt = 0u;
     for each(v) |elt| { if x == elt { cnt += 1u; } }
     ret cnt;
 }
 
-#[doc = "
-Search for the first element that matches a given predicate
-
-Apply function `f` to each element of `v`, starting from the first.
-When function `f` returns true then an option containing the element
-is returned. If `f` matches no elements then none is returned.
-"]
+/**
+ * Search for the first element that matches a given predicate
+ *
+ * Apply function `f` to each element of `v`, starting from the first.
+ * When function `f` returns true then an option containing the element
+ * is returned. If `f` matches no elements then none is returned.
+ */
 pure fn find<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
     find_between(v, 0u, len(v), f)
 }
 
-#[doc = "
-Search for the first element that matches a given predicate within a range
-
-Apply function `f` to each element of `v` within the range [`start`, `end`).
-When function `f` returns true then an option containing the element
-is returned. If `f` matches no elements then none is returned.
-"]
+/**
+ * Search for the first element that matches a given predicate within a range
+ *
+ * Apply function `f` to each element of `v` within the range
+ * [`start`, `end`). When function `f` returns true then an option containing
+ * the element is returned. If `f` matches no elements then none is returned.
+ */
 pure fn find_between<T: copy>(v: &[T], start: uint, end: uint,
                       f: fn(T) -> bool) -> option<T> {
     option::map(position_between(v, start, end, f), |i| v[i])
 }
 
-#[doc = "
-Search for the last element that matches a given predicate
-
-Apply function `f` to each element of `v` in reverse order. When function `f`
-returns true then an option containing the element is returned. If `f`
-matches no elements then none is returned.
-"]
+/**
+ * Search for the last element that matches a given predicate
+ *
+ * Apply function `f` to each element of `v` in reverse order. When function
+ * `f` returns true then an option containing the element is returned. If `f`
+ * matches no elements then none is returned.
+ */
 pure fn rfind<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
     rfind_between(v, 0u, len(v), f)
 }
 
-#[doc = "
-Search for the last element that matches a given predicate within a range
-
-Apply function `f` to each element of `v` in reverse order within the range
-[`start`, `end`). When function `f` returns true then an option containing
-the element is returned. If `f` matches no elements then none is returned.
-"]
+/**
+ * Search for the last element that matches a given predicate within a range
+ *
+ * Apply function `f` to each element of `v` in reverse order within the range
+ * [`start`, `end`). When function `f` returns true then an option containing
+ * the element is returned. If `f` matches no elements then none is returned.
+ */
 pure fn rfind_between<T: copy>(v: &[T], start: uint, end: uint,
                                f: fn(T) -> bool) -> option<T> {
     option::map(rposition_between(v, start, end, f), |i| v[i])
 }
 
-#[doc = "Find the first index containing a matching value"]
+/// Find the first index containing a matching value
 pure fn position_elem<T>(v: &[T], x: T) -> option<uint> {
     position(v, |y| x == y)
 }
 
-#[doc = "
-Find the first index matching some predicate
-
-Apply function `f` to each element of `v`.  When function `f` returns true
-then an option containing the index is returned. If `f` matches no elements
-then none is returned.
-"]
+/**
+ * Find the first index matching some predicate
+ *
+ * Apply function `f` to each element of `v`.  When function `f` returns true
+ * then an option containing the index is returned. If `f` matches no elements
+ * then none is returned.
+ */
 pure fn position<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
     position_between(v, 0u, len(v), f)
 }
 
-#[doc = "
-Find the first index matching some predicate within a range
-
-Apply function `f` to each element of `v` between the range [`start`, `end`).
-When function `f` returns true then an option containing the index is
-returned. If `f` matches no elements then none is returned.
-"]
+/**
+ * Find the first index matching some predicate within a range
+ *
+ * Apply function `f` to each element of `v` between the range
+ * [`start`, `end`). When function `f` returns true then an option containing
+ * the index is returned. If `f` matches no elements then none is returned.
+ */
 pure fn position_between<T>(v: &[T], start: uint, end: uint,
                             f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
@@ -844,29 +832,30 @@ pure fn position_between<T>(v: &[T], start: uint, end: uint,
     ret none;
 }
 
-#[doc = "Find the last index containing a matching value"]
+/// Find the last index containing a matching value
 pure fn rposition_elem<T>(v: &[T], x: T) -> option<uint> {
     rposition(v, |y| x == y)
 }
 
-#[doc = "
-Find the last index matching some predicate
-
-Apply function `f` to each element of `v` in reverse order.  When function
-`f` returns true then an option containing the index is returned. If `f`
-matches no elements then none is returned.
-"]
+/**
+ * Find the last index matching some predicate
+ *
+ * Apply function `f` to each element of `v` in reverse order.  When function
+ * `f` returns true then an option containing the index is returned. If `f`
+ * matches no elements then none is returned.
+ */
 pure fn rposition<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
     rposition_between(v, 0u, len(v), f)
 }
 
-#[doc = "
-Find the last index matching some predicate within a range
-
-Apply function `f` to each element of `v` in reverse order between the range
-[`start`, `end`). When function `f` returns true then an option containing
-the index is returned. If `f` matches no elements then none is returned.
-"]
+/**
+ * Find the last index matching some predicate within a range
+ *
+ * Apply function `f` to each element of `v` in reverse order between the
+ * range [`start`, `end`). When function `f` returns true then an option
+ * containing the index is returned. If `f` matches no elements then none is
+ * returned.
+ */
 pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
                              f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
@@ -883,14 +872,14 @@ pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
 // saying the two result lists have the same length -- or, could
 // return a nominal record with a constraint saying that, instead of
 // returning a tuple (contingent on issue #869)
-#[doc = "
-Convert a vector of pairs into a pair of vectors
-
-Returns a tuple containing two vectors where the i-th element of the first
-vector contains the first element of the i-th tuple of the input vector,
-and the i-th element of the second vector contains the second element
-of the i-th tuple of the input vector.
-"]
+/**
+ * Convert a vector of pairs into a pair of vectors
+ *
+ * Returns a tuple containing two vectors where the i-th element of the first
+ * vector contains the first element of the i-th tuple of the input vector,
+ * and the i-th element of the second vector contains the second element
+ * of the i-th tuple of the input vector.
+ */
 pure fn unzip<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut as = ~[], bs = ~[];
     for each(v) |p| {
@@ -903,12 +892,12 @@ pure fn unzip<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     ret (as, bs);
 }
 
-#[doc = "
-Convert two vectors to a vector of pairs
-
-Returns a vector of tuples, where the i-th tuple contains contains the
-i-th elements from each of the input vectors.
-"]
+/**
+ * Convert two vectors to a vector of pairs
+ *
+ * Returns a vector of tuples, where the i-th tuple contains contains the
+ * i-th elements from each of the input vectors.
+ */
 pure fn zip<T: copy, U: copy>(v: &[const T], u: &[const U]) -> ~[(T, U)] {
     let mut zipped = ~[];
     let sz = len(v);
@@ -918,20 +907,20 @@ pure fn zip<T: copy, U: copy>(v: &[const T], u: &[const U]) -> ~[(T, U)] {
     ret zipped;
 }
 
-#[doc = "
-Swaps two elements in a vector
-
-# Arguments
-
-* v  The input vector
-* a - The index of the first element
-* b - The index of the second element
-"]
+/**
+ * Swaps two elements in a vector
+ *
+ * # Arguments
+ *
+ * * v  The input vector
+ * * a - The index of the first element
+ * * b - The index of the second element
+ */
 fn swap<T>(&&v: ~[mut T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
-#[doc = "Reverse the order of elements in a vector, in place"]
+/// Reverse the order of elements in a vector, in place
 fn reverse<T>(v: ~[mut T]) {
     let mut i: uint = 0u;
     let ln = len::<T>(v);
@@ -939,7 +928,7 @@ fn reverse<T>(v: ~[mut T]) {
 }
 
 
-#[doc = "Returns a vector with the order of elements reversed"]
+/// Returns a vector with the order of elements reversed
 pure fn reversed<T: copy>(v: &[const T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
@@ -951,12 +940,12 @@ pure fn reversed<T: copy>(v: &[const T]) -> ~[T] {
     ret rs;
 }
 
-#[doc = "
-Iterates over a slice
-
-Iterates over slice `v` and, for each element, calls function `f` with the
-element's value.
-"]
+/**
+ * Iterates over a slice
+ *
+ * Iterates over slice `v` and, for each element, calls function `f` with the
+ * element's value.
+ */
 #[inline(always)]
 pure fn iter<T>(v: &[T], f: fn(T)) {
     iter_between(v, 0u, vec::len(v), f)
@@ -988,11 +977,11 @@ pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
     }
 }
 
-#[doc = "
-Iterates over a vector, with option to break
-
-Return true to continue, false to break.
-"]
+/**
+ * Iterates over a vector, with option to break
+ *
+ * Return true to continue, false to break.
+ */
 #[inline(always)]
 pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
     do vec::unpack_slice(v) |p, n| {
@@ -1008,11 +997,11 @@ pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
     }
 }
 
-#[doc = "
-Iterates over a vector's elements and indices
-
-Return true to continue, false to break.
-"]
+/**
+ * Iterates over a vector's elements and indices
+ *
+ * Return true to continue, false to break.
+ */
 #[inline(always)]
 pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
     do vec::unpack_slice(v) |p, n| {
@@ -1028,13 +1017,13 @@ pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
     }
 }
 
-#[doc = "
-Iterates over two vectors simultaneously
-
-# Failure
-
-Both vectors must have the same length
-"]
+/**
+ * Iterates over two vectors simultaneously
+ *
+ * # Failure
+ *
+ * Both vectors must have the same length
+ */
 #[inline]
 fn iter2<U, T>(v1: &[U], v2: &[T], f: fn(U, T)) {
     assert len(v1) == len(v2);
@@ -1043,12 +1032,12 @@ fn iter2<U, T>(v1: &[U], v2: &[T], f: fn(U, T)) {
     }
 }
 
-#[doc = "
-Iterates over a vector's elements and indexes
-
-Iterates over vector `v` and, for each element, calls function `f` with the
-element's value and index.
-"]
+/**
+ * Iterates over a vector's elements and indexes
+ *
+ * Iterates over vector `v` and, for each element, calls function `f` with the
+ * element's value and index.
+ */
 #[inline(always)]
 pure fn iteri<T>(v: &[T], f: fn(uint, T)) {
     let mut i = 0u;
@@ -1056,22 +1045,22 @@ pure fn iteri<T>(v: &[T], f: fn(uint, T)) {
     while i < l { f(i, v[i]); i += 1u; }
 }
 
-#[doc = "
-Iterates over a vector in reverse
-
-Iterates over vector `v` and, for each element, calls function `f` with the
-element's value.
-"]
+/**
+ * Iterates over a vector in reverse
+ *
+ * Iterates over vector `v` and, for each element, calls function `f` with the
+ * element's value.
+ */
 pure fn riter<T>(v: &[T], f: fn(T)) {
     riteri(v, |_i, v| f(v))
 }
 
-#[doc ="
-Iterates over a vector's elements and indexes in reverse
-
-Iterates over vector `v` and, for each element, calls function `f` with the
-element's value and index.
-"]
+/**
+ * Iterates over a vector's elements and indexes in reverse
+ *
+ * Iterates over vector `v` and, for each element, calls function `f` with the
+ * element's value and index.
+ */
 pure fn riteri<T>(v: &[T], f: fn(uint, T)) {
     let mut i = len(v);
     while 0u < i {
@@ -1080,16 +1069,16 @@ pure fn riteri<T>(v: &[T], f: fn(uint, T)) {
     };
 }
 
-#[doc = "
-Iterate over all permutations of vector `v`.
-
-Permutations are produced in lexicographic order with respect to the order of
-elements in `v` (so if `v` is sorted then the permutations are
-lexicographically sorted).
-
-The total number of permutations produced is `len(v)!`.  If `v` contains
-repeated elements, then some permutations are repeated.
-"]
+/**
+ * Iterate over all permutations of vector `v`.
+ *
+ * Permutations are produced in lexicographic order with respect to the order
+ * of elements in `v` (so if `v` is sorted then the permutations are
+ * lexicographically sorted).
+ *
+ * The total number of permutations produced is `len(v)!`.  If `v` contains
+ * repeated elements, then some permutations are repeated.
+ */
 pure fn permute<T: copy>(v: &[T], put: fn(~[T])) {
     let ln = len(v);
     if ln == 0u {
@@ -1122,12 +1111,12 @@ pure fn windowed<TT: copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     ret ww;
 }
 
-#[doc = "
-Work with the buffer of a vector.
-
-Allows for unsafe manipulation of vector contents, which is useful for
-foreign interop.
-"]
+/**
+ * Work with the buffer of a vector.
+ *
+ * Allows for unsafe manipulation of vector contents, which is useful for
+ * foreign interop.
+ */
 fn as_buf<E,T>(v: &[E], f: fn(*E) -> T) -> T {
     unpack_slice(v, |buf, _len| f(buf))
 }
@@ -1136,9 +1125,7 @@ fn as_mut_buf<E,T>(v: &[mut E], f: fn(*mut E) -> T) -> T {
     unpack_mut_slice(v, |buf, _len| f(buf))
 }
 
-#[doc = "
-Work with the buffer and length of a slice.
-"]
+/// Work with the buffer and length of a slice.
 #[inline(always)]
 pure fn unpack_slice<T,U>(s: &[const T],
                           f: fn(*T, uint) -> U) -> U {
@@ -1149,9 +1136,7 @@ pure fn unpack_slice<T,U>(s: &[const T],
     }
 }
 
-#[doc = "
-Work with the buffer and length of a slice.
-"]
+/// Work with the buffer and length of a slice.
 #[inline(always)]
 pure fn unpack_const_slice<T,U>(s: &[const T],
                                 f: fn(*const T, uint) -> U) -> U {
@@ -1163,9 +1148,7 @@ pure fn unpack_const_slice<T,U>(s: &[const T],
     }
 }
 
-#[doc = "
-Work with the buffer and length of a slice.
-"]
+/// Work with the buffer and length of a slice.
 #[inline(always)]
 pure fn unpack_mut_slice<T,U>(s: &[mut T],
                               f: fn(*mut T, uint) -> U) -> U {
@@ -1191,172 +1174,170 @@ impl extensions<T: copy> for ~[mut T] {
     }
 }
 
-#[doc = "Extension methods for vectors"]
+/// Extension methods for vectors
 impl extensions/&<T> for &[const T] {
-    #[doc = "Returns true if a vector contains no elements"]
+    /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty() -> bool { is_empty(self) }
-    #[doc = "Returns true if a vector contains some elements"]
+    /// Returns true if a vector contains some elements
     #[inline]
     pure fn is_not_empty() -> bool { is_not_empty(self) }
-    #[doc = "Returns the length of a vector"]
+    /// Returns the length of a vector
     #[inline]
     pure fn len() -> uint { len(self) }
 }
 
-#[doc = "Extension methods for vectors"]
+/// Extension methods for vectors
 impl extensions/&<T: copy> for &[const T] {
-    #[doc = "Returns the first element of a vector"]
+    /// Returns the first element of a vector
     #[inline]
     pure fn head() -> T { head(self) }
-    #[doc = "Returns all but the last elemnt of a vector"]
+    /// Returns all but the last elemnt of a vector
     #[inline]
     pure fn init() -> ~[T] { init(self) }
-    #[doc = "
-    Returns the last element of a `v`, failing if the vector is empty.
-    "]
+    /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
     pure fn last() -> T { last(self) }
-    #[doc = "Returns a copy of the elements from [`start`..`end`) from `v`."]
+    /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
     pure fn slice(start: uint, end: uint) -> ~[T] { slice(self, start, end) }
-    #[doc = "Returns all but the first element of a vector"]
+    /// Returns all but the first element of a vector
     #[inline]
     pure fn tail() -> ~[T] { tail(self) }
 }
 
-#[doc = "Extension methods for vectors"]
+/// Extension methods for vectors
 impl extensions/&<T> for &[T] {
-    #[doc = "Reduce a vector from right to left"]
+    /// Reduce a vector from right to left
     #[inline]
     pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
-    #[doc = "
-    Iterates over a vector
-
-    Iterates over vector `v` and, for each element, calls function `f` with
-    the element's value.
-    "]
+    /**
+     * Iterates over a vector
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value.
+     */
     #[inline]
     pure fn iter(f: fn(T)) { iter(self, f) }
-    #[doc = "
-    Iterates over a vector's elements and indexes
-
-    Iterates over vector `v` and, for each element, calls function `f` with
-    the element's value and index.
-    "]
+    /**
+     * Iterates over a vector's elements and indexes
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value and index.
+     */
     #[inline]
     pure fn iteri(f: fn(uint, T)) { iteri(self, f) }
-    #[doc = "
-    Find the first index matching some predicate
-
-    Apply function `f` to each element of `v`.  When function `f` returns true
-    then an option containing the index is returned. If `f` matches no
-    elements then none is returned.
-    "]
+    /**
+     * Find the first index matching some predicate
+     *
+     * Apply function `f` to each element of `v`.  When function `f` returns
+     * true then an option containing the index is returned. If `f` matches no
+     * elements then none is returned.
+     */
     #[inline]
     pure fn position(f: fn(T) -> bool) -> option<uint> { position(self, f) }
-    #[doc = "Find the first index containing a matching value"]
+    /// Find the first index containing a matching value
     #[inline]
     pure fn position_elem(x: T) -> option<uint> { position_elem(self, x) }
-    #[doc = "
-    Iterates over a vector in reverse
-
-    Iterates over vector `v` and, for each element, calls function `f` with
-    the element's value.
-    "]
+    /**
+     * Iterates over a vector in reverse
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value.
+     */
     #[inline]
     pure fn riter(f: fn(T)) { riter(self, f) }
-    #[doc ="
-    Iterates over a vector's elements and indexes in reverse
-
-    Iterates over vector `v` and, for each element, calls function `f` with
-    the element's value and index.
-    "]
+    /**
+     * Iterates over a vector's elements and indexes in reverse
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value and index.
+     */
     #[inline]
     pure fn riteri(f: fn(uint, T)) { riteri(self, f) }
-    #[doc = "
-    Find the last index matching some predicate
-
-    Apply function `f` to each element of `v` in reverse order.  When function
-    `f` returns true then an option containing the index is returned. If `f`
-    matches no elements then none is returned.
-    "]
+    /**
+     * Find the last index matching some predicate
+     *
+     * Apply function `f` to each element of `v` in reverse order.  When
+     * function `f` returns true then an option containing the index is
+     * returned. If `f` matches no elements then none is returned.
+     */
     #[inline]
     pure fn rposition(f: fn(T) -> bool) -> option<uint> { rposition(self, f) }
-    #[doc = "Find the last index containing a matching value"]
+    /// Find the last index containing a matching value
     #[inline]
     pure fn rposition_elem(x: T) -> option<uint> { rposition_elem(self, x) }
-    #[doc = "
-    Apply a function to each element of a vector and return the results
-    "]
+    /// Apply a function to each element of a vector and return the results
     #[inline]
     pure fn map<U>(f: fn(T) -> U) -> ~[U] { map(self, f) }
-    #[doc = "
-    Apply a function to the index and value of each element in the vector
-    and return the results
-    "]
+    /**
+     * Apply a function to the index and value of each element in the vector
+     * and return the results
+     */
     pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U] {
         mapi(self, f)
     }
-    #[doc = "Returns true if the function returns true for all elements.
-
-    If the vector is empty, true is returned."]
+    /**
+     * Returns true if the function returns true for all elements.
+     *
+     *     If the vector is empty, true is returned.
+     */
     pure fn alli(f: fn(uint, T) -> bool) -> bool {
         alli(self, f)
     }
-    #[doc = "
-    Apply a function to each element of a vector and return a concatenation
-    of each result vector
-    "]
+    /**
+     * Apply a function to each element of a vector and return a concatenation
+     * of each result vector
+     */
     #[inline]
     pure fn flat_map<U>(f: fn(T) -> ~[U]) -> ~[U] { flat_map(self, f) }
-    #[doc = "
-    Apply a function to each element of a vector and return the results
-
-    If function `f` returns `none` then that element is excluded from
-    the resulting vector.
-    "]
+    /**
+     * Apply a function to each element of a vector and return the results
+     *
+     * If function `f` returns `none` then that element is excluded from
+     * the resulting vector.
+     */
     #[inline]
     pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> ~[U] {
         filter_map(self, f)
     }
 }
 
-#[doc = "Extension methods for vectors"]
+/// Extension methods for vectors
 impl extensions/&<T: copy> for &[T] {
-    #[doc = "
-    Construct a new vector from the elements of a vector for which some
-    predicate holds.
-
-    Apply function `f` to each element of `v` and return a vector containing
-    only those elements for which `f` returned true.
-    "]
+    /**
+     * Construct a new vector from the elements of a vector for which some
+     * predicate holds.
+     *
+     * Apply function `f` to each element of `v` and return a vector
+     * containing only those elements for which `f` returned true.
+     */
     #[inline]
     pure fn filter(f: fn(T) -> bool) -> ~[T] { filter(self, f) }
-    #[doc = "
-    Search for the first element that matches a given predicate
-
-    Apply function `f` to each element of `v`, starting from the first.
-    When function `f` returns true then an option containing the element
-    is returned. If `f` matches no elements then none is returned.
-    "]
+    /**
+     * Search for the first element that matches a given predicate
+     *
+     * Apply function `f` to each element of `v`, starting from the first.
+     * When function `f` returns true then an option containing the element
+     * is returned. If `f` matches no elements then none is returned.
+     */
     #[inline]
     pure fn find(f: fn(T) -> bool) -> option<T> { find(self, f) }
-    #[doc = "
-    Search for the last element that matches a given predicate
-
-    Apply function `f` to each element of `v` in reverse order. When function
-    `f` returns true then an option containing the element is returned. If `f`
-    matches no elements then none is returned.
-    "]
+    /**
+     * Search for the last element that matches a given predicate
+     *
+     * Apply function `f` to each element of `v` in reverse order. When
+     * function `f` returns true then an option containing the element is
+     * returned. If `f` matches no elements then none is returned.
+     */
     #[inline]
     pure fn rfind(f: fn(T) -> bool) -> option<T> { rfind(self, f) }
 }
 
-#[doc = "Unsafe operations"]
+/// Unsafe operations
 mod unsafe {
     // FIXME: This should have crate visibility (#1893 blocks that)
-    #[doc = "The internal representation of a vector"]
+    /// The internal representation of a vector
     type vec_repr = {
         box_header: (uint, uint, uint, uint),
         mut fill: uint,
@@ -1364,14 +1345,14 @@ mod unsafe {
         data: u8
     };
 
-    #[doc = "
-    Constructs a vector from an unsafe pointer to a buffer
-
-    # Arguments
-
-    * ptr - An unsafe pointer to a buffer of `T`
-    * elts - The number of elements in the buffer
-    "]
+    /**
+     * Constructs a vector from an unsafe pointer to a buffer
+     *
+     * # Arguments
+     *
+     * * ptr - An unsafe pointer to a buffer of `T`
+     * * elts - The number of elements in the buffer
+     */
     #[inline(always)]
     unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
         ret ::unsafe::reinterpret_cast(
@@ -1380,28 +1361,28 @@ mod unsafe {
                                         elts as size_t));
     }
 
-    #[doc = "
-    Sets the length of a vector
-
-    This will explicitly set the size of the vector, without actually
-    modifing its buffers, so it is up to the caller to ensure that
-    the vector is actually the specified size.
-    "]
+    /**
+     * Sets the length of a vector
+     *
+     * This will explicitly set the size of the vector, without actually
+     * modifing its buffers, so it is up to the caller to ensure that
+     * the vector is actually the specified size.
+     */
     #[inline(always)]
     unsafe fn set_len<T>(&&v: ~[const T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
-    #[doc = "
-    Returns an unsafe pointer to the vector's buffer
-
-    The caller must ensure that the vector outlives the pointer this
-    function returns, or else it will end up pointing to garbage.
-
-    Modifying the vector may cause its buffer to be reallocated, which
-    would also make any pointers to it invalid.
-    "]
+    /**
+     * Returns an unsafe pointer to the vector's buffer
+     *
+     * The caller must ensure that the vector outlives the pointer this
+     * function returns, or else it will end up pointing to garbage.
+     *
+     * Modifying the vector may cause its buffer to be reallocated, which
+     * would also make any pointers to it invalid.
+     */
     #[inline(always)]
     unsafe fn to_ptr<T>(v: ~[const T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
@@ -1409,9 +1390,10 @@ mod unsafe {
     }
 
 
-    #[doc = "
-    Form a slice from a pointer and length (as a number of units, not bytes).
-    "]
+    /**
+     * Form a slice from a pointer and length (as a number of units,
+     * not bytes).
+     */
     #[inline(always)]
     unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(&& &[T]) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
@@ -1421,13 +1403,13 @@ mod unsafe {
     }
 }
 
-#[doc = "Operations on `[u8]`"]
+/// Operations on `[u8]`
 mod u8 {
     export cmp;
     export lt, le, eq, ne, ge, gt;
     export hash;
 
-    #[doc = "Bytewise string comparison"]
+    /// Bytewise string comparison
     pure fn cmp(&&a: ~[u8], &&b: ~[u8]) -> int {
         let a_len = len(a);
         let b_len = len(b);
@@ -1448,25 +1430,25 @@ mod u8 {
         }
     }
 
-    #[doc = "Bytewise less than or equal"]
+    /// Bytewise less than or equal
     pure fn lt(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) < 0 }
 
-    #[doc = "Bytewise less than or equal"]
+    /// Bytewise less than or equal
     pure fn le(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) <= 0 }
 
-    #[doc = "Bytewise equality"]
+    /// Bytewise equality
     pure fn eq(&&a: ~[u8], &&b: ~[u8]) -> bool { unsafe { cmp(a, b) == 0 } }
 
-    #[doc = "Bytewise inequality"]
+    /// Bytewise inequality
     pure fn ne(&&a: ~[u8], &&b: ~[u8]) -> bool { unsafe { cmp(a, b) != 0 } }
 
-    #[doc ="Bytewise greater than or equal"]
+    /// Bytewise greater than or equal
     pure fn ge(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) >= 0 }
 
-    #[doc = "Bytewise greater than"]
+    /// Bytewise greater than
     pure fn gt(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) > 0 }
 
-    #[doc = "String hash function"]
+    /// String hash function
     fn hash(&&s: ~[u8]) -> uint {
         /* Seems to have been tragically copy/pasted from str.rs,
            or vice versa. But I couldn't figure out how to abstract

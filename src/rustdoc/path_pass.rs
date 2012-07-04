@@ -1,4 +1,4 @@
-#[doc = "Records the full path to items"];
+//! Records the full path to items
 
 import syntax::ast;
 

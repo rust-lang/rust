@@ -1,4 +1,4 @@
-#[doc = "The document model"];
+//! The document model
 
 type ast_id = int;
 
@@ -11,10 +11,10 @@ enum page {
     itempage(itemtag)
 }
 
-#[doc = "
-Most rustdocs can be parsed into 'sections' according to their markdown
-headers
-"]
+/**
+ * Most rustdocs can be parsed into 'sections' according to their markdown
+ * headers
+ */
 type section = {
     header: str,
     body: str
@@ -107,18 +107,16 @@ type index = {
     entries: ~[index_entry]
 };
 
-#[doc = "
-
-A single entry in an index
-
-Fields:
-
-* kind - The type of thing being indexed, e.g. 'Module'
-* name - The name of the thing
-* brief - The brief description
-* link - A format-specific string representing the link target
-
-"]
+/**
+ * A single entry in an index
+ *
+ * Fields:
+ *
+ * * kind - The type of thing being indexed, e.g. 'Module'
+ * * name - The name of the thing
+ * * brief - The brief description
+ * * link - A format-specific string representing the link target
+ */
 type index_entry = {
     kind: str,
     name: str,
@@ -141,7 +139,7 @@ impl util for doc {
     }
 }
 
-#[doc = "Some helper methods on moddoc, mostly for testing"]
+/// Some helper methods on moddoc, mostly for testing
 impl util for moddoc {
 
     fn mods() -> ~[moddoc] {

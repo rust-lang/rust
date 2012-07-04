@@ -1,9 +1,9 @@
-#[doc = "The identity function"]
+/// The identity function
 pure fn id<T: copy>(x: T) -> T { x }
 
 /* FIXME (issue #141):  See test/run-pass/constrained-type.rs.  Uncomment
  * the constraint once fixed. */
-#[doc = "A rational number"]
+/// A rational number
 type rational = {num: int, den: int}; // : int::positive(*.den);
 
 pure fn rational_leq(x: rational, y: rational) -> bool {

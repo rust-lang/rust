@@ -1,13 +1,13 @@
-#[doc = "
-A functional key,value store that works on anything.
-
-This works using a binary search tree. In the first version, it's a
-very naive algorithm, but it will probably be updated to be a
-red-black tree or something else.
-
-This is copied and modified from treemap right now. It's missing a lot
-of features.
-"];
+/*!
+ * A functional key,value store that works on anything.
+ *
+ * This works using a binary search tree. In the first version, it's a
+ * very naive algorithm, but it will probably be updated to be a
+ * red-black tree or something else.
+ *
+ * This is copied and modified from treemap right now. It's missing a lot
+ * of features.
+ */
 
 import option::{some, none};
 import option = option;
@@ -25,10 +25,10 @@ enum tree_node<K, V> {
     node(@K, @V, @tree_node<K, V>, @tree_node<K, V>)
 }
 
-#[doc = "Create a treemap"]
+/// Create a treemap
 fn init<K, V>() -> treemap<K, V> { @empty }
 
-#[doc = "Insert a value into the map"]
+/// Insert a value into the map
 fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
     @alt m {
        @empty { node(@k, @v, @empty, @empty) }
@@ -42,7 +42,7 @@ fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
      }
 }
 
-#[doc = "Find a value based on the key"]
+/// Find a value based on the key
 fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty { none }
@@ -54,7 +54,7 @@ fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
     }
 }
 
-#[doc = "Visit all pairs in the map in order."]
+/// Visit all pairs in the map in order.
 fn traverse<K, V: copy>(m: treemap<K, V>, f: fn(K, V)) {
     alt *m {
       empty { }

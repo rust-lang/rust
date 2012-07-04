@@ -1,4 +1,4 @@
-#[doc = "Unsafe operations"];
+//! Unsafe operations
 
 export reinterpret_cast, forget, bump_box_refcount, transmute;
 
@@ -8,39 +8,39 @@ extern mod rusti {
     fn reinterpret_cast<T, U>(e: T) -> U;
 }
 
-#[doc = "
-Casts the value at `src` to U. The two types must have the same length.
-"]
+/// Casts the value at `src` to U. The two types must have the same length.
 #[inline(always)]
 unsafe fn reinterpret_cast<T, U>(src: T) -> U {
     rusti::reinterpret_cast(src)
 }
 
-#[doc ="
-Move a thing into the void
-
-The forget function will take ownership of the provided value but neglect
-to run any required cleanup or memory-management operations on it. This
-can be used for various acts of magick, particularly when using
-reinterpret_cast on managed pointer types.
-"]
+/**
+ * Move a thing into the void
+ *
+ * The forget function will take ownership of the provided value but neglect
+ * to run any required cleanup or memory-management operations on it. This
+ * can be used for various acts of magick, particularly when using
+ * reinterpret_cast on managed pointer types.
+ */
 #[inline(always)]
 unsafe fn forget<T>(-thing: T) { rusti::forget(thing); }
 
-#[doc = "Force-increment the reference count on a shared box. If used
-uncarefully, this can leak the box. Use this in conjunction with transmute
-and/or reinterpret_cast when such calls would otherwise scramble a box's
-reference count"]
+/**
+ * Force-increment the reference count on a shared box. If used
+ * uncarefully, this can leak the box. Use this in conjunction with transmute
+ * and/or reinterpret_cast when such calls would otherwise scramble a box's
+ * reference count
+ */
 unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
 
-#[doc = "
-Transform a value of one type into a value of another type.
-Both types must have the same size and alignment.
-
-# Example
-
-    assert transmute(\"L\") == [76u8, 0u8]/~;
-"]
+/**
+ * Transform a value of one type into a value of another type.
+ * Both types must have the same size and alignment.
+ *
+ * # Example
+ *
+ *     assert transmute("L") == [76u8, 0u8]/~;
+ */
 unsafe fn transmute<L, G>(-thing: L) -> G {
     let newthing = reinterpret_cast(thing);
     forget(thing);

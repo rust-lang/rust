@@ -44,13 +44,13 @@ mod parse {
     mod comments;
     mod attr;
 
-    #[doc = "Common routines shared by parser mods"]
+    /// Common routines shared by parser mods
     mod common;
 
-    #[doc = "Functions dealing with operator precedence"]
+    /// Functions dealing with operator precedence
     mod prec;
 
-    #[doc = "Routines the parser uses to classify AST nodes"]
+    /// Routines the parser uses to classify AST nodes
     mod classify;
 }
 

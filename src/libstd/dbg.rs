@@ -1,4 +1,4 @@
-#[doc = "Unsafe debugging functions for inspecting values."];
+//! Unsafe debugging functions for inspecting values.
 
 import unsafe::reinterpret_cast;
 
@@ -47,7 +47,7 @@ unsafe fn ptr_cast<T, U>(x: @T) -> @U {
                               reinterpret_cast(x)))
 }
 
-#[doc = "Triggers a debugger breakpoint"]
+/// Triggers a debugger breakpoint
 fn breakpoint() {
     rustrt::rust_dbg_breakpoint();
 }

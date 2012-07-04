@@ -1,4 +1,4 @@
-#[doc = "The main parser interface"];
+//! The main parser interface
 import dvec::extensions;
 
 export parse_sess;

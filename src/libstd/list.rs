@@ -1,4 +1,4 @@
-#[doc = "A standard linked list"];
+//! A standard linked list
 
 import core::option;
 import option::*;
@@ -9,37 +9,37 @@ enum list<T> {
     nil,
 }
 
-#[doc = "Create a list from a vector"]
+/// Create a list from a vector
 fn from_vec<T: copy>(v: &[T]) -> @list<T> {
     vec::foldr(v, @nil::<T>, |h, t| @cons(h, t))
 }
 
-#[doc = "
-Left fold
-
-Applies `f` to `u` and the first element in the list, then applies `f` to the
-result of the previous call and the second element, and so on, returning the
-accumulated result.
-
-# Arguments
-
-* ls - The list to fold
-* z - The initial value
-* f - The function to apply
-"]
+/**
+ * Left fold
+ *
+ * Applies `f` to `u` and the first element in the list, then applies `f` to
+ * the result of the previous call and the second element, and so on,
+ * returning the accumulated result.
+ *
+ * # Arguments
+ *
+ * * ls - The list to fold
+ * * z - The initial value
+ * * f - The function to apply
+ */
 fn foldl<T: copy, U>(z: T, ls: @list<U>, f: fn(T, U) -> T) -> T {
     let mut accum: T = z;
     do iter(ls) |elt| { accum = f(accum, elt);}
     accum
 }
 
-#[doc = "
-Search for an element that matches a given predicate
-
-Apply function `f` to each element of `v`, starting from the first.
-When function `f` returns true then an option containing the element
-is returned. If `f` matches no elements then none is returned.
-"]
+/**
+ * Search for an element that matches a given predicate
+ *
+ * Apply function `f` to each element of `v`, starting from the first.
+ * When function `f` returns true then an option containing the element
+ * is returned. If `f` matches no elements then none is returned.
+ */
 fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
     let mut ls = ls;
     loop {
@@ -53,7 +53,7 @@ fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
     };
 }
 
-#[doc = "Returns true if a list contains an element with the given value"]
+/// Returns true if a list contains an element with the given value
 fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
     for each(ls) |e| {
         if e == elt { ret true; }
@@ -61,7 +61,7 @@ fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
     ret false;
 }
 
-#[doc = "Returns true if the list is empty"]
+/// Returns true if the list is empty
 pure fn is_empty<T: copy>(ls: @list<T>) -> bool {
     alt *ls {
         nil { true }
@@ -69,19 +69,19 @@ pure fn is_empty<T: copy>(ls: @list<T>) -> bool {
     }
 }
 
-#[doc = "Returns true if the list is not empty"]
+/// Returns true if the list is not empty
 pure fn is_not_empty<T: copy>(ls: @list<T>) -> bool {
     ret !is_empty(ls);
 }
 
-#[doc = "Returns the length of a list"]
+/// Returns the length of a list
 fn len<T>(ls: @list<T>) -> uint {
     let mut count = 0u;
     iter(ls, |_e| count += 1u);
     count
 }
 
-#[doc = "Returns all but the first element of a list"]
+/// Returns all but the first element of a list
 pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
     alt *ls {
         cons(_, tl) { ret tl; }
@@ -89,12 +89,12 @@ pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
     }
 }
 
-#[doc = "Returns the first element of a list"]
+/// Returns the first element of a list
 pure fn head<T: copy>(ls: @list<T>) -> T {
     alt check *ls { cons(hd, _) { hd } }
 }
 
-#[doc = "Appends one list to another"]
+/// Appends one list to another
 pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
     alt *l {
       nil { ret m; }
@@ -102,12 +102,12 @@ pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
     }
 }
 
-#[doc = "Push an element to the front of a list"]
+/// Push an element to the front of a list
 fn push<T: copy>(&l: list<T>, v: T) {
     l = cons(v, @l);
 }
 
-#[doc = "Iterate over a list"]
+/// Iterate over a list
 fn iter<T>(l: @list<T>, f: fn(T)) {
     let mut cur = l;
     loop {
@@ -121,7 +121,7 @@ fn iter<T>(l: @list<T>, f: fn(T)) {
     }
 }
 
-#[doc = "Iterate over a list"]
+/// Iterate over a list
 fn each<T>(l: @list<T>, f: fn(T) -> bool) {
     let mut cur = l;
     loop {

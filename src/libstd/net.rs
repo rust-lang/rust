@@ -1,6 +1,4 @@
-#[doc="
-Top-level module for network-related functionality
-"];
+//! Top-level module for network-related functionality
 
 import tcp = net_tcp;
 export tcp;

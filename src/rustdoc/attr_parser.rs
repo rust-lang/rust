@@ -39,9 +39,10 @@ fn doc_meta(
     attrs: ~[ast::attribute]
 ) -> option<@ast::meta_item> {
 
-    #[doc =
-      "Given a vec of attributes, extract the meta_items contained in the \
-       doc attribute"];
+    /*!
+     * Given a vec of attributes, extract the meta_items contained in the \
+     * doc attribute
+     */
 
     let doc_attrs = attr::find_attrs_by_name(attrs, "doc");
     let doc_metas = do doc_attrs.map |attr| {

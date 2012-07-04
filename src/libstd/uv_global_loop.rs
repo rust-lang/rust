@@ -1,6 +1,4 @@
-#[doc="
-A process-wide libuv event loop for library use.
-"];
+//! A process-wide libuv event loop for library use.
 
 export get;
 
@@ -16,18 +14,18 @@ extern mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
 }
 
-#[doc ="
-Race-free helper to get access to a global task where a libuv
-loop is running.
-
-Use `uv::hl::interact` to do operations against the global
-loop that this function returns.
-
-# Return
-
-* A `hl::high_level_loop` that encapsulates communication with the global
-loop.
-"]
+/**
+ * Race-free helper to get access to a global task where a libuv
+ * loop is running.
+ *
+ * Use `uv::hl::interact` to do operations against the global
+ * loop that this function returns.
+ *
+ * # Return
+ *
+ * * A `hl::high_level_loop` that encapsulates communication with the global
+ * loop.
+ */
 fn get() -> iotask {
     ret get_monitor_task_gl();
 }

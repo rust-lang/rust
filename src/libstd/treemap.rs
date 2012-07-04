@@ -1,10 +1,10 @@
-#[doc = "
-A key,value store that works on anything.
-
-This works using a binary search tree. In the first version, it's a
-very naive algorithm, but it will probably be updated to be a
-red-black tree or something else.
-"];
+/*!
+ * A key,value store that works on anything.
+ *
+ * This works using a binary search tree. In the first version, it's a
+ * very naive algorithm, but it will probably be updated to be a
+ * red-black tree or something else.
+ */
 
 import core::option::{some, none};
 import option = core::option;
@@ -25,10 +25,10 @@ enum tree_node<K, V> = {
     mut right: tree_edge<K, V>
 };
 
-#[doc = "Create a treemap"]
+/// Create a treemap
 fn treemap<K, V>() -> treemap<K, V> { @mut none }
 
-#[doc = "Insert a value into the map"]
+/// Insert a value into the map
 fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
     alt copy *m {
       none {
@@ -50,7 +50,7 @@ fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
     };
 }
 
-#[doc = "Find a value based on the key"]
+/// Find a value based on the key
 fn find<K: copy, V: copy>(m: &const tree_edge<K, V>, k: K) -> option<V> {
     alt copy *m {
       none { none }
@@ -68,7 +68,7 @@ fn find<K: copy, V: copy>(m: &const tree_edge<K, V>, k: K) -> option<V> {
     }
 }
 
-#[doc = "Visit all pairs in the map in order."]
+/// Visit all pairs in the map in order.
 fn traverse<K, V: copy>(m: &const tree_edge<K, V>, f: fn(K, V)) {
     alt copy *m {
       none { }

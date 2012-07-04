@@ -1,6 +1,4 @@
-#[doc="
-Types/fns concerning Internet Protocol (IP), versions 4 & 6
-"];
+//! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 
 import vec;
 import uint;
@@ -28,27 +26,25 @@ export format_addr;
 export v4, v6;
 export get_addr;
 
-#[doc = "An IP address"]
+/// An IP address
 enum ip_addr {
-    #[doc="An IPv4 address"]
+    /// An IPv4 address
     ipv4(sockaddr_in),
     ipv6(sockaddr_in6)
 }
 
-#[doc="
-Human-friendly feedback on why a parse_addr attempt failed
-"]
+/// Human-friendly feedback on why a parse_addr attempt failed
 type parse_addr_err = {
     err_msg: str
 };
 
-#[doc="
-Convert a `ip_addr` to a str
-
-# Arguments
-
-* ip - a `std::net::ip::ip_addr`
-"]
+/**
+ * Convert a `ip_addr` to a str
+ *
+ * # Arguments
+ *
+ * * ip - a `std::net::ip::ip_addr`
+ */
 fn format_addr(ip: ip_addr) -> str {
     alt ip {
       ipv4(addr) {
@@ -72,27 +68,25 @@ fn format_addr(ip: ip_addr) -> str {
     }
 }
 
-#[doc="
-Represents errors returned from `net::ip::get_addr()`
-"]
+/// Represents errors returned from `net::ip::get_addr()`
 enum ip_get_addr_err {
     get_addr_unknown_error
 }
 
-#[doc="
-Attempts name resolution on the provided `node` string
-
-# Arguments
-
-* `node` - a string representing some host address
-* `iotask` - a `uv::iotask` used to interact with the underlying event loop
-
-# Returns
-
-A `result<[ip_addr]/~, ip_get_addr_err>` instance that will contain
-a vector of `ip_addr` results, in the case of success, or an error
-object in the case of failure
-"]
+/**
+ * Attempts name resolution on the provided `node` string
+ *
+ * # Arguments
+ *
+ * * `node` - a string representing some host address
+ * * `iotask` - a `uv::iotask` used to interact with the underlying event loop
+ *
+ * # Returns
+ *
+ * A `result<[ip_addr]/~, ip_get_addr_err>` instance that will contain
+ * a vector of `ip_addr` results, in the case of success, or an error
+ * object in the case of failure
+ */
 fn get_addr(++node: str, iotask: iotask)
         -> result::result<[ip_addr]/~, ip_get_addr_err> unsafe {
     do comm::listen |output_ch| {
@@ -127,21 +121,21 @@ fn get_addr(++node: str, iotask: iotask)
 }
 
 mod v4 {
-    #[doc = "
-    Convert a str to `ip_addr`
-
-    # Failure
-
-    Fails if the string is not a valid IPv4 address
-
-    # Arguments
-
-    * ip - a string of the format `x.x.x.x`
-
-    # Returns
-
-    * an `ip_addr` of the `ipv4` variant
-    "]
+    /**
+     * Convert a str to `ip_addr`
+     *
+     * # Failure
+     *
+     * Fails if the string is not a valid IPv4 address
+     *
+     * # Arguments
+     *
+     * * ip - a string of the format `x.x.x.x`
+     *
+     * # Returns
+     *
+     * * an `ip_addr` of the `ipv4` variant
+     */
     fn parse_addr(ip: str) -> ip_addr {
         alt try_parse_addr(ip) {
           result::ok(addr) { copy(addr) }
@@ -210,21 +204,21 @@ mod v4 {
     }
 }
 mod v6 {
-    #[doc = "
-    Convert a str to `ip_addr`
-
-    # Failure
-
-    Fails if the string is not a valid IPv6 address
-
-    # Arguments
-
-    * ip - an ipv6 string. See RFC2460 for spec.
-
-    # Returns
-
-    * an `ip_addr` of the `ipv6` variant
-    "]
+    /**
+     * Convert a str to `ip_addr`
+     *
+     * # Failure
+     *
+     * Fails if the string is not a valid IPv6 address
+     *
+     * # Arguments
+     *
+     * * ip - an ipv6 string. See RFC2460 for spec.
+     *
+     * # Returns
+     *
+     * * an `ip_addr` of the `ipv6` variant
+     */
     fn parse_addr(ip: str) -> ip_addr {
         alt try_parse_addr(ip) {
           result::ok(addr) { copy(addr) }

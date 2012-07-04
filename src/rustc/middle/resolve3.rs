@@ -109,13 +109,13 @@ enum ModuleDef {
     ModuleDef(@Module),     // Defines a module.
 }
 
-#[doc="Contains data for specific types of import directives."]
+/// Contains data for specific types of import directives.
 enum ImportDirectiveSubclass {
     SingleImport(Atom /* target */, Atom /* source */),
     GlobImport
 }
 
-#[doc="The context that we thread through while building the reduced graph."]
+/// The context that we thread through while building the reduced graph.
 enum ReducedGraphParent {
     ModuleReducedGraphParent(@Module)
 }
@@ -235,15 +235,15 @@ class AtomTable {
     }
 }
 
-#[doc="Creates a hash table of atoms."]
+/// Creates a hash table of atoms.
 fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
     ret hashmap::<Atom,V>(|a| a, |a, b| a == b);
 }
 
-#[doc="
-    One local scope. In Rust, local scopes can only contain value bindings.
-    Therefore, we don't have to worry about the other namespaces here.
-"]
+/**
+ * One local scope. In Rust, local scopes can only contain value bindings.
+ * Therefore, we don't have to worry about the other namespaces here.
+ */
 class Rib {
     let bindings: hashmap<Atom,def_like>;
     let kind: RibKind;
@@ -254,7 +254,7 @@ class Rib {
     }
 }
 
-#[doc="One import directive."]
+/// One import directive.
 class ImportDirective {
     let module_path: @dvec<Atom>;
     let subclass: @ImportDirectiveSubclass;
@@ -265,7 +265,7 @@ class ImportDirective {
     }
 }
 
-#[doc="The item that an import resolves to."]
+/// The item that an import resolves to.
 class Target {
     let target_module: @Module;
     let bindings: @NameBindings;
@@ -313,14 +313,14 @@ class ImportResolution {
     }
 }
 
-#[doc="The link from a module up to its nearest parent node."]
+/// The link from a module up to its nearest parent node.
 enum ParentLink {
     NoParentLink,
     ModuleParentLink(@Module, Atom),
     BlockParentLink(@Module, node_id)
 }
 
-#[doc="One node in the tree of modules."]
+/// One node in the tree of modules.
 class Module {
     let parent_link: ParentLink;
     let mut def_id: option<def_id>;
@@ -398,10 +398,10 @@ pure fn is_none<T>(x: option<T>) -> bool {
     }
 }
 
-#[doc="
-    Records the definitions (at most one for each namespace) that a name is
-    bound to.
-"]
+/**
+ * Records the definitions (at most one for each namespace) that a name is
+ * bound to.
+ */
 class NameBindings {
     let mut module_def: ModuleDef;      //< Meaning in the module namespace.
     let mut type_def: option<def>;      //< Meaning in the type namespace.
@@ -415,7 +415,7 @@ class NameBindings {
         self.impl_defs = ~[];
     }
 
-    #[doc="Creates a new module in this set of name bindings."]
+    /// Creates a new module in this set of name bindings.
     fn define_module(parent_link: ParentLink, def_id: option<def_id>) {
         if self.module_def == NoModuleDef {
             let module = @Module(parent_link, def_id);
@@ -423,22 +423,22 @@ class NameBindings {
         }
     }
 
-    #[doc="Records a type definition."]
+    /// Records a type definition.
     fn define_type(def: def) {
         self.type_def = some(def);
     }
 
-    #[doc="Records a value definition."]
+    /// Records a value definition.
     fn define_value(def: def) {
         self.value_def = some(def);
     }
 
-    #[doc="Records an impl definition."]
+    /// Records an impl definition.
     fn define_impl(implementation: @Impl) {
         self.impl_defs += ~[implementation];
     }
 
-    #[doc="Returns the module node if applicable."]
+    /// Returns the module node if applicable.
     fn get_module_if_available() -> option<@Module> {
         alt self.module_def {
             NoModuleDef         { ret none;         }
@@ -446,10 +446,10 @@ class NameBindings {
         }
     }
 
-    #[doc="
-        Returns the module node. Fails if this node does not have a module
-        definition.
-    "]
+    /**
+     * Returns the module node. Fails if this node does not have a module
+     * definition.
+     */
     fn get_module() -> @Module {
         alt self.module_def {
             NoModuleDef {
@@ -508,7 +508,7 @@ class NameBindings {
     }
 }
 
-#[doc="Interns the names of the primitive types."]
+/// Interns the names of the primitive types.
 class PrimitiveTypeTable {
     let primitive_types: hashmap<Atom,prim_ty>;
 
@@ -539,7 +539,7 @@ class PrimitiveTypeTable {
     }
 }
 
-#[doc="The main resolver class."]
+/// The main resolver class.
 class Resolver {
     let session: session;
     let ast_map: ASTMap;
@@ -611,7 +611,7 @@ class Resolver {
         self.export_map = int_hash();
     }
 
-    #[doc="The main name resolution procedure."]
+    /// The main name resolution procedure.
     fn resolve(this: @Resolver) {
         self.build_reduced_graph(this);
         self.resolve_imports();
@@ -627,7 +627,7 @@ class Resolver {
     // any imports resolved.
     //
 
-    #[doc="Constructs the reduced graph for the entire crate."]
+    /// Constructs the reduced graph for the entire crate.
     fn build_reduced_graph(this: @Resolver) {
         let initial_parent =
             ModuleReducedGraphParent((*self.graph_root).get_module());
@@ -654,7 +654,7 @@ class Resolver {
         }));
     }
 
-    #[doc="Returns the current module tracked by the reduced graph parent."]
+    /// Returns the current module tracked by the reduced graph parent.
     fn get_module_from_parent(reduced_graph_parent: ReducedGraphParent)
                            -> @Module {
         alt reduced_graph_parent {
@@ -664,16 +664,16 @@ class Resolver {
         }
     }
 
-    #[doc="
-        Adds a new child item to the module definition of the parent node and
-        returns its corresponding name bindings as well as the current parent.
-        Or, if we're inside a block, creates (or reuses) an anonymous module
-        corresponding to the innermost block ID and returns the name bindings
-        as well as the newly-created parent.
-
-        If this node does not have a module definition and we are not inside
-        a block, fails.
-    "]
+    /**
+     * Adds a new child item to the module definition of the parent node and
+     * returns its corresponding name bindings as well as the current parent.
+     * Or, if we're inside a block, creates (or reuses) an anonymous module
+     * corresponding to the innermost block ID and returns the name bindings
+     * as well as the newly-created parent.
+     *
+     * If this node does not have a module definition and we are not inside
+     * a block, fails.
+     */
     fn add_child(name: Atom,
                  reduced_graph_parent: ReducedGraphParent)
               -> (@NameBindings, ReducedGraphParent) {
@@ -742,7 +742,7 @@ class Resolver {
         }
     }
 
-    #[doc="Constructs the reduced graph for one item."]
+    /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(item: @item,
                                     parent: ReducedGraphParent,
                                     &&visitor: vt<ReducedGraphParent>) {
@@ -874,10 +874,10 @@ class Resolver {
         }
     }
 
-    #[doc="
-        Constructs the reduced graph for one variant. Variants exist in the
-        type namespace.
-    "]
+    /**
+     * Constructs the reduced graph for one variant. Variants exist in the
+     * type namespace.
+     */
     fn build_reduced_graph_for_variant(variant: variant,
                                        item_id: def_id,
                                        parent: ReducedGraphParent,
@@ -890,10 +890,10 @@ class Resolver {
                                           local_def(variant.node.id)));
     }
 
-    #[doc="
-        Constructs the reduced graph for one 'view item'. View items consist
-        of imports and use directives.
-    "]
+    /**
+     * Constructs the reduced graph for one 'view item'. View items consist
+     * of imports and use directives.
+     */
     fn build_reduced_graph_for_view_item(view_item: @view_item,
                                          parent: ReducedGraphParent,
                                          &&_visitor: vt<ReducedGraphParent>) {
@@ -1045,7 +1045,7 @@ class Resolver {
         }
     }
 
-    #[doc="Constructs the reduced graph for one foreign item."]
+    /// Constructs the reduced graph for one foreign item.
     fn build_reduced_graph_for_foreign_item(foreign_item: @foreign_item,
                                             parent: ReducedGraphParent,
                                             &&visitor:
@@ -1095,10 +1095,10 @@ class Resolver {
         visit_block(block, new_parent, visitor);
     }
 
-    #[doc="
-        Builds the reduced graph rooted at the 'use' directive for an external
-        crate.
-    "]
+    /**
+     * Builds the reduced graph rooted at the 'use' directive for an external
+     * crate.
+     */
     fn build_reduced_graph_for_external_crate(root: @Module) {
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, get(root.def_id).crate)
@@ -1285,7 +1285,7 @@ class Resolver {
         }
     }
 
-    #[doc="Creates and adds an import directive to the given module."]
+    /// Creates and adds an import directive to the given module.
     fn build_import_directive(module: @Module,
                               module_path: @dvec<Atom>,
                               subclass: @ImportDirectiveSubclass) {
@@ -1328,10 +1328,10 @@ class Resolver {
     // remain or unsuccessfully when no forward progress in resolving imports
     // is made.
 
-    #[doc="
-        Resolves all imports for the crate. This method performs the fixed-
-        point iteration.
-    "]
+    /**
+     * Resolves all imports for the crate. This method performs the fixed-
+     * point iteration.
+     */
     fn resolve_imports() {
         let mut i = 0u;
         let mut prev_unresolved_imports = 0u;
@@ -1358,10 +1358,10 @@ class Resolver {
         }
     }
 
-    #[doc="
-        Attempts to resolve imports for the given module and all of its
-        submodules.
-    "]
+    /**
+     * Attempts to resolve imports for the given module and all of its
+     * submodules.
+     */
     fn resolve_imports_for_module_subtree(module: @Module) {
         #debug("(resolving imports for module subtree) resolving %s",
                self.module_to_str(module));
@@ -1383,7 +1383,7 @@ class Resolver {
         }
     }
 
-    #[doc="Attempts to resolve imports for the given module only."]
+    /// Attempts to resolve imports for the given module only.
     fn resolve_imports_for_module(module: @Module) {
         if (*module).all_imports_resolved() {
             #debug("(resolving imports for module) all imports resolved for \
@@ -1416,13 +1416,13 @@ class Resolver {
         }
     }
 
-    #[doc="
-        Attempts to resolve the given import. The return value indicates
-        failure if we're certain the name does not exist, indeterminate if we
-        don't know whether the name exists at the moment due to other
-        currently-unresolved imports, or success if we know the name exists.
-        If successful, the resolved bindings are written into the module.
-    "]
+    /**
+     * Attempts to resolve the given import. The return value indicates
+     * failure if we're certain the name does not exist, indeterminate if we
+     * don't know whether the name exists at the moment due to other
+     * currently-unresolved imports, or success if we know the name exists.
+     * If successful, the resolved bindings are written into the module.
+     */
     fn resolve_import_for_module(module: @Module,
                                  import_directive: @ImportDirective)
                               -> ResolveResult<()> {
@@ -1721,11 +1721,11 @@ class Resolver {
         ret Success(());
     }
 
-    #[doc="
-        Resolves a glob import. Note that this function cannot fail; it either
-        succeeds or bails out (as importing * from an empty module or a module
-        that exports nothing is valid).
-    "]
+    /**
+     * Resolves a glob import. Note that this function cannot fail; it either
+     * succeeds or bails out (as importing * from an empty module or a module
+     * that exports nothing is valid).
+     */
     fn resolve_glob_import(module: @Module, containing_module: @Module)
                         -> ResolveResult<()> {
 
@@ -1927,10 +1927,10 @@ class Resolver {
         ret Success(search_module);
     }
 
-    #[doc="
-        Attempts to resolve the module part of an import directive rooted at
-        the given module.
-    "]
+    /**
+     * Attempts to resolve the module part of an import directive rooted at
+     * the given module.
+     */
     fn resolve_module_path_for_import(module: @Module,
                                       module_path: @dvec<Atom>,
                                       xray: XrayFlag)
@@ -2093,11 +2093,11 @@ class Resolver {
                 module.exported_names.contains_key(name);
     }
 
-    #[doc="
-        Attempts to resolve the supplied name in the given module for the
-        given namespace. If successful, returns the target corresponding to
-        the name.
-    "]
+    /**
+     * Attempts to resolve the supplied name in the given module for the
+     * given namespace. If successful, returns the target corresponding to
+     * the name.
+     */
     fn resolve_name_in_module(module: @Module,
                               name: Atom,
                               namespace: Namespace,
@@ -2168,11 +2168,11 @@ class Resolver {
         ret Failed;
     }
 
-    #[doc="
-        Resolves a one-level renaming import of the kind `import foo = bar;`
-        This needs special handling, as, unlike all of the other imports, it
-        needs to look in the scope chain for modules and non-modules alike.
-    "]
+    /**
+     * Resolves a one-level renaming import of the kind `import foo = bar;`
+     * This needs special handling, as, unlike all of the other imports, it
+     * needs to look in the scope chain for modules and non-modules alike.
+     */
     fn resolve_one_level_renaming_import(module: @Module,
                                          import_directive: @ImportDirective)
                                       -> ResolveResult<()> {
@@ -3496,10 +3496,10 @@ class Resolver {
         }
     }
 
-    #[doc="
-        If `check_ribs` is true, checks the local definitions first; i.e.
-        doesn't skip straight to the containing module.
-    "]
+    /**
+     * If `check_ribs` is true, checks the local definitions first; i.e.
+     * doesn't skip straight to the containing module.
+     */
     fn resolve_path(path: @path, namespace: Namespace, check_ribs: bool,
                     visitor: ResolveVisitor)
                  -> option<def> {
@@ -3859,7 +3859,7 @@ class Resolver {
     // hit.
     //
 
-    #[doc="A somewhat inefficient routine to print out the name of a module."]
+    /// A somewhat inefficient routine to print out the name of a module.
     fn module_to_str(module: @Module) -> str {
         let atoms = dvec();
         let mut current_module = module;
@@ -3977,7 +3977,7 @@ class Resolver {
     }
 }
 
-#[doc="Entry point to crate resolution."]
+/// Entry point to crate resolution.
 fn resolve_crate(session: session, ast_map: ASTMap, crate: @crate)
               -> { def_map: DefMap, exp_map: ExportMap, impl_map: ImplMap } {
 

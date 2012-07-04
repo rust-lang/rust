@@ -152,18 +152,18 @@ fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
     }
 }
 
-#[doc = "
-Checks that a method from an impl/class conforms to the signature of
-the same method as declared in the iface.
-
-# Parameters
-
-- impl_m: the method in the impl
-- impl_tps: the type params declared on the impl itself (not the method!)
-- if_m: the method in the iface
-- if_substs: the substitutions used on the type of the iface
-- self_ty: the self type of the impl
-"]
+/**
+ * Checks that a method from an impl/class conforms to the signature of
+ * the same method as declared in the iface.
+ *
+ * # Parameters
+ *
+ * - impl_m: the method in the impl
+ * - impl_tps: the type params declared on the impl itself (not the method!)
+ * - if_m: the method in the iface
+ * - if_substs: the substitutions used on the type of the iface
+ * - self_ty: the self type of the impl
+ */
 fn compare_impl_method(tcx: ty::ctxt, sp: span,
                        impl_m: ty::method, impl_tps: uint,
                        if_m: ty::method, if_substs: ty::substs,

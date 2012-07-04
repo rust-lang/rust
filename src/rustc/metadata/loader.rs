@@ -1,8 +1,4 @@
-#[doc = "
-
-Finds crate binaries and loads their metadata
-
-"];
+//! Finds crate binaries and loads their metadata
 
 import syntax::diagnostic::span_handler;
 import syntax::{ast, attr};

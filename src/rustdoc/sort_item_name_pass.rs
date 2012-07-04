@@ -1,4 +1,4 @@
-#[doc = "Sorts items by name"];
+//! Sorts items by name
 
 export mk_pass;
 

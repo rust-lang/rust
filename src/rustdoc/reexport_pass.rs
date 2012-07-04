@@ -1,4 +1,4 @@
-#[doc = "Finds docs for reexported items and duplicates them"];
+//! Finds docs for reexported items and duplicates them
 
 import std::map;
 import std::map::hashmap;

@@ -1,11 +1,9 @@
-#[doc = "
-
-A task-based interface to the uv loop
-
-The I/O task runs in its own single-threaded scheduler.  By using the
-`interact` function you can execute code in a uv callback.
-
-"];
+/*!
+ * A task-based interface to the uv loop
+ *
+ * The I/O task runs in its own single-threaded scheduler.  By using the
+ * `interact` function you can execute code in a uv callback.
+ */
 
 export iotask;
 export spawn_iotask;
@@ -17,9 +15,7 @@ import ptr::addr_of;
 import comm::{port, chan, methods, listen};
 import ll = uv_ll;
 
-#[doc = "
-Used to abstract-away direct interaction with a libuv loop.
-"]
+/// Used to abstract-away direct interaction with a libuv loop.
 enum iotask {
     iotask_({
         async_handle: *ll::uv_async_t,
@@ -52,40 +48,40 @@ fn spawn_iotask(-builder: task::builder) -> iotask {
 }
 
 
-#[doc = "
-Provide a callback to be processed by `iotask`
-
-The primary way to do operations again a running `iotask` that
-doesn't involve creating a uv handle via `safe_handle`
-
-# Warning
-
-This function is the only safe way to interact with _any_ `iotask`.
-Using functions in the `uv::ll` module outside of the `cb` passed into
-this function is _very dangerous_.
-
-# Arguments
-
-* iotask - a uv I/O task that you want to do operations against
-* cb - a function callback to be processed on the running loop's
-thread. The only parameter passed in is an opaque pointer representing the
-running `uv_loop_t*`. In the context of this callback, it is safe to use
-this pointer to do various uv_* API calls contained within the `uv::ll`
-module. It is not safe to send the `loop_ptr` param to this callback out
-via ports/chans.
-"]
+/**
+ * Provide a callback to be processed by `iotask`
+ *
+ * The primary way to do operations again a running `iotask` that
+ * doesn't involve creating a uv handle via `safe_handle`
+ *
+ * # Warning
+ *
+ * This function is the only safe way to interact with _any_ `iotask`.
+ * Using functions in the `uv::ll` module outside of the `cb` passed into
+ * this function is _very dangerous_.
+ *
+ * # Arguments
+ *
+ * * iotask - a uv I/O task that you want to do operations against
+ * * cb - a function callback to be processed on the running loop's
+ * thread. The only parameter passed in is an opaque pointer representing the
+ * running `uv_loop_t*`. In the context of this callback, it is safe to use
+ * this pointer to do various uv_* API calls contained within the `uv::ll`
+ * module. It is not safe to send the `loop_ptr` param to this callback out
+ * via ports/chans.
+ */
 unsafe fn interact(iotask: iotask,
                    -cb: fn~(*c_void)) {
     send_msg(iotask, interaction(cb));
 }
 
-#[doc="
-Shut down the I/O task
-
-Is used to signal to the loop that it should close the internally-held
-async handle and do a sanity check to make sure that all other handles are
-closed, causing a failure otherwise.
-"]
+/**
+ * Shut down the I/O task
+ *
+ * Is used to signal to the loop that it should close the internally-held
+ * async handle and do a sanity check to make sure that all other handles are
+ * closed, causing a failure otherwise.
+ */
 fn exit(iotask: iotask) unsafe {
     send_msg(iotask, teardown_loop);
 }
@@ -98,9 +94,7 @@ enum iotask_msg {
     teardown_loop
 }
 
-#[doc = "
-Run the loop and begin handling messages
-"]
+/// Run the loop and begin handling messages
 fn run_loop(iotask_ch: chan<iotask>) unsafe {
 
     let loop_ptr = ll::loop_new();
@@ -147,7 +141,7 @@ fn send_msg(iotask: iotask,
     ll::async_send(iotask.async_handle);
 }
 
-#[doc ="Dispatch all pending messages"]
+/// Dispatch all pending messages
 extern fn wake_up_cb(async_handle: *ll::uv_async_t,
                     status: int) unsafe {
 

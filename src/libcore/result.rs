@@ -1,22 +1,22 @@
-#[doc = "A type representing either success or failure"];
+//! A type representing either success or failure
 
 import either::either;
 
-#[doc = "The result type"]
+/// The result type
 enum result<T, U> {
-    #[doc = "Contains the successful result value"]
+    /// Contains the successful result value
     ok(T),
-    #[doc = "Contains the error value"]
+    /// Contains the error value
     err(U)
 }
 
-#[doc = "
-Get the value out of a successful result
-
-# Failure
-
-If the result is an error
-"]
+/**
+ * Get the value out of a successful result
+ *
+ * # Failure
+ *
+ * If the result is an error
+ */
 pure fn get<T: copy, U>(res: result<T, U>) -> T {
     alt res {
       ok(t) { t }
@@ -26,13 +26,13 @@ pure fn get<T: copy, U>(res: result<T, U>) -> T {
     }
 }
 
-#[doc = "
-Get the value out of an error result
-
-# Failure
-
-If the result is not an error
-"]
+/**
+ * Get the value out of an error result
+ *
+ * # Failure
+ *
+ * If the result is not an error
+ */
 pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
     alt res {
       err(u) { u }
@@ -42,7 +42,7 @@ pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
     }
 }
 
-#[doc = "Returns true if the result is `ok`"]
+/// Returns true if the result is `ok`
 pure fn is_ok<T, U>(res: result<T, U>) -> bool {
     alt res {
       ok(_) { true }
@@ -50,17 +50,17 @@ pure fn is_ok<T, U>(res: result<T, U>) -> bool {
     }
 }
 
-#[doc = "Returns true if the result is `err`"]
+/// Returns true if the result is `err`
 pure fn is_err<T, U>(res: result<T, U>) -> bool {
     !is_ok(res)
 }
 
-#[doc = "
-Convert to the `either` type
-
-`ok` result variants are converted to `either::right` variants, `err`
-result variants are converted to `either::left`.
-"]
+/**
+ * Convert to the `either` type
+ *
+ * `ok` result variants are converted to `either::right` variants, `err`
+ * result variants are converted to `either::left`.
+ */
 pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> either<T, U> {
     alt res {
       ok(res) { either::right(res) }
@@ -68,19 +68,20 @@ pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> either<T, U> {
     }
 }
 
-#[doc = "
-Call a function based on a previous result
-
-If `res` is `ok` then the value is extracted and passed to `op` whereupon
-`op`s result is returned. if `res` is `err` then it is immediately returned.
-This function can be used to compose the results of two functions.
-
-Example:
-
-    let res = chain(read_file(file)) { |buf|
-        ok(parse_buf(buf))
-    }
-"]
+/**
+ * Call a function based on a previous result
+ *
+ * If `res` is `ok` then the value is extracted and passed to `op` whereupon
+ * `op`s result is returned. if `res` is `err` then it is immediately
+ * returned. This function can be used to compose the results of two
+ * functions.
+ *
+ * Example:
+ *
+ *     let res = chain(read_file(file)) { |buf|
+ *         ok(parse_buf(buf))
+ *     }
+ */
 fn chain<T, U: copy, V: copy>(res: result<T, V>, op: fn(T) -> result<U, V>)
     -> result<U, V> {
     alt res {
@@ -89,14 +90,14 @@ fn chain<T, U: copy, V: copy>(res: result<T, V>, op: fn(T) -> result<U, V>)
     }
 }
 
-#[doc = "
-Call a function based on a previous result
-
-If `res` is `err` then the value is extracted and passed to `op`
-whereupon `op`s result is returned. if `res` is `ok` then it is
-immediately returned.  This function can be used to pass through a
-successful result while handling an error.
-"]
+/**
+ * Call a function based on a previous result
+ *
+ * If `res` is `err` then the value is extracted and passed to `op`
+ * whereupon `op`s result is returned. if `res` is `ok` then it is
+ * immediately returned.  This function can be used to pass through a
+ * successful result while handling an error.
+ */
 fn chain_err<T: copy, U: copy, V: copy>(
     res: result<T, V>,
     op: fn(V) -> result<T, U>)
@@ -107,19 +108,20 @@ fn chain_err<T: copy, U: copy, V: copy>(
     }
 }
 
-#[doc = "
-Call a function based on a previous result
-
-If `res` is `ok` then the value is extracted and passed to `op` whereupon
-`op`s result is returned. if `res` is `err` then it is immediately returned.
-This function can be used to compose the results of two functions.
-
-Example:
-
-    iter(read_file(file)) { |buf|
-        print_buf(buf)
-    }
-"]
+/**
+ * Call a function based on a previous result
+ *
+ * If `res` is `ok` then the value is extracted and passed to `op` whereupon
+ * `op`s result is returned. if `res` is `err` then it is immediately
+ * returned. This function can be used to compose the results of two
+ * functions.
+ *
+ * Example:
+ *
+ *     iter(read_file(file)) { |buf|
+ *         print_buf(buf)
+ *     }
+ */
 fn iter<T, E>(res: result<T, E>, f: fn(T)) {
     alt res {
       ok(t) { f(t) }
@@ -127,14 +129,14 @@ fn iter<T, E>(res: result<T, E>, f: fn(T)) {
     }
 }
 
-#[doc = "
-Call a function based on a previous result
-
-If `res` is `err` then the value is extracted and passed to `op` whereupon
-`op`s result is returned. if `res` is `ok` then it is immediately returned.
-This function can be used to pass through a successful result while handling
-an error.
-"]
+/**
+ * Call a function based on a previous result
+ *
+ * If `res` is `err` then the value is extracted and passed to `op` whereupon
+ * `op`s result is returned. if `res` is `ok` then it is immediately returned.
+ * This function can be used to pass through a successful result while
+ * handling an error.
+ */
 fn iter_err<T, E>(res: result<T, E>, f: fn(E)) {
     alt res {
       ok(_) { }
@@ -142,20 +144,20 @@ fn iter_err<T, E>(res: result<T, E>, f: fn(E)) {
     }
 }
 
-#[doc = "
-Call a function based on a previous result
-
-If `res` is `ok` then the value is extracted and passed to `op` whereupon
-`op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
-immediately returned.  This function can be used to compose the results of two
-functions.
-
-Example:
-
-    let res = map(read_file(file)) { |buf|
-        parse_buf(buf)
-    }
-"]
+/**
+ * Call a function based on a previous result
+ *
+ * If `res` is `ok` then the value is extracted and passed to `op` whereupon
+ * `op`s result is wrapped in `ok` and returned. if `res` is `err` then it is
+ * immediately returned.  This function can be used to compose the results of
+ * two functions.
+ *
+ * Example:
+ *
+ *     let res = map(read_file(file)) { |buf|
+ *         parse_buf(buf)
+ *     }
+ */
 fn map<T, E: copy, U: copy>(res: result<T, E>, op: fn(T) -> U)
   -> result<U, E> {
     alt res {
@@ -164,14 +166,14 @@ fn map<T, E: copy, U: copy>(res: result<T, E>, op: fn(T) -> U)
     }
 }
 
-#[doc = "
-Call a function based on a previous result
-
-If `res` is `err` then the value is extracted and passed to `op` whereupon
-`op`s result is wrapped in an `err` and returned. if `res` is `ok` then it is
-immediately returned.  This function can be used to pass through a successful
-result while handling an error.
-"]
+/**
+ * Call a function based on a previous result
+ *
+ * If `res` is `err` then the value is extracted and passed to `op` whereupon
+ * `op`s result is wrapped in an `err` and returned. if `res` is `ok` then it
+ * is immediately returned.  This function can be used to pass through a
+ * successful result while handling an error.
+ */
 fn map_err<T: copy, E, F: copy>(res: result<T, E>, op: fn(E) -> F)
   -> result<T, F> {
     alt res {
@@ -232,23 +234,23 @@ impl extensions<T:copy, E:copy> for result<T,E> {
     }
 }
 
-#[doc = "
-Maps each element in the vector `ts` using the operation `op`.  Should an
-error occur, no further mappings are performed and the error is returned.
-Should no error occur, a vector containing the result of each map is
-returned.
-
-Here is an example which increments every integer in a vector,
-checking for overflow:
-
-    fn inc_conditionally(x: uint) -> result<uint,str> {
-        if x == uint::max_value { ret err(\"overflow\"); }
-        else { ret ok(x+1u); }
-    }
-    map([1u, 2u, 3u]/~, inc_conditionally).chain {|incd|
-        assert incd == [2u, 3u, 4u]/~;
-    }
-"]
+/**
+ * Maps each element in the vector `ts` using the operation `op`.  Should an
+ * error occur, no further mappings are performed and the error is returned.
+ * Should no error occur, a vector containing the result of each map is
+ * returned.
+ *
+ * Here is an example which increments every integer in a vector,
+ * checking for overflow:
+ *
+ *     fn inc_conditionally(x: uint) -> result<uint,str> {
+ *         if x == uint::max_value { ret err("overflow"); }
+ *         else { ret ok(x+1u); }
+ *     }
+ *     map([1u, 2u, 3u]/~, inc_conditionally).chain {|incd|
+ *         assert incd == [2u, 3u, 4u]/~;
+ *     }
+ */
 fn map_vec<T,U:copy,V:copy>(
     ts: ~[T], op: fn(T) -> result<V,U>) -> result<~[V],U> {
 
@@ -277,13 +279,15 @@ fn map_opt<T,U:copy,V:copy>(
     }
 }
 
-#[doc = "Same as map, but it operates over two parallel vectors.
-
-A precondition is used here to ensure that the vectors are the same
-length.  While we do not often use preconditions in the standard
-library, a precondition is used here because result::t is generally
-used in 'careful' code contexts where it is both appropriate and easy
-to accommodate an error like the vectors being of different lengths."]
+/**
+ * Same as map, but it operates over two parallel vectors.
+ *
+ * A precondition is used here to ensure that the vectors are the same
+ * length.  While we do not often use preconditions in the standard
+ * library, a precondition is used here because result::t is generally
+ * used in 'careful' code contexts where it is both appropriate and easy
+ * to accommodate an error like the vectors being of different lengths.
+ */
 fn map_vec2<S,T,U:copy,V:copy>(ss: ~[S], ts: ~[T],
                                op: fn(S,T) -> result<V,U>)
     : vec::same_length(ss, ts) -> result<~[V],U> {
@@ -302,11 +306,11 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: ~[S], ts: ~[T],
     ret ok(vs);
 }
 
-#[doc = "
-Applies op to the pairwise elements from `ss` and `ts`, aborting on
-error.  This could be implemented using `map2()` but it is more efficient
-on its own as no result vector is built.
-"]
+/**
+ * Applies op to the pairwise elements from `ss` and `ts`, aborting on
+ * error.  This could be implemented using `map2()` but it is more efficient
+ * on its own as no result vector is built.
+ */
 fn iter_vec2<S,T,U:copy>(ss: ~[S], ts: ~[T],
                          op: fn(S,T) -> result<(),U>)
     : vec::same_length(ss, ts)
@@ -324,9 +328,7 @@ fn iter_vec2<S,T,U:copy>(ss: ~[S], ts: ~[T],
     ret ok(());
 }
 
-#[doc="
-Unwraps a result, assuming it is an `ok(T)`
-"]
+/// Unwraps a result, assuming it is an `ok(T)`
 fn unwrap<T, U>(-res: result<T, U>) -> T {
     unsafe {
         let addr = alt res {

@@ -1,4 +1,4 @@
-#[doc = "Build indexes as appropriate for the markdown pass"];
+//! Build indexes as appropriate for the markdown pass
 
 export mk_pass;
 

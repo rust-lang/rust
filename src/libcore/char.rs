@@ -1,4 +1,4 @@
-#[doc = "Utilities for manipulating the char type"];
+//! Utilities for manipulating the char type
 
 /*
     Lu  Uppercase_Letter    an uppercase letter
@@ -46,27 +46,27 @@ import is_XID_start = unicode::derived_property::XID_Start;
 import is_XID_continue = unicode::derived_property::XID_Continue;
 
 
-#[doc = "
-Indicates whether a character is in lower case, defined
-in terms of the Unicode General Category 'Ll'
-"]
+/**
+ * Indicates whether a character is in lower case, defined
+ * in terms of the Unicode General Category 'Ll'
+ */
 pure fn is_lowercase(c: char) -> bool {
     ret unicode::general_category::Ll(c);
 }
 
-#[doc = "
-Indicates whether a character is in upper case, defined
-in terms of the Unicode General Category 'Lu'.
-"]
+/**
+ * Indicates whether a character is in upper case, defined
+ * in terms of the Unicode General Category 'Lu'.
+ */
 pure fn is_uppercase(c: char) -> bool {
     ret unicode::general_category::Lu(c);
 }
 
-#[doc = "
-Indicates whether a character is whitespace, defined in
-terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
-additional 'Cc'-category control codes in the range [0x09, 0x0d]/~
-"]
+/**
+ * Indicates whether a character is whitespace, defined in
+ * terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
+ * additional 'Cc'-category control codes in the range [0x09, 0x0d]
+ */
 pure fn is_whitespace(c: char) -> bool {
     ret ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
@@ -74,11 +74,11 @@ pure fn is_whitespace(c: char) -> bool {
         || unicode::general_category::Zp(c);
 }
 
-#[doc = "
-Indicates whether a character is alphanumeric, defined
-in terms of the Unicode General Categories 'Nd',
-'Nl', 'No' and the Derived Core Property 'Alphabetic'.
-"]
+/**
+ * Indicates whether a character is alphanumeric, defined
+ * in terms of the Unicode General Categories 'Nd',
+ * 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+ */
 pure fn is_alphanumeric(c: char) -> bool {
     ret unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
@@ -86,32 +86,32 @@ pure fn is_alphanumeric(c: char) -> bool {
         unicode::general_category::No(c);
 }
 
-#[doc = "Indicates whether the character is an ASCII character"]
+/// Indicates whether the character is an ASCII character
 pure fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
 
-#[doc = "Indicates whether the character is numeric (Nd, Nl, or No)"]
+/// Indicates whether the character is numeric (Nd, Nl, or No)
 pure fn is_digit(c: char) -> bool {
     ret unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
         unicode::general_category::No(c);
 }
 
-#[doc = "
-Convert a char to the corresponding digit.
-
-# Safety note
-
-This function fails if `c` is not a valid char
-
-# Return value
-
-If `c` is between '0' and '9', the corresponding value
-between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
-'b' or 'B', 11, etc. Returns none if the char does not
-refer to a digit in the given radix.
-"]
+/**
+ * Convert a char to the corresponding digit.
+ *
+ * # Safety note
+ *
+ * This function fails if `c` is not a valid char
+ *
+ * # Return value
+ *
+ * If `c` is between '0' and '9', the corresponding value
+ * between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
+ * 'b' or 'B', 11, etc. Returns none if the char does not
+ * refer to a digit in the given radix.
+ */
 pure fn to_digit(c: char, radix: uint) -> option<uint> {
     let val = alt c {
       '0' to '9' { c as uint - ('0' as uint) }
@@ -123,15 +123,15 @@ pure fn to_digit(c: char, radix: uint) -> option<uint> {
     else { none }
 }
 
-#[doc = "
-Return the hexadecimal unicode escape of a char.
-
-The rules are as follows:
-
-  - chars in [0,0xff]/~ get 2-digit escapes: `\\xNN`
-  - chars in [0x100,0xffff]/~ get 4-digit escapes: `\\uNNNN`
-  - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
-"]
+/**
+ * Return the hexadecimal unicode escape of a char.
+ *
+ * The rules are as follows:
+ *
+ *   - chars in [0,0xff] get 2-digit escapes: `\\xNN`
+ *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
+ *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
+ */
 fn escape_unicode(c: char) -> str {
     let s = u32::to_str(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
@@ -145,18 +145,18 @@ fn escape_unicode(c: char) -> str {
     ret out;
 }
 
-#[doc = "
-Return a 'default' ASCII and C++11-like char-literal escape of a char.
-
-The default is chosen with a bias toward producing literals that are
-legal in a variety of languages, including C++11 and similar C-family
-languages. The exact rules are:
-
-  - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
-  - Single-quote, double-quote and backslash chars are backslash-escaped.
-  - Any other chars in the range [0x20,0x7e]/~ are not escaped.
-  - Any other chars are given hex unicode escapes; see `escape_unicode`.
-"]
+/**
+ * Return a 'default' ASCII and C++11-like char-literal escape of a char.
+ *
+ * The default is chosen with a bias toward producing literals that are
+ * legal in a variety of languages, including C++11 and similar C-family
+ * languages. The exact rules are:
+ *
+ *   - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
+ *   - Single-quote, double-quote and backslash chars are backslash-escaped.
+ *   - Any other chars in the range [0x20,0x7e] are not escaped.
+ *   - Any other chars are given hex unicode escapes; see `escape_unicode`.
+ */
 fn escape_default(c: char) -> str {
     alt c {
       '\t' { "\\t" }
@@ -170,13 +170,13 @@ fn escape_default(c: char) -> str {
     }
 }
 
-#[doc = "
-Compare two chars
-
-# Return value
-
--1 if a < b, 0 if a == b, +1 if a > b
-"]
+/**
+ * Compare two chars
+ *
+ * # Return value
+ *
+ * -1 if a < b, 0 if a == b, +1 if a > b
+ */
 pure fn cmp(a: char, b: char) -> int {
     ret  if b > a { -1 }
     else if b < a { 1 }

@@ -1,20 +1,20 @@
-#[doc = "
-Higher-level interfaces to libc::* functions and operating system services.
-
-In general these take and return rust types, use rust idioms (enums,
-closures, vectors) rather than C idioms, and do more extensive safety
-checks.
-
-This module is not meant to only contain 1:1 mappings to libc entries; any
-os-interface code that is reasonably useful and broadly applicable can go
-here. Including utility routines that merely build on other os code.
-
-We assume the general case is that users do not care, and do not want to
-be made to care, which operating system they are on. While they may want
-to special case various special cases -- and so we will not _hide_ the
-facts of which OS the user is on -- they should be given the opportunity
-to write OS-ignorant code by default.
-"];
+/*!
+ * Higher-level interfaces to libc::* functions and operating system services.
+ *
+ * In general these take and return rust types, use rust idioms (enums,
+ * closures, vectors) rather than C idioms, and do more extensive safety
+ * checks.
+ *
+ * This module is not meant to only contain 1:1 mappings to libc entries; any
+ * os-interface code that is reasonably useful and broadly applicable can go
+ * here. Including utility routines that merely build on other os code.
+ *
+ * We assume the general case is that users do not care, and do not want to
+ * be made to care, which operating system they are on. While they may want
+ * to special case various special cases -- and so we will not _hide_ the
+ * facts of which OS the user is on -- they should be given the opportunity
+ * to write OS-ignorant code by default.
+ */
 
 import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
               mode_t, pid_t, FILE};
@@ -130,7 +130,7 @@ fn setenv(n: str, v: str) {
 }
 
 mod global_env {
-    #[doc = "Internal module for serializing access to getenv/setenv"];
+    //! Internal module for serializing access to getenv/setenv
 
     export getenv;
     export setenv;
@@ -418,19 +418,19 @@ fn self_exe_path() -> option<path> {
 }
 
 
-#[doc = "
-Returns the path to the user's home directory, if known.
-
-On Unix, returns the value of the 'HOME' environment variable if it is set and
-not equal to the empty string.
-
-On Windows, returns the value of the 'HOME' environment variable if it is set
-and not equal to the empty string. Otherwise, returns the value of the
-'USERPROFILE' environment variable if it is set and not equal to the empty
-string.
-
-Otherwise, homedir returns option::none.
-"]
+/**
+ * Returns the path to the user's home directory, if known.
+ *
+ * On Unix, returns the value of the 'HOME' environment variable if it is set
+ * and not equal to the empty string.
+ *
+ * On Windows, returns the value of the 'HOME' environment variable if it is
+ * set and not equal to the empty string. Otherwise, returns the value of the
+ * 'USERPROFILE' environment variable if it is set and not equal to the empty
+ * string.
+ *
+ * Otherwise, homedir returns option::none.
+ */
 fn homedir() -> option<path> {
     ret alt getenv("HOME") {
         some(p) {
@@ -462,7 +462,7 @@ fn homedir() -> option<path> {
     }
 }
 
-#[doc = "Recursively walk a directory structure"]
+/// Recursively walk a directory structure
 fn walk_dir(p: path, f: fn(path) -> bool) {
 
     walk_dir_(p, f);
@@ -491,14 +491,14 @@ fn walk_dir(p: path, f: fn(path) -> bool) {
     }
 }
 
-#[doc = "Indicates whether a path represents a directory"]
+/// Indicates whether a path represents a directory
 fn path_is_dir(p: path) -> bool {
     do str::as_c_str(p) |buf| {
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
-#[doc = "Indicates whether a path exists"]
+/// Indicates whether a path exists
 fn path_exists(p: path) -> bool {
     do str::as_c_str(p) |buf| {
         rustrt::rust_path_exists(buf) != 0 as c_int
@@ -507,13 +507,13 @@ fn path_exists(p: path) -> bool {
 
 // FIXME (#2622): under Windows, we should prepend the current drive letter
 // to paths that start with a slash.
-#[doc = "
-Convert a relative path to an absolute path
-
-If the given path is relative, return it prepended with the current working
-directory. If the given path is already an absolute path, return it
-as is.
-"]
+/**
+ * Convert a relative path to an absolute path
+ *
+ * If the given path is relative, return it prepended with the current working
+ * directory. If the given path is already an absolute path, return it
+ * as is.
+ */
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
@@ -526,7 +526,7 @@ fn make_absolute(p: path) -> path {
 }
 
 
-#[doc = "Creates a directory at the specified path"]
+/// Creates a directory at the specified path
 fn make_dir(p: path, mode: c_int) -> bool {
     ret mkdir(p, mode);
 
@@ -551,7 +551,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
     }
 }
 
-#[doc = "Lists the contents of a directory"]
+/// Lists the contents of a directory
 fn list_dir(p: path) -> ~[str] {
 
     #[cfg(unix)]
@@ -573,11 +573,11 @@ fn list_dir(p: path) -> ~[str] {
     }
 }
 
-#[doc = "
-Lists the contents of a directory
-
-This version prepends each entry with the directory.
-"]
+/**
+ * Lists the contents of a directory
+ *
+ * This version prepends each entry with the directory.
+ */
 fn list_dir_path(p: path) -> ~[str] {
     let mut p = p;
     let pl = str::len(p);
@@ -588,7 +588,7 @@ fn list_dir_path(p: path) -> ~[str] {
     os::list_dir(p).map(|f| p + f)
 }
 
-#[doc = "Removes a directory at the specified path"]
+/// Removes a directory at the specified path
 fn remove_dir(p: path) -> bool {
    ret rmdir(p);
 
@@ -633,7 +633,7 @@ fn change_dir(p: path) -> bool {
     }
 }
 
-#[doc = "Copies a file from one location to another"]
+/// Copies a file from one location to another
 fn copy_file(from: path, to: path) -> bool {
     ret do_copy_file(from, to);
 
@@ -696,7 +696,7 @@ fn copy_file(from: path, to: path) -> bool {
     }
 }
 
-#[doc = "Deletes an existing file"]
+/// Deletes an existing file
 fn remove_file(p: path) -> bool {
     ret unlink(p);
 
@@ -720,19 +720,19 @@ fn remove_file(p: path) -> bool {
     }
 }
 
-#[doc = "Get a string representing the platform-dependent last error"]
+/// Get a string representing the platform-dependent last error
 fn last_os_error() -> str {
     rustrt::last_os_error()
 }
 
-#[doc = "
-Sets the process exit code
-
-Sets the exit code returned by the process if all supervised tasks terminate
-successfully (without failing). If the current root task fails and is
-supervised by the scheduler then any user-specified exit status is ignored and
-the process exits with the default failure status
-"]
+/**
+ * Sets the process exit code
+ *
+ * Sets the exit code returned by the process if all supervised tasks
+ * terminate successfully (without failing). If the current root task fails
+ * and is supervised by the scheduler then any user-specified exit status is
+ * ignored and the process exits with the default failure status
+ */
 fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as libc::intptr_t);
 }

@@ -7,26 +7,26 @@
 #[license = "MIT"];
 #[crate_type = "lib"];
 
-#[doc = "
-The Rust core library provides functionality that is closely tied to the Rust
-built-in types and runtime services, or that is used in nearly every
-non-trivial program.
-
-`core` includes modules corresponding to each of the integer types, each of
-the floating point types, the `bool` type, tuples, characters, strings,
-vectors (`vec`), shared boxes (`box`), and unsafe pointers (`ptr`).
-Additionally, `core` provides very commonly used built-in types and
-operations, concurrency primitives, platform abstractions, I/O, and complete
-bindings to the C standard library.
-
-`core` is linked by default to all crates and the contents imported.
-Implicitly, all crates behave as if they included the following prologue:
-
-    use core;
-    import core::*;
-
-This behavior can be disabled with the `#[no_core]` crate attribute.
-"];
+/*!
+ * The Rust core library provides functionality that is closely tied to the
+ * Rust built-in types and runtime services, or that is used in nearly every
+ * non-trivial program.
+ *
+ * `core` includes modules corresponding to each of the integer types, each of
+ * the floating point types, the `bool` type, tuples, characters, strings,
+ * vectors (`vec`), shared boxes (`box`), and unsafe pointers (`ptr`).
+ * Additionally, `core` provides very commonly used built-in types and
+ * operations, concurrency primitives, platform abstractions, I/O, and
+ * complete bindings to the C standard library.
+ *
+ * `core` is linked by default to all crates and the contents imported.
+ * Implicitly, all crates behave as if they included the following prologue:
+ *
+ *     use core;
+ *     import core::*;
+ *
+ * This behavior can be disabled with the `#[no_core]` crate attribute.
+ */
 
 // Don't link to core. We are core.
 #[no_core];
@@ -58,7 +58,7 @@ export priv;
 
 // Built-in-type support modules
 
-#[doc = "Operations and constants for `int`"]
+/// Operations and constants for `int`
 #[path = "int-template"]
 mod int {
     import inst::{ hash, pow };
@@ -67,35 +67,35 @@ mod int {
     mod inst;
 }
 
-#[doc = "Operations and constants for `i8`"]
+/// Operations and constants for `i8`
 #[path = "int-template"]
 mod i8 {
     #[path = "i8.rs"]
     mod inst;
 }
 
-#[doc = "Operations and constants for `i16`"]
+/// Operations and constants for `i16`
 #[path = "int-template"]
 mod i16 {
     #[path = "i16.rs"]
     mod inst;
 }
 
-#[doc = "Operations and constants for `i32`"]
+/// Operations and constants for `i32`
 #[path = "int-template"]
 mod i32 {
     #[path = "i32.rs"]
     mod inst;
 }
 
-#[doc = "Operations and constants for `i64`"]
+/// Operations and constants for `i64`
 #[path = "int-template"]
 mod i64 {
     #[path = "i64.rs"]
     mod inst;
 }
 
-#[doc = "Operations and constants for `uint`"]
+/// Operations and constants for `uint`
 #[path = "uint-template"]
 mod uint {
     import inst::{
@@ -109,7 +109,7 @@ mod uint {
     mod inst;
 }
 
-#[doc = "Operations and constants for `u8`"]
+/// Operations and constants for `u8`
 #[path = "uint-template"]
 mod u8 {
     import inst::is_ascii;
@@ -119,21 +119,21 @@ mod u8 {
     mod inst;
 }
 
-#[doc = "Operations and constants for `u16`"]
+/// Operations and constants for `u16`
 #[path = "uint-template"]
 mod u16 {
     #[path = "u16.rs"]
     mod inst;
 }
 
-#[doc = "Operations and constants for `u32`"]
+/// Operations and constants for `u32`
 #[path = "uint-template"]
 mod u32 {
     #[path = "u32.rs"]
     mod inst;
 }
 
-#[doc = "Operations and constants for `u64`"]
+/// Operations and constants for `u64`
 #[path = "uint-template"]
 mod u64 {
     #[path = "u64.rs"]

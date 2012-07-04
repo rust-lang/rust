@@ -1,4 +1,4 @@
-#[doc = "A general sorting pass"];
+//! A general sorting pass
 
 import std::sort;
 

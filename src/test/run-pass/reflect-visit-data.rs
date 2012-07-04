@@ -4,14 +4,14 @@
 import intrinsic::ty_visitor;
 import libc::c_void;
 
-#[doc = "High-level interfaces to `intrinsic::visit_ty` reflection system."]
+/// High-level interfaces to `intrinsic::visit_ty` reflection system.
 
-#[doc = "Iface for visitor that wishes to reflect on data."]
+/// Iface for visitor that wishes to reflect on data.
 iface movable_ptr {
     fn move_ptr(adjustment: fn(*c_void) -> *c_void);
 }
 
-#[doc = "Helper function for alignment calculation."]
+/// Helper function for alignment calculation.
 #[inline(always)]
 fn align(size: uint, align: uint) -> uint {
     ((size + align) - 1u) & !(align - 1u)

@@ -1,15 +1,15 @@
-#[doc = "
-A type representing values that may be computed concurrently and
-operations for working with them.
-
-# Example
-
-~~~
-let delayed_fib = future::spawn {|| fib(5000) };
-make_a_sandwich();
-io::println(#fmt(\"fib(5000) = %?\", delayed_fib.get()))
-~~~
-"];
+/*!
+ * A type representing values that may be computed concurrently and
+ * operations for working with them.
+ *
+ * # Example
+ *
+ * ~~~
+ * let delayed_fib = future::spawn {|| fib(5000) };
+ * make_a_sandwich();
+ * io::println(#fmt("fib(5000) = %?", delayed_fib.get()))
+ * ~~~
+ */
 
 import either::either;
 
@@ -22,34 +22,34 @@ export get;
 export with;
 export spawn;
 
-#[doc = "The future type"]
+/// The future type
 enum future<A> = {
     mut v: either<@A, fn@() -> A>
 };
 
-#[doc = "Methods on the `future` type"]
+/// Methods on the `future` type
 impl extensions<A:copy send> for future<A> {
 
     fn get() -> A {
-        #[doc = "Get the value of the future"];
+        //! Get the value of the future
 
         get(self)
     }
 
     fn with<B>(blk: fn(A) -> B) -> B {
-        #[doc = "Work with the value without copying it"];
+        //! Work with the value without copying it
 
         with(self, blk)
     }
 }
 
 fn from_value<A>(+val: A) -> future<A> {
-    #[doc = "
-    Create a future from a value
-
-    The value is immediately available and calling `get` later will
-    not block.
-    "];
+    /*!
+     * Create a future from a value
+     *
+     * The value is immediately available and calling `get` later will
+     * not block.
+     */
 
     future({
         mut v: either::left(@val)
@@ -57,12 +57,12 @@ fn from_value<A>(+val: A) -> future<A> {
 }
 
 fn from_port<A:send>(-port: comm::port<A>) -> future<A> {
-    #[doc = "
-    Create a future from a port
-
-    The first time that the value is requested the task will block
-    waiting for the result to be received on the port.
-    "];
+    /*!
+     * Create a future from a port
+     *
+     * The first time that the value is requested the task will block
+     * waiting for the result to be received on the port.
+     */
 
     do from_fn {
         comm::recv(port)
@@ -70,13 +70,13 @@ fn from_port<A:send>(-port: comm::port<A>) -> future<A> {
 }
 
 fn from_fn<A>(f: fn@() -> A) -> future<A> {
-    #[doc = "
-    Create a future from a function.
-
-    The first time that the value is requested it will be retreived by
-    calling the function.  Note that this function is a local
-    function. It is not spawned into another task.
-    "];
+    /*!
+     * Create a future from a function.
+     *
+     * The first time that the value is requested it will be retreived by
+     * calling the function.  Note that this function is a local
+     * function. It is not spawned into another task.
+     */
 
     future({
         mut v: either::right(f)
@@ -84,12 +84,12 @@ fn from_fn<A>(f: fn@() -> A) -> future<A> {
 }
 
 fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
-    #[doc = "
-    Create a future from a unique closure.
-
-    The closure will be run in a new task and its result used as the
-    value of the future.
-    "];
+    /*!
+     * Create a future from a unique closure.
+     *
+     * The closure will be run in a new task and its result used as the
+     * value of the future.
+     */
 
     let mut po = comm::port();
     let ch = comm::chan(po);
@@ -100,13 +100,13 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
 }
 
 fn get<A:copy>(future: future<A>) -> A {
-    #[doc = "Get the value of the future"];
+    //! Get the value of the future
 
     do with(future) |v| { v }
 }
 
 fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
-    #[doc = "Work with the value without copying it"];
+    //! Work with the value without copying it
 
     let v = alt copy future.v {
       either::left(v) { v }

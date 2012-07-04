@@ -1,4 +1,4 @@
-#[doc = "Random number generation"];
+//! Random number generation
 
 export rng, seed, seeded_rng, weighted, extensions;
 export xorshift, seeded_xorshift;
@@ -14,93 +14,97 @@ extern mod rustrt {
     fn rand_free(c: *rctx);
 }
 
-#[doc = "A random number generator"]
+/// A random number generator
 iface rng {
-    #[doc = "Return the next random integer"]
+    /// Return the next random integer
     fn next() -> u32;
 }
 
-#[doc = "A value with a particular weight compared to other values"]
+/// A value with a particular weight compared to other values
 type weighted<T> = { weight: uint, item: T };
 
-#[doc = "Extension methods for random number generators"]
+/// Extension methods for random number generators
 impl extensions for rng {
 
-    #[doc = "Return a random int"]
+    /// Return a random int
     fn gen_int() -> int {
         self.gen_i64() as int
     }
 
-    #[doc = "Return an int randomly chosen from the range [start, end), \
-             failing if start >= end"]
+    /**
+     * Return an int randomly chosen from the range [start, end),
+     * failing if start >= end
+     */
     fn gen_int_range(start: int, end: int) -> int {
         assert start < end;
         start + int::abs(self.gen_int() % (end - start))
     }
 
-    #[doc = "Return a random i8"]
+    /// Return a random i8
     fn gen_i8() -> i8 {
         self.next() as i8
     }
 
-    #[doc = "Return a random i16"]
+    /// Return a random i16
     fn gen_i16() -> i16 {
         self.next() as i16
     }
 
-    #[doc = "Return a random i32"]
+    /// Return a random i32
     fn gen_i32() -> i32 {
         self.next() as i32
     }
 
-    #[doc = "Return a random i64"]
+    /// Return a random i64
     fn gen_i64() -> i64 {
         (self.next() as i64 << 32) | self.next() as i64
     }
 
-    #[doc = "Return a random uint"]
+    /// Return a random uint
     fn gen_uint() -> uint {
         self.gen_u64() as uint
     }
 
-    #[doc = "Return a uint randomly chosen from the range [start, end), \
-             failing if start >= end"]
+    /**
+     * Return a uint randomly chosen from the range [start, end),
+     * failing if start >= end
+     */
     fn gen_uint_range(start: uint, end: uint) -> uint {
         assert start < end;
         start + (self.gen_uint() % (end - start))
     }
 
-    #[doc = "Return a random u8"]
+    /// Return a random u8
     fn gen_u8() -> u8 {
         self.next() as u8
     }
 
-    #[doc = "Return a random u16"]
+    /// Return a random u16
     fn gen_u16() -> u16 {
         self.next() as u16
     }
 
-    #[doc = "Return a random u32"]
+    /// Return a random u32
     fn gen_u32() -> u32 {
         self.next()
     }
 
-    #[doc = "Return a random u64"]
+    /// Return a random u64
     fn gen_u64() -> u64 {
         (self.next() as u64 << 32) | self.next() as u64
     }
 
-    #[doc = "Return a random float"]
+    /// Return a random float
     fn gen_float() -> float {
         self.gen_f64() as float
     }
 
-    #[doc = "Return a random f32"]
+    /// Return a random f32
     fn gen_f32() -> f32 {
         self.gen_f64() as f32
     }
 
-    #[doc = "Return a random f64"]
+    /// Return a random f64
     fn gen_f64() -> f64 {
         let u1 = self.next() as f64;
         let u2 = self.next() as f64;
@@ -109,24 +113,25 @@ impl extensions for rng {
         ret ((u1 / scale + u2) / scale + u3) / scale;
     }
 
-    #[doc = "Return a random char"]
+    /// Return a random char
     fn gen_char() -> char {
         self.next() as char
     }
 
-    #[doc = "Return a char randomly chosen from chars, failing if chars is \
-             empty"]
+    /**
+     * Return a char randomly chosen from chars, failing if chars is empty
+     */
     fn gen_char_from(chars: str) -> char {
         assert !chars.is_empty();
         self.choose(str::chars(chars))
     }
 
-    #[doc = "Return a random bool"]
+    /// Return a random bool
     fn gen_bool() -> bool {
         self.next() & 1u32 == 1u32
     }
 
-    #[doc = "Return a bool with a 1 in n chance of true"]
+    /// Return a bool with a 1 in n chance of true
     fn gen_weighted_bool(n: uint) -> bool {
         if n == 0u {
             true
@@ -135,8 +140,9 @@ impl extensions for rng {
         }
     }
 
-    #[doc = "Return a random string of the specified length composed of A-Z, \
-             a-z, 0-9"]
+    /**
+     * Return a random string of the specified length composed of A-Z,a-z,0-9
+     */
     fn gen_str(len: uint) -> str {
         let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
                       "abcdefghijklmnopqrstuvwxyz" +
@@ -150,19 +156,19 @@ impl extensions for rng {
         s
     }
 
-    #[doc = "Return a random byte string of the specified length"]
+    /// Return a random byte string of the specified length
     fn gen_bytes(len: uint) -> ~[u8] {
         do vec::from_fn(len) |_i| {
             self.gen_u8()
         }
     }
 
-    #[doc = "Choose an item randomly, failing if values is empty"]
+    /// Choose an item randomly, failing if values is empty
     fn choose<T:copy>(values: ~[T]) -> T {
         self.choose_option(values).get()
     }
 
-    #[doc = "Choose some(item) randomly, returning none if values is empty"]
+    /// Choose some(item) randomly, returning none if values is empty
     fn choose_option<T:copy>(values: ~[T]) -> option<T> {
         if values.is_empty() {
             none
@@ -171,14 +177,18 @@ impl extensions for rng {
         }
     }
 
-    #[doc = "Choose an item respecting the relative weights, failing if \
-             the sum of the weights is 0"]
+    /**
+     * Choose an item respecting the relative weights, failing if the sum of
+     * the weights is 0
+     */
     fn choose_weighted<T: copy>(v : ~[weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
-    #[doc = "Choose some(item) respecting the relative weights, returning \
-             none if the sum of the weights is 0"]
+    /**
+     * Choose some(item) respecting the relative weights, returning none if
+     * the sum of the weights is 0
+     */
     fn choose_weighted_option<T:copy>(v: ~[weighted<T>]) -> option<T> {
         let mut total = 0u;
         for v.each |item| {
@@ -198,8 +208,10 @@ impl extensions for rng {
         unreachable();
     }
 
-    #[doc = "Return a vec containing copies of the items, in order, where \
-             the weight of the item determines how many copies there are"]
+    /**
+     * Return a vec containing copies of the items, in order, where
+     * the weight of the item determines how many copies there are
+     */
     fn weighted_vec<T:copy>(v: ~[weighted<T>]) -> ~[T] {
         let mut r = ~[];
         for v.each |item| {
@@ -210,14 +222,14 @@ impl extensions for rng {
         r
     }
 
-    #[doc = "Shuffle a vec"]
+    /// Shuffle a vec
     fn shuffle<T:copy>(values: ~[T]) -> ~[T] {
         let mut m = vec::to_mut(values);
         self.shuffle_mut(m);
         ret vec::from_mut(m);
     }
 
-    #[doc = "Shuffle a mutable vec in place"]
+    /// Shuffle a mutable vec in place
     fn shuffle_mut<T>(&&values: ~[mut T]) {
         let mut i = values.len();
         while i >= 2u {
@@ -240,20 +252,22 @@ impl of rng for @rand_res {
     fn next() -> u32 { ret rustrt::rand_next((*self).c); }
 }
 
-#[doc = "Create a new random seed for seeded_rng"]
+/// Create a new random seed for seeded_rng
 fn seed() -> ~[u8] {
     rustrt::rand_seed()
 }
 
-#[doc = "Create a random number generator with a system specified seed"]
+/// Create a random number generator with a system specified seed
 fn rng() -> rng {
     @rand_res(rustrt::rand_new()) as rng
 }
 
-#[doc = "Create a random number generator using the specified seed. A \
-         generator constructed with a given seed will generate the same \
-         sequence of values as all other generators constructed with the \
-         same seed. The seed may be any length."]
+/**
+ * Create a random number generator using the specified seed. A generator
+ * constructed with a given seed will generate the same sequence of values as
+ * all other generators constructed with the same seed. The seed may be any
+ * length.
+ */
 fn seeded_rng(seed: ~[u8]) -> rng {
     @rand_res(rustrt::rand_new_seeded(seed)) as rng
 }

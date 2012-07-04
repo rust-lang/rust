@@ -1,4 +1,4 @@
-#[doc = "Escapes text sequences"];
+//! Escapes text sequences
 
 export mk_pass;
 

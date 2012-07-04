@@ -1,48 +1,46 @@
-#[doc = "
-
-Conversion from AST representation of types to the ty.rs
-representation.  The main routine here is `ast_ty_to_ty()`: each use
-is parameterized by an instance of `ast_conv` and a `region_scope`.
-
-The parameterization of `ast_ty_to_ty()` is because it behaves
-somewhat differently during the collect and check phases, particularly
-with respect to looking up the types of top-level items.  In the
-collect phase, the crate context is used as the `ast_conv` instance;
-in this phase, the `get_item_ty()` function triggers a recursive call
-to `ty_of_item()` (note that `ast_ty_to_ty()` will detect recursive
-types and report an error).  In the check phase, when the @fn_ctxt is
-used as the `ast_conv`, `get_item_ty()` just looks up the item type in
-`tcx.tcache`.
-
-The `region_scope` interface controls how region references are
-handled.  It has two methods which are used to resolve anonymous
-region references (e.g., `&T`) and named region references (e.g.,
-`&a.T`).  There are numerous region scopes that can be used, but most
-commonly you want either `empty_rscope`, which permits only the static
-region, or `type_rscope`, which permits the self region if the type in
-question is parameterized by a region.
-
-Unlike the `ast_conv` iface, the region scope can change as we descend
-the type.  This is to accommodate the fact that (a) fn types are binding
-scopes and (b) the default region may change.  To understand case (a),
-consider something like:
-
-  type foo = { x: &a.int, y: fn(&a.int) }
-
-The type of `x` is an error because there is no region `a` in scope.
-In the type of `y`, however, region `a` is considered a bound region
-as it does not already appear in scope.
-
-Case (b) says that if you have a type:
-  type foo/& = ...;
-  type bar = fn(&foo, &a.foo)
-The fully expanded version of type bar is:
-  type bar = fn(&foo/&, &a.foo/&a)
-Note that the self region for the `foo` defaulted to `&` in the first
-case but `&a` in the second.  Basically, defaults that appear inside
-an rptr (`&r.T`) use the region `r` that appears in the rptr.
-
-"];
+/*!
+ * Conversion from AST representation of types to the ty.rs
+ * representation.  The main routine here is `ast_ty_to_ty()`: each use
+ * is parameterized by an instance of `ast_conv` and a `region_scope`.
+ *
+ * The parameterization of `ast_ty_to_ty()` is because it behaves
+ * somewhat differently during the collect and check phases, particularly
+ * with respect to looking up the types of top-level items.  In the
+ * collect phase, the crate context is used as the `ast_conv` instance;
+ * in this phase, the `get_item_ty()` function triggers a recursive call
+ * to `ty_of_item()` (note that `ast_ty_to_ty()` will detect recursive
+ * types and report an error).  In the check phase, when the @fn_ctxt is
+ * used as the `ast_conv`, `get_item_ty()` just looks up the item type in
+ * `tcx.tcache`.
+ *
+ * The `region_scope` interface controls how region references are
+ * handled.  It has two methods which are used to resolve anonymous
+ * region references (e.g., `&T`) and named region references (e.g.,
+ * `&a.T`).  There are numerous region scopes that can be used, but most
+ * commonly you want either `empty_rscope`, which permits only the static
+ * region, or `type_rscope`, which permits the self region if the type in
+ * question is parameterized by a region.
+ *
+ * Unlike the `ast_conv` iface, the region scope can change as we descend
+ * the type.  This is to accommodate the fact that (a) fn types are binding
+ * scopes and (b) the default region may change.  To understand case (a),
+ * consider something like:
+ *
+ *   type foo = { x: &a.int, y: fn(&a.int) }
+ *
+ * The type of `x` is an error because there is no region `a` in scope.
+ * In the type of `y`, however, region `a` is considered a bound region
+ * as it does not already appear in scope.
+ *
+ * Case (b) says that if you have a type:
+ *   type foo/& = ...;
+ *   type bar = fn(&foo, &a.foo)
+ * The fully expanded version of type bar is:
+ *   type bar = fn(&foo/&, &a.foo/&a)
+ * Note that the self region for the `foo` defaulted to `&` in the first
+ * case but `&a` in the second.  Basically, defaults that appear inside
+ * an rptr (`&r.T`) use the region `r` that appears in the rptr.
+ */
 
 import check::fn_ctxt;
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};

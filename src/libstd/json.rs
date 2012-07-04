@@ -1,7 +1,7 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
 
-#[doc = "json serialization"];
+//! json serialization
 
 import result::{result, ok, err};
 import io;
@@ -26,7 +26,7 @@ export list;
 export dict;
 export null;
 
-#[doc = "Represents a json value"]
+/// Represents a json value
 enum json {
     num(float),
     string(@str),
@@ -42,7 +42,7 @@ type error = {
     msg: @str,
 };
 
-#[doc = "Serializes a json value into a io::writer"]
+/// Serializes a json value into a io::writer
 fn to_writer(wr: io::writer, j: json) {
     alt j {
       num(n) { wr.write_str(float::to_str(n, 6u)); }
@@ -109,7 +109,7 @@ fn escape_str(s: str) -> str {
     escaped
 }
 
-#[doc = "Serializes a json value into a string"]
+/// Serializes a json value into a string
 fn to_str(j: json) -> str {
     io::with_str_writer(|wr| to_writer(wr, j))
 }
@@ -461,7 +461,7 @@ impl parser for parser {
     }
 }
 
-#[doc = "Deserializes a json value from an io::reader"]
+/// Deserializes a json value from an io::reader
 fn from_reader(rdr: io::reader) -> result<json, error> {
     let parser = {
         rdr: rdr,
@@ -473,12 +473,12 @@ fn from_reader(rdr: io::reader) -> result<json, error> {
     parser.parse()
 }
 
-#[doc = "Deserializes a json value from a string"]
+/// Deserializes a json value from a string
 fn from_str(s: str) -> result<json, error> {
     io::with_str_reader(s, from_reader)
 }
 
-#[doc = "Test if two json values are equal"]
+/// Test if two json values are equal
 fn eq(value0: json, value1: json) -> bool {
     alt (value0, value1) {
       (num(f0), num(f1)) { f0 == f1 }

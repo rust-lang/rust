@@ -82,7 +82,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
     ret result;
 }
 
-#[doc="Iterates over all the paths in the given crate."]
+/// Iterates over all the paths in the given crate.
 fn each_path(cstore: cstore::cstore, cnum: ast::crate_num,
              f: fn(decoder::path_entry) -> bool) {
     let crate_data = cstore::get_crate_data(cstore, cnum);

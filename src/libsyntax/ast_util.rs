@@ -365,7 +365,7 @@ fn is_self(d: ast::def) -> bool {
   }
 }
 
-#[doc = "Maps a binary operator to its precedence"]
+/// Maps a binary operator to its precedence
 fn operator_prec(op: ast::binop) -> uint {
   alt op {
       mul | div | rem   { 12u }

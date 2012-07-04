@@ -1,4 +1,4 @@
-#[doc="An interface for numbers."]
+/// An interface for numbers.
 
 iface num {
     // FIXME: Cross-crate overloading doesn't work yet. (#2615)

@@ -1,16 +1,16 @@
-#[doc ="
-An implementation of the SHA-1 cryptographic hash.
-
-First create a `sha1` object using the `sha1` constructor, then
-feed it input using the `input` or `input_str` methods, which may be
-called any number of times.
-
-After the entire input has been fed to the hash read the result using
-the `result` or `result_str` methods.
-
-The `sha1` object may be reused to create multiple hashes by calling
-the `reset` method.
-"];
+/*!
+ * An implementation of the SHA-1 cryptographic hash.
+ *
+ * First create a `sha1` object using the `sha1` constructor, then
+ * feed it input using the `input` or `input_str` methods, which may be
+ * called any number of times.
+ *
+ * After the entire input has been fed to the hash read the result using
+ * the `result` or `result_str` methods.
+ *
+ * The `sha1` object may be reused to create multiple hashes by calling
+ * the `reset` method.
+ */
 
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference
@@ -19,23 +19,23 @@ the `reset` method.
  */
 export sha1;
 
-#[doc = "The SHA-1 interface"]
+/// The SHA-1 interface
 iface sha1 {
-    #[doc = "Provide message input as bytes"]
+    /// Provide message input as bytes
     fn input(~[u8]);
-    #[doc = "Provide message input as string"]
+    /// Provide message input as string
     fn input_str(str);
-    #[doc = "
-    Read the digest as a vector of 20 bytes. After calling this no further
-    input may be provided until reset is called.
-    "]
+    /**
+     * Read the digest as a vector of 20 bytes. After calling this no further
+     * input may be provided until reset is called.
+     */
     fn result() -> ~[u8];
-    #[doc = "
-    Read the digest as a hex string. After calling this no further
-    input may be provided until reset is called.
-    "]
+    /**
+     * Read the digest as a hex string. After calling this no further
+     * input may be provided until reset is called.
+     */
     fn result_str() -> str;
-    #[doc = "Reset the SHA-1 state for reuse"]
+    /// Reset the SHA-1 state for reuse
     fn reset();
 }
 
@@ -49,7 +49,7 @@ const k2: u32 = 0x8F1BBCDCu32;
 const k3: u32 = 0xCA62C1D6u32;
 
 
-#[doc = "Construct a `sha` object"]
+/// Construct a `sha` object
 fn sha1() -> sha1 {
     type sha1state =
         {h: ~[mut u32],

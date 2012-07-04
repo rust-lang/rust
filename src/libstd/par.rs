@@ -8,18 +8,22 @@ import core::vec::extensions;
 
 export map, mapi, alli, any, mapi_factory;
 
-#[doc="The maximum number of tasks this module will spawn for a single
-operation."]
+/**
+ * The maximum number of tasks this module will spawn for a single
+ * operation.
+ */
 const max_tasks : uint = 32u;
 
-#[doc="The minimum number of elements each task will process."]
+/// The minimum number of elements each task will process.
 const min_granularity : uint = 1024u;
 
-#[doc="An internal helper to map a function over a large vector and
-return the intermediate results.
-
-This is used to build most of the other parallel vector functions,
-like map or alli."]
+/**
+ * An internal helper to map a function over a large vector and
+ * return the intermediate results.
+ *
+ * This is used to build most of the other parallel vector functions,
+ * like map or alli.
+ */
 fn map_slices<A: copy send, B: copy send>(
     xs: ~[A],
     f: fn() -> fn~(uint, v: &[A]) -> B)
@@ -75,7 +79,7 @@ fn map_slices<A: copy send, B: copy send>(
     }
 }
 
-#[doc="A parallel version of map."]
+/// A parallel version of map.
 fn map<A: copy send, B: copy send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
@@ -84,7 +88,7 @@ fn map<A: copy send, B: copy send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
     }))
 }
 
-#[doc="A parallel version of mapi."]
+/// A parallel version of mapi.
 fn mapi<A: copy send, B: copy send>(xs: ~[A],
                                     f: fn~(uint, A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
@@ -100,10 +104,12 @@ fn mapi<A: copy send, B: copy send>(xs: ~[A],
     r
 }
 
-#[doc="A parallel version of mapi.
-
-In this case, f is a function that creates functions to run over the
-inner elements. This is to skirt the need for copy constructors."]
+/**
+ * A parallel version of mapi.
+ *
+ * In this case, f is a function that creates functions to run over the
+ * inner elements. This is to skirt the need for copy constructors.
+ */
 fn mapi_factory<A: copy send, B: copy send>(
     xs: ~[A], f: fn() -> fn~(uint, A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
@@ -120,7 +126,7 @@ fn mapi_factory<A: copy send, B: copy send>(
     r
 }
 
-#[doc="Returns true if the function holds for all elements in the vector."]
+/// Returns true if the function holds for all elements in the vector.
 fn alli<A: copy send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
     do vec::all(map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> bool {
@@ -131,7 +137,7 @@ fn alli<A: copy send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
     })) |x| { x }
 }
 
-#[doc="Returns true if the function holds for any elements in the vector."]
+/// Returns true if the function holds for any elements in the vector.
 fn any<A: copy send>(xs: ~[A], f: fn~(A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         fn~(_base : uint, slice: &[A], copy f) -> bool {

@@ -6,17 +6,19 @@ import token::*;
 import token::token;
 import ast::*;
 
-#[doc = "Unary operators have higher precedence than binary"]
+/// Unary operators have higher precedence than binary
 const unop_prec: uint = 100u;
 
-#[doc = "
-Precedence of the `as` operator, which is a binary operator
-but is not represented in the precedence table.
-"]
+/**
+ * Precedence of the `as` operator, which is a binary operator
+ * but is not represented in the precedence table.
+ */
 const as_prec: uint = 11u;
 
-#[doc = "Maps a token to a record specifying the corresponding binary
-         operator and its precedence"]
+/**
+ * Maps a token to a record specifying the corresponding binary
+ * operator and its precedence
+ */
 fn token_to_binop(tok: token) -> option<ast::binop> {
   alt tok {
       BINOP(STAR)    { some(mul) }

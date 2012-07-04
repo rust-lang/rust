@@ -1057,7 +1057,7 @@ class parser {
     }
 
     fn parse_token_tree() -> token_tree {
-        #[doc="what's the opposite delimiter?"]
+        /// what's the opposite delimiter?
         fn flip(&t: token::token) -> token::token {
             alt t {
               token::LPAREN { token::RPAREN }

@@ -1,67 +1,66 @@
-#[doc = "
-Simple getopt alternative.
-
-Construct a vector of options, either by using reqopt, optopt, and optflag or
-by building them from components yourself, and pass them to getopts, along
-with a vector of actual arguments (not including argv[0]). You'll either get a
-failure code back, or a match. You'll have to verify whether the amount of
-'free' arguments in the match is what you expect. Use opt_* accessors to get
-argument values out of the match object.
-
-Single-character options are expected to appear on the command line with a
-single preceding dash; multiple-character options are expected to be
-proceeded by two dashes. Options that expect an argument accept their argument
-following either a space or an equals sign.
-
-# Example
-
-The following example shows simple command line parsing for an application
-that requires an input file to be specified, accepts an optional output file
-name following -o, and accepts both -h and --help as optional flags.
-
-    use std;
-    import std::getopts::{optopt,optflag,getopts,opt_present,opt_maybe_str,
-        fail_str};
-
-    fn do_work(in: str, out: option<str>) {
-        // ...
-    }
-
-    fn print_usage(program: str) {
-        io::println(\"Usage: \" + program + \" [options]/~\");
-        io::println(\"-o\t\tOutput\");
-        io::println(\"-h --help\tUsage\");
-    }
-
-    fn main(args: [str]/~) {
-        check vec::is_not_empty(args);
-
-        let program : str = vec::head(args);
-
-        let opts = [
-            optopt(\"o\"),
-            optflag(\"h\"),
-            optflag(\"help\")
-        ]/~;
-        let match = alt getopts(vec::tail(args), opts) {
-            result::ok(m) { m }
-            result::err(f) { fail fail_str(f) }
-        };
-        if opt_present(match, \"h\") || opt_present(match, \"help\") {
-            print_usage(program);
-            ret;
-        }
-        let output = opt_maybe_str(match, \"o\");
-        let input = if vec::is_not_empty(match.free) {
-            match.free[0]
-        } else {
-            print_usage(program);
-            ret;
-        };
-        do_work(input, output);
-    }
-
-"];
+/*!
+ * Simple getopt alternative.
+ *
+ * Construct a vector of options, either by using reqopt, optopt, and optflag
+ * or by building them from components yourself, and pass them to getopts,
+ * along with a vector of actual arguments (not including argv[0]). You'll
+ * either get a failure code back, or a match. You'll have to verify whether
+ * the amount of 'free' arguments in the match is what you expect. Use opt_*
+ * accessors to get argument values out of the match object.
+ *
+ * Single-character options are expected to appear on the command line with a
+ * single preceding dash; multiple-character options are expected to be
+ * proceeded by two dashes. Options that expect an argument accept their
+ * argument following either a space or an equals sign.
+ *
+ * # Example
+ *
+ * The following example shows simple command line parsing for an application
+ * that requires an input file to be specified, accepts an optional output
+ * file name following -o, and accepts both -h and --help as optional flags.
+ *
+ *     use std;
+ *     import std::getopts::{optopt,optflag,getopts,opt_present,opt_maybe_str,
+ *         fail_str};
+ *
+ *     fn do_work(in: str, out: option<str>) {
+ *         // ...
+ *     }
+ *
+ *     fn print_usage(program: str) {
+ *         io::println("Usage: " + program + " [options]/~");
+ *         io::println("-o\t\tOutput");
+ *         io::println("-h --help\tUsage");
+ *     }
+ *
+ *     fn main(args: [str]/~) {
+ *         check vec::is_not_empty(args);
+ *
+ *         let program : str = vec::head(args);
+ *
+ *         let opts = [
+ *             optopt("o"),
+ *             optflag("h"),
+ *             optflag("help")
+ *         ]/~;
+ *         let match = alt getopts(vec::tail(args), opts) {
+ *             result::ok(m) { m }
+ *             result::err(f) { fail fail_str(f) }
+ *         };
+ *         if opt_present(match, "h") || opt_present(match, "help") {
+ *             print_usage(program);
+ *             ret;
+ *         }
+ *         let output = opt_maybe_str(match, "o");
+ *         let input = if vec::is_not_empty(match.free) {
+ *             match.free[0]
+ *         } else {
+ *             print_usage(program);
+ *             ret;
+ *         };
+ *         do_work(input, output);
+ *     }
+ */
 
 import core::result::{err, ok};
 import core::option;
@@ -91,7 +90,7 @@ enum hasarg { yes, no, maybe, }
 
 enum occur { req, optional, multi, }
 
-#[doc = "A description of a possible option"]
+/// A description of a possible option
 type opt = {name: name, hasarg: hasarg, occur: occur};
 
 fn mkname(nm: str) -> name {
@@ -100,40 +99,40 @@ fn mkname(nm: str) -> name {
         } else { long(nm) };
 }
 
-#[doc = "Create an option that is required and takes an argument"]
+/// Create an option that is required and takes an argument
 fn reqopt(name: str) -> opt {
     ret {name: mkname(name), hasarg: yes, occur: req};
 }
 
-#[doc = "Create an option that is optional and takes an argument"]
+/// Create an option that is optional and takes an argument
 fn optopt(name: str) -> opt {
     ret {name: mkname(name), hasarg: yes, occur: optional};
 }
 
-#[doc = "Create an option that is optional and does not take an argument"]
+/// Create an option that is optional and does not take an argument
 fn optflag(name: str) -> opt {
     ret {name: mkname(name), hasarg: no, occur: optional};
 }
 
-#[doc = "Create an option that is optional and takes an optional argument"]
+/// Create an option that is optional and takes an optional argument
 fn optflagopt(name: str) -> opt {
     ret {name: mkname(name), hasarg: maybe, occur: optional};
 }
 
-#[doc = "
-Create an option that is optional, takes an argument, and may occur
-multiple times
-"]
+/**
+ * Create an option that is optional, takes an argument, and may occur
+ * multiple times
+ */
 fn optmulti(name: str) -> opt {
     ret {name: mkname(name), hasarg: yes, occur: multi};
 }
 
 enum optval { val(str), given, }
 
-#[doc = "
-The result of checking command line arguments. Contains a vector
-of matches and a vector of free strings.
-"]
+/**
+ * The result of checking command line arguments. Contains a vector
+ * of matches and a vector of free strings.
+ */
 type match = {opts: ~[opt], vals: ~[~[optval]], free: ~[str]};
 
 fn is_arg(arg: str) -> bool {
@@ -148,10 +147,10 @@ fn find_opt(opts: ~[opt], nm: name) -> option<uint> {
     vec::position(opts, |opt| opt.name == nm)
 }
 
-#[doc = "
-The type returned when the command line does not conform to the
-expected format. Pass this value to <fail_str> to get an error message.
-"]
+/**
+ * The type returned when the command line does not conform to the
+ * expected format. Pass this value to <fail_str> to get an error message.
+ */
 enum fail_ {
     argument_missing(str),
     unrecognized_option(str),
@@ -160,7 +159,7 @@ enum fail_ {
     unexpected_argument(str),
 }
 
-#[doc = "Convert a `fail_` enum into an error string"]
+/// Convert a `fail_` enum into an error string
 fn fail_str(f: fail_) -> str {
     ret alt f {
           argument_missing(nm) { "Argument to option '" + nm + "' missing." }
@@ -175,19 +174,19 @@ fn fail_str(f: fail_) -> str {
         };
 }
 
-#[doc = "
-The result of parsing a command line with a set of options
-(result::t<match, fail_>)
-"]
+/**
+ * The result of parsing a command line with a set of options
+ * (result::t<match, fail_>)
+ */
 type result = result::result<match, fail_>;
 
-#[doc = "
-Parse command line arguments according to the provided options
-
-On success returns `ok(opt)`. Use functions such as `opt_present` `opt_str`,
-etc. to interrogate results.  Returns `err(fail_)` on failure. Use <fail_str>
-to get an error message.
-"]
+/**
+ * Parse command line arguments according to the provided options
+ *
+ * On success returns `ok(opt)`. Use functions such as `opt_present`
+ * `opt_str`, etc. to interrogate results.  Returns `err(fail_)` on failure.
+ * Use <fail_str> to get an error message.
+ */
 fn getopts(args: ~[str], opts: ~[opt]) -> result unsafe {
     let n_opts = vec::len::<opt>(opts);
     fn f(_x: uint) -> ~[optval] { ret ~[]; }
@@ -319,12 +318,12 @@ fn opt_vals(m: match, nm: str) -> ~[optval] {
 
 fn opt_val(m: match, nm: str) -> optval { ret opt_vals(m, nm)[0]; }
 
-#[doc = "Returns true if an option was matched"]
+/// Returns true if an option was matched
 fn opt_present(m: match, nm: str) -> bool {
     ret vec::len::<optval>(opt_vals(m, nm)) > 0u;
 }
 
-#[doc = "Returns true if any of several options were matched"]
+/// Returns true if any of several options were matched
 fn opts_present(m: match, names: ~[str]) -> bool {
     for vec::each(names) |nm| {
         alt find_opt(m.opts, mkname(nm)) {
@@ -336,21 +335,22 @@ fn opts_present(m: match, names: ~[str]) -> bool {
 }
 
 
-#[doc = "
-Returns the string argument supplied to a matching option
-
-Fails if the option was not matched or if the match did not take an argument
-"]
+/**
+ * Returns the string argument supplied to a matching option
+ *
+ * Fails if the option was not matched or if the match did not take an
+ * argument
+ */
 fn opt_str(m: match, nm: str) -> str {
     ret alt opt_val(m, nm) { val(s) { s } _ { fail } };
 }
 
-#[doc = "
-Returns the string argument supplied to one of several matching options
-
-Fails if the no option was provided from the given list, or if the no such
-option took an argument
-"]
+/**
+ * Returns the string argument supplied to one of several matching options
+ *
+ * Fails if the no option was provided from the given list, or if the no such
+ * option took an argument
+ */
 fn opts_str(m: match, names: ~[str]) -> str {
     for vec::each(names) |nm| {
         alt opt_val(m, nm) {
@@ -362,11 +362,12 @@ fn opts_str(m: match, names: ~[str]) -> str {
 }
 
 
-#[doc = "
-Returns a vector of the arguments provided to all matches of the given option.
-
-Used when an option accepts multiple values.
-"]
+/**
+ * Returns a vector of the arguments provided to all matches of the given
+ * option.
+ *
+ * Used when an option accepts multiple values.
+ */
 fn opt_strs(m: match, nm: str) -> ~[str] {
     let mut acc: ~[str] = ~[];
     for vec::each(opt_vals(m, nm)) |v| {
@@ -375,9 +376,7 @@ fn opt_strs(m: match, nm: str) -> ~[str] {
     ret acc;
 }
 
-#[doc = "
-Returns the string argument supplied to a matching option or none
-"]
+/// Returns the string argument supplied to a matching option or none
 fn opt_maybe_str(m: match, nm: str) -> option<str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { ret none::<str>; }
@@ -385,13 +384,13 @@ fn opt_maybe_str(m: match, nm: str) -> option<str> {
 }
 
 
-#[doc = "
-Returns the matching string, a default, or none
-
-Returns none if the option was not present, `def` if the option was
-present but no argument was provided, and the argument if the option was
-present and an argument was provided.
-"]
+/**
+ * Returns the matching string, a default, or none
+ *
+ * Returns none if the option was not present, `def` if the option was
+ * present but no argument was provided, and the argument if the option was
+ * present and an argument was provided.
+ */
 fn opt_default(m: match, nm: str, def: str) -> option<str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { ret none::<str>; }

@@ -1,6 +1,4 @@
-#[doc="
-High-level interface to libuv's TCP functionality
-"];
+//! High-level interface to libuv's TCP functionality
 
 import ip = net_ip;
 import uv::iotask;
@@ -34,13 +32,13 @@ extern mod rustrt {
     fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
 }
 
-#[doc="
-Encapsulates an open TCP/IP connection through libuv
-
-`tcp_socket` is non-copyable/sendable and automagically handles closing the
-underlying libuv data structures when it goes out of scope. This is the
-data structure that is used for read/write operations over a TCP stream.
-"]
+/**
+ * Encapsulates an open TCP/IP connection through libuv
+ *
+ * `tcp_socket` is non-copyable/sendable and automagically handles closing the
+ * underlying libuv data structures when it goes out of scope. This is the
+ * data structure that is used for read/write operations over a TCP stream.
+ */
 class tcp_socket {
   let socket_data: @tcp_socket_data;
   new(socket_data: @tcp_socket_data) { self.socket_data = socket_data; }
@@ -51,84 +49,76 @@ class tcp_socket {
   }
 }
 
-#[doc="
-A buffered wrapper for `net::tcp::tcp_socket`
-
-It is created with a call to `net::tcp::socket_buf()` and has impls that
-satisfy both the `io::reader` and `io::writer` ifaces.
-"]
+/**
+ * A buffered wrapper for `net::tcp::tcp_socket`
+ *
+ * It is created with a call to `net::tcp::socket_buf()` and has impls that
+ * satisfy both the `io::reader` and `io::writer` ifaces.
+ */
 class tcp_socket_buf {
   let data: @tcp_buffered_socket_data;
   new(data: @tcp_buffered_socket_data) { self.data = data; }
 }
 
-#[doc="
-Contains raw, string-based, error information returned from libuv
-"]
+/// Contains raw, string-based, error information returned from libuv
 type tcp_err_data = {
     err_name: str,
     err_msg: str
 };
-#[doc="
-Details returned as part of a `result::err` result from `tcp::listen`
-"]
+/// Details returned as part of a `result::err` result from `tcp::listen`
 enum tcp_listen_err_data {
-    #[doc="
-    Some unplanned-for error. The first and second fields correspond
-    to libuv's `err_name` and `err_msg` fields, respectively.
-    "]
+    /**
+     * Some unplanned-for error. The first and second fields correspond
+     * to libuv's `err_name` and `err_msg` fields, respectively.
+     */
     generic_listen_err(str, str),
-    #[doc="
-    Failed to bind to the requested IP/Port, because it is already in use.
-
-    # Possible Causes
-
-    * Attempting to bind to a port already bound to another listener
-    "]
+    /**
+     * Failed to bind to the requested IP/Port, because it is already in use.
+     *
+     * # Possible Causes
+     *
+     * * Attempting to bind to a port already bound to another listener
+     */
     address_in_use,
-    #[doc="
-    Request to bind to an IP/Port was denied by the system.
-
-    # Possible Causes
-
-    * Attemping to binding to an IP/Port as a non-Administrator
-      on Windows Vista+
-    * Attempting to bind, as a non-priv'd
-      user, to 'privileged' ports (< 1024) on *nix
-    "]
+    /**
+     * Request to bind to an IP/Port was denied by the system.
+     *
+     * # Possible Causes
+     *
+     * * Attemping to binding to an IP/Port as a non-Administrator
+     *   on Windows Vista+
+     * * Attempting to bind, as a non-priv'd
+     *   user, to 'privileged' ports (< 1024) on *nix
+     */
     access_denied
 }
-#[doc="
-Details returned as part of a `result::err` result from `tcp::connect`
-"]
+/// Details returned as part of a `result::err` result from `tcp::connect`
 enum tcp_connect_err_data {
-    #[doc="
-    Some unplanned-for error. The first and second fields correspond
-    to libuv's `err_name` and `err_msg` fields, respectively.
-    "]
+    /**
+     * Some unplanned-for error. The first and second fields correspond
+     * to libuv's `err_name` and `err_msg` fields, respectively.
+     */
     generic_connect_err(str, str),
-    #[doc="
-    Invalid IP or invalid port
-    "]
+    /// Invalid IP or invalid port
     connection_refused
 }
 
-#[doc="
-Initiate a client connection over TCP/IP
-
-# Arguments
-
-* `input_ip` - The IP address (versions 4 or 6) of the remote host
-* `port` - the unsigned integer of the desired remote host port
-* `iotask` - a `uv::iotask` that the tcp request will run on
-
-# Returns
-
-A `result` that, if the operation succeeds, contains a `net::net::tcp_socket`
-that can be used to send and receive data to/from the remote host. In the
-event of failure, a `net::tcp::tcp_connect_err_data` instance will be
-returned
-"]
+/**
+ * Initiate a client connection over TCP/IP
+ *
+ * # Arguments
+ *
+ * * `input_ip` - The IP address (versions 4 or 6) of the remote host
+ * * `port` - the unsigned integer of the desired remote host port
+ * * `iotask` - a `uv::iotask` that the tcp request will run on
+ *
+ * # Returns
+ *
+ * A `result` that, if the operation succeeds, contains a
+ * `net::net::tcp_socket` that can be used to send and receive data to/from
+ * the remote host. In the event of failure, a
+ * `net::tcp::tcp_connect_err_data` instance will be returned
+ */
 fn connect(-input_ip: ip::ip_addr, port: uint,
            iotask: iotask)
     -> result::result<tcp_socket, tcp_connect_err_data> unsafe {
@@ -252,56 +242,57 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
     }
 }
 
-#[doc="
-Write binary data to a tcp stream; Blocks until operation completes
-
-# Arguments
-
-* sock - a `tcp_socket` to write to
-* raw_write_data - a vector of `[u8]/~` that will be written to the stream.
-This value must remain valid for the duration of the `write` call
-
-# Returns
-
-A `result` object with a `nil` value as the `ok` variant, or a `tcp_err_data`
-value as the `err` variant
-"]
+/**
+ * Write binary data to a tcp stream; Blocks until operation completes
+ *
+ * # Arguments
+ *
+ * * sock - a `tcp_socket` to write to
+ * * raw_write_data - a vector of `[u8]/~` that will be written to the stream.
+ * This value must remain valid for the duration of the `write` call
+ *
+ * # Returns
+ *
+ * A `result` object with a `nil` value as the `ok` variant, or a
+ * `tcp_err_data` value as the `err` variant
+ */
 fn write(sock: tcp_socket, raw_write_data: ~[u8])
     -> result::result<(), tcp_err_data> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     write_common_impl(socket_data_ptr, raw_write_data)
 }
 
-#[doc="
-Write binary data to tcp stream; Returns a `future::future` value immediately
-
-# Safety
-
-This function can produce unsafe results if:
-
-1. the call to `write_future` is made
-2. the `future::future` value returned is never resolved via
-`future::get`
-3. and then the `tcp_socket` passed in to `write_future` leaves
-scope and is destructed before the task that runs the libuv write
-operation completes.
-
-As such: If using `write_future`, always be sure to resolve the returned
-`future` so as to ensure libuv doesn't try to access a released write handle.
-Otherwise, use the blocking `tcp::write` function instead.
-
-# Arguments
-
-* sock - a `tcp_socket` to write to
-* raw_write_data - a vector of `[u8]/~` that will be written to the stream.
-This value must remain valid for the duration of the `write` call
-
-# Returns
-
-A `future` value that, once the `write` operation completes, resolves to a
-`result` object with a `nil` value as the `ok` variant, or a `tcp_err_data`
-value as the `err` variant
-"]
+/**
+ * Write binary data to tcp stream; Returns a `future::future` value
+ * immediately
+ *
+ * # Safety
+ *
+ * This function can produce unsafe results if:
+ *
+ * 1. the call to `write_future` is made
+ * 2. the `future::future` value returned is never resolved via
+ * `future::get`
+ * 3. and then the `tcp_socket` passed in to `write_future` leaves
+ * scope and is destructed before the task that runs the libuv write
+ * operation completes.
+ *
+ * As such: If using `write_future`, always be sure to resolve the returned
+ * `future` so as to ensure libuv doesn't try to access a released write
+ * handle. Otherwise, use the blocking `tcp::write` function instead.
+ *
+ * # Arguments
+ *
+ * * sock - a `tcp_socket` to write to
+ * * raw_write_data - a vector of `[u8]/~` that will be written to the stream.
+ * This value must remain valid for the duration of the `write` call
+ *
+ * # Returns
+ *
+ * A `future` value that, once the `write` operation completes, resolves to a
+ * `result` object with a `nil` value as the `ok` variant, or a `tcp_err_data`
+ * value as the `err` variant
+ */
 fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
     -> future::future<result::result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
@@ -311,19 +302,20 @@ fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
     }
 }
 
-#[doc="
-Begin reading binary data from an open TCP connection; used with `read_stop`
-
-# Arguments
-
-* sock -- a `net::tcp::tcp_socket` for the connection to read from
-
-# Returns
-
-* A `result` instance that will either contain a
-`comm::port<tcp_read_result>` that the user can read (and optionally, loop
-on) from until `read_stop` is called, or a `tcp_err_data` record
-"]
+/**
+ * Begin reading binary data from an open TCP connection; used with
+ * `read_stop`
+ *
+ * # Arguments
+ *
+ * * sock -- a `net::tcp::tcp_socket` for the connection to read from
+ *
+ * # Returns
+ *
+ * * A `result` instance that will either contain a
+ * `comm::port<tcp_read_result>` that the user can read (and optionally, loop
+ * on) from until `read_stop` is called, or a `tcp_err_data` record
+ */
 fn read_start(sock: tcp_socket)
     -> result::result<comm::port<
         result::result<~[u8], tcp_err_data>>, tcp_err_data> unsafe {
@@ -331,13 +323,13 @@ fn read_start(sock: tcp_socket)
     read_start_common_impl(socket_data)
 }
 
-#[doc="
-Stop reading from an open TCP connection; used with `read_start`
-
-# Arguments
-
-* `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
-"]
+/**
+ * Stop reading from an open TCP connection; used with `read_start`
+ *
+ * # Arguments
+ *
+ * * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
+ */
 fn read_stop(sock: tcp_socket,
              -read_port: comm::port<result::result<[u8]/~, tcp_err_data>>) ->
     result::result<(), tcp_err_data> unsafe {
@@ -346,54 +338,56 @@ fn read_stop(sock: tcp_socket,
     read_stop_common_impl(socket_data)
 }
 
-#[doc="
-Reads a single chunk of data from `tcp_socket`; block until data/error recv'd
-
-Does a blocking read operation for a single chunk of data from a `tcp_socket`
-until a data arrives or an error is received. The provided `timeout_msecs`
-value is used to raise an error if the timeout period passes without any
-data received.
-
-# Arguments
-
-* `sock` - a `net::tcp::tcp_socket` that you wish to read from
-* `timeout_msecs` - a `uint` value, in msecs, to wait before dropping the
-read attempt. Pass `0u` to wait indefinitely
-"]
+/**
+ * Reads a single chunk of data from `tcp_socket`; block until data/error
+ * recv'd
+ *
+ * Does a blocking read operation for a single chunk of data from a
+ * `tcp_socket` until a data arrives or an error is received. The provided
+ * `timeout_msecs` value is used to raise an error if the timeout period
+ * passes without any data received.
+ *
+ * # Arguments
+ *
+ * * `sock` - a `net::tcp::tcp_socket` that you wish to read from
+ * * `timeout_msecs` - a `uint` value, in msecs, to wait before dropping the
+ * read attempt. Pass `0u` to wait indefinitely
+ */
 fn read(sock: tcp_socket, timeout_msecs: uint)
     -> result::result<~[u8],tcp_err_data> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     read_common_impl(socket_data, timeout_msecs)
 }
 
-#[doc="
-Reads a single chunk of data; returns a `future::future<[u8]/~>` immediately
-
-Does a non-blocking read operation for a single chunk of data from a
-`tcp_socket` and immediately returns a `future` value representing the
-result. When resolving the returned `future`, it will block until data
-arrives or an error is received. The provided `timeout_msecs`
-value is used to raise an error if the timeout period passes without any
-data received.
-
-# Safety
-
-This function can produce unsafe results if the call to `read_future` is
-made, the `future::future` value returned is never resolved via
-`future::get`, and then the `tcp_socket` passed in to `read_future` leaves
-scope and is destructed before the task that runs the libuv read
-operation completes.
-
-As such: If using `read_future`, always be sure to resolve the returned
-`future` so as to ensure libuv doesn't try to access a released read handle.
-Otherwise, use the blocking `tcp::read` function instead.
-
-# Arguments
-
-* `sock` - a `net::tcp::tcp_socket` that you wish to read from
-* `timeout_msecs` - a `uint` value, in msecs, to wait before dropping the
-read attempt. Pass `0u` to wait indefinitely
-"]
+/**
+ * Reads a single chunk of data; returns a `future::future<[u8]/~>`
+ * immediately
+ *
+ * Does a non-blocking read operation for a single chunk of data from a
+ * `tcp_socket` and immediately returns a `future` value representing the
+ * result. When resolving the returned `future`, it will block until data
+ * arrives or an error is received. The provided `timeout_msecs`
+ * value is used to raise an error if the timeout period passes without any
+ * data received.
+ *
+ * # Safety
+ *
+ * This function can produce unsafe results if the call to `read_future` is
+ * made, the `future::future` value returned is never resolved via
+ * `future::get`, and then the `tcp_socket` passed in to `read_future` leaves
+ * scope and is destructed before the task that runs the libuv read
+ * operation completes.
+ *
+ * As such: If using `read_future`, always be sure to resolve the returned
+ * `future` so as to ensure libuv doesn't try to access a released read
+ * handle. Otherwise, use the blocking `tcp::read` function instead.
+ *
+ * # Arguments
+ *
+ * * `sock` - a `net::tcp::tcp_socket` that you wish to read from
+ * * `timeout_msecs` - a `uint` value, in msecs, to wait before dropping the
+ * read attempt. Pass `0u` to wait indefinitely
+ */
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
     -> future::future<result::result<~[u8],tcp_err_data>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
@@ -402,75 +396,75 @@ fn read_future(sock: tcp_socket, timeout_msecs: uint)
     }
 }
 
-#[doc="
-Bind an incoming client connection to a `net::tcp::tcp_socket`
-
-# Notes
-
-It is safe to call `net::tcp::accept` _only_ within the context of the
-`new_connect_cb` callback provided as the final argument to the
-`net::tcp::listen` function.
-
-The `new_conn` opaque value is provided _only_ as the first argument to the
-`new_connect_cb` provided as a part of `net::tcp::listen`.
-It can be safely sent to another task but it _must_ be
-used (via `net::tcp::accept`) before the `new_connect_cb` call it was
-provided to returns.
-
-This implies that a port/chan pair must be used to make sure that the
-`new_connect_cb` call blocks until an attempt to create a
-`net::tcp::tcp_socket` is completed.
-
-# Example
-
-Here, the `new_conn` is used in conjunction with `accept` from within
-a task spawned by the `new_connect_cb` passed into `listen`
-
-~~~~~~~~~~~
-net::tcp::listen(remote_ip, remote_port, backlog)
-    // this callback is ran once after the connection is successfully
-    // set up
-    {|kill_ch|
-      // pass the kill_ch to your main loop or wherever you want
-      // to be able to externally kill the server from
-    }
-    // this callback is ran when a new connection arrives
-    {|new_conn, kill_ch|
-    let cont_po = comm::port::<option<tcp_err_data>>();
-    let cont_ch = comm::chan(cont_po);
-    task::spawn {||
-        let accept_result = net::tcp::accept(new_conn);
-        if accept_result.is_err() {
-            comm::send(cont_ch, result::get_err(accept_result));
-            // fail?
-        }
-        else {
-            let sock = result::get(accept_result);
-            comm::send(cont_ch, true);
-            // do work here
-        }
-    };
-    alt comm::recv(cont_po) {
-      // shut down listen()
-      some(err_data) { comm::send(kill_chan, some(err_data)) }
-      // wait for next connection
-      none {}
-    }
-};
-~~~~~~~~~~~
-
-# Arguments
-
-* `new_conn` - an opaque value used to create a new `tcp_socket`
-
-# Returns
-
-On success, this function will return a `net::tcp::tcp_socket` as the
-`ok` variant of a `result`. The `net::tcp::tcp_socket` is anchored within
-the task that `accept` was called within for its lifetime. On failure,
-this function will return a `net::tcp::tcp_err_data` record
-as the `err` variant of a `result`.
-"]
+/**
+ * Bind an incoming client connection to a `net::tcp::tcp_socket`
+ *
+ * # Notes
+ *
+ * It is safe to call `net::tcp::accept` _only_ within the context of the
+ * `new_connect_cb` callback provided as the final argument to the
+ * `net::tcp::listen` function.
+ *
+ * The `new_conn` opaque value is provided _only_ as the first argument to the
+ * `new_connect_cb` provided as a part of `net::tcp::listen`.
+ * It can be safely sent to another task but it _must_ be
+ * used (via `net::tcp::accept`) before the `new_connect_cb` call it was
+ * provided to returns.
+ *
+ * This implies that a port/chan pair must be used to make sure that the
+ * `new_connect_cb` call blocks until an attempt to create a
+ * `net::tcp::tcp_socket` is completed.
+ *
+ * # Example
+ *
+ * Here, the `new_conn` is used in conjunction with `accept` from within
+ * a task spawned by the `new_connect_cb` passed into `listen`
+ *
+ * ~~~~~~~~~~~
+ * net::tcp::listen(remote_ip, remote_port, backlog)
+ *     // this callback is ran once after the connection is successfully
+ *     // set up
+ *     {|kill_ch|
+ *       // pass the kill_ch to your main loop or wherever you want
+ *       // to be able to externally kill the server from
+ *     }
+ *     // this callback is ran when a new connection arrives
+ *     {|new_conn, kill_ch|
+ *     let cont_po = comm::port::<option<tcp_err_data>>();
+ *     let cont_ch = comm::chan(cont_po);
+ *     task::spawn {||
+ *         let accept_result = net::tcp::accept(new_conn);
+ *         if accept_result.is_err() {
+ *             comm::send(cont_ch, result::get_err(accept_result));
+ *             // fail?
+ *         }
+ *         else {
+ *             let sock = result::get(accept_result);
+ *             comm::send(cont_ch, true);
+ *             // do work here
+ *         }
+ *     };
+ *     alt comm::recv(cont_po) {
+ *       // shut down listen()
+ *       some(err_data) { comm::send(kill_chan, some(err_data)) }
+ *       // wait for next connection
+ *       none {}
+ *     }
+ * };
+ * ~~~~~~~~~~~
+ *
+ * # Arguments
+ *
+ * * `new_conn` - an opaque value used to create a new `tcp_socket`
+ *
+ * # Returns
+ *
+ * On success, this function will return a `net::tcp::tcp_socket` as the
+ * `ok` variant of a `result`. The `net::tcp::tcp_socket` is anchored within
+ * the task that `accept` was called within for its lifetime. On failure,
+ * this function will return a `net::tcp::tcp_err_data` record
+ * as the `err` variant of a `result`.
+ */
 fn accept(new_conn: tcp_new_connection)
     -> result::result<tcp_socket, tcp_err_data> unsafe {
 
@@ -545,34 +539,34 @@ fn accept(new_conn: tcp_new_connection)
     }
 }
 
-#[doc="
-Bind to a given IP/port and listen for new connections
-
-# Arguments
-
-* `host_ip` - a `net::ip::ip_addr` representing a unique IP
-(versions 4 or 6)
-* `port` - a uint representing the port to listen on
-* `backlog` - a uint representing the number of incoming connections
-to cache in memory
-* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
-* `on_establish_cb` - a callback that is evaluated if/when the listener
-is successfully established. it takes no parameters
-* `new_connect_cb` - a callback to be evaluated, on the libuv thread,
-whenever a client attempts to conect on the provided ip/port. the
-callback's arguments are:
-    * `new_conn` - an opaque type that can be passed to
-    `net::tcp::accept` in order to be converted to a `tcp_socket`.
-    * `kill_ch` - channel of type `comm::chan<option<tcp_err_data>>`. this
-    channel can be used to send a message to cause `listen` to begin
-    closing the underlying libuv data structures.
-
-# returns
-
-a `result` instance containing empty data of type `()` on a
-successful/normal shutdown, and a `tcp_listen_err_data` enum in the event
-of listen exiting because of an error
-"]
+/**
+ * Bind to a given IP/port and listen for new connections
+ *
+ * # Arguments
+ *
+ * * `host_ip` - a `net::ip::ip_addr` representing a unique IP
+ * (versions 4 or 6)
+ * * `port` - a uint representing the port to listen on
+ * * `backlog` - a uint representing the number of incoming connections
+ * to cache in memory
+ * * `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
+ * * `on_establish_cb` - a callback that is evaluated if/when the listener
+ * is successfully established. it takes no parameters
+ * * `new_connect_cb` - a callback to be evaluated, on the libuv thread,
+ * whenever a client attempts to conect on the provided ip/port. the
+ * callback's arguments are:
+ *     * `new_conn` - an opaque type that can be passed to
+ *     `net::tcp::accept` in order to be converted to a `tcp_socket`.
+ *     * `kill_ch` - channel of type `comm::chan<option<tcp_err_data>>`. this
+ *     channel can be used to send a message to cause `listen` to begin
+ *     closing the underlying libuv data structures.
+ *
+ * # returns
+ *
+ * a `result` instance containing empty data of type `()` on a
+ * successful/normal shutdown, and a `tcp_listen_err_data` enum in the event
+ * of listen exiting because of an error
+ */
 fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
           on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
@@ -721,28 +715,26 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
     }
 }
 
-#[doc="
-Convert a `net::tcp::tcp_socket` to a `net::tcp::tcp_socket_buf`.
-
-This function takes ownership of a `net::tcp::tcp_socket`, returning it
-stored within a buffered wrapper, which can be converted to a `io::reader`
-or `io::writer`
-
-# Arguments
-
-* `sock` -- a `net::tcp::tcp_socket` that you want to buffer
-
-# Returns
-
-A buffered wrapper that you can cast as an `io::reader` or `io::writer`
-"]
+/**
+ * Convert a `net::tcp::tcp_socket` to a `net::tcp::tcp_socket_buf`.
+ *
+ * This function takes ownership of a `net::tcp::tcp_socket`, returning it
+ * stored within a buffered wrapper, which can be converted to a `io::reader`
+ * or `io::writer`
+ *
+ * # Arguments
+ *
+ * * `sock` -- a `net::tcp::tcp_socket` that you want to buffer
+ *
+ * # Returns
+ *
+ * A buffered wrapper that you can cast as an `io::reader` or `io::writer`
+ */
 fn socket_buf(-sock: tcp_socket) -> tcp_socket_buf {
     tcp_socket_buf(@{ sock: sock, mut buf: []/~ })
 }
 
-#[doc="
-Convenience methods extending `net::tcp::tcp_socket`
-"]
+/// Convenience methods extending `net::tcp::tcp_socket`
 impl tcp_socket for tcp_socket {
     fn read_start() -> result::result<comm::port<
         result::result<~[u8], tcp_err_data>>, tcp_err_data> {
@@ -771,9 +763,7 @@ impl tcp_socket for tcp_socket {
     }
 }
 
-#[doc="
-Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
-"]
+/// Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 impl tcp_socket_buf of io::reader for @tcp_socket_buf {
     fn read_bytes(amt: uint) -> [u8]/~ {
         let has_amt_available =
@@ -819,9 +809,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
     }
 }
 
-#[doc="
-Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
-"]
+/// Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 impl tcp_socket_buf of io::writer for @tcp_socket_buf {
     fn write(data: [const u8]/&) unsafe {
         let socket_data_ptr =

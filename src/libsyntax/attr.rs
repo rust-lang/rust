@@ -120,10 +120,10 @@ fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
     }
 }
 
-#[doc = "
-Gets the string value if the meta_item is a meta_name_value variant
-containing a string, otherwise none
-"]
+/**
+ * Gets the string value if the meta_item is a meta_name_value variant
+ * containing a string, otherwise none
+ */
 fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@str> {
     alt meta.node {
       ast::meta_name_value(_, v) {
@@ -140,7 +140,7 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@str> {
     }
 }
 
-#[doc = "Gets a list of inner meta items from a list meta_item type"]
+/// Gets a list of inner meta items from a list meta_item type
 fn get_meta_item_list(meta: @ast::meta_item) -> option<~[@ast::meta_item]> {
     alt meta.node {
       ast::meta_list(_, l) { option::some(/* FIXME (#2543) */ copy l) }
@@ -148,10 +148,10 @@ fn get_meta_item_list(meta: @ast::meta_item) -> option<~[@ast::meta_item]> {
     }
 }
 
-#[doc = "
-If the meta item is a nam-value type with a string value then returns
-a tuple containing the name and string value, otherwise `none`
-"]
+/**
+ * If the meta item is a nam-value type with a string value then returns
+ * a tuple containing the name and string value, otherwise `none`
+ */
 fn get_name_value_str_pair(
     item: @ast::meta_item
 ) -> option<(ast::ident, @str)> {
@@ -167,9 +167,7 @@ fn get_name_value_str_pair(
 
 /* Searching */
 
-#[doc = "
-Search a list of attributes and return only those with a specific name
-"]
+/// Search a list of attributes and return only those with a specific name
 fn find_attrs_by_name(attrs: ~[ast::attribute], +name: str) ->
    ~[ast::attribute] {
     let filter = (
@@ -182,9 +180,7 @@ fn find_attrs_by_name(attrs: ~[ast::attribute], +name: str) ->
     ret vec::filter_map(attrs, filter);
 }
 
-#[doc = "
-Searcha list of meta items and return only those with a specific name
-"]
+/// Searcha list of meta items and return only those with a specific name
 fn find_meta_items_by_name(metas: ~[@ast::meta_item], +name: str) ->
    ~[@ast::meta_item] {
     let filter = fn@(&&m: @ast::meta_item) -> option<@ast::meta_item> {
@@ -195,10 +191,10 @@ fn find_meta_items_by_name(metas: ~[@ast::meta_item], +name: str) ->
     ret vec::filter_map(metas, filter);
 }
 
-#[doc = "
-Returns true if a list of meta items contains another meta item. The
-comparison is performed structurally.
-"]
+/**
+ * Returns true if a list of meta items contains another meta item. The
+ * comparison is performed structurally.
+ */
 fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item) -> bool {
     #debug("looking for %s",
            print::pprust::meta_item_to_str(*needle));
@@ -332,10 +328,10 @@ fn find_linkage_attrs(attrs: ~[ast::attribute]) -> ~[ast::attribute] {
     ret found;
 }
 
-#[doc = "
-From a list of crate attributes get only the meta_items that impact crate
-linkage
-"]
+/**
+ * From a list of crate attributes get only the meta_items that impact crate
+ * linkage
+ */
 fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     do find_linkage_attrs(attrs).flat_map |attr| {
         alt check attr.node.value.node {
@@ -370,7 +366,7 @@ enum inline_attr {
     ia_always
 }
 
-#[doc = "True if something like #[inline] is found in the list of attrs."]
+/// True if something like #[inline] is found in the list of attrs.
 fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
     // TODO---validate the usage of #[inline] and #[inline(always)]
     do vec::foldl(ia_none, attrs) |ia,attr| {
