@@ -229,14 +229,17 @@ fn getopts(args: ~[str], opts: ~[opt]) -> result unsafe {
                     /* In a series of potential options (eg. -aheJ), if we see
                        one which takes an argument, we assume all subsequent
                        characters make up the argument. This allows options
-                       such as -L/usr/local/lib/foo to be interpreted correctly
+                       such as -L/usr/local/lib/foo to be interpreted
+                       correctly
                     */
+
                     alt find_opt(opts, opt) {
                       some(id) {
                         last_valid_opt_id = option::some(id);
                       }
                       none {
-                        let arg_follows = option::is_some(last_valid_opt_id) &&
+                        let arg_follows =
+                            option::is_some(last_valid_opt_id) &&
                             alt opts[option::get(last_valid_opt_id)].hasarg {
                               yes | maybe { true }
                               no { false }
