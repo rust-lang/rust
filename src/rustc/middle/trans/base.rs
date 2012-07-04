@@ -1547,7 +1547,7 @@ fn trans_addr_of(cx: block, e: @ast::expr, dest: dest) -> block {
     let ety = expr_ty(cx, e);
     let is_immediate = ty::type_is_immediate(ety);
     if (kind == temporary && is_immediate) || kind == owned_imm {
-        val = do_spill(cx, val, ety);
+        val = do_spill(bcx, val, ety);
     }
     ret store_in_dest(bcx, val, dest);
 }
