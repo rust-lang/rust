@@ -25,6 +25,17 @@ pure fn get<T: copy>(opt: option<T>) -> T {
     alt opt { some(x) { ret x; } none { fail "option none"; } }
 }
 
+pure fn expect<T: copy>(opt: option<T>, reason: str) -> T {
+    #[doc = "
+    Gets the value out of an option, printing a specified message on failure
+
+    # Failure
+
+    Fails if the value equals `none`
+    "];
+    alt opt { some(x) { x } none { fail reason; } }
+}
+
 pure fn map<T, U: copy>(opt: option<T>, f: fn(T) -> U) -> option<U> {
     #[doc = "Maps a `some` value from one type to another"];
 
@@ -94,18 +105,18 @@ impl extensions<T> for option<T> {
     Update an optional value by optionally running its content through a
     function that returns an option.
     "]
-    fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
+    pure fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
     #[doc = "Applies a function to the contained value or returns a default"]
-    fn map_default<U: copy>(def: U, f: fn(T) -> U) -> U
+    pure fn map_default<U: copy>(def: U, f: fn(T) -> U) -> U
         { map_default(self, def, f) }
     #[doc = "Performs an operation on the contained value or does nothing"]
-    fn iter(f: fn(T)) { iter(self, f) }
+    pure fn iter(f: fn(T)) { iter(self, f) }
     #[doc = "Returns true if the option equals `none`"]
-    fn is_none() -> bool { is_none(self) }
+    pure fn is_none() -> bool { is_none(self) }
     #[doc = "Returns true if the option contains some value"]
-    fn is_some() -> bool { is_some(self) }
+    pure fn is_some() -> bool { is_some(self) }
     #[doc = "Maps a `some` value from one type to another"]
-    fn map<U:copy>(f: fn(T) -> U) -> option<U> { map(self, f) }
+    pure fn map<U:copy>(f: fn(T) -> U) -> option<U> { map(self, f) }
 }
 
 impl extensions<T: copy> for option<T> {
@@ -116,8 +127,16 @@ impl extensions<T: copy> for option<T> {
 
     Fails if the value equals `none`
     "]
-    fn get() -> T { get(self) }
-    fn get_default(def: T) -> T { get_default(self, def) }
+    pure fn get() -> T { get(self) }
+    pure fn get_default(def: T) -> T { get_default(self, def) }
+    #[doc = "
+    Gets the value out of an option, printing a specified message on failure
+
+    # Failure
+
+    Fails if the value equals `none`
+    "]
+    pure fn expect<T: copy>(reason: str) -> T { expect(self, reason) }
 }
 
 #[test]
