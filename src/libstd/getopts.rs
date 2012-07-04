@@ -220,10 +220,36 @@ fn getopts(args: ~[str], opts: ~[opt]) -> result unsafe {
                 }
             } else {
                 let mut j = 1u;
+                let mut last_valid_opt_id = option::none;
                 names = ~[];
                 while j < curlen {
                     let range = str::char_range_at(cur, j);
-                    vec::push(names, short(range.ch));
+                    let opt = short(range.ch);
+
+                    /* In a series of potential options (eg. -aheJ), if we see
+                       one which takes an argument, we assume all subsequent
+                       characters make up the argument. This allows options
+                       such as -L/usr/local/lib/foo to be interpreted correctly
+                    */
+                    alt find_opt(opts, opt) {
+                      some(id) {
+                        last_valid_opt_id = option::some(id);
+                      }
+                      none {
+                        let arg_follows = option::is_some(last_valid_opt_id) &&
+                            alt opts[option::get(last_valid_opt_id)].hasarg {
+                              yes | maybe { true }
+                              no { false }
+                            };
+                        if arg_follows && j + 1 < curlen {
+                            i_arg = option::some(str::slice(cur, j, curlen));
+                            break;
+                        } else {
+                            last_valid_opt_id = option::none;
+                        }
+                      }
+                    }
+                    vec::push(names, opt);
                     j = range.next;
                 }
             }
@@ -856,6 +882,18 @@ mod tests {
         assert opts_str(match, ~["encrypt"]) == "foo";
         assert opts_str(match, ~["e", "encrypt"]) == "foo";
         assert opts_str(match, ~["encrypt", "e"]) == "foo";
+    }
+
+    #[test]
+    fn test_nospace() {
+        let args = ~["-Lfoo"];
+        let opts = ~[optmulti("L")];
+        let match = alt getopts(args, opts) {
+          result::ok(m) { m }
+          result::err(f) { fail; }
+        };
+        assert opts_present(match, ~["L"]);
+        assert opts_str(match, ~["L"]) == "foo";
     }
 }
 
