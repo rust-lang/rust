@@ -6,6 +6,7 @@ import libc::size_t;
 
 export append;
 export append_one;
+export consume;
 export init_op;
 export is_empty;
 export is_not_empty;
@@ -40,6 +41,7 @@ export grow_set;
 export map;
 export mapi;
 export map2;
+export map_consume;
 export flat_map;
 export filter_map;
 export filter;
@@ -261,8 +263,8 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     ret result;
 }
 
-/// Return a slice that points into another slice.
-pure fn view<T: copy>(v: &[const T], start: uint, end: uint) -> &a.[T] {
+#[doc = "Return a slice that points into another slice."]
+pure fn view<T>(v: &[const T], start: uint, end: uint) -> &a.[T] {
     assert (start <= end);
     assert (end <= len(v));
     do unpack_slice(v) |p, _len| {
@@ -373,7 +375,7 @@ fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
 /// Removes the first element from a vector and return it
 fn shift<T>(&v: ~[T]) -> T {
     let ln = len::<T>(v);
-    assert (ln > 0u);
+    assert (ln > 0);
 
     let mut vv = ~[];
     v <-> vv;
@@ -384,12 +386,12 @@ fn shift<T>(&v: ~[T]) -> T {
             let vv = unsafe::to_ptr(vv);
             rr <- *vv;
 
-            for uint::range(1u, ln) |i| {
+            for uint::range(1, ln) |i| {
                 let r <- *ptr::offset(vv, i);
                 push(v, r);
             }
         }
-        unsafe::set_len(vv, 0u);
+        unsafe::set_len(vv, 0);
 
         rr
     }
@@ -402,6 +404,17 @@ fn unshift<T>(&v: ~[T], +x: T) {
     while len(vv) > 0 {
         push(v, shift(vv));
     }
+}
+
+fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
+    do unpack_slice(v) |p, ln| {
+        for uint::range(0, ln) |i| {
+            let x <- *ptr::offset(p, i);
+            f(i, x);
+        }
+    }
+
+    unsafe::set_len(v, 0);
 }
 
 /// Remove the last element from a vector and return it
@@ -573,6 +586,14 @@ pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> ~[U] {
     unchecked{reserve(result, len(v));}
     for each(v) |elem| { unsafe { push(result, f(elem)); } }
     ret result;
+}
+
+fn map_consume<T, U>(+v: ~[T], f: fn(+T) -> U) -> ~[U] {
+    let mut result = ~[];
+    do consume(v) |_i, x| {
+        vec::push(result, f(x));
+    }
+    result
 }
 
 /// Apply a function to each element of a vector and return the results
@@ -1277,6 +1298,18 @@ impl extensions/&<T> for &[T] {
     pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U] {
         mapi(self, f)
     }
+
+    #[inline]
+    fn map_r<U>(f: fn(x: &self.T) -> U) -> ~[U] {
+        let mut r = ~[];
+        let mut i = 0;
+        while i < self.len() {
+            push(r, f(&self[i]));
+            i += 1;
+        }
+        r
+    }
+
     /**
      * Returns true if the function returns true for all elements.
      *
