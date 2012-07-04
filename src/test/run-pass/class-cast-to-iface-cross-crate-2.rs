@@ -1,9 +1,8 @@
 // xfail-fast
 // aux-build:cci_class_cast.rs
 use cci_class_cast;
-import cci_class_cast::kitty::*;
 import to_str::*;
-import to_str::to_str;
+import cci_class_cast::kitty::*;
 
 fn print_out<T: to_str>(thing: T, expected: str) {
   let actual = thing.to_str();
