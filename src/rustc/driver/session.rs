@@ -167,7 +167,7 @@ impl session for session {
     fn fast_resolve() -> bool { self.debugging_opt(fast_resolve) }
 }
 
-#[doc = "Some reasonable defaults"]
+/// Some reasonable defaults
 fn basic_options() -> @options {
     @{
         crate_type: session::lib_crate,

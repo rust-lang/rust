@@ -6,10 +6,10 @@ const bits: T = 32 as T;
 #[cfg(target_arch = "x86_64")]
 const bits: T = 64 as T;
 
-#[doc = "Produce a uint suitable for use in a hash table"]
+/// Produce a uint suitable for use in a hash table
 pure fn hash(&&x: int) -> uint { ret x as uint; }
 
-#[doc = "Returns `base` raised to the power of `exponent`"]
+/// Returns `base` raised to the power of `exponent`
 fn pow(base: int, exponent: uint) -> int {
     if exponent == 0u { ret 1; } //Not mathemtically true if ~[base == 0]
     if base     == 0  { ret 0; }

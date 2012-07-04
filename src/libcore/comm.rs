@@ -1,28 +1,28 @@
-#[doc = "
-Communication between tasks
-
-Communication between tasks is facilitated by ports (in the receiving
-task), and channels (in the sending task). Any number of channels may
-feed into a single port.  Ports and channels may only transmit values
-of unique types; that is, values that are statically guaranteed to be
-accessed by a single 'owner' at a time.  Unique types include scalars,
-vectors, strings, and records, tags, tuples and unique boxes (`~T`)
-thereof. Most notably, shared boxes (`@T`) may not be transmitted
-across channels.
-
-# Example
-
-~~~
-let po = comm::port();
-let ch = comm::chan(po);
-
-task::spawn {||
-    comm::send(ch, \"Hello, World\");
-});
-
-io::println(comm::recv(p));
-~~~
-"];
+/*!
+ * Communication between tasks
+ *
+ * Communication between tasks is facilitated by ports (in the receiving
+ * task), and channels (in the sending task). Any number of channels may
+ * feed into a single port.  Ports and channels may only transmit values
+ * of unique types; that is, values that are statically guaranteed to be
+ * accessed by a single 'owner' at a time.  Unique types include scalars,
+ * vectors, strings, and records, tags, tuples and unique boxes (`~T`)
+ * thereof. Most notably, shared boxes (`@T`) may not be transmitted
+ * across channels.
+ *
+ * # Example
+ *
+ * ~~~
+ * let po = comm::port();
+ * let ch = comm::chan(po);
+ *
+ * task::spawn {||
+ *     comm::send(ch, "Hello, World");
+ * });
+ *
+ * io::println(comm::recv(p));
+ * ~~~
+ */
 
 import either::either;
 import libc::size_t;
@@ -38,34 +38,34 @@ export methods;
 export listen;
 
 
-#[doc = "
-A communication endpoint that can receive messages
-
-Each port has a unique per-task identity and may not be replicated or
-transmitted. If a port value is copied, both copies refer to the same
-port.  Ports may be associated with multiple `chan`s.
-"]
+/**
+ * A communication endpoint that can receive messages
+ *
+ * Each port has a unique per-task identity and may not be replicated or
+ * transmitted. If a port value is copied, both copies refer to the same
+ * port.  Ports may be associated with multiple `chan`s.
+ */
 enum port<T: send> {
     port_t(@port_ptr<T>)
 }
 
 // It's critical that this only have one variant, so it has a record
 // layout, and will work in the rust_task structure in task.rs.
-#[doc = "
-A communication endpoint that can send messages
-
-Each channel is bound to a port when the channel is constructed, so
-the destination port for a channel must exist before the channel
-itself.  Channels are weak: a channel does not keep the port it is
-bound to alive. If a channel attempts to send data to a dead port that
-data will be silently dropped.  Channels may be duplicated and
-themselves transmitted over other channels.
-"]
+/**
+ * A communication endpoint that can send messages
+ *
+ * Each channel is bound to a port when the channel is constructed, so
+ * the destination port for a channel must exist before the channel
+ * itself.  Channels are weak: a channel does not keep the port it is
+ * bound to alive. If a channel attempts to send data to a dead port that
+ * data will be silently dropped.  Channels may be duplicated and
+ * themselves transmitted over other channels.
+ */
 enum chan<T: send> {
     chan_t(port_id)
 }
 
-#[doc = "Constructs a port"]
+/// Constructs a port
 fn port<T: send>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
@@ -88,7 +88,7 @@ impl methods<T: send> for chan<T> {
 
 }
 
-#[doc = "Open a new receiving channel for the duration of a function"]
+/// Open a new receiving channel for the duration of a function
 fn listen<T: send, U>(f: fn(chan<T>) -> U) -> U {
     let po = port();
     f(po.chan())
@@ -119,14 +119,14 @@ class port_ptr<T:send> {
   }
 }
 
-#[doc = "
-Internal function for converting from a channel to a port
-
-# Failure
-
-Fails if the port is detached or dead. Fails if the port
-is owned by a different task.
-"]
+/**
+ * Internal function for converting from a channel to a port
+ *
+ * # Failure
+ *
+ * Fails if the port is detached or dead. Fails if the port
+ * is owned by a different task.
+ */
 fn as_raw_port<T: send, U>(ch: comm::chan<T>, f: fn(*rust_port) -> U) -> U {
 
     class portref {
@@ -150,18 +150,18 @@ fn as_raw_port<T: send, U>(ch: comm::chan<T>, f: fn(*rust_port) -> U) -> U {
     f(p.p)
 }
 
-#[doc = "
-Constructs a channel. The channel is bound to the port used to
-construct it.
-"]
+/**
+ * Constructs a channel. The channel is bound to the port used to
+ * construct it.
+ */
 fn chan<T: send>(p: port<T>) -> chan<T> {
     chan_t(rustrt::get_port_id((**p).po))
 }
 
-#[doc = "
-Sends data over a channel. The sent data is moved into the channel,
-whereupon the caller loses access to it.
-"]
+/**
+ * Sends data over a channel. The sent data is moved into the channel,
+ * whereupon the caller loses access to it.
+ */
 fn send<T: send>(ch: chan<T>, -data: T) {
     let chan_t(p) = ch;
     let data_ptr = ptr::addr_of(data) as *();
@@ -173,13 +173,13 @@ fn send<T: send>(ch: chan<T>, -data: T) {
     task::yield();
 }
 
-#[doc = "
-Receive from a port.  If no data is available on the port then the
-task will block until data becomes available.
-"]
+/**
+ * Receive from a port.  If no data is available on the port then the
+ * task will block until data becomes available.
+ */
 fn recv<T: send>(p: port<T>) -> T { recv_((**p).po) }
 
-#[doc = "Returns true if there are messages available"]
+/// Returns true if there are messages available
 fn peek<T: send>(p: port<T>) -> bool { peek_((**p).po) }
 
 #[doc(hidden)]
@@ -191,7 +191,7 @@ fn peek_chan<T: send>(ch: comm::chan<T>) -> bool {
     as_raw_port(ch, |x|peek_(x))
 }
 
-#[doc = "Receive on a raw port pointer"]
+/// Receive on a raw port pointer
 fn recv_<T: send>(p: *rust_port) -> T {
     let yield = 0u;
     let yieldp = ptr::addr_of(yield);
@@ -214,7 +214,7 @@ fn peek_(p: *rust_port) -> bool {
     rustrt::rust_port_size(p) != 0u as libc::size_t
 }
 
-#[doc = "Receive on one of two ports"]
+/// Receive on one of two ports
 fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     -> either<A, B> {
     let ports = ~[(**p_a).po, (**p_b).po];

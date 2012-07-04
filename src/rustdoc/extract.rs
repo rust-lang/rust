@@ -1,4 +1,4 @@
-#[doc = "Converts the Rust AST to the rustdoc document model"];
+//! Converts the Rust AST to the rustdoc document model
 
 import syntax::ast;
 
@@ -9,7 +9,7 @@ fn from_srv(
     default_name: str
 ) -> doc::doc {
 
-    #[doc = "Use the AST service to create a document tree"];
+    //! Use the AST service to create a document tree
 
     do astsrv::exec(srv) |ctxt| {
         extract(ctxt.ast, default_name)

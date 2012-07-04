@@ -1,4 +1,4 @@
-#[doc = "Temporary files and directories"];
+//! Temporary files and directories
 
 import core::option;
 import option::{none, some};

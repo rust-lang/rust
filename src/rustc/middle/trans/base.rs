@@ -2735,14 +2735,14 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
     }
 }
 
-#[doc = "
-Get the type of a box in the default address space.
-
-Shared box pointers live in address space 1 so the GC strategy can find them.
-Before taking a pointer to the inside of a box it should be cast into address
-space 0. Otherwise the resulting (non-box) pointer will be in the wrong
-address space and thus be the wrong type.
-"]
+/**
+ * Get the type of a box in the default address space.
+ *
+ * Shared box pointers live in address space 1 so the GC strategy can find
+ * them. Before taking a pointer to the inside of a box it should be cast into
+ * address space 0. Otherwise the resulting (non-box) pointer will be in the
+ * wrong address space and thus be the wrong type.
+ */
 fn non_gc_box_cast(cx: block, val: ValueRef) -> ValueRef {
     #debug("non_gc_box_cast");
     add_comment(cx, "non_gc_box_cast");

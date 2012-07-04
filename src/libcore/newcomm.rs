@@ -1,7 +1,9 @@
-#[doc="A new implementation of communication.
-
-This should be implementing almost entirely in Rust, and hopefully
-avoid needing a single global lock."]
+/**
+ * A new implementation of communication.
+ *
+ * This should be implementing almost entirely in Rust, and hopefully
+ * avoid needing a single global lock.
+ */
 
 import arc::methods;
 import dvec::dvec;

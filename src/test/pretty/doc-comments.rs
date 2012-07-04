@@ -6,7 +6,7 @@
 fn a() { }
 
 fn b() {
-    //~ some single line inner-docs
+    //! some single line inner-docs
 }
 
 /*

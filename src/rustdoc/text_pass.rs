@@ -1,4 +1,4 @@
-#[doc = "Generic pass for performing an operation on all descriptions"];
+//! Generic pass for performing an operation on all descriptions
 
 export mk_pass;
 

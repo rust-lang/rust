@@ -1,4 +1,4 @@
-#[doc = "A deque. Untested as of yet. Likely buggy"];
+//! A deque. Untested as of yet. Likely buggy
 
 import option::{some, none};
 import dvec::{dvec, extensions};

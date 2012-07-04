@@ -18,10 +18,10 @@ import std::map::hashmap;
 enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
               ppm_expanded_identified }
 
-#[doc = "
-The name used for source code that doesn't originate in a file
-(e.g. source from stdin or a string)
-"]
+/**
+ * The name used for source code that doesn't originate in a file
+ * (e.g. source from stdin or a string)
+ */
 fn anon_src() -> str { "<anon>" }
 
 fn source_name(input: input) -> str {
@@ -88,9 +88,9 @@ fn parse_cfgspecs(cfgspecs: ~[str]) -> ast::crate_cfg {
 }
 
 enum input {
-    #[doc = "Load source from file"]
+    /// Load source from file
     file_input(str),
-    #[doc = "The string is the source"]
+    /// The string is the source
     str_input(str)
 }
 

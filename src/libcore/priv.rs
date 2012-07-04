@@ -16,11 +16,11 @@ extern mod rustrt {
 
 type global_ptr = *libc::uintptr_t;
 
-#[doc = "
-Atomically gets a channel from a pointer to a pointer-sized memory location
-or, if no channel exists creates and installs a new channel and sets up a new
-task to receive from it.
-"]
+/**
+ * Atomically gets a channel from a pointer to a pointer-sized memory location
+ * or, if no channel exists creates and installs a new channel and sets up a
+ * new task to receive from it.
+ */
 unsafe fn chan_from_global_ptr<T: send>(
     global: global_ptr,
     builder: fn() -> task::builder,
@@ -161,25 +161,25 @@ fn test_from_global_chan2() {
     }
 }
 
-#[doc = "
-Convert the current task to a 'weak' task temporarily
-
-As a weak task it will not be counted towards the runtime's set
-of live tasks. When there are no more outstanding live (non-weak) tasks
-the runtime will send an exit message on the provided channel.
-
-This function is super-unsafe. Do not use.
-
-# Safety notes
-
-* Weak tasks must either die on their own or exit upon receipt of
-  the exit message. Failure to do so will cause the runtime to never
-  exit
-* Tasks must not call `weaken_task` multiple times. This will
-  break the kernel's accounting of live tasks.
-* Weak tasks must not be supervised. A supervised task keeps
-  a reference to its parent, so the parent will not die.
-"]
+/**
+ * Convert the current task to a 'weak' task temporarily
+ *
+ * As a weak task it will not be counted towards the runtime's set
+ * of live tasks. When there are no more outstanding live (non-weak) tasks
+ * the runtime will send an exit message on the provided channel.
+ *
+ * This function is super-unsafe. Do not use.
+ *
+ * # Safety notes
+ *
+ * * Weak tasks must either die on their own or exit upon receipt of
+ *   the exit message. Failure to do so will cause the runtime to never
+ *   exit
+ * * Tasks must not call `weaken_task` multiple times. This will
+ *   break the kernel's accounting of live tasks.
+ * * Weak tasks must not be supervised. A supervised task keeps
+ *   a reference to its parent, so the parent will not die.
+ */
 unsafe fn weaken_task(f: fn(comm::port<()>)) {
     let po = comm::port();
     let ch = comm::chan(po);

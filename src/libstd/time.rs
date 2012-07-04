@@ -29,13 +29,13 @@ extern mod rustrt {
     fn rust_mktime(&&tm: tm, &sec: i64);
 }
 
-#[doc = "A record specifying a time value in seconds and microseconds."]
+/// A record specifying a time value in seconds and microseconds.
 type timespec = {sec: i64, nsec: i32};
 
-#[doc = "
-Returns the current time as a `timespec` containing the seconds and
-microseconds since 1970-01-01T00:00:00Z.
-"]
+/**
+ * Returns the current time as a `timespec` containing the seconds and
+ * microseconds since 1970-01-01T00:00:00Z.
+ */
 fn get_time() -> timespec {
     let mut sec = 0i64;
     let mut nsec = 0i32;
@@ -43,20 +43,20 @@ fn get_time() -> timespec {
     ret {sec: sec, nsec: nsec};
 }
 
-#[doc = "
-Returns the current value of a high-resolution performance counter
-in nanoseconds since an unspecified epoch.
-"]
+/**
+ * Returns the current value of a high-resolution performance counter
+ * in nanoseconds since an unspecified epoch.
+ */
 fn precise_time_ns() -> u64 {
     let mut ns = 0u64;
     rustrt::precise_time_ns(ns);
     ns
 }
 
-#[doc = "
-Returns the current value of a high-resolution performance counter
-in seconds since an unspecified epoch.
-"]
+/**
+ * Returns the current value of a high-resolution performance counter
+ * in seconds since an unspecified epoch.
+ */
 fn precise_time_s() -> float {
     ret (precise_time_ns() as float) / 1000000000.;
 }
@@ -97,7 +97,7 @@ fn empty_tm() -> tm {
     }
 }
 
-#[doc = "Returns the specified time in UTC"]
+/// Returns the specified time in UTC
 fn at_utc(clock: timespec) -> tm {
     let mut {sec, nsec} = clock;
     let mut tm = empty_tm();
@@ -105,12 +105,12 @@ fn at_utc(clock: timespec) -> tm {
     tm
 }
 
-#[doc = "Returns the current time in UTC"]
+/// Returns the current time in UTC
 fn now_utc() -> tm {
     at_utc(get_time())
 }
 
-#[doc = "Returns the specified time in the local timezone"]
+/// Returns the specified time in the local timezone
 fn at(clock: timespec) -> tm {
     let mut {sec, nsec} = clock;
     let mut tm = empty_tm();
@@ -118,12 +118,12 @@ fn at(clock: timespec) -> tm {
     tm
 }
 
-#[doc = "Returns the current time in the local timezone"]
+/// Returns the current time in the local timezone
 fn now() -> tm {
     at(get_time())
 }
 
-#[doc = "Parses the time from the string according to the format string."]
+/// Parses the time from the string according to the format string.
 fn strptime(s: str, format: str) -> result<tm, str> {
     type tm_mut = {
        mut tm_sec: i32,
@@ -751,7 +751,7 @@ fn strftime(format: str, tm: tm) -> str {
 }
 
 impl tm for tm {
-    #[doc = "Convert time to the seconds from January 1, 1970"]
+    /// Convert time to the seconds from January 1, 1970
     fn to_timespec() -> timespec {
         let mut sec = 0i64;
         if self.tm_gmtoff == 0_i32 {
@@ -762,31 +762,31 @@ impl tm for tm {
         { sec: sec, nsec: self.tm_nsec }
     }
 
-    #[doc = "Convert time to the local timezone"]
+    /// Convert time to the local timezone
     fn to_local() -> tm {
         at(self.to_timespec())
     }
 
-    #[doc = "Convert time to the UTC"]
+    /// Convert time to the UTC
     fn to_utc() -> tm {
         at_utc(self.to_timespec())
     }
 
-    #[doc = "
-    Return a string of the current time in the form
-    \"Thu Jan  1 00:00:00 1970\".
-    "]
+    /**
+     * Return a string of the current time in the form
+     * "Thu Jan  1 00:00:00 1970".
+     */
     fn ctime() -> str { self.strftime("%c") }
 
-    #[doc = "Formats the time according to the format string."]
+    /// Formats the time according to the format string.
     fn strftime(format: str) -> str { strftime(format, self) }
 
-    #[doc = "
-    Returns a time string formatted according to RFC 822.
-
-    local: \"Thu, 22 Mar 2012 07:53:18 PST\"
-    utc:   \"Thu, 22 Mar 2012 14:53:18 UTC\"
-    "]
+    /**
+     * Returns a time string formatted according to RFC 822.
+     *
+     * local: "Thu, 22 Mar 2012 07:53:18 PST"
+     * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
+     */
     fn rfc822() -> str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%a, %d %b %Y %T GMT")
@@ -795,22 +795,22 @@ impl tm for tm {
         }
     }
 
-    #[doc = "
-    Returns a time string formatted according to RFC 822 with Zulu time.
-
-    local: \"Thu, 22 Mar 2012 07:53:18 -0700\"
-    utc:   \"Thu, 22 Mar 2012 14:53:18 -0000\"
-    "]
+    /**
+     * Returns a time string formatted according to RFC 822 with Zulu time.
+     *
+     * local: "Thu, 22 Mar 2012 07:53:18 -0700"
+     * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
+     */
     fn rfc822z() -> str {
         self.strftime("%a, %d %b %Y %T %z")
     }
 
-    #[doc = "
-    Returns a time string formatted according to ISO 8601.
-
-    local: \"2012-02-22T07:53:18-07:00\"
-    utc:   \"2012-02-22T14:53:18Z\"
-    "]
+    /**
+     * Returns a time string formatted according to ISO 8601.
+     *
+     * local: "2012-02-22T07:53:18-07:00"
+     * utc:   "2012-02-22T14:53:18Z"
+     */
     fn rfc3339() -> str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%Y-%m-%dT%H:%M:%SZ")

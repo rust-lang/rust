@@ -1,5 +1,4 @@
-#[doc =
-  "Pulls type information out of the AST and attaches it to the document"];
+//! Pulls type information out of the AST and attaches it to the document
 
 import syntax::ast;
 import syntax::print::pprust;

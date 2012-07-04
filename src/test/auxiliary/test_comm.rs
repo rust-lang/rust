@@ -11,18 +11,18 @@ export port;
 export recv;
 
 
-#[doc = "
-A communication endpoint that can receive messages
-
-Each port has a unique per-task identity and may not be replicated or
-transmitted. If a port value is copied, both copies refer to the same
-port.  Ports may be associated with multiple `chan`s.
-"]
+/**
+ * A communication endpoint that can receive messages
+ *
+ * Each port has a unique per-task identity and may not be replicated or
+ * transmitted. If a port value is copied, both copies refer to the same
+ * port.  Ports may be associated with multiple `chan`s.
+ */
 enum port<T: send> {
     port_t(@port_ptr<T>)
 }
 
-#[doc = "Constructs a port"]
+/// Constructs a port
 fn port<T: send>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
@@ -52,14 +52,14 @@ class port_ptr<T:send> {
 }
 
 
-#[doc = "
-Receive from a port.  If no data is available on the port then the
-task will block until data becomes available.
-"]
+/**
+ * Receive from a port.  If no data is available on the port then the
+ * task will block until data becomes available.
+ */
 fn recv<T: send>(p: port<T>) -> T { recv_((**p).po) }
 
 
-#[doc = "Receive on a raw port pointer"]
+/// Receive on a raw port pointer
 fn recv_<T: send>(p: *rust_port) -> T {
     let yield = 0u;
     let yieldp = ptr::addr_of(yield);

@@ -1,4 +1,4 @@
-#[doc = "AST-parsing helpers"];
+//! AST-parsing helpers
 
 import rustc::driver::driver;
 import driver::{file_input, str_input};

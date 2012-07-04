@@ -1,4 +1,4 @@
-#[doc = "Prunes things with the #[doc(hidden)] attribute"];
+//! Prunes things with the #[doc(hidden)] attribute
 
 import std::map::hashmap;
 export mk_pass;

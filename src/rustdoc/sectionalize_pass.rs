@@ -1,4 +1,4 @@
-#[doc = "Breaks rustdocs into sections according to their headers"];
+//! Breaks rustdocs into sections according to their headers
 
 export mk_pass;
 
@@ -66,23 +66,21 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 
 fn sectionalize(desc: option<str>) -> (option<str>, ~[doc::section]) {
 
-    #[doc = "
-
-    Take a description of the form
-
-        General text
-
-        # Section header
-
-        Section text
-
-        # Section header
-
-        Section text
-
-    and remove each header and accompanying text into section records.
-
-    "];
+    /*!
+     * Take a description of the form
+     *
+     *     General text
+     *
+     *     # Section header
+     *
+     *     Section text
+     *
+     *     # Section header
+     *
+     *     Section text
+     *
+     * and remove each header and accompanying text into section records.
+     */
 
     if option::is_none(desc) {
         ret (none, ~[]);

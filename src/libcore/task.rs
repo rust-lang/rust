@@ -1,26 +1,27 @@
-#[doc = "
-Task management.
-
-An executing Rust program consists of a tree of tasks, each with their own
-stack, and sole ownership of their allocated heap data. Tasks communicate
-with each other using ports and channels.
-
-When a task fails, that failure will propagate to its parent (the task
-that spawned it) and the parent will fail as well. The reverse is not
-true: when a parent task fails its children will continue executing. When
-the root (main) task fails, all tasks fail, and then so does the entire
-process.
-
-Tasks may execute in parallel and are scheduled automatically by the runtime.
-
-# Example
-
-~~~
-spawn {||
-    log(error, \"Hello, World!\");
-}
-~~~
-"];
+/*!
+ * Task management.
+ *
+ * An executing Rust program consists of a tree of tasks, each with their own
+ * stack, and sole ownership of their allocated heap data. Tasks communicate
+ * with each other using ports and channels.
+ *
+ * When a task fails, that failure will propagate to its parent (the task
+ * that spawned it) and the parent will fail as well. The reverse is not
+ * true: when a parent task fails its children will continue executing. When
+ * the root (main) task fails, all tasks fail, and then so does the entire
+ * process.
+ *
+ * Tasks may execute in parallel and are scheduled automatically by the
+ * runtime.
+ *
+ * # Example
+ *
+ * ~~~
+ * spawn {||
+ *     log(error, "Hello, World!");
+ * }
+ * ~~~
+ */
 
 import result::result;
 import dvec::extensions;
@@ -63,106 +64,106 @@ export local_data_modify;
 
 /* Data types */
 
-#[doc = "A handle to a task"]
+/// A handle to a task
 enum task = task_id;
 
-#[doc = "
-Indicates the manner in which a task exited.
-
-A task that completes without failing and whose supervised children complete
-without failing is considered to exit successfully.
-
-FIXME (See #1868): This description does not indicate the current behavior
-for linked failure.
-"]
+/**
+ * Indicates the manner in which a task exited.
+ *
+ * A task that completes without failing and whose supervised children
+ * complete without failing is considered to exit successfully.
+ *
+ * FIXME (See #1868): This description does not indicate the current behavior
+ * for linked failure.
+ */
 enum task_result {
     success,
     failure,
 }
 
-#[doc = "A message type for notifying of task lifecycle events"]
+/// A message type for notifying of task lifecycle events
 enum notification {
-    #[doc = "Sent when a task exits with the task handle and result"]
+    /// Sent when a task exits with the task handle and result
     exit(task, task_result)
 }
 
-#[doc = "Scheduler modes"]
+/// Scheduler modes
 enum sched_mode {
-    #[doc = "1:N -- All tasks run in the same OS thread"]
+    /// All tasks run in the same OS thread
     single_threaded,
-    #[doc = "M:N -- Tasks are distributed among available CPUs"]
+    /// Tasks are distributed among available CPUs
     thread_per_core,
-    #[doc = "N:N -- Each task runs in its own OS thread"]
+    /// Each task runs in its own OS thread
     thread_per_task,
-    #[doc = "?:N -- Tasks are distributed among a fixed number of OS threads"]
+    /// Tasks are distributed among a fixed number of OS threads
     manual_threads(uint),
-    #[doc = "
-    Tasks are scheduled on the main OS thread
-
-    The main OS thread is the thread used to launch the runtime which,
-    in most cases, is the process's initial thread as created by the OS.
-    "]
+    /**
+     * Tasks are scheduled on the main OS thread
+     *
+     * The main OS thread is the thread used to launch the runtime which,
+     * in most cases, is the process's initial thread as created by the OS.
+     */
     osmain
 }
 
-#[doc = "
-Scheduler configuration options
-
-# Fields
-
-* sched_mode - The operating mode of the scheduler
-
-* foreign_stack_size - The size of the foreign stack, in bytes
-
-    Rust code runs on Rust-specific stacks. When Rust code calls foreign code
-    (via functions in foreign modules) it switches to a typical, large stack
-    appropriate for running code written in languages like C. By default these
-    foreign stacks have unspecified size, but with this option their size can
-    be precisely specified.
-"]
+/**
+ * Scheduler configuration options
+ *
+ * # Fields
+ *
+ * * sched_mode - The operating mode of the scheduler
+ *
+ * * foreign_stack_size - The size of the foreign stack, in bytes
+ *
+ *     Rust code runs on Rust-specific stacks. When Rust code calls foreign
+ *     code (via functions in foreign modules) it switches to a typical, large
+ *     stack appropriate for running code written in languages like C. By
+ *     default these foreign stacks have unspecified size, but with this
+ *     option their size can be precisely specified.
+ */
 type sched_opts = {
     mode: sched_mode,
     foreign_stack_size: option<uint>
 };
 
-#[doc = "
-Task configuration options
-
-# Fields
-
-* supervise - Do not propagate failure to the parent task
-
-    All tasks are linked together via a tree, from parents to children. By
-    default children are 'supervised' by their parent and when they fail
-    so too will their parents. Settings this flag to false disables that
-    behavior.
-
-* notify_chan - Enable lifecycle notifications on the given channel
-
-* sched - Specify the configuration of a new scheduler to create the task in
-
-    By default, every task is created in the same scheduler as its
-    parent, where it is scheduled cooperatively with all other tasks
-    in that scheduler. Some specialized applications may want more
-    control over their scheduling, in which case they can be spawned
-    into a new scheduler with the specific properties required.
-
-    This is of particular importance for libraries which want to call
-    into foreign code that blocks. Without doing so in a different
-    scheduler other tasks will be impeded or even blocked indefinitely.
-
-"]
+/**
+ * Task configuration options
+ *
+ * # Fields
+ *
+ * * supervise - Do not propagate failure to the parent task
+ *
+ *     All tasks are linked together via a tree, from parents to children. By
+ *     default children are 'supervised' by their parent and when they fail
+ *     so too will their parents. Settings this flag to false disables that
+ *     behavior.
+ *
+ * * notify_chan - Enable lifecycle notifications on the given channel
+ *
+ * * sched - Specify the configuration of a new scheduler to create the task
+ *           in
+ *
+ *     By default, every task is created in the same scheduler as its
+ *     parent, where it is scheduled cooperatively with all other tasks
+ *     in that scheduler. Some specialized applications may want more
+ *     control over their scheduling, in which case they can be spawned
+ *     into a new scheduler with the specific properties required.
+ *
+ *     This is of particular importance for libraries which want to call
+ *     into foreign code that blocks. Without doing so in a different
+ *     scheduler other tasks will be impeded or even blocked indefinitely.
+ */
 type task_opts = {
     supervise: bool,
     notify_chan: option<comm::chan<notification>>,
     sched: option<sched_opts>,
 };
 
-#[doc = "
-The task builder type.
-
-Provides detailed control over the properties and behavior of new tasks.
-"]
+/**
+ * The task builder type.
+ *
+ * Provides detailed control over the properties and behavior of new tasks.
+ */
 // NB: Builders are designed to be single-use because they do stateful
 // things that get weird when reusing - e.g. if you create a result future
 // it only applies to a single task, so then you have to maintain some
@@ -182,12 +183,12 @@ enum builder {
 /* Task construction */
 
 fn default_task_opts() -> task_opts {
-    #[doc = "
-    The default task options
-
-    By default all tasks are supervised by their parent, are spawned
-    into the same scheduler, and do not post lifecycle notifications.
-    "];
+    /*!
+     * The default task options
+     *
+     * By default all tasks are supervised by their parent, are spawned
+     * into the same scheduler, and do not post lifecycle notifications.
+     */
 
     {
         supervise: true,
@@ -197,7 +198,7 @@ fn default_task_opts() -> task_opts {
 }
 
 fn builder() -> builder {
-    #[doc = "Construct a builder"];
+    //! Construct a builder
 
     let body_identity = fn@(+body: fn~()) -> fn~() { body };
 
@@ -209,39 +210,39 @@ fn builder() -> builder {
 }
 
 fn get_opts(builder: builder) -> task_opts {
-    #[doc = "Get the task_opts associated with a builder"];
+    //! Get the task_opts associated with a builder
 
     builder.opts
 }
 
 fn set_opts(builder: builder, opts: task_opts) {
-    #[doc = "
-    Set the task_opts associated with a builder
-
-    To update a single option use a pattern like the following:
-
-        set_opts(builder, {
-            supervise: false
-            with get_opts(builder)
-        });
-    "];
+    /*!
+     * Set the task_opts associated with a builder
+     *
+     * To update a single option use a pattern like the following:
+     *
+     *     set_opts(builder, {
+     *         supervise: false
+     *         with get_opts(builder)
+     *     });
+     */
 
     builder.opts = opts;
 }
 
 fn add_wrapper(builder: builder, gen_body: fn@(+fn~()) -> fn~()) {
-    #[doc = "
-    Add a wrapper to the body of the spawned task.
-
-    Before the task is spawned it is passed through a 'body generator'
-    function that may perform local setup operations as well as wrap
-    the task body in remote setup operations. With this the behavior
-    of tasks can be extended in simple ways.
-
-    This function augments the current body generator with a new body
-    generator by applying the task body which results from the
-    existing body generator to the new body generator.
-    "];
+    /*!
+     * Add a wrapper to the body of the spawned task.
+     *
+     * Before the task is spawned it is passed through a 'body generator'
+     * function that may perform local setup operations as well as wrap
+     * the task body in remote setup operations. With this the behavior
+     * of tasks can be extended in simple ways.
+     *
+     * This function augments the current body generator with a new body
+     * generator by applying the task body which results from the
+     * existing body generator to the new body generator.
+     */
 
     let prev_gen_body = builder.gen_body;
     builder.gen_body = fn@(+body: fn~()) -> fn~() {
@@ -250,18 +251,18 @@ fn add_wrapper(builder: builder, gen_body: fn@(+fn~()) -> fn~()) {
 }
 
 fn run(-builder: builder, +f: fn~()) {
-    #[doc = "
-    Creates and exucutes a new child task
-
-    Sets up a new task with its own call stack and schedules it to run
-    the provided unique closure. The task has the properties and behavior
-    specified by `builder`.
-
-    # Failure
-
-    When spawning into a new scheduler, the number of threads requested
-    must be greater than zero.
-    "];
+    /*!
+     * Creates and exucutes a new child task
+     *
+     * Sets up a new task with its own call stack and schedules it to run
+     * the provided unique closure. The task has the properties and behavior
+     * specified by `builder`.
+     *
+     * # Failure
+     *
+     * When spawning into a new scheduler, the number of threads requested
+     * must be greater than zero.
+     */
 
     let body = builder.gen_body(f);
     spawn_raw(builder.opts, body);
@@ -271,17 +272,18 @@ fn run(-builder: builder, +f: fn~()) {
 /* Builder convenience functions */
 
 fn future_result(builder: builder) -> future::future<task_result> {
-    #[doc = "
-    Get a future representing the exit status of the task.
-
-    Taking the value of the future will block until the child task terminates.
-
-    Note that the future returning by this function is only useful for
-    obtaining the value of the next task to be spawning with the
-    builder. If additional tasks are spawned with the same builder
-    then a new result future must be obtained prior to spawning each
-    task.
-    "];
+    /*!
+     * Get a future representing the exit status of the task.
+     *
+     * Taking the value of the future will block until the child task
+     * terminates.
+     *
+     * Note that the future returning by this function is only useful for
+     * obtaining the value of the next task to be spawning with the
+     * builder. If additional tasks are spawned with the same builder
+     * then a new result future must be obtained prior to spawning each
+     * task.
+     */
 
     // FIXME (#1087, #1857): Once linked failure and notification are
     // handled in the library, I can imagine implementing this by just
@@ -304,7 +306,7 @@ fn future_result(builder: builder) -> future::future<task_result> {
 }
 
 fn future_task(builder: builder) -> future::future<task> {
-    #[doc = "Get a future representing the handle to the new task"];
+    //! Get a future representing the handle to the new task
 
     let mut po = comm::port();
     let ch = comm::chan(po);
@@ -318,7 +320,7 @@ fn future_task(builder: builder) -> future::future<task> {
 }
 
 fn unsupervise(builder: builder) {
-    #[doc = "Configures the new task to not propagate failure to its parent"];
+    //! Configures the new task to not propagate failure to its parent
 
     set_opts(builder, {
         supervise: false
@@ -328,17 +330,17 @@ fn unsupervise(builder: builder) {
 
 fn run_listener<A:send>(-builder: builder,
                         +f: fn~(comm::port<A>)) -> comm::chan<A> {
-    #[doc = "
-    Runs a new task while providing a channel from the parent to the child
-
-    Sets up a communication channel from the current task to the new
-    child task, passes the port to child's body, and returns a channel
-    linked to the port to the parent.
-
-    This encapsulates some boilerplate handshaking logic that would
-    otherwise be required to establish communication from the parent
-    to the child.
-    "];
+    /*!
+     * Runs a new task while providing a channel from the parent to the child
+     *
+     * Sets up a communication channel from the current task to the new
+     * child task, passes the port to child's body, and returns a channel
+     * linked to the port to the parent.
+     *
+     * This encapsulates some boilerplate handshaking logic that would
+     * otherwise be required to establish communication from the parent
+     * to the child.
+     */
 
     let setup_po = comm::port();
     let setup_ch = comm::chan(setup_po);
@@ -357,60 +359,60 @@ fn run_listener<A:send>(-builder: builder,
 /* Spawn convenience functions */
 
 fn spawn(+f: fn~()) {
-    #[doc = "
-    Creates and executes a new child task
-
-    Sets up a new task with its own call stack and schedules it to run
-    the provided unique closure.
-
-    This function is equivalent to `run(new_builder(), f)`.
-    "];
+    /*!
+     * Creates and executes a new child task
+     *
+     * Sets up a new task with its own call stack and schedules it to run
+     * the provided unique closure.
+     *
+     * This function is equivalent to `run(new_builder(), f)`.
+     */
 
     run(builder(), f);
 }
 
 fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
-    #[doc = "
-    Runs a new task while providing a channel from the parent to the child
-
-    Sets up a communication channel from the current task to the new
-    child task, passes the port to child's body, and returns a channel
-    linked to the port to the parent.
-
-    This encapsulates some boilerplate handshaking logic that would
-    otherwise be required to establish communication from the parent
-    to the child.
-
-    The simplest way to establish bidirectional communication between
-    a parent in child is as follows:
-
-        let po = comm::port();
-        let ch = comm::chan(po);
-        let ch = spawn_listener {|po|
-            // Now the child has a port called 'po' to read from and
-            // an environment-captured channel called 'ch'.
-        };
-        // Likewise, the parent has both a 'po' and 'ch'
-
-    This function is equivalent to `run_listener(builder(), f)`.
-    "];
+    /*!
+     * Runs a new task while providing a channel from the parent to the child
+     *
+     * Sets up a communication channel from the current task to the new
+     * child task, passes the port to child's body, and returns a channel
+     * linked to the port to the parent.
+     *
+     * This encapsulates some boilerplate handshaking logic that would
+     * otherwise be required to establish communication from the parent
+     * to the child.
+     *
+     * The simplest way to establish bidirectional communication between
+     * a parent in child is as follows:
+     *
+     *     let po = comm::port();
+     *     let ch = comm::chan(po);
+     *     let ch = spawn_listener {|po|
+     *         // Now the child has a port called 'po' to read from and
+     *         // an environment-captured channel called 'ch'.
+     *     };
+     *     // Likewise, the parent has both a 'po' and 'ch'
+     *
+     * This function is equivalent to `run_listener(builder(), f)`.
+     */
 
     run_listener(builder(), f)
 }
 
 fn spawn_sched(mode: sched_mode, +f: fn~()) {
-    #[doc = "
-    Creates a new scheduler and executes a task on it
-
-    Tasks subsequently spawned by that task will also execute on
-    the new scheduler. When there are no more tasks to execute the
-    scheduler terminates.
-
-    # Failure
-
-    In manual threads mode the number of threads requested must be
-    greater than zero.
-    "];
+    /*!
+     * Creates a new scheduler and executes a task on it
+     *
+     * Tasks subsequently spawned by that task will also execute on
+     * the new scheduler. When there are no more tasks to execute the
+     * scheduler terminates.
+     *
+     * # Failure
+     *
+     * In manual threads mode the number of threads requested must be
+     * greater than zero.
+     */
 
     let mut builder = builder();
     set_opts(builder, {
@@ -424,16 +426,16 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
 }
 
 fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
-    #[doc = "
-    Execute a function in another task and return either the return value
-    of the function or result::err.
-
-    # Return value
-
-    If the function executed successfully then try returns result::ok
-    containing the value returned by the function. If the function fails
-    then try returns result::err containing nil.
-    "];
+    /*!
+     * Execute a function in another task and return either the return value
+     * of the function or result::err.
+     *
+     * # Return value
+     *
+     * If the function executed successfully then try returns result::ok
+     * containing the value returned by the function. If the function fails
+     * then try returns result::err containing nil.
+     */
 
     let po = comm::port();
     let ch = comm::chan(po);
@@ -453,7 +455,7 @@ fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
 /* Lifecycle functions */
 
 fn yield() {
-    #[doc = "Yield control to the task scheduler"];
+    //! Yield control to the task scheduler
 
     let task_ = rustrt::rust_get_task();
     let mut killed = false;
@@ -464,31 +466,30 @@ fn yield() {
 }
 
 fn failing() -> bool {
-    #[doc = "True if the running task has failed"];
+    //! True if the running task has failed
 
     rustrt::rust_task_is_unwinding(rustrt::rust_get_task())
 }
 
 fn get_task() -> task {
-    #[doc = "Get a handle to the running task"];
+    //! Get a handle to the running task
 
     task(rustrt::get_task_id())
 }
 
-#[doc = "
-Temporarily make the task unkillable
-
-# Example
-
-    task::unkillable {||
-        // detach / yield / destroy must all be called together
-        rustrt::rust_port_detach(po);
-        // This must not result in the current task being killed
-        task::yield();
-        rustrt::rust_port_destroy(po);
-    }
-
-"]
+/**
+ * Temporarily make the task unkillable
+ *
+ * # Example
+ *
+ *     task::unkillable {||
+ *         // detach / yield / destroy must all be called together
+ *         rustrt::rust_port_detach(po);
+ *         // This must not result in the current task being killed
+ *         task::yield();
+ *         rustrt::rust_port_destroy(po);
+ *     }
+ */
 unsafe fn unkillable(f: fn()) {
     class allow_failure {
       let i: (); // since a class must have at least one field
@@ -596,14 +597,16 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
  * Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation magic.
  ****************************************************************************/
 
-#[doc = "Indexes a task-local data slot. The function itself is used to
-automatically finalise stored values; also, its code pointer is used for
-comparison. Recommended use is to write an empty function for each desired
-task-local data slot (and use class destructors, instead of code inside the
-finaliser, if specific teardown is needed). DO NOT use multiple instantiations
-of a single polymorphic function to index data of different types; arbitrary
-type coercion is possible this way. The interface is safe as long as all key
-functions are monomorphic."]
+/**
+ * Indexes a task-local data slot. The function itself is used to
+ * automatically finalise stored values; also, its code pointer is used for
+ * comparison. Recommended use is to write an empty function for each desired
+ * task-local data slot (and use class destructors, instead of code inside the
+ * finaliser, if specific teardown is needed). DO NOT use multiple
+ * instantiations of a single polymorphic function to index data of different
+ * types; arbitrary type coercion is possible this way. The interface is safe
+ * as long as all key functions are monomorphic.
+ */
 type local_data_key<T> = fn@(+@T);
 
 // We use dvec because it's the best data structure in core. If TLS is used
@@ -741,23 +744,31 @@ unsafe fn local_modify<T>(task: *rust_task, key: local_data_key<T>,
 }
 
 /* Exported interface for task-local data (plus local_data_key above). */
-#[doc = "Remove a task-local data value from the table, returning the
-reference that was originally created to insert it."]
+/**
+ * Remove a task-local data value from the table, returning the
+ * reference that was originally created to insert it.
+ */
 unsafe fn local_data_pop<T>(key: local_data_key<T>) -> option<@T> {
     local_pop(rustrt::rust_get_task(), key)
 }
-#[doc = "Retrieve a task-local data value. It will also be kept alive in the
-table until explicitly removed."]
+/**
+ * Retrieve a task-local data value. It will also be kept alive in the
+ * table until explicitly removed.
+ */
 unsafe fn local_data_get<T>(key: local_data_key<T>) -> option<@T> {
     local_get(rustrt::rust_get_task(), key)
 }
-#[doc = "Store a value in task-local data. If this key already has a value,
-that value is overwritten (and its destructor is run)."]
+/**
+ * Store a value in task-local data. If this key already has a value,
+ * that value is overwritten (and its destructor is run).
+ */
 unsafe fn local_data_set<T>(key: local_data_key<T>, -data: @T) {
     local_set(rustrt::rust_get_task(), key, data)
 }
-#[doc = "Modify a task-local data value. If the function returns 'none', the
-data is removed (and its reference dropped)."]
+/**
+ * Modify a task-local data value. If the function returns 'none', the
+ * data is removed (and its reference dropped).
+ */
 unsafe fn local_data_modify<T>(key: local_data_key<T>,
                                modify_fn: fn(option<@T>) -> option<@T>) {
     local_modify(rustrt::rust_get_task(), key, modify_fn)

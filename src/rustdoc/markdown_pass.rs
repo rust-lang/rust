@@ -1,4 +1,4 @@
-#[doc = "Generate markdown from a document tree"];
+//! Generate markdown from a document tree
 
 import markdown_writer::writer;
 import markdown_writer::writer_util;

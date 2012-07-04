@@ -1,4 +1,4 @@
-#[doc = "Simple ANSI color library"];
+//! Simple ANSI color library
 
 import core::option;
 
@@ -25,13 +25,13 @@ const color_bright_white: u8 = 15u8;
 
 fn esc(writer: io::writer) { writer.write([0x1bu8, '[' as u8]/~); }
 
-#[doc = "Reset the foreground and background colors to default"]
+/// Reset the foreground and background colors to default
 fn reset(writer: io::writer) {
     esc(writer);
     writer.write(~['0' as u8, 'm' as u8]);
 }
 
-#[doc = "Returns true if the terminal supports color"]
+/// Returns true if the terminal supports color
 fn color_supported() -> bool {
     let supported_terms = ~["xterm-color", "xterm",
                            "screen-bce", "xterm-256color"];
@@ -54,12 +54,12 @@ fn set_color(writer: io::writer, first_char: u8, color: u8) {
     writer.write(~[first_char, ('0' as u8) + color, 'm' as u8]);
 }
 
-#[doc = "Set the foreground color"]
+/// Set the foreground color
 fn fg(writer: io::writer, color: u8) {
     ret set_color(writer, '3' as u8, color);
 }
 
-#[doc = "Set the background color"]
+/// Set the background color
 fn bg(writer: io::writer, color: u8) {
     ret set_color(writer, '4' as u8, color);
 }

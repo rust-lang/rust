@@ -1,4 +1,4 @@
-#[doc = "Unsafe pointer utility functions"];
+//! Unsafe pointer utility functions
 
 export addr_of;
 export mut_addr_of;
@@ -33,11 +33,11 @@ extern mod rusti {
     fn addr_of<T>(val: T) -> *T;
 }
 
-#[doc = "Get an unsafe pointer to a value"]
+/// Get an unsafe pointer to a value
 #[inline(always)]
 pure fn addr_of<T>(val: T) -> *T { unchecked { rusti::addr_of(val) } }
 
-#[doc = "Get an unsafe mut pointer to a value"]
+/// Get an unsafe mut pointer to a value
 #[inline(always)]
 pure fn mut_addr_of<T>(val: T) -> *mut T {
     unsafe {
@@ -45,7 +45,7 @@ pure fn mut_addr_of<T>(val: T) -> *mut T {
     }
 }
 
-#[doc = "Calculate the offset from a pointer"]
+/// Calculate the offset from a pointer
 #[inline(always)]
 fn offset<T>(ptr: *T, count: uint) -> *T {
     unsafe {
@@ -53,7 +53,7 @@ fn offset<T>(ptr: *T, count: uint) -> *T {
     }
 }
 
-#[doc = "Calculate the offset from a const pointer"]
+/// Calculate the offset from a const pointer
 #[inline(always)]
 fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
     unsafe {
@@ -61,19 +61,19 @@ fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
     }
 }
 
-#[doc = "Calculate the offset from a mut pointer"]
+/// Calculate the offset from a mut pointer
 #[inline(always)]
 fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
     (ptr as uint + count * sys::size_of::<T>()) as *mut T
 }
 
-#[doc = "Return the offset of the first null pointer in `buf`."]
+/// Return the offset of the first null pointer in `buf`.
 #[inline(always)]
 unsafe fn buf_len<T>(buf: **T) -> uint {
     position(buf, |i| i == null())
 }
 
-#[doc = "Return the first offset `i` such that `f(buf[i]) == true`."]
+/// Return the first offset `i` such that `f(buf[i]) == true`.
 #[inline(always)]
 unsafe fn position<T>(buf: *T, f: fn(T) -> bool) -> uint {
     let mut i = 0u;
@@ -83,34 +83,34 @@ unsafe fn position<T>(buf: *T, f: fn(T) -> bool) -> uint {
     }
 }
 
-#[doc = "Create an unsafe null pointer"]
+/// Create an unsafe null pointer
 #[inline(always)]
 pure fn null<T>() -> *T { unsafe { unsafe::reinterpret_cast(0u) } }
 
-#[doc = "Returns true if the pointer is equal to the null pointer."]
+/// Returns true if the pointer is equal to the null pointer.
 pure fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
 
-#[doc = "Returns true if the pointer is not equal to the null pointer."]
+/// Returns true if the pointer is not equal to the null pointer.
 pure fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 
-#[doc = "
-Copies data from one location to another
-
-Copies `count` elements (not bytes) from `src` to `dst`. The source
-and destination may not overlap.
-"]
+/**
+ * Copies data from one location to another
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may not overlap.
+ */
 #[inline(always)]
 unsafe fn memcpy<T>(dst: *T, src: *T, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memcpy(dst as *c_void, src as *c_void, n as size_t);
 }
 
-#[doc = "
-Copies data from one location to another
-
-Copies `count` elements (not bytes) from `src` to `dst`. The source
-and destination may overlap.
-"]
+/**
+ * Copies data from one location to another
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
 unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
     let n = count * sys::size_of::<T>();
@@ -123,12 +123,12 @@ unsafe fn memset<T>(dst: *mut T, c: int, count: uint)  {
     libc_::memset(dst as *c_void, c as libc::c_int, n as size_t);
 }
 
-#[doc = "Extension methods for pointers"]
+/// Extension methods for pointers
 impl extensions<T> for *T {
-    #[doc = "Returns true if the pointer is equal to the null pointer."]
+    /// Returns true if the pointer is equal to the null pointer.
     pure fn is_null() -> bool { is_null(self) }
 
-    #[doc = "Returns true if the pointer is not equal to the null pointer."]
+    /// Returns true if the pointer is not equal to the null pointer.
     pure fn is_not_null() -> bool { is_not_null(self) }
 }
 

@@ -1,24 +1,24 @@
-#[doc = "
-Low-level bindings to the libuv library.
-
-This module contains a set of direct, 'bare-metal' wrappers around
-the libuv C-API.
-
-Also contained herein are a set of rust records that map, in
-approximate memory-size, to the libuv data structures. The record
-implementations are adjusted, per-platform, to match their respective
-representations.
-
-There are also a collection of helper functions to ease interacting
-with the low-level API (such as a function to return the latest
-libuv error as a rust-formatted string).
-
-As new functionality, existant in uv.h, is added to the rust stdlib,
-the mappings should be added in this module.
-
-This module's implementation will hopefully be, eventually, replaced
-with per-platform, generated source files from rust-bindgen.
-"];
+/*!
+ * Low-level bindings to the libuv library.
+ *
+ * This module contains a set of direct, 'bare-metal' wrappers around
+ * the libuv C-API.
+ *
+ * Also contained herein are a set of rust records that map, in
+ * approximate memory-size, to the libuv data structures. The record
+ * implementations are adjusted, per-platform, to match their respective
+ * representations.
+ *
+ * There are also a collection of helper functions to ease interacting
+ * with the low-level API (such as a function to return the latest
+ * libuv error as a rust-formatted string).
+ *
+ * As new functionality, existant in uv.h, is added to the rust stdlib,
+ * the mappings should be added in this module.
+ *
+ * This module's implementation will hopefully be, eventually, replaced
+ * with per-platform, generated source files from rust-bindgen.
+ */
 
 import libc::size_t;
 

@@ -1,45 +1,43 @@
 // -*- rust -*-
 
-#[doc = "Boolean logic"];
+//! Boolean logic
 
 export not, and, or, xor, implies;
 export eq, ne, is_true, is_false;
 export from_str, to_str, all_values, to_bit;
 
-#[doc = "Negation / inverse"]
+/// Negation / inverse
 pure fn not(v: bool) -> bool { !v }
 
-#[doc = "Conjunction"]
+/// Conjunction
 pure fn and(a: bool, b: bool) -> bool { a && b }
 
-#[doc = "Disjunction"]
+/// Disjunction
 pure fn or(a: bool, b: bool) -> bool { a || b }
 
-#[doc = "
-Exclusive or
-
-Identical to `or(and(a, not(b)), and(not(a), b))`
-"]
+/**
+ * Exclusive or
+ *
+ * Identical to `or(and(a, not(b)), and(not(a), b))`
+ */
 pure fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 
-#[doc = "Implication in the logic, i.e. from `a` follows `b`"]
+/// Implication in the logic, i.e. from `a` follows `b`
 pure fn implies(a: bool, b: bool) -> bool { !a || b }
 
-#[doc = "
-true if truth values `a` and `b` are indistinguishable in the logic
-"]
+/// true if truth values `a` and `b` are indistinguishable in the logic
 pure fn eq(a: bool, b: bool) -> bool { a == b }
 
-#[doc = "true if truth values `a` and `b` are distinguishable in the logic"]
+/// true if truth values `a` and `b` are distinguishable in the logic
 pure fn ne(a: bool, b: bool) -> bool { a != b }
 
-#[doc = "true if `v` represents truth in the logic"]
+/// true if `v` represents truth in the logic
 pure fn is_true(v: bool) -> bool { v }
 
-#[doc = "true if `v` represents falsehood in the logic"]
+/// true if `v` represents falsehood in the logic
 pure fn is_false(v: bool) -> bool { !v }
 
-#[doc = "Parse logic value from `s`"]
+/// Parse logic value from `s`
 pure fn from_str(s: str) -> option<bool> {
     alt check s {
       "true" { some(true) }
@@ -48,19 +46,19 @@ pure fn from_str(s: str) -> option<bool> {
     }
 }
 
-#[doc = "Convert `v` into a string"]
+/// Convert `v` into a string
 pure fn to_str(v: bool) -> str { if v { "true" } else { "false" } }
 
-#[doc = "
-Iterates over all truth values by passing them to `blk` in an unspecified
-order
-"]
+/**
+ * Iterates over all truth values by passing them to `blk` in an unspecified
+ * order
+ */
 fn all_values(blk: fn(v: bool)) {
     blk(true);
     blk(false);
 }
 
-#[doc = "converts truth value to an 8 bit byte"]
+/// converts truth value to an 8 bit byte
 pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
 #[test]

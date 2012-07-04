@@ -1,5 +1,7 @@
-#[doc = "An atomically reference counted wrapper that can be used to
-share immutable data between tasks."]
+/**
+ * An atomically reference counted wrapper that can be used to
+ * share immutable data between tasks.
+ */
 
 import comm::{port, chan, methods};
 import sys::methods;
@@ -41,7 +43,7 @@ class arc_destruct<T> {
 
 type arc<T: const> = arc_destruct<T>;
 
-#[doc="Create an atomically reference counted wrapper."]
+/// Create an atomically reference counted wrapper.
 fn arc<T: const>(-data: T) -> arc<T> {
     let data = ~{mut count: 1, data: data};
     unsafe {
@@ -50,8 +52,10 @@ fn arc<T: const>(-data: T) -> arc<T> {
     }
 }
 
-#[doc="Access the underlying data in an atomically reference counted
- wrapper."]
+/**
+ * Access the underlying data in an atomically reference counted
+ * wrapper.
+ */
 fn get<T: const>(rc: &a.arc<T>) -> &a.T {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
@@ -62,11 +66,13 @@ fn get<T: const>(rc: &a.arc<T>) -> &a.T {
     }
 }
 
-#[doc="Duplicate an atomically reference counted wrapper.
-
-The resulting two `arc` objects will point to the same underlying data
-object. However, one of the `arc` objects can be sent to another task,
-allowing them to share the underlying data."]
+/**
+ * Duplicate an atomically reference counted wrapper.
+ *
+ * The resulting two `arc` objects will point to the same underlying data
+ * object. However, one of the `arc` objects can be sent to another task,
+ * allowing them to share the underlying data.
+ */
 fn clone<T: const>(rc: &arc<T>) -> arc<T> {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);

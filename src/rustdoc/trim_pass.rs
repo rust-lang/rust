@@ -1,11 +1,9 @@
-#[doc = "
-
-Pulls a brief description out of a long description.
-
-If the first paragraph of a long description is short enough then it
-is interpreted as the brief description.
-
-"];
+/*!
+ * Pulls a brief description out of a long description.
+ *
+ * If the first paragraph of a long description is short enough then it
+ * is interpreted as the brief description.
+ */
 
 export mk_pass;
 

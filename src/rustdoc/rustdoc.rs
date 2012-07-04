@@ -2,7 +2,7 @@
 import doc::item;
 import doc::util;
 
-#[doc = "A single operation on the document model"]
+/// A single operation on the document model
 type pass = {
     name: str,
     f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc
@@ -125,7 +125,7 @@ fn time<T>(what: str, f: fn() -> T) -> T {
     ret rv;
 }
 
-#[doc = "Runs rustdoc over the given file"]
+/// Runs rustdoc over the given file
 fn run(config: config::config) {
 
     let source_file = config.input_crate;

@@ -2565,7 +2565,7 @@ mod general_category {
 
 }
 mod derived_property {
-    #[doc = "Check if a character has the alphabetic unicode property"]
+    /// Check if a character has the alphabetic unicode property
     pure fn Alphabetic(c: char) -> bool {
         ret alt c {
               '\x41' to '\x5a'

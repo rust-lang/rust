@@ -1,7 +1,7 @@
-#[doc = "
-A simple map based on a vector for small integer keys. Space requirements
-are O(highest integer key).
-"];
+/*!
+ * A simple map based on a vector for small integer keys. Space requirements
+ * are O(highest integer key).
+ */
 import core::option;
 import core::option::{some, none};
 import dvec::{dvec, extensions};
@@ -10,36 +10,36 @@ import dvec::{dvec, extensions};
 // requires this to be.
 type smallintmap<T: copy> = @{v: dvec<option<T>>};
 
-#[doc = "Create a smallintmap"]
+/// Create a smallintmap
 fn mk<T: copy>() -> smallintmap<T> {
     ret @{v: dvec()};
 }
 
-#[doc = "
-Add a value to the map. If the map already contains a value for
-the specified key then the original value is replaced.
-"]
+/**
+ * Add a value to the map. If the map already contains a value for
+ * the specified key then the original value is replaced.
+ */
 #[inline(always)]
 fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
     self.v.grow_set_elt(key, none, some(val));
 }
 
-#[doc = "
-Get the value for the specified key. If the key does not exist
-in the map then returns none
-"]
+/**
+ * Get the value for the specified key. If the key does not exist
+ * in the map then returns none
+ */
 fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
     if key < self.v.len() { ret self.v.get_elt(key); }
     ret none::<T>;
 }
 
-#[doc = "
-Get the value for the specified key
-
-# Failure
-
-If the key does not exist in the map
-"]
+/**
+ * Get the value for the specified key
+ *
+ * # Failure
+ *
+ * If the key does not exist in the map
+ */
 fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     alt find(self, key) {
       none { #error("smallintmap::get(): key not present"); fail; }
@@ -47,14 +47,12 @@ fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     }
 }
 
-#[doc = "
-Returns true if the map contains a value for the specified key
-"]
+/// Returns true if the map contains a value for the specified key
 fn contains_key<T: copy>(self: smallintmap<T>, key: uint) -> bool {
     ret !option::is_none(find(self, key));
 }
 
-#[doc = "Implements the map::map interface for smallintmap"]
+/// Implements the map::map interface for smallintmap
 impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn size() -> uint {
         let mut sz = 0u;
@@ -106,7 +104,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     }
 }
 
-#[doc = "Cast the given smallintmap to a map::map"]
+/// Cast the given smallintmap to a map::map
 fn as_map<V: copy>(s: smallintmap<V>) -> map::map<uint, V> {
     s as map::map::<uint, V>
 }

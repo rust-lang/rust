@@ -1,4 +1,4 @@
-#[doc = "Support code for serialization."];
+//! Support code for serialization.
 
 use core;
 

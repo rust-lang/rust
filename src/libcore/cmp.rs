@@ -1,4 +1,4 @@
-#[doc="Interfaces used for comparison."]
+/// Interfaces used for comparison.
 
 iface ord {
     fn lt(&&other: self) -> bool;

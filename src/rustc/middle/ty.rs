@@ -2996,9 +2996,7 @@ fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {
         })
 }
 
-#[doc = "
-Returns an equivalent type with all the typedefs and self regions removed.
-"]
+/// Returns an equivalent type with all the typedefs and self regions removed.
 fn normalize_ty(cx: ctxt, t: t) -> t {
     alt cx.normalized_cache.find(t) {
       some(t) { ret t; }
