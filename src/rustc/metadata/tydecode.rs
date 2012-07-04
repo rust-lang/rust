@@ -467,7 +467,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
 
 
 // Rust metadata parsing
-fn parse_def_id(buf: ~[u8]) -> ast::def_id {
+fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let mut colon_idx = 0u;
     let len = vec::len(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }

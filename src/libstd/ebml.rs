@@ -26,6 +26,7 @@ export writer;
 export serializer;
 export ebml_deserializer;
 export deserializer;
+export with_doc_data;
 
 type ebml_tag = {id: uint, size: uint};
 
@@ -120,6 +121,10 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
 }
 
 fn doc_data(d: doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
+
+fn with_doc_data<T>(d: doc, f: fn(x:&[u8]) -> T) -> T {
+    ret f(vec::view::<u8>(*d.data, d.start, d.end));
+}
 
 fn doc_as_str(d: doc) -> str { ret str::from_bytes(doc_data(d)); }
 

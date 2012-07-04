@@ -118,7 +118,7 @@ fn item_symbol(item: ebml::doc) -> str {
 fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
     let mut found = none;
     do ebml::tagged_docs(d, tag_items_data_parent_item) |did| {
-        found = some(parse_def_id(ebml::doc_data(did)));
+        found = some(ebml::with_doc_data(did, |d| parse_def_id(d)));
     }
     found
 }
@@ -126,7 +126,8 @@ fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
 // XXX: This has nothing to do with classes.
 fn class_member_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
     let tagdoc = ebml::get_doc(d, tag_def_id);
-    ret translate_def_id(cdata, parse_def_id(ebml::doc_data(tagdoc)));
+    ret translate_def_id(cdata, ebml::with_doc_data(tagdoc,
+                                                    |d| parse_def_id(d)));
 }
 
 fn field_mutability(d: ebml::doc) -> ast::class_mutability {
@@ -207,7 +208,7 @@ fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> ~[ast::def_id] {
     let mut ids: ~[ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
     do ebml::tagged_docs(item, v) |p| {
-        let ext = parse_def_id(ebml::doc_data(p));
+        let ext = ebml::with_doc_data(p, |d| parse_def_id(d));
         vec::push(ids, {crate: cdata.cnum, node: ext.node});
     };
     ret ids;
@@ -240,7 +241,7 @@ fn resolve_path(path: ~[ast::ident], data: @~[u8]) -> ~[ast::def_id] {
     #debug("resolve_path: looking up %s", s);
     for lookup_hash(paths, eqer, hash_path(s)).each |doc| {
         let did_doc = ebml::get_doc(doc, tag_def_id);
-        vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
+        vec::push(result, ebml::with_doc_data(did_doc, |d| parse_def_id(d)));
     }
     ret result;
 }
@@ -337,7 +338,7 @@ fn get_impl_method(cdata: cmd, id: ast::node_id,
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
     do ebml::tagged_docs(find_item(id, items), tag_item_impl_method) |mid| {
-        let m_did = parse_def_id(ebml::doc_data(mid));
+        let m_did = ebml::with_doc_data(mid, |d| parse_def_id(d));
         if item_name(find_item(m_did.node, items)) == name {
             found = some(translate_def_id(cdata, m_did));
         }
@@ -375,7 +376,7 @@ fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
     };
     do ebml::tagged_docs(cls_items, tag_item_dtor) |doc| {
          let doc1 = ebml::get_doc(doc, tag_def_id);
-         let did = parse_def_id(ebml::doc_data(doc1));
+         let did = ebml::with_doc_data(doc1, |d| parse_def_id(d));
          found = some(translate_def_id(cdata, did));
     };
     found
@@ -558,7 +559,7 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     -> ~[@method_info] {
     let mut rslt = ~[];
     do ebml::tagged_docs(item, tag_item_impl_method) |doc| {
-        let m_did = parse_def_id(ebml::doc_data(doc));
+        let m_did = ebml::with_doc_data(doc, |d| parse_def_id(d));
         let mth_item = lookup_item(m_did.node, cdata.data);
         vec::push(rslt, @{did: translate_def_id(cdata, m_did),
                     /* FIXME (maybe #2323) tjc: take a look at this. */
@@ -578,7 +579,7 @@ fn get_impls_for_mod(cdata: cmd,
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
     do ebml::tagged_docs(mod_item, tag_mod_impl) |doc| {
-        let did = parse_def_id(ebml::doc_data(doc));
+        let did = ebml::with_doc_data(doc, |d| parse_def_id(d));
         let local_did = translate_def_id(cdata, did);
           // The impl may be defined in a different crate. Ask the caller
           // to give us the metadata
@@ -839,7 +840,7 @@ fn iter_crate_items(bytes: @~[u8], proc: fn(str, ast::def_id)) {
             let data = read_path(elt);
             let {tag:_, doc:def} = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
-            let did = parse_def_id(ebml::doc_data(did_doc));
+            let did = ebml::with_doc_data(did_doc, |d| parse_def_id(d));
             proc(data.path, did);
         };
     };
