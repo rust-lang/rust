@@ -211,7 +211,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(nitem.id,
                           node_foreign_item(nitem, abi,
                                            /* FIXME (#2543) */
-                                           @copy cx.path));
+                                           extend(cx, i.ident)));
         }
       }
       item_class(tps, ifces, items, ctor, dtor, _) {
