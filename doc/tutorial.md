@@ -1012,67 +1012,90 @@ call_twice(bare_function);
 
 ### Do syntax
 
-Because closures in Rust are frequently used in combination with
-higher-order functions to simulate control structures like `if` and
-`loop`. For example, this one iterates over a vector of integers
-backwards:
+Closures in Rust are frequently used in combination with higher-order
+functions to simulate control structures like `if` and
+`loop`. Consider this function that iterates over a vector of
+integers, applying an operator to each:
 
 ~~~~
-fn for_rev(v: ~[int], act: fn(int)) {
-    let mut i = vec::len(v);
-    while (i > 0u) {
-        i -= 1u;
-        act(v[i]);
-    }
+fn each(v: ~[int], op: fn(int)) {
+   let mut n = 0;
+   while n < v.len() {
+       op(v[n]);
+       n += 1;
+   }
 }
 ~~~~
 
-To run such an iteration on a block of code, you could call
-it with a closure containing a block of code.
+As a caller, if we use a closure to provide the final operator
+argument, we can write it in a way that has a pleasant, block-like
+structure.
 
 ~~~~
-# fn for_rev(v: ~[int], act: fn(int)) {}
+# fn each(v: ~[int], op: fn(int)) {}
 # fn do_some_work(i: int) { }
-for_rev(~[1, 2, 3], |n| {
+each(~[1, 2, 3], |n| {
     #debug("%i", n);
     do_some_work(n);
 });
 ~~~~
 
-Because this is such a common pattern Rust has a special form
-of function call that can be written more like a built-in control
-structure:
+This is such a useful pattern that Rust has a special form of function
+call that can be written more like a built-in control structure:
 
 ~~~~
-# fn for_rev(v: [int], act: fn(int)) {}
+# fn each(v: ~[int], op: fn(int)) {}
 # fn do_some_work(i: int) { }
-do for_rev(~[1, 2, 3]) |n| {
+do each(~[1, 2, 3]) |n| {
     #debug("%i", n);
     do_some_work(n);
 }
 ~~~~
 
-Notice that the call is prefixed with the keyword `do` and, instead of
-writing the final closure inside the argument list it is moved outside
-of the parenthesis where it looks visually more like a typical block
-of code. The `do` expression is purely syntactic sugar for a call
-that takes a final closure argument.
+The call is prefixed with the keyword `do` and, instead of writing the
+final closure inside the argument list it is moved outside of the
+parenthesis where it looks visually more like a typical block of
+code. The `do` expression is purely syntactic sugar for a call that
+takes a final closure argument.
+
+`do` is often used for task spawning.
+
+~~~~
+import task::spawn;
+
+do spawn() || {
+    #debug("I'm a task, whatever");
+}
+~~~~
+
+That's nice, but look at all those bars and parentheses - that's two empty
+argument lists back to back. Wouldn't it be great if they weren't
+there?
+
+~~~~
+# import task::spawn;
+do spawn {
+   #debug("Kablam!");
+}
+~~~~
+
+Empty argument lists can be omitted from `do` expressions.
 
 ### For loops
 
-`for` loops, like `do` expressions, allow functions to be used as
-as control structures. `for` loops can be used to treat functions
-with the proper signature as looping constructs, supporting
-`break`, `cont` and early returns.
+Most iteration in Rust is done with `for` loops. Like `do`,
+`for` is a nice syntax for doing control flow with closures.
+Additionally, within a `for` loop, `break, `cont`, and `ret`
+work just as they do with `while` and `loop`.
 
-Take for example this `each` function that iterates over a vector,
-breaking early when the iteratee returns `false`:
+Consider again our `each` function, this time improved to
+break early when the iteratee returns `false`:
 
 ~~~~
-fn each<T>(v: &[T], f: fn(T) -> bool) {
+fn each(v: ~[int], op: fn(int) -> bool) {
    let mut n = 0;
    while n < v.len() {
-       if !f(v[n]) {
+       if !op(v[n]) {
            break;
        }
        n += 1;
@@ -1093,10 +1116,11 @@ each(~[2, 4, 8, 5, 16], |n| {
 });
 ~~~~
 
-You can see how that gets noisy. As a syntactic convenience, if the
-call is preceded by the keyword `for`, the block will implicitly
-return `true`, and `break` and `cont` can be used, much like in a
-`while` loop, to explicitly return `false` or `true`.
+With `for`, functions like `each` can be treated more
+like builtin looping structures. When calling `each`
+in a `for` loop, instead of returning `false` to break
+out of the loop, you just write `break`. To continue
+to the next iteration, write `cont`.
 
 ~~~~
 # import each = vec::each;
@@ -1110,7 +1134,7 @@ for each(~[2, 4, 8, 5, 16]) |n| {
 ~~~~
 
 As an added bonus, you can use the `ret` keyword, which is not
-normally allowed in blocks, in a block that appears as the body of a
+normally allowed in closures, in a block that appears as the body of a
 `for` loop — this will cause a return to happen from the outer
 function, not just the loop body.
 
@@ -1123,6 +1147,8 @@ fn contains(v: ~[int], elt: int) -> bool {
     false
 }
 ~~~~
+
+`for` syntax only works with stack closures.
 
 
 # Datatypes
