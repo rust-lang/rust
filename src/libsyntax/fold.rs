@@ -315,6 +315,7 @@ fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {
     ret alt s {
       stmt_decl(d, nid) { stmt_decl(fld.fold_decl(d), fld.new_id(nid)) }
       stmt_expr(e, nid) { stmt_expr(fld.fold_expr(e), fld.new_id(nid)) }
+      stmt_semi(e, nid) { stmt_semi(fld.fold_expr(e), fld.new_id(nid)) }
     };
 }
 

@@ -38,6 +38,7 @@ pure fn stmt_id(s: stmt) -> node_id {
     alt s.node {
       stmt_decl(_, id) { id }
       stmt_expr(_, id) { id }
+      stmt_semi(_, id) { id }
     }
 }
 

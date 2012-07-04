@@ -15,7 +15,7 @@ fn collect_ids_block(b: blk, rs: @mut ~[node_id]) {
 
 fn collect_ids_stmt(s: @stmt, rs: @mut ~[node_id]) {
     alt s.node {
-      stmt_decl(_, id) | stmt_expr(_, id) {
+      stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
         #debug["node_id %s", int::str(id)];
         #debug["%s", stmt_to_str(*s)];
         vec::push(*rs, id);

@@ -1719,6 +1719,10 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
       }
       ast::stmt_expr(expr, id) {
         node_id = id;
+        bot = check_expr_with(fcx, expr, ty::mk_nil(fcx.ccx.tcx));
+      }
+      ast::stmt_semi(expr, id) {
+        node_id = id;
         bot = check_expr(fcx, expr, none);
       }
     }
@@ -1749,7 +1753,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
         if bot && !warned &&
                alt s.node {
                  ast::stmt_decl(@{node: ast::decl_local(_), _}, _) |
-                 ast::stmt_expr(_, _) {
+                 ast::stmt_expr(_, _) | ast::stmt_semi(_, _) {
                    true
                  }
                  _ { false }

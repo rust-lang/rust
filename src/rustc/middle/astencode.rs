@@ -229,7 +229,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
     fn drop_nested_items(blk: ast::blk_, fld: fold::ast_fold) -> ast::blk_ {
         let stmts_sans_items = do vec::filter(blk.stmts) |stmt| {
             alt stmt.node {
-              ast::stmt_expr(_, _) |
+              ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
               ast::stmt_decl(@{node: ast::decl_local(_), span: _}, _) { true }
               ast::stmt_decl(@{node: ast::decl_item(_), span: _}, _) { false }
             }

@@ -520,7 +520,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
           }
         }
       }
-      stmt_expr(e, id) {
+      stmt_expr(e, id) | stmt_semi(e, id) {
         find_pre_post_expr(fcx, e);
         copy_pre_post(fcx.ccx, id, e);
       }

@@ -27,6 +27,9 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
       ast::stmt_expr(e, _) {
         ret expr_requires_semi_to_be_stmt(e);
       }
+      ast::stmt_semi(e, _) {
+        ret false;
+      }
     }
 }
 

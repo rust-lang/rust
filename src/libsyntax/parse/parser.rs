@@ -1848,7 +1848,7 @@ class parser {
                       token::SEMI {
                         self.bump();
                         push(stmts,
-                             @{node: stmt_expr(e, stmt_id) with *stmt});
+                             @{node: stmt_semi(e, stmt_id) with *stmt});
                       }
                       token::RBRACE {
                         expr = some(e);
