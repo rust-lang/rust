@@ -121,7 +121,7 @@ fn test_from_global_chan1() {
 #[test]
 fn test_from_global_chan2() {
 
-    for iter::repeat(100u) || {
+    for iter::repeat(100u) {
         // The global channel
         let globchan = 0u;
         let globchanp = ptr::addr_of(globchan);
@@ -132,7 +132,7 @@ fn test_from_global_chan2() {
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
         for uint::range(0u, 10u) |i| {
-            do task::spawn || {
+            do task::spawn {
                 let ch = unsafe {
                     do chan_from_global_ptr(
                         globchanp, task::builder) |po| {
@@ -200,7 +200,7 @@ unsafe fn weaken_task(f: fn(comm::port<()>)) {
 
 #[test]
 fn test_weaken_task_then_unweaken() {
-    do task::try || {
+    do task::try {
         unsafe {
             do weaken_task |_po| {
             }
@@ -212,7 +212,7 @@ fn test_weaken_task_then_unweaken() {
 fn test_weaken_task_wait() {
     let builder = task::builder();
     task::unsupervise(builder);
-    do task::run(builder) || {
+    do task::run(builder) {
         unsafe {
             do weaken_task |po| {
                 comm::recv(po);
@@ -224,8 +224,8 @@ fn test_weaken_task_wait() {
 #[test]
 fn test_weaken_task_stress() {
     // Create a bunch of weak tasks
-    for iter::repeat(100u) || {
-        do task::spawn || {
+    for iter::repeat(100u) {
+        do task::spawn {
             unsafe {
                 do weaken_task |_po| {
                 }
@@ -233,7 +233,7 @@ fn test_weaken_task_stress() {
         }
         let builder = task::builder();
         task::unsupervise(builder);
-        do task::run(builder) || {
+        do task::run(builder) {
             unsafe {
                 do weaken_task |po| {
                     // Wait for it to tell us to die
@@ -247,7 +247,7 @@ fn test_weaken_task_stress() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_weaken_task_fail() {
-    let res = do task::try || {
+    let res = do task::try {
         unsafe {
             do weaken_task |_po| {
                 fail;

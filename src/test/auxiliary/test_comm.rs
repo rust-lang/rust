@@ -34,7 +34,7 @@ class port_ptr<T:send> {
     self.po = po; }
    drop unsafe {
     #debug("in the port_ptr destructor");
-       do task::unkillable || {
+       do task::unkillable {
         let yield = 0u;
         let yieldp = ptr::addr_of(yield);
         rustrt::rust_port_begin_detach(self.po, yieldp);

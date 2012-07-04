@@ -1473,7 +1473,7 @@ mod test {
         let continue_chan = comm::chan::<bool>(continue_port);
         let continue_chan_ptr = ptr::addr_of(continue_chan);
 
-        do task::spawn_sched(task::manual_threads(1u)) || {
+        do task::spawn_sched(task::manual_threads(1u)) {
             impl_uv_tcp_server(bind_ip, port,
                                kill_server_msg,
                                server_resp_msg,
@@ -1486,7 +1486,7 @@ mod test {
         comm::recv(continue_port);
         log(debug, "received on continue port, set up tcp client");
 
-        do task::spawn_sched(task::manual_threads(1u)) || {
+        do task::spawn_sched(task::manual_threads(1u)) {
             impl_uv_tcp_request(request_ip, port,
                                kill_server_msg,
                                ptr::addr_of(client_chan));

@@ -412,7 +412,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
     expected_tys: expected_tys) -> ty::fn_ty {
 
     #debug["ty_of_fn_decl"];
-    do indent || {
+    do indent {
         // new region names that appear inside of the fn decl are bound to
         // that function type
         let rb = in_binding_rscope(rscope);

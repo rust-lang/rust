@@ -98,7 +98,7 @@ class port_ptr<T:send> {
   let po: *rust_port;
   new(po: *rust_port) { self.po = po; }
   drop unsafe {
-      do task::unkillable || {
+      do task::unkillable {
         // Once the port is detached it's guaranteed not to receive further
         // messages
         let yield = 0u;
@@ -364,15 +364,15 @@ fn test_select2_rendezvous() {
     let ch_a = chan(po_a);
     let ch_b = chan(po_b);
 
-    for iter::repeat(10u) || {
-        do task::spawn || {
+    for iter::repeat(10u) {
+        do task::spawn {
             for iter::repeat(10u) { task::yield() }
             send(ch_a, "a");
         };
 
         assert select2(po_a, po_b) == either::left("a");
 
-        do task::spawn || {
+        do task::spawn {
             for iter::repeat(10u) { task::yield() }
             send(ch_b, "b");
         };
@@ -391,14 +391,14 @@ fn test_select2_stress() {
     let msgs = 100u;
     let times = 4u;
 
-    for iter::repeat(times) || {
-        do task::spawn || {
-            for iter::repeat(msgs) || {
+    for iter::repeat(times) {
+        do task::spawn {
+            for iter::repeat(msgs) {
                 send(ch_a, "a")
             }
         };
-        do task::spawn || {
-            for iter::repeat(msgs) || {
+        do task::spawn {
+            for iter::repeat(msgs) {
                 send(ch_b, "b")
             }
         };
@@ -406,7 +406,7 @@ fn test_select2_stress() {
 
     let mut as = 0;
     let mut bs = 0;
-    for iter::repeat(msgs * times * 2u) || {
+    for iter::repeat(msgs * times * 2u) {
         alt check select2(po_a, po_b) {
           either::left("a") { as += 1 }
           either::right("b") { bs += 1 }
@@ -463,7 +463,7 @@ fn test_chan_peek() {
 #[test]
 fn test_listen() {
     do listen |parent| {
-        do task::spawn || {
+        do task::spawn {
             parent.send("oatmeal-salad");
         }
         assert parent.recv() == "oatmeal-salad";
@@ -473,18 +473,18 @@ fn test_listen() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_port_detach_fail() {
-    for iter::repeat(100u) || {
+    for iter::repeat(100u) {
         let builder = task::builder();
         task::unsupervise(builder);
-        do task::run(builder) || {
+        do task::run(builder) {
             let po = port();
             let ch = po.chan();
 
-            do task::spawn || {
+            do task::spawn {
                 fail;
             }
 
-            do task::spawn || {
+            do task::spawn {
                 ch.send(());
             }
         }

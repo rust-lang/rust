@@ -390,7 +390,7 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
         ret;
     }
 
-    do task::spawn || {
+    do task::spawn {
         let testfn = copy test.fn;
         let mut builder = task::builder();
         let result_future = task::future_result(builder);

@@ -305,7 +305,7 @@ value as the `err` variant
 fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
     -> future::future<result::result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
-    do future_spawn || {
+    do future_spawn {
         let data_copy = copy(raw_write_data);
         write_common_impl(socket_data_ptr, data_copy)
     }
@@ -397,7 +397,7 @@ read attempt. Pass `0u` to wait indefinitely
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
     -> future::future<result::result<~[u8],tcp_err_data>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
-    do future_spawn || {
+    do future_spawn {
         read_common_impl(socket_data, timeout_msecs)
     }
 }
@@ -1310,7 +1310,7 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        do task::spawn_sched(task::manual_threads(1u)) || {
+        do task::spawn_sched(task::manual_threads(1u)) {
             let actual_req = do comm::listen |server_ch| {
                 run_tcp_test_server(
                     server_ip,
@@ -1379,7 +1379,7 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        do task::spawn_sched(task::manual_threads(1u)) || {
+        do task::spawn_sched(task::manual_threads(1u)) {
             let actual_req = do comm::listen |server_ch| {
                 run_tcp_test_server(
                     server_ip,
@@ -1449,7 +1449,7 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        do task::spawn_sched(task::manual_threads(1u)) || {
+        do task::spawn_sched(task::manual_threads(1u)) {
             let actual_req = do comm::listen |server_ch| {
                 run_tcp_test_server(
                     server_ip,
@@ -1519,7 +1519,7 @@ mod test {
             |new_conn, kill_ch| {
             log(debug, "SERVER: new connection!");
             do comm::listen |cont_ch| {
-                do task::spawn_sched(task::manual_threads(1u)) || {
+                do task::spawn_sched(task::manual_threads(1u)) {
                     log(debug, "SERVER: starting worker for new req");
 
                     let accept_result = accept(new_conn);

@@ -21,7 +21,7 @@ fn a() {
 }
 
 fn main() {
-    for iter::repeat(100u) || {
+    for iter::repeat(100u) {
         spawn(|| a() );
     }
 }

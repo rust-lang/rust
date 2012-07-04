@@ -64,7 +64,7 @@ fn from_port<A:send>(-port: comm::port<A>) -> future<A> {
     waiting for the result to be received on the port.
     "];
 
-    do from_fn || {
+    do from_fn {
         comm::recv(port)
     }
 }
@@ -93,7 +93,7 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
 
     let mut po = comm::port();
     let ch = comm::chan(po);
-    do task::spawn || {
+    do task::spawn {
         comm::send(ch, blk())
     };
     from_port(po)

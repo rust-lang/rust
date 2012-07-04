@@ -157,7 +157,7 @@ fn main(args: ~[str]) {
 
     let writep = comm::port();
     let writech = comm::chan(writep);
-    do task::spawn || {
+    do task::spawn {
         writer(path, writech, size);
     };
     let ch = comm::recv(writep);

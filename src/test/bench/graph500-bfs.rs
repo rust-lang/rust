@@ -235,7 +235,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
 
         let color = arc::arc(colors);
 
-        colors = do par::mapi_factory(*arc::get(&color)) || {
+        colors = do par::mapi_factory(*arc::get(&color)) {
             let colors = arc::clone(&color);
             let graph = arc::clone(&graph);
             fn~(i: uint, c: color) -> color {

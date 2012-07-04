@@ -360,7 +360,7 @@ impl serializer of serialization::serializer for ebml::writer {
     fn emit_enum_variant_arg(_idx: uint, f: fn()) { f() }
 
     fn emit_vec(len: uint, f: fn()) {
-        do self.wr_tag(es_vec as uint) || {
+        do self.wr_tag(es_vec as uint) {
             self._emit_tagged_uint(es_vec_len, len);
             f()
         }
@@ -487,7 +487,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
         #debug["read_enum_variant()"];
         let idx = self._next_uint(es_enum_vid);
         #debug["  idx=%u", idx];
-        do self.push_doc(self.next_doc(es_enum_body)) || {
+        do self.push_doc(self.next_doc(es_enum_body)) {
             f(idx)
         }
     }
@@ -499,7 +499,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
 
     fn read_vec<T:copy>(f: fn(uint) -> T) -> T {
         #debug["read_vec()"];
-        do self.push_doc(self.next_doc(es_vec)) || {
+        do self.push_doc(self.next_doc(es_vec)) {
             let len = self._next_uint(es_vec_len);
             #debug["  len=%u", len];
             f(len)
@@ -554,13 +554,13 @@ fn test_option_int() {
     }
 
     fn serialize_0<S: serialization::serializer>(s: S, v: option<int>) {
-        do s.emit_enum("core::option::t") || {
+        do s.emit_enum("core::option::t") {
             alt v {
               none {
                 s.emit_enum_variant("core::option::none", 0u, 0u, || { } );
               }
               some(v0) {
-                do s.emit_enum_variant("core::option::some", 1u, 1u) || {
+                do s.emit_enum_variant("core::option::some", 1u, 1u) {
                     s.emit_enum_variant_arg(0u, || serialize_1(s, v0));
                 }
               }
@@ -573,12 +573,12 @@ fn test_option_int() {
     }
 
     fn deserialize_0<S: serialization::deserializer>(s: S) -> option<int> {
-        do s.read_enum("core::option::t") || {
+        do s.read_enum("core::option::t") {
             do s.read_enum_variant |i| {
                 alt check i {
                   0u { none }
                   1u {
-                    let v0 = do s.read_enum_variant_arg(0u) || {
+                    let v0 = do s.read_enum_variant_arg(0u) {
                         deserialize_1(s)
                     };
                     some(v0)

@@ -87,20 +87,20 @@ fn encode_name_and_def_id(ebml_w: ebml::writer, nm: ident,
 }
 
 fn encode_region_param(ebml_w: ebml::writer, rp: region_param) {
-    do ebml_w.wr_tag(tag_region_param) || {
+    do ebml_w.wr_tag(tag_region_param) {
         serialize_region_param(ebml_w, rp)
     }
 }
 
 fn encode_named_def_id(ebml_w: ebml::writer, name: ident, id: def_id) {
-    do ebml_w.wr_tag(tag_paths_data_item) || {
+    do ebml_w.wr_tag(tag_paths_data_item) {
         encode_name(ebml_w, name);
         encode_def_id(ebml_w, id);
     }
 }
 
 fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
-    do ebml_w.wr_tag(tag_class_mut) || {
+    do ebml_w.wr_tag(tag_class_mut) {
         ebml_w.writer.write(&[alt mt { class_immutable { 'i' }
                 class_mutable { 'm' } } as u8]);
         }
@@ -112,7 +112,7 @@ fn encode_enum_variant_paths(ebml_w: ebml::writer, variants: ~[variant],
                             path: ~[ident], &index: ~[entry<str>]) {
     for variants.each |variant| {
         add_to_index(ebml_w, path, index, variant.node.name);
-        do ebml_w.wr_tag(tag_paths_data_item) || {
+        do ebml_w.wr_tag(tag_paths_data_item) {
             encode_name(ebml_w, variant.node.name);
             encode_def_id(ebml_w, local_def(variant.node.id));
         }
@@ -170,7 +170,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             encode_named_def_id(ebml_w, it.ident, local_def(it.id));
           }
           item_mod(_mod) {
-            do ebml_w.wr_tag(tag_paths_data_mod) || {
+            do ebml_w.wr_tag(tag_paths_data_mod) {
                encode_name_and_def_id(ebml_w, it.ident, it.id);
                encode_module_item_paths(ebml_w, ecx, _mod,
                                         vec::append_one(path, it.ident),
@@ -178,7 +178,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             }
           }
           item_foreign_mod(nmod) {
-            do ebml_w.wr_tag(tag_paths_data_mod) || {
+            do ebml_w.wr_tag(tag_paths_data_mod) {
               encode_name_and_def_id(ebml_w, it.ident, it.id);
               encode_foreign_module_item_paths(
                   ebml_w, nmod,
@@ -186,15 +186,15 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             }
           }
           item_ty(_, tps, _) {
-            do ebml_w.wr_tag(tag_paths_data_item) || {
+            do ebml_w.wr_tag(tag_paths_data_item) {
               encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
           }
           item_class(_, _, items, ctor, m_dtor, _) {
-            do ebml_w.wr_tag(tag_paths_data_item) || {
+            do ebml_w.wr_tag(tag_paths_data_item) {
                 encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
-            do ebml_w.wr_tag(tag_paths) || {
+            do ebml_w.wr_tag(tag_paths) {
                 // We add the same ident twice: for the
                 // class and for its ctor
                 add_to_index(ebml_w, path, index, it.ident);
@@ -206,13 +206,13 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             }
           }
           item_enum(variants, _, _) {
-            do ebml_w.wr_tag(tag_paths_data_item) || {
+            do ebml_w.wr_tag(tag_paths_data_item) {
                   encode_name_and_def_id(ebml_w, it.ident, it.id);
               }
               encode_enum_variant_paths(ebml_w, variants, path, index);
           }
           item_iface(*) {
-            do ebml_w.wr_tag(tag_paths_data_item) || {
+            do ebml_w.wr_tag(tag_paths_data_item) {
                   encode_name_and_def_id(ebml_w, it.ident, it.id);
               }
           }
@@ -372,7 +372,7 @@ fn encode_path(ebml_w: ebml::writer,
         ebml_w.wr_tagged_str(tag, *name);
     }
 
-    do ebml_w.wr_tag(tag_path) || {
+    do ebml_w.wr_tag(tag_path) {
         ebml_w.wr_tagged_u32(tag_path_len, (vec::len(path) + 1u) as u32);
         do vec::iter(path) |pe| { encode_path_elt(ebml_w, pe); }
         encode_path_elt(ebml_w, name);
@@ -606,7 +606,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       }
       item_enum(variants, tps, rp) {
         add_to_index();
-        do ebml_w.wr_tag(tag_items_data_item) || {
+        do ebml_w.wr_tag(tag_items_data_item) {
             encode_def_id(ebml_w, local_def(item.id));
             encode_family(ebml_w, 't');
             encode_type_param_bounds(ebml_w, ecx, tps);
@@ -656,7 +656,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         /* Encode the dtor */
         /* Encode id for dtor */
         do option::iter(m_dtor) |dtor| {
-            do ebml_w.wr_tag(tag_item_dtor) || {
+            do ebml_w.wr_tag(tag_item_dtor) {
                 encode_def_id(ebml_w, local_def(dtor.node.id));
             }
         };

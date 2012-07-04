@@ -3,7 +3,7 @@ fn use(_i: int) {}
 fn foo() {
     // Here, i is *moved* into the closure: Not actually OK
     let mut i = 0;
-    do task::spawn || {
+    do task::spawn {
         use(i); //~ ERROR mutable variables cannot be implicitly captured
     }
 }
@@ -13,7 +13,7 @@ fn bar() {
     // is mutable: bad
     let mut i = 0;
     while i < 10 {
-        do task::spawn || {
+        do task::spawn {
             use(i); //~ ERROR mutable variables cannot be implicitly captured
         }
         i += 1;

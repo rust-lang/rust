@@ -41,7 +41,7 @@ fn run(args: ~[str]) {
     for uint::range(0u, workers) |_i| {
         let builder = task::builder();
         vec::push(worker_results, task::future_result(builder));
-        do task::run(builder) || {
+        do task::run(builder) {
             for uint::range(0u, size / workers) |_i| {
                 comm::send(to_child, bytes(100u));
             }
