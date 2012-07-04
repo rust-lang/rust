@@ -518,7 +518,7 @@ should be encoded as UTF-8). Rust understands a number of
 character escapes, using the backslash character:
 
 `\n`
-  : A newline (Unicode character 32).
+  : A newline (Unicode character 10).
 
 `\r`
   : A carriage return (13).
