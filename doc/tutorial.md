@@ -53,7 +53,7 @@ import uint::range;
 import io::println;
 
 fn main() {
-    // Open a channel for receiving game results
+    // Open a channel to receive game results
     do listen |result_from_game| {
 
         let times = 10;
@@ -73,24 +73,24 @@ fn main() {
             let winner = result_from_game.recv();
             println(#fmt("%s wins round #%u", winner, round));
         }
+    }
 
-        fn play_game(player1: str, player2: str) -> str {
+    fn play_game(player1: str, player2: str) -> str {
 
-            // Our rock/paper/scissors types
-            enum gesture {
-                rock, paper, scissors
-            }
+        // Our rock/paper/scissors types
+        enum gesture {
+            rock, paper, scissors
+        }
 
-            let rng = seeded_rng(seed());
-            // A small inline function for picking an RPS gesture
-            let pick = || [rock, paper, scissors][rng.gen_uint() % 3];
+        let rng = seeded_rng(seed());
+        // A small inline function for picking an RPS gesture
+        let pick = || [rock, paper, scissors][rng.gen_uint() % 3];
 
-            // Pick two gestures and decide the result
-            alt (pick(), pick()) {
-                (rock, scissors) | (paper, rock) | (scissors, paper) { copy player1 }
-                (scissors, rock) | (rock, paper) | (paper, scissors) { copy player2 }
-                _ { "tie" }
-            }
+        // Pick two gestures and decide the result
+        alt (pick(), pick()) {
+            (rock, scissors) | (paper, rock) | (scissors, paper) { copy player1 }
+            (scissors, rock) | (rock, paper) | (paper, scissors) { copy player2 }
+            _ { "tie" }
         }
     }
 }
