@@ -3647,8 +3647,7 @@ class Resolver {
             NoNameDefinition {
                 // We failed to resolve the name. Report an error.
                 self.session.span_err(path.span,
-                                      #fmt("use of undeclared identifier: \
-                                            %s::%s",
+                                      #fmt("unresolved name: %s::%s",
                                            *(*self.atom_table).atoms_to_str
                                                ((*module_path_atoms).get()),
                                            *(*self.atom_table).atom_to_str
@@ -3700,8 +3699,7 @@ class Resolver {
             NoNameDefinition {
                 // We failed to resolve the name. Report an error.
                 self.session.span_err(path.span,
-                                      #fmt("use of undeclared identifier: \
-                                            %s::%s",
+                                      #fmt("unresolved name: %s::%s",
                                            *(*self.atom_table).atoms_to_str
                                                ((*module_path_atoms).get()),
                                            *(*self.atom_table).atom_to_str
@@ -3806,8 +3804,7 @@ class Resolver {
                     }
                     none {
                         self.session.span_err(expr.span,
-                                              #fmt("use of undeclared \
-                                                    identifier '%s'",
+                                              #fmt("unresolved name: %s",
                                               connect(path.idents.map(|x| *x),
                                                       "::")));
                     }
