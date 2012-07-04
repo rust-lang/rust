@@ -2,9 +2,12 @@ import alder::*;
 
 mod alder {
   export burnside;
-  export everett::{flanders};
-  export irving::{johnson, kearney};
-  export marshall::{};
+  export everett;
+  export flanders;
+  export irving;
+  export johnson;
+  export kearney;
+  export marshall;
 
   enum burnside { couch, davis }
   enum everett { flanders, glisan, hoyt }
