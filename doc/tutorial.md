@@ -162,8 +162,10 @@ $ make && make install
 ~~~~
 
 You may need to use `sudo make install` if you do not normally have
-permission to modify the destination directory (either `/usr/local/bin`
-or the directory specified with to `configure` with `--prefix`).
+permission to modify the destination directory. The install locations
+can be adjusted by passing a `--prefix` argument to
+`configure`. Various other options are also supported, pass `--help`
+for more information on them.
 
 When complete, `make install` will place the following programs into
 `/usr/local/bin`:
@@ -171,13 +173,6 @@ When complete, `make install` will place the following programs into
   * `rustc`, the Rust compiler
   * `rustdoc`, the API-documentation tool 
   * `cargo`, the Rust package manager
-
-In addition to a manual page under `/usr/local/share/man` and
-a set of host and target libraries under `/usr/local/lib/rustc`.
-
-The install locations can be adjusted by passing a `--prefix` argument
-to `configure`. Various other options are also supported, pass `--help`
-for more information on them.
 
 [wiki-get-started]: https://github.com/mozilla/rust/wiki/Doc-getting-started
 [tarball]: http://dl.rust-lang.org/dist/rust-0.1.tar.gz
