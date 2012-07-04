@@ -136,7 +136,7 @@ impl extensions<T: copy> for option<T> {
 
     Fails if the value equals `none`
     "]
-    pure fn expect<T: copy>(reason: str) -> T { expect(self, reason) }
+    pure fn expect(reason: str) -> T { expect(self, reason) }
 }
 
 #[test]

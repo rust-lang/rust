@@ -232,11 +232,11 @@ mod chained {
         }
 
         fn get(k: K) -> V {
-            option::get(self.find(k))
+            self.find(k).expect("Key not found in table")
         }
 
         fn [](k: K) -> V {
-            option::get(self.find(k))
+            self.get(k)
         }
 
         fn remove(k: K) -> option<V> {
