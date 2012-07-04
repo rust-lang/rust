@@ -4,7 +4,7 @@
 use std;
 import uint;
 import u8;
-import vec::*;
+import vec::{extensions, same_length, zip};
 
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert start < end;
