@@ -17,7 +17,7 @@ As a curly-brace language in the tradition of C, C++, and JavaScript,
 Rust looks a lot like other languages you may be familiar with.
 
 ~~~~
-fn fac(n: int) -> int {
+fn boring_old_factorial(n: int) -> int {
     let mut result = 1, i = 1;
     while i <= n {
         result *= i;
@@ -36,8 +36,65 @@ tendency towards aggressive abbreviation in the keywords—`fn` for
 function, `ret` for return.
 
 You should, however, not conclude that Rust is simply an evolution of
-C. As will become clear in the rest of this tutorial, it goes in
-quite a different direction.
+C. As will become clear in the rest of this tutorial, it goes in quite
+a different direction, with efficient, strongly-typed and memory-safe
+support for many high-level idioms.
+
+Here's a parallel game of rock, paper, scissors to whet your appetite.
+
+~~~~
+use std;
+
+import comm::{listen, methods};
+import task::spawn;
+import iter::repeat;
+import std::rand::{seeded_rng, seed};
+import uint::range;
+import io::println;
+
+fn main() {
+    // Open a channel for receiving game results
+    do listen |result_from_game| {
+
+        let times = 10;
+        let player1 = "graydon";
+        let player2 = "patrick";
+
+        for repeat(times) {
+            // Start another task to play the game
+            do spawn |copy player1, copy player2| {
+                let outcome = play_game(player1, player2);
+                result_from_game.send(outcome);
+            }
+        }
+
+        // Report the results as the games complete
+        for range(0, times) |round| {
+            let winner = result_from_game.recv();
+            println(#fmt("%s wins round #%u", winner, round));
+        }
+
+        fn play_game(player1: str, player2: str) -> str {
+
+            // Our rock/paper/scissors types
+            enum gesture {
+                rock, paper, scissors
+            }
+
+            let rng = seeded_rng(seed());
+            // A small inline function for picking an RPS gesture
+            let pick = || [rock, paper, scissors][rng.gen_uint() % 3];
+
+            // Pick two gestures and decide the result
+            alt (pick(), pick()) {
+                (rock, scissors) | (paper, rock) | (scissors, paper) { copy player1 }
+                (scissors, rock) | (rock, paper) | (paper, scissors) { copy player2 }
+                _ { "tie" }
+            }
+        }
+    }
+}
+~~~~
 
 ## Conventions
 
