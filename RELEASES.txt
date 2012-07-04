@@ -5,14 +5,13 @@ Version 0.3  (July 2012) - not yet!
 
    * New coding conveniences
       * Integer-literal suffix inference
-      * Per-module control over warnings, errors
+      * Per-item control over warnings, errors
       * #[cfg(windows)] and #[cfg(unix)] attributes
       * Documentation comments
       * More compact closure syntax
       * 'do' expressions for treating higher-order functions
         as control structures
-
-   * *-patterns (wildcard extended to all constructor fields)
+      * *-patterns (wildcard extended to all constructor fields)
 
    * Semantic cleanup
       * Resolve pass and exhaustiveness checker rewritten
