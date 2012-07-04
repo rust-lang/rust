@@ -12,7 +12,7 @@ fn main() {
     assert f(10, |a| a) == 10;
     g(||());
     assert do f(10) |a| { a } == 10;
-    do g() || { }
+    do g() { }
     let _x: fn@() -> int = || 10;
     let _y: fn@(int) -> int = |a| a;
     assert ff()(10) == 11;

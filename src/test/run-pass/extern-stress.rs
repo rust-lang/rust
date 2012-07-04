@@ -20,8 +20,8 @@ fn count(n: uint) -> uint {
 }
 
 fn main() {
-    for iter::repeat(100u) || {
-        do task::spawn || {
+    for iter::repeat(100u) {
+        do task::spawn {
             assert count(5u) == 16u;
         };
     }

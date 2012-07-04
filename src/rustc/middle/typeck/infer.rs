@@ -771,9 +771,9 @@ impl unify_methods for infer_ctxt {
         // them explicitly gives the type inferencer more
         // information and helps to produce tighter bounds
         // when necessary.
-        do indent || {
-        do self.bnds(a.lb, b.ub).then || {
-        do self.bnds(b.lb, a.ub).then || {
+        do indent {
+        do self.bnds(a.lb, b.ub).then {
+        do self.bnds(b.lb, a.ub).then {
         do self.merge_bnd(a.ub, b.ub, |x, y| x.glb(self, y) ).chain |ub| {
         do self.merge_bnd(a.lb, b.lb, |x, y| x.lub(self, y) ).chain |lb| {
             let bnds = {lb: lb, ub: ub};
@@ -783,7 +783,7 @@ impl unify_methods for infer_ctxt {
 
             // the new bounds must themselves
             // be relatable:
-            do self.bnds(bnds.lb, bnds.ub).then || {
+            do self.bnds(bnds.lb, bnds.ub).then {
                 self.set(vb, v_id, root(bnds, rank));
                 uok()
             }
@@ -1021,7 +1021,7 @@ impl unify_methods for infer_ctxt {
         a: bound<T>, b: bound<T>) -> ures {
 
         #debug("bnds(%s <: %s)", a.to_str(self), b.to_str(self));
-        do indent || {
+        do indent {
             alt (a, b) {
               (none, none) |
               (some(_), none) |
@@ -1064,8 +1064,8 @@ impl unify_methods for infer_ctxt {
     fn eq_regions(a: ty::region, b: ty::region) -> ures {
         #debug["eq_regions(%s, %s)",
                a.to_str(self), b.to_str(self)];
-        do indent || {
-            do self.sub_regions(a, b).then || {
+        do indent {
+            do self.sub_regions(a, b).then {
                 self.sub_regions(b, a)
             }
         }
@@ -1457,8 +1457,8 @@ impl assignment for infer_ctxt {
                anmnt, a.to_str(self), nr_b.to_str(self),
                r_b.to_str(self)];
 
-        do indent || {
-            do self.sub_tys(a, nr_b).then || {
+        do indent {
+            do self.sub_tys(a, nr_b).then {
                 let r_a = ty::re_scope(anmnt.borrow_scope);
                 #debug["anmnt=%?", anmnt];
                 do sub(self).contraregions(r_a, r_b).chain |_r| {
@@ -1559,7 +1559,7 @@ fn super_substs<C:combine>(
             ok(none)
           }
           (some(a), some(b)) {
-            do infcx.eq_regions(a, b).then || {
+            do infcx.eq_regions(a, b).then {
                 ok(some(a))
             }
           }
@@ -1868,7 +1868,7 @@ fn super_tys<C:combine>(
 
       (ty::ty_constr(a_t, a_constrs), ty::ty_constr(b_t, b_constrs)) {
         do self.tys(a_t, b_t).chain |t| {
-            do self.infcx().constrvecs(a_constrs, b_constrs).then || {
+            do self.infcx().constrvecs(a_constrs, b_constrs).then {
                 ok(ty::mk_constr(tcx, t, a_constrs))
             }
         }
@@ -1897,25 +1897,25 @@ impl of combine for sub {
                self.tag(),
                a.to_str(self.infcx()),
                b.to_str(self.infcx())];
-        do indent || {
+        do indent {
             alt (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) {
-                do self.infcx().vars(self.rb, a_id, b_id).then || {
+                do self.infcx().vars(self.rb, a_id, b_id).then {
                     ok(a)
                 }
               }
               (ty::re_var(a_id), _) {
-                do self.infcx().vart(self.rb, a_id, b).then || {
+                do self.infcx().vart(self.rb, a_id, b).then {
                       ok(a)
                   }
               }
               (_, ty::re_var(b_id)) {
-                  do self.infcx().tvar(self.rb, a, b_id).then || {
+                  do self.infcx().tvar(self.rb, a, b_id).then {
                       ok(a)
                   }
               }
               _ {
-                  do self.lub().regions(a, b).compare(b) || {
+                  do self.lub().regions(a, b).compare(b) {
                     ty::terr_regions_differ(b, a)
                 }
               }
@@ -1965,7 +1965,7 @@ impl of combine for sub {
         #debug("%s.tys(%s, %s)", self.tag(),
                a.to_str(*self), b.to_str(*self));
         if a == b { ret ok(a); }
-        do indent || {
+        do indent {
             alt (ty::get(a).struct, ty::get(b).struct) {
               (ty::ty_bot, _) {
                 ok(a)
@@ -2144,7 +2144,7 @@ impl of combine for lub {
                a.to_str(self.infcx()),
                b.to_str(self.infcx())];
 
-        do indent || {
+        do indent {
             alt (a, b) {
               (ty::re_static, _) | (_, ty::re_static) {
                 ok(ty::re_static) // nothing lives longer than static
@@ -2341,7 +2341,7 @@ impl of combine for glb {
                a.to_str(self.infcx()),
                b.to_str(self.infcx())];
 
-        do indent || {
+        do indent {
             alt (a, b) {
               (ty::re_static, r) | (r, ty::re_static) {
                 // static lives longer than everything else
@@ -2479,7 +2479,7 @@ fn lattice_tys<L:lattice_ops combine>(
            a.to_str(self.infcx()),
            b.to_str(self.infcx()));
     if a == b { ret ok(a); }
-    do indent || {
+    do indent {
         alt (ty::get(a).struct, ty::get(b).struct) {
           (ty::ty_bot, _) { self.ty_bot(b) }
           (_, ty::ty_bot) { self.ty_bot(a) }
@@ -2606,7 +2606,7 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
         // and then return b.
         #debug["bnd=none"];
         let a_bounds = self.with_bnd(a_bounds, b);
-        do self.infcx().bnds(a_bounds.lb, a_bounds.ub).then || {
+        do self.infcx().bnds(a_bounds.lb, a_bounds.ub).then {
             self.infcx().set(vb, a_id, root(a_bounds,
                                             nde_a.rank));
             ok(b)

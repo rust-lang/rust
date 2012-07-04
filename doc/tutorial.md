@@ -2473,7 +2473,7 @@ module `task`.  Let's begin with the simplest one, `task::spawn()`:
 
 ~~~~
 let some_value = 22;
-do task::spawn || {
+do task::spawn {
     io::println("This executes in the child task.");
     io::println(#fmt("%d", some_value));
 }
@@ -2499,7 +2499,7 @@ in parallel.  We might write something like:
 # fn some_other_expensive_computation() {}
 let port = comm::port::<int>();
 let chan = comm::chan::<int>(port);
-do task::spawn || {
+do task::spawn {
     let result = some_expensive_computation();
     comm::send(chan, result);
 }
@@ -2530,7 +2530,7 @@ The next statement actually spawns the child:
 # fn some_expensive_computation() -> int { 42 }
 # let port = comm::port::<int>();
 # let chan = comm::chan::<int>(port);
-do task::spawn || {
+do task::spawn {
     let result = some_expensive_computation();
     comm::send(chan, result);
 }

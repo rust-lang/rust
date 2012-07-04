@@ -115,7 +115,7 @@ fn should_request_new_writer_for_each_page() {
     let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
     write_markdown(doc, writer_factory);
     // We expect two pages to have been written
-    for iter::repeat(2u) || {
+    for iter::repeat(2u) {
         comm::recv(po);
     }
 }
@@ -146,7 +146,7 @@ fn should_write_title_for_each_page() {
         "#[link(name = \"core\")]; mod a { }");
     let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
     write_markdown(doc, writer_factory);
-    for iter::repeat(2u) || {
+    for iter::repeat(2u) {
         let (page, markdown) = comm::recv(po);
         alt page {
           doc::cratepage(_) {

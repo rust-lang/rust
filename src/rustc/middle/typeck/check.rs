@@ -632,7 +632,7 @@ fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
 
 fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
               expected: option<ty::t>) -> bool {
-    ret do check_expr_with_unifier(fcx, expr, expected) || {
+    ret do check_expr_with_unifier(fcx, expr, expected) {
         for expected.each |t| {
             demand::suptype(fcx, expr.span, t, fcx.expr_ty(expr));
         }

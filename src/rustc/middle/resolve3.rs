@@ -2800,7 +2800,7 @@ class Resolver {
 
             item_mod(module) {
                 let atom = (*self.atom_table).intern(item.ident);
-                do self.with_scope(some(atom)) || {
+                do self.with_scope(some(atom)) {
                     self.resolve_module(module, item.span, item.ident,
                                         item.id, visitor);
                 }
@@ -2808,7 +2808,7 @@ class Resolver {
 
             item_foreign_mod(foreign_module) {
                 let atom = (*self.atom_table).intern(item.ident);
-                do self.with_scope(some(atom)) || {
+                do self.with_scope(some(atom)) {
                     for foreign_module.items.each |foreign_item| {
                         alt foreign_item.node {
                             foreign_item_fn(_, type_parameters) {
@@ -2935,7 +2935,7 @@ class Resolver {
         (*self.value_ribs).push(function_value_rib);
 
         // If this function has type parameters, add them now.
-        do self.with_type_parameter_rib(type_parameters) || {
+        do self.with_type_parameter_rib(type_parameters) {
             // Resolve the type parameters.
             alt type_parameters {
                 NoTypeParameters {

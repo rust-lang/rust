@@ -151,7 +151,7 @@ mod test {
     #[test]
     fn test_gl_timer_sleep_stress1() {
         let hl_loop = uv::global_loop::get();
-        for iter::repeat(200u) || {
+        for iter::repeat(200u) {
             sleep(hl_loop, 1u);
         }
     }
@@ -171,14 +171,14 @@ mod test {
 
         };
 
-        for iter::repeat(repeat) || {
+        for iter::repeat(repeat) {
 
             for spec.each |spec| {
                 let (times, maxms) = spec;
-                do task::spawn || {
+                do task::spawn {
                     import rand::*;
                     let rng = rng();
-                    for iter::repeat(times) || {
+                    for iter::repeat(times) {
                         sleep(hl_loop, rng.next() as uint % maxms);
                     }
                     comm::send(ch, ());
@@ -186,7 +186,7 @@ mod test {
             }
         }
 
-        for iter::repeat(repeat * spec.len()) || {
+        for iter::repeat(repeat * spec.len()) {
             comm::recv(po)
         }
     }
@@ -204,14 +204,14 @@ mod test {
         let mut failures = 0;
         let hl_loop = uv::global_loop::get();
 
-        for iter::repeat(times as uint) || {
+        for iter::repeat(times as uint) {
             task::yield();
 
             let expected = rand::rng().gen_str(16u);
             let test_po = comm::port::<str>();
             let test_ch = comm::chan(test_po);
 
-            do task::spawn() || {
+            do task::spawn() {
                 delayed_send(hl_loop, 1u, test_ch, expected);
             };
 
@@ -231,12 +231,12 @@ mod test {
         let mut failures = 0;
         let hl_loop = uv::global_loop::get();
 
-        for iter::repeat(times as uint) || {
+        for iter::repeat(times as uint) {
             let expected = rand::rng().gen_str(16u);
             let test_po = comm::port::<str>();
             let test_ch = comm::chan(test_po);
 
-            do task::spawn() || {
+            do task::spawn() {
                 delayed_send(hl_loop, 1000u, test_ch, expected);
             };
 

@@ -35,7 +35,7 @@ fn run_passes(
         log(debug, #fmt("pass #%d", passno));
         passno += 1;
         log(debug, doc);
-        do time(pass.name) || {
+        do time(pass.name) {
             pass.f(srv, doc)
         }
     }
@@ -130,7 +130,7 @@ fn run(config: config::config) {
 
     let source_file = config.input_crate;
     do astsrv::from_file(source_file) |srv| {
-        do time("wait_ast") || {
+        do time("wait_ast") {
             do astsrv::exec(srv) |_ctxt| { }
         };
         let doc = time("extract", || {

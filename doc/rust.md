@@ -1638,7 +1638,7 @@ task in a _failing state_.
 ~~~~
 # let buildr = task::builder();
 # task::unsupervise(buildr);
-# do task::run(buildr) || {
+# do task::run(buildr) {
 
 (~[1, 2, 3, 4])[0];
 (~[mut 'x', 'y'])[1] = 'z';
@@ -3365,7 +3365,7 @@ An example of a `spawn` call:
 let po = comm::port();
 let ch = comm::chan(po);
 
-do task::spawn || {
+do task::spawn {
     // let task run, do other things
     // ...
     comm::send(ch, true);

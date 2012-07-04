@@ -172,7 +172,7 @@ mod tests {
         let p = port();
         let c = chan(p);
 
-        do task::spawn() || {
+        do task::spawn() {
             let p = port();
             c.send(chan(p));
 
@@ -198,7 +198,7 @@ mod tests {
         let p = port();
         let c = chan(p);
 
-        do task::spawn() || {
+        do task::spawn() {
             let arc_v = get_arc(arc_c);
             let v = *get(&arc_v);
             assert v[2] == 3;

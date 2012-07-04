@@ -87,7 +87,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
            ebml_w.writer.tell()];
 
     let id_range = ast_util::compute_id_range_for_inlined_item(ii);
-    do ebml_w.wr_tag(c::tag_ast as uint) || {
+    do ebml_w.wr_tag(c::tag_ast as uint) {
         ast_util::serialize_id_range(ebml_w, id_range);
         encode_ast(ebml_w, simplify_ast(ii));
         encode_side_tables_for_ii(ecx, maps, ebml_w, ii);
@@ -210,7 +210,7 @@ impl deserializer_helpers<D: deserializer> for D {
 // but eventually we should add entries to the local codemap as required.
 
 fn encode_ast(ebml_w: ebml::writer, item: ast::inlined_item) {
-    do ebml_w.wr_tag(c::tag_tree as uint) || {
+    do ebml_w.wr_tag(c::tag_tree as uint) {
         ast::serialize_inlined_item(ebml_w, item)
     }
 }
@@ -433,37 +433,37 @@ fn encode_vtable_res(ecx: @e::encode_ctxt,
 fn encode_vtable_origin(ecx: @e::encode_ctxt,
                       ebml_w: ebml::writer,
                       vtable_origin: typeck::vtable_origin) {
-    do ebml_w.emit_enum("vtable_origin") || {
+    do ebml_w.emit_enum("vtable_origin") {
         alt vtable_origin {
           typeck::vtable_static(def_id, tys, vtable_res) {
-            do ebml_w.emit_enum_variant("vtable_static", 0u, 3u) || {
-                do ebml_w.emit_enum_variant_arg(0u) || {
+            do ebml_w.emit_enum_variant("vtable_static", 0u, 3u) {
+                do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
                 }
-                do ebml_w.emit_enum_variant_arg(1u) || {
+                do ebml_w.emit_enum_variant_arg(1u) {
                     ebml_w.emit_tys(ecx, tys);
                 }
-                do ebml_w.emit_enum_variant_arg(2u) || {
+                do ebml_w.emit_enum_variant_arg(2u) {
                     encode_vtable_res(ecx, ebml_w, vtable_res);
                 }
             }
           }
           typeck::vtable_param(pn, bn) {
-            do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) || {
-                do ebml_w.emit_enum_variant_arg(0u) || {
+            do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) {
+                do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_uint(pn);
                 }
-                do ebml_w.emit_enum_variant_arg(1u) || {
+                do ebml_w.emit_enum_variant_arg(1u) {
                     ebml_w.emit_uint(bn);
                 }
             }
           }
           typeck::vtable_iface(def_id, tys) {
-            do ebml_w.emit_enum_variant("vtable_iface", 1u, 3u) || {
-                do ebml_w.emit_enum_variant_arg(0u) || {
+            do ebml_w.emit_enum_variant("vtable_iface", 1u, 3u) {
+                do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
                 }
-                do ebml_w.emit_enum_variant_arg(1u) || {
+                do ebml_w.emit_enum_variant_arg(1u) {
                     ebml_w.emit_tys(ecx, tys);
                 }
             }
@@ -480,38 +480,38 @@ impl helpers for ebml::ebml_deserializer {
 
     fn read_vtable_origin(xcx: extended_decode_ctxt)
         -> typeck::vtable_origin {
-        do self.read_enum("vtable_origin") || {
+        do self.read_enum("vtable_origin") {
             do self.read_enum_variant |i| {
                 alt check i {
                   0u {
                     typeck::vtable_static(
-                        do self.read_enum_variant_arg(0u) || {
+                        do self.read_enum_variant_arg(0u) {
                             self.read_def_id(xcx)
                         },
-                        do self.read_enum_variant_arg(1u) || {
+                        do self.read_enum_variant_arg(1u) {
                             self.read_tys(xcx)
                         },
-                        do self.read_enum_variant_arg(2u) || {
+                        do self.read_enum_variant_arg(2u) {
                             self.read_vtable_res(xcx)
                         }
                     )
                   }
                   1u {
                     typeck::vtable_param(
-                        do self.read_enum_variant_arg(0u) || {
+                        do self.read_enum_variant_arg(0u) {
                             self.read_uint()
                         },
-                        do self.read_enum_variant_arg(1u) || {
+                        do self.read_enum_variant_arg(1u) {
                             self.read_uint()
                         }
                     )
                   }
                   2u {
                     typeck::vtable_iface(
-                        do self.read_enum_variant_arg(0u) || {
+                        do self.read_enum_variant_arg(0u) {
                             self.read_def_id(xcx)
                         },
-                        do self.read_enum_variant_arg(1u) || {
+                        do self.read_enum_variant_arg(1u) {
                             self.read_tys(xcx)
                         }
                     )
@@ -551,16 +551,16 @@ impl helpers for ebml::writer {
     }
 
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty) {
-        do self.emit_rec || {
-            do self.emit_rec_field("bounds", 0u) || {
+        do self.emit_rec {
+            do self.emit_rec_field("bounds", 0u) {
                 do self.emit_from_vec(*tpbt.bounds) |bs| {
                     self.emit_bounds(ecx, bs)
                 }
             }
-            do self.emit_rec_field("rp", 1u) || {
+            do self.emit_rec_field("rp", 1u) {
                 ast::serialize_region_param(self, tpbt.rp)
             }
-            do self.emit_rec_field("ty", 2u) || {
+            do self.emit_rec_field("ty", 2u) {
                 self.emit_ty(ecx, tpbt.ty);
             }
         }
@@ -569,7 +569,7 @@ impl helpers for ebml::writer {
 
 impl writer for ebml::writer {
     fn tag(tag_id: c::astencode_tag, f: fn()) {
-        do self.wr_tag(tag_id as uint) || { f() }
+        do self.wr_tag(tag_id as uint) { f() }
     }
 
     fn id(id: ast::node_id) {
@@ -581,7 +581,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
                              maps: maps,
                              ebml_w: ebml::writer,
                              ii: ast::inlined_item) {
-    do ebml_w.wr_tag(c::tag_table as uint) || {
+    do ebml_w.wr_tag(c::tag_table as uint) {
         ast_util::visit_ids_for_inlined_item(
             ii,
             fn@(id: ast::node_id, copy ebml_w) {
@@ -602,35 +602,35 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     #debug["Encoding side tables for id %d", id];
 
     do option::iter(tcx.def_map.find(id)) |def| {
-        do ebml_w.tag(c::tag_table_def) || {
+        do ebml_w.tag(c::tag_table_def) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 ast::serialize_def(ebml_w, def)
             }
         }
     }
     do option::iter((*tcx.node_types).find(id as uint)) |ty| {
-        do ebml_w.tag(c::tag_table_node_type) || {
+        do ebml_w.tag(c::tag_table_node_type) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 e::write_type(ecx, ebml_w, ty)
             }
         }
     }
 
     do option::iter(tcx.node_type_substs.find(id)) |tys| {
-        do ebml_w.tag(c::tag_table_node_type_subst) || {
+        do ebml_w.tag(c::tag_table_node_type_subst) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 ebml_w.emit_tys(ecx, tys)
             }
         }
     }
 
     do option::iter(tcx.freevars.find(id)) |fv| {
-        do ebml_w.tag(c::tag_table_freevars) || {
+        do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 do ebml_w.emit_from_vec(*fv) |fv_entry| {
                     encode_freevar_entry(ebml_w, *fv_entry)
                 }
@@ -640,18 +640,18 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
 
     let lid = {crate: ast::local_crate, node: id};
     do option::iter(tcx.tcache.find(lid)) |tpbt| {
-        do ebml_w.tag(c::tag_table_tcache) || {
+        do ebml_w.tag(c::tag_table_tcache) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 ebml_w.emit_tpbt(ecx, tpbt);
             }
         }
     }
 
     do option::iter(tcx.ty_param_bounds.find(id)) |pbs| {
-        do ebml_w.tag(c::tag_table_param_bounds) || {
+        do ebml_w.tag(c::tag_table_param_bounds) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 ebml_w.emit_bounds(ecx, pbs)
             }
         }
@@ -672,15 +672,15 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     //}
 
     do option::iter(maps.mutbl_map.find(id)) |_m| {
-        do ebml_w.tag(c::tag_table_mutbl) || {
+        do ebml_w.tag(c::tag_table_mutbl) {
             ebml_w.id(id);
         }
     }
 
     do option::iter(maps.last_use_map.find(id)) |m| {
-        do ebml_w.tag(c::tag_table_last_use) || {
+        do ebml_w.tag(c::tag_table_last_use) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 do ebml_w.emit_from_vec((*m).get()) |id| {
                     ebml_w.emit_int(id);
                 }
@@ -692,27 +692,27 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     // don't need to keep it.
 
     do option::iter(maps.method_map.find(id)) |mme| {
-        do ebml_w.tag(c::tag_table_method_map) || {
+        do ebml_w.tag(c::tag_table_method_map) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 serialize_method_map_entry(ebml_w, mme)
             }
         }
     }
 
     do option::iter(maps.vtable_map.find(id)) |dr| {
-        do ebml_w.tag(c::tag_table_vtable_map) || {
+        do ebml_w.tag(c::tag_table_vtable_map) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 encode_vtable_res(ecx, ebml_w, dr);
             }
         }
     }
 
     do option::iter(tcx.borrowings.find(id)) |borrow| {
-        do ebml_w.tag(c::tag_table_borrowings) || {
+        do ebml_w.tag(c::tag_table_borrowings) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) || {
+            do ebml_w.tag(c::tag_table_val) {
                 ty::serialize_borrow(ebml_w, borrow)
             }
         }
@@ -753,7 +753,7 @@ impl decoder for ebml::ebml_deserializer {
 
     fn read_ty_param_bounds_and_ty(xcx: extended_decode_ctxt)
         -> ty::ty_param_bounds_and_ty {
-        do self.read_rec || {
+        do self.read_rec {
             {
                 bounds: self.read_rec_field("bounds", 0u, || {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
@@ -838,7 +838,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
 
 #[cfg(test)]
 fn encode_item_ast(ebml_w: ebml::writer, item: @ast::item) {
-    do ebml_w.wr_tag(c::tag_tree as uint) || {
+    do ebml_w.wr_tag(c::tag_tree as uint) {
         ast::serialize_item(ebml_w, *item);
     }
 }
