@@ -167,6 +167,7 @@ mod option_iter {
 }
 mod result;
 mod to_str;
+mod to_bytes;
 mod dvec;
 #[path="iter-trait"]
 mod dvec_iter {
