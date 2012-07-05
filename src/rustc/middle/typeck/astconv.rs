@@ -97,7 +97,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy>(
       (ast::rp_none, some(_)) {
         tcx.sess.span_err(
             path.span,
-            #fmt["No region bound is permitted on %s, \
+            #fmt["no region bound is permitted on %s, \
                   which is not declared as containing region pointers",
                  ty::item_path_str(tcx, did)]);
         none
@@ -116,7 +116,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy>(
     if !vec::same_length(*decl_bounds, path.types) {
         self.tcx().sess.span_fatal(
             path.span,
-            #fmt["wrong number of type arguments, expected %u but found %u",
+            #fmt["wrong number of type arguments: expected %u but found %u",
                  (*decl_bounds).len(), path.types.len()]);
     }
     let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, a_t));
@@ -181,7 +181,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           _ {
             tcx.sess.span_err(
                 a_seq_ty.span,
-                #fmt["Bound not allowed on a %s.",
+                #fmt["bound not allowed on a %s",
                      ty::ty_sort_str(tcx, seq_ty)]);
             ret seq_ty;
           }
@@ -195,7 +195,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             if path.types.len() > 0u {
                 tcx.sess.span_err(
                     path.span,
-                    "Type parameters are not allowed on this type.");
+                    "type parameters are not allowed on this type");
             }
         }
 
@@ -203,7 +203,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             if path.rp.is_some() {
                 tcx.sess.span_err(
                     path.span,
-                    "Region parameters are not allowed on this type.");
+                    "region parameters are not allowed on this type");
             }
         }
     }
@@ -213,9 +213,9 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
       some(ty::atttce_resolved(ty)) { ret ty; }
       some(ty::atttce_unresolved) {
-        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
+        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type; \
                                           insert an enum in the cycle, \
-                                          if this is desired)");
+                                          if this is desired");
       }
       none { /* go on */ }
     }

@@ -19,8 +19,8 @@ fn a_fn3(e: a_class/&a) -> a_class/&b {
 }
 
 fn a_fn4(e: int/&a) -> int/&b {
-    //~^ ERROR Region parameters are not allowed on this type.
-    //~^^ ERROR Region parameters are not allowed on this type.
+    //~^ ERROR region parameters are not allowed on this type
+    //~^^ ERROR region parameters are not allowed on this type
     ret e;
 }
 
