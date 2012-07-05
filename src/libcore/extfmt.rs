@@ -228,7 +228,7 @@ mod ct {
        {ty: ty, next: uint} {
         if i >= lim { error("missing type in conversion"); }
         let tstr = str::slice(s, i, i+1u);
-        // TODO: Do we really want two signed types here?
+        // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
             if str::eq(tstr, "b") {

@@ -32,8 +32,8 @@ type ebml_tag = {id: uint, size: uint};
 
 type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 
-// TODO: When we have module renaming, make "reader" and "writer" separate
-// modules within this file.
+// FIXME (#2739): When we have module renaming, make "reader" and "writer"
+// separate modules within this file.
 
 // ebml reading
 type doc = {data: @~[u8], start: uint, end: uint};
@@ -189,7 +189,7 @@ fn writer(w: io::writer) -> writer {
     ret {writer: w, mut size_positions: size_positions};
 }
 
-// TODO: Provide a function to write the standard ebml header.
+// FIXME (#2741): Provide a function to write the standard ebml header.
 impl writer for writer {
     fn start_tag(tag_id: uint) {
         #debug["Start tag %u", tag_id];
@@ -291,8 +291,8 @@ impl writer for writer {
     }
 }
 
-// TODO: optionally perform "relaxations" on end_tag to more efficiently
-// encode sizes; this is a fixed point iteration
+// FIXME (#2743): optionally perform "relaxations" on end_tag to more
+// efficiently encode sizes; this is a fixed point iteration
 
 // Set to true to generate more debugging in EBML serialization.
 // Totally lame approach.
@@ -343,9 +343,10 @@ impl serializer of serialization::serializer for ebml::writer {
 
     fn emit_bool(v: bool) { self.wr_tagged_u8(es_bool as uint, v as u8) }
 
-    fn emit_f64(_v: f64) { fail "TODO"; }
-    fn emit_f32(_v: f32) { fail "TODO"; }
-    fn emit_float(_v: float) { fail "TODO"; }
+    // FIXME (#2742): implement these
+    fn emit_f64(_v: f64) { fail "Unimplemented: serializing an f64"; }
+    fn emit_f32(_v: f32) { fail "Unimplemented: serializing an f32"; }
+    fn emit_float(_v: float) { fail "Unimplemented: serializing a float"; }
 
     fn emit_str(v: str) { self.wr_tagged_str(es_str as uint, v) }
 

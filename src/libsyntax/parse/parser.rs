@@ -2139,7 +2139,7 @@ class parser {
           Is it strange for the parser to check this?
           */
           none {
-            self.fatal("class with no ctor");
+            self.fatal("class with no constructor");
           }
         }
     }

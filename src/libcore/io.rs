@@ -259,8 +259,7 @@ fn file_reader(path: str) -> result<reader, str> {
 
 // Byte buffer readers
 
-// TODO: const u8, but this fails with rustboot.
-type byte_buf = {buf: ~[u8], mut pos: uint, len: uint};
+type byte_buf = {buf: ~[const u8], mut pos: uint, len: uint};
 
 impl of reader for byte_buf {
     fn read_bytes(len: uint) -> ~[u8] {
@@ -277,7 +276,8 @@ impl of reader for byte_buf {
         self.pos += 1u;
         ret b as int;
     }
-    fn unread_byte(_byte: int) { #error("TODO: unread_byte"); fail; }
+    // FIXME (#2738): implement this
+    fn unread_byte(_byte: int) { #error("Unimplemented: unread_byte"); fail; }
     fn eof() -> bool { self.pos == self.len }
     fn seek(offset: int, whence: seek_style) {
         let pos = self.pos;

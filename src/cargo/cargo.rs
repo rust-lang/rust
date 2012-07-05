@@ -743,15 +743,15 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
             #debug("  bin: %s", ct);
             install_to_dir(ct, c.bindir);
             if c.opts.mode == system_mode {
-                // TODO: Put this file in PATH / symlink it so it can be
-                // used as a generic executable
+                // FIXME (#2662): Put this file in PATH / symlink it so it can
+                // be used as a generic executable
                 // `cargo install -G rustray` and `rustray file.obj`
             }
         } else {
             #debug("  lib: %s", ct);
             install_to_dir(ct, c.libdir);
         }
-    }
+  }
 }
 
 
@@ -788,7 +788,9 @@ fn install_source(c: cargo, path: str) {
             none { cont; }
             some(crate) {
               for crate.deps.each |query| {
-                    // TODO: handle cyclic dependencies
+                    // FIXME (#1356): handle cyclic dependencies
+                    // (n.b. #1356 says "Cyclic dependency is an error
+                    // condition")
 
                     let wd_base = c.workdir + path::path_sep();
                     let wd = alt tempfile::mkdtemp(wd_base, "") {
@@ -797,7 +799,6 @@ fn install_source(c: cargo, path: str) {
                     };
 
                     install_query(c, wd, query);
-                }
 
                 os::change_dir(path);
 
@@ -808,6 +809,7 @@ fn install_source(c: cargo, path: str) {
             }
         }
     }
+  }
 }
 
 fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {

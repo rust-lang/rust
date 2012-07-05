@@ -11,6 +11,7 @@ iface num {
     fn neg() -> self;
 
     fn to_int() -> int;
-    fn from_int(n: int) -> self;    // TODO: Static functions.
+    fn from_int(n: int) -> self;    // FIXME (#2376) Static functions.
+    // n.b. #2376 is for classes, not ifaces, but it could be generalized...
 }
 
