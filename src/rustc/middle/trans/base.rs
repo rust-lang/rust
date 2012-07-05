@@ -551,7 +551,7 @@ fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
                      helper: glue_helper, name: str)
     -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue");
-    if !ccx.sess.stats() {
+    if !ccx.sess.trans_stats() {
         ret make_generic_glue_inner(ccx, t, llfn, helper);
     }
 
@@ -4550,7 +4550,7 @@ fn trans_fn(ccx: @crate_ctxt,
             ty_self: self_arg,
             param_substs: option<param_substs>,
             id: ast::node_id) {
-    let do_time = ccx.sess.stats();
+    let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { {sec: 0i64, nsec: 0i32} };
     let _icx = ccx.insn_ctxt("trans_fn");
@@ -5591,7 +5591,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
 
     // Translate the metadata.
     write_metadata(ccx, crate);
-    if ccx.sess.stats() {
+    if ccx.sess.trans_stats() {
         io::println("--- trans stats ---");
         io::println(#fmt("n_static_tydescs: %u",
                          ccx.stats.n_static_tydescs));

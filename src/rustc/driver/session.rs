@@ -28,7 +28,7 @@ const ppregions: uint = 1u;
 const time_passes: uint = 2u;
 const count_llvm_insns: uint = 4u;
 const time_llvm_passes: uint = 8u;
-const stats: uint = 16u;
+const trans_stats: uint = 16u;
 const no_asm_comments: uint = 32u;
 const no_verify: uint = 64u;
 const trace: uint = 128u;
@@ -36,6 +36,7 @@ const trace: uint = 128u;
 // It should be removed
 const no_rt: uint = 256u;
 const coherence: uint = 512u;
+const borrowck_stats: uint = 1024u;
 
 fn debugging_opts_map() -> ~[(str, str, uint)] {
     ~[("ppregions", "prettyprint regions with \
@@ -49,7 +50,8 @@ fn debugging_opts_map() -> ~[(str, str, uint)] {
      ("no-verify", "skip LLVM verification", no_verify),
      ("trace", "emit trace logs", trace),
      ("no-rt", "do not link to the runtime", no_rt),
-     ("coherence", "perform coherence checking", coherence)
+     ("coherence", "perform coherence checking", coherence),
+     ("borrowck-stats", "gather borrowck statistics",  borrowck_stats)
     ]
 }
 
@@ -160,11 +162,12 @@ impl session for session {
     fn time_passes() -> bool { self.debugging_opt(time_passes) }
     fn count_llvm_insns() -> bool { self.debugging_opt(count_llvm_insns) }
     fn time_llvm_passes() -> bool { self.debugging_opt(time_llvm_passes) }
-    fn stats() -> bool { self.debugging_opt(stats) }
+    fn trans_stats() -> bool { self.debugging_opt(trans_stats) }
     fn no_asm_comments() -> bool { self.debugging_opt(no_asm_comments) }
     fn no_verify() -> bool { self.debugging_opt(no_verify) }
     fn trace() -> bool { self.debugging_opt(trace) }
     fn coherence() -> bool { self.debugging_opt(coherence) }
+    fn borrowck_stats() -> bool { self.debugging_opt(borrowck_stats) }
 }
 
 /// Some reasonable defaults

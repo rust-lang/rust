@@ -172,6 +172,8 @@ impl methods for gather_loan_ctxt {
                        req_mutbl: ast::mutability,
                        scope_r: ty::region) {
 
+        self.bccx.guaranteed_paths += 1;
+
         #debug["guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl),
@@ -179,20 +181,27 @@ impl methods for gather_loan_ctxt {
         let _i = indenter();
 
         alt cmt.lp {
-          // If this expression is a loanable path, we MUST take out a loan.
-          // This is somewhat non-obvious.  You might think, for example, that
-          // if we have an immutable local variable `x` whose value is being
-          // borrowed, we could rely on `x` not to change.  This is not so,
-          // however, because even immutable locals can be moved.  So we take
-          // out a loan on `x`, guaranteeing that it remains immutable for the
-          // duration of the reference: if there is an attempt to move it
-          // within that scope, the loan will be detected and an error will be
-          // reported.
+          // If this expression is a loanable path, we MUST take out a
+          // loan.  This is somewhat non-obvious.  You might think,
+          // for example, that if we have an immutable local variable
+          // `x` whose value is being borrowed, we could rely on `x`
+          // not to change.  This is not so, however, because even
+          // immutable locals can be moved.  So we take out a loan on
+          // `x`, guaranteeing that it remains immutable for the
+          // duration of the reference: if there is an attempt to move
+          // it within that scope, the loan will be detected and an
+          // error will be reported.
           some(_) {
             alt scope_r {
               ty::re_scope(scope_id) {
                 let loans = self.bccx.loan(cmt, req_mutbl);
                 self.add_loans(scope_id, loans);
+
+                if req_mutbl == m_imm && cmt.mutbl != m_imm {
+                    self.bccx.loaned_paths_imm += 1;
+                } else {
+                    self.bccx.loaned_paths_same += 1;
+                }
               }
               _ {
                 self.bccx.span_err(
@@ -225,6 +234,7 @@ impl methods for gather_loan_ctxt {
                 // we were able guarantee the validity of the ptr,
                 // perhaps by rooting or because it is immutably
                 // rooted.  good.
+                self.bccx.stable_paths += 1;
               }
               err(e) {
                 // not able to guarantee the validity of the ptr.
@@ -235,6 +245,7 @@ impl methods for gather_loan_ctxt {
                 alt opt_scope_id {
                   some(scope_id) {
                     self.req_maps.pure_map.insert(scope_id, e);
+                    self.bccx.req_pure_paths += 1;
                   }
                   none {
                     // otherwise, fine, I give up.

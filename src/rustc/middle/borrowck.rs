@@ -175,11 +175,37 @@ fn check_crate(tcx: ty::ctxt,
                  last_use_map: last_use_map,
                  binding_map: int_hash(),
                  root_map: root_map(),
-                 mutbl_map: int_hash()};
+                 mutbl_map: int_hash(),
+                 mut loaned_paths_same: 0,
+                 mut loaned_paths_imm: 0,
+                 mut stable_paths: 0,
+                 mut req_pure_paths: 0,
+                 mut guaranteed_paths: 0};
 
     let req_maps = gather_loans::gather_loans(bccx, crate);
     check_loans::check_loans(bccx, req_maps, crate);
+
+    if tcx.sess.borrowck_stats() {
+        io::println("--- borrowck stats ---");
+        io::println(#fmt["paths requiring guarantees: %u",
+                        bccx.guaranteed_paths]);
+        io::println(#fmt["paths requiring loans     : %s",
+                         make_stat(bccx, bccx.loaned_paths_same)]);
+        io::println(#fmt["paths requiring imm loans : %s",
+                         make_stat(bccx, bccx.loaned_paths_imm)]);
+        io::println(#fmt["stable paths              : %s",
+                         make_stat(bccx, bccx.stable_paths)]);
+        io::println(#fmt["paths requiring purity    : %s",
+                         make_stat(bccx, bccx.req_pure_paths)]);
+    }
+
     ret (bccx.root_map, bccx.mutbl_map);
+
+    fn make_stat(bccx: borrowck_ctxt, stat: uint) -> str {
+        let stat_f = stat as float;
+        let total = bccx.guaranteed_paths as float;
+        #fmt["%u (%.0f%%)", stat  , stat_f * 100f / total]
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -190,7 +216,14 @@ type borrowck_ctxt = @{tcx: ty::ctxt,
                        last_use_map: liveness::last_use_map,
                        binding_map: binding_map,
                        root_map: root_map,
-                       mutbl_map: mutbl_map};
+                       mutbl_map: mutbl_map,
+
+                       // Statistics:
+                       mut loaned_paths_same: uint,
+                       mut loaned_paths_imm: uint,
+                       mut stable_paths: uint,
+                       mut req_pure_paths: uint,
+                       mut guaranteed_paths: uint};
 
 // a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
