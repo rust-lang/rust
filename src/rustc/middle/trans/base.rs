@@ -1369,7 +1369,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
     let _icx = bcx.insn_ctxt("copy_val_no_check");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
-    if ty::type_is_scalar(t) || ty::type_is_slice(t) {
+    if ty::type_is_scalar(t) {
         Store(bcx, src, dst);
         ret bcx;
     }
@@ -1401,7 +1401,7 @@ fn move_val(cx: block, action: copy_action, dst: ValueRef,
     let mut src_val = src.val;
     let tcx = cx.tcx();
     let mut cx = cx;
-    if ty::type_is_scalar(t) || ty::type_is_slice(t) {
+    if ty::type_is_scalar(t) {
         if src.kind == owned { src_val = Load(cx, src_val); }
         Store(cx, src_val, dst);
         ret cx;

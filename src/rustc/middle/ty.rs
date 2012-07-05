@@ -1074,8 +1074,10 @@ fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
 fn type_is_structural(ty: t) -> bool {
     alt get(ty).struct {
       ty_rec(_) | ty_class(*) | ty_tup(_) | ty_enum(*) | ty_fn(_) |
-      ty_trait(*) | ty_evec(_, vstore_fixed(_))
-      | ty_estr(vstore_fixed(_)) { true }
+      ty_trait(*) |
+      ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
+      ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
+      { true }
       _ { false }
     }
 }
