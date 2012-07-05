@@ -8,23 +8,23 @@ export default_config;
 export parse_config;
 export usage;
 
-#[doc = "The type of document to output"]
+/// The type of document to output
 enum output_format {
-    #[doc = "Markdown"]
+    /// Markdown
     markdown,
-    #[doc = "HTML, via markdown and pandoc"]
+    /// HTML, via markdown and pandoc
     pandoc_html
 }
 
-#[doc = "How to organize the output"]
+/// How to organize the output
 enum output_style {
-    #[doc = "All in a single document"]
+    /// All in a single document
     doc_per_crate,
-    #[doc = "Each module in its own document"]
+    /// Each module in its own document
     doc_per_mod
 }
 
-#[doc = "The configuration for a rustdoc session"]
+/// The configuration for a rustdoc session
 type config = {
     input_crate: str,
     output_dir: str,

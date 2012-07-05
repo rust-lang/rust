@@ -21,19 +21,19 @@ export eq_vec;
 // write an optimizing version of this module that produces a different obj
 // for the case where nbits <= 32.
 
-#[doc = "The bitvector type"]
+/// The bitvector type
 type bitv = @{storage: ~[mut uint], nbits: uint};
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);
 
-#[doc = "
-Constructs a bitvector
-
-# Arguments
-
-* nbits - The number of bits in the bitvector
-* init - If true then the bits are initialized to 1, otherwise 0
-"]
+/**
+ * Constructs a bitvector
+ *
+ * # Arguments
+ *
+ * * nbits - The number of bits in the bitvector
+ * * init - If true then the bits are initialized to 1, otherwise 0
+ */
 fn bitv(nbits: uint, init: bool) -> bitv {
     let elt = if init { !0u } else { 0u };
     let storage = vec::to_mut(vec::from_elem(nbits / uint_bits + 1u, elt));
@@ -63,12 +63,12 @@ fn union(v0: bitv, v1: bitv) -> bool {
 
 fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
 
-#[doc = "
-Calculates the intersection of two bitvectors
-
-Sets `v0` to the intersection of `v0` and `v1`. Both bitvectors must be the
-same length. Returns 'true' if `v0` was changed.
-"]
+/**
+ * Calculates the intersection of two bitvectors
+ *
+ * Sets `v0` to the intersection of `v0` and `v1`. Both bitvectors must be the
+ * same length. Returns 'true' if `v0` was changed.
+ */
 fn intersect(v0: bitv, v1: bitv) -> bool {
     let sub = land;
     ret process(v0, v1, sub);
@@ -76,16 +76,16 @@ fn intersect(v0: bitv, v1: bitv) -> bool {
 
 fn right(_w0: uint, w1: uint) -> uint { ret w1; }
 
-#[doc = "
-Assigns the value of `v1` to `v0`
-
-Both bitvectors must be the same length. Returns `true` if `v0` was changed
-"]
+/**
+ * Assigns the value of `v1` to `v0`
+ *
+ * Both bitvectors must be the same length. Returns `true` if `v0` was changed
+ */
 fn assign(v0: bitv, v1: bitv) -> bool {
     let sub = right; ret process(v0, v1, sub);
 }
 
-#[doc = "Makes a copy of a bitvector"]
+/// Makes a copy of a bitvector
 fn clone(v: bitv) -> bitv {
     let storage = vec::to_mut(vec::from_elem(v.nbits / uint_bits + 1u, 0u));
     let len = vec::len(v.storage);
@@ -93,7 +93,7 @@ fn clone(v: bitv) -> bitv {
     ret @{storage: storage, nbits: v.nbits};
 }
 
-#[doc = "Retrieve the value at index `i`"]
+/// Retrieve the value at index `i`
 #[inline(always)]
 pure fn get(v: bitv, i: uint) -> bool {
     assert (i < v.nbits);
@@ -104,12 +104,12 @@ pure fn get(v: bitv, i: uint) -> bool {
     ret x == 1u;
 }
 
-#[doc = "
-Compares two bitvectors
-
-Both bitvectors must be the same length. Returns `true` if both bitvectors
-contain identical elements.
-"]
+/**
+ * Compares two bitvectors
+ *
+ * Both bitvectors must be the same length. Returns `true` if both bitvectors
+ * contain identical elements.
+ */
 fn equal(v0: bitv, v1: bitv) -> bool {
     if v0.nbits != v1.nbits { ret false; }
     let len = vec::len(v1.storage);
@@ -118,26 +118,26 @@ fn equal(v0: bitv, v1: bitv) -> bool {
     }
 }
 
-#[doc = "Set all bits to 0"]
+/// Set all bits to 0
 #[inline(always)]
 fn clear(v: bitv) { for each_storage(v) |w| { w = 0u } }
 
-#[doc = "Set all bits to 1"]
+/// Set all bits to 1
 #[inline(always)]
 fn set_all(v: bitv) { for each_storage(v) |w| { w = !0u } }
 
-#[doc = "Invert all bits"]
+/// Invert all bits
 #[inline(always)]
 fn invert(v: bitv) { for each_storage(v) |w| { w = !w } }
 
-#[doc = "
-Calculate the difference between two bitvectors
-
-Sets each element of `v0` to the value of that element minus the element
-of `v1` at the same index. Both bitvectors must be the same length.
-
-Returns `true` if `v0` was changed.
-"]
+/**
+ * Calculate the difference between two bitvectors
+ *
+ * Sets each element of `v0` to the value of that element minus the element
+ * of `v1` at the same index. Both bitvectors must be the same length.
+ *
+ * Returns `true` if `v0` was changed.
+ */
 fn difference(v0: bitv, v1: bitv) -> bool {
     invert(v1);
     let b = intersect(v0, v1);
@@ -145,11 +145,11 @@ fn difference(v0: bitv, v1: bitv) -> bool {
     ret b;
 }
 
-#[doc = "
-Set the value of a bit at a given index
-
-`i` must be less than the length of the bitvector.
-"]
+/**
+ * Set the value of a bit at a given index
+ *
+ * `i` must be less than the length of the bitvector.
+ */
 #[inline(always)]
 fn set(v: bitv, i: uint, x: bool) {
     assert (i < v.nbits);
@@ -161,14 +161,14 @@ fn set(v: bitv, i: uint, x: bool) {
 }
 
 
-#[doc = "Returns true if all bits are 1"]
+/// Returns true if all bits are 1
 fn is_true(v: bitv) -> bool {
     for each(v) |i| { if !i { ret false; } }
     ret true;
 }
 
 
-#[doc = "Returns true if all bits are 0"]
+/// Returns true if all bits are 0
 fn is_false(v: bitv) -> bool {
     for each(v) |i| { if i { ret false; } }
     ret true;
@@ -178,11 +178,11 @@ fn init_to_vec(v: bitv, i: uint) -> uint {
     ret if get(v, i) { 1u } else { 0u };
 }
 
-#[doc = "
-Converts the bitvector to a vector of uint with the same length.
-
-Each uint in the resulting vector has either value 0u or 1u.
-"]
+/**
+ * Converts the bitvector to a vector of uint with the same length.
+ *
+ * Each uint in the resulting vector has either value 0u or 1u.
+ */
 fn to_vec(v: bitv) -> ~[uint] {
     let sub = |x| init_to_vec(v, x);
     ret vec::from_fn::<uint>(v.nbits, sub);
@@ -207,24 +207,24 @@ fn each_storage(v: bitv, op: fn(&uint) -> bool) {
     }
 }
 
-#[doc = "
-Converts the bitvector to a string.
-
-The resulting string has the same length as the bitvector, and each character
-is either '0' or '1'.
-"]
+/**
+ * Converts the bitvector to a string.
+ *
+ * The resulting string has the same length as the bitvector, and each
+ * character is either '0' or '1'.
+ */
 fn to_str(v: bitv) -> str {
     let mut rs = "";
     for each(v) |i| { if i { rs += "1"; } else { rs += "0"; } }
     ret rs;
 }
 
-#[doc = "
-Compare a bitvector to a vector of uint
-
-The uint vector is expected to only contain the values 0u and 1u. Both the
-bitvector and vector must have the same length
-"]
+/**
+ * Compare a bitvector to a vector of uint
+ *
+ * The uint vector is expected to only contain the values 0u and 1u. Both the
+ * bitvector and vector must have the same length
+ */
 fn eq_vec(v0: bitv, v1: ~[uint]) -> bool {
     assert (v0.nbits == vec::len::<uint>(v1));
     let len = v0.nbits;

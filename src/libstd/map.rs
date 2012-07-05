@@ -1,4 +1,4 @@
-#[doc = "A map type"];
+//! A map type
 
 import chained::hashmap;
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
@@ -8,65 +8,65 @@ export hash_from_vec, hash_from_strs, hash_from_bytes;
 export hash_from_ints, hash_from_uints;
 export vec_from_set;
 
-#[doc = "
-A function that returns a hash of a value
-
-The hash should concentrate entropy in the lower bits.
-"]
+/**
+ * A function that returns a hash of a value
+ *
+ * The hash should concentrate entropy in the lower bits.
+ */
 type hashfn<K> = fn@(K) -> uint;
 
 type eqfn<K> = fn@(K, K) -> bool;
 
-#[doc = "A convenience type to treat a hashmap as a set"]
+/// A convenience type to treat a hashmap as a set
 type set<K> = hashmap<K, ()>;
 
 type hashmap<K, V> = chained::t<K, V>;
 
 iface map<K, V: copy> {
-    #[doc = "Return the number of elements in the map"]
+    /// Return the number of elements in the map
     fn size() -> uint;
 
-    #[doc = "
-    Add a value to the map.
-
-    If the map already contains a value for the specified key then the
-    original value is replaced.
-
-    Returns true if the key did not already exist in the map
-    "]
+    /**
+     * Add a value to the map.
+     *
+     * If the map already contains a value for the specified key then the
+     * original value is replaced.
+     *
+     * Returns true if the key did not already exist in the map
+     */
     fn insert(+K, +V) -> bool;
 
-    #[doc = "Returns true if the map contains a value for the specified key"]
+    /// Returns true if the map contains a value for the specified key
     fn contains_key(K) -> bool;
 
-    #[doc = "
-    Get the value for the specified key. Fails if the key does not exist in
-    the map.
-    "]
+    /**
+     * Get the value for the specified key. Fails if the key does not exist in
+     * the map.
+     */
     fn get(K) -> V;
 
-    #[doc = "Like get, but as an operator."]
+    /// Like get, but as an operator.
     fn [](K) -> V;
 
-    #[doc = "
-    Get the value for the specified key. If the key does not exist in
-    the map then returns none.
-    "]
+    /**
+     * Get the value for the specified key. If the key does not exist in
+     * the map then returns none.
+     */
     fn find(K) -> option<V>;
 
-    #[doc = "
-    Remove and return a value from the map. If the key does not exist
-    in the map then returns none.
-    "]
+    /**
+     * Remove and return a value from the map. If the key does not exist
+     * in the map then returns none.
+     */
     fn remove(K) -> option<V>;
 
-    #[doc = "Iterate over all the key/value pairs in the map"]
+    /// Iterate over all the key/value pairs in the map
     fn each(fn(K, V) -> bool);
 
-    #[doc = "Iterate over all the keys in the map"]
+    /// Iterate over all the keys in the map
     fn each_key(fn(K) -> bool);
 
-    #[doc = "Iterate over all the values in the map"]
+    /// Iterate over all the values in the map
     fn each_value(fn(V) -> bool);
 }
 
@@ -295,41 +295,37 @@ fn hashmap<K: const, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
     chained::mk(hasher, eqer)
 }
 
-#[doc = "Construct a hashmap for string keys"]
+/// Construct a hashmap for string keys
 fn str_hash<V: copy>() -> hashmap<str, V> {
     ret hashmap(str::hash, str::eq);
 }
 
-#[doc = "Construct a hashmap for boxed string keys"]
+/// Construct a hashmap for boxed string keys
 fn box_str_hash<V: copy>() -> hashmap<@str, V> {
     ret hashmap(|x: @str| str::hash(*x), |x,y| str::eq(*x,*y));
 }
 
-#[doc = "Construct a hashmap for byte string keys"]
+/// Construct a hashmap for byte string keys
 fn bytes_hash<V: copy>() -> hashmap<~[u8], V> {
     ret hashmap(vec::u8::hash, vec::u8::eq);
 }
 
-#[doc = "Construct a hashmap for int keys"]
+/// Construct a hashmap for int keys
 fn int_hash<V: copy>() -> hashmap<int, V> {
     ret hashmap(int::hash, int::eq);
 }
 
-#[doc = "Construct a hashmap for uint keys"]
+/// Construct a hashmap for uint keys
 fn uint_hash<V: copy>() -> hashmap<uint, V> {
     ret hashmap(uint::hash, uint::eq);
 }
 
-#[doc = "
-Convenience function for adding keys to a hashmap with nil type keys
-"]
+/// Convenience function for adding keys to a hashmap with nil type keys
 fn set_add<K: const copy>(set: set<K>, key: K) -> bool {
     ret set.insert(key, ());
 }
 
-#[doc = "
-Convert a set into a vector.
-"]
+/// Convert a set into a vector.
 fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
     let mut v = ~[];
     do s.each_key() |k| {
@@ -339,7 +335,7 @@ fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
     v
 }
 
-#[doc = "Construct a hashmap from a vector"]
+/// Construct a hashmap from a vector
 fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
                                          items: ~[(K, V)]) -> hashmap<K, V> {
     let map = hashmap(hasher, eqer);
@@ -350,22 +346,22 @@ fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
     map
 }
 
-#[doc = "Construct a hashmap from a vector with string keys"]
+/// Construct a hashmap from a vector with string keys
 fn hash_from_strs<V: copy>(items: ~[(str, V)]) -> hashmap<str, V> {
     hash_from_vec(str::hash, str::eq, items)
 }
 
-#[doc = "Construct a hashmap from a vector with byte keys"]
+/// Construct a hashmap from a vector with byte keys
 fn hash_from_bytes<V: copy>(items: ~[(~[u8], V)]) -> hashmap<~[u8], V> {
     hash_from_vec(vec::u8::hash, vec::u8::eq, items)
 }
 
-#[doc = "Construct a hashmap from a vector with int keys"]
+/// Construct a hashmap from a vector with int keys
 fn hash_from_ints<V: copy>(items: ~[(int, V)]) -> hashmap<int, V> {
     hash_from_vec(int::hash, int::eq, items)
 }
 
-#[doc = "Construct a hashmap from a vector with uint keys"]
+/// Construct a hashmap from a vector with uint keys
 fn hash_from_uints<V: copy>(items: ~[(uint, V)]) -> hashmap<uint, V> {
     hash_from_vec(uint::hash, uint::eq, items)
 }

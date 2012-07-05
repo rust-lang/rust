@@ -1,26 +1,27 @@
-#[doc = "
-Operations on the ubiquitous `option` type.
+/*!
+ * Operations on the ubiquitous `option` type.
+ *
+ * Type `option` represents an optional value.
+ *
+ * Every `option<T>` value can either be `some(T)` or `none`. Where in other
+ * languages you might use a nullable type, in Rust you would use an option
+ * type.
+ */
 
-Type `option` represents an optional value.
-
-Every `option<T>` value can either be `some(T)` or `none`. Where in other
-languages you might use a nullable type, in Rust you would use an option type.
-"];
-
-#[doc = "The option type"]
+/// The option type
 enum option<T> {
     none,
     some(T),
 }
 
 pure fn get<T: copy>(opt: option<T>) -> T {
-    #[doc = "
-    Gets the value out of an option
-
-    # Failure
-
-    Fails if the value equals `none`
-    "];
+    /*!
+     * Gets the value out of an option
+     *
+     * # Failure
+     *
+     * Fails if the value equals `none`
+     */
 
     alt opt { some(x) { ret x; } none { fail "option none"; } }
 }
@@ -37,57 +38,57 @@ pure fn expect<T: copy>(opt: option<T>, reason: str) -> T {
 }
 
 pure fn map<T, U: copy>(opt: option<T>, f: fn(T) -> U) -> option<U> {
-    #[doc = "Maps a `some` value from one type to another"];
+    //! Maps a `some` value from one type to another
 
     alt opt { some(x) { some(f(x)) } none { none } }
 }
 
 pure fn chain<T, U>(opt: option<T>, f: fn(T) -> option<U>) -> option<U> {
-    #[doc = "
-    Update an optional value by optionally running its content through a
-    function that returns an option.
-    "];
+    /*!
+     * Update an optional value by optionally running its content through a
+     * function that returns an option.
+     */
 
     alt opt { some(x) { f(x) } none { none } }
 }
 
 pure fn is_none<T>(opt: option<T>) -> bool {
-    #[doc = "Returns true if the option equals `none`"];
+    //! Returns true if the option equals `none`
 
     alt opt { none { true } some(_) { false } }
 }
 
 pure fn is_some<T>(opt: option<T>) -> bool {
-    #[doc = "Returns true if the option contains some value"];
+    //! Returns true if the option contains some value
 
     !is_none(opt)
 }
 
 pure fn get_default<T: copy>(opt: option<T>, def: T) -> T {
-    #[doc = "Returns the contained value or a default"];
+    //! Returns the contained value or a default
 
     alt opt { some(x) { x } none { def } }
 }
 
 pure fn map_default<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
-    #[doc = "Applies a function to the contained value or returns a default"];
+    //! Applies a function to the contained value or returns a default
 
     alt opt { none { def } some(t) { f(t) } }
 }
 
 pure fn iter<T>(opt: option<T>, f: fn(T)) {
-    #[doc = "Performs an operation on the contained value or does nothing"];
+    //! Performs an operation on the contained value or does nothing
 
     alt opt { none { } some(t) { f(t); } }
 }
 
 pure fn unwrap<T>(-opt: option<T>) -> T {
-    #[doc = "
-    Moves a value out of an option type and returns it.
-
-    Useful primarily for getting strings, vectors and unique pointers out of
-    option types without copying them.
-    "];
+    /*!
+     * Moves a value out of an option type and returns it.
+     *
+     * Useful primarily for getting strings, vectors and unique pointers out
+     * of option types without copying them.
+     */
 
     unsafe {
         let addr = alt opt {
@@ -101,41 +102,42 @@ pure fn unwrap<T>(-opt: option<T>) -> T {
 }
 
 impl extensions<T> for option<T> {
-    #[doc = "
-    Update an optional value by optionally running its content through a
-    function that returns an option.
-    "]
-    pure fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
-    #[doc = "Applies a function to the contained value or returns a default"]
-    pure fn map_default<U: copy>(def: U, f: fn(T) -> U) -> U
+    /**
+     * Update an optional value by optionally running its content through a
+     * function that returns an option.
+     */
+    fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
+    /// Applies a function to the contained value or returns a default
+    fn map_default<U: copy>(def: U, f: fn(T) -> U) -> U
         { map_default(self, def, f) }
-    #[doc = "Performs an operation on the contained value or does nothing"]
-    pure fn iter(f: fn(T)) { iter(self, f) }
-    #[doc = "Returns true if the option equals `none`"]
-    pure fn is_none() -> bool { is_none(self) }
-    #[doc = "Returns true if the option contains some value"]
-    pure fn is_some() -> bool { is_some(self) }
-    #[doc = "Maps a `some` value from one type to another"]
-    pure fn map<U:copy>(f: fn(T) -> U) -> option<U> { map(self, f) }
+    /// Performs an operation on the contained value or does nothing
+    fn iter(f: fn(T)) { iter(self, f) }
+    /// Returns true if the option equals `none`
+    fn is_none() -> bool { is_none(self) }
+    /// Returns true if the option contains some value
+    fn is_some() -> bool { is_some(self) }
+    /// Maps a `some` value from one type to another
+    fn map<U:copy>(f: fn(T) -> U) -> option<U> { map(self, f) }
 }
 
 impl extensions<T: copy> for option<T> {
-    #[doc = "
-    Gets the value out of an option
-
-    # Failure
-
-    Fails if the value equals `none`
-    "]
-    pure fn get() -> T { get(self) }
-    pure fn get_default(def: T) -> T { get_default(self, def) }
-    #[doc = "
-    Gets the value out of an option, printing a specified message on failure
-
-    # Failure
-
-    Fails if the value equals `none`
-    "]
+    /**
+     * Gets the value out of an option
+     *
+     * # Failure
+     *
+     * Fails if the value equals `none`
+     */
+    fn get() -> T { get(self) }
+    fn get_default(def: T) -> T { get_default(self, def) }
+    /**
+     * Gets the value out of an option, printing a specified message on
+     * failure
+     *
+     * # Failure
+     *
+     * Fails if the value equals `none`
+     */
     pure fn expect(reason: str) -> T { expect(self, reason) }
 }
 

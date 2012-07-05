@@ -1,76 +1,76 @@
 type T = uint;
 
-#[doc = "
-Divide two numbers, return the result, rounded up.
-
-# Arguments
-
-* x - an integer
-* y - an integer distinct from 0u
-
-# Return value
-
-The smallest integer `q` such that `x/y <= q`.
-"]
+/**
+ * Divide two numbers, return the result, rounded up.
+ *
+ * # Arguments
+ *
+ * * x - an integer
+ * * y - an integer distinct from 0u
+ *
+ * # Return value
+ *
+ * The smallest integer `q` such that `x/y <= q`.
+ */
 pure fn div_ceil(x: uint, y: uint) -> uint {
     let div = div(x, y);
     if x % y == 0u { ret div;}
     else { ret div + 1u; }
 }
 
-#[doc = "
-Divide two numbers, return the result, rounded to the closest integer.
-
-# Arguments
-
-* x - an integer
-* y - an integer distinct from 0u
-
-# Return value
-
-The integer `q` closest to `x/y`.
-"]
+/**
+ * Divide two numbers, return the result, rounded to the closest integer.
+ *
+ * # Arguments
+ *
+ * * x - an integer
+ * * y - an integer distinct from 0u
+ *
+ * # Return value
+ *
+ * The integer `q` closest to `x/y`.
+ */
 pure fn div_round(x: uint, y: uint) -> uint {
     let div = div(x, y);
     if x % y * 2u  < y { ret div;}
     else { ret div + 1u; }
 }
 
-#[doc = "
-Divide two numbers, return the result, rounded down.
-
-Note: This is the same function as `div`.
-
-# Arguments
-
-* x - an integer
-* y - an integer distinct from 0u
-
-# Return value
-
-The smallest integer `q` such that `x/y <= q`. This
-is either `x/y` or `x/y + 1`.
-"]
+/**
+ * Divide two numbers, return the result, rounded down.
+ *
+ * Note: This is the same function as `div`.
+ *
+ * # Arguments
+ *
+ * * x - an integer
+ * * y - an integer distinct from 0u
+ *
+ * # Return value
+ *
+ * The smallest integer `q` such that `x/y <= q`. This
+ * is either `x/y` or `x/y + 1`.
+ */
 pure fn div_floor(x: uint, y: uint) -> uint { ret x / y; }
 
-#[doc = "Produce a uint suitable for use in a hash table"]
+/// Produce a uint suitable for use in a hash table
 pure fn hash(&&x: uint) -> uint { ret x; }
 
-#[doc = "
-Iterate over the range [`lo`..`hi`), or stop when requested
-
-# Arguments
-
-* lo - The integer at which to start the loop (included)
-* hi - The integer at which to stop the loop (excluded)
-* it - A block to execute with each consecutive integer of the range.
-       Return `true` to continue, `false` to stop.
-
-# Return value
-
-`true` If execution proceeded correctly, `false` if it was interrupted,
-that is if `it` returned `false` at any point.
-"]
+/**
+ * Iterate over the range [`lo`..`hi`), or stop when requested
+ *
+ * # Arguments
+ *
+ * * lo - The integer at which to start the loop (included)
+ * * hi - The integer at which to stop the loop (excluded)
+ * * it - A block to execute with each consecutive integer of the range.
+ *        Return `true` to continue, `false` to stop.
+ *
+ * # Return value
+ *
+ * `true` If execution proceeded correctly, `false` if it was interrupted,
+ * that is if `it` returned `false` at any point.
+ */
 fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     let mut i = lo;
     while i < hi {
@@ -80,7 +80,7 @@ fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     ret true;
 }
 
-#[doc = "Returns the smallest power of 2 greater than or equal to `n`"]
+/// Returns the smallest power of 2 greater than or equal to `n`
 #[inline(always)]
 fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;

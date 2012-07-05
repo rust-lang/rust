@@ -38,7 +38,7 @@ pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
-#[doc = "Iterate over the range [`lo`..`hi`)"]
+/// Iterate over the range [`lo`..`hi`)
 fn range(lo: T, hi: T, it: fn(T) -> bool) {
     let mut i = lo;
     while i < hi {
@@ -47,7 +47,7 @@ fn range(lo: T, hi: T, it: fn(T) -> bool) {
     }
 }
 
-#[doc = "Computes the bitwise complement"]
+/// Computes the bitwise complement
 pure fn compl(i: T) -> T {
     max_value ^ i
 }
@@ -76,18 +76,18 @@ impl num of num::num for T {
     fn from_int(n: int) -> T   { ret n as T;      }
 }
 
-#[doc = "
-Parse a buffer of bytes
-
-# Arguments
-
-* buf - A byte buffer
-* radix - The base of the number
-
-# Failure
-
-`buf` must not be empty
-"]
+/**
+ * Parse a buffer of bytes
+ *
+ * # Arguments
+ *
+ * * buf - A byte buffer
+ * * radix - The base of the number
+ *
+ * # Failure
+ *
+ * `buf` must not be empty
+ */
 fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     if vec::len(buf) == 0u { ret none; }
     let mut i = vec::len(buf) - 1u;
@@ -104,10 +104,10 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     };
 }
 
-#[doc = "Parse a string to an int"]
+/// Parse a string to an int
 fn from_str(s: str) -> option<T> { parse_buf(str::bytes(s), 10u) }
 
-#[doc = "Parse a string as an unsigned integer."]
+/// Parse a string as an unsigned integer.
 fn from_str_radix(buf: str, radix: u64) -> option<u64> {
     if str::len(buf) == 0u { ret none; }
     let mut i = str::len(buf) - 1u;
@@ -123,13 +123,13 @@ fn from_str_radix(buf: str, radix: u64) -> option<u64> {
     };
 }
 
-#[doc = "
-Convert to a string in a given base
-
-# Failure
-
-Fails if `radix` < 2 or `radix` > 16
-"]
+/**
+ * Convert to a string in a given base
+ *
+ * # Failure
+ *
+ * Fails if `radix` < 2 or `radix` > 16
+ */
 fn to_str(num: T, radix: uint) -> str {
     do to_str_bytes(false, num, radix) |slice| {
         do vec::unpack_slice(slice) |p, len| {
@@ -138,7 +138,7 @@ fn to_str(num: T, radix: uint) -> str {
     }
 }
 
-#[doc = "Low-level helper routine for string conversion."]
+/// Low-level helper routine for string conversion.
 fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
                    f: fn(v: &[u8]) -> U) -> U {
 
@@ -203,7 +203,7 @@ fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
     }
 }
 
-#[doc = "Convert to a string"]
+/// Convert to a string
 fn str(i: T) -> str { ret to_str(i, 10u); }
 
 #[test]

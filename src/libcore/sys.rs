@@ -1,4 +1,4 @@
-#[doc = "Misc low level stuff"];
+//! Misc low level stuff
 
 export type_desc;
 export get_type_desc;
@@ -39,38 +39,38 @@ extern mod rusti {
     fn min_align_of<T>() -> uint;
 }
 
-#[doc = "
-Returns a pointer to a type descriptor.
-
-Useful for calling certain function in the Rust runtime or otherwise
-performing dark magick.
-"]
+/**
+ * Returns a pointer to a type descriptor.
+ *
+ * Useful for calling certain function in the Rust runtime or otherwise
+ * performing dark magick.
+ */
 pure fn get_type_desc<T>() -> *type_desc {
     unchecked { rusti::get_tydesc::<T>() as *type_desc }
 }
 
-#[doc = "Returns the size of a type"]
+/// Returns the size of a type
 #[inline(always)]
 pure fn size_of<T>() -> uint {
     unchecked { rusti::size_of::<T>() }
 }
 
-#[doc = "
-Returns the ABI-required minimum alignment of a type
-
-This is the alignment used for struct fields. It may be smaller
-than the preferred alignment.
-"]
+/**
+ * Returns the ABI-required minimum alignment of a type
+ *
+ * This is the alignment used for struct fields. It may be smaller
+ * than the preferred alignment.
+ */
 pure fn min_align_of<T>() -> uint {
     unchecked { rusti::min_align_of::<T>() }
 }
 
-#[doc = "Returns the preferred alignment of a type"]
+/// Returns the preferred alignment of a type
 pure fn pref_align_of<T>() -> uint {
     unchecked { rusti::pref_align_of::<T>() }
 }
 
-#[doc = "Returns the refcount of a shared box (as just before calling this)"]
+/// Returns the refcount of a shared box (as just before calling this)
 pure fn refcount<T>(+t: @T) -> uint {
     unsafe {
         let ref_ptr: *uint = unsafe::reinterpret_cast(t);

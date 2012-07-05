@@ -98,9 +98,11 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
     map::vec_from_set(keys)
 }
 
-#[doc="Returns a vector of all the parents in the BFS tree rooted at key.
-
-Nodes that are unreachable have a parent of -1."]
+/**
+ * Returns a vector of all the parents in the BFS tree rooted at key.
+ *
+ * Nodes that are unreachable have a parent of -1.
+ */
 fn bfs(graph: graph, key: node_id) -> bfs_result {
     let marks : ~[mut node_id] 
         = vec::to_mut(vec::from_elem(vec::len(graph), -1i64));
@@ -125,10 +127,12 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     vec::from_mut(marks)
 }
 
-#[doc="Another version of the bfs function.
-
-This one uses the same algorithm as the parallel one, just without
-using the parallel vector operators."]
+/**
+ * Another version of the bfs function.
+ *
+ * This one uses the same algorithm as the parallel one, just without
+ * using the parallel vector operators.
+ */
 fn bfs2(graph: graph, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
 
@@ -197,7 +201,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     }
 }
 
-#[doc="A parallel version of the bfs function."]
+/// A parallel version of the bfs function.
 fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
 
@@ -277,7 +281,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
     }
 }
 
-#[doc="Performs at least some of the validation in the Graph500 spec."]
+/// Performs at least some of the validation in the Graph500 spec.
 fn validate(edges: ~[(node_id, node_id)], 
             root: node_id, tree: bfs_result) -> bool {
     // There are 5 things to test. Below is code for each of them.

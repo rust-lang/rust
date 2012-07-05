@@ -1,8 +1,8 @@
-#[doc = "
-A doubly-linked list. Supports O(1) head, tail, count, push, pop, etc.
-
-Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
-"]
+/**
+ * A doubly-linked list. Supports O(1) head, tail, count, push, pop, etc.
+ *
+ * Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
+ */
 
 import dlist_iter::extensions;
 
@@ -57,24 +57,24 @@ impl private_methods<T> for dlist_node<T> {
 }
 
 impl extensions<T> for dlist_node<T> {
-    #[doc = "Get the next node in the list, if there is one."]
+    /// Get the next node in the list, if there is one.
     pure fn next_link() -> option<dlist_node<T>> {
         self.assert_links();
         self.next
     }
-    #[doc = "Get the next node in the list, failing if there isn't one."]
+    /// Get the next node in the list, failing if there isn't one.
     pure fn next_node() -> dlist_node<T> {
         alt self.next_link() {
             some(nobe) { nobe }
             none       { fail "This dlist node has no next neighbour." }
         }
     }
-    #[doc = "Get the previous node in the list, if there is one."]
+    /// Get the previous node in the list, if there is one.
     pure fn prev_link() -> option<dlist_node<T>> {
         self.assert_links();
         self.prev
     }
-    #[doc = "Get the previous node in the list, failing if there isn't one."]
+    /// Get the previous node in the list, failing if there isn't one.
     pure fn prev_node() -> dlist_node<T> {
         alt self.prev_link() {
             some(nobe) { nobe }
@@ -82,7 +82,7 @@ impl extensions<T> for dlist_node<T> {
         }
     }
 
-    #[doc = "Remove a node from whatever dlist it's on (failing if none)."]
+    /// Remove a node from whatever dlist it's on (failing if none).
     fn remove() {
         if option::is_some(self.root) {
             option::get(self.root).remove(self);
@@ -92,17 +92,17 @@ impl extensions<T> for dlist_node<T> {
     }
 }
 
-#[doc = "Creates a new dlist node with the given data."]
+/// Creates a new dlist node with the given data.
 pure fn create_node<T>(+data: T) -> dlist_node<T> {
     dlist_node(@{data: data, mut root: none, mut prev: none, mut next: none})
 }
 
-#[doc = "Creates a new, empty dlist."]
+/// Creates a new, empty dlist.
 pure fn create<T>() -> dlist<T> {
     dlist(@{mut size: 0, mut hd: none, mut tl: none})
 }
 
-#[doc = "Creates a new dlist with a single element"]
+/// Creates a new dlist with a single element
 fn from_elt<T>(+data: T) -> dlist<T> {
     let list = create();
     list.push(data);
@@ -184,97 +184,113 @@ impl private_methods<T> for dlist<T> {
 }
 
 impl extensions<T> for dlist<T> {
-    #[doc = "Get the size of the list. O(1)."]
+    /// Get the size of the list. O(1).
     pure fn len()          -> uint { self.size }
-    #[doc = "Returns true if the list is empty. O(1)."]
+    /// Returns true if the list is empty. O(1).
     pure fn is_empty()     -> bool { self.len() == 0 }
-    #[doc = "Returns true if the list is not empty. O(1)."]
+    /// Returns true if the list is not empty. O(1).
     pure fn is_not_empty() -> bool { self.len() != 0 }
 
-    #[doc = "Add data to the head of the list. O(1)."]
+    /// Add data to the head of the list. O(1).
     fn push_head(+data: T) {
         self.add_head(self.new_link(data));
     }
-    #[doc = "Add data to the head of the list, and get the new containing
-             node. O(1)."]
+    /**
+     * Add data to the head of the list, and get the new containing
+     * node. O(1).
+     */
     fn push_head_n(+data: T) -> dlist_node<T> {
         let mut nobe = self.new_link(data);
         self.add_head(nobe);
         option::get(nobe)
     }
-    #[doc = "Add data to the tail of the list. O(1)."]
+    /// Add data to the tail of the list. O(1).
     fn push(+data: T) {
         self.add_tail(self.new_link(data));
     }
-    #[doc = "Add data to the tail of the list, and get the new containing
-             node. O(1)."]
+    /**
+     * Add data to the tail of the list, and get the new containing
+     * node. O(1).
+     */
     fn push_n(+data: T) -> dlist_node<T> {
         let mut nobe = self.new_link(data);
         self.add_tail(nobe);
         option::get(nobe)
     }
-    #[doc = "Insert data into the middle of the list, left of the given node.
-             O(1)."]
+    /**
+     * Insert data into the middle of the list, left of the given node.
+     * O(1).
+     */
     fn insert_before(+data: T, neighbour: dlist_node<T>) {
         self.insert_left(self.new_link(data), neighbour);
     }
-    #[doc = "Insert an existing node in the middle of the list, left of the
-             given node. O(1)."]
+    /**
+     * Insert an existing node in the middle of the list, left of the
+     * given node. O(1).
+     */
     fn insert_n_before(nobe: dlist_node<T>, neighbour: dlist_node<T>) {
         self.make_mine(nobe);
         self.insert_left(some(nobe), neighbour);
     }
-    #[doc = "Insert data in the middle of the list, left of the given node,
-             and get its containing node. O(1)."]
+    /**
+     * Insert data in the middle of the list, left of the given node,
+     * and get its containing node. O(1).
+     */
     fn insert_before_n(+data: T, neighbour: dlist_node<T>) -> dlist_node<T> {
         let mut nobe = self.new_link(data);
         self.insert_left(nobe, neighbour);
         option::get(nobe)
     }
-    #[doc = "Insert data into the middle of the list, right of the given node.
-             O(1)."]
+    /**
+     * Insert data into the middle of the list, right of the given node.
+     * O(1).
+     */
     fn insert_after(+data: T, neighbour: dlist_node<T>) {
         self.insert_right(neighbour, self.new_link(data));
     }
-    #[doc = "Insert an existing node in the middle of the list, right of the
-             given node. O(1)."]
+    /**
+     * Insert an existing node in the middle of the list, right of the
+     * given node. O(1).
+     */
     fn insert_n_after(nobe: dlist_node<T>, neighbour: dlist_node<T>) {
         self.make_mine(nobe);
         self.insert_right(neighbour, some(nobe));
     }
-    #[doc = "Insert data in the middle of the list, right of the given node,
-             and get its containing node. O(1)."]
+    /**
+     * Insert data in the middle of the list, right of the given node,
+     * and get its containing node. O(1).
+     */
     fn insert_after_n(+data: T, neighbour: dlist_node<T>) -> dlist_node<T> {
         let mut nobe = self.new_link(data);
         self.insert_right(neighbour, nobe);
         option::get(nobe)
     }
 
-    #[doc = "Remove a node from the head of the list. O(1)."]
+    /// Remove a node from the head of the list. O(1).
     fn pop_n() -> option<dlist_node<T>> {
         let hd = self.peek_n();
         hd.map(|nobe| self.unlink(nobe));
         hd
     }
-    #[doc = "Remove a node from the tail of the list. O(1)."]
+    /// Remove a node from the tail of the list. O(1).
     fn pop_tail_n() -> option<dlist_node<T>> {
         let tl = self.peek_tail_n();
         tl.map(|nobe| self.unlink(nobe));
         tl
     }
-    #[doc = "Get the node at the list's head. O(1)."]
+    /// Get the node at the list's head. O(1).
     pure fn peek_n() -> option<dlist_node<T>> { self.hd }
-    #[doc = "Get the node at the list's tail. O(1)."]
+    /// Get the node at the list's tail. O(1).
     pure fn peek_tail_n() -> option<dlist_node<T>> { self.tl }
 
-    #[doc = "Get the node at the list's head, failing if empty. O(1)."]
+    /// Get the node at the list's head, failing if empty. O(1).
     pure fn head_n() -> dlist_node<T> {
         alt self.hd {
             some(nobe) { nobe }
             none       { fail "Attempted to get the head of an empty dlist." }
         }
     }
-    #[doc = "Get the node at the list's tail, failing if empty. O(1)."]
+    /// Get the node at the list's tail, failing if empty. O(1).
     pure fn tail_n() -> dlist_node<T> {
         alt self.tl {
             some(nobe) { nobe }
@@ -282,10 +298,10 @@ impl extensions<T> for dlist<T> {
         }
     }
 
-    #[doc = "Remove a node from anywhere in the list. O(1)."]
+    /// Remove a node from anywhere in the list. O(1).
     fn remove(nobe: dlist_node<T>) { self.unlink(nobe); }
 
-    #[doc = "Check data structure integrity. O(n)."]
+    /// Check data structure integrity. O(n).
     fn assert_consistent() {
         if option::is_none(self.hd) || option::is_none(self.tl) {
             assert option::is_none(self.hd) && option::is_none(self.tl);
@@ -333,17 +349,17 @@ impl extensions<T> for dlist<T> {
 }
 
 impl extensions<T: copy> for dlist<T> {
-    #[doc = "Remove data from the head of the list. O(1)."]
+    /// Remove data from the head of the list. O(1).
     fn pop()       -> option<T> { self.pop_n().map       (|nobe| nobe.data) }
-    #[doc = "Remove data from the tail of the list. O(1)."]
+    /// Remove data from the tail of the list. O(1).
     fn pop_tail()  -> option<T> { self.pop_tail_n().map  (|nobe| nobe.data) }
-    #[doc = "Get data at the list's head. O(1)."]
+    /// Get data at the list's head. O(1).
     fn peek()      -> option<T> { self.peek_n().map      (|nobe| nobe.data) }
-    #[doc = "Get data at the list's tail. O(1)."]
+    /// Get data at the list's tail. O(1).
     fn peek_tail() -> option<T> { self.peek_tail_n().map (|nobe| nobe.data) }
-    #[doc = "Get data at the list's head, failing if empty. O(1)."]
+    /// Get data at the list's head, failing if empty. O(1).
     pure fn head() -> T         { self.head_n().data }
-    #[doc = "Get data at the list's tail, failing if empty. O(1)."]
+    /// Get data at the list's tail, failing if empty. O(1).
     pure fn tail() -> T         { self.tail_n().data }
 }
 

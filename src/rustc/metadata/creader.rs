@@ -1,8 +1,4 @@
-#[doc = "
-
-Validates all used crates and extern libraries and loads their metadata
-
-"];
+//! Validates all used crates and extern libraries and loads their metadata
 
 import syntax::diagnostic::span_handler;
 import syntax::{ast, ast_util};

@@ -24,7 +24,7 @@ enum tt_frame_up { /* to break a circularity */
 }
 
 /* TODO: figure out how to have a uniquely linked stack, and change to `~` */
-#[doc = "an unzipping of `token_tree`s"]
+/// an unzipping of `token_tree`s
 type tt_frame = @{
     readme: ~[ast::token_tree],
     mut idx: uint,

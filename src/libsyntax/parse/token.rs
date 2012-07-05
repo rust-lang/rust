@@ -85,7 +85,7 @@ enum token {
 }
 
 #[auto_serialize]
-#[doc = "For interpolation during macro expansion."]
+/// For interpolation during macro expansion.
 enum whole_nt {
     w_item(@ast::item),
     w_block(ast::blk),
@@ -233,14 +233,14 @@ pure fn is_bar(t: token) -> bool {
     alt t { BINOP(OR) | OROR { true } _ { false } }
 }
 
-#[doc = "
-All the valid words that have meaning in the Rust language.
-
-Rust keywords are either 'contextual' or 'restricted'. Contextual
-keywords may be used as identifiers because their appearance in
-the grammar is unambiguous. Restricted keywords may not appear
-in positions that might otherwise contain _value identifiers_.
-"]
+/**
+ * All the valid words that have meaning in the Rust language.
+ *
+ * Rust keywords are either 'contextual' or 'restricted'. Contextual
+ * keywords may be used as identifiers because their appearance in
+ * the grammar is unambiguous. Restricted keywords may not appear
+ * in positions that might otherwise contain _value identifiers_.
+ */
 fn keyword_table() -> hashmap<str, ()> {
     let keywords = str_hash();
     for contextual_keyword_table().each_key |word| {
@@ -252,7 +252,7 @@ fn keyword_table() -> hashmap<str, ()> {
     keywords
 }
 
-#[doc = "Keywords that may be used as identifiers"]
+/// Keywords that may be used as identifiers
 fn contextual_keyword_table() -> hashmap<str, ()> {
     let words = str_hash();
     let keys = ~[
@@ -274,19 +274,20 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
     words
 }
 
-#[doc = "
-Keywords that may not appear in any position that might otherwise contain a
-_value identifier_. Restricted keywords may still be used as other types of
-identifiers.
-
-Reasons:
-
-* For some (most?), if used at the start of a line, they will cause the line
-  to be interpreted as a specific kind of statement, which would be confusing.
-
-* `true` or `false` as identifiers would always be shadowed by
-  the boolean constants
-"]
+/**
+ * Keywords that may not appear in any position that might otherwise contain a
+ * _value identifier_. Restricted keywords may still be used as other types of
+ * identifiers.
+ *
+ * Reasons:
+ *
+ * * For some (most?), if used at the start of a line, they will cause the
+ *   line to be interpreted as a specific kind of statement, which would be
+ *   confusing.
+ *
+ * * `true` or `false` as identifiers would always be shadowed by
+ *   the boolean constants
+ */
 fn restricted_keyword_table() -> hashmap<str, ()> {
     let words = str_hash();
     let keys = ~[

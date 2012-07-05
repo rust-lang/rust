@@ -1,28 +1,26 @@
-#[doc ="
-Utilities that leverage libuv's `uv_timer_*` API
-"];
+//! Utilities that leverage libuv's `uv_timer_*` API
 
 import uv = uv;
 import uv::iotask;
 import iotask::iotask;
 export delayed_send, sleep, recv_timeout;
 
-#[doc = "
-Wait for timeout period then send provided value over a channel
-
-This call returns immediately. Useful as the building block for a number
-of higher-level timer functions.
-
-Is not guaranteed to wait for exactly the specified time, but will wait
-for *at least* that period of time.
-
-# Arguments
-
-* `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
-* msecs - a timeout period, in milliseconds, to wait
-* ch - a channel of type T to send a `val` on
-* val - a value of type T to send over the provided `ch`
-"]
+/**
+ * Wait for timeout period then send provided value over a channel
+ *
+ * This call returns immediately. Useful as the building block for a number
+ * of higher-level timer functions.
+ *
+ * Is not guaranteed to wait for exactly the specified time, but will wait
+ * for *at least* that period of time.
+ *
+ * # Arguments
+ *
+ * * `hl_loop` - a `uv::hl::high_level_loop` that the tcp request will run on
+ * * msecs - a timeout period, in milliseconds, to wait
+ * * ch - a channel of type T to send a `val` on
+ * * val - a value of type T to send over the provided `ch`
+ */
 fn delayed_send<T: copy send>(iotask: iotask,
                               msecs: uint, ch: comm::chan<T>, val: T) {
         unsafe {
@@ -60,17 +58,17 @@ fn delayed_send<T: copy send>(iotask: iotask,
     };
 }
 
-#[doc = "
-Blocks the current task for (at least) the specified time period.
-
-Is not guaranteed to sleep for exactly the specified time, but will sleep
-for *at least* that period of time.
-
-# Arguments
-
-* `iotask` - a `uv::iotask` that the tcp request will run on
-* msecs - an amount of time, in milliseconds, for the current task to block
-"]
+/**
+ * Blocks the current task for (at least) the specified time period.
+ *
+ * Is not guaranteed to sleep for exactly the specified time, but will sleep
+ * for *at least* that period of time.
+ *
+ * # Arguments
+ *
+ * * `iotask` - a `uv::iotask` that the tcp request will run on
+ * * msecs - an amount of time, in milliseconds, for the current task to block
+ */
 fn sleep(iotask: iotask, msecs: uint) {
     let exit_po = comm::port::<()>();
     let exit_ch = comm::chan(exit_po);
@@ -78,25 +76,26 @@ fn sleep(iotask: iotask, msecs: uint) {
     comm::recv(exit_po);
 }
 
-#[doc = "
-Receive on a port for (up to) a specified time, then return an `option<T>`
-
-This call will block to receive on the provided port for up to the specified
-timeout. Depending on whether the provided port receives in that time period,
-`recv_timeout` will return an `option<T>` representing the result.
-
-# Arguments
-
-* `iotask' - `uv::iotask` that the tcp request will run on
-* msecs - an mount of time, in milliseconds, to wait to receive
-* wait_port - a `comm::port<T>` to receive on
-
-# Returns
-
-An `option<T>` representing the outcome of the call. If the call `recv`'d on
-the provided port in the allotted timeout period, then the result will be a
-`some(T)`. If not, then `none` will be returned.
-"]
+/**
+ * Receive on a port for (up to) a specified time, then return an `option<T>`
+ *
+ * This call will block to receive on the provided port for up to the
+ * specified timeout. Depending on whether the provided port receives in that
+ * time period, `recv_timeout` will return an `option<T>` representing the
+ * result.
+ *
+ * # Arguments
+ *
+ * * `iotask' - `uv::iotask` that the tcp request will run on
+ * * msecs - an mount of time, in milliseconds, to wait to receive
+ * * wait_port - a `comm::port<T>` to receive on
+ *
+ * # Returns
+ *
+ * An `option<T>` representing the outcome of the call. If the call `recv`'d
+ * on the provided port in the allotted timeout period, then the result will
+ * be a `some(T)`. If not, then `none` will be returned.
+ */
 fn recv_timeout<T: copy send>(iotask: iotask,
                               msecs: uint,
                               wait_po: comm::port<T>) -> option<T> {

@@ -546,7 +546,7 @@ fn rollback_to<V:copy vid, T:copy>(
 }
 
 impl transaction_methods for infer_ctxt {
-    #[doc = "Execute `f` and commit the bindings if successful"]
+    /// Execute `f` and commit the bindings if successful
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
         assert self.tvb.bindings.len() == 0u;
@@ -562,7 +562,7 @@ impl transaction_methods for infer_ctxt {
         ret r;
     }
 
-    #[doc = "Execute `f`, unroll bindings on failure"]
+    /// Execute `f`, unroll bindings on failure
     fn try<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
         let tvbl = self.tvb.bindings.len();
@@ -580,7 +580,7 @@ impl transaction_methods for infer_ctxt {
         ret r;
     }
 
-    #[doc = "Execute `f` then unroll any bindings it creates"]
+    /// Execute `f` then unroll any bindings it creates
     fn probe<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
         assert self.tvb.bindings.len() == 0u;
         assert self.rb.bindings.len() == 0u;

@@ -1,4 +1,4 @@
-#[doc = "Operations and constants for `float`"];
+//! Operations and constants for `float`
 
 // Even though this module exports everything defined in it,
 // because it contains re-exports, we also have to explicitly
@@ -49,43 +49,43 @@ mod consts {
 
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.
-    #[doc = "Archimedes' constant"]
+    /// Archimedes' constant
     const pi: float = 3.14159265358979323846264338327950288;
 
-    #[doc = "pi/2.0"]
+    /// pi/2.0
     const frac_pi_2: float = 1.57079632679489661923132169163975144;
 
-    #[doc = "pi/4.0"]
+    /// pi/4.0
     const frac_pi_4: float = 0.785398163397448309615660845819875721;
 
-    #[doc = "1.0/pi"]
+    /// 1.0/pi
     const frac_1_pi: float = 0.318309886183790671537767526745028724;
 
-    #[doc = "2.0/pi"]
+    /// 2.0/pi
     const frac_2_pi: float = 0.636619772367581343075535053490057448;
 
-    #[doc = "2.0/sqrt(pi)"]
+    /// 2.0/sqrt(pi)
     const frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
 
-    #[doc = "sqrt(2.0)"]
+    /// sqrt(2.0)
     const sqrt2: float = 1.41421356237309504880168872420969808;
 
-    #[doc = "1.0/sqrt(2.0)"]
+    /// 1.0/sqrt(2.0)
     const frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
 
-    #[doc = "Euler's number"]
+    /// Euler's number
     const e: float = 2.71828182845904523536028747135266250;
 
-    #[doc = "log2(e)"]
+    /// log2(e)
     const log2_e: float = 1.44269504088896340735992468100189214;
 
-    #[doc = "log10(e)"]
+    /// log10(e)
     const log10_e: float = 0.434294481903251827651128918916605082;
 
-    #[doc = "ln(2.0)"]
+    /// ln(2.0)
     const ln_2: float = 0.693147180559945309417232121458176568;
 
-    #[doc = "ln(10.0)"]
+    /// ln(10.0)
     const ln_10: float = 2.30258509299404568401799145468436421;
 }
 
@@ -93,15 +93,15 @@ mod consts {
  * Section: String Conversions
  */
 
-#[doc = "
-Converts a float to a string
-
-# Arguments
-
-* num - The float value
-* digits - The number of significant digits
-* exact - Whether to enforce the exact number of significant digits
-"]
+/**
+ * Converts a float to a string
+ *
+ * # Arguments
+ *
+ * * num - The float value
+ * * digits - The number of significant digits
+ * * exact - Whether to enforce the exact number of significant digits
+ */
 fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if is_NaN(num) { ret "NaN"; }
     if num == infinity { ret "inf"; }
@@ -179,15 +179,15 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     ret acc;
 }
 
-#[doc = "
-Converts a float to a string with exactly the number of
-provided significant digits
-
-# Arguments
-
-* num - The float value
-* digits - The number of significant digits
-"]
+/**
+ * Converts a float to a string with exactly the number of
+ * provided significant digits
+ *
+ * # Arguments
+ *
+ * * num - The float value
+ * * digits - The number of significant digits
+ */
 fn to_str_exact(num: float, digits: uint) -> str {
     to_str_common(num, digits, true)
 }
@@ -199,45 +199,45 @@ fn test_to_str_exact_do_decimal() {
 }
 
 
-#[doc = "
-Converts a float to a string with a maximum number of
-significant digits
-
-# Arguments
-
-* num - The float value
-* digits - The number of significant digits
-"]
+/**
+ * Converts a float to a string with a maximum number of
+ * significant digits
+ *
+ * # Arguments
+ *
+ * * num - The float value
+ * * digits - The number of significant digits
+ */
 fn to_str(num: float, digits: uint) -> str {
     to_str_common(num, digits, false)
 }
 
-#[doc = "
-Convert a string to a float
-
-This function accepts strings such as
-
-* '3.14'
-* '+3.14', equivalent to '3.14'
-* '-3.14'
-* '2.5E10', or equivalently, '2.5e10'
-* '2.5E-10'
-* '', or, equivalently, '.' (understood as 0)
-* '5.'
-* '.5', or, equivalently,  '0.5'
-* 'inf', '-inf', 'NaN'
-
-Leading and trailing whitespace are ignored.
-
-# Arguments
-
-* num - A string
-
-# Return value
-
-`none` if the string did not represent a valid number.  Otherwise, `some(n)`
-where `n` is the floating-point number represented by `[num]/~`.
-"]
+/**
+ * Convert a string to a float
+ *
+ * This function accepts strings such as
+ *
+ * * '3.14'
+ * * '+3.14', equivalent to '3.14'
+ * * '-3.14'
+ * * '2.5E10', or equivalently, '2.5e10'
+ * * '2.5E-10'
+ * * '', or, equivalently, '.' (understood as 0)
+ * * '5.'
+ * * '.5', or, equivalently,  '0.5'
+ * * 'inf', '-inf', 'NaN'
+ *
+ * Leading and trailing whitespace are ignored.
+ *
+ * # Arguments
+ *
+ * * num - A string
+ *
+ * # Return value
+ *
+ * `none` if the string did not represent a valid number.  Otherwise,
+ * `some(n)` where `n` is the floating-point number represented by `[num]/~`.
+ */
 fn from_str(num: str) -> option<float> {
    if num == "inf" {
        ret some(infinity as float);
@@ -371,18 +371,18 @@ fn from_str(num: str) -> option<float> {
  * Section: Arithmetics
  */
 
-#[doc = "
-Compute the exponentiation of an integer by another integer as a float
-
-# Arguments
-
-* x - The base
-* pow - The exponent
-
-# Return value
-
-`NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
-"]
+/**
+ * Compute the exponentiation of an integer by another integer as a float
+ *
+ * # Arguments
+ *
+ * * x - The base
+ * * pow - The exponent
+ *
+ * # Return value
+ *
+ * `NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
+ */
 fn pow_with_uint(base: uint, pow: uint) -> float {
     if base == 0u {
         if pow == 0u {

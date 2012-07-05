@@ -1,106 +1,104 @@
-#[doc = "
-
-A classic liveness analysis based on dataflow over the AST.  Computes,
-for each local variable in a function, whether that variable is live
-at a given point.  Program execution points are identified by their
-id.
-
-# Basic idea
-
-The basic model is that each local variable is assigned an index.  We
-represent sets of local variables using a vector indexed by this
-index.  The value in the vector is either 0, indicating the variable
-is dead, or the id of an expression that uses the variable.
-
-We conceptually walk over the AST in reverse execution order.  If we
-find a use of a variable, we add it to the set of live variables.  If
-we find an assignment to a variable, we remove it from the set of live
-variables.  When we have to merge two flows, we take the union of
-those two flows---if the variable is live on both paths, we simply
-pick one id.  In the event of loops, we continue doing this until a
-fixed point is reached.
-
-## Checking initialization
-
-At the function entry point, all variables must be dead.  If this is
-not the case, we can report an error using the id found in the set of
-live variables, which identifies a use of the variable which is not
-dominated by an assignment.
-
-## Checking moves
-
-After each explicit move, the variable must be dead.
-
-## Computing last uses
-
-Any use of the variable where the variable is dead afterwards is a
-last use.
-
-# Extension to handle constructors
-
-Each field is assigned an index just as with local variables.  A use of
-`self` is considered a use of all fields.  A use of `self.f` is just a use
-of `f`.
-
-# Implementation details
-
-The actual implementation contains two (nested) walks over the AST.
-The outer walk has the job of building up the ir_maps instance for the
-enclosing function.  On the way down the tree, it identifies those AST
-nodes and variable IDs that will be needed for the liveness analysis
-and assigns them contiguous IDs.  The liveness id for an AST node is
-called a `live_node` (it's a newtype'd uint) and the id for a variable
-is called a `variable` (another newtype'd uint).
-
-On the way back up the tree, as we are about to exit from a function
-declaration we allocate a `liveness` instance.  Now that we know
-precisely how many nodes and variables we need, we can allocate all
-the various arrays that we will need to precisely the right size.  We then
-perform the actual propagation on the `liveness` instance.
-
-This propagation is encoded in the various `propagate_through_*()`
-methods.  It effectively does a reverse walk of the AST; whenever we
-reach a loop node, we iterate until a fixed point is reached.
-
-## The `users` struct
-
-At each live node `N`, we track three pieces of information for each
-variable `V` (these are encapsulated in the `users` struct):
-
-- `reader`: the `live_node` ID of some node which will read the value
-   that `V` holds on entry to `N`.  Formally: a node `M` such
-   that there exists a path `P` from `N` to `M` where `P` does not
-   write `V`.  If the `reader` is `invalid_node()`, then the current
-   value will never be read (the variable is dead, essentially).
-
-- `writer`: the `live_node` ID of some node which will write the
-   variable `V` and which is reachable from `N`.  Formally: a node `M`
-   such that there exists a path `P` from `N` to `M` and `M` writes
-   `V`.  If the `writer` is `invalid_node()`, then there is no writer
-   of `V` that follows `N`.
-
-- `used`: a boolean value indicating whether `V` is *used*.  We
-  distinguish a *read* from a *use* in that a *use* is some read that
-  is not just used to generate a new value.  For example, `x += 1` is
-  a read but not a use.  This is used to generate better warnings.
-
-## Special Variables
-
-We generate various special variables for various, well, special purposes.
-These are described in the `specials` struct:
-
-- `exit_ln`: a live node that is generated to represent every 'exit' from the
-  function, whether it be by explicit return, fail, or other means.
-
-- `fallthrough_ln`: a live node that represents a fallthrough
-
-- `no_ret_var`: a synthetic variable that is only 'read' from, the
-  fallthrough node.  This allows us to detect functions where we fail
-  to return explicitly.
-
-- `self_var`: a variable representing 'self'
-
-"];
+/*!
+ * A classic liveness analysis based on dataflow over the AST.  Computes,
+ * for each local variable in a function, whether that variable is live
+ * at a given point.  Program execution points are identified by their
+ * id.
+ *
+ * # Basic idea
+ *
+ * The basic model is that each local variable is assigned an index.  We
+ * represent sets of local variables using a vector indexed by this
+ * index.  The value in the vector is either 0, indicating the variable
+ * is dead, or the id of an expression that uses the variable.
+ *
+ * We conceptually walk over the AST in reverse execution order.  If we
+ * find a use of a variable, we add it to the set of live variables.  If
+ * we find an assignment to a variable, we remove it from the set of live
+ * variables.  When we have to merge two flows, we take the union of
+ * those two flows---if the variable is live on both paths, we simply
+ * pick one id.  In the event of loops, we continue doing this until a
+ * fixed point is reached.
+ *
+ * ## Checking initialization
+ *
+ * At the function entry point, all variables must be dead.  If this is
+ * not the case, we can report an error using the id found in the set of
+ * live variables, which identifies a use of the variable which is not
+ * dominated by an assignment.
+ *
+ * ## Checking moves
+ *
+ * After each explicit move, the variable must be dead.
+ *
+ * ## Computing last uses
+ *
+ * Any use of the variable where the variable is dead afterwards is a
+ * last use.
+ *
+ * # Extension to handle constructors
+ *
+ * Each field is assigned an index just as with local variables.  A use of
+ * `self` is considered a use of all fields.  A use of `self.f` is just a use
+ * of `f`.
+ *
+ * # Implementation details
+ *
+ * The actual implementation contains two (nested) walks over the AST.
+ * The outer walk has the job of building up the ir_maps instance for the
+ * enclosing function.  On the way down the tree, it identifies those AST
+ * nodes and variable IDs that will be needed for the liveness analysis
+ * and assigns them contiguous IDs.  The liveness id for an AST node is
+ * called a `live_node` (it's a newtype'd uint) and the id for a variable
+ * is called a `variable` (another newtype'd uint).
+ *
+ * On the way back up the tree, as we are about to exit from a function
+ * declaration we allocate a `liveness` instance.  Now that we know
+ * precisely how many nodes and variables we need, we can allocate all
+ * the various arrays that we will need to precisely the right size.  We then
+ * perform the actual propagation on the `liveness` instance.
+ *
+ * This propagation is encoded in the various `propagate_through_*()`
+ * methods.  It effectively does a reverse walk of the AST; whenever we
+ * reach a loop node, we iterate until a fixed point is reached.
+ *
+ * ## The `users` struct
+ *
+ * At each live node `N`, we track three pieces of information for each
+ * variable `V` (these are encapsulated in the `users` struct):
+ *
+ * - `reader`: the `live_node` ID of some node which will read the value
+ *    that `V` holds on entry to `N`.  Formally: a node `M` such
+ *    that there exists a path `P` from `N` to `M` where `P` does not
+ *    write `V`.  If the `reader` is `invalid_node()`, then the current
+ *    value will never be read (the variable is dead, essentially).
+ *
+ * - `writer`: the `live_node` ID of some node which will write the
+ *    variable `V` and which is reachable from `N`.  Formally: a node `M`
+ *    such that there exists a path `P` from `N` to `M` and `M` writes
+ *    `V`.  If the `writer` is `invalid_node()`, then there is no writer
+ *    of `V` that follows `N`.
+ *
+ * - `used`: a boolean value indicating whether `V` is *used*.  We
+ *   distinguish a *read* from a *use* in that a *use* is some read that
+ *   is not just used to generate a new value.  For example, `x += 1` is
+ *   a read but not a use.  This is used to generate better warnings.
+ *
+ * ## Special Variables
+ *
+ * We generate various special variables for various, well, special purposes.
+ * These are described in the `specials` struct:
+ *
+ * - `exit_ln`: a live node that is generated to represent every 'exit' from
+ *   the function, whether it be by explicit return, fail, or other means.
+ *
+ * - `fallthrough_ln`: a live node that represents a fallthrough
+ *
+ * - `no_ret_var`: a synthetic variable that is only 'read' from, the
+ *   fallthrough node.  This allows us to detect functions where we fail
+ *   to return explicitly.
+ *
+ * - `self_var`: a variable representing 'self'
+ */
 
 import dvec::{dvec, extensions};
 import std::map::{hashmap, int_hash, str_hash, box_str_hash};

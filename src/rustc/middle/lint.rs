@@ -17,27 +17,26 @@ export get_warning_level, get_warning_settings_level;
 export check_crate, build_settings_crate, mk_warning_settings;
 export warning_settings;
 
-#[doc="
-
-A 'lint' check is a kind of miscellaneous constraint that a user _might_ want
-to enforce, but might reasonably want to permit as well, on a module-by-module
-basis. They contrast with static constraints enforced by other phases of the
-compiler, which are generally required to hold in order to compile the program
-at all.
-
-We also build up a table containing information about lint settings, in order
-to allow other passes to take advantage of the warning attribute
-infrastructure. To save space, the table is keyed by the id of /items/, not of
-every expression. When an item has the default settings, the entry will be
-omitted. If we start allowing warn attributes on expressions, we will start
-having entries for expressions that do not share their enclosing items
-settings.
-
-This module then, exports two passes: one that populates the warning settings
-table in the session and is run early in the compile process, and one that
-does a variety of lint checks, and is run late in the compile process.
-
-"]
+/**
+ * A 'lint' check is a kind of miscellaneous constraint that a user _might_
+ * want to enforce, but might reasonably want to permit as well, on a
+ * module-by-module basis. They contrast with static constraints enforced by
+ * other phases of the compiler, which are generally required to hold in order
+ * to compile the program at all.
+ *
+ * We also build up a table containing information about lint settings, in
+ * order to allow other passes to take advantage of the warning attribute
+ * infrastructure. To save space, the table is keyed by the id of /items/, not
+ * of every expression. When an item has the default settings, the entry will
+ * be omitted. If we start allowing warn attributes on expressions, we will
+ * start having entries for expressions that do not share their enclosing
+ * items settings.
+ *
+ * This module then, exports two passes: one that populates the warning
+ * settings table in the session and is run early in the compile process, and
+ * one that does a variety of lint checks, and is run late in the compile
+ * process.
+ */
 
 enum lint {
     ctypes,
@@ -203,11 +202,11 @@ impl methods for ctxt {
         self.sess.span_lint_level(level, span, msg);
     }
 
-    #[doc="
-          Merge the warnings specified by any `warn(...)` attributes into the
-          current lint context, call the provided function, then reset the
-          warnings in effect to their previous state.
-    "]
+    /**
+     * Merge the warnings specified by any `warn(...)` attributes into the
+     * current lint context, call the provided function, then reset the
+     * warnings in effect to their previous state.
+     */
     fn with_warn_attrs(attrs: ~[ast::attribute], f: fn(ctxt)) {
 
         let mut new_ctxt = self;

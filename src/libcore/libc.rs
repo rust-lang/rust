@@ -1,38 +1,38 @@
-#[doc = "
-Bindings for libc.
-
-We consider the following specs reasonably normative with respect
-to interoperating with the C standard library (libc/msvcrt):
-
-* ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
-* ISO 9899:1999 ('C99' or 'C9x').
-* ISO 9945:1988 / IEEE 1003.1-1988 ('POSIX.1').
-* ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
-* ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
-
-Despite having several names each, these are *reasonably* coherent
-point-in-time, list-of-definition sorts of specs. You can get each under a
-variety of names but will wind up with the same definition in each case.
-
-Our interface to these libraries is complicated by the non-universality of
-conformance to any of them. About the only thing universally supported is
-the first (C95), beyond that definitions quickly become absent on various
-platforms.
-
-We therefore wind up dividing our module-space up (mostly for the sake of
-sanity while editing, filling-in-details and eliminating duplication) into
-definitions common-to-all (held in modules named c95, c99, posix88, posix01
-and posix08) and definitions that appear only on *some* platforms (named
-'extra'). This would be things like significant OSX foundation kit, or
-win32 library kernel32.dll, or various fancy glibc, linux or BSD
-extensions.
-
-In addition to the per-platform 'extra' modules, we define a module of
-'common BSD' libc routines that never quite made it into POSIX but show up
-in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the
-final one from Berkeley after the lawsuits died down and the CSRG
-dissolved.
-"];
+/*!
+ * Bindings for libc.
+ *
+ * We consider the following specs reasonably normative with respect
+ * to interoperating with the C standard library (libc/msvcrt):
+ *
+ * * ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
+ * * ISO 9899:1999 ('C99' or 'C9x').
+ * * ISO 9945:1988 / IEEE 1003.1-1988 ('POSIX.1').
+ * * ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
+ * * ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
+ *
+ * Despite having several names each, these are *reasonably* coherent
+ * point-in-time, list-of-definition sorts of specs. You can get each under a
+ * variety of names but will wind up with the same definition in each case.
+ *
+ * Our interface to these libraries is complicated by the non-universality of
+ * conformance to any of them. About the only thing universally supported is
+ * the first (C95), beyond that definitions quickly become absent on various
+ * platforms.
+ *
+ * We therefore wind up dividing our module-space up (mostly for the sake of
+ * sanity while editing, filling-in-details and eliminating duplication) into
+ * definitions common-to-all (held in modules named c95, c99, posix88, posix01
+ * and posix08) and definitions that appear only on *some* platforms (named
+ * 'extra'). This would be things like significant OSX foundation kit, or
+ * win32 library kernel32.dll, or various fancy glibc, linux or BSD
+ * extensions.
+ *
+ * In addition to the per-platform 'extra' modules, we define a module of
+ * 'common BSD' libc routines that never quite made it into POSIX but show up
+ * in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the
+ * final one from Berkeley after the lawsuits died down and the CSRG
+ * dissolved.
+ */
 
 // Initial glob-exports mean that all the contents of all the modules
 // wind up exported, if you're interested in writing platform-specific code.

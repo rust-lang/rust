@@ -1,4 +1,4 @@
-#[doc = "Rustdoc - The Rust documentation generator"];
+//! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
        vers = "0.2",

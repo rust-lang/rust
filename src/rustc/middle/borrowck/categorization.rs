@@ -1,41 +1,40 @@
-#[doc = "
-
-# Categorization
-
-The job of the categorization module is to analyze an expression to
-determine what kind of memory is used in evaluating it (for example,
-where dereferences occur and what kind of pointer is dereferenced;
-whether the memory is mutable; etc)
-
-Categorization effectively transforms all of our expressions into
-expressions of the following forms (the actual enum has many more
-possibilities, naturally, but they are all variants of these base
-forms):
-
-    E = rvalue    // some computed rvalue
-      | x         // address of a local variable, arg, or upvar
-      | *E        // deref of a ptr
-      | E.comp    // access to an interior component
-
-Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
-address where the result is to be found.  If Expr is an lvalue, then this
-is the address of the lvalue.  If Expr is an rvalue, this is the address of
-some temporary spot in memory where the result is stored.
-
-Now, cat_expr() classies the expression Expr and the address A=ToAddr(Expr)
-as follows:
-
-- cat: what kind of expression was this?  This is a subset of the
-  full expression forms which only includes those that we care about
-  for the purpose of the analysis.
-- mutbl: mutability of the address A
-- ty: the type of data found at the address A
-
-The resulting categorization tree differs somewhat from the expressions
-themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
-decomposed into two operations: a derefence to reach the array data and
-then an index to jump forward to the relevant item.
-"];
+/*!
+ * # Categorization
+ *
+ * The job of the categorization module is to analyze an expression to
+ * determine what kind of memory is used in evaluating it (for example,
+ * where dereferences occur and what kind of pointer is dereferenced;
+ * whether the memory is mutable; etc)
+ *
+ * Categorization effectively transforms all of our expressions into
+ * expressions of the following forms (the actual enum has many more
+ * possibilities, naturally, but they are all variants of these base
+ * forms):
+ *
+ *     E = rvalue    // some computed rvalue
+ *       | x         // address of a local variable, arg, or upvar
+ *       | *E        // deref of a ptr
+ *       | E.comp    // access to an interior component
+ *
+ * Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
+ * address where the result is to be found.  If Expr is an lvalue, then this
+ * is the address of the lvalue.  If Expr is an rvalue, this is the address of
+ * some temporary spot in memory where the result is stored.
+ *
+ * Now, cat_expr() classies the expression Expr and the address A=ToAddr(Expr)
+ * as follows:
+ *
+ * - cat: what kind of expression was this?  This is a subset of the
+ *   full expression forms which only includes those that we care about
+ *   for the purpose of the analysis.
+ * - mutbl: mutability of the address A
+ * - ty: the type of data found at the address A
+ *
+ * The resulting categorization tree differs somewhat from the expressions
+ * themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
+ * decomposed into two operations: a derefence to reach the array data and
+ * then an index to jump forward to the relevant item.
+ */
 
 export public_methods;
 export opt_deref_kind;

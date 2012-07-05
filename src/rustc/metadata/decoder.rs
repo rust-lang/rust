@@ -414,7 +414,7 @@ class path_entry {
     }
 }
 
-#[doc="Iterates over all the paths in the given crate."]
+/// Iterates over all the paths in the given crate.
 fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
     let root = ebml::doc(cdata.data);
     let items = ebml::get_doc(root, tag_items);

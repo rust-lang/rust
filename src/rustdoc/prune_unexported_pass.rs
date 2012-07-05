@@ -1,4 +1,4 @@
-#[doc = "Prunes branches of the tree that are not exported"];
+//! Prunes branches of the tree that are not exported
 
 import syntax::ast;
 import syntax::ast_util;

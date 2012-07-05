@@ -1,8 +1,8 @@
-#[doc = "A type that represents one of two alternatives"];
+//! A type that represents one of two alternatives
 
 import result::result;
 
-#[doc = "The either type"]
+/// The either type
 enum either<T, U> {
     left(T),
     right(U)
@@ -10,19 +10,19 @@ enum either<T, U> {
 
 fn either<T, U, V>(f_left: fn(T) -> V,
                    f_right: fn(U) -> V, value: either<T, U>) -> V {
-    #[doc = "
-    Applies a function based on the given either value
-
-    If `value` is left(T) then `f_left` is applied to its contents, if `value`
-    is right(U) then `f_right` is applied to its contents, and the result is
-    returned.
-    "];
+    /*!
+     * Applies a function based on the given either value
+     *
+     * If `value` is left(T) then `f_left` is applied to its contents, if
+     * `value` is right(U) then `f_right` is applied to its contents, and the
+     * result is returned.
+     */
 
     alt value { left(l) { f_left(l) } right(r) { f_right(r) } }
 }
 
 fn lefts<T: copy, U>(eithers: ~[either<T, U>]) -> ~[T] {
-    #[doc = "Extracts from a vector of either all the left values"];
+    //! Extracts from a vector of either all the left values
 
     let mut result: ~[T] = ~[];
     for vec::each(eithers) |elt| {
@@ -32,7 +32,7 @@ fn lefts<T: copy, U>(eithers: ~[either<T, U>]) -> ~[T] {
 }
 
 fn rights<T, U: copy>(eithers: ~[either<T, U>]) -> ~[U] {
-    #[doc = "Extracts from a vector of either all the right values"];
+    //! Extracts from a vector of either all the right values
 
     let mut result: ~[U] = ~[];
     for vec::each(eithers) |elt| {
@@ -43,12 +43,12 @@ fn rights<T, U: copy>(eithers: ~[either<T, U>]) -> ~[U] {
 
 fn partition<T: copy, U: copy>(eithers: ~[either<T, U>])
     -> {lefts: ~[T], rights: ~[U]} {
-    #[doc = "
-    Extracts from a vector of either all the left values and right values
-
-    Returns a structure containing a vector of left values and a vector of
-    right values.
-    "];
+    /*!
+     * Extracts from a vector of either all the left values and right values
+     *
+     * Returns a structure containing a vector of left values and a vector of
+     * right values.
+     */
 
     let mut lefts: ~[T] = ~[];
     let mut rights: ~[U] = ~[];
@@ -62,7 +62,7 @@ fn partition<T: copy, U: copy>(eithers: ~[either<T, U>])
 }
 
 pure fn flip<T: copy, U: copy>(eith: either<T, U>) -> either<U, T> {
-    #[doc = "Flips between left and right of a given either"];
+    //! Flips between left and right of a given either
 
     alt eith {
       right(r) { left(r) }
@@ -72,12 +72,12 @@ pure fn flip<T: copy, U: copy>(eith: either<T, U>) -> either<U, T> {
 
 pure fn to_result<T: copy, U: copy>(
     eith: either<T, U>) -> result<U, T> {
-    #[doc = "
-    Converts either::t to a result::t
-
-    Converts an `either` type to a `result` type, making the \"right\" choice
-    an ok result, and the \"left\" choice a fail
-    "];
+    /*!
+     * Converts either::t to a result::t
+     *
+     * Converts an `either` type to a `result` type, making the "right" choice
+     * an ok result, and the "left" choice a fail
+     */
 
     alt eith {
       right(r) { result::ok(r) }
@@ -86,13 +86,13 @@ pure fn to_result<T: copy, U: copy>(
 }
 
 pure fn is_left<T, U>(eith: either<T, U>) -> bool {
-    #[doc = "Checks whether the given value is a left"];
+    //! Checks whether the given value is a left
 
     alt eith { left(_) { true } _ { false } }
 }
 
 pure fn is_right<T, U>(eith: either<T, U>) -> bool {
-    #[doc = "Checks whether the given value is a right"];
+    //! Checks whether the given value is a right
 
     alt eith { right(_) { true } _ { false } }
 }

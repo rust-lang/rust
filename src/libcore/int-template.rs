@@ -38,7 +38,7 @@ pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
-#[doc = "Iterate over the range [`lo`..`hi`)"]
+/// Iterate over the range [`lo`..`hi`)
 fn range(lo: T, hi: T, it: fn(T) -> bool) {
     let mut i = lo;
     while i < hi {
@@ -47,25 +47,25 @@ fn range(lo: T, hi: T, it: fn(T) -> bool) {
     }
 }
 
-#[doc = "Computes the bitwise complement"]
+/// Computes the bitwise complement
 pure fn compl(i: T) -> T {
     -1 as T ^ i
 }
 
-#[doc = "Computes the absolute value"]
+/// Computes the absolute value
 // FIXME: abs should return an unsigned int (#2353)
 pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
 
-#[doc = "
-Parse a buffer of bytes
-
-# Arguments
-
-* buf - A byte buffer
-* radix - The base of the number
-"]
+/**
+ * Parse a buffer of bytes
+ *
+ * # Arguments
+ *
+ * * buf - A byte buffer
+ * * radix - The base of the number
+ */
 fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     if vec::len(buf) == 0u { ret none; }
     let mut i = vec::len(buf) - 1u;
@@ -88,10 +88,10 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     };
 }
 
-#[doc = "Parse a string to an int"]
+/// Parse a string to an int
 fn from_str(s: str) -> option<T> { parse_buf(str::bytes(s), 10u) }
 
-#[doc = "Convert to a string in a given base"]
+/// Convert to a string in a given base
 fn to_str(n: T, radix: uint) -> str {
     do to_str_bytes(n, radix) |slice| {
         do vec::unpack_slice(slice) |p, len| {
@@ -108,7 +108,7 @@ fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
     }
 }
 
-#[doc = "Convert to a string"]
+/// Convert to a string
 fn str(i: T) -> str { ret to_str(i, 10u); }
 
 impl ord of ord for T {

@@ -1,12 +1,12 @@
 type IMPL_T<A> = dlist::dlist<A>;
 
-#[doc = "
-Iterates through the current contents.
-
-Attempts to access this dlist during iteration are allowed (to allow for e.g.
-breadth-first search with in-place enqueues), but removing the current node
-is forbidden.
-"]
+/**
+ * Iterates through the current contents.
+ *
+ * Attempts to access this dlist during iteration are allowed (to allow for
+ * e.g. breadth-first search with in-place enqueues), but removing the current
+ * node is forbidden.
+ */
 fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
     import dlist::extensions;
 
