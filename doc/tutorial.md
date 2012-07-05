@@ -28,8 +28,8 @@ fn boring_old_factorial(n: int) -> int {
 ~~~~
 
 Several differences from C stand out. Types do not come before, but
-after variable names (preceded by a colon). In local variables
-(introduced with `let`), they are optional, and will be inferred when
+after variable names (preceded by a colon). For local variables
+(introduced with `let`), types are optional, and will be inferred when
 left off. Constructs like `while` and `if` do not require parentheses
 around the condition (though they allow them). Also, there's a
 tendency towards aggressive abbreviation in the keywords—`fn` for
@@ -123,9 +123,9 @@ The Rust compiler currently must be built from a [tarball][]. We hope
 to be distributing binary packages for various operating systems in
 the future.
 
-***Note:*** The Rust compiler is slightly unusual in that it is written
-in Rust and therefore must be built by a precompiled "snapshot" version
-of itself (made in an earlier state of development). As such, source
+The Rust compiler is slightly unusual in that it is written in Rust
+and therefore must be built by a precompiled "snapshot" version of
+itself (made in an earlier state of development). As such, source
 builds require that:
 
   * You are connected to the internet, to fetch snapshots.
@@ -133,7 +133,7 @@ builds require that:
     offer them in. Currently we build and test snapshots on:
     * Windows (7, server 2008 r2) x86 only
     * Linux (various distributions) x86 and x86-64
-    * OSX 10.6 ("Snow leopard") or 10.7 ("Lion") x86 and x86-64
+    * OSX 10.6 ("Snow Leopard") or 10.7 ("Lion") x86 and x86-64
 
 You may find other platforms work, but these are our "tier 1" supported
 build environments that are most likely to work. Further platforms will
@@ -148,15 +148,15 @@ packages:
   * gnu make 3.81 or later
   * curl
 
-Assuming you're on a relatively modern Linux system and have met the
-prerequisites, something along these lines should work. Building from source on
-Windows requires some extra steps: please see the
-[getting started][wiki-get-started] page on the Rust wiki.
+Assuming you're on a relatively modern *nix system and have met the
+prerequisites, something along these lines should work. Building from
+source on Windows requires some extra steps: please see the [getting
+started][wiki-get-started] page on the Rust wiki.
 
 ~~~~ {.notrust}
-$ wget http://dl.rust-lang.org/dist/rust-0.3.tar.gz
-$ tar -xzf rust-0.3.tar.gz
-$ cd rust-0.3
+$ wget http://dl.rust-lang.org/dist/rust-0.2.tar.gz
+$ tar -xzf rust-0.2.tar.gz
+$ cd rust-0.2
 $ ./configure
 $ make && make install
 ~~~~
@@ -174,8 +174,8 @@ When complete, `make install` will place the following programs into
   * `rustdoc`, the API-documentation tool 
   * `cargo`, the Rust package manager
 
-[wiki-get-started]: https://github.com/mozilla/rust/wiki/Doc-getting-started
-[tarball]: http://dl.rust-lang.org/dist/rust-0.1.tar.gz
+[wiki-get-started]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+[tarball]: http://dl.rust-lang.org/dist/rust-0.2.tar.gz
 
 ## Compiling your first program
 
@@ -191,9 +191,9 @@ fn main(args: ~[str]) {
 If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce a binary called `hello` (or `hello.exe`).
 
-If you modify the program to make it invalid (for example, change the
-function to an unknown name), and then compile it, you'll see an error
-message like this:
+If you modify the program to make it invalid (for example, by changing
+ `io::println` to some nonexistent function), and then compile it,
+ you'll see an error message like this:
 
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_it
@@ -321,7 +321,7 @@ Rust identifiers must start with an alphabetic character or an
 underscore, and after that may contain any alphanumeric character, and
 more underscores.
 
-NOTE: The parser doesn't currently recognize non-ascii alphabetic
+***Note:*** The parser doesn't currently recognize non-ascii alphabetic
 characters. This is a bug that will eventually be fixed.
 
 The double-colon (`::`) is used as a module separator, so
@@ -1397,8 +1397,8 @@ let y = x; // Copy the pointer, increase refcount
 // When x and y go out of scope, refcount goes to 0, box is freed
 ~~~~
 
-NOTE: We may in the future switch to garbage collection, rather than
-reference counting, for shared boxes.
+***Note:*** We may in the future switch to garbage collection, rather
+than reference counting, for shared boxes.
 
 Shared boxes never cross task boundaries.
 
@@ -1442,8 +1442,8 @@ Rust vectors are always heap-allocated and unique. A value of type
 `~[T]` is represented by a pointer to a section of heap memory
 containing any number of values of type `T`.
 
-NOTE: This uniqueness is turning out to be quite awkward in practice,
-and might change in the future.
+***Note:*** This uniqueness is turning out to be quite awkward in
+practice, and might change in the future.
 
 Vector literals are enclosed in square brackets. Dereferencing is done
 with square brackets (zero-based):
@@ -1476,10 +1476,10 @@ logarithmically, so the above code generates about the same amount of
 copying and reallocation as `push` implementations in most other
 languages.
 
-NOTE: Actually, current, growing a vector is *exactly* as inefficient
-as it looks, since vector + has been moved to the libraries and rust's
-operator overloading support is insufficient to allow this
-optimization. Try using `vec::push`.
+***Note:*** Actually, currently, growing a vector is *exactly* as
+inefficient as it looks, since vector `+` has been moved to the
+libraries and Rust's operator overloading support is insufficient to
+allow this optimization. Try using `vec::push`.
 
 ## Strings
 
@@ -1746,7 +1746,7 @@ fn plus1(&&x: int) -> int { x + 1 }
 vec::map(~[1, 2, 3], plus1);
 ~~~~
 
-NOTE: This is inconvenient, and we are hoping to get rid of this
+***Note:***: This is inconvenient, and we are hoping to get rid of this
 restriction in the future.
 
 # Modules and crates
@@ -2022,7 +2022,7 @@ object-oriented languages tend to solve with methods and inheritance.
 For example, writing a function that can operate on multiple types of
 collections.
 
-NOTE: This feature is very new, and will need a few extensions to be
+***Note:***: This feature is very new, and will need a few extensions to be
 applicable to more advanced use cases.
 
 ## Declaration
@@ -2463,7 +2463,7 @@ copying it by making use of [unique boxes](#unique-boxes), which allow
 the sending task to release ownership of a value, so that the
 receiving task can keep on using it.
 
-NOTE: As Rust evolves, we expect the Task API to grow and change
+***Note:***: As Rust evolves, we expect the task API to grow and change
 somewhat.  The tutorial documents the API as it exists today.
 
 ## Spawning a task
