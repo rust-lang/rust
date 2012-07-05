@@ -139,7 +139,7 @@ fn expand_item(exts: hashmap<str, syntax_extension>,
     };
     let it = alt it.node {
       ast::item_mac(*) {
-        expand_item_mac(exts, cx, it)
+        expand_item_mac(exts, cx, it, fld)
       }
       _ { it }
     };
@@ -150,7 +150,8 @@ fn expand_item(exts: hashmap<str, syntax_extension>,
 }
 
 fn expand_item_mac(exts: hashmap<str, syntax_extension>,
-                   cx: ext_ctxt, &&it: @ast::item) -> @ast::item {
+                   cx: ext_ctxt, &&it: @ast::item,
+                   fld: ast_fold) -> @ast::item {
     alt it.node {
       item_mac({node: mac_invoc_tt(pth, tt), span}) {
         let extname = pth.idents[0];
@@ -160,7 +161,13 @@ fn expand_item_mac(exts: hashmap<str, syntax_extension>,
                           #fmt("macro undefined: '%s'", *extname))
           }
           some(item_tt(expand)) {
-            expand.expander(cx, it.span, it.ident, tt)
+            cx.bt_push(expanded_from({call_site: it.span,
+                                      callie: {name: *extname,
+                                               span: expand.span}}));
+            let it = fld.fold_item(
+                expand.expander(cx, it.span, it.ident, tt));
+            cx.bt_pop();
+            ret it
           }
           _ { cx.span_fatal(it.span,
                             #fmt("%s is not a legal here", *extname)) }
