@@ -105,8 +105,6 @@ impl methods for message {
                               ast::by_copy)],
                 args_ast);
 
-            let args = [#fmt("-pipe: %s", *this.data_name())]/~ + args;
-
             let pat = alt (this.dir, next.dir) {
               (send, send) { "(c, s)" }
               (send, recv) { "(s, c)" }

@@ -96,6 +96,7 @@ enum whole_nt {
     w_ty(  @ast::ty),
     w_ident(str_num, bool),
     w_path(@ast::path),
+    w_tt(ast::token_tree),
 }
 
 fn binop_to_str(o: binop) -> str {
