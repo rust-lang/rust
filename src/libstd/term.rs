@@ -2,7 +2,7 @@
 
 import core::option;
 
-// TODO: Windows support.
+// FIXME (#2807): Windows support.
 
 const color_black: u8 = 0u8;
 const color_red: u8 = 1u8;

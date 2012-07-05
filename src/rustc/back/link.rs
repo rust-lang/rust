@@ -58,8 +58,8 @@ mod write {
         let td = mk_target_data(
             sess.targ_cfg.target_strs.data_layout);
         llvm::LLVMAddTargetData(td.lltd, pm.llpm);
-        // TODO: run the linter here also, once there are llvm-c bindings for
-        // it.
+        // FIXME (#2812): run the linter here also, once there are llvm-c
+        // bindings for it.
 
         // Generate a pre-optimization intermediate file if -save-temps was
         // specified.

@@ -588,7 +588,8 @@ mod node {
      *     Used for rebalancing and to allocate stacks for traversals.
      */
     type concat = {
-        left:     @node,//TODO: Perhaps a `vec` instead of `left`/`right`
+        //FIXME (#2744): Perhaps a `vec` instead of `left`/`right`
+        left:     @node,
         right:    @node,
         char_len: uint,
         byte_len: uint,
@@ -732,7 +733,8 @@ mod node {
     }
 
     pure fn byte_len(node: @node) -> uint {
-        alt(*node) {//TODO: Could we do this without the pattern-matching?
+        //FIXME (#2744): Could we do this without the pattern-matching?
+        alt(*node) {
           leaf(y)  { ret y.byte_len; }
           concat(y){ ret y.byte_len; }
         }
@@ -805,7 +807,7 @@ mod node {
             alt(leaf_iterator::next(it)) {
               option::none { break; }
               option::some(x) {
-                //TODO: Replace with memcpy or something similar
+                //FIXME (#2744): Replace with memcpy or something similar
                 let mut local_buf: ~[u8] =
                     unsafe::reinterpret_cast(*x.content);
                 let mut i = x.byte_offset;

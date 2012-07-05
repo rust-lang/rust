@@ -58,7 +58,7 @@ Similarly, the code to deserialize an instance of a non-built-in type
 where `c_Ti` is the code to deserialize an instance of `Ti` using the
 deserializer `d`.
 
-TODO--Hygiene. Search for "__" strings.  We also assume "std" is the
+FIXME (#2810)--Hygiene. Search for "__" strings.  We also assume "std" is the
 standard library.
 
 Misc notes:

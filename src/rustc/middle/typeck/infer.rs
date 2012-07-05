@@ -554,8 +554,8 @@ impl transaction_methods for infer_ctxt {
 
         let r <- self.try(f);
 
-        // TODO---could use a vec::clear() that ran destructors but kept
-        // the vec at its currently allocated length
+        // FIXME (#2814)---could use a vec::clear() that ran destructors but
+        // kept the vec at its currently allocated length
         self.tvb.bindings = ~[];
         self.rb.bindings = ~[];
 

@@ -162,7 +162,7 @@ impl translation_routines for extended_decode_ctxt {
         {crate: ast::local_crate, node: self.tr_id(did.node)}
     }
     fn tr_span(_span: span) -> span {
-        ast_util::dummy_sp() // TODO...
+        ast_util::dummy_sp() // FIXME (#1972): handle span properly
     }
 }
 

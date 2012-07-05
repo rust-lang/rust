@@ -344,7 +344,8 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
               inputs: t_args,
               output: t_res,
               ret_style: ast::return_val,
-              constraints: ~[]}); // tjc TODO
+              constraints: ~[]}); // FIXME (#2813): allow ctors to have
+         // constraints, or remove constraints from the language
         write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
         tcx.tcache.insert(local_def(ctor.node.id),
                           {bounds: tpt.bounds,

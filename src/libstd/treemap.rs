@@ -55,7 +55,7 @@ fn find<K: copy, V: copy>(m: &const tree_edge<K, V>, k: K) -> option<V> {
     alt copy *m {
       none { none }
 
-      // TODO: was that an optimization?
+      // FIXME (#2808): was that an optimization?
       some(node) {
         if k == node.key {
             some(node.value)

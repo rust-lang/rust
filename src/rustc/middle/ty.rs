@@ -2758,9 +2758,6 @@ fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
            some(tpt) { tpt.ty }
            none {
                let tpt = csearch::get_field_type(tcx, class_id, id);
-               // ok b/c fields are monomorphic
-               // TODO: Comment might be a lie, what if it mentions
-               // class-bound ty params?
                tcx.tcache.insert(id, tpt);
                tpt.ty
            }

@@ -23,7 +23,8 @@ enum tt_frame_up { /* to break a circularity */
     tt_frame_up(option<tt_frame>)
 }
 
-/* TODO: figure out how to have a uniquely linked stack, and change to `~` */
+/* FIXME (#2811): figure out how to have a uniquely linked stack,
+   and change to `~` */
 /// an unzipping of `token_tree`s
 type tt_frame = @{
     readme: ~[ast::token_tree],

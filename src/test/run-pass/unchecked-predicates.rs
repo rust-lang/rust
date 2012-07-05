@@ -1,6 +1,4 @@
 // Uses foldl to exhibit the unchecked block syntax.
-// TODO: since list's head/tail require the predicate "is_not_empty" now and
-// we have unit tests for list, this test might me not necessary anymore?
 use std;
 
 import std::list::*;

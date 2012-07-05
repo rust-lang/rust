@@ -235,7 +235,7 @@ fn main(argv: ~[str]) {
 
         out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
 
-        // TODO: run something just to make sure the code hasn't
+        // FIXME (#2815): run something just to make sure the code hasn't
         // broken yet. This is the unit test mode of this program.
 
         ret;
