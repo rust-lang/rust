@@ -9,17 +9,16 @@ Version 0.3  (July 2012) - not yet!
       * #[cfg(windows)] and #[cfg(unix)] attributes
       * Documentation comments
       * More compact closure syntax
-      * 'do' expressions for treating higher-order functions
-        as control structures
+      * 'do' expressions for treating higher-order functions as
+        control structures
       * *-patterns (wildcard extended to all constructor fields)
 
    * Semantic cleanup
-      * Resolve pass and exhaustiveness checker rewritten
-      * Alias analysis is now done with region pointers and
-        pointer borrowing
-      * Initness checking is now provided by a region-based
-        liveness pass instead of the typestate pass. Same
-        for last-use analysis
+      * Name resolution pass and exhaustiveness checker rewritten
+      * Alias analysis is now done with region pointers and pointer
+        borrowing
+      * Init-ness checking is now provided by a region-based liveness
+        pass instead of the typestate pass; same for last-use analysis
       * Extensive work on region pointers
 
    * Experimental new language features
@@ -27,8 +26,8 @@ Version 0.3  (July 2012) - not yet!
       * #!-comments for lang versioning, shell execution
       * Destructors and iface implementation for classes;
       	type-parameterized classes and class methods
-      * 'const' type kind - types that can be used to implement
-        shared memory concurrency patterns
+      * 'const' type kind for types that can be used to implement
+        shared-memory concurrency patterns
 
    * Type reflection
 
