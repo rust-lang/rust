@@ -12,6 +12,9 @@ export parse_crate_from_source_str;
 export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_from_source_str;
 
+// this used to be `import common::parser_common`, but it was causing
+// unresolved import errors. Maybe resolve3 will fix it.
+import common::*;
 import parser::parser;
 //import attr::parser_attr;
 import attr::*; //resolve bug?
@@ -20,8 +23,7 @@ import common::*; //resolve bug?
 import ast::node_id;
 import util::interner;
 // FIXME (#1935): resolve badness
-import lexer::{string_reader_as_reader, tt_reader_as_reader, reader,
-               string_reader, tt_reader};
+import lexer::*;
 import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 
 type parse_sess = @{

@@ -9,7 +9,7 @@ import lexer::reader;
 import prec::{as_prec, token_to_binop};
 import attr::parser_attr;
 import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
-                seq_sep_none, token_to_str, parser_common};
+                seq_sep_none, token_to_str};
 import dvec::{dvec, extensions};
 import vec::{push};
 import ast::*;
@@ -2595,6 +2595,21 @@ class parser {
             self.parse_item_impl()
         } else if self.eat_keyword("class") {
             self.parse_item_class()
+        } else if !self.is_any_keyword(copy self.token)
+            && self.look_ahead(1) == token::NOT
+        {
+            // item macro.
+            let pth = self.parse_path_without_tps();
+            #error("parsing invocation of %s", *pth.idents[0]);
+            self.expect(token::NOT);
+            let id = self.parse_ident();
+            let tt = self.parse_token_tree();
+            let m = ast::mac_invoc_tt(pth, tt);
+            let m: ast::mac = {node: m,
+                               span: {lo: self.span.lo,
+                                      hi: self.span.hi,
+                                      expn_info: none}};
+            (id, item_mac(m), none)
         } else { ret none; };
         some(self.mk_item(lo, self.last_span.hi, ident, item_, vis,
                           alt extra_attrs {

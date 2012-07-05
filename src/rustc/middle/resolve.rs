@@ -1352,6 +1352,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
           }
       }
       ast::item_impl(*) { /* ??? */ }
+      ast::item_mac(*) { fail "item macros unimplemented" }
     }
     ret none;
 }
@@ -1657,6 +1658,9 @@ fn index_mod(md: ast::_mod) -> mod_index {
           ast::item_class(tps, _, items, ctor, _, _) {
               // add the class name itself
               add_to_index(index, it.ident, mie_item(it));
+          }
+          ast::item_mac(*) {
+            fail "item macros unimplemented"
           }
         }
     }

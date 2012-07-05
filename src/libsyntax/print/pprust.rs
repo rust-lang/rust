@@ -589,6 +589,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         for methods.each |meth| { print_ty_method(s, meth); }
         bclose(s, item.span);
       }
+      ast::item_mac(_m) {
+        fail "item macros unimplemented"
+      }
     }
     s.ann.post(ann_node);
 }

@@ -1,7 +1,7 @@
 import std::map::hashmap;
 
 import ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
-             tt_delim, tt_flat};
+             tt_delim, tt_flat, item_mac};
 import fold::*;
 import ext::base::*;
 import ext::qquote::{qq_helper};
@@ -51,6 +51,10 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                     cx.span_fatal(pth.span,
                                   #fmt["this tt-style macro should be \
                                         invoked '%s!{...}'", *extname])
+                  }
+                  some(item_tt(*)) {
+                    cx.span_fatal(pth.span,
+                                  "cannot use item macros in this context");
                   }
                 }
               }
@@ -109,7 +113,7 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
             };
             alt exts.find(*mname) {
               none | some(normal(_)) | some(macro_defining(_))
-              | some(normal_tt(_)) {
+              | some(normal_tt(_)) | some(item_tt(*)) {
                 items
               }
 
@@ -124,7 +128,8 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
 }
 
 /* record module we enter for `#mod` */
-fn expand_item(cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
+fn expand_item(exts: hashmap<str, syntax_extension>,
+               cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                orig: fn@(&&@ast::item, ast_fold) -> @ast::item)
     -> @ast::item
 {
@@ -132,10 +137,39 @@ fn expand_item(cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
       ast::item_mod(_) | ast::item_foreign_mod(_) {true}
       _ {false}
     };
+    let it = alt it.node {
+      ast::item_mac(*) {
+        expand_item_mac(exts, cx, it)
+      }
+      _ { it }
+    };
     if is_mod { cx.mod_push(it.ident); }
     let ret_val = orig(it, fld);
     if is_mod { cx.mod_pop(); }
     ret ret_val;
+}
+
+fn expand_item_mac(exts: hashmap<str, syntax_extension>,
+                   cx: ext_ctxt, &&it: @ast::item) -> @ast::item {
+    alt it.node {
+      item_mac({node: mac_invoc_tt(pth, tt), span}) {
+        let extname = pth.idents[0];
+        alt exts.find(*extname) {
+          none {
+            cx.span_fatal(pth.span,
+                          #fmt("macro undefined: '%s'", *extname))
+          }
+          some(item_tt(expand)) {
+            expand.expander(cx, it.span, it.ident, tt)
+          }
+          _ { cx.span_fatal(it.span,
+                            #fmt("%s is not a legal here", *extname)) }
+        }
+      }
+      _ {
+        cx.span_bug(it.span, "invalid item macro invocation");
+      }
+    }
 }
 
 fn new_span(cx: ext_ctxt, sp: span) -> span {
@@ -166,7 +200,7 @@ fn expand_crate(parse_sess: parse::parse_sess,
     let f_pre =
         @{fold_expr: |a,b,c| expand_expr(exts, cx, a, b, c, afp.fold_expr),
           fold_mod: |a,b| expand_mod_items(exts, cx, a, b, afp.fold_mod),
-          fold_item: |a,b| expand_item(cx, a, b, afp.fold_item),
+          fold_item: |a,b| expand_item(exts, cx, a, b, afp.fold_item),
           new_span: |a|new_span(cx, a)
           with *afp};
     let f = make_fold(f_pre);

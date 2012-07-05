@@ -17,12 +17,18 @@ type item_decorator =
 type syntax_expander_tt = {expander: syntax_expander_tt_, span: option<span>};
 type syntax_expander_tt_ = fn@(ext_ctxt, span, ast::token_tree) -> @ast::expr;
 
+type syntax_expander_tt_item
+    = {expander: syntax_expander_tt_item_, span: option<span>};
+type syntax_expander_tt_item_
+    = fn@(ext_ctxt, span, ast::ident, ast::token_tree) -> @ast::item;
+
 enum syntax_extension {
     normal(syntax_expander),
     macro_defining(macro_definer),
     item_decorator(item_decorator),
 
-    normal_tt(syntax_expander_tt)
+    normal_tt(syntax_expander_tt),
+    item_tt(syntax_expander_tt_item),
 }
 
 // A temporary hard-coded map of methods for expanding syntax extension
@@ -30,6 +36,9 @@ enum syntax_extension {
 fn syntax_expander_table() -> hashmap<str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
         {normal({expander: f, span: none})}
+    fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
+        item_tt({expander: f, span: none})
+    }
     let syntax_expanders = str_hash::<syntax_extension>();
     syntax_expanders.insert("fmt", builtin(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert("auto_serialize",
@@ -61,6 +70,8 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
                             builtin(ext::source_util::expand_include_bin));
     syntax_expanders.insert("mod",
                             builtin(ext::source_util::expand_mod));
+    syntax_expanders.insert("proto",
+                            builtin_item_tt(ext::pipes::expand_proto));
     ret syntax_expanders;
 }
 

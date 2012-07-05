@@ -92,6 +92,15 @@ impl parser_common for parser {
         self.token_is_keyword(word, self.token)
     }
 
+    fn is_any_keyword(tok: token::token) -> bool {
+        alt tok {
+          token::IDENT(sid, false) {
+            self.keywords.contains_key(*self.get_str(sid))
+          }
+          _ { false }
+        }
+    }
+
     fn eat_keyword(word: str) -> bool {
         self.require_keyword(word);
 

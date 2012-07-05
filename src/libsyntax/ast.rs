@@ -704,6 +704,7 @@ enum item_ {
     item_trait(~[ty_param], region_param, ~[ty_method]),
     item_impl(~[ty_param], region_param, option<@trait_ref> /* trait */,
               @ty /* self */, ~[@method]),
+    item_mac(mac),
 }
 
 #[auto_serialize]

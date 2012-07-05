@@ -217,6 +217,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
               }
           }
           item_impl(*) {}
+          item_mac(*) { fail "item macros unimplemented" }
         }
     }
 }
@@ -749,6 +750,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
+      item_mac(*) { fail "item macros unimplemented" }
     }
 }
 

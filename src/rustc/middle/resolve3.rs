@@ -13,7 +13,7 @@ import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_new, expr_path};
 import syntax::ast::{expr_unary, fn_decl, foreign_item, foreign_item_fn};
 import syntax::ast::{ident, trait_ref, impure_fn, instance_var, item};
-import syntax::ast::{item_class, item_const, item_enum, item_fn};
+import syntax::ast::{item_class, item_const, item_enum, item_fn, item_mac};
 import syntax::ast::{item_foreign_mod, item_trait, item_impl, item_mod};
 import syntax::ast::{item_ty, local, local_crate, method, node_id, pat};
 import syntax::ast::{pat_enum, pat_ident, path, prim_ty, stmt_decl, ty};
@@ -871,6 +871,10 @@ class Resolver {
                 (*name_bindings).define_type(def_ty(local_def(item.id)));
                 visit_item(item, new_parent, visitor);
             }
+
+          item_mac(*) {
+            fail "item macros unimplemented"
+          }
         }
     }
 
@@ -2854,6 +2858,10 @@ class Resolver {
             item_const(*) {
                 visit_item(item, (), visitor);
             }
+
+          item_mac(*) {
+            fail "item macros unimplemented"
+          }
         }
 
         self.xray_context = orig_xray_flag;

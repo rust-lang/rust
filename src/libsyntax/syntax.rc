@@ -78,4 +78,6 @@ mod ext {
     mod log_syntax;
     mod auto_serialize;
     mod source_util;
+
+    mod pipes;
 }

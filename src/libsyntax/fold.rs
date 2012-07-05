@@ -283,6 +283,10 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                        rp,
                        /* FIXME (#2543) */ copy methods)
           }
+      item_mac(m) {
+        // TODO: we might actually want to do something here.
+        item_mac(m)
+      }
         };
 }
 
