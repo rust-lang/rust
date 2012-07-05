@@ -7,7 +7,7 @@ export min_align_of;
 export pref_align_of;
 export refcount;
 export log_str;
-export create_lock, lock_and_signal, condition, methods;
+export lock_and_signal, condition, methods;
 
 enum type_desc = {
     first_param: **libc::c_int,
@@ -87,7 +87,9 @@ pure fn log_str<T>(t: T) -> str {
 
 class lock_and_signal {
     let lock: rust_cond_lock;
-    new(lock: rust_cond_lock) { self.lock = lock; }
+    new() {
+        self.lock = rustrt::rust_create_cond_lock();
+    }
     drop { rustrt::rust_destroy_cond_lock(self.lock); }
 }
 
@@ -99,10 +101,6 @@ class unlock {
     let lock: rust_cond_lock;
     new(lock: rust_cond_lock) { self.lock = lock; }
     drop { rustrt::rust_unlock_cond_lock(self.lock); }
-}
-
-fn create_lock() -> lock_and_signal {
-    lock_and_signal(rustrt::rust_create_cond_lock())
 }
 
 impl methods for lock_and_signal {
@@ -180,7 +178,7 @@ mod tests {
     #[test]
     #[ignore] // this can go into infinite loops
     fn condition_variable() {
-        let lock = arc::arc(create_lock());
+        let lock = arc::arc(lock_and_signal());
         let lock2 = arc::clone(&lock);
 
         do task::spawn |move lock2| {

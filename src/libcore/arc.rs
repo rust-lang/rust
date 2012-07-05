@@ -88,7 +88,7 @@ type ex_data<T: send> = {lock: sys::lock_and_signal, data: T};
 type exclusive<T: send> = arc_destruct<ex_data<T>>;
 
 fn exclusive<T:send >(-data: T) -> exclusive<T> {
-    let data = ~{mut count: 1, data: {lock: sys::create_lock(),
+    let data = ~{mut count: 1, data: {lock: sys::lock_and_signal(),
                                       data: data}};
     unsafe {
         let ptr = unsafe::reinterpret_cast(data);
