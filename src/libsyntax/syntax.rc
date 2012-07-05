@@ -79,5 +79,8 @@ mod ext {
     mod auto_serialize;
     mod source_util;
 
-    mod pipes;
+    mod pipes {
+        mod pipec;
+        mod ast_builder;
+    }
 }
