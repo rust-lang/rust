@@ -38,7 +38,7 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     cond_name("none"),
     killed(false),
     reentered_rust_stack(false),
-    disallow_kill(false),
+    disallow_kill(0),
     c_stack(NULL),
     next_c_sp(0),
     next_rust_sp(0),
@@ -237,7 +237,7 @@ rust_task::must_fail_from_being_killed() {
 bool
 rust_task::must_fail_from_being_killed_unlocked() {
     kill_lock.must_have_lock();
-    return killed && !reentered_rust_stack && !disallow_kill;
+    return killed && !reentered_rust_stack && disallow_kill == 0;
 }
 
 // Only run this on the rust stack
@@ -683,13 +683,14 @@ rust_task::on_rust_stack() {
 void
 rust_task::inhibit_kill() {
     scoped_lock with(kill_lock);
-    disallow_kill = true;
+    disallow_kill++;
 }
 
 void
 rust_task::allow_kill() {
     scoped_lock with(kill_lock);
-    disallow_kill = false;
+    assert(disallow_kill > 0 && "Illegal allow_kill(): already killable!");
+    disallow_kill--;
 }
 
 //

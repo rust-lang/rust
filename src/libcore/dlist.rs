@@ -609,7 +609,7 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_asymmetric_link() {
         let l = create::<int>();
-        let one = l.push_n(1);
+        let _one = l.push_n(1);
         let two = l.push_n(2);
         two.prev = none;
         l.assert_consistent();

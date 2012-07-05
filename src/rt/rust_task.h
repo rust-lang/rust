@@ -181,7 +181,7 @@ private:
     bool killed;
     // Indicates that we've called back into Rust from C
     bool reentered_rust_stack;
-    bool disallow_kill;
+    int disallow_kill;
 
     // The stack used for running C code, borrowed from the scheduler thread
     stk_seg *c_stack;
