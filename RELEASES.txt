@@ -27,6 +27,8 @@ Version 0.3  (July 2012) - not yet!
       * #!-comments for lang versioning, shell execution
       * Destructors and iface implementation for classes;
       	type-parameterized classes and class methods
+      * 'const' type kind - types that can be used to implement
+        shared memory concurrency patterns
 
    * Type reflection
 
