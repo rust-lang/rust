@@ -18,7 +18,8 @@ type tt_frame = @{
     readme: ~[ast::token_tree],
     mut idx: uint,
     dotdotdoted: bool,
-    up: tt_frame_up
+    sep: option<token>,
+    up: tt_frame_up,
 };
 
 type tt_reader = @{
@@ -43,7 +44,7 @@ fn new_tt_reader(span_diagnostic: span_handler, itr: @interner<@str>,
     -> tt_reader {
     let r = @{span_diagnostic: span_diagnostic, interner: itr,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
-                         up: tt_frame_up(option::none)},
+                         sep: none, up: tt_frame_up(option::none)},
               interpolations: alt interp { /* just a convienience */
                 none { std::map::box_str_hash::<@arb_depth>() }
                 some(x) { x }
@@ -59,7 +60,7 @@ fn new_tt_reader(span_diagnostic: span_handler, itr: @interner<@str>,
 
 pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
     @{readme: f.readme, mut idx: f.idx, dotdotdoted: f.dotdotdoted,
-      up: alt f.up {
+      sep: f.sep, up: alt f.up {
         tt_frame_up(some(up_frame)) {
           tt_frame_up(some(dup_tt_frame(up_frame)))
         }
@@ -114,7 +115,7 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
         }
     }
     alt t {
-      tt_delim(tts) | tt_dotdotdot(_, tts) {
+      tt_delim(tts) | tt_dotdotdot(_, tts, _, _) {
         vec::foldl(lis_unconstrained, tts, {|lis, tt|
             lis_merge(lis, lockstep_iter_size(tt, r)) })
       }
@@ -155,6 +156,13 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
         } else {
             r.cur.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
+            alt r.cur.sep {
+              some(tk) {
+                r.cur_tok = tk; /* repeat same span, I guess */
+                ret ret_val;
+              }
+              none {}
+            }
         }
     }
     /* if `tt_delim`s could be 0-length, we'd need to be able to switch
@@ -164,15 +172,15 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
         alt r.cur.readme[r.cur.idx] {
           tt_delim(tts) {
             r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: false,
-                      up: tt_frame_up(option::some(r.cur)) };
+                      sep: none, up: tt_frame_up(option::some(r.cur)) };
           }
           tt_flat(sp, tok) {
             r.cur_span = sp; r.cur_tok = tok;
             r.cur.idx += 1u;
             ret ret_val;
           }
-          tt_dotdotdot(sp, tts) {
-            alt lockstep_iter_size(tt_dotdotdot(sp, tts), r) {
+          tt_dotdotdot(sp, tts, sep, zerok) {
+            alt lockstep_iter_size(tt_dotdotdot(sp, tts, sep, zerok), r) {
               lis_unconstrained {
                 r.span_diagnostic.span_fatal(
                     copy r.cur_span, /* blame macro writer */
@@ -183,10 +191,14 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                 r.span_diagnostic.span_fatal(sp, msg);
               }
               lis_constraint(len, _) {
+                if len == 0 && !zerok {
+                    r.span_diagnostic.span_fatal(sp, "this must repeat \
+                                                      at least once");
+                }
                 vec::push(r.repeat_len, len);
                 vec::push(r.repeat_idx, 0u);
                 r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
-                      up: tt_frame_up(option::some(r.cur)) };
+                          sep: sep, up: tt_frame_up(option::some(r.cur)) };
               }
             }
           }

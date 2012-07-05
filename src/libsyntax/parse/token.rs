@@ -274,9 +274,7 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
         "self", "send", "static",
         "to",
         "use",
-        "with",
-        /* temp */
-        "sep", "many", "at_least_one", "parse"
+        "with"
     ];
     for keys.each |word| {
         words.insert(word, ());

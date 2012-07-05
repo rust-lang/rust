@@ -1130,6 +1130,26 @@ class parser {
         ret e;
     }
 
+    fn parse_sep_and_zerok() -> (option<token::token>, bool) {
+        if self.token == token::BINOP(token::STAR)
+            || self.token == token::BINOP(token::PLUS) {
+            let zerok = self.token == token::BINOP(token::STAR);
+            self.bump();
+            ret (none, zerok);
+        } else {
+            let sep = self.token;
+            self.bump();
+            if self.token == token::BINOP(token::STAR)
+                || self.token == token::BINOP(token::PLUS) {
+                let zerok = self.token == token::BINOP(token::STAR);
+                self.bump();
+                ret (some(sep), zerok);
+            } else {
+                self.fatal("expected '*' or '+'");
+            }
+        }
+    }
+
     fn parse_token_tree() -> token_tree {
         /// what's the opposite delimiter?
         fn flip(&t: token::token) -> token::token {
@@ -1142,12 +1162,6 @@ class parser {
         }
 
         fn parse_tt_flat(p: parser, delim_ok: bool) -> token_tree {
-            if p.eat_keyword("many") && p.quote_depth > 0u {
-                let seq = p.parse_seq(token::LPAREN, token::RPAREN,
-                                      seq_sep_none(),
-                                      |p| p.parse_token_tree());
-                ret tt_dotdotdot(seq.span, seq.node);
-            }
             alt p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
               if !delim_ok {
@@ -1161,7 +1175,16 @@ class parser {
               token::DOLLAR if p.quote_depth > 0u {
                 p.bump();
                 let sp = p.span;
-                ret tt_interpolate(sp, p.parse_ident());
+
+                if p.token == token::LPAREN {
+                    let seq = p.parse_seq(token::LPAREN, token::RPAREN,
+                                          seq_sep_none(),
+                                          |p| p.parse_token_tree());
+                    let (s, z) = p.parse_sep_and_zerok();
+                    ret tt_dotdotdot(mk_sp(sp.lo ,p.span.hi), seq.node, s, z);
+                } else {
+                    ret tt_interpolate(sp, p.parse_ident());
+                }
               }
               _ { /* ok */ }
             }
@@ -1221,34 +1244,32 @@ class parser {
 
     fn parse_matcher(name_idx: @mut uint) -> matcher {
         let lo = self.span.lo;
-        let mut sep = none;
-        if self.eat_keyword("sep") { sep = some(self.token); self.bump(); }
 
-        let m = if self.is_keyword("many")||self.is_keyword("at_least_one") {
-            let zero_ok = self.is_keyword("many");
+        let m = if self.token == token::DOLLAR {
             self.bump();
-            let ms = (self.parse_seq(token::LPAREN, token::RPAREN,
-                                     common::seq_sep_none(),
-                                     |p| p.parse_matcher(name_idx)).node);
-            if ms.len() == 0u {
-                self.fatal("repetition body must be nonempty");
+            if self.token == token::LPAREN {
+                let ms = (self.parse_seq(token::LPAREN, token::RPAREN,
+                                         common::seq_sep_none(),
+                                         |p| p.parse_matcher(name_idx)).node);
+                if ms.len() == 0u {
+                    self.fatal("repetition body must be nonempty");
+                }
+                let (sep, zerok) = self.parse_sep_and_zerok();
+                mtc_rep(ms, sep, zerok)
+            } else {
+                let bound_to = self.parse_ident();
+                self.expect(token::COLON);
+                let nt_name = self.parse_ident();
+                let m = mtc_bb(bound_to, nt_name, *name_idx);
+                *name_idx += 1u;
+                m
             }
-            mtc_rep(ms, sep, zero_ok)
-        } else if option::is_some(sep) {
-            self.fatal("`sep <tok>` must preceed `many` or `at_least_one`");
-        } else if self.eat_keyword("parse") {
-            let bound_to = self.parse_ident();
-            self.expect(token::EQ);
-            let nt_name = self.parse_ident();
-
-            let m = mtc_bb(bound_to, nt_name, *name_idx);
-            *name_idx += 1u;
-            m
         } else {
             let m = mtc_tok(self.token);
             self.bump();
             m
         };
+
         ret spanned(lo, self.span.hi, m);
     }
 
