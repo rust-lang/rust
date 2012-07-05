@@ -98,8 +98,7 @@ class parser {
         self.restricted_keywords = token::restricted_keyword_table();
     }
 
-    //TODO: uncomment when destructors work
-    //drop {} /* do not copy the parser; its state is tied to outside state */
+    drop {} /* do not copy the parser; its state is tied to outside state */
 
     fn bump() {
         self.last_span = self.span;
