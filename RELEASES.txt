@@ -15,8 +15,11 @@ Version 0.3  (July 2012) - not yet!
 
    * Semantic cleanup
       * Resolve pass and exhaustiveness checker rewritten
-      * Borrow-check taking over from alias-analysis
-      * Liveness taking over from last-use, typestate
+      * Alias analysis is now done with region pointers and
+        pointer borrowing
+      * Initness checking is now provided by a region-based
+        liveness pass instead of the typestate pass. Same
+        for last-use analysis
       * Extensive work on region pointers
 
    * Experimental new language features
