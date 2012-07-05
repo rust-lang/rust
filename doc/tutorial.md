@@ -937,7 +937,7 @@ allocated on the call stack and refers by pointer to captured
 locals. To ensure that stack closures never outlive the local
 variables to which they refer, they can only be used in argument
 position and cannot be stored in structures nor returned from
-functions. Despite the usage limitations stack closures are used
+functions. Despite the limitations stack closures are used
 pervasively in Rust code.
 
 ### Boxed closures
