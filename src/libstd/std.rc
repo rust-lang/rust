@@ -23,6 +23,7 @@ export rope, arena, par;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
 export cmp;
+export base64;
 
 // General io and system-services modules
 
