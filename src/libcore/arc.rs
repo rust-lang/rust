@@ -41,10 +41,10 @@ class arc_destruct<T> {
   }
 }
 
-type arc<T: const> = arc_destruct<T>;
+type arc<T: const send> = arc_destruct<T>;
 
 /// Create an atomically reference counted wrapper.
-fn arc<T: const>(-data: T) -> arc<T> {
+fn arc<T: const send>(-data: T) -> arc<T> {
     let data = ~{mut count: 1, data: data};
     unsafe {
         let ptr = unsafe::transmute(data);
@@ -56,7 +56,7 @@ fn arc<T: const>(-data: T) -> arc<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-fn get<T: const>(rc: &a.arc<T>) -> &a.T {
+fn get<T: const send>(rc: &a.arc<T>) -> &a.T {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
         // Cast us back into the correct region
@@ -73,7 +73,7 @@ fn get<T: const>(rc: &a.arc<T>) -> &a.T {
  * object. However, one of the `arc` objects can be sent to another task,
  * allowing them to share the underlying data.
  */
-fn clone<T: const>(rc: &arc<T>) -> arc<T> {
+fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
         let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
