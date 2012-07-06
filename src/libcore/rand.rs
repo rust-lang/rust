@@ -144,9 +144,9 @@ impl extensions for rng {
      * Return a random string of the specified length composed of A-Z,a-z,0-9
      */
     fn gen_str(len: uint) -> str {
-        let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-                      "abcdefghijklmnopqrstuvwxyz" +
-                      "0123456789";
+        let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                       abcdefghijklmnopqrstuvwxyz\
+                       0123456789";
         let mut s = "";
         let mut i = 0u;
         while (i < len) {

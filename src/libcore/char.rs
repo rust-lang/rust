@@ -139,9 +139,9 @@ fn escape_unicode(c: char) -> str {
                     else { ('U', 8u) });
     assert str::len(s) <= pad;
     let mut out = "\\";
-    out += str::from_char(c);
-    for uint::range(str::len(s), pad) |_i| { out += "0"; }
-    out += s;
+    str::push_str(out, str::from_char(c));
+    for uint::range(str::len(s), pad) |_i| { str::push_str(out, "0"); }
+    str::push_str(out, s);
     ret out;
 }
 

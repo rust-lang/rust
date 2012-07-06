@@ -15,6 +15,7 @@ export
    from_byte,
    from_char,
    from_chars,
+   append,
    concat,
    connect,
 
@@ -25,6 +26,7 @@ export
    unpack_slice,
 
    // Adding things to and removing things from a string
+   push_str,
    push_char,
    pop_char,
    shift_char,
@@ -233,10 +235,38 @@ pure fn from_chars(chs: &[const char]) -> str {
     ret buf;
 }
 
+/// Appends a string slice to the back of a string
+#[inline(always)]
+fn push_str(&lhs: str, rhs: str/&) {
+    unsafe {
+        let llen = lhs.len();
+        let rlen = rhs.len();
+        reserve(lhs, llen + rlen);
+        do as_buf(lhs) |lbuf| {
+            do unpack_slice(rhs) |rbuf, _rlen| {
+                let dst = ptr::offset(lbuf, llen);
+                ptr::memcpy(dst, rbuf, rlen);
+            }
+        }
+        unsafe::set_len(lhs, llen + rlen);
+    }
+}
+
+/// Concatenate two strings together
+#[inline(always)]
+pure fn append(+lhs: str, rhs: str/&) -> str {
+    let mut v <- lhs;
+    unchecked {
+        push_str(v, rhs);
+    }
+    ret v;
+}
+
+
 /// Concatenate a vector of strings
 pure fn concat(v: &[const str]) -> str {
     let mut s: str = "";
-    for vec::each(v) |ss| { s += ss; }
+    for vec::each(v) |ss| { unchecked { push_str(s, ss) }; }
     ret s;
 }
 
@@ -244,8 +274,8 @@ pure fn concat(v: &[const str]) -> str {
 pure fn connect(v: &[const str], sep: str) -> str {
     let mut s = "", first = true;
     for vec::each(v) |ss| {
-        if first { first = false; } else { s += sep; }
-        s += ss;
+        if first { first = false; } else { unchecked { push_str(s, sep); } }
+        unchecked { push_str(s, ss) };
     }
     ret s;
 }
@@ -576,8 +606,8 @@ pure fn to_upper(s: str/&) -> str {
 pure fn replace(s: str, from: str, to: str) -> str {
     let mut result = "", first = true;
     do iter_between_matches(s, from) |start, end| {
-        if first { first = false; } else { result += to; }
-        unsafe { result += unsafe::slice_bytes(s, start, end); }
+        if first { first = false; } else { unchecked {push_str(result, to); }}
+        unsafe { push_str(result, unsafe::slice_bytes(s, start, end)); }
     }
     result
 }
@@ -1694,7 +1724,7 @@ pure fn escape_default(s: str/&) -> str {
     let mut out: str = "";
     unchecked {
         reserve_at_least(out, str::len(s));
-        chars_iter(s, |c| out += char::escape_default(c));
+        chars_iter(s, |c| push_str(out, char::escape_default(c)));
     }
     ret out;
 }
@@ -1704,7 +1734,7 @@ pure fn escape_unicode(s: str/&) -> str {
     let mut out: str = "";
     unchecked {
         reserve_at_least(out, str::len(s));
-        chars_iter(s, |c| out += char::escape_unicode(c));
+        chars_iter(s, |c| push_str(out, char::escape_unicode(c)));
     }
     ret out;
 }
@@ -1863,6 +1893,12 @@ impl extensions for str {
     /// Returns a string with trailing whitespace removed
     #[inline]
     fn trim_right() -> str { trim_right(self) }
+
+    /// Concatenate two strings: operator version
+    #[inline(always)]
+    pure fn +(rhs: str/&) -> str {
+        append(self, rhs)
+    }
 }
 
 /// Extension methods for strings
@@ -2311,13 +2347,13 @@ mod tests {
             fn a_million_letter_a() -> str {
                 let mut i = 0;
                 let mut rs = "";
-                while i < 100000 { rs += "aaaaaaaaaa"; i += 1; }
+                while i < 100000 { push_str(rs, "aaaaaaaaaa"); i += 1; }
                 ret rs;
             }
             fn half_a_million_letter_a() -> str {
                 let mut i = 0;
                 let mut rs = "";
-                while i < 100000 { rs += "aaaaa"; i += 1; }
+                while i < 100000 { push_str(rs, "aaaaa"); i += 1; }
                 ret rs;
             }
             assert eq(half_a_million_letter_a(),
@@ -2422,13 +2458,13 @@ mod tests {
         fn a_million_letter_X() -> str {
             let mut i = 0;
             let mut rs = "";
-            while i < 100000 { rs += "华华华华华华华华华华"; i += 1; }
+            while i < 100000 { push_str(rs, "华华华华华华华华华华"); i += 1; }
             ret rs;
         }
         fn half_a_million_letter_X() -> str {
             let mut i = 0;
             let mut rs = "";
-            while i < 100000 { rs += "华华华华华"; i += 1; }
+            while i < 100000 { push_str(rs, "华华华华华"); i += 1; }
             ret rs;
         }
         assert eq(half_a_million_letter_X(),

@@ -2963,8 +2963,8 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     /*bool*/    ~[f, f, f, f, t, t, t, t],
     /*int*/     ~[t, t, t, t, t, t, t, f],
     /*float*/   ~[t, t, t, f, t, t, f, f],
-    /*str*/     ~[t, f, f, f, t, t, f, f],
-    /*vec*/     ~[t, f, f, f, t, t, f, f],
+    /*str*/     ~[f, f, f, f, t, t, f, f],
+    /*vec*/     ~[f, f, f, f, t, t, f, f],
     /*bot*/     ~[f, f, f, f, t, t, f, f],
     /*struct*/  ~[t, t, t, t, t, t, t, t]];
 

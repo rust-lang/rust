@@ -61,10 +61,10 @@ impl <A: to_str> of to_str for ~[A] {
         let mut acc = "[", first = true;
         for vec::each(self) |elt| {
             if first { first = false; }
-            else { acc += ", "; }
-            acc += elt.to_str();
+            else { str::push_str(acc, ", "); }
+            str::push_str(acc, elt.to_str());
         }
-        acc += "]";
+        str::push_char(acc, ']');
         acc
     }
 }

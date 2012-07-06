@@ -1,5 +1,3 @@
-#[no_core];
-
 
 #[path = "module-polymorphism4-files"]
 mod cat {
