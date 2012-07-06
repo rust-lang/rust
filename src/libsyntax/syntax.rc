@@ -80,7 +80,8 @@ mod ext {
     mod source_util;
 
     mod pipes {
-        mod pipec;
         mod ast_builder;
+        mod parse_proto;
+        mod pipec;
     }
 }

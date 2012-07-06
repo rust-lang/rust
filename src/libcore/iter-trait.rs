@@ -35,4 +35,11 @@ impl extensions<A:copy> for IMPL_T<A> {
 
     fn min() -> A { iter::min(self) }
     fn max() -> A { iter::max(self) }
+
+    fn find(p: fn(A) -> bool) -> option<A> {
+        for self.each |i| {
+            if p(i) { ret some(i) }
+        }
+        ret none;
+    }
 }

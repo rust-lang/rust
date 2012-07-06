@@ -12,7 +12,7 @@ import print::pprust;
 import pprust::{item_to_str, ty_to_str};
 import ext::base::{mk_ctxt, ext_ctxt};
 import parse;
-import parse::{parse_item_from_source_str};
+import parse::*;
 
 import ast_builder::ast_builder;
 import ast_builder::methods;
@@ -42,7 +42,7 @@ impl methods for direction {
 
 enum message {
     // name, data, current state, next state, next tys
-    message(ident, ~[@ast::ty], state, state, ~[@ast::ty])
+    message(ident, ~[@ast::ty], state, ident, ~[@ast::ty])
 }
 
 impl methods for message {
@@ -89,10 +89,9 @@ impl methods for message {
     fn gen_send(cx: ext_ctxt) -> @ast::item {
         alt self {
           message(id, tys, this, next, next_tys) {
+            let next = this.proto.get_state(next);
+            assert next_tys.len() == next.ty_params.len();
             let arg_names = tys.mapi(|i, _ty| @("x_" + i.to_str()));
-
-            let args = (arg_names, tys).map(|n, t|
-                                            *n + ": " + t.to_source());
 
             let args_ast = (arg_names, tys).map(
                 |n, t| cx.arg_mode(n, t, ast::by_copy)
@@ -146,9 +145,8 @@ enum state {
 }
 
 impl methods for state {
-    fn add_message(name: ident, +data: ~[@ast::ty], next: state,
+    fn add_message(name: ident, +data: ~[@ast::ty], next: ident,
                    +next_tys: ~[@ast::ty]) {
-        assert next_tys.len() == next.ty_params.len();
         self.messages.push(message(name, data, self, next, next_tys));
     }
 
@@ -179,6 +177,7 @@ impl methods for state {
             let message(_, tys, this, next, next_tys) = m;
 
             let name = m.name();
+            let next = this.proto.get_state(next);
             let next_name = next.data_name();
 
             let dir = alt this.dir {
@@ -239,6 +238,11 @@ impl methods for protocol {
         self.add_state_poly(name, dir, ~[])
     }
 
+    /// Get or create a state.
+    fn get_state(name: ident) -> state {
+        self.states.find(|i| i.name == name).get()
+    }
+
     fn add_state_poly(name: ident, dir: direction,
                       +ty_params: ~[ast::ty_param]) -> state {
         let messages = dvec();
@@ -291,7 +295,8 @@ impl methods for protocol {
         let mut client_states = ~[];
         let mut server_states = ~[];
 
-        for self.states.each |s| {
+        // :(
+        for (copy self.states).each |s| {
             items += s.to_type_decls(cx);
 
             client_states += s.to_endpoint_decls(cx, send);
