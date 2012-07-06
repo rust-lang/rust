@@ -12,16 +12,16 @@ import option_iter::extensions;
 import ptr::extensions;
 import rand::extensions;
 import result::extensions;
-import int::num;
-import i8::num;
-import i16::num;
-import i32::num;
-import i64::num;
-import uint::num;
-import u8::num;
-import u16::num;
-import u32::num;
-import u64::num;
+import int::{num, times};
+import i8::{num, times};
+import i16::{num, times};
+import i32::{num, times};
+import i64::{num, times};
+import uint::{num, times};
+import u8::{num, times};
+import u16::{num, times};
+import u32::{num, times};
+import u64::{num, times};
 import float::num;
 import f32::num;
 import f64::num;
@@ -29,7 +29,7 @@ import f64::num;
 export path, option, some, none, unreachable;
 export extensions;
 // The following exports are the extension impls for numeric types
-export num;
+export num, times;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is

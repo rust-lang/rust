@@ -3,6 +3,10 @@ iface base_iter<A> {
     fn size_hint() -> option<uint>;
 }
 
+iface times {
+    fn times(it: fn() -> bool);
+}
+
 fn eachi<A,IA:base_iter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     let mut i = 0u;
     for self.each |a| {

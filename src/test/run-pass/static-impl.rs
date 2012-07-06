@@ -11,7 +11,7 @@ mod b {
 
 impl util for uint {
     fn str() -> str { uint::str(self) }
-    fn times(f: fn(uint)) {
+    fn multi(f: fn(uint)) {
         let mut c = 0u;
         while c < self { f(c); c += 1u; }
     }
@@ -37,6 +37,6 @@ fn main() {
     assert (~[3, 4]).map_(|a| a + 4 )[0] == 7;
     assert (~[3, 4]).map_::<uint>(|a| a as uint + 4u )[0] == 7u;
     let mut x = 0u;
-    10u.times(|_n| x += 2u );
+    10u.multi(|_n| x += 2u );
     assert x == 20u;
 }
