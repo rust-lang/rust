@@ -879,6 +879,82 @@ while (x > 10) { x -= 10; }
 assert x == 10;
 ~~~~
 
+# The Rust Memory Model
+
+At this junction let's take a detour to explain the concepts involved
+in Rust's memory model. Rust has a very particular approach to
+memory management that plays a significant role in shaping the "feel"
+of the language. Understanding the memory landscape will illuminate
+several of Rust's unique features as we encounter them.
+
+Rust has three competing goals that inform its view of memory:
+
+* Memory safety - memory that is managed by and is accessible to
+  the Rust language must be guaranteed to be valid. Under normal
+  circumstances it is impossible for Rust to trigger a segmentation
+  fault or leak memory
+* Performance - high-performance low-level code tends to employ
+  a number of allocation strategies. low-performance high-level
+  code often uses a single, GC-based, heap allocation strategy
+* Concurrency - Rust maintain memory safety guarantees even
+  for code running in parallel
+
+## How performance considerations influence the memory model
+
+Many languages that ofter the kinds of memory safety guarentees that
+Rust does have a single allocation strategy: objects live on the heap,
+live for as long as they are needed, and are periodically garbage
+collected. This is very straightforword both conceptually and in
+implementation, but has very significant costs. Such languages tend to
+aggressively pursue ways to ameliorate allocation costs (think the
+Java virtual machine). Rust supports this strategy with _shared
+boxes_, memory allocated on the heap that may be referred to (shared)
+by multiple variables.
+
+In comparison, languages like C++ offer a very precise control over
+where objects are allocated. In particular, it is common to put
+them directly on the stack, avoiding expensive heap allocation. In
+Rust this is possible as well, and the compiler will use a clever
+lifetime analysis to ensure that no variable can refer to stack
+objects after they are destroyed.
+
+## How concurrency considerations influence the memory model
+
+Memory safety in a concurrent environment tends to mean avoiding race
+conditions between two threads of execution accessing the same
+memory. Even high-level languages frequently avoid solving this
+problem, requiring programmers to correctly employ locking to unsure
+their program is free of races.
+
+Rust solves this problem by starting from the position that memory
+simply cannot be shared between tasks. Experience in other languages
+has proven that isolating each tasks' heap from each other is
+a reliable strategy and one that is easy for programmers to reason
+about. Having isolated heaps additionally means that garbage collection
+must only be done per-heap. Rust never 'stops the world' to garbage
+collect memory.
+
+If Rust tasks have completely isolated heaps then that seems to imply
+that any data transferred between them must be copied. While this
+is a fine and useful way to implement communication between tasks,
+it is also very inefficient for large data structures.
+
+Because of this Rust also introduces a global "exchange heap". Objects
+allocated here have _ownership semantics_, meaning that there is only
+a single variable that refers to them. For this reason they are
+refered to as _unique boxes_. All tasks may allocate objects on this
+heap, then _move_ those allocations to other tasks, avoiding expensive
+copies.
+
+## What to be aware of
+
+Rust has three "realms" in which objects can be allocated: the stack,
+the local heap, and the exchange heap. These realms have corresponding
+pointer types: the borrowed pointer (`&T`), the shared pointer (`@T`),
+and the unique pointer (`~T`). These three sigils will appear
+repeatedly as we explore the language. Learning the appropriate role
+of each is key to using Rust effectively.
+
 # Functions
 
 Like all other static declarations, such as `type`, functions can be
