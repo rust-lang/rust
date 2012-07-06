@@ -282,7 +282,9 @@ fn fold_crate(f: ast_fold, &&n: @ast::crate) -> @ast::crate {
 }
 fn fold_expr(f: ast_fold, &&n: @ast::expr) -> @ast::expr {f.fold_expr(n)}
 fn fold_ty(f: ast_fold, &&n: @ast::ty) -> @ast::ty {f.fold_ty(n)}
-fn fold_item(f: ast_fold, &&n: @ast::item) -> @ast::item {f.fold_item(n)}
+fn fold_item(f: ast_fold, &&n: @ast::item) -> @ast::item {
+    option::get(f.fold_item(n)) //HACK: we know we don't drop items
+}
 fn fold_stmt(f: ast_fold, &&n: @ast::stmt) -> @ast::stmt {f.fold_stmt(n)}
 fn fold_pat(f: ast_fold, &&n: @ast::pat) -> @ast::pat {f.fold_pat(n)}
 

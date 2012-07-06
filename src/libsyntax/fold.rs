@@ -22,7 +22,7 @@ iface ast_fold {
     fn fold_crate_directive(&&@crate_directive) -> @crate_directive;
     fn fold_view_item(&&@view_item) -> @view_item;
     fn fold_foreign_item(&&@foreign_item) -> @foreign_item;
-    fn fold_item(&&@item) -> @item;
+    fn fold_item(&&@item) -> option<@item>;
     fn fold_class_item(&&@class_member) -> @class_member;
     fn fold_item_underscore(item_) -> item_;
     fn fold_method(&&@method) -> @method;
@@ -55,7 +55,7 @@ type ast_fold_precursor = @{
                               ast_fold) -> (crate_directive_, span),
     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
     fold_foreign_item: fn@(&&@foreign_item, ast_fold) -> @foreign_item,
-    fold_item: fn@(&&@item, ast_fold) -> @item,
+    fold_item: fn@(&&@item, ast_fold) -> option<@item>,
     fold_class_item: fn@(&&@class_member, ast_fold) -> @class_member,
     fold_item_underscore: fn@(item_, ast_fold) -> item_,
     fold_method: fn@(&&@method, ast_fold) -> @method,
@@ -211,15 +211,15 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
           span: fld.new_span(ni.span)};
 }
 
-fn noop_fold_item(&&i: @item, fld: ast_fold) -> @item {
+fn noop_fold_item(&&i: @item, fld: ast_fold) -> option<@item> {
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    ret @{ident: fld.fold_ident(i.ident),
-          attrs: vec::map(i.attrs, fold_attribute),
-          id: fld.new_id(i.id),
-          node: fld.fold_item_underscore(i.node),
-          vis: i.vis,
-          span: fld.new_span(i.span)};
+    ret some(@{ident: fld.fold_ident(i.ident),
+               attrs: vec::map(i.attrs, fold_attribute),
+               id: fld.new_id(i.id),
+               node: fld.fold_item_underscore(i.node),
+               vis: i.vis,
+               span: fld.new_span(i.span)});
 }
 
 fn noop_fold_class_item(&&ci: @class_member, fld: ast_fold)
@@ -361,7 +361,12 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
 fn noop_fold_decl(d: decl_, fld: ast_fold) -> decl_ {
     alt d {
       decl_local(ls) { decl_local(vec::map(ls, fld.fold_local)) }
-      decl_item(it) { decl_item(fld.fold_item(it)) }
+      decl_item(it) {
+        alt fld.fold_item(it) {
+          some(it_folded) { decl_item(it_folded) }
+          none { decl_local(~[]) }
+        }
+      }
     }
 }
 
@@ -520,7 +525,7 @@ fn noop_fold_ty_constr(c: ty_constr_, fld: ast_fold) -> ty_constr_ {
 // ...nor do modules
 fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
     ret {view_items: vec::map(m.view_items, fld.fold_view_item),
-         items: vec::map(m.items, fld.fold_item)};
+         items: vec::filter_map(m.items, fld.fold_item)};
 }
 
 fn noop_fold_foreign_mod(nm: foreign_mod, fld: ast_fold) -> foreign_mod {
@@ -638,7 +643,7 @@ impl of ast_fold for ast_fold_precursor {
         -> @foreign_item {
         ret self.fold_foreign_item(x, self as ast_fold);
     }
-    fn fold_item(&&i: @item) -> @item {
+    fn fold_item(&&i: @item) -> option<@item> {
         ret self.fold_item(i, self as ast_fold);
     }
     fn fold_class_item(&&ci: @class_member) -> @class_member {

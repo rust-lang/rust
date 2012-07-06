@@ -130,28 +130,34 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
 /* record module we enter for `#mod` */
 fn expand_item(exts: hashmap<str, syntax_extension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
-               orig: fn@(&&@ast::item, ast_fold) -> @ast::item)
-    -> @ast::item
+               orig: fn@(&&@ast::item, ast_fold) -> option<@ast::item>)
+    -> option<@ast::item>
 {
     let is_mod = alt it.node {
       ast::item_mod(_) | ast::item_foreign_mod(_) {true}
       _ {false}
     };
-    let it = alt it.node {
+    let maybe_it = alt it.node {
       ast::item_mac(*) {
         expand_item_mac(exts, cx, it, fld)
       }
-      _ { it }
+      _ { some(it) }
     };
-    if is_mod { cx.mod_push(it.ident); }
-    let ret_val = orig(it, fld);
-    if is_mod { cx.mod_pop(); }
-    ret ret_val;
+
+    alt maybe_it {
+      some(it) {
+        if is_mod { cx.mod_push(it.ident); }
+        let ret_val = orig(it, fld);
+        if is_mod { cx.mod_pop(); }
+        ret ret_val;
+      }
+      none { ret none; }
+    }
 }
 
 fn expand_item_mac(exts: hashmap<str, syntax_extension>,
                    cx: ext_ctxt, &&it: @ast::item,
-                   fld: ast_fold) -> @ast::item {
+                   fld: ast_fold) -> option<@ast::item> {
     alt it.node {
       item_mac({node: mac_invoc_tt(pth, tt), span}) {
         let extname = pth.idents[0];

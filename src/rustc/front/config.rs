@@ -55,7 +55,7 @@ fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
     let view_item_filter = |a| filter_view_item(cx, a);
     let filtered_view_items = vec::filter_map(m.view_items, view_item_filter);
     ret {view_items: vec::map(filtered_view_items, fld.fold_view_item),
-         items: vec::map(filtered_items, fld.fold_item)};
+         items: vec::filter_map(filtered_items, fld.fold_item)};
 }
 
 fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->

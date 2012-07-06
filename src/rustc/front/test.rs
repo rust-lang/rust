@@ -96,7 +96,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 
 
 fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
-   @ast::item {
+   option<@ast::item> {
 
     vec::push(cx.path, i.ident);
     #debug("current path: %s", ast_util::path_name_i(cx.path));

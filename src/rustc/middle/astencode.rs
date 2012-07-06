@@ -245,7 +245,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 
     alt ii {
       ast::ii_item(i) {
-        ast::ii_item(fld.fold_item(i))
+        ast::ii_item(fld.fold_item(i).get()) //hack: we're not dropping items
       }
       ast::ii_method(d, m) {
         ast::ii_method(d, fld.fold_method(m))
@@ -285,7 +285,7 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
 
     alt ii {
       ast::ii_item(i) {
-        ast::ii_item(fld.fold_item(i))
+        ast::ii_item(fld.fold_item(i).get())
       }
       ast::ii_method(d, m) {
         ast::ii_method(xcx.tr_def_id(d), fld.fold_method(m))
