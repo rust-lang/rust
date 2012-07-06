@@ -246,6 +246,12 @@ impl methods for gather_loan_ctxt {
                   some(scope_id) {
                     self.req_maps.pure_map.insert(scope_id, e);
                     self.bccx.req_pure_paths += 1;
+
+                    if self.tcx().sess.borrowck_note_pure() {
+                        self.bccx.span_note(
+                            cmt.span,
+                            #fmt["purity required"]);
+                    }
                   }
                   none {
                     // otherwise, fine, I give up.

@@ -37,6 +37,7 @@ const trace: uint = 128u;
 const no_rt: uint = 256u;
 const coherence: uint = 512u;
 const borrowck_stats: uint = 1024u;
+const borrowck_note_pure: uint = 2048;
 
 fn debugging_opts_map() -> ~[(str, str, uint)] {
     ~[("ppregions", "prettyprint regions with \
@@ -51,7 +52,9 @@ fn debugging_opts_map() -> ~[(str, str, uint)] {
      ("trace", "emit trace logs", trace),
      ("no-rt", "do not link to the runtime", no_rt),
      ("coherence", "perform coherence checking", coherence),
-     ("borrowck-stats", "gather borrowck statistics",  borrowck_stats)
+     ("borrowck-stats", "gather borrowck statistics",  borrowck_stats),
+     ("borrowck-note-pure", "note where purity is req'd",
+      borrowck_note_pure)
     ]
 }
 
@@ -168,6 +171,7 @@ impl session for session {
     fn trace() -> bool { self.debugging_opt(trace) }
     fn coherence() -> bool { self.debugging_opt(coherence) }
     fn borrowck_stats() -> bool { self.debugging_opt(borrowck_stats) }
+    fn borrowck_note_pure() -> bool { self.debugging_opt(borrowck_note_pure) }
 }
 
 /// Some reasonable defaults
