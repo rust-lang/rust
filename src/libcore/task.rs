@@ -47,6 +47,7 @@ export unsupervise;
 export run_listener;
 
 export spawn;
+export spawn_with;
 export spawn_listener;
 export spawn_sched;
 export try;
@@ -338,6 +339,28 @@ fn unsupervise(builder: builder) {
     });
 }
 
+fn run_with<A:send>(-builder: builder,
+                    +arg: A,
+                    +f: fn~(+A)) {
+
+    /*!
+     *
+     * Runs a task, while transfering ownership of one argument to the
+     * child.
+     *
+     * This is useful for transfering ownership of noncopyables to
+     * another task.
+     *
+     */
+
+    let arg = ~mut some(arg);
+    do run(builder) {
+        let mut my_arg = none;
+        my_arg <-> *arg;
+        f(option::unwrap(my_arg))
+    }
+}
+
 fn run_listener<A:send>(-builder: builder,
                         +f: fn~(comm::port<A>)) -> comm::chan<A> {
     /*!
@@ -379,6 +402,22 @@ fn spawn(+f: fn~()) {
      */
 
     run(builder(), f);
+}
+
+fn spawn_with<A:send>(+arg: A, +f: fn~(+A)) {
+    /*!
+     * Runs a new task while providing a channel from the parent to the child
+     *
+     * Sets up a communication channel from the current task to the new
+     * child task, passes the port to child's body, and returns a channel
+     * linked to the port to the parent.
+     *
+     * This encapsulates some boilerplate handshaking logic that would
+     * otherwise be required to establish communication from the parent
+     * to the child.
+     */
+
+    run_with(builder(), arg, f)
 }
 
 fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
