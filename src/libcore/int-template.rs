@@ -11,7 +11,7 @@ export range;
 export compl;
 export abs;
 export parse_buf, from_str, to_str, to_str_bytes, str;
-export num, ord, eq;
+export num, ord, eq, times;
 
 const min_value: T = -1 as T << (inst::bits - 1 as T);
 const max_value: T = min_value - 1 as T;
@@ -135,6 +135,25 @@ impl num of num::num for T {
     fn from_int(n: int) -> T   { ret n as T;      }
 }
 
+impl times of iter::times for T {
+    #[inline(always)]
+    #[doc = "A convenience form for basic iteration. Given a variable `x` \
+        of any numeric type, the expression `for x.times { /* anything */ }` \
+        will execute the given function exactly x times. If we assume that \
+        `x` is an int, this is functionally equivalent to \
+        `for int::range(0, x) |_i| { /* anything */ }`."]
+    fn times(it: fn() -> bool) {
+        if self < 0 {
+            fail #fmt("The .times method expects a nonnegative number, \
+                       but found %?", self);
+        }
+        let mut i = self;
+        while i > 0 {
+            if !it() { break }
+            i -= 1;
+        }
+    }
+}
 
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
@@ -206,8 +225,22 @@ fn test_ifaces() {
         assert (ten.mul(two) == ten.from_int(20));
         assert (ten.div(two) == ten.from_int(5));
         assert (ten.modulo(two) == ten.from_int(0));
+        assert (ten.neg() == ten.from_int(-10));
     }
 
     test(10 as T);
 }
 
+#[test]
+fn test_times() {
+    let ten = 10 as T;
+    let mut accum = 0;
+    for ten.times { accum += 1; }
+    assert (accum == 10);
+}
+
+#[test]
+#[should_fail]
+fn test_times_negative() {
+    for (-10).times { log(error, "nope!"); }
+}

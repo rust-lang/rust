@@ -11,7 +11,7 @@ export range;
 export compl;
 export to_str, to_str_bytes;
 export from_str, from_str_radix, str, parse_buf;
-export num, ord, eq;
+export num, ord, eq, times;
 
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
@@ -102,6 +102,22 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
         if i == 0u { ret some(n); }
         i -= 1u;
     };
+}
+
+impl times of iter::times for T {
+    #[inline(always)]
+    #[doc = "A convenience form for basic iteration. Given a variable `x` \
+        of any numeric type, the expression `for x.times { /* anything */ }` \
+        will execute the given function exactly x times. If we assume that \
+        `x` is an int, this is functionally equivalent to \
+        `for int::range(0, x) |_i| { /* anything */ }`."]
+    fn times(it: fn() -> bool) {
+        let mut i = self;
+        while i > 0 {
+            if !it() { break }
+            i -= 1;
+        }
+    }
 }
 
 /// Parse a string to an int
@@ -258,4 +274,12 @@ fn to_str_radix1() {
 #[ignore(cfg(windows))]
 fn to_str_radix17() {
     uint::to_str(100u, 17u);
+}
+
+#[test]
+fn test_times() {
+    let ten = 10 as T;
+    let mut accum = 0;
+    for ten.times { accum += 1; }
+    assert (accum == 10);
 }
