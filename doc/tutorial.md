@@ -926,13 +926,12 @@ memory. Even high-level languages frequently avoid solving this
 problem, requiring programmers to correctly employ locking to unsure
 their program is free of races.
 
-Rust solves this problem by starting from the position that memory
-simply cannot be shared between tasks. Experience in other languages
-has proven that isolating each tasks' heap from each other is
-a reliable strategy and one that is easy for programmers to reason
-about. Having isolated heaps additionally means that garbage collection
-must only be done per-heap. Rust never 'stops the world' to garbage
-collect memory.
+Rust starts from the position that memory simply cannot be shared
+between tasks. Experience in other languages has proven that isolating
+each tasks' heap from each other is a reliable strategy and one that
+is easy for programmers to reason about. Having isolated heaps
+additionally means that garbage collection must only be done
+per-heap. Rust never 'stops the world' to garbage collect memory.
 
 If Rust tasks have completely isolated heaps then that seems to imply
 that any data transferred between them must be copied. While this
