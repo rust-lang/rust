@@ -10,7 +10,7 @@ import unsafe::reinterpret_cast;
 import ptr::{null, extensions};
 
 export dvec;
-export from_elt;
+export from_elem;
 export from_vec;
 export extensions;
 export unwrap;
@@ -56,7 +56,7 @@ fn dvec<A>() -> dvec<A> {
 }
 
 /// Creates a new dvec with a single element
-fn from_elt<A>(+e: A) -> dvec<A> {
+fn from_elem<A>(+e: A) -> dvec<A> {
     {mut data: ~[mut e]}
 }
 
