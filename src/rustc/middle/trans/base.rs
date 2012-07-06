@@ -1755,28 +1755,7 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
       _ {}
     }
 
-    // Special case for `+= ~[x]`
-    alt ty::get(t).struct {
-      ty::ty_vec(_) {
-        alt src.node {
-          ast::expr_vec(args, _) {
-            ret tvec::trans_append_literal(lhs_res.bcx,
-                                           lhs_res.val, t, args);
-          }
-          _ { }
-        }
-      }
-      _ { }
-    }
     let {bcx, val: rhs_val} = trans_temp_expr(lhs_res.bcx, src);
-    if ty::type_is_sequence(t) {
-        alt op {
-          ast::add {
-            ret tvec::trans_append(bcx, t, lhs_res.val, rhs_val);
-          }
-          _ { }
-        }
-    }
     ret trans_eager_binop(bcx, ex.span,
                           op, Load(bcx, lhs_res.val), t, rhs_val, t,
                           save_in(lhs_res.val));
