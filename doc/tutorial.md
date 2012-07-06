@@ -11,6 +11,33 @@ comparisons to other languages in the C family. The tutorial covers
 the whole language, though not with the depth and precision of the
 [language reference](rust.html).
 
+## Language Overview
+
+Rust is a systems programming language with a focus on type safety,
+memory safety, and performance. It is intended for writing large, high
+performance applications while preventing several classes of errors
+commonly found in languages like C++. Rust has a sophisticated memory
+model that enables many of the efficient data structures used in C
+while disallowing invalid memory access that would otherwise cause
+segmentation faults. Like other systems languages it is statically
+typed and compiled ahead of time.
+
+As a multi-paradigm language it has strong support for writing code in
+procedural, functional and object-oriented styles. Some of it's nice
+high-level features include:
+
+* Pattern matching and algebraic data types (enums) - common in functional
+  languages, pattern matching on ADTs provides a compact and expressive
+  way to encode program logic
+* Task-based concurrency - Rust uses lightweight tasks that do not share
+  memory
+* Higher-order functions - Closures in Rust are very powerful and used
+  pervasively
+* Polymorphism - Rust's type system features a unique combination of
+  Java-style interfaces and Haskell-style typeclasses
+* Generics - Functions and types can be parameterized over generic
+  types with optional type constraints
+
 ## First Impressions
 
 As a curly-brace language in the tradition of C, C++, and JavaScript,
