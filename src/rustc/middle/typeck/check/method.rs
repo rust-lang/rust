@@ -77,16 +77,20 @@ class lookup {
             // loop for impls in scope.  Note: I don't love these
             // semantics, but that's what we had so I am preserving
             // it.
-            if self.candidates.len() > 0u {
-                break;
-            }
+            if self.candidates.len() > 0u { break; }
 
-            self.add_candidates_from_scope();
+            // now look for impls in scope, but don't look for impls that
+            // would require doing an implicit borrow of the lhs.
+            self.add_candidates_from_scope(false);
+
+            // if we found anything, stop before trying borrows
+            if self.candidates.len() > 0u { break; }
+
+            // now look for impls in scope that might require a borrow
+            self.add_candidates_from_scope(true);
 
             // if we found anything, stop before attempting auto-deref.
-            if self.candidates.len() > 0u {
-                break;
-            }
+            if self.candidates.len() > 0u { break; }
 
             // check whether we can autoderef and if so loop around again.
             alt ty::deref(self.tcx(), self.self_ty, false) {
@@ -290,7 +294,7 @@ class lookup {
         */
     }
 
-    fn add_candidates_from_scope() {
+    fn add_candidates_from_scope(use_assignability: bool) {
         let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
         let mut added_any = false;
 
@@ -306,13 +310,18 @@ class lookup {
                     let {substs: impl_substs, ty: impl_ty} =
                         impl_self_ty(self.fcx, im.did);
 
-                    // if we can assign the caller to the callee, that's a
-                    // potential match.  Collect those in the vector.
-                    let can_assign = self.fcx.can_mk_assignty(
-                        self.self_expr, self.borrow_scope,
-                        self.self_ty, impl_ty);
-                    #debug["can_assign = %?", can_assign];
-                    alt can_assign {
+                    // Depending on our argument, we find potential
+                    // matches either by checking subtypability or
+                    // type assignability. Collect the matches.
+                    let matches = if use_assignability {
+                        self.fcx.can_mk_assignty(
+                            self.self_expr, self.borrow_scope,
+                            self.self_ty, impl_ty)
+                    } else {
+                        self.fcx.can_mk_subty(self.self_ty, impl_ty)
+                    };
+                    #debug["matches = %?", matches];
+                    alt matches {
                       result::err(_) { /* keep looking */ }
                       result::ok(_) {
                         if !self.candidate_impls.contains_key(im.did) {
