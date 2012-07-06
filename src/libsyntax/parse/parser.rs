@@ -1210,7 +1210,7 @@ class parser {
 
     /* temporary */
     fn parse_tt_mac_demo() -> @expr {
-
+        import ext::tt::earley_parser::{parse,success,failure};
         let name_idx = @mut 0u;
         let ms = self.parse_seq(token::LBRACE, token::RBRACE,
                                 common::seq_sep_none(),
@@ -1225,8 +1225,10 @@ class parser {
                                            self.reader.interner(), none, tts)
                 as reader;
 
-            let matches = ext::tt::earley_parser::parse
-                (self.sess, self.cfg, rdr, ms);
+            let matches = alt parse(self.sess, self.cfg, rdr, ms) {
+                  success(m) { m }
+                  failure(sp, msg) { self.span_fatal(sp,msg); }
+                };
 
             let transcriber = ext::tt::transcribe::new_tt_reader
                 (self.reader.span_diag(), self.reader.interner(),

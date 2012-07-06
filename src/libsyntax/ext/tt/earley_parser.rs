@@ -96,8 +96,13 @@ fn nameize(&&p_s: parse_sess, ms: ~[matcher], &&res: ~[@arb_depth])
     ret ret_val;
 }
 
+enum parse_result {
+    success(hashmap<ident, @arb_depth>),
+    failure(codemap::span, str)
+}
+
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
-    -> hashmap<ident,@arb_depth> {
+    -> parse_result {
     let mut cur_eis = ~[];
     vec::push(cur_eis, new_matcher_pos(ms, none, rdr.peek().sp.lo));
 
@@ -195,13 +200,14 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
         /* error messages here could be improved with links to orig. rules */
         if tok == EOF {
-            if eof_eis.len() == 1u { /* success */
-                ret nameize(sess, ms,
-                            vec::map(eof_eis[0u].matches, |dv| dv.pop()));
+            if eof_eis.len() == 1u {
+                ret success(
+                    nameize(sess, ms,
+                            vec::map(eof_eis[0u].matches, |dv| dv.pop())));
             } else if eof_eis.len() > 1u {
-                rdr.fatal("Ambiguity: multiple successful parses");
+                ret failure(sp, "Ambiguity: multiple successful parses");
             } else {
-                rdr.fatal("Unexpected end of macro invocation");
+                ret failure(sp, "Unexpected end of macro invocation");
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
@@ -210,12 +216,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     alt ei.elts[ei.idx].node
                         { mtc_bb(_,name,_) { *name } _ { fail; } }
                 }), " or ");
-                rdr.fatal(#fmt["Local ambiguity: multiple parsing options: \
-                                built-in NTs %s or %u other options.",
-                              nts, next_eis.len()]);
+                ret failure(sp, #fmt[
+                    "Local ambiguity: multiple parsing options: \
+                     built-in NTs %s or %u other options.",
+                    nts, next_eis.len()]);
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
-                rdr.fatal("No rules expected the token "
-                          + to_str(*rdr.interner(), tok));
+                failure(sp, "No rules expected the token "
+                        + to_str(*rdr.interner(), tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
