@@ -4,13 +4,13 @@ use warnings;
 
 my $indent = 0;
 while (<>) {
-    if (/^rust: ">>/) {
+    if (/^rust: ~">>/) {
         $indent += 1;
     }
 
     printf "%03d  %s%s", $indent, ("  " x $indent), $_;
 
-    if (/^rust: "<</) {
+    if (/^rust: ~"<</) {
         $indent -= 1;
     }
 }
