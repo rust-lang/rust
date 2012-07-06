@@ -11,7 +11,7 @@ import pipes::parse_proto::proto_parser;
 import pipes::pipec::methods;
 
 fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident, tt: ast::token_tree)
-    -> @ast::item
+    -> base::mac_result
 {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
@@ -25,5 +25,5 @@ fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident, tt: ast::token_tree)
 
     let proto = rust_parser.parse_proto(id);
 
-    proto.compile(cx)
+    base::mr_item(proto.compile(cx))
 }

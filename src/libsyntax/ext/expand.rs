@@ -170,10 +170,16 @@ fn expand_item_mac(exts: hashmap<str, syntax_extension>,
             cx.bt_push(expanded_from({call_site: it.span,
                                       callie: {name: *extname,
                                                span: expand.span}}));
-            let it = fld.fold_item(
-                expand.expander(cx, it.span, it.ident, tt));
+            let maybe_it =
+                alt expand.expander(cx, it.span, it.ident, tt) {
+                  mr_item(it) { fld.fold_item(it) }
+                  mr_def(mdef) {
+                    exts.insert(*mdef.ident, mdef.ext);
+                    none
+                  }
+                };
             cx.bt_pop();
-            ret it
+            ret maybe_it
           }
           _ { cx.span_fatal(it.span,
                             #fmt("%s is not a legal here", *extname)) }

@@ -20,7 +20,12 @@ type syntax_expander_tt_ = fn@(ext_ctxt, span, ast::token_tree) -> @ast::expr;
 type syntax_expander_tt_item
     = {expander: syntax_expander_tt_item_, span: option<span>};
 type syntax_expander_tt_item_
-    = fn@(ext_ctxt, span, ast::ident, ast::token_tree) -> @ast::item;
+    = fn@(ext_ctxt, span, ast::ident, ast::token_tree) -> mac_result;
+
+enum mac_result {
+    mr_item(@ast::item),
+    mr_def(macro_def)
+}
 
 enum syntax_extension {
     normal(syntax_expander),
