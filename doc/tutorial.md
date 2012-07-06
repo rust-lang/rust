@@ -14,13 +14,13 @@ the whole language, though not with the depth and precision of the
 ## Language Overview
 
 Rust is a systems programming language with a focus on type safety,
-memory safety, and performance. It is intended for writing large, high
-performance applications while preventing several classes of errors
-commonly found in languages like C++. Rust has a sophisticated memory
-model that enables many of the efficient data structures used in C
-while disallowing invalid memory access that would otherwise cause
-segmentation faults. Like other systems languages it is statically
-typed and compiled ahead of time.
+memory safety, concurrency and performance. It is intended for writing
+large, high performance applications while preventing several classes
+of errors commonly found in languages like C++. Rust has a
+sophisticated memory model that enables many of the efficient data
+structures used in C++ while disallowing invalid memory access that
+would otherwise cause segmentation faults. Like other systems
+languages it is statically typed and compiled ahead of time.
 
 As a multi-paradigm language it has strong support for writing code in
 procedural, functional and object-oriented styles. Some of it's nice
