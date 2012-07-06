@@ -17,7 +17,9 @@ fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident, tt: ast::token_tree)
     let cfg = cx.cfg();
     let body_core = alt tt { tt_delim(tts) { tts } _ {fail}};
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
-                               cx.parse_sess().interner, body_core);
+                               cx.parse_sess().interner,
+                               none,
+                               body_core);
     let rdr = tt_rdr as reader;
     let rust_parser = parser(sess, cfg, rdr.dup(), SOURCE_FILE);
 
