@@ -375,48 +375,6 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
     bcx
 }
 
-fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
-             rhs: ValueRef, dest: dest) -> block {
-    let _icx = bcx.insn_ctxt("tvec::trans_add");
-    let ccx = bcx.ccx();
-
-    let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let llunitty = type_of::type_of(ccx, unit_ty);
-
-    if ty::get(vec_ty).struct == ty::ty_str {
-        let lhs = PointerCast(bcx, lhs, T_ptr(T_i8()));
-        let rhs = PointerCast(bcx, rhs, T_ptr(T_i8()));
-        let n = Call(bcx, ccx.upcalls.str_concat, ~[lhs, rhs]);
-        let n = PointerCast(
-            bcx, n, T_unique_ptr(T_unique(ccx, T_vec(ccx, llunitty))));
-        ret base::store_in_dest(bcx, n, dest);
-    }
-
-    let lhs_fill = get_fill(bcx, get_bodyptr(bcx, lhs));
-    let rhs_fill = get_fill(bcx, get_bodyptr(bcx, rhs));
-    let new_fill = Add(bcx, lhs_fill, rhs_fill);
-    let mut {bcx: bcx, val: new_vec_ptr} =
-        alloc_uniq_raw(bcx, unit_ty, new_fill, new_fill);
-
-    let new_vec_body_ptr = get_bodyptr(bcx, new_vec_ptr);
-    let write_ptr_ptr = do_spill_noroot
-        (bcx, get_dataptr(bcx, new_vec_body_ptr));
-    let copy_fn = fn@(bcx: block, addr: ValueRef,
-                      _ty: ty::t) -> block {
-        let ccx = bcx.ccx();
-        let write_ptr = Load(bcx, write_ptr_ptr);
-        let bcx = copy_val(bcx, INIT, write_ptr,
-                           load_if_immediate(bcx, addr, unit_ty), unit_ty);
-        Store(bcx, InBoundsGEP(bcx, write_ptr, ~[C_int(ccx, 1)]),
-              write_ptr_ptr);
-        ret bcx;
-    };
-
-    let bcx = iter_vec_uniq(bcx, lhs, vec_ty, lhs_fill, copy_fn);
-    let bcx = iter_vec_uniq(bcx, rhs, vec_ty, rhs_fill, copy_fn);
-    ret base::store_in_dest(bcx, new_vec_ptr, dest);
-}
-
 type val_and_ty_fn = fn@(block, ValueRef, ty::t) -> result;
 
 type iter_vec_block = fn(block, ValueRef, ty::t) -> block;

@@ -1660,9 +1660,6 @@ fn trans_eager_binop(cx: block, span: span, op: ast::binop, lhs: ValueRef,
 
     let rhs = cast_shift_expr_rhs(cx, op, lhs, rhs);
 
-    if op == ast::add && ty::type_is_sequence(intype) {
-        ret tvec::trans_add(cx, intype, lhs, rhs, dest);
-    }
     let mut cx = cx;
     let val = alt op {
       ast::add {
