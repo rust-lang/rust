@@ -272,7 +272,13 @@ fn parse_nt(p: parser, name: str) -> whole_nt {
                       + token::to_str(*p.reader.interner(), copy p.token)) }
       } }
       "path" { token::w_path(p.parse_path_with_tps(false)) }
-      "tt" { token::w_tt(@p.parse_token_tree()) }
+      "tt" {
+        p.quote_depth += 1u;
+        let res = token::w_tt(@p.parse_token_tree());
+        p.quote_depth -= 1u;
+        res
+      }
+      "mtcs" { token::w_mtcs(p.parse_matchers()) }
       _ { p.fatal("Unsupported builtin nonterminal parser: " + name)}
     }
 }

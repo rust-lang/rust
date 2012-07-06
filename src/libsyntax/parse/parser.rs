@@ -1249,13 +1249,17 @@ class parser {
         };
     }
 
+    fn parse_matchers() -> ~[matcher] {
+        let name_idx = @mut 0u;
+        ret self.parse_seq(token::LBRACE, token::RBRACE,
+                           common::seq_sep_none(),
+                           |p| p.parse_matcher(name_idx)).node;
+    }
+
     /* temporary */
     fn parse_tt_mac_demo() -> @expr {
         import ext::tt::earley_parser::{parse,success,failure};
-        let name_idx = @mut 0u;
-        let ms = self.parse_seq(token::LBRACE, token::RBRACE,
-                                common::seq_sep_none(),
-                                |p| p.parse_matcher(name_idx)).node;
+        let ms = self.parse_matchers();
         self.quote_depth += 1u;
         let tt_rhs= self.parse_token_tree();
         self.quote_depth -= 1u;

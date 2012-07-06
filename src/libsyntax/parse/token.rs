@@ -96,10 +96,8 @@ enum whole_nt {
     w_ty(  @ast::ty),
     w_ident(str_num, bool),
     w_path(@ast::path),
-    // TODO: this seems to cause infinite recursion in
-    // type_structually_contains if it's not an @-box. We should at least get
-    // failure instead.
-    w_tt(@ast::token_tree),
+    w_tt(  @ast::token_tree), //needs @ed to break a circularity
+    w_mtcs(~[ast::matcher])
 }
 
 fn binop_to_str(o: binop) -> str {
@@ -193,8 +191,8 @@ fn to_str(in: interner<@str>, t: token) -> str {
               w_stmt(*) { "statement" } w_pat(*) { "pattern" }
               w_expr(*) { "expression" } w_ty(*) { "type" }
               w_ident(*) { "identifier" } w_path(*) { "path" }
-              w_tt(*) { "tt" }
-        }
+              w_tt(*) { "tt" } w_mtcs(*) { "matcher sequence" }
+            }
       }
     }
 }
