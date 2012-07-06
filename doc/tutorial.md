@@ -1112,7 +1112,7 @@ fn bare_function() { "I am a plain function"; }
 call_twice(bare_function);
 ~~~~
 
-### Do syntax
+## Do syntax
 
 Closures in Rust are frequently used in combination with higher-order
 functions to simulate control structures like `if` and
@@ -1183,7 +1183,7 @@ do spawn {
 
 Empty argument lists can be omitted from `do` expressions.
 
-### For loops
+## For loops
 
 Most iteration in Rust is done with `for` loops. Like `do`,
 `for` is a nice syntax for doing control flow with closures.
