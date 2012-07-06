@@ -181,6 +181,7 @@ import driver::session::session;
 import util::common::{indent, indenter};
 import ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 import ast::{m_const, m_imm, m_mutbl};
+import dvec::{dvec, extensions};
 
 export infer_ctxt;
 export new_infer_ctxt;
@@ -188,16 +189,16 @@ export mk_subty, can_mk_subty;
 export mk_subr;
 export mk_eqty;
 export mk_assignty, can_mk_assignty;
-export resolve_shallow;
-export resolve_deep;
-export resolve_deep_var;
+export resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all;
+export force_tvar, force_rvar, force_ivar, force_all;
+export resolve_type, resolve_region;
+export resolve_borrowings;
 export methods; // for infer_ctxt
 export unify_methods; // for infer_ctxt
 export fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
 export int_ty_set_all;
-export force_level, force_none, force_ty_vars_only, force_all;
 
 // Bitvector to represent sets of integral types
 enum int_ty_set = uint;
@@ -280,7 +281,8 @@ fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
 // value should be borrowed.
 type assignment = {
     expr_id: ast::node_id,
-    borrow_scope: ast::node_id
+    borrow_lb: ast::node_id,
+    borrow_ub: ast::node_id,
 };
 
 type bound<T:copy> = option<T>;
@@ -321,6 +323,10 @@ enum infer_ctxt = @{
     ty_var_counter: @mut uint,
     ty_var_integral_counter: @mut uint,
     region_var_counter: @mut uint,
+
+    borrowings: dvec<{expr_id: ast::node_id,
+                      scope: ty::region,
+                      mutbl: ast::mutability}>
 };
 
 enum fixup_err {
@@ -328,7 +334,7 @@ enum fixup_err {
     unresolved_ty(tv_vid),
     cyclic_ty(tv_vid),
     unresolved_region(region_vid),
-    cyclic_region(region_vid)
+    region_var_bound_by_region_var(region_vid, region_vid)
 }
 
 fn fixup_err_to_str(f: fixup_err) -> ~str {
@@ -337,7 +343,10 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
       unresolved_ty(_) { ~"unconstrained type" }
       cyclic_ty(_) { ~"cyclic type of infinite size" }
       unresolved_region(_) { ~"unconstrained region" }
-      cyclic_region(_) { ~"cyclic region" }
+      region_var_bound_by_region_var(r1, r2) {
+        #fmt["region var %? bound by another region var %?; this is \
+              a bug in rustc", r1, r2]
+      }
     }
 }
 
@@ -351,7 +360,8 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
                  rb: {vals: smallintmap::mk(), mut bindings: ~[]},
                  ty_var_counter: @mut 0u,
                  ty_var_integral_counter: @mut 0u,
-                 region_var_counter: @mut 0u})}
+                 region_var_counter: @mut 0u,
+                 borrowings: dvec()})}
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
@@ -387,10 +397,11 @@ fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
     #debug["can_mk_assignty(%? / %s <: %s)",
            anmnt, a.to_str(cx), b.to_str(cx)];
 
-    // FIXME (#2593): this will not unroll any entries we make in the
-    // borrowings table.  But this is OK for the moment because this is only
-    // used in method lookup, and there must be exactly one match or an
-    // error is reported. Still, it should be fixed.
+    // FIXME(#2593)---this will not unroll any entries we make in the
+    // borrowings table.  But this is OK for the moment because this
+    // is only used in method lookup, and there must be exactly one
+    // match or an error is reported. Still, it should be fixed. (#2593)
+    // NDM OUTDATED
 
     indent(|| cx.probe(||
         cx.assign_tys(anmnt, a, b)
@@ -398,21 +409,32 @@ fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
 }
 
 // See comment on the type `resolve_state` below
-fn resolve_shallow(cx: infer_ctxt, a: ty::t,
-                   force_vars: force_level) -> fres<ty::t> {
-    resolver(cx, false, force_vars).resolve(a)
-}
-
-// See comment on the type `resolve_state` below
-fn resolve_deep_var(cx: infer_ctxt, vid: tv_vid,
-                    force_vars: force_level) -> fres<ty::t> {
-    resolver(cx, true, force_vars).resolve(ty::mk_var(cx.tcx, vid))
-}
-
-// See comment on the type `resolve_state` below
-fn resolve_deep(cx: infer_ctxt, a: ty::t, force_vars: force_level)
+fn resolve_type(cx: infer_ctxt, a: ty::t, modes: uint)
     -> fres<ty::t> {
-    resolver(cx, true, force_vars).resolve(a)
+    resolver(cx, modes).resolve_type_chk(a)
+}
+
+fn resolve_region(cx: infer_ctxt, r: ty::region, modes: uint)
+    -> fres<ty::region> {
+    resolver(cx, modes).resolve_region_chk(r)
+}
+
+fn resolve_borrowings(cx: infer_ctxt) {
+    for cx.borrowings.each |item| {
+        alt resolve_region(cx, item.scope, resolve_all|force_all) {
+          ok(ty::re_scope(scope_id)) => {
+            #debug["borrowing for expr %d resolved to scope %d, mutbl %?",
+                   item.expr_id, scope_id, item.mutbl];
+            cx.tcx.borrowings.insert(
+                item.expr_id, {scope_id: scope_id, mutbl: item.mutbl});
+          }
+
+          r => {
+            cx.tcx.sess.bug(
+                #fmt["borrowing resolved to %?, not a valid scope", r]);
+          }
+        }
+    }
 }
 
 impl methods for ures {
@@ -567,6 +589,8 @@ impl transaction_methods for infer_ctxt {
 
         let tvbl = self.tvb.bindings.len();
         let rbl = self.rb.bindings.len();
+        let bl = self.borrowings.len();
+
         #debug["try(tvbl=%u, rbl=%u)", tvbl, rbl];
         let r <- f();
         alt r {
@@ -575,6 +599,7 @@ impl transaction_methods for infer_ctxt {
             #debug["try--rollback"];
             rollback_to(self.tvb, tvbl);
             rollback_to(self.rb, rbl);
+            while self.borrowings.len() != bl { self.borrowings.pop(); }
           }
         }
         ret r;
@@ -621,16 +646,19 @@ impl methods for infer_ctxt {
         ty::mk_var_integral(self.tcx, self.next_ty_var_integral_id())
     }
 
-    fn next_region_var_id() -> region_vid {
+    fn next_region_var_id(bnds: bounds<ty::region>) -> region_vid {
         let id = *self.region_var_counter;
         *self.region_var_counter += 1u;
-        self.rb.vals.insert(id,
-                            root({lb: none, ub: none}, 0u));
+        self.rb.vals.insert(id, root(bnds, 0));
         ret region_vid(id);
     }
 
-    fn next_region_var() -> ty::region {
-        ty::re_var(self.next_region_var_id())
+    fn next_region_var(bnds: bounds<ty::region>) -> ty::region {
+        ty::re_var(self.next_region_var_id(bnds))
+    }
+
+    fn next_region_var_nb() -> ty::region { // nb == "no bounds"
+        self.next_region_var({lb: none, ub: none})
     }
 
     fn ty_to_str(t: ty::t) -> ~str {
@@ -639,9 +667,16 @@ impl methods for infer_ctxt {
     }
 
     fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
-        alt infer::resolve_deep(self, typ, force_none) {
+        alt resolve_type(self, typ, resolve_all) {
           result::ok(new_type) { ret new_type; }
           result::err(_) { ret typ; }
+        }
+    }
+
+    fn resolve_region_if_possible(oldr: ty::region) -> ty::region {
+        alt resolve_region(self, oldr, resolve_all) {
+          result::ok(newr) { ret newr; }
+          result::err(_) { ret oldr; }
         }
     }
 }
@@ -1029,67 +1064,70 @@ impl unify_methods for infer_ctxt {
 // the behavior in the face of unconstrained type and region
 // variables.
 
-enum force_level {
-    // Any unconstrained variables are OK.
-    force_none,
-
-    // Unconstrained region vars and integral ty vars are OK;
-    // unconstrained general-purpose ty vars result in an error.
-    force_ty_vars_only,
-
-    // Any unconstrained variables result in an error.
-    force_all,
-}
-
+const resolve_nested_tvar: uint = 0b00000001;
+const resolve_rvar: uint        = 0b00000010;
+const resolve_ivar: uint        = 0b00000100;
+const resolve_all: uint         = 0b00000111;
+const force_tvar: uint          = 0b00010000;
+const force_rvar: uint          = 0b00100000;
+const force_ivar: uint          = 0b01000000;
+const force_all: uint           = 0b01110000;
 
 type resolve_state = @{
     infcx: infer_ctxt,
-    deep: bool,
-    force_vars: force_level,
+    modes: uint,
     mut err: option<fixup_err>,
-    mut r_seen: ~[region_vid],
     mut v_seen: ~[tv_vid]
 };
 
-fn resolver(infcx: infer_ctxt, deep: bool, fvars: force_level)
+fn resolver(infcx: infer_ctxt, modes: uint)
     -> resolve_state {
     @{infcx: infcx,
-      deep: deep,
-      force_vars: fvars,
+      modes: modes,
       mut err: none,
-      mut r_seen: ~[],
       mut v_seen: ~[]}
 }
 
 impl methods for resolve_state {
-    fn resolve(typ: ty::t) -> fres<ty::t> {
+    fn should(mode: uint) -> bool {
+        (self.modes & mode) == mode
+    }
+
+    fn resolve_type_chk(typ: ty::t) -> fres<ty::t> {
         self.err = none;
 
-        #debug["Resolving %s (deep=%b, force_vars=%?)",
+        #debug["Resolving %s (modes=%x)",
                ty_to_str(self.infcx.tcx, typ),
-               self.deep,
-               self.force_vars];
+               self.modes];
 
         // n.b. This is a hokey mess because the current fold doesn't
         // allow us to pass back errors in any useful way.
 
-        assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
-        let rty = indent(|| self.resolve1(typ) );
-        assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
+        assert vec::is_empty(self.v_seen);
+        let rty = indent(|| self.resolve_type(typ) );
+        assert vec::is_empty(self.v_seen);
         alt self.err {
           none {
-            #debug["Resolved to %s (deep=%b, force_vars=%?)",
+            #debug["Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
-                   self.deep,
-                   self.force_vars];
+                   self.modes];
             ret ok(rty);
           }
           some(e) { ret err(e); }
         }
     }
 
-    fn resolve1(typ: ty::t) -> ty::t {
-        #debug("Resolve1(%s)", typ.to_str(self.infcx));
+    fn resolve_region_chk(orig: ty::region) -> fres<ty::region> {
+        self.err = none;
+        let resolved = indent(|| self.resolve_region(orig) );
+        alt self.err {
+          none {ok(resolved)}
+          some(e) {err(e)}
+        }
+    }
+
+    fn resolve_type(typ: ty::t) -> ty::t {
+        #debug("resolve_type(%s)", typ.to_str(self.infcx));
         indent(fn&() -> ty::t {
             if !ty::type_needs_infer(typ) { ret typ; }
 
@@ -1100,23 +1138,30 @@ impl methods for resolve_state {
               ty::ty_var_integral(vid) {
                 self.resolve_ty_var_integral(vid)
               }
-              _ if !ty::type_has_regions(typ) && !self.deep {
-                typ
-              }
               _ {
-                ty::fold_regions_and_ty(
-                    self.infcx.tcx, typ,
-                    |r| self.resolve_region(r),
-                    |t| self.resolve_if_deep(t),
-                    |t| self.resolve_if_deep(t))
+                if !self.should(resolve_rvar) &&
+                    !self.should(resolve_nested_tvar) {
+                    // shortcircuit for efficiency
+                    typ
+                } else {
+                    ty::fold_regions_and_ty(
+                        self.infcx.tcx, typ,
+                        |r| self.resolve_region(r),
+                        |t| self.resolve_nested_tvar(t),
+                        |t| self.resolve_nested_tvar(t))
+                }
               }
             }
         })
     }
 
-    fn resolve_if_deep(typ: ty::t) -> ty::t {
+    fn resolve_nested_tvar(typ: ty::t) -> ty::t {
         #debug("Resolve_if_deep(%s)", typ.to_str(self.infcx));
-        if !self.deep {typ} else {self.resolve1(typ)}
+        if !self.should(resolve_nested_tvar) {
+            typ
+        } else {
+            self.resolve_type(typ)
+        }
     }
 
     fn resolve_region(orig: ty::region) -> ty::region {
@@ -1128,29 +1173,29 @@ impl methods for resolve_state {
     }
 
     fn resolve_region_var(rid: region_vid) -> ty::region {
-        if vec::contains(self.r_seen, rid) {
-            self.err = some(cyclic_region(rid));
-            ret ty::re_var(rid);
-        } else {
-            vec::push(self.r_seen, rid);
-            let nde = self.infcx.get(self.infcx.rb, rid);
-            let bounds = nde.possible_types;
+        if !self.should(resolve_rvar) {
+            ret ty::re_var(rid)
+        }
+        let nde = self.infcx.get(self.infcx.rb, rid);
+        let bounds = nde.possible_types;
+        alt bounds {
+          { ub:_, lb:some(r) } => { self.assert_not_rvar(rid, r); r }
+          { ub:some(r), lb:_ } => { self.assert_not_rvar(rid, r); r }
+          { ub:none, lb:none } => {
+            if self.should(force_rvar) {
+                self.err = some(unresolved_region(rid));
+            }
+            ty::re_var(rid)
+          }
+        }
+    }
 
-            let r1 = alt bounds {
-              { ub:_, lb:some(t) } { self.resolve_region(t) }
-              { ub:some(t), lb:_ } { self.resolve_region(t) }
-              { ub:none, lb:none } {
-                alt self.force_vars {
-                  force_all {
-                    self.err = some(unresolved_region(rid));
-                  }
-                  _ { /* ok */ }
-                }
-                ty::re_var(rid)
-              }
-            };
-            vec::pop(self.r_seen);
-            ret r1;
+    fn assert_not_rvar(rid: region_vid, r: ty::region) {
+        alt r {
+          ty::re_var(rid2) => {
+            self.err = some(region_var_bound_by_region_var(rid, rid2));
+          }
+          _ => { }
         }
     }
 
@@ -1172,15 +1217,12 @@ impl methods for resolve_state {
             let bounds = nde.possible_types;
 
             let t1 = alt bounds {
-              { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve1(t) }
-              { ub:some(t), lb:_ } { self.resolve1(t) }
-              { ub:_, lb:some(t) } { self.resolve1(t) }
+              { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve_type(t) }
+              { ub:some(t), lb:_ } { self.resolve_type(t) }
+              { ub:_, lb:some(t) } { self.resolve_type(t) }
               { ub:none, lb:none } {
-                alt self.force_vars {
-                  force_ty_vars_only | force_all {
+                if self.should(force_tvar) {
                     self.err = some(unresolved_ty(vid));
-                  }
-                  force_none { /* ok */ }
                 }
                 ty::mk_var(tcx, vid)
               }
@@ -1191,6 +1233,10 @@ impl methods for resolve_state {
     }
 
     fn resolve_ty_var_integral(vid: tvi_vid) -> ty::t {
+        if !self.should(resolve_ivar) {
+            ret ty::mk_var_integral(self.infcx.tcx, vid);
+        }
+
         let nde = self.infcx.get(self.infcx.tvib, vid);
         let pt = nde.possible_types;
 
@@ -1199,8 +1245,7 @@ impl methods for resolve_state {
         alt single_type_contained_in(self.infcx.tcx, pt) {
           some(t) { t }
           none {
-            alt self.force_vars {
-              force_all {
+            if self.should(force_ivar) {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
@@ -1209,10 +1254,8 @@ impl methods for resolve_state {
                                                            ty),
                         nde.rank));
                 ty
-              }
-              force_none | force_ty_vars_only {
+            } else {
                 ty::mk_var_integral(self.infcx.tcx, vid)
-              }
             }
           }
         }
@@ -1393,15 +1436,22 @@ impl assignment for infer_ctxt {
 
         do indent {
             do self.sub_tys(a, nr_b).then {
-                let r_a = ty::re_scope(anmnt.borrow_scope);
+                // Create a fresh region variable `r_a` with the given
+                // borrow bounds:
+                let r_lb = ty::re_scope(anmnt.borrow_lb);
+                let r_ub = ty::re_scope(anmnt.borrow_ub);
+                let r_a = self.next_region_var({lb: some(r_lb),
+                                                ub: some(r_ub)});
+
                 #debug["anmnt=%?", anmnt];
                 do sub(self).contraregions(r_a, r_b).chain |_r| {
                     // if successful, add an entry indicating that
                     // borrowing occurred
-                    #debug["borrowing expression #%?", anmnt];
-                    let borrow = {scope_id: anmnt.borrow_scope,
-                                  mutbl: m};
-                    self.tcx.borrowings.insert(anmnt.expr_id, borrow);
+                    #debug["borrowing expression #%?, scope=%?, m=%?",
+                           anmnt, r_a, m];
+                    self.borrowings.push({expr_id: anmnt.expr_id,
+                                          scope: r_a,
+                                          mutbl: m});
                     uok()
                 }
             }
@@ -1921,7 +1971,7 @@ impl of combine for sub {
                 // anything to do with the region variable that's created
                 // for it.  The only thing we're doing with `br` here is
                 // using it in the debug message.
-                let rvar = self.infcx().next_region_var();
+                let rvar = self.infcx().next_region_var_nb();
                 #debug["Bound region %s maps to %s",
                        bound_region_to_str(self.tcx, br),
                        region_to_str(self.tcx, rvar)];

@@ -3,14 +3,14 @@
 // substitutions.
 
 import check::{fn_ctxt, lookup_local, methods};
-
+import infer::{resolve_type, resolve_all, force_all};
 export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;
 
 fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
     option<ty::t> {
     if !ty::type_needs_infer(typ) { ret some(typ); }
-    alt infer::resolve_deep(fcx.infcx, typ, force_all) {
+    alt resolve_type(fcx.infcx, typ, resolve_all | force_all) {
       result::ok(new_type) { ret some(new_type); }
       result::err(e) {
         if !fcx.ccx.tcx.sess.has_errors() {
@@ -130,7 +130,8 @@ fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
 fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { ret; }
     let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
-    alt infer::resolve_deep_var(wbcx.fcx.infcx, var_id, force_all) {
+    let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
+    alt resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
       result::ok(lty) {
         #debug["Type for local %s (id %d) resolved to %s",
                pat_to_str(l.node.pat), l.node.id,
@@ -166,6 +167,9 @@ fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
     visit.visit_expr(e, wbcx, visit);
+    if wbcx.success {
+        infer::resolve_borrowings(fcx.infcx);
+    }
     ret wbcx.success;
 }
 
@@ -177,6 +181,9 @@ fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
     visit.visit_block(blk, wbcx, visit);
     for decl.inputs.each |arg| {
         resolve_type_vars_for_node(wbcx, arg.ty.span, arg.id);
+    }
+    if wbcx.success {
+        infer::resolve_borrowings(fcx.infcx);
     }
     ret wbcx.success;
 }

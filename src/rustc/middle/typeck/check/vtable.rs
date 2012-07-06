@@ -1,4 +1,5 @@
 import check::{fn_ctxt, impl_self_ty, methods};
+import infer::{resolve_type, resolve_all, force_all, fixup_err_to_str};
 
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
@@ -178,14 +179,14 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
 
 fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
     let tcx = fcx.ccx.tcx;
-    alt infer::resolve_deep(fcx.infcx, ty, force_all) {
+    alt resolve_type(fcx.infcx, ty, resolve_all | force_all) {
       result::ok(new_type) { new_type }
       result::err(e) {
         tcx.sess.span_fatal(
             sp,
             #fmt["cannot determine a type \
                   for this bounded type parameter: %s",
-                 infer::fixup_err_to_str(e)])
+                 fixup_err_to_str(e)])
       }
     }
 }

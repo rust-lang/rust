@@ -74,8 +74,7 @@ import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
 import syntax::ast::ty_i;
 import typeck::infer::{unify_methods}; // infcx.set()
-import typeck::infer::{force_level, force_none, force_ty_vars_only,
-                       force_all};
+import typeck::infer::{resolve_type, force_tvar};
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -89,7 +88,22 @@ type fn_ctxt =
      infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, tv_vid>,
 
-     mut blocks: ~[ast::node_id], // stack of blocks in scope, may be empty
+     // Sometimes we generate region pointers where the precise region
+     // to use is not known. For example, an expression like `&x.f`
+     // where `x` is of type `@T`: in this case, we will be rooting
+     // `x` onto the stack frame, and we could choose to root it until
+     // the end of (almost) any enclosing block or expression.  We
+     // want to pick the narrowest block that encompasses all uses.
+     //
+     // What we do in such cases is to generate a region variable and
+     // assign it the following two fields as bounds.  The lower bound
+     // is always the innermost enclosing expression.  The upper bound
+     // is the outermost enclosing expression that we could legally
+     // use.  In practice, this is the innermost loop or function
+     // body.
+     mut region_lb: ast::node_id,
+     mut region_ub: ast::node_id,
+
      in_scope_regions: isr_alist,
 
      node_types: smallintmap::smallintmap<ty::t>,
@@ -98,7 +112,8 @@ type fn_ctxt =
      ccx: @crate_ctxt};
 
 // Used by check_const and check_enum_variants
-fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t) -> @fn_ctxt {
+fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
+                 region_bnd: ast::node_id) -> @fn_ctxt {
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
     @{self_ty: none,
@@ -107,7 +122,8 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t) -> @fn_ctxt {
       purity: ast::pure_fn,
       infcx: infer::new_infer_ctxt(ccx.tcx),
       locals: int_hash(),
-      mut blocks: ~[],
+      mut region_lb: region_bnd,
+      mut region_ub: region_bnd,
       in_scope_regions: @nil,
       node_types: smallintmap::mk(),
       node_type_substs: map::int_hash(),
@@ -217,7 +233,8 @@ fn check_fn(ccx: @crate_ctxt,
           purity: purity,
           infcx: infcx,
           locals: locals,
-          mut blocks: ~[],
+          mut region_lb: body.node.id,
+          mut region_ub: body.node.id,
           in_scope_regions: isr,
           node_types: node_types,
           node_type_substs: node_type_substs,
@@ -307,9 +324,12 @@ fn check_fn(ccx: @crate_ctxt,
         };
 
         let visit_block = fn@(b: ast::blk, &&e: (), v: visit::vt<()>) {
-            vec::push(fcx.blocks, b.node.id);
-            visit::visit_block(b, e, v);
-            vec::pop(fcx.blocks);
+            // non-obvious: the `blk` variable maps to region lb, so
+            // we have to keep this up-to-date.  This
+            // is... unfortunate.  It'd be nice to not need this.
+            do fcx.with_region_lb(b.node.id) {
+                visit::visit_block(b, e, v);
+            }
         };
 
         // Don't descend into fns and items
@@ -430,7 +450,7 @@ impl of ast_conv for @fn_ctxt {
 
 impl of region_scope for @fn_ctxt {
     fn anon_region() -> result<ty::region, ~str> {
-        result::ok(self.infcx.next_region_var())
+        result::ok(self.infcx.next_region_var_nb())
     }
     fn named_region(id: ast::ident) -> result<ty::region, ~str> {
         do empty_rscope.named_region(id).chain_err |_e| {
@@ -448,10 +468,7 @@ impl of region_scope for @fn_ctxt {
 impl methods for @fn_ctxt {
     fn tag() -> ~str { #fmt["%x", ptr::addr_of(*self) as uint] }
     fn block_region() -> result<ty::region, ~str> {
-        alt vec::last_opt(self.blocks) {
-          some(bid) { result::ok(ty::re_scope(bid)) }
-          none { result::err(~"no block is in scope here") }
-        }
+        result::ok(ty::re_scope(self.region_lb))
     }
     #[inline(always)]
     fn write_ty(node_id: ast::node_id, ty: ty::t) {
@@ -534,15 +551,17 @@ impl methods for @fn_ctxt {
         infer::can_mk_subty(self.infcx, sub, sup)
     }
 
-    fn mk_assignty(expr: @ast::expr, borrow_scope: ast::node_id,
+    fn mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
                    sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, borrow_scope: borrow_scope};
+        let anmnt = {expr_id: expr.id, borrow_lb: borrow_lb,
+                     borrow_ub: self.region_ub};
         infer::mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
-    fn can_mk_assignty(expr: @ast::expr, borrow_scope: ast::node_id,
+    fn can_mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
                       sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, borrow_scope: borrow_scope};
+        let anmnt = {expr_id: expr.id, borrow_lb: borrow_lb,
+                     borrow_ub: self.region_ub};
         infer::can_mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
@@ -563,6 +582,20 @@ impl methods for @fn_ctxt {
                 #fmt["%s requires unsafe function or block", op]);
           }
         }
+    }
+    fn with_region_lb<R>(lb: ast::node_id, f: fn() -> R) -> R {
+        let old_region_lb = self.region_lb;
+        self.region_lb = lb;
+        let v <- f();
+        self.region_lb = old_region_lb;
+        ret v;
+    }
+    fn with_region_ub<R>(ub: ast::node_id, f: fn() -> R) -> R {
+        let old_region_ub = self.region_ub;
+        self.region_ub = ub;
+        let v <- f();
+        self.region_ub = old_region_ub;
+        ret v;
     }
 }
 
@@ -682,7 +715,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
          raw_ty: ity.ty}
     };
 
-    let self_r = if rp {some(fcx.infcx.next_region_var())} else {none};
+    let self_r = if rp {some(fcx.infcx.next_region_var_nb())} else {none};
     let tps = fcx.infcx.next_ty_vars(n_tps);
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};
@@ -733,7 +766,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               sty @ ty::ty_fn(fn_ty) {
                 replace_bound_regions_in_fn_ty(
                     fcx.ccx.tcx, @nil, none, fn_ty,
-                    |_br| fcx.infcx.next_region_var()).fn_ty
+                    |_br| fcx.infcx.next_region_var_nb()).fn_ty
               }
               sty {
                 // I would like to make this span_err, but it's
@@ -1017,7 +1050,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         -> option<O> {
         alt expected {
           some(t) {
-            alt infer::resolve_shallow(fcx.infcx, t, force_none) {
+            alt resolve_type(fcx.infcx, t, force_tvar) {
               result::ok(t) { unpack(ty::get(t).struct) }
               _ { none }
             }
@@ -1119,9 +1152,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
             // this will be the call or block that immediately
             // encloses the method call
-            let borrow_scope = fcx.tcx().region_map.get(expr.id);
+            let borrow_lb = fcx.tcx().region_map.get(expr.id);
 
-            let lkup = method::lookup(fcx, expr, base, borrow_scope,
+            let lkup = method::lookup(fcx, expr, base, borrow_lb,
                                       expr.id, field, expr_t, tps,
                                       is_self_ref);
             alt lkup.method() {
@@ -1364,13 +1397,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_while(cond, body) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
-        check_block_no_value(fcx, body);
+        do fcx.with_region_ub(body.node.id) {
+            check_block_no_value(fcx, body);
+        }
         fcx.write_ty(id, ty::mk_nil(tcx));
       }
       ast::expr_loop(body) {
-          check_block_no_value(fcx, body);
-          fcx.write_ty(id, ty::mk_nil(tcx));
-          bot = !may_break(body);
+        do fcx.with_region_ub(body.node.id) {
+            check_block_no_value(fcx, body);
+        }
+        fcx.write_ty(id, ty::mk_nil(tcx));
+        bot = !may_break(body);
       }
       ast::expr_alt(discrim, arms, _) {
         bot = alt::check_alt(fcx, expr, discrim, arms);
@@ -1754,44 +1791,44 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
       ast::unsafe_blk { @{purity: ast::unsafe_fn with *fcx0} }
       ast::default_blk { fcx0 }
     };
-    vec::push(fcx.blocks, blk.node.id);
-    let mut bot = false;
-    let mut warned = false;
-    for blk.node.stmts.each |s| {
-        if bot && !warned &&
-               alt s.node {
-                 ast::stmt_decl(@{node: ast::decl_local(_), _}, _) |
-                 ast::stmt_expr(_, _) | ast::stmt_semi(_, _) {
-                   true
-                 }
-                 _ { false }
-               } {
-            fcx.ccx.tcx.sess.span_warn(s.span, ~"unreachable statement");
-            warned = true;
+    do fcx.with_region_lb(blk.node.id) {
+        let mut bot = false;
+        let mut warned = false;
+        for blk.node.stmts.each |s| {
+            if bot && !warned &&
+                alt s.node {
+                  ast::stmt_decl(@{node: ast::decl_local(_), _}, _) |
+                  ast::stmt_expr(_, _) | ast::stmt_semi(_, _) {
+                    true
+                  }
+                  _ { false }
+                } {
+                fcx.ccx.tcx.sess.span_warn(s.span, ~"unreachable statement");
+                warned = true;
+            }
+            bot |= check_stmt(fcx, s);
         }
-        bot |= check_stmt(fcx, s);
-    }
-    alt blk.node.expr {
-      none { fcx.write_nil(blk.node.id); }
-      some(e) {
-        if bot && !warned {
-            fcx.ccx.tcx.sess.span_warn(e.span, ~"unreachable expression");
+        alt blk.node.expr {
+          none { fcx.write_nil(blk.node.id); }
+          some(e) {
+            if bot && !warned {
+                fcx.ccx.tcx.sess.span_warn(e.span, ~"unreachable expression");
+            }
+            bot |= check_expr(fcx, e, none);
+            let ety = fcx.expr_ty(e);
+            fcx.write_ty(blk.node.id, ety);
+          }
         }
-        bot |= check_expr(fcx, e, none);
-        let ety = fcx.expr_ty(e);
-        fcx.write_ty(blk.node.id, ety);
-      }
+        if bot {
+            fcx.write_bot(blk.node.id);
+        }
+        bot
     }
-    if bot {
-        fcx.write_bot(blk.node.id);
-    }
-    vec::pop(fcx.blocks);
-    ret bot;
 }
 
 fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
-    let fcx = blank_fn_ctxt(ccx, rty);
+    let fcx = blank_fn_ctxt(ccx, rty, e.id);
     check_expr(fcx, e, none);
     let cty = fcx.expr_ty(e);
     let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
@@ -1817,13 +1854,13 @@ fn check_enum_variants(ccx: @crate_ctxt,
                        vs: ~[ast::variant],
                        id: ast::node_id) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
-    let fcx = blank_fn_ctxt(ccx, rty);
     let mut disr_vals: ~[int] = ~[];
     let mut disr_val = 0;
     let mut variants = ~[];
     for vs.each |v| {
         alt v.node.disr_expr {
           some(e) {
+            let fcx = blank_fn_ctxt(ccx, rty, e.id);
             check_expr(fcx, e, none);
             let cty = fcx.expr_ty(e);
             let declty = ty::mk_int(ccx.tcx);
@@ -2003,7 +2040,7 @@ fn instantiate_path(fcx: @fn_ctxt,
         some(ast_region_to_region(fcx, fcx, sp, r))
       }
       none if tpt.rp => {
-        some(fcx.infcx.next_region_var())
+        some(fcx.infcx.next_region_var_nb())
       }
       none => {
         none
@@ -2037,8 +2074,7 @@ fn instantiate_path(fcx: @fn_ctxt,
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
-    alt infer::resolve_shallow(fcx.infcx, tp,
-                               force_ty_vars_only) {
+    alt infer::resolve_type(fcx.infcx, tp, force_tvar) {
       result::ok(t_s) if !ty::type_is_var(t_s) { ret t_s; }
       _ {
         fcx.ccx.tcx.sess.span_fatal

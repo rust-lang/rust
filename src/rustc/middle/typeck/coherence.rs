@@ -242,7 +242,7 @@ class CoherenceChecker {
     fn universally_quantify_polytype(polytype: ty_param_bounds_and_ty) -> t {
         let self_region =
             if polytype.rp {none}
-            else {some(self.inference_context.next_region_var())};
+            else {some(self.inference_context.next_region_var_nb())};
 
         let bounds_count = polytype.bounds.len();
         let type_parameters =

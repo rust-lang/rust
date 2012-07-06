@@ -8,13 +8,19 @@ know whether a given type will be a region pointer or not until this
 phase.
 
 In particular, we ensure that, if the type of an expression or
-variable is `&r.T`, then the expression or variable must occur within
-the region scope `r`.
+variable is `&r/T`, then the expression or variable must occur within
+the region scope `r`.  Note that in some cases `r` may still be a
+region variable, so this gives us a chance to influence the value for
+`r` that we infer to ensure we choose a value large enough to enclose
+all uses.  There is a lengthy comment in visit_node() that explains
+this point a bit better.
 
 */
 
 import util::ppaux;
 import syntax::print::pprust;
+import infer::{resolve_type, resolve_all, force_all,
+               resolve_rvar, force_rvar};
 
 type rcx = @{fcx: @fn_ctxt, mut errors_reported: uint};
 type rvt = visit::vt<rcx>;
@@ -114,8 +120,31 @@ fn visit_node(id: ast::node_id, span: span, rcx: rcx) -> bool {
     // Try to resolve the type.  If we encounter an error, then typeck
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
+    //
+    // Note one important point: we do not attempt to resolve *region
+    // variables* here.  This is because regionck is essentially adding
+    // constraints to those region variables and so may yet influence
+    // how they are resolved.
+    //
+    // Consider this silly example:
+    //
+    //     fn borrow(x: &int) -> &int {x}
+    //     fn foo(x: @int) -> int {  /* block: B */
+    //         let b = borrow(x);    /* region: <R0> */
+    //         *b
+    //     }
+    //
+    // Here, the region of `b` will be `<R0>`.  `<R0>` is constrainted
+    // to be some subregion of the block B and some superregion of
+    // the call.  If we forced it now, we'd choose the smaller region
+    // (the call).  But that would make the *b illegal.  Since we don't
+    // resolve, the type of b will be `&<R0>.int` and then `*b` will require
+    // that `<R0>` be bigger than the let and the `*b` expression, so we
+    // will effectively resolve `<R0>` to be the block B.
     let ty0 = fcx.node_ty(id);
-    let ty = alt infer::resolve_deep(fcx.infcx, ty0, force_none) {
+    let ty = alt resolve_type(fcx.infcx, ty0,
+                              (resolve_all | force_all) -
+                              (resolve_rvar | force_rvar)) {
       result::err(_) { ret true; }
       result::ok(ty) { ty }
     };
@@ -161,11 +190,12 @@ fn visit_node(id: ast::node_id, span: span, rcx: rcx) -> bool {
 
         alt rcx.fcx.mk_subr(encl_region, region) {
           result::err(_) {
+            let region1 = rcx.fcx.infcx.resolve_region_if_possible(region);
             tcx.sess.span_err(
                 span,
                 #fmt["reference is not valid outside \
                       of its lifetime, %s",
-                     ppaux::region_to_str(tcx, region)]);
+                     ppaux::region_to_str(tcx, region1)]);
             rcx.errors_reported += 1u;
           }
           result::ok(()) {

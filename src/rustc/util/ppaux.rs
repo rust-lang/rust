@@ -43,7 +43,11 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
             #fmt("<alt at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap))
           }
-          ast::expr_field(*) | ast::expr_unary(*) | ast::expr_binary(*) {
+          ast::expr_assign_op(*) |
+          ast::expr_field(*) |
+          ast::expr_unary(*) |
+          ast::expr_binary(*) |
+          ast::expr_index(*) {
             #fmt("<method at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap))
           }

@@ -19,7 +19,7 @@ class lookup {
     let fcx: @fn_ctxt;
     let expr: @ast::expr;
     let self_expr: @ast::expr;
-    let borrow_scope: ast::node_id;
+    let borrow_lb: ast::node_id;
     let node_id: ast::node_id;
     let m_name: ast::ident;
     let mut self_ty: ty::t;
@@ -32,7 +32,7 @@ class lookup {
     new(fcx: @fn_ctxt,
         expr: @ast::expr,           //expr for a.b in a.b()
         self_expr: @ast::expr,      //a in a.b(...)
-        borrow_scope: ast::node_id, //scope to borrow the expr for
+        borrow_lb: ast::node_id, //scope to borrow the expr for
         node_id: ast::node_id,      //node id where to store type of fn
         m_name: ast::ident,         //b in a.b(...)
         self_ty: ty::t,             //type of a in a.b(...)
@@ -42,7 +42,7 @@ class lookup {
         self.fcx = fcx;
         self.expr = expr;
         self.self_expr = self_expr;
-        self.borrow_scope = borrow_scope;
+        self.borrow_lb = borrow_lb;
         self.node_id = node_id;
         self.m_name = m_name;
         self.self_ty = self_ty;
@@ -315,7 +315,7 @@ class lookup {
                     // type assignability. Collect the matches.
                     let matches = if use_assignability {
                         self.fcx.can_mk_assignty(
-                            self.self_expr, self.borrow_scope,
+                            self.self_expr, self.borrow_lb,
                             self.self_ty, impl_ty)
                     } else {
                         self.fcx.can_mk_subty(self.self_ty, impl_ty)
@@ -377,7 +377,7 @@ class lookup {
         // Make the actual receiver type (cand.self_ty) assignable to the
         // required receiver type (cand.rcvr_ty).  If this method is not
         // from an impl, this'll basically be a no-nop.
-        alt self.fcx.mk_assignty(self.self_expr, self.borrow_scope,
+        alt self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
                                  cand.self_ty, cand.rcvr_ty) {
           result::ok(_) {}
           result::err(_) {
