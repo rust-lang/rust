@@ -341,7 +341,7 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         print_type(s, mt.ty);
         word(s.s, "]");
       }
-      ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
+      ast::ty_ptr(mt) { word(s.s, "^"); print_mt(s, mt); }
       ast::ty_rptr(region, mt) {
         alt region.node {
           ast::re_anon { word(s.s, "&"); }
