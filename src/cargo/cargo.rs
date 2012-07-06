@@ -751,7 +751,7 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
             #debug("  lib: %s", ct);
             install_to_dir(ct, c.libdir);
         }
-  }
+    }
 }
 
 
@@ -799,6 +799,7 @@ fn install_source(c: cargo, path: str) {
                     };
 
                     install_query(c, wd, query);
+                }
 
                 os::change_dir(path);
 
@@ -809,7 +810,6 @@ fn install_source(c: cargo, path: str) {
             }
         }
     }
-  }
 }
 
 fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
