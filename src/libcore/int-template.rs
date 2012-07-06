@@ -241,6 +241,7 @@ fn test_times() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(windows))]
 fn test_times_negative() {
     for (-10).times { log(error, "nope!"); }
 }
