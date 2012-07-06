@@ -3644,7 +3644,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             assert dest == ignore;
             ret trans_break(bcx);
           }
-          ast::expr_cont {
+          ast::expr_again {
             assert dest == ignore;
             ret trans_cont(bcx);
           }

@@ -966,8 +966,9 @@ class parser {
         } else if self.eat_keyword("break") {
             ex = expr_break;
             hi = self.span.hi;
-        } else if self.eat_keyword("cont") {
-            ex = expr_cont;
+        } else if self.eat_keyword("cont") ||
+            self.eat_keyword("again") {
+            ex = expr_again;
             hi = self.span.hi;
         } else if self.eat_keyword("copy") {
             let e = self.parse_expr();

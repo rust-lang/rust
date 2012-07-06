@@ -56,9 +56,9 @@
 					"trait" "fn" "enum" "iface"
 					"impl"))
       (puthash word 'def table))
-    (dolist (word '("assert"
+    (dolist (word '("again" "assert"
                     "break"
-                    "check" "claim" "cont" "copy"
+                    "check" "claim" "copy"
                     "do" "drop"
                     "else" "export" "extern"
                     "fail" "for"

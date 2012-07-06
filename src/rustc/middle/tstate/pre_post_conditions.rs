@@ -446,7 +446,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         join_then_else(fcx, p, conseq, maybe_alt, e.id, if_check);
       }
       expr_break { clear_pp(expr_pp(fcx.ccx, e)); }
-      expr_cont { clear_pp(expr_pp(fcx.ccx, e)); }
+      expr_again { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
     }
 }

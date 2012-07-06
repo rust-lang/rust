@@ -783,7 +783,7 @@ a specific value, are not allowed.
 
 `while` produces a loop that runs as long as its given condition
 (which must have type `bool`) evaluates to true. Inside a loop, the
-keyword `break` can be used to abort the loop, and `cont` can be used
+keyword `break` can be used to abort the loop, and `again` can be used
 to abort the current iteration and continue with the next.
 
 ~~~~
@@ -1187,7 +1187,7 @@ Empty argument lists can be omitted from `do` expressions.
 
 Most iteration in Rust is done with `for` loops. Like `do`,
 `for` is a nice syntax for doing control flow with closures.
-Additionally, within a `for` loop, `break, `cont`, and `ret`
+Additionally, within a `for` loop, `break, `again`, and `ret`
 work just as they do with `while` and `loop`.
 
 Consider again our `each` function, this time improved to
@@ -1221,8 +1221,8 @@ each(~[2, 4, 8, 5, 16], |n| {
 With `for`, functions like `each` can be treated more
 like builtin looping structures. When calling `each`
 in a `for` loop, instead of returning `false` to break
-out of the loop, you just write `break`. To continue
-to the next iteration, write `cont`.
+out of the loop, you just write `break`. To skip ahead
+to the next iteration, write `again`.
 
 ~~~~
 # import each = vec::each;

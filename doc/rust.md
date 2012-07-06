@@ -209,9 +209,9 @@ import export use mod
 The keywords in [source files](#source-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-alt assert
+alt again assert
 break
-check claim class const cont copy
+check claim class const copy
 drop
 else enum export extern
 fail false fn for
@@ -2034,19 +2034,19 @@ break_expr : "break" ;
 Executing a `break` expression immediately terminates the innermost loop
 enclosing it. It is only permitted in the body of a loop.
 
-### Continue expressions
+### Again expressions
 
 ~~~~~~~~{.ebnf .gram}
-break_expr : "cont" ;
+again_expr : "again" ;
 ~~~~~~~~
 
-Evaluating a `cont` expression immediately terminates the current iteration of
+Evaluating an `again` expression immediately terminates the current iteration of
 the innermost loop enclosing it, returning control to the loop *head*. In the
 case of a `while` loop, the head is the conditional expression controlling the
-loop. In the case of a `for` loop, the head is the vector-element increment
-controlling the loop.
+loop. In the case of a `for` loop, the head is the call-expression controlling
+the loop.
 
-A `cont` expression is only permitted in the body of a loop.
+An `again` expression is only permitted in the body of a loop.
 
 
 ### For expressions

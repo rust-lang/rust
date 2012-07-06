@@ -304,8 +304,7 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
 fn restricted_keyword_table() -> hashmap<str, ()> {
     let words = str_hash();
     let keys = ~[
-        "alt",
-        "assert",
+        "alt", "again", "assert",
         "break",
         "check", "claim", "class", "const", "cont", "copy",
         "do", "drop",

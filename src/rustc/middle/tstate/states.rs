@@ -498,7 +498,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret join_then_else(fcx, p, conseq, maybe_alt, e.id, if_check, pres);
       }
       expr_break { ret pure_exp(fcx.ccx, e.id, pres); }
-      expr_cont { ret pure_exp(fcx.ccx, e.id, pres); }
+      expr_again { ret pure_exp(fcx.ccx, e.id, pres); }
     }
 }
 

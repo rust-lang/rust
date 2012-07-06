@@ -42,7 +42,7 @@ fn common_exprs() -> ~[ast::expr] {
     }
 
     ~[dse(ast::expr_break),
-     dse(ast::expr_cont),
+     dse(ast::expr_again),
      dse(ast::expr_fail(option::none)),
      dse(ast::expr_fail(option::some(
          @dse(ast::expr_lit(@dsl(ast::lit_str(@"boo"))))))),

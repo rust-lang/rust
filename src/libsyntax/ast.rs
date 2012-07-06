@@ -336,7 +336,7 @@ enum expr_ {
     expr_addr_of(mutability, @expr),
     expr_fail(option<@expr>),
     expr_break,
-    expr_cont,
+    expr_again,
     expr_ret(option<@expr>),
     expr_log(int, @expr, @expr),
 

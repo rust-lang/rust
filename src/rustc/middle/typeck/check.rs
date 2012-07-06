@@ -1220,7 +1220,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_bot(id);
       }
       ast::expr_break { fcx.write_bot(id); bot = true; }
-      ast::expr_cont { fcx.write_bot(id); bot = true; }
+      ast::expr_again { fcx.write_bot(id); bot = true; }
       ast::expr_ret(expr_opt) {
         bot = true;
         let ret_ty = alt fcx.indirect_ret_ty {

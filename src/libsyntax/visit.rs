@@ -421,7 +421,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_path(p) { visit_path(p, e, v); }
       expr_fail(eo) { visit_expr_opt(eo, e, v); }
       expr_break { }
-      expr_cont { }
+      expr_again { }
       expr_ret(eo) { visit_expr_opt(eo, e, v); }
       expr_log(_, lv, x) {
         v.visit_expr(lv, e, v);

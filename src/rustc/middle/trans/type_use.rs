@@ -242,7 +242,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         })
       }
       expr_alt(_, _, _) | expr_block(_) | expr_if(_, _, _) |
-      expr_while(_, _) | expr_fail(_) | expr_break | expr_cont |
+      expr_while(_, _) | expr_fail(_) | expr_break | expr_again |
       expr_unary(_, _) | expr_lit(_) | expr_assert(_) | expr_check(_, _) |
       expr_if_check(_, _, _) | expr_mac(_) | expr_addr_of(_, _) |
       expr_ret(_) | expr_loop(_) |

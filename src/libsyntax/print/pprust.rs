@@ -1063,7 +1063,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
       }
       ast::expr_break { word(s.s, "break"); }
-      ast::expr_cont { word(s.s, "cont"); }
+      ast::expr_again { word(s.s, "again"); }
       ast::expr_ret(result) {
         word(s.s, "ret");
         alt result {

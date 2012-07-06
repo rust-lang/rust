@@ -464,7 +464,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           }
           expr_path(pth) { expr_path(fld.fold_path(pth)) }
           expr_fail(e) { expr_fail(option::map(e, fld.fold_expr)) }
-          expr_break | expr_cont { copy e }
+          expr_break | expr_again { copy e }
           expr_ret(e) { expr_ret(option::map(e, fld.fold_expr)) }
           expr_log(i, lv, e) { expr_log(i, fld.fold_expr(lv),
                                         fld.fold_expr(e)) }

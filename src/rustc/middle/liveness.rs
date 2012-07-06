@@ -470,7 +470,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       expr_assert(*) | expr_check(*) | expr_addr_of(*) | expr_copy(*) |
       expr_loop_body(*) | expr_do_body(*) | expr_cast(*) |
       expr_unary(*) | expr_fail(*) |
-      expr_break | expr_cont | expr_lit(_) | expr_ret(*) |
+      expr_break | expr_again | expr_lit(_) | expr_ret(*) |
       expr_block(*) | expr_move(*) | expr_assign(*) | expr_swap(*) |
       expr_assign_op(*) | expr_mac(*) {
           visit::visit_expr(expr, self, vt);
@@ -1009,7 +1009,7 @@ class liveness {
             self.break_ln
           }
 
-          expr_cont {
+          expr_again {
             if !self.cont_ln.is_valid() {
                 self.tcx.sess.span_bug(
                     expr.span, "cont with invalid cont_ln");
@@ -1457,7 +1457,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_assert(*) | expr_check(*) | expr_copy(*) |
       expr_loop_body(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_fail(*) |
-      expr_ret(*) | expr_break | expr_cont | expr_lit(_) |
+      expr_ret(*) | expr_break | expr_again | expr_lit(_) |
       expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) {
         visit::visit_expr(expr, self, vt);
       }
