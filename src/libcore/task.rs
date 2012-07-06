@@ -1207,6 +1207,44 @@ fn test_unkillable() {
 }
 
 #[test]
+#[ignore(cfg(windows))]
+#[should_fail]
+fn test_unkillable_nested() {
+    import comm::methods;
+    let po = comm::port();
+    let ch = po.chan();
+
+    // We want to do this after failing
+    do spawn {
+        for iter::repeat(10u) { yield() }
+        ch.send(());
+    }
+
+    do spawn {
+        yield();
+        // We want to fail after the unkillable task
+        // blocks on recv
+        fail;
+    }
+
+    unsafe {
+        do unkillable {
+            do unkillable {} // Here's the difference from the previous test.
+            let p = ~0;
+            let pp: *uint = unsafe::transmute(p);
+
+            // If we are killed here then the box will leak
+            po.recv();
+
+            let _p: ~int = unsafe::transmute(pp);
+        }
+    }
+
+    // Now we can be killed
+    po.recv();
+}
+
+#[test]
 fn test_tls_multitask() unsafe {
     fn my_key(+_x: @str) { }
     local_data_set(my_key, @"parent data");
