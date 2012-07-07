@@ -1,7 +1,8 @@
 " Vim syntax file
 " Language:     Rust
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
-" Last Change:  2010 Oct 13
+" Maintainer:   Ben Blum <bblum@mozilla.com>
+" Last Change:  2012 Jul 06
 
 if version < 600
   syntax clear
@@ -12,8 +13,8 @@ endif
 syn keyword   rustAssert      assert
 syn match     rustAssert      "assert\(\w\)*"
 syn keyword   rustKeyword     alt as break
-syn keyword   rustKeyword     check claim cont const copy else export extern fail
-syn keyword   rustKeyword     do drop for if impl import in let log
+syn keyword   rustKeyword     check claim cont const copy do drop else export extern fail
+syn keyword   rustKeyword     for if impl import in let log
 syn keyword   rustKeyword     loop mod mut new of pure
 syn keyword   rustKeyword     ret self to unchecked
 syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
@@ -30,6 +31,16 @@ syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128
 
 syn keyword   rustType        any int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str
+syn keyword   rustType        option either
+
+" Types from libc
+syn keyword   rustType        c_float c_double c_void FILE fpos_t
+syn keyword   rustType        DIR dirent
+syn keyword   rustType        c_char c_schar c_uchar
+syn keyword   rustType        c_short c_ushort c_int c_uint c_long c_ulong
+syn keyword   rustType        size_t ptrdiff_t clock_t time_t
+syn keyword   rustType        c_longlong c_ulonglong intptr_t uintptr_t
+syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 
 syn keyword   rustBoolean     true false
 
@@ -37,8 +48,18 @@ syn keyword   rustConstant    some none       " option
 syn keyword   rustConstant    left right      " either
 syn keyword   rustConstant    ok err          " result
 syn keyword   rustConstant    success failure " task
-" syn keyword   rustConstant    cons nil        " list
+syn keyword   rustConstant    cons nil        " list
 " syn keyword   rustConstant    empty node      " tree
+
+" Constants from libc
+syn keyword   rustConstant    EXIT_FAILURE EXIT_SUCCESS RAND_MAX
+syn keyword   rustConstant    EOF SEEK_SET SEEK_CUR SEEK_END _IOFBF _IONBF
+syn keyword   rustConstant    _IOLBF BUFSIZ FOPEN_MAX FILENAME_MAX L_tmpnam
+syn keyword   rustConstant    TMP_MAX O_RDONLY O_WRONLY O_RDWR O_APPEND O_CREAT
+syn keyword   rustConstant    O_EXCL O_TRUNC S_IFIFO S_IFCHR S_IFBLK S_IFDIR
+syn keyword   rustConstant    S_IFREG S_IFMT S_IEXEC S_IWRITE S_IREAD S_IRWXU
+syn keyword   rustConstant    S_IXUSR S_IWUSR S_IRUSR F_OK R_OK W_OK X_OK
+syn keyword   rustConstant    STDIN_FILENO STDOUT_FILENO STDERR_FILENO
 
 " If foo::bar changes to foo.bar, change this ("::" to "\.").
 " If foo::bar changes to Foo::bar, change this (first "\w" to "\u").
