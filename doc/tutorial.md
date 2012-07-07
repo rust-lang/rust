@@ -876,6 +876,39 @@ while (x > 10) { x -= 10; }
 assert x == 10;
 ~~~~
 
+# Functions
+
+Like all other static declarations, such as `type`, functions can be
+declared both at the top level and inside other functions (or modules,
+which we'll come back to in moment).
+
+The `ret` keyword immediately returns from a function. It is
+optionally followed by an expression to return. In functions that
+return `()`, the returned expression can be left off. A function can
+also return a value by having its top level block produce an
+expression (by omitting the final semicolon).
+
+Some functions (such as the C function `exit`) never return normally.
+In Rust, these are annotated with the pseudo-return type '`!`':
+
+~~~~
+fn dead_end() -> ! { fail; }
+~~~~
+
+This helps the compiler avoid spurious error messages. For example,
+the following code would be a type error if `dead_end` would be
+expected to return.
+
+~~~~
+# fn can_go_left() -> bool { true }
+# fn can_go_right() -> bool { true }
+# enum dir { left, right }
+# fn dead_end() -> ! { fail; }
+let dir = if can_go_left() { left }
+          else if can_go_right() { right }
+          else { dead_end(); };
+~~~~
+
 # The Rust Memory Model
 
 At this junction let's take a detour to explain the concepts involved
@@ -951,40 +984,7 @@ and the unique pointer (`~T`). These three sigils will appear
 repeatedly as we explore the language. Learning the appropriate role
 of each is key to using Rust effectively.
 
-# Functions
-
-Like all other static declarations, such as `type`, functions can be
-declared both at the top level and inside other functions (or modules,
-which we'll come back to in moment).
-
-The `ret` keyword immediately returns from a function. It is
-optionally followed by an expression to return. In functions that
-return `()`, the returned expression can be left off. A function can
-also return a value by having its top level block produce an
-expression (by omitting the final semicolon).
-
-Some functions (such as the C function `exit`) never return normally.
-In Rust, these are annotated with the pseudo-return type '`!`':
-
-~~~~
-fn dead_end() -> ! { fail; }
-~~~~
-
-This helps the compiler avoid spurious error messages. For example,
-the following code would be a type error if `dead_end` would be
-expected to return.
-
-~~~~
-# fn can_go_left() -> bool { true }
-# fn can_go_right() -> bool { true }
-# enum dir { left, right }
-# fn dead_end() -> ! { fail; }
-let dir = if can_go_left() { left }
-          else if can_go_right() { right }
-          else { dead_end(); };
-~~~~
-
-## Closures
+# Closures
 
 Named functions, like those in the previous section, may not refer
 to local variables decalared outside the function - they do not
@@ -1039,7 +1039,7 @@ position and cannot be stored in structures nor returned from
 functions. Despite the limitations stack closures are used
 pervasively in Rust code.
 
-### Boxed closures
+## Boxed closures
 
 When you need to store a closure in a data structure, a stack closure
 will not do, since the compiler will refuse to let you store it. For
@@ -1081,7 +1081,7 @@ fn mk_appender(suffix: str) -> fn@(str) -> str {
 }
 ~~~~
 
-### Unique closures
+## Unique closures
 
 Unique closures, written `fn~` in analogy to the `~` pointer type (see
 next section), hold on to things that can safely be sent between
@@ -1090,7 +1090,7 @@ closures, but they also 'own' them—meaning no other code can access
 them. Unique closures are used in concurrent code, particularly
 for spawning [tasks](#tasks).
 
-### Closure compatibility
+## Closure compatibility
 
 A nice property of Rust closures is that you can pass any kind of
 closure (as long as the arguments and return types match) to functions
