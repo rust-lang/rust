@@ -9,7 +9,6 @@ import filesearch::filesearch;
 import io::writer_util;
 
 export os;
-export os_macos, os_win32, os_linux, os_freebsd;
 export ctxt;
 export load_library_crate;
 export list_file_metadata;

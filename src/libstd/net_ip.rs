@@ -25,7 +25,6 @@ export ip_addr, parse_addr_err;
 export format_addr;
 export v4, v6;
 export get_addr;
-export ipv4, ipv6;
 
 /// An IP address
 enum ip_addr {

@@ -9,7 +9,6 @@ export lit;
 export cmnt_style;
 export gather_comments_and_literals;
 export is_doc_comment, doc_comment_style, strip_doc_comment_decoration;
-export isolated, trailing, mixed, blank_line;
 
 enum cmnt_style {
     isolated, // No code on either side of each line of the comment

@@ -7,8 +7,6 @@ export config;
 export default_config;
 export parse_config;
 export usage;
-export markdown, pandoc_html;
-export doc_per_crate, doc_per_mod;
 
 /// The type of document to output
 enum output_format {

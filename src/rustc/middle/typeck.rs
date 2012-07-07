@@ -75,8 +75,6 @@ export deserialize_method_map_entry;
 export vtable_map;
 export vtable_res;
 export vtable_origin;
-export method_static, method_param, method_trait;
-export vtable_static, vtable_param, vtable_trait;
 
 #[auto_serialize]
 enum method_origin {

@@ -1,4 +1,4 @@
-// error-pattern: import
+// error-pattern: unresolved import
 
 import m::unexported;
 
