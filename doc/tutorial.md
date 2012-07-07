@@ -880,19 +880,57 @@ their arguments are also lazily evaluated.
 
 Like all other static declarations, such as `type`, functions can be
 declared both at the top level and inside other functions (or modules,
-which we'll come back to in moment).
+which we'll come back to [later](#modules-and-crates)).
 
-The `ret` keyword immediately returns from a function. It is
-optionally followed by an expression to return. In functions that
-return `()`, the returned expression can be left off. A function can
+We've already seen several function definitions. They are introduced
+with the `fn` keyword. The type of arguments are specified following
+colons and the return type follows the arrow.
+
+~~~~
+fn int_to_str(i: int) -> str {
+    ret "tube sock";
+}
+~~~~
+
+The `ret` keyword immediately returns from the body of a function. It
+is optionally followed by an expression to return. A function can
 also return a value by having its top level block produce an
-expression (by omitting the final semicolon).
+expression.
+
+~~~~
+# const copernicus: int = 0;
+fn int_to_str(i: int) -> str {
+    if i == copernicus {
+        ret "tube sock";
+    } else {
+        ret "violin";
+    }
+}
+~~~~
+
+~~~~
+# const copernicus: int = 0;
+fn int_to_str(i: int) -> str {
+    if i == copernicus { "tube sock" }
+    else { "violin" }
+}
+~~~~
+
+Functions that do not return a value are said to return nil, `()`,
+and both the return type and the return value may be omitted from
+the definition. The following two functions are equivalent.
+
+~~~~
+fn do_nothing_the_hard_way() -> () { ret (); }
+
+fn do_nothing_the_easy_way() { }
+~~~~
 
 Some functions (such as the C function `exit`) never return normally.
 In Rust, these are annotated with the pseudo-return type '`!`':
 
 ~~~~
-fn dead_end() -> ! { fail; }
+fn dead_end() -> ! { fail }
 ~~~~
 
 This helps the compiler avoid spurious error messages. For example,
@@ -908,6 +946,8 @@ let dir = if can_go_left() { left }
           else if can_go_right() { right }
           else { dead_end(); };
 ~~~~
+
+
 
 # The Rust Memory Model
 
