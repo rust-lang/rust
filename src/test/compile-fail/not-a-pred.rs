@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: lt is not declared pure
+// error-pattern: lt
 
 fn f(a: int, b: int) : lt(a, b) { }
 

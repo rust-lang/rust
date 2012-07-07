@@ -1,4 +1,4 @@
-// error-pattern:unresolved typename: nonexistent
+// error-pattern:nonexistent
 class cat : nonexistent {
   let meows: uint;
   new(in_x : uint) { self.meows = in_x; }

@@ -63,6 +63,12 @@ export local_data_get;
 export local_data_set;
 export local_data_modify;
 
+export single_threaded;
+export thread_per_core;
+export thread_per_task;
+export manual_threads;
+export osmain;
+
 /* Data types */
 
 /// A handle to a task

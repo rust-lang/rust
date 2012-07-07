@@ -16,10 +16,8 @@ export parse_from_source_str;
 // unresolved import errors. Maybe resolve3 will fix it.
 import common::*;
 import parser::parser;
-//import attr::parser_attr;
-import attr::*; //resolve bug?
-//import common::parser_common;
-import common::*; //resolve bug?
+import attr::parser_attr;
+import common::parser_common;
 import ast::node_id;
 import util::interner;
 // FIXME (#1935): resolve badness

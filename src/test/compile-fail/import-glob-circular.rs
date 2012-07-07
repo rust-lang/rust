@@ -1,5 +1,5 @@
+// error-pattern: unresolved
 
-// error-pattern: unresolved name
 mod circ1 {
     import circ1::*;
     export f1;
