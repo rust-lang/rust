@@ -819,6 +819,21 @@ handle the failure, allowing the program to continue running.
 to access a vector out of bounds, or running a pattern match with no
 matching clauses, both result in the equivalent of a `fail`.
 
+## Assertions
+
+The keyword `assert`, followed by an expression with boolean type,
+will check that the given expression results in `true`, and cause a
+failure otherwise. It is typically used to double-check things that
+*should* hold at a certain point in a program. `assert` statements are
+always active; there is no way to build Rust code with assertions
+disabled.
+
+~~~~
+let mut x = 100;
+while (x > 10) { x -= 10; }
+assert x == 10;
+~~~~
+
 ## Logging
 
 Rust has a built-in logging mechanism, using the `log` statement.
@@ -860,21 +875,6 @@ and will log the formatted string:
 
 Because the macros `#debug`, `#warn`, and `#error` expand to calls to `log`,
 their arguments are also lazily evaluated.
-
-## Assertions
-
-The keyword `assert`, followed by an expression with boolean type,
-will check that the given expression results in `true`, and cause a
-failure otherwise. It is typically used to double-check things that
-*should* hold at a certain point in a program. `assert` statements are
-always active; there is no way to build Rust code with assertions
-disabled.
-
-~~~~
-let mut x = 100;
-while (x > 10) { x -= 10; }
-assert x == 10;
-~~~~
 
 # Functions
 
