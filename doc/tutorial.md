@@ -1553,8 +1553,8 @@ let y = x; // Copy the pointer, increase refcount
 // When x and y go out of scope, refcount goes to 0, box is freed
 ~~~~
 
-***Note:*** We will in the future switch to garbage collection, rather
-than reference counting, for shared boxes.
+> ***Note:*** We will in the future switch to garbage collection,
+> rather than reference counting, for shared boxes.
 
 Shared boxes never cross task boundaries.
 
@@ -1642,8 +1642,8 @@ Rust vectors are always heap-allocated and unique. A value of type
 `~[T]` is represented by a pointer to a section of heap memory
 containing any number of values of type `T`.
 
-***Note:*** This uniqueness is turning out to be quite awkward in
-practice, and might change in the future.
+> ***Note:*** This uniqueness is turning out to be quite awkward in
+> practice, and might change in the future.
 
 Vector literals are enclosed in square brackets. Dereferencing is done
 with square brackets (zero-based):
@@ -1676,10 +1676,10 @@ logarithmically, so the above code generates about the same amount of
 copying and reallocation as `push` implementations in most other
 languages.
 
-***Note:*** Actually, currently, growing a vector is *exactly* as
-inefficient as it looks, since vector `+` has been moved to the
-libraries and Rust's operator overloading support is insufficient to
-allow this optimization. Try using `vec::push`.
+> ***Note:*** Actually, currently, growing a vector is *exactly* as
+> inefficient as it looks, since vector `+` has been moved to the
+> libraries and Rust's operator overloading support is insufficient to
+> allow this optimization. Try using `vec::push`.
 
 ## Strings
 
@@ -1946,8 +1946,8 @@ fn plus1(&&x: int) -> int { x + 1 }
 vec::map(~[1, 2, 3], plus1);
 ~~~~
 
-***Note:***: This is inconvenient, and we are hoping to get rid of this
-restriction in the future.
+> ***Note:*** This is inconvenient, and we are hoping to get rid of
+> this restriction in the future.
 
 # Modules and crates
 
@@ -2222,8 +2222,8 @@ object-oriented languages tend to solve with methods and inheritance.
 For example, writing a function that can operate on multiple types of
 collections.
 
-***Note:***: This feature is very new, and will need a few extensions to be
-applicable to more advanced use cases.
+> ***Note:*** This feature is very new, and will need a few extensions to be
+> applicable to more advanced use cases.
 
 ## Declaration
 
@@ -2663,8 +2663,8 @@ copying it by making use of [unique boxes](#unique-boxes), which allow
 the sending task to release ownership of a value, so that the
 receiving task can keep on using it.
 
-***Note:***: As Rust evolves, we expect the task API to grow and change
-somewhat.  The tutorial documents the API as it exists today.
+> ***Note:*** As Rust evolves, we expect the task API to grow and
+> change somewhat.  The tutorial documents the API as it exists today.
 
 ## Spawning a task
 

@@ -57,3 +57,10 @@ h1.title {
   background-repeat: no-repeat;
   background-position: right;
 }
+
+blockquote {
+    color: black;
+    background-color: lavender;
+    margin: 1em;
+    padding: 0.5em 1em 0.5em 1em;
+}
