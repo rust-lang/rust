@@ -83,7 +83,7 @@ fn main() {
     // Open a channel to receive game results
     do listen |result_from_game| {
 
-        let  = 10;
+        let times = 10;
         let player1 = "graydon";
         let player2 = "patrick";
 
