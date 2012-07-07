@@ -1341,6 +1341,12 @@ let foo_ptr;
 }
 ~~~~
 
+> ***Note:*** borrowed pointers are a new addition to the language.
+> They are not used extensively yet but are expected to become the
+> pointer type used in many common situations, in particular for
+> by-reference argument passing. Rust's current solution for passing
+> arguments by reference is [argument modes](#argument-passing).
+
 ## Mutability
 
 All pointer types have a mutable variant, written `@mut T` or `~mut
