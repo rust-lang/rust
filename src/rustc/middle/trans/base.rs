@@ -2392,16 +2392,18 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
             ccx, node_id_type(bcx, id))));
     }
 
-    // FIXME: Need to support extern-ABI functions (#1840)
-    if fn_id.crate == ast::local_crate {
-        alt bcx.tcx().def_map.find(id) {
-          some(ast::def_fn(_, ast::extern_fn)) {
+    alt ty::get(tpt.ty).struct {
+      ty::ty_fn(fn_ty) {
+        alt fn_ty.purity {
+          ast::extern_fn {
             // Extern functions are just opaque pointers
             let val = PointerCast(bcx, val, T_ptr(T_i8()));
             ret lval_no_env(bcx, val, owned_imm);
           }
-          _ { }
+          _ { /* fall through */ }
         }
+      }
+      _ { /* fall through */ }
     }
 
     ret {bcx: bcx, val: val, kind: owned, env: null_env};

@@ -527,7 +527,7 @@ fn purity_fn_family(p: purity) -> char {
       unsafe_fn { 'u' }
       pure_fn { 'p' }
       impure_fn { 'f' }
-      extern_fn { 'c' }
+      extern_fn { 'F' }
     }
 }
 
