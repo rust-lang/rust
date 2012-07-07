@@ -883,7 +883,7 @@ declared both at the top level and inside other functions (or modules,
 which we'll come back to [later](#modules-and-crates)).
 
 We've already seen several function definitions. They are introduced
-with the `fn` keyword. The type of arguments are specified following
+with the `fn` keyword, the type of arguments are specified following
 colons and the return type follows the arrow.
 
 ~~~~
@@ -947,7 +947,211 @@ let dir = if can_go_left() { left }
           else { dead_end(); };
 ~~~~
 
+# Basic datatypes
 
+The core datatypes of Rust are structural records, enums (tagged
+unions, algebraic data types), and tuples. They are immutable
+by default.
+
+~~~~
+type point = {x: float, y: float};
+
+enum shape {
+    circle(point, float),
+    rectangle(point, point)
+}
+~~~~
+
+## Records
+
+Rust record types are written `{field1: T1, field2: T2 [, ...]}`,
+where `T1`, `T2`, ... denote types.  Record literals are written in
+the same way, but with expressions instead of types. They are quite
+similar to C structs, and even laid out the same way in memory (so you
+can read from a Rust struct in C, and vice-versa). The dot operator is
+used to access record fields (`mypoint.x`).
+
+Fields that you want to mutate must be explicitly marked `mut`.
+
+~~~~
+type stack = {content: ~[int], mut head: uint};
+~~~~
+
+With such a type, you can do `mystack.head += 1u`. If `mut` were
+omitted from the type, such an assignment would result in a type
+error.
+
+To create a new record based on the value of an existing record
+you construct it using the `with` keyword:
+
+~~~~
+let oldpoint = {x: 10f, y: 20f};
+let newpoint = {x: 0f with oldpoint};
+assert newpoint == {x: 0f, y: 20f};
+~~~~
+
+This will create a new record, copying all the fields from `oldpoint`
+into it, except for the ones that are explicitly set in the literal.
+
+Rust record types are *structural*. This means that `{x: float, y:
+float}` is not just a way to define a new type, but is the actual name
+of the type. Record types can be used without first defining them. If
+module A defines `type point = {x: float, y: float}`, and module B,
+without knowing anything about A, defines a function that returns an
+`{x: float, y: float}`, you can use that return value as a `point` in
+module A. (Remember that `type` defines an additional name for a type,
+not an actual new type.)
+
+## Record patterns
+
+Records can be destructured in `alt` patterns. The basic syntax is
+`{fieldname: pattern, ...}`, but the pattern for a field can be
+omitted as a shorthand for simply binding the variable with the same
+name as the field.
+
+~~~~
+# let mypoint = {x: 0f, y: 0f};
+alt mypoint {
+    {x: 0f, y: y_name} { /* Provide sub-patterns for fields */ }
+    {x, y}             { /* Simply bind the fields */ }
+}
+~~~~
+
+The field names of a record do not have to appear in a pattern in the
+same order they appear in the type. When you are not interested in all
+the fields of a record, a record pattern may end with `, _` (as in
+`{field1, _}`) to indicate that you're ignoring all other fields.
+
+## Enums
+
+Enums are datatypes that have several alternate representations. For
+example, consider the type shown earlier:
+
+~~~~
+# type point = {x: float, y: float};
+enum shape {
+    circle(point, float),
+    rectangle(point, point)
+}
+~~~~
+
+A value of this type is either a circle, in which case it contains a
+point record and a float, or a rectangle, in which case it contains
+two point records. The run-time representation of such a value
+includes an identifier of the actual form that it holds, much like the
+'tagged union' pattern in C, but with better ergonomics.
+
+The above declaration will define a type `shape` that can be used to
+refer to such shapes, and two functions, `circle` and `rectangle`,
+which can be used to construct values of the type (taking arguments of
+the specified types). So `circle({x: 0f, y: 0f}, 10f)` is the way to
+create a new circle.
+
+Enum variants need not have type parameters. This, for example, is
+equivalent to a C enum:
+
+~~~~
+enum direction {
+    north,
+    east,
+    south,
+    west
+}
+~~~~
+
+This will define `north`, `east`, `south`, and `west` as constants,
+all of which have type `direction`.
+
+When an enum is C-like, that is, when none of the variants have
+parameters, it is possible to explicitly set the discriminator values
+to an integer value:
+
+~~~~
+enum color {
+  red = 0xff0000,
+  green = 0x00ff00,
+  blue = 0x0000ff
+}
+~~~~
+
+If an explicit discriminator is not specified for a variant, the value
+defaults to the value of the previous variant plus one. If the first
+variant does not have a discriminator, it defaults to 0. For example,
+the value of `north` is 0, `east` is 1, etc.
+
+When an enum is C-like the `as` cast operator can be used to get the
+discriminator's value.
+
+<a name="single_variant_enum"></a>
+
+There is a special case for enums with a single variant. These are
+used to define new types in such a way that the new name is not just a
+synonym for an existing type, but its own distinct type. If you say:
+
+~~~~
+enum gizmo_id = int;
+~~~~
+
+That is a shorthand for this:
+
+~~~~
+enum gizmo_id { gizmo_id(int) }
+~~~~
+
+Enum types like this can have their content extracted with the
+dereference (`*`) unary operator:
+
+~~~~
+# enum gizmo_id = int;
+let my_gizmo_id = gizmo_id(10);
+let id_int: int = *my_gizmo_id;
+~~~~
+
+## Enum patterns
+
+For enum types with multiple variants, destructuring is the only way to
+get at their contents. All variant constructors can be used as
+patterns, as in this definition of `area`:
+
+~~~~
+# type point = {x: float, y: float};
+# enum shape { circle(point, float), rectangle(point, point) }
+fn area(sh: shape) -> float {
+    alt sh {
+        circle(_, size) { float::consts::pi * size * size }
+        rectangle({x, y}, {x: x2, y: y2}) { (x2 - x) * (y2 - y) }
+    }
+}
+~~~~
+
+Another example, matching nullary enum variants:
+
+~~~~
+# type point = {x: float, y: float};
+# enum direction { north, east, south, west }
+fn point_from_direction(dir: direction) -> point {
+    alt dir {
+        north { {x:  0f, y:  1f} }
+        east  { {x:  1f, y:  0f} }
+        south { {x:  0f, y: -1f} }
+        west  { {x: -1f, y:  0f} }
+    }
+}
+~~~~
+
+## Tuples
+
+Tuples in Rust behave exactly like records, except that their fields
+do not have names (and can thus not be accessed with dot notation).
+Tuples can have any arity except for 0 or 1 (though you may consider
+nil, `()`, as the empty tuple if you like).
+
+~~~~
+let mytup: (int, int, float) = (10, 20, 30.0);
+alt mytup {
+  (a, b, c) { log(info, a + b + (c as int)); }
+}
+~~~~
 
 # The Rust Memory Model
 
@@ -1023,6 +1227,200 @@ pointer types: the borrowed pointer (`&T`), the shared pointer (`@T`),
 and the unique pointer (`~T`). These three sigils will appear
 repeatedly as we explore the language. Learning the appropriate role
 of each is key to using Rust effectively.
+
+# Pointers
+
+In contrast to a lot of modern languages, record and enum types in
+Rust are not represented as pointers to allocated memory. They are,
+like in C and C++, represented directly. This means that if you `let x
+= {x: 1f, y: 1f};`, you are creating a record on the stack. If you
+then copy it into a data structure, the whole record is copied, not
+just a pointer.
+
+For small records like `point`, this is usually more efficient than
+allocating memory and going through a pointer. But for big records, or
+records with mutable fields, it can be useful to have a single copy on
+the heap, and refer to that through a pointer.
+
+Rust supports several types of pointers. The safe pointer types are
+`@T` for shared boxes allocated on the local heap, `~T`, for
+uniquely-owned boxes allocated on the exchange heap, and `&T`, for
+borrowed pointers, which may point to any memory, and whose lifetimes
+are governed by the call stack.
+
+Rust also has an unsafe pointer, written `*T`, which is a completely
+unchecked pointer type only used in unsafe code (and thus, in typical
+Rust code, very rarely).
+
+All pointer types can be dereferenced with the `*` unary operator.
+
+## Shared boxes
+
+Shared boxes are pointers to heap-allocated, reference counted memory.
+A cycle collector ensures that circular references do not result in
+memory leaks.
+
+Creating a shared box is done by simply applying the unary `@`
+operator to an expression. The result of the expression will be boxed,
+resulting in a box of the right type. For example:
+
+~~~~
+let x = @10; // New box, refcount of 1
+let y = x; // Copy the pointer, increase refcount
+// When x and y go out of scope, refcount goes to 0, box is freed
+~~~~
+
+> ***Note:*** We will in the future switch to garbage collection,
+> rather than reference counting, for shared boxes.
+
+Shared boxes never cross task boundaries.
+
+## Unique boxes
+
+In contrast to shared boxes, unique boxes have a single owner and thus
+two unique boxes may not refer to the same memory. All unique boxes
+across all tasks are allocated on a single _exchange heap_, where
+their uniquely owned nature allows them to be passed between tasks.
+
+Because unique boxes are uniquely owned, copying them involves allocating
+a new unique box and duplicating the contents. Copying unique boxes
+is expensive so the compiler will complain if you do.
+
+~~~~
+let x = ~10;
+let y = x; // error: copying a non-implicitly copyable type
+~~~~
+
+If you really want to copy a unique box you must say so explicitly.
+
+~~~~
+let x = ~10;
+let y = copy x;
+~~~~
+
+This is where the 'move' (`<-`) operator comes in. It is similar to
+`=`, but it de-initializes its source. Thus, the unique box can move
+from `x` to `y`, without violating the constraint that it only has a
+single owner (if you used assignment instead of the move operator, the
+box would, in principle, be copied).
+
+~~~~
+let x = ~10;
+let y <- x;
+~~~~
+
+Unique boxes, when they do not contain any shared boxes, can be sent
+to other tasks. The sending task will give up ownership of the box,
+and won't be able to access it afterwards. The receiving task will
+become the sole owner of the box.
+
+## Borrowed pointers
+
+Rust borrowed pointers are a general purpose reference/pointer type,
+similar to the C++ reference type, but guaranteed to point to valid
+memory. In contrast to unique pointers, where the holder of a unique
+pointer is the owner of the pointed-to memory, borrowed pointers never
+imply ownership. Pointers may be borrowed from any type, in which case
+the pointer is guaranteed not to outlive the value it points to.
+
+~~~~
+# fn work_with_foo_by_pointer(f: &str) { }
+let foo = "foo";
+work_with_foo_by_pointer(&foo);
+~~~~
+
+The following shows an example of what is _not_ possible with borrowed
+pointers. If you were able to write this then the pointer to `foo`
+would outlive `foo` itself.
+
+~~~~ {.ignore}
+let foo_ptr;
+{
+    let foo = "foo";
+    foo_ptr = &foo;
+}
+~~~~
+
+## Mutability
+
+All pointer types have a mutable variant, written `@mut T` or `~mut
+T`. Given such a pointer, you can write to its contents by combining
+the dereference operator with a mutating action.
+
+~~~~
+fn increase_contents(pt: @mut int) {
+    *pt += 1;
+}
+~~~~
+
+# Vectors
+
+Rust vectors are always heap-allocated and unique. A value of type
+`~[T]` is represented by a pointer to a section of heap memory
+containing any number of values of type `T`.
+
+> ***Note:*** This uniqueness is turning out to be quite awkward in
+> practice, and might change in the future.
+
+Vector literals are enclosed in square brackets. Dereferencing is done
+with square brackets (zero-based):
+
+~~~~
+let myvec = ~[true, false, true, false];
+if myvec[1] { io::println("boom"); }
+~~~~
+
+By default, vectors are immutable—you can not replace their elements.
+The type written as `~[mut T]` is a vector with mutable
+elements. Mutable vector literals are written `~[mut]` (empty) or `~[mut
+1, 2, 3]` (with elements).
+
+The `+` operator means concatenation when applied to vector types.
+Growing a vector in Rust is not as inefficient as it looks :
+
+~~~~
+let mut myvec = ~[], i = 0;
+while i < 100 {
+    myvec += ~[i];
+    i += 1;
+}
+~~~~
+
+Because a vector is unique, replacing it with a longer one (which is
+what `+= ~[i]` does) is indistinguishable from appending to it
+in-place. Vector representations are optimized to grow
+logarithmically, so the above code generates about the same amount of
+copying and reallocation as `push` implementations in most other
+languages.
+
+> ***Note:*** Actually, currently, growing a vector is *exactly* as
+> inefficient as it looks, since vector `+` has been moved to the
+> libraries and Rust's operator overloading support is insufficient to
+> allow this optimization. Try using `vec::push`.
+
+## Strings
+
+The `str` type in Rust is represented exactly the same way as a vector
+of bytes (`~[u8]`), except that it is guaranteed to have a trailing
+null byte (for interoperability with C APIs).
+
+This sequence of bytes is interpreted as an UTF-8 encoded sequence of
+characters. This has the advantage that UTF-8 encoded I/O (which
+should really be the default for modern systems) is very fast, and
+that strings have, for most intents and purposes, a nicely compact
+representation. It has the disadvantage that you only get
+constant-time access by byte, not by character.
+
+A lot of algorithms don't need constant-time indexed access (they
+iterate over all characters, which `str::chars` helps with), and
+for those that do, many don't need actual characters, and can operate
+on bytes. For algorithms that do really need to index by character,
+there's the option to convert your string to a character vector (using
+`str::chars`).
+
+Like vectors, strings are always unique. You can wrap them in a shared
+box to share them. Unlike vectors, there is no mutable variant of
+strings. They are always immutable.
 
 # Closures
 
@@ -1288,424 +1686,6 @@ fn contains(v: ~[int], elt: int) -> bool {
 ~~~~
 
 `for` syntax only works with stack closures.
-
-
-# Datatypes
-
-The core datatypes of Rust are structural records, enums (tagged
-unions, algebraic data types), and classes. They are immutable
-by default.
-
-~~~~
-type point = {x: float, y: float};
-
-enum shape {
-    circle(point, float),
-    rectangle(point, point)
-}
-
-class drawing {
-    let mut shapes: [shape];
-
-    new() {
-        self.shapes = [];
-    }
-
-    fn add_shape(new_shape: shape) {
-        self.shapes += [new_shape];
-    }
-}
-
-let my_drawing = drawing();
-my_drawing.add_shape(circle({x: 0.0, y: 0.0}, 10.0));
-~~~~
-
-## Records
-
-Rust record types are written `{field1: T1, field2: T2 [, ...]}`,
-where `T1`, `T2`, ... denote types.  Record literals are written in
-the same way, but with expressions instead of types. They are quite
-similar to C structs, and even laid out the same way in memory (so you
-can read from a Rust struct in C, and vice-versa). The dot operator is
-used to access record fields (`mypoint.x`).
-
-Fields that you want to mutate must be explicitly marked `mut`.
-
-~~~~
-type stack = {content: ~[int], mut head: uint};
-~~~~
-
-With such a type, you can do `mystack.head += 1u`. If `mut` were
-omitted from the type, such an assignment would result in a type
-error.
-
-To create a new record based on the value of an existing record
-you construct it using the `with` keyword:
-
-~~~~
-let oldpoint = {x: 10f, y: 20f};
-let newpoint = {x: 0f with oldpoint};
-assert newpoint == {x: 0f, y: 20f};
-~~~~
-
-This will create a new record, copying all the fields from `oldpoint`
-into it, except for the ones that are explicitly set in the literal.
-
-Rust record types are *structural*. This means that `{x: float, y:
-float}` is not just a way to define a new type, but is the actual name
-of the type. Record types can be used without first defining them. If
-module A defines `type point = {x: float, y: float}`, and module B,
-without knowing anything about A, defines a function that returns an
-`{x: float, y: float}`, you can use that return value as a `point` in
-module A. (Remember that `type` defines an additional name for a type,
-not an actual new type.)
-
-## Record patterns
-
-Records can be destructured in `alt` patterns. The basic syntax is
-`{fieldname: pattern, ...}`, but the pattern for a field can be
-omitted as a shorthand for simply binding the variable with the same
-name as the field.
-
-~~~~
-# let mypoint = {x: 0f, y: 0f};
-alt mypoint {
-    {x: 0f, y: y_name} { /* Provide sub-patterns for fields */ }
-    {x, y}             { /* Simply bind the fields */ }
-}
-~~~~
-
-The field names of a record do not have to appear in a pattern in the
-same order they appear in the type. When you are not interested in all
-the fields of a record, a record pattern may end with `, _` (as in
-`{field1, _}`) to indicate that you're ignoring all other fields.
-
-## Enums
-
-Enums are datatypes that have several alternate representations. For
-example, consider the type shown earlier:
-
-~~~~
-# type point = {x: float, y: float};
-enum shape {
-    circle(point, float),
-    rectangle(point, point)
-}
-~~~~
-
-A value of this type is either a circle, in which case it contains a
-point record and a float, or a rectangle, in which case it contains
-two point records. The run-time representation of such a value
-includes an identifier of the actual form that it holds, much like the
-'tagged union' pattern in C, but with better ergonomics.
-
-The above declaration will define a type `shape` that can be used to
-refer to such shapes, and two functions, `circle` and `rectangle`,
-which can be used to construct values of the type (taking arguments of
-the specified types). So `circle({x: 0f, y: 0f}, 10f)` is the way to
-create a new circle.
-
-Enum variants need not have type parameters. This, for example, is
-equivalent to a C enum:
-
-~~~~
-enum direction {
-    north,
-    east,
-    south,
-    west
-}
-~~~~
-
-This will define `north`, `east`, `south`, and `west` as constants,
-all of which have type `direction`.
-
-When an enum is C-like, that is, when none of the variants have
-parameters, it is possible to explicitly set the discriminator values
-to an integer value:
-
-~~~~
-enum color {
-  red = 0xff0000,
-  green = 0x00ff00,
-  blue = 0x0000ff
-}
-~~~~
-
-If an explicit discriminator is not specified for a variant, the value
-defaults to the value of the previous variant plus one. If the first
-variant does not have a discriminator, it defaults to 0. For example,
-the value of `north` is 0, `east` is 1, etc.
-
-When an enum is C-like the `as` cast operator can be used to get the
-discriminator's value.
-
-<a name="single_variant_enum"></a>
-
-There is a special case for enums with a single variant. These are
-used to define new types in such a way that the new name is not just a
-synonym for an existing type, but its own distinct type. If you say:
-
-~~~~
-enum gizmo_id = int;
-~~~~
-
-That is a shorthand for this:
-
-~~~~
-enum gizmo_id { gizmo_id(int) }
-~~~~
-
-Enum types like this can have their content extracted with the
-dereference (`*`) unary operator:
-
-~~~~
-# enum gizmo_id = int;
-let my_gizmo_id = gizmo_id(10);
-let id_int: int = *my_gizmo_id;
-~~~~
-
-## Enum patterns
-
-For enum types with multiple variants, destructuring is the only way to
-get at their contents. All variant constructors can be used as
-patterns, as in this definition of `area`:
-
-~~~~
-# type point = {x: float, y: float};
-# enum shape { circle(point, float), rectangle(point, point) }
-fn area(sh: shape) -> float {
-    alt sh {
-        circle(_, size) { float::consts::pi * size * size }
-        rectangle({x, y}, {x: x2, y: y2}) { (x2 - x) * (y2 - y) }
-    }
-}
-~~~~
-
-Another example, matching nullary enum variants:
-
-~~~~
-# type point = {x: float, y: float};
-# enum direction { north, east, south, west }
-fn point_from_direction(dir: direction) -> point {
-    alt dir {
-        north { {x:  0f, y:  1f} }
-        east  { {x:  1f, y:  0f} }
-        south { {x:  0f, y: -1f} }
-        west  { {x: -1f, y:  0f} }
-    }
-}
-~~~~
-
-## Tuples
-
-Tuples in Rust behave exactly like records, except that their fields
-do not have names (and can thus not be accessed with dot notation).
-Tuples can have any arity except for 0 or 1 (though you may consider
-nil, `()`, as the empty tuple if you like).
-
-~~~~
-let mytup: (int, int, float) = (10, 20, 30.0);
-alt mytup {
-  (a, b, c) { log(info, a + b + (c as int)); }
-}
-~~~~
-
-## Pointers
-
-In contrast to a lot of modern languages, record and enum types in
-Rust are not represented as pointers to allocated memory. They are,
-like in C and C++, represented directly. This means that if you `let x
-= {x: 1f, y: 1f};`, you are creating a record on the stack. If you
-then copy it into a data structure, the whole record is copied, not
-just a pointer.
-
-For small records like `point`, this is usually more efficient than
-allocating memory and going through a pointer. But for big records, or
-records with mutable fields, it can be useful to have a single copy on
-the heap, and refer to that through a pointer.
-
-Rust supports several types of pointers. The safe pointer types are
-`@T` for shared boxes allocated on the local heap, `~T`, for
-uniquely-owned boxes allocated on the exchange heap, and `&T`, for
-borrowed pointers, which may point to any memory, and whose lifetimes
-are governed by the call stack.
-
-Rust also has an unsafe pointer, written `*T`, which is a completely
-unchecked pointer type only used in unsafe code (and thus, in typical
-Rust code, very rarely).
-
-All pointer types can be dereferenced with the `*` unary operator.
-
-### Shared boxes
-
-Shared boxes are pointers to heap-allocated, reference counted memory.
-A cycle collector ensures that circular references do not result in
-memory leaks.
-
-Creating a shared box is done by simply applying the unary `@`
-operator to an expression. The result of the expression will be boxed,
-resulting in a box of the right type. For example:
-
-~~~~
-let x = @10; // New box, refcount of 1
-let y = x; // Copy the pointer, increase refcount
-// When x and y go out of scope, refcount goes to 0, box is freed
-~~~~
-
-> ***Note:*** We will in the future switch to garbage collection,
-> rather than reference counting, for shared boxes.
-
-Shared boxes never cross task boundaries.
-
-### Unique boxes
-
-In contrast to shared boxes, unique boxes have a single owner and thus
-two unique boxes may not refer to the same memory. All unique boxes
-across all tasks are allocated on a single _exchange heap_, where
-their uniquely owned nature allows them to be passed between tasks.
-
-Because unique boxes are uniquely owned, copying them involves allocating
-a new unique box and duplicating the contents. Copying unique boxes
-is expensive so the compiler will complain if you do.
-
-~~~~
-let x = ~10;
-let y = x; // error: copying a non-implicitly copyable type
-~~~~
-
-If you really want to copy a unique box you must say so explicitly.
-
-~~~~
-let x = ~10;
-let y = copy x;
-~~~~
-
-This is where the 'move' (`<-`) operator comes in. It is similar to
-`=`, but it de-initializes its source. Thus, the unique box can move
-from `x` to `y`, without violating the constraint that it only has a
-single owner (if you used assignment instead of the move operator, the
-box would, in principle, be copied).
-
-~~~~
-let x = ~10;
-let y <- x;
-~~~~
-
-Unique boxes, when they do not contain any shared boxes, can be sent
-to other tasks. The sending task will give up ownership of the box,
-and won't be able to access it afterwards. The receiving task will
-become the sole owner of the box.
-
-### Borrowed pointers
-
-Rust borrowed pointers are a general purpose reference/pointer type,
-similar to the C++ reference type, but guaranteed to point to valid
-memory. In contrast to unique pointers, where the holder of a unique
-pointer is the owner of the pointed-to memory, borrowed pointers never
-imply ownership. Pointers may be borrowed from any type, in which case
-the pointer is guaranteed not to outlive the value it points to.
-
-~~~~
-# fn work_with_foo_by_pointer(f: &str) { }
-let foo = "foo";
-work_with_foo_by_pointer(&foo);
-~~~~
-
-The following shows an example of what is _not_ possible with borrowed
-pointers. If you were able to write this then the pointer to `foo`
-would outlive `foo` itself.
-
-~~~~ {.ignore}
-let foo_ptr;
-{
-    let foo = "foo";
-    foo_ptr = &foo;
-}
-~~~~
-
-### Mutability
-
-All pointer types have a mutable variant, written `@mut T` or `~mut
-T`. Given such a pointer, you can write to its contents by combining
-the dereference operator with a mutating action.
-
-~~~~
-fn increase_contents(pt: @mut int) {
-    *pt += 1;
-}
-~~~~
-
-## Vectors
-
-Rust vectors are always heap-allocated and unique. A value of type
-`~[T]` is represented by a pointer to a section of heap memory
-containing any number of values of type `T`.
-
-> ***Note:*** This uniqueness is turning out to be quite awkward in
-> practice, and might change in the future.
-
-Vector literals are enclosed in square brackets. Dereferencing is done
-with square brackets (zero-based):
-
-~~~~
-let myvec = ~[true, false, true, false];
-if myvec[1] { io::println("boom"); }
-~~~~
-
-By default, vectors are immutable—you can not replace their elements.
-The type written as `~[mut T]` is a vector with mutable
-elements. Mutable vector literals are written `~[mut]` (empty) or `~[mut
-1, 2, 3]` (with elements).
-
-The `+` operator means concatenation when applied to vector types.
-Growing a vector in Rust is not as inefficient as it looks :
-
-~~~~
-let mut myvec = ~[], i = 0;
-while i < 100 {
-    myvec += ~[i];
-    i += 1;
-}
-~~~~
-
-Because a vector is unique, replacing it with a longer one (which is
-what `+= ~[i]` does) is indistinguishable from appending to it
-in-place. Vector representations are optimized to grow
-logarithmically, so the above code generates about the same amount of
-copying and reallocation as `push` implementations in most other
-languages.
-
-> ***Note:*** Actually, currently, growing a vector is *exactly* as
-> inefficient as it looks, since vector `+` has been moved to the
-> libraries and Rust's operator overloading support is insufficient to
-> allow this optimization. Try using `vec::push`.
-
-## Strings
-
-The `str` type in Rust is represented exactly the same way as a vector
-of bytes (`~[u8]`), except that it is guaranteed to have a trailing
-null byte (for interoperability with C APIs).
-
-This sequence of bytes is interpreted as an UTF-8 encoded sequence of
-characters. This has the advantage that UTF-8 encoded I/O (which
-should really be the default for modern systems) is very fast, and
-that strings have, for most intents and purposes, a nicely compact
-representation. It has the disadvantage that you only get
-constant-time access by byte, not by character.
-
-A lot of algorithms don't need constant-time indexed access (they
-iterate over all characters, which `str::chars` helps with), and
-for those that do, many don't need actual characters, and can operate
-on bytes. For algorithms that do really need to index by character,
-there's the option to convert your string to a character vector (using
-`str::chars`).
-
-Like vectors, strings are always unique. You can wrap them in a shared
-box to share them. Unlike vectors, there is no mutable variant of
-strings. They are always immutable.
-
-NOTE: Section on resources removed. ToDo: document classes and destructors
 
 # Argument passing
 
