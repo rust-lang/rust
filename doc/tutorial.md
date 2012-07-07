@@ -1228,14 +1228,14 @@ and the unique pointer (`~T`). These three sigils will appear
 repeatedly as we explore the language. Learning the appropriate role
 of each is key to using Rust effectively.
 
-# Pointers
+# Boxes and pointers
 
-In contrast to a lot of modern languages, record and enum types in
-Rust are not represented as pointers to allocated memory. They are,
-like in C and C++, represented directly. This means that if you `let x
-= {x: 1f, y: 1f};`, you are creating a record on the stack. If you
-then copy it into a data structure, the whole record is copied, not
-just a pointer.
+In contrast to a lot of modern languages, aggregate types like records
+and enums are not represented as pointers to allocated memory. They
+are, like in C and C++, represented directly. This means that if you
+`let x = {x: 1f, y: 1f};`, you are creating a record on the stack. If
+you then copy it into a data structure, the whole record is copied,
+not just a pointer.
 
 For small records like `point`, this is usually more efficient than
 allocating memory and going through a pointer. But for big records, or
@@ -1260,18 +1260,20 @@ Shared boxes are pointers to heap-allocated, reference counted memory.
 A cycle collector ensures that circular references do not result in
 memory leaks.
 
+> ***Note:*** We will in the future switch to garbage collection,
+> rather than reference counting, for shared boxes.
+
 Creating a shared box is done by simply applying the unary `@`
 operator to an expression. The result of the expression will be boxed,
-resulting in a box of the right type. For example:
+resulting in a box of the right type. Copying a shared box, as happens
+during assignment, only copies a pointer, never the contents of the
+box.
 
 ~~~~
-let x = @10; // New box, refcount of 1
+let x: @int = @10; // New box, refcount of 1
 let y = x; // Copy the pointer, increase refcount
 // When x and y go out of scope, refcount goes to 0, box is freed
 ~~~~
-
-> ***Note:*** We will in the future switch to garbage collection,
-> rather than reference counting, for shared boxes.
 
 Shared boxes never cross task boundaries.
 
@@ -1308,6 +1310,11 @@ box would, in principle, be copied).
 let x = ~10;
 let y <- x;
 ~~~~
+
+> ***Note:*** this discussion of copying vs moving does not account
+> for the "last use" rules that automatically promote copy operations
+> to moves. This is an evolving area of the language that will
+> continue to change.
 
 Unique boxes, when they do not contain any shared boxes, can be sent
 to other tasks. The sending task will give up ownership of the box,
