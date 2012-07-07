@@ -68,11 +68,13 @@ mod ext {
     mod tt {
         mod transcribe;
         mod earley_parser;
+        mod macro_rules;
     }
 
+
+    mod simplext;
     mod fmt;
     mod env;
-    mod simplext;
     mod concat_idents;
     mod ident_to_str;
     mod log_syntax;

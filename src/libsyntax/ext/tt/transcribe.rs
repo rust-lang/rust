@@ -23,7 +23,7 @@ type tt_frame = @{
 };
 
 type tt_reader = @{
-    span_diagnostic: span_handler,
+    sp_diag: span_handler,
     interner: @interner<@str>,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
@@ -36,13 +36,13 @@ type tt_reader = @{
 };
 
 /** This can do Macro-By-Example transcription. On the other hand, if
- *  `doc` contains no `tt_dotdotdot`s and `tt_interpolate`s, `interp` can (and
+ *  `src` contains no `tt_dotdotdot`s and `tt_interpolate`s, `interp` can (and
  *  should) be none. */
-fn new_tt_reader(span_diagnostic: span_handler, itr: @interner<@str>,
+fn new_tt_reader(sp_diag: span_handler, itr: @interner<@str>,
                  interp: option<std::map::hashmap<ident,@arb_depth>>,
                  src: ~[ast::token_tree])
     -> tt_reader {
-    let r = @{span_diagnostic: span_diagnostic, interner: itr,
+    let r = @{sp_diag: sp_diag, interner: itr,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: none, up: tt_frame_up(option::none)},
               interpolations: alt interp { /* just a convienience */
@@ -70,7 +70,7 @@ pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
 }
 
 pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
-    @{span_diagnostic: r.span_diagnostic, interner: r.interner,
+    @{sp_diag: r.sp_diag, interner: r.interner,
       mut cur: dup_tt_frame(r.cur),
       interpolations: r.interpolations,
       mut repeat_idx: copy r.repeat_idx, mut repeat_len: copy r.repeat_len,
@@ -132,28 +132,27 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
 
 fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
     let ret_val = { tok: r.cur_tok, sp: r.cur_span };
-    if r.cur.idx >= vec::len(r.cur.readme) {
+    while r.cur.idx >= vec::len(r.cur.readme) {
         /* done with this set; pop or repeat? */
         if ! r.cur.dotdotdoted
             || r.repeat_idx.last() == r.repeat_len.last() - 1 {
-            if r.cur.dotdotdoted {
-                vec::pop(r.repeat_idx); vec::pop(r.repeat_len);
-            }
+
             alt r.cur.up {
               tt_frame_up(none) {
                 r.cur_tok = EOF;
                 ret ret_val;
               }
               tt_frame_up(some(tt_f)) {
+                if r.cur.dotdotdoted {
+                    vec::pop(r.repeat_idx); vec::pop(r.repeat_len);
+                }
+
                 r.cur = tt_f;
-                /* the outermost `if` would need to be a `while` if we
-                didn't know that the last thing in a `tt_delim` is always
-                a `tt_flat`, and that a `tt_dotdotdot` is never empty */
                 r.cur.idx += 1u;
               }
             }
 
-        } else {
+        } else { /* repeat */
             r.cur.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
             alt r.cur.sep {
@@ -165,14 +164,13 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             }
         }
     }
-    /* if `tt_delim`s could be 0-length, we'd need to be able to switch
-    between popping and pushing until we got to an actual `tt_flat` */
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_flat`, even though it won't happen */
         alt r.cur.readme[r.cur.idx] {
           tt_delim(tts) {
             r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: false,
                       sep: none, up: tt_frame_up(option::some(r.cur)) };
+            // if this could be 0-length, we'd need to potentially recur here
           }
           tt_flat(sp, tok) {
             r.cur_span = sp; r.cur_tok = tok;
@@ -182,23 +180,29 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
           tt_dotdotdot(sp, tts, sep, zerok) {
             alt lockstep_iter_size(tt_dotdotdot(sp, tts, sep, zerok), r) {
               lis_unconstrained {
-                r.span_diagnostic.span_fatal(
-                    copy r.cur_span, /* blame macro writer */
+                r.sp_diag.span_fatal(
+                    sp, /* blame macro writer */
                     "attempted to repeat an expression containing no syntax \
                      variables matched as repeating at this depth");
               }
-              lis_contradiction(msg) { /* blame macro invoker */
-                r.span_diagnostic.span_fatal(sp, msg);
+              lis_contradiction(msg) { /* TODO blame macro invoker instead*/
+                r.sp_diag.span_fatal(sp, msg);
               }
               lis_constraint(len, _) {
-                if len == 0 && !zerok {
-                    r.span_diagnostic.span_fatal(sp, "this must repeat \
-                                                      at least once");
-                }
                 vec::push(r.repeat_len, len);
                 vec::push(r.repeat_idx, 0u);
                 r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
                           sep: sep, up: tt_frame_up(option::some(r.cur)) };
+
+                if len == 0 {
+                    if !zerok {
+                        r.sp_diag.span_fatal(sp, /* TODO blame invoker */
+                                             "this must repeat at least \
+                                              once");
+                    }
+                    /* we need to pop before we proceed, so recur */
+                    ret tt_next_token(r);
+                }
               }
             }
           }
@@ -219,7 +223,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                 ret ret_val;
               }
               seq(*) {
-                r.span_diagnostic.span_fatal(
+                r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
                     #fmt["variable '%s' is still repeating at this depth",
                          *ident]);

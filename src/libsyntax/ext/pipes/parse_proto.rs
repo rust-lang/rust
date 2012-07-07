@@ -10,10 +10,9 @@ impl proto_parser for parser {
     fn parse_proto(id: ident) -> protocol {
         let proto = protocol(id);
 
-        self.parse_unspanned_seq(token::LBRACE,
-                                 token::RBRACE,
-                                 {sep: none, trailing_sep_allowed: false},
-                                 |self| self.parse_state(proto));
+        self.parse_seq_to_before_end(token::EOF,
+                                     {sep: none, trailing_sep_allowed: false},
+                                     |self| self.parse_state(proto));
 
         ret proto;
     }

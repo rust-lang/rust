@@ -413,7 +413,7 @@ type mac_body = option<mac_body_>;
 #[auto_serialize]
 enum mac_ {
     mac_invoc(@path, mac_arg, mac_body),
-    mac_invoc_tt(@path, token_tree), //will kill mac_invoc and steal its name
+    mac_invoc_tt(@path,~[token_tree]),//will kill mac_invoc and steal its name
     mac_embed_type(@ty),
     mac_embed_block(blk),
     mac_ellipsis,

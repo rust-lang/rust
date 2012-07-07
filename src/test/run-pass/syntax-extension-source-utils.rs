@@ -1,4 +1,4 @@
-// This test is brittle! 
+// This test is brittle!
 // xfail-pretty - the pretty tests lose path information, breaking #include
 
 mod m1 {
@@ -9,7 +9,7 @@ mod m1 {
 
 fn main() {
     assert(#line[] == 11u);
-    assert(#col[] == 12u);
+    assert(#col[] == 11u);
     assert(#file[].ends_with("syntax-extension-source-utils.rs"));
     assert(#stringify[(2*3) + 5] == "2 * 3 + 5");
     assert(#include["syntax-extension-source-utils-files/includeme.fragment"]

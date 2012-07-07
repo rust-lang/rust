@@ -98,9 +98,9 @@ impl tt_reader_as_reader of reader for tt_reader {
         tt_next_token(self)
     }
     fn fatal(m: str) -> ! {
-        self.span_diagnostic.span_fatal(copy self.cur_span, m);
+        self.sp_diag.span_fatal(copy self.cur_span, m);
     }
-    fn span_diag() -> span_handler { self.span_diagnostic }
+    fn span_diag() -> span_handler { self.sp_diag }
     fn interner() -> @interner<@str> { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         { tok: self.cur_tok, sp: self.cur_span }

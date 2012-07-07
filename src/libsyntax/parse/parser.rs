@@ -1022,9 +1022,12 @@ class parser {
             /* `!`, as an operator, is prefix, so we know this isn't that */
             if self.token == token::NOT {
                 self.bump();
-                let m_body = self.parse_token_tree();
+                let tts = self.parse_unspanned_seq(
+                    token::LBRACE, token::RBRACE, seq_sep_none(),
+                    |p| p.parse_token_tree());
                 let hi = self.span.hi;
-                ret pexpr(self.mk_mac_expr(lo, hi, mac_invoc_tt(pth,m_body)));
+
+                ret pexpr(self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts)));
             } else {
                 hi = pth.span.hi;
                 ex = expr_path(pth);
@@ -2642,14 +2645,17 @@ class parser {
             self.parse_item_class()
         } else if !self.is_any_keyword(copy self.token)
             && self.look_ahead(1) == token::NOT
+            && is_plain_ident(self.look_ahead(2))
         {
             // item macro.
             let pth = self.parse_path_without_tps();
             #error("parsing invocation of %s", *pth.idents[0]);
             self.expect(token::NOT);
             let id = self.parse_ident();
-            let tt = self.parse_token_tree();
-            let m = ast::mac_invoc_tt(pth, tt);
+            let tts = self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
+                                               seq_sep_none(),
+                                               |p| p.parse_token_tree());
+            let m = ast::mac_invoc_tt(pth, tts);
             let m: ast::mac = {node: m,
                                span: {lo: self.span.lo,
                                       hi: self.span.hi,

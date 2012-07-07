@@ -72,11 +72,10 @@ enum arb_depth { leaf(whole_nt), seq(~[@arb_depth], codemap::span) }
 
 type earley_item = matcher_pos;
 
-
-fn nameize(&&p_s: parse_sess, ms: ~[matcher], &&res: ~[@arb_depth])
+fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@arb_depth])
     -> hashmap<ident,@arb_depth> {
-    fn n_rec(&&p_s: parse_sess, &&m: matcher, &&res: ~[@arb_depth],
-             &&ret_val: hashmap<ident, @arb_depth>) {
+    fn n_rec(p_s: parse_sess, m: matcher, res: ~[@arb_depth],
+             ret_val: hashmap<ident, @arb_depth>) {
         alt m {
           {node: mtc_tok(_), span: _} { }
           {node: mtc_rep(more_ms, _, _), span: _} {
@@ -142,8 +141,11 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         // doing a lot of array work that will get thrown away
                         // most of the time.
                         for ei.matches.eachi() |idx, elt| {
+                            let sub = elt.get();
+                            // Some subtrees don't contain the name at all
+                            if sub.len() == 0u { cont; }
                             new_pos.matches[idx]
-                                .push(@seq(elt.get(), mk_sp(ei.sp_lo,sp.hi)));
+                                .push(@seq(sub, mk_sp(ei.sp_lo,sp.hi)));
                         }
 
                         new_pos.idx += 1u;
@@ -221,8 +223,8 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                      built-in NTs %s or %u other options.",
                     nts, next_eis.len()]);
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
-                failure(sp, "No rules expected the token "
-                        + to_str(*rdr.interner(), tok));
+                ret failure(sp, "No rules expected the token "
+                            + to_str(*rdr.interner(), tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
@@ -245,6 +247,9 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
                 /* this would fail if zero-length tokens existed */
                 while rdr.peek().sp.lo < rust_parser.span.lo {
+                    rdr.next_token();
+                } /* except for EOF... */
+                while rust_parser.token == EOF && rdr.peek().tok != EOF {
                     rdr.next_token();
                 }
             }
@@ -273,7 +278,7 @@ fn parse_nt(p: parser, name: str) -> whole_nt {
       } }
       "path" { token::w_path(p.parse_path_with_tps(false)) }
       "tt" {
-        p.quote_depth += 1u;
+        p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::w_tt(@p.parse_token_tree());
         p.quote_depth -= 1u;
         res

@@ -4,8 +4,10 @@ import diagnostic::span_handler;
 import codemap::{codemap, span, expn_info, expanded_from};
 import std::map::str_hash;
 
+// second argument is the span to blame for general argument problems
 type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
+// second argument is the origin of the macro, if user-defined
 type syntax_expander = {expander: syntax_expander_, span: option<span>};
 
 type macro_def = {ident: ast::ident, ext: syntax_extension};
@@ -15,14 +17,16 @@ type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
 type syntax_expander_tt = {expander: syntax_expander_tt_, span: option<span>};
-type syntax_expander_tt_ = fn@(ext_ctxt, span, ast::token_tree) -> @ast::expr;
+type syntax_expander_tt_ = fn@(ext_ctxt, span, ~[ast::token_tree])
+    -> mac_result;
 
 type syntax_expander_tt_item
     = {expander: syntax_expander_tt_item_, span: option<span>};
 type syntax_expander_tt_item_
-    = fn@(ext_ctxt, span, ast::ident, ast::token_tree) -> mac_result;
+    = fn@(ext_ctxt, span, ast::ident, ~[ast::token_tree]) -> mac_result;
 
 enum mac_result {
+    mr_expr(@ast::expr),
     mr_item(@ast::item),
     mr_def(macro_def)
 }
@@ -32,7 +36,7 @@ enum syntax_extension {
     macro_defining(macro_definer),
     item_decorator(item_decorator),
 
-    normal_tt(syntax_expander_tt),
+    expr_tt(syntax_expander_tt),
     item_tt(syntax_expander_tt_item),
 }
 
@@ -45,12 +49,15 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
         item_tt({expander: f, span: none})
     }
     let syntax_expanders = str_hash::<syntax_extension>();
+    syntax_expanders.insert("macro",
+                            macro_defining(ext::simplext::add_new_extension));
+    syntax_expanders.insert("macro_rules",
+                            builtin_item_tt(
+                                ext::tt::macro_rules::add_new_extension));
     syntax_expanders.insert("fmt", builtin(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert("auto_serialize",
                             item_decorator(ext::auto_serialize::expand));
     syntax_expanders.insert("env", builtin(ext::env::expand_syntax_ext));
-    syntax_expanders.insert("macro",
-                            macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert("concat_idents",
                             builtin(ext::concat_idents::expand_syntax_ext));
     syntax_expanders.insert("ident_to_str",

@@ -10,16 +10,13 @@ import pipes::parse_proto::proto_parser;
 
 import pipes::pipec::methods;
 
-fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident, tt: ast::token_tree)
-    -> base::mac_result
+fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
+                tt: ~[ast::token_tree]) -> base::mac_result
 {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
-    let body_core = alt tt { tt_delim(tts) { tts } _ {fail}};
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
-                               cx.parse_sess().interner,
-                               none,
-                               body_core);
+                               cx.parse_sess().interner, none, tt);
     let rdr = tt_rdr as reader;
     let rust_parser = parser(sess, cfg, rdr.dup(), SOURCE_FILE);
 
