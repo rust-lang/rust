@@ -1557,6 +1557,33 @@ to other tasks. The sending task will give up ownership of the box,
 and won't be able to access it afterwards. The receiving task will
 become the sole owner of the box.
 
+### Borrowed Pointers
+
+Rust borrowed pointers are a general purpose reference/pointer type,
+similar to the C++ reference type, but guaranteed to point to valid
+memory. In contrast to unique pointers, where the holder of a unique
+pointer is the owner of the pointed-to memory, borrowed pointers never
+imply ownership. Pointers may be borrowed from any type, in which case
+the pointer is guaranteed not to outlive the value it points to.
+
+~~~~
+# fn work_with_foo_by_pointer(f: &str) { }
+let foo = "foo";
+work_with_foo_by_pointer(&foo);
+~~~~
+
+The following shows an example of what is _not_ possible with borrowed
+pointers. If you were able to write this then the pointer to `foo`
+would outlive `foo` itself.
+
+~~~~ {.ignore}
+let foo_ptr;
+{
+    let foo = "foo";
+    foo_ptr = &foo;
+}
+~~~~
+
 ### Mutability
 
 All pointer types have a mutable variant, written `@mut T` or `~mut
