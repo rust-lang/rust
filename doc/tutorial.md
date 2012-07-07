@@ -83,7 +83,7 @@ fn main() {
     // Open a channel to receive game results
     do listen |result_from_game| {
 
-        let times = 10;
+        let  = 10;
         let player1 = "graydon";
         let player2 = "patrick";
 
@@ -347,9 +347,6 @@ like the `let x = ...` example above.
 Rust identifiers must start with an alphabetic character or an
 underscore, and after that may contain any alphanumeric character, and
 more underscores.
-
-***Note:*** The parser doesn't currently recognize non-ascii alphabetic
-characters. This is a bug that will eventually be fixed.
 
 The double-colon (`::`) is used as a module separator, so
 `io::println` means 'the thing named `println` in the module
