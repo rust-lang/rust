@@ -1252,17 +1252,32 @@ fn contains(v: ~[int], elt: int) -> bool {
 
 # Datatypes
 
-Rust datatypes are, by default, immutable. The core datatypes of Rust
-are structural records and 'enums' (tagged unions, algebraic data
-types).
+The core datatypes of Rust are structural records, enums (tagged
+unions, algebraic data types), and classes. They are immutable
+by default.
 
 ~~~~
 type point = {x: float, y: float};
+
 enum shape {
     circle(point, float),
     rectangle(point, point)
 }
-let my_shape = circle({x: 0.0, y: 0.0}, 10.0);
+
+class drawing {
+    let mut shapes: [shape];
+
+    new() {
+        self.shapes = [];
+    }
+
+    fn add_shape(new_shape: shape) {
+        self.shapes += [new_shape];
+    }
+}
+
+let my_drawing = drawing();
+my_drawing.add_shape(circle({x: 0.0, y: 0.0}, 10.0));
 ~~~~
 
 ## Records
@@ -1271,12 +1286,10 @@ Rust record types are written `{field1: T1, field2: T2 [, ...]}`,
 where `T1`, `T2`, ... denote types.  Record literals are written in
 the same way, but with expressions instead of types. They are quite
 similar to C structs, and even laid out the same way in memory (so you
-can read from a Rust struct in C, and vice-versa).
+can read from a Rust struct in C, and vice-versa). The dot operator is
+used to access record fields (`mypoint.x`).
 
-The dot operator is used to access record fields (`mypoint.x`).
-
-Fields that you want to mutate must be explicitly marked as such. For
-example...
+Fields that you want to mutate must be explicitly marked `mut`.
 
 ~~~~
 type stack = {content: ~[int], mut head: uint};
@@ -1286,8 +1299,8 @@ With such a type, you can do `mystack.head += 1u`. If `mut` were
 omitted from the type, such an assignment would result in a type
 error.
 
-To 'update' an immutable record, you use functional record update
-syntax, by ending a record literal with the keyword `with`:
+To create a new record based on the value of an existing record
+you construct it using the `with` keyword:
 
 ~~~~
 let oldpoint = {x: 10f, y: 20f};
@@ -1295,7 +1308,7 @@ let newpoint = {x: 0f with oldpoint};
 assert newpoint == {x: 0f, y: 20f};
 ~~~~
 
-This will create a new struct, copying all the fields from `oldpoint`
+This will create a new record, copying all the fields from `oldpoint`
 into it, except for the ones that are explicitly set in the literal.
 
 Rust record types are *structural*. This means that `{x: float, y:
@@ -1329,8 +1342,8 @@ the fields of a record, a record pattern may end with `, _` (as in
 
 ## Enums
 
-Enums are datatypes that have several different representations. For
-example, the type shown earlier:
+Enums are datatypes that have several alternate representations. For
+example, consider the type shown earlier:
 
 ~~~~
 # type point = {x: float, y: float};
@@ -1352,7 +1365,7 @@ which can be used to construct values of the type (taking arguments of
 the specified types). So `circle({x: 0f, y: 0f}, 10f)` is the way to
 create a new circle.
 
-Enum variants do not have to have parameters. This, for example, is
+Enum variants need not have type parameters. This, for example, is
 equivalent to a C enum:
 
 ~~~~
@@ -1448,8 +1461,8 @@ fn point_from_direction(dir: direction) -> point {
 
 Tuples in Rust behave exactly like records, except that their fields
 do not have names (and can thus not be accessed with dot notation).
-Tuples can have any arity except for 0 or 1 (though you may see nil,
-`()`, as the empty tuple if you like).
+Tuples can have any arity except for 0 or 1 (though you may consider
+nil, `()`, as the empty tuple if you like).
 
 ~~~~
 let mytup: (int, int, float) = (10, 20, 30.0);
@@ -1472,11 +1485,15 @@ allocating memory and going through a pointer. But for big records, or
 records with mutable fields, it can be useful to have a single copy on
 the heap, and refer to that through a pointer.
 
-Rust supports several types of pointers. The simplest is the unsafe
-pointer, written `*T`, which is a completely unchecked pointer type
-only used in unsafe code (and thus, in typical Rust code, very
-rarely). The safe pointer types are `@T` for shared, reference-counted
-boxes, and `~T`, for uniquely-owned pointers.
+Rust supports several types of pointers. The safe pointer types are
+`@T` for shared boxes allocated on the local heap, `~T`, for
+uniquely-owned boxes allocated on the exchange heap, and `&T`, for
+borrowed pointers, which may point to any memory, and whose lifetimes
+are governed by the call stack.
+
+Rust also has an unsafe pointer, written `*T`, which is a completely
+unchecked pointer type only used in unsafe code (and thus, in typical
+Rust code, very rarely).
 
 All pointer types can be dereferenced with the `*` unary operator.
 
@@ -1496,20 +1513,32 @@ let y = x; // Copy the pointer, increase refcount
 // When x and y go out of scope, refcount goes to 0, box is freed
 ~~~~
 
-***Note:*** We may in the future switch to garbage collection, rather
+***Note:*** We will in the future switch to garbage collection, rather
 than reference counting, for shared boxes.
 
 Shared boxes never cross task boundaries.
 
 ### Unique boxes
 
-In contrast to shared boxes, unique boxes are not reference counted.
-Instead, it is statically guaranteed that only a single owner of the
-box exists at any time.
+In contrast to shared boxes, unique boxes have a single owner and thus
+two unique boxes may not refer to the same memory. All unique boxes
+across all tasks are allocated on a single _exchange heap_, where
+their uniquely owned nature allows them to be passed between tasks.
+
+Because unique boxes are uniquely owned, copying them involves allocating
+a new unique box and duplicating the contents. Copying unique boxes
+is expensive so the compiler will complain if you do.
 
 ~~~~
 let x = ~10;
-let y <- x;
+let y = x; // error: copying a non-implicitly copyable type
+~~~~
+
+If you really want to copy a unique box you must say so explicitly.
+
+~~~~
+let x = ~10;
+let y = copy x;
 ~~~~
 
 This is where the 'move' (`<-`) operator comes in. It is similar to
@@ -1517,6 +1546,11 @@ This is where the 'move' (`<-`) operator comes in. It is similar to
 from `x` to `y`, without violating the constraint that it only has a
 single owner (if you used assignment instead of the move operator, the
 box would, in principle, be copied).
+
+~~~~
+let x = ~10;
+let y <- x;
+~~~~
 
 Unique boxes, when they do not contain any shared boxes, can be sent
 to other tasks. The sending task will give up ownership of the box,
