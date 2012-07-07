@@ -5,11 +5,11 @@ CodeMirror.defineMode("rust", function() {
     "do": "else-style", "ret": "else-style", "fail": "else-style",
     "break": "atom", "cont": "atom", "const": "let", "resource": "fn",
     "let": "let", "fn": "fn", "for": "for", "alt": "alt", "iface": "iface",
-    "impl": "impl", "type": "type", "enum": "enum", "mod": "mod",
+    "impl": "impl", "type": "type", "enum": "enum", "class": "atom", "mod": "mod",
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
     "claim": "op", "extern": "ignore", "unsafe": "ignore", "import": "else-style",
     "export": "else-style", "copy": "op", "log": "op", "log_err": "op",
-    "use": "op", "bind": "op", "self": "atom"
+    "use": "op", "bind": "op", "self": "atom", "new": "atom"
   };
   var typeKeywords = function() {
     var keywords = {"fn": "fn"};
