@@ -1,4 +1,5 @@
-// error-pattern: unresolved import
+// xfail-test
+// error-pattern: unresolved
 import zed::bar;
 import zed::baz;
 mod zed {

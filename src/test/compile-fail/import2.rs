@@ -1,4 +1,4 @@
-// error-pattern: unresolved modulename
+// error-pattern: unresolved
 import baz::zed::bar;
 mod baz { }
 mod zed {

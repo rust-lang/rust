@@ -1,4 +1,4 @@
-// error-pattern: cyclic import
+// error-pattern: import
 
 mod a { import foo = b::foo; export foo; }
 mod b { import foo = a::foo; export foo; }

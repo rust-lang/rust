@@ -166,6 +166,13 @@ export ty_sort_str;
 export normalize_ty;
 export to_str;
 export borrow, serialize_borrow, deserialize_borrow;
+export bound_const;
+export terr_no_integral_type, terr_ty_param_size, terr_self_substs;
+export terr_in_field, terr_record_fields, terr_vstores_differ, terr_arg_count;
+export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
+export terr_regions_differ, terr_mutability, terr_purity_mismatch;
+export terr_constr_mismatch, terr_constr_len, terr_proto_mismatch;
+export terr_ret_style_mismatch;
 
 // Data types
 

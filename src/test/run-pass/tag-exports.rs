@@ -2,6 +2,7 @@ import alder::*;
 
 mod alder {
   export burnside;
+  export couch;
   export everett;
   export flanders;
   export irving;

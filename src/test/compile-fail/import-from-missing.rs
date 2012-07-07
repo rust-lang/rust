@@ -1,4 +1,4 @@
-// error-pattern:unresolved import
+// error-pattern:unresolved
 import spam::{ham, eggs};
 
 mod spam {
