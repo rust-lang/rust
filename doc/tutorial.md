@@ -11,7 +11,7 @@ comparisons to other languages in the C family. The tutorial covers
 the whole language, though not with the depth and precision of the
 [language reference](rust.html).
 
-## Language Overview
+## Language overview
 
 Rust is a systems programming language with a focus on type safety,
 memory safety, concurrency and performance. It is intended for writing
@@ -38,7 +38,7 @@ high-level features include:
 * Generics - Functions and types can be parameterized over generic
   types with optional type constraints
 
-## First Impressions
+## First impressions
 
 As a curly-brace language in the tradition of C, C++, and JavaScript,
 Rust looks a lot like other languages you may be familiar with.
@@ -1557,7 +1557,7 @@ to other tasks. The sending task will give up ownership of the box,
 and won't be able to access it afterwards. The receiving task will
 become the sole owner of the box.
 
-### Borrowed Pointers
+### Borrowed pointers
 
 Rust borrowed pointers are a general purpose reference/pointer type,
 similar to the C++ reference type, but guaranteed to point to valid
