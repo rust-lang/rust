@@ -1981,7 +1981,7 @@ fn for_rev<T>(vector: ~[T], action fn(T)) {
 
 fn map<T, U>(vector: ~[T], function :fn(T) -> U) -> ~[U] {
     let mut accumulator = ~[];
-    for vector.each |element| { vec::push(accumulator, function(eltement)); }
+    for vector.each |element| { vec::push(accumulator, function(element)); }
     ret accumulator;
 }
 ~~~~
