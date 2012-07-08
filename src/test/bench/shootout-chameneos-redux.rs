@@ -17,9 +17,7 @@ fn print_complements() {
     }
 }
 
-// can I combine these two lines?
-enum color_e { Red, Yellow, Blue }
-type color = color_e;
+enum color { Red, Yellow, Blue }
 
 type creature_info = { name: uint, color: color };
 
@@ -125,13 +123,20 @@ fn creature(
 }
 
 fn rendezvous(nn: uint, set: ~[color]) {
+    // these ports will allow us to hear from the creatures
     let from_creatures:     comm::port<creature_info> = comm::port();
     let from_creatures_log: comm::port<str> = comm::port();
+
+    // these channels will be passed to the creatures so they can talk to us
     let to_rendezvous     = comm::chan(from_creatures);
     let to_rendezvous_log = comm::chan(from_creatures_log);
+
+    // these channels will allow us to talk to each creature by 'name'/index
     let to_creature: ~[comm::chan<option<creature_info>>] =
         vec::mapi(set,
             fn@(ii: uint, col: color) -> comm::chan<option<creature_info>> {
+                // create each creature as a listener with a port, and
+                // give us a channel to talk to each
                 ret do task::spawn_listener |from_rendezvous| {
                     creature(ii, col, from_rendezvous, to_rendezvous,
                              to_rendezvous_log);
@@ -139,35 +144,17 @@ fn rendezvous(nn: uint, set: ~[color]) {
             }
         );
 
-    let mut meetings = 0;
     let mut creatures_met = 0;
-    let mut creatures_present = 0;
-
-    // use option type instead of initializing to junk?
-    let mut first_creature  = { name: 0, color: Red };
-    let mut second_creature = { name: 0, color: Red };
 
     // set up meetings...
-    while meetings < nn {
-        let creature_req: creature_info = comm::recv(from_creatures);
-        creatures_met += 1;
+    for nn.times {
+        let fst_creature: creature_info = comm::recv(from_creatures);
+        let snd_creature: creature_info = comm::recv(from_creatures);
 
-        alt creatures_present {
-            0 {
-                first_creature = creature_req;
-                creatures_present = 1;
-              }
-            1 {
-                second_creature = creature_req;
-                comm::send(to_creature[first_creature.name],
-                           some(second_creature));
-                comm::send(to_creature[second_creature.name],
-                           some(first_creature));
-                creatures_present = 0;
-                meetings += 1;
-              }
-            _ { fail "too many creatures are here!" }
-        }
+        creatures_met += 2;
+
+        comm::send(to_creature[fst_creature.name], some(snd_creature));
+        comm::send(to_creature[snd_creature.name], some(fst_creature));
     }
 
     // tell each creature to stop
