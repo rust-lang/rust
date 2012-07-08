@@ -134,6 +134,10 @@ fragments of programs that don't compile on their own. To try them
 out, you might have to wrap them in `fn main() { ... }`, and make sure
 they don't contain references to things that aren't actually defined.
 
+> ***Warning:*** Rust is a language under heavy development. Notes
+> about potential changes to the language, implementation
+> deficiencies, and other caveats appear offset in blockquotes.
+
 ## Disclaimer
 
 Rust is a language under development. The general flavor of the
