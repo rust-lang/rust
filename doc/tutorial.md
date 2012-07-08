@@ -1792,6 +1792,85 @@ fn contains(v: ~[int], elt: int) -> bool {
 
 `for` syntax only works with stack closures.
 
+# Classes
+
+Rust lets users define new types with fields and methods, called 'classes', in
+the style of object-oriented languages.
+
+(Warning: Rust's classes are in the process of changing rapidly. Some more
+information about some of the potential changes is [here][classchanges].)
+
+[classchanges]: http://pcwalton.github.com/blog/2012/06/03/maximally-minimal-classes-for-rust/
+
+An example of a class:
+
+~~~~
+class example {
+  let mut x: int;
+  let y: int;
+
+  priv {
+    let mut private_member: int;
+    fn private_method() {}
+  }
+
+  new(x: int) {
+    // Constructor
+    self.x = x;
+    self.y = 7;
+    self.a();
+  }
+
+  fn a() {
+    io::println("a");
+  }
+
+  drop {
+    // Destructor
+    self.x = 0;
+  }
+}
+
+fn main() {
+  let x: example = example(1);
+  let y: @example = @example(2);
+  x.a();
+  x.x = 5;
+}
+~~~~
+
+Fields and methods are declared just like functions and local variables, using
+'fn' and 'let'. As usual, 'let mut' can be used to create mutable fields. At
+minimum, Rust classes must have at least one field.
+
+Rust classes must also have a constructor, and can optionally have a destructor
+as well. The constructor and destructor are declared as shown in the example:
+like methods named 'new' and 'drop', but without 'fn', and without arguments
+for drop.
+
+In the constructor, the compiler will enforce that all fields are initialized
+before doing anything which might allow them to be accessed. This includes
+returning from the constructor, calling any method on 'self', calling any
+function with 'self' as an argument, or taking a reference to 'self'. Mutation
+of immutable fields is possible only in the constructor, and only before doing
+any of these things; afterwards it is an error.
+
+Private fields and methods are declared as shown above, using a `priv { ... }`
+block within the class. They are accessible only from within the same instance
+of the same class. (For example, even from within class A, you cannot call
+private methods, or access private fields, on other instances of class A; only
+on `self`.) This accessibility restriction may change in the future.
+
+As mentioned below, in the section on copying types, classes with destructors
+are considered 'resource' types and are not copyable.
+
+Declaring a class also declares its constructor as a function of the same name.
+You can construct an instance of the class, as in the example, by calling that
+function. The function and the type, though they have the same name, are
+otherwise independent. As with other Rust types, you can use `@` or `~` to
+construct a heap-allocated instance of a class, either shared or unique; just
+call e.g. `@example(...)` as shown above.
+
 # Argument passing
 
 Rust datatypes are not trivial to copy (the way, for example,
