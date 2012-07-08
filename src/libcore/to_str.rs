@@ -97,6 +97,7 @@ mod tests {
         assert ((), ((), 100)).to_str() == "((), ((), 100))";
     }
 
+    #[test]
     fn test_vectors() {
         let x: ~[int] = ~[];
         assert x.to_str() == "~[]";
@@ -106,6 +107,7 @@ mod tests {
                "~[~[], ~[1], ~[1, 1]]";
     }
 
+    #[test]
     fn test_pointer_types() {
         assert (@1).to_str() == "@1";
         assert (~(true, false)).to_str() == "~(true, false)";
