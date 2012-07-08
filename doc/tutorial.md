@@ -1178,7 +1178,7 @@ Rust has three competing goals that inform its view of memory:
 * Performance - high-performance low-level code tends to employ
   a number of allocation strategies. low-performance high-level
   code often uses a single, GC-based, heap allocation strategy
-* Concurrency - Rust maintain memory safety guarantees even
+* Concurrency - Rust must maintain memory safety guarantees even
   for code running in parallel
 
 ## How performance considerations influence the memory model
