@@ -181,7 +181,9 @@ fn rendezvous(nn: uint, set: ~[color]) {
 }
 
 fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() || args.len() <= 1u {
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ~["", "200000"]
+    } else if args.len() <= 1u {
         ~["", "600"]
     } else {
         args
