@@ -1163,7 +1163,7 @@ alt mytup {
 }
 ~~~~
 
-# The Rust Memory Model
+# The Rust memory model
 
 At this junction let's take a detour to explain the concepts involved
 in Rust's memory model. Rust has a very particular approach to
