@@ -1797,8 +1797,8 @@ fn contains(v: ~[int], elt: int) -> bool {
 Rust lets users define new types with fields and methods, called 'classes', in
 the style of object-oriented languages.
 
-(Warning: Rust's classes are in the process of changing rapidly. Some more
-information about some of the potential changes is [here][classchanges].)
+> ***Warning:*** Rust's classes are in the process of changing rapidly. Some more
+> information about some of the potential changes is [here][classchanges].
 
 [classchanges]: http://pcwalton.github.com/blog/2012/06/03/maximally-minimal-classes-for-rust/
 
