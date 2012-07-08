@@ -32,6 +32,7 @@ Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Erik Rose <erik@mozilla.com>
 Evan McClanahan <evan@evanmcc.com>
 Gareth Daniel Smith <garethdanielsmith@gmail.com>
+Glenn Willen <gwillen@nerdnet.org>
 Graham Fawcett <fawcett@uwindsor.ca>
 Grahame Bowland <grahame@angrygoats.net>
 Haitao Li <lihaitao@gmail.com>
