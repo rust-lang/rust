@@ -1368,19 +1368,46 @@ fn increase_contents(pt: @mut int) {
 
 # Vectors
 
-Rust vectors are always heap-allocated and unique. A value of type
-`~[T]` is represented by a pointer to a section of heap memory
-containing any number of values of type `T`.
+Vectors represent a section of memory that contains some number
+of values. Like other types in Rust, vectors can be stored on
+the stack, the local heap, or the exchange heap.
 
-> ***Note:*** This uniqueness is turning out to be quite awkward in
-> practice, and might change in the future.
+~~~
+enum crayon {
+    almond, antique_brass, apricot,
+    aquamarine, asparagus, atomic_tangerine,
+    banana_mania, beaver, bittersweet
+}
 
-Vector literals are enclosed in square brackets. Dereferencing is done
-with square brackets (zero-based):
+// A stack vector of crayons
+let stack_crayons: &[crayon] = &[almond, antique_brass, apricot];
+// A local heap (shared) vector of crayons
+let local_crayons: @[crayon] = @[aquamarine, asparagus, atomic_tangerine];
+// An exchange heap (unique) vector of crayons
+let exchange_crayons: ~[crayon] = ~[banana_mania, beaver, bittersweet];
+~~~
+
+> ***Note:*** Until recently Rust only had unique vectors, using the
+> unadorned `[]` syntax for literals. This syntax is still supported
+> but is deprecated. In the future it will probably represent some
+> "reasonable default" vector type.
+>
+> Unique vectors are the currently-recomended vector type for general
+> use as they are the most tested and well-supported by existing
+> libraries. There will be a gradual shift toward using more
+> stack and local vectors in the coming releases.
+
+Vector literals are enclosed in square brackets and dereferencing is
+also done with square brackets (zero-based):
 
 ~~~~
-let myvec = ~[true, false, true, false];
-if myvec[1] { io::println("boom"); }
+# enum crayon { almond, antique_brass, apricot,
+#               aquamarine, asparagus, atomic_tangerine,
+#               banana_mania, beaver, bittersweet };
+# fn draw_crying_puppy(c: crayon) { }
+
+let crayons = ~[banana_mania, beaver, bittersweet];
+if crayons[0] == bittersweet { draw_crying_puppy(crayons[0]); }
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
@@ -1388,52 +1415,67 @@ The type written as `~[mut T]` is a vector with mutable
 elements. Mutable vector literals are written `~[mut]` (empty) or `~[mut
 1, 2, 3]` (with elements).
 
+~~~~
+# enum crayon { almond, antique_brass, apricot,
+#               aquamarine, asparagus, atomic_tangerine,
+#               banana_mania, beaver, bittersweet };
+
+let crayons = ~[mut banana_mania, beaver, bittersweet];
+crayons[0] = atomic_tangerine;
+~~~~
+
 The `+` operator means concatenation when applied to vector types.
-Growing a vector in Rust is not as inefficient as it looks :
 
 ~~~~
-let mut myvec = ~[], i = 0;
-while i < 100 {
-    myvec += ~[i];
-    i += 1;
-}
+# enum crayon { almond, antique_brass, apricot,
+#               aquamarine, asparagus, atomic_tangerine,
+#               banana_mania, beaver, bittersweet };
+
+let my_crayons = ~[almond, antique_brass, apricot];
+let your_crayons = ~[banana_mania, beaver, bittersweet];
+
+let our_crayons = my_crayons + your_crayons;
 ~~~~
 
-Because a vector is unique, replacing it with a longer one (which is
-what `+= ~[i]` does) is indistinguishable from appending to it
-in-place. Vector representations are optimized to grow
-logarithmically, so the above code generates about the same amount of
-copying and reallocation as `push` implementations in most other
-languages.
+The `+=` operator also works as expected, provided the assignee
+lives in a mutable slot.
 
-> ***Note:*** Actually, currently, growing a vector is *exactly* as
-> inefficient as it looks, since vector `+` has been moved to the
-> libraries and Rust's operator overloading support is insufficient to
-> allow this optimization. Try using `vec::push`.
+~~~~
+# enum crayon { almond, antique_brass, apricot,
+#               aquamarine, asparagus, atomic_tangerine,
+#               banana_mania, beaver, bittersweet };
+
+let mut my_crayons = ~[almond, antique_brass, apricot];
+let your_crayons = ~[banana_mania, beaver, bittersweet];
+
+my_crayons += your_crayons;
+~~~~
 
 ## Strings
 
-The `str` type in Rust is represented exactly the same way as a vector
-of bytes (`~[u8]`), except that it is guaranteed to have a trailing
-null byte (for interoperability with C APIs).
+The `str` type in Rust is represented exactly the same way as a unique
+vector of immutable bytes (`~[u8]`). This sequence of bytes is
+interpreted as an UTF-8 encoded sequence of characters. This has the
+advantage that UTF-8 encoded I/O (which should really be the default
+for modern systems) is very fast, and that strings have, for most
+intents and purposes, a nicely compact representation. It has the
+disadvantage that you only get constant-time access by byte, not by
+character.
 
-This sequence of bytes is interpreted as an UTF-8 encoded sequence of
-characters. This has the advantage that UTF-8 encoded I/O (which
-should really be the default for modern systems) is very fast, and
-that strings have, for most intents and purposes, a nicely compact
-representation. It has the disadvantage that you only get
-constant-time access by byte, not by character.
+~~~~
+let huh = "what?";
+let que: u8 = huh[4]; // indexing a string returns a `u8`
+assert que == '?' as u8;
+~~~~
 
 A lot of algorithms don't need constant-time indexed access (they
 iterate over all characters, which `str::chars` helps with), and
 for those that do, many don't need actual characters, and can operate
 on bytes. For algorithms that do really need to index by character,
-there's the option to convert your string to a character vector (using
-`str::chars`).
+there are core library functions available.
 
-Like vectors, strings are always unique. You can wrap them in a shared
-box to share them. Unlike vectors, there is no mutable variant of
-strings. They are always immutable.
+> ***Note:*** like vectors, strings will soon be allocatable in
+> the local heap and on the stack, in addition to the exchange heap.
 
 # Closures
 
