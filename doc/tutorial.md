@@ -478,9 +478,7 @@ a type error. Read about [single-variant enums](#single_variant_enum)
 further on if you need to create a type name that's not just a
 synonym.
 
-## Literals
-
-### Numeric literals
+## Numeric literals
 
 Integers can be written in decimal (`144`), hexadecimal (`0x90`), and
 binary (`0b10010000`) base.
@@ -539,7 +537,7 @@ and `f64` can be used to create literals of a specific type. The
 suffix `f` can be used to write `float` literals without a dot or
 exponent: `3f`.
 
-### Other literals
+## Other literals
 
 The nil literal is written just like the type: `()`. The keywords
 `true` and `false` produce the boolean literals.
@@ -1224,8 +1222,8 @@ Because of this Rust also introduces a global "exchange heap". Objects
 allocated here have _ownership semantics_, meaning that there is only
 a single variable that refers to them. For this reason they are
 refered to as _unique boxes_. All tasks may allocate objects on this
-heap, then _move_ those allocations to other tasks, avoiding expensive
-copies.
+heap, then transfer ownership of those allocations to other tasks,
+avoiding expensive copies.
 
 ## What to be aware of
 
@@ -1531,10 +1529,9 @@ if favorite_crayon_name.len() > 5 {
 
 # Closures
 
-Named functions, like those in the previous section, may not refer
-to local variables decalared outside the function - they do not
-close over their environment. For example you couldn't write the
-following:
+Named functions, like those we've seen so far, may not refer to local
+variables decalared outside the function - they do not "close over
+their environment". For example you couldn't write the following:
 
 ~~~~ {.ignore}
 let foo = 10;
@@ -1557,10 +1554,11 @@ let closure = |arg| println(#fmt("captured_var=%d, arg=%d", captured_var, arg));
 call_closure_with_ten(closure);
 ~~~~
 
-The types of the arguments are generally omitted, as is the return
-type, because the compiler can almost always infer them. In the rare
-case where the compiler needs assistance though, the arguments and
-return types may be annotated.
+Closures begin with the argument list between bars and are followed by
+a single expression. The types of the arguments are generally omitted,
+as is the return type, because the compiler can almost always infer
+them. In the rare case where the compiler needs assistance though, the
+arguments and return types may be annotated.
 
 ~~~~
 # type mygoodness = fn(str) -> str; type what_the = int;
@@ -1584,7 +1582,7 @@ position and cannot be stored in structures nor returned from
 functions. Despite the limitations stack closures are used
 pervasively in Rust code.
 
-## Boxed closures
+## Shared closures
 
 When you need to store a closure in a data structure, a stack closure
 will not do, since the compiler will refuse to let you store it. For
