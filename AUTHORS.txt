@@ -75,6 +75,7 @@ Rick Waldron <waldron.rick@gmail.com>
 Rob Arnold <robarnold@cs.cmu.edu>
 Roland Tanglao <roland@rolandtanglao.com>
 Roy Frostig <rfrostig@mozilla.com>
+Ryan Scheel <ryan.havvy@gmail.com>
 Sean Stangl <sstangl@mozilla.com>
 startling <tdixon51793@gmail.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
