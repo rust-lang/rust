@@ -1971,18 +1971,18 @@ they apply to.  Thus, Rust allows functions and datatypes to have type
 parameters.
 
 ~~~~
-fn for_rev<T>(v: ~[T], act: fn(T)) {
-    let mut i = vec::len(v);
+fn for_rev<T>(vector: ~[T], action fn(T)) {
+    let mut i = vec::len(vector);
     while i > 0u {
         i -= 1u;
-        act(v[i]);
+        action(vector[i]);
     }
 }
 
-fn map<T, U>(v: ~[T], f: fn(T) -> U) -> ~[U] {
-    let mut acc = ~[];
-    for v.each |elt| { vec::push(acc, f(elt)); }
-    ret acc;
+fn map<T, U>(vector: ~[T], function :fn(T) -> U) -> ~[U] {
+    let mut accumulator = ~[];
+    for vector.each |elt| { vec::push(accumulator, function(elt)); }
+    ret accumulator;
 }
 ~~~~
 
