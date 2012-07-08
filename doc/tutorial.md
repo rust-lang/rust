@@ -1729,7 +1729,7 @@ Empty argument lists can be omitted from `do` expressions.
 
 Most iteration in Rust is done with `for` loops. Like `do`,
 `for` is a nice syntax for doing control flow with closures.
-Additionally, within a `for` loop, `break, `again`, and `ret`
+Additionally, within a `for` loop, `break`, `again`, and `ret`
 work just as they do with `while` and `loop`.
 
 Consider again our `each` function, this time improved to
