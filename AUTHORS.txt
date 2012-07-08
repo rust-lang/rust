@@ -13,6 +13,7 @@ Armin Ronacher <armin.ronacher@active-4.com>
 Austin Seipp <mad.one@gmail.com>
 Ben Blum <bblum@andrew.cmu.edu>
 Ben Striegel <ben.striegel@gmail.com>
+Benjamin Herr <ben@0x539.de>
 Benjamin Jackman <ben@jackman.biz>
 Benjamin Kircher <benjamin.kircher@gmail.com>
 Brendan Eich <brendan@mozilla.org>
