@@ -60,7 +60,7 @@ h1.title {
 
 blockquote {
     color: black;
-    background-color: lavender;
+    border-left: solid 1px silver;
     margin: 1em;
     padding: 0.5em 1em 0.5em 1em;
 }
