@@ -1477,6 +1477,50 @@ there are core library functions available.
 > ***Note:*** like vectors, strings will soon be allocatable in
 > the local heap and on the stack, in addition to the exchange heap.
 
+## Vector and string methods
+
+Both vectors and strings support a number of useful
+[methods](#implementation).  While we haven't covered methods yet,
+most vector functionality is provided by methods, so let's have a
+brief look at a few common ones.
+
+~~~
+# import io::println;
+# enum crayon {
+#     almond, antique_brass, apricot,
+#     aquamarine, asparagus, atomic_tangerine,
+#     banana_mania, beaver, bittersweet
+# }
+# fn unwrap_crayon(c: crayon) -> int { 0 }
+# fn eat_crayon_wax(i: int) { }
+# fn store_crayon_in_nasal_cavity(i: uint, c: crayon) { }
+# fn crayon_to_str(c: crayon) -> str { "" }
+
+let crayons = ~[almond, antique_brass, apricot];
+
+// Check the length of the vector
+assert crayons.len() == 3;
+assert !crayons.is_empty();
+
+// Iterate over a vector
+for crayons.each |crayon| {
+    let delicious_crayon_wax = unwrap_crayon(crayon);
+    eat_crayon_wax(delicious_crayon_wax);
+}
+
+// Map vector elements
+let crayon_names = crayons.map(crayon_to_str);
+let favorite_crayon_name = crayon_names[0];
+
+// Remove whitespace from before and after the string
+let new_favorite_crayon_name = favorite_crayon_name.trim();
+
+if favorite_crayon_name.len() > 5 {
+   // Create a substring
+   println(favorite_crayon_name.substr(0, 5));
+}
+~~~
+
 # Closures
 
 Named functions, like those in the previous section, may not refer
