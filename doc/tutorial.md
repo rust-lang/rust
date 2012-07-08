@@ -2507,10 +2507,15 @@ values of *an* unknown type that conforms to a given interface.
 However, consider this function:
 
 ~~~~
+# type circle = int; type rectangle = int;
 # iface drawable { fn draw(); }
+# impl of drawable for int { fn draw() {} }
+# fn new_circle() -> int { 1 }
 fn draw_all<T: drawable>(shapes: ~[T]) {
     for shapes.each |shape| { shape.draw(); }
 }
+# let c: circle = new_circle();
+# draw_all(~[c]);
 ~~~~
 
 You can call that on an array of circles, or an array of squares
