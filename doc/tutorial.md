@@ -380,6 +380,14 @@ fn main() {
 }
 ~~~~
 
+Local variables may shadow earlier declarations, causing the
+previous variable to go out of scope.
+
+~~~~
+let my_favorite_value: float = 57.8;
+let my_favorite_value: int = my_favorite_value as int;
+~~~~
+
 ## Types
 
 The `-> bool` in the `is_four` example is the way a function's return
