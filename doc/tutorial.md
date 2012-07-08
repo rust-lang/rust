@@ -1822,7 +1822,7 @@ class example {
     // Constructor
     self.x = x;
     self.y = 7;
-    self.a();
+    self.private_member = 8;
   }
 
   fn a() {
