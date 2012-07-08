@@ -98,6 +98,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_vectors() {
         let x: ~[int] = ~[];
         assert x.to_str() == "~[]";
