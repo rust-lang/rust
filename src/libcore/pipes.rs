@@ -144,6 +144,15 @@ fn recv<T: send>(-p: recv_packet<T>) -> option<T> {
     }
 }
 
+/// Returns true if messages are available.
+fn peek<T: send>(p: recv_packet<T>) -> bool {
+    alt p.header().state {
+      empty { false }
+      blocked { fail "peeking on blocked packet" }
+      full | terminated { true }
+    }
+}
+
 fn sender_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { uniquify(p) };
     alt swap_state_rel(p.header.state, terminated) {
@@ -336,6 +345,20 @@ class recv_packet<T: send> {
         let mut p = none;
         p <-> self.p;
         option::unwrap(p)
+    }
+
+    fn header() -> &self.packet_header {
+        alt self.p {
+          some(packet) {
+            unsafe {
+                let packet = uniquify(packet);
+                let header = reinterpret_cast(&packet.header);
+                forget(packet);
+                header
+            }
+          }
+          none { fail "packet already consumed" }
+        }
     }
 }
 
