@@ -1430,6 +1430,7 @@ fn print_view_paths(s: ps, vps: ~[@ast::view_path]) {
 fn print_view_item(s: ps, item: @ast::view_item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
+    print_outer_attributes(s, item.attrs);
     alt item.node {
       ast::view_item_use(id, mta, _) {
         head(s, "use");
