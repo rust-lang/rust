@@ -24,7 +24,8 @@ import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
 import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
 import syntax::ast::{view_item_import, view_item_use, view_path_glob};
 import syntax::ast::{view_path_list, view_path_simple};
-import syntax::ast_util::{def_id_of_def, local_def, new_def_hash, walk_pat};
+import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
+import syntax::ast_util::{walk_pat};
 import syntax::attr::{attr_metas, contains_name};
 import syntax::codemap::span;
 import syntax::visit::{default_visitor, fk_method, mk_vt, visit_block};
@@ -1163,6 +1164,8 @@ class Resolver {
      * crate.
      */
     fn build_reduced_graph_for_external_crate(root: @Module) {
+        let modules = new_def_hash();
+
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, get(root.def_id).crate)
                 |path_entry| {
@@ -1220,15 +1223,58 @@ class Resolver {
                                     let parent_link =
                                         self.get_parent_link(new_parent,
                                                              atom);
-                                    (*child_name_bindings).
-                                        define_module(parent_link,
-                                                      some(def_id));
+
+                                    alt modules.find(def_id) {
+                                        none {
+                                            (*child_name_bindings).
+                                                define_module(parent_link,
+                                                              some(def_id));
+                                            modules.insert(def_id,
+                                                (*child_name_bindings).
+                                                    get_module());
+                                        }
+                                        some(existing_module) {
+                                            // Create an import resolution to
+                                            // avoid creating cycles in the
+                                            // module graph.
+
+                                            let resolution =
+                                                @ImportResolution(dummy_sp());
+                                            resolution.
+                                                outstanding_references = 0;
+
+                                            alt existing_module.parent_link {
+                                                NoParentLink |
+                                                        BlockParentLink(*) {
+                                                    fail "can't happen";
+                                                }
+                                                ModuleParentLink
+                                                        (parent_module,
+                                                         atom) {
+
+                                                    let name_bindings =
+                                                        parent_module.
+                                                            children.get
+                                                                (atom);
+
+                                                    resolution.module_target =
+                                                        some(Target
+                                                            (parent_module,
+                                                             name_bindings));
+                                                }
+                                            }
+
+                                            new_parent.import_resolutions.
+                                                insert(atom, resolution);
+                                        }
+                                    }
                                 }
                                 ModuleDef(module) {
                                     #debug("(building reduced graph for \
                                             external crate) already created \
                                             module");
                                     module.def_id = some(def_id);
+                                    modules.insert(def_id, module);
                                 }
                             }
                         }
