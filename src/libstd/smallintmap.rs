@@ -73,6 +73,9 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         self.v.set_elt(key, none);
         old
     }
+    fn clear() {
+        self.v.set(~[mut]);
+    }
     fn contains_key(&&key: uint) -> bool {
         contains_key(self, key)
     }

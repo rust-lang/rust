@@ -60,6 +60,9 @@ iface map<K, V: copy> {
      */
     fn remove(K) -> option<V>;
 
+    /// Clear the map, removing all key/value pairs.
+    fn clear();
+
     /// Iterate over all the key/value pairs in the map
     fn each(fn(K, V) -> bool);
 
@@ -74,6 +77,8 @@ iface map<K, V: copy> {
 // external code that doesn't want to pay the cost of a box.
 mod chained {
     export t, mk, hashmap;
+
+    const initial_capacity: uint = 32u; // 2^5
 
     type entry<K, V> = {
         hash: uint,
@@ -255,6 +260,11 @@ mod chained {
             }
         }
 
+        fn clear() {
+            self.count = 0u;
+            self.chains = chains(initial_capacity);
+        }
+
         fn each(blk: fn(K,V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(entry.key, copy entry.value) { break; }
@@ -271,7 +281,6 @@ mod chained {
     }
 
     fn mk<K, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
-        let initial_capacity: uint = 32u; // 2^5
         let slf: t<K, V> = @{mut count: 0u,
                              mut chains: chains(initial_capacity),
                              hasher: hasher,
@@ -607,6 +616,18 @@ mod tests {
         assert (option::is_none(map.find(key)));
         map.insert(key, "val");
         assert (option::get(map.find(key)) == "val");
+    }
+
+    #[test]
+    fn test_clear() {
+        let key = "k";
+        let map = map::hashmap::<str, str>(str::hash, str::eq);
+        map.insert(key, "val");
+        assert (map.size() == 1);
+        assert (map.contains_key(key));
+        map.clear();
+        assert (map.size() == 0);
+        assert (!map.contains_key(key));
     }
 
     #[test]
