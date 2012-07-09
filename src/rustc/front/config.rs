@@ -39,11 +39,22 @@ fn filter_item(cx: ctxt, &&item: @ast::item) ->
     if item_in_cfg(cx, item) { option::some(item) } else { option::none }
 }
 
+fn filter_view_item(cx: ctxt, &&view_item: @ast::view_item
+                   )-> option<@ast::view_item> {
+    if view_item_in_cfg(cx, view_item) {
+        option::some(view_item)
+    } else {
+        option::none
+    }
+}
+
 fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
-    let filter = |a| filter_item(cx, a);
-    let filtered_items = vec::filter_map(m.items, filter);
-    ret {view_items: vec::map(m.view_items, fld.fold_view_item),
+    let item_filter = |a| filter_item(cx, a);
+    let filtered_items = vec::filter_map(m.items, item_filter);
+    let view_item_filter = |a| filter_view_item(cx, a);
+    let filtered_view_items = vec::filter_map(m.view_items, view_item_filter);
+    ret {view_items: vec::map(filtered_view_items, fld.fold_view_item),
          items: vec::map(filtered_items, fld.fold_item)};
 }
 
@@ -56,9 +67,12 @@ fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
 
 fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
                    fld: fold::ast_fold) -> ast::foreign_mod {
-    let filter = |a| filter_foreign_item(cx, a);
-    let filtered_items = vec::filter_map(nm.items, filter);
-    ret {view_items: vec::map(nm.view_items, fld.fold_view_item),
+    let item_filter = |a| filter_foreign_item(cx, a);
+    let filtered_items = vec::filter_map(nm.items, item_filter);
+    let view_item_filter = |a| filter_view_item(cx, a);
+    let filtered_view_items = vec::filter_map(
+        nm.view_items, view_item_filter);
+    ret {view_items: vec::map(filtered_view_items, fld.fold_view_item),
          items: filtered_items};
 }
 
@@ -95,6 +109,10 @@ fn item_in_cfg(cx: ctxt, item: @ast::item) -> bool {
 }
 
 fn foreign_item_in_cfg(cx: ctxt, item: @ast::foreign_item) -> bool {
+    ret cx.in_cfg(item.attrs);
+}
+
+fn view_item_in_cfg(cx: ctxt, item: @ast::view_item) -> bool {
     ret cx.in_cfg(item.attrs);
 }
 

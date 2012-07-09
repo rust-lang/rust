@@ -87,3 +87,13 @@ mod test_foreign_items {
         fn vec_from_buf_shared();
     }
 }
+
+mod test_use_statements {
+    #[cfg(bogus)]
+    use flippity_foo;
+
+    extern mod rustrt {
+        #[cfg(bogus)]
+        use flippity_foo;
+    }
+}

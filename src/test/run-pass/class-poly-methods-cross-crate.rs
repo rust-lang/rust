@@ -1,4 +1,3 @@
-// xfail-fast
 // aux-build:cci_class_6.rs
 use cci_class_6;
 import cci_class_6::kitties::*;
