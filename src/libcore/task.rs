@@ -528,13 +528,15 @@ fn get_task() -> task {
  *
  * # Example
  *
- *     task::unkillable {||
- *         // detach / yield / destroy must all be called together
- *         rustrt::rust_port_detach(po);
- *         // This must not result in the current task being killed
- *         task::yield();
- *         rustrt::rust_port_destroy(po);
- *     }
+ * ~~~
+ * task::unkillable {||
+ *     // detach / yield / destroy must all be called together
+ *     rustrt::rust_port_detach(po);
+ *     // This must not result in the current task being killed
+ *     task::yield();
+ *     rustrt::rust_port_destroy(po);
+ * }
+ * ~~~
  */
 unsafe fn unkillable(f: fn()) {
     class allow_failure {
