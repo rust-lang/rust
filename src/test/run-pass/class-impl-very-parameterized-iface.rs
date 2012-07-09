@@ -77,10 +77,10 @@ class cat<T: copy> : map<int, T> {
   }
 
   fn each_key(&&f: fn(&&int) -> bool) {
-    for self.each |k, _v| { if !f(k) { break; } cont;};
+    for self.each |k, _v| { if !f(k) { break; } again;};
   }
   fn each_value(&&f: fn(&&T) -> bool) {
-    for self.each |_k, v| { if !f(v) { break; } cont;};
+    for self.each |_k, v| { if !f(v) { break; } again;};
   }
 }
 

@@ -5441,7 +5441,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         let mut reexports = ~[];
         for cx.exp_map.each |exp_id, defs| {
             for defs.each |def| {
-                if !def.reexp { cont; }
+                if !def.reexp { again; }
                 let path = alt check cx.tcx.items.get(exp_id) {
                   ast_map::node_export(_, path) {
                     ast_map::path_to_str(*path)

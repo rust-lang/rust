@@ -56,7 +56,7 @@ fn strip_doc_comment_decoration(comment: str) -> str {
         let mut i = max.get_default(uint::max_value);
         for lines.each |line| {
             if line.trim().is_empty() {
-                cont;
+                again;
             }
             for line.each_chari |j, c| {
                 if j >= i {

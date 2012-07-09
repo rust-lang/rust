@@ -1184,7 +1184,7 @@ mod node {
                     let next_char = get_next_char_in_leaf(it);
                     alt(next_char) {
                       option::none {
-                        cont;
+                        again;
                       }
                       option::some(_) {
                         ret next_char;

@@ -53,7 +53,7 @@ impl reader_util for reader {
                 assert (w > 0u);
                 if w == 1u {
                     vec::push(chars,  b0 as char );
-                    cont;
+                    again;
                 }
                 // can't satisfy this char with the existing data
                 if end > vec::len(buf) {

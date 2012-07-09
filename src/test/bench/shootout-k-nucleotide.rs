@@ -155,7 +155,7 @@ fn main(args: ~[str]) {
    while !rdr.eof() {
       let line: str = rdr.read_line();
 
-      if str::len(line) == 0u { cont; }
+      if str::len(line) == 0u { again; }
 
       alt (line[0], proc_mode) {
 

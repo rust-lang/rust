@@ -2129,7 +2129,7 @@ fn check_exports(e: @env) {
                 let id = alt check glob.path.node {
                   ast::view_path_glob(_, node_id) { node_id }
                 };
-                if ! glob_is_re_exported.contains_key(id) { cont; }
+                if ! glob_is_re_exported.contains_key(id) { again; }
                 do iter_mod(*e, glob.def,
                             glob.path.span, outside) |ident, def| {
                     vec::push(_mod.globbed_exports, ident);

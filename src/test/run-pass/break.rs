@@ -10,14 +10,14 @@ fn main() {
         if x == 3 { break; } assert (x <= 3);
     }
     i = 0;
-    while i < 10 { i += 1; if i % 2 == 0 { cont; } assert (i % 2 != 0); }
+    while i < 10 { i += 1; if i % 2 == 0 { again; } assert (i % 2 != 0); }
     i = 0;
     loop { 
-        i += 1; if i % 2 == 0 { cont; } assert (i % 2 != 0); 
+        i += 1; if i % 2 == 0 { again; } assert (i % 2 != 0); 
         if i >= 10 { break; }
     }
     for vec::each(~[1, 2, 3, 4, 5, 6]) |x| {
-        if x % 2 == 0 { cont; }
+        if x % 2 == 0 { again; }
         assert (x % 2 != 0);
     }
 }

@@ -1140,7 +1140,7 @@ class parser {
                   }
                   _ { self.unexpected(); }
                 }
-                cont;
+                again;
             }
             if self.expr_is_complete(e) { break; }
             alt copy self.token {

@@ -119,12 +119,12 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                 // find the trait that im implements (if any)
                 let of_ty = alt ty::impl_trait(tcx, im.did) {
                   some(of_ty) { of_ty }
-                  _ { cont; }
+                  _ { again; }
                 };
 
                 // it must have the same id as the expected one
                 alt ty::get(of_ty).struct {
-                  ty::ty_trait(id, _) if id != trait_id { cont; }
+                  ty::ty_trait(id, _) if id != trait_id { again; }
                   _ { /* ok */ }
                 }
 
@@ -134,7 +134,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                     impl_self_ty(fcx, im.did);
                 let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                 alt fcx.mk_subty(ty, for_ty) {
-                  result::err(_) { cont; }
+                  result::err(_) { again; }
                   result::ok(()) { }
                 }
 

@@ -310,7 +310,7 @@ fn scan_digits(rdr: string_reader, radix: uint) -> str {
     let mut rslt = "";
     loop {
         let c = rdr.curr;
-        if c == '_' { bump(rdr); cont; }
+        if c == '_' { bump(rdr); again; }
         alt char::to_digit(c, radix) {
           some(d) {
             str::push_char(rslt, c);

@@ -17,7 +17,7 @@ fn main() {
     is_even = false;
     i += 1u;
     if i % 2u != 0u {
-        cont;
+        again;
     }
     is_even = true;
   }
@@ -30,7 +30,7 @@ fn main() {
     is_even = false;
     i += 1u;
     if i % 2u != 0u {
-        cont;
+        again;
     }
     is_even = true;
   }

@@ -597,7 +597,7 @@ fn link_binary(sess: session,
     for cstore::get_used_crate_files(cstore).each |cratepath| {
         if str::ends_with(cratepath, ".rlib") {
             vec::push(cc_args, cratepath);
-            cont;
+            again;
         }
         let cratepath = cratepath;
         let dir = path::dirname(cratepath);

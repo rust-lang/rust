@@ -184,7 +184,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
 
             let mut reexportdocs = ~[];
             for defs.each |def| {
-                if !def.reexp { cont; }
+                if !def.reexp { again; }
                 alt def_map.find(def.id) {
                   some(itemtag) {
                     reexportdocs += ~[(*name, itemtag)];

@@ -1329,7 +1329,7 @@ class Resolver {
 
         for (*impls_in_module).each |implementation| {
             if def_ids.contains_key(implementation.did) {
-                cont;
+                again;
             }
             def_ids.insert(implementation.did, ());
 
@@ -1821,7 +1821,7 @@ class Resolver {
             if !self.name_is_exported(containing_module, atom) {
                 #debug("(resolving glob import) name '%s' is unexported",
                        *(*self.atom_table).atom_to_str(atom));
-                cont;
+                again;
             }
 
             #debug("(resolving glob import) writing module resolution \
@@ -1898,7 +1898,7 @@ class Resolver {
             if !self.name_is_exported(containing_module, atom) {
                 #debug("(resolving glob import) name '%s' is unexported",
                        *(*self.atom_table).atom_to_str(atom));
-                cont;
+                again;
             }
 
             let mut dest_import_resolution;
@@ -2512,7 +2512,7 @@ class Resolver {
                 // to fail.
 
                 if namespace == ImplNS {
-                    cont;
+                    again;
                 }
 
                 alt self.resolve_definition_of_name_in_module(module,

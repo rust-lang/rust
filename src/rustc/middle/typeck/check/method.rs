@@ -170,7 +170,7 @@ class lookup {
         for vec::each(*bounds) |bound| {
             let (iid, bound_substs) = alt bound {
               ty::bound_copy | ty::bound_send | ty::bound_const {
-                cont; /* ok */
+                again; /* ok */
               }
               ty::bound_trait(bound_t) {
                 alt check ty::get(bound_t).struct {
@@ -215,7 +215,7 @@ class lookup {
 
         let ms = *ty::trait_methods(self.tcx(), did);
         for ms.eachi |i, m| {
-            if m.ident != self.m_name { cont; }
+            if m.ident != self.m_name { again; }
 
             let m_fty = ty::mk_fn(self.tcx(), m.fty);
 
@@ -251,7 +251,7 @@ class lookup {
         let ms = *ty::trait_methods(self.tcx(), did);
 
         for ms.each |m| {
-            if m.ident != self.m_name { cont; }
+            if m.ident != self.m_name { again; }
 
             if m.vis == ast::private && !self.include_private {
                 self.tcx().sess.span_fatal(

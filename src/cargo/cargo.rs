@@ -785,7 +785,7 @@ fn install_source(c: cargo, path: str) {
 
     for cratefiles.each |cf| {
         alt load_crate(cf) {
-            none { cont; }
+            none { again; }
             some(crate) {
               for crate.deps.each |query| {
                     // FIXME (#1356): handle cyclic dependencies
@@ -975,7 +975,7 @@ fn cmd_uninstall(c: cargo) {
                     }
                     ret;
                 }
-                none { cont; }
+                none { again; }
             }
         }
 
@@ -993,7 +993,7 @@ fn cmd_uninstall(c: cargo) {
                     }
                     ret;
                 }
-                none { cont; }
+                none { again; }
             }
         }
         for os::list_dir(bin).each |file| {
@@ -1007,7 +1007,7 @@ fn cmd_uninstall(c: cargo) {
                     }
                     ret;
                 }
-                none { cont; }
+                none { again; }
             }
         }
 
