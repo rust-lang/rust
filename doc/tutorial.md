@@ -1964,35 +1964,29 @@ non-copyable types.
 
 ## Generic functions
 
-Throughout this tutorial, we've been defining functions like `for_rev`
+Throughout this tutorial, we've been defining functions like
 that act only on single data types. It is 2012, and we no longer
 expect to be defining such functions again and again for every type
 they apply to.  Thus, Rust allows functions and datatypes to have type
 parameters.
 
 ~~~~
-fn for_rev<T>(vector: ~[T], action: fn(T)) {
-    let mut i = vec::len(vector);
-    while i > 0u {
-        i -= 1u;
-        action(vector[i]);
-    }
-}
-
-fn map<T, U>(vector: ~[T], function :fn(T) -> U) -> ~[U] {
+fn map<T, U>(vector: ~[T], function: fn(T) -> U) -> ~[U] {
     let mut accumulator = ~[];
-    for vector.each |element| { vec::push(accumulator, function(element)); }
+    for vector.each |element| {
+        vec::push(accumulator, function(element));
+    }
     ret accumulator;
 }
 ~~~~
 
-When defined in this way, these functions can be applied to any type
-of vector, as long as the type of the closure's argument and the type of
-the vector's content agree with each other.
+When defined with type parameters, this function can be applied to any
+type of vector, as long as the type of `function`'s argument and the
+type of the vector's content agree with each other.
 
-Inside a parameterized (generic) function, the names of the type
-parameters (capitalized by convention) stand for opaque types. You
-can't look inside them, but you can pass them around.
+Inside a generic function, the names of the type parameters
+(capitalized by convention) stand for opaque types. You can't look
+inside them, but you can pass them around.
 
 ## Generic datatypes
 
@@ -2076,18 +2070,22 @@ fn head<T: copy>(v: ~[T]) -> T { v[0] }
 
 When instantiating a generic function, you can only instantiate it
 with types that fit its kinds. So you could not apply `head` to a
-resource type.
+resource type. Rust has several kinds that can be used as type bounds:
 
-Rust has three kinds: 'noncopyable', 'copyable', and 'sendable'. By
-default, type parameters are considered to be noncopyable. You can
-annotate them with the `copy` keyword to declare them copyable, and
-with the `send` keyword to make them sendable.
+* `copy` - Copyable types. All types are copyable unless they
+  are classes with destructors or otherwise contain
+  classes with destructors.
+* `send` - Sendable types. All types are sendable unless they
+  contain shared boxes, closures, or other local-heap-allocated
+  types.
+* `const` - Constant types. These are types that do not contain
+  mutable fields nor shared boxes.
 
-Sendable types are a subset of copyable types. They are types that do
-not contain shared (reference counted) types, which are thus uniquely
-owned by the function that owns them, and can be sent over channels to
-other tasks. Most of the generic functions in the core `comm` module
-take sendable types.
+> ***Note:*** Rust type kinds are syntactically very similar to
+> [interfaces](#interfaces) when used as type bounds, and can be
+> conveniently thought of as built-in interfaces. In the future type
+> kinds will actually be interfaces that the compiler has special
+> knowledge about.
 
 ## Generic functions and argument-passing
 
@@ -2102,12 +2100,12 @@ vec::map(~[1, 2, 3], plus1);
 
 You will get an error message about argument passing styles
 disagreeing. The reason is that generic types are always passed by
-pointer, so `map` expects a function that takes its argument by
-pointer. The `plus1` you defined, however, uses the default, efficient
-way to pass integers, which is by value. To get around this issue, you
-have to explicitly mark the arguments to a function that you want to
-pass to a generic higher-order function as being passed by pointer,
-using the `&&` sigil:
+reference, so `map` expects a function that takes its argument by
+reference. The `plus1` you defined, however, uses the default,
+efficient way to pass integers, which is by value. To get around this
+issue, you have to explicitly mark the arguments to a function that
+you want to pass to a generic higher-order function as being passed by
+pointer, using the `&&` sigil:
 
 ~~~~
 fn plus1(&&x: int) -> int { x + 1 }
