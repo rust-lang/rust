@@ -1007,8 +1007,7 @@ class parser {
         } else if self.eat_keyword("break") {
             ex = expr_break;
             hi = self.span.hi;
-        } else if self.eat_keyword("cont") ||
-            self.eat_keyword("again") {
+        } else if self.eat_keyword("again") {
             ex = expr_again;
             hi = self.span.hi;
         } else if self.eat_keyword("copy") {
