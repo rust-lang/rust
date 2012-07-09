@@ -17,7 +17,7 @@
  * # Example
  *
  * ~~~
- * spawn {||
+ * do spawn {
  *     log(error, "Hello, World!");
  * }
  * ~~~
@@ -350,7 +350,6 @@ fn run_with<A:send>(-builder: builder,
                     +f: fn~(+A)) {
 
     /*!
-     *
      * Runs a task, while transfering ownership of one argument to the
      * child.
      *
@@ -412,15 +411,13 @@ fn spawn(+f: fn~()) {
 
 fn spawn_with<A:send>(+arg: A, +f: fn~(+A)) {
     /*!
-     * Runs a new task while providing a channel from the parent to the child
+     * Runs a task, while transfering ownership of one argument to the
+     * child.
      *
-     * Sets up a communication channel from the current task to the new
-     * child task, passes the port to child's body, and returns a channel
-     * linked to the port to the parent.
+     * This is useful for transfering ownership of noncopyables to
+     * another task.
      *
-     * This encapsulates some boilerplate handshaking logic that would
-     * otherwise be required to establish communication from the parent
-     * to the child.
+     * This function is equivalent to `run_with(builder(), arg, f)`.
      */
 
     run_with(builder(), arg, f)
@@ -443,7 +440,7 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
      *
      *     let po = comm::port();
      *     let ch = comm::chan(po);
-     *     let ch = spawn_listener {|po|
+     *     let ch = do spawn_listener |po| {
      *         // Now the child has a port called 'po' to read from and
      *         // an environment-captured channel called 'ch'.
      *     };
@@ -537,13 +534,15 @@ fn get_task() -> task {
  *
  * # Example
  *
- *     task::unkillable {||
- *         // detach / yield / destroy must all be called together
- *         rustrt::rust_port_detach(po);
- *         // This must not result in the current task being killed
- *         task::yield();
- *         rustrt::rust_port_destroy(po);
- *     }
+ * ~~~
+ * do task::unkillable {
+ *     // detach / yield / destroy must all be called together
+ *     rustrt::rust_port_detach(po);
+ *     // This must not result in the current task being killed
+ *     task::yield();
+ *     rustrt::rust_port_destroy(po);
+ * }
+ * ~~~
  */
 unsafe fn unkillable(f: fn()) {
     class allow_failure {

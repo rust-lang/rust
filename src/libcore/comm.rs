@@ -16,9 +16,9 @@
  * let po = comm::port();
  * let ch = comm::chan(po);
  *
- * task::spawn {||
+ * do task::spawn {
  *     comm::send(ch, "Hello, World");
- * });
+ * }
  *
  * io::println(comm::recv(p));
  * ~~~
