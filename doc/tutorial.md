@@ -2229,7 +2229,7 @@ somewhere, it will complain that no matching crate was found.
 
 A set of basic library routines, mostly related to built-in datatypes
 and the task system, are always implicitly linked and included in any
-Rust program, unless the `--no-core` compiler switch is given.
+Rust program.
 
 This library is documented [here][core].
 
