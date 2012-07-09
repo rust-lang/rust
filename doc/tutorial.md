@@ -1592,7 +1592,7 @@ When you need to store a closure in a data structure, a stack closure
 will not do, since the compiler will refuse to let you store it. For
 this purpose, Rust provides a type of closure that has an arbitrary
 lifetime, written `fn@` (boxed closure, analogous to the `@` pointer
-type described in the next section).
+type described earlier).
 
 A boxed closure does not directly access its environment, but merely
 copies out the values that it closes over into a private data
@@ -2950,9 +2950,10 @@ fn stringifier(from_parent: comm::port<uint>,
 You can see that the function takes two parameters.  The first is a
 port used to receive messages from the parent, and the second is a
 channel used to send messages to the parent.  The body itself simply
-loops, reading from the `from_par` port and then sending its response
-to the `to_par` channel.  The actual response itself is simply the
-strified version of the received value, `uint::to_str(value)`.
+loops, reading from the `from_parent` port and then sending its
+response to the `to_parent` channel.  The actual response itself is
+simply the strified version of the received value,
+`uint::to_str(value)`.
  
 Here is the code for the parent task:
 
