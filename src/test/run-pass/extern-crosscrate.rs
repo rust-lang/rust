@@ -1,3 +1,4 @@
+// xfail-fast
 //aux-build:extern-crosscrate-source.rs
 
 use externcallback(vers = "0.1");
