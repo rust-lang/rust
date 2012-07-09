@@ -405,15 +405,13 @@ fn spawn(+f: fn~()) {
 
 fn spawn_with<A:send>(+arg: A, +f: fn~(+A)) {
     /*!
-     * Runs a new task while providing a channel from the parent to the child
+     * Runs a task, while transfering ownership of one argument to the
+     * child.
      *
-     * Sets up a communication channel from the current task to the new
-     * child task, passes the port to child's body, and returns a channel
-     * linked to the port to the parent.
+     * This is useful for transfering ownership of noncopyables to
+     * another task.
      *
-     * This encapsulates some boilerplate handshaking logic that would
-     * otherwise be required to establish communication from the parent
-     * to the child.
+     * This function is equivalent to `run_with(builder(), arg, f)`.
      */
 
     run_with(builder(), arg, f)
