@@ -60,6 +60,7 @@ class cat : map<int, bool> {
   fn each_value(&&f: fn(&&bool) -> bool) {
     for self.each |_k, v| { if !f(v) { break; } cont;};
   }
+  fn clear() { }
 }
 
 fn main() {
