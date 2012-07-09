@@ -156,7 +156,16 @@ fn peek<T: send>(p: recv_packet<T>) -> bool {
 fn sender_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { uniquify(p) };
     alt swap_state_rel(p.header.state, terminated) {
-      empty | blocked {
+      empty {
+        // The receiver will eventually clean up.
+        unsafe { forget(p) }
+      }
+      blocked {
+        // wake up the target
+        let target = p.header.blocked_task.get();
+        rustrt::task_signal_event(target,
+                                  ptr::addr_of(p.header) as *libc::c_void);
+
         // The receiver will eventually clean up.
         unsafe { forget(p) }
       }
