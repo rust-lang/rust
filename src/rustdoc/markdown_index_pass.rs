@@ -121,6 +121,7 @@ fn pandoc_header_id(header: str) -> str {
         let s = str::replace(s, "/", "");
         let s = str::replace(s, ":", "");
         let s = str::replace(s, "&", "");
+        let s = str::replace(s, "^", "");
         ret s;
     }
     fn replace_with_hyphens(s: str) -> str {
@@ -138,6 +139,8 @@ fn should_remove_punctuation_from_headers() {
     assert pandoc_header_id("impl of num::num for int")
         == "impl-of-numnum-for-int";
     assert pandoc_header_id("impl of num::num for int/&")
+        == "impl-of-numnum-for-int";
+    assert pandoc_header_id("impl of num::num for ^int")
         == "impl-of-numnum-for-int";
 }
 
