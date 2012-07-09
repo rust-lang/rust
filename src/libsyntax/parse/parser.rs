@@ -936,14 +936,6 @@ class parser {
             hi = self.span.hi;
             ex = expr_vec(es, mutbl);
         } else if self.token == token::POUND
-            && self.look_ahead(1u) == token::POUND {
-            self.bump(); self.bump();
-            //let macname = self.parse_path_without_tps();
-            //let macbody = self.parse_token_tree();
-            //ret pexpr(self.mk_mac_expr(lo, self.span.hi,
-            //                           mac_invoc_tt(macname, macbody)));
-            ret pexpr(self.parse_tt_mac_demo());
-        } else if self.token == token::POUND
             && self.look_ahead(1u) == token::LT {
             self.bump(); self.bump();
             let ty = self.parse_ty(false);
@@ -1257,39 +1249,6 @@ class parser {
         ret self.parse_seq(token::LBRACE, token::RBRACE,
                            common::seq_sep_none(),
                            |p| p.parse_matcher(name_idx)).node;
-    }
-
-    /* temporary */
-    fn parse_tt_mac_demo() -> @expr {
-        import ext::tt::earley_parser::{parse,success,failure};
-        let ms = self.parse_matchers();
-        self.quote_depth += 1u;
-        let tt_rhs= self.parse_token_tree();
-        self.quote_depth -= 1u;
-        let tt_readme = self.parse_token_tree();
-        alt (tt_readme, tt_rhs) {
-          (tt_delim(tts), tt_delim(tts_rhs)) {
-            let rdr = lexer::new_tt_reader(self.reader.span_diag(),
-                                           self.reader.interner(), none, tts)
-                as reader;
-
-            let matches = alt parse(self.sess, self.cfg, rdr, ms) {
-                  success(m) { m }
-                  failure(sp, msg) { self.span_fatal(sp,msg); }
-                };
-
-            let transcriber = ext::tt::transcribe::new_tt_reader
-                (self.reader.span_diag(), self.reader.interner(),
-                 some(matches), tts_rhs);
-            let res_parser = parser(self.sess, self.cfg,
-                                    transcriber as reader,
-                                    SOURCE_FILE);
-
-            ret res_parser.parse_expr();
-          }
-          _ { fail; }
-        }
-
     }
 
     fn parse_matcher(name_idx: @mut uint) -> matcher {
