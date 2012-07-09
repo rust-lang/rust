@@ -827,13 +827,17 @@ fn get_crate_vers(data: @~[u8]) -> @str {
 fn list_crate_items(bytes: @~[u8], md: ebml::doc, out: io::writer) {
     out.write_str("=Items=\n");
     let items = ebml::get_doc(md, tag_items);
-    do iter_crate_items(bytes) |path, did| {
-        out.write_str(#fmt["%s (%s)\n", path, describe_def(items, did)]);
+    do iter_crate_items(bytes) |tag, path, did| {
+      // Don't print out any metadata info about intrinsics
+       if tag != tag_paths_foreign_path {
+            out.write_str(#fmt["%s (%s)\n", path,
+                               describe_def(items, did)]);
+       }
     }
     out.write_str("\n");
 }
 
-fn iter_crate_items(bytes: @~[u8], proc: fn(str, ast::def_id)) {
+fn iter_crate_items(bytes: @~[u8], proc: fn(uint, str, ast::def_id)) {
     let md = ebml::doc(bytes);
     let paths = ebml::get_doc(md, tag_paths);
     let index = ebml::get_doc(paths, tag_index);
@@ -842,10 +846,10 @@ fn iter_crate_items(bytes: @~[u8], proc: fn(str, ast::def_id)) {
         let et = tag_index_buckets_bucket_elt;
         do ebml::tagged_docs(bucket, et) |elt| {
             let data = read_path(elt);
-            let {tag:_, doc:def} = ebml::doc_at(bytes, data.pos);
+            let {tag:t, doc:def} = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = ebml::with_doc_data(did_doc, |d| parse_def_id(d));
-            proc(data.path, did);
+            proc(t, data.path, did);
         };
     };
 }
@@ -859,7 +863,7 @@ fn get_crate_module_paths(bytes: @~[u8]) -> ~[(ast::def_id, str)] {
     // fowarded path due to renamed import or reexport
     let mut res = ~[];
     let mods = map::str_hash();
-    do iter_crate_items(bytes) |path, did| {
+    do iter_crate_items(bytes) |_tag, path, did| {
         let m = mod_of_path(path);
         if str::is_not_empty(m) {
             // if m has a sub-item, it must be a module

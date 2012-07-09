@@ -131,8 +131,11 @@ fn add_to_index(ebml_w: ebml::writer, path: &[ident], &index: ~[entry<str>],
 fn encode_foreign_module_item_paths(ebml_w: ebml::writer, nmod: foreign_mod,
                                     path: ~[ident], &index: ~[entry<str>]) {
     for nmod.items.each |nitem| {
-        add_to_index(ebml_w, path, index, nitem.ident);
-        encode_named_def_id(ebml_w, nitem.ident, local_def(nitem.id));
+      add_to_index(ebml_w, path, index, nitem.ident);
+      do ebml_w.wr_tag(tag_paths_foreign_path) {
+          encode_name(ebml_w, nitem.ident);
+          encode_def_id(ebml_w, local_def(nitem.id));
+      }
     }
 }
 
@@ -244,7 +247,9 @@ fn encode_reexport_paths(ebml_w: ebml::writer,
     for ecx.reexports.each |reexport| {
         let (path, def_id) = reexport;
         vec::push(index, {val: path, pos: ebml_w.writer.tell()});
-        ebml_w.start_tag(tag_paths_data_item);
+        // List metadata ignores tag_paths_foreign_path things, but
+        // other things look at it.
+        ebml_w.start_tag(tag_paths_foreign_path);
         encode_name(ebml_w, @path);
         encode_def_id(ebml_w, def_id);
         ebml_w.end_tag();

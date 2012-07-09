@@ -96,6 +96,7 @@ const tag_mod_impl_trait: uint = 0x47u;
  */
 const tag_item_impl_method: uint = 0x48u;
 const tag_item_dtor: uint = 0x49u;
+const tag_paths_foreign_path: uint = 0x4a;
 
 // used to encode crate_ctxt side tables
 enum astencode_tag { // Reserves 0x50 -- 0x6f
