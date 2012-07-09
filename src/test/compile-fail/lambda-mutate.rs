@@ -1,4 +1,4 @@
-// error-pattern:assigning to variable declared in an outer block
+// error-pattern:assigning to captured outer variable in a heap closure
 // Make sure we can't write to upvars from fn@s
 fn main() {
     let i = 0;

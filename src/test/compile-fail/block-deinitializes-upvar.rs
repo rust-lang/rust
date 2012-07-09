@@ -1,4 +1,4 @@
-// error-pattern:moving out of immutable variable declared in an outer block
+// error-pattern:moving out of captured outer immutable variable in a stack closure
 fn force(f: fn()) { f(); }
 fn main() {
     let mut x = @{x: 17, y: 2};
