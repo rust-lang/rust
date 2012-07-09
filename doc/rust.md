@@ -3186,7 +3186,7 @@ let x: ~int = ~10;
 ~~~~~~~~
 
 Some operations (such as field selection) implicitly dereference boxes. An
-example of an @dfn{implicit dereference} operation performed on box values:
+example of an _implicit dereference_ operation performed on box values:
 
 ~~~~~~~~
 let x = @{y: 10};
@@ -3196,8 +3196,8 @@ assert x.y == 10;
 Other operations act on box values as single-word-sized address values. For
 these operations, to access the value held in the box requires an explicit
 dereference of the box value. Explicitly dereferencing a box is indicated with
-the unary *star* operator `*`. Examples of such @dfn{explicit
-dereference} operations are:
+the unary *star* operator `*`. Examples of such _explicit dereference_
+operations are:
 
 * copying box values (`x = y`)
 * passing box values to functions (`f(x,y)`)
