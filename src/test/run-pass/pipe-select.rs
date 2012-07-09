@@ -72,4 +72,34 @@ fn main() {
     sleep(iotask, 1000);
 
     signal(c2);
+
+    test_select2();
+}
+
+fn test_select2() {
+    let (ac, ap) = stream::init();
+    let (bc, bp) = stream::init();
+
+    stream::client::send(ac, 42);
+
+    alt pipes::select2(ap, bp) {
+      either::left(*) { }
+      either::right(*) { fail }
+    }
+
+    stream::client::send(bc, "abc");
+
+    #error("done with first select2");
+
+    let (ac, ap) = stream::init();
+    let (bc, bp) = stream::init();
+
+    stream::client::send(bc, "abc");
+
+    alt pipes::select2(ap, bp) {
+      either::left(*) { fail }
+      either::right(*) { }
+    }
+
+    stream::client::send(ac, 42);
 }

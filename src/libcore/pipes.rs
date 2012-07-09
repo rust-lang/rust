@@ -1,6 +1,7 @@
 // Runtime support for pipes.
 
-import unsafe::{forget, reinterpret_cast};
+import unsafe::{forget, reinterpret_cast, transmute};
+import either::{either, left, right};
 
 enum state {
     empty,
@@ -241,6 +242,30 @@ fn wait_many(pkts: ~[&a.packet_header]) -> uint {
         || pkts[ready_packet].state == terminated;
 
     ready_packet
+}
+
+fn select2<A: send, B: send>(
+    +a: recv_packet<A>,
+    +b: recv_packet<B>)
+    -> either<(option<A>, recv_packet<B>), (recv_packet<A>, option<B>)>
+{
+    let a = unsafe { uniquify(a.unwrap()) };
+    let b = unsafe { uniquify(b.unwrap()) };
+    let i = {
+        let headers = ~[&a.header,
+                        &b.header];
+        wait_many(headers)
+    };
+
+    unsafe {
+        alt i {
+          0 { left((recv(recv_packet(transmute(a))),
+                    recv_packet(transmute(b)))) }
+          1 { right((recv_packet(transmute(a)),
+                     recv(recv_packet(transmute(b))))) }
+          _ { fail "select2 return an invalid packet" }
+        }
+    }
 }
 
 #[doc = "Waits on a set of endpoints. Returns a message, its index,
