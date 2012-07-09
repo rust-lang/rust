@@ -15,21 +15,14 @@ uint8_t str_body_shape[] = {
 };
 
 struct type_desc str_body_tydesc = {
-    0, // unused
     1, // size
     1, // align
     NULL, // take_glue
     NULL, // drop_glue
     NULL, // free_glue
     NULL, // visit_glue
-    0, // unused
-    0, // unused
-    0, // unused
-    0, // unused
     str_body_shape, // shape
     &empty_shape_tables, // shape_tables
-    0, // unused
-    0, // unused
 };
 
 //

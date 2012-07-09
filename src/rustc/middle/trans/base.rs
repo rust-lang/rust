@@ -596,21 +596,14 @@ fn emit_tydescs(ccx: @crate_ctxt) {
 
         let tydesc =
             C_named_struct(ccx.tydesc_type,
-                           ~[C_null(T_ptr(T_ptr(ccx.tydesc_type))),
-                            ti.size, // size
-                            ti.align, // align
-                            take_glue, // take_glue
-                            drop_glue, // drop_glue
-                            free_glue, // free_glue
-                            visit_glue, // visit_glue
-                            C_int(ccx, 0), // unused
-                            C_int(ccx, 0), // unused
-                            C_int(ccx, 0), // unused
-                            C_int(ccx, 0), // unused
-                            C_shape(ccx, shape), // shape
-                            shape_tables, // shape_tables
-                            C_int(ccx, 0), // unused
-                             C_int(ccx, 0)]); // unused
+                           ~[ti.size, // size
+                             ti.align, // align
+                             take_glue, // take_glue
+                             drop_glue, // drop_glue
+                             free_glue, // free_glue
+                             visit_glue, // visit_glue
+                             C_shape(ccx, shape), // shape
+                             shape_tables]); // shape_tables
 
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
@@ -1213,14 +1206,12 @@ fn call_cmp_glue(bcx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
     let lltydesc = get_tydesc_simple(bcx.ccx(), t);
-    let lltydescs =
-        Load(bcx, GEPi(bcx, lltydesc, ~[0u, abi::tydesc_field_first_param]));
 
     let llfn = bcx.ccx().upcalls.cmp_type;
 
     let llcmpresultptr = alloca(bcx, T_i1());
-    Call(bcx, llfn, ~[llcmpresultptr, lltydesc, lltydescs,
-                     llrawlhsptr, llrawrhsptr, llop]);
+    Call(bcx, llfn, ~[llcmpresultptr, lltydesc,
+                      llrawlhsptr, llrawrhsptr, llop]);
     ret Load(bcx, llcmpresultptr);
 }
 

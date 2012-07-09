@@ -484,8 +484,7 @@ log::walk_res2(const rust_fn *dtor, const uint8_t *end_sp) {
 
 extern "C" void
 shape_cmp_type(int8_t *result, const type_desc *tydesc,
-               const type_desc **subtydescs, uint8_t *data_0,
-               uint8_t *data_1, uint8_t cmp_type) {
+               uint8_t *data_0, uint8_t *data_1, uint8_t cmp_type) {
     rust_task *task = rust_get_current_task();
     shape::arena arena;
 

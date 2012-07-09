@@ -444,13 +444,11 @@ upcall_rust_personality(int version,
 
 extern "C" void
 shape_cmp_type(int8_t *result, const type_desc *tydesc,
-               const type_desc **subtydescs, uint8_t *data_0,
-               uint8_t *data_1, uint8_t cmp_type);
+               uint8_t *data_0, uint8_t *data_1, uint8_t cmp_type);
 
 struct s_cmp_type_args {
     int8_t *result;
     const type_desc *tydesc;
-    const type_desc **subtydescs;
     uint8_t *data_0;
     uint8_t *data_1;
     uint8_t cmp_type;
@@ -458,16 +456,15 @@ struct s_cmp_type_args {
 
 extern "C" void
 upcall_s_cmp_type(s_cmp_type_args *args) {
-    shape_cmp_type(args->result, args->tydesc, args->subtydescs,
+    shape_cmp_type(args->result, args->tydesc,
                    args->data_0, args->data_1, args->cmp_type);
 }
 
 extern "C" void
 upcall_cmp_type(int8_t *result, const type_desc *tydesc,
-                const type_desc **subtydescs, uint8_t *data_0,
-                uint8_t *data_1, uint8_t cmp_type) {
+                uint8_t *data_0, uint8_t *data_1, uint8_t cmp_type) {
     rust_task *task = rust_get_current_task();
-    s_cmp_type_args args = {result, tydesc, subtydescs,
+    s_cmp_type_args args = {result, tydesc,
                             data_0, data_1, cmp_type};
     UPCALL_SWITCH_STACK(task, &args, upcall_s_cmp_type);
 }

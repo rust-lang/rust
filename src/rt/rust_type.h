@@ -45,24 +45,15 @@ static inline void *box_body(rust_opaque_box *box) {
     return (void*)(box + 1);
 }
 
-// N.B. If you want to add a field to tydesc, please use one of the
-// unused fields!
 struct type_desc {
-    uintptr_t UNUSED_1;
     size_t size;
     size_t align;
     glue_fn *take_glue;
     glue_fn *drop_glue;
     glue_fn *free_glue;
     glue_fn *visit_glue;
-    uintptr_t UNUSED_2;
-    uintptr_t UNUSED_3;
-    uintptr_t UNUSED_4;
-    uintptr_t UNUSED_5;
     const uint8_t *shape;
     const rust_shape_tables *shape_tables;
-    uintptr_t UNUSED_6;
-    uintptr_t UNUSED_7;
 };
 
 extern "C" type_desc *rust_clone_type_desc(type_desc*);

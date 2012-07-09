@@ -86,7 +86,7 @@ fn declare_upcalls(targ_cfg: @session::config,
           cmp_type:
               dv("cmp_type",
                  ~[T_ptr(T_i1()), T_ptr(tydesc_type),
-                  T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()),
+                  T_ptr(T_i8()),
                   T_ptr(T_i8()),
                   T_i8()]),
           log_type:
