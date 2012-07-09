@@ -344,7 +344,6 @@ fn run_with<A:send>(-builder: builder,
                     +f: fn~(+A)) {
 
     /*!
-     *
      * Runs a task, while transfering ownership of one argument to the
      * child.
      *
