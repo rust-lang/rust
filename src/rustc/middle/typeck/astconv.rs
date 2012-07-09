@@ -100,7 +100,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy>(
       (false, some(_)) {
         tcx.sess.span_err(
             path.span,
-            #fmt["no region bound is permitted on %s, \
+            #fmt["no region bound is allowed on `%s`, \
                   which is not declared as containing region pointers",
                  ty::item_path_str(tcx, did)]);
         none
