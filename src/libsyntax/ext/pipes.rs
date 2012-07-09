@@ -8,7 +8,7 @@ import parse::common::parser_common;
 
 import pipes::parse_proto::proto_parser;
 
-import pipes::pipec::*;
+import pipes::pipec::methods;
 
 fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident, tt: ast::token_tree)
     -> @ast::item

@@ -5,7 +5,7 @@ import token::{can_begin_expr, is_ident, is_plain_ident, ACTUALLY};
 import codemap::{span,fss_none};
 import util::interner;
 import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
-import lexer::reader;
+import lexer::{reader, tt_reader_as_reader};
 import prec::{as_prec, token_to_binop};
 import attr::parser_attr;
 import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
