@@ -288,6 +288,7 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
       'u' { dl_def(ast::def_fn(did, ast::unsafe_fn)) }
       'f' { dl_def(ast::def_fn(did, ast::impure_fn)) }
       'p' { dl_def(ast::def_fn(did, ast::pure_fn)) }
+      'F' { dl_def(ast::def_fn(did, ast::extern_fn)) }
       'y' { dl_def(ast::def_ty(did)) }
       't' { dl_def(ast::def_ty(did)) }
       'm' { dl_def(ast::def_mod(did)) }
