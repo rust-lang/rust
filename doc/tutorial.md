@@ -1428,10 +1428,10 @@ also done with square brackets (zero-based):
 # enum crayon { almond, antique_brass, apricot,
 #               aquamarine, asparagus, atomic_tangerine,
 #               banana_mania, beaver, bittersweet };
-# fn draw_crying_puppy(c: crayon) { }
+# fn draw_scene(c: crayon) { }
 
 let crayons = ~[banana_mania, beaver, bittersweet];
-if crayons[0] == bittersweet { draw_crying_puppy(crayons[0]); }
+if crayons[0] == bittersweet { draw_scene(crayons[0]); }
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
@@ -1644,8 +1644,8 @@ fn mk_appender(suffix: str) -> fn@(str) -> str {
 
 ## Unique closures
 
-Unique closures, written `fn~` in analogy to the `~` pointer type (see
-next section), hold on to things that can safely be sent between
+Unique closures, written `fn~` in analogy to the `~` pointer type,
+hold on to things that can safely be sent between
 processes. They copy the values they close over, much like boxed
 closures, but they also 'own' them—meaning no other code can access
 them. Unique closures are used in concurrent code, particularly
