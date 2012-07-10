@@ -11,11 +11,11 @@ fn main() {
     assert 15i32.add(6i32) == 21i32;
     assert 15i64.add(6i64) == 21i64;
     // times
-    let bar = 15.times;
-    let bar = 15i8.times;
-    let bar = 15i16.times;
-    let bar = 15i32.times;
-    let bar = 15i64.times;
+     15.times(|| false);
+     15i8.times(|| false);
+     15i16.times(|| false);
+     15i32.times(|| false);
+     15i64.times(|| false);
 
 // uints
     // num
@@ -25,11 +25,11 @@ fn main() {
     assert 15u32.add(6u32) == 21u32;
     assert 15u64.add(6u64) == 21u64;
     // times
-    let bar = 15u.times;
-    let bar = 15u8.times;
-    let bar = 15u16.times;
-    let bar = 15u32.times;
-    let bar = 15u64.times;
+     15u.times(|| false);
+     15u8.times(|| false);
+     15u16.times(|| false);
+     15u32.times(|| false);
+     15u64.times(|| false);
 
 // floats
     // num
