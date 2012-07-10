@@ -782,9 +782,9 @@ let (a, b) = get_tuple_of_two_ints();
 This will introduce two new variables, `a` and `b`, bound to the
 content of the tuple.
 
-You may only use irrevocable patterns—patterns that can never fail to
-match—in let bindings, though. Things like literals, which only match
-a specific value, are not allowed.
+You may only use irrefutable patterns—patterns that can never fail to
+match—in let bindings. Other types of patterns, such as literals, are
+not allowed.
 
 ## Loops
 
@@ -821,13 +821,29 @@ in a moment.
 ## Failure
 
 The `fail` keyword causes the current [task](#tasks) to fail. You use
-it to indicate unexpected failure, much like you'd use `exit(1)` in a
-C program, except that in Rust, it is possible for other tasks to
-handle the failure, allowing the program to continue running.
+it to indicate unexpected failure, much like you'd use `abort` in a
+C program or a fatal exception in a C++ program.
 
-`fail` takes an optional argument, which must have type `str`. Trying
-to access a vector out of bounds, or running a pattern match with no
-matching clauses, both result in the equivalent of a `fail`.
+There is no way for the current task to resume execution after
+failure; failure is nonrecoverable. It is, however, possible for
+*another* task to handle the failure, allowing the program to continue
+running.
+
+`fail` takes an optional argument specifying the reason for the
+failure. It must have type `str`.
+
+In addition to the `fail` statement, the following circumstances cause
+task failure:
+
+* Accessing an out-of-bounds element of a vector.
+
+* Having no clauses match when evaluating an `alt check` expression.
+
+* An assertion failure.
+
+* Integer division by zero.
+
+* Running out of memory.
 
 ## Assertions
 
