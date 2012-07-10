@@ -2,6 +2,7 @@
 #include "rust_globals.h"
 #include "rust_task.h"
 #include "rust_shape.h"
+#include "rust_box_annihilator.h"
 
 class annihilator : public shape::data<annihilator,shape::ptr> {
     friend class shape::data<annihilator,shape::ptr>;

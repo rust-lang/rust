@@ -7,6 +7,7 @@
 #include "sync/timer.h"
 #include "rust_abi.h"
 #include "rust_port.h"
+#include "rust_box_annihilator.h"
 
 #include <time.h>
 
@@ -738,6 +739,12 @@ extern "C" CDECL void
 rust_set_exit_status(intptr_t code) {
     rust_task *task = rust_get_current_task();
     task->kernel->set_exit_status((int)code);
+}
+
+extern "C" CDECL void
+rust_annihilate_box(rust_opaque_box *ptr) {
+    rust_task *task = rust_get_current_task();
+    annihilate_box(task, ptr);
 }
 
 extern void log_console_on();
