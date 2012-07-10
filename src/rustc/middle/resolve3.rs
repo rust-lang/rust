@@ -1264,6 +1264,11 @@ class Resolver {
                                                 }
                                             }
 
+                                            #debug("(building reduced graph \
+                                                     for external crate) \
+                                                     ... creating import \
+                                                     resolution");
+
                                             new_parent.import_resolutions.
                                                 insert(atom, resolution);
                                         }
