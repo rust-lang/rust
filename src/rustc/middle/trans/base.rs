@@ -2660,7 +2660,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
         alt e.node {
           ast::expr_path(_) {
             let v = trans_path(cx, e.id);
-            ret lval_maybe_callee_to_lval(v, expr_ty(cx, e));
+            ret lval_maybe_callee_to_lval(v, e.span);
           }
           ast::expr_field(base, ident, _) {
             ret trans_rec_field(cx, base, ident);
@@ -2711,26 +2711,18 @@ fn non_gc_box_cast(cx: block, val: ValueRef) -> ValueRef {
     PointerCast(cx, val, non_gc_t)
 }
 
-fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
-    let must_bind = alt c.env { self_env(_, _, _) { true } _ { false } };
-    if must_bind {
-        let n_args = ty::ty_fn_args(ty).len();
-        let args = vec::from_elem(n_args, none);
-        let space = alloc_ty(c.bcx, ty);
-        let bcx = closure::trans_bind_1(c.bcx, ty, c, args, ty,
-                                        save_in(space));
-        add_clean_temp(bcx, space, ty);
-        {bcx: bcx, val: space, kind: temporary}
-    } else {
-        alt check c.env {
-          is_closure { {bcx: c.bcx, val: c.val, kind: c.kind} }
-          null_env {
-            let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
-            let llfn = create_real_fn_pair(c.bcx, llfnty, c.val,
-                                           null_env_ptr(c.bcx));
-            {bcx: c.bcx, val: llfn, kind: temporary}
-          }
-        }
+fn lval_maybe_callee_to_lval(c: lval_maybe_callee, sp: span) -> lval_result {
+    alt c.env {
+      self_env(*) {
+        c.bcx.sess().span_bug(sp, "implicitly binding method call");
+      }
+      is_closure { {bcx: c.bcx, val: c.val, kind: c.kind} }
+      null_env {
+        let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
+        let llfn = create_real_fn_pair(c.bcx, llfnty, c.val,
+                                       null_env_ptr(c.bcx));
+        {bcx: c.bcx, val: llfn, kind: temporary}
+      }
     }
 }
 
@@ -3605,7 +3597,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_field(base, _, _) {
             if dest == ignore { ret trans_expr(bcx, base, ignore); }
             let callee = trans_callee(bcx, e), ty = expr_ty(bcx, e);
-            let lv = lval_maybe_callee_to_lval(callee, ty);
+            let lv = lval_maybe_callee_to_lval(callee, e.span);
             revoke_clean(lv.bcx, lv.val);
             memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, ty);
             ret lv.bcx;

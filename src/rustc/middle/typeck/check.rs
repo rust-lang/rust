@@ -710,18 +710,18 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     #debug(">> typechecking expr %d (%s)",
            expr.id, syntax::print::pprust::expr_to_str(expr));
 
-    // A generic function to factor out common logic from call and bind
-    // expressions.
-    fn check_call_or_bind(
+    // A generic function to factor out common logic from call and
+    // overloaded operations
+    fn check_call_inner(
         fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id, in_fty: ty::t,
-        args: ~[option<@ast::expr>]) -> {fty: ty::t, bot: bool} {
+        args: ~[@ast::expr]) -> {fty: ty::t, bot: bool} {
 
         let mut bot = false;
 
         // Replace all region parameters in the arguments and return
         // type with fresh region variables.
 
-        #debug["check_call_or_bind: before universal quant., in_fty=%s",
+        #debug["check_call_inner: before universal quant., in_fty=%s",
                fcx.infcx.ty_to_str(in_fty)];
 
         // This is subtle: we expect `fty` to be a function type, which
@@ -747,7 +747,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             };
 
         let fty = ty::mk_fn(fcx.tcx(), fn_ty);
-        #debug["check_call_or_bind: after universal quant., fty=%s",
+        #debug["check_call_inner: after universal quant., fty=%s",
                fcx.infcx.ty_to_str(fty)];
 
         let supplied_arg_count = vec::len(args);
@@ -782,23 +782,18 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         for [false, true]/_.each |check_blocks| {
-            for args.eachi |i, a_opt| {
-                alt a_opt {
-                  some(a) {
-                    let is_block = alt a.node {
-                      ast::expr_fn_block(*) { true }
-                      _ { false }
-                    };
-                    if is_block == check_blocks {
-                        let arg_ty = arg_tys[i];
-                        bot |= check_expr_with_unifier(
-                            fcx, a, some(arg_ty),
-                            || demand::assign(fcx, a.span, call_expr_id,
-                                              arg_ty, a)
+            for args.eachi |i, a| {
+                let is_block = alt a.node {
+                  ast::expr_fn_block(*) { true }
+                  _ { false }
+                };
+                if is_block == check_blocks {
+                    let arg_ty = arg_tys[i];
+                    bot |= check_expr_with_unifier(
+                        fcx, a, some(arg_ty),
+                        || demand::assign(fcx, a.span, call_expr_id,
+                                          arg_ty, a)
                         );
-                    }
-                  }
-                  none { }
                 }
             }
         }
@@ -824,9 +819,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // Call the generic checker.
         let fty = {
-            let args_opt = args.map(|arg| some(arg));
-            let r = check_call_or_bind(fcx, sp, call_expr_id,
-                                       fn_ty, args_opt);
+            let r = check_call_inner(fcx, sp, call_expr_id,
+                                     fn_ty, args);
             bot |= r.bot;
             r.fty
         };
@@ -890,7 +884,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
                         self_ex: @ast::expr, self_t: ty::t,
-                        opname: str, args: ~[option<@ast::expr>])
+                        opname: str, args: ~[@ast::expr])
         -> option<(ty::t, bool)> {
         let callee_id = ast_util::op_expr_callee_id(op_ex);
         let lkup = method::lookup(fcx, op_ex, self_ex, op_ex.id,
@@ -899,8 +893,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           some(origin) {
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(callee_id);
-                check_call_or_bind(fcx, op_ex.span, op_ex.id,
-                                   method_ty, args)
+                check_call_inner(fcx, op_ex.span, op_ex.id,
+                                 method_ty, args)
             };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some((ty::ty_fn_ret(method_ty), bot))
@@ -965,7 +959,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           some(name) {
             alt lookup_op_method(fcx, ex,
                                  lhs_expr, lhs_resolved_t,
-                                 name, ~[some(rhs)]) {
+                                 name, ~[rhs]) {
               some(pair) { ret pair; }
               _ {}
             }
@@ -1589,7 +1583,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let resolved = structurally_resolved_type(fcx, expr.span,
                                                       raw_base_t);
             alt lookup_op_method(fcx, expr, base, resolved, "[]",
-                                 ~[some(idx)]) {
+                                 ~[idx]) {
               some((ret_ty, _)) { fcx.write_ty(id, ret_ty); }
               _ {
                 tcx.sess.span_fatal(

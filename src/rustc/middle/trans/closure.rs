@@ -90,9 +90,6 @@ import dvec::extensions;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 enum environment_value {
-    // Evaluate expr and store result in env (used for bind).
-    env_expr(@ast::expr, ty::t),
-
     // Copy the value from this llvm ValueRef into the environment.
     env_copy(ValueRef, ty::t, lval_kind),
 
@@ -105,7 +102,6 @@ enum environment_value {
 
 fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
     alt ev {
-      env_expr(ex, _) { expr_to_str(ex) }
       env_copy(v, t, lk) { #fmt("copy(%s,%s)", val_str(ccx.tn, v),
                                 ty_to_str(ccx.tcx, t)) }
       env_move(v, t, lk) { #fmt("move(%s,%s)", val_str(ccx.tn, v),
@@ -123,7 +119,7 @@ fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
 // Given a closure ty, emits a corresponding tuple ty
 fn mk_closure_tys(tcx: ty::ctxt,
                   bound_values: ~[environment_value])
-    -> (ty::t, ~[ty::t]) {
+    -> ty::t {
     let mut bound_tys = ~[];
 
     // Compute the closed over data
@@ -132,7 +128,6 @@ fn mk_closure_tys(tcx: ty::ctxt,
             env_copy(_, t, _) { t }
             env_move(_, t, _) { t }
             env_ref(_, t, _) { t }
-            env_expr(_, t) { t }
         });
     }
     let bound_data_ty = ty::mk_tup(tcx, bound_tys);
@@ -140,7 +135,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
     let cdata_ty = ty::mk_tup(tcx, ~[ty::mk_tup(tcx, ~[]),
                                     bound_data_ty]);
     #debug["cdata_ty=%s", ty_to_str(tcx, cdata_ty)];
-    ret (cdata_ty, bound_tys);
+    ret cdata_ty;
 }
 
 fn allocate_cbox(bcx: block,
@@ -196,8 +191,7 @@ fn store_environment(bcx: block,
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
-    let (cdata_ty, bound_tys) =
-        mk_closure_tys(tcx, bound_values);
+    let cdata_ty = mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
     let llbox = allocate_cbox(bcx, ck, cdata_ty);
@@ -225,11 +219,6 @@ fn store_environment(bcx: block,
         let bound_data = GEPi(bcx, llbox,
              ~[0u, abi::box_field_body, abi::closure_body_bindings, i]);
         alt bv {
-          env_expr(e, _) {
-            bcx = base::trans_expr_save_in(bcx, e, bound_data);
-            add_clean_temp_mem(bcx, bound_data, bound_tys[i]);
-            vec::push(temp_cleanups, bound_data);
-          }
           env_copy(val, ty, owned) {
             let val1 = load_if_immediate(bcx, val, ty);
             bcx = base::copy_val(bcx, INIT, bound_data, val1, ty);
@@ -415,70 +404,6 @@ fn trans_expr_fn(bcx: block,
     ret bcx;
 }
 
-fn trans_bind_1(cx: block, outgoing_fty: ty::t,
-                f_res: lval_maybe_callee,
-                args: ~[option<@ast::expr>], pair_ty: ty::t,
-                dest: dest) -> block {
-    let _icx = cx.insn_ctxt("closure::trans_bind1");
-    let ccx = cx.ccx();
-    let mut bound: ~[@ast::expr] = ~[];
-    for vec::each(args) |argopt| {
-        alt argopt { none { } some(e) { vec::push(bound, e); } }
-    }
-    let mut bcx = f_res.bcx;
-    if dest == ignore {
-        for vec::each(bound) |ex| { bcx = trans_expr(bcx, ex, ignore); }
-        ret bcx;
-    }
-
-    if bound.len() == 0u &&
-       (f_res.env == null_env || f_res.env == is_closure) {
-        // Trivial 'binding': just return the closure
-        let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
-        memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, pair_ty);
-        ret lv.bcx;
-    }
-
-    // Arrange for the bound function to live in the first binding spot
-    // if the function is not statically known.
-    let (env_vals, target_info) = alt f_res.env {
-      null_env { (~[], target_static(f_res.val)) }
-      is_closure {
-        // Cast the function we are binding to be the type that the
-        // closure will expect it to have. The type the closure knows
-        // about has the type parameters substituted with the real types.
-        let llclosurety = T_ptr(type_of(ccx, outgoing_fty));
-        let src_loc = PointerCast(bcx, f_res.val, llclosurety);
-        (~[env_copy(src_loc, pair_ty, owned)], target_closure)
-      }
-      self_env(slf, slf_t, none) {
-        (~[env_copy(slf, slf_t, owned)], target_static_self(f_res.val))
-      }
-      self_env(_, slf_t, some(slf)) {
-        let cast = PointerCast(bcx, f_res.val, T_ptr(T_nil()));
-        (~[env_copy(cast, ty::mk_nil_ptr(ccx.tcx), owned_imm),
-          env_copy(slf, slf_t, owned_imm)], target_self)
-      }
-    };
-
-    // Actually construct the closure
-    let {llbox, cdata_ty, bcx} = store_environment(
-        bcx, vec::append(env_vals,
-                         vec::map(bound, |x| {
-                             env_expr(x, expr_ty(bcx, x))
-                         })),
-        ty::ck_box);
-
-    // Make thunk
-    let llthunk = trans_bind_thunk(
-        cx.fcx.ccx, cx.fcx.path, pair_ty, outgoing_fty, args,
-        cdata_ty, target_info);
-
-    // Fill the function pair
-    fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, llbox);
-    ret bcx;
-}
-
 fn make_fn_glue(
     cx: block,
     v: ValueRef,
@@ -610,164 +535,4 @@ fn make_opaque_cbox_free_glue(
           }
         }
     }
-}
-
-enum target_info {
-    target_closure,
-    target_static(ValueRef),
-    target_self,
-    target_static_self(ValueRef),
-}
-
-// pth is cx.path
-fn trans_bind_thunk(ccx: @crate_ctxt,
-                    path: path,
-                    incoming_fty: ty::t,
-                    outgoing_fty: ty::t,
-                    args: ~[option<@ast::expr>],
-                    cdata_ty: ty::t,
-                    target_info: target_info)
-    -> {val: ValueRef, ty: TypeRef} {
-    let _icx = ccx.insn_ctxt("closure::trans_bind_thunk");
-    let tcx = ccx.tcx;
-    #debug["trans_bind_thunk[incoming_fty=%s,outgoing_fty=%s,\
-            cdata_ty=%s]/~",
-           ty_to_str(tcx, incoming_fty),
-           ty_to_str(tcx, outgoing_fty),
-           ty_to_str(tcx, cdata_ty)];
-
-    // Here we're not necessarily constructing a thunk in the sense of
-    // "function with no arguments".  The result of compiling 'bind f(foo,
-    // bar, baz)' would be a thunk that, when called, applies f to those
-    // arguments and returns the result.  But we're stretching the meaning of
-    // the word "thunk" here to also mean the result of compiling, say, 'bind
-    // f(foo, _, baz)', or any other bind expression that binds f and leaves
-    // some (or all) of the arguments unbound.
-
-    // Here, 'incoming_fty' is the type of the entire bind expression, while
-    // 'outgoing_fty' is the type of the function that is having some of its
-    // arguments bound.  If f is a function that takes three arguments of type
-    // int and returns int, and we're translating, say, 'bind f(3, _, 5)',
-    // then outgoing_fty is the type of f, which is (int, int, int) -> int,
-    // and incoming_fty is the type of 'bind f(3, _, 5)', which is int -> int.
-
-    // Once translated, the entire bind expression will be the call f(foo,
-    // bar, baz) wrapped in a (so-called) thunk that takes 'bar' as its
-    // argument and that has bindings of 'foo' to 3 and 'baz' to 5 and a
-    // pointer to 'f' all saved in its environment.  So, our job is to
-    // construct and return that thunk.
-
-    // Give the thunk a name, type, and value.
-    let s = mangle_internal_name_by_path_and_seq(ccx, path, @"thunk");
-    let llthunk_ty = get_pair_fn_ty(type_of(ccx, incoming_fty));
-    let llthunk = decl_internal_cdecl_fn(ccx.llmod, s, llthunk_ty);
-
-    // Create a new function context and block context for the thunk, and hold
-    // onto a pointer to the first block in the function for later use.
-    let fcx = new_fn_ctxt(ccx, path, llthunk, none);
-    let mut bcx = top_scope_block(fcx, none);
-    let lltop = bcx.llbb;
-    // Since we might need to construct derived tydescs that depend on
-    // our bound tydescs, we need to load tydescs out of the environment
-    // before derived tydescs are constructed. To do this, we load them
-    // in the load_env block.
-    let l_bcx = raw_block(fcx, fcx.llloadenv);
-
-    // The 'llenv' that will arrive in the thunk we're creating is an
-    // environment that will contain the values of its arguments and a
-    // pointer to the original function.  This environment is always
-    // stored like an opaque box (see big comment at the header of the
-    // file), so we load the body body, which contains the type descr
-    // and cached data.
-    let llcdata = base::opaque_box_body(l_bcx, cdata_ty, fcx.llenv);
-
-    // "target", in this context, means the function that's having some of its
-    // arguments bound and that will be called inside the thunk we're
-    // creating.  (In our running example, target is the function f.)  Pick
-    // out the pointer to the target function from the environment. The
-    // target function lives in the first binding spot.
-    let (lltargetfn, lltargetenv, starting_idx) = alt target_info {
-      target_static(fptr) {
-        (fptr, llvm::LLVMGetUndef(T_opaque_cbox_ptr(ccx)), 0u)
-      }
-      target_closure {
-        let pair = GEPi(bcx, llcdata, ~[0u, abi::closure_body_bindings, 0u]);
-        let lltargetenv =
-            Load(bcx, GEPi(bcx, pair, ~[0u, abi::fn_field_box]));
-        let lltargetfn = Load
-            (bcx, GEPi(bcx, pair, ~[0u, abi::fn_field_code]));
-        (lltargetfn, lltargetenv, 1u)
-      }
-      target_self {
-        let fptr = Load(bcx, GEPi(bcx, llcdata,
-                                  ~[0u, abi::closure_body_bindings, 0u]));
-        let slfbox =
-            GEPi(bcx, llcdata, ~[0u, abi::closure_body_bindings, 1u]);
-        let selfptr =
-            GEPi(bcx, Load(bcx, slfbox), ~[0u, abi::box_field_body]);
-        (fptr, PointerCast(bcx, selfptr, T_opaque_cbox_ptr(ccx)), 2u)
-      }
-      target_static_self(fptr) {
-        let slfptr =
-            GEPi(bcx, llcdata, ~[0u, abi::closure_body_bindings, 0u]);
-        (fptr, PointerCast(bcx, slfptr, T_opaque_cbox_ptr(ccx)), 1u)
-      }
-    };
-
-    // And then, pick out the target function's own environment.  That's what
-    // we'll use as the environment the thunk gets.
-
-    // Get the types of the arguments to f.
-    let outgoing_args = ty::ty_fn_args(outgoing_fty);
-
-    // Set up the three implicit arguments to the thunk.
-    let mut llargs: ~[ValueRef] = ~[fcx.llretptr, lltargetenv];
-
-    let mut a: uint = first_real_arg; // retptr, env come first
-    let mut b: uint = starting_idx;
-    let mut outgoing_arg_index: uint = 0u;
-    for vec::each(args) |arg| {
-        let out_arg = outgoing_args[outgoing_arg_index];
-        alt arg {
-          // Arg provided at binding time; thunk copies it from
-          // closure.
-          some(e) {
-            let mut val =
-                GEPi(bcx, llcdata, ~[0u, abi::closure_body_bindings, b]);
-
-            alt ty::resolved_mode(tcx, out_arg.mode) {
-              ast::by_val {
-                val = Load(bcx, val);
-              }
-              ast::by_copy {
-                let alloc = alloc_ty(bcx, out_arg.ty);
-                memmove_ty(bcx, alloc, val, out_arg.ty);
-                bcx = take_ty(bcx, alloc, out_arg.ty);
-                val = alloc;
-              }
-              ast::by_ref | ast::by_mutbl_ref | ast::by_move { }
-            }
-            vec::push(llargs, val);
-            b += 1u;
-          }
-
-          // Arg will be provided when the thunk is invoked.
-          none {
-            vec::push(llargs, llvm::LLVMGetParam(llthunk, a as c_uint));
-            a += 1u;
-          }
-        }
-        outgoing_arg_index += 1u;
-    }
-
-    // Cast the outgoing function to the appropriate type.
-    // This is necessary because the type of the function that we have
-    // in the closure does not know how many type descriptors the function
-    // needs to take.
-    let lltargetty = type_of_fn_from_ty(ccx, outgoing_fty);
-    let lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
-    Call(bcx, lltargetfn, llargs);
-    build_return(bcx);
-    finish_fn(fcx, lltop);
-    ret {val: llthunk, ty: llthunk_ty};
 }
