@@ -130,10 +130,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
             env_ref(_, t, _) { t }
         });
     }
-    let bound_data_ty = ty::mk_tup(tcx, bound_tys);
-    // FIXME[mono] remove tuple of tydescs from closure types (#2531)
-    let cdata_ty = ty::mk_tup(tcx, ~[ty::mk_tup(tcx, ~[]),
-                                    bound_data_ty]);
+    let cdata_ty = ty::mk_tup(tcx, bound_tys);
     #debug["cdata_ty=%s", ty_to_str(tcx, cdata_ty)];
     ret cdata_ty;
 }
@@ -217,7 +214,7 @@ fn store_environment(bcx: block,
         }
 
         let bound_data = GEPi(bcx, llbox,
-             ~[0u, abi::box_field_body, abi::closure_body_bindings, i]);
+             ~[0u, abi::box_field_body, i]);
         alt bv {
           env_copy(val, ty, owned) {
             let val1 = load_if_immediate(bcx, val, ty);
@@ -334,7 +331,7 @@ fn load_environment(fcx: fn_ctxt,
           capture::cap_drop { /* ignore */ }
           _ {
             let mut upvarptr =
-                GEPi(bcx, llcdata, ~[0u, abi::closure_body_bindings, i]);
+                GEPi(bcx, llcdata, ~[0u, i]);
             alt ck {
               ty::ck_block { upvarptr = Load(bcx, upvarptr); }
               ty::ck_uniq | ty::ck_box { }
@@ -347,10 +344,10 @@ fn load_environment(fcx: fn_ctxt,
     }
     if load_ret_handle {
         let flagptr = Load(bcx, GEPi(bcx, llcdata,
-                                     ~[0u, abi::closure_body_bindings, i]));
+                                     ~[0u, i]));
         let retptr = Load(bcx,
                           GEPi(bcx, llcdata,
-                               ~[0u, abi::closure_body_bindings, i+1u]));
+                               ~[0u, i+1u]));
         fcx.loop_ret = some({flagptr: flagptr, retptr: retptr});
     }
 }

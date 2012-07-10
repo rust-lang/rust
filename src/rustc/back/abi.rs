@@ -60,10 +60,6 @@ const cmp_glue_op_le: uint = 2u;
 const fn_field_code: uint = 0u;
 const fn_field_box: uint = 1u;
 
-// closures, see trans_closure.rs
-const closure_body_ty_params: uint = 0u;
-const closure_body_bindings: uint = 1u;
-
 const vec_elt_fill: uint = 0u;
 
 const vec_elt_alloc: uint = 1u;
