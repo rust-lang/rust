@@ -40,6 +40,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
 
     let builder_fn = || {
         let builder = task::builder();
+        task::unsupervise(builder);
         task::set_sched_mode(builder, task::single_threaded);
         builder
     };
