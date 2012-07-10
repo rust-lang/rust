@@ -120,7 +120,7 @@ rust_task_fail(rust_task *task,
                size_t line);
 
 struct
-rust_task : public kernel_owned<rust_task>, rust_cond
+rust_task : public kernel_owned<rust_task>
 {
     RUST_ATOMIC_REFCOUNT();
 
@@ -185,7 +185,7 @@ private:
     bool killed;
     // Indicates that we've called back into Rust from C
     bool reentered_rust_stack;
-    int disallow_kill;
+    unsigned long disallow_kill;
 
     // The stack used for running C code, borrowed from the scheduler thread
     stk_seg *c_stack;
