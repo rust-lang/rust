@@ -1,6 +1,3 @@
-#[no_core];
-
-
 #[path = "module-polymorphism2-files"]
 mod mystd {
 
