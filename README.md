@@ -34,8 +34,8 @@ To build from source you will also need the following prerequisite packages:
 Assuming you're on a relatively modern Linux/OSX system and have met the
 prerequisites, something along these lines should work:
 
-    $ tar -xzf rust-0.2.tar.gz
-    $ cd rust-0.2
+    $ tar -xzf rust-0.3.tar.gz
+    $ cd rust-0.3
     $ ./configure
     $ make && make install
 
