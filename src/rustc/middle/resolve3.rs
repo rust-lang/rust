@@ -17,7 +17,8 @@ import syntax::ast::{ident, trait_ref, impure_fn, instance_var, item};
 import syntax::ast::{item_class, item_const, item_enum, item_fn, item_mac};
 import syntax::ast::{item_foreign_mod, item_trait, item_impl, item_mod};
 import syntax::ast::{item_ty, local, local_crate, method, node_id, pat};
-import syntax::ast::{pat_enum, pat_ident, path, prim_ty, stmt_decl, ty};
+import syntax::ast::{pat_enum, pat_ident, pat_lit, pat_range, path, prim_ty};
+import syntax::ast::{stmt_decl, ty};
 import syntax::ast::{ty_bool, ty_char, ty_constr, ty_f, ty_f32, ty_f64};
 import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
 import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
@@ -3638,6 +3639,15 @@ class Resolver {
                     for path.types.each |ty| {
                         self.resolve_type(ty, visitor);
                     }
+                }
+
+                pat_lit(expr) {
+                    self.resolve_expr(expr, visitor);
+                }
+
+                pat_range(first_expr, last_expr) {
+                    self.resolve_expr(first_expr, visitor);
+                    self.resolve_expr(last_expr, visitor);
                 }
 
                 _ {
