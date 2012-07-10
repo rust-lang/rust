@@ -2830,8 +2830,8 @@ supposed to point at, this is safe.
 Rust supports a system of lightweight tasks, similar to what is found
 in Erlang or other actor systems. Rust tasks communicate via messages
 and do not share data. However, it is possible to send data without
-copying it by making use of [unique boxes](#unique-boxes), which allow
-the sending task to release ownership of a value, so that the
+copying it by making use of [the exchange heap](#unique-boxes), which
+allow the sending task to release ownership of a value, so that the
 receiving task can keep on using it.
 
 > ***Note:*** As Rust evolves, we expect the task API to grow and
@@ -2843,10 +2843,13 @@ Spawning a task is done using the various spawn functions in the
 module `task`.  Let's begin with the simplest one, `task::spawn()`:
 
 ~~~~
+import task::spawn;
+import io::println;
+
 let some_value = 22;
-do task::spawn {
-    io::println("This executes in the child task.");
-    io::println(#fmt("%d", some_value));
+do spawn {
+    println("This executes in the child task.");
+    println(#fmt("%d", some_value));
 }
 ~~~~
 
@@ -2866,44 +2869,54 @@ For example, imagine we wish to perform two expensive computations
 in parallel.  We might write something like:
 
 ~~~~
+import task::spawn;
+import comm::{port, chan, methods};
+
+let port = port();
+let chan = port.chan();
+
+do spawn {
+    let result = some_expensive_computation();
+    chan.send(result);
+}
+
+some_other_expensive_computation();
+let result = port.recv();
+
 # fn some_expensive_computation() -> int { 42 }
 # fn some_other_expensive_computation() {}
-let port = comm::port::<int>();
-let chan = comm::chan::<int>(port);
-do task::spawn {
-    let result = some_expensive_computation();
-    comm::send(chan, result);
-}
-some_other_expensive_computation();
-let result = comm::recv(port);
 ~~~~
 
 Let's walk through this code line-by-line.  The first line creates a
 port for receiving integers:
 
+~~~~ {.ignore}
+# import comm::port;
+let port = port();
 ~~~~
-let port = comm::port::<int>();
 
-~~~~
 This port is where we will receive the message from the child task
 once it is complete.  The second line creates a channel for sending
 integers to the port `port`:
 
 ~~~~
-# let port = comm::port::<int>();
-let chan = comm::chan::<int>(port);
+# import comm::{port, chan, methods};
+# let port = port::<int>();
+let chan = port.chan();
 ~~~~
 
 The channel will be used by the child to send a message to the port.
 The next statement actually spawns the child:
 
 ~~~~
+# import task::{spawn};
+# import comm::{port, chan, methods};
 # fn some_expensive_computation() -> int { 42 }
-# let port = comm::port::<int>();
-# let chan = comm::chan::<int>(port);
-do task::spawn {
+# let port = port();
+# let chan = port.chan();
+do spawn {
     let result = some_expensive_computation();
-    comm::send(chan, result);
+    chan.send(result);
 }
 ~~~~
 
@@ -2913,12 +2926,13 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
+# import comm::{port, chan, methods};
 # fn some_other_expensive_computation() {}
-# let port = comm::port::<int>();
-# let chan = comm::chan::<int>(port);
-# comm::send(chan, 0);
+# let port = port::<int>();
+# let chan = chan::<int>(port);
+# chan.send(0);
 some_other_expensive_computation();
-let result = comm::recv(port);
+let result = port.recv();
 ~~~~
 
 ## Creating a task with a bi-directional communication path
@@ -2934,12 +2948,13 @@ the string in response.  The child terminates when `0` is received.
 Here is the function which implements the child task:
 
 ~~~~
-fn stringifier(from_parent: comm::port<uint>,
-               to_parent: comm::chan<str>) {
+# import comm::{port, chan, methods};
+fn stringifier(from_parent: port<uint>,
+               to_parent: chan<str>) {
     let mut value: uint;
     loop {
-        value = comm::recv(from_parent);
-        comm::send(to_parent, uint::to_str(value, 10u));
+        value = from_parent.recv();
+        to_parent.send(uint::to_str(value, 10u));
         if value == 0u { break; }
     }
 }
@@ -2956,25 +2971,32 @@ simply the strified version of the received value,
 Here is the code for the parent task:
 
 ~~~~
+# import task::{spawn_listener};
+# import comm::{chan, port, methods};
 # fn stringifier(from_parent: comm::port<uint>,
 #                to_parent: comm::chan<str>) {
 #     comm::send(to_parent, "22");
 #     comm::send(to_parent, "23");
 #     comm::send(to_parent, "0");
 # }
-fn main() {
-    let from_child = comm::port();
-    let to_parent = comm::chan(from_child);
-    let to_child = do task::spawn_listener |from_parent| {
-        stringifier(from_parent, to_parent);
-    };
-    comm::send(to_child, 22u);
-    assert comm::recv(from_child) == "22";
-    comm::send(to_child, 23u);
-    assert comm::recv(from_child) == "23";
-    comm::send(to_child, 0u);
-    assert comm::recv(from_child) == "0";
-}
+# fn main() {
+
+let from_child = port();
+let to_parent = from_child.chan();
+let to_child = do spawn_listener |from_parent| {
+    stringifier(from_parent, to_parent);
+};
+
+to_child.send(22u);
+assert from_child.recv() == "22";
+
+to_child.send(23u);
+assert from_child.recv() == "23";
+
+to_child.send(0u);
+assert from_child.recv() == "0";
+
+# }
 ~~~~
 
 The parent first sets up a port to receive data from and a channel
@@ -2985,15 +3007,6 @@ the associated channel. Finally, the closure passed to
 `spawn_listener()` that forms the body of the child task captures the
 `to_parent` channel in its environment, so both parent and child
 can send and receive data to and from the other.
-
-## The supervisor relationship
-
-By default, failures in Rust propagate upward through the task tree.
-We say that each task is supervised by its parent, meaning that if the
-task fails, that failure is propagated to the parent task, which will
-fail sometime later.  This propagation can be disabled by using the
-function `task::unsupervise()`, which disables error propagation from
-the current task to its parent.
 
 # Testing
 
