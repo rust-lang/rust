@@ -223,8 +223,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         parameterized(cx, base, substs.self_r, substs.tps)
       }
       ty_evec(mt, vs) {
-        #fmt["[%s]/%s", mt_to_str(cx, mt),
-             vstore_to_str(cx, vs)]
+        alt vs {
+          ty::vstore_fixed(_) {
+            #fmt["[%s]/%s", mt_to_str(cx, mt), vstore_to_str(cx, vs)]
+          }
+          _ { #fmt["%s[%s]", vstore_to_str(cx, vs), mt_to_str(cx, mt)] }
+        }
       }
       ty_estr(vs) { #fmt["str/%s", vstore_to_str(cx, vs)] }
       ty_opaque_box { "@?" }

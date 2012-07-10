@@ -378,8 +378,20 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         word(s.s, constrs_str(cs, ty_constr_to_str));
       }
       ast::ty_vstore(t, v) {
-        print_type(s, t);
-        print_vstore(s, v);
+        // If it is a vector, print it in prefix notation.
+        // Someday it will all be like this.
+        let is_fixed = alt v { ast::vstore_fixed(_) { true } _ { false } };
+        alt t.node {
+          ast::ty_vec(*) if !is_fixed {
+            print_vstore(s, v);
+            print_type(s, t);
+          }
+          _ {
+            print_type(s, t);
+            word(s.s, "/");
+            print_vstore(s, v);
+          }
+        }
       }
       ast::ty_mac(_) {
           fail "print_type doesn't know how to print a ty_mac";
@@ -826,11 +838,11 @@ fn print_mac(s: ps, m: ast::mac) {
 
 fn print_vstore(s: ps, t: ast::vstore) {
     alt t {
-      ast::vstore_fixed(some(i)) { word(s.s, #fmt("/%u", i)); }
-      ast::vstore_fixed(none) { word(s.s, "/_"); }
-      ast::vstore_uniq { word(s.s, "/~"); }
-      ast::vstore_box { word(s.s, "/@"); }
-      ast::vstore_slice(r) { word(s.s, "/"); print_region(s, r); }
+      ast::vstore_fixed(some(i)) { word(s.s, #fmt("%u", i)); }
+      ast::vstore_fixed(none) { word(s.s, "_"); }
+      ast::vstore_uniq { word(s.s, "~"); }
+      ast::vstore_box { word(s.s, "@"); }
+      ast::vstore_slice(r) { print_region(s, r); }
     }
 }
 
@@ -841,8 +853,20 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
     s.ann.pre(ann_node);
     alt expr.node {
       ast::expr_vstore(e, v) {
-        print_expr(s, e);
-        print_vstore(s, v);
+        // If it is a vector, print it in prefix notation.
+        // Someday it will all be like this.
+        let is_fixed = alt v { ast::vstore_fixed(_) { true } _ { false } };
+        alt e.node {
+          ast::expr_vec(*) if !is_fixed {
+            print_vstore(s, v);
+            print_expr(s, e);
+          }
+          _ {
+            print_expr(s, e);
+            word(s.s, "/");
+            print_vstore(s, v);
+          }
+        }
       }
       ast::expr_vec(exprs, mutbl) {
         ibox(s, indent_unit);
@@ -1121,7 +1145,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
       ast::expr_log(_, _, _) | ast::expr_assert(_) |
       ast::expr_call(_, _, true) |
-      ast::expr_check(_, _) { true }
+      ast::expr_check(_, _) | ast::expr_vstore(_, _) { true }
       _ { false }
     };
     if parens { popen(s); }
