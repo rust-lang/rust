@@ -51,7 +51,7 @@ fn main() {
     });
 
     let (c1, p1) = oneshot::init();
-    let (c2, p2) = oneshot::init();
+    let (_c2, p2) = oneshot::init();
 
     let c = send(c, (p1, p2));
     
@@ -59,7 +59,7 @@ fn main() {
 
     signal(c1);
 
-    let (c1, p1) = oneshot::init();
+    let (_c1, p1) = oneshot::init();
     let (c2, p2) = oneshot::init();
 
     send(c, (p1, p2));

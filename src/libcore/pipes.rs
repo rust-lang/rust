@@ -133,7 +133,6 @@ fn try_recv<T: send>(-p: recv_packet<T>) -> option<T> {
         rustrt::task_clear_event_reject(this);
         let old_state = swap_state_acq(p.header.state,
                                        blocked);
-        #debug("%?", old_state);
         alt old_state {
           empty {
             #debug("no data available on %?, going to sleep.", p_);
@@ -230,7 +229,7 @@ impl private_methods for packet_header {
 
 #[doc = "Returns when one of the packet headers reports data is
 available."]
-fn wait_many(pkts: ~[&a.packet_header]) -> uint {
+fn wait_many(pkts: &[&a.packet_header]) -> uint {
     let this = rustrt::rust_get_task();
 
     rustrt::task_clear_event_reject(this);
@@ -283,23 +282,19 @@ fn select2<A: send, B: send>(
     +b: recv_packet<B>)
     -> either<(option<A>, recv_packet<B>), (recv_packet<A>, option<B>)>
 {
-    let a = unsafe { uniquify(a.unwrap()) };
-    let b = unsafe { uniquify(b.unwrap()) };
-    let i = {
-        let headers = ~[&a.header,
-                        &b.header];
-        wait_many(headers)
-    };
+    let i = wait_many([a.header(), b.header()]/_);
 
     unsafe {
         alt i {
-          0 { left((try_recv(recv_packet(transmute(a))),
-                    recv_packet(transmute(b)))) }
-          1 { right((recv_packet(transmute(a)),
-                     try_recv(recv_packet(transmute(b))))) }
+          0 { left((try_recv(a), b)) }
+          1 { right((a, try_recv(b))) }
           _ { fail "select2 return an invalid packet" }
         }
     }
+}
+
+fn selecti<T: send>(endpoints: &[&recv_packet<T>]) -> uint {
+    wait_many(endpoints.map(|p| p.header()))
 }
 
 #[doc = "Waits on a set of endpoints. Returns a message, its index,
@@ -307,15 +302,10 @@ fn select2<A: send, B: send>(
 fn select<T: send>(+endpoints: ~[recv_packet<T>])
     -> (uint, option<T>, ~[recv_packet<T>])
 {
-    let endpoints = vec::map_consume(
-        endpoints,
-        |p| unsafe { uniquify(p.unwrap()) });
-    let endpoints_r = vec::view(endpoints, 0, endpoints.len());
-    let ready = wait_many(endpoints_r.map_r(|p| &p.header));
+    let ready = wait_many(endpoints.map(|p| p.header()));
     let mut remaining = ~[];
     let mut result = none;
     do vec::consume(endpoints) |i, p| {
-        let p = recv_packet(unsafe { unsafe::transmute(p) });
         if i == ready {
             result = try_recv(p);
         }
