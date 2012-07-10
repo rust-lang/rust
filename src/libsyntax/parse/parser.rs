@@ -1246,9 +1246,29 @@ class parser {
 
     fn parse_matchers() -> ~[matcher] {
         let name_idx = @mut 0u;
-        ret self.parse_seq(token::LBRACE, token::RBRACE,
-                           common::seq_sep_none(),
-                           |p| p.parse_matcher(name_idx)).node;
+        ret self.parse_matcher_subseq(name_idx, token::LBRACE, token::RBRACE);
+    }
+
+
+    // This goofy function is necessary to correctly match parens in matchers.
+    // Otherwise, `$( ( )` would be a valid matcher, and `$( () )` would be
+    // invalid. It's similar to common::parse_seq.
+    fn parse_matcher_subseq(name_idx: @mut uint, bra: token::token,
+                            ket: token::token) -> ~[matcher] {
+        let mut ret_val = ~[];
+        let mut lparens = 0u;
+
+        self.expect(bra);
+
+        while self.token != ket || lparens > 0u {
+            if self.token == token::LPAREN { lparens += 1u; }
+            if self.token == token::RPAREN { lparens -= 1u; }
+            vec::push(ret_val, self.parse_matcher(name_idx));
+        }
+
+        self.bump();
+
+        ret ret_val;
     }
 
     fn parse_matcher(name_idx: @mut uint) -> matcher {
@@ -1257,9 +1277,8 @@ class parser {
         let m = if self.token == token::DOLLAR {
             self.bump();
             if self.token == token::LPAREN {
-                let ms = (self.parse_seq(token::LPAREN, token::RPAREN,
-                                         common::seq_sep_none(),
-                                         |p| p.parse_matcher(name_idx)).node);
+                let ms = self.parse_matcher_subseq(name_idx, token::LPAREN,
+                                                   token::RPAREN);
                 if ms.len() == 0u {
                     self.fatal("repetition body must be nonempty");
                 }
