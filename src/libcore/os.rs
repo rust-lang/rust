@@ -163,15 +163,11 @@ mod global_env {
         let builder_fn = || {
             let builder = task::builder();
             task::unsupervise(builder);
-            task::set_opts(builder, {
-                sched:  some({
-                    mode: task::single_threaded,
-                    // FIXME (#2621): This would be a good place to use a
-                    // very small foreign stack
-                    foreign_stack_size: none
-                })
-                with task::get_opts(builder)
-            });
+
+            // FIXME (#2621): This would be a good place to use a very small
+            // foreign stack
+            task::set_sched_mode(builder, task::single_threaded);
+
             builder
         };
         unsafe {

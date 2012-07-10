@@ -40,14 +40,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
 
     let builder_fn = || {
         let builder = task::builder();
-        task::set_opts(builder, {
-            supervise: false,
-            sched: some({
-                mode: task::single_threaded,
-                foreign_stack_size: none
-            })
-            with task::get_opts(builder)
-        });
+        task::set_sched_mode(builder, task::single_threaded);
         builder
     };
 

@@ -25,19 +25,11 @@ enum iotask {
 
 fn spawn_iotask(-builder: task::builder) -> iotask {
 
-    import task::{set_opts, get_opts, single_threaded, run};
-
-    set_opts(builder, {
-        sched: some({
-            mode: single_threaded,
-            foreign_stack_size: none
-        })
-        with get_opts(builder)
-    });
+    task::set_sched_mode(builder, task::single_threaded);
 
     do listen |iotask_ch| {
 
-        do run(copy(builder)) {
+        do task::run(copy(builder)) {
             #debug("entering libuv task");
             run_loop(iotask_ch);
             #debug("libuv task exiting");
