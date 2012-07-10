@@ -163,7 +163,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             v.visit_ty(m.decl.output, e, v);
         }
       }
-      item_mac(_m) { fail "item macros unimplemented" }
+      item_mac(m) { visit_mac(m, e, v) }
     }
 }
 

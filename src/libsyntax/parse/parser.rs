@@ -2626,7 +2626,6 @@ class parser {
         {
             // item macro.
             let pth = self.parse_path_without_tps();
-            #error("parsing invocation of %s", *pth.idents[0]);
             self.expect(token::NOT);
             let id = self.parse_ident();
             let tts = self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
