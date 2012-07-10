@@ -1,7 +1,10 @@
-### Installing Rust
+# The Rust programming language
 
-Source build
-=========================
+This is a compiler for Rust, including standard libraries, tools and
+documentation.
+
+
+## Installation
 
 The Rust compiler is slightly unusual in that it is written in Rust and
 therefore must be built by a precompiled "snapshot" version of itself (made in
@@ -27,10 +30,6 @@ To build from source you will also need the following prerequisite packages:
     * gnu make 3.81 or later
     * curl
 
-
-Building and installing
-=========================
-
 Assuming you're on a relatively modern Linux/OSX system and have met the
 prerequisites, something along these lines should work:
 
@@ -54,9 +53,15 @@ configure. Various other options are also supported, pass --help for more
 information on them.
 
 
-More help
-=========================
+## License
 
-The tutorial is a good starting point:
+Rust is primarily distributed under the terms of the MIT license, with
+portions covered by various BSD-like licenses.
 
-    http://dl.rust-lang.org/doc/tutorial.html
+See LICENSE.txt for complete terms of copyright and redistribution.
+
+
+## More help
+
+The [tutorial](http://dl.rust-lang.org/doc/tutorial.html) is a good
+starting point.
