@@ -4,7 +4,7 @@
 //
 // http://theincredibleholk.wordpress.com/2012/07/06/rusty-pipes/
 
-import pipes::recv;
+import pipes::try_recv;
 
 type username = str;
 type password = str;
@@ -43,7 +43,7 @@ fn bank_client(+bank: bank::client::login) {
     import bank::*;
 
     let bank = client::login(bank, "theincredibleholk", "1234");
-    let bank = alt recv(bank) {
+    let bank = alt try_recv(bank) {
       some(ok(connected)) {
         #move(connected)
       }
@@ -53,7 +53,7 @@ fn bank_client(+bank: bank::client::login) {
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
-    alt recv(bank) {
+    alt try_recv(bank) {
       some(money(m, _)) {
         io::println("Yay! I got money!");
       }

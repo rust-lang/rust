@@ -117,7 +117,11 @@ fn send<T: send>(-p: send_packet<T>, -payload: T) {
     }
 }
 
-fn recv<T: send>(-p: recv_packet<T>) -> option<T> {
+fn recv<T: send>(-p: recv_packet<T>) -> T {
+    option::unwrap(try_recv(p))
+}
+
+fn try_recv<T: send>(-p: recv_packet<T>) -> option<T> {
     let p_ = p.unwrap();
     let p = unsafe { uniquify(p_) };
     let this = rustrt::rust_get_task();
@@ -288,10 +292,10 @@ fn select2<A: send, B: send>(
 
     unsafe {
         alt i {
-          0 { left((recv(recv_packet(transmute(a))),
+          0 { left((try_recv(recv_packet(transmute(a))),
                     recv_packet(transmute(b)))) }
           1 { right((recv_packet(transmute(a)),
-                     recv(recv_packet(transmute(b))))) }
+                     try_recv(recv_packet(transmute(b))))) }
           _ { fail "select2 return an invalid packet" }
         }
     }
@@ -312,7 +316,7 @@ fn select<T: send>(+endpoints: ~[recv_packet<T>])
     do vec::consume(endpoints) |i, p| {
         let p = recv_packet(unsafe { unsafe::transmute(p) });
         if i == ready {
-            result = recv(p);
+            result = try_recv(p);
         }
         else {
             vec::push(remaining, p);

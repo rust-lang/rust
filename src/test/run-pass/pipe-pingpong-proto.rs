@@ -21,14 +21,14 @@ mod test {
 
         let chan = client::ping(chan);
         log(error, "Sent ping");
-        let pong(_chan) = option::unwrap(recv(chan));
+        let pong(_chan) = recv(chan);
         log(error, "Received pong");
     }
     
     fn server(-chan: pingpong::server::ping) {
         import pingpong::server;
 
-        let ping(chan) = option::unwrap(recv(chan));
+        let ping(chan) = recv(chan);
         log(error, "Received ping");
         let _chan = server::pong(chan);
         log(error, "Sent pong");

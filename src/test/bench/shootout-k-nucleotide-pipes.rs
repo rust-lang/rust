@@ -43,7 +43,7 @@ mod stream {
             let mut endp = none;
             endp <-> self.endp;
             let streamp::data(x, endp) = unwrap(
-                pipes::recv(unwrap(endp)));
+                pipes::try_recv(unwrap(endp)));
             self.endp = some(endp);
             x
         }

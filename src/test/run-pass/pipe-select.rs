@@ -26,14 +26,9 @@ fn main() {
 
     let iotask = uv::global_loop::get();
     
-    #macro[
-        [#recv[chan],
-         chan.recv()(chan)]
-    ];
-
     let c = pipes::spawn_service(stream::init, |p| { 
         #error("waiting for pipes");
-        let stream::send(x, p) = option::unwrap(recv(p));
+        let stream::send(x, p) = recv(p);
         #error("got pipes");
         let (left, right) : (oneshot::server::waiting,
                              oneshot::server::waiting)
@@ -44,7 +39,7 @@ fn main() {
         assert i == 0;
 
         #error("waiting for pipes");
-        let stream::send(x, _) = option::unwrap(recv(p));
+        let stream::send(x, _) = recv(p);
         #error("got pipes");
         let (left, right) : (oneshot::server::waiting,
                              oneshot::server::waiting)

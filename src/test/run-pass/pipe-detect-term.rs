@@ -6,7 +6,7 @@ use std;
 import std::timer::sleep;
 import std::uv;
 
-import pipes::{recv};
+import pipes::{try_recv, recv};
 
 proto! oneshot {
     waiting:send {
@@ -20,7 +20,7 @@ fn main() {
     let iotask = uv::global_loop::get();
     
     let c = pipes::spawn_service(oneshot::init, |p| { 
-        alt recv(p) {
+        alt try_recv(p) {
           some(*) { fail }
           none { }
         }
