@@ -143,7 +143,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         for ei.matches.eachi() |idx, elt| {
                             let sub = elt.get();
                             // Some subtrees don't contain the name at all
-                            if sub.len() == 0u { cont; }
+                            if sub.len() == 0u { again; }
                             new_pos.matches[idx]
                                 .push(@seq(sub, mk_sp(ei.sp_lo,sp.hi)));
                         }
