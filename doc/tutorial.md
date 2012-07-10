@@ -75,7 +75,7 @@ use std;
 import comm::{listen, methods};
 import task::spawn;
 import iter::repeat;
-import std::rand::{seeded_rng, seed};
+import rand::{seeded_rng, seed};
 import uint::range;
 import io::println;
 
