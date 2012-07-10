@@ -43,10 +43,9 @@ impl methods for reflector {
 
     fn c_tydesc(t: ty::t) -> ValueRef {
         let bcx = self.bcx;
-        let mut static_ti = none;
-        let lltydesc = get_tydesc(bcx.ccx(), t, static_ti);
-        lazily_emit_all_tydesc_glue(bcx.ccx(), copy static_ti);
-        PointerCast(bcx, lltydesc, T_ptr(self.tydesc_ty))
+        let static_ti = get_tydesc(bcx.ccx(), t);
+        lazily_emit_all_tydesc_glue(bcx.ccx(), static_ti);
+        PointerCast(bcx, static_ti.tydesc, T_ptr(self.tydesc_ty))
     }
 
     fn c_mt(mt: ty::mt) -> ~[ValueRef] {
