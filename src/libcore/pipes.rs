@@ -2,6 +2,7 @@
 
 import unsafe::{forget, reinterpret_cast, transmute};
 import either::{either, left, right};
+import option::unwrap;
 
 enum state {
     empty,
@@ -427,4 +428,70 @@ fn spawn_service_recv<T: send>(
     }
 
     client
+}
+
+// Streams - Make pipes a little easier in general.
+
+proto! streamp {
+    open:send<T: send> {
+        data(T) -> open<T>
+    }
+}
+
+type chan<T:send> = { mut endp: option<streamp::client::open<T>> };
+type port<T:send> = { mut endp: option<streamp::server::open<T>> };
+
+fn stream<T:send>() -> (chan<T>, port<T>) {
+    let (c, s) = streamp::init();
+
+    #macro[
+        [#move[x],
+         unsafe { let y <- *ptr::addr_of(x); y }]
+    ];
+
+    ({ mut endp: some(c) }, { mut endp: some(s) })
+}
+
+impl chan<T: send> for chan<T> {
+    fn send(+x: T) {
+        let mut endp = none;
+        endp <-> self.endp;
+        self.endp = some(
+            streamp::client::data(unwrap(endp), x))
+    }
+}
+
+impl port<T: send> for port<T> {
+    fn recv() -> T {
+        let mut endp = none;
+        endp <-> self.endp;
+        let streamp::data(x, endp) = pipes::recv(unwrap(endp));
+        self.endp = some(endp);
+        x
+    }
+
+    fn try_recv() -> option<T> {
+        let mut endp = none;
+        endp <-> self.endp;
+        alt pipes::try_recv(unwrap(endp)) {
+          some(streamp::data(x, endp)) {
+            self.endp = some(#move(endp));
+            some(#move(x))
+          }
+          none { none }
+        }
+    }
+
+    pure fn peek() -> bool unchecked {
+        let mut endp = none;
+        endp <-> self.endp;
+        let peek = alt endp {
+          some(endp) {
+            pipes::peek(endp)
+          }
+          none { fail "peeking empty stream" }
+        };
+        self.endp <-> endp;
+        peek
+    }
 }
