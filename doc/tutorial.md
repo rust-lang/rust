@@ -2847,6 +2847,7 @@ import task::spawn;
 import io::println;
 
 let some_value = 22;
+
 do spawn {
     println("This executes in the child task.");
     println(#fmt("%d", some_value));
