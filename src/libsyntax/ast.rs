@@ -453,6 +453,15 @@ type ty_method = {ident: ident, attrs: ~[attribute],
                   decl: fn_decl, tps: ~[ty_param], span: span};
 
 #[auto_serialize]
+// A trait method is either required (meaning it doesn't have an
+// implementation, just a signature) or provided (meaning it has a default
+// implementation).
+enum trait_method {
+    required(ty_method),
+    provided(@method),
+}
+
+#[auto_serialize]
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
 #[auto_serialize]
@@ -695,7 +704,7 @@ enum item_ {
                /* dtor is optional */
                option<class_dtor>
                ),
-    item_trait(~[ty_param], ~[ty_method]),
+    item_trait(~[ty_param], ~[trait_method]),
     item_impl(~[ty_param], option<@trait_ref> /* trait */,
               @ty /* self */, ~[@method]),
     item_mac(mac),

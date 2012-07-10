@@ -147,8 +147,15 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
     let rp = tcx.region_paramd_items.contains_key(id);
     alt check tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_trait(_, ms), _}, _) {
-        store_methods::<ast::ty_method>(ccx, id, ms, |m| {
-            ty_of_ty_method(ccx, m, rp)
+        store_methods::<ast::trait_method>(ccx, id, ms, |m| {
+            alt m {
+              required(ty_m) {
+                ty_of_ty_method(ccx, ty_m, rp)
+              }
+              provided(m) {
+                ty_of_method(ccx, m, rp)
+              }
+            }
         });
       }
       ast_map::node_item(@{node: ast::item_class(_,_,its,_,_), _}, _) {

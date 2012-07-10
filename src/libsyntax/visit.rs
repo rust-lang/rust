@@ -62,6 +62,7 @@ type visitor<E> =
       visit_constr: fn@(@path, span, node_id, E, vt<E>),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
       visit_ty_method: fn@(ty_method, E, vt<E>),
+      visit_trait_method: fn@(trait_method, E, vt<E>),
       visit_class_item: fn@(@class_member, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
@@ -81,6 +82,7 @@ fn default_visitor<E>() -> visitor<E> {
           visit_constr: |a,b,c,d,e|visit_constr::<E>(a, b, c, d, e),
           visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
           visit_ty_method: |a,b,c|visit_ty_method::<E>(a, b, c),
+          visit_trait_method: |a,b,c|visit_trait_method::<E>(a, b, c),
           visit_class_item: |a,b,c|visit_class_item::<E>(a, b, c)};
 }
 
@@ -160,7 +162,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       item_trait(tps, methods) {
         v.visit_ty_params(tps, e, v);
         for methods.each |m| {
-            v.visit_ty_method(m, e, v);
+            v.visit_trait_method(m, e, v);
         }
       }
       item_mac(m) { visit_mac(m, e, v) }
@@ -317,6 +319,17 @@ fn visit_ty_method<E>(m: ty_method, e: E, v: vt<E>) {
     v.visit_ty(m.decl.output, e, v);
 }
 
+fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
+    alt m {
+      required(ty_m) {
+        v.visit_ty_method(ty_m, e, v)
+      }
+      provided(m) {
+        visit_method_helper(m, e, v)
+      }
+    }
+}
+
 fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
     for b.node.view_items.each |vi| { v.visit_view_item(vi, e, v); }
     for b.node.stmts.each |s| { v.visit_stmt(s, e, v); }
@@ -465,6 +478,7 @@ type simple_visitor =
       visit_constr: fn@(@path, span, node_id),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
       visit_ty_method: fn@(ty_method),
+      visit_trait_method: fn@(trait_method),
       visit_class_item: fn@(@class_member)};
 
 fn simple_ignore_ty(_t: @ty) {}
@@ -487,6 +501,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
                         _id: node_id) { },
           visit_ty_method: fn@(_m: ty_method) { },
+          visit_trait_method: fn@(_m: trait_method) { },
           visit_class_item: fn@(_c: @class_member) {}
          };
 }
@@ -546,6 +561,11 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(ty);
         visit_ty_method(ty, e, v);
     }
+    fn v_trait_method(f: fn@(trait_method), m: trait_method, &&e: (),
+                      v: vt<()>) {
+        f(m);
+        visit_trait_method(m, e, v);
+    }
     fn v_ty_params(f: fn@(~[ty_param]),
                    ps: ~[ty_param],
                    &&e: (), v: vt<()>) {
@@ -596,6 +616,8 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                     v_fn(v.visit_fn, a, b, c, d, e, f, g),
                 visit_ty_method: |a,b,c|
                     v_ty_method(v.visit_ty_method, a, b, c),
+                visit_trait_method: |a,b,c|
+                    v_trait_method(v.visit_trait_method, a, b, c),
                 visit_class_item: |a,b,c|
                     v_class_item(v.visit_class_item, a, b, c)
                });

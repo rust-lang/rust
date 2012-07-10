@@ -207,7 +207,14 @@ fn merge_method_attrs(
             node: ast::item_trait(_, methods), _
           }, _) {
             par::seqmap(methods, |method| {
-                (*method.ident, attr_parser::parse_desc(method.attrs))
+                alt method {
+                  ast::required(ty_m) {
+                    (*ty_m.ident, attr_parser::parse_desc(ty_m.attrs))
+                  }
+                  ast::provided(m) {
+                    (*m.ident, attr_parser::parse_desc(m.attrs))
+                  }
+                }
             })
           }
           ast_map::node_item(@{

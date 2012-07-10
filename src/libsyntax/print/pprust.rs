@@ -5,6 +5,7 @@ import pp::{break_offset, word, printer,
             space, zerobreak, hardbreak, breaks, consistent,
             inconsistent, eof};
 import diagnostic;
+import ast::{required, provided};
 import ast_util::operator_prec;
 import dvec::{dvec, extensions};
 import parse::classify::*;
@@ -593,7 +594,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_type_params(s, tps);
         word(s.s, " ");
         bopen(s);
-        for methods.each |meth| { print_ty_method(s, meth); }
+        for methods.each |meth| { print_trait_method(s, meth); }
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) {
@@ -645,6 +646,13 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     print_outer_attributes(s, m.attrs);
     print_ty_fn(s, none, m.decl, some(m.ident), some(m.tps));
     word(s.s, ";");
+}
+
+fn print_trait_method(s: ps, m: ast::trait_method) {
+    alt m {
+      required(ty_m) { print_ty_method(s, ty_m) }
+      provided(m)    { print_method(s, m) }
+    }
 }
 
 fn print_method(s: ps, meth: @ast::method) {

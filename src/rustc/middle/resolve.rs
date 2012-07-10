@@ -1,6 +1,7 @@
 import syntax::{ast, ast_util, codemap, ast_map};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
+import ast::{required, provided};
 import syntax::ast_util::{local_def, def_id_of_def, new_def_hash,
                           class_item_ident, path_to_ident};
 import pat_util::*;
@@ -566,12 +567,8 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
       }
       ast::item_trait(tps, methods) {
         v.visit_ty_params(tps, sc, v);
-        let isc = @cons(scope_method(i.id, tps), sc);
         for methods.each |m| {
-            v.visit_ty_params(m.tps, isc, v);
-            let msc = @cons(scope_method(i.id, vec::append(tps, m.tps)), sc);
-            for m.decl.inputs.each |a| { v.visit_ty(a.ty, msc, v); }
-            v.visit_ty(m.decl.output, msc, v);
+            visit_trait_method(m, i, tps, sc, v);
         }
       }
       ast::item_class(tps, traits, members, ctor, m_dtor) {
@@ -616,6 +613,27 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
     }
 
     e.resolve_unexported = old_resolve_unexported;
+}
+
+fn visit_trait_method(m: trait_method, i: @ast::item,
+                      tps: ~[ast::ty_param], sc: scopes,
+                      v: vt<scopes>) {
+    alt m {
+      required(ty_m) {
+        let isc = @cons(scope_method(i.id, tps), sc);
+        v.visit_ty_params(ty_m.tps, isc, v);
+        let msc = @cons(scope_method(i.id, vec::append(tps, ty_m.tps)), sc);
+        for ty_m.decl.inputs.each |a| { v.visit_ty(a.ty, msc, v); }
+        v.visit_ty(ty_m.decl.output, msc, v);
+      }
+      provided(m) {
+         v.visit_ty_params(m.tps, sc, v);
+        let msc = @cons(scope_method(m.self_id, vec::append(tps, m.tps)),
+                        sc);
+        v.visit_fn(visit::fk_method(m.ident, ~[], m),
+                   m.decl, m.body, m.span, m.id, msc, v);
+      }
+    }
 }
 
 fn visit_foreign_item_with_scope(ni: @ast::foreign_item, &&sc: scopes,
@@ -1785,7 +1803,16 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
                       "type parameter");
       }
       ast::item_trait(_, methods) {
-        ensure_unique(*e, i.span, methods, |m| m.ident,
+        ensure_unique(*e, i.span, methods, |m| {
+            alt m {
+              required(ty_m) {
+                ty_m.ident
+              }
+              provided(m) {
+                m.ident
+              }
+            }
+        },
                       "method");
       }
       ast::item_impl(_, _, _, methods) {

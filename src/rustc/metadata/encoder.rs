@@ -744,12 +744,21 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         let mut i = 0u;
         for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
-            ebml_w.start_tag(tag_item_trait_method);
-            encode_name(ebml_w, mty.ident);
-            encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
-            encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
-            encode_family(ebml_w, purity_fn_family(mty.purity));
-            ebml_w.end_tag();
+            alt ms[i] {
+              required(ty_m) {
+                ebml_w.start_tag(tag_item_trait_method);
+                encode_name(ebml_w, mty.ident);
+                encode_type_param_bounds(ebml_w, ecx, ty_m.tps);
+                encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
+                encode_family(ebml_w, purity_fn_family(mty.purity));
+                ebml_w.end_tag();
+              }
+              provided(m) {
+                encode_info_for_method(ecx, ebml_w, path,
+                                       should_inline(m.attrs), item.id,
+                                       m, m.tps);
+              }
+            }
             i += 1u;
         }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));

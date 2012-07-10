@@ -511,6 +511,9 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_ty_method: fn@(_ty_m: ty_method) {
         },
 
+        visit_trait_method: fn@(_ty_m: trait_method) {
+        },
+
         visit_class_item: fn@(c: @class_member) {
             alt c.node {
               instance_var(_, _, _, id,_) {

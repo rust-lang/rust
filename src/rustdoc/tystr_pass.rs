@@ -171,14 +171,28 @@ fn get_method_sig(
             node: ast::item_trait(_, methods), _
           }, _) {
             alt check vec::find(methods, |method| {
-                *method.ident == method_name
+                alt method {
+                  ast::required(ty_m) { *ty_m.ident == method_name }
+                  ast::provided(m) { *m.ident == method_name }
+                }
             }) {
                 some(method) {
-                    some(pprust::fun_to_str(
-                        method.decl,
-                        method.ident,
-                        method.tps
-                    ))
+                  alt method {
+                    ast::required(ty_m) {
+                      some(pprust::fun_to_str(
+                          ty_m.decl,
+                          ty_m.ident,
+                          ty_m.tps
+                      ))
+                    }
+                    ast::provided(m) {
+                      some(pprust::fun_to_str(
+                          m.decl,
+                          m.ident,
+                          m.tps
+                      ))
+                    }
+                  }
                 }
             }
           }

@@ -42,14 +42,14 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              mtc_rep, mtc_tok, mul, mutability, neg, noreturn, not, pat,
              pat_box, pat_enum, pat_ident, pat_lit, pat_range, pat_rec,
              pat_tup, pat_uniq, pat_wild, path, private, proto, proto_any,
-             proto_bare, proto_block, proto_box, proto_uniq, public, pure_fn,
-             purity, re_anon, re_named, region, rem, ret_style,
-             return_val, shl, shr, stmt, stmt_decl,
-             stmt_expr, stmt_semi, subtract, token_tree, trait_ref, tt_delim,
-             tt_dotdotdot, tt_flat, tt_interpolate, ty, ty_, ty_bot, ty_box,
-             ty_constr, ty_constr_, ty_constr_arg, ty_field, ty_fn, ty_infer,
-             ty_mac, ty_method, ty_nil, ty_param, ty_path, ty_ptr, ty_rec,
-             ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec, ty_vstore,
+             proto_bare, proto_block, proto_box, proto_uniq, provided, public,
+             pure_fn, purity, re_anon, re_named, region, rem, required,
+             ret_style, return_val, shl, shr, stmt, stmt_decl, stmt_expr,
+             stmt_semi, subtract, token_tree, trait_method, trait_ref,
+             tt_delim, tt_dotdotdot, tt_flat, tt_interpolate, ty, ty_, ty_bot,
+             ty_box, ty_constr, ty_constr_, ty_constr_arg, ty_field, ty_fn,
+             ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_path, ty_ptr,
+             ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec, ty_vstore,
              unchecked_blk, uniq, unsafe_blk, unsafe_fn, variant, view_item,
              view_item_, view_item_export, view_item_import, view_item_use,
              view_path, view_path_glob, view_path_list, view_path_simple,
@@ -275,7 +275,7 @@ class parser {
              constraints: constrs};
     }
 
-    fn parse_ty_methods() -> ~[ty_method] {
+    fn parse_trait_methods() -> ~[trait_method] {
         do self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
                                     seq_sep_none()) |p| {
             let attrs = p.parse_outer_attributes();
@@ -284,11 +284,41 @@ class parser {
             let ident = p.parse_method_name();
             let tps = p.parse_ty_params();
             let d = p.parse_ty_fn_decl(pur), fhi = p.last_span.hi;
-            self.expect(token::SEMI);
-            {ident: ident, attrs: attrs, decl: {purity: pur with d}, tps: tps,
-             span: mk_sp(flo, fhi)}
+            #debug["parse_trait_methods(): trait method ends in %s",
+                   token_to_str(self.reader, self.token)];
+            alt self.token {
+              token::SEMI {
+                self.bump();
+                required({ident: ident, attrs: attrs,
+                          decl: {purity: pur with d}, tps: tps,
+                          span: mk_sp(flo, fhi)})
+              }
+              token::LBRACE {
+                self.bump();
+                let (inner_attrs, body) =
+                    self.parse_inner_attrs_and_block(true);
+                let attrs = vec::append(attrs, inner_attrs);
+                self.eat(token::RBRACE);
+                provided(@{ident: ident,
+                           attrs: attrs,
+                           tps: tps,
+                           decl: d,
+                           body: body,
+                           id: self.get_id(),
+                           span: mk_sp(flo, fhi),
+                           self_id: self.get_id(),
+                           // Provided traits methods always public for now
+                           vis: public})
+              }
+
+              _ { self.fatal("expected ';' or '}` \
+                              but found `"
+                             + token_to_str(self.reader, self.token) + "`");
+                }
+            }
         }
     }
+
 
     fn parse_mt() -> mt {
         let mutbl = self.parse_mutability();
@@ -2127,7 +2157,7 @@ class parser {
         let ident = self.parse_ident();
         self.parse_region_param();
         let tps = self.parse_ty_params();
-        let meths = self.parse_ty_methods();
+        let meths = self.parse_trait_methods();
         (ident, item_trait(tps, meths), none)
     }
 

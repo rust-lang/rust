@@ -41,6 +41,7 @@ independently:
 import result::{result, extensions};
 import syntax::{ast, ast_util, ast_map};
 import ast::spanned;
+import ast::{required, provided};
 import syntax::ast_map::node_id_to_str;
 import syntax::ast_util::{local_def, respan, split_class_items};
 import syntax::visit;

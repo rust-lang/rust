@@ -11,6 +11,11 @@ enum page {
     itempage(itemtag)
 }
 
+enum implementation {
+    required,
+    provided,
+}
+
 /**
  * Most rustdocs can be parsed into 'sections' according to their markdown
  * headers
@@ -91,7 +96,8 @@ type methoddoc = {
     brief: option<str>,
     desc: option<str>,
     sections: ~[section],
-    sig: option<str>
+    sig: option<str>,
+    implementation: implementation,
 };
 
 type impldoc = {

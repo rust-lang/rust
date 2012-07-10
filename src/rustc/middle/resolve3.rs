@@ -26,6 +26,7 @@ import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
 import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
 import syntax::ast::{view_item_import, view_item_use, view_path_glob};
 import syntax::ast::{view_path_list, view_path_simple};
+import syntax::ast::{required, provided};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{walk_pat};
 import syntax::attr::{attr_metas, contains_name};
@@ -2928,21 +2929,33 @@ class Resolver {
                         //
                         // XXX: Do we need a node ID here?
 
-                        do self.with_type_parameter_rib
-                                (HasTypeParameters(&method.tps,
+                        alt method {
+                          required(ty_m) {
+                            do self.with_type_parameter_rib
+                                (HasTypeParameters(&ty_m.tps,
                                                    item.id,
                                                    type_parameters.len(),
                                                    NormalRibKind))
-                                || {
+                            || {
 
-                            // Resolve the method-specific type parameters.
-                            self.resolve_type_parameters(method.tps, visitor);
+                                // Resolve the method-specific type
+                                // parameters.
+                                self.resolve_type_parameters(ty_m.tps,
+                                                             visitor);
 
-                            for method.decl.inputs.each |argument| {
-                                self.resolve_type(argument.ty, visitor);
+                                for ty_m.decl.inputs.each |argument| {
+                                    self.resolve_type(argument.ty, visitor);
+                                }
+
+                                self.resolve_type(ty_m.decl.output, visitor);
                             }
-
-                            self.resolve_type(method.decl.output, visitor);
+                          }
+                          provided(m) {
+                              self.resolve_method(NormalRibKind,
+                                                  m,
+                                                  type_parameters.len(),
+                                                  visitor)
+                          }
                         }
                     }
                 }
@@ -3242,19 +3255,10 @@ class Resolver {
             for class_members.each |class_member| {
                 alt class_member.node {
                     class_method(method) {
-                        let borrowed_method_type_parameters = &method.tps;
-                        let type_parameters =
-                            HasTypeParameters(borrowed_method_type_parameters,
-                                              method.id,
-                                              outer_type_parameter_count,
-                                              NormalRibKind);
-                        self.resolve_function(NormalRibKind,
-                                              some(@method.decl),
-                                              type_parameters,
-                                              method.body,
-                                              HasSelfBinding(method.self_id),
-                                              NoCaptureClause,
-                                              visitor);
+                      self.resolve_method(NormalRibKind,
+                                          method,
+                                          outer_type_parameter_count,
+                                          visitor);
                     }
                     instance_var(_, field_type, _, _, _) {
                         self.resolve_type(field_type, visitor);
@@ -3289,6 +3293,27 @@ class Resolver {
                 }
             }
         }
+    }
+
+    // Does this really need to take a RibKind or is it always going
+    // to be NormalRibKind?
+    fn resolve_method(rib_kind: RibKind,
+                      method: @method,
+                      outer_type_parameter_count: uint,
+                      visitor: ResolveVisitor) {
+        let borrowed_method_type_parameters = &method.tps;
+        let type_parameters =
+            HasTypeParameters(borrowed_method_type_parameters,
+                              method.id,
+                              outer_type_parameter_count,
+                              rib_kind);
+        self.resolve_function(rib_kind,
+                              some(@method.decl),
+                              type_parameters,
+                              method.body,
+                              HasSelfBinding(method.self_id),
+                              NoCaptureClause,
+                              visitor);
     }
 
     fn resolve_implementation(id: node_id,

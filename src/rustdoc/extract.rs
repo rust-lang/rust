@@ -185,17 +185,32 @@ fn should_extract_enum_variants() {
 
 fn traitdoc_from_trait(
     itemdoc: doc::itemdoc,
-    methods: ~[ast::ty_method]
+    methods: ~[ast::trait_method]
 ) -> doc::traitdoc {
     {
         item: itemdoc,
         methods: do par::seqmap(methods) |method| {
-            {
-                name: *method.ident,
-                brief: none,
-                desc: none,
-                sections: ~[],
-                sig: none
+            alt method {
+              ast::required(ty_m) {
+                {
+                    name: *ty_m.ident,
+                    brief: none,
+                    desc: none,
+                    sections: ~[],
+                    sig: none,
+                    implementation: doc::required,
+                }
+              }
+              ast::provided(m) {
+                {
+                    name: *m.ident,
+                    brief: none,
+                    desc: none,
+                    sections: ~[],
+                    sig: none,
+                    implementation: doc::provided,
+                }
+              }
             }
         }
     }
@@ -227,7 +242,8 @@ fn impldoc_from_impl(
                 brief: none,
                 desc: none,
                 sections: ~[],
-                sig: none
+                sig: none,
+                implementation: doc::provided,
             }
         }
     }
