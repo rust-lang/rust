@@ -69,10 +69,11 @@ fn build_configuration(sess: session, argv0: ~str, input: input) ->
     // If the user wants a test runner, then add the test cfg
     let gen_cfg =
         {
-            if sess.opts.test && !attr::contains_name(user_cfg, ~"test")
-               {
+            if sess.opts.test && !attr::contains_name(user_cfg, ~"test") {
                 ~[attr::mk_word_item(@~"test")]
-            } else { ~[] }
+            } else {
+                ~[attr::mk_word_item(@~"notest")]
+            }
         };
     ret vec::append(vec::append(user_cfg, gen_cfg), default_cfg);
 }

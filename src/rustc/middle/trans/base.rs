@@ -37,7 +37,7 @@ import link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_path,
               mangle_internal_name_by_path_and_seq,
               mangle_exported_name};
-import metadata::{csearch, cstore, encoder};
+import metadata::{csearch, cstore, decoder, encoder};
 import metadata::common::link_meta;
 import util::ppaux;
 import util::ppaux::{ty_to_str, ty_to_short_str};
@@ -3942,9 +3942,23 @@ fn trans_fail_value(bcx: block, sp_opt: option<span>,
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = invoke(bcx, bcx.ccx().upcalls._fail, args);
+    let bcx = trans_rtcall(bcx, ~"fail", args);
     Unreachable(bcx);
     ret bcx;
+}
+
+fn trans_rtcall(bcx: block, name: ~str, args: ~[ValueRef]) -> block {
+    let did = bcx.ccx().rtcalls[name];
+    let fty = if did.crate == ast::local_crate {
+        ty::node_id_to_type(bcx.ccx().tcx, did.node)
+    } else {
+        csearch::get_type(bcx.ccx().tcx, did).ty
+    };
+    let rty = ty::ty_fn_ret(fty);
+    ret trans_call_inner(
+        bcx, none, fty, rty,
+        |bcx| lval_static_fn_inner(bcx, did, 0, ~[], none),
+        arg_vals(args), ignore);
 }
 
 fn trans_break_cont(bcx: block, to_end: bool)
@@ -5314,6 +5328,79 @@ fn trap(bcx: block) {
     }
 }
 
+fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
+    if ccx.rtcalls.contains_key(name) {
+        fail #fmt("multiple definitions for runtime call %s", name);
+    }
+    ccx.rtcalls.insert(name, did);
+}
+
+fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
+    visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
+        visit_item: |item| alt item.node {
+          ast::item_fn(decl, _, _) {
+            let attr_metas = attr::attr_metas(
+                attr::find_attrs_by_name(item.attrs, ~"rt"));
+            do vec::iter(attr_metas) |attr_meta| {
+                alt attr::get_meta_item_list(attr_meta) {
+                  some(list) {
+                    let name = *attr::get_meta_item_name(vec::head(list));
+                    push_rtcall(ccx, name, {crate: ast::local_crate,
+                                            node: item.id});
+                  }
+                  none {}
+                }
+            }
+          }
+          _ {}
+        }
+        with *visit::default_simple_visitor()
+    }));
+}
+
+fn gather_external_rtcalls(ccx: @crate_ctxt) {
+    do cstore::iter_crate_data(ccx.sess.cstore) |_cnum, cmeta| {
+        do decoder::each_path(cmeta) |path| {
+            let pathname = path.path_string;
+            alt path.def_like {
+              decoder::dl_def(d) {
+                alt d {
+                  ast::def_fn(did, _) {
+                    // FIXME (#2861): This should really iterate attributes
+                    // like gather_local_rtcalls, but we'll need to
+                    // export attributes in metadata/encoder before we can do
+                    // that.
+                    let sentinel = "rt::rt_";
+                    let slen = str::len(sentinel);
+                    if str::starts_with(pathname, sentinel) {
+                        let name = str::substr(pathname,
+                                               slen, str::len(pathname)-slen);
+                        push_rtcall(ccx, name, did);
+                    }
+                  }
+                  _ {}
+                }
+              }
+              _ {}
+            }
+            true
+        }
+    }
+}
+
+fn gather_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
+    gather_local_rtcalls(ccx, crate);
+    gather_external_rtcalls(ccx);
+
+    // FIXME (#2861): Check for other rtcalls too, once they are
+    // supported. Also probably want to check type signature so we don't crash
+    // in some obscure place in LLVM if the user provides the wrong signature
+    // for an rtcall.
+    if !ccx.rtcalls.contains_key(~"fail") {
+        fail ~"no definition for runtime call fail";
+    }
+}
+
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
@@ -5544,6 +5631,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           upcalls:
               upcall::declare_upcalls(targ_cfg, tn, tydesc_type,
                                       llmod),
+          rtcalls: str_hash::<ast::def_id>(),
           tydesc_type: tydesc_type,
           int_type: int_type,
           float_type: float_type,
@@ -5556,6 +5644,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           class_ctors: int_hash::<ast::def_id>(),
           mut do_not_commit_warning_issued: false};
 
+
+    gather_rtcalls(ccx, crate);
 
     {
         let _icx = ccx.insn_ctxt(~"data");
