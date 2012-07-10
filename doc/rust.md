@@ -813,8 +813,8 @@ mod foo {
 }
 ~~~~~~~~
 
-When exporting the name of an `enum` type `t`, by default, the module also
-implicitly exports all of `t`'s constructors. For example:
+When exporting the name of an `enum` type `t`, by default, the module does
+*not* implicitly export any of `t`'s constructors. For example:
 
 ~~~~~~~~
 mod foo {
@@ -824,29 +824,7 @@ mod foo {
 }
 ~~~~~~~~
 
-Here, `foo` imports `t`, `a`, `b`, and `c`.
-
-The second and third forms of export declaration can be used to export
-an `enum` item without exporting all of its constructors. These two
-forms can only be used to export an `enum` item. The second form
-exports the `enum` type name without exporting any of its
-constructors, achieving a simple kind of data abstraction. The third
-form exports an `enum` type name along with a subset of its
-constructors. For example:
-
-~~~~~~~~
-mod foo {
-    export abstract::{};
-    export slightly_abstract::{a, b};
-
-    enum abstract {x, y, z}
-    enum slightly_abstract {a, b, c, d}
-}
-~~~~~~~~
-
-Module `foo` exports the types `abstract` and `slightly_abstract`, as well as
-constructors `a` and `b`, but doesn't export constructors `x`, `y`, `z`, `c`,
-or `d`.
+Here, `foo` imports `t`, but not `a`, `b`, and `c`.
 
 ### Functions
 
