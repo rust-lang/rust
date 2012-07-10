@@ -66,6 +66,9 @@ syn keyword   rustConstant    STDIN_FILENO STDOUT_FILENO STDERR_FILENO
 syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
 syn match     rustModPathSep  "::"
 
+syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1
+syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 " foo::<T>();
+
 syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString
@@ -119,6 +122,7 @@ hi def link rustAttribute     PreProc
 " Other Suggestions:
 " hi def link rustModPathSep    Conceal
 " hi rustAssert ctermfg=yellow
+" hi rustFuncCall ctermfg=magenta
 
 syn sync minlines=200
 syn sync maxlines=500
