@@ -1212,7 +1212,7 @@ fn test_avoid_copying_the_body_unsupervise() {
 #[test]
 fn test_osmain() {
     let buildr = builder();
-    set_sched_mode(buildr, mode);
+    set_sched_mode(buildr, osmain);
 
     let po = comm::port();
     let ch = comm::chan(po);
