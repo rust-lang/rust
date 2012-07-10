@@ -2320,11 +2320,11 @@ and one for values. This means that this code is valid:
 ~~~~
 mod buffalo {
     type buffalo = int;
-    fn buffalo(buffalo: buffalo) -> buffalo { buffalo }
+    fn buffalo<buffalo: copy>(buffalo: buffalo) -> buffalo { buffalo }
 }
 fn main() {
     let buffalo: buffalo::buffalo = 1;
-    buffalo::buffalo(buffalo::buffalo(buffalo));
+    buffalo::buffalo::<buffalo::buffalo>(buffalo::buffalo(buffalo));
 }
 ~~~~
 
