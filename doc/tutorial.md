@@ -1266,13 +1266,7 @@ All pointer types can be dereferenced with the `*` unary operator.
 
 ## Shared boxes
 
-Shared boxes are pointers to heap-allocated, reference counted memory.
-A cycle collector ensures that circular references do not result in
-memory leaks.
-
-> ***Note:*** We will in the future switch to garbage collection,
-> rather than reference counting, for shared boxes.
-
+Shared boxes are pointers to heap-allocated, garbage collected memory.
 Creating a shared box is done by simply applying the unary `@`
 operator to an expression. The result of the expression will be boxed,
 resulting in a box of the right type. Copying a shared box, as happens
@@ -1286,6 +1280,10 @@ let y = x; // Copy the pointer, increase refcount
 ~~~~
 
 Shared boxes never cross task boundaries.
+
+> ***Note:*** shared boxes are currently reclaimed through reference
+> counting and cycle collection, but we will switch to a tracing
+> garbage collector.
 
 ## Unique boxes
 
