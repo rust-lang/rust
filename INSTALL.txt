@@ -57,6 +57,6 @@ information on them.
 More help
 =========================
 
-Be sure to check out the 'Getting started' page on the Rust wiki:
+The tutorial is a good starting point:
 
-    https://github.com/mozilla/rust/wiki/Doc-getting-started
+    http://dl.rust-lang.org/doc/tutorial.html
