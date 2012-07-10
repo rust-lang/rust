@@ -638,6 +638,9 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         Store(bcx, val, v);
         bcx
       }
+      ty::ty_evec(_, ty::vstore_slice(_)) | ty::ty_estr(ty::vstore_slice(_)) {
+        bcx
+      }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, take_ty)
       }
