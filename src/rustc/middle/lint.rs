@@ -107,7 +107,7 @@ fn get_lint_dict() -> lint_dict {
         ("old_vecs",
          @{lint: old_vecs,
            desc: "old (deprecated) vectors",
-           default: warn}),
+           default: error}),
 
         ("old_strs",
          @{lint: old_strs,
