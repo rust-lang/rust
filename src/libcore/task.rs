@@ -239,7 +239,7 @@ fn set_opts(builder: builder, opts: task_opts) {
 }
 
 fn set_sched_mode(builder: builder, mode: sched_mode) {
-    set_opts(builder, { 
+    set_opts(builder, {
         sched: some({
             mode: mode,
             foreign_stack_size: none
