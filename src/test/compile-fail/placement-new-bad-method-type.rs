@@ -11,5 +11,5 @@ impl methods for malloc_pool {
 fn main() {
     let p = &malloc_pool(());
     let x = new(*p) 4u;
-    //~^ ERROR mismatched types: expected `fn(uint, uint) -> *()`
+    //~^ ERROR mismatched types: expected `fn(*()) -> *()`
 }

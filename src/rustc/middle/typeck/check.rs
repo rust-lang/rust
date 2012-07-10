@@ -1631,17 +1631,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           some(entry) {
             fcx.ccx.method_map.insert(alloc_id, entry);
 
-            // Check that the alloc() method has the expected type, which
-            // should be fn(sz: uint, align: uint) -> *().
+            // Check that the alloc() method has the expected
+            // type, which should be fn(tydesc: *()) -> *().
             let expected_ty = {
-                let ty_uint = ty::mk_uint(tcx);
                 let ty_nilp = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx),
                                               mutbl: ast::m_imm});
-                let m = ast::expl(ty::default_arg_mode_for_ty(ty_uint));
+                let m = ast::expl(ty::default_arg_mode_for_ty(ty_nilp));
                 ty::mk_fn(tcx, {purity: ast::impure_fn,
                                 proto: ast::proto_any,
-                                inputs: ~[{mode: m, ty: ty_uint},
-                                         {mode: m, ty: ty_uint}],
+                                inputs: ~[{mode: m, ty: ty_nilp}],
                                 output: ty_nilp,
                                 ret_style: ast::return_val,
                                 constraints: ~[]})
