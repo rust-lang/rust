@@ -101,24 +101,7 @@ type item_info = (ident, item_, option<~[attribute]>);
 
 fn dummy() {
 
-/* We need to position the macros to capture the ACTUALLY tokens before they
-get bumped away. So two bumps in a row is bad. (the first lookahead also
-counts as a bump).
 
-Events happen L to R; 'B' indicates a bump before hand:
-           ._____________________________.________________________.
-           ↓                            B|                        |
-   parse_expr -> parse_expr_res -> parse_assign_expr              |
-                                    ↓                             |
-                            parse_binops -> parse_more_binops     |
-                             ↓             B↓                    B|
-                            parse_prefix_expr B-> parse_dot_or_call_expr
-                             B|_↑                  ↓
-                                                  parse_bottom_expr
-                                                  B↓
-                                            ⋯->parse_ident
-...so we've hit parse_prefix_expr, parse_more_binops, and parse_bottom_expr.
-*/
 
     #macro[[#maybe_whole_item[p],
             alt copy p.token {
@@ -136,18 +119,9 @@ Events happen L to R; 'B' indicates a bump before hand:
             alt copy p.token {
                 ACTUALLY(token::w_pat(pt)) { p.bump(); ret pt; }
                 _ {} }]];
-    #macro[[#maybe_whole_expr[p],
-            alt copy p.token {
-                ACTUALLY(token::w_expr(e)) {
-                    p.bump();
-                    ret e;
-                }
-                ACTUALLY(token::w_path(pt)) {
-                    p.bump();
-                    ret p.mk_expr(p.span.lo, p.span.lo,
-                                  expr_path(pt));
-                }
-                _ {} }]];
+    /* The expr situation is not as complex as I thought it would be.
+    The important thing is to make sure that lookahead doesn't balk
+    at ACTUALLY tokens */
     #macro[[#maybe_whole_expr_pexpr[p], /* ack! */
             alt copy p.token {
                 ACTUALLY(token::w_expr(e)) {
@@ -1302,7 +1276,6 @@ class parser {
 
 
     fn parse_prefix_expr() -> pexpr {
-        #maybe_whole_expr_pexpr[self];
         let lo = self.span.lo;
         let mut hi;
 
@@ -1380,7 +1353,6 @@ class parser {
 
     fn parse_more_binops(plhs: pexpr, min_prec: uint) ->
         @expr {
-        #maybe_whole_expr[self];
         let lhs = self.to_expr(plhs);
         if self.expr_is_complete(plhs) { ret lhs; }
         let peeked = self.token;
