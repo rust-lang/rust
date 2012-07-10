@@ -1119,7 +1119,7 @@ class Resolver {
 
         alt foreign_item.node {
             foreign_item_fn(fn_decl, type_parameters) {
-                let def = def_fn(local_def(foreign_item.id), impure_fn);
+                let def = def_fn(local_def(foreign_item.id), fn_decl.purity);
                 (*name_bindings).define_value(def);
 
                 do self.with_type_parameter_rib
