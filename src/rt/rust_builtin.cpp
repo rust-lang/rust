@@ -858,6 +858,11 @@ rust_task_allow_kill() {
     task->allow_kill();
 }
 
+extern "C" void
+rust_task_kill_other(rust_task *task) { /* Used for linked failure */
+    task->kill();
+}
+
 extern "C" rust_cond_lock*
 rust_create_cond_lock() {
     return new rust_cond_lock();
@@ -884,6 +889,7 @@ rust_unlock_cond_lock(rust_cond_lock *lock) {
 
 extern "C" void
 rust_wait_cond_lock(rust_cond_lock *lock) {
+    assert(false && "condition->wait() is totally broken! Don't use it!");
     rust_task *task = rust_get_current_task();
     lock->lock.must_have_lock();
     assert(NULL == lock->waiting);
@@ -897,6 +903,7 @@ rust_wait_cond_lock(rust_cond_lock *lock) {
 
 extern "C" bool
 rust_signal_cond_lock(rust_cond_lock *lock) {
+    assert(false && "condition->signal() is totally broken! Don't use it!");
     lock->lock.must_have_lock();
     if(NULL == lock->waiting) {
         return false;
