@@ -219,6 +219,8 @@ pure fn can_begin_expr(t: token) -> bool {
       BINOP(OR) { true } // in lambda syntax
       OROR { true } // in lambda syntax
       MOD_SEP { true }
+      ACTUALLY(w_expr(*)) | ACTUALLY(w_ident(*)) | ACTUALLY(w_block(*))
+      | ACTUALLY(w_path(*)) { true }
       _ { false }
     }
 }
