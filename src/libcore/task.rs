@@ -38,6 +38,7 @@ export builder;
 export default_task_opts;
 export get_opts;
 export set_opts;
+export set_sched_mode;
 export add_wrapper;
 export run;
 
@@ -235,6 +236,16 @@ fn set_opts(builder: builder, opts: task_opts) {
      */
 
     builder.opts = opts;
+}
+
+fn set_sched_mode(builder: builder, mode: sched_mode) {
+    set_opts(builder, { 
+        sched: some({
+            mode: mode,
+            foreign_stack_size: none
+        })
+        with get_opts(builder)
+    });
 }
 
 fn add_wrapper(builder: builder, gen_body: fn@(+fn~()) -> fn~()) {
@@ -467,13 +478,7 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
      */
 
     let mut builder = builder();
-    set_opts(builder, {
-        sched: some({
-            mode: mode,
-            foreign_stack_size: none
-        })
-        with get_opts(builder)
-    });
+    set_sched_mode(builder, mode);
     run(builder, f);
 }
 
@@ -1207,14 +1212,7 @@ fn test_avoid_copying_the_body_unsupervise() {
 #[test]
 fn test_osmain() {
     let buildr = builder();
-    let opts = {
-        sched: some({
-            mode: osmain,
-            foreign_stack_size: none
-        })
-        with get_opts(buildr)
-    };
-    set_opts(buildr, opts);
+    set_sched_mode(buildr, mode);
 
     let po = comm::port();
     let ch = comm::chan(po);
