@@ -503,8 +503,7 @@ class parser {
               }
               mt { ty_uniq(mt) }
             }
-        } else if self.token == token::BINOP(token::STAR) ||
-            self.token == token::BINOP(token::CARET) {
+        } else if self.token == token::BINOP(token::STAR) {
             self.bump();
             ty_ptr(self.parse_mt())
         } else if self.token == token::LBRACE {
