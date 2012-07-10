@@ -26,5 +26,24 @@ fn main() {
         }
     });
 
-    sleep(iotask, 1000);
+    sleep(iotask, 100);
+
+    let b = task::builder();
+    task::unsupervise(b);
+    task::run(b, failtest);
+}
+
+// Make sure the right thing happens during failure.
+fn failtest() {
+    let iotask = uv::global_loop::get();
+    
+    let (c, p) = oneshot::init();
+
+    do task::spawn_with(c) |_c| { 
+        fail;
+    }
+
+    #error("%?", recv(p));
+    // make sure we get killed if we missed it in the receive.
+    loop { task::yield() }
 }

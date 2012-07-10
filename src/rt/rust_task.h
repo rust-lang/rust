@@ -316,7 +316,7 @@ public:
         this->event_reject = false;
     }
 
-    void *wait_event();
+    void *wait_event(bool *killed);
     void signal_event(void *event);
 
     void cleanup_after_turn();

@@ -713,16 +713,14 @@ rust_task::allow_kill() {
 }
 
 void *
-rust_task::wait_event() {
+rust_task::wait_event(bool *killed) {
     scoped_lock with(state_lock);
 
     if(!event_reject) {
         block_locked(&event_cond, "waiting on event");
-        bool killed = false;
         state_lock.unlock();
-        yield(&killed);
+        yield(killed);
         state_lock.lock();
-        // TODO: what is the right thing to do if we are killed?
     }
 
     event_reject = false;

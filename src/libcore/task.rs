@@ -46,6 +46,7 @@ export future_result;
 export future_task;
 export unsupervise;
 export run_listener;
+export run_with;
 
 export spawn;
 export spawn_with;

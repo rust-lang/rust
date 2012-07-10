@@ -47,7 +47,7 @@ extern mod rustrt {
     #[rust_stack]
     fn task_clear_event_reject(task: *rust_task);
 
-    fn task_wait_event(this: *rust_task) -> *libc::c_void;
+    fn task_wait_event(this: *rust_task, killed: &mut bool) -> *libc::c_void;
     fn task_signal_event(target: *rust_task, event: *libc::c_void);
 }
 
@@ -55,6 +55,16 @@ extern mod rustrt {
 // suspect graydon would want us to use void pointers instead.
 unsafe fn uniquify<T>(x: *T) -> ~T {
     unsafe { unsafe::reinterpret_cast(x) }
+}
+
+fn wait_event(this: *rust_task) -> *libc::c_void {
+    let mut killed = false;
+
+    let res = rustrt::task_wait_event(this, &mut killed);
+    if killed && !task::failing() {
+        fail "killed"
+    }
+    res
 }
 
 fn swap_state_acq(&dst: state, src: state) -> state {
@@ -113,23 +123,23 @@ fn recv<T: send>(-p: recv_packet<T>) -> option<T> {
     let this = rustrt::rust_get_task();
     rustrt::task_clear_event_reject(this);
     p.header.blocked_task = some(this);
+    let mut first = true;
     loop {
+        rustrt::task_clear_event_reject(this);
         let old_state = swap_state_acq(p.header.state,
                                        blocked);
         #debug("%?", old_state);
         alt old_state {
           empty {
             #debug("no data available on %?, going to sleep.", p_);
-            rustrt::task_wait_event(this);
+            wait_event(this);
             #debug("woke up, p.state = %?", p.header.state);
-            if p.header.state == full {
-                let mut payload = none;
-                payload <-> (*p).payload;
-                p.header.state = terminated;
-                ret some(option::unwrap(payload))
+          }
+          blocked {
+            if first {
+                fail "blocking on already blocked packet"
             }
           }
-          blocked { fail "blocking on already blocked packet" }
           full {
             let mut payload = none;
             payload <-> (*p).payload;
@@ -141,11 +151,12 @@ fn recv<T: send>(-p: recv_packet<T>) -> option<T> {
             ret none;
           }
         }
+        first = false;
     }
 }
 
 /// Returns true if messages are available.
-fn peek<T: send>(p: recv_packet<T>) -> bool {
+pure fn peek<T: send>(p: recv_packet<T>) -> bool {
     alt p.header().state {
       empty { false }
       blocked { fail "peeking on blocked packet" }
@@ -236,7 +247,7 @@ fn wait_many(pkts: ~[&a.packet_header]) -> uint {
 
     while !data_avail {
         #debug("sleeping on %? packets", pkts.len());
-        let event = rustrt::task_wait_event(this) as *packet_header;
+        let event = wait_event(this) as *packet_header;
         let pos = vec::position(pkts, |p| ptr::addr_of(*p) == event);
 
         alt pos {
@@ -356,7 +367,7 @@ class recv_packet<T: send> {
         option::unwrap(p)
     }
 
-    fn header() -> &self.packet_header {
+    pure fn header() -> &self.packet_header {
         alt self.p {
           some(packet) {
             unsafe {
