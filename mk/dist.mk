@@ -15,8 +15,7 @@ endif
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm
 
 PKG_FILES := \
-    $(S)LICENSE.txt $(S)README.txt             \
-    $(S)INSTALL.txt                            \
+    $(S)LICENSE.txt $(S)README.md              \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
     $(S)doc                                    \
