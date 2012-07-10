@@ -814,7 +814,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     fn check_call(fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id,
                   f: @ast::expr, args: ~[@ast::expr]) -> bool {
 
-        let mut bot = check_expr(fcx, f, none);
+        // Index expressions need to be handled seperately, to inform
+        // them that they appear in call position.
+        let mut bot = alt f.node {
+          ast::expr_field(base, field, tys) {
+            check_field(fcx, f, true, base, field, tys)
+          }
+          _ { check_expr(fcx, f, none) }
+        };
         let fn_ty = fcx.expr_ty(f);
 
         // Call the generic checker.
@@ -1049,6 +1056,101 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         check_fn(fcx.ccx, fcx.self_ty, fn_ty, decl, body,
                  is_loop_body, some(fcx));
+    }
+
+    // Check field access expressions
+    fn check_field(fcx: @fn_ctxt, expr: @ast::expr, is_callee: bool,
+                   base: @ast::expr, field: ast::ident, tys: ~[@ast::ty])
+        -> bool {
+        let tcx = fcx.ccx.tcx;
+        let bot = check_expr(fcx, base, none);
+        let expr_t = structurally_resolved_type(fcx, expr.span,
+                                                fcx.expr_ty(base));
+        let base_t = do_autoderef(fcx, expr.span, expr_t);
+        let mut handled = false;
+        let n_tys = vec::len(tys);
+        alt structure_of(fcx, expr.span, base_t) {
+          ty::ty_rec(fields) {
+            alt ty::field_idx(field, fields) {
+              some(ix) {
+                if n_tys > 0u {
+                    tcx.sess.span_err(expr.span,
+                                      "can't provide type parameters \
+                                       to a field access");
+                }
+                fcx.write_ty(expr.id, fields[ix].mt.ty);
+                handled = true;
+              }
+              _ {}
+            }
+          }
+          ty::ty_class(base_id, substs) {
+              // This is just for fields -- the same code handles
+              // methods in both classes and traits
+
+              // (1) verify that the class id actually has a field called
+              // field
+              #debug("class named %s", ty_to_str(tcx, base_t));
+              /*
+                check whether this is a self-reference or not, which
+                determines whether we look at all fields or only public
+                ones
+               */
+              let cls_items = if self_ref(fcx, base.id) {
+                  // base expr is "self" -- consider all fields
+                  ty::lookup_class_fields(tcx, base_id)
+              }
+              else {
+                  lookup_public_fields(tcx, base_id)
+              };
+              alt lookup_field_ty(tcx, base_id, cls_items, field, substs) {
+                 some(field_ty) {
+                    // (2) look up what field's type is, and return it
+                     fcx.write_ty(expr.id, field_ty);
+                     handled = true;
+                 }
+                 none {}
+              }
+          }
+          _ {}
+        }
+        if !handled {
+            let tps = vec::map(tys, |ty| fcx.to_ty(ty));
+            let is_self_ref = self_ref(fcx, base.id);
+
+            // this will be the call or block that immediately
+            // encloses the method call
+            let borrow_scope = fcx.tcx().region_map.get(expr.id);
+
+            let lkup = method::lookup(fcx, expr, base, borrow_scope,
+                                      expr.id, field, expr_t, tps,
+                                      is_self_ref);
+            alt lkup.method() {
+              some(entry) {
+                fcx.ccx.method_map.insert(expr.id, entry);
+
+                // If we have resolved to a method but this is not in
+                // a callee position, error
+                if !is_callee {
+                    tcx.sess.span_err(
+                        expr.span,
+                        "attempted to take value of method \
+                         (try writing an anonymous function)");
+                }
+              }
+              none {
+                let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
+                let msg = #fmt["attempted access of field `%s` on type `%s`, \
+                                but no public field or method with that name \
+                                was found",
+                               *field, fcx.infcx.ty_to_str(t_err)];
+                tcx.sess.span_err(expr.span, msg);
+                // NB: Adding a bogus type to allow typechecking to continue
+                fcx.write_ty(expr.id, fcx.infcx.next_ty_var());
+              }
+            }
+        }
+        ret bot;
     }
 
 
@@ -1489,84 +1591,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
       }
       ast::expr_field(base, field, tys) {
-        bot |= check_expr(fcx, base, none);
-        let expr_t = structurally_resolved_type(fcx, expr.span,
-                                                fcx.expr_ty(base));
-        let base_t = do_autoderef(fcx, expr.span, expr_t);
-        let mut handled = false;
-        let n_tys = vec::len(tys);
-        alt structure_of(fcx, expr.span, base_t) {
-          ty::ty_rec(fields) {
-            alt ty::field_idx(field, fields) {
-              some(ix) {
-                if n_tys > 0u {
-                    tcx.sess.span_err(expr.span,
-                                      "can't provide type parameters \
-                                       to a field access");
-                }
-                fcx.write_ty(id, fields[ix].mt.ty);
-                handled = true;
-              }
-              _ {}
-            }
-          }
-          ty::ty_class(base_id, substs) {
-              // This is just for fields -- the same code handles
-              // methods in both classes and traits
-
-              // (1) verify that the class id actually has a field called
-              // field
-              #debug("class named %s", ty_to_str(tcx, base_t));
-              /*
-                check whether this is a self-reference or not, which
-                determines whether we look at all fields or only public
-                ones
-               */
-              let cls_items = if self_ref(fcx, base.id) {
-                  // base expr is "self" -- consider all fields
-                  ty::lookup_class_fields(tcx, base_id)
-              }
-              else {
-                  lookup_public_fields(tcx, base_id)
-              };
-              alt lookup_field_ty(tcx, base_id, cls_items, field, substs) {
-                 some(field_ty) {
-                    // (2) look up what field's type is, and return it
-                     fcx.write_ty(id, field_ty);
-                     handled = true;
-                 }
-                 none {}
-              }
-          }
-          _ {}
-        }
-        if !handled {
-            let tps = vec::map(tys, |ty| fcx.to_ty(ty));
-            let is_self_ref = self_ref(fcx, base.id);
-
-            // this will be the call or block that immediately
-            // encloses the method call
-            let borrow_scope = fcx.tcx().region_map.get(expr.id);
-
-            let lkup = method::lookup(fcx, expr, base, borrow_scope,
-                                      expr.id, field, expr_t, tps,
-                                      is_self_ref);
-            alt lkup.method() {
-              some(entry) {
-                fcx.ccx.method_map.insert(id, entry);
-              }
-              none {
-                let t_err = fcx.infcx.resolve_type_vars_if_possible(expr_t);
-                let msg = #fmt["attempted access of field `%s` on type `%s`, \
-                                but no public field or method with that name \
-                                was found",
-                               *field, fcx.infcx.ty_to_str(t_err)];
-                tcx.sess.span_err(expr.span, msg);
-                // NB: Adding a bogus type to allow typechecking to continue
-                fcx.write_ty(id, fcx.infcx.next_ty_var());
-              }
-            }
-        }
+        bot = check_field(fcx, expr, false, base, field, tys);
       }
       ast::expr_index(base, idx) {
         bot |= check_expr(fcx, base, none);
