@@ -367,12 +367,11 @@ fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
     let llty = type_of(ccx, box_ptr_ty);
 
     // Get the tydesc for the body:
-    let mut static_ti = none;
-    let lltydesc = get_tydesc(ccx, t, static_ti);
-    lazily_emit_all_tydesc_glue(ccx, copy static_ti);
+    let static_ti = get_tydesc(ccx, t);
+    lazily_emit_all_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
-    let rval = Call(bcx, upcall, ~[lltydesc, size]);
+    let rval = Call(bcx, upcall, ~[static_ti.tydesc, size]);
     ret PointerCast(bcx, rval, llty);
 }
 
@@ -409,20 +408,10 @@ fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
 // Type descriptor and type glue stuff
 
 fn get_tydesc_simple(ccx: @crate_ctxt, t: ty::t) -> ValueRef {
-    let mut ti = none;
-    get_tydesc(ccx, t, ti)
+    get_tydesc(ccx, t).tydesc
 }
 
-fn get_tydesc(ccx: @crate_ctxt, t: ty::t,
-              &static_ti: option<@tydesc_info>) -> ValueRef {
-    assert !ty::type_has_params(t);
-    // Otherwise, generate a tydesc if necessary, and return it.
-    let inf = get_static_tydesc(ccx, t);
-    static_ti = some(inf);
-    inf.tydesc
-}
-
-fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
+fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     alt ccx.tydescs.find(t) {
       some(inf) { inf }
       _ {
@@ -1090,7 +1079,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
 }
 
 fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
-                               static_ti: option<@tydesc_info>) {
+                               static_ti: @tydesc_info) {
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
@@ -1098,74 +1087,68 @@ fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
 }
 
 fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
-                           static_ti: option<@tydesc_info>) {
+                           ti: @tydesc_info) {
     let _icx = ccx.insn_ctxt("lazily_emit_tydesc_glue");
-    alt static_ti {
-      none { }
-      some(ti) {
-        if field == abi::tydesc_field_take_glue {
-            alt ti.take_glue {
-              some(_) { }
-              none {
-                #debug("+++ lazily_emit_tydesc_glue TAKE %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-                let glue_fn = declare_generic_glue
-                    (ccx, ti.ty, T_glue_fn(ccx), "take");
-                ti.take_glue = some(glue_fn);
-                make_generic_glue(ccx, ti.ty, glue_fn,
-                                  make_take_glue, "take");
-                #debug("--- lazily_emit_tydesc_glue TAKE %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-              }
-            }
-        } else if field == abi::tydesc_field_drop_glue {
-            alt ti.drop_glue {
-              some(_) { }
-              none {
-                #debug("+++ lazily_emit_tydesc_glue DROP %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-                let glue_fn =
-                    declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "drop");
-                ti.drop_glue = some(glue_fn);
-                make_generic_glue(ccx, ti.ty, glue_fn,
-                                  make_drop_glue, "drop");
-                #debug("--- lazily_emit_tydesc_glue DROP %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-              }
-            }
-        } else if field == abi::tydesc_field_free_glue {
-            alt ti.free_glue {
-              some(_) { }
-              none {
-                #debug("+++ lazily_emit_tydesc_glue FREE %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-                let glue_fn =
-                    declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "free");
-                ti.free_glue = some(glue_fn);
-                make_generic_glue(ccx, ti.ty, glue_fn,
-                                  make_free_glue, "free");
-                #debug("--- lazily_emit_tydesc_glue FREE %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-              }
-            }
-        } else if field == abi::tydesc_field_visit_glue {
-            alt ti.visit_glue {
-              some(_) { }
-              none {
-                #debug("+++ lazily_emit_tydesc_glue VISIT %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-                let glue_fn =
-                    declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "visit");
-                ti.visit_glue = some(glue_fn);
-                make_generic_glue(ccx, ti.ty, glue_fn,
-                                  make_visit_glue, "visit");
-                #debug("--- lazily_emit_tydesc_glue VISIT %s",
-                       ppaux::ty_to_str(ccx.tcx, ti.ty));
-              }
-            }
+    if field == abi::tydesc_field_take_glue {
+        alt ti.take_glue {
+          some(_) { }
+          none {
+            #debug("+++ lazily_emit_tydesc_glue TAKE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+            let glue_fn = declare_generic_glue
+                (ccx, ti.ty, T_glue_fn(ccx), "take");
+            ti.take_glue = some(glue_fn);
+            make_generic_glue(ccx, ti.ty, glue_fn,
+                              make_take_glue, "take");
+            #debug("--- lazily_emit_tydesc_glue TAKE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+          }
         }
-
-      }
+    } else if field == abi::tydesc_field_drop_glue {
+        alt ti.drop_glue {
+          some(_) { }
+          none {
+            #debug("+++ lazily_emit_tydesc_glue DROP %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+            let glue_fn =
+                declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "drop");
+            ti.drop_glue = some(glue_fn);
+            make_generic_glue(ccx, ti.ty, glue_fn,
+                              make_drop_glue, "drop");
+            #debug("--- lazily_emit_tydesc_glue DROP %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+          }
+        }
+    } else if field == abi::tydesc_field_free_glue {
+        alt ti.free_glue {
+          some(_) { }
+          none {
+            #debug("+++ lazily_emit_tydesc_glue FREE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+            let glue_fn =
+                declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "free");
+            ti.free_glue = some(glue_fn);
+            make_generic_glue(ccx, ti.ty, glue_fn,
+                              make_free_glue, "free");
+            #debug("--- lazily_emit_tydesc_glue FREE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+          }
+        }
+    } else if field == abi::tydesc_field_visit_glue {
+        alt ti.visit_glue {
+          some(_) { }
+          none {
+            #debug("+++ lazily_emit_tydesc_glue VISIT %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+            let glue_fn =
+                declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "visit");
+            ti.visit_glue = some(glue_fn);
+            make_generic_glue(ccx, ti.ty, glue_fn,
+                              make_visit_glue, "visit");
+            #debug("--- lazily_emit_tydesc_glue VISIT %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
+          }
+        }
     }
 }
 
@@ -1173,13 +1156,13 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
 fn call_tydesc_glue_full(++cx: block, v: ValueRef, tydesc: ValueRef,
                          field: uint, static_ti: option<@tydesc_info>) {
     let _icx = cx.insn_ctxt("call_tydesc_glue_full");
-    lazily_emit_tydesc_glue(cx.ccx(), field, static_ti);
-    if cx.unreachable { ret; }
+        if cx.unreachable { ret; }
 
     let mut static_glue_fn = none;
     alt static_ti {
       none {/* no-op */ }
       some(sti) {
+        lazily_emit_tydesc_glue(cx.ccx(), field, sti);
         if field == abi::tydesc_field_take_glue {
             static_glue_fn = sti.take_glue;
         } else if field == abi::tydesc_field_drop_glue {
@@ -1213,9 +1196,8 @@ fn call_tydesc_glue_full(++cx: block, v: ValueRef, tydesc: ValueRef,
 fn call_tydesc_glue(++cx: block, v: ValueRef, t: ty::t, field: uint)
     -> block {
     let _icx = cx.insn_ctxt("call_tydesc_glue");
-    let mut ti = none;
-    let td = get_tydesc(cx.ccx(), t, ti);
-    call_tydesc_glue_full(cx, v, td, field, ti);
+    let ti = get_tydesc(cx.ccx(), t);
+    call_tydesc_glue_full(cx, v, ti.tydesc, field, some(ti));
     ret cx;
 }
 

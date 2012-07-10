@@ -146,7 +146,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
 fn allocate_cbox(bcx: block,
                  ck: ty::closure_kind,
                  cdata_ty: ty::t)
-    -> (block, ValueRef, ~[ValueRef]) {
+    -> ValueRef {
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -160,42 +160,23 @@ fn allocate_cbox(bcx: block,
         Store(bcx, rc, ref_cnt);
     }
 
-    fn store_tydesc(bcx: block,
-                    cdata_ty: ty::t,
-                    llbox: ValueRef,
-                    &ti: option<@tydesc_info>) -> block {
-        let bound_tydesc = GEPi(bcx, llbox, ~[0u, abi::box_field_tydesc]);
-        let td = base::get_tydesc(bcx.ccx(), cdata_ty, ti);
-        Store(bcx, td, bound_tydesc);
-        bcx
-    }
-
     // Allocate and initialize the box:
-    let mut ti = none;
-    let mut temp_cleanups = ~[];
-    let (bcx, llbox) = alt ck {
+    let llbox = alt ck {
       ty::ck_box {
-        get_tydesc(ccx, cdata_ty, ti);
-        let llbox = malloc_raw(bcx, cdata_ty, heap_shared);
-        (bcx, llbox)
+        malloc_raw(bcx, cdata_ty, heap_shared)
       }
       ty::ck_uniq {
-        let llbox = malloc_raw(bcx, cdata_ty, heap_exchange);
-        (bcx, llbox)
+        malloc_raw(bcx, cdata_ty, heap_exchange)
       }
       ty::ck_block {
         let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
         let llbox = base::alloc_ty(bcx, cbox_ty);
         nuke_ref_count(bcx, llbox);
-        (bcx, llbox)
+        llbox
       }
     };
 
-    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, ti);
-    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, ti);
-    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, ti);
-
-    ret (bcx, llbox, temp_cleanups);
+    ret llbox;
 }
 
 type closure_result = {
@@ -219,8 +200,8 @@ fn store_environment(bcx: block,
         mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
-    let mut (bcx, llbox, temp_cleanups) =
-        allocate_cbox(bcx, ck, cdata_ty);
+    let llbox = allocate_cbox(bcx, ck, cdata_ty);
+    let mut temp_cleanups = ~[];
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
@@ -567,10 +548,9 @@ fn make_opaque_cbox_take_glue(
         let bcx = take_ty(bcx, tydesc_out, ty::mk_type(tcx));
 
         // Take the data in the tuple
-        let ti = none;
         let cdata_out = GEPi(bcx, cbox_out, ~[0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata_out, tydesc,
-                              abi::tydesc_field_take_glue, ti);
+                              abi::tydesc_field_take_glue, none);
         bcx
     }
 }
@@ -615,10 +595,9 @@ fn make_opaque_cbox_free_glue(
         let tydesc = PointerCast(bcx, tydesc, lltydescty);
 
         // Drop the tuple data then free the descriptor
-        let ti = none;
         let cdata = GEPi(bcx, cbox, ~[0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata, tydesc,
-                              abi::tydesc_field_drop_glue, ti);
+                              abi::tydesc_field_drop_glue, none);
 
         // Free the ty descr (if necc) and the box itself
         alt ck {
