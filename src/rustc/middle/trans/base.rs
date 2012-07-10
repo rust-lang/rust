@@ -713,9 +713,6 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
                        tvec::expand_boxed_vec_ty(bcx.tcx(), t));
         ret;
       }
-      ty::ty_evec(_, _) {
-          bcx.sess().unimpl("trans::base::make_free_glue on other evec");
-      }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, free_ty)
       }
