@@ -1511,8 +1511,25 @@ class parser {
             let pats = self.parse_pats();
             let mut guard = none;
             if self.eat_keyword(~"if") { guard = some(self.parse_expr()); }
-            if self.token == token::FAT_ARROW { self.bump(); }
-            let blk = self.parse_block();
+            let blk = if self.token != token::FAT_ARROW {
+                self.parse_block()
+            } else {
+                self.bump();
+                if self.token == token::LBRACE {
+                    self.parse_block()
+                } else {
+                    let expr = self.parse_expr();
+                    if self.token != token::RBRACE {
+                        self.expect(token::COMMA);
+                    }
+                    {node: {view_items: ~[],
+                            stmts: ~[],
+                            expr: some(expr),
+                            id: self.get_id(),
+                            rules: default_blk},
+                     span: expr.span}
+                }
+            };
             vec::push(arms, {pats: pats, guard: guard, body: blk});
         }
         let mut hi = self.span.hi;
