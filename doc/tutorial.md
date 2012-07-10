@@ -111,7 +111,7 @@ fn main() {
 
         let rng = seeded_rng(seed());
         // A small inline function for picking an RPS gesture
-        let pick = || [rock, paper, scissors][rng.gen_uint() % 3];
+        let pick = || (~[rock, paper, scissors])[rng.gen_uint() % 3];
 
         // Pick two gestures and decide the result
         alt (pick(), pick()) {
@@ -1581,7 +1581,7 @@ access local variables in the enclosing scope.
 
 ~~~~
 let mut max = 0;
-[1, 2, 3].map(|x| if x > max { max = x });
+(~[1, 2, 3]).map(|x| if x > max { max = x });
 ~~~~
 
 Stack closures are very efficient because their environment is
