@@ -1376,9 +1376,9 @@ fn increase_contents(pt: @mut int) {
 
 # Vectors
 
-Vectors represent a section of memory that contains some number
-of values. Like other types in Rust, vectors can be stored on
-the stack, the local heap, or the exchange heap.
+Vectors are a contiguous section of memory containing zero or more
+values of the same type. Like other types in Rust, vectors can be
+stored on the stack, the local heap, or the exchange heap.
 
 ~~~
 enum crayon {
