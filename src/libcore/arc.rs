@@ -84,7 +84,7 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
 }
 
 // An arc over mutable data that is protected by a lock.
-type ex_data<T: send> = {lock: sys::lock_and_signal, data: T};
+type ex_data<T: send> = {lock: sys::lock_and_signal, mut data: T};
 type exclusive<T: send> = arc_destruct<ex_data<T>>;
 
 fn exclusive<T:send >(-data: T) -> exclusive<T> {
@@ -110,12 +110,12 @@ impl methods<T: send> for exclusive<T> {
         arc_destruct(self.data)
     }
 
-    unsafe fn with<U>(f: fn(sys::condition, x: &T) -> U) -> U {
+    unsafe fn with<U>(f: fn(sys::condition, x: &mut T) -> U) -> U {
         let ptr: ~arc_data<ex_data<T>> =
             unsafe::reinterpret_cast(self.data);
         let r = {
             let rec: &ex_data<T> = &(*ptr).data;
-            rec.lock.lock_cond(|c| f(c, &rec.data))
+            rec.lock.lock_cond(|c| f(c, &mut rec.data))
         };
         unsafe::forget(ptr);
         r
