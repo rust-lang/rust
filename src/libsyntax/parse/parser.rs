@@ -1,3 +1,5 @@
+import print::pprust::expr_to_str;
+
 import result::result;
 import either::{either, left, right};
 import std::map::{hashmap, str_hash};
@@ -758,11 +760,13 @@ class parser {
     }
 
     fn mk_expr(lo: uint, hi: uint, +node: expr_) -> @expr {
-        ret @{id: self.get_id(), node: node, span: mk_sp(lo, hi)};
+        ret @{id: self.get_id(), callee_id: self.get_id(),
+              node: node, span: mk_sp(lo, hi)};
     }
 
     fn mk_mac_expr(lo: uint, hi: uint, m: mac_) -> @expr {
         ret @{id: self.get_id(),
+              callee_id: self.get_id(),
               node: expr_mac({node: m, span: mk_sp(lo, hi)}),
               span: mk_sp(lo, hi)};
     }
@@ -772,7 +776,8 @@ class parser {
         let lv_lit = @{node: lit_uint(i as u64, ty_u32),
                        span: span};
 
-        ret @{id: self.get_id(), node: expr_lit(lv_lit), span: span};
+        ret @{id: self.get_id(), callee_id: self.get_id(),
+              node: expr_lit(lv_lit), span: span};
     }
 
     fn mk_pexpr(lo: uint, hi: uint, node: expr_) -> pexpr {
@@ -1112,7 +1117,6 @@ class parser {
                 let ix = self.parse_expr();
                 hi = ix.span.hi;
                 self.expect(token::RBRACKET);
-                self.get_id(); // see ast_util::op_expr_callee_id
                 e = self.mk_pexpr(lo, hi, expr_index(self.to_expr(e), ix));
               }
 

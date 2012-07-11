@@ -105,8 +105,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
 
       ast::expr_binary(*) | ast::expr_unary(*) | ast::expr_assign_op(*)
         | ast::expr_index(*) {
-        maybe_resolve_type_vars_for_node(wbcx, e.span,
-                                         ast_util::op_expr_callee_id(e));
+        maybe_resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
       }
 
       _ { }

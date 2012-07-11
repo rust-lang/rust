@@ -3,12 +3,13 @@ import base::ext_ctxt;
 
 fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
     @ast::expr {
-    ret @{id: cx.next_id(), node: expr, span: sp};
+    ret @{id: cx.next_id(), callee_id: cx.next_id(),
+          node: expr, span: sp};
 }
 
 fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
     let sp_lit = @{node: lit, span: sp};
-    ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
+    mk_expr(cx, sp, ast::expr_lit(sp_lit))
 }
 fn mk_str(cx: ext_ctxt, sp: span, s: str) -> @ast::expr {
     let lit = ast::lit_str(@s);
@@ -62,7 +63,7 @@ fn mk_call(cx: ext_ctxt, sp: span, fn_path: ~[ast::ident],
 fn mk_base_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
    @ast::expr {
     let vecexpr = ast::expr_vec(exprs, ast::m_imm);
-    ret @{id: cx.next_id(), node: vecexpr, span: sp};
+    mk_expr(cx, sp, vecexpr)
 }
 fn mk_vstore_e(cx: ext_ctxt, sp: span, expr: @ast::expr, vst: ast::vstore) ->
    @ast::expr {

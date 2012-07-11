@@ -405,6 +405,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
         visit_stmt: fn@(s: @ast::stmt) {
             alt s.node {
               ast::stmt_semi(@{id: id,
+                               callee_id: _,
                                node: ast::expr_path(@path),
                                span: _}, _) {
                 cx.sess.span_lint(

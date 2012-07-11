@@ -233,7 +233,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
             if has_trait_bounds(*bounds) {
                 let callee_id = alt ex.node {
                   ast::expr_field(_, _, _) { ex.id }
-                  _ { ast_util::op_expr_callee_id(ex) }
+                  _ { ex.callee_id }
                 };
                 let substs = fcx.node_ty_substs(callee_id);
                 let iscs = cx.impl_map.get(ex.id);

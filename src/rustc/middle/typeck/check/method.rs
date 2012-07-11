@@ -415,7 +415,7 @@ class lookup {
         let all_substs = {tps: vec::append(cand.self_substs.tps, m_substs)
                           with cand.self_substs};
 
-        self.fcx.write_ty_substs(self.node_id, cand.fty, all_substs);
+         self.fcx.write_ty_substs(self.node_id, cand.fty, all_substs);
 
         ret cand.entry;
     }

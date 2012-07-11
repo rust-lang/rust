@@ -893,13 +893,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         self_ex: @ast::expr, self_t: ty::t,
                         opname: str, args: ~[@ast::expr])
         -> option<(ty::t, bool)> {
-        let callee_id = ast_util::op_expr_callee_id(op_ex);
         let lkup = method::lookup(fcx, op_ex, self_ex, op_ex.id,
-                                  callee_id, @opname, self_t, ~[], false);
+                     op_ex.callee_id, @opname, self_t, ~[], false);
         alt lkup.method() {
           some(origin) {
             let {fty: method_ty, bot: bot} = {
-                let method_ty = fcx.node_ty(callee_id);
+                let method_ty = fcx.node_ty(op_ex.callee_id);
                 check_call_inner(fcx, op_ex.span, op_ex.id,
                                  method_ty, args)
             };
@@ -1963,7 +1962,9 @@ fn check_constraints(fcx: @fn_ctxt, cs: ~[@ast::constr],
                     }
                     ast::carg_lit(l) {
                       let tmp_node_id = fcx.ccx.tcx.sess.next_node_id();
-                      {id: tmp_node_id, node: ast::expr_lit(l), span: a.span}
+                      {id: tmp_node_id,
+                       callee_id: fcx.ccx.tcx.sess.next_node_id(),
+                       node: ast::expr_lit(l), span: a.span}
                     }
                     ast::carg_ident(i) {
                       if i < num_args {
@@ -1976,6 +1977,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: ~[@ast::constr],
                               (arg_occ_node_id,
                                ast::def_arg(args[i].id, args[i].mode));
                           {id: arg_occ_node_id,
+                           callee_id: fcx.ccx.tcx.sess.next_node_id(),
                            node: ast::expr_path(p),
                            span: a.span}
                       } else {
@@ -1987,11 +1989,14 @@ fn check_constraints(fcx: @fn_ctxt, cs: ~[@ast::constr],
                   });
         }
         let p_op: ast::expr_ = ast::expr_path(c.node.path);
-        let oper: @ast::expr = @{id: c.node.id, node: p_op, span: c.span};
+        let oper: @ast::expr = @{id: c.node.id,
+             callee_id: fcx.ccx.tcx.sess.next_node_id(),
+             node: p_op, span: c.span};
         // Another ephemeral expr
         let call_expr_id = fcx.ccx.tcx.sess.next_node_id();
         let call_expr =
             @{id: call_expr_id,
+              callee_id: fcx.ccx.tcx.sess.next_node_id(),
               node: ast::expr_call(oper, c_args, false),
               span: c.span};
         check_pred_expr(fcx, call_expr);

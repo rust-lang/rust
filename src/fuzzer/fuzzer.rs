@@ -34,7 +34,7 @@ fn find_rust_files(&files: ~[str], path: str) {
 
 fn common_exprs() -> ~[ast::expr] {
     fn dse(e: ast::expr_) -> ast::expr {
-        { id: 0, node: e, span: ast_util::dummy_sp() }
+        { id: 0, callee_id: -1, node: e, span: ast_util::dummy_sp() }
     }
 
     fn dsl(l: ast::lit_) -> ast::lit {

@@ -288,7 +288,8 @@ enum blk_check_mode { default_blk, unchecked_blk, unsafe_blk, }
 enum expr_check_mode { claimed_expr, checked_expr, }
 
 #[auto_serialize]
-type expr = {id: node_id, node: expr_, span: span};
+type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
+// Extra node ID is only used for index, assign_op, unary, binary
 
 #[auto_serialize]
 enum alt_mode { alt_check, alt_exhaustive, }

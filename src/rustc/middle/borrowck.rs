@@ -159,7 +159,6 @@ import std::list::{list, cons, nil};
 import result::{result, ok, err, extensions};
 import syntax::print::pprust;
 import util::common::indenter;
-import ast_util::op_expr_callee_id;
 import ty::to_str;
 import driver::session::session;
 import dvec::{dvec, extensions};

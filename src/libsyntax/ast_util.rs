@@ -272,11 +272,6 @@ pure fn unguarded_pat(a: arm) -> option<~[@pat]> {
     if is_unguarded(a) { some(/* FIXME (#2543) */ copy a.pats) } else { none }
 }
 
-// Provides an extra node_id to hang callee information on, in case the
-// operator is deferred to a user-supplied method. The parser is responsible
-// for reserving this id.
-fn op_expr_callee_id(e: @expr) -> node_id { e.id - 1 }
-
 pure fn class_item_ident(ci: @class_member) -> ident {
     alt ci.node {
       instance_var(i,_,_,_,_) { /* FIXME (#2543) */ copy i }
@@ -455,14 +450,8 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_expr: fn@(e: @expr) {
+            vfn(e.callee_id);
             vfn(e.id);
-            alt e.node {
-              expr_index(*) | expr_assign_op(*) |
-              expr_unary(*) | expr_binary(*) {
-                vfn(ast_util::op_expr_callee_id(e));
-              }
-              _ { /* fallthrough */ }
-            }
         },
 
         visit_ty: fn@(t: @ty) {

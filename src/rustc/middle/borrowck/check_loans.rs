@@ -616,7 +616,7 @@ fn check_loans_in_expr(expr: @ast::expr,
       if self.bccx.method_map.contains_key(expr.id) {
         self.check_call(expr,
                         none,
-                        ast_util::op_expr_callee_id(expr),
+                        expr.callee_id,
                         expr.span,
                         ~[rval]);
       }
@@ -624,7 +624,7 @@ fn check_loans_in_expr(expr: @ast::expr,
       if self.bccx.method_map.contains_key(expr.id) {
         self.check_call(expr,
                         none,
-                        ast_util::op_expr_callee_id(expr),
+                        expr.callee_id,
                         expr.span,
                         ~[]);
       }

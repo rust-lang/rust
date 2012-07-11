@@ -172,7 +172,8 @@ impl helpers for ext_ctxt {
     }
 
     fn expr(span: span, node: ast::expr_) -> @ast::expr {
-        @{id: self.next_id(), node: node, span: span}
+        @{id: self.next_id(), callee_id: self.next_id(),
+          node: node, span: span}
     }
 
     fn var_ref(span: span, name: ast::ident) -> @ast::expr {

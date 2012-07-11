@@ -688,6 +688,7 @@ impl of ast_fold for ast_fold_precursor {
     fn fold_expr(&&x: @expr) -> @expr {
         let (n, s) = self.fold_expr(x.node, x.span, self as ast_fold);
         ret @{id: self.new_id(x.id),
+              callee_id: self.new_id(x.callee_id),
               node: n,
               span: self.new_span(s)};
     }

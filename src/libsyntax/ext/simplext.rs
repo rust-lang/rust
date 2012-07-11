@@ -7,7 +7,7 @@ import base::*;
 import fold::*;
 import ast_util::respan;
 import ast::{ident, path, ty, blk_, expr, expr_path,
-             expr_vec, expr_mac, mac_invoc, node_id};
+             expr_vec, expr_mac, mac_invoc, node_id, expr_index};
 
 export add_new_extension;
 

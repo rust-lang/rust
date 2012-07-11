@@ -1475,12 +1475,12 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
     // Check for user-defined method call
     alt bcx.ccx().maps.method_map.find(un_expr.id) {
       some(mentry) {
-        let callee_id = ast_util::op_expr_callee_id(un_expr);
-        let fty = node_id_type(bcx, callee_id);
+        let fty = node_id_type(bcx, un_expr.callee_id);
         ret trans_call_inner(
             bcx, un_expr.info(), fty,
             expr_ty(bcx, un_expr),
-            |bcx| impl::trans_method_callee(bcx, callee_id, e, mentry),
+            |bcx| impl::trans_method_callee(bcx, un_expr.callee_id, e,
+                                            mentry),
             arg_exprs(~[]), dest);
       }
       _ {}
@@ -1703,10 +1703,9 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
     alt bcx.ccx().maps.method_map.find(ex.id) {
       some(origin) {
         let bcx = lhs_res.bcx;
-        let callee_id = ast_util::op_expr_callee_id(ex);
         #debug["user-defined method callee_id: %s",
-               ast_map::node_id_to_str(bcx.tcx().items, callee_id)];
-        let fty = node_id_type(bcx, callee_id);
+               ast_map::node_id_to_str(bcx.tcx().items, ex.callee_id)];
+        let fty = node_id_type(bcx, ex.callee_id);
 
         let dty = expr_ty(bcx, dst);
         let target = alloc_ty(bcx, dty);
@@ -1717,7 +1716,7 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
             |bcx| {
                 // FIXME (#2528): provide the already-computed address, not
                 // the expr.
-                impl::trans_method_callee(bcx, callee_id, dst, origin)
+                impl::trans_method_callee(bcx, ex.callee_id, dst, origin)
             },
             arg_exprs(~[src]), save_in(target));
 
@@ -1851,13 +1850,12 @@ fn trans_binary(bcx: block, op: ast::binop, lhs: @ast::expr,
     // User-defined operators
     alt bcx.ccx().maps.method_map.find(ex.id) {
       some(origin) {
-        let callee_id = ast_util::op_expr_callee_id(ex);
-        let fty = node_id_type(bcx, callee_id);
+        let fty = node_id_type(bcx, ex.callee_id);
         ret trans_call_inner(
             bcx, ex.info(), fty,
             expr_ty(bcx, ex),
             |bcx| {
-                impl::trans_method_callee(bcx, callee_id, lhs, origin)
+                impl::trans_method_callee(bcx, ex.callee_id, lhs, origin)
             },
             arg_exprs(~[rhs]), dest);
       }
@@ -3597,12 +3595,12 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             // If it is here, it's not an lval, so this is a user-defined
             // index op
             let origin = bcx.ccx().maps.method_map.get(e.id);
-            let callee_id = ast_util::op_expr_callee_id(e);
-            let fty = node_id_type(bcx, callee_id);
+            let fty = node_id_type(bcx, e.callee_id);
             ret trans_call_inner(
                 bcx, e.info(), fty,
                 expr_ty(bcx, e),
-                |bcx| impl::trans_method_callee(bcx, callee_id, base, origin),
+                |bcx| impl::trans_method_callee(bcx, e.callee_id, base,
+                                                origin),
                 arg_exprs(~[idx]), dest);
           }
 
