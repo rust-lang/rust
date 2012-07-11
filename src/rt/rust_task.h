@@ -208,10 +208,10 @@ private:
 
     void transition(rust_task_state src, rust_task_state dst,
                     rust_cond *cond, const char* cond_name);
-    void transition_locked(rust_task_state src, rust_task_state dst,
+    void transition_inner(rust_task_state src, rust_task_state dst,
                            rust_cond *cond, const char* cond_name);
 
-    bool must_fail_from_being_killed_unlocked();
+    bool must_fail_from_being_killed_inner();
     // Called by rust_task_fail to unwind on failure
     void begin_failure(char const *expr,
                        char const *file,
@@ -226,8 +226,8 @@ private:
                                char const *file,
                                size_t line);
 
-    bool block_locked(rust_cond *on, const char* name);
-    void wakeup_locked(rust_cond *from);
+    bool block_inner(rust_cond *on, const char* name);
+    void wakeup_inner(rust_cond *from);
 
 public:
 
