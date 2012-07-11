@@ -601,11 +601,27 @@ fn print_item(s: ps, &&item: @ast::item) {
         for methods.each |meth| { print_ty_method(s, meth); }
         bclose(s, item.span);
       }
-      ast::item_mac(_m) {
-        fail "item macros unimplemented"
+      ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) {
+
+        word(s.s, *item.ident);
+        bopen(s);
+        for tts.each |tt| { print_tt(s, tt); }
+        bclose(s, item.span);
+      }
+      ast::item_mac(_) {
+        fail "invalid item-position syntax bit"
       }
     }
     s.ann.post(ann_node);
+}
+
+/// Unimplemented because ident tokens lose their meaning without the interner
+/// present. Fixing that would make invoking the pretty printer painful.
+/// If this did work, the naive way of implementing it would be really ugly.
+/// A prettier option would involve scraping the macro grammar for formatting
+/// advice. But that would be hard.
+fn print_tt(_s: ps, _tt: ast::token_tree) {
+    fail "token trees cannot be pretty-printed"
 }
 
 fn print_variant(s: ps, v: ast::variant) {
@@ -821,6 +837,13 @@ fn print_mac(s: ps, m: ast::mac) {
         }
         option::iter(arg, |a| print_expr(s, a));
         // FIXME: extension 'body' (#2339)
+      }
+      ast::mac_invoc_tt(path, tts) {
+        print_path(s, path, false);
+        word(s.s, "!");
+        bopen(s);
+        for tts.each() |tt| { print_tt(s, tt); }
+        bclose(s, m.span);
       }
       ast::mac_embed_type(ty) {
         word(s.s, "#<");
