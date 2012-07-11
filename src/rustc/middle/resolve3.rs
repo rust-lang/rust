@@ -17,8 +17,9 @@ import syntax::ast::{ident, trait_ref, impure_fn, instance_var, item};
 import syntax::ast::{item_class, item_const, item_enum, item_fn, item_mac};
 import syntax::ast::{item_foreign_mod, item_trait, item_impl, item_mod};
 import syntax::ast::{item_ty, local, local_crate, method, node_id, pat};
-import syntax::ast::{pat_enum, pat_ident, pat_lit, pat_range, path, prim_ty};
-import syntax::ast::{stmt_decl, ty};
+import syntax::ast::{pat_enum, pat_ident, path, prim_ty, stmt_decl, ty,
+                     pat_box, pat_uniq, pat_lit, pat_range, pat_rec,
+                     pat_tup, pat_wild};
 import syntax::ast::{ty_bool, ty_char, ty_constr, ty_f, ty_f32, ty_f64};
 import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
 import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
@@ -28,6 +29,7 @@ import syntax::ast::{view_path_list, view_path_simple};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{walk_pat};
 import syntax::attr::{attr_metas, contains_name};
+import syntax::print::pprust::path_to_str;
 import syntax::codemap::span;
 import syntax::visit::{default_visitor, fk_method, mk_vt, visit_block};
 import syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
@@ -3384,6 +3386,40 @@ class Resolver {
                              none, visitor);
     }
 
+    fn num_bindings(pat: @pat) -> uint {
+      pat_util::pat_binding_ids(self.def_map, pat).len()
+    }
+
+    fn warn_var_patterns(arm: arm) {
+      /*
+        The idea here is that an arm like:
+           alpha | beta
+        where alpha is a variant and beta is an identifier that
+        might refer to a variant that's not in scope will result
+        in a confusing error message. Showing that beta actually binds a
+        new variable might help.
+       */
+      for arm.pats.each |p| {
+         do pat_util::pat_bindings(self.def_map, p) |_id, sp, pth| {
+             self.session.span_note(sp, #fmt("Treating %s as a variable \
+               binding, because it does not denote any variant in scope",
+                                             path_to_str(pth)));
+         }
+      };
+    }
+    fn check_consistent_bindings(arm: arm) {
+      if arm.pats.len() == 0 { ret; }
+      let good = self.num_bindings(arm.pats[0]);
+      for arm.pats.each() |p: @pat| {
+        if self.num_bindings(p) != good {
+          self.session.span_err(p.span,
+             "inconsistent number of bindings");
+          self.warn_var_patterns(arm);
+          break;
+        };
+      };
+    }
+
     fn resolve_arm(arm: arm, visitor: ResolveVisitor) {
         (*self.value_ribs).push(@Rib(NormalRibKind));
 
@@ -3392,6 +3428,10 @@ class Resolver {
             self.resolve_pattern(pattern, RefutableMode, Immutable,
                                  some(bindings_list), visitor);
         }
+
+        // This has to happen *after* we determine which
+        // pat_idents are variants
+        self.check_consistent_bindings(arm);
 
         visit_expr_opt(arm.guard, (), visitor);
         self.resolve_block(arm.body, visitor);

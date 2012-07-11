@@ -34,9 +34,6 @@ fn pat_is_variant(dm: resolve::def_map, pat: @pat) -> bool {
     }
 }
 
-// This does *not* normalize. The pattern should be already normalized
-// if you want to get a normalized pattern out of it.
-// Could return a constrained type in order to express that (future work)
 fn pat_bindings(dm: resolve::def_map, pat: @pat,
                 it: fn(node_id, span, @path)) {
     do walk_pat(pat) |p| {
