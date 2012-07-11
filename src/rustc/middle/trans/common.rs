@@ -348,19 +348,23 @@ type scope_info = {
     mut landing_pad: option<BasicBlockRef>,
 };
 
-impl node_info for @ast::expr {
+trait get_node_info {
+    fn info() -> option<node_info>;
+}
+
+impl node_info of get_node_info for @ast::expr {
     fn info() -> option<node_info> {
         some({id: self.id, span: self.span})
     }
 }
 
-impl node_info for ast::blk {
+impl node_info of get_node_info for ast::blk {
     fn info() -> option<node_info> {
         some({id: self.node.id, span: self.span})
     }
 }
 
-impl node_info for option<@ast::expr> {
+impl node_info of get_node_info for option<@ast::expr> {
     fn info() -> option<node_info> {
         self.chain(|s| s.info())
     }

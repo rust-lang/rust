@@ -1,6 +1,6 @@
 // -*- rust -*-
 import metadata::{creader, cstore, filesearch};
-import session::session;
+import session::{session, session_};
 import syntax::parse;
 import syntax::{ast, codemap};
 import syntax::attr;
@@ -168,7 +168,10 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                              session::sess_os_to_meta_os(sess.targ_cfg.os),
                              sess.opts.static));
 
-    let { def_map: def_map, exp_map: exp_map, impl_map: impl_map } =
+    let { def_map: def_map,
+          exp_map: exp_map,
+          impl_map: impl_map,
+          trait_map: trait_map } =
         time(time_passes, ~"resolution", ||
              middle::resolve3::resolve_crate(sess, ast_map, crate));
 
@@ -187,6 +190,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let (method_map, vtable_map) = time(time_passes, ~"typechecking", ||
                                         typeck::check_crate(ty_cx,
                                                             impl_map,
+                                                            trait_map,
                                                             crate));
 
     time(time_passes, ~"const checking", ||
@@ -516,11 +520,12 @@ fn build_session(sopts: @session::options,
     build_session_(sopts, codemap, demitter, span_diagnostic_handler)
 }
 
-fn build_session_(
-    sopts: @session::options, cm: codemap::codemap,
-    demitter: diagnostic::emitter,
-    span_diagnostic_handler: diagnostic::span_handler
-) -> session {
+fn build_session_(sopts: @session::options,
+                  cm: codemap::codemap,
+                  demitter: diagnostic::emitter,
+                  span_diagnostic_handler: diagnostic::span_handler)
+               -> session {
+
     let target_cfg = build_target_config(sopts, demitter);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
@@ -528,19 +533,19 @@ fn build_session_(
         sopts.target_triple,
         sopts.addl_lib_search_paths);
     let warning_settings = lint::mk_warning_settings();
-    @{targ_cfg: target_cfg,
-      opts: sopts,
-      cstore: cstore,
-      parse_sess:
+    session_(@{targ_cfg: target_cfg,
+               opts: sopts,
+               cstore: cstore,
+               parse_sess:
           parse::new_parse_sess_special_handler(span_diagnostic_handler, cm),
-      codemap: cm,
-      // For a library crate, this is always none
-      mut main_fn: none,
-      span_diagnostic: span_diagnostic_handler,
-      filesearch: filesearch,
-      mut building_library: false,
-      working_dir: os::getcwd(),
-      warning_settings: warning_settings}
+               codemap: cm,
+               // For a library crate, this is always none
+               mut main_fn: none,
+               span_diagnostic: span_diagnostic_handler,
+               filesearch: filesearch,
+               mut building_library: false,
+               working_dir: os::getcwd(),
+               warning_settings: warning_settings})
 }
 
 fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {

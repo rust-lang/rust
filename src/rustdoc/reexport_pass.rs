@@ -1,5 +1,6 @@
 //! Finds docs for reexported items and duplicates them
 
+import doc::item_utils;
 import std::map;
 import std::map::hashmap;
 import std::list;
@@ -331,10 +332,10 @@ fn merge_reexports(
         let new_items = get_new_items(path, fold.ctxt);
         #debug("merging into %?: %?", path, new_items);
 
-        {
+        doc::moddoc_({
             items: (doc.items + new_items)
-            with doc
-        }
+            with *doc
+        })
     }
 
     fn get_new_items(path: ~[~str], path_map: path_map) -> ~[doc::itemtag] {
@@ -352,11 +353,11 @@ fn merge_reexports(
 
     fn reexport_doc(doc: doc::itemtag, name: ~str) -> doc::itemtag {
         alt doc {
-          doc::modtag(doc @ {item, _}) {
-            doc::modtag({
+          doc::modtag(doc @ doc::moddoc_({item, _})) {
+            doc::modtag(doc::moddoc_({
                 item: reexport(item, name)
-                with doc
-            })
+                with *doc
+            }))
           }
           doc::nmodtag(_) { fail }
           doc::consttag(doc @ {item, _}) {

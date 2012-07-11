@@ -65,11 +65,15 @@ type decode_ctxt = @{
     maps: maps
 };
 
-type extended_decode_ctxt = @{
+type extended_decode_ctxt_ = {
     dcx: decode_ctxt,
     from_id_range: ast_util::id_range,
     to_id_range: ast_util::id_range
 };
+
+enum extended_decode_ctxt {
+    extended_decode_ctxt_(@extended_decode_ctxt_)
+}
 
 iface tr {
     fn tr(xcx: extended_decode_ctxt) -> self;
@@ -112,9 +116,9 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         let ast_dsr = ebml::ebml_deserializer(ast_doc);
         let from_id_range = ast_util::deserialize_id_range(ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
-        let xcx = @{dcx: dcx,
-                    from_id_range: from_id_range,
-                    to_id_range: to_id_range};
+        let xcx = extended_decode_ctxt_(@{dcx: dcx,
+                                          from_id_range: from_id_range,
+                                          to_id_range: to_id_range});
         let raw_ii = decode_ast(ast_doc);
         let ii = renumber_ast(xcx, raw_ii);
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
@@ -182,13 +186,23 @@ impl of tr for span {
     }
 }
 
-impl serializer_helpers<S: serializer> for S {
+trait def_id_serializer_helpers {
+    fn emit_def_id(did: ast::def_id);
+}
+
+impl serializer_helpers<S: serializer> of def_id_serializer_helpers for S {
     fn emit_def_id(did: ast::def_id) {
         ast::serialize_def_id(self, did)
     }
 }
 
-impl deserializer_helpers<D: deserializer> for D {
+trait def_id_deserializer_helpers {
+    fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id;
+}
+
+impl deserializer_helpers<D: deserializer> of def_id_deserializer_helpers
+        for D {
+
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id {
         let did = ast::deserialize_def_id(self);
         did.tr(xcx)
@@ -370,7 +384,11 @@ fn encode_freevar_entry(ebml_w: ebml::writer, fv: freevar_entry) {
     serialize_freevar_entry(ebml_w, fv)
 }
 
-impl helper for ebml::ebml_deserializer {
+trait ebml_deserializer_helper {
+    fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry;
+}
+
+impl helper of ebml_deserializer_helper for ebml::ebml_deserializer {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry {
         let fv = deserialize_freevar_entry(self);
         fv.tr(xcx)
@@ -386,7 +404,11 @@ impl of tr for freevar_entry {
 // ______________________________________________________________________
 // Encoding and decoding of method_map_entry
 
-impl helper for ebml::ebml_deserializer {
+trait read_method_map_entry_helper {
+    fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry;
+}
+
+impl helper of read_method_map_entry_helper for ebml::ebml_deserializer {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry {
         let mme = deserialize_method_map_entry(self);
         {derefs: mme.derefs, origin: mme.origin.tr(xcx)}
@@ -412,7 +434,11 @@ impl of tr for method_origin {
 // ______________________________________________________________________
 // Encoding and decoding of borrow
 
-impl helper for ebml::ebml_deserializer {
+trait read_borrow_helper {
+    fn read_borrow(xcx: extended_decode_ctxt) -> ty::borrow;
+}
+
+impl helper of read_borrow_helper for ebml::ebml_deserializer {
     fn read_borrow(xcx: extended_decode_ctxt) -> ty::borrow {
         let borrow = ty::deserialize_borrow(self);
         {scope_id: xcx.tr_id(borrow.scope_id),
@@ -478,7 +504,12 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
 
 }
 
-impl helpers for ebml::ebml_deserializer {
+trait vtable_deserialization_helpers {
+    fn read_vtable_res(xcx: extended_decode_ctxt) -> typeck::vtable_res;
+    fn read_vtable_origin(xcx: extended_decode_ctxt) -> typeck::vtable_origin;
+}
+
+impl helpers of vtable_deserialization_helpers for ebml::ebml_deserializer {
     fn read_vtable_res(xcx: extended_decode_ctxt) -> typeck::vtable_res {
         @self.read_to_vec(|| self.read_vtable_origin(xcx) )
     }
@@ -530,7 +561,11 @@ impl helpers for ebml::ebml_deserializer {
 // ______________________________________________________________________
 // Encoding and decoding the side tables
 
-impl helpers for @e::encode_ctxt {
+trait get_ty_str_ctxt {
+    fn ty_str_ctxt() -> @tyencode::ctxt;
+}
+
+impl helpers of get_ty_str_ctxt for @e::encode_ctxt {
     fn ty_str_ctxt() -> @tyencode::ctxt {
         @{diag: self.tcx.sess.diagnostic(),
           ds: e::def_to_str,
@@ -540,7 +575,14 @@ impl helpers for @e::encode_ctxt {
     }
 }
 
-impl helpers for ebml::writer {
+trait ebml_writer_helpers {
+    fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t);
+    fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]);
+    fn emit_bounds(ecx: @e::encode_ctxt, bs: ty::param_bounds);
+    fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty);
+}
+
+impl helpers of ebml_writer_helpers for ebml::writer {
     fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t) {
         e::write_type(ecx, self, ty)
     }
@@ -572,7 +614,12 @@ impl helpers for ebml::writer {
     }
 }
 
-impl writer for ebml::writer {
+trait write_tag_and_id {
+    fn tag(tag_id: c::astencode_tag, f: fn());
+    fn id(id: ast::node_id);
+}
+
+impl writer of write_tag_and_id for ebml::writer {
     fn tag(tag_id: c::astencode_tag, f: fn()) {
         do self.wr_tag(tag_id as uint) { f() }
     }
@@ -724,7 +771,13 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     }
 }
 
-impl decoder for ebml::doc {
+trait doc_decoder_helpers {
+    fn as_int() -> int;
+    fn [](tag: c::astencode_tag) -> ebml::doc;
+    fn opt_child(tag: c::astencode_tag) -> option<ebml::doc>;
+}
+
+impl decoder of doc_decoder_helpers for ebml::doc {
     fn as_int() -> int { ebml::doc_as_u64(self) as int }
     fn [](tag: c::astencode_tag) -> ebml::doc {
         ebml::get_doc(self, tag as uint)
@@ -734,7 +787,17 @@ impl decoder for ebml::doc {
     }
 }
 
-impl decoder for ebml::ebml_deserializer {
+trait ebml_deserializer_decoder_helpers {
+    fn read_ty(xcx: extended_decode_ctxt) -> ty::t;
+    fn read_tys(xcx: extended_decode_ctxt) -> ~[ty::t];
+    fn read_bounds(xcx: extended_decode_ctxt) -> @~[ty::param_bound];
+    fn read_ty_param_bounds_and_ty(xcx: extended_decode_ctxt)
+                                -> ty::ty_param_bounds_and_ty;
+}
+
+impl decoder of ebml_deserializer_decoder_helpers
+        for ebml::ebml_deserializer {
+
     fn read_ty(xcx: extended_decode_ctxt) -> ty::t {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode

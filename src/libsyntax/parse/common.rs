@@ -22,9 +22,44 @@ fn token_to_str(reader: reader, ++token: token::token) -> ~str {
     token::to_str(*reader.interner(), token)
 }
 
-// This should be done with traits, once traits work
-impl parser_common for parser {
+trait parser_common {
+    fn unexpected_last(t: token::token) -> !;
+    fn unexpected() -> !;
+    fn expect(t: token::token);
+    fn parse_ident() -> ast::ident;
+    fn parse_path_list_ident() -> ast::path_list_ident;
+    fn parse_value_ident() -> ast::ident;
+    fn eat(tok: token::token) -> bool;
+    // A sanity check that the word we are asking for is a known keyword
+    fn require_keyword(word: ~str);
+    fn token_is_keyword(word: ~str, ++tok: token::token) -> bool;
+    fn is_keyword(word: ~str) -> bool;
+    fn is_any_keyword(tok: token::token) -> bool;
+    fn eat_keyword(word: ~str) -> bool;
+    fn expect_keyword(word: ~str);
+    fn is_restricted_keyword(word: ~str) -> bool;
+    fn check_restricted_keywords();
+    fn check_restricted_keywords_(w: ~str);
+    fn expect_gt();
+    fn parse_seq_to_before_gt<T: copy>(sep: option<token::token>,
+                                       f: fn(parser) -> T) -> ~[T];
+    fn parse_seq_to_gt<T: copy>(sep: option<token::token>,
+                                f: fn(parser) -> T) -> ~[T];
+    fn parse_seq_lt_gt<T: copy>(sep: option<token::token>,
+                                f: fn(parser) -> T) -> spanned<~[T]>;
+    fn parse_seq_to_end<T: copy>(ket: token::token, sep: seq_sep,
+                                 f: fn(parser) -> T) -> ~[T];
+    fn parse_seq_to_before_end<T: copy>(ket: token::token, sep: seq_sep,
+                                        f: fn(parser) -> T) -> ~[T];
+    fn parse_unspanned_seq<T: copy>(bra: token::token,
+                                    ket: token::token,
+                                    sep: seq_sep,
+                                    f: fn(parser) -> T) -> ~[T];
+    fn parse_seq<T: copy>(bra: token::token, ket: token::token, sep: seq_sep,
+                          f: fn(parser) -> T) -> spanned<~[T]>;
+}
 
+impl parser_common of parser_common for parser {
     fn unexpected_last(t: token::token) -> ! {
         self.span_fatal(
             copy self.last_span,

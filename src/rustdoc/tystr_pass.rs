@@ -1,5 +1,6 @@
 //! Pulls type information out of the AST and attaches it to the document
 
+import doc::item_utils;
 import syntax::ast;
 import syntax::print::pprust;
 import syntax::ast_map;

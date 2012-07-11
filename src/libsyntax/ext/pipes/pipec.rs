@@ -15,9 +15,9 @@ import pprust::{item_to_str, ty_to_str};
 import ext::base::{mk_ctxt, ext_ctxt};
 import parse;
 import parse::*;
-
 import proto::*;
 
+import ast_builder::append_types;
 import ast_builder::ast_builder;
 import ast_builder::methods;
 import ast_builder::path;
@@ -38,7 +38,7 @@ impl compile for message {
 
             let args_ast = vec::append(
                 ~[cx.arg_mode(@~"pipe",
-                              cx.ty_path(path(this.data_name())
+                              cx.ty_path_ast_builder(path(this.data_name())
                                         .add_tys(cx.ty_vars(this.ty_params))),
                               ast::by_copy)],
                 args_ast);
@@ -64,7 +64,7 @@ impl compile for message {
 
             cx.item_fn_poly(self.name(),
                             args_ast,
-                            cx.ty_path(path(next.data_name())
+                            cx.ty_path_ast_builder(path(next.data_name())
                                       .add_tys(next_tys)),
                             self.get_params(),
                             cx.expr_block(body))
@@ -109,6 +109,11 @@ impl compile for message {
                             cx.expr_block(body))
           }
         }
+    }
+
+    fn to_ty(cx: ext_ctxt) -> @ast::ty {
+        cx.ty_path_ast_builder(path(self.name)
+          .add_tys(cx.ty_vars(self.ty_params)))
     }
 }
 
@@ -169,9 +174,9 @@ impl compile for state {
         vec::push(items,
                   cx.item_ty_poly(
                       self.data_name(),
-                      cx.ty_path(
+                      cx.ty_path_ast_builder(
                           (@~"pipes" + @(dir.to_str() + ~"_packet"))
-                          .add_ty(cx.ty_path(
+                          .add_ty(cx.ty_path_ast_builder(
                               (self.proto.name + self.data_name())
                               .add_tys(cx.ty_vars(self.ty_params))))),
                       self.ty_params));
@@ -266,7 +271,12 @@ impl of to_source for @ast::expr {
     }
 }
 
-impl parse_utils for ext_ctxt {
+trait ext_ctxt_parse_utils {
+    fn parse_item(s: ~str) -> @ast::item;
+    fn parse_expr(s: ~str) -> @ast::expr;
+}
+
+impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
     fn parse_item(s: ~str) -> @ast::item {
         let res = parse::parse_item_from_source_str(
             ~"***protocol expansion***",
@@ -290,5 +300,22 @@ impl parse_utils for ext_ctxt {
             @(copy s),
             self.cfg(),
             self.parse_sess())
+    }
+}
+
+trait two_vector_utils<A, B> {
+    fn zip() -> ~[(A, B)];
+    fn map<C>(f: fn(A, B) -> C) -> ~[C];
+}
+
+impl methods<A: copy, B: copy> of two_vector_utils<A, B> for (~[A], ~[B]) {
+    fn zip() -> ~[(A, B)] {
+        let (a, b) = self;
+        vec::zip(a, b)
+    }
+
+    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
+        let (a, b) = self;
+        vec::map2(a, b, f)
     }
 }

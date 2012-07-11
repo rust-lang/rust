@@ -92,6 +92,7 @@ pure fn iter<T>(opt: option<T>, f: fn(T)) {
     alt opt { none { } some(t) { f(t); } }
 }
 
+#[inline(always)]
 pure fn unwrap<T>(-opt: option<T>) -> T {
     /*!
      * Moves a value out of an option type and returns it.

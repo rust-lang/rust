@@ -2188,14 +2188,23 @@ class parser {
         }
     }
 
+    fn token_is_pound_or_doc_comment(++tok: token::token) -> bool {
+        alt tok {
+            token::POUND | token::DOC_COMMENT(_) { true }
+            _ { false }
+        }
+    }
+
     fn parse_single_class_item(vis: visibility)
         -> @class_member {
-        if self.eat_keyword(~"let") {
+        if (self.eat_keyword(~"let") ||
+                self.token_is_keyword(~"mut", copy self.token) ||
+                !self.is_any_keyword(copy self.token)) &&
+                !self.token_is_pound_or_doc_comment(self.token) {
             let a_var = self.parse_instance_var(vis);
             self.expect(token::SEMI);
             ret a_var;
-        }
-        else {
+        } else {
             let m = self.parse_method(vis);
             ret @{node: class_method(m), span: m.span};
         }
@@ -2510,7 +2519,7 @@ class parser {
             self.parse_item_trait()
         } else if self.eat_keyword(~"impl") {
             self.parse_item_impl()
-        } else if self.eat_keyword(~"class") {
+        } else if self.eat_keyword(~"class") || self.eat_keyword(~"struct") {
             self.parse_item_class()
         } else if !self.is_any_keyword(copy self.token)
             && self.look_ahead(1) == token::NOT

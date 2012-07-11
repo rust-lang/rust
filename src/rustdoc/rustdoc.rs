@@ -1,4 +1,5 @@
 // Some utility interfaces
+import doc::item_utils;
 import doc::item;
 import doc::util;
 
@@ -47,39 +48,39 @@ fn test_run_passes() {
         _srv: astsrv::srv,
         doc: doc::doc
     ) -> doc::doc {
-        {
+        doc::doc_({
             pages: ~[
                 doc::cratepage({
-                    topmod: {
+                    topmod: doc::moddoc_({
                         item: {
                             name: doc.cratemod().name() + ~"two"
                             with doc.cratemod().item
                         },
                         items: ~[],
                         index: none
-                    }
+                    })
                 })
             ]
-        }
+        })
     }
     fn pass2(
         _srv: astsrv::srv,
         doc: doc::doc
     ) -> doc::doc {
-        {
+        doc::doc_({
             pages: ~[
                 doc::cratepage({
-                    topmod: {
+                    topmod: doc::moddoc_({
                         item: {
                             name: doc.cratemod().name() + ~"three"
                             with doc.cratemod().item
                         },
                         items: ~[],
                         index: none
-                    }
+                    })
                 })
             ]
-        }
+        })
     }
     let source = ~"";
     do astsrv::from_str(source) |srv| {

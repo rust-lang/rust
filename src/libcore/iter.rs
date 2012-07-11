@@ -3,6 +3,16 @@ iface base_iter<A> {
     fn size_hint() -> option<uint>;
 }
 
+trait extended_iter<A> {
+    fn eachi(blk: fn(uint, A) -> bool);
+    fn all(blk: fn(A) -> bool) -> bool;
+    fn any(blk: fn(A) -> bool) -> bool;
+    fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
+    fn contains(x: A) -> bool;
+    fn count(x: A) -> uint;
+    fn position(f: fn(A) -> bool) -> option<uint>;
+}
+
 iface times {
     fn times(it: fn() -> bool);
 }

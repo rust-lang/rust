@@ -3,10 +3,14 @@
 // of such a type could ever be constructed.
 enum t = @t; //~ ERROR this type cannot be instantiated
 
+trait to_str_2 {
+    fn to_str() -> ~str;
+}
+
 // I use an impl here because it will cause
 // the compiler to attempt autoderef and then
 // try to resolve the method.
-impl methods for t {
+impl methods of to_str_2 for t {
     fn to_str() -> ~str { ~"t" }
 }
 

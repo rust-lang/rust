@@ -11,6 +11,7 @@ import future::extensions;
 import result::*;
 import libc::size_t;
 import str::extensions;
+import io::{reader, writer};
 
 // tcp interfaces
 export tcp_socket;

@@ -165,6 +165,7 @@ export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
 export terr_regions_differ, terr_mutability, terr_purity_mismatch;
 export terr_proto_mismatch;
 export terr_ret_style_mismatch;
+export purity_to_str;
 
 // Data types
 
@@ -441,7 +442,11 @@ impl of vid for region_vid {
     fn to_str() -> ~str { #fmt["<R%u>", self.to_uint()] }
 }
 
-impl of to_str::to_str for purity {
+trait purity_to_str {
+    fn to_str() -> ~str;
+}
+
+impl of purity_to_str for purity {
     fn to_str() -> ~str {
         purity_to_str(self)
     }
@@ -2359,7 +2364,8 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
             ~" function was expected";
       }
       terr_purity_mismatch(f1, f2) {
-        ret #fmt["expected %s fn but found %s fn", f1.to_str(), f2.to_str()];
+        ret #fmt["expected %s fn but found %s fn",
+                 purity_to_str(f1), purity_to_str(f2)];
       }
       terr_proto_mismatch(e, a) {
         ret #fmt["closure protocol mismatch (%s vs %s)",

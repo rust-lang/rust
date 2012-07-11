@@ -1,5 +1,6 @@
 //! Prunes things with the #[doc(hidden)] attribute
 
+import doc::item_utils;
 import std::map::hashmap;
 export mk_pass;
 
@@ -24,12 +25,12 @@ fn fold_mod(
 ) -> doc::moddoc {
     let doc = fold::default_any_fold_mod(fold, doc);
 
-    {
+    doc::moddoc_({
         items: vec::filter(doc.items, |itemtag| {
             !is_hidden(fold.ctxt, itemtag.item())
         })
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn is_hidden(srv: astsrv::srv, doc: doc::itemdoc) -> bool {

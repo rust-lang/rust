@@ -1,5 +1,9 @@
+trait get {
+    fn get() -> int;
+}
+
 // Note: impl on a slice
-impl foo for &int {
+impl foo of get for &int {
     fn get() -> int {
         ret *self;
     }

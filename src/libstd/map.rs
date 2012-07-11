@@ -92,12 +92,18 @@ mod chained {
         absent
     }
 
-    type t<K, V> = @{
+    type hashmap__<K, V> = {
         mut count: uint,
         mut chains: ~[mut chain<K,V>],
         hasher: hashfn<K>,
         eqer: eqfn<K>
     };
+
+    enum hashmap_<K, V> {
+        hashmap_(@hashmap__<K, V>)
+    }
+
+    type t<K, V> = hashmap_<K, V>;
 
     enum search_result<K, V> {
         not_found,
@@ -284,10 +290,10 @@ mod chained {
     }
 
     fn mk<K, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
-        let slf: t<K, V> = @{mut count: 0u,
-                             mut chains: chains(initial_capacity),
-                             hasher: hasher,
-                             eqer: eqer};
+        let slf: t<K, V> = hashmap_(@{mut count: 0u,
+                                      mut chains: chains(initial_capacity),
+                                      hasher: hasher,
+                                      eqer: eqer});
         slf
     }
 }

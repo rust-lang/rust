@@ -1,5 +1,9 @@
+trait sum {
+    fn sum() -> int;
+}
+
 // Note: impl on a slice
-impl foo for &[int] {
+impl foo of sum for &[int] {
     fn sum() -> int {
         let mut sum = 0;
         for vec::each(self) |e| { sum += e; }

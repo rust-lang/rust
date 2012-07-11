@@ -132,7 +132,7 @@ fn default_par_fold<T:send copy>(ctxt: T) -> fold<T> {
 }
 
 fn default_seq_fold_doc<T>(fold: fold<T>, doc: doc::doc) -> doc::doc {
-    {
+    doc::doc_({
         pages: do vec::map(doc.pages) |page| {
             alt page {
               doc::cratepage(doc) {
@@ -143,8 +143,8 @@ fn default_seq_fold_doc<T>(fold: fold<T>, doc: doc::doc) -> doc::doc {
               }
             }
         }
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn default_seq_fold_crate<T>(
@@ -167,39 +167,39 @@ fn default_any_fold_mod<T:send copy>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    {
+    doc::moddoc_({
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |itemtag, copy fold| {
             fold_itemtag(fold, itemtag)
         })
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn default_seq_fold_mod<T>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    {
+    doc::moddoc_({
         item: fold.fold_item(fold, doc.item),
         items: vec::map(doc.items, |itemtag| {
             fold_itemtag(fold, itemtag)
         })
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn default_par_fold_mod<T:send copy>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    {
+    doc::moddoc_({
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |itemtag, copy fold| {
             fold_itemtag(fold, itemtag)
         })
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn default_any_fold_nmod<T:send copy>(

@@ -426,7 +426,7 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
 type region_paramd_items = hashmap<ast::node_id, ()>;
 type dep_map = hashmap<ast::node_id, @dvec<ast::node_id>>;
 
-type determine_rp_ctxt = @{
+type determine_rp_ctxt_ = {
     sess: session,
     ast_map: ast_map::map,
     def_map: resolve::def_map,
@@ -441,6 +441,10 @@ type determine_rp_ctxt = @{
     // see long discussion on region_is_relevant()
     mut anon_implies_rp: bool
 };
+
+enum determine_rp_ctxt {
+    determine_rp_ctxt_(@determine_rp_ctxt_)
+}
 
 impl methods for determine_rp_ctxt {
     fn add_rp(id: ast::node_id) {
@@ -608,14 +612,14 @@ fn determine_rp_in_crate(sess: session,
                          ast_map: ast_map::map,
                          def_map: resolve::def_map,
                          crate: @ast::crate) -> region_paramd_items {
-    let cx = @{sess: sess,
-               ast_map: ast_map,
-               def_map: def_map,
-               region_paramd_items: int_hash(),
-               dep_map: int_hash(),
-               worklist: dvec(),
-               mut item_id: 0,
-               mut anon_implies_rp: false};
+    let cx = determine_rp_ctxt_(@{sess: sess,
+                                  ast_map: ast_map,
+                                  def_map: def_map,
+                                  region_paramd_items: int_hash(),
+                                  dep_map: int_hash(),
+                                  worklist: dvec(),
+                                  mut item_id: 0,
+                                  mut anon_implies_rp: false});
 
     // gather up the base set, worklist and dep_map:
     let visitor = visit::mk_vt(@{

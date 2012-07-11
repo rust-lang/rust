@@ -60,6 +60,7 @@ fn count_names(ms: &[matcher]) -> uint {
         }})
 }
 
+#[warn(no_non_implicitly_copyable_typarams)]
 fn new_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
     -> matcher_pos {
     ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(none),

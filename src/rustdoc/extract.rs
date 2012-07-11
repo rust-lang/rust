@@ -1,6 +1,7 @@
 //! Converts the Rust AST to the rustdoc document model
 
 import syntax::ast;
+import doc::item_utils;
 
 export from_srv, extract;
 
@@ -20,13 +21,13 @@ fn extract(
     crate: @ast::crate,
     default_name: ~str
 ) -> doc::doc {
-    {
+    doc::doc_({
         pages: ~[
             doc::cratepage({
                 topmod: top_moddoc_from_crate(crate, default_name),
             })
         ]
-    }
+    })
 }
 
 fn top_moddoc_from_crate(
@@ -53,7 +54,7 @@ fn moddoc_from_mod(
     itemdoc: doc::itemdoc,
     module: ast::_mod
 ) -> doc::moddoc {
-    {
+    doc::moddoc_({
         item: itemdoc,
         items: do vec::filter_map(module.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
@@ -104,7 +105,7 @@ fn moddoc_from_mod(
             }
         },
         index: none
-    }
+    })
 }
 
 fn nmoddoc_from_mod(

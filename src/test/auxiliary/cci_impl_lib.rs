@@ -1,6 +1,10 @@
 #[link(name="cci_impl_lib", vers="0.0")];
 
-impl helpers for uint {
+trait uint_helpers {
+    fn to(v: uint, f: fn(uint));
+}
+
+impl helpers of uint_helpers for uint {
     #[inline]
     fn to(v: uint, f: fn(uint)) {
         let mut i = self;

@@ -2,9 +2,13 @@
 
 type ast_id = int;
 
-type doc = {
+type doc_ = {
     pages: ~[page]
 };
+
+enum doc {
+    doc_(doc_)
+}
 
 enum page {
     cratepage(cratedoc),
@@ -59,11 +63,15 @@ type simpleitemdoc = {
     sig: option<~str>
 };
 
-type moddoc = {
+type moddoc_ = {
     item: itemdoc,
     items: ~[itemtag],
     index: option<index>
 };
+
+enum moddoc {
+    moddoc_(moddoc_)
+}
 
 type nmoddoc = {
     item: itemdoc,
@@ -221,7 +229,18 @@ impl util for moddoc {
     }
 }
 
-impl util for ~[page] {
+trait page_utils {
+    fn mods() -> ~[moddoc];
+    fn nmods() -> ~[nmoddoc];
+    fn fns() -> ~[fndoc];
+    fn consts() -> ~[constdoc];
+    fn enums() -> ~[enumdoc];
+    fn traits() -> ~[traitdoc];
+    fn impls() -> ~[impldoc];
+    fn types() -> ~[tydoc];
+}
+
+impl util of page_utils for ~[page] {
 
     fn mods() -> ~[moddoc] {
         do vec::filter_map(self) |page| {
@@ -339,7 +358,16 @@ impl of item for impldoc {
     fn item() -> itemdoc { self.item }
 }
 
-impl util<A:item> for A {
+trait item_utils {
+    fn id() -> ast_id;
+    fn name() -> ~str;
+    fn path() -> ~[~str];
+    fn brief() -> option<~str>;
+    fn desc() -> option<~str>;
+    fn sections() -> ~[section];
+}
+
+impl util<A:item> of item_utils for A {
     fn id() -> ast_id {
         self.item().id
     }

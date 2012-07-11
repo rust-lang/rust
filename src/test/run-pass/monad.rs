@@ -1,4 +1,8 @@
-impl monad<A> for ~[A] {
+trait vec_monad<A> {
+    fn bind<B>(f: fn(A) -> ~[B]) -> ~[B];
+}
+
+impl monad<A> of vec_monad<A> for ~[A] {
     fn bind<B>(f: fn(A) -> ~[B]) -> ~[B] {
         let mut r = ~[];
         for self.each |elt| { r += f(elt); }
@@ -6,7 +10,11 @@ impl monad<A> for ~[A] {
     }
 }
 
-impl monad<A> for option<A> {
+trait option_monad<A> {
+    fn bind<B>(f: fn(A) -> option<B>) -> option<B>;
+}
+
+impl monad<A> of option_monad<A> for option<A> {
     fn bind<B>(f: fn(A) -> option<B>) -> option<B> {
         alt self {
           some(a) { f(a) }

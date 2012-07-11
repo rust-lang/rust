@@ -2,6 +2,7 @@
 
 import std::{ebml, map};
 import std::map::{hashmap, str_hash};
+import dvec::{dvec, extensions};
 import io::writer_util;
 import syntax::{ast, ast_util};
 import syntax::attr;
@@ -37,6 +38,7 @@ export get_crate_hash;
 export get_crate_vers;
 export get_impls_for_mod;
 export get_trait_methods;
+export get_method_names_if_trait;
 export get_crate_module_paths;
 export def_like;
 export dl_def;
@@ -638,6 +640,23 @@ fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
                     }, vis: ast::public});
     }
     @result
+}
+
+// If the item in question is a trait, returns its set of methods. Otherwise,
+// returns none.
+fn get_method_names_if_trait(cdata: cmd, node_id: ast::node_id)
+                          -> option<@dvec<@~str>> {
+
+    let item = lookup_item(node_id, cdata.data);
+    if item_family(item) != 'I' {
+        ret none;
+    }
+
+    let resulting_method_names = @dvec();
+    do ebml::tagged_docs(item, tag_item_trait_method) |method| {
+        (*resulting_method_names).push(item_name(method));
+    }
+    ret some(resulting_method_names);
 }
 
 // Helper function that gets either fields or methods

@@ -6,16 +6,20 @@ export public_methods;
 
 impl public_methods for borrowck_ctxt {
     fn loan(cmt: cmt, mutbl: ast::mutability) -> @dvec<loan> {
-        let lc = @{bccx: self, loans: @dvec()};
+        let lc = loan_ctxt_(@{bccx: self, loans: @dvec()});
         lc.loan(cmt, mutbl);
         ret lc.loans;
     }
 }
 
-type loan_ctxt = @{
+type loan_ctxt_ = {
     bccx: borrowck_ctxt,
     loans: @dvec<loan>
 };
+
+enum loan_ctxt {
+    loan_ctxt_(@loan_ctxt_)
+}
 
 impl loan_methods for loan_ctxt {
     fn ok_with_loan_of(cmt: cmt,

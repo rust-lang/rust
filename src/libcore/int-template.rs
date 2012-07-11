@@ -233,6 +233,7 @@ fn test_ifaces() {
 
 #[test]
 fn test_times() {
+    import iter::times;
     let ten = 10 as T;
     let mut accum = 0;
     for ten.times { accum += 1; }
@@ -243,5 +244,6 @@ fn test_times() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_times_negative() {
+    import iter::times;
     for (-10).times { log(error, ~"nope!"); }
 }

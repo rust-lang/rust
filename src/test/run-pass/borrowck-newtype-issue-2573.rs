@@ -2,7 +2,11 @@ enum foo = {mut bar: baz};
 
 enum baz = @{mut baz: int};
 
-impl quuux for foo {
+trait frob {
+    fn frob();
+}
+
+impl quuux of frob for foo {
     fn frob() {
         really_impure(self.bar);
     }

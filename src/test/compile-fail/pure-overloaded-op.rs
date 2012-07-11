@@ -1,6 +1,13 @@
 type point = { x: int, y: int };
 
-impl foo for point {
+trait operators {
+    pure fn +(z: int) -> int;
+    fn *(z: int) -> int;
+    fn [](z: int) -> int;
+    fn unary-() -> int;
+}
+
+impl foo of operators for point {
     // expr_binary
     pure fn +(z: int) -> int { self.x + self.y + z }
     fn *(z: int) -> int { self.x * self.y * z }

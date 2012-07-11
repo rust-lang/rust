@@ -5,7 +5,12 @@ type a = &int;
 type b = @a;
 type c = {f: @b};
 
-impl methods for c {
+trait set_f {
+    fn set_f_ok(b: @b/&self);
+    fn set_f_bad(b: @b);
+}
+
+impl methods of set_f for c {
     fn set_f_ok(b: @b/&self) {
         self.f = b;
     }

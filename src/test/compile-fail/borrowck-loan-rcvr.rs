@@ -1,6 +1,12 @@
 type point = { x: int, y: int };
 
-impl foo for point {
+trait methods {
+    fn impurem();
+    fn blockm(f: fn());
+    pure fn purem();
+}
+
+impl foo of methods for point {
     fn impurem() {
     }
 

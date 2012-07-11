@@ -85,6 +85,12 @@ export unpack_const_slice;
 export unsafe;
 export u8;
 export extensions;
+export const_vector;
+export copyable_vector;
+export immutable_vector;
+export immutable_copyable_vector;
+export iter_trait_extensions;
+export vec_concat;
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -179,11 +185,12 @@ pure fn len<T>(&&v: &[const T]) -> uint {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> ~[T] {
+pure fn from_fn<T: copy>(n_elts: uint, op: init_op<T>) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
-    while i < n_elts unsafe { push(v, op(i)); i += 1u; }
+    while i < n_elts unsafe { ref_set(v, i, op(i)); i += 1u; }
+    unsafe { unsafe::set_len(v, n_elts); }
     ret v;
 }
 
@@ -197,8 +204,9 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts)}
     let mut i: uint = 0u;
-    unsafe { // because push is impure
-        while i < n_elts { push(v, t); i += 1u; }
+    unsafe { // because ref_set is unsafe
+        while i < n_elts { ref_set(v, i, t); i += 1u; }
+        unsafe { unsafe::set_len(v, n_elts); }
     }
     ret v;
 }
@@ -466,6 +474,16 @@ fn push_slow<T>(&v: ~[const T], +initval: T) {
 #[inline(always)]
 unsafe fn ref<T: copy>(v: &[const T], i: uint) -> T {
     unpack_slice(v, |p, _len| *ptr::offset(p, i))
+}
+
+#[inline(always)]
+unsafe fn ref_set<T: copy>(v: &[mut T], i: uint, +val: T) {
+    let mut box = some(val);
+    do unpack_mut_slice(v) |p, _len| {
+        let mut box2 = none;
+        box2 <-> box;
+        rusti::move_val_init(*ptr::mut_offset(p, i), option::unwrap(box2));
+    }
 }
 
 #[inline(always)]
@@ -1591,6 +1609,9 @@ mod u8 {
 impl extensions/&<A> of iter::base_iter<A> for &[const A] {
     fn each(blk: fn(A) -> bool) { each(self, blk) }
     fn size_hint() -> option<uint> { some(len(self)) }
+}
+
+impl extensions/&<A> of iter::extended_iter<A> for &[const A] {
     fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
     fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
@@ -1599,6 +1620,7 @@ impl extensions/&<A> of iter::base_iter<A> for &[const A] {
     }
     fn contains(x: A) -> bool { iter::contains(self, x) }
     fn count(x: A) -> uint { iter::count(self, x) }
+    fn position(f: fn(A) -> bool) -> option<uint> { iter::position(self, f) }
 }
 
 trait iter_trait_extensions<A> {

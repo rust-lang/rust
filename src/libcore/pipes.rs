@@ -578,7 +578,11 @@ impl<T: send> of selectable for pipes::port<T> {
 
 type shared_chan<T: send> = arc::exclusive<pipes::chan<T>>;
 
-impl chan<T: send> for shared_chan<T> {
+trait send_on_shared_chan<T> {
+    fn send(+x: T);
+}
+
+impl chan<T: send> of send_on_shared_chan<T> for shared_chan<T> {
     fn send(+x: T) {
         let mut xx = some(x);
         do self.with |_c, chan| {

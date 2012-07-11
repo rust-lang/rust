@@ -8,6 +8,7 @@ import io;
 import io::{reader_util, writer_util};
 import map;
 import map::hashmap;
+import map::map;
 import core::vec::extensions;
 
 export json;
@@ -114,12 +115,16 @@ fn to_str(j: json) -> ~str {
     io::with_str_writer(|wr| to_writer(wr, j))
 }
 
-type parser = {
+type parser_ = {
     rdr: io::reader,
     mut ch: char,
     mut line: uint,
     mut col: uint,
 };
+
+enum parser {
+    parser_(parser_)
+}
 
 impl parser for parser {
     fn eof() -> bool { self.ch == -1 as char }
@@ -463,12 +468,12 @@ impl parser for parser {
 
 /// Deserializes a json value from an io::reader
 fn from_reader(rdr: io::reader) -> result<json, error> {
-    let parser = {
+    let parser = parser_({
         rdr: rdr,
         mut ch: rdr.read_char(),
         mut line: 1u,
         mut col: 1u,
-    };
+    });
 
     parser.parse()
 }

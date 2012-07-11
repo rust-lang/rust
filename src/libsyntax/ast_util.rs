@@ -306,7 +306,13 @@ pure fn class_member_visibility(ci: @class_member) -> visibility {
   }
 }
 
-impl inlined_item_methods for inlined_item {
+trait inlined_item_utils {
+    fn ident() -> ident;
+    fn id() -> ast::node_id;
+    fn accept<E>(e: E, v: visit::vt<E>);
+}
+
+impl inlined_item_methods of inlined_item_utils for inlined_item {
     fn ident() -> ident {
         alt self {
           ii_item(i) { /* FIXME (#2543) */ copy i.ident }

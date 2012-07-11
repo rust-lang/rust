@@ -101,13 +101,21 @@ fn read_to_vec<D: deserializer, T: copy>(d: D, f: fn() -> T) -> ~[T] {
     }
 }
 
-impl serializer_helpers<S: serializer> for S {
+trait serializer_helpers {
+    fn emit_from_vec<T>(v: ~[T], f: fn(T));
+}
+
+impl serializer_helpers<S: serializer> of serializer_helpers for S {
     fn emit_from_vec<T>(v: ~[T], f: fn(T)) {
         emit_from_vec(self, v, f)
     }
 }
 
-impl deserializer_helpers<D: deserializer> for D {
+trait deserializer_helpers {
+    fn read_to_vec<T: copy>(f: fn() -> T) -> ~[T];
+}
+
+impl deserializer_helpers<D: deserializer> of deserializer_helpers for D {
     fn read_to_vec<T: copy>(f: fn() -> T) -> ~[T] {
         read_to_vec(self, f)
     }

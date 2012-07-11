@@ -1,5 +1,7 @@
 //! Generic pass for performing an operation on all descriptions
 
+import doc::item_utils;
+
 export mk_pass;
 
 fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> pass {

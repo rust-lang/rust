@@ -1,5 +1,6 @@
 //! Records the full path to items
 
+import doc::item_utils;
 import syntax::ast;
 
 export mk_pass;
@@ -46,10 +47,10 @@ fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
     let doc = fold::default_any_fold_mod(fold, doc);
     if !is_topmod { vec::pop(fold.ctxt.path); }
 
-    {
+    doc::moddoc_({
         item: fold.fold_item(fold, doc.item)
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {

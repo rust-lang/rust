@@ -2,7 +2,11 @@ import libc, unsafe;
 
 enum malloc_pool = ();
 
-impl methods for malloc_pool {
+trait alloc {
+    fn alloc(sz: int, align: int) -> *();
+}
+
+impl methods of alloc for malloc_pool {
     fn alloc(sz: int, align: int) -> *() {
         fail;
     }

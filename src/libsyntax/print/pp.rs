@@ -103,22 +103,22 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     let token: ~[mut token] = vec::to_mut(vec::from_elem(n, EOF));
     let size: ~[mut int] = vec::to_mut(vec::from_elem(n, 0));
     let scan_stack: ~[mut uint] = vec::to_mut(vec::from_elem(n, 0u));
-    @{out: out,
-      buf_len: n,
-      mut margin: linewidth as int,
-      mut space: linewidth as int,
-      mut left: 0u,
-      mut right: 0u,
-      token: token,
-      size: size,
-      mut left_total: 0,
-      mut right_total: 0,
-      mut scan_stack: scan_stack,
-      mut scan_stack_empty: true,
-      mut top: 0u,
-      mut bottom: 0u,
-      print_stack: dvec(),
-      mut pending_indentation: 0}
+    printer_(@{out: out,
+               buf_len: n,
+               mut margin: linewidth as int,
+               mut space: linewidth as int,
+               mut left: 0u,
+               mut right: 0u,
+               token: token,
+               size: size,
+               mut left_total: 0,
+               mut right_total: 0,
+               mut scan_stack: scan_stack,
+               mut scan_stack_empty: true,
+               mut top: 0u,
+               mut bottom: 0u,
+               print_stack: dvec(),
+               mut pending_indentation: 0})
 }
 
 
@@ -199,7 +199,7 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
  * the method called 'pretty_print', and the 'PRINT' process is the method
  * called 'print'.
  */
-type printer = @{
+type printer_ = {
     out: io::writer,
     buf_len: uint,
     mut margin: int, // width of lines we're constrained to
@@ -225,6 +225,10 @@ type printer = @{
     // buffered indentation to avoid writing trailing whitespace
     mut pending_indentation: int
 };
+
+enum printer {
+    printer_(@printer_)
+}
 
 impl printer for printer {
     fn last_token() -> token { self.token[self.right] }

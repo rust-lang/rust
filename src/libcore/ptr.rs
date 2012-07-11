@@ -14,6 +14,7 @@ export memset;
 export buf_len;
 export position;
 export extensions;
+export ptr;
 
 import libc::{c_void, size_t};
 

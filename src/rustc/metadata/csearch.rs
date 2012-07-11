@@ -10,6 +10,7 @@ import syntax::diagnostic::span_handler;
 import syntax::diagnostic::expect;
 import common::*;
 import std::map::hashmap;
+import dvec::{dvec, extensions};
 
 export class_dtor;
 export get_symbol;
@@ -23,6 +24,7 @@ export lookup_method_purity;
 export get_enum_variants;
 export get_impls_for_mod;
 export get_trait_methods;
+export get_method_names_if_trait;
 export each_path;
 export get_type;
 export get_impl_trait;
@@ -138,6 +140,13 @@ fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_trait_methods(cdata, def.node, tcx)
+}
+
+fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
+                          -> option<@dvec<@~str>> {
+
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    ret decoder::get_method_names_if_trait(cdata, def.node);
 }
 
 fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {

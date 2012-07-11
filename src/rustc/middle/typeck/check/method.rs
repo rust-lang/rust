@@ -1,9 +1,12 @@
 /* Code to handle method lookups (which can be quite complex) */
 
+import coherence::get_base_type_def_id;
+import middle::resolve3::Impl;
+import middle::typeck::infer::methods; // next_ty_vars
 import syntax::ast::def_id;
 import syntax::ast_map;
+import syntax::ast_map::node_id_to_str;
 import syntax::ast_util::new_def_hash;
-import middle::typeck::infer::methods; // next_ty_vars
 import dvec::{dvec, extensions};
 
 type candidate = {
@@ -55,11 +58,34 @@ class lookup {
 
     // Entrypoint:
     fn method() -> option<method_map_entry> {
-        #debug["method lookup(m_name=%s, self_ty=%s)",
-               *self.m_name, self.fcx.infcx.ty_to_str(self.self_ty)];
+        #debug["method lookup(m_name=%s, self_ty=%s, %?)",
+               *self.m_name, self.fcx.infcx.ty_to_str(self.self_ty),
+               ty::get(self.self_ty).struct];
+
+        // Determine if there are any inherent methods we can call.
+        let optional_inherent_methods;
+        alt get_base_type_def_id(self.fcx.infcx,
+                                 self.self_expr.span,
+                                 self.self_ty) {
+            none {
+                optional_inherent_methods = none;
+            }
+            some(base_type_def_id) {
+                #debug("(checking method) found base type");
+                optional_inherent_methods =
+                    self.fcx.ccx.coherence_info.inherent_methods.find
+                        (base_type_def_id);
+
+                if optional_inherent_methods.is_none() {
+                    #debug("(checking method) ... no inherent methods found");
+                } else {
+                    #debug("(checking method) ... inherent methods found");
+                }
+            }
+        }
 
         loop {
-            // First, see whether this is an interface-bounded parameter
+            // First, see whether this is an interface-bounded parameter.
             alt ty::get(self.self_ty).struct {
               ty::ty_param(n, did) {
                 self.add_candidates_from_param(n, did);
@@ -83,11 +109,19 @@ class lookup {
             // would require doing an implicit borrow of the lhs.
             self.add_candidates_from_scope(false);
 
+            // Look for inherent methods.
+            self.add_inherent_and_extension_candidates
+                (optional_inherent_methods, false);
+
             // if we found anything, stop before trying borrows
             if self.candidates.len() > 0u { break; }
 
             // now look for impls in scope that might require a borrow
             self.add_candidates_from_scope(true);
+
+            // Again, look for inherent methods.
+            self.add_inherent_and_extension_candidates
+                (optional_inherent_methods, true);
 
             // if we found anything, stop before attempting auto-deref.
             if self.candidates.len() > 0u { break; }
@@ -296,6 +330,14 @@ class lookup {
     }
 
     fn add_candidates_from_scope(use_assignability: bool) {
+        // If we're using coherence and this is one of the method invocation
+        // forms it supports, don't use this method; it'll result in lots of
+        // multiple-methods-in-scope errors.
+
+        if self.fcx.ccx.trait_map.contains_key(self.expr.id) {
+            ret;
+        }
+
         let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
         let mut added_any = false;
 
@@ -303,43 +345,8 @@ class lookup {
 
         for list::each(impls_vecs) |impls| {
             for vec::each(*impls) |im| {
-                // Check whether this impl has a method with the right name.
-                for im.methods.find(|m| m.ident == self.m_name).each |m| {
-
-                    // determine the `self` of the impl with fresh
-                    // variables for each parameter:
-                    let {substs: impl_substs, ty: impl_ty} =
-                        impl_self_ty(self.fcx, im.did);
-
-                    // Depending on our argument, we find potential
-                    // matches either by checking subtypability or
-                    // type assignability. Collect the matches.
-                    let matches = if use_assignability {
-                        self.fcx.can_mk_assignty(
-                            self.self_expr, self.borrow_lb,
-                            self.self_ty, impl_ty)
-                    } else {
-                        self.fcx.can_mk_subty(self.self_ty, impl_ty)
-                    };
-                    #debug["matches = %?", matches];
-                    alt matches {
-                      result::err(_) { /* keep looking */ }
-                      result::ok(_) {
-                        if !self.candidate_impls.contains_key(im.did) {
-                            let fty = self.ty_from_did(m.did);
-                            self.candidates.push(
-                                {self_ty: self.self_ty,
-                                 self_substs: impl_substs,
-                                 rcvr_ty: impl_ty,
-                                 n_tps_m: m.n_tps,
-                                 fty: fty,
-                                 entry: {derefs: self.derefs,
-                                         origin: method_static(m.did)}});
-                            self.candidate_impls.insert(im.did, ());
-                            added_any = true;
-                        }
-                      }
-                    }
+                if self.add_candidates_from_impl(im, use_assignability) {
+                    added_any = true;
                 }
             }
 
@@ -347,6 +354,53 @@ class lookup {
             // matches and then ignore outer scopes
             if added_any {ret;}
         }
+    }
+
+    // Returns true if any were added and false otherwise.
+    fn add_candidates_from_impl(im: @resolve3::Impl,
+                                use_assignability: bool) -> bool {
+
+        let mut added_any = false;
+
+        // Check whether this impl has a method with the right name.
+        for im.methods.find(|m| m.ident == self.m_name).each |m| {
+
+            // determine the `self` of the impl with fresh
+            // variables for each parameter:
+            let {substs: impl_substs, ty: impl_ty} =
+                impl_self_ty(self.fcx, im.did);
+
+            // Depending on our argument, we find potential
+            // matches either by checking subtypability or
+            // type assignability. Collect the matches.
+            let matches = if use_assignability {
+                self.fcx.can_mk_assignty(self.self_expr, self.borrow_lb,
+                                         self.self_ty, impl_ty)
+            } else {
+                self.fcx.can_mk_subty(self.self_ty, impl_ty)
+            };
+            #debug["matches = %?", matches];
+            alt matches {
+              result::err(_) { /* keep looking */ }
+              result::ok(_) {
+                if !self.candidate_impls.contains_key(im.did) {
+                    let fty = self.ty_from_did(m.did);
+                    self.candidates.push(
+                        {self_ty: self.self_ty,
+                         self_substs: impl_substs,
+                         rcvr_ty: impl_ty,
+                         n_tps_m: m.n_tps,
+                         fty: fty,
+                         entry: {derefs: self.derefs,
+                                 origin: method_static(m.did)}});
+                    self.candidate_impls.insert(im.did, ());
+                    added_any = true;
+                }
+              }
+            }
+        }
+
+        ret added_any;
     }
 
     fn add_candidates_from_m(self_substs: ty::substs,
@@ -365,6 +419,58 @@ class lookup {
              n_tps_m: (*m.tps).len(),
              fty: fty,
              entry: {derefs: self.derefs, origin: origin}});
+    }
+
+    fn add_inherent_and_extension_candidates(optional_inherent_methods:
+                                                option<@dvec<@Impl>>,
+                                             use_assignability: bool) {
+
+        // Add inherent methods.
+        alt optional_inherent_methods {
+            none {
+                // Continue.
+            }
+            some(inherent_methods) {
+                #debug("(adding inherent and extension candidates) adding \
+                        inherent candidates");
+                for inherent_methods.each |implementation| {
+                    #debug("(adding inherent and extension candidates) \
+                            adding candidates from impl: %s",
+                           node_id_to_str(self.tcx().items,
+                                          implementation.did.node));
+                    self.add_candidates_from_impl(implementation,
+                                                  use_assignability);
+                }
+            }
+        }
+
+        // Add trait methods.
+        alt self.fcx.ccx.trait_map.find(self.expr.id) {
+            none {
+                // XXX: This particular operation is not yet trait-ified;
+                // leave it alone for now.
+            }
+            some(trait_ids) {
+                for (*trait_ids).each |trait_id| {
+                    #debug("(adding inherent and extension candidates) \
+                            trying trait: %s",
+                           node_id_to_str(self.tcx().items, trait_id.node));
+
+                    let coherence_info = self.fcx.ccx.coherence_info;
+                    alt coherence_info.extension_methods.find(trait_id) {
+                        none {
+                            // Do nothing.
+                        }
+                        some(extension_methods) {
+                            for extension_methods.each |implementation| {
+                                self.add_candidates_from_impl
+                                    (implementation, use_assignability);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn write_mty_from_candidate(cand: candidate) -> method_map_entry {

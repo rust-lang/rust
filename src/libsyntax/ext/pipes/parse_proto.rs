@@ -6,7 +6,12 @@ import parse::token;
 
 import pipec::*;
 
-impl proto_parser for parser {
+trait proto_parser {
+    fn parse_proto(id: ident) -> protocol;
+    fn parse_state(proto: protocol);
+}
+
+impl proto_parser of proto_parser for parser {
     fn parse_proto(id: ident) -> protocol {
         let proto = protocol(id);
 

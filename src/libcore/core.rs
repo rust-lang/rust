@@ -5,12 +5,15 @@
 import option::{some, none};
 import option = option::option;
 import path = path::path;
-import str::extensions;
 import tuple::extensions;
+import str::{extensions, str_slice, unique_str};
 import vec::extensions;
+import vec::{const_vector, copyable_vector, immutable_vector};
+import vec::{immutable_copyable_vector, iter_trait_extensions, vec_concat};
+import iter::{base_iter, extended_iter, copyable_iter, times};
 import option::extensions;
 import option_iter::extensions;
-import ptr::extensions;
+import ptr::{extensions, ptr};
 import rand::extensions;
 import result::extensions;
 import int::{num, times};
@@ -26,11 +29,18 @@ import u64::{num, times};
 import float::num;
 import f32::num;
 import f64::num;
+import num::num;
 
 export path, option, some, none, unreachable;
 export extensions;
 // The following exports are the extension impls for numeric types
 export num, times;
+// The following exports are the common traits
+export str_slice, unique_str;
+export const_vector, copyable_vector, immutable_vector;
+export immutable_copyable_vector, iter_trait_extensions, vec_concat;
+export base_iter, copyable_iter, extended_iter;
+export ptr;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is

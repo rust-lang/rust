@@ -6,7 +6,12 @@ import list;
 import list::{list, cons, nil};
 
 type chunk = {data: ~[u8], mut fill: uint};
-type arena = {mut chunks: @list<@chunk>};
+
+type arena_ = {mut chunks: @list<@chunk>};
+
+enum arena {
+    arena_(arena_)
+}
 
 fn chunk(size: uint) -> @chunk {
     let mut v = ~[];
@@ -15,7 +20,7 @@ fn chunk(size: uint) -> @chunk {
 }
 
 fn arena_with_size(initial_size: uint) -> arena {
-    ret {mut chunks: @cons(chunk(initial_size), @nil)};
+    ret arena_({mut chunks: @cons(chunk(initial_size), @nil)});
 }
 
 fn arena() -> arena {

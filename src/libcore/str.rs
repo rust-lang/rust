@@ -106,7 +106,9 @@ export
    escape_unicode,
 
    unsafe,
-   extensions;
+   extensions,
+   str_slice,
+   unique_str;
 
 #[abi = "cdecl"]
 extern mod rustrt {

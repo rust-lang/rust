@@ -5,6 +5,7 @@
  * individual modules, pages for the crate, indexes, etc.
  */
 
+import doc::{item_utils, page_utils};
 import syntax::ast;
 
 export mk_pass;
@@ -51,9 +52,9 @@ fn make_doc_from_pages(page_port: page_port) -> doc::doc {
             break;
         }
     }
-    {
+    doc::doc_({
         pages: pages
-    }
+    })
 }
 
 fn find_pages(doc: doc::doc, page_chan: page_chan) {
@@ -103,7 +104,7 @@ fn fold_mod(
 }
 
 fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
-    {
+    doc::moddoc_({
         items: do vec::filter(doc.items) |item| {
             alt item {
               doc::modtag(_) { false }
@@ -111,8 +112,8 @@ fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
               _ { true }
             }
         }
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn fold_nmod(

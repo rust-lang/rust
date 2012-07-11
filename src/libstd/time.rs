@@ -65,7 +65,7 @@ fn tzset() {
     rustrt::rust_tzset();
 }
 
-type tm = {
+type tm_ = {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]
     tm_hour: i32, // hours after midnight ~[0-23]
@@ -80,8 +80,12 @@ type tm = {
     tm_nsec: i32, // nanoseconds
 };
 
+enum tm {
+    tm_(tm_)
+}
+
 fn empty_tm() -> tm {
-    {
+    tm_({
         tm_sec: 0_i32,
         tm_min: 0_i32,
         tm_hour: 0_i32,
@@ -94,7 +98,7 @@ fn empty_tm() -> tm {
         tm_gmtoff: 0_i32,
         tm_zone: ~"",
         tm_nsec: 0_i32,
-    }
+    })
 }
 
 /// Returns the specified time in UTC
@@ -563,7 +567,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         }
 
         if pos == len && rdr.eof() {
-            ok({
+            ok(tm_({
                 tm_sec: tm.tm_sec,
                 tm_min: tm.tm_min,
                 tm_hour: tm.tm_hour,
@@ -576,7 +580,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                 tm_gmtoff: tm.tm_gmtoff,
                 tm_zone: tm.tm_zone,
                 tm_nsec: tm.tm_nsec,
-            })
+            }))
         } else { result }
     }
 }

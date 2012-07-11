@@ -9,7 +9,21 @@ export parser_attr;
 // extensions, which both begin with token.POUND
 type attr_or_ext = option<either<~[ast::attribute], @ast::expr>>;
 
-impl parser_attr for parser {
+trait parser_attr {
+    fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
+        -> attr_or_ext;
+    fn parse_outer_attributes() -> ~[ast::attribute];
+    fn parse_attribute(style: ast::attr_style) -> ast::attribute;
+    fn parse_attribute_naked(style: ast::attr_style, lo: uint) ->
+        ast::attribute;
+    fn parse_inner_attrs_and_next() ->
+        {inner: ~[ast::attribute], next: ~[ast::attribute]};
+    fn parse_meta_item() -> @ast::meta_item;
+    fn parse_meta_seq() -> ~[@ast::meta_item];
+    fn parse_optional_meta() -> ~[@ast::meta_item];
+}
+
+impl parser_attr of parser_attr for parser {
 
     fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
         -> attr_or_ext

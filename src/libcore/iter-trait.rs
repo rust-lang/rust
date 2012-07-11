@@ -8,6 +8,9 @@ export extensions;
 impl extensions<A> of iter::base_iter<A> for IMPL_T<A> {
     fn each(blk: fn(A) -> bool) { EACH(self, blk) }
     fn size_hint() -> option<uint> { SIZE_HINT(self) }
+}
+
+impl extensions<A> of iter::extended_iter<A> for IMPL_T<A> {
     fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
     fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }

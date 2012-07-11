@@ -162,14 +162,17 @@ fn get_warning_settings_level(settings: warning_settings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: lint_modes) -> lint_modes {
-    @{v: copy modes.v}
+    std::smallintmap::smallintmap_(@{v: copy modes.v})
 }
 
-type ctxt = {dict: lint_dict,
-             curr: lint_modes,
-             is_default: bool,
-             sess: session};
+type ctxt_ = {dict: lint_dict,
+              curr: lint_modes,
+              is_default: bool,
+              sess: session};
 
+enum ctxt {
+    ctxt_(ctxt_)
+}
 
 impl methods for ctxt {
     fn get_level(lint: lint) -> level {
@@ -216,9 +219,10 @@ impl methods for ctxt {
                             // we do multiple unneeded copies of the map
                             // if many attributes are set, but this shouldn't
                             // actually be a problem...
-                            new_ctxt = {is_default: false,
-                                        curr: clone_lint_modes(new_ctxt.curr)
-                                        with new_ctxt};
+                            new_ctxt =
+                                ctxt_({is_default: false,
+                                       curr: clone_lint_modes(new_ctxt.curr)
+                                      with *new_ctxt});
                             new_ctxt.set_level(lint, new_level);
                           }
                         }
@@ -271,10 +275,10 @@ fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
 
 fn build_settings_crate(sess: session::session, crate: @ast::crate) {
 
-    let cx = {dict: get_lint_dict(),
-              curr: std::smallintmap::mk(),
-              is_default: true,
-              sess: sess};
+    let cx = ctxt_({dict: get_lint_dict(),
+                    curr: std::smallintmap::mk(),
+                    is_default: true,
+                    sess: sess});
 
     // Install defaults.
     for cx.dict.each |_k, spec| { cx.set_level(spec.lint, spec.default); }
@@ -291,7 +295,7 @@ fn build_settings_crate(sess: session::session, crate: @ast::crate) {
             sess.warning_settings.default_settings.insert(k, v);
         }
 
-        let cx = {is_default: true with cx};
+        let cx = ctxt_({is_default: true with *cx});
 
         let visit = visit::mk_vt(@{
             visit_item: build_settings_item

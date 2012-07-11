@@ -437,14 +437,24 @@ fn resolve_borrowings(cx: infer_ctxt) {
     }
 }
 
-impl methods for ures {
+trait then {
+    fn then<T:copy>(f: fn() -> result<T,ty::type_err>)
+        -> result<T,ty::type_err>;
+}
+
+impl methods of then for ures {
     fn then<T:copy>(f: fn() -> result<T,ty::type_err>)
         -> result<T,ty::type_err> {
         self.chain(|_i| f())
     }
 }
 
-impl methods<T:copy> for cres<T> {
+trait cres_helpers<T> {
+    fn to_ures() -> ures;
+    fn compare(t: T, f: fn() -> ty::type_err) -> cres<T>;
+}
+
+impl methods<T:copy> of cres_helpers<T> for cres<T> {
     fn to_ures() -> ures {
         alt self {
           ok(_v) { ok(()) }
@@ -1097,19 +1107,22 @@ const force_rvar: uint          = 0b00100000;
 const force_ivar: uint          = 0b01000000;
 const force_all: uint           = 0b01110000;
 
-type resolve_state = @{
+type resolve_state_ = {
     infcx: infer_ctxt,
     modes: uint,
     mut err: option<fixup_err>,
     mut v_seen: ~[tv_vid]
 };
 
-fn resolver(infcx: infer_ctxt, modes: uint)
-    -> resolve_state {
-    @{infcx: infcx,
-      modes: modes,
-      mut err: none,
-      mut v_seen: ~[]}
+enum resolve_state {
+    resolve_state_(@resolve_state_)
+}
+
+fn resolver(infcx: infer_ctxt, modes: uint) -> resolve_state {
+    resolve_state_(@{infcx: infcx,
+                     modes: modes,
+                     mut err: none,
+                     mut v_seen: ~[]})
 }
 
 impl methods for resolve_state {

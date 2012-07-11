@@ -313,8 +313,11 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
         ~"if", ~"iface", ~"impl", ~"import",
         ~"let", ~"log", ~"loop",
         ~"mod", ~"mut",
-        ~"new", ~"owned",
-        ~"pure", ~"ret",
+        ~"new",
+        ~"owned",
+        ~"pure",
+        ~"ret",
+        ~"struct",
         ~"true", ~"trait", ~"type",
         ~"unchecked", ~"unsafe",
         ~"while"

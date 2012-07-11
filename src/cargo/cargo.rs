@@ -11,7 +11,7 @@ import result::{ok, err};
 import io::writer_util;
 import std::{map, json, tempfile, term, sort, getopts};
 import map::hashmap;
-import json::to_str;
+import to_str::to_str;
 import getopts::{optflag, optopt, opt_present};
 
 type package = {
@@ -535,7 +535,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
         versions: ~[]
     };
 
-    alt src.packages.position(|pkg| pkg.uuid == uuid ) {
+    alt vec::position(src.packages, |pkg| pkg.uuid == uuid) {
       some(idx) {
         src.packages[idx] = newpkg;
         log(debug, ~"  updated package: " + src.name + ~"/" + name);

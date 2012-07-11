@@ -148,7 +148,12 @@ mod v4 {
     // the simple, old style numberic representation of
     // ipv4
     type ipv4_rep = { a: u8, b: u8, c: u8, d:u8 };
-    impl x for ipv4_rep {
+
+    trait as_unsafe_u32 {
+        unsafe fn as_u32() -> u32;
+    }
+
+    impl x of as_unsafe_u32 for ipv4_rep {
         // this is pretty dastardly, i know
         unsafe fn as_u32() -> u32 {
             *((ptr::addr_of(self)) as *u32)

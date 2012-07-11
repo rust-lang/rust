@@ -1,5 +1,6 @@
 //! Prunes branches of the tree that are not exported
 
+import doc::item_utils;
 import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_map;
@@ -24,10 +25,10 @@ fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
 
 fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
     let doc = fold::default_any_fold_mod(fold, doc);
-    {
+    doc::moddoc_({
         items: exported_items(fold.ctxt, doc)
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn exported_items(srv: astsrv::srv, doc: doc::moddoc) -> ~[doc::itemtag] {

@@ -1,7 +1,10 @@
+import doc::item_utils;
+
 export writeinstr;
 export writer;
 export writer_factory;
 export writer_util;
+export writer_utils;
 export make_writer_factory;
 export future_writer_factory;
 export make_filename;
@@ -14,7 +17,13 @@ enum writeinstr {
 type writer = fn~(+writeinstr);
 type writer_factory = fn~(page: doc::page) -> writer;
 
-impl writer_util for writer {
+trait writer_utils {
+    fn write_str(str: ~str);
+    fn write_line(str: ~str);
+    fn write_done();
+}
+
+impl writer_util of writer_utils for writer {
     fn write_str(str: ~str) {
         self(write(str));
     }

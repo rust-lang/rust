@@ -9,6 +9,8 @@ use crate_method_reexport_grrrrrrr2;
 
 fn main() {
     import crate_method_reexport_grrrrrrr2::rust::methods;
+    import crate_method_reexport_grrrrrrr2::rust::add;
+    import crate_method_reexport_grrrrrrr2::rust::cx;
     let x = @();
     x.cx();
     let y = ();

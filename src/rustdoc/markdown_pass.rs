@@ -1,7 +1,9 @@
 //! Generate markdown from a document tree
 
+import doc::item_utils;
 import markdown_writer::writer;
 import markdown_writer::writer_util;
+import markdown_writer::writer_utils;
 import markdown_writer::writer_factory;
 
 export mk_pass;
@@ -513,20 +515,20 @@ fn should_insert_blank_line_after_fn_signature() {
 #[test]
 fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc(~"fn a() { }");
-    let doc = {
+    let doc = doc::doc_({
         pages: ~[
             doc::cratepage({
-                topmod: {
+                topmod: doc::moddoc_({
                     items: ~[doc::fntag({
                         sig: some(~"line 1\nline 2")
                         with doc.cratemod().fns()[0]
                     })]
-                    with doc.cratemod()
-                }
+                    with *doc.cratemod()
+                })
                 with doc.cratedoc()
             })
         ]
-    };
+    });
     let markdown = test::write_markdown_str(doc);
     assert str::contains(markdown, ~"    line 1\n    line 2");
 }

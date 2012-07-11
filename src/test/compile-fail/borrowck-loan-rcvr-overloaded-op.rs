@@ -1,6 +1,11 @@
 type point = { x: int, y: int };
 
-impl foo for point {
+trait add_and_times {
+    pure fn +(z: int) -> int;
+    fn *(z: int) -> int;
+}
+
+impl foo of add_and_times for point {
     pure fn +(z: int) -> int { self.x + self.y + z }
     fn *(z: int) -> int { self.x * self.y * z }
 }

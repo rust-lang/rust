@@ -1,4 +1,8 @@
-impl methods for @@uint {
+trait double {
+    fn double() -> uint;
+}
+
+impl methods of double for @@uint {
     fn double() -> uint { **self * 2u }
 }
 

@@ -9,7 +9,7 @@ iface frobable {
 }
 
 #[int_frobable]
-impl frobable for int {
+impl frobable of frobable for int {
     #[frob_attr1]
     fn frob() {
         #[frob_attr2];

@@ -1,5 +1,7 @@
 //! Sorts items by type
 
+import doc::item_utils;
+
 export mk_pass;
 
 fn mk_pass() -> pass {

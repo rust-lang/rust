@@ -1,5 +1,7 @@
 //! Build indexes as appropriate for the markdown pass
 
+import doc::item_utils;
+
 export mk_pass;
 
 fn mk_pass(config: config::config) -> pass {
@@ -31,10 +33,10 @@ fn fold_mod(
 
     let doc = fold::default_any_fold_mod(fold, doc);
 
-    {
+    doc::moddoc_({
         index: some(build_mod_index(doc, fold.ctxt))
-        with doc
-    }
+        with *doc
+    })
 }
 
 fn fold_nmod(

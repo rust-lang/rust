@@ -1,6 +1,11 @@
 // The cases commented as "Leaks" need to not leak. Issue #2581
 
-impl methods<T: copy> for ~[T] {
+trait minus_and_foo<T> {
+    fn -(x: &[T]) -> ~[T];
+    fn foo(x: &[T]) -> ~[T];
+}
+
+impl methods<T: copy> of minus_and_foo<T> for ~[T] {
     fn -(x: &[T]) -> ~[T] {
         ~[x[0], x[0], x[0]]
     }
@@ -10,19 +15,31 @@ impl methods<T: copy> for ~[T] {
     }
 }
 
-impl methods<T: copy> for ~T {
+trait plus_uniq<T> {
+    fn +(rhs: ~T) -> ~T;
+}
+
+impl methods<T: copy> of plus_uniq<T> for ~T {
     fn +(rhs: ~T) -> ~T {
         rhs
     }
 }
 
-impl methods for ~int {
+trait minus {
+    fn -(rhs: ~int) -> ~int;
+}
+
+impl methods of minus for ~int {
     fn -(rhs: ~int) -> ~int {
         ~(*self - *rhs)
     }
 }
 
-impl methods for @int {
+trait plus_boxed {
+    fn +(rhs: @int) -> @int;
+}
+
+impl methods of plus_boxed for @int {
     fn +(rhs: @int) -> @int {
         @(*self + *rhs)
     }

@@ -2,4 +2,12 @@
 #[crate_type = "lib"];
 
 type t1 = uint;
-impl t2 for ~str { }
+
+trait foo {
+    fn foo();
+}
+
+impl t2 of foo for ~str {
+    fn foo() {}
+}
+

@@ -94,7 +94,11 @@ class icx_popper {
     }
 }
 
-impl ccx_icx for @crate_ctxt {
+trait get_insn_ctxt {
+    fn insn_ctxt(s: ~str) -> icx_popper;
+}
+
+impl ccx_icx of get_insn_ctxt for @crate_ctxt {
     fn insn_ctxt(s: ~str) -> icx_popper {
         #debug("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
@@ -104,13 +108,13 @@ impl ccx_icx for @crate_ctxt {
     }
 }
 
-impl bcx_icx for block {
+impl bcx_icx of get_insn_ctxt for block {
     fn insn_ctxt(s: ~str) -> icx_popper {
         self.ccx().insn_ctxt(s)
     }
 }
 
-impl fcx_icx for fn_ctxt {
+impl fcx_icx of get_insn_ctxt for fn_ctxt {
     fn insn_ctxt(s: ~str) -> icx_popper {
         self.ccx.insn_ctxt(s)
     }

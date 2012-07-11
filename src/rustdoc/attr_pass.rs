@@ -6,6 +6,7 @@
      of the natural-language documentation for a crate."
 )];
 
+import doc::item_utils;
 import syntax::ast;
 import syntax::ast_map;
 import std::map::hashmap;
@@ -48,13 +49,13 @@ fn fold_crate(
     };
 
     {
-        topmod: {
+        topmod: doc::moddoc_({
             item: {
                 name: option::get_default(attrs.name, doc.topmod.name())
                 with doc.topmod.item
             }
-            with doc.topmod
-        }
+            with *doc.topmod
+        })
     }
 }
 

@@ -1,6 +1,13 @@
 type point = {x: int, y: int};
 
-impl point_ops for point {
+trait ops {
+    fn +(other: point) -> point;
+    fn -(other: point) -> point;
+    fn unary-() -> point;
+    fn [](x: bool) -> int;
+}
+
+impl point_ops of ops for point {
     fn +(other: point) -> point {
         {x: self.x + other.x, y: self.y + other.y}
     }

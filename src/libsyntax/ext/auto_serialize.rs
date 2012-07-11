@@ -123,7 +123,34 @@ fn expand(cx: ext_ctxt,
     }
 }
 
-impl helpers for ext_ctxt {
+trait ext_ctxt_helpers {
+    fn helper_path(base_path: @ast::path, helper_name: ~str) -> @ast::path;
+    fn path(span: span, strs: ~[ast::ident]) -> @ast::path;
+    fn path_tps(span: span, strs: ~[ast::ident],
+                tps: ~[@ast::ty]) -> @ast::path;
+    fn ty_path(span: span, strs: ~[ast::ident], tps: ~[@ast::ty]) -> @ast::ty;
+    fn ty_fn(span: span,
+             -input_tys: ~[@ast::ty],
+             -output: @ast::ty) -> @ast::ty;
+    fn ty_nil(span: span) -> @ast::ty;
+    fn expr(span: span, node: ast::expr_) -> @ast::expr;
+    fn var_ref(span: span, name: ast::ident) -> @ast::expr;
+    fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk;
+    fn expr_blk(expr: @ast::expr) -> ast::blk;
+    fn binder_pat(span: span, nm: ast::ident) -> @ast::pat;
+    fn stmt(expr: @ast::expr) -> @ast::stmt;
+    fn alt_stmt(arms: ~[ast::arm], span: span, -v: @ast::expr) -> @ast::stmt;
+    fn lit_str(span: span, s: @~str) -> @ast::expr;
+    fn lit_uint(span: span, i: uint) -> @ast::expr;
+    fn lambda(blk: ast::blk) -> @ast::expr;
+    fn clone_folder() -> fold::ast_fold;
+    fn clone(v: @ast::expr) -> @ast::expr;
+    fn clone_ty(v: @ast::ty) -> @ast::ty;
+    fn clone_ty_param(v: ast::ty_param) -> ast::ty_param;
+    fn at(span: span, expr: @ast::expr) -> @ast::expr;
+}
+
+impl helpers of ext_ctxt_helpers for ext_ctxt {
     fn helper_path(base_path: @ast::path,
                    helper_name: ~str) -> @ast::path {
         let head = vec::init(base_path.idents);

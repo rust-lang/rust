@@ -76,7 +76,7 @@ import syntax::ast::ty_i;
 import typeck::infer::{unify_methods}; // infcx.set()
 import typeck::infer::{resolve_type, force_tvar};
 
-type fn_ctxt =
+type fn_ctxt_ =
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
@@ -111,30 +111,39 @@ type fn_ctxt =
 
      ccx: @crate_ctxt};
 
+enum fn_ctxt {
+    fn_ctxt_(fn_ctxt_)
+}
+
 // Used by check_const and check_enum_variants
 fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
                  region_bnd: ast::node_id) -> @fn_ctxt {
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
-    @{self_ty: none,
-      ret_ty: rty,
-      indirect_ret_ty: none,
-      purity: ast::pure_fn,
-      infcx: infer::new_infer_ctxt(ccx.tcx),
-      locals: int_hash(),
-      mut region_lb: region_bnd,
-      mut region_ub: region_bnd,
-      in_scope_regions: @nil,
-      node_types: smallintmap::mk(),
-      node_type_substs: map::int_hash(),
-      ccx: ccx}
+    @fn_ctxt_({self_ty: none,
+               ret_ty: rty,
+               indirect_ret_ty: none,
+               purity: ast::pure_fn,
+               infcx: infer::new_infer_ctxt(ccx.tcx),
+               locals: int_hash(),
+               mut region_lb: region_bnd,
+               mut region_ub: region_bnd,
+               in_scope_regions: @nil,
+               node_types: smallintmap::mk(),
+               node_type_substs: map::int_hash(),
+               ccx: ccx})
 }
 
 // a list of mapping from in-scope-region-names ("isr") to the
 // corresponding ty::region
 type isr_alist = @list<(ty::bound_region, ty::region)>;
 
-impl methods for isr_alist {
+trait get_and_find_region {
+    fn get(br: ty::bound_region) -> ty::region;
+    fn find(br: ty::bound_region) -> option<ty::region>;
+}
+
+impl methods of get_and_find_region for isr_alist {
     fn get(br: ty::bound_region) -> ty::region {
         option::get(self.find(br))
     }
@@ -227,18 +236,18 @@ fn check_fn(ccx: @crate_ctxt,
             }
         } else { none };
 
-        @{self_ty: self_ty,
-          ret_ty: ret_ty,
-          indirect_ret_ty: indirect_ret_ty,
-          purity: purity,
-          infcx: infcx,
-          locals: locals,
-          mut region_lb: body.node.id,
-          mut region_ub: body.node.id,
-          in_scope_regions: isr,
-          node_types: node_types,
-          node_type_substs: node_type_substs,
-          ccx: ccx}
+        @fn_ctxt_({self_ty: self_ty,
+                   ret_ty: ret_ty,
+                   indirect_ret_ty: indirect_ret_ty,
+                   purity: purity,
+                   infcx: infcx,
+                   locals: locals,
+                   mut region_lb: body.node.id,
+                   mut region_ub: body.node.id,
+                   in_scope_regions: isr,
+                   node_types: node_types,
+                   node_type_substs: node_type_substs,
+                   ccx: ccx})
     };
 
     gather_locals(fcx, decl, body, arg_tys);
@@ -1787,8 +1796,8 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
 
 fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
     let fcx = alt blk.node.rules {
-      ast::unchecked_blk { @{purity: ast::impure_fn with *fcx0} }
-      ast::unsafe_blk { @{purity: ast::unsafe_fn with *fcx0} }
+      ast::unchecked_blk { @fn_ctxt_({purity: ast::impure_fn with **fcx0}) }
+      ast::unsafe_blk { @fn_ctxt_({purity: ast::unsafe_fn with **fcx0}) }
       ast::default_blk { fcx0 }
     };
     do fcx.with_region_lb(blk.node.id) {

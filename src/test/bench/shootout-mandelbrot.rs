@@ -19,7 +19,12 @@ import std::map::hashmap;
 type cmplx = {re: f64, im: f64};
 type line = {i: uint, b: ~[u8]};
 
-impl arith for cmplx {
+trait times_and_plus {
+    fn *(x: cmplx) -> cmplx;
+    fn +(x: cmplx) -> cmplx;
+}
+
+impl arith of times_and_plus for cmplx {
     fn *(x: cmplx) -> cmplx {
         {re: self.re*x.re - self.im*x.im, im: self.re*x.im + self.im*x.re}
     }

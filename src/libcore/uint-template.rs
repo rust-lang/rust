@@ -278,6 +278,7 @@ fn to_str_radix17() {
 
 #[test]
 fn test_times() {
+    import iter::times;
     let ten = 10 as T;
     let mut accum = 0;
     for ten.times { accum += 1; }

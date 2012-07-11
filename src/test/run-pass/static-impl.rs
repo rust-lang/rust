@@ -1,15 +1,24 @@
 import a::*;
 import b::baz;
 
+trait plus {
+    fn plus() -> int;
+}
+
 mod a {
-    impl foo for uint { fn plus() -> int { self as int + 20 } }
+    impl foo of plus for uint { fn plus() -> int { self as int + 20 } }
 }
 
 mod b {
-    impl baz for ~str { fn plus() -> int { 200 } }
+    impl baz of plus for ~str { fn plus() -> int { 200 } }
 }
 
-impl util for uint {
+trait uint_utils {
+    fn str() -> ~str;
+    fn multi(f: fn(uint));
+}
+
+impl util of uint_utils for uint {
     fn str() -> ~str { uint::str(self) }
     fn multi(f: fn(uint)) {
         let mut c = 0u;
@@ -17,7 +26,13 @@ impl util for uint {
     }
 }
 
-impl util<T> for ~[T] {
+trait vec_utils<T> {
+    fn length_() -> uint;
+    fn iter_(f: fn(T));
+    fn map_<U>(f: fn(T) -> U) -> ~[U];
+}
+
+impl util<T> of vec_utils<T> for ~[T] {
     fn length_() -> uint { vec::len(self) }
     fn iter_(f: fn(T)) { for self.each |x| { f(x); } }
     fn map_<U>(f: fn(T) -> U) -> ~[U] {
@@ -28,8 +43,6 @@ impl util<T> for ~[T] {
 }
 
 fn main() {
-    impl foo for int { fn plus() -> int { self + 10 } }
-    assert 10.plus() == 20;
     assert 10u.plus() == 30;
     assert (~"hi").plus() == 200;
 

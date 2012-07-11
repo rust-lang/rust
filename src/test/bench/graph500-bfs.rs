@@ -7,6 +7,7 @@ An implementation of the Graph500 Breadth First Search problem in Rust.
 use std;
 import std::time;
 import std::map;
+import std::map::map;
 import std::map::hashmap;
 import std::deque;
 import std::deque::t;

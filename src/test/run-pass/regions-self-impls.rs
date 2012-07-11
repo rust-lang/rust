@@ -1,6 +1,10 @@
 type clam = { chowder: &int };
 
-impl clam for clam {
+trait get_chowder {
+    fn get_chowder() -> &self/int;
+}
+
+impl clam of get_chowder for clam {
     fn get_chowder() -> &self/int { ret self.chowder; }
 }
 

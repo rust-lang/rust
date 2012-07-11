@@ -1,5 +1,6 @@
 //! A general sorting pass
 
+import doc::item_utils;
 import std::sort;
 
 export item_lteq, mk_pass;
@@ -34,10 +35,10 @@ fn fold_mod(
     doc: doc::moddoc
 ) -> doc::moddoc {
     let doc = fold::default_any_fold_mod(fold, doc);
-    {
+    doc::moddoc_({
         items: sort::merge_sort(fold.ctxt, doc.items)
-        with doc
-    }
+        with *doc
+    })
 }
 
 #[test]

@@ -1,1 +1,4 @@
-impl methods1 for uint { fn me() -> uint { self } }
+trait me {
+    fn me() -> uint;
+}
+impl methods1 of me for uint { fn me() -> uint { self } }
