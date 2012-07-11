@@ -1,7 +1,7 @@
 //! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
-       vers = "0.2",
+       vers = "0.3",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
@@ -13,10 +13,10 @@
 
 #[warn(no_vecs_not_implicitly_copyable)];
 
-use core(vers = "0.2");
-use std(vers = "0.2");
-use rustc(vers = "0.2");
-use syntax(vers = "0.2");
+use core(vers = "0.3");
+use std(vers = "0.3");
+use rustc(vers = "0.3");
+use syntax(vers = "0.3");
 
 import core::*;
 
