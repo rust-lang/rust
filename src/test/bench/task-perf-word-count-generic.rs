@@ -108,7 +108,7 @@ mod map_reduce {
     {
         let mut tasks = ~[];
         for inputs.each |i| {
-            tasks += ~[spawn_joinable(|| map_task(map, ctrl, i) )];
+            vec::push(tasks, spawn_joinable(|| map_task(map, ctrl, i) ));
         }
         ret tasks;
     }
@@ -218,9 +218,8 @@ mod map_reduce {
                     let p = port();
                     let ch = chan(p);
                     let r = reduce, kk = k;
-                    tasks += ~[
-                        spawn_joinable(|| reduce_task(r, kk, ch) )
-                    ];
+                    vec::push(tasks,
+                              spawn_joinable(|| reduce_task(r, kk, ch) ));
                     c = recv(p);
                     treemap::insert(reducers, k, c);
                   }
@@ -255,7 +254,7 @@ fn main(argv: ~[str]) {
     }
     else {
         let num_readers = 50;
-        let words_per_reader = 400;
+        let words_per_reader = 1000;
         vec::from_fn(
             num_readers,
             |_i| fn~() -> word_reader {
