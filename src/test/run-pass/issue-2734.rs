@@ -1,4 +1,3 @@
-// xfail-test
 iface hax { } 
 impl <A> of hax for A { } 
 
