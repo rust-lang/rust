@@ -52,11 +52,11 @@ fn thread_ring(i: uint,
     };
 }
 
-fn main(args: [str]/~) {
+fn main(args: ~[str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ["", "100", "10000"]/~
+        ~["", "100", "10000"]
     } else if args.len() <= 1u {
-        ["", "100", "1000"]/~
+        ~["", "100", "1000"]
     } else {
         copy args
     }; 
@@ -70,7 +70,7 @@ fn main(args: [str]/~) {
     let start = time::precise_time_s();
 
     // create the ring
-    let mut futures = []/~;
+    let mut futures = ~[];
 
     for uint::range(1u, num_tasks) |i| {
         //#error("spawning %?", i);
@@ -78,7 +78,7 @@ fn main(args: [str]/~) {
         let num_chan2 = ~mut none;
         *num_chan2 <-> num_chan;
         let num_port = ~mut some(num_port);
-        futures += [future::spawn(|move num_chan2, move num_port| {
+        futures += ~[future::spawn(|move num_chan2, move num_port| {
             let mut num_chan = none;
             num_chan <-> *num_chan2;
             let mut num_port1 = none;
@@ -86,7 +86,7 @@ fn main(args: [str]/~) {
             thread_ring(i, msg_per_task,
                         option::unwrap(num_chan),
                         option::unwrap(num_port1))
-        })]/~;
+        })];
         num_chan = some(new_chan);
     };
 

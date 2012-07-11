@@ -162,7 +162,7 @@ impl methods for state {
         cx.ty_path(path(self.name).add_tys(cx.ty_vars(self.ty_params)))
     }
 
-    fn to_type_decls(cx: ext_ctxt) -> [@ast::item]/~ {
+    fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
         // This compiles into two different type declarations. Say the
         // state is called ping. This will generate both `ping` and
         // `ping_message`. The first contains data that the user cares
@@ -171,7 +171,7 @@ impl methods for state {
 
         let name = self.data_name();
 
-        let mut items_msg = []/~;
+        let mut items_msg = ~[];
 
         for self.messages.each |m| {
             let message(_, tys, this, next, next_tys) = m;
@@ -197,7 +197,7 @@ impl methods for state {
         ~[cx.item_enum_poly(name, items_msg, self.ty_params)]
     }
 
-    fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> [@ast::item]/~ {
+    fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {
         let dir = alt dir {
           send { (*self).dir }
           recv { (*self).dir.reverse() }
@@ -285,7 +285,7 @@ impl methods for protocol {
                   start_state.to_ty(cx).to_source(),
                   body.to_source()),
             cx.cfg(),
-            []/~,
+            ~[],
             ast::public,
             cx.parse_sess()).get()
     }
@@ -325,7 +325,7 @@ impl of to_source for @ast::item {
     }
 }
 
-impl of to_source for [@ast::item]/~ {
+impl of to_source for ~[@ast::item] {
     fn to_source() -> str {
         str::connect(self.map(|i| i.to_source()), "\n\n")
     }
@@ -337,7 +337,7 @@ impl of to_source for @ast::ty {
     }
 }
 
-impl of to_source for [@ast::ty]/~ {
+impl of to_source for ~[@ast::ty] {
     fn to_source() -> str {
         str::connect(self.map(|i| i.to_source()), ", ")
     }
@@ -361,7 +361,7 @@ impl parse_utils for ext_ctxt {
             "***protocol expansion***",
             @(copy s),
             self.cfg(),
-            []/~,
+            ~[],
             ast::public,
             self.parse_sess());
         alt res {
@@ -382,13 +382,13 @@ impl parse_utils for ext_ctxt {
     }
 }
 
-impl methods<A: copy, B: copy> for ([A]/~, [B]/~) {
-    fn zip() -> [(A, B)]/~ {
+impl methods<A: copy, B: copy> for (~[A], ~[B]) {
+    fn zip() -> ~[(A, B)] {
         let (a, b) = self;
         vec::zip(a, b)
     }
 
-    fn map<C>(f: fn(A, B) -> C) -> [C]/~ {
+    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
         let (a, b) = self;
         vec::map2(a, b, f)
     }

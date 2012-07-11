@@ -84,12 +84,12 @@ enum ip_get_addr_err {
  *
  * # Returns
  *
- * A `result<[ip_addr]/~, ip_get_addr_err>` instance that will contain
+ * A `result<~[ip_addr], ip_get_addr_err>` instance that will contain
  * a vector of `ip_addr` results, in the case of success, or an error
  * object in the case of failure
  */
 fn get_addr(++node: str, iotask: iotask)
-        -> result::result<[ip_addr]/~, ip_get_addr_err> unsafe {
+        -> result::result<~[ip_addr], ip_get_addr_err> unsafe {
     do comm::listen |output_ch| {
         do str::unpack_slice(node) |node_ptr, len| {
             log(debug, #fmt("slice len %?", len));
@@ -249,7 +249,7 @@ mod v6 {
 }
 
 type get_addr_data = {
-    output_ch: comm::chan<result::result<[ip_addr]/~,ip_get_addr_err>>
+    output_ch: comm::chan<result::result<~[ip_addr],ip_get_addr_err>>
 };
 
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
@@ -259,7 +259,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
         *get_addr_data;
     if status == 0i32 {
         if res != (ptr::null::<addrinfo>()) {
-            let mut out_vec = []/~;
+            let mut out_vec = ~[];
             log(debug, #fmt("initial addrinfo: %?", res));
             let mut curr_addr = res;
             loop {
@@ -278,7 +278,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                         result::err(get_addr_unknown_error));
                     break;
                 };
-                out_vec += [new_ip_addr]/~;
+                out_vec += ~[new_ip_addr];
 
                 let next_addr = ll::get_next_addrinfo(curr_addr);
                 if next_addr == ptr::null::<addrinfo>() as *addrinfo {

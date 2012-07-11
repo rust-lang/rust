@@ -146,7 +146,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
 /**
  * Fancy quicksort. Sorts a mut vector in place.
  *
- * Based on algorithm presented by [Sedgewick and Bentley]/~
+ * Based on algorithm presented by ~[Sedgewick and Bentley]
  * (http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf).
  * According to these slides this is the algorithm of choice for
  * 'randomly ordered keys, abstract compare' & 'small number of key values'.

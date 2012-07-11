@@ -236,7 +236,7 @@ fn to_str(num: float, digits: uint) -> str {
  * # Return value
  *
  * `none` if the string did not represent a valid number.  Otherwise,
- * `some(n)` where `n` is the floating-point number represented by `[num]/~`.
+ * `some(n)` where `n` is the floating-point number represented by `[num]`.
  */
 fn from_str(num: str) -> option<float> {
    if num == "inf" {
@@ -261,7 +261,7 @@ fn from_str(num: str) -> option<float> {
       _ { ret none; }
    }
 
-   //Determine if first char is '-'/'+'. Set ~[pos] and ~[neg] accordingly.
+   //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
    let mut neg = false;               //Sign of the result
    alt str::char_at(num, 0u) {
       '-' {

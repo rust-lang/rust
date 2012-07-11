@@ -666,14 +666,14 @@ pure fn filter<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[T] {
  *
  * Flattens a vector of vectors of T into a single vector of T.
  */
-pure fn concat<T: copy>(v: &[[T]/~]) -> ~[T] {
+pure fn concat<T: copy>(v: &[~[T]]) -> ~[T] {
     let mut r = ~[];
     for each(v) |inner| { unsafe { push_all(r, inner); } }
     ret r;
 }
 
 /// Concatenate a vector of vectors, placing a given separator between each
-pure fn connect<T: copy>(v: &[[T]/~], sep: T) -> ~[T] {
+pure fn connect<T: copy>(v: &[~[T]], sep: T) -> ~[T] {
     let mut r: ~[T] = ~[];
     let mut first = true;
     for each(v) |inner| {

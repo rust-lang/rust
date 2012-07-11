@@ -39,7 +39,7 @@ unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
  *
  * # Example
  *
- *     assert transmute("L") == [76u8, 0u8]/~;
+ *     assert transmute("L") == ~[76u8, 0u8];
  */
 unsafe fn transmute<L, G>(-thing: L) -> G {
     let newthing = reinterpret_cast(thing);

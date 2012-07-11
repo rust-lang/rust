@@ -28,21 +28,21 @@
  *     }
  *
  *     fn print_usage(program: str) {
- *         io::println("Usage: " + program + " [options]/~");
+ *         io::println("Usage: " + program + " [options]");
  *         io::println("-o\t\tOutput");
  *         io::println("-h --help\tUsage");
  *     }
  *
- *     fn main(args: [str]/~) {
+ *     fn main(args: ~[str]) {
  *         check vec::is_not_empty(args);
  *
  *         let program : str = vec::head(args);
  *
- *         let opts = [
+ *         let opts = ~[
  *             optopt("o"),
  *             optflag("h"),
  *             optflag("help")
- *         ]/~;
+ *         ];
  *         let match = alt getopts(vec::tail(args), opts) {
  *             result::ok(m) { m }
  *             result::err(f) { fail fail_str(f) }

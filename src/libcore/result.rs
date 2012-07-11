@@ -247,8 +247,8 @@ impl extensions<T:copy, E:copy> for result<T,E> {
  *         if x == uint::max_value { ret err("overflow"); }
  *         else { ret ok(x+1u); }
  *     }
- *     map([1u, 2u, 3u]/~, inc_conditionally).chain {|incd|
- *         assert incd == [2u, 3u, 4u]/~;
+ *     map(~[1u, 2u, 3u], inc_conditionally).chain {|incd|
+ *         assert incd == ~[2u, 3u, 4u];
  *     }
  */
 fn map_vec<T,U:copy,V:copy>(

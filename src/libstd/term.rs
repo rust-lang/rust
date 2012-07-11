@@ -23,7 +23,7 @@ const color_bright_magenta: u8 = 13u8;
 const color_bright_cyan: u8 = 14u8;
 const color_bright_white: u8 = 15u8;
 
-fn esc(writer: io::writer) { writer.write([0x1bu8, '[' as u8]/~); }
+fn esc(writer: io::writer) { writer.write(~[0x1bu8, '[' as u8]); }
 
 /// Reset the foreground and background colors to default
 fn reset(writer: io::writer) {

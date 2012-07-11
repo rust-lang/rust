@@ -32,7 +32,7 @@ export unwrap;
  * # WARNING
  *
  * For maximum performance, this type is implemented using some rather
- * unsafe code.  In particular, this innocent looking `[mut A]/~` pointer
+ * unsafe code.  In particular, this innocent looking `~[mut A]` pointer
  * *may be null!*  Therefore, it is important you not reach into the
  * data structure manually but instead use the provided extensions.
  *

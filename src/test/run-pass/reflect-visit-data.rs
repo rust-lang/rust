@@ -254,23 +254,23 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     }
 
     fn visit_evec_box(mtbl: uint, inner: *tydesc) -> bool {
-        self.align_to::<[u8]/@>();
+        self.align_to::<@[u8]>();
         if ! self.inner.visit_evec_box(mtbl, inner) { ret false; }
-        self.bump_past::<[u8]/@>();
+        self.bump_past::<@[u8]>();
         true
     }
 
     fn visit_evec_uniq(mtbl: uint, inner: *tydesc) -> bool {
-        self.align_to::<[u8]/~>();
+        self.align_to::<~[u8]>();
         if ! self.inner.visit_evec_uniq(mtbl, inner) { ret false; }
-        self.bump_past::<[u8]/~>();
+        self.bump_past::<~[u8]>();
         true
     }
 
     fn visit_evec_slice(mtbl: uint, inner: *tydesc) -> bool {
-        self.align_to::<[u8]/&static>();
+        self.align_to::<&static.[u8]>();
         if ! self.inner.visit_evec_slice(mtbl, inner) { ret false; }
-        self.bump_past::<[u8]/&static>();
+        self.bump_past::<&static.[u8]>();
         true
     }
 

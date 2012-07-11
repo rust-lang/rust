@@ -39,7 +39,7 @@ fn doc_comment_style(comment: str) -> ast::attr_style {
 fn strip_doc_comment_decoration(comment: str) -> str {
 
     /// remove whitespace-only lines from the start/end of lines
-    fn vertical_trim(lines: [str]/~) -> [str]/~ {
+    fn vertical_trim(lines: ~[str]) -> ~[str] {
         let mut i = 0u, j = lines.len();
         while i < j && lines[i].trim().is_empty() {
             i += 1u;
@@ -51,7 +51,7 @@ fn strip_doc_comment_decoration(comment: str) -> str {
     }
 
     // drop leftmost columns that contain only values in chars
-    fn block_trim(lines: [str]/~, chars: str, max: option<uint>) -> [str]/~ {
+    fn block_trim(lines: ~[str], chars: str, max: option<uint>) -> ~[str] {
 
         let mut i = max.get_default(uint::max_value);
         for lines.each |line| {
@@ -136,7 +136,7 @@ fn consume_whitespace_counting_blank_lines(rdr: string_reader,
 
 
 fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
-                                                        &comments: [cmnt]/~) {
+                                                        &comments: ~[cmnt]) {
     #debug(">>> shebang comment");
     let p = rdr.chpos;
     #debug("<<< shebang comment");
@@ -148,7 +148,7 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
 }
 
 fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
-                                                        &comments: [cmnt]/~) {
+                                                        &comments: ~[cmnt]) {
     #debug(">>> line comments");
     let p = rdr.chpos;
     let mut lines: ~[str] = ~[];
@@ -191,7 +191,7 @@ fn trim_whitespace_prefix_and_push_line(&lines: ~[str],
 }
 
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
-                                                        &comments: [cmnt]/~) {
+                                                        &comments: ~[cmnt]) {
     #debug(">>> block comment");
     let p = rdr.chpos;
     let mut lines: ~[str] = ~[];
