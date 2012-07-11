@@ -56,34 +56,11 @@ impl methods for message {
 
     // Return the type parameters actually used by this message
     fn get_params() -> ~[ast::ty_param] {
-        let mut used = ~[];
         alt self {
-          message(_, tys, this, _, next_tys) {
-            let parms = this.ty_params;
-            for vec::append(tys, next_tys).each |ty| {
-                alt ty.node {
-                  ast::ty_path(path, _) {
-                    if path.idents.len() == 1 {
-                        let id = path.idents[0];
-
-                        let found = parms.find(|p| id == p.ident);
-
-                        alt found {
-                          some(p) {
-                            if !used.contains(p) {
-                                vec::push(used, p);
-                            }
-                          }
-                          none { }
-                        }
-                    }
-                  }
-                  _ { }
-                }
-            }
+          message(_, _, this, _, _) {
+            this.ty_params
           }
         }
-        used
     }
 
     fn gen_send(cx: ext_ctxt) -> @ast::item {
