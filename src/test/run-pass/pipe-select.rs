@@ -1,4 +1,5 @@
 // xfail-pretty
+// xfail-win32
 
 use std;
 import std::timer::sleep;
