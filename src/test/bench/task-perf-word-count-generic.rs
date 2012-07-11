@@ -30,6 +30,10 @@ import comm::recv;
 import comm::send;
 import comm::methods;
 
+trait word_reader {
+    fn read_word() -> option<str>;
+}
+
 // These used to be in task, but they disappeard.
 type joinable_task = port<()>;
 fn spawn_joinable(+f: fn~()) -> joinable_task {
@@ -46,14 +50,21 @@ fn join(t: joinable_task) {
     t.recv()
 }
 
-fn map(&&filename: str, emit: map_reduce::putter<str, int>) {
-    let f = alt io::file_reader(filename) {
-      result::ok(f) { f }
-      result::err(e) { fail #fmt("%?", e) }
-    };
+impl of word_reader for io::reader {
+    fn read_word() -> option<str> { read_word(self) }
+}
 
+fn file_word_reader(filename: str) -> word_reader {
+    alt io::file_reader(filename) {
+      result::ok(f) { f as word_reader }
+      result::err(e) { fail #fmt("%?", e) }
+    }
+}
+
+fn map(f: fn~() -> word_reader, emit: map_reduce::putter<str, int>) {
+    let f = f();
     loop {
-        alt read_word(f) {
+        alt f.read_word() {
           some(w) { emit(w, 1); }
           none { break; }
         }
@@ -230,20 +241,31 @@ mod map_reduce {
 }
 
 fn main(argv: ~[str]) {
-    if vec::len(argv) < 2u {
+    if vec::len(argv) < 2u && !os::getenv("RUST_BENCH").is_some() {
         let out = io::stdout();
 
         out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
 
-        // FIXME (#2815): run something just to make sure the code hasn't
-        // broken yet. This is the unit test mode of this program.
-
         ret;
     }
 
+    let readers: ~[fn~() -> word_reader]  = if argv.len() >= 2 {
+        vec::view(argv, 1u, argv.len()).map(
+            |f| fn~() -> word_reader { file_word_reader(f) } )
+    }
+    else {
+        let num_readers = 50;
+        let words_per_reader = 400;
+        vec::from_fn(
+            num_readers,
+            |_i| fn~() -> word_reader {
+                random_word_reader(words_per_reader) as word_reader
+            })
+    };
+
     let start = time::precise_time_ns();
 
-    map_reduce::map_reduce(map, reduce, vec::slice(argv, 1u, argv.len()));
+    map_reduce::map_reduce(map, reduce, readers);
     let stop = time::precise_time_ns();
 
     let elapsed = (stop - start) / 1000000u64;
@@ -264,5 +286,24 @@ fn read_word(r: io::reader) -> option<str> {
     }
     ret none;
 }
+
 fn is_word_char(c: char) -> bool {
-    char::is_alphabetic(c) || char::is_digit(c) || c == '_' }
+    char::is_alphabetic(c) || char::is_digit(c) || c == '_'
+}
+
+class random_word_reader: word_reader {
+    let mut remaining: uint;
+    let rng: rand::rng;
+    new(count: uint) {
+        self.remaining = count;
+        self.rng = rand::rng();
+    }
+
+    fn read_word() -> option<str> {
+        if self.remaining > 0 {
+            self.remaining -= 1;
+            some(self.rng.gen_str(5))
+        }
+        else { none }
+    }
+}
