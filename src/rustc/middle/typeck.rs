@@ -291,6 +291,11 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                 vtable_map: std::map::int_hash(),
                 tcx: tcx};
     collect::collect_item_types(ccx, crate);
+
+    if tcx.sess.coherence() {
+        coherence::check_coherence(ccx, crate);
+    }
+
     check::check_item_types(ccx, crate);
     check_for_main_fn(ccx);
     tcx.sess.abort_if_errors();

@@ -67,6 +67,7 @@ mod middle {
         mod astconv;
         mod infer;
         mod collect;
+        mod coherence;
     }
     mod check_loop;
     mod check_alt;
