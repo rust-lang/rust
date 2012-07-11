@@ -166,16 +166,15 @@ class CoherenceChecker {
                 self.get_base_type(base_mutability_and_type.ty)
             }
 
-            ty_enum(*) | ty_class(*) {
+            ty_enum(*) | ty_trait(*) | ty_class(*) {
                 some(original_type)
             }
 
             ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
             ty_str | ty_estr(*) | ty_vec(*) | ty_evec(*) | ty_rec(*) |
-            ty_fn(*) | ty_trait(*) | ty_tup(*) | ty_var(*) |
-            ty_var_integral(*) | ty_param(*) | ty_self | ty_constr(*) |
-            ty_type | ty_opaque_box | ty_opaque_closure_ptr(*) |
-            ty_unboxed_vec(*) {
+            ty_fn(*) | ty_tup(*) | ty_var(*) | ty_var_integral(*) |
+            ty_param(*) | ty_self | ty_constr(*) | ty_type | ty_opaque_box |
+            ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) {
                 none
             }
         }
@@ -189,12 +188,14 @@ class CoherenceChecker {
             }
             some(base_type) {
                 alt get(base_type).struct {
-                    ty_enum(def_id, _) | ty_class(def_id, _) {
+                    ty_enum(def_id, _) |
+                    ty_class(def_id, _) |
+                    ty_trait(def_id, _) {
                         ret some(def_id);
                     }
                     _ {
                         fail "get_base_type() returned a type that wasn't an \
-                              enum or class";
+                              enum, class, or trait";
                     }
                 }
             }
@@ -394,13 +395,13 @@ class CoherenceChecker {
         let results = @dvec();
         for items.each |item| {
             alt item.node {
-                item_class(*) | item_enum(*) {
+                item_class(*) | item_enum(*) | item_trait(*) {
                     results.push(local_def(item.id));
                 }
 
                 item_const(*) | item_fn(*) | item_mod(*) |
-                item_foreign_mod(*) | item_ty(*) | item_trait(*) |
-                item_impl(*) | item_mac(*) {
+                item_foreign_mod(*) | item_ty(*) | item_impl(*) |
+                item_mac(*) {
                     // Nothing to do.
                 }
             }
