@@ -1,7 +1,7 @@
-Version 0.3  (July 2012) - not yet!
------------------------------------
+Version 0.3  (July 2012)
+------------------------
 
-   * ~1500 changes, numerous bugfixes
+   * ~1900 changes, numerous bugfixes
 
    * New coding conveniences
       * Integer-literal suffix inference
@@ -33,7 +33,7 @@ Version 0.3  (July 2012) - not yet!
 
    * Removal of various obsolete features
       * Keywords: 'be', 'prove', 'syntax', 'note', 'mutable', 'bind',
-        	  'crust', 'native' (now 'extern')
+                 'crust', 'native' (now 'extern'), 'cont' (now 'again')
 
       * Constructs: do-while loops ('do' repurposed), fn binding,
       	            resources (replaced by destructors)
