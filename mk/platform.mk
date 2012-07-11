@@ -21,7 +21,7 @@ CFG_DSYMUTIL := true
 
 ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
-  CFG_LIB_GLOB=lib$(1)-*.so
+  CFG_LIB_GLOB=$(wildcard $(1)/lib$(2)-*.so)
   CFG_GCCISH_CFLAGS += -fPIC -I/usr/local/include
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
@@ -40,7 +40,7 @@ endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
-  CFG_LIB_GLOB=lib$(1)-*.so
+  CFG_LIB_GLOB=$(wildcard $(1)/lib$(2)-*.so)
   CFG_GCCISH_CFLAGS += -fPIC
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
@@ -76,8 +76,7 @@ endif
 
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).dylib
-  CFG_LIB_GLOB=lib$(1)-*.dylib
-  CFG_LIB_DSYM_GLOB=lib$(1)-*.dylib.dSYM
+  CFG_LIB_GLOB=$(wildcard $(1)/lib$(2)-*.dylib $(1)/lib$(2)-*.dylib.dSYM)
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
   CFG_GCCISH_LINK_FLAGS += -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind
@@ -174,7 +173,7 @@ ifdef CFG_WINDOWSY
 
   CFG_EXE_SUFFIX := .exe
   CFG_LIB_NAME=$(1).dll
-  CFG_LIB_GLOB=$(1)-*.dll
+  CFG_LIB_GLOB=$(wildcard $(1)/$(2)-*.dll)
   CFG_DEF_SUFFIX := .def
 ifdef MSYSTEM
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH

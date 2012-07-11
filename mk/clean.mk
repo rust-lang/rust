@@ -62,10 +62,10 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTC)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBSYNTAX)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CORELIB_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(STDLIB_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTC_GLOB)
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBSYNTAX_GLOB)
+	$(Q)rm -f $$(call CORELIB_GLOB,$$(HLIB$(1)_H_$(2)))
+	$(Q)rm -f $$(call STDLIB_GLOB,$$(HLIB$(1)_H_$(2))))
+	$(Q)rm -f $$(call LIBRUSTC_GLOB,$$(HLIB$(1)_H_$(2)))
+	$(Q)rm -f $$(call LIBSYNTAX_GLOB,$$(HLIB$(1)_H_$(2)))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/libstd.rlib
 
@@ -88,10 +88,10 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CORELIB_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(STDLIB_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTC_GLOB)
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBSYNTAX_GLOB)
+	$(Q)rm -f $$(call CORELIB_GLOB,$$(TLIB$(1)_T_$(2)_H_$(3)))
+	$(Q)rm -f $$(call STDLIB_GLOB,$$(TLIB$(1)_T_$(2)_H_$(3)))
+	$(Q)rm -f $$(call LIBRUSTC_GLOB,$$(TLIB$(1)_T_$(2)_H_$(3)))
+	$(Q)rm -f $$(call LIBSYNTAX_GLOB,$$(TLIB$(1)_T_$(2)_H_$(3)))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a

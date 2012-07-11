@@ -6,11 +6,12 @@
 # destination directory as arg 2, and filename/libname-glob as arg 3
 ifdef VERBOSE
  INSTALL = install -m755 $(1)/$(3) $(2)/$(3)
- INSTALL_LIB = install -m644 `ls -rt1 $(1)/$(3) | tail -1` $(2)/
+ INSTALL_LIB = install -m644 $(3) $(2)/
 else
  INSTALL = $(Q)$(call E, install: $(2)/$(3)) && install -m755 $(1)/$(3) $(2)/$(3)
- INSTALL_LIB = $(Q)$(call E, install_lib: $(2)/$(3)) &&                    \
-	       install -m644 `ls -rt1 $(1)/$(3) | tail -1` $(2)/
+ INSTALL_LIB = $(Q)$(call E, install_lib: \
+                   $(addprefix $(2)/,$(basename $(3)))) &&  \
+	               install -m644 $(3) $(2)/
 endif
 
 # The stage we install from
@@ -37,13 +38,17 @@ install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB))
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),\
+            $$(call CORELIB_GLOB,$$(TL$(1)$(2))))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB))
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),\
+            $$(call STDLIB_GLOB,$$(TL$(1)$(2))))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB))
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),\
+            $$(call LIBRUSTC_GLOB,$$(TL$(1)$(2))))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBSYNTAX_GLOB))
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),\
+            $$(call LIBSYNTAX_GLOB,$$(TL$(1)$(2))))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 
 endef
@@ -74,10 +79,10 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),cargo$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTC_GLOB))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBSYNTAX_GLOB))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(call CORELIB_GLOB,$(PHL)))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(call STDLIB_GLOB,$(PHL)))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(call LIBRUSTC_GLOB,$(PHL)))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(call LIBSYNTAX_GLOB,$(PHL)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))
 	$(Q)$(call INSTALL,$(S)/man, \
 	     $(PREFIX_ROOT)/share/man/man1,rustc.1)
@@ -86,7 +91,7 @@ install-targets: $(INSTALL_TARGET_RULES)
 
 
 HOST_LIB_FROM_HL_GLOB = \
-  $(patsubst $(HL)/%,$(PHL)/%,$(wildcard $(HL)/$(1)))
+  $(patsubst $(HL)/%,$(PHL)/%,$(1))
 
 uninstall:
 	$(Q)rm -f $(PHB)/rustc$(X)
@@ -95,10 +100,10 @@ uninstall:
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM)
 	$(Q)rm -f $(PHL)/$(CFG_RUNTIME)
 	$(Q)for i in \
-          $(call HOST_LIB_FROM_HL_GLOB,$(CORELIB_GLOB)) \
-          $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB)) \
-          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB)) \
-          $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB)) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(call CORELIB_GLOB,$(HL))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(call STDLIB_GLOB,$(HL))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(call LIBRUSTC_GLOB,$(HL))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(call LIBSYNTAX_GLOB,$(HL))) \
         ; \
         do rm -f $$i ; \
         done
