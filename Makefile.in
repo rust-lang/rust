@@ -118,10 +118,14 @@ CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 CFG_LIBSYNTAX :=$(call CFG_LIB_NAME,syntax)
 
-STDLIB_GLOB =$(call CFG_LIB_GLOB,$(1),std)
-CORELIB_GLOB =$(call CFG_LIB_GLOB,$(1),core)
-LIBRUSTC_GLOB =$(call CFG_LIB_GLOB,$(1),rustc)
-LIBSYNTAX_GLOB =$(call CFG_LIB_GLOB,$(1),syntax)
+STDLIB_GLOB :=$(call CFG_LIB_GLOB,std)
+CORELIB_GLOB :=$(call CFG_LIB_GLOB,core)
+LIBRUSTC_GLOB :=$(call CFG_LIB_GLOB,rustc)
+LIBSYNTAX_GLOB :=$(call CFG_LIB_GLOB,syntax)
+STDLIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,std)
+CORELIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,core)
+LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
+LIBSYNTAX_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,syntax)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
