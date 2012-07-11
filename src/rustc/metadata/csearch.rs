@@ -17,6 +17,7 @@ export get_class_fields;
 export get_class_method;
 export get_field_type;
 export get_type_param_count;
+export get_region_param;
 export lookup_defs;
 export lookup_method_purity;
 export get_enum_variants;
@@ -151,6 +152,12 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     decoder::get_type(cdata, def.node, tcx)
 }
 
+fn get_region_param(cstore: metadata::cstore::cstore,
+                    def: ast::def_id) -> bool {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    ret decoder::get_region_param(cdata, def.node);
+}
+
 fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                   def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.cstore;
@@ -168,7 +175,7 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                  class_id, def) );
     #debug("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
-    ret {bounds: @~[], rp: ast::rp_none, ty: ty};
+    ret {bounds: @~[], rp: false, ty: ty};
 }
 
 // Given a def_id for an impl or class, return the trait it implements,

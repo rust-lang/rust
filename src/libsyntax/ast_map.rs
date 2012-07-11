@@ -188,14 +188,14 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     alt i.node {
-      item_impl(_, _, _, _, ms) {
+      item_impl(_, _, _, ms) {
         let impl_did = ast_util::local_def(i.id);
         for ms.each |m| {
             map_method(impl_did, extend(cx, i.ident), m,
                        cx);
         }
       }
-      item_enum(vs, _, _) {
+      item_enum(vs, _) {
         for vs.each |v| {
             cx.map.insert(v.node.id, node_variant(
                 /* FIXME (#2543) */ copy v, i,
@@ -214,7 +214,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
                                            extend(cx, i.ident)));
         }
       }
-      item_class(tps, traits, items, ctor, dtor, _) {
+      item_class(tps, traits, items, ctor, dtor) {
           let (_, ms) = ast_util::split_class_items(items);
           // Map trait refs to their parent classes. This is
           // so we can find the self_ty

@@ -41,8 +41,8 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              pat_box, pat_enum, pat_ident, pat_lit, pat_range, pat_rec,
              pat_tup, pat_uniq, pat_wild, path, private, proto, proto_any,
              proto_bare, proto_block, proto_box, proto_uniq, public, pure_fn,
-             purity, re_anon, re_named, region, region_param, rem, ret_style,
-             return_val, rp_none, rp_self, shl, shr, stmt, stmt_decl,
+             purity, re_anon, re_named, region, rem, ret_style,
+             return_val, shl, shr, stmt, stmt_decl,
              stmt_expr, stmt_semi, subtract, token_tree, trait_ref, tt_delim,
              tt_dotdotdot, tt_flat, tt_interpolate, ty, ty_, ty_bot, ty_box,
              ty_constr, ty_constr_, ty_constr_arg, ty_field, ty_fn, ty_infer,
@@ -2133,10 +2133,10 @@ class parser {
 
     fn parse_item_trait() -> item_info {
         let ident = self.parse_ident();
-        let rp = self.parse_region_param();
+        self.parse_region_param();
         let tps = self.parse_ty_params();
         let meths = self.parse_ty_methods();
-        (ident, item_trait(tps, rp, meths), none)
+        (ident, item_trait(tps, meths), none)
     }
 
     // Parses three variants (with the region/type params always optional):
@@ -2147,18 +2147,19 @@ class parser {
         fn wrap_path(p: parser, pt: @path) -> @ty {
             @{id: p.get_id(), node: ty_path(pt, p.get_id()), span: pt.span}
         }
-        let mut (ident, rp, tps) = {
+        let mut (ident, tps) = {
             if self.token == token::LT {
-                (none, rp_none, self.parse_ty_params())
+                (none, self.parse_ty_params())
             } else if self.token == token::BINOP(token::SLASH) {
-                (none, self.parse_region_param(), self.parse_ty_params())
+                self.parse_region_param();
+                (none, self.parse_ty_params())
             }
             else if self.is_keyword("of") {
-                (none, rp_none, ~[])
+                (none, ~[])
             } else {
                 let id = self.parse_ident();
-                let rp = self.parse_region_param();
-                (some(id), rp, self.parse_ty_params())
+                self.parse_region_param();
+                (some(id), self.parse_ty_params())
             }
         };
         let ifce = if self.eat_keyword("of") {
@@ -2179,25 +2180,18 @@ class parser {
         while !self.eat(token::RBRACE) {
             vec::push(meths, self.parse_method(public));
         }
-        (ident, item_impl(tps, rp, ifce, ty, meths), none)
+        (ident, item_impl(tps, ifce, ty, meths), none)
     }
 
     // Instantiates ident <i> with references to <typarams> as arguments.
     // Used to create a path that refers to a class which will be defined as
     // the return type of the ctor function.
     fn ident_to_path_tys(i: ident,
-                         rp: region_param,
                          typarams: ~[ty_param]) -> @path {
         let s = self.last_span;
 
-        // Hack.  But then, this whole function is in service of a hack.
-        let a_r = alt rp {
-          rp_none { none }
-          rp_self { some(self.region_from_name(some(@"self"))) }
-        };
-
         @{span: s, global: false, idents: ~[i],
-          rp: a_r,
+          rp: none,
           types: vec::map(typarams, |tp| {
               @{id: self.get_id(),
                 node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
@@ -2218,9 +2212,9 @@ class parser {
 
     fn parse_item_class() -> item_info {
         let class_name = self.parse_value_ident();
-        let rp = self.parse_region_param();
+        self.parse_region_param();
         let ty_params = self.parse_ty_params();
-        let class_path = self.ident_to_path_tys(class_name, rp, ty_params);
+        let class_path = self.ident_to_path_tys(class_name, ty_params);
         let traits : ~[@trait_ref] = if self.eat(token::COLON)
             { self.parse_trait_ref_list() }
         else { ~[] };
@@ -2255,7 +2249,7 @@ class parser {
                         self_id: self.get_id(),
                         dec: ct_d,
                         body: ct_b},
-                 span: ct_s}, actual_dtor, rp),
+                 span: ct_s}, actual_dtor),
              none)
           }
           /*
@@ -2447,26 +2441,23 @@ class parser {
 
     fn parse_item_type() -> item_info {
         let t = self.parse_type_decl();
-        let rp = self.parse_region_param();
+        self.parse_region_param();
         let tps = self.parse_ty_params();
         self.expect(token::EQ);
         let ty = self.parse_ty(false);
         self.expect(token::SEMI);
-        (t.ident, item_ty(ty, tps, rp), none)
+        (t.ident, item_ty(ty, tps), none)
     }
 
-    fn parse_region_param() -> region_param {
+    fn parse_region_param() {
         if self.eat(token::BINOP(token::SLASH)) {
             self.expect(token::BINOP(token::AND));
-            rp_self
-        } else {
-            rp_none
         }
     }
 
     fn parse_item_enum(default_vis: visibility) -> item_info {
         let id = self.parse_ident();
-        let rp = self.parse_region_param();
+        self.parse_region_param();
         let ty_params = self.parse_ty_params();
         let mut variants: ~[variant] = ~[];
         // Newtype syntax
@@ -2483,7 +2474,7 @@ class parser {
                          id: self.get_id(),
                          disr_expr: none,
                          vis: public});
-            ret (id, item_enum(~[variant], ty_params, rp), none);
+            ret (id, item_enum(~[variant], ty_params), none);
         }
         self.expect(token::LBRACE);
 
@@ -2521,7 +2512,7 @@ class parser {
             self.fatal("discriminator values can only be used with a c-like \
                         enum");
         }
-        (id, item_enum(variants, ty_params, rp), none)
+        (id, item_enum(variants, ty_params), none)
     }
 
     fn parse_fn_ty_proto() -> proto {

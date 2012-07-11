@@ -679,30 +679,23 @@ type item = {ident: ident, attrs: ~[attribute],
              vis: visibility, span: span};
 
 #[auto_serialize]
-enum region_param {
-    rp_none,
-    rp_self
-}
-
-#[auto_serialize]
 enum item_ {
     item_const(@ty, @expr),
     item_fn(fn_decl, ~[ty_param], blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
-    item_ty(@ty, ~[ty_param], region_param),
-    item_enum(~[variant], ~[ty_param], region_param),
+    item_ty(@ty, ~[ty_param]),
+    item_enum(~[variant], ~[ty_param]),
     item_class(~[ty_param], /* ty params for class */
                ~[@trait_ref],   /* traits this class implements */
                ~[@class_member], /* methods, etc. */
                                /* (not including ctor or dtor) */
                class_ctor,
                /* dtor is optional */
-               option<class_dtor>,
-               region_param
+               option<class_dtor>
                ),
-    item_trait(~[ty_param], region_param, ~[ty_method]),
-    item_impl(~[ty_param], region_param, option<@trait_ref> /* trait */,
+    item_trait(~[ty_param], ~[ty_method]),
+    item_impl(~[ty_param], option<@trait_ref> /* trait */,
               @ty /* self */, ~[@method]),
     item_mac(mac),
 }

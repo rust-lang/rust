@@ -439,10 +439,10 @@ fn resolve_names(e: @env, c: @ast::crate) {
           /* At this point, the code knows what traits the trait refs
              refer to, so it's possible to resolve them.
            */
-          ast::item_impl(_, _, ifce, _, _) {
+          ast::item_impl(_, ifce, _, _) {
             ifce.iter(|p| resolve_trait_ref(p, sc, e))
           }
-          ast::item_class(_, traits, _, _, _, _) {
+          ast::item_class(_, traits, _, _, _) {
             for traits.each |p| {
                resolve_trait_ref(p, sc, e);
             }
@@ -552,7 +552,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
 
     let sc = @cons(scope_item(i), sc);
     alt i.node {
-      ast::item_impl(tps, _, ifce, sty, methods) {
+      ast::item_impl(tps, ifce, sty, methods) {
         v.visit_ty_params(tps, sc, v);
         option::iter(ifce, |p| visit::visit_path(p.path, sc, v));
         v.visit_ty(sty, sc, v);
@@ -564,7 +564,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
                        m.decl, m.body, m.span, m.id, msc, v);
         }
       }
-      ast::item_trait(tps, _, methods) {
+      ast::item_trait(tps, methods) {
         v.visit_ty_params(tps, sc, v);
         let isc = @cons(scope_method(i.id, tps), sc);
         for methods.each |m| {
@@ -574,7 +574,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item,
             v.visit_ty(m.decl.output, msc, v);
         }
       }
-      ast::item_class(tps, traits, members, ctor, m_dtor, _) {
+      ast::item_class(tps, traits, members, ctor, m_dtor) {
         v.visit_ty_params(tps, sc, v);
         let class_scope = @cons(scope_item(i), sc);
         /* visit the constructor... */
@@ -1042,13 +1042,13 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
           }
           scope_item(it) {
             alt it.node {
-              ast::item_impl(tps, _, _, _, _) {
+              ast::item_impl(tps, _, _, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
-              ast::item_enum(_, tps, _) | ast::item_ty(_, tps, _) {
+              ast::item_enum(_, tps) | ast::item_ty(_, tps) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
-              ast::item_trait(tps, _, _) {
+              ast::item_trait(tps, _) {
                 if ns == ns_type {
                     if *name == "self" {
                         ret some(def_self(it.id));
@@ -1062,7 +1062,7 @@ fn lookup_in_scope(e: env, &&sc: scopes, sp: span, name: ident, ns: namespace,
               ast::item_foreign_mod(m) {
                 ret lookup_in_local_foreign_mod(e, it.id, sp, name, ns);
               }
-              ast::item_class(tps, _, members, ctor, _, _) {
+              ast::item_class(tps, _, members, ctor, _) {
                   if ns == ns_type {
                       ret lookup_in_ty_params(e, name, tps);
                   }
@@ -1234,7 +1234,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
               }
               ast::decl_item(it) {
                 alt it.node {
-                  ast::item_enum(variants, _, _) {
+                  ast::item_enum(variants, _) {
                     if ns == ns_type {
                         if str::eq(*it.ident, *name) {
                             ret some(ast::def_ty(local_def(it.id)));
@@ -1339,7 +1339,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
       ast::item_ty(*) | item_trait(*) | item_enum(*) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
-      ast::item_class(_, _, _members, ct, _, _) {
+      ast::item_class(_, _, _members, ct, _) {
           alt ns {
              ns_type {
                ret some(ast::def_class(local_def(i.id)));
@@ -1641,11 +1641,11 @@ fn index_mod(md: ast::_mod) -> mod_index {
     for md.items.each |it| {
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
-          ast::item_foreign_mod(_) | ast::item_ty(_, _, _) |
+          ast::item_foreign_mod(_) | ast::item_ty(_, _) |
           ast::item_impl(*) | ast::item_trait(*) {
             add_to_index(index, it.ident, mie_item(it));
           }
-          ast::item_enum(variants, _, _) {
+          ast::item_enum(variants, _) {
             add_to_index(index, it.ident, mie_item(it));
             let mut variant_idx: uint = 0u;
             for variants.each |v| {
@@ -1655,7 +1655,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
-          ast::item_class(tps, _, items, ctor, _, _) {
+          ast::item_class(tps, _, items, ctor, _) {
               // add the class name itself
               add_to_index(index, it.ident, mie_item(it));
           }
@@ -1780,15 +1780,15 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
         ensure_unique(*e, i.span, ty_params, |tp| tp.ident,
                       "type parameter");
       }
-      ast::item_enum(_, ty_params, _) {
+      ast::item_enum(_, ty_params) {
         ensure_unique(*e, i.span, ty_params, |tp| tp.ident,
                       "type parameter");
       }
-      ast::item_trait(_, _, methods) {
+      ast::item_trait(_, methods) {
         ensure_unique(*e, i.span, methods, |m| m.ident,
                       "method");
       }
-      ast::item_impl(_, _, _, _, methods) {
+      ast::item_impl(_, _, _, methods) {
         ensure_unique(*e, i.span, methods, |m| m.ident,
                       "method");
       }
@@ -1854,7 +1854,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
               }
               ast::decl_item(it) {
                 alt it.node {
-                  ast::item_enum(variants, _, _) {
+                  ast::item_enum(variants, _) {
                     add_name(types, it.span, it.ident);
                     for variants.each |v| {
                         add_name(values, v.span, v.node.name);
@@ -2051,7 +2051,7 @@ fn check_exports(e: @env) {
           some(ms) {
             let maybe_id = do list_search(ms) |m| {
                 alt m {
-                  mie_item(@{node: item_enum(_, _, _), id, _}) { some(id) }
+                  mie_item(@{node: item_enum(_, _), id, _}) { some(id) }
                   _ { none }
                 }
             };
@@ -2242,7 +2242,7 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: ~[@_impl],
                       name: option<ident>,
                       ck_exports: option<@indexed_mod>) {
     alt i.node {
-      ast::item_impl(_, _, ifce, _, mthds) {
+      ast::item_impl(_, ifce, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
            alt ck_exports {
              some(m) { is_exported(e, i.ident, m) }
@@ -2257,7 +2257,7 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: ~[@_impl],
                         })});
         }
       }
-      ast::item_class(tps, ifces, items, _, _, _) {
+      ast::item_class(tps, ifces, items, _, _) {
           let (_, mthds) = ast_util::split_class_items(items);
           let n_tps = tps.len();
         do vec::iter(ifces) |p| {

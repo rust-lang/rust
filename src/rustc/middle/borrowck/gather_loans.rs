@@ -199,6 +199,12 @@ impl methods for gather_loan_ctxt {
 
                 if req_mutbl == m_imm && cmt.mutbl != m_imm {
                     self.bccx.loaned_paths_imm += 1;
+
+                    if self.tcx().sess.borrowck_note_loan() {
+                        self.bccx.span_note(
+                            cmt.span,
+                            #fmt["immutable loan required"]);
+                    }
                 } else {
                     self.bccx.loaned_paths_same += 1;
                 }

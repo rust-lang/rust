@@ -16,15 +16,14 @@ impl of region_scope for empty_rscope {
     }
 }
 
-enum type_rscope = ast::region_param;
+enum type_rscope = bool;
 impl of region_scope for type_rscope {
     fn anon_region() -> result<ty::region, str> {
-        alt *self {
-          ast::rp_self { result::ok(ty::re_bound(ty::br_self)) }
-          ast::rp_none {
+        if *self {
+            result::ok(ty::re_bound(ty::br_self))
+        } else {
             result::err("to use region types here, the containing type \
                          must be declared with a region bound")
-          }
         }
     }
     fn named_region(id: ast::ident) -> result<ty::region, str> {

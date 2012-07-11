@@ -15,7 +15,7 @@ import middle::typeck::infer::{infer_ctxt, mk_subty, new_infer_ctxt};
 import syntax::ast::{crate, def_id, item, item_class, item_const, item_enum};
 import syntax::ast::{item_fn, item_foreign_mod, item_impl, item_mac};
 import syntax::ast::{item_mod, item_trait, item_ty, local_crate, method};
-import syntax::ast::{node_id, region_param, rp_none, rp_self, trait_ref};
+import syntax::ast::{node_id, trait_ref};
 import syntax::ast_util::{def_id_of_def, new_def_hash};
 import syntax::visit::{default_simple_visitor, default_visitor};
 import syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
@@ -76,7 +76,7 @@ class CoherenceChecker {
         visit_crate(*crate, (), mk_simple_visitor(@{
             visit_item: |item| {
                 alt item.node {
-                    item_impl(_, _, associated_trait, self_type, _) {
+                    item_impl(_, associated_trait, self_type, _) {
                         self.check_implementation(item, associated_trait);
                     }
                     _ {
@@ -239,15 +239,9 @@ class CoherenceChecker {
     // Converts a polytype to a monotype by replacing all parameters with
     // type variables.
     fn universally_quantify_polytype(polytype: ty_param_bounds_and_ty) -> t {
-        let self_region;
-        alt polytype.rp {
-            rp_none {
-                self_region = none;
-            }
-            rp_self {
-                self_region = some(self.inference_context.next_region_var())
-            }
-        };
+        let self_region =
+            if polytype.rp {none}
+            else {some(self.inference_context.next_region_var())};
 
         let bounds_count = polytype.bounds.len();
         let type_parameters =
@@ -304,7 +298,7 @@ class CoherenceChecker {
                             self.privileged_types.remove(privileged_type);
                         }
                     }
-                    item_impl(_, _, optional_trait_ref, _, _) {
+                    item_impl(_, optional_trait_ref, _, _) {
                         alt self.base_type_def_ids.find(item.id) {
                             none {
                                 // Nothing to do.

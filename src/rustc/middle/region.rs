@@ -138,11 +138,13 @@ import syntax::{ast, visit};
 import syntax::codemap::span;
 import syntax::print::pprust;
 import syntax::ast_util::new_def_hash;
+import syntax::ast_map;
+import dvec::{dvec, extensions};
+import metadata::csearch;
 
 import std::list;
 import std::list::list;
-import std::map;
-import std::map::hashmap;
+import std::map::{hashmap, int_hash};
 
 type parent = option<ast::node_id>;
 
@@ -386,7 +388,7 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
         -> region_map {
     let cx: ctxt = {sess: sess,
                     def_map: def_map,
-                    region_map: map::int_hash(),
+                    region_map: int_hash(),
                     parent: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
@@ -402,3 +404,208 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
     ret cx.region_map;
 }
 
+// ___________________________________________________________________________
+// Determining region parameterization
+//
+// Infers which type defns must be region parameterized---this is done
+// by scanning their contents to see whether they reference a region
+// type, directly or indirectly.  This is a fixed-point computation.
+//
+// We do it in two passes.  First we walk the AST and construct a map
+// from each type defn T1 to other defns which make use of it.  For example,
+// if we have a type like:
+//
+//    type S = *int;
+//    type T = S;
+//
+// Then there would be a map entry from S to T.  During the same walk,
+// we also construct add any types that reference regions to a set and
+// a worklist.  We can then process the worklist, propagating indirect
+// dependencies until a fixed point is reached.
+
+type region_paramd_items = hashmap<ast::node_id, ()>;
+type dep_map = hashmap<ast::node_id, @dvec<ast::node_id>>;
+
+type determine_rp_ctxt = @{
+    sess: session,
+    ast_map: ast_map::map,
+    def_map: resolve::def_map,
+    region_paramd_items: region_paramd_items,
+    dep_map: dep_map,
+    worklist: dvec<ast::node_id>,
+
+    mut item_id: ast::node_id,
+    mut anon_implies_rp: bool
+};
+
+impl methods for determine_rp_ctxt {
+    fn add_rp(id: ast::node_id) {
+        assert id != 0;
+        if self.region_paramd_items.insert(id, ()) {
+            #debug["add region-parameterized item: %d (%s)",
+                   id, ast_map::node_id_to_str(self.ast_map, id)];
+            self.worklist.push(id);
+        } else {
+            #debug["item %d already region-parameterized", id];
+        }
+    }
+
+    fn add_dep(from: ast::node_id, to: ast::node_id) {
+        #debug["add dependency from %d -> %d (%s -> %s)",
+               from, to,
+               ast_map::node_id_to_str(self.ast_map, from),
+               ast_map::node_id_to_str(self.ast_map, to)];
+        let vec = alt self.dep_map.find(from) {
+            some(vec) => {vec}
+            none => {
+                let vec = @dvec();
+                self.dep_map.insert(from, vec);
+                vec
+            }
+        };
+        if !vec.contains(to) { vec.push(to); }
+    }
+
+    fn region_is_relevant(r: @ast::region) -> bool {
+        alt r.node {
+          ast::re_anon {self.anon_implies_rp}
+          ast::re_named(@"self") {true}
+          ast::re_named(_) {false}
+        }
+    }
+
+    fn with(item_id: ast::node_id, anon_implies_rp: bool, f: fn()) {
+        let old_item_id = self.item_id;
+        let old_anon_implies_rp = self.anon_implies_rp;
+        self.item_id = item_id;
+        self.anon_implies_rp = anon_implies_rp;
+        #debug["with_item_id(%d, %b)", item_id, anon_implies_rp];
+        let _i = util::common::indenter();
+        f();
+        self.item_id = old_item_id;
+        self.anon_implies_rp = old_anon_implies_rp;
+    }
+}
+
+fn determine_rp_in_item(item: @ast::item,
+                        &&cx: determine_rp_ctxt,
+                        visitor: visit::vt<determine_rp_ctxt>) {
+    do cx.with(item.id, true) {
+        visit::visit_item(item, cx, visitor);
+    }
+}
+
+fn determine_rp_in_fn(fk: visit::fn_kind,
+                      decl: ast::fn_decl,
+                      body: ast::blk,
+                      sp: span,
+                      id: ast::node_id,
+                      &&cx: determine_rp_ctxt,
+                      visitor: visit::vt<determine_rp_ctxt>) {
+    do cx.with(cx.item_id, false) {
+        visit::visit_fn(fk, decl, body, sp, id, cx, visitor);
+    }
+}
+
+fn determine_rp_in_ty_method(ty_m: ast::ty_method,
+                             &&cx: determine_rp_ctxt,
+                             visitor: visit::vt<determine_rp_ctxt>) {
+    do cx.with(cx.item_id, false) {
+        visit::visit_ty_method(ty_m, cx, visitor);
+    }
+}
+
+fn determine_rp_in_ty(ty: @ast::ty,
+                      &&cx: determine_rp_ctxt,
+                      visitor: visit::vt<determine_rp_ctxt>) {
+
+    // we are only interesting in types that will require an item to
+    // be region-parameterized.  if cx.item_id is zero, then this type
+    // is not a member of a type defn nor is it a constitutent of an
+    // impl etc.  So we can ignore it and its components.
+    if cx.item_id == 0 { ret; }
+
+    // if this type directly references a region, either via a
+    // region pointer like &r.ty or a region-parameterized path
+    // like path/r, add to the worklist/set
+    alt ty.node {
+      ast::ty_rptr(r, _) |
+      ast::ty_path(@{rp: some(r), _}, _) |
+      ast::ty_vstore(_, ast::vstore_slice(r)) => {
+        #debug["referenced type with regions %s", pprust::ty_to_str(ty)];
+        if cx.region_is_relevant(r) {
+            cx.add_rp(cx.item_id);
+        }
+      }
+
+      _ => {}
+    }
+
+    // if this references another named type, add the dependency
+    // to the dep_map.  If the type is not defined in this crate,
+    // then check whether it is region-parameterized and consider
+    // that as a direct dependency.
+    alt ty.node {
+      ast::ty_path(_, id) {
+        alt cx.def_map.get(id) {
+          ast::def_ty(did) | ast::def_class(did) {
+            if did.crate == ast::local_crate {
+                cx.add_dep(did.node, cx.item_id);
+            } else {
+                let cstore = cx.sess.cstore;
+                if csearch::get_region_param(cstore, did) {
+                    #debug["reference to external, rp'd type %s",
+                           pprust::ty_to_str(ty)];
+                    cx.add_rp(cx.item_id);
+                }
+            }
+          }
+          _ {}
+        }
+      }
+      _ {}
+    }
+
+    visit::visit_ty(ty, cx, visitor);
+}
+
+fn determine_rp_in_crate(sess: session,
+                         ast_map: ast_map::map,
+                         def_map: resolve::def_map,
+                         crate: @ast::crate) -> region_paramd_items {
+    let cx = @{sess: sess,
+               ast_map: ast_map,
+               def_map: def_map,
+               region_paramd_items: int_hash(),
+               dep_map: int_hash(),
+               worklist: dvec(),
+               mut item_id: 0,
+               mut anon_implies_rp: false};
+
+    // gather up the base set, worklist and dep_map:
+    let visitor = visit::mk_vt(@{
+        visit_fn: determine_rp_in_fn,
+        visit_item: determine_rp_in_item,
+        visit_ty: determine_rp_in_ty,
+        visit_ty_method: determine_rp_in_ty_method,
+        with *visit::default_visitor()
+    });
+    visit::visit_crate(*crate, cx, visitor);
+
+    // propagate indirect dependencies
+    while cx.worklist.len() != 0 {
+        let id = cx.worklist.pop();
+        #debug["popped %d from worklist", id];
+        alt cx.dep_map.find(id) {
+          none {}
+          some(vec) {
+            for vec.each |to_id| {
+                cx.add_rp(to_id);
+            }
+          }
+        }
+    }
+
+    // return final set
+    ret cx.region_paramd_items;
+}

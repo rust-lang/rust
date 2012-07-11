@@ -112,7 +112,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             traverse_inline_body(cx, blk);
         }
       }
-      item_impl(tps, _, _, _, ms) {
+      item_impl(tps, _, _, ms) {
         for vec::each(ms) |m| {
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
@@ -121,7 +121,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, _traits, items, ctor, m_dtor, _) {
+      item_class(tps, _traits, items, ctor, m_dtor) {
         cx.rmap.insert(ctor.node.id, ());
         do option::iter(m_dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
@@ -143,7 +143,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_ty(t, _, _) {
+      item_ty(t, _) {
         traverse_ty(t, cx, mk_ty_visitor());
       }
       item_const(*) |
@@ -218,7 +218,7 @@ fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
         visit_item: |i, cx, v| {
             visit::visit_item(i, cx, v);
             alt i.node {
-              item_class(_, _, _, _, some(_), _) {
+              item_class(_, _, _, _, some(_)) {
                 traverse_public_item(cx, i);
               }
               _ {}

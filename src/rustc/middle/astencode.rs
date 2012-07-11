@@ -554,11 +554,11 @@ impl helpers for ebml::writer {
         do self.emit_rec {
             do self.emit_rec_field("bounds", 0u) {
                 do self.emit_from_vec(*tpbt.bounds) |bs| {
-                    self.emit_bounds(ecx, bs)
+                    self.emit_bounds(ecx, bs);
                 }
             }
             do self.emit_rec_field("rp", 1u) {
-                ast::serialize_region_param(self, tpbt.rp)
+                self.emit_bool(tpbt.rp);
             }
             do self.emit_rec_field("ty", 2u) {
                 self.emit_ty(ecx, tpbt.ty);
@@ -759,7 +759,7 @@ impl decoder for ebml::ebml_deserializer {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
                 }),
                 rp: self.read_rec_field("rp", 1u, || {
-                    ast::deserialize_region_param(self)
+                    self.read_bool()
                 }),
                 ty: self.read_rec_field("ty", 2u, || {
                     self.read_ty(xcx)

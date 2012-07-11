@@ -1,5 +1,5 @@
 // Note: impl on a slice
-impl foo/& for &int {
+impl foo for &int {
     fn get() -> int {
         ret *self;
     }

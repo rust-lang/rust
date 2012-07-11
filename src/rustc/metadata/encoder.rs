@@ -86,10 +86,10 @@ fn encode_name_and_def_id(ebml_w: ebml::writer, nm: ident,
     encode_def_id(ebml_w, local_def(id));
 }
 
-fn encode_region_param(ebml_w: ebml::writer, rp: region_param) {
-    do ebml_w.wr_tag(tag_region_param) {
-        serialize_region_param(ebml_w, rp)
-    }
+fn encode_region_param(ecx: @encode_ctxt, ebml_w: ebml::writer,
+                       it: @ast::item) {
+    let rp = ecx.tcx.region_paramd_items.contains_key(it.id);
+    if rp { do ebml_w.wr_tag(tag_region_param) { } }
 }
 
 fn encode_named_def_id(ebml_w: ebml::writer, name: ident, id: def_id) {
@@ -188,12 +188,12 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                   vec::append_one(path, it.ident), index);
             }
           }
-          item_ty(_, tps, _) {
+          item_ty(_, tps) {
             do ebml_w.wr_tag(tag_paths_data_item) {
               encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
           }
-          item_class(_, _, items, ctor, m_dtor, _) {
+          item_class(_, _, items, ctor, m_dtor) {
             do ebml_w.wr_tag(tag_paths_data_item) {
                 encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
@@ -208,7 +208,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                                         index);
             }
           }
-          item_enum(variants, _, _) {
+          item_enum(variants, _) {
             do ebml_w.wr_tag(tag_paths_data_item) {
                   encode_name_and_def_id(ebml_w, it.ident, it.id);
               }
@@ -406,7 +406,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
             ref, we need to map it to its parent class */
                 ebml_w.wr_str(def_to_str(local_def(it.id)));
               }
-              some(ast_map::node_item(@{node: item_impl(_,_,
+              some(ast_map::node_item(@{node: item_impl(_,
                                                    some(ifce),_,_),_},_)) {
                 ebml_w.wr_str(def_to_str(did));
               }
@@ -550,7 +550,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
     let tcx = ecx.tcx;
     let must_write =
-        alt item.node { item_enum(_, _, _) { true } _ { false } };
+        alt item.node { item_enum(_, _) { true } _ { false } };
     if !must_write && !reachable(ecx, item.id) { ret; }
 
     fn add_to_index_(item: @item, ebml_w: ebml::writer,
@@ -598,7 +598,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
-      item_ty(_, tps, rp) {
+      item_ty(_, tps) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -607,10 +607,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        encode_region_param(ebml_w, rp);
+        encode_region_param(ecx, ebml_w, item);
         ebml_w.end_tag();
       }
-      item_enum(variants, tps, rp) {
+      item_enum(variants, tps) {
         add_to_index();
         do ebml_w.wr_tag(tag_items_data_item) {
             encode_def_id(ebml_w, local_def(item.id));
@@ -623,12 +623,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             }
             ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
             encode_path(ebml_w, path, ast_map::path_name(item.ident));
-            encode_region_param(ebml_w, rp);
+            encode_region_param(ecx, ebml_w, item);
         }
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps, traits, items, ctor, m_dtor, rp) {
+      item_class(tps, traits, items, ctor, m_dtor) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -655,7 +655,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        encode_region_param(ebml_w, rp);
+        encode_region_param(ecx, ebml_w, item);
         for traits.each |t| {
            encode_trait_ref(ebml_w, ecx, t);
         }
@@ -704,12 +704,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
-      item_impl(tps, rp, ifce, _, methods) {
+      item_impl(tps, ifce, _, methods) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i');
-        encode_region_param(ebml_w, rp);
+        encode_region_param(ecx, ebml_w, item);
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
@@ -733,12 +733,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                                    vec::append(tps, m.tps));
         }
       }
-      item_trait(tps, rp, ms) {
+      item_trait(tps, ms) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'I');
-        encode_region_param(ebml_w, rp);
+        encode_region_param(ecx, ebml_w, item);
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
@@ -801,7 +801,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
                 alt i.node {
-                   item_class(tps, _, _, ctor, m_dtor, _) {
+                   item_class(tps, _, _, ctor, m_dtor) {
                    #debug("encoding info for ctor %s %d", *i.ident,
                           ctor.node.id);
                    vec::push(*index,

@@ -78,22 +78,22 @@ fn moddoc_from_mod(
                     constdoc_from_const(itemdoc)
                 ))
               }
-              ast::item_enum(variants, _, _) {
+              ast::item_enum(variants, _) {
                 some(doc::enumtag(
                     enumdoc_from_enum(itemdoc, variants)
                 ))
               }
-              ast::item_trait(_, _, methods) {
+              ast::item_trait(_, methods) {
                 some(doc::traittag(
                     traitdoc_from_trait(itemdoc, methods)
                 ))
               }
-              ast::item_impl(_, _, _, _, methods) {
+              ast::item_impl(_, _, _, methods) {
                 some(doc::impltag(
                     impldoc_from_impl(itemdoc, methods)
                 ))
               }
-              ast::item_ty(_, _, _) {
+              ast::item_ty(_, _) {
                 some(doc::tytag(
                     tydoc_from_ty(itemdoc)
                 ))

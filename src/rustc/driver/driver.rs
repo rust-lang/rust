@@ -178,7 +178,11 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let region_map = time(time_passes, "region resolution", ||
         middle::region::resolve_crate(sess, def_map, crate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars, region_map);
+    let rp_set = time(time_passes, "region paramerization inference", ||
+        middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
+
+    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
+                            region_map, rp_set);
 
     let (method_map, vtable_map) = time(time_passes, "typechecking", ||
                                         typeck::check_crate(ty_cx,

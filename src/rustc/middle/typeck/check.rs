@@ -66,7 +66,7 @@ type parameter).
 
 */
 
-import astconv::{ast_conv, ast_ty_to_ty};
+import astconv::{ast_conv, ast_ty_to_ty, ast_region_to_region};
 import collect::{methods}; // ccx.to_ty()
 import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
@@ -348,17 +348,20 @@ fn check_class_member(ccx: @crate_ctxt, class_t: ty::t,
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
-      ast::item_enum(vs, _, _) {
+      ast::item_enum(vs, _) {
         check_enum_variants(ccx, it.span, vs, it.id);
       }
       ast::item_fn(decl, tps, body) {
         check_bare_fn(ccx, decl, body, it.id, none);
       }
-      ast::item_impl(tps, rp, _, ty, ms) {
+      ast::item_impl(tps, _, ty, ms) {
+        let rp = ccx.tcx.region_paramd_items.contains_key(it.id);
+        #debug["item_impl %s with id %d rp %b",
+               *it.ident, it.id, rp];
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| { check_method(ccx, m, self_ty);}
       }
-      ast::item_class(tps, traits, members, ctor, m_dtor, rp) {
+      ast::item_class(tps, traits, members, ctor, m_dtor) {
           let tcx = ccx.tcx;
           let class_t = ty::node_id_to_type(tcx, it.id);
           // typecheck the ctor
@@ -387,9 +390,9 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           // Check that the class is instantiable
           check_instantiable(ccx.tcx, it.span, it.id);
       }
-      ast::item_ty(t, tps, rp) {
+      ast::item_ty(t, tps) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
-        check_bounds_are_used(ccx, t.span, tps, rp, tpt_ty);
+        check_bounds_are_used(ccx, t.span, tps, tpt_ty);
       }
       ast::item_foreign_mod(m) {
         if syntax::attr::foreign_abi(it.attrs) ==
@@ -647,15 +650,16 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
     let tcx = fcx.ccx.tcx;
 
     let {n_tps, rp, raw_ty} = if did.crate == ast::local_crate {
+        let rp = fcx.tcx().region_paramd_items.contains_key(did.node);
         alt check tcx.items.find(did.node) {
-          some(ast_map::node_item(@{node: ast::item_impl(ts, rp, _, st, _),
+          some(ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                   _}, _)) {
             {n_tps: ts.len(),
              rp: rp,
              raw_ty: fcx.ccx.to_ty(rscope::type_rscope(rp), st)}
           }
           some(ast_map::node_item(@{node: ast::item_class(ts,
-                                 _,_,_,_,rp), id: class_id, _},_)) {
+                                 _,_,_,_), id: class_id, _},_)) {
               /* If the impl is a class, the self ty is just the class ty
                  (doing a no-op subst for the ty params; in the next step,
                  we substitute in fresh vars for them)
@@ -663,9 +667,8 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
               {n_tps: ts.len(),
                rp: rp,
                raw_ty: ty::mk_class(tcx, local_def(class_id),
-                      {self_r: alt rp {
-                          ast::rp_self { some(fcx.infcx.next_region_var()) }
-                          ast::rp_none { none }},
+                      {self_r: if rp {some(ty::re_bound(ty::br_self))}
+                               else {none},
                        self_ty: none,
                        tps: ty::ty_params_to_tys(tcx, ts)})}
           }
@@ -679,10 +682,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
          raw_ty: ity.ty}
     };
 
-    let self_r = alt rp {
-      ast::rp_none { none }
-      ast::rp_self { some(fcx.infcx.next_region_var()) }
-    };
+    let self_r = if rp {some(fcx.infcx.next_region_var())} else {none};
     let tps = fcx.infcx.next_ty_vars(n_tps);
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};
@@ -2053,7 +2053,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         // extern functions are just u8 pointers
         ret {
             bounds: @~[],
-            rp: ast::rp_none,
+            rp: false,
             ty: ty::mk_ptr(
                 fcx.ccx.tcx,
                 {
@@ -2109,13 +2109,27 @@ fn instantiate_path(fcx: @fn_ctxt,
     let ty_param_count = vec::len(*tpt.bounds);
     let ty_substs_len = vec::len(pth.types);
 
-    // For now, there is no way to explicitly specify the region bound.
-    // This will have to change eventually.
-    let self_r = alt tpt.rp {
-      ast::rp_self { some(fcx.infcx.next_region_var()) }
-      ast::rp_none { none }
+    // determine the region bound, using the value given by the user
+    // (if any) and otherwise using a fresh region variable
+    let self_r = alt pth.rp {
+      some(r) if !tpt.rp => {
+        fcx.ccx.tcx.sess.span_err
+            (sp, "this item is not region-parameterized");
+        none
+      }
+      some(r) => {
+        some(ast_region_to_region(fcx, fcx, sp, r))
+      }
+      none if tpt.rp => {
+        some(fcx.infcx.next_region_var())
+      }
+      none => {
+        none
+      }
     };
 
+    // determine values for type parameters, using the values given by
+    // the user (if any) and otherwise using fresh type variables
     let tps = if ty_substs_len == 0u {
         fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_param_count == 0u {
@@ -2203,24 +2217,14 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
 fn check_bounds_are_used(ccx: @crate_ctxt,
                          span: span,
                          tps: ~[ast::ty_param],
-                         rp: ast::region_param,
                          ty: ty::t) {
-    let mut r_used = alt rp {
-      ast::rp_self { false }
-      ast::rp_none { true }
-    };
-
-    if tps.len() == 0u && r_used { ret; }
+    // make a vector of booleans initially false, set to true when used
+    if tps.len() == 0u { ret; }
     let tps_used = vec::to_mut(vec::from_elem(tps.len(), false));
 
     ty::walk_regions_and_ty(
         ccx.tcx, ty,
-        |r| {
-            alt r {
-              ty::re_bound(_) { r_used = true; }
-              _ { }
-            }
-        },
+        |_r| {},
         |t| {
             alt ty::get(t).struct {
               ty::ty_param(idx, _) { tps_used[idx] = true; }
@@ -2228,12 +2232,6 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
             }
             true
         });
-
-    if !r_used {
-        ccx.tcx.sess.span_err(
-            span, "lifetime `self` unused inside \
-                   reference-parameterized type");
-    }
 
     for tps_used.eachi |i, b| {
         if !b {

@@ -233,7 +233,9 @@ type ctxt =
       cstore: metadata::cstore::cstore,
       sess: session::session,
       def_map: resolve::def_map,
+
       region_map: middle::region::region_map,
+      region_paramd_items: middle::region::region_paramd_items,
 
       // Stores the types for various nodes in the AST.  Note that this table
       // is not guaranteed to be populated until after typeck.  See
@@ -482,7 +484,7 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
 }
 
 type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
-                               rp: ast::region_param,
+                               rp: bool,
                                ty: t};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
@@ -505,9 +507,12 @@ fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
                  |&&a: t, &&b: t| type_id(a) == type_id(b))
 }
 
-fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
+fn mk_ctxt(s: session::session,
+           dm: resolve::def_map,
+           amap: ast_map::map,
            freevars: freevars::freevar_map,
-           region_map: middle::region::region_map) -> ctxt {
+           region_map: middle::region::region_map,
+           region_paramd_items: middle::region::region_paramd_items) -> ctxt {
     let interner = map::hashmap(|&&k: intern_key| {
         hash_type_structure(k.struct) +
             option::map_default(k.o_def_id, 0u, ast_util::hash_def)
@@ -523,6 +528,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       sess: s,
       def_map: dm,
       region_map: region_map,
+      region_paramd_items: region_paramd_items,
       node_types: @smallintmap::mk(),
       node_type_substs: map::int_hash(),
       items: amap,
@@ -2543,10 +2549,10 @@ fn impl_trait(cx: ctxt, id: ast::def_id) -> option<t> {
         #debug("(impl_trait) searching for trait impl %?", id);
         alt cx.items.find(id.node) {
            some(ast_map::node_item(@{node: ast::item_impl(
-              _, _, some(@{id: id, _}), _, _), _}, _)) {
+               _, some(@{id: id, _}), _, _), _}, _)) {
               some(node_id_to_type(cx, id))
            }
-           some(ast_map::node_item(@{node: ast::item_class(_, _, _, _, _, _),
+           some(ast_map::node_item(@{node: ast::item_class(*),
                            _},_)) {
              alt cx.def_map.find(id.node) {
                some(def_ty(trait_id)) {
@@ -2606,7 +2612,7 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> option<def_id> {
     if is_local(class_id) {
        alt cx.items.find(class_id.node) {
          some(ast_map::node_item(@{node: ast::item_class(_, _, _, _,
-                                     some(dtor), _), _}, _))
+                                     some(dtor)), _}, _))
              { some(local_def(dtor.node.id))  }
          _  { none }
        }
@@ -2687,7 +2693,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
           expr, since check_enum_variants also updates the enum_var_cache
          */
         alt cx.items.get(id.node) {
-          ast_map::node_item(@{node: ast::item_enum(variants, _, _), _}, _) {
+          ast_map::node_item(@{node: ast::item_enum(variants, _), _}, _) {
             let mut disr_val = -1;
             @vec::map(variants, |variant| {
                 let ctor_ty = node_id_to_type(cx, variant.node.id);
@@ -2780,7 +2786,7 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) {
          alt i.node {
-                 ast::item_class(_, _, items, _, _, _) {
+                 ast::item_class(_, _, items, _, _) {
                class_field_tys(items)
            }
            _ { cx.sess.bug("class ID bound to non-class"); }
@@ -2822,7 +2828,7 @@ pure fn is_public(f: field_ty) -> bool {
 fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
     : is_local(did) -> ~[{name: ident, id: node_id, vis: visibility}] {
     alt cx.items.find(did.node) {
-       some(ast_map::node_item(@{node: item_class(_,_,items,_,_,_), _}, _)) {
+       some(ast_map::node_item(@{node: item_class(_,_,items,_,_), _}, _)) {
          let (_,ms) = split_class_items(items);
          vec::map(ms, |m| {name: m.ident, id: m.id,
                             vis: m.vis})

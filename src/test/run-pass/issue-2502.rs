@@ -1,4 +1,4 @@
-class font/& {
+class font {
     let fontbuf: &self.~[u8];
 
     new(fontbuf: &self.~[u8]) {

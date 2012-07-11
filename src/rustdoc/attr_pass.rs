@@ -147,7 +147,7 @@ fn fold_enum(
             let desc = do astsrv::exec(srv) |ctxt| {
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
-                    node: ast::item_enum(ast_variants, _, _), _
+                    node: ast::item_enum(ast_variants, _), _
                   }, _) {
                     let ast_variant = option::get(
                         vec::find(ast_variants, |v| {
@@ -204,14 +204,14 @@ fn merge_method_attrs(
     let attrs: ~[(str, option<str>)] = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_trait(_, _, methods), _
+            node: ast::item_trait(_, methods), _
           }, _) {
             par::seqmap(methods, |method| {
                 (*method.ident, attr_parser::parse_desc(method.attrs))
             })
           }
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, _, _, methods), _
+            node: ast::item_impl(_, _, _, methods), _
           }, _) {
             par::seqmap(methods, |method| {
                 (*method.ident, attr_parser::parse_desc(method.attrs))

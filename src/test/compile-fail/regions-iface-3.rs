@@ -1,4 +1,4 @@
-iface get_ctxt/& {
+iface get_ctxt {
     fn get_ctxt() -> &self.uint;
 }
 

@@ -2291,7 +2291,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             ccx.external.insert(parent_id, some(item.id));
             let mut my_id = 0;
             alt check item.node {
-              ast::item_enum(_, _, _) {
+              ast::item_enum(_, _) {
                 let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
                 let vs_there = ty::enum_variants(ccx.tcx, parent_id);
                 do vec::iter2(*vs_here, *vs_there) |here, there| {
@@ -4886,13 +4886,13 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, _rp, _, _, ms) {
+      ast::item_impl(tps, _, _, ms) {
         impl::trans_impl(ccx, *path, item.ident, ms, tps);
       }
       ast::item_mod(m) {
         trans_mod(ccx, m);
       }
-      ast::item_enum(variants, tps, _) {
+      ast::item_enum(variants, tps) {
         if tps.len() == 0u {
             let degen = variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
@@ -4916,7 +4916,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
-      ast::item_class(tps, _traits, items, ctor, m_dtor, _) {
+      ast::item_class(tps, _traits, items, ctor, m_dtor) {
         if tps.len() == 0u {
           let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
                          vtables: none,
@@ -5199,7 +5199,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                                   ~[path_name(enm.ident),
                                    path_name(v.node.name)]);
             let llfn = alt check enm.node {
-              ast::item_enum(_, _, _) {
+              ast::item_enum(_, _) {
                 register_fn(ccx, v.span, pth, id)
               }
             };
@@ -5220,7 +5220,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
 fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
     let _icx = ccx.insn_ctxt("trans_constant");
     alt it.node {
-      ast::item_enum(variants, _, _) {
+      ast::item_enum(variants, _) {
         let vi = ty::enum_variants(ccx.tcx, {crate: ast::local_crate,
                                              node: it.id});
         let mut i = 0;

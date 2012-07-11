@@ -1,12 +1,12 @@
 type ctxt = { v: uint };
 
-iface get_ctxt/& {
+iface get_ctxt {
     fn get_ctxt() -> &self.ctxt;
 }
 
-type has_ctxt/& = { c: &ctxt };
+type has_ctxt = { c: &ctxt };
 
-impl/& of get_ctxt for has_ctxt {
+impl of get_ctxt for has_ctxt {
     fn get_ctxt() -> &self.ctxt { self.c }
 }
 

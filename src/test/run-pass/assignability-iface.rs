@@ -6,7 +6,7 @@ iface iterable<A> {
     fn iterate(blk: fn(A) -> bool);
 }
 
-impl vec/&<A> of iterable<A> for &[const A] {
+impl vec<A> of iterable<A> for &[const A] {
     fn iterate(f: fn(A) -> bool) {
         vec::each(self, f);
     }

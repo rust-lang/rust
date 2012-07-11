@@ -38,6 +38,7 @@ const no_rt: uint = 256u;
 const coherence: uint = 512u;
 const borrowck_stats: uint = 1024u;
 const borrowck_note_pure: uint = 2048;
+const borrowck_note_loan: uint = 4096;
 
 fn debugging_opts_map() -> ~[(str, str, uint)] {
     ~[("ppregions", "prettyprint regions with \
@@ -46,7 +47,7 @@ fn debugging_opts_map() -> ~[(str, str, uint)] {
      ("count-llvm-insns", "count where LLVM \
                            instrs originate", count_llvm_insns),
      ("time-llvm-passes", "measure time of each LLVM pass", time_llvm_passes),
-     ("stats", "gather trans statistics", stats),
+     ("trans-stats", "gather trans statistics", trans_stats),
      ("no-asm-comments", "omit comments when using -S", no_asm_comments),
      ("no-verify", "skip LLVM verification", no_verify),
      ("trace", "emit trace logs", trace),
@@ -54,7 +55,9 @@ fn debugging_opts_map() -> ~[(str, str, uint)] {
      ("coherence", "perform coherence checking", coherence),
      ("borrowck-stats", "gather borrowck statistics",  borrowck_stats),
      ("borrowck-note-pure", "note where purity is req'd",
-      borrowck_note_pure)
+      borrowck_note_pure),
+     ("borrowck-note-loan", "note where loans are req'd",
+      borrowck_note_loan)
     ]
 }
 
@@ -172,6 +175,7 @@ impl session for session {
     fn coherence() -> bool { self.debugging_opt(coherence) }
     fn borrowck_stats() -> bool { self.debugging_opt(borrowck_stats) }
     fn borrowck_note_pure() -> bool { self.debugging_opt(borrowck_note_pure) }
+    fn borrowck_note_loan() -> bool { self.debugging_opt(borrowck_note_loan) }
 }
 
 /// Some reasonable defaults

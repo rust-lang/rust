@@ -458,12 +458,11 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
       }
-      ast::item_ty(ty, params, rp) {
+      ast::item_ty(ty, params) {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, "type");
         word(s.s, *item.ident);
-        print_region_param(s, rp);
         print_type_params(s, params);
         end(s); // end the inner ibox
 
@@ -473,7 +472,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         word(s.s, ";");
         end(s); // end the outer ibox
       }
-      ast::item_enum(variants, params, rp) {
+      ast::item_enum(variants, params) {
         let newtype =
             vec::len(variants) == 1u &&
                 str::eq(*item.ident, *variants[0].node.name) &&
@@ -483,7 +482,6 @@ fn print_item(s: ps, &&item: @ast::item) {
             word_space(s, "enum");
         } else { head(s, "enum"); }
         word(s.s, *item.ident);
-        print_region_param(s, rp);
         print_type_params(s, params);
         space(s.s);
         if newtype {
@@ -506,10 +504,9 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps, traits, items, ctor, m_dtor, rp) {
+      ast::item_class(tps, traits, items, ctor, m_dtor) {
           head(s, "class");
           word_nbsp(s, *item.ident);
-          print_region_param(s, rp);
           print_type_params(s, tps);
           if vec::len(traits) != 0u {
               word_space(s, ":");
@@ -571,10 +568,9 @@ fn print_item(s: ps, &&item: @ast::item) {
           }
           bclose(s, item.span);
        }
-      ast::item_impl(tps, rp, ifce, ty, methods) {
+      ast::item_impl(tps, ifce, ty, methods) {
         head(s, "impl");
         word(s.s, *item.ident);
-        print_region_param(s, rp);
         print_type_params(s, tps);
         space(s.s);
         option::iter(ifce, |p| {
@@ -591,10 +587,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_trait(tps, rp, methods) {
+      ast::item_trait(tps, methods) {
         head(s, "iface");
         word(s.s, *item.ident);
-        print_region_param(s, rp);
         print_type_params(s, tps);
         word(s.s, " ");
         bopen(s);
@@ -1403,13 +1398,6 @@ fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
               ast::bound_trait(t) { print_type(s, t); }
             }
         }
-    }
-}
-
-fn print_region_param(s: ps, rp: ast::region_param) {
-    alt rp {
-      ast::rp_self { word(s.s, "/&") }
-      ast::rp_none { }
     }
 }
 

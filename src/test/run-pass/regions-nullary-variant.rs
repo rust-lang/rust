@@ -1,4 +1,4 @@
-enum roption/& {
+enum roption {
     a, b(&uint)
 }
 

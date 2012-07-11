@@ -21,6 +21,7 @@ export get_class_fields;
 export get_symbol;
 export get_enum_variants;
 export get_type;
+export get_region_param;
 export get_type_param_count;
 export get_impl_trait;
 export get_class_method;
@@ -185,15 +186,10 @@ fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     @bounds
 }
 
-fn item_ty_region_param(item: ebml::doc) -> ast::region_param {
+fn item_ty_region_param(item: ebml::doc) -> bool {
     alt ebml::maybe_get_doc(item, tag_region_param) {
-      some(rp_doc) {
-        let dsr = ebml::ebml_deserializer(rp_doc);
-        ast::deserialize_region_param(dsr)
-      }
-      none { // not all families of items have region params
-        ast::rp_none
-      }
+      some(_) { true }
+      none { false }
     }
 }
 
@@ -323,6 +319,11 @@ fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     } else { @~[] };
     let rp = item_ty_region_param(item);
     ret {bounds: tp_bounds, rp: rp, ty: t};
+}
+
+fn get_region_param(cdata: cmd, id: ast::node_id) -> bool {
+    let item = lookup_item(id, cdata.data);
+    ret item_ty_region_param(item);
 }
 
 fn get_type_param_count(data: @~[u8], id: ast::node_id) -> uint {

@@ -110,7 +110,7 @@ fn fold_enum(
             let sig = do astsrv::exec(srv) |ctxt| {
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
-                    node: ast::item_enum(ast_variants, _, _), _
+                    node: ast::item_enum(ast_variants, _), _
                   }, _) {
                     let ast_variant = option::get(
                         do vec::find(ast_variants) |v| {
@@ -168,7 +168,7 @@ fn get_method_sig(
     do astsrv::exec(srv) |ctxt| {
         alt check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_trait(_, _, methods), _
+            node: ast::item_trait(_, methods), _
           }, _) {
             alt check vec::find(methods, |method| {
                 *method.ident == method_name
@@ -183,7 +183,7 @@ fn get_method_sig(
             }
           }
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, _, _, methods), _
+            node: ast::item_impl(_, _, _, methods), _
           }, _) {
             alt check vec::find(methods, |method| {
                 *method.ident == method_name
@@ -218,7 +218,7 @@ fn fold_impl(
     let (trait_ty, self_ty) = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, trait_ty, self_ty, _), _
+            node: ast::item_impl(_, trait_ty, self_ty, _), _
           }, _) {
             let trait_ty = option::map(trait_ty, |p| {
                 pprust::path_to_str(p.path)
@@ -274,7 +274,7 @@ fn fold_type(
             alt ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 ident: ident,
-                node: ast::item_ty(ty, params, ast::rp_none), _
+                node: ast::item_ty(ty, params), _
               }, _) {
                 some(#fmt(
                     "type %s%s = %s",

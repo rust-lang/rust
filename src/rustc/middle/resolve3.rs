@@ -847,7 +847,7 @@ class Resolver {
             }
 
             // These items live in both the type and value namespaces.
-            item_enum(variants, _, _) {
+            item_enum(variants, _) {
                 (*name_bindings).define_type(def_ty(local_def(item.id)));
 
                 for variants.each |variant| {
@@ -857,7 +857,7 @@ class Resolver {
                                                          visitor);
                 }
             }
-            item_class(_, _, class_members, ctor, _, _) {
+            item_class(_, _, class_members, ctor, _) {
                 (*name_bindings).define_type(def_ty(local_def(item.id)));
 
                 let purity = ctor.node.dec.purity;
@@ -899,7 +899,7 @@ class Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_impl(_, _, _, _, methods) {
+            item_impl(_, _, _, methods) {
                 // Create the set of implementation information that the
                 // implementation scopes (ImplScopes) need and write it into
                 // the implementation definition list for this set of name
@@ -2884,8 +2884,8 @@ class Resolver {
         }
 
         alt item.node {
-            item_enum(_, type_parameters, _) |
-            item_ty(_, type_parameters, _) {
+            item_enum(_, type_parameters) |
+            item_ty(_, type_parameters) {
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters, item.id, 0u,
                                            NormalRibKind))
@@ -2895,7 +2895,7 @@ class Resolver {
                 }
             }
 
-            item_impl(type_parameters, _, interface_reference, self_type,
+            item_impl(type_parameters, interface_reference, self_type,
                       methods) {
                 self.resolve_implementation(item.id,
                                             item.span,
@@ -2906,7 +2906,7 @@ class Resolver {
                                             visitor);
             }
 
-            item_trait(type_parameters, _, methods) {
+            item_trait(type_parameters, methods) {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
@@ -2948,7 +2948,7 @@ class Resolver {
             }
 
             item_class(ty_params, interfaces, class_members, constructor,
-                       optional_destructor, _) {
+                       optional_destructor) {
 
                 self.resolve_class(item.id,
                                    @copy ty_params,

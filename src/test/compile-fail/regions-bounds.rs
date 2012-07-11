@@ -2,9 +2,9 @@
 // nominal types (but not on other types) and that they are type
 // checked.
 
-enum an_enum/& { }
-iface an_iface/& { }
-class a_class/& { let x:int; new(x:int) { self.x = x; } }
+enum an_enum = &int;
+iface an_iface { fn foo() -> &self.int; }
+class a_class { let x:&self.int; new(x:&self.int) { self.x = x; } }
 
 fn a_fn1(e: an_enum/&a) -> an_enum/&b {
     ret e; //~ ERROR mismatched types: expected `an_enum/&b` but found `an_enum/&a`

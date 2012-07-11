@@ -244,15 +244,13 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           }
           item_mod(m) { item_mod(fld.fold_mod(m)) }
           item_foreign_mod(nm) { item_foreign_mod(fld.fold_foreign_mod(nm)) }
-          item_ty(t, typms, rp) { item_ty(fld.fold_ty(t),
-                                          fold_ty_params(typms, fld),
-                                          rp) }
-          item_enum(variants, typms, r) {
+          item_ty(t, typms) { item_ty(fld.fold_ty(t),
+                                      fold_ty_params(typms, fld)) }
+          item_enum(variants, typms) {
             item_enum(vec::map(variants, |x| fld.fold_variant(x)),
-                      fold_ty_params(typms, fld),
-                      r)
+                      fold_ty_params(typms, fld))
           }
-          item_class(typms, traits, items, ctor, m_dtor, rp) {
+          item_class(typms, traits, items, ctor, m_dtor) {
               let ctor_body = fld.fold_block(ctor.node.body);
               let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
               let ctor_id   = fld.new_id(ctor.node.id);
@@ -269,18 +267,16 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                   {node: {body: ctor_body,
                           dec: ctor_decl,
                           id: ctor_id with ctor.node}
-                      with ctor}, dtor, rp)
+                      with ctor}, dtor)
           }
-          item_impl(tps, rp, ifce, ty, methods) {
+          item_impl(tps, ifce, ty, methods) {
               item_impl(fold_ty_params(tps, fld),
-                        rp,
                         ifce.map(|p| fold_trait_ref(p, fld)),
                         fld.fold_ty(ty),
                         vec::map(methods, |x| fld.fold_method(x)))
           }
-          item_trait(tps, rp, methods) {
+          item_trait(tps, methods) {
             item_trait(fold_ty_params(tps, fld),
-                       rp,
                        /* FIXME (#2543) */ copy methods)
           }
       item_mac(m) {

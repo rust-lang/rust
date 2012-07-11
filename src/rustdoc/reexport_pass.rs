@@ -291,7 +291,7 @@ fn all_impls(m: ast::_mod) -> map::set<ast::def_id> {
     let all_impls = ast_util::new_def_hash();
     for m.items.each |item| {
         alt item.node {
-          ast::item_impl(_, _, _, _, _) {
+          ast::item_impl(_, _, _, _) {
             all_impls.insert(ast_util::local_def(item.id), ());
           }
           _ { }

@@ -61,6 +61,7 @@ type visitor<E> =
       visit_ty_params: fn@(~[ty_param], E, vt<E>),
       visit_constr: fn@(@path, span, node_id, E, vt<E>),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
+      visit_ty_method: fn@(ty_method, E, vt<E>),
       visit_class_item: fn@(@class_member, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
@@ -79,6 +80,7 @@ fn default_visitor<E>() -> visitor<E> {
           visit_ty_params: |a,b,c|visit_ty_params::<E>(a, b, c),
           visit_constr: |a,b,c,d,e|visit_constr::<E>(a, b, c, d, e),
           visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
+          visit_ty_method: |a,b,c|visit_ty_method::<E>(a, b, c),
           visit_class_item: |a,b,c|visit_class_item::<E>(a, b, c)};
 }
 
@@ -125,17 +127,17 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         for nm.view_items.each |vi| { v.visit_view_item(vi, e, v); }
         for nm.items.each |ni| { v.visit_foreign_item(ni, e, v); }
       }
-      item_ty(t, tps, rp) {
+      item_ty(t, tps) {
         v.visit_ty(t, e, v);
         v.visit_ty_params(tps, e, v);
       }
-      item_enum(variants, tps, _) {
+      item_enum(variants, tps) {
         v.visit_ty_params(tps, e, v);
         for variants.each |vr| {
             for vr.node.args.each |va| { v.visit_ty(va.ty, e, v); }
         }
       }
-      item_impl(tps, _rp, ifce, ty, methods) {
+      item_impl(tps, ifce, ty, methods) {
         v.visit_ty_params(tps, e, v);
         option::iter(ifce, |p| visit_path(p.path, e, v));
         v.visit_ty(ty, e, v);
@@ -143,7 +145,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, traits, members, ctor, m_dtor, _) {
+      item_class(tps, traits, members, ctor, m_dtor) {
           v.visit_ty_params(tps, e, v);
           for members.each |m| {
              v.visit_class_item(m, e, v);
@@ -155,12 +157,10 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
                   visit_class_dtor_helper(dtor, tps,
                      ast_util::local_def(i.id), e, v)};
       }
-      item_trait(tps, _rp, methods) {
+      item_trait(tps, methods) {
         v.visit_ty_params(tps, e, v);
         for methods.each |m| {
-            for m.decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
-            v.visit_ty_params(m.tps, e, v);
-            v.visit_ty(m.decl.output, e, v);
+            v.visit_ty_method(m, e, v);
         }
       }
       item_mac(m) { visit_mac(m, e, v) }
@@ -311,6 +311,12 @@ fn visit_fn<E>(fk: fn_kind, decl: fn_decl, body: blk, _sp: span,
     v.visit_block(body, e, v);
 }
 
+fn visit_ty_method<E>(m: ty_method, e: E, v: vt<E>) {
+    for m.decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
+    v.visit_ty_params(m.tps, e, v);
+    v.visit_ty(m.decl.output, e, v);
+}
+
 fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
     for b.node.view_items.each |vi| { v.visit_view_item(vi, e, v); }
     for b.node.stmts.each |s| { v.visit_stmt(s, e, v); }
@@ -458,6 +464,7 @@ type simple_visitor =
       visit_ty_params: fn@(~[ty_param]),
       visit_constr: fn@(@path, span, node_id),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
+      visit_ty_method: fn@(ty_method),
       visit_class_item: fn@(@class_member)};
 
 fn simple_ignore_ty(_t: @ty) {}
@@ -479,6 +486,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_constr: fn@(_p: @path, _sp: span, _id: node_id) { },
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
                         _id: node_id) { },
+          visit_ty_method: fn@(_m: ty_method) { },
           visit_class_item: fn@(_c: @class_member) {}
          };
 }
@@ -534,6 +542,10 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(ty);
         visit_ty(ty, e, v);
     }
+    fn v_ty_method(f: fn@(ty_method), ty: ty_method, &&e: (), v: vt<()>) {
+        f(ty);
+        visit_ty_method(ty, e, v);
+    }
     fn v_ty_params(f: fn@(~[ty_param]),
                    ps: ~[ty_param],
                    &&e: (), v: vt<()>) {
@@ -582,6 +594,8 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                     v_constr(v.visit_constr, a, b, c, d, e),
                 visit_fn: |a,b,c,d,e,f,g|
                     v_fn(v.visit_fn, a, b, c, d, e, f, g),
+                visit_ty_method: |a,b,c|
+                    v_ty_method(v.visit_ty_method, a, b, c),
                 visit_class_item: |a,b,c|
                     v_class_item(v.visit_class_item, a, b, c)
                });

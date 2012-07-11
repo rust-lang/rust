@@ -52,7 +52,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       item_class(*) {
           fail "find_pre_post_item: shouldn't be called on item_class";
       }
-      item_impl(_, _, _, _, ms) {
+      item_impl(_, _, _, ms) {
         for ms.each |m| { find_pre_post_method(ccx, m); }
       }
       item_mac(*) { fail "item macros unimplemented" }

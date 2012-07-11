@@ -1,7 +1,7 @@
-class CMap/& {
-    let buf: [u8]/&;
+class CMap {
+    let buf: &[u8];
 
-    new(buf: [u8]/&) {
+    new(buf: &self.[u8]) {
         self.buf = buf;
     }
 }

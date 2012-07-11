@@ -128,8 +128,7 @@ impl ast_builder for ext_ctxt {
                       +ty_params: ~[ast::ty_param]) -> @ast::item {
         self.item(name,
                   ast::item_enum(variants,
-                                 ty_params,
-                                 ast::rp_none))
+                                 ty_params))
     }
 
     fn item_enum(name: ident,
@@ -167,12 +166,10 @@ impl ast_builder for ext_ctxt {
     fn item_ty_poly(name: ident,
                     ty: @ast::ty,
                     +params: ~[ast::ty_param]) -> @ast::item {
-        self.item(name,
-                  ast::item_ty(ty, params, ast::rp_none))
+        self.item(name, ast::item_ty(ty, params))
     }
 
-    fn item_ty(name: ident,
-               ty: @ast::ty) -> @ast::item {
+    fn item_ty(name: ident, ty: @ast::ty) -> @ast::item {
         self.item_ty_poly(name, ty, ~[])
     }
 

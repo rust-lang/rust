@@ -155,7 +155,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for m.items.each |it| {
         if it.ident == i { local = true; }
         alt it.node {
-          item_enum(variants, _, _) {
+          item_enum(variants, _) {
             for variants.each |v| {
                 if v.node.name == i {
                    local = true;
@@ -428,7 +428,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_item: fn@(i: @item) {
             vfn(i.id);
             alt i.node {
-              item_enum(vs, _, _) { for vs.each |v| { vfn(v.node.id); } }
+              item_enum(vs, _) { for vs.each |v| { vfn(v.node.id); } }
               _ {}
             }
         },
@@ -517,6 +517,9 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             do vec::iter(d.inputs) |arg| {
                 vfn(arg.id)
             }
+        },
+
+        visit_ty_method: fn@(_ty_m: ty_method) {
         },
 
         visit_class_item: fn@(c: @class_member) {

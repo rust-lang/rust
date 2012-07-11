@@ -1,13 +1,13 @@
 type ctxt = { v: uint };
 
-iface get_ctxt/& {
+iface get_ctxt {
     // Here the `&` is bound in the method definition:
     fn get_ctxt() -> &ctxt;
 }
 
-type has_ctxt/& = { c: &ctxt };
+type has_ctxt = { c: &ctxt };
 
-impl/& of get_ctxt for has_ctxt {
+impl of get_ctxt for has_ctxt {
 
     // Here an error occurs because we used `&self` but
     // the definition used `&`:
