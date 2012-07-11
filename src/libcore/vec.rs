@@ -1181,22 +1181,32 @@ pure fn unpack_mut_slice<T,U>(s: &[mut T],
     }
 }
 
-impl extensions<T: copy> for ~[T] {
+trait vec_concat<T> {
+    pure fn +(rhs: &[const T]) -> self;
+}
+
+impl extensions<T: copy> of vec_concat<T> for ~[T] {
     #[inline(always)]
     pure fn +(rhs: &[const T]) -> ~[T] {
         append(self, rhs)
     }
 }
 
-impl extensions<T: copy> for ~[mut T] {
+impl extensions<T: copy> of vec_concat<T> for ~[mut T] {
     #[inline(always)]
     pure fn +(rhs: &[const T]) -> ~[mut T] {
         append_mut(self, rhs)
     }
 }
 
+trait const_vector {
+    pure fn is_empty() -> bool;
+    pure fn is_not_empty() -> bool;
+    pure fn len() -> uint;
+}
+
 /// Extension methods for vectors
-impl extensions/&<T> for &[const T] {
+impl extensions/&<T> of const_vector for &[const T] {
     /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty() -> bool { is_empty(self) }
@@ -1208,8 +1218,16 @@ impl extensions/&<T> for &[const T] {
     pure fn len() -> uint { len(self) }
 }
 
+trait copyable_vector<T> {
+    pure fn head() -> T;
+    pure fn init() -> ~[T];
+    pure fn last() -> T;
+    pure fn slice(start: uint, end: uint) -> ~[T];
+    pure fn tail() -> ~[T];
+}
+
 /// Extension methods for vectors
-impl extensions/&<T: copy> for &[const T] {
+impl extensions/&<T: copy> of copyable_vector<T> for &[const T] {
     /// Returns the first element of a vector
     #[inline]
     pure fn head() -> T { head(self) }
@@ -1227,8 +1245,26 @@ impl extensions/&<T: copy> for &[const T] {
     pure fn tail() -> ~[T] { tail(self) }
 }
 
+trait immutable_vector/&<T> {
+    pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U;
+    pure fn iter(f: fn(T));
+    pure fn iteri(f: fn(uint, T));
+    pure fn position(f: fn(T) -> bool) -> option<uint>;
+    pure fn position_elem(x: T) -> option<uint>;
+    pure fn riter(f: fn(T));
+    pure fn riteri(f: fn(uint, T));
+    pure fn rposition(f: fn(T) -> bool) -> option<uint>;
+    pure fn rposition_elem(x: T) -> option<uint>;
+    pure fn map<U>(f: fn(T) -> U) -> ~[U];
+    pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U];
+    fn map_r<U>(f: fn(x: &self.T) -> U) -> ~[U];
+    pure fn alli(f: fn(uint, T) -> bool) -> bool;
+    pure fn flat_map<U>(f: fn(T) -> ~[U]) -> ~[U];
+    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> ~[U];
+}
+
 /// Extension methods for vectors
-impl extensions/&<T> for &[T] {
+impl extensions/&<T> of immutable_vector<T> for &[T] {
     /// Reduce a vector from right to left
     #[inline]
     pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
@@ -1336,8 +1372,14 @@ impl extensions/&<T> for &[T] {
     }
 }
 
+trait immutable_copyable_vector<T> {
+    pure fn filter(f: fn(T) -> bool) -> ~[T];
+    pure fn find(f: fn(T) -> bool) -> option<T>;
+    pure fn rfind(f: fn(T) -> bool) -> option<T>;
+}
+
 /// Extension methods for vectors
-impl extensions/&<T: copy> for &[T] {
+impl extensions/&<T: copy> of immutable_copyable_vector<T> for &[T] {
     /**
      * Construct a new vector from the elements of a vector for which some
      * predicate holds.
@@ -1510,7 +1552,16 @@ impl extensions/&<A> of iter::base_iter<A> for &[const A] {
     fn contains(x: A) -> bool { iter::contains(self, x) }
     fn count(x: A) -> uint { iter::count(self, x) }
 }
-impl extensions/&<A:copy> for &[const A] {
+
+trait iter_trait_extensions<A> {
+    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
+    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
+    fn to_vec() -> ~[A];
+    fn min() -> A;
+    fn max() -> A;
+}
+
+impl extensions/&<A:copy> of iter_trait_extensions<A> for &[const A] {
     fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }

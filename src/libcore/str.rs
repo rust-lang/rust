@@ -1882,8 +1882,15 @@ mod unsafe {
 
 }
 
+trait unique_str {
+    fn trim() -> self;
+    fn trim_left() -> self;
+    fn trim_right() -> self;
+    pure fn +(rhs: str/&) -> self;
+}
+
 /// Extension methods for strings
-impl extensions for str {
+impl extensions of unique_str for str {
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
     fn trim() -> str { trim(self) }
@@ -1901,8 +1908,35 @@ impl extensions for str {
     }
 }
 
+trait str_slice {
+    fn all(it: fn(char) -> bool) -> bool;
+    fn any(it: fn(char) -> bool) -> bool;
+    fn contains(needle: str/&a) -> bool;
+    fn contains_char(needle: char) -> bool;
+    fn each(it: fn(u8) -> bool);
+    fn eachi(it: fn(uint, u8) -> bool);
+    fn each_char(it: fn(char) -> bool);
+    fn each_chari(it: fn(uint, char) -> bool);
+    fn ends_with(needle: str/&) -> bool;
+    fn is_empty() -> bool;
+    fn is_not_empty() -> bool;
+    fn is_whitespace() -> bool;
+    fn is_alphanumeric() -> bool;
+    pure fn len() -> uint;
+    fn slice(begin: uint, end: uint) -> str;
+    fn split(sepfn: fn(char) -> bool) -> ~[str];
+    fn split_char(sep: char) -> ~[str];
+    fn split_str(sep: str/&a) -> ~[str];
+    fn starts_with(needle: str/&a) -> bool;
+    fn substr(begin: uint, n: uint) -> str;
+    fn to_lower() -> str;
+    fn to_upper() -> str;
+    fn escape_default() -> str;
+    fn escape_unicode() -> str;
+}
+
 /// Extension methods for strings
-impl extensions/& for str/& {
+impl extensions/& of str_slice for str/& {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters

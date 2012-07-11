@@ -11,15 +11,23 @@ enum state {
     terminated
 }
 
-type packet_header = {
+type packet_header_ = {
     mut state: state,
     mut blocked_task: option<*rust_task>,
 };
 
-type packet<T: send> = {
+enum packet_header {
+    packet_header_(packet_header_)
+}
+
+type packet_<T:send> = {
     header: packet_header,
     mut payload: option<T>
 };
+
+enum packet<T:send> {
+    packet_(packet_<T>)
+}
 
 fn packet<T: send>() -> *packet<T> unsafe {
     let p: *packet<T> = unsafe::transmute(~{
@@ -428,8 +436,17 @@ proto! streamp {
     }
 }
 
-type chan<T:send> = { mut endp: option<streamp::client::open<T>> };
-type port<T:send> = { mut endp: option<streamp::server::open<T>> };
+type chan_<T:send> = { mut endp: option<streamp::client::open<T>> };
+
+enum chan<T:send> {
+    chan_(chan_<T>)
+}
+
+type port_<T:send> = { mut endp: option<streamp::server::open<T>> };
+
+enum port<T:send> {
+    port_(port_<T>)
+}
 
 fn stream<T:send>() -> (chan<T>, port<T>) {
     let (c, s) = streamp::init();
@@ -439,7 +456,7 @@ fn stream<T:send>() -> (chan<T>, port<T>) {
          unsafe { let y <- *ptr::addr_of(x); y }]
     ];
 
-    ({ mut endp: some(c) }, { mut endp: some(s) })
+    (chan_({ mut endp: some(c) }), port_({ mut endp: some(s) }))
 }
 
 impl chan<T: send> for chan<T> {

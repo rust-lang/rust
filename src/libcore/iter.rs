@@ -7,6 +7,15 @@ iface times {
     fn times(it: fn() -> bool);
 }
 
+trait copyable_iter<A:copy> {
+    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
+    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
+    fn to_vec() -> ~[A];
+    fn min() -> A;
+    fn max() -> A;
+    fn find(p: fn(A) -> bool) -> option<A>;
+}
+
 fn eachi<A,IA:base_iter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     let mut i = 0u;
     for self.each |a| {

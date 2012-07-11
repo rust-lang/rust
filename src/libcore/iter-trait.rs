@@ -21,7 +21,7 @@ impl extensions<A> of iter::base_iter<A> for IMPL_T<A> {
     }
 }
 
-impl extensions<A:copy> for IMPL_T<A> {
+impl extensions<A:copy> of iter::copyable_iter<A> for IMPL_T<A> {
     fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }

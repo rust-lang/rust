@@ -46,28 +46,32 @@ export unwrap;
  * pointers achieved about 103 million pushes/second.  Using an option
  * type could only produce 47 million pushes/second.
  */
-type dvec<A> = {
+type dvec_<A> = {
     mut data: ~[mut A]
 };
 
+enum dvec<A> {
+    dvec_(dvec_<A>)
+}
+
 /// Creates a new, empty dvec
 fn dvec<A>() -> dvec<A> {
-    {mut data: ~[mut]}
+    dvec_({mut data: ~[mut]})
 }
 
 /// Creates a new dvec with a single element
 fn from_elem<A>(+e: A) -> dvec<A> {
-    {mut data: ~[mut e]}
+    dvec_({mut data: ~[mut e]})
 }
 
 /// Creates a new dvec with the contents of a vector
 fn from_vec<A>(+v: ~[mut A]) -> dvec<A> {
-    {mut data: v}
+    dvec_({mut data: v})
 }
 
 /// Consumes the vector and returns its contents
 fn unwrap<A>(-d: dvec<A>) -> ~[mut A] {
-    let {data: v} <- d;
+    let dvec_({data: v}) <- d;
     ret v;
 }
 

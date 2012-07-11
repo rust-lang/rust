@@ -123,8 +123,13 @@ unsafe fn memset<T>(dst: *mut T, c: int, count: uint)  {
     libc_::memset(dst as *c_void, c as libc::c_int, n as size_t);
 }
 
+trait ptr {
+    pure fn is_null() -> bool;
+    pure fn is_not_null() -> bool;
+}
+
 /// Extension methods for pointers
-impl extensions<T> for *T {
+impl extensions<T> of ptr for *T {
     /// Returns true if the pointer is equal to the null pointer.
     pure fn is_null() -> bool { is_null(self) }
 
