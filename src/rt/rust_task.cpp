@@ -114,7 +114,7 @@ cleanup_task(cleanup_args *args) {
     rust_task *task = a->task;
 
     {
-        scoped_lock with(task->kill_lock);
+        scoped_lock with(task->lifecycle_lock);
         if (task->killed && !threw_exception) {
             LOG(task, task, "Task killed during termination");
             threw_exception = true;
@@ -230,21 +230,25 @@ void rust_task::start()
 
 bool
 rust_task::must_fail_from_being_killed() {
-    scoped_lock with(kill_lock);
+    scoped_lock with(lifecycle_lock);
     return must_fail_from_being_killed_unlocked();
 }
 
 bool
 rust_task::must_fail_from_being_killed_unlocked() {
-    kill_lock.must_have_lock();
+    lifecycle_lock.must_have_lock();
     return killed && !reentered_rust_stack && disallow_kill == 0;
 }
 
 // Only run this on the rust stack
 void
 rust_task::yield(bool *killed) {
+    // FIXME (#2787): clean this up
     if (must_fail_from_being_killed()) {
-        assert(!blocked());
+        {
+            scoped_lock with(lifecycle_lock);
+            assert(!(state == task_state_blocked));
+        }
         *killed = true;
     }
 
@@ -258,7 +262,7 @@ rust_task::yield(bool *killed) {
 
 void
 rust_task::kill() {
-    scoped_lock with(kill_lock);
+    scoped_lock with(lifecycle_lock);
 
     // XXX: bblum: kill/kill race
 
@@ -270,8 +274,9 @@ rust_task::kill() {
     killed = true;
     // Unblock the task so it can unwind.
 
-    if (blocked() && must_fail_from_being_killed_unlocked()) {
-        wakeup(cond);
+    if (state == task_state_blocked &&
+        must_fail_from_being_killed_unlocked()) {
+        wakeup_locked(cond);
     }
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
@@ -335,32 +340,19 @@ rust_task::get_frame_glue_fns(uintptr_t fp) {
     return *((frame_glue_fns**) fp);
 }
 
-bool
-rust_task::running()
+void rust_task::assert_is_running()
 {
-    scoped_lock with(state_lock);
-    return state == task_state_running;
+    scoped_lock with(lifecycle_lock);
+    assert(state == task_state_running);
 }
 
-bool
-rust_task::blocked()
-{
-    scoped_lock with(state_lock);
-    return state == task_state_blocked;
-}
-
+// FIXME (#2851, #2787): This is only used by rust_port/rust_port selector,
+// and is inherently racy. Get rid of it.
 bool
 rust_task::blocked_on(rust_cond *on)
 {
-    scoped_lock with(state_lock);
+    scoped_lock with(lifecycle_lock);
     return cond == on;
-}
-
-bool
-rust_task::dead()
-{
-    scoped_lock with(state_lock);
-    return state == task_state_dead;
 }
 
 void *
@@ -384,20 +376,20 @@ rust_task::free(void *p)
 void
 rust_task::transition(rust_task_state src, rust_task_state dst,
                       rust_cond *cond, const char* cond_name) {
-    scoped_lock with(state_lock);
+    scoped_lock with(lifecycle_lock);
     transition_locked(src, dst, cond, cond_name);
 }
 
 void rust_task::transition_locked(rust_task_state src, rust_task_state dst,
                                   rust_cond *cond, const char* cond_name) {
-    state_lock.must_have_lock();
+    lifecycle_lock.must_have_lock();
     sched_loop->transition(this, src, dst, cond, cond_name);
 }
 
 void
 rust_task::set_state(rust_task_state state,
                      rust_cond *cond, const char* cond_name) {
-    state_lock.must_have_lock();
+    lifecycle_lock.must_have_lock();
     this->state = state;
     this->cond = cond;
     this->cond_name = cond_name;
@@ -405,7 +397,7 @@ rust_task::set_state(rust_task_state state,
 
 bool
 rust_task::block(rust_cond *on, const char* name) {
-    scoped_lock with(kill_lock);
+    scoped_lock with(lifecycle_lock);
     return block_locked(on, name);
 }
 
@@ -428,7 +420,7 @@ rust_task::block_locked(rust_cond *on, const char* name) {
 
 void
 rust_task::wakeup(rust_cond *from) {
-    scoped_lock with(state_lock);
+    scoped_lock with(lifecycle_lock);
     wakeup_locked(from);
 }
 
@@ -676,26 +668,27 @@ rust_task::on_rust_stack() {
 
 void
 rust_task::inhibit_kill() {
-    scoped_lock with(kill_lock);
+    scoped_lock with(lifecycle_lock);
+    // FIXME (#1868) Check here if we have to die
     disallow_kill++;
 }
 
 void
 rust_task::allow_kill() {
-    scoped_lock with(kill_lock);
+    scoped_lock with(lifecycle_lock);
     assert(disallow_kill > 0 && "Illegal allow_kill(): already killable!");
     disallow_kill--;
 }
 
 void *
 rust_task::wait_event(bool *killed) {
-    scoped_lock with(state_lock);
+    scoped_lock with(lifecycle_lock);
 
     if(!event_reject) {
         block_locked(&event_cond, "waiting on event");
-        state_lock.unlock();
+        lifecycle_lock.unlock();
         yield(killed);
-        state_lock.lock();
+        lifecycle_lock.lock();
     }
 
     event_reject = false;
@@ -704,7 +697,7 @@ rust_task::wait_event(bool *killed) {
 
 void
 rust_task::signal_event(void *event) {
-    scoped_lock with(state_lock);
+    scoped_lock with(lifecycle_lock);
 
     this->event = event;
     event_reject = true;
