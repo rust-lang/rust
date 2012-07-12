@@ -223,7 +223,7 @@ fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
       ty::ty_evec(mt, vstore_uniq) {
         if mt.mutbl != ast::m_imm { ret false; }
         alt ty::get(mt.ty).struct {
-          ty::ty_str { ret true; }
+          ty::ty_estr(vstore_uniq) { ret true; }
           _ { ret false; }
         }
       }

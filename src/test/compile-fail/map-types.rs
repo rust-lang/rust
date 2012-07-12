@@ -8,5 +8,5 @@ import std::map::map;
 fn main() {
     let x: map<str,str> = map::str_hash::<str>() as map::<str,str>;
     let y: map<uint,str> = x;
-    //~^ ERROR mismatched types: expected `std::map::map<uint,str>`
+    //~^ ERROR mismatched types: expected `std::map::map<uint,str/~>`
 }
