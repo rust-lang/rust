@@ -208,7 +208,7 @@ rust_sched_loop::run_single_turn() {
             return sched_loop_state_block;
         }
 
-        scheduled_task->assert_is_running();
+        assert(scheduled_task->running());
 
         DLOG(this, task,
              "activating task %s 0x%" PRIxPTR

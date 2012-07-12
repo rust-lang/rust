@@ -170,8 +170,7 @@ rust_task : public kernel_owned<rust_task>
 private:
 
     // Protects state, cond, cond_name
-    // Protects the killed flag, disallow_kill flag, reentered_rust_stack
-    lock_and_signal lifecycle_lock;
+    lock_and_signal state_lock;
     rust_task_state state;
     rust_cond *cond;
     const char *cond_name;
@@ -180,6 +179,8 @@ private:
     rust_cond event_cond;
     void *event;
 
+    // Protects the killed flag, disallow_kill flag, reentered_rust_stack
+    lock_and_signal kill_lock;
     // Indicates that the task was killed and needs to unwind
     bool killed;
     // Indicates that we've called back into Rust from C
@@ -242,8 +243,10 @@ public:
                rust_opaque_box *env,
                void *args);
     void start();
-    void assert_is_running();
-    bool blocked_on(rust_cond *cond); // FIXME (#2851) Get rid of this.
+    bool running();
+    bool blocked();
+    bool blocked_on(rust_cond *cond);
+    bool dead();
 
     void *malloc(size_t sz, const char *tag, type_desc *td=0);
     void *realloc(void *data, size_t sz);
@@ -435,8 +438,7 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
 
     bool had_reentered_rust_stack = reentered_rust_stack;
     {
-        // FIXME (#2787) This must be racy. Figure it out.
-        scoped_lock with(lifecycle_lock);
+        scoped_lock with(kill_lock);
         reentered_rust_stack = true;
     }
 
@@ -451,7 +453,7 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
 
     next_c_sp = prev_c_sp;
     {
-        scoped_lock with(lifecycle_lock);
+        scoped_lock with(kill_lock);
         reentered_rust_stack = had_reentered_rust_stack;
     }
 
