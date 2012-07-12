@@ -3,6 +3,19 @@
 import unsafe::{forget, reinterpret_cast, transmute};
 import either::{either, left, right};
 import option::unwrap;
+import arc::methods;
+
+/* Use this after the snapshot
+macro_rules! move {
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+}
+*/
+
+fn macros() {
+    #macro[
+        [#move(x), { unsafe { let y <- *ptr::addr_of(x); y } }]
+    ];
+}
 
 enum state {
     empty,
@@ -455,11 +468,6 @@ enum port<T:send> {
 fn stream<T:send>() -> (chan<T>, port<T>) {
     let (c, s) = streamp::init();
 
-    #macro[
-        [#move[x],
-         unsafe { let y <- *ptr::addr_of(x); y }]
-    ];
-
     (chan_({ mut endp: some(c) }), port_({ mut endp: some(s) }))
 }
 
@@ -505,4 +513,70 @@ impl port<T: send> for port<T> {
         self.endp <-> endp;
         peek
     }
+}
+
+// Treat a whole bunch of ports as one.
+class port_set<T: send> {
+    let mut ports: ~[pipes::port<T>];
+
+    new() { self.ports = ~[]; }
+
+    fn add(+port: pipes::port<T>) {
+        vec::push(self.ports, port)
+    }
+
+    fn try_recv() -> option<T> {
+        let mut result = none;
+        while result == none && self.ports.len() > 0 {
+            let i = pipes::wait_many(self.ports.map(|p| p.header()));
+            // dereferencing an unsafe pointer nonsense to appease the
+            // borrowchecker.
+            alt unsafe {(*ptr::addr_of(self.ports[i])).try_recv()} {
+              some(m) {
+                result = some(#move(m));
+              }
+              none {
+                // Remove this port.
+                let mut ports = ~[];
+                self.ports <-> ports;
+                vec::consume(ports,
+                             |j, x| if i != j { vec::push(self.ports, x) });
+              }
+            }
+        }
+        result
+    }
+
+    fn recv() -> T {
+        option::unwrap(self.try_recv())
+    }
+}
+
+impl private_methods/&<T: send> for pipes::port<T> {
+    pure fn header() -> *pipes::packet_header unchecked {
+        alt self.endp {
+          some(endp) {
+            endp.header()
+          }
+          none { fail "peeking empty stream" }
+        }
+    }
+}
+
+
+type shared_chan<T: send> = arc::exclusive<pipes::chan<T>>;
+
+impl chan<T: send> for shared_chan<T> {
+    fn send(+x: T) {
+        let mut xx = some(x);
+        do self.with |_c, chan| {
+            let mut x = none;
+            x <-> xx;
+            chan.send(option::unwrap(x))
+        }
+    }
+}
+
+fn shared_chan<T:send>(+c: pipes::chan<T>) -> shared_chan<T> {
+    arc::exclusive(c)
 }

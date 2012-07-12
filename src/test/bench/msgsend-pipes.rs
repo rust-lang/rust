@@ -8,7 +8,7 @@ use std;
 import io::writer;
 import io::writer_util;
 
-import pipes::{port, chan};
+import pipes::{port, port_set, chan};
 
 macro_rules! move {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
@@ -91,97 +91,4 @@ fn main(args: ~[str]) {
 
     #debug("%?", args);
     run(args);
-}
-
-// Treat a whole bunch of ports as one.
-class box<T> {
-    let mut contents: option<T>;
-    new(+x: T) { self.contents = some(x); }
-
-    fn swap(f: fn(+T) -> T) {
-        let mut tmp = none;
-        self.contents <-> tmp;
-        self.contents = some(f(option::unwrap(tmp)));
-    }
-
-    fn unwrap() -> T {
-        let mut tmp = none;
-        self.contents <-> tmp;
-        option::unwrap(tmp)
-    }
-}
-
-class port_set<T: send> {
-    let mut ports: ~[pipes::port<T>];
-
-    new() { self.ports = ~[]; }
-
-    fn add(+port: pipes::port<T>) {
-        vec::push(self.ports, port)
-    }
-
-    fn try_recv() -> option<T> {
-        let mut result = none;
-        while result == none && self.ports.len() > 0 {
-            let i = pipes::wait_many(self.ports.map(|p| p.header()));
-            // dereferencing an unsafe pointer nonsense to appease the
-            // borrowchecker.
-            alt unsafe {(*ptr::addr_of(self.ports[i])).try_recv()} {
-              some(m) {
-                result = some(move!{m});
-              }
-              none {
-                // Remove this port.
-                let mut ports = ~[];
-                self.ports <-> ports;
-                vec::consume(ports,
-                             |j, x| if i != j { vec::push(self.ports, x) });
-              }
-            }
-        }
-/*        
-        while !done {
-            do self.ports.swap |ports| {
-                if ports.len() > 0 {
-                    let old_len = ports.len();
-                    let (_, m, ports) = pipes::select(ports);
-                    alt m {
-                      some(pipes::streamp::data(x, next)) {
-                        result = some(move!{x});
-                        done = true;
-                        assert ports.len() == old_len - 1;
-                        vec::append_one(ports, move!{next})
-                      }
-                      none {
-                        //#error("pipe closed");
-                        assert ports.len() == old_len - 1;
-                        ports
-                      }
-                    }
-                }
-                else {
-                    //#error("no more pipes");
-                    done = true;
-                    ~[]
-                }
-            }
-        }
-*/
-        result
-    }
-
-    fn recv() -> T {
-        option::unwrap(self.try_recv())
-    }
-}
-
-impl private_methods/&<T: send> for pipes::port<T> {
-    pure fn header() -> *pipes::packet_header unchecked {
-        alt self.endp {
-          some(endp) {
-            endp.header()
-          }
-          none { fail "peeking empty stream" }
-        }
-    }
 }
