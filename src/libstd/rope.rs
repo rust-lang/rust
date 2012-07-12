@@ -53,7 +53,7 @@ fn empty() -> rope {
  * * this operation does not copy the string;
  * * the function runs in linear time.
  */
-fn of_str(str: @str) -> rope {
+fn of_str(str: @str/~) -> rope {
     ret of_substr(str, 0u, str::len(*str));
 }
 
@@ -79,7 +79,7 @@ fn of_str(str: @str) -> rope {
  * * this function does _not_ check the validity of the substring;
  * * this function fails if `byte_offset` or `byte_len` do not match `str`.
  */
-fn of_substr(str: @str, byte_offset: uint, byte_len: uint) -> rope {
+fn of_substr(str: @str/~, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
     if byte_offset + byte_len  > str::len(*str) { fail; }
     ret node::content(node::of_substr(str, byte_offset, byte_len));
@@ -107,7 +107,7 @@ fn append_char(rope: rope, char: char) -> rope {
  *
  * * this function executes in near-linear time
  */
-fn append_str(rope: rope, str: @str) -> rope {
+fn append_str(rope: rope, str: @str/~) -> rope {
     ret append_rope(rope, of_str(str))
 }
 
@@ -127,7 +127,7 @@ fn prepend_char(rope: rope, char: char) -> rope {
  * # Performance note
  * * this function executes in near-linear time
  */
-fn prepend_str(rope: rope, str: @str) -> rope {
+fn prepend_str(rope: rope, str: @str/~) -> rope {
     ret append_rope(of_str(str), rope)
 }
 
@@ -567,7 +567,7 @@ mod node {
         byte_offset: uint,
         byte_len:    uint,
         char_len:   uint,
-        content:    @str
+        content:    @str/~
     };
 
     /**
@@ -627,7 +627,7 @@ mod node {
      * Performance note: The complexity of this function is linear in
      * the length of `str`.
      */
-    fn of_str(str: @str) -> @node {
+    fn of_str(str: @str/~) -> @node {
         ret of_substr(str, 0u, str::len(*str));
     }
 
@@ -648,7 +648,7 @@ mod node {
      * Behavior is undefined if `byte_start` or `byte_len` do not represent
      * valid positions in `str`
      */
-    fn of_substr(str: @str, byte_start: uint, byte_len: uint) -> @node {
+    fn of_substr(str: @str/~, byte_start: uint, byte_len: uint) -> @node {
         ret of_substr_unsafer(str, byte_start, byte_len,
                               str::count_chars(*str, byte_start, byte_len));
     }
@@ -674,7 +674,7 @@ mod node {
      * * Behavior is undefined if `char_len` does not accurately represent the
      *   number of chars between byte_start and byte_start+byte_len
      */
-    fn of_substr_unsafer(str: @str, byte_start: uint, byte_len: uint,
+    fn of_substr_unsafer(str: @str/~, byte_start: uint, byte_len: uint,
                           char_len: uint) -> @node {
         assert(byte_start + byte_len <= str::len(*str));
         let candidate = @leaf({

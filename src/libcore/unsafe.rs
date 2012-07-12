@@ -61,8 +61,8 @@ mod tests {
             let box = @"box box box";       // refcount 1
             bump_box_refcount(box);         // refcount 2
             let ptr: *int = transmute(box); // refcount 2
-            let _box1: @str = reinterpret_cast(ptr);
-            let _box2: @str = reinterpret_cast(ptr);
+            let _box1: @str/~ = reinterpret_cast(ptr);
+            let _box2: @str/~ = reinterpret_cast(ptr);
             assert *_box1 == "box box box";
             assert *_box2 == "box box box";
             // Will destroy _box1 and _box2. Without the bump, this would

@@ -218,7 +218,7 @@ impl helpers for ext_ctxt {
                 ast::expr_alt(v, arms, ast::alt_exhaustive)))
     }
 
-    fn lit_str(span: span, s: @str) -> @ast::expr {
+    fn lit_str(span: span, s: @str/~) -> @ast::expr {
         self.expr(
             span,
             ast::expr_lit(
@@ -343,8 +343,19 @@ fn ser_lambda(cx: ext_ctxt, tps: ser_tps_map, ty: @ast::ty,
     cx.lambda(cx.blk(ty.span, ser_ty(cx, tps, ty, s, v)))
 }
 
+fn is_vec_or_str(ty: @ast::ty) -> bool {
+    alt ty.node {
+      ast::ty_vec(_) { true }
+      // This may be wrong if the user has shadowed (!) str
+      ast::ty_path(@{span: _, global: _, idents: ids,
+                             rp: none, types: _}, _)
+      if ids == ~[@"str"] { true }
+      _ { false }
+    }
+}
+
 fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
-                ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
+          ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
     -> ~[@ast::stmt] {
 
     let ext_cx = cx; // required for #ast{}
@@ -363,6 +374,11 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       ast::ty_box(mt) {
         let l = ser_lambda(cx, tps, mt.ty, cx.clone(s), #ast{ *$(v) });
         ~[#ast(stmt){$(s).emit_box($(l));}]
+      }
+
+      // For unique evecs/estrs, just pass through to underlying vec or str
+      ast::ty_uniq(mt) if is_vec_or_str(mt.ty) {
+        ser_ty(cx, tps, mt.ty, s, v)
       }
 
       ast::ty_uniq(mt) {
@@ -610,6 +626,11 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
       ast::ty_box(mt) {
         let l = deser_lambda(cx, tps, mt.ty, cx.clone(d));
         #ast{ @$(d).read_box($(l)) }
+      }
+
+      // For unique evecs/estrs, just pass through to underlying vec or str
+      ast::ty_uniq(mt) if is_vec_or_str(mt.ty) {
+        deser_ty(cx, tps, mt.ty, d)
       }
 
       ast::ty_uniq(mt) {

@@ -32,7 +32,7 @@ fn deserialize_span<D>(_d: D) -> span {
 type spanned<T> = {node: T, span: span};
 
 #[auto_serialize]
-type ident = @str;
+type ident = @str/~;
 
 // Functions may or may not have names.
 #[auto_serialize]
@@ -427,11 +427,11 @@ type lit = spanned<lit_>;
 
 #[auto_serialize]
 enum lit_ {
-    lit_str(@str),
+    lit_str(@str/~),
     lit_int(i64, int_ty),
     lit_uint(u64, uint_ty),
     lit_int_unsuffixed(i64),
-    lit_float(@str, float_ty),
+    lit_float(@str/~, float_ty),
     lit_nil,
     lit_bool(bool),
 }

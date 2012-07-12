@@ -202,18 +202,18 @@ fn Atom(n: uint) -> Atom {
 }
 
 class AtomTable {
-    let atoms: hashmap<@str,Atom>;
-    let strings: dvec<@str>;
+    let atoms: hashmap<@str/~,Atom>;
+    let strings: dvec<@str/~>;
     let mut atom_count: uint;
 
     new() {
-        self.atoms = hashmap::<@str,Atom>(|x| str::hash(*x),
+        self.atoms = hashmap::<@str/~,Atom>(|x| str::hash(*x),
                                           |x, y| str::eq(*x, *y));
         self.strings = dvec();
         self.atom_count = 0u;
     }
 
-    fn intern(string: @str) -> Atom {
+    fn intern(string: @str/~) -> Atom {
         alt self.atoms.find(string) {
             none { /* fall through */ }
             some(atom) { ret atom; }
@@ -227,11 +227,11 @@ class AtomTable {
         ret atom;
     }
 
-    fn atom_to_str(atom: Atom) -> @str {
+    fn atom_to_str(atom: Atom) -> @str/~ {
         ret self.strings.get_elt(atom);
     }
 
-    fn atoms_to_strs(atoms: ~[Atom], f: fn(@str) -> bool) {
+    fn atoms_to_strs(atoms: ~[Atom], f: fn(@str/~) -> bool) {
         for atoms.each |atom| {
             if !f(self.atom_to_str(atom)) {
                 ret;
@@ -239,7 +239,7 @@ class AtomTable {
         }
     }
 
-    fn atoms_to_str(atoms: ~[Atom]) -> @str {
+    fn atoms_to_str(atoms: ~[Atom]) -> @str/~ {
         // XXX: str::connect should do this.
         let mut result = "";
         let mut first = true;
@@ -577,7 +577,8 @@ class PrimitiveTypeTable {
         self.intern(atom_table, @"u64",     ty_uint(ty_u64));
     }
 
-    fn intern(atom_table: @AtomTable, string: @str, primitive_type: prim_ty) {
+    fn intern(atom_table: @AtomTable, string: @str/~,
+              primitive_type: prim_ty) {
         let atom = (*atom_table).intern(string);
         self.primitive_types.insert(atom, primitive_type);
     }

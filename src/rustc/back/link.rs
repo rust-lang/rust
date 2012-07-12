@@ -291,14 +291,14 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                    sha: sha1) -> link_meta {
 
     type provided_metas =
-        {name: option<@str>,
-         vers: option<@str>,
+        {name: option<@str/~>,
+         vers: option<@str/~>,
          cmh_items: ~[@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let mut name: option<@str> = none;
-        let mut vers: option<@str> = none;
+        let mut name: option<@str/~> = none;
+        let mut vers: option<@str/~> = none;
         let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
@@ -321,7 +321,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: ast::crate,
                               metas: provided_metas,
-                              dep_hashes: ~[@str]) -> str {
+                              dep_hashes: ~[@str/~]) -> str {
         fn len_and_str(s: str) -> str {
             ret #fmt["%u_%s", str::len(s), s];
         }
@@ -362,7 +362,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
-                       output: str, metas: provided_metas) -> @str {
+                       output: str, metas: provided_metas) -> @str/~ {
         ret alt metas.name {
               some(v) { v }
               none {
@@ -384,7 +384,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     }
 
     fn crate_meta_vers(sess: session, _crate: ast::crate,
-                       metas: provided_metas) -> @str {
+                       metas: provided_metas) -> @str/~ {
         ret alt metas.vers {
               some(v) { v }
               none {
@@ -490,7 +490,7 @@ fn mangle(ss: path) -> str {
     n
 }
 
-fn exported_name(path: path, hash: @str, vers: @str) -> str {
+fn exported_name(path: path, hash: @str/~, vers: @str/~) -> str {
     ret mangle(
         vec::append_one(vec::append_one(path, path_name(hash)),
                         path_name(vers)));
@@ -502,7 +502,7 @@ fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
-                                     t: ty::t, name: @str) ->
+                                     t: ty::t, name: @str/~) ->
    str {
     let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
@@ -510,7 +510,7 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
-                                        flav: @str) -> str {
+                                        flav: @str/~) -> str {
     ret mangle(vec::append_one(path, path_name(@ccx.names(*flav))));
 }
 
@@ -518,7 +518,7 @@ fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
     ret mangle(path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @str) -> str {
+fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @str/~) -> str {
     ret ccx.names(*flav);
 }
 

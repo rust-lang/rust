@@ -253,7 +253,7 @@ type ctxt =
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
-      short_names_cache: hashmap<t, @str>,
+      short_names_cache: hashmap<t, @str/~>,
       needs_drop_cache: hashmap<t, bool>,
       needs_unwind_cleanup_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,

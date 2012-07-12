@@ -37,7 +37,7 @@ type cnum_map = map::hashmap<ast::crate_num, ast::crate_num>;
 // Multiple items may have the same def_id in crate metadata. They may be
 // renamed imports or reexports. This map keeps the "real" module path
 // and def_id.
-type mod_path_map = map::hashmap<ast::def_id, @str>;
+type mod_path_map = map::hashmap<ast::def_id, @str/~>;
 
 type crate_metadata = @{name: str,
                         data: @~[u8],
@@ -83,12 +83,12 @@ fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {
     ret p(cstore).metas.get(cnum);
 }
 
-fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> @str {
+fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> @str/~ {
     let cdata = get_crate_data(cstore, cnum);
     ret decoder::get_crate_hash(cdata.data);
 }
 
-fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @str {
+fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @str/~ {
     let cdata = get_crate_data(cstore, cnum);
     ret decoder::get_crate_vers(cdata.data);
 }
@@ -153,8 +153,8 @@ fn find_use_stmt_cnum(cstore: cstore,
 
 // returns hashes of crates directly used by this crate. Hashes are
 // sorted by crate name.
-fn get_dep_hashes(cstore: cstore) -> ~[@str] {
-    type crate_hash = {name: @str, hash: @str};
+fn get_dep_hashes(cstore: cstore) -> ~[@str/~] {
+    type crate_hash = {name: @str/~, hash: @str/~};
     let mut result = ~[];
 
     for p(cstore).use_crate_map.each_value |cnum| {
@@ -171,7 +171,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[@str] {
     for sorted.each |x| {
         #debug("  hash[%s]: %s", *x.name, *x.hash);
     }
-    fn mapper(ch: crate_hash) -> @str { ret ch.hash; }
+    fn mapper(ch: crate_hash) -> @str/~ { ret ch.hash; }
     ret vec::map(sorted, mapper);
 }
 

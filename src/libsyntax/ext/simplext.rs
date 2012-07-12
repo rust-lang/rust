@@ -679,7 +679,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> base::macro_def {
     let args = get_mac_args_no_max(cx, sp, arg, 0u, "macro");
 
-    let mut macro_name: option<@str> = none;
+    let mut macro_name: option<@str/~> = none;
     let mut clauses: ~[@clause] = ~[];
     for args.each |arg| {
         alt arg.node {

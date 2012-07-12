@@ -775,7 +775,7 @@ fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
     }
 }
 
-fn list_crate_attributes(md: ebml::doc, hash: @str, out: io::writer) {
+fn list_crate_attributes(md: ebml::doc, hash: @str/~, out: io::writer) {
     out.write_str(#fmt("=Crate Attributes (%s)=\n", *hash));
 
     for get_attributes(md).each |attr| {
@@ -790,7 +790,7 @@ fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
 }
 
 type crate_dep = {cnum: ast::crate_num, name: ast::ident,
-                  vers: @str, hash: @str};
+                  vers: @str/~, hash: @str/~};
 
 fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
@@ -821,13 +821,13 @@ fn list_crate_deps(data: @~[u8], out: io::writer) {
     out.write_str("\n");
 }
 
-fn get_crate_hash(data: @~[u8]) -> @str {
+fn get_crate_hash(data: @~[u8]) -> @str/~ {
     let cratedoc = ebml::doc(data);
     let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
     ret @str::from_bytes(ebml::doc_data(hashdoc));
 }
 
-fn get_crate_vers(data: @~[u8]) -> @str {
+fn get_crate_vers(data: @~[u8]) -> @str/~ {
     let attrs = decoder::get_crate_attributes(data);
     ret alt attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), "vers") {

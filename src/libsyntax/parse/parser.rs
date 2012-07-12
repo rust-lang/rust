@@ -230,7 +230,7 @@ class parser {
     fn warn(m: str) {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
-    fn get_str(i: token::str_num) -> @str {
+    fn get_str(i: token::str_num) -> @str/~ {
         interner::get(*self.reader.interner(), i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
@@ -394,7 +394,7 @@ class parser {
         }
     }
 
-    fn region_from_name(s: option<@str>) -> @region {
+    fn region_from_name(s: option<@str/~>) -> @region {
         let r = alt s {
           some (string) { re_named(string) }
           none { re_anon }
@@ -461,22 +461,10 @@ class parser {
             }
         } else if self.token == token::AT {
             self.bump();
-            // HACK: turn @[...] into a @-evec
-            alt self.parse_mt() {
-              {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
-                ty_vstore(t, vstore_box)
-              }
-              mt { ty_box(mt) }
-            }
+            ty_box(self.parse_mt())
         } else if self.token == token::TILDE {
             self.bump();
-            // HACK: turn ~[...] into a ~-evec
-            alt self.parse_mt() {
-              {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
-                ty_vstore(t, vstore_uniq)
-              }
-              mt { ty_uniq(mt) }
-            }
+            ty_uniq(self.parse_mt())
         } else if self.token == token::BINOP(token::STAR) {
             self.bump();
             ty_ptr(self.parse_mt())
@@ -506,13 +494,8 @@ class parser {
         } else if self.token == token::BINOP(token::AND) {
             self.bump();
             let region = self.parse_region_dot();
-            // HACK: turn &a.[...] into a &a-evec
-            alt self.parse_mt() {
-              {ty: t @ @{node: ty_vec(_), _}, mutbl: m_imm} {
-                ty_vstore(t, vstore_slice(region))
-              }
-              mt { ty_rptr(region, mt) }
-            }
+            let mt = self.parse_mt();
+            ty_rptr(region, mt)
         } else if self.eat_keyword("pure") {
             self.parse_ty_fn(ast::pure_fn)
         } else if self.eat_keyword("unsafe") {
@@ -2742,7 +2725,7 @@ class parser {
                       config: self.cfg});
     }
 
-    fn parse_str() -> @str {
+    fn parse_str() -> @str/~ {
         alt copy self.token {
           token::LIT_STR(s) { self.bump(); self.get_str(s) }
           _ {

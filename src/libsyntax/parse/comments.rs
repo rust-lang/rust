@@ -275,7 +275,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
                                 srdr: io::reader) ->
    {cmnts: ~[cmnt], lits: ~[lit]} {
     let src = @str::from_bytes(srdr.read_whole_stream());
-    let itr = @interner::mk::<@str>(
+    let itr = @interner::mk::<@str/~>(
         |x| str::hash(*x),
         |x,y| str::eq(*x, *y)
     );

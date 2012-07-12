@@ -310,8 +310,8 @@ fn str_hash<V: copy>() -> hashmap<str, V> {
 }
 
 /// Construct a hashmap for boxed string keys
-fn box_str_hash<V: copy>() -> hashmap<@str, V> {
-    ret hashmap(|x: @str| str::hash(*x), |x,y| str::eq(*x,*y));
+fn box_str_hash<V: copy>() -> hashmap<@str/~, V> {
+    ret hashmap(|x: @str/~| str::hash(*x), |x,y| str::eq(*x,*y));
 }
 
 /// Construct a hashmap for byte string keys

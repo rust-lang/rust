@@ -418,7 +418,7 @@ fn check_compiling(filename: str) -> happiness {
 }
 
 
-fn parse_and_print(code: @str) -> str {
+fn parse_and_print(code: @str/~) -> str {
     let filename = "tmp.rs";
     let sess = parse::new_parse_sess(option::none);
     write_file(filename, *code);
@@ -501,7 +501,7 @@ fn file_might_not_converge(filename: str) -> bool {
     ret false;
 }
 
-fn check_roundtrip_convergence(code: @str, maxIters: uint) {
+fn check_roundtrip_convergence(code: @str/~, maxIters: uint) {
 
     let mut i = 0u;
     let mut newv = code;

@@ -29,7 +29,7 @@ type ctxt = {
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
-type ty_abbrev = {pos: uint, len: uint, s: @str};
+type ty_abbrev = {pos: uint, len: uint, s: @str/~};
 
 enum abbrev_ctxt { ac_no_abbrevs, ac_use_abbrevs(hashmap<ty::t, ty_abbrev>), }
 

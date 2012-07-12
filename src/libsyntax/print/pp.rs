@@ -59,7 +59,7 @@ type break_t = {offset: int, blank_space: int};
 
 type begin_t = {offset: int, breaks: breaks};
 
-enum token { STRING(@str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
+enum token { STRING(@str/~, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
 
 fn tok_str(++t: token) -> str {
     alt t {

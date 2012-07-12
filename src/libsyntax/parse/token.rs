@@ -115,7 +115,7 @@ fn binop_to_str(o: binop) -> str {
     }
 }
 
-fn to_str(in: interner<@str>, t: token) -> str {
+fn to_str(in: interner<@str/~>, t: token) -> str {
     alt t {
       EQ { "=" }
       LT { "<" }

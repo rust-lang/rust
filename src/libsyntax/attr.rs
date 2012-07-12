@@ -124,7 +124,7 @@ fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
  * Gets the string value if the meta_item is a meta_name_value variant
  * containing a string, otherwise none
  */
-fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@str> {
+fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@str/~> {
     alt meta.node {
       ast::meta_name_value(_, v) {
         alt v.node {
@@ -154,7 +154,7 @@ fn get_meta_item_list(meta: @ast::meta_item) -> option<~[@ast::meta_item]> {
  */
 fn get_name_value_str_pair(
     item: @ast::meta_item
-) -> option<(ast::ident, @str)> {
+) -> option<(ast::ident, @str/~)> {
     alt attr::get_meta_item_value_str(item) {
       some(value) {
         let name = attr::get_meta_item_name(item);
@@ -239,7 +239,7 @@ fn attrs_contains_name(attrs: ~[ast::attribute], +name: str) -> bool {
 }
 
 fn first_attr_value_str_by_name(attrs: ~[ast::attribute], +name: str)
-    -> option<@str> {
+    -> option<@str/~> {
     let mattrs = find_attrs_by_name(attrs, name);
     if vec::len(mattrs) > 0u {
         ret get_meta_item_value_str(attr_meta(mattrs[0]));
@@ -258,7 +258,7 @@ fn last_meta_item_by_name(
 fn last_meta_item_value_str_by_name(
     items: ~[@ast::meta_item],
     +name: str
-) -> option<@str> {
+) -> option<@str/~> {
     alt last_meta_item_by_name(items, name) {
       some(item) {
         alt attr::get_meta_item_value_str(item) {

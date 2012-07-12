@@ -25,7 +25,7 @@ type parse_sess = @{
     cm: codemap::codemap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
-    interner: @interner::interner<@str>,
+    interner: @interner::interner<@str/~>,
     // these two must be kept up to date
     mut chpos: uint,
     mut byte_pos: uint
@@ -36,7 +36,7 @@ fn new_parse_sess(demitter: option<emitter>) -> parse_sess {
     ret @{cm: cm,
           mut next_id: 1,
           span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-          interner: @interner::mk::<@str>(|x| str::hash(*x),
+          interner: @interner::mk::<@str/~>(|x| str::hash(*x),
                                           |x,y| str::eq(*x, *y)),
           mut chpos: 0u, mut byte_pos: 0u};
 }
@@ -46,7 +46,7 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
     ret @{cm: cm,
           mut next_id: 1,
           span_diagnostic: sh,
-          interner: @interner::mk::<@str>(|x| str::hash(*x),
+          interner: @interner::mk::<@str/~>(|x| str::hash(*x),
                                           |x,y| str::eq(*x, *y)),
           mut chpos: 0u, mut byte_pos: 0u};
 }
@@ -97,7 +97,7 @@ fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
     ret r;
 }
 
-fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
+fn parse_crate_from_source_str(name: str, source: @str/~, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
@@ -107,7 +107,7 @@ fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
     ret r;
 }
 
-fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
+fn parse_expr_from_source_str(name: str, source: @str/~, cfg: ast::crate_cfg,
                               sess: parse_sess) -> @ast::expr {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
@@ -117,7 +117,7 @@ fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
     ret r;
 }
 
-fn parse_item_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
+fn parse_item_from_source_str(name: str, source: @str/~, cfg: ast::crate_cfg,
                               +attrs: ~[ast::attribute],
                               vis: ast::visibility,
                               sess: parse_sess) -> option<@ast::item> {
@@ -131,7 +131,7 @@ fn parse_item_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
 
 fn parse_from_source_str<T>(f: fn (p: parser) -> T,
                             name: str, ss: codemap::file_substr,
-                            source: @str, cfg: ast::crate_cfg,
+                            source: @str/~, cfg: ast::crate_cfg,
                             sess: parse_sess)
     -> T
 {
@@ -156,7 +156,7 @@ fn next_node_id(sess: parse_sess) -> node_id {
 
 fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                                   +name: str, +ss: codemap::file_substr,
-                                  source: @str) -> (parser, string_reader) {
+                                  source: @str/~) -> (parser, string_reader) {
     let ftype = parser::SOURCE_FILE;
     let filemap = codemap::new_filemap_w_substr
         (name, ss, source, sess.chpos, sess.byte_pos);
@@ -168,7 +168,7 @@ fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
 
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                               +name: str, +ss: codemap::file_substr,
-                              source: @str) -> parser {
+                              source: @str/~) -> parser {
     let (p, _) = new_parser_etc_from_source_str(sess, cfg, name, ss, source);
     ret p;
 }

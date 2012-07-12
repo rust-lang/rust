@@ -29,7 +29,7 @@ export null;
 /// Represents a json value
 enum json {
     num(float),
-    string(@str),
+    string(@str/~),
     boolean(bool),
     list(@~[json]),
     dict(map::hashmap<str, json>),
@@ -39,7 +39,7 @@ enum json {
 type error = {
     line: uint,
     col: uint,
-    msg: @str,
+    msg: @str/~,
 };
 
 /// Serializes a json value into a io::writer
@@ -324,7 +324,7 @@ impl parser for parser {
         ok(res)
     }
 
-    fn parse_str() -> result<@str, error> {
+    fn parse_str() -> result<@str/~, error> {
         let mut escape = false;
         let mut res = "";
 
@@ -579,7 +579,7 @@ impl of to_json for str {
     fn to_json() -> json { string(@copy self) }
 }
 
-impl of to_json for @str {
+impl of to_json for @str/~ {
     fn to_json() -> json { string(self) }
 }
 

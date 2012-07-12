@@ -160,12 +160,17 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
         ret {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
     }
 
-    fn mk_vstore<AC: ast_conv, RS: region_scope copy>(
-        self: AC, rscope: RS, a_seq_ty: @ast::ty, vst: ty::vstore) -> ty::t {
+    // Handle @, ~, and & being able to mean estrs and evecs.
+    // If a_seq_ty is a str or a vec, make it an estr/evec
+    fn mk_maybe_vstore<AC: ast_conv, RS: region_scope copy>(
+        self: AC, rscope: RS, a_seq_ty: ast::mt, vst: ty::vstore,
+        constr: fn(ty::mt) -> ty::t) -> ty::t {
 
         let tcx = self.tcx();
 
-        alt a_seq_ty.node {
+        alt a_seq_ty.ty.node {
+          // to convert to an e{vec,str}, there can't be a mutability argument
+          _ if a_seq_ty.mutbl != ast::m_imm {}
           ast::ty_vec(mt) {
             ret ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
           }
@@ -181,13 +186,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           _ {}
         }
 
-        // Get the type, just for the error message
-        let seq_ty = ast_ty_to_ty(self, rscope, a_seq_ty);
-        tcx.sess.span_err(
-            a_seq_ty.span,
-            #fmt["bound not allowed on a %s",
-                 ty::ty_sort_str(tcx, seq_ty)]);
-        ret seq_ty;
+        let seq_ty = ast_mt_to_mt(self, rscope, a_seq_ty);
+        ret constr(seq_ty);
     }
 
     fn check_path_args(tcx: ty::ctxt,
@@ -227,10 +227,12 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
       ast::ty_nil { ty::mk_nil(tcx) }
       ast::ty_bot { ty::mk_bot(tcx) }
       ast::ty_box(mt) {
-        ty::mk_box(tcx, ast_mt_to_mt(self, rscope, mt))
+        mk_maybe_vstore(self, rscope, mt, ty::vstore_box,
+                        |tmt| ty::mk_box(tcx, tmt))
       }
       ast::ty_uniq(mt) {
-        ty::mk_uniq(tcx, ast_mt_to_mt(self, rscope, mt))
+        mk_maybe_vstore(self, rscope, mt, ty::vstore_uniq,
+                        |tmt| ty::mk_uniq(tcx, tmt))
       }
       ast::ty_vec(mt) {
         ty::mk_vec(tcx, ast_mt_to_mt(self, rscope, mt))
@@ -240,8 +242,9 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
       }
       ast::ty_rptr(region, mt) {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
-        let mt = ast_mt_to_mt(self, in_anon_rscope(rscope, r), mt);
-        ty::mk_rptr(tcx, r, mt)
+        mk_maybe_vstore(self, in_anon_rscope(rscope, r), mt,
+                        ty::vstore_slice(r),
+                        |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(fields) {
         let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, t));
@@ -318,24 +321,64 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           }
         }
       }
+      // This is awful and repetitive but will go away
       ast::ty_vstore(a_t, ast::vstore_slice(a_r)) {
         let r = ast_region_to_region(self, rscope, ast_ty.span, a_r);
-        mk_vstore(self, in_anon_rscope(rscope, r), a_t, ty::vstore_slice(r))
+        mk_maybe_vstore(self, in_anon_rscope(rscope, r),
+                        {ty: a_t, mutbl: ast::m_imm},
+                        ty::vstore_slice(r),
+                        |ty| {
+                            tcx.sess.span_err(
+                                a_t.span,
+                                #fmt["bound not allowed on a %s",
+                                     ty::ty_sort_str(tcx, ty.ty)]);
+                            ty.ty
+                        })
+
       }
       ast::ty_vstore(a_t, ast::vstore_uniq) {
-        mk_vstore(self, rscope, a_t, ty::vstore_uniq)
+        mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
+                        ty::vstore_uniq,
+                        |ty| {
+                            tcx.sess.span_err(
+                                a_t.span,
+                                #fmt["bound not allowed on a %s",
+                                     ty::ty_sort_str(tcx, ty.ty)]);
+                            ty.ty
+                        })
       }
       ast::ty_vstore(a_t, ast::vstore_box) {
-        mk_vstore(self, rscope, a_t, ty::vstore_box)
+        mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
+                        ty::vstore_box,
+                        |ty| {
+                            tcx.sess.span_err(
+                                a_t.span,
+                                #fmt["bound not allowed on a %s",
+                                     ty::ty_sort_str(tcx, ty.ty)]);
+                            ty.ty
+                        })
       }
       ast::ty_vstore(a_t, ast::vstore_fixed(some(u))) {
-        mk_vstore(self, rscope, a_t, ty::vstore_fixed(u))
+        mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
+                        ty::vstore_fixed(u),
+                        |ty| {
+                            tcx.sess.span_err(
+                                a_t.span,
+                                #fmt["bound not allowed on a %s",
+                                     ty::ty_sort_str(tcx, ty.ty)]);
+                            ty.ty
+                        })
       }
       ast::ty_vstore(_, ast::vstore_fixed(none)) {
         tcx.sess.span_bug(
             ast_ty.span,
             "implied fixed length for bound");
       }
+/*
+      ast::ty_vstore(_, _) {
+        tcx.sess.span_bug(ast_ty.span, "some BS");
+      }
+*/
       ast::ty_constr(t, cs) {
         let mut out_cs = ~[];
         for cs.each |constr| {

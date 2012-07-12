@@ -38,7 +38,7 @@ fn read_crates(diag: span_handler, crate: ast::crate,
 type cache_entry = {
     cnum: int,
     span: span,
-    hash: @str,
+    hash: @str/~,
     metas: @~[@ast::meta_item]
 };
 

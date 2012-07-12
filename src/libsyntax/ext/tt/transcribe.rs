@@ -24,7 +24,7 @@ type tt_frame = @{
 
 type tt_reader = @{
     sp_diag: span_handler,
-    interner: @interner<@str>,
+    interner: @interner<@str/~>,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
     interpolations: std::map::hashmap<ident, @arb_depth>,
@@ -38,7 +38,7 @@ type tt_reader = @{
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_dotdotdot`s and `tt_interpolate`s, `interp` can (and
  *  should) be none. */
-fn new_tt_reader(sp_diag: span_handler, itr: @interner<@str>,
+fn new_tt_reader(sp_diag: span_handler, itr: @interner<@str/~>,
                  interp: option<std::map::hashmap<ident,@arb_depth>>,
                  src: ~[ast::token_tree])
     -> tt_reader {

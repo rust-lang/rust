@@ -116,7 +116,7 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @str {
+fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @str/~ {
     let name_items = attr::find_meta_items_by_name(metas, "name");
     alt vec::last_opt(name_items) {
       some(i) {
