@@ -9,7 +9,6 @@ class rust_port_selector : public rust_cond {
  private:
     rust_port **ports;
     size_t n_ports;
-    lock_and_signal rendezvous_lock;
 
  public:
     rust_port_selector();
