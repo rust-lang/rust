@@ -459,7 +459,6 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         ~[]
       }
 
-      ast::ty_vstore(@{node: ast::ty_vec(mt),_}, ast::vstore_uniq) |
       ast::ty_vec(mt) {
         let ser_e =
             cx.expr(
@@ -475,6 +474,11 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         ~[#ast(stmt){
             std::serialization::emit_from_vec($(s), $(v), |__e| $(ser_e))
         }]
+      }
+
+      // For unique vstores, just pass through to the underlying vec or str
+      ast::ty_vstore(ty, ast::vstore_uniq) {
+        ser_ty(cx, tps, ty, s, v)
       }
 
       ast::ty_vstore(_, _) {
@@ -685,10 +689,14 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         #ast{ fail }
       }
 
-      ast::ty_vstore(@{node: ast::ty_vec(mt),_}, ast::vstore_uniq) |
       ast::ty_vec(mt) {
         let l = deser_lambda(cx, tps, mt.ty, cx.clone(d));
         #ast{ std::serialization::read_to_vec($(d), $(l)) }
+      }
+
+      // For unique vstores, just pass through to the underlying vec or str
+      ast::ty_vstore(ty, ast::vstore_uniq) {
+        deser_ty(cx, tps, ty, d)
       }
 
       ast::ty_vstore(_, _) {
