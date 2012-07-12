@@ -275,6 +275,8 @@ public:
     // Fail self, assuming caller-on-stack is this task.
     void fail();
     void fail(char const *expr, char const *file, size_t line);
+    void conclude_failure();
+    void fail_parent();
 
     // Disconnect from our supervisor.
     void unsupervise();

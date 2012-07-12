@@ -10,8 +10,6 @@
 #include "rust_env.h"
 #include "rust_port.h"
 
-// TODO(bblum): get rid of supervisors
-
 // Tasks
 rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
                      rust_task *spawner, const char *name,
@@ -148,9 +146,13 @@ cleanup_task(cleanup_args *args) {
 
     task->notify(!threw_exception);
 
-#ifdef __WIN32__
-    assert(!threw_exception && "No exception-handling yet on windows builds");
+    if (threw_exception) {
+#ifndef __WIN32__
+        task->conclude_failure();
+#else
+        assert(false && "Shouldn't happen");
 #endif
+    }
 }
 
 extern "C" CDECL void upcall_exchange_free(void *ptr);
@@ -260,7 +262,10 @@ void
 rust_task::kill() {
     scoped_lock with(kill_lock);
 
-    // XXX: bblum: kill/kill race
+    if (dead()) {
+        // Task is already dead, can't kill what's already dead.
+        fail_parent();
+    }
 
     // Note the distinction here: kill() is when you're in an upcall
     // from task A and want to force-fail task B, you do B->kill().
@@ -309,9 +314,29 @@ rust_task::begin_failure(char const *expr, char const *file, size_t line) {
     throw this;
 #else
     die();
+    conclude_failure();
     // FIXME (#908): Need unwinding on windows. This will end up aborting
     sched_loop->fail();
 #endif
+}
+
+void
+rust_task::conclude_failure() {
+    fail_parent();
+}
+
+void
+rust_task::fail_parent() {
+    scoped_lock with(supervisor_lock);
+    if (supervisor) {
+        DLOG(sched_loop, task,
+             "task %s @0x%" PRIxPTR
+             " propagating failure to supervisor %s @0x%" PRIxPTR,
+             name, this, supervisor->name, supervisor);
+        supervisor->kill();
+    }
+    if (NULL == supervisor && propagate_failure)
+        sched_loop->fail();
 }
 
 void
