@@ -1,6 +1,6 @@
 // error-pattern: mismatched types
 
-fn f(x : &a.int) -> &a.int {
+fn f(x : &a/int) -> &a/int {
     ret &3;
 }
 

@@ -420,15 +420,20 @@ class parser {
         }
     }
 
-    // Parses something like "&x." (note the trailing dot)
-    fn parse_region_dot() -> @region {
+    // Parses something like "&x/" (note the trailing slash)
+    fn parse_region_with_sep() -> @region {
         let name =
             alt copy self.token {
-              token::IDENT(sid, _) if self.look_ahead(1u) == token::DOT {
-                self.bump(); self.bump();
-                some(self.get_str(sid))
+              token::IDENT(sid, _) => {
+                if self.look_ahead(1u) == token::DOT || // backwards compat
+                    self.look_ahead(1u) == token::BINOP(token::SLASH) {
+                    self.bump(); self.bump();
+                    some(self.get_str(sid))
+                } else {
+                    none
+                }
               }
-              _ { none }
+              _ => { none }
             };
         self.region_from_name(name)
     }
@@ -495,7 +500,7 @@ class parser {
             t
         } else if self.token == token::BINOP(token::AND) {
             self.bump();
-            let region = self.parse_region_dot();
+            let region = self.parse_region_with_sep();
             let mt = self.parse_mt();
             ty_rptr(region, mt)
         } else if self.eat_keyword("pure") {

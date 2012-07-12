@@ -11,7 +11,7 @@ impl of get_ctxt for has_ctxt {
 
     // Here an error occurs because we used `&self` but
     // the definition used `&`:
-    fn get_ctxt() -> &self.ctxt { //~ ERROR method `get_ctxt` has an incompatible type
+    fn get_ctxt() -> &self/ctxt { //~ ERROR method `get_ctxt` has an incompatible type
         self.c
     }
 

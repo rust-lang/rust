@@ -2,7 +2,7 @@
 // refers to self.
 
 iface foo {
-    fn self_int() -> &self.int;
+    fn self_int() -> &self/int;
 
     fn any_int() -> &int;
 }

@@ -6,12 +6,12 @@ class dog {
     }
 
     fn chase_cat() {
-        let p: &static.mut uint = &mut self.cats_chased; //~ ERROR mismatched types
+        let p: &static/mut uint = &mut self.cats_chased; //~ ERROR mismatched types
         *p += 1u;
     }
 
     fn chase_cat_2() {
-        let p: &blk.mut uint = &mut self.cats_chased;
+        let p: &blk/mut uint = &mut self.cats_chased;
         *p += 1u;
     }
 }

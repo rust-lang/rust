@@ -1,7 +1,7 @@
 // Here, `f` is a function that takes a pointer `x` and a function
 // `g`, where `g` requires its argument `y` to be in the same region
 // that `x` is in.
-fn has_same_region(f: fn(x: &a.int, g: fn(y: &a.int))) {
+fn has_same_region(f: fn(x: &a/int, g: fn(y: &a/int))) {
     // Somewhat counterintuitively, this fails because, in
     // `wants_two_regions`, the `g` argument needs to be able to
     // accept any region.  That is, the type that `has_same_region`

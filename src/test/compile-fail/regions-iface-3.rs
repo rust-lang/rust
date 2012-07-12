@@ -1,5 +1,5 @@
 iface get_ctxt {
-    fn get_ctxt() -> &self.uint;
+    fn get_ctxt() -> &self/uint;
 }
 
 fn make_gc1(gc: get_ctxt/&a) -> get_ctxt/&b  {

@@ -1,11 +1,11 @@
 class font {
-    let fontbuf: &self.~[u8];
+    let fontbuf: &self/~[u8];
 
-    new(fontbuf: &self.~[u8]) {
+    new(fontbuf: &self/~[u8]) {
         self.fontbuf = fontbuf;
     }
 
-    fn buf() -> &self.~[u8] {
+    fn buf() -> &self/~[u8] {
         self.fontbuf
     }
 }

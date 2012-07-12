@@ -11,7 +11,7 @@ impl methods for c {
     }
 
     fn set_f_bad(b: @b) {
-        self.f = b; //~ ERROR mismatched types: expected `@@&self.int` but found `@@&int`
+        self.f = b; //~ ERROR mismatched types: expected `@@&self/int` but found `@@&int`
     }
 }
 
