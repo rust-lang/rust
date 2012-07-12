@@ -275,10 +275,6 @@ public:
     void fail();
     void fail(char const *expr, char const *file, size_t line);
 
-    // Propagate failure to the entire rust runtime.
-    // TODO(bblum): maybe this can be done at rust-level?
-    void fail_sched_loop();
-
     // Disconnect from our supervisor.
     void unsupervise();
 

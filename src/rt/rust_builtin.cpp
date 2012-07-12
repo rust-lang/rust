@@ -863,11 +863,6 @@ rust_task_kill_other(rust_task *task) { /* Used for linked failure */
     task->kill();
 }
 
-extern "C" void
-rust_task_kill_all(rust_task *task) {
-    task->fail_sched_loop();
-}
-
 extern "C" rust_cond_lock*
 rust_create_cond_lock() {
     return new rust_cond_lock();

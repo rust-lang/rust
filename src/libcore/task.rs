@@ -591,21 +591,16 @@ class taskgroup {
     let my_pos:     uint;
     // let parent_group: taskgroup_arc; // TODO(bblum)
     // TODO XXX bblum: add a list of empty slots to get runtime back
-    // Indicates whether this is the main (root) taskgroup. If so, failure
-    // here should take down the entire runtime.
-    let is_main:    bool;
-    new(-tasks: taskgroup_arc, me: *rust_task, my_pos: uint, is_main: bool) {
-        self.tasks   = tasks;
-        self.me      = me;
-        self.my_pos  = my_pos;
-        self.is_main = is_main;
+    let mut failed: bool;
+    new(-tasks: taskgroup_arc, me: *rust_task, my_pos: uint) {
+        self.tasks = tasks; self.me = me; self.my_pos = my_pos;
+        self.failed = true; // This will get un-set on successful exit.
     }
     // Runs on task exit.
     drop {
-        // If we are failing, the whole taskgroup needs to die.
-        if rustrt::rust_task_is_unwinding(self.me) {
+        if self.failed {
             // Take everybody down with us.
-            kill_taskgroup(self.tasks, self.me, self.my_pos, self.is_main);
+            kill_taskgroup(self.tasks, self.me, self.my_pos);
         } else {
             // Remove ourselves from the group.
             leave_taskgroup(self.tasks, self.me, self.my_pos);
@@ -647,8 +642,7 @@ fn leave_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint) {
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
-fn kill_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint,
-                  is_main: bool) {
+fn kill_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint) {
     // NB: We could do the killing iteration outside of the group arc, by
     // having "let mut newstate" here, swapping inside, and iterating after.
     // But that would let other exiting tasks fall-through and exit while we
@@ -673,40 +667,32 @@ fn kill_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint,
                     rustrt::rust_task_kill_other(task);
                 };
             }
-            // Only one task should ever do this.
-            if is_main {
-                rustrt::rust_task_kill_all(me);
-            }
         };
-        // (note: multiple tasks may reach this point)
     };
 }
 
-fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
+fn share_parent_taskgroup() -> taskgroup_arc {
     let me = rustrt::rust_get_task();
     alt unsafe { local_get(me, taskgroup_key) } {
         some(group) {
-            // Clone the shared state for the child; propagate main-ness.
-            (group.tasks.clone(), group.is_main)
+            group.tasks.clone()
         }
         none {
-            // Main task, doing first spawn ever.
+            /* Main task, doing first spawn ever. */
             let tasks = arc::exclusive(some(dvec::from_elem(some(me))));
-            let group = @taskgroup(tasks.clone(), me, 0, true);
+            let group = @taskgroup(tasks.clone(), me, 0);
             unsafe { local_set(me, taskgroup_key, group); }
-            // Tell child task it's also in the main group.
-            (tasks, true)
+            tasks
         }
     }
 }
 
 fn spawn_raw(opts: task_opts, +f: fn~()) {
     // Decide whether the child needs to be in a new linked failure group.
-    let (child_tg, is_main) = if opts.supervise {
+    let child_tg: taskgroup_arc = if opts.supervise {
         share_parent_taskgroup()
     } else {
-        // Detached from the parent group; create a new (non-main) one.
-        (arc::exclusive(some(dvec::from_elem(none))), false)
+        arc::exclusive(some(dvec::from_elem(none)))
     };
 
     unsafe {
@@ -726,8 +712,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             // Getting killed after here would leak the task.
 
             let child_wrapper =
-                make_child_wrapper(new_task, child_tg,
-                                   opts.supervise, is_main, f);
+                make_child_wrapper(new_task, child_tg, opts.supervise, f);
             let fptr = ptr::addr_of(child_wrapper);
             let closure: *rust_closure = unsafe::reinterpret_cast(fptr);
 
@@ -745,8 +730,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
     }
 
     fn make_child_wrapper(child_task: *rust_task, -child_tg: taskgroup_arc,
-                          supervise: bool, is_main: bool,
-                          -f: fn~()) -> fn~() {
+                          supervise: bool, -f: fn~()) -> fn~() {
         let child_tg_ptr = ~mut some(child_tg);
         fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
@@ -762,12 +746,13 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             // parent was already failing, so don't bother doing anything.
             alt enlist_in_taskgroup(child_tg, child_task) {
                 some(my_index) {
-                    let group =
-                        @taskgroup(child_tg, child_task, my_index, is_main);
+                    let group = @taskgroup(child_tg, child_task, my_index);
                     unsafe { local_set(child_task, taskgroup_key, group); }
                     // Run the child's body.
                     f();
-                    // TLS cleanup code will exit the taskgroup.
+                    // Report successful exit. (TLS cleanup code will tear
+                    // down the group.)
+                    group.failed = false;
                 }
                 none { }
             }
@@ -1021,7 +1006,6 @@ extern mod rustrt {
     fn rust_task_inhibit_kill();
     fn rust_task_allow_kill();
     fn rust_task_kill_other(task: *rust_task);
-    fn rust_task_kill_all(task: *rust_task);
 
     #[rust_stack]
     fn rust_get_task_local_data(task: *rust_task) -> *libc::c_void;

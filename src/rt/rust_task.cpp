@@ -129,11 +129,6 @@ cleanup_task(cleanup_args *args) {
         // assert(task->task_local_data != NULL);
         task->task_local_data_cleanup(task->task_local_data);
         task->task_local_data = NULL;
-    } else if (threw_exception) {
-        // Edge case: If main never spawns any tasks, but fails anyway, TLS
-        // won't be around to take down the kernel (task.rs:kill_taskgroup,
-        // rust_task_kill_all). Do it here instead.
-        task->fail_sched_loop();
     }
 
     // FIXME (#2676): For performance we should do the annihilator
@@ -287,7 +282,6 @@ rust_task::kill() {
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
 }
 
-// TODO(bblum): Move this to rust_builtin.cpp (cleanup)
 extern "C" CDECL
 bool rust_task_is_unwinding(rust_task *rt) {
     return rt->unwinding;
@@ -321,12 +315,8 @@ rust_task::begin_failure(char const *expr, char const *file, size_t line) {
 #else
     die();
     // FIXME (#908): Need unwinding on windows. This will end up aborting
-    fail_sched_loop();
-#endif
-}
-
-void rust_task::fail_sched_loop() {
     sched_loop->fail();
+#endif
 }
 
 void

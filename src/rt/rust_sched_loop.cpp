@@ -260,8 +260,8 @@ rust_task *
 rust_sched_loop::create_task(rust_task *spawner, const char *name) {
     rust_task *task =
         new (this->kernel, "rust_task")
-        rust_task(this, task_state_newborn,
-                  spawner, name, kernel->env->min_stack_size);
+        rust_task (this, task_state_newborn,
+                   spawner, name, kernel->env->min_stack_size);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
 

@@ -178,7 +178,6 @@ rust_port_task
 rust_task_inhibit_kill
 rust_task_allow_kill
 rust_task_kill_other
-rust_task_kill_all
 rust_create_cond_lock
 rust_destroy_cond_lock
 rust_lock_cond_lock
