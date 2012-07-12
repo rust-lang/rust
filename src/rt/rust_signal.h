@@ -5,6 +5,7 @@
 class rust_signal {
 public:
     virtual void signal() = 0;
+    virtual ~rust_signal() {}
 };
 
 #endif /* RUST_SIGNAL_H */
