@@ -144,7 +144,8 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     let mut path = ~[];
     for uint::range(start_idx, len1 - 1u) |_i| { vec::push(path, ".."); };
 
-    vec::push_all(path, vec::view(split2, start_idx, len2 - 1u));
+    // FIXME (#2880): use view here.
+    vec::push_all(path, vec::slice(split2, start_idx, len2 - 1u));
 
     if check vec::is_not_empty(path) {
         ret path::connect_many(path);

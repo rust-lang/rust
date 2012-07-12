@@ -258,13 +258,13 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     assert (end <= len(v));
     let mut result = ~[];
     unchecked {
-        push_all(result, view(v, start, end));
+        for uint::range(start, end) |i| { vec::push(result, v[i]) }
     }
     ret result;
 }
 
 #[doc = "Return a slice that points into another slice."]
-pure fn view<T>(v: &[const T], start: uint, end: uint) -> &a.[T] {
+pure fn view<T>(v: &a.[T], start: uint, end: uint) -> &a.[T] {
     assert (start <= end);
     assert (end <= len(v));
     do unpack_slice(v) |p, _len| {

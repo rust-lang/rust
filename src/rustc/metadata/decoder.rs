@@ -73,7 +73,8 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@(x:&[u8]) -> bool, hash: uint) ->
     let belt = tag_index_buckets_bucket_elt;
     do ebml::tagged_docs(bucket, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
-        if eq_fn(vec::view::<u8>(*elt.data, elt.start + 4u, elt.end)) {
+        // FIXME (#2880): use view here.
+        if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
             vec::push(result, ebml::doc_at(d.data, pos).doc);
         }
     };
