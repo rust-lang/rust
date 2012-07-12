@@ -16,10 +16,8 @@ type upcalls =
      exchange_free: ValueRef,
      validate_box: ValueRef,
      mark: ValueRef,
-     vec_grow: ValueRef,
      str_new_uniq: ValueRef,
      str_new_shared: ValueRef,
-     str_concat: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
      alloc_c_stack: ValueRef,
@@ -71,22 +69,16 @@ fn declare_upcalls(targ_cfg: @session::config,
               nothrow(dv("validate_box", ~[T_ptr(T_i8())])),
           mark:
               d("mark", ~[T_ptr(T_i8())], int_t),
-          vec_grow:
-              nothrow(dv("vec_grow", ~[T_ptr(T_ptr(T_i8())), int_t])),
           str_new_uniq:
               nothrow(d("str_new_uniq", ~[T_ptr(T_i8()), int_t],
                         T_ptr(T_i8()))),
           str_new_shared:
               nothrow(d("str_new_shared", ~[T_ptr(T_i8()), int_t],
                         T_ptr(T_i8()))),
-          str_concat:
-              nothrow(d("str_concat", ~[T_ptr(T_i8()),
-                                       T_ptr(T_i8())],
-                        T_ptr(T_i8()))),
           cmp_type:
               dv("cmp_type",
                  ~[T_ptr(T_i1()), T_ptr(tydesc_type),
-                  T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()),
+                  T_ptr(T_i8()),
                   T_ptr(T_i8()),
                   T_i8()]),
           log_type:

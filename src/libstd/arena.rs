@@ -31,11 +31,11 @@ impl arena for arena {
         head = chunk(uint::next_power_of_two(new_min_chunk_size + 1u));
         self.chunks = @cons(head, self.chunks);
 
-        ret self.alloc(n_bytes, align);
+        ret self.alloc_inner(n_bytes, align);
     }
 
     #[inline(always)]
-    fn alloc(n_bytes: uint, align: uint) -> *() {
+    fn alloc_inner(n_bytes: uint, align: uint) -> *() {
         let alignm1 = align - 1u;
         let mut head = list::head(self.chunks);
 
@@ -50,6 +50,14 @@ impl arena for arena {
             let p = ptr::offset(vec::unsafe::to_ptr(head.data), start);
             head.fill = end;
             ret unsafe::reinterpret_cast(p);
+        }
+    }
+
+    #[inline(always)]
+    fn alloc(tydesc: *()) -> *() {
+        unsafe {
+            let tydesc = tydesc as *sys::type_desc;
+            self.alloc_inner((*tydesc).size, (*tydesc).align)
         }
     }
 }

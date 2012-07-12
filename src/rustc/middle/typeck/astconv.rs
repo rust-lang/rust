@@ -164,31 +164,30 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
         self: AC, rscope: RS, a_seq_ty: @ast::ty, vst: ty::vstore) -> ty::t {
 
         let tcx = self.tcx();
-        let seq_ty = ast_ty_to_ty(self, rscope, a_seq_ty);
 
-        alt ty::get(seq_ty).struct {
-          ty::ty_vec(mt) {
-            ret ty::mk_evec(tcx, mt, vst);
+        alt a_seq_ty.node {
+          ast::ty_vec(mt) {
+            ret ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
           }
-
-          // HACK: if we get a ~[], we assume that it was actually a
-          // [] that got written down, and we throw away the /~...
-          ty::ty_evec(mt, vstore_uniq) {
-            ret ty::mk_evec(tcx, mt, vst);
+          ast::ty_path(path, id) {
+            alt tcx.def_map.find(id) {
+              some(ast::def_prim_ty(ast::ty_str)) {
+                check_path_args(tcx, path, NO_TPS | NO_REGIONS);
+                ret ty::mk_estr(tcx, vst);
+              }
+              _ {}
+            }
           }
-
-          ty::ty_str {
-            ret ty::mk_estr(tcx, vst);
-          }
-
-          _ {
-            tcx.sess.span_err(
-                a_seq_ty.span,
-                #fmt["bound not allowed on a %s",
-                     ty::ty_sort_str(tcx, seq_ty)]);
-            ret seq_ty;
-          }
+          _ {}
         }
+
+        // Get the type, just for the error message
+        let seq_ty = ast_ty_to_ty(self, rscope, a_seq_ty);
+        tcx.sess.span_err(
+            a_seq_ty.span,
+            #fmt["bound not allowed on a %s",
+                 ty::ty_sort_str(tcx, seq_ty)]);
+        ret seq_ty;
     }
 
     fn check_path_args(tcx: ty::ctxt,

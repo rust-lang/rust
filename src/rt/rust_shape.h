@@ -407,10 +407,6 @@ ctxt<T>::walk_tag0() {
     // Determine the size and alignment.
     tinfo.tag_sa = get_size_align(tinfo.info_ptr);
 
-    // Read in a dummy value; this used to be the number of parameters
-    uint16_t number_of_params = get_u16_bump(sp);
-    assert(number_of_params == 0 && "tag has type parameters on it");
-
     // Call to the implementation.
     static_cast<T *>(this)->walk_tag1(tinfo);
 }
@@ -488,10 +484,6 @@ ctxt<T>::walk_res0() {
     const rust_fn **resources =
         reinterpret_cast<const rust_fn **>(tables->resources);
     const rust_fn *dtor = resources[dtor_offset];
-
-    // Read in a dummy value; this used to be the number of parameters
-    uint16_t number_of_params = get_u16_bump(sp);
-    assert(number_of_params == 0 && "resource has type parameters on it");
 
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;

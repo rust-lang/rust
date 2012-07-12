@@ -335,59 +335,6 @@ upcall_str_new_shared(const char *cstr, size_t len) {
 }
 
 
-struct s_vec_grow_args {
-    rust_task *task;
-    rust_vec_box** vp;
-    size_t new_sz;
-};
-
-extern "C" CDECL void
-upcall_s_vec_grow(s_vec_grow_args *args) {
-    rust_task *task = args->task;
-    LOG_UPCALL_ENTRY(task);
-    reserve_vec(task, args->vp, args->new_sz);
-    (*args->vp)->body.fill = args->new_sz;
-}
-
-extern "C" CDECL void
-upcall_vec_grow(rust_vec_box** vp, size_t new_sz) {
-    rust_task *task = rust_get_current_task();
-    s_vec_grow_args args = {task, vp, new_sz};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_vec_grow);
-}
-
-struct s_str_concat_args {
-    rust_task *task;
-    rust_vec_box* lhs;
-    rust_vec_box* rhs;
-    rust_vec_box* retval;
-};
-
-extern "C" CDECL void
-upcall_s_str_concat(s_str_concat_args *args) {
-    rust_vec *lhs = &args->lhs->body;
-    rust_vec *rhs = &args->rhs->body;
-    rust_task *task = args->task;
-    size_t fill = lhs->fill + rhs->fill - 1;
-    rust_vec_box* v = (rust_vec_box*)
-        task->kernel->malloc(fill + sizeof(rust_vec_box),
-                             "str_concat");
-    v->header.td = args->lhs->header.td;
-    v->body.fill = v->body.alloc = fill;
-    memmove(&v->body.data[0], &lhs->data[0], lhs->fill - 1);
-    memmove(&v->body.data[lhs->fill - 1], &rhs->data[0], rhs->fill);
-    args->retval = v;
-}
-
-extern "C" CDECL rust_vec_box*
-upcall_str_concat(rust_vec_box* lhs, rust_vec_box* rhs) {
-    rust_task *task = rust_get_current_task();
-    s_str_concat_args args = {task, lhs, rhs, 0};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_concat);
-    return args.retval;
-}
-
-
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
@@ -444,13 +391,11 @@ upcall_rust_personality(int version,
 
 extern "C" void
 shape_cmp_type(int8_t *result, const type_desc *tydesc,
-               const type_desc **subtydescs, uint8_t *data_0,
-               uint8_t *data_1, uint8_t cmp_type);
+               uint8_t *data_0, uint8_t *data_1, uint8_t cmp_type);
 
 struct s_cmp_type_args {
     int8_t *result;
     const type_desc *tydesc;
-    const type_desc **subtydescs;
     uint8_t *data_0;
     uint8_t *data_1;
     uint8_t cmp_type;
@@ -458,16 +403,15 @@ struct s_cmp_type_args {
 
 extern "C" void
 upcall_s_cmp_type(s_cmp_type_args *args) {
-    shape_cmp_type(args->result, args->tydesc, args->subtydescs,
+    shape_cmp_type(args->result, args->tydesc,
                    args->data_0, args->data_1, args->cmp_type);
 }
 
 extern "C" void
 upcall_cmp_type(int8_t *result, const type_desc *tydesc,
-                const type_desc **subtydescs, uint8_t *data_0,
-                uint8_t *data_1, uint8_t cmp_type) {
+                uint8_t *data_0, uint8_t *data_1, uint8_t cmp_type) {
     rust_task *task = rust_get_current_task();
-    s_cmp_type_args args = {result, tydesc, subtydescs,
+    s_cmp_type_args args = {result, tydesc,
                             data_0, data_1, cmp_type};
     UPCALL_SWITCH_STACK(task, &args, upcall_s_cmp_type);
 }

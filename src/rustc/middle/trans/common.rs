@@ -660,10 +660,9 @@ fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
 
     let int_type = T_int(targ_cfg);
     let elems =
-        ~[tydescpp, int_type, int_type,
-         glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
-         int_type, int_type, int_type, int_type,
-         T_ptr(T_i8()), T_ptr(T_i8()), int_type, int_type];
+        ~[int_type, int_type,
+          glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
+          T_ptr(T_i8()), T_ptr(T_i8())];
     set_struct_body(tydesc, elems);
     ret tydesc;
 }

@@ -10,9 +10,8 @@ export log_str;
 export lock_and_signal, condition, methods;
 
 enum type_desc = {
-    first_param: **libc::c_int,
-    size: libc::size_t,
-    align: libc::size_t
+    size: uint,
+    align: uint
     // Remaining fields not listed
 };
 

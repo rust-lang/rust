@@ -658,7 +658,7 @@ fn mk_mach_float(cx: ctxt, tm: ast::float_ty) -> t { mk_t(cx, ty_float(tm)) }
 
 fn mk_char(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_char)) }
 
-fn mk_str(cx: ctxt) -> t { mk_t(cx, ty_str) }
+fn mk_str(cx: ctxt) -> t { mk_estr(cx, vstore_uniq) }
 
 fn mk_estr(cx: ctxt, t: vstore) -> t {
     mk_t(cx, ty_estr(t))

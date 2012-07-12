@@ -33,22 +33,15 @@ const box_field_body: uint = 4u;
 
 const general_code_alignment: uint = 16u;
 
-const tydesc_field_first_param: uint = 0u;
-const tydesc_field_size: uint = 1u;
-const tydesc_field_align: uint = 2u;
-const tydesc_field_take_glue: uint = 3u;
-const tydesc_field_drop_glue: uint = 4u;
-const tydesc_field_free_glue: uint = 5u;
-const tydesc_field_visit_glue: uint = 6u;
-const tydesc_field_sever_glue: uint = 7u;
-const tydesc_field_mark_glue: uint = 8u;
-const tydesc_field_unused2: uint = 9u;
-const tydesc_field_unused_2: uint = 10u;
-const tydesc_field_shape: uint = 11u;
-const tydesc_field_shape_tables: uint = 12u;
-const tydesc_field_n_params: uint = 13u;
-const tydesc_field_obj_params: uint = 14u; // FIXME unused (#2351)
-const n_tydesc_fields: uint = 15u;
+const tydesc_field_size: uint = 0u;
+const tydesc_field_align: uint = 1u;
+const tydesc_field_take_glue: uint = 2u;
+const tydesc_field_drop_glue: uint = 3u;
+const tydesc_field_free_glue: uint = 4u;
+const tydesc_field_visit_glue: uint = 5u;
+const tydesc_field_shape: uint = 6u;
+const tydesc_field_shape_tables: uint = 7u;
+const n_tydesc_fields: uint = 8u;
 
 const cmp_glue_op_eq: uint = 0u;
 

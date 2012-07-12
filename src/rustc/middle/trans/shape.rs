@@ -250,10 +250,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
             }
             add_u16(s, id as u16);
 
-            // Hack: always encode 0 tps, since the shape glue format
-            // hasn't changed since we started monomorphizing.
-            add_u16(s, 0_u16);
-
             s
           }
         }
@@ -342,10 +338,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
           let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
           let id = interner::intern(ccx.shape_cx.resources, ri);
           add_u16(s, id as u16);
-
-          // Hack: always encode 0 tps, since the shape glue format
-          // hasn't changed since we started monomorphizing.
-          add_u16(s, 0_u16);
         };
         for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each |f| {
            sub += shape_of(ccx, f.mt.ty);

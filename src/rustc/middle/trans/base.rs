@@ -596,21 +596,14 @@ fn emit_tydescs(ccx: @crate_ctxt) {
 
         let tydesc =
             C_named_struct(ccx.tydesc_type,
-                           ~[C_null(T_ptr(T_ptr(ccx.tydesc_type))),
-                            ti.size, // size
-                            ti.align, // align
-                            take_glue, // take_glue
-                            drop_glue, // drop_glue
-                            free_glue, // free_glue
-                            visit_glue, // visit_glue
-                            C_int(ccx, 0), // unused
-                            C_int(ccx, 0), // unused
-                            C_int(ccx, 0), // unused
-                            C_int(ccx, 0), // unused
-                            C_shape(ccx, shape), // shape
-                            shape_tables, // shape_tables
-                            C_int(ccx, 0), // unused
-                             C_int(ccx, 0)]); // unused
+                           ~[ti.size, // size
+                             ti.align, // align
+                             take_glue, // take_glue
+                             drop_glue, // drop_glue
+                             free_glue, // free_glue
+                             visit_glue, // visit_glue
+                             C_shape(ccx, shape), // shape
+                             shape_tables]); // shape_tables
 
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
@@ -1213,14 +1206,12 @@ fn call_cmp_glue(bcx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
     let lltydesc = get_tydesc_simple(bcx.ccx(), t);
-    let lltydescs =
-        Load(bcx, GEPi(bcx, lltydesc, ~[0u, abi::tydesc_field_first_param]));
 
     let llfn = bcx.ccx().upcalls.cmp_type;
 
     let llcmpresultptr = alloca(bcx, T_i1());
-    Call(bcx, llfn, ~[llcmpresultptr, lltydesc, lltydescs,
-                     llrawlhsptr, llrawrhsptr, llop]);
+    Call(bcx, llfn, ~[llcmpresultptr, lltydesc,
+                      llrawlhsptr, llrawrhsptr, llop]);
     ret Load(bcx, llcmpresultptr);
 }
 
@@ -3702,9 +3693,9 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             ret trans_assign_op(bcx, e, op, dst, src);
           }
           ast::expr_new(pool, alloc_id, val) {
-            // First, call pool->alloc(sz, align) to get back a void*.  Then,
-            // cast this memory to the required type and evaluate value into
-            // it.
+            // First, call pool->alloc(tydesc) to get back a void*.
+            // Then, cast this memory to the required type and evaluate value
+            // into it.
             let ccx = bcx.ccx();
 
             // Allocate space for the ptr that will be returned from
@@ -3715,24 +3706,21 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             #debug["ptr_ty = %s", ppaux::ty_to_str(tcx, ptr_ty)];
             #debug["ptr_ptr_val = %s", val_str(ccx.tn, ptr_ptr_val)];
 
-            let void_ty = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx),
-                                           mutbl: ast::m_imm});
-            let voidval = {
-                let llvoid_ty = type_of(ccx, void_ty);
-                PointerCast(bcx, ptr_ptr_val, T_ptr(llvoid_ty))
-            };
-
+            let void_ty = ty::mk_nil_ptr(tcx);
+            let llvoid_ty = type_of(ccx, void_ty);
+            let voidval = PointerCast(bcx, ptr_ptr_val, T_ptr(llvoid_ty));
             #debug["voidval = %s", val_str(ccx.tn, voidval)];
 
-            let llval_ty = type_of(ccx, expr_ty(bcx, val));
-            let args =
-                ~[llsize_of(ccx, llval_ty), llalign_of(ccx, llval_ty)];
+            let static_ti = get_tydesc(ccx, expr_ty(bcx, val));
+            lazily_emit_all_tydesc_glue(ccx, static_ti);
+            let lltydesc = PointerCast(bcx, static_ti.tydesc, llvoid_ty);
+
             let origin = bcx.ccx().maps.method_map.get(alloc_id);
             let bcx = trans_call_inner(
                 bcx, e.info(), node_id_type(bcx, alloc_id), void_ty,
                 |bcx| impl::trans_method_callee(bcx, alloc_id,
                                                  pool, origin),
-                arg_vals(args),
+                arg_vals(~[lltydesc]),
                 save_in(voidval));
 
             #debug["dest = %s", dest_str(ccx, dest)];
