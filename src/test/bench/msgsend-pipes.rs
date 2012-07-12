@@ -82,7 +82,7 @@ fn run(args: &[str]) {
 
 fn main(args: ~[str]) {
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "1000000", "10000"]
+        ~["", "1000000", "8"]
     } else if args.len() <= 1u {
         ~["", "10000", "4"]
     } else {
@@ -112,24 +112,34 @@ class box<T> {
 }
 
 class port_set<T: send> {
-    let ports: box<~[pipes::streamp::server::open<T>]>;
+    let mut ports: ~[pipes::port<T>];
 
-    new() { self.ports = box(~[]); }
+    new() { self.ports = ~[]; }
 
     fn add(+port: pipes::port<T>) {
-        let pipes::port_(port) <- port;
-        let mut p = none;
-        port.endp <-> p;
-        do self.ports.swap |ports| {
-            let mut p_ = none;
-            p <-> p_;
-            vec::append_one(ports, option::unwrap(p_))
-        }
+        vec::push(self.ports, port)
     }
 
     fn try_recv() -> option<T> {
         let mut result = none;
-        let mut done = false;
+        while result == none && self.ports.len() > 0 {
+            let i = pipes::wait_many(self.ports.map(|p| p.header()));
+            // dereferencing an unsafe pointer nonsense to appease the
+            // borrowchecker.
+            alt unsafe {(*ptr::addr_of(self.ports[i])).try_recv()} {
+              some(m) {
+                result = some(move!{m});
+              }
+              none {
+                // Remove this port.
+                let mut ports = ~[];
+                self.ports <-> ports;
+                vec::consume(ports,
+                             |j, x| if i != j { vec::push(self.ports, x) });
+              }
+            }
+        }
+/*        
         while !done {
             do self.ports.swap |ports| {
                 if ports.len() > 0 {
@@ -156,10 +166,22 @@ class port_set<T: send> {
                 }
             }
         }
+*/
         result
     }
 
     fn recv() -> T {
         option::unwrap(self.try_recv())
+    }
+}
+
+impl private_methods/&<T: send> for pipes::port<T> {
+    pure fn header() -> *pipes::packet_header unchecked {
+        alt self.endp {
+          some(endp) {
+            endp.header()
+          }
+          none { fail "peeking empty stream" }
+        }
     }
 }
