@@ -4613,7 +4613,9 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
 fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt("trans_const_expr");
     alt e.node {
-      ast::expr_lit(lit) { ret trans_crate_lit(cx, e, *lit); }
+      ast::expr_lit(lit) { trans_crate_lit(cx, e, *lit) }
+      // If we have a vstore, just keep going; it has to be a string
+      ast::expr_vstore(e, _) { trans_const_expr(cx, e) }
       ast::expr_binary(b, e1, e2) {
         let te1 = trans_const_expr(cx, e1);
         let te2 = trans_const_expr(cx, e2);

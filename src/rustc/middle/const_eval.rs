@@ -103,6 +103,8 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
         }
       }
       expr_lit(lit) { lit_to_const(lit) }
+      // If we have a vstore, just keep going; it has to be a string
+      expr_vstore(e, _) { eval_const_expr(tcx, e) }
     }
 }
 
