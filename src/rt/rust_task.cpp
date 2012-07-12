@@ -243,7 +243,7 @@ rust_task::must_fail_from_being_killed_inner() {
 // Only run this on the rust stack
 void
 rust_task::yield(bool *killed) {
-    // FIXME (#2875): clean this up
+    // FIXME (#2787): clean this up
     if (must_fail_from_being_killed()) {
         {
             scoped_lock with(lifecycle_lock);
@@ -346,11 +346,12 @@ void rust_task::assert_is_running()
     assert(state == task_state_running);
 }
 
-// FIXME (#2851) Remove this code when rust_port goes away?
+// FIXME (#2851, #2787): This is only used by rust_port/rust_port selector,
+// and is inherently racy. Get rid of it.
 bool
 rust_task::blocked_on(rust_cond *on)
 {
-    lifecycle_lock.must_have_lock();
+    scoped_lock with(lifecycle_lock);
     return cond == on;
 }
 

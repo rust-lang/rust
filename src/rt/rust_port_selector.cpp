@@ -75,7 +75,7 @@ rust_port_selector::msg_sent_on(rust_port *port) {
 
     // Prevent two ports from trying to wake up the task
     // simultaneously
-    scoped_lock with(task->lifecycle_lock);
+    scoped_lock with(rendezvous_lock);
 
     if (task->blocked_on(this)) {
         for (size_t i = 0; i < n_ports; i++) {
@@ -85,7 +85,7 @@ rust_port_selector::msg_sent_on(rust_port *port) {
                 n_ports = 0;
                 *task->rendezvous_ptr = (uintptr_t) port;
                 task->rendezvous_ptr = NULL;
-                task->wakeup_inner(this);
+                task->wakeup(this);
                 return;
             }
         }

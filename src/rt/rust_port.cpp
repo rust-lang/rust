@@ -26,11 +26,9 @@ void rust_port::deref() {
     scoped_lock with(ref_lock);
     ref_count--;
     if (!ref_count) {
-        // The port owner is waiting for the port to be detached (if it
-        // hasn't already been killed)
-        scoped_lock with(task->lifecycle_lock);
         if (task->blocked_on(&detach_cond)) {
-            task->wakeup_inner(&detach_cond);
+            // The port owner is waiting for the port to be detached
+            task->wakeup(&detach_cond);
         }
     }
 }
@@ -66,15 +64,12 @@ void rust_port::send(void *sptr) {
         assert(!buffer.is_empty() &&
                "rust_chan::transmit with nothing to send.");
 
-        {
-            scoped_lock with(task->lifecycle_lock);
-            if (task->blocked_on(this)) {
-                KLOG(kernel, comm, "dequeued in rendezvous_ptr");
-                buffer.dequeue(task->rendezvous_ptr);
-                task->rendezvous_ptr = 0;
-                task->wakeup_inner(this);
-                did_rendezvous = true;
-            }
+        if (task->blocked_on(this)) {
+            KLOG(kernel, comm, "dequeued in rendezvous_ptr");
+            buffer.dequeue(task->rendezvous_ptr);
+            task->rendezvous_ptr = 0;
+            task->wakeup(this);
+            did_rendezvous = true;
         }
     }
 
@@ -83,8 +78,11 @@ void rust_port::send(void *sptr) {
         // it may be waiting on a group of ports
 
         rust_port_selector *port_selector = task->get_port_selector();
-        // The port selector will check if the task is blocked, not us.
-        port_selector->msg_sent_on(this);
+        // This check is not definitive. The port selector will take a lock
+        // and check again whether the task is still blocked.
+        if (task->blocked_on(port_selector)) {
+            port_selector->msg_sent_on(this);
+        }
     }
 }
 

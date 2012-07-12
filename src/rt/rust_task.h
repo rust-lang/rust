@@ -226,11 +226,8 @@ private:
                                char const *file,
                                size_t line);
 
-    friend class rust_port;
-    friend class rust_port_selector;
     bool block_inner(rust_cond *on, const char* name);
     void wakeup_inner(rust_cond *from);
-    bool blocked_on(rust_cond *cond);
 
 public:
 
@@ -246,6 +243,7 @@ public:
                void *args);
     void start();
     void assert_is_running();
+    bool blocked_on(rust_cond *cond); // FIXME (#2851) Get rid of this.
 
     void *malloc(size_t sz, const char *tag, type_desc *td=0);
     void *realloc(void *data, size_t sz);
@@ -437,7 +435,7 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
 
     bool had_reentered_rust_stack = reentered_rust_stack;
     {
-        // FIXME (#2875) This must be racy. Figure it out.
+        // FIXME (#2787) This must be racy. Figure it out.
         scoped_lock with(lifecycle_lock);
         reentered_rust_stack = true;
     }
