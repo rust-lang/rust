@@ -27,7 +27,7 @@ fn find_reachable(crate_mod: _mod, exp_map: resolve::exp_map,
     let rmap = std::map::int_hash();
     let cx = {exp_map: exp_map, tcx: tcx, method_map: method_map, rmap: rmap};
     traverse_public_mod(cx, crate_mod);
-    traverse_all_resources(cx, crate_mod);
+    traverse_all_resources_and_impls(cx, crate_mod);
     rmap
 }
 
@@ -81,18 +81,6 @@ fn traverse_public_mod(cx: ctx, m: _mod) {
     if !traverse_exports(cx, m.view_items) {
         // No exports, so every local item is exported
         for vec::each(m.items) |item| { traverse_public_item(cx, item); }
-    } else {
-        // Make impls always reachable.
-        for vec::each(m.items) |item| {
-            alt item.node {
-                item_impl(*) {
-                    traverse_public_item(cx, item);
-                }
-                _ {
-                    // Nothing to do.
-                }
-            }
-        }
     }
 }
 
@@ -212,7 +200,7 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     }));
 }
 
-fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
+fn traverse_all_resources_and_impls(cx: ctx, crate_mod: _mod) {
     visit::visit_mod(crate_mod, ast_util::dummy_sp(), 0, cx, visit::mk_vt(@{
         visit_expr: |_e, _cx, _v| { },
         visit_item: |i, cx, v| {
@@ -221,9 +209,13 @@ fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
               item_class(_, _, _, _, some(_)) {
                 traverse_public_item(cx, i);
               }
+              item_impl(*) {
+                traverse_public_item(cx, i);
+              }
               _ {}
             }
         }
         with *visit::default_visitor()
     }));
 }
+
