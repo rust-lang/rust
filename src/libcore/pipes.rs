@@ -169,7 +169,7 @@ fn try_recv<T: send>(-p: recv_packet<T>) -> option<T> {
 
 /// Returns true if messages are available.
 pure fn peek<T: send>(p: recv_packet<T>) -> bool {
-    alt p.header().state {
+    alt unsafe {(*p.header()).state} {
       empty { false }
       blocked { fail "peeking on blocked packet" }
       full | terminated { true }
@@ -219,14 +219,16 @@ fn receiver_terminate<T: send>(p: *packet<T>) {
     }
 }
 
-impl private_methods for packet_header {
+impl private_methods for *packet_header {
     // Returns the old state.
-    fn mark_blocked(this: *rust_task) -> state {
+    unsafe fn mark_blocked(this: *rust_task) -> state {
+        let self = &*self;
         self.blocked_task = some(this);
         swap_state_acq(self.state, blocked)
     }
 
-    fn unblock() {
+    unsafe fn unblock() {
+        let self = &*self;
         alt swap_state_acq(self.state, empty) {
           empty | blocked { }
           terminated { self.state = terminated; }
@@ -237,19 +239,19 @@ impl private_methods for packet_header {
 
 #[doc = "Returns when one of the packet headers reports data is
 available."]
-fn wait_many(pkts: &[&a.packet_header]) -> uint {
+fn wait_many(pkts: &[*packet_header]) -> uint {
     let this = rustrt::rust_get_task();
 
     rustrt::task_clear_event_reject(this);
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
-    for pkts.eachi |i, p| {
+    for pkts.eachi |i, p| unsafe {
         let old = p.mark_blocked(this);
         alt old {
           full | terminated {
             data_avail = true;
             ready_packet = i;
-            p.state = old;
+            (*p).state = old;
             break;
           }
           blocked { fail "blocking on blocked packet" }
@@ -260,7 +262,7 @@ fn wait_many(pkts: &[&a.packet_header]) -> uint {
     while !data_avail {
         #debug("sleeping on %? packets", pkts.len());
         let event = wait_event(this) as *packet_header;
-        let pos = vec::position(pkts, |p| ptr::addr_of(*p) == event);
+        let pos = vec::position(pkts, |p| p == event);
 
         alt pos {
           some(i) {
@@ -275,12 +277,14 @@ fn wait_many(pkts: &[&a.packet_header]) -> uint {
 
     #debug("%?", pkts[ready_packet]);
 
-    for pkts.each |p| { p.unblock() }
+    for pkts.each |p| { unsafe{p.unblock()} }
 
     #debug("%?, %?", ready_packet, pkts[ready_packet]);
 
-    assert pkts[ready_packet].state == full
-        || pkts[ready_packet].state == terminated;
+    unsafe {
+        assert (*pkts[ready_packet]).state == full
+            || (*pkts[ready_packet]).state == terminated;
+    }
 
     ready_packet
 }
@@ -370,12 +374,12 @@ class recv_packet<T: send> {
         option::unwrap(p)
     }
 
-    pure fn header() -> &self.packet_header {
+    pure fn header() -> *packet_header {
         alt self.p {
           some(packet) {
             unsafe {
                 let packet = uniquify(packet);
-                let header = reinterpret_cast(&packet.header);
+                let header = ptr::addr_of(packet.header);
                 forget(packet);
                 header
             }
