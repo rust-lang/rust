@@ -67,8 +67,6 @@ mod pipes {
           }
           full { fail "duplicate send" }
           blocked {
-            // FIXME: once the target will actually block, tell the
-            // scheduler to wake it up.
 
             // The receiver will eventually clean this up.
             unsafe { forget(p); }
