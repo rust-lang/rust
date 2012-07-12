@@ -434,7 +434,11 @@ type determine_rp_ctxt = @{
     dep_map: dep_map,
     worklist: dvec<ast::node_id>,
 
+    // the innermost enclosing item id
     mut item_id: ast::node_id,
+
+    // true when we are within an item but not within a method.
+    // see long discussion on region_is_relevant()
     mut anon_implies_rp: bool
 };
 
@@ -466,6 +470,38 @@ impl methods for determine_rp_ctxt {
         if !vec.contains(to) { vec.push(to); }
     }
 
+    // Determines whether a reference to a region that appears in the
+    // AST implies that the enclosing type is region-parameterized.
+    //
+    // This point is subtle.  Here are four examples to make it more
+    // concrete.
+    //
+    // 1. impl foo for &int { ... }
+    // 2. impl foo for &self/int { ... }
+    // 3. impl foo for bar { fn m() -> &self/int { ... } }
+    // 4. impl foo for bar { fn m() -> &int { ... } }
+    //
+    // In case 1, the anonymous region is being referenced,
+    // but it appears in a context where the anonymous region
+    // resolves to self, so the impl foo is region-parameterized.
+    //
+    // In case 2, the self parameter is written explicitly.
+    //
+    // In case 3, the method refers to self, so that implies that the
+    // impl must be region parameterized.  (If the type bar is not
+    // region parameterized, that is an error, because the self region
+    // is effectively unconstrained, but that is detected elsewhere).
+    //
+    // In case 4, the anonymous region is referenced, but it
+    // bound by the method, so it does not refer to self.  This impl
+    // need not be region parameterized.
+    //
+    // So the rules basically are: the `self` region always implies
+    // that the enclosing type is region parameterized.  The anonymous
+    // region also does, unless it appears within a method, in which
+    // case it is bound.  We handle this by setting a flag
+    // (anon_implies_rp) to true when we enter an item and setting
+    // that flag to false when we enter a method.
     fn region_is_relevant(r: @ast::region) -> bool {
         alt r.node {
           ast::re_anon {self.anon_implies_rp}
