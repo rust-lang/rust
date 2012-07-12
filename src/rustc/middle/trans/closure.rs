@@ -365,7 +365,7 @@ fn trans_expr_fn(bcx: block,
     let ccx = bcx.ccx(), bcx = bcx;
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
-    let sub_path = vec::append_one(bcx.fcx.path, path_name(@"anon"));
+    let sub_path = vec::append_one(bcx.fcx.path, path_name(@"anon"/~));
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 

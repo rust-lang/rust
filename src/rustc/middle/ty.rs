@@ -2661,7 +2661,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(*path, ast_map::path_name(nm))
           }
           ast_map::node_dtor(_, _, _, path) {
-            vec::append_one(*path, ast_map::path_name(@"dtor"))
+            vec::append_one(*path, ast_map::path_name(@"dtor"/~))
           }
 
 

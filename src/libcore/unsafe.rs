@@ -58,7 +58,7 @@ mod tests {
     #[test]
     fn test_bump_box_refcount() {
         unsafe {
-            let box = @"box box box";       // refcount 1
+            let box = @"box box box"/~;       // refcount 1
             bump_box_refcount(box);         // refcount 2
             let ptr: *int = transmute(box); // refcount 2
             let _box1: @str/~ = reinterpret_cast(ptr);

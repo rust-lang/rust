@@ -49,7 +49,7 @@ fn dump_crates(crate_cache: dvec<cache_entry>) {
         #debug("span: %?", entry.span);
         #debug("hash: %?", entry.hash);
         let attrs = ~[
-            attr::mk_attr(attr::mk_list_item(@"link", *entry.metas))
+            attr::mk_attr(attr::mk_list_item(@"link"/~, *entry.metas))
         ];
         for attr::find_linkage_attrs(attrs).each |attr| {
             #debug("meta: %s", pprust::attr_to_str(attr));
@@ -81,7 +81,7 @@ fn warn_if_multiple_versions(diag: span_handler,
             for matches.each |match| {
                 diag.span_note(match.span, "used here");
                 let attrs = ~[
-                    attr::mk_attr(attr::mk_list_item(@"link", *match.metas))
+                    attr::mk_attr(attr::mk_list_item(@"link"/~, *match.metas))
                 ];
                 loader::note_linkage_attrs(diag, attrs);
             }
@@ -168,7 +168,7 @@ fn metas_with(ident: ast::ident, key: ast::ident,
 
 fn metas_with_ident(ident: ast::ident,
                     metas: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
-    metas_with(ident, @"name", metas)
+    metas_with(ident, @"name"/~, metas)
 }
 
 fn existing_match(e: env, metas: ~[@ast::meta_item], hash: str) ->
@@ -245,7 +245,7 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
     for decoder::get_crate_deps(cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
-        let cmetas = metas_with(dep.vers, @"vers", ~[]);
+        let cmetas = metas_with(dep.vers, @"vers"/~, ~[]);
         #debug("resolving dep crate %s ver: %s hash: %s",
                *dep.name, *dep.vers, *dep.hash);
         alt existing_match(e, metas_with_ident(cname, cmetas), *dep.hash) {

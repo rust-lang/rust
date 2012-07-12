@@ -802,7 +802,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     ebml_w.start_tag(tag_items_data);
     vec::push(*index, {val: crate_node_id, pos: ebml_w.writer.tell()});
     encode_info_for_mod(ecx, ebml_w, crate.node.module,
-                        crate_node_id, ~[], @"");
+                        crate_node_id, ~[], @""/~);
     visit::visit_crate(*crate, (), visit::mk_vt(@{
         visit_expr: |_e, _cx, _v| { },
         visit_item: |i, cx, v, copy ebml_w| {
@@ -952,18 +952,18 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
         assert (*ecx.link_meta.vers != "");
 
         let name_item =
-            attr::mk_name_value_item_str(@"name", *ecx.link_meta.name);
+            attr::mk_name_value_item_str(@"name"/~, *ecx.link_meta.name);
         let vers_item =
-            attr::mk_name_value_item_str(@"vers", *ecx.link_meta.vers);
+            attr::mk_name_value_item_str(@"vers"/~, *ecx.link_meta.vers);
 
         let other_items =
             {
-                let tmp = attr::remove_meta_items_by_name(items, @"name");
-                attr::remove_meta_items_by_name(tmp, @"vers")
+                let tmp = attr::remove_meta_items_by_name(items, @"name"/~);
+                attr::remove_meta_items_by_name(tmp, @"vers"/~)
             };
 
         let meta_items = vec::append(~[name_item, vers_item], other_items);
-        let link_item = attr::mk_list_item(@"link", meta_items);
+        let link_item = attr::mk_list_item(@"link"/~, meta_items);
 
         ret attr::mk_attr(link_item);
     }

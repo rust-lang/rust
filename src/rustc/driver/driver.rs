@@ -51,13 +51,13 @@ fn default_configuration(sess: session, argv0: str, input: input) ->
 
     ret ~[ // Target bindings.
          attr::mk_word_item(@os::family()),
-         mk(@"target_os", os::sysname()),
-         mk(@"target_family", os::family()),
-         mk(@"target_arch", arch),
-         mk(@"target_libc", libc),
+         mk(@"target_os"/~, os::sysname()),
+         mk(@"target_family"/~, os::family()),
+         mk(@"target_arch"/~, arch),
+         mk(@"target_libc"/~, libc),
          // Build bindings.
-         mk(@"build_compiler", argv0),
-         mk(@"build_input", source_name(input))];
+         mk(@"build_compiler"/~, argv0),
+         mk(@"build_input"/~, source_name(input))];
 }
 
 fn build_configuration(sess: session, argv0: str, input: input) ->
@@ -71,7 +71,7 @@ fn build_configuration(sess: session, argv0: str, input: input) ->
         {
             if sess.opts.test && !attr::contains_name(user_cfg, "test")
                {
-                ~[attr::mk_word_item(@"test")]
+                ~[attr::mk_word_item(@"test"/~)]
             } else { ~[] }
         };
     ret vec::append(vec::append(user_cfg, gen_cfg), default_cfg);

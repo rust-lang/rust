@@ -35,7 +35,8 @@ impl of qq_helper for @ast::crate {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_crate(*self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ~[@"syntax", @"ext", @"qquote", @"parse_crate"])
+        mk_path(cx, sp,
+                ~[@"syntax"/~, @"ext"/~, @"qquote"/~, @"parse_crate"/~])
     }
     fn get_fold_fn() -> str {"fold_crate"}
 }
@@ -49,7 +50,8 @@ impl of qq_helper for @ast::expr {
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ~[@"syntax", @"ext", @"qquote", @"parse_expr"])
+        mk_path(cx, sp,
+                ~[@"syntax"/~, @"ext"/~, @"qquote"/~, @"parse_expr"/~])
     }
     fn get_fold_fn() -> str {"fold_expr"}
 }
@@ -63,7 +65,8 @@ impl of qq_helper for @ast::ty {
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ~[@"syntax", @"ext", @"qquote", @"parse_ty"])
+        mk_path(cx, sp,
+                ~[@"syntax"/~, @"ext"/~, @"qquote"/~, @"parse_ty"/~])
     }
     fn get_fold_fn() -> str {"fold_ty"}
 }
@@ -72,7 +75,8 @@ impl of qq_helper for @ast::item {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_item(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ~[@"syntax", @"ext", @"qquote", @"parse_item"])
+        mk_path(cx, sp,
+                ~[@"syntax"/~, @"ext"/~, @"qquote"/~, @"parse_item"/~])
     }
     fn get_fold_fn() -> str {"fold_item"}
 }
@@ -81,7 +85,8 @@ impl of qq_helper for @ast::stmt {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_stmt(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ~[@"syntax", @"ext", @"qquote", @"parse_stmt"])
+        mk_path(cx, sp,
+                ~[@"syntax"/~, @"ext"/~, @"qquote"/~, @"parse_stmt"/~])
     }
     fn get_fold_fn() -> str {"fold_stmt"}
 }
@@ -90,7 +95,7 @@ impl of qq_helper for @ast::pat {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_pat(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
-        mk_path(cx, sp, ~[@"syntax", @"ext", @"qquote", @"parse_pat"])
+        mk_path(cx, sp, ~[@"syntax"/~, @"ext"/~, @"qquote"/~, @"parse_pat"/~])
     }
     fn get_fold_fn() -> str {"fold_pat"}
 }
@@ -228,19 +233,19 @@ fn finish<T: qq_helper>
     let cx = ecx;
 
     let cfg_call = || mk_call_(
-        cx, sp, mk_access(cx, sp, ~[@"ext_cx"], @"cfg"), ~[]);
+        cx, sp, mk_access(cx, sp, ~[@"ext_cx"/~], @"cfg"/~), ~[]);
 
     let parse_sess_call = || mk_call_(
-        cx, sp, mk_access(cx, sp, ~[@"ext_cx"], @"parse_sess"), ~[]);
+        cx, sp, mk_access(cx, sp, ~[@"ext_cx"/~], @"parse_sess"/~), ~[]);
 
     let pcall = mk_call(cx,sp,
-                       ~[@"syntax", @"parse", @"parser",
-                        @"parse_from_source_str"],
+                       ~[@"syntax"/~, @"parse"/~, @"parser"/~,
+                        @"parse_from_source_str"/~],
                        ~[node.mk_parse_fn(cx,sp),
                         mk_str(cx,sp, fname),
                         mk_call(cx,sp,
-                                ~[@"syntax",@"ext",
-                                 @"qquote", @"mk_file_substr"],
+                                ~[@"syntax"/~,@"ext"/~,
+                                 @"qquote"/~, @"mk_file_substr"/~],
                                 ~[mk_str(cx,sp, loc.file.name),
                                  mk_uint(cx,sp, loc.line),
                                  mk_uint(cx,sp, loc.col)]),
@@ -252,15 +257,15 @@ fn finish<T: qq_helper>
     let mut rcall = pcall;
     if (g_len > 0u) {
         rcall = mk_call(cx,sp,
-                        ~[@"syntax", @"ext", @"qquote", @"replace"],
+                        ~[@"syntax"/~, @"ext"/~, @"qquote"/~, @"replace"/~],
                         ~[pcall,
                           mk_uniq_vec_e(cx,sp, qcx.gather.map_to_vec(|g| {
                              mk_call(cx,sp,
-                                     ~[@"syntax", @"ext",
-                                      @"qquote", @g.constr],
+                                     ~[@"syntax"/~, @"ext"/~,
+                                      @"qquote"/~, @g.constr],
                                      ~[g.e])})),
                          mk_path(cx,sp,
-                                 ~[@"syntax", @"ext", @"qquote",
+                                 ~[@"syntax"/~, @"ext"/~, @"qquote"/~,
                                   @node.get_fold_fn()])]);
     }
     ret rcall;

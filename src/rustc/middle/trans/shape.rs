@@ -730,7 +730,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_class(did, substs) {
             let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
                 // remember the drop flag
-                  ~[{ident: @"drop", mt: {ty:
+                  ~[{ident: @"drop"/~, mt: {ty:
                                         ty::mk_u8(tcx),
                                         mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +

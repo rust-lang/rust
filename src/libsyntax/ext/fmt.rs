@@ -38,7 +38,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   pieces: ~[piece], args: ~[@ast::expr])
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> ~[ast::ident] {
-        ret ~[@"extfmt", @"rt", ident];
+        ret ~[@"extfmt"/~, @"rt"/~, ident];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span,
                          ident: ast::ident) -> @ast::expr {
@@ -50,7 +50,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
 
     fn make_rt_conv_expr(cx: ext_ctxt, sp: span, cnv: conv) -> @ast::expr {
         fn make_flags(cx: ext_ctxt, sp: span, flags: ~[flag]) -> @ast::expr {
-            let mut tmp_expr = make_rt_path_expr(cx, sp, @"flag_none");
+            let mut tmp_expr = make_rt_path_expr(cx, sp, @"flag_none"/~);
             for flags.each |f| {
                 let fstr = alt f {
                   flag_left_justify { "flag_left_justify" }
@@ -67,11 +67,11 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {
               count_implied {
-                ret make_rt_path_expr(cx, sp, @"count_implied");
+                ret make_rt_path_expr(cx, sp, @"count_implied"/~);
               }
               count_is(c) {
                 let count_lit = mk_int(cx, sp, c);
-                let count_is_path = make_path_vec(cx, @"count_is");
+                let count_is_path = make_path_vec(cx, @"count_is"/~);
                 let count_is_args = ~[count_lit];
                 ret mk_call(cx, sp, count_is_path, count_is_args);
               }
@@ -97,10 +97,10 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             ret mk_rec_e(cx, sp,
-                         ~[{ident: @"flags", ex: flags_expr},
-                          {ident: @"width", ex: width_expr},
-                          {ident: @"precision", ex: precision_expr},
-                          {ident: @"ty", ex: ty_expr}]);
+                         ~[{ident: @"flags"/~, ex: flags_expr},
+                          {ident: @"width"/~, ex: width_expr},
+                          {ident: @"precision"/~, ex: precision_expr},
+                          {ident: @"ty"/~, ex: ty_expr}]);
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
@@ -275,7 +275,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
 
     let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
-    ret mk_call(cx, fmt_sp, ~[@"str", @"concat"], ~[arg_vec]);
+    ret mk_call(cx, fmt_sp, ~[@"str"/~, @"concat"/~], ~[arg_vec]);
 }
 //
 // Local Variables:

@@ -2,7 +2,7 @@
 
 fn main() {
     let cheese = "roquefort";
-    let carrots = @"crunchy";
+    let carrots = @"crunchy"/~;
 
     fn@(tasties: @str/~, macerate: fn(str)) {
         macerate(*tasties);

@@ -505,7 +505,7 @@ impl methods for determine_rp_ctxt {
     fn region_is_relevant(r: @ast::region) -> bool {
         alt r.node {
           ast::re_anon {self.anon_implies_rp}
-          ast::re_named(@"self") {true}
+          ast::re_named(@"self"/~) {true}
           ast::re_named(_) {false}
         }
     }

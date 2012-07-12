@@ -458,7 +458,7 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
               }
               ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
-              if ids == ~[@"str"] && (! uses_vstore.contains_key(t.id)) {
+              if ids == ~[@"str"/~] && (! uses_vstore.contains_key(t.id)) {
                 cx.sess.span_lint(
                     old_strs, t.id, it.id,
                     t.span, "deprecated str type");

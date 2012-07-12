@@ -885,7 +885,7 @@ fn resolve_import(e: env, n_id: node_id, name: ast::ident,
     // import
     alt e.imports.find(n_id) {
       some(resolving(sp)) {
-        e.imports.insert(n_id, resolved(none, none, none, @~[], @"", sp));
+        e.imports.insert(n_id, resolved(none, none, none, @~[], @""/~, sp));
       }
       _ { }
     }

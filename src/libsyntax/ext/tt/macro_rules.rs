@@ -18,9 +18,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     let argument_gram = ~[
         ms(mtc_rep(~[
-            ms(mtc_bb(@"lhs",@"mtcs", 0u)),
+            ms(mtc_bb(@"lhs"/~,@"mtcs"/~, 0u)),
             ms(mtc_tok(FAT_ARROW)),
-            ms(mtc_bb(@"rhs",@"tt", 1u)),
+            ms(mtc_bb(@"rhs"/~,@"tt"/~, 1u)),
         ], some(SEMI), false))];
 
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
@@ -31,11 +31,11 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
       failure(sp, msg) { cx.span_fatal(sp, msg); }
     };
 
-    let lhses = alt arguments.get(@"lhs") {
+    let lhses = alt arguments.get(@"lhs"/~) {
       @seq(s, sp) { s }
       _ { cx.span_bug(sp, "wrong-structured lhs") }
     };
-    let rhses = alt arguments.get(@"rhs") {
+    let rhses = alt arguments.get(@"rhs"/~) {
       @seq(s, sp) { s }
       _ { cx.span_bug(sp, "wrong-structured rhs") }
     };

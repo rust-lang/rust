@@ -381,7 +381,7 @@ fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
     // dtor has one argument, of type ()
     {inputs: ~[{mode: ast::expl(ast::by_ref),
-               ty: nil_t, ident: @"_", id: 0}],
+               ty: nil_t, ident: @"_"/~, id: 0}],
      output: nil_t, purity: impure_fn, cf: return_val, constraints: ~[]}
 }
 

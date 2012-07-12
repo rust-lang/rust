@@ -259,7 +259,7 @@ class parser {
                 let name = self.parse_value_ident();
                 p.bump();
                 name
-            } else { @"" };
+            } else { @""/~ };
 
             {mode: mode, ty: p.parse_ty(false), ident: name,
              id: p.get_id()}
@@ -1337,7 +1337,8 @@ class parser {
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
                 ex = alt e.node {
-                  expr_vec(*) if m == m_imm {
+                  expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
+                  if m == m_imm {
                     expr_vstore(e, vstore_slice(self.region_from_name(none)))
                   }
                   _ { expr_addr_of(m, e) }
@@ -1353,7 +1354,8 @@ class parser {
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
             ex = alt e.node {
-              expr_vec(*) if m == m_imm { expr_vstore(e, vstore_box) }
+              expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
+              if m == m_imm { expr_vstore(e, vstore_box) }
               _ { expr_unary(box(m), e) }
             };
           }
@@ -1364,7 +1366,8 @@ class parser {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
             ex = alt e.node {
-              expr_vec(*) if m == m_imm { expr_vstore(e, vstore_uniq) }
+              expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
+              if m == m_imm { expr_vstore(e, vstore_uniq) }
               _ { expr_unary(uniq(m), e) }
             };
           }
@@ -2134,12 +2137,16 @@ class parser {
     fn parse_method_name() -> ident {
         alt copy self.token {
           token::BINOP(op) { self.bump(); @token::binop_to_str(op) }
-          token::NOT { self.bump(); @"!" }
-          token::LBRACKET { self.bump(); self.expect(token::RBRACKET); @"[]" }
+          token::NOT { self.bump(); @"!"/~ }
+          token::LBRACKET {
+            self.bump();
+            self.expect(token::RBRACKET);
+            @"[]"/~
+          }
           _ {
             let id = self.parse_value_ident();
-            if id == @"unary" && self.eat(token::BINOP(token::MINUS)) {
-                @"unary-"
+            if id == @"unary"/~ && self.eat(token::BINOP(token::MINUS)) {
+                @"unary-"/~
             }
             else { id }
           }

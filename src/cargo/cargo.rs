@@ -283,7 +283,7 @@ fn load_crate(filename: str) -> option<crate> {
             ast::view_item_use(ident, metas, id) {
                 let name_items = attr::find_meta_items_by_name(metas, "name");
                 let m = if name_items.is_empty() {
-                    metas + ~[attr::mk_name_value_item_str(@"name", *ident)]
+                    metas + ~[attr::mk_name_value_item_str(@"name"/~, *ident)]
                 } else {
                     metas
                 };

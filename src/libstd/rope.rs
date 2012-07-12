@@ -1270,7 +1270,7 @@ mod tests {
 
     #[test]
     fn of_string1() {
-        let sample = @"0123456789ABCDE";
+        let sample = @"0123456789ABCDE"/~;
         let r      = of_str(sample);
 
         assert char_len(r) == str::char_len(*sample);
@@ -1330,8 +1330,8 @@ mod tests {
 
     #[test]
     fn bal1() {
-        let init = @ "1234567890";
-        let buf  = @ mut * init;
+        let init = @"1234567890"/~;
+        let buf  = @mut * init;
         let mut i = 0;
         while i < 8 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
@@ -1352,7 +1352,7 @@ mod tests {
     #[ignore]
     fn char_at1() {
         //Generate a large rope
-        let mut r = of_str(@ "123456789");
+        let mut r = of_str(@"123456789"/~);
         for uint::range(0u, 10u) |_i| {
             r = append_rope(r, r);
         }
@@ -1384,7 +1384,7 @@ mod tests {
     #[test]
     fn concat1() {
         //Generate a reasonable rope
-        let chunk = of_str(@ "123456789");
+        let chunk = of_str(@"123456789"/~);
         let mut r = empty();
         for uint::range(0u, 10u) |_i| {
             r = append_rope(r, chunk);

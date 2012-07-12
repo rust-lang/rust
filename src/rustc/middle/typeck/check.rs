@@ -1625,7 +1625,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let p_ty = fcx.expr_ty(p);
 
         let lkup = method::lookup(fcx, p, p, expr.id, alloc_id,
-                                  @"alloc", p_ty, ~[], false);
+                                  @"alloc"/~, p_ty, ~[], false);
         alt lkup.method() {
           some(entry) {
             fcx.ccx.method_map.insert(alloc_id, entry);
@@ -2282,10 +2282,10 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         (1u, ~[], ty::mk_nil_ptr(tcx))
       }
       "visit_tydesc" {
-        assert ccx.tcx.intrinsic_defs.contains_key(@"tydesc");
-        assert ccx.tcx.intrinsic_defs.contains_key(@"ty_visitor");
-        let (_, tydesc_ty) = ccx.tcx.intrinsic_defs.get(@"tydesc");
-        let (_, visitor_trait) = ccx.tcx.intrinsic_defs.get(@"ty_visitor");
+        assert ccx.tcx.intrinsic_defs.contains_key(@"tydesc"/~);
+        assert ccx.tcx.intrinsic_defs.contains_key(@"ty_visitor"/~);
+        let (_, tydesc_ty) = ccx.tcx.intrinsic_defs.get(@"tydesc"/~);
+        let (_, visitor_trait) = ccx.tcx.intrinsic_defs.get(@"ty_visitor"/~);
         let td_ptr = ty::mk_ptr(ccx.tcx, {ty: tydesc_ty,
                                           mutbl: ast::m_imm});
         (0u, ~[arg(ast::by_val, td_ptr),

@@ -1301,10 +1301,10 @@ fn test_unkillable_nested() {
 #[test]
 fn test_tls_multitask() unsafe {
     fn my_key(+_x: @str/~) { }
-    local_data_set(my_key, @"parent data");
+    local_data_set(my_key, @"parent data"/~);
     do task::spawn {
         assert local_data_get(my_key) == none; // TLS shouldn't carry over.
-        local_data_set(my_key, @"child data");
+        local_data_set(my_key, @"child data"/~);
         assert *(local_data_get(my_key).get()) == "child data";
         // should be cleaned up for us
     }
@@ -1317,15 +1317,15 @@ fn test_tls_multitask() unsafe {
 #[test]
 fn test_tls_overwrite() unsafe {
     fn my_key(+_x: @str/~) { }
-    local_data_set(my_key, @"first data");
-    local_data_set(my_key, @"next data"); // Shouldn't leak.
+    local_data_set(my_key, @"first data"/~);
+    local_data_set(my_key, @"next data"/~); // Shouldn't leak.
     assert *(local_data_get(my_key).get()) == "next data";
 }
 
 #[test]
 fn test_tls_pop() unsafe {
     fn my_key(+_x: @str/~) { }
-    local_data_set(my_key, @"weasel");
+    local_data_set(my_key, @"weasel"/~);
     assert *(local_data_pop(my_key).get()) == "weasel";
     // Pop must remove the data from the map.
     assert local_data_pop(my_key) == none;
@@ -1337,12 +1337,12 @@ fn test_tls_modify() unsafe {
     local_data_modify(my_key, |data| {
         alt data {
             some(@val) { fail "unwelcome value: " + val }
-            none       { some(@"first data") }
+            none       { some(@"first data"/~) }
         }
     });
     local_data_modify(my_key, |data| {
         alt data {
-            some(@"first data") { some(@"next data") }
+            some(@"first data"/~) { some(@"next data"/~) }
             some(@val)          { fail "wrong value: " + val }
             none                { fail "missing value" }
         }
@@ -1359,7 +1359,7 @@ fn test_tls_crust_automorestack_memorial_bug() unsafe {
     // for logging, think vsnprintf) would run on a stack smaller than 1 MB.
     fn my_key(+_x: @str/~) { }
     do task::spawn {
-        unsafe { local_data_set(my_key, @"hax"); }
+        unsafe { local_data_set(my_key, @"hax"/~); }
     }
 }
 
@@ -1369,7 +1369,7 @@ fn test_tls_multiple_types() unsafe {
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
     do task::spawn {
-        local_data_set(str_key, @"string data");
+        local_data_set(str_key, @"string data"/~);
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);
     }
@@ -1381,7 +1381,7 @@ fn test_tls_overwrite_multiple_types() unsafe {
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
     do task::spawn {
-        local_data_set(str_key, @"string data");
+        local_data_set(str_key, @"string data"/~);
         local_data_set(int_key, @42);
         // This could cause a segfault if overwriting-destruction is done with
         // the crazy polymorphic transmute rather than the provided finaliser.
@@ -1396,10 +1396,10 @@ fn test_tls_cleanup_on_failure() unsafe {
     fn str_key(+_x: @str/~) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
-    local_data_set(str_key, @"parent data");
+    local_data_set(str_key, @"parent data"/~);
     local_data_set(box_key, @@());
     do task::spawn { // spawn_linked
-        local_data_set(str_key, @"string data");
+        local_data_set(str_key, @"string data"/~);
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);
         fail;

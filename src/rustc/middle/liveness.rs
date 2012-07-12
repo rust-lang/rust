@@ -290,8 +290,8 @@ class ir_maps {
         alt self.var_kinds[*var] {
           vk_local(_, name) | vk_arg(_, name, _) {name}
           vk_field(name) {@("self." + *name)}
-          vk_self {@"self"}
-          vk_implicit_ret {@"<implicit-ret>"}
+          vk_self {@"self"/~}
+          vk_implicit_ret {@"<implicit-ret>"/~}
         }
     }
 

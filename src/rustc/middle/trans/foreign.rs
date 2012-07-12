@@ -1001,7 +1001,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
-            ccx, vec::append_one(path, ast_map::path_name(@"__rust_abi")));
+            ccx, vec::append_one(path, ast_map::path_name(@"__rust_abi"/~)));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id);
@@ -1039,7 +1039,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         let shim_name = link::mangle_internal_name_by_path(
             ccx, vec::append_one(path,
-                                 ast_map::path_name(@"__rust_stack_shim")));
+                                 ast_map::path_name(@"__rust_stack_shim"/~)));
         ret build_shim_fn_(ccx, shim_name, llrustfn, tys,
                            lib::llvm::CCallConv,
                            build_args, build_ret);

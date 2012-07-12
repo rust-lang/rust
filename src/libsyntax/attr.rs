@@ -77,7 +77,7 @@ fn mk_sugared_doc_attr(text: str, lo: uint, hi: uint) -> ast::attribute {
     let lit = spanned(lo, hi, ast::lit_str(@text));
     let attr = {
         style: doc_comment_style(text),
-        value: spanned(lo, hi, ast::meta_name_value(@"doc", lit)),
+        value: spanned(lo, hi, ast::meta_name_value(@"doc"/~, lit)),
         is_sugared_doc: true
     };
     ret spanned(lo, hi, attr);
@@ -97,7 +97,7 @@ fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
 fn desugar_doc_attr(attr: ast::attribute) -> ast::attribute {
     if attr.node.is_sugared_doc {
         let comment = get_meta_item_value_str(@attr.node.value).get();
-        let meta = mk_name_value_item_str(@"doc",
+        let meta = mk_name_value_item_str(@"doc"/~,
                                      strip_doc_comment_decoration(*comment));
         ret mk_attr(meta);
     } else {
@@ -345,13 +345,13 @@ fn foreign_abi(attrs: ~[ast::attribute]) -> either<str, ast::foreign_abi> {
       option::none {
         either::right(ast::foreign_abi_cdecl)
       }
-      option::some(@"rust-intrinsic") {
+      option::some(@"rust-intrinsic"/~) {
         either::right(ast::foreign_abi_rust_intrinsic)
       }
-      option::some(@"cdecl") {
+      option::some(@"cdecl"/~) {
         either::right(ast::foreign_abi_cdecl)
       }
-      option::some(@"stdcall") {
+      option::some(@"stdcall"/~) {
         either::right(ast::foreign_abi_stdcall)
       }
       option::some(t) {
@@ -371,8 +371,8 @@ fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline(always)]
     do vec::foldl(ia_none, attrs) |ia,attr| {
         alt attr.node.value.node {
-          ast::meta_word(@"inline") { ia_hint }
-          ast::meta_list(@"inline", items) {
+          ast::meta_word(@"inline"/~) { ia_hint }
+          ast::meta_list(@"inline"/~, items) {
             if !vec::is_empty(find_meta_items_by_name(items, "always")) {
                 ia_always
             } else {

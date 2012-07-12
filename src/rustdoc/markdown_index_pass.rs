@@ -116,7 +116,7 @@ fn pandoc_header_id(header: str) -> str {
         let s = str::replace(s, "]", "");
         let s = str::replace(s, "(", "");
         let s = str::replace(s, ")", "");
-        let s = str::replace(s, "@", "");
+        let s = str::replace(s, "@", "/~"/~);
         let s = str::replace(s, "~", "");
         let s = str::replace(s, "/", "");
         let s = str::replace(s, ":", "");

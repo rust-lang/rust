@@ -486,8 +486,8 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let llalign = llalign_of(ccx, llty);
     //XXX this triggers duplicate LLVM symbols
     let name = if false /*ccx.sess.opts.debuginfo*/ {
-        mangle_internal_name_by_type_only(ccx, t, @"tydesc")
-    } else { mangle_internal_name_by_seq(ccx, @"tydesc") };
+        mangle_internal_name_by_type_only(ccx, t, @"tydesc"/~)
+    } else { mangle_internal_name_by_seq(ccx, @"tydesc"/~) };
     note_unique_llvm_symbol(ccx, name);
     log(debug, #fmt("+++ declare_tydesc %s %s", ty_to_str(ccx.tcx, t), name));
     let gvar = str::as_c_str(name, |buf| {
@@ -667,8 +667,8 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
-    assert bcx.ccx().tcx.intrinsic_defs.contains_key(@"ty_visitor");
-    let (iid, ty) = bcx.ccx().tcx.intrinsic_defs.get(@"ty_visitor");
+    assert bcx.ccx().tcx.intrinsic_defs.contains_key(@"ty_visitor"/~);
+    let (iid, ty) = bcx.ccx().tcx.intrinsic_defs.get(@"ty_visitor"/~);
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
     bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, iid);
     build_return(bcx);
@@ -2131,7 +2131,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
              must_cast: true};
       }
       ast_map::node_ctor(nm, _, ct, _, pt) { (pt, nm, ct.span) }
-      ast_map::node_dtor(_, dtor, _, pt) {(pt, @"drop", dtor.span)}
+      ast_map::node_dtor(_, dtor, _, pt) {(pt, @"drop"/~, dtor.span)}
       ast_map::node_expr(*) { ccx.tcx.sess.bug("Can't monomorphize an expr") }
       ast_map::node_export(*) {
           ccx.tcx.sess.bug("Can't monomorphize an export")
@@ -3825,7 +3825,7 @@ fn trans_log(log_ex: @ast::expr, lvl: @ast::expr,
         ccx.module_data.get(modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
-            ccx, modpath, @"loglevel");
+            ccx, modpath, @"loglevel"/~);
         let global = str::as_c_str(s, |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
         });
@@ -4563,7 +4563,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     let fn_args = vec::map(variant.node.args, |varg|
         {mode: ast::expl(ast::by_copy),
          ty: varg.ty,
-         ident: @"arg",
+         ident: @"arg"/~,
          id: varg.id});
     let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id,
                                param_substs, none);
@@ -5215,7 +5215,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
         let path = item_path(ccx, it);
         for vec::each(variants) |variant| {
             let p = vec::append(path, ~[path_name(variant.node.name),
-                                       path_name(@"discrim")]);
+                                       path_name(@"discrim"/~)]);
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
             note_unique_llvm_symbol(ccx, s);

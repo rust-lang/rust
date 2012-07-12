@@ -560,22 +560,22 @@ class PrimitiveTypeTable {
     new(atom_table: @AtomTable) {
         self.primitive_types = atom_hashmap();
 
-        self.intern(atom_table, @"bool",    ty_bool);
-        self.intern(atom_table, @"char",    ty_int(ty_char));
-        self.intern(atom_table, @"float",   ty_float(ty_f));
-        self.intern(atom_table, @"f32",     ty_float(ty_f32));
-        self.intern(atom_table, @"f64",     ty_float(ty_f64));
-        self.intern(atom_table, @"int",     ty_int(ty_i));
-        self.intern(atom_table, @"i8",      ty_int(ty_i8));
-        self.intern(atom_table, @"i16",     ty_int(ty_i16));
-        self.intern(atom_table, @"i32",     ty_int(ty_i32));
-        self.intern(atom_table, @"i64",     ty_int(ty_i64));
-        self.intern(atom_table, @"str",     ty_str);
-        self.intern(atom_table, @"uint",    ty_uint(ty_u));
-        self.intern(atom_table, @"u8",      ty_uint(ty_u8));
-        self.intern(atom_table, @"u16",     ty_uint(ty_u16));
-        self.intern(atom_table, @"u32",     ty_uint(ty_u32));
-        self.intern(atom_table, @"u64",     ty_uint(ty_u64));
+        self.intern(atom_table, @"bool"/~,    ty_bool);
+        self.intern(atom_table, @"char"/~,    ty_int(ty_char));
+        self.intern(atom_table, @"float"/~,   ty_float(ty_f));
+        self.intern(atom_table, @"f32"/~,     ty_float(ty_f32));
+        self.intern(atom_table, @"f64"/~,     ty_float(ty_f64));
+        self.intern(atom_table, @"int"/~,     ty_int(ty_i));
+        self.intern(atom_table, @"i8"/~,      ty_int(ty_i8));
+        self.intern(atom_table, @"i16"/~,     ty_int(ty_i16));
+        self.intern(atom_table, @"i32"/~,     ty_int(ty_i32));
+        self.intern(atom_table, @"i64"/~,     ty_int(ty_i64));
+        self.intern(atom_table, @"str"/~,     ty_str);
+        self.intern(atom_table, @"uint"/~,    ty_uint(ty_u));
+        self.intern(atom_table, @"u8"/~,      ty_uint(ty_u8));
+        self.intern(atom_table, @"u16"/~,     ty_uint(ty_u16));
+        self.intern(atom_table, @"u32"/~,     ty_uint(ty_u32));
+        self.intern(atom_table, @"u64"/~,     ty_uint(ty_u64));
     }
 
     fn intern(atom_table: @AtomTable, string: @str/~,
@@ -651,7 +651,7 @@ class Resolver {
         self.type_ribs = @dvec();
         self.xray_context = NoXray;
 
-        self.self_atom = (*self.atom_table).intern(@"self");
+        self.self_atom = (*self.atom_table).intern(@"self"/~);
         self.primitive_type_table = @PrimitiveTypeTable(self.atom_table);
 
         self.namespaces = ~[ ModuleNS, TypeNS, ValueNS, ImplNS ];
@@ -4234,7 +4234,7 @@ class Resolver {
                     current_module = module;
                 }
                 BlockParentLink(module, node_id) {
-                    atoms.push((*self.atom_table).intern(@"<opaque>"));
+                    atoms.push((*self.atom_table).intern(@"<opaque>"/~));
                     current_module = module;
                 }
             }

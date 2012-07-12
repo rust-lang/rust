@@ -833,7 +833,7 @@ fn get_crate_vers(data: @~[u8]) -> @str/~ {
     ret alt attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), "vers") {
       some(ver) { ver }
-      none { @"0.0" }
+      none { @"0.0"/~ }
     };
 }
 

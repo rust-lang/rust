@@ -92,7 +92,7 @@ fn expand(cx: ext_ctxt,
           _mitem: ast::meta_item,
           in_items: ~[@ast::item]) -> ~[@ast::item] {
     fn not_auto_serialize(a: ast::attribute) -> bool {
-        attr::get_attr_name(a) != @"auto_serialize"
+        attr::get_attr_name(a) != @"auto_serialize"/~
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -154,7 +154,7 @@ impl helpers for ext_ctxt {
         let args = do vec::map(input_tys) |ty| {
             {mode: ast::expl(ast::by_ref),
              ty: ty,
-             ident: @"",
+             ident: @""/~,
              id: self.next_id()}
         };
 
@@ -350,7 +350,7 @@ fn is_vec_or_str(ty: @ast::ty) -> bool {
       // This may be wrong if the user has shadowed (!) str
       ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
-      if ids == ~[@"str"] { true }
+      if ids == ~[@"str"/~] { true }
       _ { false }
     }
 }
@@ -529,12 +529,12 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
 
     let ser_inputs: ~[ast::arg] =
         vec::append(~[{mode: ast::expl(ast::by_ref),
-                      ty: cx.ty_path(span, ~[@"__S"], ~[]),
-                      ident: @"__s",
+                      ty: cx.ty_path(span, ~[@"__S"/~], ~[]),
+                      ident: @"__s"/~,
                       id: cx.next_id()},
                      {mode: ast::expl(ast::by_ref),
                       ty: v_ty,
-                      ident: @"__v",
+                      ident: @"__v"/~,
                       id: cx.next_id()}],
                     tp_inputs);
 
@@ -552,12 +552,12 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
 
     let ser_bnds = @~[
         ast::bound_trait(cx.ty_path(span,
-                                    ~[@"std", @"serialization",
-                                     @"serializer"],
+                                    ~[@"std"/~, @"serialization"/~,
+                                     @"serializer"/~],
                                     ~[]))];
 
     let ser_tps: ~[ast::ty_param] =
-        vec::append(~[{ident: @"__S",
+        vec::append(~[{ident: @"__S"/~,
                       id: cx.next_id(),
                       bounds: ser_bnds}],
                     vec::map(tps, |tp| cx.clone_ty_param(tp)));
@@ -749,8 +749,8 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
 
     let deser_inputs: ~[ast::arg] =
         vec::append(~[{mode: ast::expl(ast::by_ref),
-                      ty: cx.ty_path(span, ~[@"__D"], ~[]),
-                      ident: @"__d",
+                      ty: cx.ty_path(span, ~[@"__D"/~], ~[]),
+                      ident: @"__d"/~,
                       id: cx.next_id()}],
                     tp_inputs);
 
@@ -768,11 +768,11 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
     let deser_bnds = @~[
         ast::bound_trait(cx.ty_path(
             span,
-            ~[@"std", @"serialization", @"deserializer"],
+            ~[@"std"/~, @"serialization"/~, @"deserializer"/~],
             ~[]))];
 
     let deser_tps: ~[ast::ty_param] =
-        vec::append(~[{ident: @"__D",
+        vec::append(~[{ident: @"__D"/~,
                       id: cx.next_id(),
                       bounds: deser_bnds}],
                     vec::map(tps, |tp| {

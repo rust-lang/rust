@@ -75,7 +75,7 @@ impl methods for message {
             );
 
             let args_ast = vec::append(
-                ~[cx.arg_mode(@"pipe",
+                ~[cx.arg_mode(@"pipe"/~,
                               cx.ty_path(path(this.data_name())
                                         .add_tys(cx.ty_vars(this.ty_params))),
                               ast::by_copy)],
@@ -92,7 +92,7 @@ impl methods for message {
             body += #fmt("let message = %s::%s(%s);\n",
                          *this.proto.name,
                          *self.name(),
-                         str::connect(vec::append_one(arg_names, @"s")
+                         str::connect(vec::append_one(arg_names, @"s"/~)
                                       .map(|x| *x),
                                       ", "));
             body += #fmt("pipes::send(pipe, message);\n");
@@ -158,8 +158,8 @@ impl methods for state {
             let next_name = next.data_name();
 
             let dir = alt this.dir {
-              send { @"server" }
-              recv { @"client" }
+              send { @"server"/~ }
+              recv { @"client"/~ }
             };
 
             let v = cx.variant(name,
@@ -190,7 +190,7 @@ impl methods for state {
                   cx.item_ty_poly(
                       self.data_name(),
                       cx.ty_path(
-                          (@"pipes" + @(dir.to_str() + "_packet"))
+                          (@"pipes"/~ + @(dir.to_str() + "_packet"/~))
                           .add_ty(cx.ty_path(
                               (self.proto.name + self.data_name())
                               .add_tys(cx.ty_vars(self.ty_params))))),
@@ -281,10 +281,10 @@ impl methods for protocol {
         }
 
         vec::push(items,
-                  cx.item_mod(@"client",
+                  cx.item_mod(@"client"/~,
                               client_states));
         vec::push(items,
-                  cx.item_mod(@"server",
+                  cx.item_mod(@"server"/~,
                               server_states));
 
         cx.item_mod(self.name, items)
