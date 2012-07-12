@@ -314,7 +314,7 @@ fn print_region(s: ps, region: @ast::region) {
       ast::re_anon { word_space(s, "&"); }
       ast::re_named(name) {
         word(s.s, "&");
-        word_space(s, *name);
+        word(s.s, *name);
       }
     }
 }
@@ -860,7 +860,7 @@ fn print_vstore(s: ps, t: ast::vstore) {
       ast::vstore_fixed(none) { word(s.s, "_"); }
       ast::vstore_uniq { word(s.s, "~"); }
       ast::vstore_box { word(s.s, "@"); }
-      ast::vstore_slice(r) { print_region(s, r); }
+      ast::vstore_slice(r) { print_region(s, r); word(s.s, "."); }
     }
 }
 
