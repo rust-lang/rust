@@ -1,5 +1,3 @@
-// FIXME: un-xfail after snapshot
-// xfail-test
 
 import intrinsic::{tydesc, get_tydesc, visit_tydesc, ty_visitor};
 import libc::c_void;
@@ -32,16 +30,16 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
 
     #[inline(always)]
     fn bump(sz: uint) {
-        self.inner.move_ptr() {|p|
+      do self.inner.move_ptr() |p| {
             ((p as uint) + sz) as *c_void
-        }
+      };
     }
 
     #[inline(always)]
     fn align(a: uint) {
-        self.inner.move_ptr() {|p|
+      do self.inner.move_ptr() |p| {
             align(p as uint, a) as *c_void
-        }
+      };
     }
 
     #[inline(always)]
@@ -247,9 +245,9 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     }
 
     fn visit_vec(mtbl: uint, inner: *tydesc) -> bool {
-        self.align_to::<[u8]>();
+        self.align_to::<~[u8]>();
         if ! self.inner.visit_vec(mtbl, inner) { ret false; }
-        self.bump_past::<[u8]>();
+        self.bump_past::<~[u8]>();
         true
     }
 
@@ -407,7 +405,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
 
     fn visit_trait() -> bool {
         self.align_to::<ty_visitor>();
-        if ! self.inner.visit_iface() { ret false; }
+        if ! self.inner.visit_trait() { ret false; }
         self.bump_past::<ty_visitor>();
         true
     }
@@ -492,16 +490,16 @@ impl of ty_visitor for my_visitor {
     fn visit_bot() -> bool { true }
     fn visit_nil() -> bool { true }
     fn visit_bool() -> bool {
-        self.get::<bool>() {|b|
+      do self.get::<bool>() |b| {
             self.vals += ~[bool::to_str(b)];
-        }
-        true
+      };
+      true
     }
     fn visit_int() -> bool {
-        self.get::<int>() {|i|
+      do self.get::<int>() |i| {
             self.vals += ~[int::to_str(i, 10u)];
-        }
-        true
+      };
+      true
     }
     fn visit_i8() -> bool { true }
     fn visit_i16() -> bool { true }
@@ -623,9 +621,9 @@ fn main() {
     let v = v as ty_visitor;
     visit_tydesc(td, v);
 
-    for (copy u.vals).each {|s|
+    for (copy u.vals).each |s| {
         io::println(#fmt("val: %s", s));
     }
     #error("%?", copy u.vals);
-    assert u.vals == ["1", "2", "3", "true", "false", "5", "4", "3"];
+    assert u.vals == ~["1", "2", "3", "true", "false", "5", "4", "3"];
  }
