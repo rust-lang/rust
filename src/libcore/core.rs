@@ -59,7 +59,7 @@ mod core {
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
-    use std(vers = "0.2");
+    use std(vers = "0.3");
     import std::test;
 }
 

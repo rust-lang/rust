@@ -6,11 +6,11 @@
 # destination directory as arg 2, and filename/libname-glob as arg 3
 ifdef VERBOSE
  INSTALL = install -m755 $(1)/$(3) $(2)/$(3)
- INSTALL_LIB = install -m644 `ls -rt1 $(1)/$(3) | tail -1` $(2)/
+ INSTALL_LIB = install -m644 `ls -drt1 $(1)/$(3) | tail -1` $(2)/
 else
  INSTALL = $(Q)$(call E, install: $(2)/$(3)) && install -m755 $(1)/$(3) $(2)/$(3)
  INSTALL_LIB = $(Q)$(call E, install_lib: $(2)/$(3)) &&                    \
-	       install -m644 `ls -rt1 $(1)/$(3) | tail -1` $(2)/
+	       install -m644 `ls -drt1 $(1)/$(3) | tail -1` $(2)/
 endif
 
 # The stage we install from
