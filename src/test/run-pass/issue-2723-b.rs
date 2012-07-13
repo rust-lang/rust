@@ -1,3 +1,4 @@
+// xfail-fast: aux-build not compatible with fast
 // aux-build:issue_2723_a.rs
 
 use issue_2723_a;
