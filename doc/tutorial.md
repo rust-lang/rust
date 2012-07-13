@@ -1347,7 +1347,7 @@ imply ownership. Pointers may be borrowed from any type, in which case
 the pointer is guaranteed not to outlive the value it points to.
 
 ~~~~
-# fn work_with_foo_by_pointer(f: &str/~) { }
+# fn work_with_foo_by_pointer(f: &~str) { }
 let foo = "foo";
 work_with_foo_by_pointer(&foo);
 ~~~~
