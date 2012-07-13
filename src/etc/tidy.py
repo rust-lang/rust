@@ -28,6 +28,8 @@ try:
             if line.find("FIXME") != -1:
                 if re.search("FIXME.*#\d+", line) == None:
                     report_err("FIXME without issue number")
+            if line.find("TODO") != -1:
+                report_err("TODO is deprecated; use FIXME")
         if (line.find('\t') != -1 and
             fileinput.filename().find("Makefile") == -1):
             report_err("tab character")
