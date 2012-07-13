@@ -244,6 +244,44 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
     }
 }
 
+fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
+    -> ast::mac_arg {
+    import ast::{matcher, matcher_, mtc_tok, mtc_rep, mtc_bb};
+    import parse::lexer::{new_tt_reader, tt_reader_as_reader, reader};
+    import tt::earley_parser::{parse_or_else, seq, leaf};
+
+    // these spans won't matter, anyways
+    fn ms(m: matcher_) -> matcher {
+        {node: m, span: {lo: 0u, hi: 0u, expn_info: none}}
+    }
+
+    let argument_gram = ~[ms(mtc_rep(~[
+        ms(mtc_bb(@~"arg",@~"expr", 0u))
+    ], some(parse::token::COMMA), true, 0u, 1u))];
+
+    let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
+                                   cx.parse_sess().interner, none, arg);
+    let args =
+        alt parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
+                          argument_gram).get(@~"arg") {
+          @seq(s, _) {
+            do s.map() |lf| {
+                alt lf {
+                  @leaf(parse::token::w_expr(arg)) {
+                    arg /* whew! list of exprs, here we come! */
+                  }
+                  _ { fail ~"badly-structured parse result"; }
+                }
+            }
+          }
+          _ { fail ~"badly-structured parse result"; }
+        };
+
+    ret some(@{id: parse::next_node_id(cx.parse_sess()),
+               callee_id: parse::next_node_id(cx.parse_sess()),
+               node: ast::expr_vec(args, ast::m_imm), span: sp});
+}
+
 //
 // Local Variables:
 // mode: rust

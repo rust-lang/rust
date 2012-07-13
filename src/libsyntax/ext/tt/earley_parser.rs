@@ -110,6 +110,16 @@ enum parse_result {
     failure(codemap::span, ~str)
 }
 
+fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
+                 ms: ~[matcher]) -> hashmap<ident, @arb_depth> {
+    alt parse(sess, cfg, rdr, ms) {
+      success(m) { m }
+      failure(sp, str) {
+        sess.span_diagnostic.span_fatal(sp, str);
+      }
+    }
+}
+
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     -> parse_result {
     let mut cur_eis = ~[];
