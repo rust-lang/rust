@@ -45,7 +45,7 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
 }
 
 fn apply_to_sections(op: op, sections: ~[doc::section]) -> ~[doc::section] {
-    par::anymap(sections, |section, copy op| {
+    par::map(sections, |section, copy op| {
         header: op(section.header),
         body: op(section.body)
     })
@@ -55,7 +55,7 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: do par::anymap(doc.variants) |variant, copy fold| {
+        variants: do par::map(doc.variants) |variant, copy fold| {
             {
                 desc: maybe_apply_op(fold.ctxt, variant.desc)
                 with variant
@@ -75,7 +75,7 @@ fn fold_trait(fold: fold::fold<op>, doc: doc::traitdoc) -> doc::traitdoc {
 }
 
 fn apply_to_methods(op: op, docs: ~[doc::methoddoc]) -> ~[doc::methoddoc] {
-    do par::anymap(docs) |doc, copy op| {
+    do par::map(docs) |doc, copy op| {
         {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),

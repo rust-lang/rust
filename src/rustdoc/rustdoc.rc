@@ -19,6 +19,7 @@ use rustc(vers = "0.3");
 use syntax(vers = "0.3");
 
 import core::*;
+import std::par;
 
 mod config;
 mod parse;
@@ -44,7 +45,6 @@ mod sort_pass;
 mod sort_item_name_pass;
 mod sort_item_type_pass;
 mod reexport_pass;
-mod par;
 mod page_pass;
 mod sectionalize_pass;
 mod escape_pass;
