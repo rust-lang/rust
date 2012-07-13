@@ -1,6 +1,8 @@
 //! A map type
 
 import chained::hashmap;
+import io::writer_util;
+import to_str::to_str;
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
 export box_str_hash;
 export bytes_hash, int_hash, uint_hash, set_add;
@@ -98,6 +100,7 @@ mod chained {
         hasher: hashfn<K>,
         eqer: eqfn<K>
     };
+    type t<K, V> = @hashmap_<K, V>;
 
     enum hashmap_<K, V> {
         hashmap_(@hashmap__<K, V>)
@@ -111,7 +114,7 @@ mod chained {
         found_after(@entry<K,V>, @entry<K,V>)
     }
 
-    impl private_methods<K, V: copy> for t<K, V> {
+    impl private_methods<K, V: copy> for hashmap_<K, V> {
         fn search_rem(k: K, h: uint, idx: uint,
                       e_root: @entry<K,V>) -> search_result<K,V> {
             let mut e0 = e_root;
@@ -284,6 +287,33 @@ mod chained {
 
         fn each_value(blk: fn(V) -> bool) { self.each(|_k, v| blk(v)) }
     }
+
+    impl hashmap<K: to_str, V: to_str copy> of to_str for hashmap_<K, V> {
+        fn to_writer(wr: io::writer) {
+            if self.count == 0u {
+                wr.write_str("{}");
+                ret;
+            }
+
+            wr.write_str("{ ");
+            let mut first = true;
+            for self.each_entry |entry| {
+                if !first {
+                    wr.write_str(", ");
+                }
+                first = false;
+                wr.write_str(entry.key.to_str());
+                wr.write_str(": ");
+                wr.write_str((copy entry.value).to_str());
+            };
+            wr.write_str(" }");
+        }
+
+        fn to_str() -> ~str {
+            do io::with_str_writer |wr| { self.to_writer(wr) }
+        }
+    }
+
 
     fn chains<K,V>(nchains: uint) -> ~[mut chain<K,V>] {
         ret vec::to_mut(vec::from_elem(nchains, absent));
