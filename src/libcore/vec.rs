@@ -1420,6 +1420,11 @@ mod unsafe {
         data: u8
     };
 
+    type slice_repr = {
+        mut data: *u8,
+        mut len: uint
+    };
+
     /**
      * Constructs a vector from an unsafe pointer to a buffer
      *
@@ -1461,6 +1466,13 @@ mod unsafe {
     #[inline(always)]
     unsafe fn to_ptr<T>(v: ~[const T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
+    }
+
+
+    #[inline(always)]
+    unsafe fn to_ptr_slice<T>(v: &[const T]) -> *T {
+        let repr: **slice_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
 
