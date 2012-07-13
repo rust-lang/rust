@@ -379,18 +379,15 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         word(s.s, constrs_str(cs, ty_constr_to_str));
       }
       ast::ty_vstore(t, v) {
-        // If it is a vector, print it in prefix notation.
-        // Someday it will all be like this.
-        let is_fixed = alt v { ast::vstore_fixed(_) { true } _ { false } };
-        alt t.node {
-          ast::ty_vec(*) if !is_fixed {
-            print_vstore(s, v);
-            print_type(s, t);
-          }
-          _ {
+        alt v {
+          ast::vstore_fixed(_) {
             print_type(s, t);
             word(s.s, "/");
             print_vstore(s, v);
+          }
+          _ {
+            print_vstore(s, v);
+            print_type(s, t);
           }
         }
       }
@@ -888,18 +885,15 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
     s.ann.pre(ann_node);
     alt expr.node {
       ast::expr_vstore(e, v) {
-        // If it is a vector, print it in prefix notation.
-        // Someday it will all be like this.
-        let is_fixed = alt v { ast::vstore_fixed(_) { true } _ { false } };
-        alt e.node {
-          ast::expr_vec(*) if !is_fixed {
-            print_vstore(s, v);
-            print_expr(s, e);
-          }
-          _ {
+        alt v {
+          ast::vstore_fixed(_) {
             print_expr(s, e);
             word(s.s, "/");
             print_vstore(s, v);
+          }
+          _ {
+            print_vstore(s, v);
+            print_expr(s, e);
           }
         }
       }

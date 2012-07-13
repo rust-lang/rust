@@ -100,6 +100,15 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> str {
     }
 }
 
+fn vstore_ty_to_str(cx: ctxt, ty: str, vs: ty::vstore) -> str {
+    alt vs {
+      ty::vstore_fixed(_) {
+        #fmt["%s/%s", ty, vstore_to_str(cx, vs)]
+      }
+      _ { #fmt["%s%s", vstore_to_str(cx, vs), ty] }
+    }
+}
+
 fn tys_to_str(cx: ctxt, ts: ~[t]) -> str {
     let mut rs = "";
     for ts.each |t| { rs += ty_to_str(cx, t); }
@@ -223,14 +232,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         parameterized(cx, base, substs.self_r, substs.tps)
       }
       ty_evec(mt, vs) {
-        alt vs {
-          ty::vstore_fixed(_) {
-            #fmt["[%s]/%s", mt_to_str(cx, mt), vstore_to_str(cx, vs)]
-          }
-          _ { #fmt["%s[%s]", vstore_to_str(cx, vs), mt_to_str(cx, mt)] }
-        }
+        vstore_ty_to_str(cx, #fmt["[%s]", mt_to_str(cx, mt)], vs)
       }
-      ty_estr(vs) { #fmt["str/%s", vstore_to_str(cx, vs)] }
+      ty_estr(vs) { vstore_ty_to_str(cx, "str", vs) }
       ty_opaque_box { "@?" }
       ty_constr(t, _) { "@?" }
       ty_opaque_closure_ptr(ck_block) { "closure&" }
