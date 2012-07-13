@@ -12,7 +12,8 @@ enum tt_frame_up { /* to break a circularity */
     tt_frame_up(option<tt_frame>)
 }
 
-/* TODO: figure out how to have a uniquely linked stack, and change to `~` */
+/* FIXME #2811: figure out how to have a uniquely linked stack, and change to
+   `~` */
 ///an unzipping of `token_tree`s
 type tt_frame = @{
     readme: ~[ast::token_tree],
@@ -185,7 +186,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                     "attempted to repeat an expression containing no syntax \
                      variables matched as repeating at this depth");
               }
-              lis_contradiction(msg) { /* TODO blame macro invoker instead*/
+              lis_contradiction(msg) { /* FIXME #2887 blame macro invoker
+                                          instead*/
                 r.sp_diag.span_fatal(sp, msg);
               }
               lis_constraint(len, _) {
@@ -196,7 +198,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
 
                 if len == 0 {
                     if !zerok {
-                        r.sp_diag.span_fatal(sp, /* TODO blame invoker */
+                        r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
+                                                  */
                                              "this must repeat at least \
                                               once");
                     }
@@ -206,7 +209,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
               }
             }
           }
-          // TODO: think about span stuff here
+          // FIXME #2887: think about span stuff here
           tt_interpolate(sp, ident) {
             alt *lookup_cur_ad(r, ident) {
               /* sidestep the interpolation tricks for ident because

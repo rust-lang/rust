@@ -62,7 +62,7 @@ impl ast_builder for ext_ctxt {
         {mode: ast::infer(self.next_id()),
          ty: ty,
          ident: name,
-         // TODO: should this be the same as the infer id?
+         // FIXME #2886: should this be the same as the infer id?
          id: self.next_id()}
     }
 
@@ -90,7 +90,7 @@ impl ast_builder for ext_ctxt {
          output: output,
          purity: ast::impure_fn,
          cf: ast::return_val,
-         // TODO: we'll probably want a variant that does constrained
+         // FIXME #2886: we'll probably want a variant that does constrained
          // types.
          constraints: ~[]}
     }
@@ -157,7 +157,7 @@ impl ast_builder for ext_ctxt {
     }
 
     fn ty_path(path: @ast::path) -> @ast::ty {
-        // TODO: make sure the node ids are legal.
+        // FIXME #2886: make sure the node ids are legal.
         @{id: self.next_id(),
           node: ast::ty_path(path, self.next_id()),
           span: empty_span()}
