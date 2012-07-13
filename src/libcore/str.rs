@@ -26,6 +26,7 @@ export
    unpack_slice,
 
    // Adding things to and removing things from a string
+   push_str_no_overallocate,
    push_str,
    push_char,
    pop_char,
@@ -235,13 +236,29 @@ pure fn from_chars(chs: &[const char]) -> str {
     ret buf;
 }
 
+/// Appends a string slice to the back of a string, without overallocating
+#[inline(always)]
+fn push_str_no_overallocate(&lhs: str, rhs: str/&) {
+    unsafe {
+        let llen = lhs.len();
+        let rlen = rhs.len();
+        reserve(lhs, llen + rlen);
+        do as_buf(lhs) |lbuf| {
+            do unpack_slice(rhs) |rbuf, _rlen| {
+                let dst = ptr::offset(lbuf, llen);
+                ptr::memcpy(dst, rbuf, rlen);
+            }
+        }
+        unsafe::set_len(lhs, llen + rlen);
+    }
+}
 /// Appends a string slice to the back of a string
 #[inline(always)]
 fn push_str(&lhs: str, rhs: str/&) {
     unsafe {
         let llen = lhs.len();
         let rlen = rhs.len();
-        reserve(lhs, llen + rlen);
+        reserve_at_least(lhs, llen + rlen);
         do as_buf(lhs) |lbuf| {
             do unpack_slice(rhs) |rbuf, _rlen| {
                 let dst = ptr::offset(lbuf, llen);
@@ -257,7 +274,7 @@ fn push_str(&lhs: str, rhs: str/&) {
 pure fn append(+lhs: str, rhs: str/&) -> str {
     let mut v <- lhs;
     unchecked {
-        push_str(v, rhs);
+        push_str_no_overallocate(v, rhs);
     }
     ret v;
 }
