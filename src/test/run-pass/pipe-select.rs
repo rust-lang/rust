@@ -1,4 +1,4 @@
-// xfail
+// xfail-test
 // xfail-pretty
 // xfail-win32
 
