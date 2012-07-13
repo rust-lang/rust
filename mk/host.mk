@@ -31,6 +31,7 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_GLOB) \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_DSYM_GLOB) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_LIBSYNTAX): \
@@ -42,6 +43,7 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBSYNTAX): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_GLOB) \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_DSYM_GLOB) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME): \
@@ -54,7 +56,15 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_CORELIB): \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+# Subtle: We do not let the shell expand $(CORELIB_DSYM_GLOB) directly rather
+# we use Make's $$(wildcard) facility. The reason is that, on mac, when using
+# USE_SNAPSHOT_CORELIB, we copy the core.dylib file out of the snapshot.
+# In that case, there is no .dSYM file.  Annoyingly, bash then refuses to expand
+# glob, and cp reports an error because libcore-*.dylib.dsym does not exist.
+# Make instead expands the glob to nothing, which gives us the correct behavior.
+# (Copy .dsym file if it exists, but do nothing otherwise)
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(CORELIB_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(CORELIB_DSYM_GLOB)) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_STDLIB): \
@@ -64,6 +74,7 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_STDLIB): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_DSYM_GLOB)) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/libcore.rlib: \
