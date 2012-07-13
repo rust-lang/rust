@@ -15,7 +15,7 @@
 rust_kernel::rust_kernel(rust_env *env) :
     _region(env, true),
     _log(NULL),
-    max_task_id(1),
+    max_task_id(INIT_TASK_ID-1), // sync_add_and_fetch increments first
     max_port_id(1),
     rval(0),
     max_sched_id(1),

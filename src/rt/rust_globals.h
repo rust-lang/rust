@@ -90,6 +90,8 @@ extern "C" int check_claims;
 // This accounts for logging buffers.
 static size_t const BUF_BYTES = 2048;
 
+#define INIT_TASK_ID 1
+
 // The error status to use when the process fails
 #define PROC_FAIL_CODE 101
 

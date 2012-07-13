@@ -864,8 +864,12 @@ rust_task_kill_other(rust_task *task) { /* Used for linked failure */
 }
 
 extern "C" void
-rust_task_kill_all(rust_task *task) {
+rust_task_kill_all(rust_task *task) { /* Used for linked failure */
     task->fail_sched_loop();
+    // This must not happen twice.
+    static bool main_taskgroup_failed = false;
+    assert(!main_taskgroup_failed);
+    main_taskgroup_failed = true;
 }
 
 extern "C" rust_cond_lock*
