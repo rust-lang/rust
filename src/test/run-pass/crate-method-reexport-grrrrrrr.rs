@@ -2,6 +2,7 @@
 // name_pool::methods impl in the other crate is reachable from this
 // crate.
 
+// xfail-fast
 // aux-build:crate-method-reexport-grrrrrrr2.rs
 
 use crate_method_reexport_grrrrrrr2;
