@@ -5,7 +5,7 @@
  * interface.
  */
 import base::*;
-import build::mk_lit;
+import build::mk_uniq_str;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
@@ -17,14 +17,11 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     let var = expr_to_str(cx, args[0], "#env requires a string");
     alt os::getenv(var) {
-      option::none { ret make_new_str(cx, sp, ""); }
-      option::some(s) { ret make_new_str(cx, sp, s); }
+      option::none { ret mk_uniq_str(cx, sp, ""); }
+      option::some(s) { ret mk_uniq_str(cx, sp, s); }
     }
 }
 
-fn make_new_str(cx: ext_ctxt, sp: codemap::span, +s: str) -> @ast::expr {
-    ret mk_lit(cx, sp, ast::lit_str(@s));
-}
 //
 // Local Variables:
 // mode: rust

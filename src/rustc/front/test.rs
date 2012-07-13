@@ -301,11 +301,17 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 
     let name_lit: ast::lit =
         nospan(ast::lit_str(@ast_util::path_name_i(path)));
-    let name_expr: ast::expr =
-        {id: cx.sess.next_node_id(),
-         callee_id: cx.sess.next_node_id(),
-         node: ast::expr_lit(@name_lit),
-         span: span};
+    let name_expr_inner: @ast::expr =
+        @{id: cx.sess.next_node_id(),
+          callee_id: cx.sess.next_node_id(),
+          node: ast::expr_lit(@name_lit),
+          span: span};
+    let name_expr = {id: cx.sess.next_node_id(),
+                     callee_id: cx.sess.next_node_id(),
+                     node: ast::expr_vstore(name_expr_inner,
+                                            ast::vstore_uniq),
+                     span: dummy_sp()};
+
 
     let name_field: ast::field =
         nospan({mutbl: ast::m_imm, ident: @"name"/~, expr: @name_expr});
@@ -401,8 +407,11 @@ fn mk_test_wrapper(cx: test_ctxt,
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
     let str_pt = path_node(~[@"str"/~]);
+    let str_ty_inner = @{id: cx.sess.next_node_id(),
+                         node: ast::ty_path(str_pt, cx.sess.next_node_id()),
+                         span: dummy_sp()};
     let str_ty = @{id: cx.sess.next_node_id(),
-                   node: ast::ty_path(str_pt, cx.sess.next_node_id()),
+                   node: ast::ty_vstore(str_ty_inner, ast::vstore_uniq),
                    span: dummy_sp()};
     let args_mt = {ty: str_ty, mutbl: ast::m_imm};
     let args_ty_inner = @{id: cx.sess.next_node_id(),

@@ -242,15 +242,15 @@ fn finish<T: qq_helper>
                        ~[@"syntax"/~, @"parse"/~, @"parser"/~,
                         @"parse_from_source_str"/~],
                        ~[node.mk_parse_fn(cx,sp),
-                        mk_str(cx,sp, fname),
+                        mk_uniq_str(cx,sp, fname),
                         mk_call(cx,sp,
                                 ~[@"syntax"/~,@"ext"/~,
                                  @"qquote"/~, @"mk_file_substr"/~],
-                                ~[mk_str(cx,sp, loc.file.name),
+                                ~[mk_uniq_str(cx,sp, loc.file.name),
                                  mk_uint(cx,sp, loc.line),
                                  mk_uint(cx,sp, loc.col)]),
                         mk_unary(cx,sp, ast::box(ast::m_imm),
-                                 mk_str(cx,sp, str2)),
+                                 mk_uniq_str(cx,sp, str2)),
                         cfg_call(),
                         parse_sess_call()]
                       );

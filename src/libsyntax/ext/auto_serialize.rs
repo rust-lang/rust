@@ -222,9 +222,13 @@ impl helpers for ext_ctxt {
     fn lit_str(span: span, s: @str/~) -> @ast::expr {
         self.expr(
             span,
-            ast::expr_lit(
-                @{node: ast::lit_str(s),
-                  span: span}))
+            ast::expr_vstore(
+                self.expr(
+                    span,
+                    ast::expr_lit(
+                        @{node: ast::lit_str(s),
+                          span: span})),
+                ast::vstore_uniq))
     }
 
     fn lit_uint(span: span, i: uint) -> @ast::expr {

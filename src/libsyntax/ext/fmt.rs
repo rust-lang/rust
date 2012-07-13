@@ -249,7 +249,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     for pieces.each |pc| {
         alt pc {
           piece_string(s) {
-            vec::push(piece_exprs, mk_str(cx, fmt_sp, s));
+            vec::push(piece_exprs, mk_uniq_str(cx, fmt_sp, s));
           }
           piece_conv(conv) {
             n += 1u;
