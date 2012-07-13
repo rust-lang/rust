@@ -11,7 +11,7 @@
 #define HAVE_DLFCN_H
 #include <dlfcn.h>
 #elif defined(_WIN32)
-// TODO
+// FIXME #2889
 #endif
 
 #define END_OF_STACK_RA     (void (*)())0xdeadbeef

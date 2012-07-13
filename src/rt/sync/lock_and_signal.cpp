@@ -29,7 +29,8 @@ lock_and_signal::lock_and_signal()
     const DWORD SPIN_COUNT = 4000;
     CHECKED(!InitializeCriticalSectionAndSpinCount(&_cs, SPIN_COUNT));
 
-    // TODO? Consider checking GetProcAddress("InitializeCriticalSectionEx")
+    // FIXME #2893 Consider checking
+    // GetProcAddress("InitializeCriticalSectionEx")
     // so Windows >= Vista we can use CRITICAL_SECTION_NO_DEBUG_INFO to avoid
     // allocating CRITICAL_SECTION debug info that is never released. See:
     // http://stackoverflow.com/questions/804848/

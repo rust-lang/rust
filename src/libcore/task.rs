@@ -181,7 +181,7 @@ type task_opts = {
 // sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
 enum builder {
-    builder_({
+  builder_({
         mut opts: task_opts,
         mut gen_body: fn@(+fn~()) -> fn~(),
         can_not_copy: option<comm::port<()>>

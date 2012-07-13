@@ -938,8 +938,8 @@ task_clear_event_reject(rust_task *task) {
 // task.
 extern "C" void *
 task_wait_event(rust_task *task, bool *killed) {
-    // TODO: we should assert that the passed in task is the currently running
-    // task. We wouldn't want to wait some other task.
+    // FIXME #2890: we should assert that the passed in task is the currently
+    // running task. We wouldn't want to wait some other task.
 
     return task->wait_event(killed);
 }

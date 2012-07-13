@@ -160,7 +160,7 @@ size_of::walk_struct1(const uint8_t *end_sp) {
 #if 0
 
 class copy : public data<copy,uint8_t *> {
-    // TODO
+    // FIXME #2892
 };
 
 #endif

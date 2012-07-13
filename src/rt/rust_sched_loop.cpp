@@ -25,7 +25,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched,int id) :
     log_lvl(log_debug),
     min_stack_size(kernel->env->min_stack_size),
     local_region(kernel->env, false),
-    // TODO: calculate a per scheduler name.
+    // FIXME #2891: calculate a per-scheduler name.
     name("main")
 {
     LOGPTR(this, "new dom", (uintptr_t)this);

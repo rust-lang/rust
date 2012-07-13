@@ -570,7 +570,7 @@ public:
 // Size-of (which also computes alignment). Be warned: this is an expensive
 // operation.
 //
-// TODO: Maybe dynamic_size_of() should call into this somehow?
+// FIXME #2894: Maybe dynamic_size_of() should call into this somehow?
 //
 
 class size_of : public ctxt<size_of> {
@@ -612,7 +612,7 @@ public:
     }
 
     void walk_res1(const rust_fn *dtor, const uint8_t *end_sp) {
-        abort();    // TODO
+        abort();    // FIXME #2895
     }
 
     void walk_fixedvec1(uint16_t n_elts, bool is_pod) {
