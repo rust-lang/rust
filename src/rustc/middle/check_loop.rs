@@ -35,7 +35,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
               }
               expr_again {
                 if !cx.in_loop {
-                    tcx.sess.span_err(e.span, "`cont` outside of loop");
+                    tcx.sess.span_err(e.span, "`again` outside of loop");
                 }
               }
               expr_ret(oe) {
