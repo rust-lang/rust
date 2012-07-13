@@ -40,7 +40,7 @@ fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
     let doc =fold::default_seq_fold_trait(fold, doc);
 
     {
-        methods: par::anymap(doc.methods, |doc| {
+        methods: par::map(doc.methods, |doc| {
             brief: extract(doc.desc)
             with doc
         })
@@ -52,7 +52,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: par::anymap(doc.methods, |doc| {
+        methods: par::map(doc.methods, |doc| {
             brief: extract(doc.desc)
             with doc
         })
