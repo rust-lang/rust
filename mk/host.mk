@@ -31,7 +31,7 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_GLOB) \
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_DSYM_GLOB) \
+		$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_DSYM_GLOB)) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_LIBSYNTAX): \
@@ -43,7 +43,7 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBSYNTAX): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_GLOB) \
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_DSYM_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_DSYM_GLOB)) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME): \
