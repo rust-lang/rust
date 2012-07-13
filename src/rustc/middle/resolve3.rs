@@ -2920,6 +2920,8 @@ class Resolver {
                                            NormalRibKind))
                         || {
 
+                    self.resolve_type_parameters(type_parameters, visitor);
+
                     for methods.each |method| {
                         // Create a new rib for the method-specific type
                         // parameters.
