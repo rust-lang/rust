@@ -75,7 +75,7 @@ extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   return true;
 }
 
-extern "C" void
+extern "C" bool
 LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         LLVMModuleRef M,
                         const char *triple,
@@ -107,6 +107,10 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo,
                     raw_fd_ostream::F_Binary);
+  if (ErrorInfo != "") {
+    LLVMRustError = ErrorInfo.c_str();
+    return false;
+  }
   formatted_raw_ostream FOS(OS);
 
   bool foo = Target->addPassesToEmitFile(*PM, FOS, FileType, NoVerify);
@@ -114,6 +118,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   (void)foo;
   PM->run(*unwrap(M));
   delete Target;
+  return true;
 }
 
 extern "C" LLVMModuleRef LLVMRustParseAssemblyFile(const char *Filename) {

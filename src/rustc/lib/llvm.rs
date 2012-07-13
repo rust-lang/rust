@@ -941,7 +941,7 @@ extern mod llvm {
                                // c_uint to FileType
                                Output: *c_char, FileType: c_uint,
                                OptLevel: c_int,
-                               EnableSegmentedStacks: bool);
+                               EnableSegmentedStacks: bool) -> bool;
 
     /** Returns a string describing the last error caused by an LLVMRust*
         call. */
