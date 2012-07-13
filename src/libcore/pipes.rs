@@ -318,8 +318,20 @@ fn select2<A: send, B: send>(
     }
 }
 
-fn selecti<T: send>(endpoints: &[&recv_packet<T>]) -> uint {
+trait selectable {
+    pure fn header() -> *packet_header;
+}
+
+fn selecti<T: selectable>(endpoints: &[T]) -> uint {
     wait_many(endpoints.map(|p| p.header()))
+}
+
+fn select2i<A: selectable, B: selectable>(a: A, b: B) -> either<(), ()> {
+    alt wait_many([a.header(), b.header()]/_) {
+      0 { left(()) }
+      1 { right(()) }
+      _ { fail "wait returned unexpected index" }
+    }
 }
 
 #[doc = "Waits on a set of endpoints. Returns a message, its index,
@@ -552,7 +564,7 @@ class port_set<T: send> {
     }
 }
 
-impl private_methods/&<T: send> for pipes::port<T> {
+impl<T: send> of selectable for pipes::port<T> {
     pure fn header() -> *pipes::packet_header unchecked {
         alt self.endp {
           some(endp) {
