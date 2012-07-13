@@ -357,7 +357,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
 
     fn warn_missing(sess: session, name: str, default: str) {
         if !sess.building_library { ret; }
-        sess.warn(#fmt["missing crate link meta '%s', using '%s' as default",
+        sess.warn(#fmt["missing crate link meta `%s`, using `%s` as default",
                        name, default]);
     }
 
@@ -371,7 +371,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                         let mut os =
                             str::split_char(path::basename(output), '.');
                         if (vec::len(os) < 2u) {
-                            sess.fatal(#fmt("output file name %s doesn't\
+                            sess.fatal(#fmt("output file name `%s` doesn't\
                               appear to have an extension", output));
                         }
                         vec::pop(os);
@@ -680,7 +680,7 @@ fn link_binary(sess: session,
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);
     if 0 != prog.status {
-        sess.err(#fmt["linking with %s failed with code %d",
+        sess.err(#fmt["linking with `%s` failed with code %d",
                       cc_prog, prog.status]);
         sess.note(#fmt["%s arguments: %s",
                        cc_prog, str::connect(cc_args, " ")]);
@@ -696,7 +696,7 @@ fn link_binary(sess: session,
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
         if ! os::remove_file(obj_filename) {
-            sess.warn(#fmt["failed to delete object file '%s'",
+            sess.warn(#fmt["failed to delete object file `%s`",
                            obj_filename]);
         }
     }

@@ -41,7 +41,7 @@ fn load_library_crate(cx: ctxt) -> {ident: str, data: @~[u8]} {
       some(t) { ret t; }
       none {
         cx.diag.span_fatal(
-            cx.span, #fmt["can't find crate for '%s'", *cx.ident]);
+            cx.span, #fmt["can't find crate for `%s`", *cx.ident]);
       }
     }
 }

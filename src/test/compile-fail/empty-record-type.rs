@@ -1,4 +1,4 @@
-// error-pattern:unexpected token: '}'
+// error-pattern:unexpected token: `}`
 // Issue #1200
 
 type t = {};

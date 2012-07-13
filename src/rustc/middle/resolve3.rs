@@ -1309,7 +1309,7 @@ class Resolver {
                         def_self(*) | def_arg(*) | def_local(*) |
                         def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
                         def_use(*) | def_upvar(*) | def_region(*) {
-                            fail #fmt("didn't expect %?", def);
+                            fail #fmt("didn't expect `%?`", def);
                         }
                     }
                 }
@@ -1360,14 +1360,14 @@ class Resolver {
         // skip them.
 
         #debug("(building reduced graph for impls in external crate) looking \
-                for impls in '%s' (%?)",
+                for impls in `%s` (%?)",
                self.module_to_str(module),
                copy module.def_id);
 
         alt module.def_id {
             none {
                 #debug("(building reduced graph for impls in external \
-                        module) no def ID for '%s', skipping",
+                        module) no def ID for `%s`, skipping",
                        self.module_to_str(module));
                 ret;
             }
@@ -1390,7 +1390,7 @@ class Resolver {
             def_ids.insert(implementation.did, ());
 
             #debug("(building reduced graph for impls in external module) \
-                    added impl '%s' (%?) to '%s'",
+                    added impl `%s` (%?) to `%s`",
                    *implementation.ident,
                    implementation.did,
                    self.module_to_str(module));
@@ -1549,8 +1549,8 @@ class Resolver {
         let mut resolution_result;
         let module_path = import_directive.module_path;
 
-        #debug("(resolving import for module) resolving import '%s::...' in \
-                '%s'",
+        #debug("(resolving import for module) resolving import `%s::...` in \
+                `%s`",
                *(*self.atom_table).atoms_to_str((*module_path).get()),
                self.module_to_str(module));
 
@@ -1633,15 +1633,15 @@ class Resolver {
                              target: Atom, source: Atom)
                           -> ResolveResult<()> {
 
-        #debug("(resolving single import) resolving '%s' = '%s::%s' from \
-                '%s'",
+        #debug("(resolving single import) resolving `%s` = `%s::%s` from \
+                `%s`",
                *(*self.atom_table).atom_to_str(target),
                self.module_to_str(containing_module),
                *(*self.atom_table).atom_to_str(source),
                self.module_to_str(module));
 
         if !self.name_is_exported(containing_module, source) {
-            #debug("(resolving single import) name '%s' is unexported",
+            #debug("(resolving single import) name `%s` is unexported",
                    *(*self.atom_table).atom_to_str(source));
             ret Failed;
         }
@@ -1875,13 +1875,13 @@ class Resolver {
                 |atom, target_import_resolution| {
 
             if !self.name_is_exported(containing_module, atom) {
-                #debug("(resolving glob import) name '%s' is unexported",
+                #debug("(resolving glob import) name `%s` is unexported",
                        *(*self.atom_table).atom_to_str(atom));
                 again;
             }
 
             #debug("(resolving glob import) writing module resolution \
-                    %? into '%s'",
+                    %? into `%s`",
                    is_none(target_import_resolution.module_target),
                    self.module_to_str(module));
 
@@ -1952,7 +1952,7 @@ class Resolver {
         // Add all children from the containing module.
         for containing_module.children.each |atom, name_bindings| {
             if !self.name_is_exported(containing_module, atom) {
-                #debug("(resolving glob import) name '%s' is unexported",
+                #debug("(resolving glob import) name `%s` is unexported",
                        *(*self.atom_table).atom_to_str(atom));
                 again;
             }
@@ -1971,8 +1971,8 @@ class Resolver {
             }
 
 
-            #debug("(resolving glob import) writing resolution '%s' in '%s' \
-                    to '%s'",
+            #debug("(resolving glob import) writing resolution `%s` in `%s` \
+                    to `%s`",
                    *(*self.atom_table).atom_to_str(atom),
                    self.module_to_str(containing_module),
                    self.module_to_str(module));
@@ -2070,8 +2070,8 @@ class Resolver {
         let module_path_len = (*module_path).len();
         assert module_path_len > 0u;
 
-        #debug("(resolving module path for import) processing '%s' rooted at \
-               '%s'",
+        #debug("(resolving module path for import) processing `%s` rooted at \
+               `%s`",
                *(*self.atom_table).atoms_to_str((*module_path).get()),
                self.module_to_str(module));
 
@@ -2107,8 +2107,8 @@ class Resolver {
                                      namespace: Namespace)
                                   -> ResolveResult<Target> {
 
-        #debug("(resolving item in lexical scope) resolving '%s' in \
-                namespace %? in '%s'",
+        #debug("(resolving item in lexical scope) resolving `%s` in \
+                namespace %? in `%s`",
                *(*self.atom_table).atom_to_str(name),
                namespace,
                self.module_to_str(module));
@@ -2234,12 +2234,12 @@ class Resolver {
                               xray: XrayFlag)
                            -> ResolveResult<Target> {
 
-        #debug("(resolving name in module) resolving '%s' in '%s'",
+        #debug("(resolving name in module) resolving `%s` in `%s`",
                *(*self.atom_table).atom_to_str(name),
                self.module_to_str(module));
 
         if xray == NoXray && !self.name_is_exported(module, name) {
-            #debug("(resolving name in module) name '%s' is unexported",
+            #debug("(resolving name in module) name `%s` is unexported",
                    *(*self.atom_table).atom_to_str(name));
             ret Failed;
         }
@@ -2320,8 +2320,8 @@ class Resolver {
             }
         }
 
-        #debug("(resolving one-level naming result) resolving import '%s' = \
-                '%s' in '%s'",
+        #debug("(resolving one-level naming result) resolving import `%s` = \
+                `%s` in `%s`",
                 *(*self.atom_table).atom_to_str(target_name),
                 *(*self.atom_table).atom_to_str(source_name),
                 self.module_to_str(module));
@@ -2456,7 +2456,7 @@ class Resolver {
             }
             some(import_resolution) {
                 #debug("(resolving one-level renaming import) writing module \
-                        result %? for '%s' into '%s'",
+                        result %? for `%s` into `%s`",
                        is_none(module_result),
                        *(*self.atom_table).atom_to_str(target_name),
                        self.module_to_str(module));
@@ -2536,7 +2536,7 @@ class Resolver {
             some(_) {
                 // Bail out.
                 #debug("(recording exports for module subtree) not recording \
-                        exports for '%s'",
+                        exports for `%s`",
                        self.module_to_str(module));
                 ret;
             }
@@ -2622,7 +2622,7 @@ class Resolver {
             some(_) {
                 // Bail out.
                 #debug("(building impl scopes for module subtree) not \
-                        resolving implementations for '%s'",
+                        resolving implementations for `%s`",
                        self.module_to_str(module));
                 ret;
             }
@@ -2724,7 +2724,7 @@ class Resolver {
             some(name) {
                 alt orig_module.children.find(name) {
                     none {
-                        #debug("!!! (with scope) didn't find '%s' in '%s'",
+                        #debug("!!! (with scope) didn't find `%s` in `%s`",
                                *(*self.atom_table).atom_to_str(name),
                                self.module_to_str(orig_module));
                     }
@@ -2732,7 +2732,7 @@ class Resolver {
                         alt (*name_bindings).get_module_if_available() {
                             none {
                                 #debug("!!! (with scope) didn't find module \
-                                        for '%s' in '%s'",
+                                        for `%s` in `%s`",
                                        *(*self.atom_table).atom_to_str(name),
                                        self.module_to_str(orig_module));
                             }
@@ -3155,7 +3155,7 @@ class Resolver {
 
                         self.resolve_type(argument.ty, visitor);
 
-                        #debug("(resolving function) recorded argument '%s'",
+                        #debug("(resolving function) recorded argument `%s`",
                                *(*self.atom_table).atom_to_str(name));
                     }
 
@@ -3504,7 +3504,7 @@ class Resolver {
                 let mut result_def;
                 alt self.resolve_path(path, TypeNS, true, visitor) {
                     some(def) {
-                        #debug("(resolving type) resolved '%s' to type",
+                        #debug("(resolving type) resolved `%s` to type",
                                *path.idents.last());
                         result_def = some(def);
                     }
@@ -3542,7 +3542,7 @@ class Resolver {
                 alt copy result_def {
                     some(def) {
                         // Write the result into the def map.
-                        #debug("(resolving type) writing resolution for '%s' \
+                        #debug("(resolving type) writing resolution for `%s` \
                                 (id %d)",
                                connect(path.idents.map(|x| *x), "::"),
                                path_id);
@@ -3550,7 +3550,7 @@ class Resolver {
                     }
                     none {
                         self.session.span_err
-                            (ty.span, #fmt("use of undeclared type name '%s'",
+                            (ty.span, #fmt("use of undeclared type name `%s`",
                                            connect(path.idents.map(|x| *x),
                                                    "::")));
                     }
@@ -3606,7 +3606,7 @@ class Resolver {
 
                     alt self.resolve_enum_variant_or_const(atom) {
                         FoundEnumVariant(def) if mode == RefutableMode {
-                            #debug("(resolving pattern) resolving '%s' to \
+                            #debug("(resolving pattern) resolving `%s` to \
                                     enum variant",
                                    *path.idents[0]);
 
@@ -3628,7 +3628,7 @@ class Resolver {
                                                    in scope");
                         }
                         EnumVariantOrConstNotFound {
-                            #debug("(resolving pattern) binding '%s'",
+                            #debug("(resolving pattern) binding `%s`",
                                    *path.idents[0]);
 
                             let is_mutable = mutability == Mutable;
@@ -3822,7 +3822,7 @@ class Resolver {
                                          -> NameDefinition {
 
         if xray == NoXray && !self.name_is_exported(containing_module, name) {
-            #debug("(resolving definition of name in module) name '%s' is \
+            #debug("(resolving definition of name in module) name `%s` is \
                     unexported",
                    *(*self.atom_table).atom_to_str(name));
             ret NoNameDefinition;
@@ -4018,7 +4018,7 @@ class Resolver {
 
         alt copy search_result {
             some(dl_def(def)) {
-                #debug("(resolving path in local ribs) resolved '%s' to \
+                #debug("(resolving path in local ribs) resolved `%s` to \
                         local: %?",
                        *(*self.atom_table).atom_to_str(name),
                        def);
@@ -4049,7 +4049,7 @@ class Resolver {
                     }
                     some(def) {
                         #debug("(resolving item path in lexical scope) \
-                                resolved '%s' to item",
+                                resolved `%s` to item",
                                *(*self.atom_table).atom_to_str(name));
                         ret some(def);
                     }
@@ -4082,7 +4082,7 @@ class Resolver {
                 alt self.resolve_path(path, ValueNS, true, visitor) {
                     some(def) {
                         // Write the result into the def map.
-                        #debug("(resolving expr) resolved '%s'",
+                        #debug("(resolving expr) resolved `%s`",
                                connect(path.idents.map(|x| *x), "::"));
                         self.record_def(expr.id, def);
                     }
@@ -4166,7 +4166,7 @@ class Resolver {
             some(_) {
                 // Bail out.
                 #debug("(checking for unused imports in module subtree) not \
-                        checking for unused imports for '%s'",
+                        checking for unused imports for `%s`",
                        self.module_to_str(module));
                 ret;
             }
@@ -4262,7 +4262,7 @@ class Resolver {
     }
 
     fn dump_module(module: @Module) {
-        #debug("Dump of module '%s':", self.module_to_str(module));
+        #debug("Dump of module `%s`:", self.module_to_str(module));
 
         #debug("Children:");
         for module.children.each |name, _child| {

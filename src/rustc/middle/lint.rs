@@ -127,7 +127,7 @@ fn get_lint_dict() -> lint_dict {
         ("vecs_not_implicitly_copyable",
          @{lint: vecs_not_implicitly_copyable,
            desc: "make vecs and strs not implicitly copyable\
-                  ('err' is ignored; only checked at top level",
+                  (`err` is ignored; only checked at top level",
            default: warn}),
 
         ("implicit_copies",
@@ -223,7 +223,7 @@ impl methods for ctxt {
                             self.span_lint(
                                 self.get_level(unrecognized_warning),
                                 meta.span,
-                                #fmt("unknown warning: '%s'", name));
+                                #fmt("unknown warning: `%s`", name));
                           }
                           (_, some((lint, new_level))) {
                             // we do multiple unneeded copies of the map

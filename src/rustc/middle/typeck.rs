@@ -262,7 +262,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
         if !ok {
                 tcx.sess.span_err(main_span,
                    #fmt("Wrong type in main function: found `%s`, \
-                   expecting `extern fn(~[str]) -> ()` \
+                   expected `extern fn(~[str]) -> ()` \
                    or `extern fn() -> ()`",
                          ty_to_str(tcx, main_t)));
          }

@@ -1,2 +1,2 @@
-// error-pattern:expecting
+// error-pattern:expected
 import foo::*::bar

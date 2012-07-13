@@ -405,7 +405,7 @@ impl parser for parser {
             alt self.ch {
               ',' { self.bump(); }
               ']' { self.bump(); ret ok(list(@values)); }
-              _ { ret self.error("expecting ',' or ']'"); }
+              _ { ret self.error("expected `,` or `]`"); }
             }
         };
     }
@@ -437,7 +437,7 @@ impl parser for parser {
 
             if self.ch != ':' {
                 if self.eof() { break; }
-                ret self.error("expecting ':'");
+                ret self.error("expected `:`");
             }
             self.bump();
 
@@ -452,7 +452,7 @@ impl parser for parser {
               '}' { self.bump(); ret ok(dict(values)); }
               _ {
                   if self.eof() { break; }
-                  ret self.error("expecting ',' or '}'");
+                  ret self.error("expected `,` or `}`");
               }
             }
         }
@@ -797,7 +797,7 @@ mod tests {
         assert from_str("[1,]") ==
             err({line: 1u, col: 4u, msg: @"invalid syntax"});
         assert from_str("[6 7]") ==
-            err({line: 1u, col: 4u, msg: @"expecting ',' or ']'"});
+            err({line: 1u, col: 4u, msg: @"expected `,` or `]`"});
 
         assert from_str("[]") == ok(list(@~[]));
         assert from_str("[ ]") == ok(list(@~[]));
@@ -826,13 +826,13 @@ mod tests {
             err({line: 1u, col: 6u, msg: @"EOF while parsing object"});
 
         assert from_str("{\"a\" 1") ==
-            err({line: 1u, col: 6u, msg: @"expecting ':'"});
+            err({line: 1u, col: 6u, msg: @"expected `:`"});
         assert from_str("{\"a\":") ==
             err({line: 1u, col: 6u, msg: @"EOF while parsing value"});
         assert from_str("{\"a\":1") ==
             err({line: 1u, col: 7u, msg: @"EOF while parsing object"});
         assert from_str("{\"a\":1 1") ==
-            err({line: 1u, col: 8u, msg: @"expecting ',' or '}'"});
+            err({line: 1u, col: 8u, msg: @"expected `,` or `}`"});
         assert from_str("{\"a\":1,") ==
             err({line: 1u, col: 8u, msg: @"EOF while parsing object"});
 

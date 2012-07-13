@@ -1,4 +1,4 @@
-// error-pattern:expecting
+// error-pattern:expected
 
 import baz = foo::{bar};
 

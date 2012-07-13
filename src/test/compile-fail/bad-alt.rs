@@ -1,4 +1,4 @@
-// error-pattern: expecting
+// error-pattern: expected
 
 fn main() {
   let int x = 5;

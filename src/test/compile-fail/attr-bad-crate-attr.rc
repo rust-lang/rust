@@ -1,4 +1,4 @@
-// error-pattern: expecting mod
+// error-pattern: expected `mod`
 
 #[attr = "val"];
 #[attr = "val"] // Unterminated

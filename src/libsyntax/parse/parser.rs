@@ -311,7 +311,7 @@ class parser {
                            vis: public})
               }
 
-              _ { self.fatal("expected ';' or '}` \
+              _ { self.fatal("expected `;` or `}` \
                               but found `"
                              + token_to_str(self.reader, self.token) + "`");
                 }
@@ -545,7 +545,7 @@ class parser {
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())
-        } else { self.fatal("expecting type"); };
+        } else { self.fatal("expected type"); };
 
         let sp = mk_sp(lo, self.last_span.hi);
         ret @{id: self.get_id(),
@@ -1176,7 +1176,7 @@ class parser {
                 self.bump();
                 ret (some(sep), zerok);
             } else {
-                self.fatal("expected '*' or '+'");
+                self.fatal("expected `*` or `+`");
             }
         }
     }
@@ -1709,8 +1709,9 @@ class parser {
                 if self.token == token::UNDERSCORE {
                     self.bump();
                     if self.token != token::RBRACE {
-                        self.fatal("expecting }, found " +
-                                   token_to_str(self.reader, self.token));
+                        self.fatal("expected `}`, found `" +
+                                   token_to_str(self.reader, self.token) +
+                                   "`");
                     }
                     etc = true;
                     break;
@@ -1855,7 +1856,7 @@ class parser {
             is_mutbl = class_mutable;
         }
         if !is_plain_ident(self.token) {
-            self.fatal("expecting ident");
+            self.fatal("expected ident");
         }
         let name = self.parse_ident();
         self.expect(token::COLON);
@@ -2000,9 +2001,9 @@ class parser {
                       }
                       t {
                         if classify::stmt_ends_with_semi(*stmt) {
-                            self.fatal("expected ';' or '}' after expression \
-                                        but found '"
-                                       + token_to_str(self.reader, t) + "'");
+                            self.fatal("expected `;` or `}` after expression \
+                                        but found `"
+                                       + token_to_str(self.reader, t) + "`");
                         }
                         vec::push(stmts, stmt);
                       }
@@ -2363,8 +2364,8 @@ class parser {
             alt self.parse_item(attrs, vis) {
               some(i) { vec::push(items, i); }
               _ {
-                self.fatal("expected item but found '" +
-                           token_to_str(self.reader, self.token) + "'");
+                self.fatal("expected item but found `" +
+                           token_to_str(self.reader, self.token) + "`");
               }
             }
             #debug["parse_mod_items: attrs=%?", attrs];

@@ -28,23 +28,23 @@ impl parser_common for parser {
     fn unexpected_last(t: token::token) -> ! {
         self.span_fatal(
             copy self.last_span,
-            "unexpected token: '" + token_to_str(self.reader, t) + "'");
+            "unexpected token: `" + token_to_str(self.reader, t) + "`");
     }
 
     fn unexpected() -> ! {
-        self.fatal("unexpected token: '"
-                   + token_to_str(self.reader, self.token) + "'");
+        self.fatal("unexpected token: `"
+                   + token_to_str(self.reader, self.token) + "`");
     }
 
     fn expect(t: token::token) {
         if self.token == t {
             self.bump();
         } else {
-            let mut s: str = "expecting '";
+            let mut s: str = "expected `";
             s += token_to_str(self.reader, t);
-            s += "' but found '";
+            s += "` but found `";
             s += token_to_str(self.reader, self.token);
-            self.fatal(s + "'");
+            self.fatal(s + "`");
         }
     }
 
@@ -53,8 +53,9 @@ impl parser_common for parser {
           token::IDENT(i, _) { self.bump(); ret self.get_str(i); }
           token::ACTUALLY(token::w_ident(*)) { self.bug(
               "ident interpolation not converted to real token"); }
-          _ { self.fatal("expecting ident, found "
-                      + token_to_str(self.reader, self.token)); }
+          _ { self.fatal("expected ident, found `"
+                         + token_to_str(self.reader, self.token)
+                         + "`"); }
         }
     }
 
@@ -121,8 +122,9 @@ impl parser_common for parser {
     fn expect_keyword(word: str) {
         self.require_keyword(word);
         if !self.eat_keyword(word) {
-            self.fatal("expecting " + word + ", found " +
-                    token_to_str(self.reader, self.token));
+            self.fatal("expected `" + word + "`, found `" +
+                       token_to_str(self.reader, self.token) +
+                       "`");
         }
     }
 
@@ -152,10 +154,11 @@ impl parser_common for parser {
         } else if self.token == token::BINOP(token::SHR) {
             self.swap(token::GT, self.span.lo + 1u, self.span.hi);
         } else {
-            let mut s: str = "expecting ";
+            let mut s: str = "expected `";
             s += token_to_str(self.reader, token::GT);
-            s += ", found ";
+            s += "`, found `";
             s += token_to_str(self.reader, self.token);
+            s += "`";
             self.fatal(s);
         }
     }
