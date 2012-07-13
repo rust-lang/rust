@@ -613,8 +613,6 @@ class taskgroup {
     }
 }
 
-fn taskgroup_key(+_group: @taskgroup) { } // For TLS
-
 fn enlist_in_taskgroup(group_arc: taskgroup_arc,
                        me: *rust_task) -> option<uint> {
     do group_arc.with |_c, state| {
@@ -682,9 +680,16 @@ fn kill_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint,
     };
 }
 
+// FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
+// a proper closure because the #[test]s won't understand. Have to fake it.
+unsafe fn taskgroup_key() -> local_data_key<taskgroup> {
+    // Use a "code pointer" value that will never be a real code pointer.
+    unsafe::transmute((-2 as uint, 0u))
+}
+
 fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
     let me = rustrt::rust_get_task();
-    alt unsafe { local_get(me, taskgroup_key) } {
+    alt unsafe { local_get(me, taskgroup_key()) } {
         some(group) {
             // Clone the shared state for the child; propagate main-ness.
             (group.tasks.clone(), group.is_main)
@@ -693,7 +698,7 @@ fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
             // Main task, doing first spawn ever.
             let tasks = arc::exclusive(some(dvec::from_elem(some(me))));
             let group = @taskgroup(tasks.clone(), me, 0, true);
-            unsafe { local_set(me, taskgroup_key, group); }
+            unsafe { local_set(me, taskgroup_key(), group); }
             // Tell child task it's also in the main group.
             (tasks, true)
         }
@@ -764,12 +769,13 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
                 some(my_index) {
                     let group =
                         @taskgroup(child_tg, child_task, my_index, is_main);
-                    unsafe { local_set(child_task, taskgroup_key, group); }
+                    unsafe { local_set(child_task, taskgroup_key(), group); }
                     // Run the child's body.
                     f();
                     // TLS cleanup code will exit the taskgroup.
                 }
-                none { }
+                none {
+                }
             }
         }
     }
@@ -820,34 +826,30 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
  ****************************************************************************/
 
 /**
- * Indexes a task-local data slot. The function itself is used to
- * automatically finalise stored values; also, its code pointer is used for
+ * Indexes a task-local data slot. The function's code pointer is used for
  * comparison. Recommended use is to write an empty function for each desired
- * task-local data slot (and use class destructors, instead of code inside the
- * finaliser, if specific teardown is needed). DO NOT use multiple
+ * task-local data slot (and use class destructors, not code inside the
+ * function, if specific teardown is needed). DO NOT use multiple
  * instantiations of a single polymorphic function to index data of different
  * types; arbitrary type coercion is possible this way. The interface is safe
  * as long as all key functions are monomorphic.
  */
 type local_data_key<T> = fn@(+@T);
 
+iface local_data { }
+impl<T> of local_data for @T { }
+
 // We use dvec because it's the best data structure in core. If TLS is used
 // heavily in future, this could be made more efficient with a proper map.
-type task_local_element = (*libc::c_void, *libc::c_void, fn@(+*libc::c_void));
+type task_local_element = (*libc::c_void, *libc::c_void, local_data);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
 type task_local_map = @dvec::dvec<option<task_local_element>>;
 
 extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();
     // Get and keep the single reference that was created at the beginning.
-    let map: task_local_map = unsafe::reinterpret_cast(map_ptr);
-    for (*map).each |entry| {
-        alt entry {
-            // Finaliser drops data. We drop the finaliser implicitly here.
-            some((_key, data, finalise_fn)) { finalise_fn(data); }
-            none { }
-        }
-    }
+    let _map: task_local_map = unsafe::reinterpret_cast(map_ptr);
+    // All local_data will be destroyed along with the map.
 }
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
@@ -881,15 +883,15 @@ unsafe fn key_to_key_value<T>(key: local_data_key<T>) -> *libc::c_void {
 
 // If returning some(..), returns with @T with the map's reference. Careful!
 unsafe fn local_data_lookup<T>(map: task_local_map, key: local_data_key<T>)
-        -> option<(uint, *libc::c_void, fn@(+*libc::c_void))> {
+        -> option<(uint, *libc::c_void)> {
     let key_value = key_to_key_value(key);
     let map_pos = (*map).position(|entry|
         alt entry { some((k,_,_)) { k == key_value } none { false } }
     );
     do map_pos.map |index| {
         // .get() is guaranteed because of "none { false }" above.
-        let (_, data_ptr, finaliser) = (*map)[index].get();
-        (index, data_ptr, finaliser)
+        let (_, data_ptr, _) = (*map)[index].get();
+        (index, data_ptr)
     }
 }
 
@@ -898,15 +900,15 @@ unsafe fn local_get_helper<T>(task: *rust_task, key: local_data_key<T>,
     let map = get_task_local_map(task);
     // Interpret our findings from the map
     do local_data_lookup(map, key).map |result| {
-        // A reference count magically appears on 'data' out of thin air.
-        // 'data' has the reference we originally stored it with. We either
-        // need to erase it from the map or artificially bump the count.
-        let (index, data_ptr, _) = result;
+        // A reference count magically appears on 'data' out of thin air. It
+        // was referenced in the local_data box, though, not here, so before
+        // overwriting the local_data_box we need to give an extra reference.
+        // We must also give an extra reference when not removing.
+        let (index, data_ptr) = result;
         let data: @T = unsafe::transmute(data_ptr);
+        unsafe::bump_box_refcount(data);
         if do_pop {
             (*map).set_elt(index, none);
-        } else {
-            unsafe::bump_box_refcount(data);
         }
         data
     }
@@ -926,20 +928,20 @@ unsafe fn local_set<T>(task: *rust_task, key: local_data_key<T>, +data: @T) {
     let map = get_task_local_map(task);
     // Store key+data as *voids. Data is invisibly referenced once; key isn't.
     let keyval = key_to_key_value(key);
-    let data_ptr = unsafe::transmute(data);
-    // Finaliser is called at task exit to de-reference up remaining entries.
-    let finaliser: fn@(+*libc::c_void) = unsafe::reinterpret_cast(key);
+    // We keep the data in two forms: one as an unsafe pointer, so we can get
+    // it back by casting; another in an existential box, so the reference we
+    // own on it can be dropped when the box is destroyed. The unsafe pointer
+    // does not have a reference associated with it, so it may become invalid
+    // when the box is destroyed.
+    let data_ptr = unsafe::reinterpret_cast(data);
+    let data_box = data as local_data;
     // Construct new entry to store in the map.
-    let new_entry = some((keyval, data_ptr, finaliser));
+    let new_entry = some((keyval, data_ptr, data_box));
     // Find a place to put it.
     alt local_data_lookup(map, key) {
-        some((index, old_data_ptr, old_finaliser)) {
-            // Key already had a value set, old_data_ptr, whose reference we
-            // need to drop. After that, overwriting its slot will be safe.
-            // (The heap-allocated finaliser will be freed in the overwrite.)
-            // FIXME(#2734): just transmuting old_data_ptr to @T doesn't work,
-            // similarly to the sample there (but more our/unsafety's fault?).
-            old_finaliser(old_data_ptr);
+        some((index, _old_data_ptr)) {
+            // Key already had a value set, _old_data_ptr, whose reference
+            // will get dropped when the local_data box is overwritten.
             (*map).set_elt(index, new_entry);
         }
         none {
