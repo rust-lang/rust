@@ -860,8 +860,17 @@ fn print_vstore(s: ps, t: ast::vstore) {
       ast::vstore_fixed(none) { word(s.s, "_"); }
       ast::vstore_uniq { word(s.s, "~"); }
       ast::vstore_box { word(s.s, "@"); }
-      ast::vstore_slice(r) { print_region(s, r); word(s.s, "."); }
-    }
+      ast::vstore_slice(r) {
+          alt r.node {
+            ast::re_anon { word(s.s, "&"); }
+            ast::re_named(name) {
+                word(s.s, "&");
+                word(s.s, *name);
+                word(s.s, ".");
+            }
+          }
+      }
+   }
 }
 
 fn print_expr(s: ps, &&expr: @ast::expr) {
