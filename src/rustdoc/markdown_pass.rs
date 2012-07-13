@@ -82,7 +82,7 @@ fn write_markdown(
     doc: doc::doc,
     +writer_factory: writer_factory
 ) {
-    do par::anymap(doc.pages) |page| {
+    do par::map(doc.pages) |page| {
         let ctxt = {
             w: writer_factory(page)
         };
@@ -488,7 +488,7 @@ fn write_sig(ctxt: ctxt, sig: option<~str>) {
 
 fn code_block_indent(s: ~str) -> ~str {
     let lines = str::lines_any(s);
-    let indented = par::seqmap(lines, |line| #fmt("    %s", line) );
+    let indented = vec::map(lines, |line| #fmt("    %s", line) );
     str::connect(indented, ~"\n")
 }
 

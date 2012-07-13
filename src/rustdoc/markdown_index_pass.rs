@@ -55,7 +55,7 @@ fn build_mod_index(
     config: config::config
 ) -> doc::index {
     {
-        entries: par::anymap(doc.items, |doc| {
+        entries: par::map(doc.items, |doc| {
             item_to_entry(doc, config)
         })
     }
@@ -66,7 +66,7 @@ fn build_nmod_index(
     config: config::config
 ) -> doc::index {
     {
-        entries: par::anymap(doc.fns, |doc| {
+        entries: par::map(doc.fns, |doc| {
             item_to_entry(doc::fntag(doc), config)
         })
     }

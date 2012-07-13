@@ -62,7 +62,7 @@ fn unindent(s: ~str) -> ~str {
 
     if vec::is_not_empty(lines) {
         let unindented = ~[str::trim(vec::head(lines))]
-            + do par::anymap(vec::tail(lines)) |line| {
+            + do par::map(vec::tail(lines)) |line| {
             if str::is_whitespace(line) {
                 line
             } else {

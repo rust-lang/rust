@@ -34,7 +34,7 @@ fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
-        methods: do par::anymap(doc.methods) |method| {
+        methods: do par::map(doc.methods) |method| {
             let (desc, sections) = sectionalize(method.desc);
 
             {
@@ -51,7 +51,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: do par::anymap(doc.methods) |method| {
+        methods: do par::map(doc.methods) |method| {
             let (desc, sections) = sectionalize(method.desc);
 
             {

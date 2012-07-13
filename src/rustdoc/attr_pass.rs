@@ -143,7 +143,7 @@ fn fold_enum(
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: do par::anymap(doc.variants) |variant| {
+        variants: do par::map(doc.variants) |variant| {
             let desc = do astsrv::exec(srv) |ctxt| {
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
@@ -206,7 +206,7 @@ fn merge_method_attrs(
           ast_map::node_item(@{
             node: ast::item_trait(_, methods), _
           }, _) {
-            par::seqmap(methods, |method| {
+            vec::map(methods, |method| {
                 alt method {
                   ast::required(ty_m) {
                     (*ty_m.ident, attr_parser::parse_desc(ty_m.attrs))
@@ -220,7 +220,7 @@ fn merge_method_attrs(
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) {
-            par::seqmap(methods, |method| {
+            vec::map(methods, |method| {
                 (*method.ident, attr_parser::parse_desc(method.attrs))
             })
           }

@@ -113,7 +113,7 @@ fn nmoddoc_from_mod(
 ) -> doc::nmoddoc {
     {
         item: itemdoc,
-        fns: do par::seqmap(module.items) |item| {
+        fns: do vec::map(module.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::foreign_item_fn(_, _) {
@@ -159,7 +159,7 @@ fn enumdoc_from_enum(
 fn variantdocs_from_variants(
     variants: ~[ast::variant]
 ) -> ~[doc::variantdoc] {
-    par::seqmap(variants, variantdoc_from_variant)
+    vec::map(variants, variantdoc_from_variant)
 }
 
 fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
@@ -189,7 +189,7 @@ fn traitdoc_from_trait(
 ) -> doc::traitdoc {
     {
         item: itemdoc,
-        methods: do par::seqmap(methods) |method| {
+        methods: do vec::map(methods) |method| {
             alt method {
               ast::required(ty_m) {
                 {
@@ -236,7 +236,7 @@ fn impldoc_from_impl(
         item: itemdoc,
         trait_ty: none,
         self_ty: none,
-        methods: do par::seqmap(methods) |method| {
+        methods: do vec::map(methods) |method| {
             {
                 name: *method.ident,
                 brief: none,
