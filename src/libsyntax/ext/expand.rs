@@ -81,7 +81,20 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                     cx.bt_pop();
 
                     (fully_expanded, s)
+                  }
+                  some(normal({expander: exp, span: exp_sp})) {
+                    //convert the new-style invoc for the old-style macro
+                    let arg = base::tt_args_to_original_flavor(cx, pth.span,
+                                                               tts);
+                    let expanded = exp(cx, mac.span, arg, none);
 
+                    cx.bt_push(expanded_from({call_site: s,
+                                callie: {name: *extname, span: exp_sp}}));
+                    //keep going, outside-in
+                    let fully_expanded = fld.fold_expr(expanded).node;
+                    cx.bt_pop();
+
+                    (fully_expanded, s)
                   }
                   _ {
                     cx.span_fatal(pth.span,
