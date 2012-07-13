@@ -47,9 +47,11 @@ fn main() {
                              oneshot::server::waiting)
             = x;
         #error("selecting");
-        let (i, _, _) = select(~[left, right]);
-        #error("selected");
-        assert i == 1;
+        let (i, m, _) = select(~[left, right]);
+        #error("selected %?", i);
+        if m != none {
+            assert i == 1;
+        }
     });
 
     let (c1, p1) = oneshot::init();
@@ -57,7 +59,7 @@ fn main() {
 
     let c = send(c, (p1, p2));
     
-    sleep(iotask, 1000);
+    sleep(iotask, 100);
 
     signal(c1);
 
@@ -66,7 +68,7 @@ fn main() {
 
     send(c, (p1, p2));
 
-    sleep(iotask, 1000);
+    sleep(iotask, 100);
 
     signal(c2);
 
