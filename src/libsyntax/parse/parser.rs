@@ -279,41 +279,46 @@ class parser {
         do self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
                                     seq_sep_none()) |p| {
             let attrs = p.parse_outer_attributes();
-            let flo = p.span.lo;
+            let lo = p.span.lo;
             let pur = p.parse_fn_purity();
+            // NB: at the moment, trait methods are public by default; this
+            // could change.
+            let vis = p.parse_visibility(public);
             let ident = p.parse_method_name();
             let tps = p.parse_ty_params();
-            let d = p.parse_ty_fn_decl(pur), fhi = p.last_span.hi;
-            #debug["parse_trait_methods(): trait method ends in %s",
-                   token_to_str(self.reader, self.token)];
-            alt self.token {
+            let d = p.parse_ty_fn_decl(pur);
+            let hi = p.last_span.hi;
+            #debug["parse_trait_methods(): trait method signature ends in \
+                    `%s`",
+                   token_to_str(p.reader, p.token)];
+            alt p.token {
               token::SEMI {
-                self.bump();
+                p.bump();
+                #debug["parse_trait_methods(): parsing required method"];
+                // NB: at the moment, visibility annotations on required
+                // methods are ignored; this could change.
                 required({ident: ident, attrs: attrs,
                           decl: {purity: pur with d}, tps: tps,
-                          span: mk_sp(flo, fhi)})
+                          span: mk_sp(lo, hi)})
               }
               token::LBRACE {
-                self.bump();
+                #debug["parse_trait_methods(): parsing provided method"];
                 let (inner_attrs, body) =
-                    self.parse_inner_attrs_and_block(true);
+                    p.parse_inner_attrs_and_block(true);
                 let attrs = vec::append(attrs, inner_attrs);
-                self.eat(token::RBRACE);
                 provided(@{ident: ident,
                            attrs: attrs,
                            tps: tps,
                            decl: d,
                            body: body,
-                           id: self.get_id(),
-                           span: mk_sp(flo, fhi),
-                           self_id: self.get_id(),
-                           // Provided traits methods always public for now
-                           vis: public})
+                           id: p.get_id(),
+                           span: mk_sp(lo, hi),
+                           self_id: p.get_id(),
+                           vis: vis})
               }
 
-              _ { self.fatal("expected `;` or `}` \
-                              but found `"
-                             + token_to_str(self.reader, self.token) + "`");
+              _ { p.fatal("expected `;` or `}` but found `" +
+                          token_to_str(p.reader, p.token) + "`");
                 }
             }
         }
