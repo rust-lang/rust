@@ -4,6 +4,8 @@
 //
 // I *think* it's the same, more or less.
 
+// xfail-pretty
+
 use std;
 import io::writer;
 import io::writer_util;

@@ -8,6 +8,8 @@
 // different scalability characteristics compared to the select
 // version.
 
+// xfail-pretty
+
 use std;
 import io::writer;
 import io::writer_util;
