@@ -770,7 +770,7 @@ class liveness {
     // _______________________________________________________________________
 
     fn compute(decl: fn_decl, body: blk) -> live_node {
-        // if there is a `break` or `cont` at the top level, then it's
+        // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
         let entry_ln: live_node =
