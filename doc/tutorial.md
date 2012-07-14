@@ -2508,6 +2508,18 @@ Note that functions do not explicitly have the type parameters that
 are provided by the iface. It will cause a compile-time error if you
 include them in the iface or impl.
 
+## Use of the type `self` in interfaces
+
+Interfaces may use `self` as a type where the implementation uses its
+own type. This defines an interface for testing equality of a type with
+itself:
+
+~~~~
+iface eq {
+  fn equals(other: self) -> bool;
+}
+~~~~
+
 ## Casting to an interface type
 
 The above allows us to define functions that polymorphically act on
