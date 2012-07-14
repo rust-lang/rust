@@ -40,23 +40,24 @@ const borrowck_stats: uint = 1024u;
 const borrowck_note_pure: uint = 2048;
 const borrowck_note_loan: uint = 4096;
 
-fn debugging_opts_map() -> ~[(str, str, uint)] {
-    ~[("ppregions", "prettyprint regions with \
+fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
+    ~[(~"ppregions", ~"prettyprint regions with \
                     internal repr details", ppregions),
-     ("time-passes", "measure time of each rustc pass", time_passes),
-     ("count-llvm-insns", "count where LLVM \
+     (~"time-passes", ~"measure time of each rustc pass", time_passes),
+     (~"count-llvm-insns", ~"count where LLVM \
                            instrs originate", count_llvm_insns),
-     ("time-llvm-passes", "measure time of each LLVM pass", time_llvm_passes),
-     ("trans-stats", "gather trans statistics", trans_stats),
-     ("no-asm-comments", "omit comments when using -S", no_asm_comments),
-     ("no-verify", "skip LLVM verification", no_verify),
-     ("trace", "emit trace logs", trace),
-     ("no-rt", "do not link to the runtime", no_rt),
-     ("coherence", "perform coherence checking", coherence),
-     ("borrowck-stats", "gather borrowck statistics",  borrowck_stats),
-     ("borrowck-note-pure", "note where purity is req'd",
+     (~"time-llvm-passes", ~"measure time of each LLVM pass",
+      time_llvm_passes),
+     (~"trans-stats", ~"gather trans statistics", trans_stats),
+     (~"no-asm-comments", ~"omit comments when using -S", no_asm_comments),
+     (~"no-verify", ~"skip LLVM verification", no_verify),
+     (~"trace", ~"emit trace logs", trace),
+     (~"no-rt", ~"do not link to the runtime", no_rt),
+     (~"coherence", ~"perform coherence checking", coherence),
+     (~"borrowck-stats", ~"gather borrowck statistics",  borrowck_stats),
+     (~"borrowck-note-pure", ~"note where purity is req'd",
       borrowck_note_pure),
-     ("borrowck-note-loan", "note where loans are req'd",
+     (~"borrowck-note-loan", ~"note where loans are req'd",
       borrowck_note_loan)
     ]
 }
@@ -72,9 +73,9 @@ type options =
      lint_opts: ~[(lint::lint, lint::level)],
      save_temps: bool,
      output_type: back::link::output_type,
-     addl_lib_search_paths: ~[str],
-     maybe_sysroot: option<str>,
-     target_triple: str,
+     addl_lib_search_paths: ~[~str],
+     maybe_sysroot: option<~str>,
+     target_triple: ~str,
      cfg: ast::crate_cfg,
      test: bool,
      parse_only: bool,
@@ -82,7 +83,7 @@ type options =
      debugging_opts: uint,
     };
 
-type crate_metadata = {name: str, data: ~[u8]};
+type crate_metadata = {name: ~str, data: ~[u8]};
 
 type session = @{targ_cfg: @config,
                  opts: @options,
@@ -94,20 +95,20 @@ type session = @{targ_cfg: @config,
                  span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::filesearch,
                  mut building_library: bool,
-                 working_dir: str,
+                 working_dir: ~str,
                  warning_settings: lint::warning_settings};
 
 impl session for session {
-    fn span_fatal(sp: span, msg: str) -> ! {
+    fn span_fatal(sp: span, msg: ~str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
-    fn fatal(msg: str) -> ! {
+    fn fatal(msg: ~str) -> ! {
         self.span_diagnostic.handler().fatal(msg)
     }
-    fn span_err(sp: span, msg: str) {
+    fn span_err(sp: span, msg: ~str) {
         self.span_diagnostic.span_err(sp, msg)
     }
-    fn err(msg: str) {
+    fn err(msg: ~str) {
         self.span_diagnostic.handler().err(msg)
     }
     fn has_errors() -> bool {
@@ -116,32 +117,32 @@ impl session for session {
     fn abort_if_errors() {
         self.span_diagnostic.handler().abort_if_errors()
     }
-    fn span_warn(sp: span, msg: str) {
+    fn span_warn(sp: span, msg: ~str) {
         self.span_diagnostic.span_warn(sp, msg)
     }
-    fn warn(msg: str) {
+    fn warn(msg: ~str) {
         self.span_diagnostic.handler().warn(msg)
     }
-    fn span_note(sp: span, msg: str) {
+    fn span_note(sp: span, msg: ~str) {
         self.span_diagnostic.span_note(sp, msg)
     }
-    fn note(msg: str) {
+    fn note(msg: ~str) {
         self.span_diagnostic.handler().note(msg)
     }
-    fn span_bug(sp: span, msg: str) -> ! {
+    fn span_bug(sp: span, msg: ~str) -> ! {
         self.span_diagnostic.span_bug(sp, msg)
     }
-    fn bug(msg: str) -> ! {
+    fn bug(msg: ~str) -> ! {
         self.span_diagnostic.handler().bug(msg)
     }
-    fn span_unimpl(sp: span, msg: str) -> ! {
+    fn span_unimpl(sp: span, msg: ~str) -> ! {
         self.span_diagnostic.span_unimpl(sp, msg)
     }
-    fn unimpl(msg: str) -> ! {
+    fn unimpl(msg: ~str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
     fn span_lint_level(level: lint::level,
-                       sp: span, msg: str) {
+                       sp: span, msg: ~str) {
         alt level {
           lint::ignore { }
           lint::warn { self.span_warn(sp, msg); }
@@ -150,7 +151,7 @@ impl session for session {
     }
     fn span_lint(lint_mode: lint::lint,
                  expr_id: ast::node_id, item_id: ast::node_id,
-                 span: span, msg: str) {
+                 span: span, msg: ~str) {
         let level = lint::get_warning_settings_level(
             self.warning_settings, lint_mode, expr_id, item_id);
         self.span_lint_level(level, span, msg);
@@ -201,7 +202,7 @@ fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-fn expect<T: copy>(sess: session, opt: option<T>, msg: fn() -> str) -> T {
+fn expect<T: copy>(sess: session, opt: option<T>, msg: fn() -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
@@ -216,8 +217,8 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
         } else {
             alt syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
-                "crate_type") {
-              option::some(@"lib") { true }
+                ~"crate_type") {
+              option::some(@~"lib") { true }
               _ { false }
             }
         }
@@ -240,12 +241,12 @@ fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
 mod test {
     import syntax::ast_util;
 
-    fn make_crate_type_attr(t: str) -> ast::attribute {
+    fn make_crate_type_attr(t: ~str) -> ast::attribute {
         ast_util::respan(ast_util::dummy_sp(), {
             style: ast::attr_outer,
             value: ast_util::respan(ast_util::dummy_sp(),
                 ast::meta_name_value(
-                    @"crate_type",
+                    @~"crate_type",
                     ast_util::respan(ast_util::dummy_sp(),
                                      ast::lit_str(@t)))),
             is_sugared_doc: false
@@ -254,8 +255,8 @@ mod test {
 
     fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
         let mut attrs = ~[];
-        if with_bin { attrs += ~[make_crate_type_attr("bin")]; }
-        if with_lib { attrs += ~[make_crate_type_attr("lib")]; }
+        if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
+        if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
         @ast_util::respan(ast_util::dummy_sp(), {
             directives: ~[],
             module: {view_items: ~[], items: ~[]},

@@ -38,7 +38,7 @@ type ctxt = {
 
 type srv_owner<T> = fn(srv: srv) -> T;
 type ctxt_handler<T> = fn~(ctxt: ctxt) -> T;
-type parser = fn~(session, str) -> @ast::crate;
+type parser = fn~(session, ~str) -> @ast::crate;
 
 enum msg {
     handle_request(fn~(ctxt)),
@@ -49,15 +49,15 @@ enum srv = {
     ch: comm::chan<msg>
 };
 
-fn from_str<T>(source: str, owner: srv_owner<T>) -> T {
+fn from_str<T>(source: ~str, owner: srv_owner<T>) -> T {
     run(owner, source, parse::from_str_sess)
 }
 
-fn from_file<T>(file: str, owner: srv_owner<T>) -> T {
+fn from_file<T>(file: ~str, owner: srv_owner<T>) -> T {
     run(owner, file, parse::from_file_sess)
 }
 
-fn run<T>(owner: srv_owner<T>, source: str, +parse: parser) -> T {
+fn run<T>(owner: srv_owner<T>, source: ~str, +parse: parser) -> T {
 
     let srv_ = srv({
         ch: do task::spawn_listener |po| {
@@ -70,7 +70,7 @@ fn run<T>(owner: srv_owner<T>, source: str, +parse: parser) -> T {
     ret res;
 }
 
-fn act(po: comm::port<msg>, source: str, parse: parser) {
+fn act(po: comm::port<msg>, source: ~str, parse: parser) {
     let (sess, ignore_errors) = build_session();
 
     let ctxt = build_ctxt(
@@ -155,8 +155,8 @@ fn build_error_handlers(
     };
 
     impl of diagnostic::handler for diagnostic_handler {
-        fn fatal(msg: str) -> ! { self.inner.fatal(msg) }
-        fn err(msg: str) { self.inner.err(msg) }
+        fn fatal(msg: ~str) -> ! { self.inner.fatal(msg) }
+        fn err(msg: ~str) { self.inner.err(msg) }
         fn bump_err_count() {
             if !(*self.ignore_errors) {
                 self.inner.bump_err_count();
@@ -164,19 +164,19 @@ fn build_error_handlers(
         }
         fn has_errors() -> bool { self.inner.has_errors() }
         fn abort_if_errors() { self.inner.abort_if_errors() }
-        fn warn(msg: str) { self.inner.warn(msg) }
-        fn note(msg: str) { self.inner.note(msg) }
-        fn bug(msg: str) -> ! { self.inner.bug(msg) }
-        fn unimpl(msg: str) -> ! { self.inner.unimpl(msg) }
+        fn warn(msg: ~str) { self.inner.warn(msg) }
+        fn note(msg: ~str) { self.inner.note(msg) }
+        fn bug(msg: ~str) -> ! { self.inner.bug(msg) }
+        fn unimpl(msg: ~str) -> ! { self.inner.unimpl(msg) }
         fn emit(cmsp: option<(codemap::codemap, codemap::span)>,
-                msg: str, lvl: diagnostic::level) {
+                msg: ~str, lvl: diagnostic::level) {
             self.inner.emit(cmsp, msg, lvl)
         }
     }
 
     let ignore_errors = @mut false;
     let emitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
-                       msg: str, lvl: diagnostic::level) {
+                       msg: ~str, lvl: diagnostic::level) {
         if !(*ignore_errors) {
             diagnostic::emit(cmsp, msg, lvl);
         }
@@ -198,7 +198,7 @@ fn build_error_handlers(
 
 #[test]
 fn should_prune_unconfigured_items() {
-    let source = "#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
+    let source = ~"#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
             assert vec::is_empty(ctxt.ast.node.module.items);
@@ -208,7 +208,7 @@ fn should_prune_unconfigured_items() {
 
 #[test]
 fn srv_should_build_ast_map() {
-    let source = "fn a() { }";
+    let source = ~"fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
             assert ctxt.ast_map.size() != 0u
@@ -218,7 +218,7 @@ fn srv_should_build_ast_map() {
 
 #[test]
 fn srv_should_build_reexport_map() {
-    let source = "import a::b; export b; mod a { mod b { } }";
+    let source = ~"import a::b; export b; mod a { mod b { } }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
             assert ctxt.exp_map.size() != 0u
@@ -228,7 +228,7 @@ fn srv_should_build_reexport_map() {
 
 #[test]
 fn srv_should_resolve_external_crates() {
-    let source = "use std;\
+    let source = ~"use std;\
                   fn f() -> std::sha1::sha1 {\
                   std::sha1::mk_sha1() }";
     // Just testing that resolve doesn't crash
@@ -237,7 +237,7 @@ fn srv_should_resolve_external_crates() {
 
 #[test]
 fn srv_should_resolve_core_crate() {
-    let source = "fn a() -> option { fail }";
+    let source = ~"fn a() -> option { fail }";
     // Just testing that resolve doesn't crash
     from_str(source, |_srv| { } )
 }
@@ -246,25 +246,25 @@ fn srv_should_resolve_core_crate() {
 fn srv_should_resolve_non_existant_imports() {
     // We want to ignore things we can't resolve. Shouldn't
     // need to be able to find external crates to create docs.
-    let source = "import wooboo; fn a() { }";
+    let source = ~"import wooboo; fn a() { }";
     from_str(source, |_srv| { } )
 }
 
 #[test]
 fn srv_should_resolve_non_existant_uses() {
-    let source = "use forble; fn a() { }";
+    let source = ~"use forble; fn a() { }";
     from_str(source, |_srv| { } )
 }
 
 #[test]
 fn should_ignore_external_import_paths_that_dont_exist() {
-    let source = "use forble; import forble::bippy;";
+    let source = ~"use forble; import forble::bippy;";
     from_str(source, |_srv| { } )
 }
 
 #[test]
 fn srv_should_return_request_result() {
-    let source = "fn a() { }";
+    let source = ~"fn a() { }";
     do from_str(source) |srv| {
         let result = exec(srv, |_ctxt| 1000 );
         assert result == 1000;

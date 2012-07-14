@@ -84,15 +84,15 @@ mod syntax {
     export parse;
 }
 
-type ser_tps_map = map::hashmap<str, fn@(@ast::expr) -> ~[@ast::stmt]>;
-type deser_tps_map = map::hashmap<str, fn@() -> @ast::expr>;
+type ser_tps_map = map::hashmap<~str, fn@(@ast::expr) -> ~[@ast::stmt]>;
+type deser_tps_map = map::hashmap<~str, fn@() -> @ast::expr>;
 
 fn expand(cx: ext_ctxt,
           span: span,
           _mitem: ast::meta_item,
           in_items: ~[@ast::item]) -> ~[@ast::item] {
     fn not_auto_serialize(a: ast::attribute) -> bool {
-        attr::get_attr_name(a) != @"auto_serialize"
+        attr::get_attr_name(a) != @~"auto_serialize"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -114,7 +114,7 @@ fn expand(cx: ext_ctxt,
           }
 
           _ {
-            cx.span_err(span, "#[auto_serialize] can only be \
+            cx.span_err(span, ~"#[auto_serialize] can only be \
                                applied to type and enum \
                                definitions");
             ~[in_item]
@@ -125,11 +125,11 @@ fn expand(cx: ext_ctxt,
 
 impl helpers for ext_ctxt {
     fn helper_path(base_path: @ast::path,
-                   helper_name: str) -> @ast::path {
+                   helper_name: ~str) -> @ast::path {
         let head = vec::init(base_path.idents);
         let tail = vec::last(base_path.idents);
         self.path(base_path.span,
-                  vec::append(head, ~[@(helper_name + "_" + *tail)]))
+                  vec::append(head, ~[@(helper_name + ~"_" + *tail)]))
     }
 
     fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
@@ -154,7 +154,7 @@ impl helpers for ext_ctxt {
         let args = do vec::map(input_tys) |ty| {
             {mode: ast::expl(ast::by_ref),
              ty: ty,
-             ident: @"",
+             ident: @~"",
              id: self.next_id()}
         };
 
@@ -219,12 +219,16 @@ impl helpers for ext_ctxt {
                 ast::expr_alt(v, arms, ast::alt_exhaustive)))
     }
 
-    fn lit_str(span: span, s: @str/~) -> @ast::expr {
+    fn lit_str(span: span, s: @~str) -> @ast::expr {
         self.expr(
             span,
-            ast::expr_lit(
-                @{node: ast::lit_str(s),
-                  span: span}))
+            ast::expr_vstore(
+                self.expr(
+                    span,
+                    ast::expr_lit(
+                        @{node: ast::lit_str(s),
+                          span: span})),
+                ast::vstore_uniq))
     }
 
     fn lit_uint(span: span, i: uint) -> @ast::expr {
@@ -293,7 +297,7 @@ fn ser_path(cx: ext_ctxt, tps: ser_tps_map, path: @ast::path,
         cx.expr(
             path.span,
             ast::expr_path(
-                cx.helper_path(path, "serialize")));
+                cx.helper_path(path, ~"serialize")));
 
     let ty_args = do vec::map(path.types) |ty| {
         let sv_stmts = ser_ty(cx, tps, ty, cx.clone(s), #ast{ __v });
@@ -350,7 +354,7 @@ fn is_vec_or_str(ty: @ast::ty) -> bool {
       // This may be wrong if the user has shadowed (!) str
       ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
-      if ids == ~[@"str"] { true }
+      if ids == ~[@~"str"] { true }
       _ { false }
     }
 }
@@ -388,7 +392,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_ptr(_) | ast::ty_rptr(_, _) {
-        cx.span_err(ty.span, "cannot serialize pointer types");
+        cx.span_err(ty.span, ~"cannot serialize pointer types");
         ~[]
       }
 
@@ -410,7 +414,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_fn(_, _) {
-        cx.span_err(ty.span, "cannot serialize function types");
+        cx.span_err(ty.span, ~"cannot serialize function types");
         ~[]
       }
 
@@ -467,12 +471,12 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_mac(_) {
-        cx.span_err(ty.span, "cannot serialize macro types");
+        cx.span_err(ty.span, ~"cannot serialize macro types");
         ~[]
       }
 
       ast::ty_infer {
-        cx.span_err(ty.span, "cannot serialize inferred types");
+        cx.span_err(ty.span, ~"cannot serialize inferred types");
         ~[]
       }
 
@@ -499,7 +503,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_vstore(_, _) {
-        cx.span_unimpl(ty.span, "serialization for vstore types");
+        cx.span_unimpl(ty.span, ~"serialization for vstore types");
       }
 
     }
@@ -521,7 +525,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
              ty: cx.ty_fn(span,
                           ~[cx.ty_path(span, ~[tp.ident], ~[])],
                           cx.ty_nil(span)),
-             ident: @("__s" + *tp.ident),
+             ident: @(~"__s" + *tp.ident),
              id: cx.next_id()});
 
     #debug["tp_inputs = %?", tp_inputs];
@@ -529,12 +533,12 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
 
     let ser_inputs: ~[ast::arg] =
         vec::append(~[{mode: ast::expl(ast::by_ref),
-                      ty: cx.ty_path(span, ~[@"__S"], ~[]),
-                      ident: @"__s",
+                      ty: cx.ty_path(span, ~[@~"__S"], ~[]),
+                      ident: @~"__s",
                       id: cx.next_id()},
                      {mode: ast::expl(ast::by_ref),
                       ty: v_ty,
-                      ident: @"__v",
+                      ident: @~"__v",
                       id: cx.next_id()}],
                     tp_inputs);
 
@@ -552,12 +556,12 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
 
     let ser_bnds = @~[
         ast::bound_trait(cx.ty_path(span,
-                                    ~[@"std", @"serialization",
-                                     @"serializer"],
+                                    ~[@~"std", @~"serialization",
+                                     @~"serializer"],
                                     ~[]))];
 
     let ser_tps: ~[ast::ty_param] =
-        vec::append(~[{ident: @"__S",
+        vec::append(~[{ident: @~"__S",
                       id: cx.next_id(),
                       bounds: ser_bnds}],
                     vec::map(tps, |tp| cx.clone_ty_param(tp)));
@@ -569,7 +573,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
     let ser_blk = cx.blk(span,
                          f(cx, tps_map, #ast{ __s }, #ast{ __v }));
 
-    @{ident: @("serialize_" + *name),
+    @{ident: @(~"serialize_" + *name),
       attrs: ~[],
       id: cx.next_id(),
       node: ast::item_fn({inputs: ser_inputs,
@@ -594,7 +598,7 @@ fn deser_path(cx: ext_ctxt, tps: deser_tps_map, path: @ast::path,
         cx.expr(
             path.span,
             ast::expr_path(
-                cx.helper_path(path, "deserialize")));
+                cx.helper_path(path, ~"deserialize")));
 
     let ty_args = do vec::map(path.types) |ty| {
         let dv_expr = deser_ty(cx, tps, ty, cx.clone(d));
@@ -722,7 +726,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
       }
 
       ast::ty_vstore(_, _) {
-        cx.span_unimpl(ty.span, "deserialization for vstore types");
+        cx.span_unimpl(ty.span, ~"deserialization for vstore types");
       }
     }
 }
@@ -742,15 +746,15 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
              ty: cx.ty_fn(span,
                           ~[],
                           cx.ty_path(span, ~[tp.ident], ~[])),
-             ident: @("__d" + *tp.ident),
+             ident: @(~"__d" + *tp.ident),
              id: cx.next_id()});
 
     #debug["tp_inputs = %?", tp_inputs];
 
     let deser_inputs: ~[ast::arg] =
         vec::append(~[{mode: ast::expl(ast::by_ref),
-                      ty: cx.ty_path(span, ~[@"__D"], ~[]),
-                      ident: @"__d",
+                      ty: cx.ty_path(span, ~[@~"__D"], ~[]),
+                      ident: @~"__d",
                       id: cx.next_id()}],
                     tp_inputs);
 
@@ -768,11 +772,11 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
     let deser_bnds = @~[
         ast::bound_trait(cx.ty_path(
             span,
-            ~[@"std", @"serialization", @"deserializer"],
+            ~[@~"std", @~"serialization", @~"deserializer"],
             ~[]))];
 
     let deser_tps: ~[ast::ty_param] =
-        vec::append(~[{ident: @"__D",
+        vec::append(~[{ident: @~"__D",
                       id: cx.next_id(),
                       bounds: deser_bnds}],
                     vec::map(tps, |tp| {
@@ -784,7 +788,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
 
     let deser_blk = cx.expr_blk(f(cx, tps_map, #ast(expr){__d}));
 
-    @{ident: @("deserialize_" + *name),
+    @{ident: @(~"deserialize_" + *name),
       attrs: ~[],
       id: cx.next_id(),
       node: ast::item_fn({inputs: deser_inputs,

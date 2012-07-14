@@ -9,7 +9,7 @@ fn inject_intrinsic(sess: session,
 
     let intrinsic_module = @#include_str("intrinsic.rs");
 
-    let item = parse::parse_item_from_source_str("<intrinsic>",
+    let item = parse::parse_item_from_source_str(~"<intrinsic>",
                                                  intrinsic_module,
                                                  sess.opts.cfg,
                                                  ~[], ast::public,
@@ -18,7 +18,7 @@ fn inject_intrinsic(sess: session,
         alt item {
           some(i) { i }
           none {
-            sess.fatal("no item found in intrinsic module");
+            sess.fatal(~"no item found in intrinsic module");
           }
         };
 

@@ -65,7 +65,7 @@ mod pipes {
             // The receiver will eventually clean this up.
             unsafe { forget(p); }
           }
-          full { fail "duplicate send" }
+          full { fail ~"duplicate send" }
           blocked {
 
             // The receiver will eventually clean this up.
@@ -108,7 +108,7 @@ mod pipes {
           }
           full {
             // This is impossible
-            fail "you dun goofed"
+            fail ~"you dun goofed"
           }
           terminated {
             // I have to clean up, use drop_glue
@@ -125,7 +125,7 @@ mod pipes {
           }
           blocked {
             // this shouldn't happen.
-            fail "terminating a blocked packet"
+            fail ~"terminating a blocked packet"
           }
           terminated | full {
             // I have to clean up, use drop_glue
@@ -213,7 +213,7 @@ mod pingpong {
         fn do_pong(-c: pong) -> (ping, ()) {
             let packet = pipes::recv(c);
             if packet == none {
-                fail "sender closed the connection"
+                fail ~"sender closed the connection"
             }
             (liberate_pong(option::unwrap(packet)), ())
         }
@@ -226,7 +226,7 @@ mod pingpong {
         fn do_ping(-c: ping) -> (pong, ()) {
             let packet = pipes::recv(c);
             if packet == none {
-                fail "sender closed the connection"
+                fail ~"sender closed the connection"
             }
             (liberate_ping(option::unwrap(packet)), ())
         }
@@ -241,16 +241,16 @@ mod pingpong {
 
 fn client(-chan: pingpong::client::ping) {
     let chan = pingpong::client::do_ping(chan);
-    log(error, "Sent ping");
+    log(error, ~"Sent ping");
     let (chan, _data) = pingpong::client::do_pong(chan);
-    log(error, "Received pong");
+    log(error, ~"Received pong");
 }
 
 fn server(-chan: pingpong::server::ping) {
     let (chan, _data) = pingpong::server::do_ping(chan);
-    log(error, "Received ping");
+    log(error, ~"Received ping");
     let chan = pingpong::server::do_pong(chan);
-    log(error, "Sent pong");
+    log(error, ~"Sent pong");
 }
 
 fn main() {

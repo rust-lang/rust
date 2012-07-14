@@ -20,18 +20,18 @@ mod test {
         import pingpong::client;
 
         let chan = client::ping(chan);
-        log(error, "Sent ping");
+        log(error, ~"Sent ping");
         let pong(_chan) = recv(chan);
-        log(error, "Received pong");
+        log(error, ~"Received pong");
     }
     
     fn server(-chan: pingpong::server::ping) {
         import pingpong::server;
 
         let ping(chan) = recv(chan);
-        log(error, "Received ping");
+        log(error, ~"Received ping");
         let _chan = server::pong(chan);
-        log(error, "Sent pong");
+        log(error, ~"Sent pong");
     }
 }
 

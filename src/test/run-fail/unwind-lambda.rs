@@ -1,16 +1,16 @@
 // error-pattern:fail
 
 fn main() {
-    let cheese = "roquefort";
-    let carrots = @"crunchy";
+    let cheese = ~"roquefort";
+    let carrots = @~"crunchy";
 
-    fn@(tasties: @str/~, macerate: fn(str)) {
+    fn@(tasties: @~str, macerate: fn(~str)) {
         macerate(*tasties);
     } (carrots, |food| {
         let mush = food + cheese;
         let f = fn@() {
             let chew = mush + cheese;
-            fail "so yummy"
+            fail ~"so yummy"
         };
         f();
     });

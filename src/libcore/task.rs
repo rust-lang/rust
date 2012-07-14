@@ -520,7 +520,7 @@ fn yield() {
     let mut killed = false;
     rustrt::rust_task_yield(task_, killed);
     if killed && !failing() {
-        fail "killed";
+        fail ~"killed";
     }
 }
 
@@ -782,20 +782,20 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
 
     fn new_task_in_new_sched(opts: sched_opts) -> *rust_task {
         if opts.foreign_stack_size != none {
-            fail "foreign_stack_size scheduler option unimplemented";
+            fail ~"foreign_stack_size scheduler option unimplemented";
         }
 
         let num_threads = alt opts.mode {
           single_threaded { 1u }
           thread_per_core {
-            fail "thread_per_core scheduling mode unimplemented"
+            fail ~"thread_per_core scheduling mode unimplemented"
           }
           thread_per_task {
-            fail "thread_per_task scheduling mode unimplemented"
+            fail ~"thread_per_task scheduling mode unimplemented"
           }
           manual_threads(threads) {
             if threads == 0u {
-                fail "can not create a scheduler with no threads";
+                fail ~"can not create a scheduler with no threads";
             }
             threads
           }
@@ -1146,21 +1146,21 @@ fn test_spawn_listiner_bidi() {
         // Now the child has a port called 'po' to read from and
         // an environment-captured channel called 'ch'.
         let res = comm::recv(po);
-        assert res == "ping";
-        comm::send(ch, "pong");
+        assert res == ~"ping";
+        comm::send(ch, ~"pong");
     };
     // Likewise, the parent has both a 'po' and 'ch'
-    comm::send(ch, "ping");
+    comm::send(ch, ~"ping");
     let res = comm::recv(po);
-    assert res == "pong";
+    assert res == ~"pong";
 }
 
 #[test]
 fn test_try_success() {
     alt do try {
-        "Success!"
+        ~"Success!"
     } {
-        result::ok("Success!") { }
+        result::ok(~"Success!") { }
         _ { fail; }
     }
 }
@@ -1466,54 +1466,54 @@ fn test_unkillable_nested() {
 
 #[test]
 fn test_tls_multitask() unsafe {
-    fn my_key(+_x: @str/~) { }
-    local_data_set(my_key, @"parent data");
+    fn my_key(+_x: @~str) { }
+    local_data_set(my_key, @~"parent data");
     do task::spawn {
         assert local_data_get(my_key) == none; // TLS shouldn't carry over.
-        local_data_set(my_key, @"child data");
-        assert *(local_data_get(my_key).get()) == "child data";
+        local_data_set(my_key, @~"child data");
+        assert *(local_data_get(my_key).get()) == ~"child data";
         // should be cleaned up for us
     }
     // Must work multiple times
-    assert *(local_data_get(my_key).get()) == "parent data";
-    assert *(local_data_get(my_key).get()) == "parent data";
-    assert *(local_data_get(my_key).get()) == "parent data";
+    assert *(local_data_get(my_key).get()) == ~"parent data";
+    assert *(local_data_get(my_key).get()) == ~"parent data";
+    assert *(local_data_get(my_key).get()) == ~"parent data";
 }
 
 #[test]
 fn test_tls_overwrite() unsafe {
-    fn my_key(+_x: @str/~) { }
-    local_data_set(my_key, @"first data");
-    local_data_set(my_key, @"next data"); // Shouldn't leak.
-    assert *(local_data_get(my_key).get()) == "next data";
+    fn my_key(+_x: @~str) { }
+    local_data_set(my_key, @~"first data");
+    local_data_set(my_key, @~"next data"); // Shouldn't leak.
+    assert *(local_data_get(my_key).get()) == ~"next data";
 }
 
 #[test]
 fn test_tls_pop() unsafe {
-    fn my_key(+_x: @str/~) { }
-    local_data_set(my_key, @"weasel");
-    assert *(local_data_pop(my_key).get()) == "weasel";
+    fn my_key(+_x: @~str) { }
+    local_data_set(my_key, @~"weasel");
+    assert *(local_data_pop(my_key).get()) == ~"weasel";
     // Pop must remove the data from the map.
     assert local_data_pop(my_key) == none;
 }
 
 #[test]
 fn test_tls_modify() unsafe {
-    fn my_key(+_x: @str/~) { }
+    fn my_key(+_x: @~str) { }
     local_data_modify(my_key, |data| {
         alt data {
-            some(@val) { fail "unwelcome value: " + val }
-            none       { some(@"first data") }
+            some(@val) { fail ~"unwelcome value: " + val }
+            none       { some(@~"first data") }
         }
     });
     local_data_modify(my_key, |data| {
         alt data {
-            some(@"first data") { some(@"next data") }
-            some(@val)          { fail "wrong value: " + val }
-            none                { fail "missing value" }
+            some(@~"first data") { some(@~"next data") }
+            some(@val)          { fail ~"wrong value: " + val }
+            none                { fail ~"missing value" }
         }
     });
-    assert *(local_data_pop(my_key).get()) == "next data";
+    assert *(local_data_pop(my_key).get()) == ~"next data";
 }
 
 #[test]
@@ -1523,19 +1523,19 @@ fn test_tls_crust_automorestack_memorial_bug() unsafe {
     // jump over to the rust stack, which causes next_c_sp to get recorded as
     // something within a rust stack segment. Then a subsequent upcall (esp.
     // for logging, think vsnprintf) would run on a stack smaller than 1 MB.
-    fn my_key(+_x: @str/~) { }
+    fn my_key(+_x: @~str) { }
     do task::spawn {
-        unsafe { local_data_set(my_key, @"hax"); }
+        unsafe { local_data_set(my_key, @~"hax"); }
     }
 }
 
 #[test]
 fn test_tls_multiple_types() unsafe {
-    fn str_key(+_x: @str/~) { }
+    fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
     do task::spawn {
-        local_data_set(str_key, @"string data");
+        local_data_set(str_key, @~"string data");
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);
     }
@@ -1543,11 +1543,11 @@ fn test_tls_multiple_types() unsafe {
 
 #[test]
 fn test_tls_overwrite_multiple_types() unsafe {
-    fn str_key(+_x: @str/~) { }
+    fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
     do task::spawn {
-        local_data_set(str_key, @"string data");
+        local_data_set(str_key, @~"string data");
         local_data_set(int_key, @42);
         // This could cause a segfault if overwriting-destruction is done with
         // the crazy polymorphic transmute rather than the provided finaliser.
@@ -1559,13 +1559,13 @@ fn test_tls_overwrite_multiple_types() unsafe {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_tls_cleanup_on_failure() unsafe {
-    fn str_key(+_x: @str/~) { }
+    fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
-    local_data_set(str_key, @"parent data");
+    local_data_set(str_key, @~"parent data");
     local_data_set(box_key, @@());
     do task::spawn { // spawn_linked
-        local_data_set(str_key, @"string data");
+        local_data_set(str_key, @~"string data");
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);
         fail;

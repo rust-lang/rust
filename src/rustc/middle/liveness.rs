@@ -153,11 +153,11 @@ fn check_crate(tcx: ty::ctxt,
 }
 
 impl of to_str::to_str for live_node {
-    fn to_str() -> str { #fmt["ln(%u)", *self] }
+    fn to_str() -> ~str { #fmt["ln(%u)", *self] }
 }
 
 impl of to_str::to_str for variable {
-    fn to_str() -> str { #fmt["v(%u)", *self] }
+    fn to_str() -> ~str { #fmt["v(%u)", *self] }
 }
 
 // ______________________________________________________________________
@@ -289,9 +289,9 @@ class ir_maps {
     fn variable_name(var: variable) -> ident {
         alt self.var_kinds[*var] {
           vk_local(_, name) | vk_arg(_, name, _) {name}
-          vk_field(name) {@("self." + *name)}
-          vk_self {@"self"}
-          vk_implicit_ret {@"<implicit-ret>"}
+          vk_field(name) {@(~"self." + *name)}
+          vk_self {@~"self"}
+          vk_implicit_ret {@~"<implicit-ret>"}
         }
     }
 
@@ -303,7 +303,7 @@ class ir_maps {
         alt self.capture_map.find(expr.id) {
           some(caps) {caps}
           none {
-            self.tcx.sess.span_bug(expr.span, "no registered caps");
+            self.tcx.sess.span_bug(expr.span, ~"no registered caps");
           }
         }
     }
@@ -580,7 +580,7 @@ class liveness {
           }
           none {
             self.tcx.sess.span_bug(
-                span, "Not present in def map")
+                span, ~"Not present in def map")
           }
         }
     }
@@ -654,26 +654,26 @@ class liveness {
         for uint::range(0u, self.ir.num_vars) |var_idx| {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                wr.write_str(" ");
+                wr.write_str(~" ");
                 wr.write_str(variable(var_idx).to_str());
             }
         }
     }
 
-    fn ln_str(ln: live_node) -> str {
+    fn ln_str(ln: live_node) -> ~str {
         do io::with_str_writer |wr| {
-            wr.write_str("[ln(");
+            wr.write_str(~"[ln(");
             wr.write_uint(*ln);
-            wr.write_str(") of kind ");
+            wr.write_str(~") of kind ");
             wr.write_str(#fmt["%?", copy self.ir.lnks[*ln]]);
-            wr.write_str(" reads");
+            wr.write_str(~" reads");
             self.write_vars(wr, ln, |idx| self.users[idx].reader );
-            wr.write_str("  writes");
+            wr.write_str(~"  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer );
-            wr.write_str(" ");
-            wr.write_str(" precedes ");
+            wr.write_str(~" ");
+            wr.write_str(~" precedes ");
             wr.write_str((copy self.successors[*ln]).to_str());
-            wr.write_str("]");
+            wr.write_str(~"]");
         }
     }
 
@@ -1003,7 +1003,7 @@ class liveness {
           expr_break {
             if !self.break_ln.is_valid() {
                 self.tcx.sess.span_bug(
-                    expr.span, "break with invalid break_ln");
+                    expr.span, ~"break with invalid break_ln");
             }
 
             self.break_ln
@@ -1012,7 +1012,7 @@ class liveness {
           expr_again {
             if !self.cont_ln.is_valid() {
                 self.tcx.sess.span_bug(
-                    expr.span, "cont with invalid cont_ln");
+                    expr.span, ~"cont with invalid cont_ln");
             }
 
             self.cont_ln
@@ -1117,7 +1117,7 @@ class liveness {
           }
 
           expr_mac(*) {
-            self.tcx.sess.span_bug(expr.span, "unexpanded macro");
+            self.tcx.sess.span_bug(expr.span, ~"unexpanded macro");
           }
         }
     }
@@ -1505,7 +1505,7 @@ impl check_methods for @liveness {
             } else if ty::type_is_bot(t_ret) {
                 // for bot return types, not ok.  Function should fail.
                 self.tcx.sess.span_err(
-                    sp, "some control paths may return");
+                    sp, ~"some control paths may return");
             } else {
                 alt fk {
                   visit::fk_ctor(*) {
@@ -1513,7 +1513,7 @@ impl check_methods for @liveness {
                   }
                   _ {
                     self.tcx.sess.span_err(
-                        sp, "not all control paths return a value");
+                        sp, ~"not all control paths return a value");
                   }
                 }
             }
@@ -1630,11 +1630,11 @@ impl check_methods for @liveness {
           some(lnk_expr(span)) {
             self.tcx.sess.span_err(
                 span,
-                "re-assignment of immutable variable");
+                ~"re-assignment of immutable variable");
 
             self.tcx.sess.span_note(
                 orig_span,
-                "prior assignment occurs here");
+                ~"prior assignment occurs here");
           }
           some(lnk) {
             self.tcx.sess.span_bug(
@@ -1671,7 +1671,7 @@ impl check_methods for @liveness {
               vk_self {
                 self.tcx.sess.span_err(
                     move_span,
-                    "illegal move from self (cannot move out of a field of \
+                    ~"illegal move from self (cannot move out of a field of \
                        self)");
                 ret;
               }
@@ -1686,7 +1686,7 @@ impl check_methods for @liveness {
 
         self.report_illegal_read(move_span, lnk, var, moved_variable);
         self.tcx.sess.span_note(
-            move_span, "move of variable occurred here");
+            move_span, ~"move of variable occurred here");
 
     }
 
@@ -1695,9 +1695,9 @@ impl check_methods for @liveness {
                            var: variable,
                            rk: read_kind) {
         let msg = alt rk {
-          possibly_uninitialized_variable {"possibly uninitialized variable"}
-          possibly_uninitialized_field {"possibly uninitialized field"}
-          moved_variable {"moved variable"}
+          possibly_uninitialized_variable {~"possibly uninitialized variable"}
+          possibly_uninitialized_field {~"possibly uninitialized field"}
+          moved_variable {~"moved variable"}
         };
         let name = (*self.ir).variable_name(var);
         alt lnk {

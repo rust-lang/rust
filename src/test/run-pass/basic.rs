@@ -20,7 +20,7 @@ fn a(c: chan<int>) {
 
 fn k(x: int) -> int { ret 15; }
 
-fn g(x: int, y: str) -> int {
+fn g(x: int, y: ~str) -> int {
     log(debug, x);
     log(debug, y);
     let z: int = k(1);
@@ -29,7 +29,7 @@ fn g(x: int, y: str) -> int {
 
 fn main() {
     let mut n: int = 2 + 3 * 7;
-    let s: str = "hello there";
+    let s: ~str = ~"hello there";
     let p = comm::port();
     let ch = comm::chan(p);
     task::spawn(|| a(ch) );

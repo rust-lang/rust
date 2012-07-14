@@ -102,12 +102,12 @@ mod consts {
  * * digits - The number of significant digits
  * * exact - Whether to enforce the exact number of significant digits
  */
-fn to_str_common(num: float, digits: uint, exact: bool) -> str {
-    if is_NaN(num) { ret "NaN"; }
-    if num == infinity { ret "inf"; }
-    if num == neg_infinity { ret "-inf"; }
+fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
+    if is_NaN(num) { ret ~"NaN"; }
+    if num == infinity { ret ~"inf"; }
+    if num == neg_infinity { ret ~"-inf"; }
 
-    let mut (num, sign) = if num < 0.0 { (-num, "-") } else { (num, "") };
+    let mut (num, sign) = if num < 0.0 { (-num, ~"-") } else { (num, ~"") };
 
     // truncated integer
     let trunc = num as uint;
@@ -145,7 +145,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     }
 
     let mut acc;
-    let mut racc = "";
+    let mut racc = ~"";
     let mut carry = if frac * 10.0 as uint >= 5u { 1u } else { 0u };
 
     // turn digits into string
@@ -165,15 +165,15 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
 
     // pad decimals with trailing zeroes
     while str::len(racc) < digits && exact {
-        racc += "0"
+        racc += ~"0"
     }
 
     // combine ints and decimals
     let mut ones = uint::str(trunc + carry);
-    if racc == "" {
+    if racc == ~"" {
         acc = sign + ones;
     } else {
-        acc = sign + ones + "." + racc;
+        acc = sign + ones + ~"." + racc;
     }
 
     ret acc;
@@ -188,14 +188,14 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
  * * num - The float value
  * * digits - The number of significant digits
  */
-fn to_str_exact(num: float, digits: uint) -> str {
+fn to_str_exact(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, true)
 }
 
 #[test]
 fn test_to_str_exact_do_decimal() {
     let s = to_str_exact(5.0, 4u);
-    assert s == "5.0000";
+    assert s == ~"5.0000";
 }
 
 
@@ -208,7 +208,7 @@ fn test_to_str_exact_do_decimal() {
  * * num - The float value
  * * digits - The number of significant digits
  */
-fn to_str(num: float, digits: uint) -> str {
+fn to_str(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, false)
 }
 
@@ -238,12 +238,12 @@ fn to_str(num: float, digits: uint) -> str {
  * `none` if the string did not represent a valid number.  Otherwise,
  * `some(n)` where `n` is the floating-point number represented by `[num]`.
  */
-fn from_str(num: str) -> option<float> {
-   if num == "inf" {
+fn from_str(num: ~str) -> option<float> {
+   if num == ~"inf" {
        ret some(infinity as float);
-   } else if num == "-inf" {
+   } else if num == ~"-inf" {
        ret some(neg_infinity as float);
-   } else if num == "NaN" {
+   } else if num == ~"NaN" {
        ret some(NaN as float);
    }
 
@@ -433,45 +433,45 @@ impl num of num::num for float {
 
 #[test]
 fn test_from_str() {
-   assert from_str("3") == some(3.);
-   assert from_str("3") == some(3.);
-   assert from_str("3.14") == some(3.14);
-   assert from_str("+3.14") == some(3.14);
-   assert from_str("-3.14") == some(-3.14);
-   assert from_str("2.5E10") == some(25000000000.);
-   assert from_str("2.5e10") == some(25000000000.);
-   assert from_str("25000000000.E-10") == some(2.5);
-   assert from_str(".") == some(0.);
-   assert from_str(".e1") == some(0.);
-   assert from_str(".e-1") == some(0.);
-   assert from_str("5.") == some(5.);
-   assert from_str(".5") == some(0.5);
-   assert from_str("0.5") == some(0.5);
-   assert from_str("0.5") == some(0.5);
-   assert from_str("0.5") == some(0.5);
-   assert from_str("-.5") == some(-0.5);
-   assert from_str("-.5") == some(-0.5);
-   assert from_str("-5") == some(-5.);
-   assert from_str("-0") == some(-0.);
-   assert from_str("0") == some(0.);
-   assert from_str("inf") == some(infinity);
-   assert from_str("-inf") == some(neg_infinity);
+   assert from_str(~"3") == some(3.);
+   assert from_str(~"3") == some(3.);
+   assert from_str(~"3.14") == some(3.14);
+   assert from_str(~"+3.14") == some(3.14);
+   assert from_str(~"-3.14") == some(-3.14);
+   assert from_str(~"2.5E10") == some(25000000000.);
+   assert from_str(~"2.5e10") == some(25000000000.);
+   assert from_str(~"25000000000.E-10") == some(2.5);
+   assert from_str(~".") == some(0.);
+   assert from_str(~".e1") == some(0.);
+   assert from_str(~".e-1") == some(0.);
+   assert from_str(~"5.") == some(5.);
+   assert from_str(~".5") == some(0.5);
+   assert from_str(~"0.5") == some(0.5);
+   assert from_str(~"0.5") == some(0.5);
+   assert from_str(~"0.5") == some(0.5);
+   assert from_str(~"-.5") == some(-0.5);
+   assert from_str(~"-.5") == some(-0.5);
+   assert from_str(~"-5") == some(-5.);
+   assert from_str(~"-0") == some(-0.);
+   assert from_str(~"0") == some(0.);
+   assert from_str(~"inf") == some(infinity);
+   assert from_str(~"-inf") == some(neg_infinity);
    // note: NaN != NaN, hence this slightly complex test
-   alt from_str("NaN") {
+   alt from_str(~"NaN") {
        some(f) { assert is_NaN(f); }
        none { fail; }
    }
 
-   assert from_str("") == none;
-   assert from_str("x") == none;
-   assert from_str(" ") == none;
-   assert from_str("   ") == none;
-   assert from_str("e") == none;
-   assert from_str("E") == none;
-   assert from_str("E1") == none;
-   assert from_str("1e1e1") == none;
-   assert from_str("1e1.1") == none;
-   assert from_str("1e1-1") == none;
+   assert from_str(~"") == none;
+   assert from_str(~"x") == none;
+   assert from_str(~" ") == none;
+   assert from_str(~"   ") == none;
+   assert from_str(~"e") == none;
+   assert from_str(~"E") == none;
+   assert from_str(~"E1") == none;
+   assert from_str(~"1e1e1") == none;
+   assert from_str(~"1e1.1") == none;
+   assert from_str(~"1e1-1") == none;
 }
 
 #[test]
@@ -520,8 +520,8 @@ fn test_nonnegative() {
 
 #[test]
 fn test_to_str_inf() {
-    assert to_str(infinity, 10u) == "inf";
-    assert to_str(-infinity, 10u) == "-inf";
+    assert to_str(infinity, 10u) == ~"inf";
+    assert to_str(-infinity, 10u) == ~"-inf";
 }
 
 #[test]

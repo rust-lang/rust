@@ -21,10 +21,10 @@ import metadata::common::link_meta;
 import syntax::ast_map::path;
 import util::ppaux::ty_to_str;
 
-type namegen = fn@(str) -> str;
+type namegen = fn@(~str) -> ~str;
 fn new_namegen() -> namegen {
     let i = @mut 0;
-    ret fn@(prefix: str) -> str { *i += 1; prefix + int::str(*i) };
+    ret fn@(prefix: ~str) -> ~str { *i += 1; prefix + int::str(*i) };
 }
 
 type tydesc_info =
@@ -68,9 +68,9 @@ type stats =
      mut n_glues_created: uint,
      mut n_null_glues: uint,
      mut n_real_glues: uint,
-     llvm_insn_ctxt: @mut ~[str],
-     llvm_insns: hashmap<str, uint>,
-     fn_times: @mut ~[{ident: str, time: int}]};
+     llvm_insn_ctxt: @mut ~[~str],
+     llvm_insns: hashmap<~str, uint>,
+     fn_times: @mut ~[{ident: ~str, time: int}]};
 
 class BuilderRef_res {
     let B: BuilderRef;
@@ -84,17 +84,17 @@ type crate_ctxt = {
      llmod: ModuleRef,
      td: target_data,
      tn: type_names,
-     externs: hashmap<str, ValueRef>,
-     intrinsics: hashmap<str, ValueRef>,
+     externs: hashmap<~str, ValueRef>,
+     intrinsics: hashmap<~str, ValueRef>,
      item_vals: hashmap<ast::node_id, ValueRef>,
      exp_map: resolve::exp_map,
      reachable: reachable::map,
-     item_symbols: hashmap<ast::node_id, str>,
+     item_symbols: hashmap<ast::node_id, ~str>,
      mut main_fn: option<ValueRef>,
      link_meta: link_meta,
      enum_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::def_id, ValueRef>,
-     discrim_symbols: hashmap<ast::node_id, str>,
+     discrim_symbols: hashmap<ast::node_id, ~str>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      // Track mapping of external ids to local items imported for inlining
      external: hashmap<ast::def_id, option<ast::node_id>>,
@@ -106,14 +106,14 @@ type crate_ctxt = {
      // Cache generated vtables
      vtables: hashmap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: hashmap<str, ValueRef>,
-     module_data: hashmap<str, ValueRef>,
+     const_cstr_cache: hashmap<~str, ValueRef>,
+     module_data: hashmap<~str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
      sha: std::sha1::sha1,
-     type_sha1s: hashmap<ty::t, str>,
-     type_short_names: hashmap<ty::t, str>,
-     all_llvm_symbols: set<str>,
+     type_sha1s: hashmap<ty::t, ~str>,
+     type_short_names: hashmap<ty::t, ~str>,
+     all_llvm_symbols: set<~str>,
      tcx: ty::ctxt,
      maps: astencode::maps,
      stats: stats,
@@ -204,10 +204,10 @@ type fn_ctxt = @{
     ccx: @crate_ctxt
 };
 
-fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
+fn warn_not_to_commit(ccx: @crate_ctxt, msg: ~str) {
     if !ccx.do_not_commit_warning_issued {
         ccx.do_not_commit_warning_issued = true;
-        ccx.sess.warn(msg + " -- do not commit like this!");
+        ccx.sess.warn(msg + ~" -- do not commit like this!");
     }
 }
 
@@ -421,13 +421,13 @@ fn rslt(bcx: block, val: ValueRef) -> result {
     {bcx: bcx, val: val}
 }
 
-fn ty_str(tn: type_names, t: TypeRef) -> str {
+fn ty_str(tn: type_names, t: TypeRef) -> ~str {
     ret lib::llvm::type_to_str(tn, t);
 }
 
 fn val_ty(v: ValueRef) -> TypeRef { ret llvm::LLVMTypeOf(v); }
 
-fn val_str(tn: type_names, v: ValueRef) -> str { ret ty_str(tn, val_ty(v)); }
+fn val_str(tn: type_names, v: ValueRef) -> ~str { ret ty_str(tn, val_ty(v)); }
 
 // Returns the nth element of the given LLVM structure type.
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
@@ -464,13 +464,13 @@ impl bcx_cxs for block {
     pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
     pure fn sess() -> session { self.fcx.ccx.sess }
 
-    fn val_str(val: ValueRef) -> str {
+    fn val_str(val: ValueRef) -> ~str {
         val_str(self.ccx().tn, val)
     }
-    fn ty_to_str(t: ty::t) -> str {
+    fn ty_to_str(t: ty::t) -> ~str {
         ty_to_str(self.tcx(), t)
     }
-    fn to_str() -> str {
+    fn to_str() -> ~str {
         alt self.node_info {
           some(node_info) {
             #fmt["[block %d]", node_info.id]
@@ -591,7 +591,7 @@ fn T_struct(elts: ~[TypeRef]) -> TypeRef unsafe {
     ret llvm::LLVMStructType(to_ptr(elts), elts.len() as c_uint, False);
 }
 
-fn T_named_struct(name: str) -> TypeRef {
+fn T_named_struct(name: ~str) -> TypeRef {
     let c = llvm::LLVMGetGlobalContext();
     ret str::as_c_str(name, |buf| llvm::LLVMStructCreateNamed(c, buf));
 }
@@ -610,7 +610,7 @@ fn T_empty_struct() -> TypeRef { ret T_struct(~[]); }
 fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
 fn T_task(targ_cfg: @session::config) -> TypeRef {
-    let t = T_named_struct("task");
+    let t = T_named_struct(~"task");
 
     // Refcount
     // Delegate pointer
@@ -644,7 +644,7 @@ fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
 }
 
 fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
-    let s = "glue_fn";
+    let s = ~"glue_fn";
     alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t = T_tydesc_field(cx, abi::tydesc_field_drop_glue);
     associate_type(cx.tn, s, t);
@@ -652,7 +652,7 @@ fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
 }
 
 fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
-    let tydesc = T_named_struct("tydesc");
+    let tydesc = T_named_struct(~"tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
@@ -748,7 +748,7 @@ fn T_taskptr(cx: @crate_ctxt) -> TypeRef { ret T_ptr(cx.task_type); }
 
 // This type must never be used directly; it must always be cast away.
 fn T_typaram(tn: type_names) -> TypeRef {
-    let s = "typaram";
+    let s = ~"typaram";
     alt name_has_type(tn, s) { some(t) { ret t; } _ {} }
     let t = T_i8();
     associate_type(tn, s, t);
@@ -768,7 +768,7 @@ fn T_enum_discrim(cx: @crate_ctxt) -> TypeRef {
 }
 
 fn T_opaque_enum(cx: @crate_ctxt) -> TypeRef {
-    let s = "opaque_enum";
+    let s = ~"opaque_enum";
     alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t = T_struct(~[T_enum_discrim(cx), T_i8()]);
     associate_type(cx.tn, s, t);
@@ -799,7 +799,7 @@ fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
     ret llvm::LLVMConstInt(t, u, sign_extend);
 }
 
-fn C_floating(s: str, t: TypeRef) -> ValueRef {
+fn C_floating(s: ~str, t: TypeRef) -> ValueRef {
     ret str::as_c_str(s, |buf| llvm::LLVMConstRealOfString(t, buf));
 }
 
@@ -834,7 +834,7 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i as u64, False); }
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
+fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
     alt cx.const_cstr_cache.find(s) {
       some(llval) { ret llval; }
       none { }
@@ -844,7 +844,7 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
-        str::as_c_str(cx.names("str"),
+        str::as_c_str(cx.names(~"str"),
                     |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
@@ -855,13 +855,13 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
     ret g;
 }
 
-fn C_estr_slice(cx: @crate_ctxt, s: str) -> ValueRef {
+fn C_estr_slice(cx: @crate_ctxt, s: ~str) -> ValueRef {
     let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
     C_struct(~[cs, C_uint(cx, str::len(s) + 1u /* +1 for null */)])
 }
 
 // Returns a Plain Old LLVM String:
-fn C_postr(s: str) -> ValueRef {
+fn C_postr(s: ~str) -> ValueRef {
     ret do str::as_c_str(s) |buf| {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
@@ -898,7 +898,7 @@ fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let llglobal = str::as_c_str(ccx.names("shape"), |buf| {
+    let llglobal = str::as_c_str(ccx.names(~"shape"), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llshape);
@@ -952,12 +952,12 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     ret build::And(cx, bumped, build::Not(cx, mask));
 }
 
-fn path_str(p: path) -> str {
-    let mut r = "", first = true;
+fn path_str(p: path) -> ~str {
+    let mut r = ~"", first = true;
     for vec::each(p) |e| {
         alt e { ast_map::path_name(s) | ast_map::path_mod(s) {
           if first { first = false; }
-          else { r += "::"; }
+          else { r += ~"::"; }
           r += *s;
         } }
     }

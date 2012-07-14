@@ -142,9 +142,9 @@ fn as_raw_port<T: send, U>(ch: comm::chan<T>, f: fn(*rust_port) -> U) -> U {
     let p = portref(rustrt::rust_port_take(*ch));
 
     if ptr::is_null(p.p) {
-        fail "unable to locate port for channel"
+        fail ~"unable to locate port for channel"
     } else if rustrt::get_task_id() != rustrt::rust_port_task(p.p) {
-        fail "unable to access unowned port"
+        fail ~"unable to access unowned port"
     }
 
     f(p.p)
@@ -245,7 +245,7 @@ fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     } else if resport == (**p_b).po {
         either::right(recv(p_b))
     } else {
-        fail "unexpected result from rust_port_select";
+        fail ~"unexpected result from rust_port_select";
     }
 }
 
@@ -348,13 +348,13 @@ fn test_select2_available() {
     let ch_a = chan(po_a);
     let ch_b = chan(po_b);
 
-    send(ch_a, "a");
+    send(ch_a, ~"a");
 
-    assert select2(po_a, po_b) == either::left("a");
+    assert select2(po_a, po_b) == either::left(~"a");
 
-    send(ch_b, "b");
+    send(ch_b, ~"b");
 
-    assert select2(po_a, po_b) == either::right("b");
+    assert select2(po_a, po_b) == either::right(~"b");
 }
 
 #[test]
@@ -367,17 +367,17 @@ fn test_select2_rendezvous() {
     for iter::repeat(10u) {
         do task::spawn {
             for iter::repeat(10u) { task::yield() }
-            send(ch_a, "a");
+            send(ch_a, ~"a");
         };
 
-        assert select2(po_a, po_b) == either::left("a");
+        assert select2(po_a, po_b) == either::left(~"a");
 
         do task::spawn {
             for iter::repeat(10u) { task::yield() }
-            send(ch_b, "b");
+            send(ch_b, ~"b");
         };
 
-        assert select2(po_a, po_b) == either::right("b");
+        assert select2(po_a, po_b) == either::right(~"b");
     }
 }
 
@@ -394,12 +394,12 @@ fn test_select2_stress() {
     for iter::repeat(times) {
         do task::spawn {
             for iter::repeat(msgs) {
-                send(ch_a, "a")
+                send(ch_a, ~"a")
             }
         };
         do task::spawn {
             for iter::repeat(msgs) {
-                send(ch_b, "b")
+                send(ch_b, ~"b")
             }
         };
     }
@@ -408,8 +408,8 @@ fn test_select2_stress() {
     let mut bs = 0;
     for iter::repeat(msgs * times * 2u) {
         alt check select2(po_a, po_b) {
-          either::left("a") { as += 1 }
-          either::right("b") { bs += 1 }
+          either::left(~"a") { as += 1 }
+          either::right(~"b") { bs += 1 }
         }
     }
 
@@ -421,8 +421,8 @@ fn test_select2_stress() {
 fn test_recv_chan() {
     let po = port();
     let ch = chan(po);
-    send(ch, "flower");
-    assert recv_chan(ch) == "flower";
+    send(ch, ~"flower");
+    assert recv_chan(ch) == ~"flower";
 }
 
 #[test]
@@ -430,7 +430,7 @@ fn test_recv_chan() {
 #[ignore(cfg(windows))]
 fn test_recv_chan_dead() {
     let ch = chan(port());
-    send(ch, "flower");
+    send(ch, ~"flower");
     recv_chan(ch);
 }
 
@@ -439,7 +439,7 @@ fn test_recv_chan_dead() {
 fn test_recv_chan_wrong_task() {
     let po = port();
     let ch = chan(po);
-    send(ch, "flower");
+    send(ch, ~"flower");
     assert result::is_err(task::try(||
         recv_chan(ch)
     ))
@@ -464,9 +464,9 @@ fn test_chan_peek() {
 fn test_listen() {
     do listen |parent| {
         do task::spawn {
-            parent.send("oatmeal-salad");
+            parent.send(~"oatmeal-salad");
         }
-        assert parent.recv() == "oatmeal-salad";
+        assert parent.recv() == ~"oatmeal-salad";
     }
 }
 

@@ -2,6 +2,6 @@
 // xfail-test
 
 fn main() {
-    assert a::b::g() == "ralph";
-    assert a::c::g() == "nelson";
+    assert a::b::g() == ~"ralph";
+    assert a::c::g() == ~"nelson";
 }

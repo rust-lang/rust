@@ -69,6 +69,6 @@ mod std {
  * any code paths following the appearance of this function as unreachable.
  */
 fn unreachable() -> ! {
-    fail "Internal error: entered unreachable code";
+    fail ~"Internal error: entered unreachable code";
 }
 

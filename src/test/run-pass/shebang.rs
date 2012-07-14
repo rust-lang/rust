@@ -3,4 +3,4 @@
 
 import io::println;
 
-fn main() { io::println("Hello World"); }
+fn main() { io::println(~"Hello World"); }

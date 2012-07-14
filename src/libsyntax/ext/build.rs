@@ -11,16 +11,16 @@ fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
     let sp_lit = @{node: lit, span: sp};
     mk_expr(cx, sp, ast::expr_lit(sp_lit))
 }
-fn mk_str(cx: ext_ctxt, sp: span, s: str) -> @ast::expr {
-    let lit = ast::lit_str(@s);
-    ret mk_lit(cx, sp, lit);
-}
 fn mk_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {
     let lit = ast::lit_int(i as i64, ast::ty_i);
     ret mk_lit(cx, sp, lit);
 }
 fn mk_uint(cx: ext_ctxt, sp: span, u: uint) -> @ast::expr {
     let lit = ast::lit_uint(u as u64, ast::ty_u);
+    ret mk_lit(cx, sp, lit);
+}
+fn mk_u8(cx: ext_ctxt, sp: span, u: u8) -> @ast::expr {
+    let lit = ast::lit_uint(u as u64, ast::ty_u8);
     ret mk_lit(cx, sp, lit);
 }
 fn mk_binary(cx: ext_ctxt, sp: span, op: ast::binop,
@@ -76,6 +76,13 @@ fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
 fn mk_fixed_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
    @ast::expr {
     mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::vstore_fixed(none))
+}
+fn mk_base_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
+    let lit = ast::lit_str(@s);
+    ret mk_lit(cx, sp, lit);
+}
+fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
+    mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::vstore_uniq)
 }
 
 fn mk_rec_e(cx: ext_ctxt, sp: span,

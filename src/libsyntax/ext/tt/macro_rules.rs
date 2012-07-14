@@ -18,9 +18,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     let argument_gram = ~[
         ms(mtc_rep(~[
-            ms(mtc_bb(@"lhs",@"mtcs", 0u)),
+            ms(mtc_bb(@~"lhs",@~"mtcs", 0u)),
             ms(mtc_tok(FAT_ARROW)),
-            ms(mtc_bb(@"rhs",@"tt", 1u)),
+            ms(mtc_bb(@~"rhs",@~"tt", 1u)),
         ], some(SEMI), false))];
 
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
@@ -31,20 +31,20 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
       failure(sp, msg) { cx.span_fatal(sp, msg); }
     };
 
-    let lhses = alt arguments.get(@"lhs") {
+    let lhses = alt arguments.get(@~"lhs") {
       @seq(s, sp) { s }
-      _ { cx.span_bug(sp, "wrong-structured lhs") }
+      _ { cx.span_bug(sp, ~"wrong-structured lhs") }
     };
-    let rhses = alt arguments.get(@"rhs") {
+    let rhses = alt arguments.get(@~"rhs") {
       @seq(s, sp) { s }
-      _ { cx.span_bug(sp, "wrong-structured rhs") }
+      _ { cx.span_bug(sp, ~"wrong-structured rhs") }
     };
 
     fn generic_extension(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree],
                          lhses: ~[@arb_depth], rhses: ~[@arb_depth])
     -> mac_result {
         let mut best_fail_spot = {lo: 0u, hi: 0u, expn_info: none};
-        let mut best_fail_msg = "internal error: ran no matchers";
+        let mut best_fail_msg = ~"internal error: ran no matchers";
 
         let s_d = cx.parse_sess().span_diagnostic;
         let itr = cx.parse_sess().interner;
@@ -57,7 +57,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                   success(m) {
                     let rhs = alt rhses[i] {
                       @leaf(w_tt(@tt)) { tt }
-                      _ { cx.span_bug(sp, "bad thing in rhs") }
+                      _ { cx.span_bug(sp, ~"bad thing in rhs") }
                     };
                     let trncbr = new_tt_reader(s_d, itr, some(m), ~[rhs]);
                     let p = parser(cx.parse_sess(), cx.cfg(),
@@ -71,7 +71,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                   }
                 }
               }
-              _ { cx.bug("non-matcher found in parsed lhses"); }
+              _ { cx.bug(~"non-matcher found in parsed lhses"); }
             }
         }
         cx.span_fatal(best_fail_spot, best_fail_msg);

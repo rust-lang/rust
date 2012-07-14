@@ -84,7 +84,7 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
 
     let res = rustrt::task_wait_event(this, &mut killed);
     if killed && !task::failing() {
-        fail "killed"
+        fail ~"killed"
     }
     res
 }
@@ -118,7 +118,7 @@ fn send<T: send>(-p: send_packet<T>, -payload: T) {
         // The receiver will eventually clean this up.
         unsafe { forget(p); }
       }
-      full { fail "duplicate send" }
+      full { fail ~"duplicate send" }
       blocked {
         #debug("waking up task for %?", p_);
         alt p.header.blocked_task {
@@ -126,7 +126,7 @@ fn send<T: send>(-p: send_packet<T>, -payload: T) {
             rustrt::task_signal_event(
                 task, ptr::addr_of(p.header) as *libc::c_void);
           }
-          none { fail "blocked packet has no task" }
+          none { fail ~"blocked packet has no task" }
         }
 
         // The receiver will eventually clean this up.
@@ -162,7 +162,7 @@ fn try_recv<T: send>(-p: recv_packet<T>) -> option<T> {
           }
           blocked {
             if first {
-                fail "blocking on already blocked packet"
+                fail ~"blocking on already blocked packet"
             }
           }
           full {
@@ -184,7 +184,7 @@ fn try_recv<T: send>(-p: recv_packet<T>) -> option<T> {
 pure fn peek<T: send>(p: recv_packet<T>) -> bool {
     alt unsafe {(*p.header()).state} {
       empty { false }
-      blocked { fail "peeking on blocked packet" }
+      blocked { fail ~"peeking on blocked packet" }
       full | terminated { true }
     }
 }
@@ -207,7 +207,7 @@ fn sender_terminate<T: send>(p: *packet<T>) {
       }
       full {
         // This is impossible
-        fail "you dun goofed"
+        fail ~"you dun goofed"
       }
       terminated {
         // I have to clean up, use drop_glue
@@ -224,7 +224,7 @@ fn receiver_terminate<T: send>(p: *packet<T>) {
       }
       blocked {
         // this shouldn't happen.
-        fail "terminating a blocked packet"
+        fail ~"terminating a blocked packet"
       }
       terminated | full {
         // I have to clean up, use drop_glue
@@ -267,7 +267,7 @@ fn wait_many(pkts: &[*packet_header]) -> uint {
             (*p).state = old;
             break;
           }
-          blocked { fail "blocking on blocked packet" }
+          blocked { fail ~"blocking on blocked packet" }
           empty { }
         }
     }
@@ -313,7 +313,7 @@ fn select2<A: send, B: send>(
         alt i {
           0 { left((try_recv(a), b)) }
           1 { right((a, try_recv(b))) }
-          _ { fail "select2 return an invalid packet" }
+          _ { fail ~"select2 return an invalid packet" }
         }
     }
 }
@@ -397,7 +397,7 @@ class recv_packet<T: send> {
                 header
             }
           }
-          none { fail "packet already consumed" }
+          none { fail ~"packet already consumed" }
         }
     }
 }
@@ -508,7 +508,7 @@ impl port<T: send> for port<T> {
           some(endp) {
             pipes::peek(endp)
           }
-          none { fail "peeking empty stream" }
+          none { fail ~"peeking empty stream" }
         };
         self.endp <-> endp;
         peek
@@ -558,7 +558,7 @@ impl private_methods/&<T: send> for pipes::port<T> {
           some(endp) {
             endp.header()
           }
-          none { fail "peeking empty stream" }
+          none { fail ~"peeking empty stream" }
         }
     }
 }

@@ -80,7 +80,7 @@ impl private_methods<A> for dvec<A> {
         unsafe {
             let data: *() = unsafe::reinterpret_cast(self.data);
             if data.is_null() {
-                fail "Recursive use of dvec";
+                fail ~"Recursive use of dvec";
             }
         }
     }
@@ -91,7 +91,7 @@ impl private_methods<A> for dvec<A> {
             let mut data = unsafe::reinterpret_cast(null::<()>());
             data <-> self.data;
             let data_ptr: *() = unsafe::reinterpret_cast(data);
-            if data_ptr.is_null() { fail "Recursive use of dvec"; }
+            if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
             ret f(data);
         }
     }
@@ -149,11 +149,11 @@ impl extensions<A> for dvec<A> {
             let mut data = unsafe::reinterpret_cast(null::<()>());
             data <-> self.data;
             let data_ptr: *() = unsafe::reinterpret_cast(data);
-            if data_ptr.is_null() { fail "Recursive use of dvec"; }
-            log(error, "a");
+            if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
+            log(error, ~"a");
             self.data <- ~[mut t];
             vec::push_all_move(self.data, data);
-            log(error, "b");
+            log(error, ~"b");
         }
     }
 
@@ -276,7 +276,7 @@ impl extensions<A:copy> for dvec<A> {
 
         let length = self.len();
         if length == 0u {
-            fail "attempt to retrieve the last element of an empty vector";
+            fail ~"attempt to retrieve the last element of an empty vector";
         }
 
         ret self.data[length - 1u];

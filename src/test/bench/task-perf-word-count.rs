@@ -21,7 +21,7 @@ import comm::port;
 import comm::recv;
 import comm::send;
 
-fn map(input: str, emit: map_reduce::putter) {
+fn map(input: ~str, emit: map_reduce::putter) {
     let f = io::str_reader(input);
 
 
@@ -30,7 +30,7 @@ fn map(input: str, emit: map_reduce::putter) {
     }
 }
 
-fn reduce(_word: str, get: map_reduce::getter) {
+fn reduce(_word: ~str, get: map_reduce::getter) {
     let mut count = 0;
 
     loop { alt get() { some(_) { count += 1; } none { break; } } }
@@ -43,22 +43,22 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter = fn@(str, int);
+    type putter = fn@(~str, int);
 
-    type mapper = fn@(str, putter);
+    type mapper = fn@(~str, putter);
 
     type getter = fn@() -> option<int>;
 
-    type reducer = fn@(str, getter);
+    type reducer = fn@(~str, getter);
 
     enum ctrl_proto {
-        find_reducer(str, chan<chan<reduce_proto>>),
+        find_reducer(~str, chan<chan<reduce_proto>>),
         mapper_done,
     }
 
     enum reduce_proto { emit_val(int), done, ref, release, }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: ~[str]) ->
+    fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: ~[~str]) ->
        ~[future::future<task::task_result>] {
         let mut results = ~[];
         for inputs.each |i| {
@@ -69,12 +69,12 @@ mod map_reduce {
         ret results;
     }
 
-    fn map_task(ctrl: chan<ctrl_proto>, input: str) {
+    fn map_task(ctrl: chan<ctrl_proto>, input: ~str) {
         // log(error, "map_task " + input);
         let intermediates = map::str_hash();
 
-        fn emit(im: map::hashmap<str, chan<reduce_proto>>,
-                ctrl: chan<ctrl_proto>, key: str, val: int) {
+        fn emit(im: map::hashmap<~str, chan<reduce_proto>>,
+                ctrl: chan<ctrl_proto>, key: ~str, val: int) {
             let mut c;
             alt im.find(key) {
               some(_c) {
@@ -98,7 +98,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn reduce_task(key: str, out: chan<chan<reduce_proto>>) {
+    fn reduce_task(key: ~str, out: chan<chan<reduce_proto>>) {
         let p = port();
 
         send(out, chan(p));
@@ -128,13 +128,13 @@ mod map_reduce {
         reduce(key, || get(p, state) );
     }
 
-    fn map_reduce(-inputs: ~[str]) {
+    fn map_reduce(-inputs: ~[~str]) {
         let ctrl = port::<ctrl_proto>();
 
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let mut reducers: map::hashmap<str, chan<reduce_proto>>;
+        let mut reducers: map::hashmap<~str, chan<reduce_proto>>;
 
         reducers = map::str_hash();
 
@@ -178,7 +178,7 @@ mod map_reduce {
     }
 }
 
-fn main(argv: ~[str]) {
+fn main(argv: ~[~str]) {
     let inputs = if vec::len(argv) < 2u {
         ~[input1(), input2(), input3()]
     } else {
@@ -194,19 +194,19 @@ fn main(argv: ~[str]) {
     let mut elapsed = stop - start;
     elapsed /= 1000000u64;
 
-    log(error, "MapReduce completed in "
-             + u64::str(elapsed) + "ms");
+    log(error, ~"MapReduce completed in "
+             + u64::str(elapsed) + ~"ms");
 }
 
-fn read_word(r: io::reader) -> option<str> {
-    let mut w = "";
+fn read_word(r: io::reader) -> option<~str> {
+    let mut w = ~"";
 
     while !r.eof() {
         let c = r.read_char();
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != "" { ret some(w); } }
+        } else { if w != ~"" { ret some(w); } }
     }
     ret none;
 }
@@ -297,7 +297,7 @@ fn is_word_char(c: char) -> bool { is_alpha(c) || is_digit(c) || c == '_' }
 
 
 
-fn input1() -> str { " Lorem ipsum dolor sit amet, consectetur
+fn input1() -> ~str { ~" Lorem ipsum dolor sit amet, consectetur
 adipiscing elit. Vestibulum tempor erat a dui commodo congue. Proin ac
 imperdiet est. Nunc volutpat placerat justo, ac euismod nisl elementum
 et. Nam a eros eleifend dolor porttitor auctor a a felis. Maecenas dui
@@ -337,7 +337,7 @@ laoreet nec. Curabitur non urna a augue rhoncus pulvinar. Integer
 placerat vehicula nisl sed egestas. Morbi iaculis diam at erat
 sollicitudin nec interdum libero tristique.  " }
 
-fn input2() -> str { " Lorem ipsum dolor sit amet, consectetur
+fn input2() -> ~str { ~" Lorem ipsum dolor sit amet, consectetur
 adipiscing elit. Proin enim nibh, scelerisque faucibus accumsan id,
 feugiat id ipsum. In luctus mauris a massa consequat dignissim. Donec
 sit amet sem urna. Nullam pellentesque accumsan mi, at convallis arcu
@@ -397,7 +397,7 @@ ullamcorper. Nullam blandit, diam quis sollicitudin tincidunt, elit
 justo varius lacus, aliquet luctus neque nibh quis turpis. Etiam massa
 sapien, tristique ut consectetur eu, elementum vel orci.  " }
 
-fn input3() -> str { " Lorem ipsum dolor sit amet, consectetur
+fn input3() -> ~str { ~" Lorem ipsum dolor sit amet, consectetur
 adipiscing elit. Pellentesque bibendum sapien ut magna fringilla
 mollis. Vivamus in neque non metus faucibus accumsan eu pretium
 nunc. Ut erat augue, pulvinar eget blandit nec, cursus quis

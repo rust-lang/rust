@@ -7,7 +7,7 @@ export future_writer_factory;
 export make_filename;
 
 enum writeinstr {
-    write(str),
+    write(~str),
     done
 }
 
@@ -15,12 +15,12 @@ type writer = fn~(+writeinstr);
 type writer_factory = fn~(page: doc::page) -> writer;
 
 impl writer_util for writer {
-    fn write_str(str: str) {
+    fn write_str(str: ~str) {
         self(write(str));
     }
 
-    fn write_line(str: str) {
-        self.write_str(str + "\n");
+    fn write_line(str: ~str) {
+        self.write_str(str + ~"\n");
     }
 
     fn write_done() {
@@ -70,19 +70,19 @@ fn pandoc_writer(
     let filename = make_local_filename(config, page);
 
     let pandoc_args = ~[
-        "--standalone",
-        "--section-divs",
-        "--from=markdown",
-        "--to=html",
-        "--css=rust.css",
-        "--output=" + filename
+        ~"--standalone",
+        ~"--section-divs",
+        ~"--from=markdown",
+        ~"--to=html",
+        ~"--css=rust.css",
+        ~"--output=" + filename
     ];
 
     do generic_writer |markdown| {
         import io::writer_util;
 
         #debug("pandoc cmd: %s", pandoc_cmd);
-        #debug("pandoc args: %s", str::connect(pandoc_args, " "));
+        #debug("pandoc args: %s", str::connect(pandoc_args, ~" "));
 
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
@@ -118,16 +118,16 @@ fn pandoc_writer(
         if status != 0 {
             #error("pandoc-out: %s", stdout);
             #error("pandoc-err: %s", stderr);
-            fail "pandoc failed";
+            fail ~"pandoc failed";
         }
     }
 }
 
-fn readclose(fd: libc::c_int) -> str {
+fn readclose(fd: libc::c_int) -> ~str {
     // Copied from run::program_output
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let mut buf = "";
+    let mut buf = ~"";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
         buf += str::from_bytes(bytes);
@@ -136,9 +136,9 @@ fn readclose(fd: libc::c_int) -> str {
     ret buf;
 }
 
-fn generic_writer(+process: fn~(markdown: str)) -> writer {
+fn generic_writer(+process: fn~(markdown: ~str)) -> writer {
     let ch = do task::spawn_listener |po: comm::port<writeinstr>| {
-        let mut markdown = "";
+        let mut markdown = ~"";
         let mut keep_going = true;
         while keep_going {
             alt comm::recv(po) {
@@ -157,7 +157,7 @@ fn generic_writer(+process: fn~(markdown: str)) -> writer {
 fn make_local_filename(
     config: config::config,
     page: doc::page
-) -> str {
+) -> ~str {
     let filename = make_filename(config, page);
     path::connect(config.output_dir, filename)
 }
@@ -165,77 +165,77 @@ fn make_local_filename(
 fn make_filename(
     config: config::config,
     page: doc::page
-) -> str {
+) -> ~str {
     let filename = {
         alt page {
           doc::cratepage(doc) {
             if config.output_format == config::pandoc_html &&
                 config.output_style == config::doc_per_mod {
-                "index"
+                ~"index"
             } else {
-                assert doc.topmod.name() != "";
+                assert doc.topmod.name() != ~"";
                 doc.topmod.name()
             }
           }
           doc::itempage(doc) {
-            str::connect(doc.path() + ~[doc.name()], "_")
+            str::connect(doc.path() + ~[doc.name()], ~"_")
           }
         }
     };
     let ext = alt config.output_format {
-      config::markdown { "md" }
-      config::pandoc_html { "html" }
+      config::markdown { ~"md" }
+      config::pandoc_html { ~"html" }
     };
 
-    filename + "." + ext
+    filename + ~"." + ext
 }
 
 #[test]
 fn should_use_markdown_file_name_based_off_crate() {
     let config = {
-        output_dir: "output/dir",
+        output_dir: ~"output/dir",
         output_format: config::markdown,
         output_style: config::doc_per_crate
-        with config::default_config("input/test.rc")
+        with config::default_config(~"input/test.rc")
     };
-    let doc = test::mk_doc("test", "");
+    let doc = test::mk_doc(~"test", ~"");
     let page = doc::cratepage(doc.cratedoc());
     let filename = make_local_filename(config, page);
-    assert filename == "output/dir/test.md";
+    assert filename == ~"output/dir/test.md";
 }
 
 #[test]
 fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
     let config = {
-        output_dir: "output/dir",
+        output_dir: ~"output/dir",
         output_format: config::pandoc_html,
         output_style: config::doc_per_mod
-        with config::default_config("input/test.rc")
+        with config::default_config(~"input/test.rc")
     };
-    let doc = test::mk_doc("", "");
+    let doc = test::mk_doc(~"", ~"");
     let page = doc::cratepage(doc.cratedoc());
     let filename = make_local_filename(config, page);
-    assert filename == "output/dir/index.html";
+    assert filename == ~"output/dir/index.html";
 }
 
 #[test]
 fn should_name_mod_file_names_by_path() {
     let config = {
-        output_dir: "output/dir",
+        output_dir: ~"output/dir",
         output_format: config::pandoc_html,
         output_style: config::doc_per_mod
-        with config::default_config("input/test.rc")
+        with config::default_config(~"input/test.rc")
     };
-    let doc = test::mk_doc("", "mod a { mod b { } }");
+    let doc = test::mk_doc(~"", ~"mod a { mod b { } }");
     let modb = doc.cratemod().mods()[0].mods()[0];
     let page = doc::itempage(doc::modtag(modb));
     let filename = make_local_filename(config, page);
-    assert  filename == "output/dir/a_b.html";
+    assert  filename == ~"output/dir/a_b.html";
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(name: str, source: str) -> doc::doc {
+    fn mk_doc(name: ~str, source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, name);
             let doc = path_pass::mk_pass().f(srv, doc);
@@ -244,7 +244,7 @@ mod test {
     }
 }
 
-fn write_file(path: str, s: str) {
+fn write_file(path: ~str, s: ~str) {
     import io::writer_util;
 
     alt io::file_writer(path, ~[io::create, io::truncate]) {
@@ -256,7 +256,7 @@ fn write_file(path: str, s: str) {
 }
 
 fn future_writer_factory(
-) -> (writer_factory, comm::port<(doc::page, str)>) {
+) -> (writer_factory, comm::port<(doc::page, ~str)>) {
     let markdown_po = comm::port();
     let markdown_ch = comm::chan(markdown_po);
     let writer_factory = fn~(page: doc::page) -> writer {
@@ -274,14 +274,14 @@ fn future_writer_factory(
     (writer_factory, markdown_po)
 }
 
-fn future_writer() -> (writer, future::future<str>) {
+fn future_writer() -> (writer, future::future<~str>) {
     let port = comm::port();
     let chan = comm::chan(port);
     let writer = fn~(+instr: writeinstr) {
         comm::send(chan, copy instr);
     };
     let future = do future::from_fn {
-        let mut res = "";
+        let mut res = ~"";
         loop {
             alt comm::recv(port) {
               write(s) { res += s }

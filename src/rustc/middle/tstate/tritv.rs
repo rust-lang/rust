@@ -264,15 +264,15 @@ fn to_vec(v: t) -> ~[uint] {
     ret rslt;
 }
 
-fn to_str(v: t) -> str {
+fn to_str(v: t) -> ~str {
     let mut i: uint = 0u;
-    let mut rs: str = "";
+    let mut rs: ~str = ~"";
     while i < v.nbits {
         rs +=
             alt tritv_get(v, i) {
-              dont_care { "?" }
-              ttrue { "1" }
-              tfalse { "0" }
+              dont_care { ~"?" }
+              ttrue { ~"1" }
+              tfalse { ~"0" }
             };
         i += 1u;
     }

@@ -85,7 +85,7 @@ fn len<T>(ls: @list<T>) -> uint {
 pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
     alt *ls {
         cons(_, tl) { ret tl; }
-        nil { fail "list empty" }
+        nil { fail ~"list empty" }
     }
 }
 

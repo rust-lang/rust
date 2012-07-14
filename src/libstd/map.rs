@@ -237,7 +237,7 @@ mod chained {
         }
 
         fn get(k: K) -> V {
-            self.find(k).expect("Key not found in table")
+            self.find(k).expect(~"Key not found in table")
         }
 
         fn [](k: K) -> V {
@@ -305,13 +305,13 @@ fn hashmap<K: const, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
 }
 
 /// Construct a hashmap for string keys
-fn str_hash<V: copy>() -> hashmap<str, V> {
+fn str_hash<V: copy>() -> hashmap<~str, V> {
     ret hashmap(str::hash, str::eq);
 }
 
 /// Construct a hashmap for boxed string keys
-fn box_str_hash<V: copy>() -> hashmap<@str/~, V> {
-    ret hashmap(|x: @str/~| str::hash(*x), |x,y| str::eq(*x,*y));
+fn box_str_hash<V: copy>() -> hashmap<@~str, V> {
+    ret hashmap(|x: @~str| str::hash(*x), |x,y| str::eq(*x,*y));
 }
 
 /// Construct a hashmap for byte string keys
@@ -356,7 +356,7 @@ fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
 }
 
 /// Construct a hashmap from a vector with string keys
-fn hash_from_strs<V: copy>(items: ~[(str, V)]) -> hashmap<str, V> {
+fn hash_from_strs<V: copy>(items: ~[(~str, V)]) -> hashmap<~str, V> {
     hash_from_vec(str::hash, str::eq, items)
 }
 
@@ -385,8 +385,8 @@ mod tests {
         fn uint_id(&&x: uint) -> uint { x }
         let hasher_uint: map::hashfn<uint> = uint_id;
         let eqer_uint: map::eqfn<uint> = eq_uint;
-        let hasher_str: map::hashfn<str> = str::hash;
-        let eqer_str: map::eqfn<str> = str::eq;
+        let hasher_str: map::hashfn<~str> = str::hash;
+        let eqer_str: map::eqfn<~str> = str::eq;
         #debug("uint -> uint");
         let hm_uu: map::hashmap<uint, uint> =
             map::hashmap::<uint, uint>(hasher_uint, eqer_uint);
@@ -400,49 +400,49 @@ mod tests {
         assert (hm_uu.get(12u) == 14u);
         assert (!hm_uu.insert(12u, 12u));
         assert (hm_uu.get(12u) == 12u);
-        let ten: str = "ten";
-        let eleven: str = "eleven";
-        let twelve: str = "twelve";
+        let ten: ~str = ~"ten";
+        let eleven: ~str = ~"eleven";
+        let twelve: ~str = ~"twelve";
         #debug("str -> uint");
-        let hm_su: map::hashmap<str, uint> =
-            map::hashmap::<str, uint>(hasher_str, eqer_str);
-        assert (hm_su.insert("ten", 12u));
+        let hm_su: map::hashmap<~str, uint> =
+            map::hashmap::<~str, uint>(hasher_str, eqer_str);
+        assert (hm_su.insert(~"ten", 12u));
         assert (hm_su.insert(eleven, 13u));
-        assert (hm_su.insert("twelve", 14u));
+        assert (hm_su.insert(~"twelve", 14u));
         assert (hm_su.get(eleven) == 13u);
-        assert (hm_su.get("eleven") == 13u);
-        assert (hm_su.get("twelve") == 14u);
-        assert (hm_su.get("ten") == 12u);
-        assert (!hm_su.insert("twelve", 14u));
-        assert (hm_su.get("twelve") == 14u);
-        assert (!hm_su.insert("twelve", 12u));
-        assert (hm_su.get("twelve") == 12u);
+        assert (hm_su.get(~"eleven") == 13u);
+        assert (hm_su.get(~"twelve") == 14u);
+        assert (hm_su.get(~"ten") == 12u);
+        assert (!hm_su.insert(~"twelve", 14u));
+        assert (hm_su.get(~"twelve") == 14u);
+        assert (!hm_su.insert(~"twelve", 12u));
+        assert (hm_su.get(~"twelve") == 12u);
         #debug("uint -> str");
-        let hm_us: map::hashmap<uint, str> =
-            map::hashmap::<uint, str>(hasher_uint, eqer_uint);
-        assert (hm_us.insert(10u, "twelve"));
-        assert (hm_us.insert(11u, "thirteen"));
-        assert (hm_us.insert(12u, "fourteen"));
-        assert (str::eq(hm_us.get(11u), "thirteen"));
-        assert (str::eq(hm_us.get(12u), "fourteen"));
-        assert (str::eq(hm_us.get(10u), "twelve"));
-        assert (!hm_us.insert(12u, "fourteen"));
-        assert (str::eq(hm_us.get(12u), "fourteen"));
-        assert (!hm_us.insert(12u, "twelve"));
-        assert (str::eq(hm_us.get(12u), "twelve"));
+        let hm_us: map::hashmap<uint, ~str> =
+            map::hashmap::<uint, ~str>(hasher_uint, eqer_uint);
+        assert (hm_us.insert(10u, ~"twelve"));
+        assert (hm_us.insert(11u, ~"thirteen"));
+        assert (hm_us.insert(12u, ~"fourteen"));
+        assert (str::eq(hm_us.get(11u), ~"thirteen"));
+        assert (str::eq(hm_us.get(12u), ~"fourteen"));
+        assert (str::eq(hm_us.get(10u), ~"twelve"));
+        assert (!hm_us.insert(12u, ~"fourteen"));
+        assert (str::eq(hm_us.get(12u), ~"fourteen"));
+        assert (!hm_us.insert(12u, ~"twelve"));
+        assert (str::eq(hm_us.get(12u), ~"twelve"));
         #debug("str -> str");
-        let hm_ss: map::hashmap<str, str> =
-            map::hashmap::<str, str>(hasher_str, eqer_str);
-        assert (hm_ss.insert(ten, "twelve"));
-        assert (hm_ss.insert(eleven, "thirteen"));
-        assert (hm_ss.insert(twelve, "fourteen"));
-        assert (str::eq(hm_ss.get("eleven"), "thirteen"));
-        assert (str::eq(hm_ss.get("twelve"), "fourteen"));
-        assert (str::eq(hm_ss.get("ten"), "twelve"));
-        assert (!hm_ss.insert("twelve", "fourteen"));
-        assert (str::eq(hm_ss.get("twelve"), "fourteen"));
-        assert (!hm_ss.insert("twelve", "twelve"));
-        assert (str::eq(hm_ss.get("twelve"), "twelve"));
+        let hm_ss: map::hashmap<~str, ~str> =
+            map::hashmap::<~str, ~str>(hasher_str, eqer_str);
+        assert (hm_ss.insert(ten, ~"twelve"));
+        assert (hm_ss.insert(eleven, ~"thirteen"));
+        assert (hm_ss.insert(twelve, ~"fourteen"));
+        assert (str::eq(hm_ss.get(~"eleven"), ~"thirteen"));
+        assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
+        assert (str::eq(hm_ss.get(~"ten"), ~"twelve"));
+        assert (!hm_ss.insert(~"twelve", ~"fourteen"));
+        assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
+        assert (!hm_ss.insert(~"twelve", ~"twelve"));
+        assert (str::eq(hm_ss.get(~"twelve"), ~"twelve"));
         #debug("*** finished test_simple");
     }
 
@@ -484,10 +484,10 @@ mod tests {
             i += 1u;
         }
         #debug("str -> str");
-        let hasher_str: map::hashfn<str> = str::hash;
-        let eqer_str: map::eqfn<str> = str::eq;
-        let hm_ss: map::hashmap<str, str> =
-            map::hashmap::<str, str>(hasher_str, eqer_str);
+        let hasher_str: map::hashfn<~str> = str::hash;
+        let eqer_str: map::eqfn<~str> = str::eq;
+        let hm_ss: map::hashmap<~str, ~str> =
+            map::hashmap::<~str, ~str>(hasher_str, eqer_str);
         i = 0u;
         while i < num_to_insert {
             assert hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u));
@@ -602,27 +602,27 @@ mod tests {
 
     #[test]
     fn test_contains_key() {
-        let key = "k";
-        let map = map::hashmap::<str, str>(str::hash, str::eq);
+        let key = ~"k";
+        let map = map::hashmap::<~str, ~str>(str::hash, str::eq);
         assert (!map.contains_key(key));
-        map.insert(key, "val");
+        map.insert(key, ~"val");
         assert (map.contains_key(key));
     }
 
     #[test]
     fn test_find() {
-        let key = "k";
-        let map = map::hashmap::<str, str>(str::hash, str::eq);
+        let key = ~"k";
+        let map = map::hashmap::<~str, ~str>(str::hash, str::eq);
         assert (option::is_none(map.find(key)));
-        map.insert(key, "val");
-        assert (option::get(map.find(key)) == "val");
+        map.insert(key, ~"val");
+        assert (option::get(map.find(key)) == ~"val");
     }
 
     #[test]
     fn test_clear() {
-        let key = "k";
-        let map = map::hashmap::<str, str>(str::hash, str::eq);
-        map.insert(key, "val");
+        let key = ~"k";
+        let map = map::hashmap::<~str, ~str>(str::hash, str::eq);
+        map.insert(key, ~"val");
         assert (map.size() == 1);
         assert (map.contains_key(key));
         map.clear();
@@ -633,13 +633,13 @@ mod tests {
     #[test]
     fn test_hash_from_vec() {
         let map = map::hash_from_strs(~[
-            ("a", 1),
-            ("b", 2),
-            ("c", 3)
+            (~"a", 1),
+            (~"b", 2),
+            (~"c", 3)
         ]);
         assert map.size() == 3u;
-        assert map.get("a") == 1;
-        assert map.get("b") == 2;
-        assert map.get("c") == 3;
+        assert map.get(~"a") == 1;
+        assert map.get(~"b") == 2;
+        assert map.get(~"c") == 3;
     }
 }

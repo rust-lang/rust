@@ -107,7 +107,7 @@ class lookup {
         if self.candidates.len() > 1u {
             self.tcx().sess.span_err(
                 self.expr.span,
-                "multiple applicable methods in scope");
+                ~"multiple applicable methods in scope");
 
             for self.candidates.eachi |i, candidate| {
                 alt candidate.entry.origin {
@@ -222,14 +222,14 @@ class lookup {
             if ty::type_has_self(m_fty) {
                 self.tcx().sess.span_err(
                     self.expr.span,
-                    "can not call a method that contains a \
+                    ~"can not call a method that contains a \
                      self type through a boxed iface");
             }
 
             if (*m.tps).len() > 0u {
                 self.tcx().sess.span_err(
                     self.expr.span,
-                    "can not call a generic method through a \
+                    ~"can not call a generic method through a \
                      boxed trait");
             }
 
@@ -256,7 +256,7 @@ class lookup {
             if m.vis == ast::private && !self.include_private {
                 self.tcx().sess.span_fatal(
                     self.expr.span,
-                    "Call to private method not allowed outside \
+                    ~"Call to private method not allowed outside \
                      its defining class");
             }
 
@@ -399,12 +399,12 @@ class lookup {
             } else if n_tps_m == 0u {
                 tcx.sess.span_err(
                     self.expr.span,
-                    "this method does not take type parameters");
+                    ~"this method does not take type parameters");
                 self.fcx.infcx.next_ty_vars(n_tps_m)
             } else if n_tps_supplied != n_tps_m {
                 tcx.sess.span_err(
                     self.expr.span,
-                    "incorrect number of type \
+                    ~"incorrect number of type \
                      parameters given for this method");
                 self.fcx.infcx.next_ty_vars(n_tps_m)
             } else {

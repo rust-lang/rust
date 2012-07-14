@@ -14,22 +14,22 @@ fn main() {
     assert (pi as int == '\u03a0' as int);
     assert ('\x0a' as int == '\n' as int);
 
-    let bhutan: str = "འབྲུག་ཡུལ།";
-    let japan: str = "日本";
-    let uzbekistan: str = "Ўзбекистон";
-    let austria: str = "Österreich";
+    let bhutan: ~str = ~"འབྲུག་ཡུལ།";
+    let japan: ~str = ~"日本";
+    let uzbekistan: ~str = ~"Ўзбекистон";
+    let austria: ~str = ~"Österreich";
 
-    let bhutan_e: str =
-        "\u0f60\u0f56\u0fb2\u0f74\u0f42\u0f0b\u0f61\u0f74\u0f63\u0f0d";
-    let japan_e: str = "\u65e5\u672c";
-    let uzbekistan_e: str =
-        "\u040e\u0437\u0431\u0435\u043a\u0438\u0441\u0442\u043e\u043d";
-    let austria_e: str = "\u00d6sterreich";
+    let bhutan_e: ~str =
+        ~"\u0f60\u0f56\u0fb2\u0f74\u0f42\u0f0b\u0f61\u0f74\u0f63\u0f0d";
+    let japan_e: ~str = ~"\u65e5\u672c";
+    let uzbekistan_e: ~str =
+        ~"\u040e\u0437\u0431\u0435\u043a\u0438\u0441\u0442\u043e\u043d";
+    let austria_e: ~str = ~"\u00d6sterreich";
 
     let oo: char = 'Ö';
     assert (oo as int == 0xd6);
 
-    fn check_str_eq(a: str, b: str) {
+    fn check_str_eq(a: ~str, b: ~str) {
         let mut i: int = 0;
         for str::each(a) |ab| {
             log(debug, i);

@@ -121,7 +121,7 @@ impl extensions for rng {
     /**
      * Return a char randomly chosen from chars, failing if chars is empty
      */
-    fn gen_char_from(chars: str) -> char {
+    fn gen_char_from(chars: ~str) -> char {
         assert !chars.is_empty();
         self.choose(str::chars(chars))
     }
@@ -143,11 +143,11 @@ impl extensions for rng {
     /**
      * Return a random string of the specified length composed of A-Z,a-z,0-9
      */
-    fn gen_str(len: uint) -> str {
-        let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+    fn gen_str(len: uint) -> ~str {
+        let charset = ~"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                        abcdefghijklmnopqrstuvwxyz\
                        0123456789";
-        let mut s = "";
+        let mut s = ~"";
         let mut i = 0u;
         while (i < len) {
             s = s + str::from_char(self.gen_char_from(charset));

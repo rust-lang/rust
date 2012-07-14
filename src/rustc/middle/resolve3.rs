@@ -203,18 +203,18 @@ fn Atom(n: uint) -> Atom {
 }
 
 class AtomTable {
-    let atoms: hashmap<@str/~,Atom>;
-    let strings: dvec<@str/~>;
+    let atoms: hashmap<@~str,Atom>;
+    let strings: dvec<@~str>;
     let mut atom_count: uint;
 
     new() {
-        self.atoms = hashmap::<@str/~,Atom>(|x| str::hash(*x),
+        self.atoms = hashmap::<@~str,Atom>(|x| str::hash(*x),
                                           |x, y| str::eq(*x, *y));
         self.strings = dvec();
         self.atom_count = 0u;
     }
 
-    fn intern(string: @str/~) -> Atom {
+    fn intern(string: @~str) -> Atom {
         alt self.atoms.find(string) {
             none { /* fall through */ }
             some(atom) { ret atom; }
@@ -228,11 +228,11 @@ class AtomTable {
         ret atom;
     }
 
-    fn atom_to_str(atom: Atom) -> @str/~ {
+    fn atom_to_str(atom: Atom) -> @~str {
         ret self.strings.get_elt(atom);
     }
 
-    fn atoms_to_strs(atoms: ~[Atom], f: fn(@str/~) -> bool) {
+    fn atoms_to_strs(atoms: ~[Atom], f: fn(@~str) -> bool) {
         for atoms.each |atom| {
             if !f(self.atom_to_str(atom)) {
                 ret;
@@ -240,15 +240,15 @@ class AtomTable {
         }
     }
 
-    fn atoms_to_str(atoms: ~[Atom]) -> @str/~ {
+    fn atoms_to_str(atoms: ~[Atom]) -> @~str {
         // XXX: str::connect should do this.
-        let mut result = "";
+        let mut result = ~"";
         let mut first = true;
         for self.atoms_to_strs(atoms) |string| {
             if first {
                 first = false;
             } else {
-                result += "::";
+                result += ~"::";
             }
 
             result += *string;
@@ -498,7 +498,8 @@ class NameBindings {
     fn get_module() -> @Module {
         alt self.module_def {
             NoModuleDef {
-                fail "get_module called on a node with no module definition!";
+                fail
+                    ~"get_module called on a node with no module definition!";
             }
             ModuleDef(module) {
                 ret module;
@@ -560,25 +561,25 @@ class PrimitiveTypeTable {
     new(atom_table: @AtomTable) {
         self.primitive_types = atom_hashmap();
 
-        self.intern(atom_table, @"bool",    ty_bool);
-        self.intern(atom_table, @"char",    ty_int(ty_char));
-        self.intern(atom_table, @"float",   ty_float(ty_f));
-        self.intern(atom_table, @"f32",     ty_float(ty_f32));
-        self.intern(atom_table, @"f64",     ty_float(ty_f64));
-        self.intern(atom_table, @"int",     ty_int(ty_i));
-        self.intern(atom_table, @"i8",      ty_int(ty_i8));
-        self.intern(atom_table, @"i16",     ty_int(ty_i16));
-        self.intern(atom_table, @"i32",     ty_int(ty_i32));
-        self.intern(atom_table, @"i64",     ty_int(ty_i64));
-        self.intern(atom_table, @"str",     ty_str);
-        self.intern(atom_table, @"uint",    ty_uint(ty_u));
-        self.intern(atom_table, @"u8",      ty_uint(ty_u8));
-        self.intern(atom_table, @"u16",     ty_uint(ty_u16));
-        self.intern(atom_table, @"u32",     ty_uint(ty_u32));
-        self.intern(atom_table, @"u64",     ty_uint(ty_u64));
+        self.intern(atom_table, @~"bool",    ty_bool);
+        self.intern(atom_table, @~"char",    ty_int(ty_char));
+        self.intern(atom_table, @~"float",   ty_float(ty_f));
+        self.intern(atom_table, @~"f32",     ty_float(ty_f32));
+        self.intern(atom_table, @~"f64",     ty_float(ty_f64));
+        self.intern(atom_table, @~"int",     ty_int(ty_i));
+        self.intern(atom_table, @~"i8",      ty_int(ty_i8));
+        self.intern(atom_table, @~"i16",     ty_int(ty_i16));
+        self.intern(atom_table, @~"i32",     ty_int(ty_i32));
+        self.intern(atom_table, @~"i64",     ty_int(ty_i64));
+        self.intern(atom_table, @~"str",     ty_str);
+        self.intern(atom_table, @~"uint",    ty_uint(ty_u));
+        self.intern(atom_table, @~"u8",      ty_uint(ty_u8));
+        self.intern(atom_table, @~"u16",     ty_uint(ty_u16));
+        self.intern(atom_table, @~"u32",     ty_uint(ty_u32));
+        self.intern(atom_table, @~"u64",     ty_uint(ty_u64));
     }
 
-    fn intern(atom_table: @AtomTable, string: @str/~,
+    fn intern(atom_table: @AtomTable, string: @~str,
               primitive_type: prim_ty) {
         let atom = (*atom_table).intern(string);
         self.primitive_types.insert(atom, primitive_type);
@@ -651,7 +652,7 @@ class Resolver {
         self.type_ribs = @dvec();
         self.xray_context = NoXray;
 
-        self.self_atom = (*self.atom_table).intern(@"self");
+        self.self_atom = (*self.atom_table).intern(@~"self");
         self.primitive_type_table = @PrimitiveTypeTable(self.atom_table);
 
         self.namespaces = ~[ ModuleNS, TypeNS, ValueNS, ImplNS ];
@@ -934,7 +935,7 @@ class Resolver {
             }
 
           item_mac(*) {
-            fail "item macros unimplemented"
+            fail ~"item macros unimplemented"
           }
         }
     }
@@ -1038,14 +1039,15 @@ class Resolver {
                             let last_ident = full_path.idents.last();
                             if last_ident != ident {
                                 self.session.span_err(view_item.span,
-                                                      "cannot export under \
+                                                      ~"cannot export under \
                                                        a new name");
                             }
                             if full_path.idents.len() != 1u {
-                                self.session.span_err(view_item.span,
-                                                      "cannot export an item \
-                                                       that is not in this \
-                                                       module");
+                                self.session.span_err(
+                                    view_item.span,
+                                    ~"cannot export an item \
+                                      that is not in this \
+                                      module");
                             }
 
                             let atom = (*self.atom_table).intern(ident);
@@ -1054,7 +1056,7 @@ class Resolver {
 
                         view_path_glob(*) {
                             self.session.span_err(view_item.span,
-                                                  "export globs are \
+                                                  ~"export globs are \
                                                    unsupported");
                         }
 
@@ -1063,7 +1065,7 @@ class Resolver {
                                     path_list_idents.len() == 0u {
 
                                 self.session.span_warn(view_item.span,
-                                                       "this syntax for \
+                                                       ~"this syntax for \
                                                         exporting no \
                                                         variants is \
                                                         unsupported; export \
@@ -1072,7 +1074,7 @@ class Resolver {
                             } else {
                                 if path.idents.len() != 0u {
                                     self.session.span_err(view_item.span,
-                                                          "cannot export an \
+                                                          ~"cannot export an \
                                                            item that is not \
                                                            in this module");
                                 }
@@ -1180,7 +1182,7 @@ class Resolver {
                    path_entry.path_string,
                    path_entry.def_like);
 
-            let mut pieces = split_str(path_entry.path_string, "::");
+            let mut pieces = split_str(path_entry.path_string, ~"::");
             let final_ident = pop(pieces);
 
             // Find the module we need, creating modules along the way if we
@@ -1251,7 +1253,7 @@ class Resolver {
                                             alt existing_module.parent_link {
                                                 NoParentLink |
                                                         BlockParentLink(*) {
-                                                    fail "can't happen";
+                                                    fail ~"can't happen";
                                                 }
                                                 ModuleParentLink
                                                         (parent_module,
@@ -1468,7 +1470,7 @@ class Resolver {
             }
 
             if self.unresolved_imports == prev_unresolved_imports {
-                self.session.err("failed to resolve imports");
+                self.session.err(~"failed to resolve imports");
                 self.report_unresolved_imports(module_root);
                 break;
             }
@@ -1520,7 +1522,7 @@ class Resolver {
                 Failed {
                     // We presumably emitted an error. Continue.
                     self.session.span_err(import_directive.span,
-                                          "failed to resolve import");
+                                          ~"failed to resolve import");
                 }
                 Indeterminate {
                     // Bail out. We'll come around next time.
@@ -1803,7 +1805,7 @@ class Resolver {
                         binding");
             }
             UnknownResult {
-                fail "module result should be known at this point";
+                fail ~"module result should be known at this point";
             }
         }
         alt value_result {
@@ -1813,7 +1815,7 @@ class Resolver {
             }
             UnboundResult { /* Continue. */ }
             UnknownResult {
-                fail "value result should be known at this point";
+                fail ~"value result should be known at this point";
             }
         }
         alt type_result {
@@ -1823,7 +1825,7 @@ class Resolver {
             }
             UnboundResult { /* Continue. */ }
             UnknownResult {
-                fail "type result should be known at this point";
+                fail ~"type result should be known at this point";
             }
         }
         alt impl_result {
@@ -1834,7 +1836,7 @@ class Resolver {
             }
             UnboundImplResult { /* Continue. */ }
             UnknownImplResult {
-                fail "impl result should be known at this point";
+                fail ~"impl result should be known at this point";
             }
         }
 
@@ -2025,7 +2027,7 @@ class Resolver {
                                             xray) {
 
                 Failed {
-                    self.session.span_err(span, "unresolved name");
+                    self.session.span_err(span, ~"unresolved name");
                     ret Failed;
                 }
                 Indeterminate {
@@ -2082,7 +2084,7 @@ class Resolver {
         let mut search_module;
         alt self.resolve_module_in_lexical_scope(module, first_element) {
             Failed {
-                self.session.span_err(span, "unresolved name");
+                self.session.span_err(span, ~"unresolved name");
                 ret Failed;
             }
             Indeterminate {
@@ -2316,7 +2318,7 @@ class Resolver {
                 source_name = source;
             }
             GlobImport {
-                fail "found `import *`, which is invalid";
+                fail ~"found `import *`, which is invalid";
             }
         }
 
@@ -2443,14 +2445,15 @@ class Resolver {
         if is_none(module_result) && is_none(value_result) &&
                 is_none(type_result) && is_none(impl_result) {
 
-            self.session.span_err(import_directive.span, "unresolved import");
+            self.session.span_err(import_directive.span,
+                                  ~"unresolved import");
             ret Failed;
         }
 
         // Otherwise, proceed and write in the bindings.
         alt module.import_resolutions.find(target_name) {
             none {
-                fail "(resolving one-level renaming import) reduced graph \
+                fail ~"(resolving one-level renaming import) reduced graph \
                       construction or glob importing should have created the \
                       import resolution name by now";
             }
@@ -2488,7 +2491,7 @@ class Resolver {
         let import_count = module.imports.len();
         if index != import_count {
             self.session.span_err(module.imports.get_elt(index).span,
-                                  "unresolved import");
+                                  ~"unresolved import");
         }
 
         // Descend into children and anonymous children.
@@ -2800,15 +2803,15 @@ class Resolver {
                         // named function item. This is not allowed, so we
                         // report an error.
 
-                        self.session.span_err(span,
-                                              "attempted dynamic environment-\
-                                               capture");
+                        self.session.span_err(
+                            span,
+                            ~"attempted dynamic environment-capture");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
 
                         self.session.span_err(span,
-                                              "attempt to use a type \
+                                              ~"attempt to use a type \
                                                argument out of scope");
                     }
 
@@ -2881,7 +2884,7 @@ class Resolver {
         // Items with the !resolve_unexported attribute are X-ray contexts.
         // This is used to allow the test runner to run unexported tests.
         let orig_xray_flag = self.xray_context;
-        if contains_name(attr_metas(item.attrs), "!resolve_unexported") {
+        if contains_name(attr_metas(item.attrs), ~"!resolve_unexported") {
             self.xray_context = Xray;
         }
 
@@ -3014,7 +3017,7 @@ class Resolver {
 
                 if !self.session.building_library &&
                         is_none(self.session.main_fn) &&
-                        str::eq(*item.ident, "main") {
+                        str::eq(*item.ident, ~"main") {
 
                     self.session.main_fn = some((item.id, item.span));
                 }
@@ -3037,7 +3040,7 @@ class Resolver {
             }
 
           item_mac(*) {
-            fail "item macros unimplemented"
+            fail ~"item macros unimplemented"
           }
         }
 
@@ -3102,7 +3105,7 @@ class Resolver {
                                                 capture_item.span) {
                         none {
                             self.session.span_err(capture_item.span,
-                                                  "unresolved name in \
+                                                  ~"unresolved name in \
                                                    capture clause");
                         }
                         some(def) {
@@ -3231,7 +3234,7 @@ class Resolver {
                 alt self.resolve_path(interface.path, TypeNS, true, visitor) {
                     none {
                         self.session.span_err(interface.path.span,
-                                              "attempt to implement a \
+                                              ~"attempt to implement a \
                                                nonexistent interface");
                     }
                     some(def) {
@@ -3345,7 +3348,7 @@ class Resolver {
                                           true, visitor) {
                         none {
                             self.session.span_err(span,
-                                                  "attempt to implement an \
+                                                  ~"attempt to implement an \
                                                    unknown interface");
                         }
                         some(def) {
@@ -3441,7 +3444,7 @@ class Resolver {
       for arm.pats.each() |p: @pat| {
         if self.num_bindings(p) != good {
           self.session.span_err(p.span,
-             "inconsistent number of bindings");
+             ~"inconsistent number of bindings");
           self.warn_var_patterns(arm);
           break;
         };
@@ -3544,7 +3547,7 @@ class Resolver {
                         // Write the result into the def map.
                         #debug("(resolving type) writing resolution for `%s` \
                                 (id %d)",
-                               connect(path.idents.map(|x| *x), "::"),
+                               connect(path.idents.map(|x| *x), ~"::"),
                                path_id);
                         self.record_def(path_id, def);
                     }
@@ -3552,7 +3555,7 @@ class Resolver {
                         self.session.span_err
                             (ty.span, #fmt("use of undeclared type name `%s`",
                                            connect(path.idents.map(|x| *x),
-                                                   "::")));
+                                                   ~"::")));
                     }
                 }
             }
@@ -3565,7 +3568,7 @@ class Resolver {
                                           false, visitor) {
                         none {
                             self.session.span_err(constraint.span,
-                                                  "(resolving function) \
+                                                  ~"(resolving function) \
                                                    use of undeclared \
                                                    constraint");
                         }
@@ -3623,7 +3626,7 @@ class Resolver {
                         }
                         FoundConst {
                             self.session.span_err(pattern.span,
-                                                  "pattern variable \
+                                                  ~"pattern variable \
                                                    conflicts with a constant \
                                                    in scope");
                         }
@@ -3699,7 +3702,7 @@ class Resolver {
                         }
                         none {
                             self.session.span_err(path.span,
-                                                  "unresolved enum variant");
+                                                  ~"unresolved enum variant");
                         }
                     }
 
@@ -3735,7 +3738,7 @@ class Resolver {
             Success(target) {
                 alt target.bindings.value_def {
                     none {
-                        fail "resolved name in the value namespace to a set \
+                        fail ~"resolved name in the value namespace to a set \
                               of name bindings with no def?!";
                     }
                     some(def @ def_variant(*)) {
@@ -3751,7 +3754,7 @@ class Resolver {
             }
 
             Indeterminate {
-                fail "unexpected indeterminate result";
+                fail ~"unexpected indeterminate result";
             }
 
             Failed {
@@ -3858,7 +3861,7 @@ class Resolver {
                                 ret ImportNameDefinition(def);
                             }
                             none {
-                                fail "target for namespace doesn't refer to \
+                                fail ~"target for namespace doesn't refer to \
                                       bindings that contain a definition for \
                                       that namespace!";
                             }
@@ -3910,7 +3913,7 @@ class Resolver {
             }
 
             Indeterminate {
-                fail "indeterminate unexpected";
+                fail ~"indeterminate unexpected";
             }
 
             Success(resulting_module) {
@@ -3964,7 +3967,7 @@ class Resolver {
             }
 
             Indeterminate {
-                fail "indeterminate unexpected";
+                fail ~"indeterminate unexpected";
             }
 
             Success(resulting_module) {
@@ -4012,7 +4015,7 @@ class Resolver {
                                                  AllowCapturingSelf);
             }
             ModuleNS | ImplNS {
-                fail "module or impl namespaces do not have local ribs";
+                fail ~"module or impl namespaces do not have local ribs";
             }
         }
 
@@ -4044,7 +4047,7 @@ class Resolver {
             Success(target) {
                 alt (*target.bindings).def_for_namespace(namespace) {
                     none {
-                        fail "resolved name in a namespace to a set of name \
+                        fail ~"resolved name in a namespace to a set of name \
                               bindings with no def for that namespace?!";
                     }
                     some(def) {
@@ -4056,7 +4059,7 @@ class Resolver {
                 }
             }
             Indeterminate {
-                fail "unexpected indeterminate result";
+                fail ~"unexpected indeterminate result";
             }
             Failed {
                 ret none;
@@ -4083,14 +4086,14 @@ class Resolver {
                     some(def) {
                         // Write the result into the def map.
                         #debug("(resolving expr) resolved `%s`",
-                               connect(path.idents.map(|x| *x), "::"));
+                               connect(path.idents.map(|x| *x), ~"::"));
                         self.record_def(expr.id, def);
                     }
                     none {
                         self.session.span_err(expr.span,
                                               #fmt("unresolved name: %s",
                                               connect(path.idents.map(|x| *x),
-                                                      "::")));
+                                                      ~"::")));
                     }
                 }
 
@@ -4197,15 +4200,15 @@ class Resolver {
                 alt self.unused_import_lint_level {
                     warn {
                         self.session.span_warn(import_resolution.span,
-                                               "unused import");
+                                               ~"unused import");
                     }
                     error {
                         self.session.span_err(import_resolution.span,
-                                              "unused import");
+                                              ~"unused import");
                     }
                     ignore {
                         self.session.span_bug(import_resolution.span,
-                                              "shouldn't be here if lint \
+                                              ~"shouldn't be here if lint \
                                                pass is ignored");
                     }
                 }
@@ -4221,7 +4224,7 @@ class Resolver {
     //
 
     /// A somewhat inefficient routine to print out the name of a module.
-    fn module_to_str(module: @Module) -> str {
+    fn module_to_str(module: @Module) -> ~str {
         let atoms = dvec();
         let mut current_module = module;
         loop {
@@ -4234,21 +4237,21 @@ class Resolver {
                     current_module = module;
                 }
                 BlockParentLink(module, node_id) {
-                    atoms.push((*self.atom_table).intern(@"<opaque>"));
+                    atoms.push((*self.atom_table).intern(@~"<opaque>"));
                     current_module = module;
                 }
             }
         }
 
         if atoms.len() == 0u {
-            ret "???";
+            ret ~"???";
         }
 
-        let mut string = "";
+        let mut string = ~"";
         let mut i = atoms.len() - 1u;
         loop {
             if i < atoms.len() - 1u {
-                string += "::";
+                string += ~"::";
             }
             string += *(*self.atom_table).atom_to_str(atoms.get_elt(i));
 
@@ -4273,36 +4276,36 @@ class Resolver {
         for module.import_resolutions.each |name, import_resolution| {
             let mut module_repr;
             alt (*import_resolution).target_for_namespace(ModuleNS) {
-                none { module_repr = ""; }
+                none { module_repr = ~""; }
                 some(target) {
-                    module_repr = " module:?";
+                    module_repr = ~" module:?";
                     // XXX
                 }
             }
 
             let mut value_repr;
             alt (*import_resolution).target_for_namespace(ValueNS) {
-                none { value_repr = ""; }
+                none { value_repr = ~""; }
                 some(target) {
-                    value_repr = " value:?";
+                    value_repr = ~" value:?";
                     // XXX
                 }
             }
 
             let mut type_repr;
             alt (*import_resolution).target_for_namespace(TypeNS) {
-                none { type_repr = ""; }
+                none { type_repr = ~""; }
                 some(target) {
-                    type_repr = " type:?";
+                    type_repr = ~" type:?";
                     // XXX
                 }
             }
 
             let mut impl_repr;
             alt (*import_resolution).target_for_namespace(ImplNS) {
-                none { impl_repr = ""; }
+                none { impl_repr = ~""; }
                 some(target) {
-                    impl_repr = " impl:?";
+                    impl_repr = ~" impl:?";
                     // XXX
                 }
             }

@@ -185,7 +185,7 @@ fn check_crate(tcx: ty::ctxt,
     check_loans::check_loans(bccx, req_maps, crate);
 
     if tcx.sess.borrowck_stats() {
-        io::println("--- borrowck stats ---");
+        io::println(~"--- borrowck stats ---");
         io::println(#fmt["paths requiring guarantees: %u",
                         bccx.guaranteed_paths]);
         io::println(#fmt["paths requiring loans     : %s",
@@ -200,7 +200,7 @@ fn check_crate(tcx: ty::ctxt,
 
     ret (bccx.root_map, bccx.mutbl_map);
 
-    fn make_stat(bccx: borrowck_ctxt, stat: uint) -> str {
+    fn make_stat(bccx: borrowck_ctxt, stat: uint) -> ~str {
         let stat_f = stat as float;
         let total = bccx.guaranteed_paths as float;
         #fmt["%u (%.0f%%)", stat  , stat_f * 100f / total]
@@ -386,11 +386,11 @@ impl error_methods for borrowck_ctxt {
                  self.bckerr_code_to_str(err.code)]);
     }
 
-    fn span_err(s: span, m: str) {
+    fn span_err(s: span, m: ~str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(s: span, m: str) {
+    fn span_note(s: span, m: ~str) {
         self.tcx.sess.span_note(s, m);
     }
 
@@ -408,14 +408,14 @@ impl error_methods for borrowck_ctxt {
 }
 
 impl to_str_methods for borrowck_ctxt {
-    fn cat_to_repr(cat: categorization) -> str {
+    fn cat_to_repr(cat: categorization) -> ~str {
         alt cat {
-          cat_special(sk_method) { "method" }
-          cat_special(sk_static_item) { "static_item" }
-          cat_special(sk_self) { "self" }
-          cat_special(sk_heap_upvar) { "heap-upvar" }
-          cat_stack_upvar(_) { "stack-upvar" }
-          cat_rvalue { "rvalue" }
+          cat_special(sk_method) { ~"method" }
+          cat_special(sk_static_item) { ~"static_item" }
+          cat_special(sk_self) { ~"self" }
+          cat_special(sk_heap_upvar) { ~"heap-upvar" }
+          cat_stack_upvar(_) { ~"stack-upvar" }
+          cat_rvalue { ~"rvalue" }
           cat_local(node_id) { #fmt["local(%d)", node_id] }
           cat_binding(node_id) { #fmt["binding(%d)", node_id] }
           cat_arg(node_id) { #fmt["arg(%d)", node_id] }
@@ -430,33 +430,33 @@ impl to_str_methods for borrowck_ctxt {
         }
     }
 
-    fn mut_to_str(mutbl: ast::mutability) -> str {
+    fn mut_to_str(mutbl: ast::mutability) -> ~str {
         alt mutbl {
-          m_mutbl { "mutable" }
-          m_const { "const" }
-          m_imm { "immutable" }
+          m_mutbl { ~"mutable" }
+          m_const { ~"const" }
+          m_imm { ~"immutable" }
         }
     }
 
-    fn ptr_sigil(ptr: ptr_kind) -> str {
+    fn ptr_sigil(ptr: ptr_kind) -> ~str {
         alt ptr {
-          uniq_ptr { "~" }
-          gc_ptr { "@" }
-          region_ptr { "&" }
-          unsafe_ptr { "*" }
+          uniq_ptr { ~"~" }
+          gc_ptr { ~"@" }
+          region_ptr { ~"&" }
+          unsafe_ptr { ~"*" }
         }
     }
 
-    fn comp_to_repr(comp: comp_kind) -> str {
+    fn comp_to_repr(comp: comp_kind) -> ~str {
         alt comp {
           comp_field(fld, _) { *fld }
-          comp_index(*) { "[]" }
-          comp_tuple { "()" }
-          comp_variant(_) { "<enum>" }
+          comp_index(*) { ~"[]" }
+          comp_tuple { ~"()" }
+          comp_variant(_) { ~"<enum>" }
         }
     }
 
-    fn lp_to_str(lp: @loan_path) -> str {
+    fn lp_to_str(lp: @loan_path) -> ~str {
         alt *lp {
           lp_local(node_id) {
             #fmt["local(%d)", node_id]
@@ -475,56 +475,56 @@ impl to_str_methods for borrowck_ctxt {
         }
     }
 
-    fn cmt_to_repr(cmt: cmt) -> str {
+    fn cmt_to_repr(cmt: cmt) -> ~str {
         #fmt["{%s id:%d m:%s lp:%s ty:%s}",
              self.cat_to_repr(cmt.cat),
              cmt.id,
              self.mut_to_str(cmt.mutbl),
-             cmt.lp.map_default("none", |p| self.lp_to_str(p) ),
+             cmt.lp.map_default(~"none", |p| self.lp_to_str(p) ),
              ty_to_str(self.tcx, cmt.ty)]
     }
 
-    fn pk_to_sigil(pk: ptr_kind) -> str {
+    fn pk_to_sigil(pk: ptr_kind) -> ~str {
         alt pk {
-          uniq_ptr {"~"}
-          gc_ptr {"@"}
-          region_ptr {"&"}
-          unsafe_ptr {"*"}
+          uniq_ptr {~"~"}
+          gc_ptr {~"@"}
+          region_ptr {~"&"}
+          unsafe_ptr {~"*"}
         }
     }
 
-    fn cmt_to_str(cmt: cmt) -> str {
+    fn cmt_to_str(cmt: cmt) -> ~str {
         let mut_str = self.mut_to_str(cmt.mutbl);
         alt cmt.cat {
-          cat_special(sk_method) { "method" }
-          cat_special(sk_static_item) { "static item" }
-          cat_special(sk_self) { "self reference" }
+          cat_special(sk_method) { ~"method" }
+          cat_special(sk_static_item) { ~"static item" }
+          cat_special(sk_self) { ~"self reference" }
           cat_special(sk_heap_upvar) {
-              "captured outer variable in a heap closure"
+              ~"captured outer variable in a heap closure"
           }
-          cat_rvalue { "non-lvalue" }
-          cat_local(_) { mut_str + " local variable" }
-          cat_binding(_) { "pattern binding" }
-          cat_arg(_) { "argument" }
+          cat_rvalue { ~"non-lvalue" }
+          cat_local(_) { mut_str + ~" local variable" }
+          cat_binding(_) { ~"pattern binding" }
+          cat_arg(_) { ~"argument" }
           cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
                                      mut_str, self.pk_to_sigil(pk)] }
           cat_stack_upvar(_) {
-            "captured outer " + mut_str + " variable in a stack closure"
+            ~"captured outer " + mut_str + ~" variable in a stack closure"
           }
-          cat_comp(_, comp_field(*)) { mut_str + " field" }
-          cat_comp(_, comp_tuple) { "tuple content" }
-          cat_comp(_, comp_variant(_)) { "enum content" }
+          cat_comp(_, comp_field(*)) { mut_str + ~" field" }
+          cat_comp(_, comp_tuple) { ~"tuple content" }
+          cat_comp(_, comp_variant(_)) { ~"enum content" }
           cat_comp(_, comp_index(t, _)) {
             alt ty::get(t).struct {
               ty::ty_vec(*) | ty::ty_evec(*) {
-                mut_str + " vec content"
+                mut_str + ~" vec content"
               }
 
               ty::ty_str | ty::ty_estr(*) {
-                mut_str + " str content"
+                mut_str + ~" str content"
               }
 
-              _ { mut_str + " indexed content" }
+              _ { mut_str + ~" indexed content" }
             }
           }
           cat_discr(cmt, _) {
@@ -533,20 +533,20 @@ impl to_str_methods for borrowck_ctxt {
         }
     }
 
-    fn bckerr_code_to_str(code: bckerr_code) -> str {
+    fn bckerr_code_to_str(code: bckerr_code) -> ~str {
         alt code {
           err_mutbl(req, act) {
             #fmt["creating %s alias to aliasable, %s memory",
                  self.mut_to_str(req), self.mut_to_str(act)]
           }
           err_mut_uniq {
-            "unique value in aliasable, mutable location"
+            ~"unique value in aliasable, mutable location"
           }
           err_mut_variant {
-            "enum variant in aliasable, mutable location"
+            ~"enum variant in aliasable, mutable location"
           }
           err_preserve_gc {
-            "GC'd value would have to be preserved for longer \
+            ~"GC'd value would have to be preserved for longer \
                  than the scope of the function"
           }
         }

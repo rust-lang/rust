@@ -4,7 +4,7 @@ export mk_pass;
 
 fn mk_pass(config: config::config) -> pass {
     {
-        name: "markdown_index",
+        name: ~"markdown_index",
         f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
             run(srv, doc, config)
         }
@@ -82,7 +82,7 @@ fn item_to_entry(
         markdown_writer::make_filename(config, doc::itempage(doc))
       }
       _ {
-        "#" + pandoc_header_id(markdown_pass::header_text(doc))
+        ~"#" + pandoc_header_id(markdown_pass::header_text(doc))
       }
     };
 
@@ -94,7 +94,7 @@ fn item_to_entry(
     }
 }
 
-fn pandoc_header_id(header: str) -> str {
+fn pandoc_header_id(header: ~str) -> ~str {
 
     // http://johnmacfarlane.net/pandoc/README.html#headers
 
@@ -106,61 +106,61 @@ fn pandoc_header_id(header: str) -> str {
     let header = maybe_use_section_id(header);
     ret header;
 
-    fn remove_formatting(s: str) -> str {
-        str::replace(s, "`", "")
+    fn remove_formatting(s: ~str) -> ~str {
+        str::replace(s, ~"`", ~"")
     }
-    fn remove_punctuation(s: str) -> str {
-        let s = str::replace(s, "<", "");
-        let s = str::replace(s, ">", "");
-        let s = str::replace(s, "[", "");
-        let s = str::replace(s, "]", "");
-        let s = str::replace(s, "(", "");
-        let s = str::replace(s, ")", "");
-        let s = str::replace(s, "@", "");
-        let s = str::replace(s, "~", "");
-        let s = str::replace(s, "/", "");
-        let s = str::replace(s, ":", "");
-        let s = str::replace(s, "&", "");
-        let s = str::replace(s, "^", "");
+    fn remove_punctuation(s: ~str) -> ~str {
+        let s = str::replace(s, ~"<", ~"");
+        let s = str::replace(s, ~">", ~"");
+        let s = str::replace(s, ~"[", ~"");
+        let s = str::replace(s, ~"]", ~"");
+        let s = str::replace(s, ~"(", ~"");
+        let s = str::replace(s, ~")", ~"");
+        let s = str::replace(s, ~"@~", ~"");
+        let s = str::replace(s, ~"~", ~"");
+        let s = str::replace(s, ~"/", ~"");
+        let s = str::replace(s, ~":", ~"");
+        let s = str::replace(s, ~"&", ~"");
+        let s = str::replace(s, ~"^", ~"");
         ret s;
     }
-    fn replace_with_hyphens(s: str) -> str {
-        str::replace(s, " ", "-")
+    fn replace_with_hyphens(s: ~str) -> ~str {
+        str::replace(s, ~" ", ~"-")
     }
-    fn convert_to_lowercase(s: str) -> str { str::to_lower(s) }
-    fn remove_up_to_first_letter(s: str) -> str { s }
-    fn maybe_use_section_id(s: str) -> str { s }
+    fn convert_to_lowercase(s: ~str) -> ~str { str::to_lower(s) }
+    fn remove_up_to_first_letter(s: ~str) -> ~str { s }
+    fn maybe_use_section_id(s: ~str) -> ~str { s }
 }
 
 #[test]
 fn should_remove_punctuation_from_headers() {
-    assert pandoc_header_id("impl foo of bar<A>") == "impl-foo-of-bara";
-    assert pandoc_header_id("fn@(~[~A])") == "fna";
-    assert pandoc_header_id("impl of num::num for int")
-        == "impl-of-numnum-for-int";
-    assert pandoc_header_id("impl of num::num for int/&")
-        == "impl-of-numnum-for-int";
-    assert pandoc_header_id("impl of num::num for ^int")
-        == "impl-of-numnum-for-int";
+    assert pandoc_header_id(~"impl foo of bar<A>") == ~"impl-foo-of-bara";
+    assert pandoc_header_id(~"fn@(~[~A])") == ~"fna";
+    assert pandoc_header_id(~"impl of num::num for int")
+        == ~"impl-of-numnum-for-int";
+    assert pandoc_header_id(~"impl of num::num for int/&")
+        == ~"impl-of-numnum-for-int";
+    assert pandoc_header_id(~"impl of num::num for ^int")
+        == ~"impl-of-numnum-for-int";
 }
 
 #[test]
 fn should_index_mod_contents() {
     let doc = test::mk_doc(
         config::doc_per_crate,
-        "mod a { } fn b() { }"
+        ~"mod a { } fn b() { }"
     );
     assert option::get(doc.cratemod().index).entries[0] == {
-        kind: "Module",
-        name: "a",
+        kind: ~"Module",
+        name: ~"a",
         brief: none,
-        link: "#module-a"
+        link: ~"#module-a"
     };
     assert option::get(doc.cratemod().index).entries[1] == {
-        kind: "Function",
-        name: "b",
+        kind: ~"Function",
+        name: ~"b",
         brief: none,
-        link: "#function-b"
+        link: ~"#function-b"
     };
 }
 
@@ -168,19 +168,19 @@ fn should_index_mod_contents() {
 fn should_index_mod_contents_multi_page() {
     let doc = test::mk_doc(
         config::doc_per_mod,
-        "mod a { } fn b() { }"
+        ~"mod a { } fn b() { }"
     );
     assert option::get(doc.cratemod().index).entries[0] == {
-        kind: "Module",
-        name: "a",
+        kind: ~"Module",
+        name: ~"a",
         brief: none,
-        link: "a.html"
+        link: ~"a.html"
     };
     assert option::get(doc.cratemod().index).entries[1] == {
-        kind: "Function",
-        name: "b",
+        kind: ~"Function",
+        name: ~"b",
         brief: none,
-        link: "#function-b"
+        link: ~"#function-b"
     };
 }
 
@@ -188,13 +188,13 @@ fn should_index_mod_contents_multi_page() {
 fn should_index_foreign_mod_pages() {
     let doc = test::mk_doc(
         config::doc_per_mod,
-        "extern mod a { }"
+        ~"extern mod a { }"
     );
     assert option::get(doc.cratemod().index).entries[0] == {
-        kind: "Foreign module",
-        name: "a",
+        kind: ~"Foreign module",
+        name: ~"a",
         brief: none,
-        link: "a.html"
+        link: ~"a.html"
     };
 }
 
@@ -202,34 +202,35 @@ fn should_index_foreign_mod_pages() {
 fn should_add_brief_desc_to_index() {
     let doc = test::mk_doc(
         config::doc_per_mod,
-        "#[doc = \"test\"] mod a { }"
+        ~"#[doc = \"test\"] mod a { }"
     );
-    assert option::get(doc.cratemod().index).entries[0].brief == some("test");
+    assert option::get(doc.cratemod().index).entries[0].brief
+        == some(~"test");
 }
 
 #[test]
 fn should_index_foreign_mod_contents() {
     let doc = test::mk_doc(
         config::doc_per_crate,
-        "extern mod a { fn b(); }"
+        ~"extern mod a { fn b(); }"
     );
     assert option::get(doc.cratemod().nmods()[0].index).entries[0] == {
-        kind: "Function",
-        name: "b",
+        kind: ~"Function",
+        name: ~"b",
         brief: none,
-        link: "#function-b"
+        link: ~"#function-b"
     };
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(output_style: config::output_style, source: str) -> doc::doc {
+    fn mk_doc(output_style: config::output_style, source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
             let config = {
                 output_style: output_style
-                with config::default_config("whatever")
+                with config::default_config(~"whatever")
             };
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);
             let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
             let doc = path_pass::mk_pass().f(srv, doc);

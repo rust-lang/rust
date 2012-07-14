@@ -2,7 +2,7 @@ import base::*;
 import ast;
 import codemap::span;
 import print::pprust;
-import build::{mk_lit,mk_uniq_vec_e};
+import build::{mk_uint,mk_u8,mk_uniq_str,mk_uniq_vec_e};
 
 export expand_line;
 export expand_col;
@@ -16,17 +16,17 @@ export expand_include_bin;
 /* #line(): expands to the current line number */
 fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
-    get_mac_args(cx, sp, arg, 0u, option::some(0u), "line");
+    get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"line");
     let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret mk_lit(cx, sp, ast::lit_uint(loc.line as u64, ast::ty_u));
+    ret mk_uint(cx, sp, loc.line);
 }
 
 /* #col(): expands to the current column number */
 fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               _body: ast::mac_body) -> @ast::expr {
-    get_mac_args(cx, sp, arg, 0u, option::some(0u), "col");
+    get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"col");
     let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret mk_lit(cx, sp, ast::lit_uint(loc.col as u64, ast::ty_u));
+    ret mk_uint(cx, sp, loc.col);
 }
 
 /* #file(): expands to the current filename */
@@ -34,29 +34,29 @@ fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
  * out if we wanted. */
 fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
-    get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
+    get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"file");
     let { file: @{ name: filename, _ }, _ } =
         codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret mk_lit(cx, sp, ast::lit_str(@filename));
+    ret mk_uniq_str(cx, sp, filename);
 }
 
 fn expand_stringify(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                     _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "stringify");
-    ret mk_lit(cx, sp, ast::lit_str(@pprust::expr_to_str(args[0])));
+    let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), ~"stringify");
+    ret mk_uniq_str(cx, sp, pprust::expr_to_str(args[0]));
 }
 
 fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
     -> @ast::expr {
-    get_mac_args(cx, sp, arg, 0u, option::some(0u), "file");
-    ret mk_lit(cx, sp, ast::lit_str(
-        @str::connect(cx.mod_path().map(|x|*x), "::")));
+    get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"file");
+    ret mk_uniq_str(cx, sp,
+                    str::connect(cx.mod_path().map(|x|*x), ~"::"));
 }
 
 fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                   _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), "include");
-    let file = expr_to_str(cx, args[0], "#include_str requires a string");
+    let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), ~"include");
+    let file = expr_to_str(cx, args[0], ~"#include_str requires a string");
     let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(),
                                         res_rel_file(cx, sp, file),
                                         parse::parser::SOURCE_FILE);
@@ -65,9 +65,9 @@ fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 
 fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                       _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args(cx,sp,arg,1u,option::some(1u),"include_str");
+    let args = get_mac_args(cx,sp,arg,1u,option::some(1u),~"include_str");
 
-    let file = expr_to_str(cx, args[0], "#include_str requires a string");
+    let file = expr_to_str(cx, args[0], ~"#include_str requires a string");
 
     let res = io::read_whole_file_str(res_rel_file(cx, sp, file));
     alt res {
@@ -77,19 +77,19 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
       }
     }
 
-    ret mk_lit(cx, sp, ast::lit_str(@result::unwrap(res)));
+    ret mk_uniq_str(cx, sp, result::unwrap(res));
 }
 
 fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                       _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args(cx,sp,arg,1u,option::some(1u),"include_bin");
+    let args = get_mac_args(cx,sp,arg,1u,option::some(1u),~"include_bin");
 
-    let file = expr_to_str(cx, args[0], "#include_bin requires a string");
+    let file = expr_to_str(cx, args[0], ~"#include_bin requires a string");
 
     alt io::read_whole_file(res_rel_file(cx, sp, file)) {
       result::ok(src) {
         let u8_exprs = vec::map(src, |char: u8| {
-            mk_lit(cx, sp, ast::lit_uint(char as u64, ast::ty_u8))
+            mk_u8(cx, sp, char)
         });
         ret mk_uniq_vec_e(cx, sp, u8_exprs);
       }

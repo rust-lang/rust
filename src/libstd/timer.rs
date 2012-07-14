@@ -41,12 +41,13 @@ fn delayed_send<T: copy send>(iotask: iotask,
                     }
                     else {
                         let error_msg = uv::ll::get_last_err_info(loop_ptr);
-                        fail "timer::delayed_send() start failed: "+error_msg;
+                        fail ~"timer::delayed_send() start failed: " +
+                            error_msg;
                     }
                 }
                 else {
                     let error_msg = uv::ll::get_last_err_info(loop_ptr);
-                    fail "timer::delayed_send() init failed: "+error_msg;
+                    fail ~"timer::delayed_send() init failed: "+error_msg;
                 }
             };
             // delayed_send_cb has been processed by libuv
@@ -128,7 +129,7 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
     else {
         let loop_ptr = uv::ll::get_loop_for_uv_handle(handle);
         let error_msg = uv::ll::get_last_err_info(loop_ptr);
-        fail "timer::sleep() init failed: "+error_msg;
+        fail ~"timer::sleep() init failed: "+error_msg;
     }
 }
 
@@ -232,7 +233,7 @@ mod test {
 
         for iter::repeat(times as uint) {
             let expected = rand::rng().gen_str(16u);
-            let test_po = comm::port::<str>();
+            let test_po = comm::port::<~str>();
             let test_ch = comm::chan(test_po);
 
             do task::spawn() {

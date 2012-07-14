@@ -14,7 +14,7 @@ export normalize;
 
 // FIXME: This type should probably be constrained (#2624)
 /// A path or fragment of a filesystem path
-type path = str;
+type path = ~str;
 
 #[cfg(unix)]
 mod consts {
@@ -58,9 +58,9 @@ fn path_is_absolute(p: str) -> bool {
 }
 
 /// Get the default path separator for the host platform
-fn path_sep() -> str { ret str::from_char(consts::path_sep); }
+fn path_sep() -> ~str { ret str::from_char(consts::path_sep); }
 
-fn split_dirname_basename (pp: path) -> {dirname: str, basename: str} {
+fn split_dirname_basename (pp: path) -> {dirname: ~str, basename: ~str} {
     alt str::rfind(pp, |ch|
         ch == consts::path_sep || ch == consts::alt_path_sep
     ) {
@@ -68,7 +68,7 @@ fn split_dirname_basename (pp: path) -> {dirname: str, basename: str} {
         {dirname: str::slice(pp, 0u, i),
          basename: str::slice(pp, i + 1u, str::len(pp))}
       }
-      none { {dirname: ".", basename: pp} }
+      none { {dirname: ~".", basename: pp} }
     }
 }
 
@@ -159,16 +159,16 @@ fn split(p: path) -> ~[path] {
  * ignored.  If the path includes directory components then they are included
  * in the filename part of the result pair.
  */
-fn splitext(p: path) -> (str, str) {
-    if str::is_empty(p) { ("", "") }
+fn splitext(p: path) -> (~str, ~str) {
+    if str::is_empty(p) { (~"", ~"") }
     else {
         let parts = str::split_char(p, '.');
         if vec::len(parts) > 1u {
-            let base = str::connect(vec::init(parts), ".");
+            let base = str::connect(vec::init(parts), ~".");
             // We just checked that parts is non-empty, so this is safe
-            let ext = "." + vec::last(parts);
+            let ext = ~"." + vec::last(parts);
 
-            fn is_dotfile(base: str) -> bool {
+            fn is_dotfile(base: ~str) -> bool {
                 str::is_empty(base)
                     || str::ends_with(
                         base, str::from_char(consts::path_sep))
@@ -176,11 +176,11 @@ fn splitext(p: path) -> (str, str) {
                         base, str::from_char(consts::alt_path_sep))
             }
 
-            fn ext_contains_sep(ext: str) -> bool {
+            fn ext_contains_sep(ext: ~str) -> bool {
                 vec::len(split(ext)) > 1u
             }
 
-            fn no_basename(ext: str) -> bool {
+            fn no_basename(ext: ~str) -> bool {
                 str::ends_with(
                     ext, str::from_char(consts::path_sep))
                     || str::ends_with(
@@ -190,12 +190,12 @@ fn splitext(p: path) -> (str, str) {
             if is_dotfile(base)
                 || ext_contains_sep(ext)
                 || no_basename(ext) {
-                (p, "")
+                (p, ~"")
             } else {
                 (base, ext)
             }
         } else {
-            (p, "")
+            (p, ~"")
         }
     }
 }
@@ -220,13 +220,13 @@ fn normalize(p: path) -> path {
     let s = if check vec::is_not_empty(s) {
         connect_many(s)
     } else {
-        ""
+        ~""
     };
     let s = reabsolute(p, s);
     let s = reterminate(p, s);
 
     let s = if str::len(s) == 0u {
-        "."
+        ~"."
     } else {
         s
     };
@@ -235,7 +235,7 @@ fn normalize(p: path) -> path {
 
     fn strip_dots(s: ~[path]) -> ~[path] {
         vec::filter_map(s, |elem|
-            if elem == "." {
+            if elem == ~"." {
                 option::none
             } else {
                 option::some(elem)
@@ -252,7 +252,7 @@ fn normalize(p: path) -> path {
         let mut skip = 0;
         while i != 0u {
             i -= 1u;
-            if s[i] == ".." {
+            if s[i] == ~".." {
                 skip += 1;
             } else {
                 if skip == 0 {
@@ -264,7 +264,7 @@ fn normalize(p: path) -> path {
         }
         let mut t = vec::reversed(t);
         while skip > 0 {
-            vec::push(t, "..");
+            vec::push(t, ~"..");
             skip -= 1;
         }
         ret t;
@@ -304,122 +304,122 @@ mod tests {
     #[test]
     fn test_connect() {
         let slash = path_sep();
-        log(error, connect("a", "b"));
-        assert (connect("a", "b") == "a" + slash + "b");
-        assert (connect("a" + slash, "b") == "a" + slash + "b");
+        log(error, connect(~"a", ~"b"));
+        assert (connect(~"a", ~"b") == ~"a" + slash + ~"b");
+        assert (connect(~"a" + slash, ~"b") == ~"a" + slash + ~"b");
     }
 
-    fn ps() -> str {
+    fn ps() -> ~str {
         path_sep()
     }
 
-    fn aps() -> str {
-        "/"
+    fn aps() -> ~str {
+        ~"/"
     }
 
     #[test]
     fn split1() {
-        let actual = split("a" + ps() + "b");
-        let expected = ~["a", "b"];
+        let actual = split(~"a" + ps() + ~"b");
+        let expected = ~[~"a", ~"b"];
         assert actual == expected;
     }
 
     #[test]
     fn split2() {
-        let actual = split("a" + aps() + "b");
-        let expected = ~["a", "b"];
+        let actual = split(~"a" + aps() + ~"b");
+        let expected = ~[~"a", ~"b"];
         assert actual == expected;
     }
 
     #[test]
     fn split3() {
-        let actual = split(ps() + "a" + ps() + "b");
-        let expected = ~["a", "b"];
+        let actual = split(ps() + ~"a" + ps() + ~"b");
+        let expected = ~[~"a", ~"b"];
         assert actual == expected;
     }
 
     #[test]
     fn split4() {
-        let actual = split("a" + ps() + "b" + aps() + "c");
-        let expected = ~["a", "b", "c"];
+        let actual = split(~"a" + ps() + ~"b" + aps() + ~"c");
+        let expected = ~[~"a", ~"b", ~"c"];
         assert actual == expected;
     }
 
     #[test]
     fn normalize1() {
-        let actual = normalize("a/b/..");
-        let expected = "a";
+        let actual = normalize(~"a/b/..");
+        let expected = ~"a";
         assert actual == expected;
     }
 
     #[test]
     fn normalize2() {
-        let actual = normalize("/a/b/..");
-        let expected = "/a";
+        let actual = normalize(~"/a/b/..");
+        let expected = ~"/a";
         assert actual == expected;
     }
 
     #[test]
     fn normalize3() {
-        let actual = normalize("a/../b");
-        let expected = "b";
+        let actual = normalize(~"a/../b");
+        let expected = ~"b";
         assert actual == expected;
     }
 
     #[test]
     fn normalize4() {
-        let actual = normalize("/a/../b");
-        let expected = "/b";
+        let actual = normalize(~"/a/../b");
+        let expected = ~"/b";
         assert actual == expected;
     }
 
     #[test]
     fn normalize5() {
-        let actual = normalize("a/.");
-        let expected = "a";
+        let actual = normalize(~"a/.");
+        let expected = ~"a";
         assert actual == expected;
     }
 
     #[test]
     fn normalize6() {
-        let actual = normalize("a/./b/");
-        let expected = "a/b/";
+        let actual = normalize(~"a/./b/");
+        let expected = ~"a/b/";
         assert actual == expected;
     }
 
     #[test]
     fn normalize7() {
-        let actual = normalize("a/..");
-        let expected = ".";
+        let actual = normalize(~"a/..");
+        let expected = ~".";
         assert actual == expected;
     }
 
     #[test]
     fn normalize8() {
-        let actual = normalize("../../..");
-        let expected = "../../..";
+        let actual = normalize(~"../../..");
+        let expected = ~"../../..";
         assert actual == expected;
     }
 
     #[test]
     fn normalize9() {
-        let actual = normalize("a/b/../../..");
-        let expected = "..";
+        let actual = normalize(~"a/b/../../..");
+        let expected = ~"..";
         assert actual == expected;
     }
 
     #[test]
     fn normalize10() {
-        let actual = normalize("/a/b/c/../d/./../../e/");
-        let expected = "/a/e/";
+        let actual = normalize(~"/a/b/c/../d/./../../e/");
+        let expected = ~"/a/e/";
         log(error, actual);
         assert actual == expected;
     }
 
     #[test]
     fn normalize11() {
-        let actual = normalize("/a/..");
-        let expected = "/";
+        let actual = normalize(~"/a/..");
+        let expected = ~"/";
         assert actual == expected;
     }
 
@@ -440,58 +440,58 @@ mod tests {
 
     #[test]
     fn splitext_empty() {
-        let (base, ext) = splitext("");
-        assert base == "";
-        assert ext == "";
+        let (base, ext) = splitext(~"");
+        assert base == ~"";
+        assert ext == ~"";
     }
 
     #[test]
     fn splitext_ext() {
-        let (base, ext) = splitext("grum.exe");
-        assert base == "grum";
-        assert ext == ".exe";
+        let (base, ext) = splitext(~"grum.exe");
+        assert base == ~"grum";
+        assert ext == ~".exe";
     }
 
     #[test]
     fn splitext_noext() {
-        let (base, ext) = splitext("grum");
-        assert base == "grum";
-        assert ext == "";
+        let (base, ext) = splitext(~"grum");
+        assert base == ~"grum";
+        assert ext == ~"";
     }
 
     #[test]
     fn splitext_dotfile() {
-        let (base, ext) = splitext(".grum");
-        assert base == ".grum";
-        assert ext == "";
+        let (base, ext) = splitext(~".grum");
+        assert base == ~".grum";
+        assert ext == ~"";
     }
 
     #[test]
     fn splitext_path_ext() {
-        let (base, ext) = splitext("oh/grum.exe");
-        assert base == "oh/grum";
-        assert ext == ".exe";
+        let (base, ext) = splitext(~"oh/grum.exe");
+        assert base == ~"oh/grum";
+        assert ext == ~".exe";
     }
 
     #[test]
     fn splitext_path_noext() {
-        let (base, ext) = splitext("oh/grum");
-        assert base == "oh/grum";
-        assert ext == "";
+        let (base, ext) = splitext(~"oh/grum");
+        assert base == ~"oh/grum";
+        assert ext == ~"";
     }
 
     #[test]
     fn splitext_dot_in_path() {
-        let (base, ext) = splitext("oh.my/grum");
-        assert base == "oh.my/grum";
-        assert ext == "";
+        let (base, ext) = splitext(~"oh.my/grum");
+        assert base == ~"oh.my/grum";
+        assert ext == ~"";
     }
 
     #[test]
     fn splitext_nobasename() {
-        let (base, ext) = splitext("oh.my/");
-        assert base == "oh.my/";
-        assert ext == "";
+        let (base, ext) = splitext(~"oh.my/");
+        assert base == ~"oh.my/";
+        assert ext == ~"";
     }
 }
 

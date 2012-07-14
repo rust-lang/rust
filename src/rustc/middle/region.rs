@@ -150,7 +150,7 @@ type parent = option<ast::node_id>;
 
 /* Records the parameter ID of a region name. */
 type binding = {node_id: ast::node_id,
-                name: str,
+                name: ~str,
                 br: ty::bound_region};
 
 // Mapping from a block/expr/binding to the innermost scope that
@@ -265,7 +265,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
 fn parent_id(cx: ctxt, span: span) -> ast::node_id {
     alt cx.parent {
       none {
-        cx.sess.span_bug(span, "crate should not be parent here");
+        cx.sess.span_bug(span, ~"crate should not be parent here");
       }
       some(parent_id) {
         parent_id
@@ -505,7 +505,7 @@ impl methods for determine_rp_ctxt {
     fn region_is_relevant(r: @ast::region) -> bool {
         alt r.node {
           ast::re_anon {self.anon_implies_rp}
-          ast::re_named(@"self") {true}
+          ast::re_named(@~"self") {true}
           ast::re_named(_) {false}
         }
     }

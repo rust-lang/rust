@@ -793,7 +793,7 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
     // yuck :/
     rustrt::rust_uv_buf_init(out_buf_ptr, input, len as size_t);
     //let result = rustrt::rust_uv_buf_init_2(input, len as size_t);
-    log(debug, "after rust_uv_buf_init");
+    log(debug, ~"after rust_uv_buf_init");
     let res_base = get_base_from_buf(out_buf);
     let res_len = get_len_from_buf(out_buf);
     //let res_base = get_base_from_buf(result);
@@ -803,21 +803,21 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
     ret out_buf;
     //ret result;
 }
-unsafe fn ip4_addr(ip: str, port: int)
+unsafe fn ip4_addr(ip: ~str, port: int)
 -> sockaddr_in {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip4_addr(ip_buf as *u8,
                                  port as libc::c_int)
     }
 }
-unsafe fn ip6_addr(ip: str, port: int)
+unsafe fn ip6_addr(ip: ~str, port: int)
 -> sockaddr_in6 {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip6_addr(ip_buf as *u8,
                                  port as libc::c_int)
     }
 }
-unsafe fn ip4_name(src: &sockaddr_in) -> str {
+unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
     // ipv4 addr max size: 15 + 1 trailing null byte
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                      0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
@@ -834,7 +834,7 @@ unsafe fn ip4_name(src: &sockaddr_in) -> str {
         str::unsafe::from_buf(dst_buf)
     }
 }
-unsafe fn ip6_name(src: &sockaddr_in6) -> str {
+unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
     // ipv6 addr max size: 45 + 1 trailing null byte
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                        0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
@@ -854,7 +854,7 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> str {
             str::unsafe::from_buf(dst_buf)
           }
           _ {
-            ""
+            ~""
           }
         }
     }
@@ -961,7 +961,7 @@ unsafe fn free_base_of_buf(buf: uv_buf_t) {
     rustrt::rust_uv_free_base_of_buf(buf);
 }
 
-unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> str {
+unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
     let err = last_error(uv_loop);
     let err_ptr = ptr::addr_of(err);
     let err_name = str::unsafe::from_c_str(err_name(err_ptr));
@@ -979,8 +979,8 @@ unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
 }
 
 type uv_err_data = {
-    err_name: str,
-    err_msg: str
+    err_name: ~str,
+    err_msg: ~str
 };
 
 unsafe fn is_ipv4_addrinfo(input: *addrinfo) -> bool {
@@ -1013,7 +1013,7 @@ mod test {
     type request_wrapper = {
         write_req: *uv_write_t,
         req_buf: *~[uv_buf_t],
-        read_chan: *comm::chan<str>
+        read_chan: *comm::chan<~str>
     };
 
     extern fn after_close_cb(handle: *libc::c_void) {
@@ -1024,7 +1024,7 @@ mod test {
     extern fn on_alloc_cb(handle: *libc::c_void,
                          ++suggested_size: libc::size_t)
         -> uv_buf_t unsafe {
-        log(debug, "on_alloc_cb!");
+        log(debug, ~"on_alloc_cb!");
         let char_ptr = malloc_buf_base_of(suggested_size);
         log(debug, #fmt("on_alloc_cb h: %? char_ptr: %u sugsize: %u",
                          handle,
@@ -1056,15 +1056,15 @@ mod test {
         }
         else if (nread == -1) {
             // err .. possibly EOF
-            log(debug, "read: eof!");
+            log(debug, ~"read: eof!");
         }
         else {
             // nread == 0 .. do nothing, just free buf as below
-            log(debug, "read: do nothing!");
+            log(debug, ~"read: do nothing!");
         }
         // when we're done
         free_base_of_buf(buf);
-        log(debug, "CLIENT exiting on_read_cb");
+        log(debug, ~"CLIENT exiting on_read_cb");
     }
 
     extern fn on_write_complete_cb(write_req: *uv_write_t,
@@ -1086,7 +1086,7 @@ mod test {
         let stream =
             get_stream_handle_from_connect_req(connect_req_ptr);
         if (status == 0i32) {
-            log(debug, "on_connect_cb: in status=0 if..");
+            log(debug, ~"on_connect_cb: in status=0 if..");
             let client_data = get_data_for_req(
                 connect_req_ptr as *libc::c_void)
                 as *request_wrapper;
@@ -1107,11 +1107,11 @@ mod test {
             log(debug, err_msg);
             assert false;
         }
-        log(debug, "finishing on_connect_cb");
+        log(debug, ~"finishing on_connect_cb");
     }
 
-    fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
-                          client_chan: *comm::chan<str>) unsafe {
+    fn impl_uv_tcp_request(ip: ~str, port: int, req_str: ~str,
+                          client_chan: *comm::chan<~str>) unsafe {
         let test_loop = loop_new();
         let tcp_handle = tcp_t();
         let tcp_handle_ptr = ptr::addr_of(tcp_handle);
@@ -1143,9 +1143,9 @@ mod test {
         let tcp_init_result = tcp_init(
             test_loop as *libc::c_void, tcp_handle_ptr);
         if (tcp_init_result == 0i32) {
-            log(debug, "sucessful tcp_init_result");
+            log(debug, ~"sucessful tcp_init_result");
 
-            log(debug, "building addr...");
+            log(debug, ~"building addr...");
             let addr = ip4_addr(ip, port);
             // FIXME ref #2064
             let addr_ptr = ptr::addr_of(addr);
@@ -1167,17 +1167,17 @@ mod test {
                 set_data_for_uv_handle(
                     tcp_handle_ptr as *libc::c_void,
                     ptr::addr_of(client_data) as *libc::c_void);
-                log(debug, "before run tcp req loop");
+                log(debug, ~"before run tcp req loop");
                 run(test_loop);
-                log(debug, "after run tcp req loop");
+                log(debug, ~"after run tcp req loop");
             }
             else {
-               log(debug, "tcp_connect() failure");
+               log(debug, ~"tcp_connect() failure");
                assert false;
             }
         }
         else {
-            log(debug, "tcp_init() failure");
+            log(debug, ~"tcp_init() failure");
             assert false;
         }
         loop_delete(test_loop);
@@ -1191,7 +1191,8 @@ mod test {
 
     extern fn client_stream_after_close_cb(handle: *libc::c_void)
         unsafe {
-        log(debug, "SERVER: closed client stream, now closing server stream");
+        log(debug,
+            ~"SERVER: closed client stream, now closing server stream");
         let client_data = get_data_for_uv_handle(
             handle) as
             *tcp_server_data;
@@ -1202,7 +1203,7 @@ mod test {
     extern fn after_server_resp_write(req: *uv_write_t) unsafe {
         let client_stream_ptr =
             get_stream_handle_from_write_req(req);
-        log(debug, "SERVER: resp sent... closing client stream");
+        log(debug, ~"SERVER: resp sent... closing client stream");
         close(client_stream_ptr as *libc::c_void,
                       client_stream_after_close_cb)
     }
@@ -1231,8 +1232,8 @@ mod test {
             let server_kill_msg = (*client_data).server_kill_msg;
             let write_req = (*client_data).server_write_req;
             if (str::contains(request_str, server_kill_msg)) {
-                log(debug, "SERVER: client req contains kill_msg!");
-                log(debug, "SERVER: sending response to client");
+                log(debug, ~"SERVER: client req contains kill_msg!");
+                log(debug, ~"SERVER: sending response to client");
                 read_stop(client_stream_ptr);
                 let server_chan = *((*client_data).server_chan);
                 comm::send(server_chan, request_str);
@@ -1244,7 +1245,7 @@ mod test {
                 log(debug, #fmt("SERVER: resp write result: %d",
                             write_result as int));
                 if (write_result != 0i32) {
-                    log(debug, "bad result for server resp write()");
+                    log(debug, ~"bad result for server resp write()");
                     log(debug, get_last_err_info(
                         get_loop_for_uv_handle(client_stream_ptr
                             as *libc::c_void)));
@@ -1252,26 +1253,26 @@ mod test {
                 }
             }
             else {
-                log(debug, "SERVER: client req !contain kill_msg!");
+                log(debug, ~"SERVER: client req !contain kill_msg!");
             }
         }
         else if (nread == -1) {
             // err .. possibly EOF
-            log(debug, "read: eof!");
+            log(debug, ~"read: eof!");
         }
         else {
             // nread == 0 .. do nothing, just free buf as below
-            log(debug, "read: do nothing!");
+            log(debug, ~"read: do nothing!");
         }
         // when we're done
         free_base_of_buf(buf);
-        log(debug, "SERVER exiting on_read_cb");
+        log(debug, ~"SERVER exiting on_read_cb");
     }
 
     extern fn server_connection_cb(server_stream_ptr:
                                     *uv_stream_t,
                                   status: libc::c_int) unsafe {
-        log(debug, "client connecting!");
+        log(debug, ~"client connecting!");
         let test_loop = get_loop_for_uv_handle(
                                server_stream_ptr as *libc::c_void);
         if status != 0i32 {
@@ -1289,7 +1290,7 @@ mod test {
             client_stream_ptr as *libc::c_void,
             server_data as *libc::c_void);
         if (client_init_result == 0i32) {
-            log(debug, "successfully initialized client stream");
+            log(debug, ~"successfully initialized client stream");
             let accept_result = accept(server_stream_ptr as
                                                  *libc::c_void,
                                                client_stream_ptr as
@@ -1301,7 +1302,7 @@ mod test {
                                                      on_alloc_cb,
                                                      on_server_read_cb);
                 if (read_result == 0i32) {
-                    log(debug, "successful server read start");
+                    log(debug, ~"successful server read start");
                 }
                 else {
                     log(debug, #fmt("server_connection_cb: bad read:%d",
@@ -1325,9 +1326,9 @@ mod test {
     type tcp_server_data = {
         client: *uv_tcp_t,
         server: *uv_tcp_t,
-        server_kill_msg: str,
+        server_kill_msg: ~str,
         server_resp_buf: *~[uv_buf_t],
-        server_chan: *comm::chan<str>,
+        server_chan: *comm::chan<~str>,
         server_write_req: *uv_write_t
     };
 
@@ -1354,11 +1355,11 @@ mod test {
         close(async_handle as *libc::c_void, async_close_cb);
     }
 
-    fn impl_uv_tcp_server(server_ip: str,
+    fn impl_uv_tcp_server(server_ip: ~str,
                           server_port: int,
-                          kill_server_msg: str,
-                          server_resp_msg: str,
-                          server_chan: *comm::chan<str>,
+                          kill_server_msg: ~str,
+                          server_resp_msg: ~str,
+                          server_chan: *comm::chan<~str>,
                           continue_chan: *comm::chan<bool>) unsafe {
         let test_loop = loop_new();
         let tcp_server = tcp_t();
@@ -1408,7 +1409,7 @@ mod test {
             let bind_result = tcp_bind(tcp_server_ptr,
                                                server_addr_ptr);
             if (bind_result == 0i32) {
-                log(debug, "successful uv_tcp_bind, listening");
+                log(debug, ~"successful uv_tcp_bind, listening");
 
                 // uv_listen()
                 let listen_result = listen(tcp_server_ptr as
@@ -1428,7 +1429,7 @@ mod test {
                         async_send(continue_async_handle_ptr);
                         // uv_run()
                         run(test_loop);
-                        log(debug, "server uv::run() has returned");
+                        log(debug, ~"server uv::run() has returned");
                     }
                     else {
                         log(debug, #fmt("uv_async_init failure: %d",
@@ -1459,15 +1460,15 @@ mod test {
     // this is the impl for a test that is (maybe) ran on a
     // per-platform/arch basis below
     fn impl_uv_tcp_server_and_request() unsafe {
-        let bind_ip = "0.0.0.0";
-        let request_ip = "127.0.0.1";
+        let bind_ip = ~"0.0.0.0";
+        let request_ip = ~"127.0.0.1";
         let port = 8887;
-        let kill_server_msg = "does a dog have buddha nature?";
-        let server_resp_msg = "mu!";
-        let client_port = comm::port::<str>();
-        let client_chan = comm::chan::<str>(client_port);
-        let server_port = comm::port::<str>();
-        let server_chan = comm::chan::<str>(server_port);
+        let kill_server_msg = ~"does a dog have buddha nature?";
+        let server_resp_msg = ~"mu!";
+        let client_port = comm::port::<~str>();
+        let client_chan = comm::chan::<~str>(client_port);
+        let server_port = comm::port::<~str>();
+        let server_chan = comm::chan::<~str>(server_port);
 
         let continue_port = comm::port::<bool>();
         let continue_chan = comm::chan::<bool>(continue_port);
@@ -1482,9 +1483,9 @@ mod test {
         };
 
         // block until the server up is.. possibly a race?
-        log(debug, "before receiving on server continue_port");
+        log(debug, ~"before receiving on server continue_port");
         comm::recv(continue_port);
-        log(debug, "received on continue port, set up tcp client");
+        log(debug, ~"received on continue port, set up tcp client");
 
         do task::spawn_sched(task::manual_threads(1u)) {
             impl_uv_tcp_request(request_ip, port,

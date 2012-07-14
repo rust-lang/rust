@@ -1,1 +1,1 @@
-fn main() { let x: ~[int] = ~[]; for x.each |_i| { fail "moop"; } }
+fn main() { let x: ~[int] = ~[]; for x.each |_i| { fail ~"moop"; } }

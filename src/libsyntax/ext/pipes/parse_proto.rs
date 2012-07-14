@@ -28,8 +28,8 @@ impl proto_parser for parser {
         };
         self.bump();
         let dir = alt dir {
-          @"send" { send }
-          @"recv" { recv }
+          @~"send" { send }
+          @~"recv" { recv }
           _ { fail }
         };
 

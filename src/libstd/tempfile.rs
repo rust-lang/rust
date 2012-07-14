@@ -5,7 +5,7 @@ import option::{none, some};
 import rand;
 import core::rand::extensions;
 
-fn mkdtemp(prefix: str, suffix: str) -> option<str> {
+fn mkdtemp(prefix: ~str, suffix: ~str) -> option<~str> {
     let r = rand::rng();
     let mut i = 0u;
     while (i < 1000u) {
@@ -20,11 +20,11 @@ fn mkdtemp(prefix: str, suffix: str) -> option<str> {
 
 #[test]
 fn test_mkdtemp() {
-    let r = mkdtemp("./", "foobar");
+    let r = mkdtemp(~"./", ~"foobar");
     alt r {
         some(p) {
             os::remove_dir(p);
-            assert(str::ends_with(p, "foobar"));
+            assert(str::ends_with(p, ~"foobar"));
         }
         _ { assert(false); }
     }

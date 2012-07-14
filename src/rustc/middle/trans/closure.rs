@@ -100,7 +100,7 @@ enum environment_value {
     env_ref(ValueRef, ty::t, lval_kind),
 }
 
-fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
+fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> ~str {
     alt ev {
       env_copy(v, t, lk) { #fmt("copy(%s,%s)", val_str(ccx.tn, v),
                                 ty_to_str(ccx.tcx, t)) }
@@ -139,11 +139,11 @@ fn allocate_cbox(bcx: block,
                  ck: ty::closure_kind,
                  cdata_ty: ty::t)
     -> ValueRef {
-    let _icx = bcx.insn_ctxt("closure::allocate_cbox");
+    let _icx = bcx.insn_ctxt(~"closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: block, llbox: ValueRef) {
-        let _icx = bcx.insn_ctxt("closure::nuke_ref_count");
+        let _icx = bcx.insn_ctxt(~"closure::nuke_ref_count");
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx.ccx();
         let llbox = PointerCast(bcx, llbox, T_opaque_box_ptr(ccx));
@@ -184,7 +184,7 @@ type closure_result = {
 fn store_environment(bcx: block,
                      bound_values: ~[environment_value],
                      ck: ty::closure_kind) -> closure_result {
-    let _icx = bcx.insn_ctxt("closure::store_environment");
+    let _icx = bcx.insn_ctxt(~"closure::store_environment");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
@@ -224,7 +224,7 @@ fn store_environment(bcx: block,
             bcx = base::copy_val(bcx, INIT, bound_data, val, ty);
           }
           env_copy(_, _, temporary) {
-            fail "cannot capture temporary upvar";
+            fail ~"cannot capture temporary upvar";
           }
           env_move(val, ty, kind) {
             let src = {bcx:bcx, val:val, kind:kind};
@@ -241,7 +241,7 @@ fn store_environment(bcx: block,
             Store(bcx, addr, bound_data);
           }
           env_ref(_, _, temporary) {
-            fail "cannot capture temporary upvar";
+            fail ~"cannot capture temporary upvar";
           }
         }
     }
@@ -257,7 +257,7 @@ fn build_closure(bcx0: block,
                  ck: ty::closure_kind,
                  id: ast::node_id,
                  include_ret_handle: option<ValueRef>) -> closure_result {
-    let _icx = bcx0.insn_ctxt("closure::build_closure");
+    let _icx = bcx0.insn_ctxt(~"closure::build_closure");
     // If we need to, package up the iterator body to call
     let mut env_vals = ~[];
     let mut bcx = bcx0;
@@ -318,7 +318,7 @@ fn load_environment(fcx: fn_ctxt,
                     cap_vars: ~[capture::capture_var],
                     load_ret_handle: bool,
                     ck: ty::closure_kind) {
-    let _icx = fcx.insn_ctxt("closure::load_environment");
+    let _icx = fcx.insn_ctxt(~"closure::load_environment");
     let bcx = raw_block(fcx, fcx.llloadenv);
 
     // Load a pointer to the closure data, skipping over the box header:
@@ -360,12 +360,12 @@ fn trans_expr_fn(bcx: block,
                  cap_clause: ast::capture_clause,
                  is_loop_body: option<option<ValueRef>>,
                  dest: dest) -> block {
-    let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
+    let _icx = bcx.insn_ctxt(~"closure::trans_expr_fn");
     if dest == ignore { ret bcx; }
     let ccx = bcx.ccx(), bcx = bcx;
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
-    let sub_path = vec::append_one(bcx.fcx.path, path_name(@"anon"));
+    let sub_path = vec::append_one(bcx.fcx.path, path_name(@~"anon"));
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
@@ -407,7 +407,7 @@ fn make_fn_glue(
     t: ty::t,
     glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
     -> block {
-    let _icx = cx.insn_ctxt("closure::make_fn_glue");
+    let _icx = cx.insn_ctxt(~"closure::make_fn_glue");
     let bcx = cx;
     let tcx = cx.tcx();
 
@@ -426,7 +426,7 @@ fn make_fn_glue(
       ty::ty_fn({proto: ast::proto_any, _}) { bcx }
       ty::ty_fn({proto: ast::proto_uniq, _}) { fn_env(ty::ck_uniq) }
       ty::ty_fn({proto: ast::proto_box, _}) { fn_env(ty::ck_box) }
-      _ { fail "make_fn_glue invoked on non-function type" }
+      _ { fail ~"make_fn_glue invoked on non-function type" }
     };
 }
 
@@ -436,7 +436,7 @@ fn make_opaque_cbox_take_glue(
     cboxptr: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
     // Easy cases:
-    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
+    let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_take_glue");
     alt ck {
       ty::ck_block { ret bcx; }
       ty::ck_box { incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); ret bcx; }
@@ -482,7 +482,7 @@ fn make_opaque_cbox_drop_glue(
     ck: ty::closure_kind,
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> block {
-    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_drop_glue");
+    let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_drop_glue");
     alt ck {
       ty::ck_block { bcx }
       ty::ck_box {
@@ -501,7 +501,7 @@ fn make_opaque_cbox_free_glue(
     ck: ty::closure_kind,
     cbox: ValueRef)     // ptr to the opaque closure
     -> block {
-    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_free_glue");
+    let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_free_glue");
     alt ck {
       ty::ck_block { ret bcx; }
       ty::ck_box | ty::ck_uniq { /* hard cases: */ }
@@ -523,7 +523,7 @@ fn make_opaque_cbox_free_glue(
 
         // Free the ty descr (if necc) and the box itself
         alt ck {
-          ty::ck_block { fail "Impossible"; }
+          ty::ck_block { fail ~"Impossible"; }
           ty::ck_box {
             trans_free(bcx, cbox)
           }

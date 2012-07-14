@@ -5,10 +5,10 @@ import common::config;
 export load_errors;
 export expected_error;
 
-type expected_error = { line: uint, kind: str, msg: str };
+type expected_error = { line: uint, kind: ~str, msg: ~str };
 
 // Load any test directives embedded in the file
-fn load_errors(testfile: str) -> ~[expected_error] {
+fn load_errors(testfile: ~str) -> ~[expected_error] {
     let mut error_patterns = ~[];
     let rdr = result::get(io::file_reader(testfile));
     let mut line_num = 1u;
@@ -20,8 +20,8 @@ fn load_errors(testfile: str) -> ~[expected_error] {
     ret error_patterns;
 }
 
-fn parse_expected(line_num: uint, line: str) -> ~[expected_error] unsafe {
-    let error_tag = "//~";
+fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] unsafe {
+    let error_tag = ~"//~";
     let mut idx;
     alt str::find_str(line, error_tag) {
          option::none { ret ~[]; }

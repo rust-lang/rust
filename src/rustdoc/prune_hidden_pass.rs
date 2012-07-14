@@ -5,7 +5,7 @@ export mk_pass;
 
 fn mk_pass() -> pass {
     {
-        name: "prune_hidden",
+        name: ~"prune_hidden",
         f: run
     }
 }
@@ -47,15 +47,15 @@ fn is_hidden(srv: astsrv::srv, doc: doc::itemdoc) -> bool {
 
 #[test]
 fn should_prune_hidden_items() {
-    let doc = test::mk_doc("#[doc(hidden)] mod a { }");
+    let doc = test::mk_doc(~"#[doc(hidden)] mod a { }");
     assert vec::is_empty(doc.cratemod().mods())
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             run(srv, doc)
         }
     }

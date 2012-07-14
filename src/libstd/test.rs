@@ -30,7 +30,7 @@ extern mod rustrt {
 // paths; i.e. it should be a series of identifiers seperated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
-type test_name = str;
+type test_name = ~str;
 
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
@@ -49,24 +49,24 @@ type test_desc = {
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: ~[str], tests: ~[test_desc]) {
+fn test_main(args: ~[~str], tests: ~[test_desc]) {
     let opts =
         alt parse_opts(args) {
           either::left(o) { o }
           either::right(m) { fail m }
         };
-    if !run_tests_console(opts, tests) { fail "Some tests failed"; }
+    if !run_tests_console(opts, tests) { fail ~"Some tests failed"; }
 }
 
-type test_opts = {filter: option<str>, run_ignored: bool,
-                  logfile: option<str>};
+type test_opts = {filter: option<~str>, run_ignored: bool,
+                  logfile: option<~str>};
 
-type opt_res = either<test_opts, str>;
+type opt_res = either<test_opts, ~str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: ~[str]) -> opt_res {
+fn parse_opts(args: ~[~str]) -> opt_res {
     let args_ = vec::tail(args);
-    let opts = ~[getopts::optflag("ignored"), getopts::optopt("logfile")];
+    let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let match =
         alt getopts::getopts(args_, opts) {
           ok(m) { m }
@@ -78,8 +78,8 @@ fn parse_opts(args: ~[str]) -> opt_res {
             option::some(match.free[0])
         } else { option::none };
 
-    let run_ignored = getopts::opt_present(match, "ignored");
-    let logfile = getopts::opt_maybe_str(match, "logfile");
+    let run_ignored = getopts::opt_present(match, ~"ignored");
+    let logfile = getopts::opt_maybe_str(match, ~"logfile");
 
     let test_opts = {filter: filter, run_ignored: run_ignored,
                      logfile: logfile};
@@ -107,7 +107,7 @@ fn run_tests_console(opts: test_opts,
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
-            let noun = if st.total != 1u { "tests" } else { "test" };
+            let noun = if st.total != 1u { ~"tests" } else { ~"test" };
             st.out.write_line(#fmt["\nrunning %u %s", st.total, noun]);
           }
           te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
@@ -122,18 +122,18 @@ fn run_tests_console(opts: test_opts,
               tr_ok {
                 st.passed += 1u;
                 write_ok(st.out, st.use_color);
-                st.out.write_line("");
+                st.out.write_line(~"");
               }
               tr_failed {
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
-                st.out.write_line("");
+                st.out.write_line(~"");
                 vec::push(st.failures, copy test);
               }
               tr_ignored {
                 st.ignored += 1u;
                 write_ignored(st.out, st.use_color);
-                st.out.write_line("");
+                st.out.write_line(~"");
               }
             }
           }
@@ -184,25 +184,25 @@ fn run_tests_console(opts: test_opts,
     fn write_log(out: io::writer, result: test_result, test: test_desc) {
         out.write_line(#fmt("%s %s",
                     alt result {
-                        tr_ok { "ok" }
-                        tr_failed { "failed" }
-                        tr_ignored { "ignored" }
+                        tr_ok { ~"ok" }
+                        tr_failed { ~"failed" }
+                        tr_ignored { ~"ignored" }
                     }, test.name));
     }
 
     fn write_ok(out: io::writer, use_color: bool) {
-        write_pretty(out, "ok", term::color_green, use_color);
+        write_pretty(out, ~"ok", term::color_green, use_color);
     }
 
     fn write_failed(out: io::writer, use_color: bool) {
-        write_pretty(out, "FAILED", term::color_red, use_color);
+        write_pretty(out, ~"FAILED", term::color_red, use_color);
     }
 
     fn write_ignored(out: io::writer, use_color: bool) {
-        write_pretty(out, "ignored", term::color_yellow, use_color);
+        write_pretty(out, ~"ignored", term::color_yellow, use_color);
     }
 
-    fn write_pretty(out: io::writer, word: str, color: u8, use_color: bool) {
+    fn write_pretty(out: io::writer, word: ~str, color: u8, use_color: bool) {
         if use_color && term::color_supported() {
             term::fg(out, color);
         }
@@ -214,7 +214,7 @@ fn run_tests_console(opts: test_opts,
 }
 
 fn print_failures(st: console_test_state) {
-    st.out.write_line("\nfailures:");
+    st.out.write_line(~"\nfailures:");
     let failures = copy st.failures;
     let failures = vec::map(failures, |test| test.name);
     let failures = sort::merge_sort(str::le, failures);
@@ -229,14 +229,14 @@ fn should_sort_failures_before_printing_them() {
     let writer = io::mem_buffer_writer(buffer);
 
     let test_a = {
-        name: "a",
+        name: ~"a",
         fn: fn~() { },
         ignore: false,
         should_fail: false
     };
 
     let test_b = {
-        name: "b",
+        name: ~"b",
         fn: fn~() { },
         ignore: false,
         should_fail: false
@@ -256,8 +256,8 @@ fn should_sort_failures_before_printing_them() {
 
     let s = io::mem_buffer_str(buffer);
 
-    let apos = option::get(str::find_str(s, "a"));
-    let bpos = option::get(str::find_str(s, "b"));
+    let apos = option::get(str::find_str(s, ~"a"));
+    let bpos = option::get(str::find_str(s, ~"b"));
     assert apos < bpos;
 }
 
@@ -339,10 +339,10 @@ fn filter_tests(opts: test_opts,
         let filter_str =
             alt opts.filter {
           option::some(f) { f }
-          option::none { "" }
+          option::none { ~"" }
         };
 
-        fn filter_fn(test: test_desc, filter_str: str) ->
+        fn filter_fn(test: test_desc, filter_str: ~str) ->
             option<test_desc> {
             if str::contains(test.name, filter_str) {
                 ret option::some(copy test);
@@ -419,7 +419,7 @@ mod tests {
     fn do_not_run_ignored_tests() {
         fn f() { fail; }
         let desc = {
-            name: "whatever",
+            name: ~"whatever",
             fn: f,
             ignore: true,
             should_fail: false
@@ -435,7 +435,7 @@ mod tests {
     fn ignored_tests_result_in_ignored() {
         fn f() { }
         let desc = {
-            name: "whatever",
+            name: ~"whatever",
             fn: f,
             ignore: true,
             should_fail: false
@@ -452,7 +452,7 @@ mod tests {
     fn test_should_fail() {
         fn f() { fail; }
         let desc = {
-            name: "whatever",
+            name: ~"whatever",
             fn: f,
             ignore: false,
             should_fail: true
@@ -468,7 +468,7 @@ mod tests {
     fn test_should_fail_but_succeeds() {
         fn f() { }
         let desc = {
-            name: "whatever",
+            name: ~"whatever",
             fn: f,
             ignore: false,
             should_fail: true
@@ -482,17 +482,17 @@ mod tests {
 
     #[test]
     fn first_free_arg_should_be_a_filter() {
-        let args = ~["progname", "filter"];
+        let args = ~[~"progname", ~"filter"];
         let opts = alt parse_opts(args) { either::left(o) { o }
-          _ { fail "Malformed arg in first_free_arg_should_be_a_filter"; } };
-        assert (str::eq("filter", option::get(opts.filter)));
+          _ { fail ~"Malformed arg in first_free_arg_should_be_a_filter"; } };
+        assert (str::eq(~"filter", option::get(opts.filter)));
     }
 
     #[test]
     fn parse_ignored_flag() {
-        let args = ~["progname", "filter", "--ignored"];
+        let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = alt parse_opts(args) { either::left(o) { o }
-          _ { fail "Malformed arg in parse_ignored_flag"; } };
+          _ { fail ~"Malformed arg in parse_ignored_flag"; } };
         assert (opts.run_ignored);
     }
 
@@ -504,12 +504,12 @@ mod tests {
         let opts = {filter: option::none, run_ignored: true,
             logfile: option::none};
         let tests =
-            ~[{name: "1", fn: fn~() { }, ignore: true, should_fail: false},
-             {name: "2", fn: fn~() { }, ignore: false, should_fail: false}];
+            ~[{name: ~"1", fn: fn~() { }, ignore: true, should_fail: false},
+             {name: ~"2", fn: fn~() { }, ignore: false, should_fail: false}];
         let filtered = filter_tests(opts, tests);
 
         assert (vec::len(filtered) == 1u);
-        assert (filtered[0].name == "1");
+        assert (filtered[0].name == ~"1");
         assert (filtered[0].ignore == false);
     }
 
@@ -519,12 +519,12 @@ mod tests {
             logfile: option::none};
 
         let names =
-            ~["sha1::test", "int::test_to_str", "int::test_pow",
-             "test::do_not_run_ignored_tests",
-             "test::ignored_tests_result_in_ignored",
-             "test::first_free_arg_should_be_a_filter",
-             "test::parse_ignored_flag", "test::filter_for_ignored_option",
-             "test::sort_tests"];
+            ~[~"sha1::test", ~"int::test_to_str", ~"int::test_pow",
+             ~"test::do_not_run_ignored_tests",
+             ~"test::ignored_tests_result_in_ignored",
+             ~"test::first_free_arg_should_be_a_filter",
+             ~"test::parse_ignored_flag", ~"test::filter_for_ignored_option",
+             ~"test::sort_tests"];
         let tests =
         {
         let testfn = fn~() { };
@@ -539,11 +539,13 @@ mod tests {
     let filtered = filter_tests(opts, tests);
 
     let expected =
-        ~["int::test_pow", "int::test_to_str", "sha1::test",
-         "test::do_not_run_ignored_tests", "test::filter_for_ignored_option",
-         "test::first_free_arg_should_be_a_filter",
-         "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
-         "test::sort_tests"];
+        ~[~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
+          ~"test::do_not_run_ignored_tests",
+          ~"test::filter_for_ignored_option",
+          ~"test::first_free_arg_should_be_a_filter",
+          ~"test::ignored_tests_result_in_ignored",
+          ~"test::parse_ignored_flag",
+          ~"test::sort_tests"];
 
     let pairs = vec::zip(expected, filtered);
 

@@ -85,16 +85,16 @@ impl of io::writer for devnull {
     fn flush() -> int {0}
 }
 
-fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
+fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
 {
     let p: comm::port<line> = comm::port();
     let ch = comm::chan(p);
     comm::send(writech, ch);
     let cout: io::writer = alt path {
-        "" {
+        ~"" {
             {dn: 0} as io::writer
         }
-        "-" {
+        ~"-" {
             io::stdout()
         }
         _ {
@@ -103,7 +103,7 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
                 ~[io::create, io::truncate]))
         }
     };
-    cout.write_line("P4");
+    cout.write_line(~"P4");
     cout.write_line(#fmt("%u %u", size, size));
     let lines = std::map::uint_hash();
     let mut done = 0_u;
@@ -139,14 +139,14 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     }
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "4000", "10"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"4000", ~"10"]
     } else {
         args
     };
 
-    let path = if vec::len(args) < 4_u { "" }
+    let path = if vec::len(args) < 4_u { ~"" }
     else { args[3] };
 
     let yieldevery = if vec::len(args) < 3_u { 10_u }

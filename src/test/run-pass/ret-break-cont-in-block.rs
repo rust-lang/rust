@@ -26,13 +26,13 @@ fn bail_deep(x: ~[~[bool]]) {
     assert !seen;
 }
 
-fn ret_deep() -> str {
+fn ret_deep() -> ~str {
     for iter(~[1, 2]) |e| {
         for iter(~[3, 4]) |x| {
-            if e + x > 4 { ret "hi"; }
+            if e + x > 4 { ret ~"hi"; }
         }
     }
-    ret "bye";
+    ret ~"bye";
 }
 
 fn main() {
@@ -47,11 +47,11 @@ fn main() {
 
     assert find_pos(1, ~[0, 1, 2, 3]) == some(1u);
     assert find_pos(1, ~[0, 4, 2, 3]) == none;
-    assert find_pos("hi", ~["foo", "bar", "baz", "hi"]) == some(3u);
+    assert find_pos(~"hi", ~[~"foo", ~"bar", ~"baz", ~"hi"]) == some(3u);
 
     bail_deep(~[~[false, false], ~[true, true], ~[false, true]]);
     bail_deep(~[~[true]]);
     bail_deep(~[~[false, false, false]]);
 
-    assert ret_deep() == "hi";
+    assert ret_deep() == ~"hi";
 }

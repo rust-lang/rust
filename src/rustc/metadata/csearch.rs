@@ -30,7 +30,7 @@ export get_impl_method;
 export get_item_path;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
 
-fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
+fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> ~str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     ret decoder::get_symbol(cdata, def.node);
 }

@@ -253,7 +253,7 @@ type ctxt =
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
-      short_names_cache: hashmap<t, @str/~>,
+      short_names_cache: hashmap<t, @~str>,
       needs_drop_cache: hashmap<t, bool>,
       needs_unwind_cleanup_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
@@ -444,26 +444,26 @@ enum region_vid = uint;
 
 iface vid {
     fn to_uint() -> uint;
-    fn to_str() -> str;
+    fn to_str() -> ~str;
 }
 
 impl of vid for tv_vid {
     fn to_uint() -> uint { *self }
-    fn to_str() -> str { #fmt["<V%u>", self.to_uint()] }
+    fn to_str() -> ~str { #fmt["<V%u>", self.to_uint()] }
 }
 
 impl of vid for tvi_vid {
     fn to_uint() -> uint { *self }
-    fn to_str() -> str { #fmt["<VI%u>", self.to_uint()] }
+    fn to_str() -> ~str { #fmt["<VI%u>", self.to_uint()] }
 }
 
 impl of vid for region_vid {
     fn to_uint() -> uint { *self }
-    fn to_str() -> str { #fmt["<R%u>", self.to_uint()] }
+    fn to_str() -> ~str { #fmt["<R%u>", self.to_uint()] }
 }
 
 impl of to_str::to_str for purity {
-    fn to_str() -> str {
+    fn to_str() -> ~str {
         purity_to_str(self)
     }
 }
@@ -1020,10 +1020,10 @@ fn substs_is_noop(substs: substs) -> bool {
         substs.self_ty.is_none()
 }
 
-fn substs_to_str(cx: ctxt, substs: substs) -> str {
+fn substs_to_str(cx: ctxt, substs: substs) -> ~str {
     #fmt["substs(self_r=%s, self_ty=%s, tps=%?)",
-         substs.self_r.map_default("none", |r| region_to_str(cx, r)),
-         substs.self_ty.map_default("none", |t| ty_to_str(cx, t)),
+         substs.self_r.map_default(~"none", |r| region_to_str(cx, r)),
+         substs.self_ty.map_default(~"none", |t| ty_to_str(cx, t)),
          substs.tps.map(|t| ty_to_str(cx, t))]
 }
 
@@ -1117,7 +1117,9 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
     alt get(ty).struct {
       ty_str | ty_estr(_) { ret mk_mach_uint(cx, ast::ty_u8); }
       ty_vec(mt) | ty_evec(mt, _) | ty_unboxed_vec(mt) { ret mt.ty; }
-      _ { cx.sess.bug("sequence_element_type called on non-sequence value"); }
+      _ { cx.sess.bug(
+          ~"sequence_element_type called on non-sequence value");
+        }
     }
 }
 
@@ -1125,7 +1127,7 @@ fn get_element_type(ty: t, i: uint) -> t {
     alt get(ty).struct {
       ty_rec(flds) { ret flds[i].mt.ty; }
       ty_tup(ts) { ret ts[i]; }
-      _ { fail "get_element_type called on invalid type"; }
+      _ { fail ~"get_element_type called on invalid type"; }
     }
 }
 
@@ -1603,10 +1605,10 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // FIXME (#2663): is self ever const?
       ty_self { kind_noncopyable() }
       ty_var(_) | ty_var_integral(_) {
-        cx.sess.bug("Asked to compute kind of a type variable");
+        cx.sess.bug(~"Asked to compute kind of a type variable");
       }
       ty_type | ty_opaque_closure_ptr(_) | ty_opaque_box | ty_unboxed_vec(_) {
-        cx.sess.bug("Asked to compute kind of fictitious type");
+        cx.sess.bug(~"Asked to compute kind of fictitious type");
       }
     };
 
@@ -1785,7 +1787,7 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
           ty_param(_, _) { true }
 
           ty_evec(_, _) | ty_estr(_) {
-            cx.sess.unimpl("estr/evec in type_allows_implicit_copy");
+            cx.sess.unimpl(~"estr/evec in type_allows_implicit_copy");
           }
 
           ty_vec(mt) {
@@ -1889,7 +1891,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
 
       ty_var(*) | ty_var_integral(*) | ty_self(*) {
-        cx.sess.bug("non concrete type in type_is_pod");
+        cx.sess.bug(~"non concrete type in type_is_pod");
       }
     }
 
@@ -2010,7 +2012,7 @@ fn hash_type_structure(st: sty) -> uint {
         for c.node.args.each |a| {
             alt a.node {
               carg_base { h += h << 2u; }
-              carg_lit(_) { fail "lit args not implemented yet"; }
+              carg_lit(_) { fail ~"lit args not implemented yet"; }
               carg_ident(p) { h += h << 2u; }
             }
         }
@@ -2166,28 +2168,28 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 fn ty_fn_args(fty: t) -> ~[arg] {
     alt get(fty).struct {
       ty_fn(f) { f.inputs }
-      _ { fail "ty_fn_args() called on non-fn type"; }
+      _ { fail ~"ty_fn_args() called on non-fn type"; }
     }
 }
 
 fn ty_fn_proto(fty: t) -> ast::proto {
     alt get(fty).struct {
       ty_fn(f) { f.proto }
-      _ { fail "ty_fn_proto() called on non-fn type"; }
+      _ { fail ~"ty_fn_proto() called on non-fn type"; }
     }
 }
 
 pure fn ty_fn_ret(fty: t) -> t {
     alt get(fty).struct {
       ty_fn(f) { f.output }
-      _ { fail "ty_fn_ret() called on non-fn type"; }
+      _ { fail ~"ty_fn_ret() called on non-fn type"; }
     }
 }
 
 fn ty_fn_ret_style(fty: t) -> ast::ret_style {
     alt get(fty).struct {
       ty_fn(f) { f.ret_style }
-      _ { fail "ty_fn_ret_style() called on non-fn type"; }
+      _ { fail ~"ty_fn_ret_style() called on non-fn type"; }
     }
 }
 
@@ -2321,11 +2323,11 @@ fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
             tcx.sess.span_fatal
-                (sp, "type inference failed because I \
+                (sp, ~"type inference failed because I \
                      could not find a type\n that's both of the form "
                  + ty_to_str(tcx, mk_var(tcx, vid)) +
-                 " and of the form " + ty_to_str(tcx, rt) +
-                 " - such a type would have to be infinitely large.");
+                 ~" and of the form " + ty_to_str(tcx, rt) +
+                 ~" - such a type would have to be infinitely large.");
     }
 }
 
@@ -2400,7 +2402,7 @@ fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
     }
 }
 
-fn ty_sort_str(cx: ctxt, t: t) -> str {
+fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     alt get(t).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) |
       ty_uint(_) | ty_float(_) | ty_estr(_) | ty_str |
@@ -2409,41 +2411,41 @@ fn ty_sort_str(cx: ctxt, t: t) -> str {
       }
 
       ty_enum(id, _) { #fmt["enum %s", item_path_str(cx, id)] }
-      ty_box(_) { "@-ptr" }
-      ty_uniq(_) { "~-ptr" }
-      ty_evec(_, _) | ty_vec(_) { "vector" }
-      ty_unboxed_vec(_) { "unboxed vector" }
-      ty_ptr(_) { "*-ptr" }
-      ty_rptr(_, _) { "&-ptr" }
-      ty_rec(_) { "record" }
-      ty_fn(_) { "fn" }
+      ty_box(_) { ~"@-ptr" }
+      ty_uniq(_) { ~"~-ptr" }
+      ty_evec(_, _) | ty_vec(_) { ~"vector" }
+      ty_unboxed_vec(_) { ~"unboxed vector" }
+      ty_ptr(_) { ~"*-ptr" }
+      ty_rptr(_, _) { ~"&-ptr" }
+      ty_rec(_) { ~"record" }
+      ty_fn(_) { ~"fn" }
       ty_trait(id, _) { #fmt["trait %s", item_path_str(cx, id)] }
       ty_class(id, _) { #fmt["class %s", item_path_str(cx, id)] }
-      ty_tup(_) { "tuple" }
-      ty_var(_) { "variable" }
-      ty_var_integral(_) { "integral variable" }
-      ty_param(_, _) { "type parameter" }
-      ty_self { "self" }
+      ty_tup(_) { ~"tuple" }
+      ty_var(_) { ~"variable" }
+      ty_var_integral(_) { ~"integral variable" }
+      ty_param(_, _) { ~"type parameter" }
+      ty_self { ~"self" }
       ty_constr(t, _) { ty_sort_str(cx, t) }
     }
 }
 
-fn type_err_to_str(cx: ctxt, err: type_err) -> str {
-    fn terr_vstore_kind_to_str(k: terr_vstore_kind) -> str {
-        alt k { terr_vec { "[]" } terr_str { "str" } }
+fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
+    fn terr_vstore_kind_to_str(k: terr_vstore_kind) -> ~str {
+        alt k { terr_vec { ~"[]" } terr_str { ~"str" } }
     }
 
     alt err {
-      terr_mismatch { ret "types differ"; }
+      terr_mismatch { ret ~"types differ"; }
       terr_ret_style_mismatch(expect, actual) {
-        fn to_str(s: ast::ret_style) -> str {
+        fn to_str(s: ast::ret_style) -> ~str {
             alt s {
-              ast::noreturn { "non-returning" }
-              ast::return_val { "return-by-value" }
+              ast::noreturn { ~"non-returning" }
+              ast::return_val { ~"return-by-value" }
             }
         }
-        ret to_str(actual) + " function found where " + to_str(expect) +
-            " function was expected";
+        ret to_str(actual) + ~" function found where " + to_str(expect) +
+            ~" function was expected";
       }
       terr_purity_mismatch(f1, f2) {
         ret #fmt["expected %s fn but found %s fn", f1.to_str(), f2.to_str()];
@@ -2452,45 +2454,45 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
         ret #fmt["closure protocol mismatch (%s vs %s)",
                  proto_to_str(e), proto_to_str(a)];
       }
-      terr_mutability { ret "values differ in mutability"; }
-      terr_box_mutability { ret "boxed values differ in mutability"; }
-      terr_vec_mutability { ret "vectors differ in mutability"; }
-      terr_ptr_mutability { ret "pointers differ in mutability"; }
-      terr_ref_mutability { ret "references differ in mutability"; }
+      terr_mutability { ret ~"values differ in mutability"; }
+      terr_box_mutability { ret ~"boxed values differ in mutability"; }
+      terr_vec_mutability { ret ~"vectors differ in mutability"; }
+      terr_ptr_mutability { ret ~"pointers differ in mutability"; }
+      terr_ref_mutability { ret ~"references differ in mutability"; }
       terr_ty_param_size(e_sz, a_sz) {
-        ret "expected a type with " + uint::to_str(e_sz, 10u) +
-                " type params but found one with " + uint::to_str(a_sz, 10u) +
-                " type params";
+        ret ~"expected a type with " + uint::to_str(e_sz, 10u) +
+            ~" type params but found one with " + uint::to_str(a_sz, 10u) +
+            ~" type params";
       }
       terr_tuple_size(e_sz, a_sz) {
-        ret "expected a tuple with " + uint::to_str(e_sz, 10u) +
-                " elements but found one with " + uint::to_str(a_sz, 10u) +
-                " elements";
+        ret ~"expected a tuple with " + uint::to_str(e_sz, 10u) +
+                ~" elements but found one with " + uint::to_str(a_sz, 10u) +
+                ~" elements";
       }
       terr_record_size(e_sz, a_sz) {
-        ret "expected a record with " + uint::to_str(e_sz, 10u) +
-                " fields but found one with " + uint::to_str(a_sz, 10u) +
-                " fields";
+        ret ~"expected a record with " + uint::to_str(e_sz, 10u) +
+                ~" fields but found one with " + uint::to_str(a_sz, 10u) +
+                ~" fields";
       }
-      terr_record_mutability { ret "record elements differ in mutability"; }
+      terr_record_mutability { ret ~"record elements differ in mutability"; }
       terr_record_fields(e_fld, a_fld) {
-        ret "expected a record with field `" + *e_fld +
-                "` but found one with field `" + *a_fld + "`";
+        ret ~"expected a record with field `" + *e_fld +
+            ~"` but found one with field `" + *a_fld + ~"`";
       }
-      terr_arg_count { ret "incorrect number of function parameters"; }
+      terr_arg_count { ret ~"incorrect number of function parameters"; }
       terr_mode_mismatch(e_mode, a_mode) {
-        ret "expected argument mode " + mode_to_str(e_mode) + " but found " +
-                mode_to_str(a_mode);
+        ret ~"expected argument mode " + mode_to_str(e_mode) +
+            ~" but found " + mode_to_str(a_mode);
       }
       terr_constr_len(e_len, a_len) {
-        ret "expected a type with " + uint::str(e_len) +
-                " constraints, but found one with " + uint::str(a_len) +
-                " constraints";
+        ret ~"expected a type with " + uint::str(e_len) +
+            ~" constraints, but found one with " + uint::str(a_len) +
+            ~" constraints";
       }
       terr_constr_mismatch(e_constr, a_constr) {
-        ret "expected a type with constraint " + ty_constr_to_str(e_constr) +
-                " but found one with constraint " +
-                ty_constr_to_str(a_constr);
+        ret ~"expected a type with constraint " + ty_constr_to_str(e_constr) +
+            ~" but found one with constraint " +
+            ty_constr_to_str(a_constr);
       }
       terr_regions_differ(subregion, superregion) {
         ret #fmt("references with lifetime %s do not necessarily \
@@ -2511,10 +2513,10 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
         ret #fmt("%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act));
       }
       terr_self_substs {
-        ret "inconsistent self substitution"; // XXX this is more of a bug
+        ret ~"inconsistent self substitution"; // XXX this is more of a bug
       }
       terr_no_integral_type {
-        ret "couldn't determine an appropriate integral type for integer \
+        ret ~"couldn't determine an appropriate integral type for integer \
              literal";
       }
     }
@@ -2602,7 +2604,7 @@ fn substd_enum_variants(cx: ctxt,
     }
 }
 
-fn item_path_str(cx: ctxt, id: ast::def_id) -> str {
+fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
     ast_map::path_to_str(item_path(cx, id))
 }
 
@@ -2661,7 +2663,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(*path, ast_map::path_name(nm))
           }
           ast_map::node_dtor(_, _, _, path) {
-            vec::append_one(*path, ast_map::path_name(@"dtor"))
+            vec::append_one(*path, ast_map::path_name(@~"dtor"))
           }
 
 
@@ -2707,7 +2709,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
                     // FIXME: issue #1417
                     disr_val = alt const_eval::eval_const_expr(cx, ex) {
                       const_eval::const_int(val) {val as int}
-                      _ { cx.sess.bug("tag_variants: bad disr expr"); }
+                      _ { cx.sess.bug(~"tag_variants: bad disr expr"); }
                     }
                   }
                   _ {disr_val += 1;}
@@ -2720,7 +2722,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
                  }
             })
           }
-          _ { cx.sess.bug("tag_variants: id not bound to an enum"); }
+          _ { cx.sess.bug(~"tag_variants: id not bound to an enum"); }
         }
     };
     cx.enum_var_cache.insert(id, result);
@@ -2738,7 +2740,7 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
         if ast_util::def_eq(variant.id, variant_id) { ret variant; }
         i += 1u;
     }
-    cx.sess.bug("enum_variant_with_id(): no variant exists with that ID");
+    cx.sess.bug(~"enum_variant_with_id(): no variant exists with that ID");
 }
 
 
@@ -2789,7 +2791,7 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
                  ast::item_class(_, _, items, _, _) {
                class_field_tys(items)
            }
-           _ { cx.sess.bug("class ID bound to non-class"); }
+           _ { cx.sess.bug(~"class ID bound to non-class"); }
          }
        }
        _ {
@@ -2808,7 +2810,7 @@ fn lookup_class_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
     alt vec::find(lookup_class_fields(cx, parent),
                  |f| f.id.node == field_id.node) {
         some(t) { t }
-        none { cx.sess.bug("class ID not found in parent's fields"); }
+        none { cx.sess.bug(~"class ID not found in parent's fields"); }
     }
 }
 
@@ -2834,7 +2836,7 @@ fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
                             vis: m.vis})
        }
        _ {
-           cx.sess.bug("lookup_class_method_ids: id not bound to a class");
+           cx.sess.bug(~"lookup_class_method_ids: id not bound to a class");
        }
     }
 }
@@ -2995,8 +2997,8 @@ fn ast_constr_to_constr<T>(tcx: ctxt, c: @ast::constr_general<T>) ->
       }
       _ {
         tcx.sess.span_fatal(c.span,
-                            "predicate " + path_to_str(c.node.path) +
-                            " is unbound or bound to a non-function or an \
+                            ~"predicate " + path_to_str(c.node.path) +
+                            ~" is unbound or bound to a non-function or an \
             impure function");
       }
     }

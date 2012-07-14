@@ -10,8 +10,8 @@ fn test_box() {
 }
 
 fn test_str() {
-    let rs = if true { "happy" } else { "sad" };
-    assert (rs == "happy");
+    let rs = if true { ~"happy" } else { ~"sad" };
+    assert (rs == ~"happy");
 }
 
 fn main() { test_box(); test_str(); }

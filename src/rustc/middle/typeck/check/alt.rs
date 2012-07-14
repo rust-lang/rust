@@ -90,9 +90,9 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                 let s = #fmt["this pattern has %u field%s, but the \
                               corresponding variant has %u field%s",
                              subpats_len,
-                             if subpats_len == 1u { "" } else { "s" },
+                             if subpats_len == 1u { ~"" } else { ~"s" },
                              arg_len,
-                             if arg_len == 1u { "" } else { "s" }];
+                             if arg_len == 1u { ~"" } else { ~"s" }];
                 tcx.sess.span_fatal(pat.span, s);
             }
 
@@ -106,8 +106,8 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                 (pat.span, #fmt["this pattern has %u field%s, \
                                  but the corresponding variant has no fields",
                                 subpats_len,
-                                if subpats_len == 1u { "" }
-                                else { "s" }]);
+                                if subpats_len == 1u { ~"" }
+                                else { ~"s" }]);
         }
       }
       _ {
@@ -143,12 +143,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         #debug["pat_range ending type: %?", e_ty];
         if !require_same_types(
             tcx, some(fcx.infcx), pat.span, b_ty, e_ty,
-            || "mismatched types in range") {
+            || ~"mismatched types in range") {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
-            tcx.sess.span_err(pat.span, "non-numeric type used in range");
+            tcx.sess.span_err(pat.span, ~"non-numeric type used in range");
         } else if !valid_range_bounds(fcx.ccx, begin, end) {
-            tcx.sess.span_err(begin.span, "lower range bound must be less \
+            tcx.sess.span_err(begin.span, ~"lower range bound must be less \
                                            than upper");
         }
         fcx.write_ty(pat.id, b_ty);
@@ -246,9 +246,9 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ {
             tcx.sess.span_fatal(
                 pat.span,
-                "mismatched types: expected `" +
+                ~"mismatched types: expected `" +
                 fcx.infcx.ty_to_str(expected) +
-                "` found box");
+                ~"` found box");
           }
         }
       }
@@ -261,9 +261,9 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ {
             tcx.sess.span_fatal(
                 pat.span,
-                "mismatched types: expected `" +
+                ~"mismatched types: expected `" +
                 fcx.infcx.ty_to_str(expected) +
-                "` found uniq");
+                ~"` found uniq");
           }
         }
       }

@@ -384,8 +384,9 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
           // Check that there's at least one field
           let (fields,_) = split_class_items(members);
           if fields.len() < 1u {
-              ccx.tcx.sess.span_err(it.span, "a class must have at least one \
-                field");
+              ccx.tcx.sess.span_err(
+                  it.span,
+                  ~"a class must have at least one field");
           }
           // Check that the class is instantiable
           check_instantiable(ccx.tcx, it.span, it.id);
@@ -429,14 +430,14 @@ impl of ast_conv for @fn_ctxt {
 }
 
 impl of region_scope for @fn_ctxt {
-    fn anon_region() -> result<ty::region, str> {
+    fn anon_region() -> result<ty::region, ~str> {
         result::ok(self.infcx.next_region_var())
     }
-    fn named_region(id: ast::ident) -> result<ty::region, str> {
+    fn named_region(id: ast::ident) -> result<ty::region, ~str> {
         do empty_rscope.named_region(id).chain_err |_e| {
             alt self.in_scope_regions.find(ty::br_named(id)) {
               some(r) { result::ok(r) }
-              none if *id == "blk" { self.block_region() }
+              none if *id == ~"blk" { self.block_region() }
               none {
                 result::err(#fmt["named region `%s` not in scope here", *id])
               }
@@ -446,11 +447,11 @@ impl of region_scope for @fn_ctxt {
 }
 
 impl methods for @fn_ctxt {
-    fn tag() -> str { #fmt["%x", ptr::addr_of(*self) as uint] }
-    fn block_region() -> result<ty::region, str> {
+    fn tag() -> ~str { #fmt["%x", ptr::addr_of(*self) as uint] }
+    fn block_region() -> result<ty::region, ~str> {
         alt vec::last_opt(self.blocks) {
           some(bid) { result::ok(ty::re_scope(bid)) }
-          none { result::err("no block is in scope here") }
+          none { result::err(~"no block is in scope here") }
         }
     }
     #[inline(always)]
@@ -554,7 +555,7 @@ impl methods for @fn_ctxt {
         infer::mk_subr(self.infcx, sub, sup)
     }
 
-    fn require_unsafe(sp: span, op: str) {
+    fn require_unsafe(sp: span, op: ~str) {
         alt self.purity {
           ast::unsafe_fn {/*ok*/}
           _ {
@@ -672,7 +673,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
                        self_ty: none,
                        tps: ty::ty_params_to_tys(tcx, ts)})}
           }
-          _ { tcx.sess.bug("impl_self_ty: unbound item or item that \
+          _ { tcx.sess.bug(~"impl_self_ty: unbound item or item that \
                doesn't have a self_ty"); }
         }
     } else {
@@ -739,7 +740,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 // I would like to make this span_err, but it's
                 // really hard due to the way that expr_bind() is
                 // written.
-                fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
+                fcx.ccx.tcx.sess.span_fatal(sp, ~"mismatched types: \
                                             expected function or foreign \
                                             function but found "
                                             + fcx.infcx.ty_to_str(in_fty));
@@ -762,15 +763,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 sp, #fmt["this function takes %u parameter%s but %u \
                           parameter%s supplied", expected_arg_count,
                          if expected_arg_count == 1u {
-                             ""
+                             ~""
                          } else {
-                             "s"
+                             ~"s"
                          },
                          supplied_arg_count,
                          if supplied_arg_count == 1u {
-                             " was"
+                             ~" was"
                          } else {
-                             "s were"
+                             ~"s were"
                          }]);
             fcx.infcx.next_ty_vars(supplied_arg_count)
         };
@@ -839,7 +840,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fcx.write_ty(call_expr_id, f.output);
             ret bot;
           }
-          _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
+          _ { fcx.ccx.tcx.sess.span_fatal(sp, ~"calling non-function"); }
         }
     }
 
@@ -881,7 +882,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         ret if_bot;
     }
 
-    fn binop_method(op: ast::binop) -> option<str> {
+    fn binop_method(op: ast::binop) -> option<~str> {
         alt op {
           ast::add | ast::subtract | ast::mul | ast::div | ast::rem |
           ast::bitxor | ast::bitand | ast::bitor | ast::shl | ast::shr
@@ -891,7 +892,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
                         self_ex: @ast::expr, self_t: ty::t,
-                        opname: str, args: ~[@ast::expr])
+                        opname: ~str, args: ~[@ast::expr])
         -> option<(ty::t, bool)> {
         let lkup = method::lookup(fcx, op_ex, self_ex, op_ex.id,
                      op_ex.callee_id, @opname, self_t, ~[], false);
@@ -975,10 +976,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         check_expr(fcx, rhs, none);
 
         tcx.sess.span_err(
-            ex.span, "binary operation " + ast_util::binop_to_str(op) +
-            " cannot be applied to type `" +
+            ex.span, ~"binary operation " + ast_util::binop_to_str(op) +
+            ~" cannot be applied to type `" +
             fcx.infcx.ty_to_str(lhs_resolved_t) +
-            "`");
+            ~"`");
 
         // If the or operator is used it might be that the user forgot to
         // supply the do keyword.  Let's be more helpful in that situation.
@@ -986,7 +987,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           alt ty::get(lhs_resolved_t).struct {
             ty::ty_fn(f) {
               tcx.sess.span_note(
-                  ex.span, "did you forget the 'do' keyword for the call?");
+                  ex.span, ~"did you forget the 'do' keyword for the call?");
             }
             _ {}
           }
@@ -994,7 +995,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         (lhs_resolved_t, false)
     }
-    fn check_user_unop(fcx: @fn_ctxt, op_str: str, mname: str,
+    fn check_user_unop(fcx: @fn_ctxt, op_str: ~str, mname: ~str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr, rhs_t: ty::t) -> ty::t {
         alt lookup_op_method(fcx, ex, rhs_expr, rhs_t, mname, ~[]) {
@@ -1074,7 +1075,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               some(ix) {
                 if n_tys > 0u {
                     tcx.sess.span_err(expr.span,
-                                      "can't provide type parameters \
+                                      ~"can't provide type parameters \
                                        to a field access");
                 }
                 fcx.write_ty(expr.id, fields[ix].mt.ty);
@@ -1133,7 +1134,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 if !is_callee {
                     tcx.sess.span_err(
                         expr.span,
-                        "attempted to take value of method \
+                        ~"attempted to take value of method \
                          (try writing an anonymous function)");
                 }
               }
@@ -1170,7 +1171,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
           _ {
-            tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence")
+            tcx.sess.span_bug(expr.span, ~"vstore modifier on non-sequence")
           }
         };
         fcx.write_ty(ev.id, typ);
@@ -1245,7 +1246,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               ty::ty_ptr(*) {
                 fcx.require_unsafe(
                     expr.span,
-                    "dereference of unsafe pointer");
+                    ~"dereference of unsafe pointer");
               }
               _ { /*ok*/ }
             }
@@ -1257,7 +1258,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                   ty::ty_enum(*) {
                     tcx.sess.span_err(
                         expr.span,
-                        "can only dereference enums \
+                        ~"can only dereference enums \
                          with a single variant which has a \
                          single argument");
                   }
@@ -1275,7 +1276,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::get(oprnd_t).struct == ty::ty_bool) {
-                oprnd_t = check_user_unop(fcx, "!", "!", expr,
+                oprnd_t = check_user_unop(fcx, ~"!", ~"!", expr,
                                          oprnd, oprnd_t);
             }
           }
@@ -1283,7 +1284,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::type_is_fp(oprnd_t)) {
-                oprnd_t = check_user_unop(fcx, "-", "unary-", expr,
+                oprnd_t = check_user_unop(fcx, ~"-", ~"unary-", expr,
                                          oprnd, oprnd_t);
             }
           }
@@ -1305,7 +1306,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
         instantiate_path(fcx, pth, tpt, expr.span, expr.id);
       }
-      ast::expr_mac(_) { tcx.sess.bug("unexpanded macro"); }
+      ast::expr_mac(_) { tcx.sess.bug(~"unexpanded macro"); }
       ast::expr_fail(expr_opt) {
         bot = true;
         alt expr_opt {
@@ -1327,7 +1328,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               result::ok(_) { /* fall through */ }
               result::err(_) {
                 tcx.sess.span_err(expr.span,
-                                  "`ret;` in function returning non-nil"); }
+                                  ~"`ret;` in function returning non-nil"); }
             }
           }
           some(e) { check_expr_with(fcx, e, ret_ty); }
@@ -1417,7 +1418,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}), fty.proto)
           }
           _ {
-            tcx.sess.span_fatal(expr.span, "a `loop` function's last \
+            tcx.sess.span_fatal(expr.span, ~"a `loop` function's last \
                                             argument should be of function \
                                             type");
           }
@@ -1445,7 +1446,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             (ty::mk_fn(tcx, fty), fty.proto)
           }
           _ {
-            tcx.sess.span_fatal(expr.span, "a `do` function's last argument \
+            tcx.sess.span_fatal(expr.span, ~"a `do` function's last argument \
                                             should be of function type");
           }
         };
@@ -1491,12 +1492,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
           _ {
             if ty::type_is_nil(t_e) {
-                tcx.sess.span_err(expr.span, "cast from nil: " +
-                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                tcx.sess.span_err(expr.span, ~"cast from nil: " +
+                                  fcx.infcx.ty_to_str(t_e) + ~" as " +
                                   fcx.infcx.ty_to_str(t_1));
             } else if ty::type_is_nil(t_1) {
-                tcx.sess.span_err(expr.span, "cast to nil: " +
-                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                tcx.sess.span_err(expr.span, ~"cast to nil: " +
+                                  fcx.infcx.ty_to_str(t_e) + ~" as " +
                                   fcx.infcx.ty_to_str(t_1));
             }
 
@@ -1510,8 +1511,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 issue number in this comment.
                 */
                 tcx.sess.span_err(expr.span,
-                                  "non-scalar cast: " +
-                                  fcx.infcx.ty_to_str(t_e) + " as " +
+                                  ~"non-scalar cast: " +
+                                  fcx.infcx.ty_to_str(t_e) + ~" as " +
                                   fcx.infcx.ty_to_str(t_1));
             }
           }
@@ -1568,7 +1569,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               ty::ty_rec(flds) { flds }
               _ {
                 tcx.sess.span_fatal(expr.span,
-                                    "record update has non-record base");
+                                    ~"record update has non-record base");
               }
             };
             fcx.write_ty(id, bexpr_t);
@@ -1582,7 +1583,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 }
                 if !found {
                     tcx.sess.span_fatal(f.span,
-                                        "unknown field in record update: " +
+                                        ~"unknown field in record update: " +
                                             *f.node.ident);
                 }
             }
@@ -1606,13 +1607,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           none {
             let resolved = structurally_resolved_type(fcx, expr.span,
                                                       raw_base_t);
-            alt lookup_op_method(fcx, expr, base, resolved, "[]",
+            alt lookup_op_method(fcx, expr, base, resolved, ~"[]",
                                  ~[idx]) {
               some((ret_ty, _)) { fcx.write_ty(id, ret_ty); }
               _ {
                 tcx.sess.span_fatal(
-                    expr.span, "cannot index a value of type `" +
-                    fcx.infcx.ty_to_str(base_t) + "`");
+                    expr.span, ~"cannot index a value of type `" +
+                    fcx.infcx.ty_to_str(base_t) + ~"`");
               }
             }
           }
@@ -1625,7 +1626,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let p_ty = fcx.expr_ty(p);
 
         let lkup = method::lookup(fcx, p, p, expr.id, alloc_id,
-                                  @"alloc", p_ty, ~[], false);
+                                  @~"alloc", p_ty, ~[], false);
         alt lkup.method() {
           some(entry) {
             fcx.ccx.method_map.insert(alloc_id, entry);
@@ -1672,7 +1673,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
            ty_to_str(tcx, fcx.expr_ty(expr)),
            alt expected {
                some(t) { ty_to_str(tcx, t) }
-               _ { "empty" }
+               _ { ~"empty" }
            });
 
     unifier();
@@ -1683,9 +1684,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
 fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
     if !type_is_integral(fcx, sp, t) {
-        fcx.ccx.tcx.sess.span_err(sp, "mismatched types: expected \
+        fcx.ccx.tcx.sess.span_err(sp, ~"mismatched types: expected \
                                        integral type but found `"
-                                  + fcx.infcx.ty_to_str(t) + "`");
+                                  + fcx.infcx.ty_to_str(t) + ~"`");
     }
 }
 
@@ -1774,7 +1775,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
                  }
                  _ { false }
                } {
-            fcx.ccx.tcx.sess.span_warn(s.span, "unreachable statement");
+            fcx.ccx.tcx.sess.span_warn(s.span, ~"unreachable statement");
             warned = true;
         }
         bot |= check_stmt(fcx, s);
@@ -1783,7 +1784,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
       none { fcx.write_nil(blk.node.id); }
       some(e) {
         if bot && !warned {
-            fcx.ccx.tcx.sess.span_warn(e.span, "unreachable expression");
+            fcx.ccx.tcx.sess.span_warn(e.span, ~"unreachable expression");
         }
         bot |= check_expr(fcx, e, none);
         let ety = fcx.expr_ty(e);
@@ -1846,7 +1847,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
               }
               _ {
                 ccx.tcx.sess.span_err(e.span,
-                                      "expected signed integer constant");
+                                      ~"expected signed integer constant");
               }
             }
           }
@@ -1854,7 +1855,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
         }
         if vec::contains(disr_vals, disr_val) {
             ccx.tcx.sess.span_err(v.span,
-                                  "discriminator value already exists");
+                                  ~"discriminator value already exists");
         }
         vec::push(disr_vals, disr_val);
         let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
@@ -1881,7 +1882,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
           _ { false }
         }
     }) {
-        ccx.tcx.sess.span_err(sp, "illegal recursive enum type; \
+        ccx.tcx.sess.span_err(sp, ~"illegal recursive enum type; \
                                    wrap the inner value in a box to \
                                    make it representable");
     }
@@ -1902,7 +1903,7 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
         if !ty::is_pred_ty(fcx.expr_ty(operator)) {
             fcx.ccx.tcx.sess.span_err
                 (operator.span,
-                 "operator in constraint has non-boolean return type");
+                 ~"operator in constraint has non-boolean return type");
         }
 
         alt operator.node {
@@ -1913,26 +1914,26 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
               }
               _ {
                 fcx.ccx.tcx.sess.span_err(operator.span,
-                                            "impure function as operator \
+                                            ~"impure function as operator \
                                              in constraint");
               }
             }
             for operands.each |operand| {
                 if !ast_util::is_constraint_arg(operand) {
                     let s =
-                        "constraint args must be slot variables or literals";
+                        ~"constraint args must be slot variables or literals";
                     fcx.ccx.tcx.sess.span_err(e.span, s);
                 }
             }
           }
           _ {
-            let s = "in a constraint, expected the \
+            let s = ~"in a constraint, expected the \
                      constraint name to be an explicit name";
             fcx.ccx.tcx.sess.span_err(e.span, s);
           }
         }
       }
-      _ { fcx.ccx.tcx.sess.span_err(e.span, "check on non-predicate"); }
+      _ { fcx.ccx.tcx.sess.span_err(e.span, ~"check on non-predicate"); }
     }
     ret bot;
 }
@@ -1957,7 +1958,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: ~[@ast::constr],
                  @alt a.node {
                     ast::carg_base {
                       fcx.ccx.tcx.sess.span_bug(a.span,
-                                                "check_constraints:\
+                                                ~"check_constraints:\
                     unexpected carg_base");
                     }
                     ast::carg_lit(l) {
@@ -1982,7 +1983,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: ~[@ast::constr],
                            span: a.span}
                       } else {
                           fcx.ccx.tcx.sess.span_bug(
-                              a.span, "check_constraints:\
+                              a.span, ~"check_constraints:\
                                        carg_ident index out of bounds");
                       }
                     }
@@ -2018,7 +2019,7 @@ fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> tv_vid {
       some(x) { x }
       _ {
         fcx.ccx.tcx.sess.span_fatal(sp,
-                                    "internal error looking up a local var")
+                                    ~"internal error looking up a local var")
       }
     }
 }
@@ -2048,7 +2049,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
             ret no_params(self_ty);
           }
           none {
-              fcx.ccx.tcx.sess.span_bug(sp, "def_self with no self_ty");
+              fcx.ccx.tcx.sess.span_bug(sp, ~"def_self with no self_ty");
           }
         }
       }
@@ -2068,7 +2069,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
 
       ast::def_fn(id, ast::unsafe_fn) {
         // Unsafe functions can only be touched in an unsafe context
-        fcx.require_unsafe(sp, "access to unsafe function");
+        fcx.require_unsafe(sp, ~"access to unsafe function");
         ret ty::lookup_item_type(fcx.ccx.tcx, id);
       }
 
@@ -2082,7 +2083,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         ret no_params(typ);
       }
       ast::def_ty(_) | ast::def_prim_ty(_) {
-        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type");
       }
       ast::def_upvar(_, inner, _) {
         ret ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
@@ -2091,13 +2092,13 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         ret no_params(ty::mk_param(fcx.ccx.tcx, n, did));
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) {
-        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found module");
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found module");
       }
       ast::def_use(*) {
-        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found use");
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found use");
       }
       ast::def_region(*) {
-        fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found region");
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found region");
       }
     }
 }
@@ -2117,7 +2118,7 @@ fn instantiate_path(fcx: @fn_ctxt,
     let self_r = alt pth.rp {
       some(r) if !tpt.rp => {
         fcx.ccx.tcx.sess.span_err
-            (sp, "this item is not region-parameterized");
+            (sp, ~"this item is not region-parameterized");
         none
       }
       some(r) => {
@@ -2137,15 +2138,15 @@ fn instantiate_path(fcx: @fn_ctxt,
         fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_param_count == 0u {
         fcx.ccx.tcx.sess.span_err
-            (sp, "this item does not take type parameters");
+            (sp, ~"this item does not take type parameters");
         fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_substs_len > ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (sp, "too many type parameters provided for this item");
+            (sp, ~"too many type parameters provided for this item");
         fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_substs_len < ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (sp, "not enough type parameters provided for this item");
+            (sp, ~"not enough type parameters provided for this item");
         fcx.infcx.next_ty_vars(ty_param_count)
     } else {
         pth.types.map(|aty| fcx.to_ty(aty))
@@ -2163,7 +2164,7 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
       result::ok(t_s) if !ty::type_is_var(t_s) { ret t_s; }
       _ {
         fcx.ccx.tcx.sess.span_fatal
-            (sp, "the type of this value must be known in this context");
+            (sp, ~"the type of this value must be known in this context");
       }
     }
 }
@@ -2253,45 +2254,45 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
     }
     let tcx = ccx.tcx;
     let (n_tps, inputs, output) = alt *it.ident {
-      "size_of" |
-      "pref_align_of" | "min_align_of" { (1u, ~[], ty::mk_uint(ccx.tcx)) }
-      "init" { (1u, ~[], param(ccx, 0u)) }
-      "forget" { (1u, ~[arg(ast::by_move, param(ccx, 0u))],
+      ~"size_of" |
+      ~"pref_align_of" | ~"min_align_of" { (1u, ~[], ty::mk_uint(ccx.tcx)) }
+      ~"init" { (1u, ~[], param(ccx, 0u)) }
+      ~"forget" { (1u, ~[arg(ast::by_move, param(ccx, 0u))],
                   ty::mk_nil(tcx)) }
-      "reinterpret_cast" { (2u, ~[arg(ast::by_ref, param(ccx, 0u))],
+      ~"reinterpret_cast" { (2u, ~[arg(ast::by_ref, param(ccx, 0u))],
                             param(ccx, 1u)) }
-      "addr_of" { (1u, ~[arg(ast::by_ref, param(ccx, 0u))],
+      ~"addr_of" { (1u, ~[arg(ast::by_ref, param(ccx, 0u))],
                    ty::mk_imm_ptr(tcx, param(ccx, 0u))) }
-      "move_val" | "move_val_init" {
+      ~"move_val" | ~"move_val_init" {
         (1u, ~[arg(ast::by_mutbl_ref, param(ccx, 0u)),
               arg(ast::by_move, param(ccx, 0u))],
          ty::mk_nil(tcx))
       }
-      "needs_drop" { (1u, ~[], ty::mk_bool(tcx)) }
+      ~"needs_drop" { (1u, ~[], ty::mk_bool(tcx)) }
 
-      "atomic_xchng" | "atomic_add" | "atomic_sub" |
-      "atomic_xchng_acq" | "atomic_add_acq" | "atomic_sub_acq" |
-      "atomic_xchng_rel" | "atomic_add_rel" | "atomic_sub_rel" {
+      ~"atomic_xchng" | ~"atomic_add" | ~"atomic_sub" |
+      ~"atomic_xchng_acq" | ~"atomic_add_acq" | ~"atomic_sub_acq" |
+      ~"atomic_xchng_rel" | ~"atomic_add_rel" | ~"atomic_sub_rel" {
         (0u, ~[arg(ast::by_mutbl_ref, ty::mk_int(tcx)),
                arg(ast::by_val, ty::mk_int(tcx))],
          ty::mk_int(tcx))
       }
 
-      "get_tydesc" {
+      ~"get_tydesc" {
         // FIXME (#2712): return *intrinsic::tydesc, not *()
         (1u, ~[], ty::mk_nil_ptr(tcx))
       }
-      "visit_tydesc" {
-        assert ccx.tcx.intrinsic_defs.contains_key(@"tydesc");
-        assert ccx.tcx.intrinsic_defs.contains_key(@"ty_visitor");
-        let (_, tydesc_ty) = ccx.tcx.intrinsic_defs.get(@"tydesc");
-        let (_, visitor_trait) = ccx.tcx.intrinsic_defs.get(@"ty_visitor");
+      ~"visit_tydesc" {
+        assert ccx.tcx.intrinsic_defs.contains_key(@~"tydesc");
+        assert ccx.tcx.intrinsic_defs.contains_key(@~"ty_visitor");
+        let (_, tydesc_ty) = ccx.tcx.intrinsic_defs.get(@~"tydesc");
+        let (_, visitor_trait) = ccx.tcx.intrinsic_defs.get(@~"ty_visitor");
         let td_ptr = ty::mk_ptr(ccx.tcx, {ty: tydesc_ty,
                                           mutbl: ast::m_imm});
         (0u, ~[arg(ast::by_val, td_ptr),
                arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
       }
-      "frame_address" {
+      ~"frame_address" {
         let fty = ty::mk_fn(ccx.tcx, {
             purity: ast::impure_fn,
             proto: ast::proto_any,
@@ -2308,8 +2309,8 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }
       other {
-        tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +
-                          other + "`");
+        tcx.sess.span_err(it.span, ~"unrecognized intrinsic function: `" +
+                          other + ~"`");
         ret;
       }
     };

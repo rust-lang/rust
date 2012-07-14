@@ -4,7 +4,7 @@ import doc::util;
 
 /// A single operation on the document model
 type pass = {
-    name: str,
+    name: ~str,
     f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc
 };
 
@@ -52,7 +52,7 @@ fn test_run_passes() {
                 doc::cratepage({
                     topmod: {
                         item: {
-                            name: doc.cratemod().name() + "two"
+                            name: doc.cratemod().name() + ~"two"
                             with doc.cratemod().item
                         },
                         items: ~[],
@@ -71,7 +71,7 @@ fn test_run_passes() {
                 doc::cratepage({
                     topmod: {
                         item: {
-                            name: doc.cratemod().name() + "three"
+                            name: doc.cratemod().name() + ~"three"
                             with doc.cratemod().item
                         },
                         items: ~[],
@@ -81,27 +81,27 @@ fn test_run_passes() {
             ]
         }
     }
-    let source = "";
+    let source = ~"";
     do astsrv::from_str(source) |srv| {
         let passes = ~[
             {
-                name: "",
+                name: ~"",
                 f: pass1
             },
             {
-                name: "",
+                name: ~"",
                 f: pass2
             }
         ];
-        let doc = extract::from_srv(srv, "one");
+        let doc = extract::from_srv(srv, ~"one");
         let doc = run_passes(srv, doc, passes);
-        assert doc.cratemod().name() == "onetwothree";
+        assert doc.cratemod().name() == ~"onetwothree";
     }
 }
 
-fn main(args: ~[str]) {
+fn main(args: ~[~str]) {
 
-    if vec::contains(args, "-h") {
+    if vec::contains(args, ~"-h") {
         config::usage();
         ret;
     }
@@ -117,7 +117,7 @@ fn main(args: ~[str]) {
     run(config);
 }
 
-fn time<T>(what: str, f: fn() -> T) -> T {
+fn time<T>(what: ~str, f: fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = f();
     let end = std::time::precise_time_s();
@@ -130,10 +130,10 @@ fn run(config: config::config) {
 
     let source_file = config.input_crate;
     do astsrv::from_file(source_file) |srv| {
-        do time("wait_ast") {
+        do time(~"wait_ast") {
             do astsrv::exec(srv) |_ctxt| { }
         };
-        let doc = time("extract", || {
+        let doc = time(~"extract", || {
             let default_name = source_file;
             extract::from_srv(srv, default_name)
         });

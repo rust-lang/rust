@@ -73,10 +73,10 @@ enum level {
 }
 
 type lint_spec = @{lint: lint,
-                   desc: str,
+                   desc: ~str,
                    default: level};
 
-type lint_dict = hashmap<str,lint_spec>;
+type lint_dict = hashmap<~str,lint_spec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
@@ -84,55 +84,55 @@ type lint_dict = hashmap<str,lint_spec>;
  */
 fn get_lint_dict() -> lint_dict {
     let v = ~[
-        ("ctypes",
+        (~"ctypes",
          @{lint: ctypes,
-           desc: "proper use of core::libc types in foreign modules",
+           desc: ~"proper use of core::libc types in foreign modules",
            default: warn}),
 
-        ("unused_imports",
+        (~"unused_imports",
          @{lint: unused_imports,
-           desc: "imports that are never used",
+           desc: ~"imports that are never used",
            default: ignore}),
 
-        ("while_true",
+        (~"while_true",
          @{lint: while_true,
-           desc: "suggest using loop { } instead of while(true) { }",
+           desc: ~"suggest using loop { } instead of while(true) { }",
            default: warn}),
 
-        ("path_statement",
+        (~"path_statement",
          @{lint: path_statement,
-           desc: "path statements with no effect",
+           desc: ~"path statements with no effect",
            default: warn}),
 
-        ("old_vecs",
+        (~"old_vecs",
          @{lint: old_vecs,
-           desc: "old (deprecated) vectors",
+           desc: ~"old (deprecated) vectors",
            default: error}),
 
-        ("old_strs",
+        (~"old_strs",
          @{lint: old_strs,
-           desc: "old (deprecated) strings",
-           default: ignore}),
+           desc: ~"old (deprecated) strings",
+           default: error}),
 
-        ("unrecognized_warning",
+        (~"unrecognized_warning",
          @{lint: unrecognized_warning,
-           desc: "unrecognized warning attribute",
+           desc: ~"unrecognized warning attribute",
            default: warn}),
 
-        ("non_implicitly_copyable_typarams",
+        (~"non_implicitly_copyable_typarams",
          @{lint: non_implicitly_copyable_typarams,
-           desc: "passing non implicitly copyable types as copy type params",
+           desc: ~"passing non implicitly copyable types as copy type params",
            default: warn}),
 
-        ("vecs_not_implicitly_copyable",
+        (~"vecs_not_implicitly_copyable",
          @{lint: vecs_not_implicitly_copyable,
-           desc: "make vecs and strs not implicitly copyable\
+           desc: ~"make vecs and strs not implicitly copyable\
                   (`err` is ignored; only checked at top level",
            default: warn}),
 
-        ("implicit_copies",
+        (~"implicit_copies",
          @{lint: implicit_copies,
-           desc: "implicit copies of non implicitly copyable data",
+           desc: ~"implicit copies of non implicitly copyable data",
            default: warn})
 
     ];
@@ -198,7 +198,7 @@ impl methods for ctxt {
         }
     }
 
-    fn span_lint(level: level, span: span, msg: str) {
+    fn span_lint(level: level, span: span, msg: ~str) {
         self.sess.span_lint_level(level, span, msg);
     }
 
@@ -211,7 +211,8 @@ impl methods for ctxt {
 
         let mut new_ctxt = self;
 
-        let metas = attr::attr_metas(attr::find_attrs_by_name(attrs, "warn"));
+        let metas = attr::attr_metas(
+            attr::find_attrs_by_name(attrs, ~"warn"));
         for metas.each |meta| {
             alt meta.node {
               ast::meta_list(_, metas) {
@@ -239,14 +240,14 @@ impl methods for ctxt {
                       _ {
                         self.sess.span_err(
                             meta.span,
-                            "malformed warning attribute");
+                            ~"malformed warning attribute");
                       }
                     }
                 }
               }
               _ {
                 self.sess.span_err(meta.span,
-                                   "malformed warning attribute");
+                                   ~"malformed warning attribute");
               }
             }
         }
@@ -256,12 +257,12 @@ impl methods for ctxt {
 }
 
 
-fn lookup_lint(dict: lint_dict, s: str)
-    -> (str, option<(lint, level)>) {
-    let s = str::replace(s, "-", "_");
-    let (name, level) = if s.starts_with("no_") {
+fn lookup_lint(dict: lint_dict, s: ~str)
+    -> (~str, option<(lint, level)>) {
+    let s = str::replace(s, ~"-", ~"_");
+    let (name, level) = if s.starts_with(~"no_") {
         (s.substr(3u, s.len() - 3u), ignore)
-    } else if s.starts_with("err_") {
+    } else if s.starts_with(~"err_") {
         (s.substr(4u, s.len() - 4u), error)
     } else {
         (s, warn)
@@ -341,7 +342,7 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
                             cx.sess.span_lint(
                                 while_true, e.id, it.id,
                                 e.span,
-                                "denote infinite loops with loop { ... }");
+                                ~"denote infinite loops with loop { ... }");
                     }
                     _ {}
                 }
@@ -367,14 +368,14 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
-                        "found rust type `int` in foreign module, while \
+                        ~"found rust type `int` in foreign module, while \
                          libc::c_int or libc::c_long should be used");
                   }
                   ast::def_prim_ty(ast::ty_uint(ast::ty_u)) {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
-                        "found rust type `uint` in foreign module, while \
+                        ~"found rust type `uint` in foreign module, while \
                          libc::c_uint or libc::c_ulong should be used");
                   }
                   _ { }
@@ -411,7 +412,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
                 cx.sess.span_lint(
                     path_statement, id, it.id,
                     s.span,
-                    "path statement with no effect");
+                    ~"path statement with no effect");
               }
               _ {}
             }
@@ -432,13 +433,13 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
               if ! uses_vstore.contains_key(e.id) {
                 cx.sess.span_lint(
                     old_vecs, e.id, it.id,
-                    e.span, "deprecated vec expr");
+                    e.span, ~"deprecated vec expr");
               }
               ast::expr_lit(@{node: ast::lit_str(_), span:_})
               if ! uses_vstore.contains_key(e.id) {
                 cx.sess.span_lint(
                     old_strs, e.id, it.id,
-                    e.span, "deprecated str expr");
+                    e.span, ~"deprecated str expr");
               }
 
               ast::expr_vstore(@inner, _) {
@@ -454,14 +455,14 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
               if ! uses_vstore.contains_key(t.id) {
                 cx.sess.span_lint(
                     old_vecs, t.id, it.id,
-                    t.span, "deprecated vec type");
+                    t.span, ~"deprecated vec type");
               }
               ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
-              if ids == ~[@"str"] && (! uses_vstore.contains_key(t.id)) {
+              if ids == ~[@~"str"] && (! uses_vstore.contains_key(t.id)) {
                 cx.sess.span_lint(
                     old_strs, t.id, it.id,
-                    t.span, "deprecated str type");
+                    t.span, ~"deprecated str type");
               }
               ast::ty_vstore(inner, _) |
               ast::ty_box({ty: inner, _}) |

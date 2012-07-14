@@ -16,7 +16,7 @@ fn maybe_inject_libcore_ref(sess: session,
 }
 
 fn use_core(crate: @ast::crate) -> bool {
-    !attr::attrs_contains_name(crate.node.attrs, "no_core")
+    !attr::attrs_contains_name(crate.node.attrs, ~"no_core")
 }
 
 fn inject_libcore_ref(sess: session,
@@ -30,11 +30,11 @@ fn inject_libcore_ref(sess: session,
     let n1 = sess.next_node_id();
     let n2 = sess.next_node_id();
 
-    let vi1 = @{node: ast::view_item_use(@"core", ~[], n1),
+    let vi1 = @{node: ast::view_item_use(@~"core", ~[], n1),
                 attrs: ~[],
                 vis: ast::public,
                 span: dummy_sp()};
-    let vp = spanned(ast::view_path_glob(ident_to_path(dummy_sp(), @"core"),
+    let vp = spanned(ast::view_path_glob(ident_to_path(dummy_sp(), @~"core"),
                                          n2));
     let vi2 = @{node: ast::view_item_import(~[vp]),
                 attrs: ~[],

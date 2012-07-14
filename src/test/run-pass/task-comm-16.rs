@@ -36,7 +36,7 @@ fn test_vec() {
 fn test_str() {
     let po = port();
     let ch = chan(po);
-    let s0 = "test";
+    let s0 = ~"test";
     send(ch, s0);
     let s1 = recv(po);
     assert (s1[0] == 't' as u8);

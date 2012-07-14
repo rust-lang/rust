@@ -29,7 +29,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     // There ought to be a better approach. Attributes?
 
     for crate.node.module.items.each |crate_item| {
-        if *crate_item.ident == "intrinsic" {
+        if *crate_item.ident == ~"intrinsic" {
             alt crate_item.node {
               ast::item_mod(m) {
                 for m.items.each |intrinsic_item| {
@@ -99,7 +99,7 @@ impl of ast_conv for @crate_ctxt {
 
     fn ty_infer(span: span) -> ty::t {
         self.tcx.sess.span_bug(span,
-                               "found `ty_infer` in unexpected place");
+                               ~"found `ty_infer` in unexpected place");
     }
 }
 
@@ -187,8 +187,8 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                        self_ty: ty::t) {
 
     if impl_m.tps != if_m.tps {
-        tcx.sess.span_err(sp, "method `" + *if_m.ident +
-                          "` has an incompatible set of type parameters");
+        tcx.sess.span_err(sp, ~"method `" + *if_m.ident +
+                          ~"` has an incompatible set of type parameters");
         ret;
     }
 
@@ -228,7 +228,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     };
     require_same_types(
         tcx, none, sp, impl_fty, if_fty,
-        || "method `" + *if_m.ident + "` has an incompatible type");
+        || ~"method `" + *if_m.ident + ~"` has an incompatible type");
     ret;
 
     // Replaces bound references to the self region with `with_r`.
@@ -452,7 +452,7 @@ fn ty_of_ty_method(self: @crate_ctxt,
 fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref, rp: bool)
     -> (ast::def_id, ty_param_substs_and_ty) {
 
-    let sp = t.path.span, err = "can only implement interface types",
+    let sp = t.path.span, err = ~"can only implement interface types",
         sess = ccx.tcx.sess;
 
     let rscope = type_rscope(rp);
@@ -551,7 +551,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_impl(*) | ast::item_mod(_) |
       ast::item_foreign_mod(_) { fail; }
-      ast::item_mac(*) { fail "item macros unimplemented" }
+      ast::item_mac(*) { fail ~"item macros unimplemented" }
     }
 }
 
@@ -582,7 +582,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
                   }
                   _ {
                     ccx.tcx.sess.span_err(
-                        t.span, "type parameter bounds must be \
+                        t.span, ~"type parameter bounds must be \
                                  interface types");
                     ~[]
                   }

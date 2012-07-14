@@ -213,9 +213,9 @@ fn each_storage(v: bitv, op: fn(&uint) -> bool) {
  * The resulting string has the same length as the bitvector, and each
  * character is either '0' or '1'.
  */
-fn to_str(v: bitv) -> str {
-    let mut rs = "";
-    for each(v) |i| { if i { rs += "1"; } else { rs += "0"; } }
+fn to_str(v: bitv) -> ~str {
+    let mut rs = ~"";
+    for each(v) |i| { if i { rs += ~"1"; } else { rs += ~"0"; } }
     ret rs;
 }
 
@@ -243,10 +243,10 @@ mod tests {
     #[test]
     fn test_to_str() {
         let zerolen = bitv(0u, false);
-        assert to_str(zerolen) == "";
+        assert to_str(zerolen) == ~"";
 
         let eightbits = bitv(8u, false);
-        assert to_str(eightbits) == "00000000";
+        assert to_str(eightbits) == ~"00000000";
     }
 
     #[test]

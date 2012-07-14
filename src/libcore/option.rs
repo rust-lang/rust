@@ -23,10 +23,10 @@ pure fn get<T: copy>(opt: option<T>) -> T {
      * Fails if the value equals `none`
      */
 
-    alt opt { some(x) { ret x; } none { fail "option none"; } }
+    alt opt { some(x) { ret x; } none { fail ~"option none"; } }
 }
 
-pure fn expect<T: copy>(opt: option<T>, reason: str) -> T {
+pure fn expect<T: copy>(opt: option<T>, reason: ~str) -> T {
     #[doc = "
     Gets the value out of an option, printing a specified message on failure
 
@@ -93,7 +93,7 @@ pure fn unwrap<T>(-opt: option<T>) -> T {
     unsafe {
         let addr = alt opt {
           some(x) { ptr::addr_of(x) }
-          none { fail "option none" }
+          none { fail ~"option none" }
         };
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(opt);
@@ -138,7 +138,7 @@ impl extensions<T: copy> for option<T> {
      *
      * Fails if the value equals `none`
      */
-    pure fn expect(reason: str) -> T { expect(self, reason) }
+    pure fn expect(reason: ~str) -> T { expect(self, reason) }
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn test_unwrap_ptr() {
 
 #[test]
 fn test_unwrap_str() {
-    let x = "test";
+    let x = ~"test";
     let addr_x = str::as_buf(x, |buf| ptr::addr_of(buf));
     let opt = some(x);
     let y = unwrap(opt);

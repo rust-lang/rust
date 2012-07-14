@@ -127,7 +127,7 @@ fn with_doc_data<T>(d: doc, f: fn(x: &[u8]) -> T) -> T {
     ret f(vec::slice::<u8>(*d.data, d.start, d.end));
 }
 
-fn doc_as_str(d: doc) -> str { ret str::from_bytes(doc_data(d)); }
+fn doc_as_str(d: doc) -> ~str { ret str::from_bytes(doc_data(d)); }
 
 fn doc_as_u8(d: doc) -> u8 {
     assert d.end == d.start + 1u;
@@ -271,7 +271,7 @@ impl writer for writer {
         self.wr_tagged_bytes(tag_id, &[v as u8]);
     }
 
-    fn wr_tagged_str(tag_id: uint, v: str) {
+    fn wr_tagged_str(tag_id: uint, v: ~str) {
         // Lame: can't use str::as_bytes() here because the resulting
         // vector is NULL-terminated.  Annoyingly, the underlying
         // writer interface doesn't permit us to write a slice of a
@@ -286,7 +286,7 @@ impl writer for writer {
         self.writer.write(b);
     }
 
-    fn wr_str(s: str) {
+    fn wr_str(s: ~str) {
         #debug["Write str: %?", s];
         self.writer.write(str::bytes(s));
     }
@@ -320,7 +320,7 @@ impl serializer of serialization::serializer for ebml::writer {
         self.wr_tagged_u32(t as uint, v as u32);
     }
 
-    fn _emit_label(label: str) {
+    fn _emit_label(label: ~str) {
         // There are various strings that we have access to, such as
         // the name of a record field, which do not actually appear in
         // the serialized EBML (normally).  This is just for
@@ -345,17 +345,17 @@ impl serializer of serialization::serializer for ebml::writer {
     fn emit_bool(v: bool) { self.wr_tagged_u8(es_bool as uint, v as u8) }
 
     // FIXME (#2742): implement these
-    fn emit_f64(_v: f64) { fail "Unimplemented: serializing an f64"; }
-    fn emit_f32(_v: f32) { fail "Unimplemented: serializing an f32"; }
-    fn emit_float(_v: float) { fail "Unimplemented: serializing a float"; }
+    fn emit_f64(_v: f64) { fail ~"Unimplemented: serializing an f64"; }
+    fn emit_f32(_v: f32) { fail ~"Unimplemented: serializing an f32"; }
+    fn emit_float(_v: float) { fail ~"Unimplemented: serializing a float"; }
 
-    fn emit_str(v: str) { self.wr_tagged_str(es_str as uint, v) }
+    fn emit_str(v: ~str) { self.wr_tagged_str(es_str as uint, v) }
 
-    fn emit_enum(name: str, f: fn()) {
+    fn emit_enum(name: ~str, f: fn()) {
         self._emit_label(name);
         self.wr_tag(es_enum as uint, f)
     }
-    fn emit_enum_variant(_v_name: str, v_id: uint, _cnt: uint, f: fn()) {
+    fn emit_enum_variant(_v_name: ~str, v_id: uint, _cnt: uint, f: fn()) {
         self._emit_tagged_uint(es_enum_vid, v_id);
         self.wr_tag(es_enum_body as uint, f)
     }
@@ -375,7 +375,7 @@ impl serializer of serialization::serializer for ebml::writer {
     fn emit_box(f: fn()) { f() }
     fn emit_uniq(f: fn()) { f() }
     fn emit_rec(f: fn()) { f() }
-    fn emit_rec_field(f_name: str, _f_idx: uint, f: fn()) {
+    fn emit_rec_field(f_name: ~str, _f_idx: uint, f: fn()) {
         self._emit_label(f_name);
         f()
     }
@@ -391,7 +391,7 @@ fn ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
 }
 
 impl deserializer of serialization::deserializer for ebml_deserializer {
-    fn _check_label(lbl: str) {
+    fn _check_label(lbl: ~str) {
         if self.pos < self.parent.end {
             let {tag: r_tag, doc: r_doc} =
                 ebml::doc_at(self.parent.data, self.pos);
@@ -408,7 +408,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
     fn next_doc(exp_tag: ebml_serializer_tag) -> ebml::doc {
         #debug[". next_doc(exp_tag=%?)", exp_tag];
         if self.pos >= self.parent.end {
-            fail "no more documents in current node!";
+            fail ~"no more documents in current node!";
         }
         let {tag: r_tag, doc: r_doc} =
             ebml::doc_at(self.parent.data, self.pos);
@@ -472,14 +472,14 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
 
     fn read_bool() -> bool { ebml::doc_as_u8(self.next_doc(es_bool)) as bool }
 
-    fn read_f64() -> f64 { fail "read_f64()"; }
-    fn read_f32() -> f32 { fail "read_f32()"; }
-    fn read_float() -> float { fail "read_float()"; }
+    fn read_f64() -> f64 { fail ~"read_f64()"; }
+    fn read_f32() -> f32 { fail ~"read_f32()"; }
+    fn read_float() -> float { fail ~"read_float()"; }
 
-    fn read_str() -> str { ebml::doc_as_str(self.next_doc(es_str)) }
+    fn read_str() -> ~str { ebml::doc_as_str(self.next_doc(es_str)) }
 
     // Compound types:
-    fn read_enum<T:copy>(name: str, f: fn() -> T) -> T {
+    fn read_enum<T:copy>(name: ~str, f: fn() -> T) -> T {
         #debug["read_enum(%s)", name];
         self._check_label(name);
         self.push_doc(self.next_doc(es_enum), f)
@@ -528,7 +528,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
         f()
     }
 
-    fn read_rec_field<T:copy>(f_name: str, f_idx: uint, f: fn() -> T) -> T {
+    fn read_rec_field<T:copy>(f_name: ~str, f_idx: uint, f: fn() -> T) -> T {
         #debug["read_rec_field(%s, idx=%u)", f_name, f_idx];
         self._check_label(f_name);
         f()
@@ -556,13 +556,13 @@ fn test_option_int() {
     }
 
     fn serialize_0<S: serialization::serializer>(s: S, v: option<int>) {
-        do s.emit_enum("core::option::t") {
+        do s.emit_enum(~"core::option::t") {
             alt v {
               none {
-                s.emit_enum_variant("core::option::none", 0u, 0u, || { } );
+                s.emit_enum_variant(~"core::option::none", 0u, 0u, || { } );
               }
               some(v0) {
-                do s.emit_enum_variant("core::option::some", 1u, 1u) {
+                do s.emit_enum_variant(~"core::option::some", 1u, 1u) {
                     s.emit_enum_variant_arg(0u, || serialize_1(s, v0));
                 }
               }
@@ -575,7 +575,7 @@ fn test_option_int() {
     }
 
     fn deserialize_0<S: serialization::deserializer>(s: S) -> option<int> {
-        do s.read_enum("core::option::t") {
+        do s.read_enum(~"core::option::t") {
             do s.read_enum_variant |i| {
                 alt check i {
                   0u { none }

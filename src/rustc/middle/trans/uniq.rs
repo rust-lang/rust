@@ -9,7 +9,7 @@ export make_free_glue, autoderef, duplicate;
 
 fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
     -> block {
-    let _icx = bcx.insn_ctxt("uniq::make_free_glue");
+    let _icx = bcx.insn_ctxt(~"uniq::make_free_glue");
     do with_cond(bcx, IsNotNull(bcx, vptr)) |bcx| {
         let content_ty = content_ty(t);
         let body_ptr = opaque_box_body(bcx, content_ty, vptr);
@@ -32,7 +32,7 @@ fn autoderef(bcx: block, v: ValueRef, t: ty::t) -> {v: ValueRef, t: ty::t} {
 }
 
 fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
-    let _icx = bcx.insn_ctxt("uniq::duplicate");
+    let _icx = bcx.insn_ctxt(~"uniq::duplicate");
     let content_ty = content_ty(t);
     let {box: dst_box, body: dst_body} = malloc_unique(bcx, content_ty);
 

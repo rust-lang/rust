@@ -9,5 +9,5 @@ mod m {
     fn exported() { }
 
     #[test]
-    fn unexported() { fail "runned an unexported test"; }
+    fn unexported() { fail ~"runned an unexported test"; }
 }

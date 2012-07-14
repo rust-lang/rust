@@ -172,30 +172,30 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     }
 
     fn visit_str() -> bool {
-        self.align_to::<str>();
+        self.align_to::<~str>();
         if ! self.inner.visit_str() { ret false; }
-        self.bump_past::<str>();
+        self.bump_past::<~str>();
         true
     }
 
     fn visit_estr_box() -> bool {
-        self.align_to::<str/@>();
+        self.align_to::<@str>();
         if ! self.inner.visit_estr_box() { ret false; }
-        self.bump_past::<str/@>();
+        self.bump_past::<@str>();
         true
     }
 
     fn visit_estr_uniq() -> bool {
-        self.align_to::<str/~>();
+        self.align_to::<~str>();
         if ! self.inner.visit_estr_uniq() { ret false; }
-        self.bump_past::<str/~>();
+        self.bump_past::<~str>();
         true
     }
 
     fn visit_estr_slice() -> bool {
-        self.align_to::<str/&static>();
+        self.align_to::<&static/str>();
         if ! self.inner.visit_estr_slice() { ret false; }
-        self.bump_past::<str/&static>();
+        self.bump_past::<&static/str>();
         true
     }
 
@@ -289,7 +289,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
         true
     }
 
-    fn visit_rec_field(i: uint, name: str/&,
+    fn visit_rec_field(i: uint, name: &str,
                        mtbl: uint, inner: *tydesc) -> bool {
         if ! self.inner.visit_rec_field(i, name, mtbl, inner) { ret false; }
         true
@@ -308,7 +308,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
         true
     }
 
-    fn visit_class_field(i: uint, name: str/&,
+    fn visit_class_field(i: uint, name: &str,
                          mtbl: uint, inner: *tydesc) -> bool {
         if ! self.inner.visit_class_field(i, name, mtbl, inner) {
             ret false;
@@ -374,7 +374,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     fn visit_enter_enum_variant(variant: uint,
                                 disr_val: int,
                                 n_fields: uint,
-                                name: str/&) -> bool {
+                                name: &str) -> bool {
         if ! self.inner.visit_enter_enum_variant(variant, disr_val,
                                                  n_fields, name) {
             ret false;
@@ -390,7 +390,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     fn visit_leave_enum_variant(variant: uint,
                                 disr_val: int,
                                 n_fields: uint,
-                                name: str/&) -> bool {
+                                name: &str) -> bool {
         if ! self.inner.visit_leave_enum_variant(variant, disr_val,
                                                  n_fields, name) {
             ret false;
@@ -460,7 +460,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
 enum my_visitor = @{
     mut ptr1: *c_void,
     mut ptr2: *c_void,
-    mut vals: ~[str]
+    mut vals: ~[~str]
 };
 
 impl extra_methods for my_visitor {
@@ -540,7 +540,7 @@ impl of ty_visitor for my_visitor {
 
     fn visit_enter_rec(_n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }
-    fn visit_rec_field(_i: uint, _name: str/&,
+    fn visit_rec_field(_i: uint, _name: &str,
                        _mtbl: uint, inner: *tydesc) -> bool {
         #error("rec field!");
         self.visit_inner(inner)
@@ -550,7 +550,7 @@ impl of ty_visitor for my_visitor {
 
     fn visit_enter_class(_n_fields: uint,
                          _sz: uint, _align: uint) -> bool { true }
-    fn visit_class_field(_i: uint, _name: str/&,
+    fn visit_class_field(_i: uint, _name: &str,
                          _mtbl: uint, inner: *tydesc) -> bool {
         self.visit_inner(inner)
     }
@@ -574,14 +574,14 @@ impl of ty_visitor for my_visitor {
     fn visit_enter_enum_variant(_variant: uint,
                                 _disr_val: int,
                                 _n_fields: uint,
-                                _name: str/&) -> bool { true }
+                                _name: &str) -> bool { true }
     fn visit_enum_variant_field(_i: uint, inner: *tydesc) -> bool {
         self.visit_inner(inner)
     }
     fn visit_leave_enum_variant(_variant: uint,
                                 _disr_val: int,
                                 _n_fields: uint,
-                                _name: str/&) -> bool { true }
+                                _name: &str) -> bool { true }
     fn visit_leave_enum(_n_variants: uint,
                         _sz: uint, _align: uint) -> bool { true }
 
@@ -625,5 +625,5 @@ fn main() {
         io::println(#fmt("val: %s", s));
     }
     #error("%?", copy u.vals);
-    assert u.vals == ~["1", "2", "3", "true", "false", "5", "4", "3"];
+    assert u.vals == ~[~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3"];
  }

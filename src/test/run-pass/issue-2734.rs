@@ -6,7 +6,7 @@ fn perform_hax<T>(x: @T) -> hax {
 }
 
 fn deadcode() {
-    perform_hax(@"deadcode");
+    perform_hax(@~"deadcode");
 }
 
 fn main() {

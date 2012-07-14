@@ -9,7 +9,7 @@ fn foo(x: uint) {
     if check even(x) {
         log(debug, x);
     } else {
-        fail "Number is odd";
+        fail ~"Number is odd";
     }
 }
 

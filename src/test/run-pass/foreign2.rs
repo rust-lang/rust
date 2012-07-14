@@ -24,4 +24,4 @@ extern mod libc {
 #[nolink]
 extern mod baz { }
 
-fn main(args: ~[str]) { }
+fn main(args: ~[~str]) { }

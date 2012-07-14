@@ -21,23 +21,23 @@ import common::mode_pretty;
 import common::mode;
 import util::logv;
 
-fn main(args: ~[str]) {
+fn main(args: ~[~str]) {
     let config = parse_config(args);
     log_config(config);
     run_tests(config);
 }
 
-fn parse_config(args: ~[str]) -> config {
+fn parse_config(args: ~[~str]) -> config {
     let opts =
-        ~[getopts::reqopt("compile-lib-path"),
-          getopts::reqopt("run-lib-path"),
-          getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
-          getopts::reqopt("build-base"), getopts::reqopt("aux-base"),
-          getopts::reqopt("stage-id"),
-          getopts::reqopt("mode"), getopts::optflag("ignored"),
-          getopts::optopt("runtool"), getopts::optopt("rustcflags"),
-          getopts::optflag("verbose"),
-          getopts::optopt("logfile")];
+        ~[getopts::reqopt(~"compile-lib-path"),
+          getopts::reqopt(~"run-lib-path"),
+          getopts::reqopt(~"rustc-path"), getopts::reqopt(~"src-base"),
+          getopts::reqopt(~"build-base"), getopts::reqopt(~"aux-base"),
+          getopts::reqopt(~"stage-id"),
+          getopts::reqopt(~"mode"), getopts::optflag(~"ignored"),
+          getopts::optopt(~"runtool"), getopts::optopt(~"rustcflags"),
+          getopts::optflag(~"verbose"),
+          getopts::optopt(~"logfile")];
 
     check (vec::is_not_empty(args));
     let args_ = vec::tail(args);
@@ -47,23 +47,23 @@ fn parse_config(args: ~[str]) -> config {
           err(f) { fail getopts::fail_str(f) }
         };
 
-    ret {compile_lib_path: getopts::opt_str(match, "compile-lib-path"),
-         run_lib_path: getopts::opt_str(match, "run-lib-path"),
-         rustc_path: getopts::opt_str(match, "rustc-path"),
-         src_base: getopts::opt_str(match, "src-base"),
-         build_base: getopts::opt_str(match, "build-base"),
-         aux_base: getopts::opt_str(match, "aux-base"),
-         stage_id: getopts::opt_str(match, "stage-id"),
-         mode: str_mode(getopts::opt_str(match, "mode")),
-         run_ignored: getopts::opt_present(match, "ignored"),
+    ret {compile_lib_path: getopts::opt_str(match, ~"compile-lib-path"),
+         run_lib_path: getopts::opt_str(match, ~"run-lib-path"),
+         rustc_path: getopts::opt_str(match, ~"rustc-path"),
+         src_base: getopts::opt_str(match, ~"src-base"),
+         build_base: getopts::opt_str(match, ~"build-base"),
+         aux_base: getopts::opt_str(match, ~"aux-base"),
+         stage_id: getopts::opt_str(match, ~"stage-id"),
+         mode: str_mode(getopts::opt_str(match, ~"mode")),
+         run_ignored: getopts::opt_present(match, ~"ignored"),
          filter:
              if vec::len(match.free) > 0u {
                  option::some(match.free[0])
              } else { option::none },
-         logfile: getopts::opt_maybe_str(match, "logfile"),
-         runtool: getopts::opt_maybe_str(match, "runtool"),
-         rustcflags: getopts::opt_maybe_str(match, "rustcflags"),
-         verbose: getopts::opt_present(match, "verbose")};
+         logfile: getopts::opt_maybe_str(match, ~"logfile"),
+         runtool: getopts::opt_maybe_str(match, ~"runtool"),
+         rustcflags: getopts::opt_maybe_str(match, ~"rustcflags"),
+         verbose: getopts::opt_present(match, ~"verbose")};
 }
 
 fn log_config(config: config) {
@@ -84,30 +84,30 @@ fn log_config(config: config) {
     logv(c, #fmt["\n"]);
 }
 
-fn opt_str(maybestr: option<str>) -> str {
-    alt maybestr { option::some(s) { s } option::none { "(none)" } }
+fn opt_str(maybestr: option<~str>) -> ~str {
+    alt maybestr { option::some(s) { s } option::none { ~"(none)" } }
 }
 
-fn str_opt(maybestr: str) -> option<str> {
-    if maybestr != "(none)" { option::some(maybestr) } else { option::none }
+fn str_opt(maybestr: ~str) -> option<~str> {
+    if maybestr != ~"(none)" { option::some(maybestr) } else { option::none }
 }
 
-fn str_mode(s: str) -> mode {
+fn str_mode(s: ~str) -> mode {
     alt s {
-      "compile-fail" { mode_compile_fail }
-      "run-fail" { mode_run_fail }
-      "run-pass" { mode_run_pass }
-      "pretty" { mode_pretty }
-      _ { fail "invalid mode" }
+      ~"compile-fail" { mode_compile_fail }
+      ~"run-fail" { mode_run_fail }
+      ~"run-pass" { mode_run_pass }
+      ~"pretty" { mode_pretty }
+      _ { fail ~"invalid mode" }
     }
 }
 
-fn mode_str(mode: mode) -> str {
+fn mode_str(mode: mode) -> ~str {
     alt mode {
-      mode_compile_fail { "compile-fail" }
-      mode_run_fail { "run-fail" }
-      mode_run_pass { "run-pass" }
-      mode_pretty { "pretty" }
+      mode_compile_fail { ~"compile-fail" }
+      mode_run_fail { ~"run-fail" }
+      mode_run_pass { ~"run-pass" }
+      mode_pretty { ~"pretty" }
     }
 }
 
@@ -115,7 +115,7 @@ fn run_tests(config: config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
     let res = test::run_tests_console(opts, tests);
-    if !res { fail "Some tests failed"; }
+    if !res { fail ~"Some tests failed"; }
 }
 
 fn test_opts(config: config) -> test::test_opts {
@@ -146,11 +146,11 @@ fn make_tests(config: config) -> ~[test::test_desc] {
     ret tests;
 }
 
-fn is_test(config: config, testfile: str) -> bool {
+fn is_test(config: config, testfile: ~str) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
-        alt config.mode { mode_pretty { ~[".rs"] } _ { ~[".rc", ".rs"] } };
-    let invalid_prefixes = ~[".", "#", "~"];
+        alt config.mode { mode_pretty { ~[~".rs"] } _ { ~[~".rc", ~".rs"] } };
+    let invalid_prefixes = ~[~".", ~"#", ~"~"];
     let name = path::basename(testfile);
 
     let mut valid = false;
@@ -166,7 +166,7 @@ fn is_test(config: config, testfile: str) -> bool {
     ret valid;
 }
 
-fn make_test(config: config, testfile: str) ->
+fn make_test(config: config, testfile: ~str) ->
    test::test_desc {
     {
         name: make_test_name(config, testfile),
@@ -176,11 +176,11 @@ fn make_test(config: config, testfile: str) ->
     }
 }
 
-fn make_test_name(config: config, testfile: str) -> str {
+fn make_test_name(config: config, testfile: ~str) -> ~str {
     #fmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
-fn make_test_closure(config: config, testfile: str) -> test::test_fn {
+fn make_test_closure(config: config, testfile: ~str) -> test::test_fn {
     fn~() { runtest::run(config, copy testfile) }
 }
 

@@ -33,9 +33,9 @@ fn reset(writer: io::writer) {
 
 /// Returns true if the terminal supports color
 fn color_supported() -> bool {
-    let supported_terms = ~["xterm-color", "xterm",
-                           "screen-bce", "xterm-256color"];
-    ret alt os::getenv("TERM") {
+    let supported_terms = ~[~"xterm-color", ~"xterm",
+                           ~"screen-bce", ~"xterm-256color"];
+    ret alt os::getenv(~"TERM") {
           option::some(env) {
             for vec::each(supported_terms) |term| {
                 if str::eq(term, env) { ret true; }

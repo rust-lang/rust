@@ -55,7 +55,7 @@ fn find_locals(tcx: ty::ctxt,
 fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
    uint {
     log(debug,
-             constraint_to_str(tcx, c) + " |-> " + uint::str(next));
+             constraint_to_str(tcx, c) + ~" |-> " + uint::str(next));
 
     let {path: p, def_id: d_id, args: args} = c.node;
     alt tbl.find(d_id) {

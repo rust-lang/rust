@@ -136,7 +136,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       }
       item_const(*) |
       item_enum(*) | item_trait(*) {}
-      item_mac(*) { fail "item macros unimplemented" }
+      item_mac(*) { fail ~"item macros unimplemented" }
     }
 }
 

@@ -24,7 +24,7 @@ iface sha1 {
     /// Provide message input as bytes
     fn input(~[u8]);
     /// Provide message input as string
-    fn input_str(str);
+    fn input_str(~str);
     /**
      * Read the digest as a vector of 20 bytes. After calling this no further
      * input may be provided until reset is called.
@@ -34,7 +34,7 @@ iface sha1 {
      * Read the digest as a hex string. After calling this no further
      * input may be provided until reset is called.
      */
-    fn result_str() -> str;
+    fn result_str() -> ~str;
     /// Reset the SHA-1 state for reuse
     fn reset();
 }
@@ -232,11 +232,11 @@ fn sha1() -> sha1 {
             self.computed = false;
         }
         fn input(msg: ~[u8]) { add_input(self, msg); }
-        fn input_str(msg: str) { add_input(self, str::bytes(msg)); }
+        fn input_str(msg: ~str) { add_input(self, str::bytes(msg)); }
         fn result() -> ~[u8] { ret mk_result(self); }
-        fn result_str() -> str {
+        fn result_str() -> ~str {
             let r = mk_result(self);
-            let mut s = "";
+            let mut s = ~"";
             for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
             ret s;
         }
@@ -260,18 +260,18 @@ mod tests {
 
     #[test]
     fn test() unsafe {
-        type test = {input: str, output: ~[u8]};
+        type test = {input: ~str, output: ~[u8]};
 
-        fn a_million_letter_a() -> str {
+        fn a_million_letter_a() -> ~str {
             let mut i = 0;
-            let mut rs = "";
-            while i < 100000 { str::push_str(rs, "aaaaaaaaaa"); i += 1; }
+            let mut rs = ~"";
+            while i < 100000 { str::push_str(rs, ~"aaaaaaaaaa"); i += 1; }
             ret rs;
         }
         // Test messages from FIPS 180-1
 
         let fips_180_1_tests: ~[test] =
-            ~[{input: "abc",
+            ~[{input: ~"abc",
               output:
                   ~[0xA9u8, 0x99u8, 0x3Eu8, 0x36u8,
                    0x47u8, 0x06u8, 0x81u8, 0x6Au8,
@@ -279,8 +279,8 @@ mod tests {
                    0x78u8, 0x50u8, 0xC2u8, 0x6Cu8,
                    0x9Cu8, 0xD0u8, 0xD8u8, 0x9Du8]},
              {input:
-                  "abcdbcdecdefdefgefghfghighij" +
-                  "hijkijkljklmklmnlmnomnopnopq",
+                  ~"abcdbcdecdefdefgefghfghighij" +
+                  ~"hijkijkljklmklmnlmnomnopnopq",
               output:
                   ~[0x84u8, 0x98u8, 0x3Eu8, 0x44u8,
                    0x1Cu8, 0x3Bu8, 0xD2u8, 0x6Eu8,
@@ -297,14 +297,14 @@ mod tests {
         // Examples from wikipedia
 
         let wikipedia_tests: ~[test] =
-            ~[{input: "The quick brown fox jumps over the lazy dog",
+            ~[{input: ~"The quick brown fox jumps over the lazy dog",
               output:
                   ~[0x2fu8, 0xd4u8, 0xe1u8, 0xc6u8,
                    0x7au8, 0x2du8, 0x28u8, 0xfcu8,
                    0xedu8, 0x84u8, 0x9eu8, 0xe1u8,
                    0xbbu8, 0x76u8, 0xe7u8, 0x39u8,
                    0x1bu8, 0x93u8, 0xebu8, 0x12u8]},
-             {input: "The quick brown fox jumps over the lazy cog",
+             {input: ~"The quick brown fox jumps over the lazy cog",
               output:
                   ~[0xdeu8, 0x9fu8, 0x2cu8, 0x7fu8,
                    0xd2u8, 0x5eu8, 0x1bu8, 0x3au8,

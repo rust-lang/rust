@@ -50,12 +50,12 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       item_foreign_mod(nm) { find_pre_post_foreign_mod(nm); }
       item_ty(*) | item_enum(*) | item_trait(*) { ret; }
       item_class(*) {
-          fail "find_pre_post_item: shouldn't be called on item_class";
+          fail ~"find_pre_post_item: shouldn't be called on item_class";
       }
       item_impl(_, _, _, ms) {
         for ms.each |m| { find_pre_post_method(ccx, m); }
       }
-      item_mac(*) { fail "item macros unimplemented" }
+      item_mac(*) { fail ~"item macros unimplemented" }
     }
 }
 
@@ -303,7 +303,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 
         for (*cap_clause).each |cap_item| {
             if cap_item.is_move {
-                log(debug, ("forget_in_postcond: ", cap_item));
+                log(debug, (~"forget_in_postcond: ", cap_item));
                 forget_in_postcond(fcx, e.id, cap_item.id);
             }
         }
@@ -447,7 +447,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       }
       expr_break { clear_pp(expr_pp(fcx.ccx, e)); }
       expr_again { clear_pp(expr_pp(fcx.ccx, e)); }
-      expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
+      expr_mac(_) { fcx.ccx.tcx.sess.bug(~"unexpanded macro"); }
     }
 }
 

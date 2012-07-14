@@ -100,61 +100,61 @@ enum whole_nt {
     w_mtcs(~[ast::matcher])
 }
 
-fn binop_to_str(o: binop) -> str {
+fn binop_to_str(o: binop) -> ~str {
     alt o {
-      PLUS { "+" }
-      MINUS { "-" }
-      STAR { "*" }
-      SLASH { "/" }
-      PERCENT { "%" }
-      CARET { "^" }
-      AND { "&" }
-      OR { "|" }
-      SHL { "<<" }
-      SHR { ">>" }
+      PLUS { ~"+" }
+      MINUS { ~"-" }
+      STAR { ~"*" }
+      SLASH { ~"/" }
+      PERCENT { ~"%" }
+      CARET { ~"^" }
+      AND { ~"&" }
+      OR { ~"|" }
+      SHL { ~"<<" }
+      SHR { ~">>" }
     }
 }
 
-fn to_str(in: interner<@str/~>, t: token) -> str {
+fn to_str(in: interner<@~str>, t: token) -> ~str {
     alt t {
-      EQ { "=" }
-      LT { "<" }
-      LE { "<=" }
-      EQEQ { "==" }
-      NE { "!=" }
-      GE { ">=" }
-      GT { ">" }
-      NOT { "!" }
-      TILDE { "~" }
-      OROR { "||" }
-      ANDAND { "&&" }
+      EQ { ~"=" }
+      LT { ~"<" }
+      LE { ~"<=" }
+      EQEQ { ~"==" }
+      NE { ~"!=" }
+      GE { ~">=" }
+      GT { ~">" }
+      NOT { ~"!" }
+      TILDE { ~"~" }
+      OROR { ~"||" }
+      ANDAND { ~"&&" }
       BINOP(op) { binop_to_str(op) }
-      BINOPEQ(op) { binop_to_str(op) + "=" }
+      BINOPEQ(op) { binop_to_str(op) + ~"=" }
 
       /* Structural symbols */
-      AT { "@" }
-      DOT { "." }
-      ELLIPSIS { "..." }
-      COMMA { "," }
-      SEMI { "" }
-      COLON { ":" }
-      MOD_SEP { "::" }
-      RARROW { "->" }
-      LARROW { "<-" }
-      DARROW { "<->" }
-      FAT_ARROW { "=>" }
-      LPAREN { "(" }
-      RPAREN { ")" }
-      LBRACKET { "[" }
-      RBRACKET { "]" }
-      LBRACE { "{" }
-      RBRACE { "}" }
-      POUND { "#" }
-      DOLLAR { "$" }
+      AT { ~"@" }
+      DOT { ~"." }
+      ELLIPSIS { ~"..." }
+      COMMA { ~"," }
+      SEMI { ~"" }
+      COLON { ~":" }
+      MOD_SEP { ~"::" }
+      RARROW { ~"->" }
+      LARROW { ~"<-" }
+      DARROW { ~"<->" }
+      FAT_ARROW { ~"=>" }
+      LPAREN { ~"(" }
+      RPAREN { ~")" }
+      LBRACKET { ~"[" }
+      RBRACKET { ~"]" }
+      LBRACE { ~"{" }
+      RBRACE { ~"}" }
+      POUND { ~"#" }
+      DOLLAR { ~"$" }
 
       /* Literals */
       LIT_INT(c, ast::ty_char) {
-        "'" + char::escape_default(c as char) + "'"
+        ~"'" + char::escape_default(c as char) + ~"'"
       }
       LIT_INT(i, t) {
         int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t)
@@ -170,28 +170,28 @@ fn to_str(in: interner<@str/~>, t: token) -> str {
             ast_util::float_ty_to_str(t)
       }
       LIT_STR(s) {
-        "\""
+        ~"\""
             + str::escape_default(*interner::get(in, s))
-            + "\""
+            + ~"\""
       }
 
       /* Name components */
       IDENT(s, _) {
         *interner::get(in, s)
       }
-      UNDERSCORE { "_" }
+      UNDERSCORE { ~"_" }
 
       /* Other */
       DOC_COMMENT(s) { *interner::get(in, s) }
-      EOF { "<eof>" }
+      EOF { ~"<eof>" }
       ACTUALLY(w_nt) {
-        "an interpolated " +
+        ~"an interpolated " +
             alt w_nt {
-              w_item(*) { "item" } w_block(*) { "block" }
-              w_stmt(*) { "statement" } w_pat(*) { "pattern" }
-              w_expr(*) { "expression" } w_ty(*) { "type" }
-              w_ident(*) { "identifier" } w_path(*) { "path" }
-              w_tt(*) { "tt" } w_mtcs(*) { "matcher sequence" }
+              w_item(*) { ~"item" } w_block(*) { ~"block" }
+              w_stmt(*) { ~"statement" } w_pat(*) { ~"pattern" }
+              w_expr(*) { ~"expression" } w_ty(*) { ~"type" }
+              w_ident(*) { ~"identifier" } w_path(*) { ~"path" }
+              w_tt(*) { ~"tt" } w_mtcs(*) { ~"matcher sequence" }
             }
       }
     }
@@ -256,7 +256,7 @@ pure fn is_bar(t: token) -> bool {
  * the grammar is unambiguous. Restricted keywords may not appear
  * in positions that might otherwise contain _value identifiers_.
  */
-fn keyword_table() -> hashmap<str, ()> {
+fn keyword_table() -> hashmap<~str, ()> {
     let keywords = str_hash();
     for contextual_keyword_table().each_key |word| {
         keywords.insert(word, ());
@@ -268,18 +268,18 @@ fn keyword_table() -> hashmap<str, ()> {
 }
 
 /// Keywords that may be used as identifiers
-fn contextual_keyword_table() -> hashmap<str, ()> {
+fn contextual_keyword_table() -> hashmap<~str, ()> {
     let words = str_hash();
     let keys = ~[
-        "as",
-        "else",
-        "move",
-        "of",
-        "priv", "pub",
-        "self", "send", "static",
-        "to",
-        "use",
-        "with"
+        ~"as",
+        ~"else",
+        ~"move",
+        ~"of",
+        ~"priv", ~"pub",
+        ~"self", ~"send", ~"static",
+        ~"to",
+        ~"use",
+        ~"with"
     ];
     for keys.each |word| {
         words.insert(word, ());
@@ -301,23 +301,23 @@ fn contextual_keyword_table() -> hashmap<str, ()> {
  * * `true` or `false` as identifiers would always be shadowed by
  *   the boolean constants
  */
-fn restricted_keyword_table() -> hashmap<str, ()> {
+fn restricted_keyword_table() -> hashmap<~str, ()> {
     let words = str_hash();
     let keys = ~[
-        "alt", "again", "assert",
-        "break",
-        "check", "claim", "class", "const", "copy",
-        "do", "drop",
-        "else", "enum", "export", "extern",
-        "fail", "false", "fn", "for",
-        "if", "iface", "impl", "import",
-        "let", "log", "loop",
-        "mod", "mut",
-        "new",
-        "pure", "ret",
-        "true", "trait", "type",
-        "unchecked", "unsafe",
-        "while"
+        ~"alt", ~"again", ~"assert",
+        ~"break",
+        ~"check", ~"claim", ~"class", ~"const", ~"copy",
+        ~"do", ~"drop",
+        ~"else", ~"enum", ~"export", ~"extern",
+        ~"fail", ~"false", ~"fn", ~"for",
+        ~"if", ~"iface", ~"impl", ~"import",
+        ~"let", ~"log", ~"loop",
+        ~"mod", ~"mut",
+        ~"new",
+        ~"pure", ~"ret",
+        ~"true", ~"trait", ~"type",
+        ~"unchecked", ~"unsafe",
+        ~"while"
     ];
     for keys.each |word| {
         words.insert(word, ());

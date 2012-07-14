@@ -70,11 +70,11 @@ impl methods for assignment_type {
           at_mutbl_ref {false}
         }
     }
-    fn ing_form(desc: str) -> str {
+    fn ing_form(desc: ~str) -> ~str {
         alt self {
-          at_straight_up { "assigning to " + desc }
-          at_swap { "swapping to and from " + desc }
-          at_mutbl_ref { "taking mut reference to " + desc }
+          at_straight_up { ~"assigning to " + desc }
+          at_swap { ~"swapping to and from " + desc }
+          at_mutbl_ref { ~"taking mut reference to " + desc }
         }
     }
 }
@@ -381,7 +381,7 @@ impl methods for check_loan_ctxt {
         }
     }
 
-    fn report_purity_error(pc: purity_cause, sp: span, msg: str) {
+    fn report_purity_error(pc: purity_cause, sp: span, msg: ~str) {
         alt pc {
           pc_pure_fn {
             self.tcx().sess.span_err(

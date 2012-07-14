@@ -23,10 +23,10 @@ enum direction {
 }
 
 impl of to_str for direction {
-    fn to_str() -> str {
+    fn to_str() -> ~str {
         alt self {
-          send { "send" }
-          recv { "recv" }
+          send { ~"send" }
+          recv { ~"recv" }
         }
     }
 }
@@ -68,35 +68,35 @@ impl methods for message {
           message(id, tys, this, next, next_tys) {
             let next = this.proto.get_state(next);
             assert next_tys.len() == next.ty_params.len();
-            let arg_names = tys.mapi(|i, _ty| @("x_" + i.to_str()));
+            let arg_names = tys.mapi(|i, _ty| @(~"x_" + i.to_str()));
 
             let args_ast = (arg_names, tys).map(
                 |n, t| cx.arg_mode(n, t, ast::by_copy)
             );
 
             let args_ast = vec::append(
-                ~[cx.arg_mode(@"pipe",
+                ~[cx.arg_mode(@~"pipe",
                               cx.ty_path(path(this.data_name())
                                         .add_tys(cx.ty_vars(this.ty_params))),
                               ast::by_copy)],
                 args_ast);
 
             let pat = alt (this.dir, next.dir) {
-              (send, send) { "(c, s)" }
-              (send, recv) { "(s, c)" }
-              (recv, send) { "(s, c)" }
-              (recv, recv) { "(c, s)" }
+              (send, send) { ~"(c, s)" }
+              (send, recv) { ~"(s, c)" }
+              (recv, send) { ~"(s, c)" }
+              (recv, recv) { ~"(c, s)" }
             };
 
             let mut body = #fmt("{ let %s = pipes::entangle();\n", pat);
             body += #fmt("let message = %s::%s(%s);\n",
                          *this.proto.name,
                          *self.name(),
-                         str::connect(vec::append_one(arg_names, @"s")
+                         str::connect(vec::append_one(arg_names, @~"s")
                                       .map(|x| *x),
-                                      ", "));
+                                      ~", "));
             body += #fmt("pipes::send(pipe, message);\n");
-            body += "c }";
+            body += ~"c }";
 
             let body = cx.parse_expr(body);
 
@@ -127,7 +127,7 @@ impl methods for state {
         self.messages.push(message(name, data, self, next, next_tys));
     }
 
-    fn filename() -> str {
+    fn filename() -> ~str {
         (*self).proto.filename()
     }
 
@@ -158,8 +158,8 @@ impl methods for state {
             let next_name = next.data_name();
 
             let dir = alt this.dir {
-              send { @"server" }
-              recv { @"client" }
+              send { @~"server" }
+              recv { @~"client" }
             };
 
             let v = cx.variant(name,
@@ -190,7 +190,7 @@ impl methods for state {
                   cx.item_ty_poly(
                       self.data_name(),
                       cx.ty_path(
-                          (@"pipes" + @(dir.to_str() + "_packet"))
+                          (@~"pipes" + @(dir.to_str() + ~"_packet"))
                           .add_ty(cx.ty_path(
                               (self.proto.name + self.data_name())
                               .add_tys(cx.ty_vars(self.ty_params))))),
@@ -236,17 +236,17 @@ impl methods for protocol {
         state
     }
 
-    fn filename() -> str {
-        "proto://" + *self.name
+    fn filename() -> ~str {
+        ~"proto://" + *self.name
     }
 
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let start_state = self.states[0];
 
         let body = alt start_state.dir {
-          send { cx.parse_expr("pipes::entangle()") }
+          send { cx.parse_expr(~"pipes::entangle()") }
           recv {
-            cx.parse_expr("{ \
+            cx.parse_expr(~"{ \
                            let (s, c) = pipes::entangle(); \
                            (c, s) \
                            }")
@@ -281,10 +281,10 @@ impl methods for protocol {
         }
 
         vec::push(items,
-                  cx.item_mod(@"client",
+                  cx.item_mod(@~"client",
                               client_states));
         vec::push(items,
-                  cx.item_mod(@"server",
+                  cx.item_mod(@~"server",
                               server_states));
 
         cx.item_mod(self.name, items)
@@ -293,49 +293,49 @@ impl methods for protocol {
 
 iface to_source {
     // Takes a thing and generates a string containing rust code for it.
-    fn to_source() -> str;
+    fn to_source() -> ~str;
 }
 
 impl of to_source for @ast::item {
-    fn to_source() -> str {
+    fn to_source() -> ~str {
         item_to_str(self)
     }
 }
 
 impl of to_source for ~[@ast::item] {
-    fn to_source() -> str {
-        str::connect(self.map(|i| i.to_source()), "\n\n")
+    fn to_source() -> ~str {
+        str::connect(self.map(|i| i.to_source()), ~"\n\n")
     }
 }
 
 impl of to_source for @ast::ty {
-    fn to_source() -> str {
+    fn to_source() -> ~str {
         ty_to_str(self)
     }
 }
 
 impl of to_source for ~[@ast::ty] {
-    fn to_source() -> str {
-        str::connect(self.map(|i| i.to_source()), ", ")
+    fn to_source() -> ~str {
+        str::connect(self.map(|i| i.to_source()), ~", ")
     }
 }
 
 impl of to_source for ~[ast::ty_param] {
-    fn to_source() -> str {
+    fn to_source() -> ~str {
         pprust::typarams_to_str(self)
     }
 }
 
 impl of to_source for @ast::expr {
-    fn to_source() -> str {
+    fn to_source() -> ~str {
         pprust::expr_to_str(self)
     }
 }
 
 impl parse_utils for ext_ctxt {
-    fn parse_item(s: str) -> @ast::item {
+    fn parse_item(s: ~str) -> @ast::item {
         let res = parse::parse_item_from_source_str(
-            "***protocol expansion***",
+            ~"***protocol expansion***",
             @(copy s),
             self.cfg(),
             ~[],
@@ -350,9 +350,9 @@ impl parse_utils for ext_ctxt {
         }
     }
 
-    fn parse_expr(s: str) -> @ast::expr {
+    fn parse_expr(s: ~str) -> @ast::expr {
         parse::parse_expr_from_source_str(
-            "***protocol expansion***",
+            ~"***protocol expansion***",
             @(copy s),
             self.cfg(),
             self.parse_sess())

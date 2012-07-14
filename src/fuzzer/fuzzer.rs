@@ -8,23 +8,23 @@ import syntax::diagnostic;
 enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
 
-fn write_file(filename: str, content: str) {
+fn write_file(filename: ~str, content: ~str) {
     result::get(
         io::file_writer(filename, ~[io::create, io::truncate]))
         .write_str(content);
 }
 
-fn contains(haystack: str, needle: str) -> bool {
+fn contains(haystack: ~str, needle: ~str) -> bool {
     str::contains(haystack, needle)
 }
 
-fn find_rust_files(&files: ~[str], path: str) {
-    if str::ends_with(path, ".rs") && !contains(path, "utf8") {
+fn find_rust_files(&files: ~[~str], path: ~str) {
+    if str::ends_with(path, ~".rs") && !contains(path, ~"utf8") {
         // ignoring "utf8" tests because something is broken
         files += ~[path];
     } else if os::path_is_dir(path)
-        && !contains(path, "compile-fail")
-        && !contains(path, "build") {
+        && !contains(path, ~"compile-fail")
+        && !contains(path, ~"build") {
         for os::list_dir_path(path).each |p| {
             find_rust_files(files, p);
         }
@@ -45,7 +45,7 @@ fn common_exprs() -> ~[ast::expr] {
      dse(ast::expr_again),
      dse(ast::expr_fail(option::none)),
      dse(ast::expr_fail(option::some(
-         @dse(ast::expr_lit(@dsl(ast::lit_str(@"boo"))))))),
+         @dse(ast::expr_lit(@dsl(ast::lit_str(@~"boo"))))))),
      dse(ast::expr_ret(option::none)),
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
@@ -228,31 +228,31 @@ fn under(n: uint, it: fn(uint)) {
 
 fn devnull() -> io::writer { io::mem_buffer_writer(io::mem_buffer()) }
 
-fn as_str(f: fn@(io::writer)) -> str {
+fn as_str(f: fn@(io::writer)) -> ~str {
     let buf = io::mem_buffer();
     f(io::mem_buffer_writer(buf));
     io::mem_buffer_str(buf)
 }
 
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
-                         filename: str, cx: context) {
+                         filename: ~str, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
                                   |a| safe_to_use_expr(a, cx.mode) );
-    check_variants_T(crate, codemap, filename, "expr",
+    check_variants_T(crate, codemap, filename, ~"expr",
                      extra_exprs + stolen.exprs, pprust::expr_to_str,
                      replace_expr_in_crate, cx);
-    check_variants_T(crate, codemap, filename, "ty", stolen.tys,
+    check_variants_T(crate, codemap, filename, ~"ty", stolen.tys,
                      pprust::ty_to_str, replace_ty_in_crate, cx);
 }
 
 fn check_variants_T<T: copy>(
   crate: ast::crate,
   codemap: codemap::codemap,
-  filename: str,
-  thing_label: str,
+  filename: ~str,
+  thing_label: ~str,
   things: ~[T],
-  stringifier: fn@(@T) -> str,
+  stringifier: fn@(@T) -> ~str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
@@ -263,9 +263,9 @@ fn check_variants_T<T: copy>(
 
     if L < 100u {
         do under(uint::min(L, 20u)) |i| {
-            log(error, "Replacing... #" + uint::str(i));
+            log(error, ~"Replacing... #" + uint::str(i));
             do under(uint::min(L, 30u)) |j| {
-                log(error, "With... " + stringifier(@things[j]));
+                log(error, ~"With... " + stringifier(@things[j]));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
@@ -276,7 +276,7 @@ fn check_variants_T<T: copy>(
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
-                        io::str_reader(""), a,
+                        io::str_reader(~""), a,
                         pprust::no_ann(),
                         false));
                 alt cx.mode {
@@ -297,21 +297,26 @@ fn check_variants_T<T: copy>(
     }
 }
 
-fn last_part(filename: str) -> str {
+fn last_part(filename: ~str) -> ~str {
   let ix = option::get(str::rfind_char(filename, '/'));
   str::slice(filename, ix + 1u, str::len(filename) - 3u)
 }
 
-enum happiness { passed, cleanly_rejected(str), known_bug(str), failed(str), }
+enum happiness {
+    passed,
+    cleanly_rejected(~str),
+    known_bug(~str),
+    failed(~str),
+}
 
 // We'd find more bugs if we could take an AST here, but
 // - that would find many "false positives" or unimportant bugs
 // - that would be tricky, requiring use of tasks or serialization
 //   or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: str, suggested_filename_prefix: str,
+fn check_whole_compiler(code: ~str, suggested_filename_prefix: ~str,
                         allow_running: bool) {
-    let filename = suggested_filename_prefix + ".rs";
+    let filename = suggested_filename_prefix + ~".rs";
     write_file(filename, code);
 
     let compile_result = check_compiling(filename);
@@ -324,102 +329,102 @@ fn check_whole_compiler(code: str, suggested_filename_prefix: str,
     alt run_result {
       passed | cleanly_rejected(_) | known_bug(_) {
         removeIfExists(suggested_filename_prefix);
-        removeIfExists(suggested_filename_prefix + ".rs");
-        removeDirIfExists(suggested_filename_prefix + ".dSYM");
+        removeIfExists(suggested_filename_prefix + ~".rs");
+        removeDirIfExists(suggested_filename_prefix + ~".dSYM");
       }
       failed(s) {
-        log(error, "check_whole_compiler failure: " + s);
-        log(error, "Saved as: " + filename);
+        log(error, ~"check_whole_compiler failure: " + s);
+        log(error, ~"Saved as: " + filename);
       }
     }
 }
 
-fn removeIfExists(filename: str) {
+fn removeIfExists(filename: ~str) {
     // So sketchy!
-    assert !contains(filename, " ");
-    run::program_output("bash", ~["-c", "rm " + filename]);
+    assert !contains(filename, ~" ");
+    run::program_output(~"bash", ~[~"-c", ~"rm " + filename]);
 }
 
-fn removeDirIfExists(filename: str) {
+fn removeDirIfExists(filename: ~str) {
     // So sketchy!
-    assert !contains(filename, " ");
-    run::program_output("bash", ~["-c", "rm -r " + filename]);
+    assert !contains(filename, ~" ");
+    run::program_output(~"bash", ~[~"-c", ~"rm -r " + filename]);
 }
 
-fn check_running(exe_filename: str) -> happiness {
+fn check_running(exe_filename: ~str) -> happiness {
     let p = run::program_output(
-        "/Users/jruderman/scripts/timed_run_rust_program.py",
+        ~"/Users/jruderman/scripts/timed_run_rust_program.py",
         ~[exe_filename]);
-    let comb = p.out + "\n" + p.err;
+    let comb = p.out + ~"\n" + p.err;
     if str::len(comb) > 1u {
-        log(error, "comb comb comb: " + comb);
+        log(error, ~"comb comb comb: " + comb);
     }
 
-    if contains(comb, "Assertion failed:") {
-        failed("C++ assertion failure")
-    } else if contains(comb, "leaked memory in rust main loop") {
+    if contains(comb, ~"Assertion failed:") {
+        failed(~"C++ assertion failure")
+    } else if contains(comb, ~"leaked memory in rust main loop") {
         // might also use exit code 134
         //failed("Leaked")
-        known_bug("https://github.com/mozilla/rust/issues/910")
-    } else if contains(comb, "src/rt/") {
-        failed("Mentioned src/rt/")
-    } else if contains(comb, "malloc") {
-        failed("Mentioned malloc")
+        known_bug(~"https://github.com/mozilla/rust/issues/910")
+    } else if contains(comb, ~"src/rt/") {
+        failed(~"Mentioned src/rt/")
+    } else if contains(comb, ~"malloc") {
+        failed(~"Mentioned malloc")
     } else {
         alt p.status {
             0         { passed }
-            100       { cleanly_rejected("running: explicit fail") }
-            101 | 247 { cleanly_rejected("running: timed out") }
+            100       { cleanly_rejected(~"running: explicit fail") }
+            101 | 247 { cleanly_rejected(~"running: timed out") }
             245 | 246 | 138 | 252 {
-              known_bug("https://github.com/mozilla/rust/issues/1466")
+              known_bug(~"https://github.com/mozilla/rust/issues/1466")
             }
             136 | 248 {
               known_bug(
-                  "SIGFPE - https://github.com/mozilla/rust/issues/944")
+                  ~"SIGFPE - https://github.com/mozilla/rust/issues/944")
             }
             rc {
-              failed("Rust program ran but exited with status " +
+              failed(~"Rust program ran but exited with status " +
                      int::str(rc))
             }
         }
     }
 }
 
-fn check_compiling(filename: str) -> happiness {
+fn check_compiling(filename: ~str) -> happiness {
     let p = run::program_output(
-        "/Users/jruderman/code/rust/build/x86_64-apple-darwin/\
+        ~"/Users/jruderman/code/rust/build/x86_64-apple-darwin/\
          stage1/bin/rustc",
         ~[filename]);
 
     //#error("Status: %d", p.status);
     if p.status == 0 {
         passed
-    } else if p.err != "" {
-        if contains(p.err, "error:") {
-            cleanly_rejected("rejected with span_error")
+    } else if p.err != ~"" {
+        if contains(p.err, ~"error:") {
+            cleanly_rejected(~"rejected with span_error")
         } else {
-            log(error, "Stderr: " + p.err);
-            failed("Unfamiliar error message")
+            log(error, ~"Stderr: " + p.err);
+            failed(~"Unfamiliar error message")
         }
-    } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
-        log(error, "Stdout: " + p.out);
-        failed("Looks like an llvm assertion failure")
-    } else if contains(p.out, "internal compiler error unimplemented") {
-        known_bug("Something unimplemented")
-    } else if contains(p.out, "internal compiler error") {
-        log(error, "Stdout: " + p.out);
-        failed("internal compiler error")
+    } else if contains(p.out, ~"Assertion") && contains(p.out, ~"failed") {
+        log(error, ~"Stdout: " + p.out);
+        failed(~"Looks like an llvm assertion failure")
+    } else if contains(p.out, ~"internal compiler error unimplemented") {
+        known_bug(~"Something unimplemented")
+    } else if contains(p.out, ~"internal compiler error") {
+        log(error, ~"Stdout: " + p.out);
+        failed(~"internal compiler error")
 
     } else {
         log(error, p.status);
-        log(error, "!Stdout: " + p.out);
-        failed("What happened?")
+        log(error, ~"!Stdout: " + p.out);
+        failed(~"What happened?")
     }
 }
 
 
-fn parse_and_print(code: @str/~) -> str {
-    let filename = "tmp.rs";
+fn parse_and_print(code: @~str) -> ~str {
+    let filename = ~"tmp.rs";
     let sess = parse::new_parse_sess(option::none);
     write_file(filename, *code);
     let crate = parse::parse_crate_from_source_str(
@@ -450,49 +455,49 @@ fn has_raw_pointers(c: ast::crate) -> bool {
     ret *has_rp;
 }
 
-fn content_is_dangerous_to_run(code: str) -> bool {
+fn content_is_dangerous_to_run(code: ~str) -> bool {
     let dangerous_patterns =
-        ~["xfail-test",
-         "import",  // espeically fs, run
-         "extern",
-         "unsafe",
-         "log"];    // python --> rust pipe deadlock?
+        ~[~"xfail-test",
+         ~"import",  // espeically fs, run
+         ~"extern",
+         ~"unsafe",
+         ~"log"];    // python --> rust pipe deadlock?
 
     for dangerous_patterns.each |p| { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn content_is_dangerous_to_compile(code: str) -> bool {
+fn content_is_dangerous_to_compile(code: ~str) -> bool {
     let dangerous_patterns =
-        ~["xfail-test"];
+        ~[~"xfail-test"];
 
     for dangerous_patterns.each |p| { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn content_might_not_converge(code: str) -> bool {
+fn content_might_not_converge(code: ~str) -> bool {
     let confusing_patterns =
-        ~["xfail-test",
-         "xfail-pretty",
-         "self",       // crazy rules enforced by parser not typechecker?
-         "spawn",      // precedence issues?
-         "bind",       // precedence issues?
-         " be ",       // don't want to replace its child with a non-call:
+        ~[~"xfail-test",
+         ~"xfail-pretty",
+         ~"self",       // crazy rules enforced by parser not typechecker?
+         ~"spawn",      // precedence issues?
+         ~"bind",       // precedence issues?
+         ~" be ",       // don't want to replace its child with a non-call:
                        // "Non-call expression in tail call"
-         "\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
+         ~"\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
         ];
 
     for confusing_patterns.each |p| { if contains(code, p) { ret true; } }
     ret false;
 }
 
-fn file_might_not_converge(filename: str) -> bool {
+fn file_might_not_converge(filename: ~str) -> bool {
     let confusing_files = ~[
-      "expr-alt.rs", // pretty-printing "(a = b) = c"
+      ~"expr-alt.rs", // pretty-printing "(a = b) = c"
                      // vs "a = b = c" and wrapping
-      "block-arg-in-ternary.rs", // wrapping
-      "move-3-unique.rs", // 0 becomes (0), but both seem reasonable. wtf?
-      "move-3.rs"  // 0 becomes (0), but both seem reasonable. wtf?
+      ~"block-arg-in-ternary.rs", // wrapping
+      ~"move-3-unique.rs", // 0 becomes (0), but both seem reasonable. wtf?
+      ~"move-3.rs"  // 0 becomes (0), but both seem reasonable. wtf?
     ];
 
 
@@ -501,7 +506,7 @@ fn file_might_not_converge(filename: str) -> bool {
     ret false;
 }
 
-fn check_roundtrip_convergence(code: @str/~, maxIters: uint) {
+fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
 
     let mut i = 0u;
     let mut newv = code;
@@ -519,16 +524,16 @@ fn check_roundtrip_convergence(code: @str/~, maxIters: uint) {
         #error("Converged after %u iterations", i);
     } else {
         #error("Did not converge after %u iterations!", i);
-        write_file("round-trip-a.rs", *oldv);
-        write_file("round-trip-b.rs", *newv);
-        run::run_program("diff",
-                         ~["-w", "-u", "round-trip-a.rs",
-                          "round-trip-b.rs"]);
-        fail "Mismatch";
+        write_file(~"round-trip-a.rs", *oldv);
+        write_file(~"round-trip-b.rs", *newv);
+        run::run_program(~"diff",
+                         ~[~"-w", ~"-u", ~"round-trip-a.rs",
+                          ~"round-trip-b.rs"]);
+        fail ~"Mismatch";
     }
 }
 
-fn check_convergence(files: ~[str]) {
+fn check_convergence(files: ~[~str]) {
     #error("pp convergence tests: %u files", vec::len(files));
     for files.each |file| {
         if !file_might_not_converge(file) {
@@ -543,7 +548,7 @@ fn check_convergence(files: ~[str]) {
     }
 }
 
-fn check_variants(files: ~[str], cx: context) {
+fn check_variants(files: ~[~str], cx: context) {
     for files.each |file| {
         if cx.mode == tm_converge && file_might_not_converge(file) {
             #error("Skipping convergence test based on\
@@ -552,7 +557,7 @@ fn check_variants(files: ~[str], cx: context) {
         }
 
         let s = @result::get(io::read_whole_file_str(file));
-        if contains(*s, "#") {
+        if contains(*s, ~"#") {
             again; // Macros are confusing
         }
         if cx.mode == tm_converge && content_might_not_converge(*s) {
@@ -562,7 +567,7 @@ fn check_variants(files: ~[str], cx: context) {
             again;
         }
 
-        log(error, "check_variants: " + file);
+        log(error, ~"check_variants: " + file);
         let sess = parse::new_parse_sess(option::none);
         let crate =
             parse::parse_crate_from_source_str(
@@ -582,7 +587,7 @@ fn check_variants(files: ~[str], cx: context) {
     }
 }
 
-fn main(args: ~[str]) {
+fn main(args: ~[~str]) {
     if vec::len(args) != 2u {
         #error("usage: %s <testdir>", args[0]);
         ret;

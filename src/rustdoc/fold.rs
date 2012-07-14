@@ -332,9 +332,9 @@ fn default_seq_fold_type<T>(
 
 #[test]
 fn default_fold_should_produce_same_doc() {
-    let source = "mod a { fn b() { } mod c { fn d() { } } }";
+    let source = ~"mod a { fn b() { } mod c { fn d() { } } }";
     let ast = parse::from_str(source);
-    let doc = extract::extract(ast, "");
+    let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
     let folded = fld.fold_doc(fld, doc);
     assert doc == folded;
@@ -342,9 +342,9 @@ fn default_fold_should_produce_same_doc() {
 
 #[test]
 fn default_fold_should_produce_same_consts() {
-    let source = "const a: int = 0;";
+    let source = ~"const a: int = 0;";
     let ast = parse::from_str(source);
-    let doc = extract::extract(ast, "");
+    let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
     let folded = fld.fold_doc(fld, doc);
     assert doc == folded;
@@ -352,9 +352,9 @@ fn default_fold_should_produce_same_consts() {
 
 #[test]
 fn default_fold_should_produce_same_enums() {
-    let source = "enum a { b }";
+    let source = ~"enum a { b }";
     let ast = parse::from_str(source);
-    let doc = extract::extract(ast, "");
+    let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
     let folded = fld.fold_doc(fld, doc);
     assert doc == folded;
@@ -362,9 +362,9 @@ fn default_fold_should_produce_same_enums() {
 
 #[test]
 fn default_parallel_fold_should_produce_same_doc() {
-    let source = "mod a { fn b() { } mod c { fn d() { } } }";
+    let source = ~"mod a { fn b() { } mod c { fn d() { } } }";
     let ast = parse::from_str(source);
-    let doc = extract::extract(ast, "");
+    let doc = extract::extract(ast, ~"");
     let fld = default_par_fold(());
     let folded = fld.fold_doc(fld, doc);
     assert doc == folded;

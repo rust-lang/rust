@@ -10,8 +10,8 @@ fn test_box() {
 }
 
 fn test_str() {
-    let res = alt check true { true { "happy" } };
-    assert (res == "happy");
+    let res = alt check true { true { ~"happy" } };
+    assert (res == ~"happy");
 }
 
 fn main() { test_box(); test_str(); }

@@ -97,7 +97,7 @@ const shape_fixedvec: u8 = 32u8;
 const shape_slice: u8 = 33u8;
 const shape_unboxed_vec: u8 = 34u8;
 
-fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
+fn mk_global(ccx: @crate_ctxt, name: ~str, llval: ValueRef, internal: bool) ->
    ValueRef {
     let llglobal =
         str::as_c_str(name,
@@ -184,8 +184,8 @@ fn s_send_tydesc(_tcx: ty_ctxt) -> u8 {
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
-    let llshapetablesty = trans::common::T_named_struct("shapes");
-    let llshapetables = str::as_c_str("shapes", |buf| {
+    let llshapetablesty = trans::common::T_named_struct(~"shapes");
+    let llshapetables = str::as_c_str(~"shapes", |buf| {
         lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
     });
 
@@ -351,7 +351,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
       ty::ty_param(*) {
-        ccx.tcx.sess.bug("non-monomorphized type parameter");
+        ccx.tcx.sess.bug(~"non-monomorphized type parameter");
       }
       ty::ty_fn({proto: ast::proto_box, _}) { ~[shape_box_fn] }
       ty::ty_fn({proto: ast::proto_uniq, _}) { ~[shape_uniq_fn] }
@@ -361,7 +361,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
       ty::ty_opaque_closure_ptr(_) { ~[shape_opaque_closure_ptr] }
       ty::ty_constr(inner_t, _) { shape_of(ccx, inner_t) }
       ty::ty_var(_) | ty::ty_var_integral(_) | ty::ty_self {
-        ccx.sess.bug("shape_of: unexpected type struct found");
+        ccx.sess.bug(~"shape_of: unexpected type struct found");
       }
     }
 }
@@ -458,7 +458,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     header += data;
     header += lv_table;
 
-    ret mk_global(ccx, "tag_shapes", C_bytes(header), true);
+    ret mk_global(ccx, ~"tag_shapes", C_bytes(header), true);
 
 /* tjc: Not annotating FIXMEs in this module because of #1498 */
     fn largest_variants(ccx: @crate_ctxt,
@@ -579,7 +579,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
             dtors += ~[trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];
         }
     }
-    ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
+    ret mk_global(ccx, ~"resource_shapes", C_struct(dtors), true);
 }
 
 fn gen_shape_tables(ccx: @crate_ctxt) {
@@ -699,7 +699,7 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
         cx.enum_sizes.insert(t, max_size);
         ret max_size;
       }
-      _ { cx.sess.bug("static_size_of_enum called on non-enum"); }
+      _ { cx.sess.bug(~"static_size_of_enum called on non-enum"); }
     }
 }
 
@@ -730,7 +730,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_class(did, substs) {
             let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
                 // remember the drop flag
-                  ~[{ident: @"drop", mt: {ty:
+                  ~[{ident: @~"drop", mt: {ty:
                                         ty::mk_u8(tcx),
                                         mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +

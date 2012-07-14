@@ -13,17 +13,17 @@ export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args_no_max(cx, sp, arg, 1u, "fmt");
+    let args = get_mac_args_no_max(cx, sp, arg, 1u, ~"fmt");
     let fmt =
         expr_to_str(cx, args[0],
-                    "first argument to #fmt must be a string literal.");
+                    ~"first argument to #fmt must be a string literal.");
     let fmtspan = args[0].span;
     #debug("Format string:");
     log(debug, fmt);
-    fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: str) -> ! {
+    fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: ~str) -> ! {
         cx.span_fatal(sp, msg);
     }
-    let parse_fmt_err = fn@(s: str) -> ! {
+    let parse_fmt_err = fn@(s: ~str) -> ! {
         parse_fmt_err_(cx, fmtspan, s)
     };
     let pieces = parse_fmt_string(fmt, parse_fmt_err);
@@ -38,7 +38,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   pieces: ~[piece], args: ~[@ast::expr])
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> ~[ast::ident] {
-        ret ~[@"extfmt", @"rt", ident];
+        ret ~[@~"extfmt", @~"rt", ident];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span,
                          ident: ast::ident) -> @ast::expr {
@@ -50,14 +50,14 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
 
     fn make_rt_conv_expr(cx: ext_ctxt, sp: span, cnv: conv) -> @ast::expr {
         fn make_flags(cx: ext_ctxt, sp: span, flags: ~[flag]) -> @ast::expr {
-            let mut tmp_expr = make_rt_path_expr(cx, sp, @"flag_none");
+            let mut tmp_expr = make_rt_path_expr(cx, sp, @~"flag_none");
             for flags.each |f| {
                 let fstr = alt f {
-                  flag_left_justify { "flag_left_justify" }
-                  flag_left_zero_pad { "flag_left_zero_pad" }
-                  flag_space_for_sign { "flag_space_for_sign" }
-                  flag_sign_always { "flag_sign_always" }
-                  flag_alternate { "flag_alternate" }
+                  flag_left_justify { ~"flag_left_justify" }
+                  flag_left_zero_pad { ~"flag_left_zero_pad" }
+                  flag_space_for_sign { ~"flag_space_for_sign" }
+                  flag_sign_always { ~"flag_sign_always" }
+                  flag_alternate { ~"flag_alternate" }
                 };
                 tmp_expr = mk_binary(cx, sp, ast::bitor, tmp_expr,
                                      make_rt_path_expr(cx, sp, @fstr));
@@ -67,15 +67,15 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {
               count_implied {
-                ret make_rt_path_expr(cx, sp, @"count_implied");
+                ret make_rt_path_expr(cx, sp, @~"count_implied");
               }
               count_is(c) {
                 let count_lit = mk_int(cx, sp, c);
-                let count_is_path = make_path_vec(cx, @"count_is");
+                let count_is_path = make_path_vec(cx, @~"count_is");
                 let count_is_args = ~[count_lit];
                 ret mk_call(cx, sp, count_is_path, count_is_args);
               }
-              _ { cx.span_unimpl(sp, "unimplemented #fmt conversion"); }
+              _ { cx.span_unimpl(sp, ~"unimplemented #fmt conversion"); }
             }
         }
         fn make_ty(cx: ext_ctxt, sp: span, t: ty) -> @ast::expr {
@@ -83,13 +83,13 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             alt t {
               ty_hex(c) {
                 alt c {
-                  case_upper { rt_type = "ty_hex_upper"; }
-                  case_lower { rt_type = "ty_hex_lower"; }
+                  case_upper { rt_type = ~"ty_hex_upper"; }
+                  case_lower { rt_type = ~"ty_hex_lower"; }
                 }
               }
-              ty_bits { rt_type = "ty_bits"; }
-              ty_octal { rt_type = "ty_octal"; }
-              _ { rt_type = "ty_default"; }
+              ty_bits { rt_type = ~"ty_bits"; }
+              ty_octal { rt_type = ~"ty_octal"; }
+              _ { rt_type = ~"ty_default"; }
             }
             ret make_rt_path_expr(cx, sp, @rt_type);
         }
@@ -97,10 +97,10 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             ret mk_rec_e(cx, sp,
-                         ~[{ident: @"flags", ex: flags_expr},
-                          {ident: @"width", ex: width_expr},
-                          {ident: @"precision", ex: precision_expr},
-                          {ident: @"ty", ex: ty_expr}]);
+                         ~[{ident: @~"flags", ex: flags_expr},
+                          {ident: @~"width", ex: width_expr},
+                          {ident: @~"precision", ex: precision_expr},
+                          {ident: @~"ty", ex: ty_expr}]);
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
@@ -109,9 +109,9 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         ret make_conv_rec(cx, sp, rt_conv_flags, rt_conv_width,
                           rt_conv_precision, rt_conv_ty);
     }
-    fn make_conv_call(cx: ext_ctxt, sp: span, conv_type: str, cnv: conv,
+    fn make_conv_call(cx: ext_ctxt, sp: span, conv_type: ~str, cnv: conv,
                       arg: @ast::expr) -> @ast::expr {
-        let fname = "conv_" + conv_type;
+        let fname = ~"conv_" + conv_type;
         let path = make_path_vec(cx, @fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg];
@@ -131,7 +131,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               _ { ret false; }
             }
         }
-        let unsupported = "conversion not supported in #fmt string";
+        let unsupported = ~"conversion not supported in #fmt string";
         alt cnv.param {
           option::none { }
           _ { cx.span_unimpl(sp, unsupported); }
@@ -142,15 +142,15 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               flag_sign_always {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
-                                  "+ flag only valid in " +
-                                      "signed #fmt conversion");
+                                  ~"+ flag only valid in " +
+                                      ~"signed #fmt conversion");
                 }
               }
               flag_space_for_sign {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
-                                  "space flag only valid in " +
-                                      "signed #fmt conversions");
+                                  ~"space flag only valid in " +
+                                      ~"signed #fmt conversions");
                 }
               }
               flag_left_zero_pad { }
@@ -168,27 +168,27 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           _ { cx.span_unimpl(sp, unsupported); }
         }
         alt cnv.ty {
-          ty_str { ret make_conv_call(cx, arg.span, "str", cnv, arg); }
+          ty_str { ret make_conv_call(cx, arg.span, ~"str", cnv, arg); }
           ty_int(sign) {
             alt sign {
-              signed { ret make_conv_call(cx, arg.span, "int", cnv, arg); }
+              signed { ret make_conv_call(cx, arg.span, ~"int", cnv, arg); }
               unsigned {
-                ret make_conv_call(cx, arg.span, "uint", cnv, arg);
+                ret make_conv_call(cx, arg.span, ~"uint", cnv, arg);
               }
             }
           }
-          ty_bool { ret make_conv_call(cx, arg.span, "bool", cnv, arg); }
-          ty_char { ret make_conv_call(cx, arg.span, "char", cnv, arg); }
-          ty_hex(_) { ret make_conv_call(cx, arg.span, "uint", cnv, arg); }
-          ty_bits { ret make_conv_call(cx, arg.span, "uint", cnv, arg); }
-          ty_octal { ret make_conv_call(cx, arg.span, "uint", cnv, arg); }
-          ty_float { ret make_conv_call(cx, arg.span, "float", cnv, arg); }
-          ty_poly { ret make_conv_call(cx, arg.span, "poly", cnv, arg); }
+          ty_bool { ret make_conv_call(cx, arg.span, ~"bool", cnv, arg); }
+          ty_char { ret make_conv_call(cx, arg.span, ~"char", cnv, arg); }
+          ty_hex(_) { ret make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
+          ty_bits { ret make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
+          ty_octal { ret make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
+          ty_float { ret make_conv_call(cx, arg.span, ~"float", cnv, arg); }
+          ty_poly { ret make_conv_call(cx, arg.span, ~"poly", cnv, arg); }
         }
     }
     fn log_conv(c: conv) {
         alt c.param {
-          some(p) { log(debug, "param: " + int::to_str(p, 10u)); }
+          some(p) { log(debug, ~"param: " + int::to_str(p, 10u)); }
           _ { #debug("param: none"); }
         }
         for c.flags.each |f| {
@@ -202,20 +202,20 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         }
         alt c.width {
           count_is(i) { log(debug,
-                                 "width: count is " + int::to_str(i, 10u)); }
+                                 ~"width: count is " + int::to_str(i, 10u)); }
           count_is_param(i) {
             log(debug,
-                     "width: count is param " + int::to_str(i, 10u));
+                     ~"width: count is param " + int::to_str(i, 10u));
           }
           count_is_next_param { #debug("width: count is next param"); }
           count_implied { #debug("width: count is implied"); }
         }
         alt c.precision {
           count_is(i) { log(debug,
-                                 "prec: count is " + int::to_str(i, 10u)); }
+                                 ~"prec: count is " + int::to_str(i, 10u)); }
           count_is_param(i) {
             log(debug,
-                     "prec: count is param " + int::to_str(i, 10u));
+                     ~"prec: count is param " + int::to_str(i, 10u));
           }
           count_is_next_param { #debug("prec: count is next param"); }
           count_implied { #debug("prec: count is implied"); }
@@ -249,14 +249,14 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     for pieces.each |pc| {
         alt pc {
           piece_string(s) {
-            vec::push(piece_exprs, mk_str(cx, fmt_sp, s));
+            vec::push(piece_exprs, mk_uniq_str(cx, fmt_sp, s));
           }
           piece_conv(conv) {
             n += 1u;
             if n >= nargs {
                 cx.span_fatal(sp,
-                              "not enough arguments to #fmt " +
-                                  "for the given format string");
+                              ~"not enough arguments to #fmt " +
+                                  ~"for the given format string");
             }
             #debug("Building conversion:");
             log_conv(conv);
@@ -275,7 +275,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
 
     let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
-    ret mk_call(cx, fmt_sp, ~[@"str", @"concat"], ~[arg_vec]);
+    ret mk_call(cx, fmt_sp, ~[@~"str", @~"concat"], ~[arg_vec]);
 }
 //
 // Local Variables:

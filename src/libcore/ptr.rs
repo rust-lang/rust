@@ -174,7 +174,7 @@ fn test_position() {
     import str::as_c_str;
     import libc::c_char;
 
-    let s = "hello";
+    let s = ~"hello";
     unsafe {
         assert 2u == as_c_str(s, |p| position(p, |c| c == 'l' as c_char));
         assert 4u == as_c_str(s, |p| position(p, |c| c == 'o' as c_char));
@@ -184,9 +184,9 @@ fn test_position() {
 
 #[test]
 fn test_buf_len() {
-    let s0 = "hello";
-    let s1 = "there";
-    let s2 = "thing";
+    let s0 = ~"hello";
+    let s1 = ~"there";
+    let s2 = ~"thing";
     do str::as_c_str(s0) |p0| {
         do str::as_c_str(s1) |p1| {
             do str::as_c_str(s2) |p2| {

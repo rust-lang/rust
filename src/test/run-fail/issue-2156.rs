@@ -4,7 +4,7 @@ use std;
 import io::{reader, reader_util};
 
 fn main() {
-    do io::with_str_reader("") |rdr| {
+    do io::with_str_reader(~"") |rdr| {
         alt rdr.read_char() { '=' { } _ { fail } }
     }
 }

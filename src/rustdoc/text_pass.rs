@@ -2,7 +2,7 @@
 
 export mk_pass;
 
-fn mk_pass(name: str, +op: fn~(str) -> str) -> pass {
+fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> pass {
     {
         name: name,
         f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
@@ -11,7 +11,7 @@ fn mk_pass(name: str, +op: fn~(str) -> str) -> pass {
     }
 }
 
-type op = fn~(str) -> str;
+type op = fn~(~str) -> ~str;
 
 #[warn(no_non_implicitly_copyable_typarams)]
 fn run(
@@ -29,7 +29,7 @@ fn run(
     fold.fold_doc(fold, doc)
 }
 
-fn maybe_apply_op(op: op, s: option<str>) -> option<str> {
+fn maybe_apply_op(op: op, s: option<~str>) -> option<~str> {
     option::map(s, |s| op(s) )
 }
 
@@ -96,167 +96,167 @@ fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
 
 #[test]
 fn should_execute_op_on_enum_brief() {
-    let doc = test::mk_doc("#[doc = \" a \"] enum a { b }");
-    assert doc.cratemod().enums()[0].brief() == some("a");
+    let doc = test::mk_doc(~"#[doc = \" a \"] enum a { b }");
+    assert doc.cratemod().enums()[0].brief() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_enum_desc() {
-    let doc = test::mk_doc("#[doc = \" a \"] enum a { b }");
-    assert doc.cratemod().enums()[0].desc() == some("a");
+    let doc = test::mk_doc(~"#[doc = \" a \"] enum a { b }");
+    assert doc.cratemod().enums()[0].desc() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_variant_desc() {
-    let doc = test::mk_doc("enum a { #[doc = \" a \"] b }");
-    assert doc.cratemod().enums()[0].variants[0].desc == some("a");
+    let doc = test::mk_doc(~"enum a { #[doc = \" a \"] b }");
+    assert doc.cratemod().enums()[0].variants[0].desc == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_brief() {
     let doc = test::mk_doc(
-        "#[doc = \" a \"] iface i { fn a(); }");
-    assert doc.cratemod().traits()[0].brief() == some("a");
+        ~"#[doc = \" a \"] iface i { fn a(); }");
+    assert doc.cratemod().traits()[0].brief() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_desc() {
     let doc = test::mk_doc(
-        "#[doc = \" a \"] iface i { fn a(); }");
-    assert doc.cratemod().traits()[0].desc() == some("a");
+        ~"#[doc = \" a \"] iface i { fn a(); }");
+    assert doc.cratemod().traits()[0].desc() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_method_brief() {
     let doc = test::mk_doc(
-        "iface i { #[doc = \" a \"] fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].brief == some("a");
+        ~"iface i { #[doc = \" a \"] fn a(); }");
+    assert doc.cratemod().traits()[0].methods[0].brief == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_method_desc() {
     let doc = test::mk_doc(
-        "iface i { #[doc = \" a \"] fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].desc == some("a");
+        ~"iface i { #[doc = \" a \"] fn a(); }");
+    assert doc.cratemod().traits()[0].methods[0].desc == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_brief() {
     let doc = test::mk_doc(
-        "#[doc = \" a \"] impl i for int { fn a() { } }");
-    assert doc.cratemod().impls()[0].brief() == some("a");
+        ~"#[doc = \" a \"] impl i for int { fn a() { } }");
+    assert doc.cratemod().impls()[0].brief() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_desc() {
     let doc = test::mk_doc(
-        "#[doc = \" a \"] impl i for int { fn a() { } }");
-    assert doc.cratemod().impls()[0].desc() == some("a");
+        ~"#[doc = \" a \"] impl i for int { fn a() { } }");
+    assert doc.cratemod().impls()[0].desc() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_brief() {
     let doc = test::mk_doc(
-        "impl i for int { #[doc = \" a \"] fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].brief == some("a");
+        ~"impl i for int { #[doc = \" a \"] fn a() { } }");
+    assert doc.cratemod().impls()[0].methods[0].brief == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_desc() {
     let doc = test::mk_doc(
-        "impl i for int { #[doc = \" a \"] fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].desc == some("a");
+        ~"impl i for int { #[doc = \" a \"] fn a() { } }");
+    assert doc.cratemod().impls()[0].methods[0].desc == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_type_brief() {
     let doc = test::mk_doc(
-        "#[doc = \" a \"] type t = int;");
-    assert doc.cratemod().types()[0].brief() == some("a");
+        ~"#[doc = \" a \"] type t = int;");
+    assert doc.cratemod().types()[0].brief() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_type_desc() {
     let doc = test::mk_doc(
-        "#[doc = \" a \"] type t = int;");
-    assert doc.cratemod().types()[0].desc() == some("a");
+        ~"#[doc = \" a \"] type t = int;");
+    assert doc.cratemod().types()[0].desc() == some(~"a");
 }
 
 #[test]
 fn should_execute_on_item_section_headers() {
     let doc = test::mk_doc(
-        "#[doc = \"\
+        ~"#[doc = \"\
          #    Header    \n\
          Body\"]\
          fn a() { }");
-    assert doc.cratemod().fns()[0].sections()[0].header == "Header";
+    assert doc.cratemod().fns()[0].sections()[0].header == ~"Header";
 }
 
 #[test]
 fn should_execute_on_item_section_bodies() {
     let doc = test::mk_doc(
-        "#[doc = \"\
+        ~"#[doc = \"\
          # Header\n\
          Body      \"]\
          fn a() { }");
-    assert doc.cratemod().fns()[0].sections()[0].body == "Body";
+    assert doc.cratemod().fns()[0].sections()[0].body == ~"Body";
 }
 
 #[test]
 fn should_execute_on_trait_method_section_headers() {
     let doc = test::mk_doc(
-        "iface i {
+        ~"iface i {
          #[doc = \"\
          # Header    \n\
          Body\"]\
          fn a(); }");
     assert doc.cratemod().traits()[0].methods[0].sections[0].header
-        == "Header";
+        == ~"Header";
 }
 
 #[test]
 fn should_execute_on_trait_method_section_bodies() {
     let doc = test::mk_doc(
-        "iface i {
+        ~"iface i {
          #[doc = \"\
          # Header\n\
          Body     \"]\
          fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].sections[0].body == "Body";
+    assert doc.cratemod().traits()[0].methods[0].sections[0].body == ~"Body";
 }
 
 #[test]
 fn should_execute_on_impl_method_section_headers() {
     let doc = test::mk_doc(
-        "impl i for bool {
+        ~"impl i for bool {
          #[doc = \"\
          # Header   \n\
          Body\"]\
          fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].sections[0].header
-        == "Header";
+        == ~"Header";
 }
 
 #[test]
 fn should_execute_on_impl_method_section_bodies() {
     let doc = test::mk_doc(
-        "impl i for bool {
+        ~"impl i for bool {
          #[doc = \"\
          # Header\n\
          Body    \"]\
          fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].sections[0].body == "Body";
+    assert doc.cratemod().impls()[0].methods[0].sections[0].body == ~"Body";
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);
             let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
             let doc = sectionalize_pass::mk_pass().f(srv, doc);
-            mk_pass("", |s| str::trim(s) ).f(srv, doc)
+            mk_pass(~"", |s| str::trim(s) ).f(srv, doc)
         }
     }
 }

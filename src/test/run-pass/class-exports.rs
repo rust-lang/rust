@@ -7,13 +7,13 @@ mod kitty {
   export cat;
   class cat {
     let meows: uint;
-    let name: str;
+    let name: ~str;
 
-    fn get_name() -> str {  self.name }
-    new(in_name: str) { self.name = in_name; self.meows = 0u; }
+    fn get_name() -> ~str {  self.name }
+    new(in_name: ~str) { self.name = in_name; self.meows = 0u; }
   }
 }
 
 fn main() {
-  assert(cat("Spreckles").get_name() == "Spreckles");
+  assert(cat(~"Spreckles").get_name() == ~"Spreckles");
 }

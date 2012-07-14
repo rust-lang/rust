@@ -5,8 +5,8 @@ use std;
 import str;
 
 fn test1() {
-    let mut s: str = "hello";
-    s += "world";
+    let mut s: ~str = ~"hello";
+    s += ~"world";
     log(debug, s);
     assert (s[9] == 'd' as u8);
 }
@@ -14,13 +14,13 @@ fn test1() {
 fn test2() {
     // This tests for issue #163
 
-    let ff: str = "abc";
-    let a: str = ff + "ABC" + ff;
-    let b: str = "ABC" + ff + "ABC";
+    let ff: ~str = ~"abc";
+    let a: ~str = ff + ~"ABC" + ff;
+    let b: ~str = ~"ABC" + ff + ~"ABC";
     log(debug, a);
     log(debug, b);
-    assert (str::eq(a, "abcABCabc"));
-    assert (str::eq(b, "ABCabcABC"));
+    assert (str::eq(a, ~"abcABCabc"));
+    assert (str::eq(b, ~"ABCabcABC"));
 }
 
 fn main() { test1(); test2(); }

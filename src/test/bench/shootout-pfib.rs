@@ -46,14 +46,14 @@ fn fib(n: int) -> int {
 
 type config = {stress: bool};
 
-fn parse_opts(argv: ~[str]) -> config {
-    let opts = ~[getopts::optflag("stress")];
+fn parse_opts(argv: ~[~str]) -> config {
+    let opts = ~[getopts::optflag(~"stress")];
 
     let opt_args = vec::slice(argv, 1u, vec::len(argv));
 
 
     alt getopts::getopts(opt_args, opts) {
-      ok(m) { ret {stress: getopts::opt_present(m, "stress")} }
+      ok(m) { ret {stress: getopts::opt_present(m, ~"stress")} }
       err(_) { fail; }
     }
 }
@@ -78,11 +78,11 @@ fn stress(num_tasks: int) {
     for results.each |r| { future::get(r); }
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "20"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"20"]
     } else if args.len() <= 1u {
-        ~["", "8"]
+        ~[~"", ~"8"]
     } else {
         args
     };

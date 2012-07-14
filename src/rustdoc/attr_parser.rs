@@ -14,13 +14,13 @@ export parse_crate, parse_desc;
 export parse_hidden;
 
 type crate_attrs = {
-    name: option<str>
+    name: option<~str>
 };
 
 #[cfg(test)]
 mod test {
 
-    fn parse_attributes(source: str) -> ~[ast::attribute] {
+    fn parse_attributes(source: ~str) -> ~[ast::attribute] {
         import syntax::parse;
         import parse::parser;
         import parse::attr::parser_attr;
@@ -29,7 +29,7 @@ mod test {
 
         let parse_sess = syntax::parse::new_parse_sess(none);
         let parser = parse::new_parser_from_source_str(
-            parse_sess, ~[], "-", codemap::fss_none, @source);
+            parse_sess, ~[], ~"-", codemap::fss_none, @source);
 
         parser.parse_outer_attributes()
     }
@@ -44,7 +44,7 @@ fn doc_meta(
      * doc attribute
      */
 
-    let doc_attrs = attr::find_attrs_by_name(attrs, "doc");
+    let doc_attrs = attr::find_attrs_by_name(attrs, ~"doc");
     let doc_metas = do doc_attrs.map |attr| {
         attr::attr_meta(attr::desugar_doc_attr(attr))
     };
@@ -64,21 +64,21 @@ fn parse_crate(attrs: ~[ast::attribute]) -> crate_attrs {
 
     {
         name: attr::last_meta_item_value_str_by_name(
-            link_metas, "name").map(|x| *x )
+            link_metas, ~"name").map(|x| *x )
     }
 }
 
 #[test]
 fn should_extract_crate_name_from_link_attribute() {
-    let source = "#[link(name = \"snuggles\")]";
+    let source = ~"#[link(name = \"snuggles\")]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
-    assert attrs.name == some("snuggles");
+    assert attrs.name == some(~"snuggles");
 }
 
 #[test]
 fn should_not_extract_crate_name_if_no_link_attribute() {
-    let source = "";
+    let source = ~"";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
     assert attrs.name == none;
@@ -86,13 +86,13 @@ fn should_not_extract_crate_name_if_no_link_attribute() {
 
 #[test]
 fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
-    let source = "#[link(whatever)]";
+    let source = ~"#[link(whatever)]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
     assert attrs.name == none;
 }
 
-fn parse_desc(attrs: ~[ast::attribute]) -> option<str> {
+fn parse_desc(attrs: ~[ast::attribute]) -> option<~str> {
     alt doc_meta(attrs) {
       some(meta) {
         attr::get_meta_item_value_str(meta).map(|x| *x )
@@ -103,7 +103,7 @@ fn parse_desc(attrs: ~[ast::attribute]) -> option<str> {
 
 #[test]
 fn parse_desc_should_handle_undocumented_mods() {
-    let source = "";
+    let source = ~"";
     let attrs = test::parse_attributes(source);
     let attrs = parse_desc(attrs);
     assert attrs == none;
@@ -111,10 +111,10 @@ fn parse_desc_should_handle_undocumented_mods() {
 
 #[test]
 fn parse_desc_should_parse_simple_doc_attributes() {
-    let source = "#[doc = \"basic\"]";
+    let source = ~"#[doc = \"basic\"]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_desc(attrs);
-    assert attrs == some("basic");
+    assert attrs == some(~"basic");
 }
 
 fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
@@ -122,7 +122,7 @@ fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
       some(meta) {
         alt attr::get_meta_item_list(meta) {
           some(metas) {
-            let hiddens = attr::find_meta_items_by_name(metas, "hidden");
+            let hiddens = attr::find_meta_items_by_name(metas, ~"hidden");
             vec::is_not_empty(hiddens)
           }
           none { false }
@@ -134,14 +134,14 @@ fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
 
 #[test]
 fn shoulde_parse_hidden_attribute() {
-    let source = "#[doc(hidden)]";
+    let source = ~"#[doc(hidden)]";
     let attrs = test::parse_attributes(source);
     assert parse_hidden(attrs) == true;
 }
 
 #[test]
 fn shoulde_not_parse_non_hidden_attribute() {
-    let source = "#[doc = \"\"]";
+    let source = ~"#[doc = \"\"]";
     let attrs = test::parse_attributes(source);
     assert parse_hidden(attrs) == false;
 }

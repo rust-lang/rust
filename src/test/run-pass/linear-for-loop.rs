@@ -6,7 +6,7 @@ fn main() {
     for x.each |i| { log(debug, i); y += i; }
     log(debug, y);
     assert (y == 6);
-    let s = "hello there";
+    let s = ~"hello there";
     let mut i: int = 0;
     for str::each(s) |c| {
         if i == 0 { assert (c == 'h' as u8); }

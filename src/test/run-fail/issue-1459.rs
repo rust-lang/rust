@@ -1,4 +1,4 @@
 // error-pattern:roflcopter
 fn main() {
-    log (fail "roflcopter", 2);
+    log (fail ~"roflcopter", 2);
 }

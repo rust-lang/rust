@@ -132,7 +132,7 @@ fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
         }
     } {
         some(val) { val }
-        none { fail "min called on empty iterator" }
+        none { fail ~"min called on empty iterator" }
     }
 }
 
@@ -148,7 +148,7 @@ fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
         }
     } {
         some(val) { val }
-        none { fail "max called on empty iterator" }
+        none { fail ~"max called on empty iterator" }
     }
 }
 

@@ -47,7 +47,7 @@ const DW_ATE_signed_char: int = 0x06;
 const DW_ATE_unsigned: int = 0x07;
 const DW_ATE_unsigned_char: int = 0x08;
 
-fn llstr(s: str) -> ValueRef {
+fn llstr(s: ~str) -> ValueRef {
     str::as_c_str(s, |sbuf| {
         llvm::LLVMMDString(sbuf, str::len(s) as libc::c_uint)
     })
@@ -75,7 +75,7 @@ fn llnull() -> ValueRef unsafe {
     unsafe::reinterpret_cast(ptr::null::<ValueRef>())
 }
 
-fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
+fn add_named_metadata(cx: @crate_ctxt, name: ~str, val: ValueRef) {
     str::as_c_str(name, |sbuf| {
         llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, val)
     })
@@ -86,10 +86,10 @@ fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
 type debug_ctxt = {
     llmetadata: metadata_cache,
     names: namegen,
-    crate_file: str
+    crate_file: ~str
 };
 
-fn mk_ctxt(crate: str) -> debug_ctxt {
+fn mk_ctxt(crate: ~str) -> debug_ctxt {
     {llmetadata: map::int_hash(),
      names: new_namegen(),
      crate_file: crate}
@@ -106,8 +106,8 @@ fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
 
 type metadata<T> = {node: ValueRef, data: T};
 
-type file_md = {path: str};
-type compile_unit_md = {name: str};
+type file_md = {path: ~str};
+type compile_unit_md = {name: ~str};
 type subprogram_md = {id: ast::node_id};
 type local_var_md = {id: ast::node_id};
 type tydesc_md = {hash: uint};
@@ -181,11 +181,11 @@ fn create_compile_unit(cx: @crate_ctxt)
                          llstr(#env["CFG_VERSION"]),
                          lli1(true), // deprecated: main compile unit
                          lli1(cx.sess.opts.optimize != 0u),
-                         llstr(""), // flags (???)
+                         llstr(~""), // flags (???)
                          lli32(0) // runtime version (???)
                         ];
     let unit_node = llmdnode(unit_metadata);
-    add_named_metadata(cx, "llvm.dbg.cu", unit_node);
+    add_named_metadata(cx, ~"llvm.dbg.cu", unit_node);
     let mdval = @{node: unit_node, data: {name: crate_name}};
     update_cache(cache, tg, compile_unit_metadata(mdval));
 
@@ -196,7 +196,7 @@ fn get_cache(cx: @crate_ctxt) -> metadata_cache {
     option::get(cx.dbg_cx).llmetadata
 }
 
-fn get_file_path_and_dir(work_dir: str, full_path: str) -> (str, str) {
+fn get_file_path_and_dir(work_dir: ~str, full_path: ~str) -> (~str, ~str) {
     (if str::starts_with(full_path, work_dir) {
         str::slice(full_path, str::len(work_dir) + 1u,
                    str::len(full_path))
@@ -205,7 +205,7 @@ fn get_file_path_and_dir(work_dir: str, full_path: str) -> (str, str) {
     }, work_dir)
 }
 
-fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
+fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
     alt cached_metadata::<@metadata<file_md>>(
@@ -292,26 +292,26 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     }
 
     let (name, encoding) = alt check ty {
-      ast::ty_bool {("bool", DW_ATE_boolean)}
+      ast::ty_bool {(~"bool", DW_ATE_boolean)}
       ast::ty_int(m) { alt m {
-        ast::ty_char {("char", DW_ATE_unsigned)}
-        ast::ty_i {("int", DW_ATE_signed)}
-        ast::ty_i8 {("i8", DW_ATE_signed_char)}
-        ast::ty_i16 {("i16", DW_ATE_signed)}
-        ast::ty_i32 {("i32", DW_ATE_signed)}
-        ast::ty_i64 {("i64", DW_ATE_signed)}
+        ast::ty_char {(~"char", DW_ATE_unsigned)}
+        ast::ty_i {(~"int", DW_ATE_signed)}
+        ast::ty_i8 {(~"i8", DW_ATE_signed_char)}
+        ast::ty_i16 {(~"i16", DW_ATE_signed)}
+        ast::ty_i32 {(~"i32", DW_ATE_signed)}
+        ast::ty_i64 {(~"i64", DW_ATE_signed)}
       }}
       ast::ty_uint(m) { alt m {
-        ast::ty_u {("uint", DW_ATE_unsigned)}
-        ast::ty_u8 {("u8", DW_ATE_unsigned_char)}
-        ast::ty_u16 {("u16", DW_ATE_unsigned)}
-        ast::ty_u32 {("u32", DW_ATE_unsigned)}
-        ast::ty_u64 {("u64", DW_ATE_unsigned)}
+        ast::ty_u {(~"uint", DW_ATE_unsigned)}
+        ast::ty_u8 {(~"u8", DW_ATE_unsigned_char)}
+        ast::ty_u16 {(~"u16", DW_ATE_unsigned)}
+        ast::ty_u32 {(~"u32", DW_ATE_unsigned)}
+        ast::ty_u64 {(~"u64", DW_ATE_unsigned)}
       }}
       ast::ty_float(m) { alt m {
-        ast::ty_f {("float", DW_ATE_float)}
-        ast::ty_f32 {("f32", DW_ATE_float)}
-        ast::ty_f64 {("f64", DW_ATE_float)}
+        ast::ty_f {(~"float", DW_ATE_float)}
+        ast::ty_f32 {(~"f32", DW_ATE_float)}
+        ast::ty_f64 {(~"f64", DW_ATE_float)}
       }}
     };
 
@@ -332,7 +332,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     let llnode = llmdnode(lldata);
     let mdval = @{node: llnode, data: {hash: ty::type_id(t)}};
     update_cache(cache, tg, tydesc_metadata(mdval));
-    add_named_metadata(cx, "llvm.dbg.ty", llnode);
+    add_named_metadata(cx, ~"llvm.dbg.ty", llnode);
     ret mdval;
 }
 
@@ -350,17 +350,17 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     //let cu_node = create_compile_unit(cx, fname);
-    let llnode = create_derived_type(tg, file_node.node, "", 0, size * 8,
+    let llnode = create_derived_type(tg, file_node.node, ~"", 0, size * 8,
                                      align * 8, 0, pointee.node);
     let mdval = @{node: llnode, data: {hash: ty::type_id(t)}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
-    add_named_metadata(cx, "llvm.dbg.ty", llnode);
+    add_named_metadata(cx, ~"llvm.dbg.ty", llnode);
     ret mdval;
 }
 
 type struct_ctxt = {
     file: ValueRef,
-    name: str,
+    name: ~str,
     line: int,
     mut members: ~[ValueRef],
     mut total_size: int,
@@ -373,7 +373,7 @@ fn finish_structure(cx: @struct_ctxt) -> ValueRef {
                               option::some(cx.members));
 }
 
-fn create_structure(file: @metadata<file_md>, name: str, line: int)
+fn create_structure(file: @metadata<file_md>, name: ~str, line: int)
     -> @struct_ctxt {
     let cx = @{file: file.node,
                name: name,
@@ -385,7 +385,7 @@ fn create_structure(file: @metadata<file_md>, name: str, line: int)
     ret cx;
 }
 
-fn create_derived_type(type_tag: int, file: ValueRef, name: str, line: int,
+fn create_derived_type(type_tag: int, file: ValueRef, name: ~str, line: int,
                        size: int, align: int, offset: int, ty: ValueRef)
     -> ValueRef {
     let lldata = ~[lltag(type_tag),
@@ -401,7 +401,7 @@ fn create_derived_type(type_tag: int, file: ValueRef, name: str, line: int,
     ret llmdnode(lldata);
 }
 
-fn add_member(cx: @struct_ctxt, name: str, line: int, size: int, align: int,
+fn add_member(cx: @struct_ctxt, name: ~str, line: int, size: int, align: int,
               ty: ValueRef) {
     vec::push(cx.members, create_derived_type(MemberTag, cx.file, name, line,
                                        size * 8, align * 8, cx.total_size,
@@ -414,7 +414,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: ~[ast::ty_field],
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     let scx = create_structure(file_node,
-                               option::get(cx.dbg_cx).names("rec"),
+                               option::get(cx.dbg_cx).names(~"rec"),
                                line_from_span(cx.sess.codemap,
                                               span) as int);
     for fields.each |field| {
@@ -446,19 +446,19 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     let refcount_type = create_basic_type(cx, uint_t,
                                           ast::ty_uint(ast::ty_u), span);
     let scx = create_structure(file_node, ty_to_str(cx.tcx, outer), 0);
-    add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int,
+    add_member(scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
-    add_member(scx, "boxed", 0, 8, //XXX member_size_and_align(??)
+    add_member(scx, ~"boxed", 0, 8, //XXX member_size_and_align(??)
                8, //XXX just a guess
                boxed.node);
     let llnode = finish_structure(scx);
     let mdval = @{node: llnode, data: {hash: ty::type_id(outer)}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
-    add_named_metadata(cx, "llvm.dbg.ty", llnode);
+    add_named_metadata(cx, ~"llvm.dbg.ty", llnode);
     ret mdval;
 }
 
-fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
+fn create_composite_type(type_tag: int, name: ~str, file: ValueRef, line: int,
                          size: int, align: int, offset: int,
                          derived: option<ValueRef>,
                          members: option<~[ValueRef]>)
@@ -497,17 +497,17 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     let scx = create_structure(file_node, ty_to_str(cx.tcx, vec_t), 0);
     let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx),
                                         ast::ty_uint(ast::ty_u), vec_ty_span);
-    add_member(scx, "fill", 0, sys::size_of::<libc::size_t>() as int,
+    add_member(scx, ~"fill", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
-    add_member(scx, "alloc", 0, sys::size_of::<libc::size_t>() as int,
+    add_member(scx, ~"alloc", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
     let subrange = llmdnode(~[lltag(SubrangeTag), lli64(0), lli64(0)]);
     let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
-    let data_ptr = create_composite_type(ArrayTypeTag, "", file_node.node, 0,
+    let data_ptr = create_composite_type(ArrayTypeTag, ~"", file_node.node, 0,
                                          arr_size, arr_align, 0,
                                          option::some(elem_ty_md.node),
                                          option::some(~[subrange]));
-    add_member(scx, "data", 0, 0, // clang says the size should be 0
+    add_member(scx, ~"data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
     ret @{node: llnode, data: {hash: ty::type_id(vec_t)}};
@@ -617,11 +617,11 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
     */
 }
 
-fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
+fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> ~str {
     codemap::lookup_char_pos(cx.sess.codemap, sp.lo).file.name
 }
 
-fn create_var(type_tag: int, context: ValueRef, name: str, file: ValueRef,
+fn create_var(type_tag: int, context: ValueRef, name: ~str, file: ValueRef,
               line: int, ret_ty: ValueRef) -> ValueRef {
     let lldata = ~[lltag(type_tag),
                   context,
@@ -648,7 +648,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     let name = alt local.node.pat.node {
       ast::pat_ident(pth, _) { ast_util::path_to_ident(pth) }
       // FIXME this should be handled (#2533)
-      _ { fail "no single variable name for local"; }
+      _ { fail ~"no single variable name for local"; }
     };
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        local.span.lo);
@@ -667,19 +667,19 @@ fn create_local_var(bcx: block, local: @ast::local)
     let llptr = alt bcx.fcx.lllocals.find(local.node.id) {
       option::some(local_mem(v)) { v }
       option::some(_) {
-        bcx.tcx().sess.span_bug(local.span, "local is bound to \
+        bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
                 something weird");
       }
       option::none {
         alt bcx.fcx.lllocals.get(local.node.pat.id) {
           local_imm(v) { v }
-          _ { bcx.tcx().sess.span_bug(local.span, "local is bound to \
+          _ { bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
                 something weird"); }
         }
       }
     };
     let declargs = ~[llmdnode(~[llptr]), mdnode];
-    trans::build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
+    trans::build::Call(bcx, cx.intrinsics.get(~"llvm.dbg.declare"),
                        declargs);
     ret mdval;
 }
@@ -710,7 +710,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
       local_mem(v) | local_imm(v) { v }
     };
     let declargs = ~[llmdnode(~[llptr]), mdnode];
-    trans::build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
+    trans::build::Call(bcx, cx.intrinsics.get(~"llvm.dbg.declare"),
                        declargs);
     ret mdval;
 }
@@ -746,7 +746,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
           ast::item_fn(decl, _, _) {
             (item.ident, decl.output, item.id)
           }
-          _ { fcx.ccx.sess.span_bug(item.span, "create_function: item \
+          _ { fcx.ccx.sess.span_bug(item.span, ~"create_function: item \
                 bound to non-function"); }
         }
       }
@@ -760,16 +760,16 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       ast_map::node_expr(expr) {
         alt expr.node {
           ast::expr_fn(_, decl, _, _) {
-            (@dbg_cx.names("fn"), decl.output, expr.id)
+            (@dbg_cx.names(~"fn"), decl.output, expr.id)
           }
           ast::expr_fn_block(decl, _, _) {
-            (@dbg_cx.names("fn"), decl.output, expr.id)
+            (@dbg_cx.names(~"fn"), decl.output, expr.id)
           }
-          _ { fcx.ccx.sess.span_bug(expr.span, "create_function: \
+          _ { fcx.ccx.sess.span_bug(expr.span, ~"create_function: \
                   expected an expr_fn or fn_block here"); }
         }
       }
-      _ { fcx.ccx.sess.bug("create_function: unexpected \
+      _ { fcx.ccx.sess.bug(~"create_function: unexpected \
             sort of node"); }
     };
 
@@ -794,7 +794,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     } else {
         llnull()
     };
-    let sub_node = create_composite_type(SubroutineTag, "", file_node, 0, 0,
+    let sub_node = create_composite_type(SubroutineTag, ~"", file_node, 0, 0,
                                          0, 0, option::none,
                                          option::some(~[ty_node]));
 
@@ -803,7 +803,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
                        file_node,
                        llstr(*ident),
                        llstr(*ident), //XXX fully-qualified C++ name
-                       llstr(""), //XXX MIPS name?????
+                       llstr(~""), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),
                        sub_node,
@@ -820,7 +820,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
                        //list of func vars
                       ];
     let val = llmdnode(fn_metadata);
-    add_named_metadata(cx, "llvm.dbg.sp", val);
+    add_named_metadata(cx, ~"llvm.dbg.sp", val);
     let mdval = @{node: val, data: {id: id}};
     update_cache(cache, SubprogramTag, subprogram_metadata(mdval));
 

@@ -4,13 +4,13 @@
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern mod rustrt1 {
-    fn last_os_error() -> str;
+    fn last_os_error() -> ~str;
 }
 
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern mod rustrt2 {
-    fn last_os_error() -> str;
+    fn last_os_error() -> ~str;
 }
 
 fn main() {

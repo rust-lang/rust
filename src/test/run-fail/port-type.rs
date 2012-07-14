@@ -15,4 +15,4 @@ fn echo<T: send>(c: chan<T>, oc: chan<chan<T>>) {
     send(c, x);
 }
 
-fn main() { fail "meep"; }
+fn main() { fail ~"meep"; }

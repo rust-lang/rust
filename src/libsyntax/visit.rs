@@ -28,8 +28,8 @@ fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
       fk_item_fn(name, _) | fk_method(name, _, _)
           | fk_ctor(name, _, _, _) { /* FIXME (#2543) */ copy name }
-      fk_anon(*) | fk_fn_block(*) { @"anon" }
-      fk_dtor(*)                  { @"drop" }
+      fk_anon(*) | fk_fn_block(*) { @~"anon" }
+      fk_dtor(*)                  { @~"drop" }
     }
 }
 

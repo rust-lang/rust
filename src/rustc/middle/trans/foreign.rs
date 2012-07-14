@@ -90,7 +90,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 ty_align(elt)
             }
             _ {
-                fail "ty_size: unhandled type"
+                fail ~"ty_size: unhandled type"
             }
         };
     }
@@ -115,7 +115,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
               len * eltsz
             }
             _ {
-                fail "ty_size: unhandled type"
+                fail ~"ty_size: unhandled type"
             }
         };
     }
@@ -212,7 +212,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 }
             }
             _ {
-                fail "classify: unhandled type";
+                fail ~"classify: unhandled type";
             }
         }
     }
@@ -310,7 +310,7 @@ fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
                 vec::push(tys, T_f64());
             }
             _ {
-                fail "llregtype: unhandled class";
+                fail ~"llregtype: unhandled class";
             }
         }
         i += 1u;
@@ -420,8 +420,8 @@ fn decl_x86_64_fn(tys: x86_64_tys,
     ret llfn;
 }
 
-fn link_name(i: @ast::foreign_item) -> str {
-    alt attr::first_attr_value_str_by_name(i.attrs, "link_name") {
+fn link_name(i: @ast::foreign_item) -> ~str {
+    alt attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
       none { ret *i.ident; }
       option::some(ln) { ret *ln; }
     }
@@ -444,7 +444,7 @@ fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
         let llretty = type_of::type_of(ccx, ret_ty);
         (llargtys, llretty, ret_ty)
       }
-      _ { ccx.sess.bug("c_arg_and_ret_lltys called on non-function type"); }
+      _ { ccx.sess.bug(~"c_arg_and_ret_lltys called on non-function type"); }
     }
 }
 
@@ -475,7 +475,7 @@ type shim_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef, llretval: ValueRef);
 
 fn build_shim_fn_(ccx: @crate_ctxt,
-                  shim_name: str,
+                  shim_name: ~str,
                   llbasefn: ValueRef,
                   tys: @c_stack_tys,
                   cc: lib::llvm::CallConv,
@@ -519,7 +519,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
                   arg_builder: wrap_arg_builder,
                   ret_builder: wrap_ret_builder) {
 
-    let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
+    let _icx = ccx.insn_ctxt(~"foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, none);
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
@@ -579,18 +579,18 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
 fn trans_foreign_mod(ccx: @crate_ctxt,
                     foreign_mod: ast::foreign_mod, abi: ast::foreign_abi) {
 
-    let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
+    let _icx = ccx.insn_ctxt(~"foreign::trans_foreign_mod");
 
     fn build_shim_fn(ccx: @crate_ctxt,
                      foreign_item: @ast::foreign_item,
                      tys: @c_stack_tys,
                      cc: lib::llvm::CallConv) -> ValueRef {
 
-        let _icx = ccx.insn_ctxt("foreign::build_shim_fn");
+        let _icx = ccx.insn_ctxt(~"foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt("foreign::shim::build_args");
+            let _icx = bcx.insn_ctxt(~"foreign::shim::build_args");
             let mut llargvals = ~[];
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
@@ -636,7 +636,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef, llretval: ValueRef)  {
-            let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
+            let _icx = bcx.insn_ctxt(~"foreign::shim::build_ret");
             alt tys.x86_64_tys {
                 some(x86_64) {
                   do vec::iteri(x86_64.attrs) |i, a| {
@@ -680,12 +680,12 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
         let lname = link_name(foreign_item);
         let llbasefn = base_fn(ccx, lname, tys, cc);
         // Name the shim function
-        let shim_name = lname + "__c_stack_shim";
+        let shim_name = lname + ~"__c_stack_shim";
         ret build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
                            build_args, build_ret);
     }
 
-    fn base_fn(ccx: @crate_ctxt, lname: str, tys: @c_stack_tys,
+    fn base_fn(ccx: @crate_ctxt, lname: ~str, tys: @c_stack_tys,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
         alt tys.x86_64_tys {
@@ -727,11 +727,11 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
 
-        let _icx = ccx.insn_ctxt("foreign::build_wrap_fn");
+        let _icx = ccx.insn_ctxt(~"foreign::build_wrap_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
+            let _icx = bcx.insn_ctxt(~"foreign::wrap::build_args");
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
             let implicit_args = first_real_arg; // ret + env
@@ -746,7 +746,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
         fn build_ret(bcx: block, _tys: @c_stack_tys,
                      _llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
+            let _icx = bcx.insn_ctxt(~"foreign::wrap::build_ret");
             RetVoid(bcx);
         }
 
@@ -768,7 +768,8 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
           if abi != ast::foreign_abi_rust_intrinsic {
               let llwrapfn = get_item_val(ccx, id);
               let tys = c_stack_tys(ccx, id);
-              if attr::attrs_contains_name(foreign_item.attrs, "rust_stack") {
+              if attr::attrs_contains_name(foreign_item.attrs,
+                                           ~"rust_stack") {
                   build_direct_fn(ccx, llwrapfn, foreign_item, tys, cc);
               } else {
                   let llshimfn = build_shim_fn(ccx, foreign_item, tys, cc);
@@ -783,7 +784,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                       some(ast_map::node_foreign_item(_, _, pt)) { pt }
                       _ {
                           ccx.sess.span_bug(foreign_item.span,
-                                            "can't find intrinsic path")
+                                            ~"can't find intrinsic path")
                       }
                   };
                   let psubsts = {
@@ -807,76 +808,76 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                some(substs), some(item.span));
     let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     alt check *item.ident {
-      "atomic_xchng" {
+      ~"atomic_xchng" {
         let old = AtomicRMW(bcx, Xchg,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_xchng_acq" {
+      ~"atomic_xchng_acq" {
         let old = AtomicRMW(bcx, Xchg,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_xchng_rel" {
+      ~"atomic_xchng_rel" {
         let old = AtomicRMW(bcx, Xchg,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Release);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_add" {
+      ~"atomic_add" {
         let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_add_acq" {
+      ~"atomic_add_acq" {
         let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_add_rel" {
+      ~"atomic_add_rel" {
         let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Release);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_sub" {
+      ~"atomic_sub" {
         let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_sub_acq" {
+      ~"atomic_sub_acq" {
         let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
-      "atomic_sub_rel" {
+      ~"atomic_sub_rel" {
         let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Release);
         Store(bcx, old, fcx.llretptr);
       }
-      "size_of" {
+      ~"size_of" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
               fcx.llretptr);
       }
-      "move_val" {
+      ~"move_val" {
         let tp_ty = substs.tys[0];
         let src = {bcx: bcx,
                    val: get_param(decl, first_real_arg + 1u),
@@ -886,7 +887,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                        src,
                        tp_ty);
       }
-      "move_val_init" {
+      ~"move_val_init" {
         let tp_ty = substs.tys[0];
         let src = {bcx: bcx,
                    val: get_param(decl, first_real_arg + 1u),
@@ -896,19 +897,19 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                        src,
                        tp_ty);
       }
-      "min_align_of" {
+      ~"min_align_of" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         Store(bcx, C_uint(ccx, shape::llalign_of_min(ccx, lltp_ty)),
               fcx.llretptr);
       }
-      "pref_align_of" {
+      ~"pref_align_of" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         Store(bcx, C_uint(ccx, shape::llalign_of_pref(ccx, lltp_ty)),
               fcx.llretptr);
       }
-      "get_tydesc" {
+      ~"get_tydesc" {
         let tp_ty = substs.tys[0];
         let static_ti = get_tydesc(ccx, tp_ty);
         lazily_emit_all_tydesc_glue(ccx, static_ti);
@@ -917,15 +918,15 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         let td = PointerCast(bcx, static_ti.tydesc, T_ptr(T_nil()));
         Store(bcx, td, fcx.llretptr);
       }
-      "init" {
+      ~"init" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         if !ty::type_is_nil(tp_ty) {
             Store(bcx, C_null(lltp_ty), fcx.llretptr);
         }
       }
-      "forget" {}
-      "reinterpret_cast" {
+      ~"forget" {}
+      ~"reinterpret_cast" {
         let tp_ty = substs.tys[0];
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let llout_ty = type_of::type_of(ccx, substs.tys[1]);
@@ -947,23 +948,23 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             Store(bcx, Load(bcx, cast), fcx.llretptr);
         }
       }
-      "addr_of" {
+      ~"addr_of" {
         Store(bcx, get_param(decl, first_real_arg), fcx.llretptr);
       }
-      "needs_drop" {
+      ~"needs_drop" {
         let tp_ty = substs.tys[0];
         Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
               fcx.llretptr);
       }
-      "visit_tydesc" {
+      ~"visit_tydesc" {
         let td = get_param(decl, first_real_arg);
         let visitor = get_param(decl, first_real_arg + 1u);
         let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
         call_tydesc_glue_full(bcx, visitor, td,
                               abi::tydesc_field_visit_glue, none);
       }
-      "frame_address" {
-        let frameaddress = ccx.intrinsics.get("llvm.frameaddress");
+      ~"frame_address" {
+        let frameaddress = ccx.intrinsics.get(~"llvm.frameaddress");
         let frameaddress_val = Call(bcx, frameaddress, ~[C_i32(0i32)]);
         let fty = ty::mk_fn(bcx.tcx(), {
             purity: ast::impure_fn,
@@ -993,15 +994,15 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
 fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                   body: ast::blk, llwrapfn: ValueRef, id: ast::node_id) {
 
-    let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
+    let _icx = ccx.insn_ctxt(~"foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @crate_ctxt, path: ast_map::path,
                      decl: ast::fn_decl, body: ast::blk,
                      id: ast::node_id) -> ValueRef {
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
+        let _icx = ccx.insn_ctxt(~"foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
-            ccx, vec::append_one(path, ast_map::path_name(@"__rust_abi")));
+            ccx, vec::append_one(path, ast_map::path_name(@~"__rust_abi")));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id);
@@ -1011,11 +1012,11 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
 
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
+        let _icx = ccx.insn_ctxt(~"foreign::foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt("foreign::extern::shim::build_args");
+            let _icx = bcx.insn_ctxt(~"foreign::extern::shim::build_args");
             let mut llargvals = ~[];
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
@@ -1039,7 +1040,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         let shim_name = link::mangle_internal_name_by_path(
             ccx, vec::append_one(path,
-                                 ast_map::path_name(@"__rust_stack_shim")));
+                                 ast_map::path_name(@~"__rust_stack_shim")));
         ret build_shim_fn_(ccx, shim_name, llrustfn, tys,
                            lib::llvm::CCallConv,
                            build_args, build_ret);
@@ -1048,11 +1049,11 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_wrap_fn(ccx: @crate_ctxt, llshimfn: ValueRef,
                      llwrapfn: ValueRef, tys: @c_stack_tys) {
 
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_wrap_fn");
+        let _icx = ccx.insn_ctxt(~"foreign::foreign::build_wrap_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
+            let _icx = bcx.insn_ctxt(~"foreign::foreign::wrap::build_args");
             alt tys.x86_64_tys {
                 option::some(x86_64) {
                     let mut atys = x86_64.arg_tys;
@@ -1106,7 +1107,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
+            let _icx = bcx.insn_ctxt(~"foreign::foreign::wrap::build_ret");
             alt tys.x86_64_tys {
                 option::some(x86_64) {
                     if x86_64.sret || !tys.ret_def {
@@ -1150,7 +1151,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
                      path: ast_map::path, node_id: ast::node_id)
     -> ValueRef {
-    let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
+    let _icx = ccx.insn_ctxt(~"foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);
     ret if ccx.sess.targ_cfg.arch == arch_x86_64 {
@@ -1169,7 +1170,7 @@ fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
 
 fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
     -> ast::foreign_abi {
-    alt attr::first_attr_value_str_by_name(i.attrs, "abi") {
+    alt attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
       none {
         alt check ccx.tcx.items.get(i.id) {
           ast_map::node_foreign_item(_, abi, _) { abi }

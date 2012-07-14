@@ -39,7 +39,7 @@ impl loan_methods for loan_ctxt {
         if cmt.lp.is_none() {
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
-                "loan() called with non-lendable value");
+                ~"loan() called with non-lendable value");
         }
 
         alt cmt.cat {
@@ -47,7 +47,7 @@ impl loan_methods for loan_ctxt {
             // should never be loanable
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
-                "rvalue with a non-none lp");
+                ~"rvalue with a non-none lp");
           }
           cat_local(_) | cat_arg(_) | cat_stack_upvar(_) {
             self.ok_with_loan_of(cmt, req_mutbl)
@@ -88,7 +88,7 @@ impl loan_methods for loan_ctxt {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
-                "aliased ptr with a non-none lp");
+                ~"aliased ptr with a non-none lp");
           }
         }
     }

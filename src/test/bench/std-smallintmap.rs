@@ -17,11 +17,11 @@ fn check_sequential(min: uint, max: uint, map: smallintmap<uint>) {
     }
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "100000", "100"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"100000", ~"100"]
     } else if args.len() <= 1u {
-        ~["", "10000", "50"]
+        ~[~"", ~"10000", ~"50"]
     } else {
         args
     };

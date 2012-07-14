@@ -6,7 +6,7 @@ export item_lteq, mk_pass;
 
 type item_lteq = fn~(doc::itemtag, doc::itemtag) -> bool;
 
-fn mk_pass(name: str, +lteq: item_lteq) -> pass {
+fn mk_pass(name: ~str, +lteq: item_lteq) -> pass {
     {
         name: name,
         f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
@@ -46,14 +46,14 @@ fn test() {
         str::le(item1.name(), item2.name())
     }
 
-    let source = "mod z { mod y { } fn x() { } } mod w { }";
+    let source = ~"mod z { mod y { } fn x() { } } mod w { }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
-        let doc = mk_pass("", name_lteq).f(srv, doc);
-        assert doc.cratemod().mods()[0].name() == "w";
-        assert doc.cratemod().mods()[1].items[0].name() == "x";
-        assert doc.cratemod().mods()[1].items[1].name() == "y";
-        assert doc.cratemod().mods()[1].name() == "z";
+        let doc = extract::from_srv(srv, ~"");
+        let doc = mk_pass(~"", name_lteq).f(srv, doc);
+        assert doc.cratemod().mods()[0].name() == ~"w";
+        assert doc.cratemod().mods()[1].items[0].name() == ~"x";
+        assert doc.cratemod().mods()[1].items[1].name() == ~"y";
+        assert doc.cratemod().mods()[1].name() == ~"z";
     }
 }
 
@@ -63,14 +63,14 @@ fn should_be_stable() {
         true
     }
 
-    let source = "mod a { mod b { } } mod c { mod d { } }";
+    let source = ~"mod a { mod b { } } mod c { mod d { } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
-        let doc = mk_pass("", always_eq).f(srv, doc);
-        assert doc.cratemod().mods()[0].items[0].name() == "b";
-        assert doc.cratemod().mods()[1].items[0].name() == "d";
-        let doc = mk_pass("", always_eq).f(srv, doc);
-        assert doc.cratemod().mods()[0].items[0].name() == "b";
-        assert doc.cratemod().mods()[1].items[0].name() == "d";
+        let doc = extract::from_srv(srv, ~"");
+        let doc = mk_pass(~"", always_eq).f(srv, doc);
+        assert doc.cratemod().mods()[0].items[0].name() == ~"b";
+        assert doc.cratemod().mods()[1].items[0].name() == ~"d";
+        let doc = mk_pass(~"", always_eq).f(srv, doc);
+        assert doc.cratemod().mods()[0].items[0].name() == ~"b";
+        assert doc.cratemod().mods()[1].items[0].name() == ~"d";
     }
 }

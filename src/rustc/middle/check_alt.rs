@@ -43,7 +43,7 @@ fn check_arms(tcx: ty::ctxt, arms: ~[arm]) {
             let v = ~[pat];
             alt is_useful(tcx, seen, v) {
               not_useful {
-                tcx.sess.span_err(pat.span, "unreachable pattern");
+                tcx.sess.span_err(pat.span, ~"unreachable pattern");
               }
               _ {}
             }
@@ -67,8 +67,8 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
         alt ty::get(ty).struct {
           ty::ty_bool {
             alt check ctor {
-              val(const_int(1i64)) { some(@"true") }
-              val(const_int(0i64)) { some(@"false") }
+              val(const_int(1i64)) { some(@~"true") }
+              val(const_int(0i64)) { some(@~"false") }
             }
           }
           ty::ty_enum(id, _) {
@@ -82,9 +82,9 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
         }
       }
     };
-    let msg = "non-exhaustive patterns" + alt ext {
-      some(s) { ": " + *s + " not covered" }
-      none { "" }
+    let msg = ~"non-exhaustive patterns" + alt ext {
+      some(s) { ~": " + *s + ~" not covered" }
+      none { ~"" }
     };
     tcx.sess.span_err(sp, msg);
 }
@@ -344,7 +344,7 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
     visit::visit_local(loc, s, v);
     if is_refutable(tcx, loc.node.pat) {
         tcx.sess.span_err(loc.node.pat.span,
-                          "refutable pattern in local binding");
+                          ~"refutable pattern in local binding");
     }
 }
 

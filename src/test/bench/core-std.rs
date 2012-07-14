@@ -8,7 +8,7 @@ import std::map::{map, hashmap};
 
 import io::{reader, reader_util};
 
-fn main(argv: ~[str]) {
+fn main(argv: ~[~str]) {
     #macro[
         [#bench[id],
          maybe_run_test(argv, #stringify(id), id)
@@ -26,12 +26,12 @@ fn main(argv: ~[str]) {
     #bench[vec_push_all];
 }
 
-fn maybe_run_test(argv: &[str], name: str, test: fn()) {
+fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
     let mut run_test = false;
 
-    if os::getenv("RUST_BENCH").is_some() { run_test = true }
+    if os::getenv(~"RUST_BENCH").is_some() { run_test = true }
     else if argv.len() > 0 {
-        run_test = argv.contains("all") || argv.contains(name)
+        run_test = argv.contains(~"all") || argv.contains(name)
     }
 
     if !run_test { ret }
@@ -55,7 +55,7 @@ fn shift_push() {
 fn read_line() {
     let path = path::connect(
         #env("CFG_SRC_DIR"),
-        "src/test/bench/shootout-k-nucleotide.data"
+        ~"src/test/bench/shootout-k-nucleotide.data"
     );
 
     for int::range(0, 3) |_i| {

@@ -9,8 +9,8 @@ extern mod rustrt {
     fn debug_get_stk_seg() -> *u8;
 
     fn unsupervise();
-    fn last_os_error() -> str;
-    fn rust_getcwd() -> str;
+    fn last_os_error() -> ~str;
+    fn rust_getcwd() -> ~str;
     fn get_task_id();
     fn sched_threads();
     fn rust_get_task();

@@ -7,7 +7,7 @@ import ast::{ident, node_id};
 import codemap::span;
 import ext::base::mk_ctxt;
 
-fn ident(s: str) -> ast::ident {
+fn ident(s: ~str) -> ast::ident {
     @(copy s)
 }
 

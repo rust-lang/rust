@@ -30,17 +30,17 @@ enum oper_type {
 }
 
 /* logging funs */
-fn def_id_to_str(d: def_id) -> str {
-    ret int::str(d.crate) + "," + int::str(d.node);
+fn def_id_to_str(d: def_id) -> ~str {
+    ret int::str(d.crate) + ~"," + int::str(d.node);
 }
 
-fn comma_str(args: ~[@constr_arg_use]) -> str {
-    let mut rslt = "";
+fn comma_str(args: ~[@constr_arg_use]) -> ~str {
+    let mut rslt = ~"";
     let mut comma = false;
     for args.each |a| {
-        if comma { rslt += ", "; } else { comma = true; }
+        if comma { rslt += ~", "; } else { comma = true; }
         alt a.node {
-          carg_base { rslt += "*"; }
+          carg_base { rslt += ~"*"; }
           carg_ident(i) { rslt += *i.ident; }
           carg_lit(l) { rslt += lit_to_str(l); }
         }
@@ -48,23 +48,23 @@ fn comma_str(args: ~[@constr_arg_use]) -> str {
     ret rslt;
 }
 
-fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> str {
+fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> ~str {
     ret #fmt("%s(%s) - arising from %s",
              path_to_str(c.node.path),
              comma_str(c.node.args),
              codemap::span_to_str(c.span, tcx.sess.codemap));
 }
 
-fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
-    let mut s = "";
+fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> ~str {
+    let mut s = ~"";
     let mut comma = false;
     for constraints(fcx).each |p| {
         alt tritv_get(v, p.bit_num) {
           dont_care { }
           tt {
             s +=
-                if comma { ", " } else { comma = true; "" } +
-                    if tt == tfalse { "!" } else { "" } +
+                if comma { ~", " } else { comma = true; ~"" } +
+                    if tt == tfalse { ~"!" } else { ~"" } +
                     constraint_to_str(fcx.ccx.tcx, p.c);
           }
         }
@@ -77,8 +77,8 @@ fn log_tritv(fcx: fn_ctxt, v: tritv::t) {
 }
 
 fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
-   -> str {
-    let mut s = "";
+   -> ~str {
+    let mut s = ~"";
     for constraints(fcx).each |c| {
         if tritv_get(expected, c.bit_num) == ttrue &&
                tritv_get(actual, c.bit_num) != ttrue {
@@ -93,12 +93,12 @@ fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) {
     log(error, tritv_to_str(fcx, v));
 }
 
-fn tos(v: ~[uint]) -> str {
-    let mut rslt = "";
+fn tos(v: ~[uint]) -> ~str {
+    let mut rslt = ~"";
     for v.each |i| {
         if i == 0u {
-            rslt += "0";
-        } else if i == 1u { rslt += "1"; } else { rslt += "?"; }
+            rslt += ~"0";
+        } else if i == 1u { rslt += ~"1"; } else { rslt += ~"?"; }
     }
     ret rslt;
 }
@@ -143,11 +143,11 @@ fn log_states_err(pp: pre_and_post_state) {
     log_cond_err(p2);
 }
 
-fn print_ident(i: ident) { log(debug, " " + *i + " "); }
+fn print_ident(i: ident) { log(debug, ~" " + *i + ~" "); }
 
 fn print_idents(&idents: ~[ident]) {
     if vec::len::<ident>(idents) == 0u { ret; }
-    log(debug, "an ident: " + *vec::pop::<ident>(idents));
+    log(debug, ~"an ident: " + *vec::pop::<ident>(idents));
     print_idents(idents);
 }
 
@@ -499,23 +499,23 @@ fn constraints(fcx: fn_ctxt) -> ~[norm_constraint] {
 fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
               occ: ~[@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",
-           constr_args_to_str(fn@(i: inst) -> str { ret *i.ident; }, occ));
+           constr_args_to_str(fn@(i: inst) -> ~str { ret *i.ident; }, occ));
     for (*occs).each |pd| {
         log(debug,
-                 "match_args: candidate " + pred_args_to_str(pd));
+                 ~"match_args: candidate " + pred_args_to_str(pd));
         fn eq(p: inst, q: inst) -> bool { ret p.node == q.node; }
         if ty::args_eq(eq, pd.node.args, occ) { ret pd.node.bit_num; }
     }
-    fcx.ccx.tcx.sess.bug("match_args: no match for occurring args");
+    fcx.ccx.tcx.sess.bug(~"match_args: no match for occurring args");
 }
 
 fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
     alt tcx.def_map.find(t) {
       none {
-        tcx.sess.bug("node_id_for_constr: bad node_id " + int::str(t));
+        tcx.sess.bug(~"node_id_for_constr: bad node_id " + int::str(t));
       }
       some(def_fn(i, _)) { ret i; }
-      _ { tcx.sess.bug("node_id_for_constr: pred is not a function"); }
+      _ { tcx.sess.bug(~"node_id_for_constr: pred is not a function"); }
     }
 }
 
@@ -535,7 +535,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
           }
           none {
               tcx.sess.span_bug(e.span,
-                 "exprs_to_constr_args: unbound id as pred arg");
+                 ~"exprs_to_constr_args: unbound id as pred arg");
 
           }
         }
@@ -543,8 +543,8 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
       expr_lit(l) { ret @respan(e.span, carg_lit(l)); }
       _ {
         tcx.sess.span_fatal(e.span,
-                            "arguments to constrained functions must be " +
-                                "literals or local variables");
+                            ~"arguments to constrained functions must be " +
+                                ~"literals or local variables");
       }
     }
 }
@@ -569,20 +569,21 @@ fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
           }
           _ {
             tcx.sess.span_bug(operator.span,
-                              "ill-formed operator in predicate");
+                              ~"ill-formed operator in predicate");
           }
         }
       }
       _ {
-        tcx.sess.span_bug(e.span, "ill-formed predicate");
+        tcx.sess.span_bug(e.span, ~"ill-formed predicate");
       }
     }
 }
 
-fn pred_args_to_str(p: pred_args) -> str {
-    "<" + uint::str(p.node.bit_num) + ", " +
-        constr_args_to_str(fn@(i: inst) -> str { ret *i.ident; }, p.node.args)
-        + ">"
+fn pred_args_to_str(p: pred_args) -> ~str {
+    ~"<" + uint::str(p.node.bit_num) + ~", " +
+        constr_args_to_str(fn@(i: inst) -> ~str {ret *i.ident; },
+                           p.node.args)
+        + ~">"
 }
 
 fn substitute_constr_args(cx: ty::ctxt, actuals: ~[@expr], c: @ty::constr) ->
@@ -604,7 +605,7 @@ fn substitute_arg(cx: ty::ctxt, actuals: ~[@expr], a: @constr_arg) ->
         if i < num_actuals {
             ret expr_to_constr_arg(cx, actuals[i]);
         } else {
-            cx.sess.span_fatal(a.span, "constraint argument out of bounds");
+            cx.sess.span_fatal(a.span, ~"constraint argument out of bounds");
         }
       }
       carg_base { ret @respan(a.span, carg_base); }
@@ -689,18 +690,18 @@ fn find_in_subst_bool(s: subst, id: node_id) -> bool {
     is_some(find_in_subst(id, s))
 }
 
-fn insts_to_str(stuff: ~[constr_arg_general_<inst>]) -> str {
-    let mut rslt = "<";
+fn insts_to_str(stuff: ~[constr_arg_general_<inst>]) -> ~str {
+    let mut rslt = ~"<";
     for stuff.each |i| {
         rslt +=
-            " " +
+            ~" " +
                 alt i {
                   carg_ident(p) { *p.ident }
-                  carg_base { "*" }
-                  carg_lit(_) { "~[lit]" }
-                } + " ";
+                  carg_base { ~"*" }
+                  carg_lit(_) { ~"~[lit]" }
+                } + ~" ";
     }
-    rslt += ">";
+    rslt += ~">";
     rslt
 }
 
@@ -741,13 +742,13 @@ fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
       }
       some(_) {
         fcx.ccx.tcx.sess.span_fatal(sp,
-                                    "local_node_id_to_def_id: id \
+                                    ~"local_node_id_to_def_id: id \
                isn't a local");
       }
       none {
         // should really be bug. span_bug()?
         fcx.ccx.tcx.sess.span_fatal(sp,
-                                    "local_node_id_to_def_id: id \
+                                    ~"local_node_id_to_def_id: id \
                is unbound");
       }
     }
@@ -898,7 +899,7 @@ fn args_to_constr_args(tcx: ty::ctxt, args: ~[arg],
                                             node: args[i].id})
                             } else {
                                 tcx.sess.span_bug(a.span,
-                                                  "index out of bounds in \
+                                                  ~"index out of bounds in \
                                                    constraint arg");
                             }
                         }
@@ -949,7 +950,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
       }
       _ {
         // Shouldn't happen; callee should be ty_fn.
-        fcx.ccx.tcx.sess.bug("non-fn callee type in callee_modes: " +
+        fcx.ccx.tcx.sess.bug(~"non-fn callee type in callee_modes: " +
                                  util::ppaux::ty_to_str(fcx.ccx.tcx, ty));
       }
     }

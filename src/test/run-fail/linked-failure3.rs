@@ -6,7 +6,7 @@ import task;
 import comm::port;
 import comm::recv;
 
-fn grandchild() { fail "grandchild dies"; }
+fn grandchild() { fail ~"grandchild dies"; }
 
 fn child() {
     let p = port::<int>();

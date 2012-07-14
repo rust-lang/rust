@@ -25,7 +25,7 @@ type tt_frame = @{
 
 type tt_reader = @{
     sp_diag: span_handler,
-    interner: @interner<@str/~>,
+    interner: @interner<@~str>,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
     interpolations: std::map::hashmap<ident, @arb_depth>,
@@ -39,7 +39,7 @@ type tt_reader = @{
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_dotdotdot`s and `tt_interpolate`s, `interp` can (and
  *  should) be none. */
-fn new_tt_reader(sp_diag: span_handler, itr: @interner<@str/~>,
+fn new_tt_reader(sp_diag: span_handler, itr: @interner<@~str>,
                  interp: option<std::map::hashmap<ident,@arb_depth>>,
                  src: ~[ast::token_tree])
     -> tt_reader {
@@ -93,7 +93,7 @@ fn lookup_cur_ad(r: tt_reader, name: ident) -> @arb_depth {
     lookup_cur_ad_by_ad(r, r.interpolations.get(name))
 }
 enum lis {
-    lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(str)
+    lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
 }
 
 fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
@@ -183,7 +183,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
               lis_unconstrained {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
-                    "attempted to repeat an expression containing no syntax \
+                    ~"attempted to repeat an expression containing no syntax \
                      variables matched as repeating at this depth");
               }
               lis_contradiction(msg) { /* FIXME #2887 blame macro invoker
@@ -200,7 +200,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                     if !zerok {
                         r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
                                                   */
-                                             "this must repeat at least \
+                                             ~"this must repeat at least \
                                               once");
                     }
                     /* we need to pop before we proceed, so recur */

@@ -40,9 +40,9 @@ class cat : noisy {
   }
 
   let how_hungry : @mut int;
-  let name : str;
+  let name : ~str;
 
-  new(in_x : uint, in_y : int, in_name: str)
+  new(in_x : uint, in_y : int, in_name: ~str)
     { self.meows = @mut in_x; self.how_hungry = @mut in_y;
       self.name = in_name; }
 
@@ -55,7 +55,7 @@ fn annoy_neighbors<T: noisy>(critter: T) {
 }
 
 fn main() {
-  let nyan : cat  = cat(0u, 2, "nyan");
+  let nyan : cat  = cat(0u, 2, ~"nyan");
   let whitefang : dog = dog();
   annoy_neighbors(nyan as noisy);
   annoy_neighbors(whitefang as noisy);

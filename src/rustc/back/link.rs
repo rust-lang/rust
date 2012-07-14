@@ -25,11 +25,11 @@ enum output_type {
     output_type_exe,
 }
 
-fn llvm_err(sess: session, msg: str) -> ! unsafe {
+fn llvm_err(sess: session, msg: ~str) -> ! unsafe {
     let cstr = llvm::LLVMRustGetLastError();
     if cstr == ptr::null() {
         sess.fatal(msg);
-    } else { sess.fatal(msg + ": " + str::unsafe::from_c_str(cstr)); }
+    } else { sess.fatal(msg + ~": " + str::unsafe::from_c_str(cstr)); }
 }
 
 mod write {
@@ -43,15 +43,16 @@ mod write {
 
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
-    fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
+    fn mk_intermediate_name(output_path: ~str, extension: ~str) ->
+        ~str unsafe {
         let stem = alt str::find_char(output_path, '.') {
           some(dot_pos) { str::slice(output_path, 0u, dot_pos) }
           none { output_path }
         };
-        ret stem + "." + extension;
+        ret stem + ~"." + extension;
     }
 
-    fn run_passes(sess: session, llmod: ModuleRef, output: str) {
+    fn run_passes(sess: session, llmod: ModuleRef, output: ~str) {
         let opts = sess.opts;
         if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
         let mut pm = mk_pass_manager();
@@ -68,14 +69,14 @@ mod write {
             alt opts.output_type {
               output_type_bitcode {
                 if opts.optimize != 0u {
-                    let filename = mk_intermediate_name(output, "no-opt.bc");
+                    let filename = mk_intermediate_name(output, ~"no-opt.bc");
                     str::as_c_str(filename, |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     });
                 }
               }
               _ {
-                let filename = mk_intermediate_name(output, "bc");
+                let filename = mk_intermediate_name(output, ~"bc");
                 str::as_c_str(filename, |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                 });
@@ -147,7 +148,7 @@ mod write {
             if opts.save_temps {
                 // Always output the bitcode file with --save-temps
 
-                let filename = mk_intermediate_name(output, "opt.bc");
+                let filename = mk_intermediate_name(output, ~"opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
                 str::as_c_str(filename, |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
@@ -287,28 +288,28 @@ mod write {
  *
  */
 
-fn build_link_meta(sess: session, c: ast::crate, output: str,
+fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                    sha: sha1) -> link_meta {
 
     type provided_metas =
-        {name: option<@str/~>,
-         vers: option<@str/~>,
+        {name: option<@~str>,
+         vers: option<@~str>,
          cmh_items: ~[@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let mut name: option<@str/~> = none;
-        let mut vers: option<@str/~> = none;
+        let mut name: option<@~str> = none;
+        let mut vers: option<@~str> = none;
         let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if *attr::get_meta_item_name(meta) == "name" {
+            if *attr::get_meta_item_name(meta) == ~"name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
                   none { vec::push(cmh_items, meta); }
                 }
-            } else if *attr::get_meta_item_name(meta) == "vers" {
+            } else if *attr::get_meta_item_name(meta) == ~"vers" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { vers = some(v); }
                   none { vec::push(cmh_items, meta); }
@@ -321,12 +322,12 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(sha: sha1, _crate: ast::crate,
                               metas: provided_metas,
-                              dep_hashes: ~[@str/~]) -> str {
-        fn len_and_str(s: str) -> str {
+                              dep_hashes: ~[@~str]) -> ~str {
+        fn len_and_str(s: ~str) -> ~str {
             ret #fmt["%u_%s", str::len(s), s];
         }
 
-        fn len_and_str_lit(l: ast::lit) -> str {
+        fn len_and_str_lit(l: ast::lit) -> ~str {
             ret len_and_str(pprust::lit_to_str(@l));
         }
 
@@ -343,7 +344,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
               ast::meta_word(name) { sha.input_str(len_and_str(*name)); }
               ast::meta_list(_, _) {
                 // FIXME (#607): Implement this
-                fail "unimplemented meta_item variant";
+                fail ~"unimplemented meta_item variant";
               }
             }
         }
@@ -355,14 +356,14 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
         ret truncated_sha1_result(sha);
     }
 
-    fn warn_missing(sess: session, name: str, default: str) {
+    fn warn_missing(sess: session, name: ~str, default: ~str) {
         if !sess.building_library { ret; }
         sess.warn(#fmt["missing crate link meta `%s`, using `%s` as default",
                        name, default]);
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
-                       output: str, metas: provided_metas) -> @str/~ {
+                       output: ~str, metas: provided_metas) -> @~str {
         ret alt metas.name {
               some(v) { v }
               none {
@@ -375,21 +376,21 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                               appear to have an extension", output));
                         }
                         vec::pop(os);
-                        str::connect(os, ".")
+                        str::connect(os, ~".")
                     };
-                warn_missing(sess, "name", name);
+                warn_missing(sess, ~"name", name);
                 @name
               }
             };
     }
 
     fn crate_meta_vers(sess: session, _crate: ast::crate,
-                       metas: provided_metas) -> @str/~ {
+                       metas: provided_metas) -> @~str {
         ret alt metas.vers {
               some(v) { v }
               none {
-                let vers = "0.0";
-                warn_missing(sess, "vers", vers);
+                let vers = ~"0.0";
+                warn_missing(sess, ~"vers", vers);
                 @vers
               }
             };
@@ -405,30 +406,30 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     ret {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_sha1_result(sha: sha1) -> str unsafe {
+fn truncated_sha1_result(sha: sha1) -> ~str unsafe {
     ret str::slice(sha.result_str(), 0u, 16u);
 }
 
 
 // This calculates STH for a symbol, as defined above
 fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t,
-               link_meta: link_meta) -> str {
+               link_meta: link_meta) -> ~str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
     sha.reset();
     sha.input_str(*link_meta.name);
-    sha.input_str("-");
+    sha.input_str(~"-");
     sha.input_str(link_meta.extras_hash);
-    sha.input_str("-");
+    sha.input_str(~"-");
     sha.input_str(encoder::encoded_ty(tcx, t));
     let hash = truncated_sha1_result(sha);
     // Prefix with _ so that it never blends into adjacent digits
 
-    ret "_" + hash;
+    ret ~"_" + hash;
 }
 
-fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
+fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
     alt ccx.type_sha1s.find(t) {
       some(h) { ret h; }
       none {
@@ -442,17 +443,17 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
-fn sanitize(s: str) -> str {
-    let mut result = "";
+fn sanitize(s: ~str) -> ~str {
+    let mut result = ~"";
     do str::chars_iter(s) |c| {
         alt c {
-          '@' { result += "_sbox_"; }
-          '~' { result += "_ubox_"; }
-          '*' { result += "_ptr_"; }
-          '&' { result += "_ref_"; }
-          ',' { result += "_"; }
+          '@' { result += ~"_sbox_"; }
+          '~' { result += ~"_ubox_"; }
+          '*' { result += ~"_ptr_"; }
+          '&' { result += ~"_ref_"; }
+          ',' { result += ~"_"; }
 
-          '{' | '(' { result += "_of_"; }
+          '{' | '(' { result += ~"_of_"; }
           'a' to 'z'
           | 'A' to 'Z'
           | '0' to '9'
@@ -469,16 +470,16 @@ fn sanitize(s: str) -> str {
     if result.len() > 0u &&
         result[0] != '_' as u8 &&
         ! char::is_XID_start(result[0] as char) {
-        ret "_" + result;
+        ret ~"_" + result;
     }
 
     ret result;
 }
 
-fn mangle(ss: path) -> str {
+fn mangle(ss: path) -> ~str {
     // Follow C++ namespace-mangling style
 
-    let mut n = "_ZN"; // Begin name-sequence.
+    let mut n = ~"_ZN"; // Begin name-sequence.
 
     for ss.each |s| {
         alt s { path_name(s) | path_mod(s) {
@@ -486,52 +487,52 @@ fn mangle(ss: path) -> str {
           n += #fmt["%u%s", str::len(sani), sani];
         } }
     }
-    n += "E"; // End name-sequence.
+    n += ~"E"; // End name-sequence.
     n
 }
 
-fn exported_name(path: path, hash: @str/~, vers: @str/~) -> str {
+fn exported_name(path: path, hash: @~str, vers: @~str) -> ~str {
     ret mangle(
         vec::append_one(vec::append_one(path, path_name(hash)),
                         path_name(vers)));
 }
 
-fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
+fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     ret exported_name(path, @hash, ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
-                                     t: ty::t, name: @str/~) ->
-   str {
+                                     t: ty::t, name: @~str) ->
+   ~str {
     let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     ret mangle(~[path_name(name), path_name(s), path_name(@hash)]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
-                                        flav: @str/~) -> str {
+                                        flav: @~str) -> ~str {
     ret mangle(vec::append_one(path, path_name(@ccx.names(*flav))));
 }
 
-fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
+fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> ~str {
     ret mangle(path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @str/~) -> str {
+fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @~str) -> ~str {
     ret ccx.names(*flav);
 }
 
 // If the user wants an exe generated we need to invoke
 // cc to link the object file with some libs
 fn link_binary(sess: session,
-               obj_filename: str,
-               out_filename: str,
+               obj_filename: ~str,
+               out_filename: ~str,
                lm: link_meta) {
     // Converts a library file name into a cc -l argument
-    fn unlib(config: @session::config, filename: str) -> str unsafe {
-        let rmlib = fn@(filename: str) -> str {
-            let found = str::find_str(filename, "lib");
+    fn unlib(config: @session::config, filename: ~str) -> ~str unsafe {
+        let rmlib = fn@(filename: ~str) -> ~str {
+            let found = str::find_str(filename, ~"lib");
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
@@ -539,10 +540,10 @@ fn link_binary(sess: session,
                 ret str::slice(filename, 3u, str::len(filename));
             } else { ret filename; }
         };
-        fn rmext(filename: str) -> str {
+        fn rmext(filename: ~str) -> ~str {
             let mut parts = str::split_char(filename, '.');
             vec::pop(parts);
-            ret str::connect(parts, ".");
+            ret str::connect(parts, ~".");
         }
         ret alt config.os {
               session::os_macos { rmext(rmlib(filename)) }
@@ -564,46 +565,46 @@ fn link_binary(sess: session,
         path::connect(path::dirname(out_filename), long_libname)
     } else { out_filename };
 
-    log(debug, "output: " + output);
+    log(debug, ~"output: " + output);
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
-    let stage: str = "-L" + sess.filesearch.get_target_lib_path();
+    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path();
 
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
     // instead of hard-coded gcc.
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
-    let cc_prog: str =
-        if sess.targ_cfg.os == session::os_win32 { "gcc" } else { "cc" };
+    let cc_prog: ~str =
+        if sess.targ_cfg.os == session::os_win32 { ~"gcc" } else { ~"cc" };
     // The invocations of cc share some flags across platforms
 
     let mut cc_args =
         vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
-    vec::push(cc_args, "-o");
+    vec::push(cc_args, ~"-o");
     vec::push(cc_args, output);
     vec::push(cc_args, obj_filename);
 
     let mut lib_cmd;
     let os = sess.targ_cfg.os;
     if os == session::os_macos {
-        lib_cmd = "-dynamiclib";
-    } else { lib_cmd = "-shared"; }
+        lib_cmd = ~"-dynamiclib";
+    } else { lib_cmd = ~"-shared"; }
 
     // # Crate linking
 
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each |cratepath| {
-        if str::ends_with(cratepath, ".rlib") {
+        if str::ends_with(cratepath, ~".rlib") {
             vec::push(cc_args, cratepath);
             again;
         }
         let cratepath = cratepath;
         let dir = path::dirname(cratepath);
-        if dir != "" { vec::push(cc_args, "-L" + dir); }
+        if dir != ~"" { vec::push(cc_args, ~"-L" + dir); }
         let libarg = unlib(sess.targ_cfg, path::basename(cratepath));
-        vec::push(cc_args, "-l" + libarg);
+        vec::push(cc_args, ~"-l" + libarg);
     }
 
     let ula = cstore::get_used_link_args(cstore);
@@ -618,11 +619,11 @@ fn link_binary(sess: session,
     // forces to make sure that library can be found at runtime.
 
     let addl_paths = sess.opts.addl_lib_search_paths;
-    for addl_paths.each |path| { vec::push(cc_args, "-L" + path); }
+    for addl_paths.each |path| { vec::push(cc_args, ~"-L" + path); }
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each |l| { vec::push(cc_args, "-l" + l); }
+    for used_libs.each |l| { vec::push(cc_args, ~"-l" + l); }
 
     if sess.building_library {
         vec::push(cc_args, lib_cmd);
@@ -630,35 +631,35 @@ fn link_binary(sess: session,
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
-            vec::push(cc_args, "-Wl,-install_name,@rpath/"
+            vec::push(cc_args, ~"-Wl,-install_name,@rpath/"
                       + path::basename(output));
         }
     }
 
     if !sess.debugging_opt(session::no_rt) {
         // Always want the runtime linked in
-        vec::push(cc_args, "-lrustrt");
+        vec::push(cc_args, ~"-lrustrt");
     }
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        vec::push_all(cc_args, ~["-lrt", "-ldl"]);
+        vec::push_all(cc_args, ~[~"-lrt", ~"-ldl"]);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
         // which lives in libm. Similar to above, on some linuxes we
         // have to be explicit about linking to it. See #2510
-        vec::push(cc_args, "-lm");
+        vec::push(cc_args, ~"-lm");
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
-        vec::push_all(cc_args, ~["-pthread", "-lrt",
-                                "-L/usr/local/lib", "-lexecinfo",
-                                "-L/usr/local/lib/gcc46",
-                                "-L/usr/local/lib/gcc44", "-lstdc++",
-                                "-Wl,-z,origin",
-                                "-Wl,-rpath,/usr/local/lib/gcc46",
-                                "-Wl,-rpath,/usr/local/lib/gcc44"]);
+        vec::push_all(cc_args, ~[~"-pthread", ~"-lrt",
+                                ~"-L/usr/local/lib", ~"-lexecinfo",
+                                ~"-L/usr/local/lib/gcc46",
+                                ~"-L/usr/local/lib/gcc44", ~"-lstdc++",
+                                ~"-Wl,-z,origin",
+                                ~"-Wl,-rpath,/usr/local/lib/gcc46",
+                                ~"-Wl,-rpath,/usr/local/lib/gcc44"]);
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the
@@ -666,31 +667,31 @@ fn link_binary(sess: session,
     // understand how to unwind our __morestack frame, so we have to turn it
     // off. This has impacted some other projects like GHC.
     if sess.targ_cfg.os == session::os_macos {
-        vec::push(cc_args, "-Wl,-no_compact_unwind");
+        vec::push(cc_args, ~"-Wl,-no_compact_unwind");
     }
 
     // Stack growth requires statically linking a __morestack function
-    vec::push(cc_args, "-lmorestack");
+    vec::push(cc_args, ~"-lmorestack");
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // extern libraries might live, based on the addl_lib_search_paths
     vec::push_all(cc_args, rpath::get_rpath_flags(sess, output));
 
-    #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));
+    #debug("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);
     if 0 != prog.status {
         sess.err(#fmt["linking with `%s` failed with code %d",
                       cc_prog, prog.status]);
         sess.note(#fmt["%s arguments: %s",
-                       cc_prog, str::connect(cc_args, " ")]);
+                       cc_prog, str::connect(cc_args, ~" ")]);
         sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::os_macos {
-        run::run_program("dsymutil", ~[output]);
+        run::run_program(~"dsymutil", ~[output]);
     }
 
     // Remove the temporary object file if we aren't saving temps

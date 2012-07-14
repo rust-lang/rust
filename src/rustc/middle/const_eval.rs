@@ -6,7 +6,7 @@ enum const_val {
     const_float(f64),
     const_int(i64),
     const_uint(u64),
-    const_str(str),
+    const_str(~str),
 }
 
 // FIXME: issue #1417
@@ -159,7 +159,7 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
         }
     }
     _ {
-        fail "compare_const_vals: ill-typed comparison";
+        fail ~"compare_const_vals: ill-typed comparison";
     }
   }
 }

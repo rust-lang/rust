@@ -16,7 +16,7 @@ fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
         // Check dlist invariant.
         if !option::is_some(nobe.root) ||
            !box::ptr_eq(*option::get(nobe.root), *self) {
-            fail "Iteration encountered a dlist node not on this dlist."
+            fail ~"Iteration encountered a dlist node not on this dlist."
         }
         if !f(nobe.data) { break; }
         // Check that the user didn't do a remove.
@@ -24,7 +24,7 @@ fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
         // immediately put it back in a different position. I allow this.
         if !option::is_some(nobe.root) ||
            !box::ptr_eq(*option::get(nobe.root), *self) {
-            fail "Removing a dlist node during iteration is forbidden!"
+            fail ~"Removing a dlist node during iteration is forbidden!"
         }
         link = nobe.next_link();
     }

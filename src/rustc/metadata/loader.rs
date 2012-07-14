@@ -31,12 +31,12 @@ type ctxt = {
     span: span,
     ident: ast::ident,
     metas: ~[@ast::meta_item],
-    hash: str,
+    hash: ~str,
     os: os,
     static: bool
 };
 
-fn load_library_crate(cx: ctxt) -> {ident: str, data: @~[u8]} {
+fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     alt find_library_crate(cx) {
       some(t) { ret t; }
       none {
@@ -46,33 +46,33 @@ fn load_library_crate(cx: ctxt) -> {ident: str, data: @~[u8]} {
     }
 }
 
-fn find_library_crate(cx: ctxt) -> option<{ident: str, data: @~[u8]}> {
+fn find_library_crate(cx: ctxt) -> option<{ident: ~str, data: @~[u8]}> {
     attr::require_unique_names(cx.diag, cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
 
-fn libname(cx: ctxt) -> {prefix: str, suffix: str} {
-    if cx.static { ret {prefix: "lib", suffix: ".rlib"}; }
+fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
+    if cx.static { ret {prefix: ~"lib", suffix: ~".rlib"}; }
     alt cx.os {
-      os_win32 { ret {prefix: "", suffix: ".dll"}; }
-      os_macos { ret {prefix: "lib", suffix: ".dylib"}; }
-      os_linux { ret {prefix: "lib", suffix: ".so"}; }
-      os_freebsd { ret {prefix: "lib", suffix: ".so"}; }
+      os_win32 { ret {prefix: ~"", suffix: ~".dll"}; }
+      os_macos { ret {prefix: ~"lib", suffix: ~".dylib"}; }
+      os_linux { ret {prefix: ~"lib", suffix: ~".so"}; }
+      os_freebsd { ret {prefix: ~"lib", suffix: ~".so"}; }
     }
 }
 
 fn find_library_crate_aux(cx: ctxt,
-                          nn: {prefix: str, suffix: str},
+                          nn: {prefix: ~str, suffix: ~str},
                           filesearch: filesearch::filesearch) ->
-   option<{ident: str, data: @~[u8]}> {
+   option<{ident: ~str, data: @~[u8]}> {
     let crate_name = crate_name_from_metas(cx.metas);
-    let prefix: str = nn.prefix + *crate_name + "-";
-    let suffix: str = nn.suffix;
+    let prefix: ~str = nn.prefix + *crate_name + ~"-";
+    let suffix: ~str = nn.suffix;
 
     let mut matches = ~[];
     filesearch::search(filesearch, |path| {
         #debug("inspecting file %s", path);
-        let f: str = path::basename(path);
+        let f: ~str = path::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
             #debug("skipping %s, doesn't look like %s*%s", path, prefix,
                    suffix);
@@ -105,7 +105,7 @@ fn find_library_crate_aux(cx: ctxt,
     } else {
         cx.diag.span_err(
             cx.span, #fmt("multiple matching crates for `%s`", *crate_name));
-        cx.diag.handler().note("candidates:");
+        cx.diag.handler().note(~"candidates:");
         for matches.each |match| {
             cx.diag.handler().note(#fmt("path: %s", match.ident));
             let attrs = decoder::get_crate_attributes(match.data);
@@ -116,8 +116,8 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @str/~ {
-    let name_items = attr::find_meta_items_by_name(metas, "name");
+fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @~str {
+    let name_items = attr::find_meta_items_by_name(metas, ~"name");
     alt vec::last_opt(name_items) {
       some(i) {
         alt attr::get_meta_item_value_str(i) {
@@ -127,7 +127,7 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @str/~ {
           _ { fail }
         }
       }
-      none { fail "expected to find the crate name" }
+      none { fail ~"expected to find the crate name" }
     }
 }
 
@@ -138,7 +138,7 @@ fn note_linkage_attrs(diag: span_handler, attrs: ~[ast::attribute]) {
 }
 
 fn crate_matches(crate_data: @~[u8], metas: ~[@ast::meta_item],
-                 hash: str) -> bool {
+                 hash: ~str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
     if hash.is_not_empty() {
@@ -170,7 +170,7 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
 }
 
 fn get_metadata_section(os: os,
-                        filename: str) -> option<@~[u8]> unsafe {
+                        filename: ~str) -> option<@~[u8]> unsafe {
     let mb = str::as_c_str(filename, |buf| {
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
@@ -196,21 +196,21 @@ fn get_metadata_section(os: os,
     ret option::none::<@~[u8]>;
 }
 
-fn meta_section_name(os: os) -> str {
+fn meta_section_name(os: os) -> ~str {
     alt os {
-      os_macos { "__DATA,__note.rustc" }
-      os_win32 { ".note.rustc" }
-      os_linux { ".note.rustc" }
-      os_freebsd { ".note.rustc" }
+      os_macos { ~"__DATA,__note.rustc" }
+      os_win32 { ~".note.rustc" }
+      os_linux { ~".note.rustc" }
+      os_freebsd { ~".note.rustc" }
     }
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(os: os, path: str, out: io::writer) {
+fn list_file_metadata(os: os, path: ~str, out: io::writer) {
     alt get_metadata_section(os, path) {
       option::some(bytes) { decoder::list_crate_metadata(bytes, out); }
       option::none {
-        out.write_str("could not find metadata in " + path + ".\n");
+        out.write_str(~"could not find metadata in " + path + ~".\n");
       }
     }
 }

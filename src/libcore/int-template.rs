@@ -89,10 +89,10 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
 }
 
 /// Parse a string to an int
-fn from_str(s: str) -> option<T> { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: ~str) -> option<T> { parse_buf(str::bytes(s), 10u) }
 
 /// Convert to a string in a given base
-fn to_str(n: T, radix: uint) -> str {
+fn to_str(n: T, radix: uint) -> ~str {
     do to_str_bytes(n, radix) |slice| {
         do vec::unpack_slice(slice) |p, len| {
             unsafe { str::unsafe::from_buf_len(p, len) }
@@ -109,7 +109,7 @@ fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 }
 
 /// Convert to a string
-fn str(i: T) -> str { ret to_str(i, 10u); }
+fn str(i: T) -> ~str { ret to_str(i, 10u); }
 
 impl ord of ord for T {
     fn lt(&&other: T) -> bool {
@@ -159,20 +159,20 @@ impl times of iter::times for T {
 #[test]
 #[ignore]
 fn test_from_str() {
-    assert from_str("0") == some(0 as T);
-    assert from_str("3") == some(3 as T);
-    assert from_str("10") == some(10 as T);
-    assert from_str("123456789") == some(123456789 as T);
-    assert from_str("00100") == some(100 as T);
+    assert from_str(~"0") == some(0 as T);
+    assert from_str(~"3") == some(3 as T);
+    assert from_str(~"10") == some(10 as T);
+    assert from_str(~"123456789") == some(123456789 as T);
+    assert from_str(~"00100") == some(100 as T);
 
-    assert from_str("-1") == some(-1 as T);
-    assert from_str("-3") == some(-3 as T);
-    assert from_str("-10") == some(-10 as T);
-    assert from_str("-123456789") == some(-123456789 as T);
-    assert from_str("-00100") == some(-100 as T);
+    assert from_str(~"-1") == some(-1 as T);
+    assert from_str(~"-3") == some(-3 as T);
+    assert from_str(~"-10") == some(-10 as T);
+    assert from_str(~"-123456789") == some(-123456789 as T);
+    assert from_str(~"-00100") == some(-100 as T);
 
-    assert from_str(" ") == none;
-    assert from_str("x") == none;
+    assert from_str(~" ") == none;
+    assert from_str(~"x") == none;
 }
 
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
@@ -180,36 +180,36 @@ fn test_from_str() {
 #[ignore]
 fn test_parse_buf() {
     import str::bytes;
-    assert parse_buf(bytes("123"), 10u) == some(123 as T);
-    assert parse_buf(bytes("1001"), 2u) == some(9 as T);
-    assert parse_buf(bytes("123"), 8u) == some(83 as T);
-    assert parse_buf(bytes("123"), 16u) == some(291 as T);
-    assert parse_buf(bytes("ffff"), 16u) == some(65535 as T);
-    assert parse_buf(bytes("FFFF"), 16u) == some(65535 as T);
-    assert parse_buf(bytes("z"), 36u) == some(35 as T);
-    assert parse_buf(bytes("Z"), 36u) == some(35 as T);
+    assert parse_buf(bytes(~"123"), 10u) == some(123 as T);
+    assert parse_buf(bytes(~"1001"), 2u) == some(9 as T);
+    assert parse_buf(bytes(~"123"), 8u) == some(83 as T);
+    assert parse_buf(bytes(~"123"), 16u) == some(291 as T);
+    assert parse_buf(bytes(~"ffff"), 16u) == some(65535 as T);
+    assert parse_buf(bytes(~"FFFF"), 16u) == some(65535 as T);
+    assert parse_buf(bytes(~"z"), 36u) == some(35 as T);
+    assert parse_buf(bytes(~"Z"), 36u) == some(35 as T);
 
-    assert parse_buf(bytes("-123"), 10u) == some(-123 as T);
-    assert parse_buf(bytes("-1001"), 2u) == some(-9 as T);
-    assert parse_buf(bytes("-123"), 8u) == some(-83 as T);
-    assert parse_buf(bytes("-123"), 16u) == some(-291 as T);
-    assert parse_buf(bytes("-ffff"), 16u) == some(-65535 as T);
-    assert parse_buf(bytes("-FFFF"), 16u) == some(-65535 as T);
-    assert parse_buf(bytes("-z"), 36u) == some(-35 as T);
-    assert parse_buf(bytes("-Z"), 36u) == some(-35 as T);
+    assert parse_buf(bytes(~"-123"), 10u) == some(-123 as T);
+    assert parse_buf(bytes(~"-1001"), 2u) == some(-9 as T);
+    assert parse_buf(bytes(~"-123"), 8u) == some(-83 as T);
+    assert parse_buf(bytes(~"-123"), 16u) == some(-291 as T);
+    assert parse_buf(bytes(~"-ffff"), 16u) == some(-65535 as T);
+    assert parse_buf(bytes(~"-FFFF"), 16u) == some(-65535 as T);
+    assert parse_buf(bytes(~"-z"), 36u) == some(-35 as T);
+    assert parse_buf(bytes(~"-Z"), 36u) == some(-35 as T);
 
-    assert parse_buf(str::bytes("Z"), 35u) == none;
-    assert parse_buf(str::bytes("-9"), 2u) == none;
+    assert parse_buf(str::bytes(~"Z"), 35u) == none;
+    assert parse_buf(str::bytes(~"-9"), 2u) == none;
 }
 
 #[test]
 fn test_to_str() {
     import str::eq;
-    assert (eq(to_str(0 as T, 10u), "0"));
-    assert (eq(to_str(1 as T, 10u), "1"));
-    assert (eq(to_str(-1 as T, 10u), "-1"));
-    assert (eq(to_str(127 as T, 16u), "7f"));
-    assert (eq(to_str(100 as T, 10u), "100"));
+    assert (eq(to_str(0 as T, 10u), ~"0"));
+    assert (eq(to_str(1 as T, 10u), ~"1"));
+    assert (eq(to_str(-1 as T, 10u), ~"-1"));
+    assert (eq(to_str(127 as T, 16u), ~"7f"));
+    assert (eq(to_str(100 as T, 10u), ~"100"));
 }
 
 #[test]
@@ -243,5 +243,5 @@ fn test_times() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_times_negative() {
-    for (-10).times { log(error, "nope!"); }
+    for (-10).times { log(error, ~"nope!"); }
 }

@@ -9,7 +9,7 @@ export mk_pass;
 
 fn mk_pass() -> pass {
     {
-        name: "desc_to_brief",
+        name: ~"desc_to_brief",
         f: run
     }
 }
@@ -62,35 +62,35 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 
 #[test]
 fn should_promote_desc() {
-    let doc = test::mk_doc("#[doc = \"desc\"] mod m { }");
-    assert doc.cratemod().mods()[0].brief() == some("desc");
+    let doc = test::mk_doc(~"#[doc = \"desc\"] mod m { }");
+    assert doc.cratemod().mods()[0].brief() == some(~"desc");
 }
 
 #[test]
 fn should_promote_trait_method_desc() {
-    let doc = test::mk_doc("iface i { #[doc = \"desc\"] fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].brief == some("desc");
+    let doc = test::mk_doc(~"iface i { #[doc = \"desc\"] fn a(); }");
+    assert doc.cratemod().traits()[0].methods[0].brief == some(~"desc");
 }
 
 #[test]
 fn should_promote_impl_method_desc() {
     let doc = test::mk_doc(
-        "impl i for int { #[doc = \"desc\"] fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].brief == some("desc");
+        ~"impl i for int { #[doc = \"desc\"] fn a() { } }");
+    assert doc.cratemod().impls()[0].methods[0].brief == some(~"desc");
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }
 }
 
-fn extract(desc: option<str>) -> option<str> {
+fn extract(desc: option<~str>) -> option<~str> {
     if option::is_none(desc) {
         ret none
     }
@@ -98,7 +98,7 @@ fn extract(desc: option<str>) -> option<str> {
     parse_desc(option::get(desc))
 }
 
-fn parse_desc(desc: str) -> option<str> {
+fn parse_desc(desc: ~str) -> option<~str> {
 
     const max_brief_len: uint = 120u;
 
@@ -114,17 +114,17 @@ fn parse_desc(desc: str) -> option<str> {
     }
 }
 
-fn first_sentence(s: str) -> option<str> {
+fn first_sentence(s: ~str) -> option<~str> {
     let paras = paragraphs(s);
     if vec::is_not_empty(paras) {
         let first_para = vec::head(paras);
-        some(str::replace(first_sentence_(first_para), "\n", " "))
+        some(str::replace(first_sentence_(first_para), ~"\n", ~" "))
     } else {
         none
     }
 }
 
-fn first_sentence_(s: str) -> str {
+fn first_sentence_(s: ~str) -> ~str {
     let mut dotcount = 0;
     // The index of the character following a single dot. This allows
     // Things like [0..1) to appear in the brief description
@@ -146,7 +146,7 @@ fn first_sentence_(s: str) -> str {
         str::slice(s, 0u, idx - 1u)
       }
       _ {
-        if str::ends_with(s, ".") {
+        if str::ends_with(s, ~".") {
             str::slice(s, 0u, str::len(s))
         } else {
             s
@@ -155,10 +155,10 @@ fn first_sentence_(s: str) -> str {
     }
 }
 
-fn paragraphs(s: str) -> ~[str] {
+fn paragraphs(s: ~str) -> ~[~str] {
     let lines = str::lines_any(s);
     let mut whitespace_lines = 0;
-    let mut accum = "";
+    let mut accum = ~"";
     let paras = do vec::foldl(~[], lines) |paras, line| {
         let mut res = paras;
 
@@ -168,7 +168,7 @@ fn paragraphs(s: str) -> ~[str] {
             if whitespace_lines > 0 {
                 if str::is_not_empty(accum) {
                     res += ~[accum];
-                    accum = "";
+                    accum = ~"";
                 }
             }
 
@@ -177,7 +177,7 @@ fn paragraphs(s: str) -> ~[str] {
             accum = if str::is_empty(accum) {
                 line
             } else {
-                accum + "\n" + line
+                accum + ~"\n" + line
             }
         }
 
@@ -193,26 +193,26 @@ fn paragraphs(s: str) -> ~[str] {
 
 #[test]
 fn test_paragraphs_1() {
-    let paras = paragraphs("1\n\n2");
-    assert paras == ~["1", "2"];
+    let paras = paragraphs(~"1\n\n2");
+    assert paras == ~[~"1", ~"2"];
 }
 
 #[test]
 fn test_paragraphs_2() {
-    let paras = paragraphs("\n\n1\n1\n\n2\n\n");
-    assert paras == ~["1\n1", "2"];
+    let paras = paragraphs(~"\n\n1\n1\n\n2\n\n");
+    assert paras == ~[~"1\n1", ~"2"];
 }
 
 #[test]
 fn should_promote_short_descs() {
-    let desc = some("desc");
+    let desc = some(~"desc");
     let brief = extract(desc);
     assert brief == desc;
 }
 
 #[test]
 fn should_not_promote_long_descs() {
-    let desc = some("Warkworth Castle is a ruined medieval building
+    let desc = some(~"Warkworth Castle is a ruined medieval building
 in the town of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -226,7 +226,7 @@ counties.");
 
 #[test]
 fn should_promote_first_sentence() {
-    let desc = some("Warkworth Castle is a ruined medieval building
+    let desc = some(~"Warkworth Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -236,12 +236,12 @@ King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
     assert brief == some(
-        "Warkworth Castle is a ruined medieval building in the town");
+        ~"Warkworth Castle is a ruined medieval building in the town");
 }
 
 #[test]
 fn should_not_consider_double_period_to_end_sentence() {
-    let desc = some("Warkworth..Castle is a ruined medieval building
+    let desc = some(~"Warkworth..Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -251,12 +251,12 @@ King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
     assert brief == some(
-        "Warkworth..Castle is a ruined medieval building in the town");
+        ~"Warkworth..Castle is a ruined medieval building in the town");
 }
 
 #[test]
 fn should_not_consider_triple_period_to_end_sentence() {
-    let desc = some("Warkworth... Castle is a ruined medieval building
+    let desc = some(~"Warkworth... Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -266,5 +266,5 @@ King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
     assert brief == some(
-        "Warkworth... Castle is a ruined medieval building in the town");
+        ~"Warkworth... Castle is a ruined medieval building in the town");
 }

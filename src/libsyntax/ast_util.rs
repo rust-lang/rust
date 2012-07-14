@@ -21,11 +21,11 @@ pure fn mk_sp(lo: uint, hi: uint) -> span {
 // make this a const, once the compiler supports it
 pure fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
-pure fn path_name(p: @path) -> str { path_name_i(p.idents) }
+pure fn path_name(p: @path) -> ~str { path_name_i(p.idents) }
 
-pure fn path_name_i(idents: ~[ident]) -> str {
+pure fn path_name_i(idents: ~[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map(|i|*i), "::")
+    str::connect(idents.map(|i|*i), ~"::")
 }
 
 pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
@@ -45,7 +45,7 @@ pure fn stmt_id(s: stmt) -> node_id {
 fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
     alt d { def_variant(enum_id, var_id) {
             ret {enm: enum_id, var: var_id}; }
-        _ { fail "non-variant in variant_def_ids"; } }
+        _ { fail ~"non-variant in variant_def_ids"; } }
 }
 
 pure fn def_id_of_def(d: def) -> def_id {
@@ -63,26 +63,26 @@ pure fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-pure fn binop_to_str(op: binop) -> str {
+pure fn binop_to_str(op: binop) -> ~str {
     alt op {
-      add { ret "+"; }
-      subtract { ret "-"; }
-      mul { ret "*"; }
-      div { ret "/"; }
-      rem { ret "%"; }
-      and { ret "&&"; }
-      or { ret "||"; }
-      bitxor { ret "^"; }
-      bitand { ret "&"; }
-      bitor { ret "|"; }
-      shl { ret "<<"; }
-      shr { ret ">>"; }
-      eq { ret "=="; }
-      lt { ret "<"; }
-      le { ret "<="; }
-      ne { ret "!="; }
-      ge { ret ">="; }
-      gt { ret ">"; }
+      add { ret ~"+"; }
+      subtract { ret ~"-"; }
+      mul { ret ~"*"; }
+      div { ret ~"/"; }
+      rem { ret ~"%"; }
+      and { ret ~"&&"; }
+      or { ret ~"||"; }
+      bitxor { ret ~"^"; }
+      bitand { ret ~"&"; }
+      bitor { ret ~"|"; }
+      shl { ret ~"<<"; }
+      shr { ret ~">>"; }
+      eq { ret ~"=="; }
+      lt { ret ~"<"; }
+      le { ret ~"<="; }
+      ne { ret ~"!="; }
+      ge { ret ~">="; }
+      gt { ret ~">"; }
     }
 }
 
@@ -98,13 +98,13 @@ pure fn is_shift_binop(b: binop) -> bool {
     }
 }
 
-pure fn unop_to_str(op: unop) -> str {
+pure fn unop_to_str(op: unop) -> ~str {
     alt op {
-      box(mt) { if mt == m_mutbl { ret "@mut "; } ret "@"; }
-      uniq(mt) { if mt == m_mutbl { ret "~mut "; } ret "~"; }
-      deref { ret "*"; }
-      not { ret "!"; }
-      neg { ret "-"; }
+      box(mt) { if mt == m_mutbl { ret ~"@mut "; } ret ~"@"; }
+      uniq(mt) { if mt == m_mutbl { ret ~"~mut "; } ret ~"~"; }
+      deref { ret ~"*"; }
+      not { ret ~"!"; }
+      neg { ret ~"-"; }
     }
 }
 
@@ -112,11 +112,11 @@ pure fn is_path(e: @expr) -> bool {
     ret alt e.node { expr_path(_) { true } _ { false } };
 }
 
-pure fn int_ty_to_str(t: int_ty) -> str {
+pure fn int_ty_to_str(t: int_ty) -> ~str {
     alt t {
-      ty_char { "u8" } // ???
-      ty_i { "" } ty_i8 { "i8" } ty_i16 { "i16" }
-      ty_i32 { "i32" } ty_i64 { "i64" }
+      ty_char { ~"u8" } // ???
+      ty_i { ~"" } ty_i8 { ~"i8" } ty_i16 { ~"i16" }
+      ty_i32 { ~"i32" } ty_i64 { ~"i64" }
     }
 }
 
@@ -129,10 +129,10 @@ pure fn int_ty_max(t: int_ty) -> u64 {
     }
 }
 
-pure fn uint_ty_to_str(t: uint_ty) -> str {
+pure fn uint_ty_to_str(t: uint_ty) -> ~str {
     alt t {
-      ty_u { "u" } ty_u8 { "u8" } ty_u16 { "u16" }
-      ty_u32 { "u32" } ty_u64 { "u64" }
+      ty_u { ~"u" } ty_u8 { ~"u8" } ty_u16 { ~"u16" }
+      ty_u32 { ~"u32" } ty_u64 { ~"u64" }
     }
 }
 
@@ -145,8 +145,8 @@ pure fn uint_ty_max(t: uint_ty) -> u64 {
     }
 }
 
-pure fn float_ty_to_str(t: float_ty) -> str {
-    alt t { ty_f { "" } ty_f32 { "f32" } ty_f64 { "f64" } }
+pure fn float_ty_to_str(t: float_ty) -> ~str {
+    alt t { ty_f { ~"" } ty_f32 { ~"f32" } ty_f64 { ~"f64" } }
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
@@ -191,7 +191,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
                             if id.node.name == i { ret true; }
                         }
                     } else {
-                        fail "export of path-qualified list";
+                        fail ~"export of path-qualified list";
                     }
                   }
 
@@ -381,7 +381,7 @@ fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
     // dtor has one argument, of type ()
     {inputs: ~[{mode: ast::expl(ast::by_ref),
-               ty: nil_t, ident: @"_", id: 0}],
+               ty: nil_t, ident: @~"_", id: 0}],
      output: nil_t, purity: impure_fn, cf: return_val, constraints: ~[]}
 }
 

@@ -27,17 +27,17 @@ fn target_env(lib_path: str, prog: str) -> ~[(str,str)] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(_lib_path: str, _prog: str) -> ~[(str,str)] {
+fn target_env(_lib_path: ~str, _prog: ~str) -> ~[(~str,~str)] {
     ~[]
 }
 
 
 // FIXME (#2659): This code is duplicated in core::run::program_output
-fn run(lib_path: str,
-       prog: str,
-       args: ~[str],
-       env: ~[(str, str)],
-       input: option<str>) -> {status: int, out: str, err: str} {
+fn run(lib_path: ~str,
+       prog: ~str,
+       args: ~[~str],
+       env: ~[(~str, ~str)],
+       input: option<~str>) -> {status: int, out: ~str, err: ~str} {
 
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
@@ -69,8 +69,8 @@ fn run(lib_path: str,
         comm::send(ch, (1, output));
     }
     let status = run::waitpid(pid);
-    let mut errs = "";
-    let mut outs = "";
+    let mut errs = ~"";
+    let mut outs = ~"";
     let mut count = 2;
     while count > 0 {
         let stream = comm::recv(p);
@@ -87,7 +87,7 @@ fn run(lib_path: str,
     ret {status: status, out: outs, err: errs};
 }
 
-fn writeclose(fd: c_int, s: option<str>) {
+fn writeclose(fd: c_int, s: option<~str>) {
     if option::is_some(s) {
         let writer = io::fd_writer(fd, false);
         writer.write_str(option::get(s));
@@ -96,11 +96,11 @@ fn writeclose(fd: c_int, s: option<str>) {
     os::close(fd);
 }
 
-fn readclose(fd: c_int) -> str {
+fn readclose(fd: c_int) -> ~str {
     // Copied from run::program_output
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let mut buf = "";
+    let mut buf = ~"";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
         buf += str::from_bytes(bytes);

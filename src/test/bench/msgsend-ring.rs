@@ -22,11 +22,11 @@ fn thread_ring(i: uint,
     };
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "100", "10000"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"100", ~"10000"]
     } else if args.len() <= 1u {
-        ~["", "100", "1000"]
+        ~[~"", ~"100", ~"1000"]
     } else {
         args
     };        

@@ -10,7 +10,7 @@ import parse::{parser, parse_expr_from_source_str, new_parser_from_tt};
 
 import codemap::{span, expanded_from};
 
-fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
+fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                e: expr_, s: span, fld: ast_fold,
                orig: fn@(expr_, span, ast_fold) -> (expr_, span))
     -> (expr_, span)
@@ -54,7 +54,7 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   }
                   some(item_tt(*)) {
                     cx.span_fatal(pth.span,
-                                  "cannot use item macros in this context");
+                                  ~"cannot use item macros in this context");
                   }
                 }
               }
@@ -91,14 +91,14 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
 
                 }
               }
-              _ { cx.span_bug(mac.span, "naked syntactic bit") }
+              _ { cx.span_bug(mac.span, ~"naked syntactic bit") }
             }
           }
           _ { orig(e, s, fld) }
         };
 }
 
-fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
+fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                     module: ast::_mod, fld: ast_fold,
                     orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
     -> ast::_mod
@@ -133,7 +133,7 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
 }
 
 /* record module we enter for `#mod` */
-fn expand_item(exts: hashmap<str, syntax_extension>,
+fn expand_item(exts: hashmap<~str, syntax_extension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                orig: fn@(&&@ast::item, ast_fold) -> option<@ast::item>)
     -> option<@ast::item>
@@ -160,7 +160,7 @@ fn expand_item(exts: hashmap<str, syntax_extension>,
     }
 }
 
-fn expand_item_mac(exts: hashmap<str, syntax_extension>,
+fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                    cx: ext_ctxt, &&it: @ast::item,
                    fld: ast_fold) -> option<@ast::item> {
     alt it.node {
@@ -179,7 +179,7 @@ fn expand_item_mac(exts: hashmap<str, syntax_extension>,
             let maybe_it = alt expanded {
               mr_item(it) { fld.fold_item(it) }
               mr_expr(e) { cx.span_fatal(pth.span,
-                                         "expr macro in item position: " +
+                                         ~"expr macro in item position: " +
                                          *extname) }
               mr_def(mdef) {
                 exts.insert(*mdef.ident, mdef.ext);
@@ -194,7 +194,7 @@ fn expand_item_mac(exts: hashmap<str, syntax_extension>,
         }
       }
       _ {
-        cx.span_bug(it.span, "invalid item macro invocation");
+        cx.span_bug(it.span, ~"invalid item macro invocation");
       }
     }
 }
@@ -209,9 +209,9 @@ fn new_span(cx: ext_ctxt, sp: span) -> span {
 // is substantially more mature, these should move from here, into a
 // compiled part of libcore at very least.
 
-fn core_macros() -> str {
+fn core_macros() -> ~str {
     ret
-"{
+~"{
     #macro([#error[f, ...], log(core::error, #fmt[f, ...])]);
     #macro([#warn[f, ...], log(core::warn, #fmt[f, ...])]);
     #macro([#info[f, ...], log(core::info, #fmt[f, ...])]);
@@ -231,7 +231,7 @@ fn expand_crate(parse_sess: parse::parse_sess,
           new_span: |a|new_span(cx, a)
           with *afp};
     let f = make_fold(f_pre);
-    let cm = parse_expr_from_source_str("<core-macros>",
+    let cm = parse_expr_from_source_str(~"<core-macros>",
                                         @core_macros(),
                                         cfg,
                                         parse_sess);
