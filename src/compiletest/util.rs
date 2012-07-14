@@ -20,10 +20,10 @@ fn make_new_path(path: ~str) -> ~str {
 fn lib_path_env_var() -> ~str { ~"LD_LIBRARY_PATH" }
 
 #[cfg(target_os = "macos")]
-fn lib_path_env_var() -> str { "DYLD_LIBRARY_PATH" }
+fn lib_path_env_var() -> ~str { ~"DYLD_LIBRARY_PATH" }
 
 #[cfg(target_os = "win32")]
-fn lib_path_env_var() -> str { "PATH" }
+fn lib_path_env_var() -> ~str { ~"PATH" }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
@@ -31,7 +31,7 @@ fn lib_path_env_var() -> str { "PATH" }
 fn path_div() -> ~str { ~":" }
 
 #[cfg(target_os = "win32")]
-fn path_div() -> str { ";" }
+fn path_div() -> str { ~";" }
 
 fn logv(config: config, s: ~str) {
     log(debug, s);

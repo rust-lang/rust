@@ -897,32 +897,32 @@ mod tests {
     #[cfg(windows)]
     fn homedir() {
 
-        let oldhome = getenv("HOME");
-        let olduserprofile = getenv("USERPROFILE");
+        let oldhome = getenv(~"HOME");
+        let olduserprofile = getenv(~"USERPROFILE");
 
-        setenv("HOME", "");
-        setenv("USERPROFILE", "");
+        setenv(~"HOME", ~"");
+        setenv(~"USERPROFILE", ~"");
 
         assert os::homedir() == none;
 
-        setenv("HOME", "/home/MountainView");
-        assert os::homedir() == some("/home/MountainView");
+        setenv(~"HOME", ~"/home/MountainView");
+        assert os::homedir() == some(~"/home/MountainView");
 
-        setenv("HOME", "");
+        setenv(~"HOME", ~"");
 
-        setenv("USERPROFILE", "/home/MountainView");
-        assert os::homedir() == some("/home/MountainView");
+        setenv(~"USERPROFILE", ~"/home/MountainView");
+        assert os::homedir() == some(~"/home/MountainView");
 
-        setenv("USERPROFILE", "/home/MountainView");
-        assert os::homedir() == some("/home/MountainView");
+        setenv(~"USERPROFILE", ~"/home/MountainView");
+        assert os::homedir() == some(~"/home/MountainView");
 
-        setenv("HOME", "/home/MountainView");
-        setenv("USERPROFILE", "/home/PaloAlto");
-        assert os::homedir() == some("/home/MountainView");
+        setenv(~"HOME", ~"/home/MountainView");
+        setenv(~"USERPROFILE", ~"/home/PaloAlto");
+        assert os::homedir() == some(~"/home/MountainView");
 
-        option::iter(oldhome, |s| setenv("HOME", s));
+        option::iter(oldhome, |s| setenv(~"HOME", s));
         option::iter(olduserprofile,
-                               |s| setenv("USERPROFILE", s));
+                               |s| setenv(~"USERPROFILE", s));
     }
 
     // Issue #712

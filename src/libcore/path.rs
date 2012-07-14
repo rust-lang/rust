@@ -426,8 +426,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn normalize12() {
-        let actual = normalize("C:/whatever");
-        let expected = "C:/whatever";
+        let actual = normalize(~"C:/whatever");
+        let expected = ~"C:/whatever";
         log(error, actual);
         assert actual == expected;
     }
@@ -435,7 +435,7 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn path_is_absolute_win32() {
-        assert path_is_absolute("C:/whatever");
+        assert path_is_absolute(~"C:/whatever");
     }
 
     #[test]
