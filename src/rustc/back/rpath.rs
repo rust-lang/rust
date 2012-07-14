@@ -314,32 +314,32 @@ mod test {
     #[test]
     #[cfg(target_os = "linux")]
     fn test_rpath_relative() {
-      let o = session::os_linux;
-      check not_win32(o);
-      let res = get_rpath_relative_to_output(o,
+        let o = session::os_linux;
+        check not_win32(o);
+        let res = get_rpath_relative_to_output(o,
             ~"/usr", ~"bin/rustc", ~"lib/libstd.so");
-      assert res == ~"$ORIGIN/../lib";
+        assert res == ~"$ORIGIN/../lib";
     }
 
     #[test]
     #[cfg(target_os = "freebsd")]
     fn test_rpath_relative() {
-      let o = session::os_freebsd;
-      check not_win32(o);
-      let res = get_rpath_relative_to_output(o,
-            "/usr", "bin/rustc", "lib/libstd.so");
-      assert res == "$ORIGIN/../lib";
+        let o = session::os_freebsd;
+        check not_win32(o);
+        let res = get_rpath_relative_to_output(o,
+            ~"/usr", ~"bin/rustc", ~"lib/libstd.so");
+        assert res == ~"$ORIGIN/../lib";
     }
 
     #[test]
     #[cfg(target_os = "macos")]
     fn test_rpath_relative() {
-      // this is why refinements would be nice
-      let o = session::os_macos;
-      check not_win32(o);
-      let res = get_rpath_relative_to_output(o, "/usr", "bin/rustc",
-                                             "lib/libstd.so");
-        assert res == "@executable_path/../lib";
+        // this is why refinements would be nice
+        let o = session::os_macos;
+        check not_win32(o);
+        let res = get_rpath_relative_to_output(o, ~"/usr", ~"bin/rustc",
+                                               ~"lib/libstd.so");
+        assert res == ~"@executable_path/../lib";
     }
 
     #[test]
