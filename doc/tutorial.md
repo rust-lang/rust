@@ -2504,6 +2504,10 @@ needed because it could also, for example, specify an implementation
 of `seq<int>`—the `of` clause *refers* to a type, rather than defining
 one.
 
+Note that functions do not explicitly have the type parameters that 
+are provided by the iface. It will cause a compile-time error if you
+include them in the iface or impl.
+
 ## Casting to an interface type
 
 The above allows us to define functions that polymorphically act on
