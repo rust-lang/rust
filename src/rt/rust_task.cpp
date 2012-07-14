@@ -10,7 +10,7 @@
 #include "rust_env.h"
 #include "rust_port.h"
 
-// TODO(bblum): get rid of supervisors
+// FIXME (#1789) (bblum): get rid of supervisors
 
 // Tasks
 rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
@@ -293,7 +293,7 @@ rust_task::kill() {
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
 }
 
-// TODO(bblum): Move this to rust_builtin.cpp (cleanup)
+// (bblum): Move this to rust_builtin.cpp (cleanup)
 extern "C" CDECL
 bool rust_task_is_unwinding(rust_task *rt) {
     return rt->unwinding;
