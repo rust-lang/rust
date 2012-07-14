@@ -378,18 +378,10 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         space(s.s);
         word(s.s, constrs_str(cs, ty_constr_to_str));
       }
-      ast::ty_vstore(t, v) {
-        alt v {
-          ast::vstore_fixed(_) {
-            print_type(s, t);
-            word(s.s, ~"/");
-            print_vstore(s, v);
-          }
-          _ {
-            print_vstore(s, v);
-            print_type(s, t);
-          }
-        }
+      ast::ty_fixed_length(t, v) {
+        print_type(s, t);
+        word(s.s, ~"/");
+        print_vstore(s, ast::vstore_fixed(v));
       }
       ast::ty_mac(_) {
           fail ~"print_type doesn't know how to print a ty_mac";

@@ -497,15 +497,9 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         }]
       }
 
-      // For unique vstores, just pass through to the underlying vec or str
-      ast::ty_vstore(ty, ast::vstore_uniq) {
-        ser_ty(cx, tps, ty, s, v)
+      ast::ty_fixed_length(_, _) {
+        cx.span_unimpl(ty.span, ~"serialization for fixed length types");
       }
-
-      ast::ty_vstore(_, _) {
-        cx.span_unimpl(ty.span, ~"serialization for vstore types");
-      }
-
     }
 }
 
@@ -720,13 +714,8 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         #ast{ std::serialization::read_to_vec($(d), $(l)) }
       }
 
-      // For unique vstores, just pass through to the underlying vec or str
-      ast::ty_vstore(ty, ast::vstore_uniq) {
-        deser_ty(cx, tps, ty, d)
-      }
-
-      ast::ty_vstore(_, _) {
-        cx.span_unimpl(ty.span, ~"deserialization for vstore types");
+      ast::ty_fixed_length(_, _) {
+        cx.span_unimpl(ty.span, ~"deserialization for fixed length types");
       }
     }
 }

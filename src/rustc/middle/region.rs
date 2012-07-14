@@ -566,8 +566,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // like path/r, add to the worklist/set
     alt ty.node {
       ast::ty_rptr(r, _) |
-      ast::ty_path(@{rp: some(r), _}, _) |
-      ast::ty_vstore(_, ast::vstore_slice(r)) => {
+      ast::ty_path(@{rp: some(r), _}, _) => {
         #debug["referenced type with regions %s", pprust::ty_to_str(ty)];
         if cx.region_is_relevant(r) {
             cx.add_rp(cx.item_id);

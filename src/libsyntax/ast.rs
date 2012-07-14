@@ -503,7 +503,7 @@ enum ty_ {
     ty_tup(~[@ty]),
     ty_path(@path, node_id),
     ty_constr(@ty, ~[@ty_constr]),
-    ty_vstore(@ty, vstore),
+    ty_fixed_length(@ty, option<uint>),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

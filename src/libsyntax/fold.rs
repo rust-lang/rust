@@ -506,7 +506,7 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
       ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty),
                                 vec::map(constrs, |x| fld.fold_ty_constr(x)))}
-      ty_vstore(t, vs) {ty_vstore(fld.fold_ty(t), vs)}
+      ty_fixed_length(t, vs) {ty_fixed_length(fld.fold_ty(t), vs)}
       ty_mac(mac) {ty_mac(fold_mac(mac))}
     }
 }

@@ -464,7 +464,7 @@ fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
                     old_strs, t.id, it.id,
                     t.span, ~"deprecated str type");
               }
-              ast::ty_vstore(inner, _) |
+              ast::ty_fixed_length(inner, _) |
               ast::ty_box({ty: inner, _}) |
               ast::ty_uniq({ty: inner, _}) |
               ast::ty_rptr(_, {ty: inner, _}) {

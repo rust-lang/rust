@@ -316,7 +316,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           }
         }
       }
-      ast::ty_vstore(a_t, ast::vstore_fixed(some(u))) {
+      ast::ty_fixed_length(a_t, some(u)) {
         mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
                         ty::vstore_fixed(u),
                         |ty| {
@@ -327,13 +327,10 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
                             ty.ty
                         })
       }
-      ast::ty_vstore(_, ast::vstore_fixed(none)) {
+      ast::ty_fixed_length(_, none) {
         tcx.sess.span_bug(
             ast_ty.span,
             ~"implied fixed length for bound");
-      }
-      ast::ty_vstore(_, _) {
-        tcx.sess.span_bug(ast_ty.span, ~"vstore in type??");
       }
       ast::ty_constr(t, cs) {
         let mut out_cs = ~[];

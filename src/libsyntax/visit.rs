@@ -200,7 +200,7 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
         v.visit_ty(decl.output, e, v);
       }
       ty_path(p, _) { visit_path(p, e, v); }
-      ty_vstore(t, _) {
+      ty_fixed_length(t, _) {
         v.visit_ty(t, e, v);
       }
       ty_constr(t, cs) {

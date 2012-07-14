@@ -49,7 +49,8 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              tt_delim, tt_dotdotdot, tt_flat, tt_interpolate, ty, ty_, ty_bot,
              ty_box, ty_constr, ty_constr_, ty_constr_arg, ty_field, ty_fn,
              ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_path, ty_ptr,
-             ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec, ty_vstore,
+             ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec,
+             ty_fixed_length,
              unchecked_blk, uniq, unsafe_blk, unsafe_fn, variant, view_item,
              view_item_, view_item_export, view_item_import, view_item_use,
              view_path, view_path_glob, view_path_list, view_path_simple,
@@ -554,11 +555,11 @@ class parser {
 
         let sp = mk_sp(lo, self.last_span.hi);
         ret @{id: self.get_id(),
-              node: alt self.maybe_parse_vstore() {
-                // Consider a vstore suffix like /@ or /~
+              node: alt self.maybe_parse_fixed_vstore() {
+                // Consider a fixed vstore suffix (/N or /_)
                 none { t }
                 some(v) {
-                  ty_vstore(@{id: self.get_id(), node:t, span: sp}, v)
+                  ty_fixed_length(@{id: self.get_id(), node:t, span: sp}, v)
                 } },
               span: sp}
     }
@@ -650,15 +651,15 @@ class parser {
         }
     }
 
-    fn maybe_parse_vstore() -> option<vstore> {
+    fn maybe_parse_fixed_vstore() -> option<option<uint>> {
         if self.token == token::BINOP(token::SLASH) {
             self.bump();
             alt copy self.token {
               token::UNDERSCORE {
-                self.bump(); some(vstore_fixed(none))
+                self.bump(); some(none)
               }
               token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 {
-                self.bump(); some(vstore_fixed(some(i as uint)))
+                self.bump(); some(some(i as uint))
               }
               _ {
                 none
@@ -1029,11 +1030,11 @@ class parser {
         alt ex {
           expr_lit(@{node: lit_str(_), span: _}) |
           expr_vec(_, _)  {
-            alt self.maybe_parse_vstore() {
+            alt self.maybe_parse_fixed_vstore() {
               none { }
               some(v) {
                 hi = self.span.hi;
-                ex = expr_vstore(self.mk_expr(lo, hi, ex), v);
+                ex = expr_vstore(self.mk_expr(lo, hi, ex), vstore_fixed(v));
               }
             }
           }
