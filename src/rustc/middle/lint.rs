@@ -112,7 +112,7 @@ fn get_lint_dict() -> lint_dict {
         ("old_strs",
          @{lint: old_strs,
            desc: "old (deprecated) strings",
-           default: ignore}),
+           default: warn}),
 
         ("unrecognized_warning",
          @{lint: unrecognized_warning,
