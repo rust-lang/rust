@@ -266,6 +266,9 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
                 if_m, tpt.substs, selfty);
           }
           none {
+            // FIXME (#2794): if there's a default impl in the trait,
+            // use that.
+
             tcx.sess.span_err(
                 a_trait_ty.path.span,
                 #fmt["missing method `%s`", *if_m.ident]);
