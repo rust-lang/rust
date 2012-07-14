@@ -654,20 +654,11 @@ class parser {
         if self.token == token::BINOP(token::SLASH) {
             self.bump();
             alt copy self.token {
-              token::AT {
-                self.bump(); some(vstore_box)
-              }
-              token::TILDE {
-                self.bump(); some(vstore_uniq)
-              }
               token::UNDERSCORE {
                 self.bump(); some(vstore_fixed(none))
               }
               token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 {
                 self.bump(); some(vstore_fixed(some(i as uint)))
-              }
-              token::BINOP(token::AND) {
-                some(vstore_slice(self.parse_region()))
               }
               _ {
                 none
