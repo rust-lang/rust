@@ -269,6 +269,7 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
 fn trans_estr(bcx: block, s: @str/~, vstore: ast::vstore,
               dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_estr");
+    if dest == base::ignore { ret bcx; }
     let ccx = bcx.ccx();
 
     let c = alt vstore {
