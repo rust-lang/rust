@@ -83,7 +83,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@arb_depth])
           }
           {node: mtc_bb(bind_name, _, idx), span: sp} {
             if ret_val.contains_key(bind_name) {
-                p_s.span_diagnostic.span_fatal(sp, "Duplicated bind name: "
+                p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "
                                                + *bind_name)
             }
             ret_val.insert(bind_name, res[idx]);
@@ -97,7 +97,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@arb_depth])
 
 enum parse_result {
     success(hashmap<ident, @arb_depth>),
-    failure(codemap::span, str)
+    failure(codemap::span, ~str)
 }
 
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
@@ -207,9 +207,9 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     nameize(sess, ms,
                             vec::map(eof_eis[0u].matches, |dv| dv.pop())));
             } else if eof_eis.len() > 1u {
-                ret failure(sp, "Ambiguity: multiple successful parses");
+                ret failure(sp, ~"Ambiguity: multiple successful parses");
             } else {
-                ret failure(sp, "Unexpected end of macro invocation");
+                ret failure(sp, ~"Unexpected end of macro invocation");
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
@@ -217,13 +217,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     alt ei.elts[ei.idx].node
                         { mtc_bb(_,name,_) { *name } _ { fail; } }
-                }), " or ");
+                }), ~" or ");
                 ret failure(sp, #fmt[
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
                     nts, next_eis.len()]);
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
-                ret failure(sp, "No rules expected the token "
+                ret failure(sp, ~"No rules expected the token "
                             + to_str(*rdr.interner(), tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
@@ -259,32 +259,32 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     }
 }
 
-fn parse_nt(p: parser, name: str) -> whole_nt {
+fn parse_nt(p: parser, name: ~str) -> whole_nt {
     alt name {
-      "item" { alt p.parse_item(~[], ast::public) {
+      ~"item" { alt p.parse_item(~[], ast::public) {
         some(i) { token::w_item(i) }
-        none { p.fatal("expected an item keyword") }
+        none { p.fatal(~"expected an item keyword") }
       }}
-      "block" { token::w_block(p.parse_block()) }
-      "stmt" { token::w_stmt(p.parse_stmt(~[])) }
-      "pat" { token::w_pat(p.parse_pat()) }
-      "expr" { token::w_expr(p.parse_expr()) }
-      "ty" { token::w_ty(p.parse_ty(false /* no need to disambiguate*/)) }
+      ~"block" { token::w_block(p.parse_block()) }
+      ~"stmt" { token::w_stmt(p.parse_stmt(~[])) }
+      ~"pat" { token::w_pat(p.parse_pat()) }
+      ~"expr" { token::w_expr(p.parse_expr()) }
+      ~"ty" { token::w_ty(p.parse_ty(false /* no need to disambiguate*/)) }
       // this could be handled like a token, since it is one
-      "ident" { alt copy p.token {
+      ~"ident" { alt copy p.token {
           token::IDENT(sn,b) { p.bump(); token::w_ident(sn,b) }
-          _ { p.fatal("expected ident, found "
+          _ { p.fatal(~"expected ident, found "
                       + token::to_str(*p.reader.interner(), copy p.token)) }
       } }
-      "path" { token::w_path(p.parse_path_with_tps(false)) }
-      "tt" {
+      ~"path" { token::w_path(p.parse_path_with_tps(false)) }
+      ~"tt" {
         p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::w_tt(@p.parse_token_tree());
         p.quote_depth -= 1u;
         res
       }
-      "mtcs" { token::w_mtcs(p.parse_matchers()) }
-      _ { p.fatal("Unsupported builtin nonterminal parser: " + name)}
+      ~"mtcs" { token::w_mtcs(p.parse_matchers()) }
+      _ { p.fatal(~"Unsupported builtin nonterminal parser: " + name)}
     }
 }
 

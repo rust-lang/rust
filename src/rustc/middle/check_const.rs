@@ -63,16 +63,16 @@ fn check_expr(sess: session, def_map: resolve::def_map,
           expr_unary(box(_), _) | expr_unary(uniq(_), _) |
           expr_unary(deref, _){
             sess.span_err(e.span,
-                          "disallowed operator in constant expression");
+                          ~"disallowed operator in constant expression");
             ret;
           }
           expr_lit(@{node: lit_str(_), _}) {
             sess.span_err(e.span,
-                          "string constants are not supported");
+                          ~"string constants are not supported");
           }
           expr_binary(_, _, _) | expr_unary(_, _) {
             if method_map.contains_key(e.id) {
-                sess.span_err(e.span, "user-defined operators are not \
+                sess.span_err(e.span, ~"user-defined operators are not \
                                        allowed in constant expressions");
             }
           }
@@ -80,9 +80,9 @@ fn check_expr(sess: session, def_map: resolve::def_map,
           expr_cast(_, _) {
             let ety = ty::expr_ty(tcx, e);
             if !ty::type_is_numeric(ety) {
-                sess.span_err(e.span, "can not cast to `" +
+                sess.span_err(e.span, ~"can not cast to `" +
                               util::ppaux::ty_to_str(tcx, ety) +
-                              "` in a constant expression");
+                              ~"` in a constant expression");
             }
           }
           expr_path(_) {
@@ -90,19 +90,20 @@ fn check_expr(sess: session, def_map: resolve::def_map,
               some(def_const(def_id)) {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
-                        e.span, "paths in constants may only refer to \
+                        e.span, ~"paths in constants may only refer to \
                                  crate-local constants");
                 }
               }
               _ {
                 sess.span_err(
-                    e.span, "paths in constants may only refer to constants");
+                    e.span,
+                    ~"paths in constants may only refer to constants");
               }
             }
           }
           _ {
             sess.span_err(e.span,
-                          "constant contains unimplemented expression type");
+                          ~"constant contains unimplemented expression type");
             ret;
           }
         }
@@ -112,14 +113,14 @@ fn check_expr(sess: session, def_map: resolve::def_map,
         if t != ty_char {
             if (v as u64) > ast_util::int_ty_max(
                 if t == ty_i { sess.targ_cfg.int_type } else { t }) {
-                sess.span_err(e.span, "literal out of range for its type");
+                sess.span_err(e.span, ~"literal out of range for its type");
             }
         }
       }
       expr_lit(@{node: lit_uint(v, t), _}) {
         if v > ast_util::uint_ty_max(
             if t == ty_u { sess.targ_cfg.uint_type } else { t }) {
-            sess.span_err(e.span, "literal out of range for its type");
+            sess.span_err(e.span, ~"literal out of range for its type");
         }
       }
       _ {}
@@ -157,7 +158,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
 
     fn visit_item(it: @item, &&env: env, v: visit::vt<env>) {
         if (*env.idstack).contains(it.id) {
-            env.sess.span_fatal(env.root_it.span, "recursive constant");
+            env.sess.span_fatal(env.root_it.span, ~"recursive constant");
         }
         (*env.idstack).push(it.id);
         visit::visit_item(it, env, v);

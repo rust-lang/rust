@@ -49,7 +49,7 @@ class cat<T: copy> : map<int, T> {
   
   fn get(&&k:int) -> T { alt self.find(k) {
       some(v) { v }
-      none    { fail "epic fail"; }
+      none    { fail ~"epic fail"; }
     }
   }
   fn [](&&k:int) -> T { self.get(k) }
@@ -87,9 +87,9 @@ class cat<T: copy> : map<int, T> {
 
 
 fn main() {
-  let nyan : cat<str> = cat(0, 2, "nyan");
+  let nyan : cat<~str> = cat(0, 2, ~"nyan");
   for uint::range(1u, 5u) |_i| { nyan.speak(); }
-  assert(nyan.find(1) == some("nyan"));
+  assert(nyan.find(1) == some(~"nyan"));
   assert(nyan.find(10) == none);
   let spotty : cat<cat_type> = cat(2, 57, tuxedo);
   for uint::range(0u, 6u) |_i| { spotty.speak(); }

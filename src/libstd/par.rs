@@ -31,7 +31,7 @@ fn map_slices<A: copy send, B: copy send>(
 
     let len = xs.len();
     if len < min_granularity {
-        log(info, "small slice");
+        log(info, ~"small slice");
         // This is a small vector, fall back on the normal map.
         ~[f()(0u, xs)]
     }
@@ -42,7 +42,7 @@ fn map_slices<A: copy send, B: copy send>(
 
         let mut futures = ~[];
         let mut base = 0u;
-        log(info, "spawning tasks");
+        log(info, ~"spawning tasks");
         while base < len {
             let end = uint::min(len, base + items_per_task);
             // FIXME: why is the ::<A, ()> annotation required here? (#2617)
@@ -66,7 +66,7 @@ fn map_slices<A: copy send, B: copy send>(
             };
             base += items_per_task;
         }
-        log(info, "tasks spawned");
+        log(info, ~"tasks spawned");
 
         log(info, #fmt("num_tasks: %?", (num_tasks, futures.len())));
         assert(num_tasks == futures.len());

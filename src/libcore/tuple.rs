@@ -22,7 +22,7 @@ pure fn swap<T:copy, U:copy>(pair: (T, U)) -> (U, T) {
 #[test]
 fn test_tuple() {
     assert first((948, 4039.48)) == 948;
-    assert second((34.5, "foo")) == "foo";
+    assert second((34.5, ~"foo")) == ~"foo";
     assert swap(('a', 2)) == (2, 'a');
 }
 

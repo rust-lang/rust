@@ -9,7 +9,7 @@ export mk_pass;
 
 fn mk_pass() -> pass {
     {
-        name: "prune_unexported",
+        name: ~"prune_unexported",
         f: run
     }
 }
@@ -70,7 +70,7 @@ fn exported_items_from_mod(
 fn exported_items_from(
     srv: astsrv::srv,
     doc: doc::moddoc,
-    is_exported: fn(astsrv::srv, str) -> bool
+    is_exported: fn(astsrv::srv, ~str) -> bool
 ) -> ~[doc::itemtag] {
     do vec::filter_map(doc.items) |itemtag| {
         let itemtag = alt itemtag {
@@ -95,7 +95,7 @@ fn exported_items_from(
 fn exported_variants_from(
     srv: astsrv::srv,
     doc: doc::enumdoc,
-    is_exported: fn(astsrv::srv, str) -> bool
+    is_exported: fn(astsrv::srv, ~str) -> bool
 ) -> ~[doc::variantdoc] {
     do vec::filter_map(doc.variants) |doc| {
         if is_exported(srv, doc.name) {
@@ -109,7 +109,7 @@ fn exported_variants_from(
 fn is_exported_from_mod(
     srv: astsrv::srv,
     mod_id: doc::ast_id,
-    item_name: str
+    item_name: ~str
 ) -> bool {
     do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(mod_id) {
@@ -119,18 +119,18 @@ fn is_exported_from_mod(
                 ast_util::is_exported(@item_name, m)
               }
               _ {
-                fail "is_exported_from_mod: not a mod";
+                fail ~"is_exported_from_mod: not a mod";
               }
             }
           }
-          _ { fail "is_exported_from_mod: not an item"; }
+          _ { fail ~"is_exported_from_mod: not an item"; }
         }
     }
 }
 
 fn is_exported_from_crate(
     srv: astsrv::srv,
-    item_name: str
+    item_name: ~str
 ) -> bool {
     do astsrv::exec(srv) |ctxt| {
         ast_util::is_exported(@item_name, ctxt.ast.node.module)
@@ -139,32 +139,32 @@ fn is_exported_from_crate(
 
 #[test]
 fn should_prune_unexported_fns() {
-    let doc = test::mk_doc("mod b { export a; fn a() { } fn b() { } }");
+    let doc = test::mk_doc(~"mod b { export a; fn a() { } fn b() { } }");
     assert vec::len(doc.cratemod().mods()[0].fns()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_fns_from_top_mod() {
-    let doc = test::mk_doc("export a; fn a() { } fn b() { }");
+    let doc = test::mk_doc(~"export a; fn a() { } fn b() { }");
     assert vec::len(doc.cratemod().fns()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_modules() {
-    let doc = test::mk_doc("mod a { export a; mod a { } mod b { } }");
+    let doc = test::mk_doc(~"mod a { export a; mod a { } mod b { } }");
     assert vec::len(doc.cratemod().mods()[0].mods()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_modules_from_top_mod() {
-    let doc = test::mk_doc("export a; mod a { } mod b { }");
+    let doc = test::mk_doc(~"export a; mod a { } mod b { }");
     assert vec::len(doc.cratemod().mods()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_consts() {
     let doc = test::mk_doc(
-        "mod a { export a; \
+        ~"mod a { export a; \
          const a: bool = true; \
          const b: bool = true; }");
     assert vec::len(doc.cratemod().mods()[0].consts()) == 1u;
@@ -173,63 +173,63 @@ fn should_prune_unexported_consts() {
 #[test]
 fn should_prune_unexported_consts_from_top_mod() {
     let doc = test::mk_doc(
-        "export a; const a: bool = true; const b: bool = true;");
+        ~"export a; const a: bool = true; const b: bool = true;");
     assert vec::len(doc.cratemod().consts()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_enums_from_top_mod() {
-    let doc = test::mk_doc("export a; mod a { } enum b { c }");
+    let doc = test::mk_doc(~"export a; mod a { } enum b { c }");
     assert vec::len(doc.cratemod().enums()) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_enums() {
-    let doc = test::mk_doc("mod a { export a; mod a { } enum b { c } }");
+    let doc = test::mk_doc(~"mod a { export a; mod a { } enum b { c } }");
     assert vec::len(doc.cratemod().mods()[0].enums()) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_variants_from_top_mod() {
-    let doc = test::mk_doc("export b::{}; enum b { c }");
+    let doc = test::mk_doc(~"export b::{}; enum b { c }");
     assert vec::len(doc.cratemod().enums()[0].variants) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_variants() {
-    let doc = test::mk_doc("mod a { export b::{}; enum b { c } }");
+    let doc = test::mk_doc(~"mod a { export b::{}; enum b { c } }");
     assert vec::len(doc.cratemod().mods()[0].enums()[0].variants) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_traits_from_top_mod() {
-    let doc = test::mk_doc("export a; mod a { } iface b { fn c(); }");
+    let doc = test::mk_doc(~"export a; mod a { } iface b { fn c(); }");
     assert vec::is_empty(doc.cratemod().traits());
 }
 
 #[test]
 fn should_prune_unexported_impls_from_top_mod() {
     let doc = test::mk_doc(
-        "export a; mod a { } impl b for int { fn c() { } }");
+        ~"export a; mod a { } impl b for int { fn c() { } }");
     assert vec::is_empty(doc.cratemod().impls())
 }
 
 #[test]
 fn should_prune_unexported_types() {
-    let doc = test::mk_doc("export a; mod a { } type b = int;");
+    let doc = test::mk_doc(~"export a; mod a { } type b = int;");
     assert vec::is_empty(doc.cratemod().types());
 }
 
 #[test]
 fn should_not_prune_reexports() {
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             let doc = reexport_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }
-    let doc = mk_doc("import a::b; \
+    let doc = mk_doc(~"import a::b; \
                       export b; \
                       mod a { fn b() { } }");
     assert vec::is_not_empty(doc.cratemod().fns());
@@ -237,9 +237,9 @@ fn should_not_prune_reexports() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             run(srv, doc)
         }
     }

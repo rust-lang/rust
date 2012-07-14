@@ -64,5 +64,5 @@ fn main() {
     // because `inner`s alignment was 4.
     assert sys::size_of::<outer>() == m::m::size();
 
-    assert y == "(22, (44))";
+    assert y == ~"(22, (44))";
 }

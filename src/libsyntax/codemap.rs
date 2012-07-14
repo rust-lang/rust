@@ -28,7 +28,7 @@ export loc;
 export get_filemap;
 export new_codemap;
 
-type filename = str;
+type filename = ~str;
 
 type file_pos = {ch: uint, byte: uint};
 
@@ -41,11 +41,11 @@ type file_pos = {ch: uint, byte: uint};
 enum file_substr {
     fss_none,
     fss_internal(span),
-    fss_external({filename: str, line: uint, col: uint})
+    fss_external({filename: ~str, line: uint, col: uint})
 }
 
 type filemap =
-    @{name: filename, substr: file_substr, src: @str/~,
+    @{name: filename, substr: file_substr, src: @~str,
       start_pos: file_pos, mut lines: ~[file_pos]};
 
 type codemap = @{files: dvec<filemap>};
@@ -55,7 +55,7 @@ type loc = {file: filemap, line: uint, col: uint};
 fn new_codemap() -> codemap { @{files: dvec()} }
 
 fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
-                        src: @str/~,
+                        src: @~str,
                         start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
     ret @{name: filename, substr: substr, src: src,
@@ -63,14 +63,14 @@ fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
           mut lines: ~[{ch: start_pos_ch, byte: start_pos_byte}]};
 }
 
-fn new_filemap(+filename: filename, src: @str/~,
+fn new_filemap(+filename: filename, src: @~str,
                start_pos_ch: uint, start_pos_byte: uint)
     -> filemap {
     ret new_filemap_w_substr(filename, fss_none, src,
                              start_pos_ch, start_pos_byte);
 }
 
-fn mk_substr_filename(cm: codemap, sp: span) -> str
+fn mk_substr_filename(cm: codemap, sp: span) -> ~str
 {
     let pos = lookup_char_pos(cm, sp.lo);
     ret #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
@@ -121,7 +121,7 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
 }
 
 fn lookup_char_pos_adj(map: codemap, pos: uint)
-    -> {filename: str, line: uint, col: uint, file: option<filemap>}
+    -> {filename: ~str, line: uint, col: uint, file: option<filemap>}
 {
     let loc = lookup_char_pos(map, pos);
     alt (loc.file.substr) {
@@ -158,19 +158,19 @@ fn adjust_span(map: codemap, sp: span) -> span {
 
 enum expn_info_ {
     expanded_from({call_site: span,
-                   callie: {name: str, span: option<span>}})
+                   callie: {name: ~str, span: option<span>}})
 }
 type expn_info = option<@expn_info_>;
 type span = {lo: uint, hi: uint, expn_info: expn_info};
 
-fn span_to_str_no_adj(sp: span, cm: codemap) -> str {
+fn span_to_str_no_adj(sp: span, cm: codemap) -> ~str {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
     ret #fmt("%s:%u:%u: %u:%u", lo.file.name,
              lo.line, lo.col, hi.line, hi.col)
 }
 
-fn span_to_str(sp: span, cm: codemap) -> str {
+fn span_to_str(sp: span, cm: codemap) -> ~str {
     let lo = lookup_char_pos_adj(cm, sp.lo);
     let hi = lookup_char_pos_adj(cm, sp.hi);
     ret #fmt("%s:%u:%u: %u:%u", lo.filename,
@@ -194,7 +194,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     ret @{file: lo.file, lines: lines};
 }
 
-fn get_line(fm: filemap, line: int) -> str unsafe {
+fn get_line(fm: filemap, line: int) -> ~str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end = alt str::find_char_from(*fm.src, '\n', begin) {
       some(e) { e }
@@ -213,20 +213,20 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
     {fm: fm, pos: line_offset + col_offset}
 }
 
-fn span_to_snippet(sp: span, cm: codemap::codemap) -> str {
+fn span_to_snippet(sp: span, cm: codemap::codemap) -> ~str {
     let begin = lookup_byte_offset(cm, sp.lo);
     let end = lookup_byte_offset(cm, sp.hi);
     assert begin.fm == end.fm;
     ret str::slice(*begin.fm.src, begin.pos, end.pos);
 }
 
-fn get_snippet(cm: codemap::codemap, fidx: uint, lo: uint, hi: uint) -> str
+fn get_snippet(cm: codemap::codemap, fidx: uint, lo: uint, hi: uint) -> ~str
 {
     let fm = cm.files[fidx];
     ret str::slice(*fm.src, lo, hi)
 }
 
-fn get_filemap(cm: codemap, filename: str) -> filemap {
+fn get_filemap(cm: codemap, filename: ~str) -> filemap {
     for cm.files.each |fm| { if fm.name == filename { ret fm; } }
     //XXjdm the following triggers a mismatched type bug
     //      (or expected function, found _|_)

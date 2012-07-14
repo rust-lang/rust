@@ -62,9 +62,9 @@ iface program {
  *
  * The process id of the spawned process
  */
-fn spawn_process(prog: str, args: ~[str],
-                 env: option<~[(str,str)]>,
-                 dir: option<str>,
+fn spawn_process(prog: ~str, args: ~[~str],
+                 env: option<~[(~str,~str)]>,
+                 dir: option<~str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
    -> pid_t {
     do with_argv(prog, args) |argv| {
@@ -77,7 +77,7 @@ fn spawn_process(prog: str, args: ~[str],
     }
 }
 
-fn with_argv<T>(prog: str, args: ~[str],
+fn with_argv<T>(prog: ~str, args: ~[~str],
                 cb: fn(**libc::c_char) -> T) -> T {
     let mut argptrs = str::as_c_str(prog, |b| ~[b]);
     let mut tmps = ~[];
@@ -91,7 +91,7 @@ fn with_argv<T>(prog: str, args: ~[str],
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: option<~[(str,str)]>,
+fn with_envp<T>(env: option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
@@ -144,7 +144,7 @@ fn with_envp<T>(env: option<~[(str,str)]>,
     }
 }
 
-fn with_dirp<T>(d: option<str>,
+fn with_dirp<T>(d: option<~str>,
                 cb: fn(*libc::c_char) -> T) -> T {
     alt d {
       some(dir) { str::as_c_str(dir, cb) }
@@ -164,7 +164,7 @@ fn with_dirp<T>(d: option<str>,
  *
  * The process id
  */
-fn run_program(prog: str, args: ~[str]) -> int {
+fn run_program(prog: ~str, args: ~[~str]) -> int {
     let pid = spawn_process(prog, args, none, none,
                             0i32, 0i32, 0i32);
     if pid == -1 as pid_t { fail; }
@@ -187,7 +187,7 @@ fn run_program(prog: str, args: ~[str]) -> int {
  *
  * A class with a <program> field
  */
-fn start_program(prog: str, args: ~[str]) -> program {
+fn start_program(prog: ~str, args: ~[~str]) -> program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -248,8 +248,8 @@ fn start_program(prog: str, args: ~[str]) -> program {
     ret prog_res(repr) as program;
 }
 
-fn read_all(rd: io::reader) -> str {
-    let mut buf = "";
+fn read_all(rd: io::reader) -> ~str {
+    let mut buf = ~"";
     while !rd.eof() {
         let bytes = rd.read_bytes(4096u);
         buf += str::from_bytes(bytes);
@@ -271,8 +271,8 @@ fn read_all(rd: io::reader) -> str {
  * A record, {status: int, out: str, err: str} containing the exit code,
  * the contents of stdout and the contents of stderr.
  */
-fn program_output(prog: str, args: ~[str]) ->
-   {status: int, out: str, err: str} {
+fn program_output(prog: ~str, args: ~[~str]) ->
+   {status: int, out: ~str, err: ~str} {
 
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
@@ -307,8 +307,8 @@ fn program_output(prog: str, args: ~[str]) ->
         comm::send(ch, (1, output));
     };
     let status = run::waitpid(pid);
-    let mut errs = "";
-    let mut outs = "";
+    let mut errs = ~"";
+    let mut outs = ~"";
     let mut count = 2;
     while count > 0 {
         let stream = comm::recv(p);
@@ -325,7 +325,7 @@ fn program_output(prog: str, args: ~[str]) ->
     ret {status: status, out: outs, err: errs};
 }
 
-fn writeclose(fd: c_int, s: str) {
+fn writeclose(fd: c_int, s: ~str) {
     import io::writer_util;
 
     #error("writeclose %d, %s", fd as int, s);
@@ -335,10 +335,10 @@ fn writeclose(fd: c_int, s: str) {
     os::close(fd);
 }
 
-fn readclose(fd: c_int) -> str {
+fn readclose(fd: c_int) -> ~str {
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let mut buf = "";
+    let mut buf = ~"";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
         buf += str::from_bytes(bytes);
@@ -397,9 +397,9 @@ mod tests {
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)
     fn test_leaks() {
-        run::run_program("echo", ~[]);
-        run::start_program("echo", ~[]);
-        run::program_output("echo", ~[]);
+        run::run_program(~"echo", ~[]);
+        run::start_program(~"echo", ~[]);
+        run::program_output(~"echo", ~[]);
     }
 
     #[test]
@@ -410,14 +410,14 @@ mod tests {
 
         let pid =
             run::spawn_process(
-                "cat", ~[], none, none,
+                ~"cat", ~[], none, none,
                 pipe_in.in, pipe_out.out, pipe_err.out);
         os::close(pipe_in.in);
         os::close(pipe_out.out);
         os::close(pipe_err.out);
 
         if pid == -1i32 { fail; }
-        let expected = "test";
+        let expected = ~"test";
         writeclose(pipe_in.out, expected);
         let actual = readclose(pipe_out.in);
         readclose(pipe_err.in);
@@ -430,7 +430,7 @@ mod tests {
 
     #[test]
     fn waitpid() {
-        let pid = run::spawn_process("false", ~[],
+        let pid = run::spawn_process(~"false", ~[],
                                      none, none,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);

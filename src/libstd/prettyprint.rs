@@ -4,7 +4,7 @@ import serialization::serializer;
 
 impl of serializer for writer {
     fn emit_nil() {
-        self.write_str("()")
+        self.write_str(~"()")
     }
 
     fn emit_uint(v: uint) {
@@ -63,68 +63,68 @@ impl of serializer for writer {
         self.write_str(#fmt["%?_f32", v]);
     }
 
-    fn emit_str(v: str) {
+    fn emit_str(v: ~str) {
         self.write_str(#fmt["%?", v]);
     }
 
-    fn emit_enum(_name: str, f: fn()) {
+    fn emit_enum(_name: ~str, f: fn()) {
         f();
     }
 
-    fn emit_enum_variant(v_name: str, _v_id: uint, sz: uint, f: fn()) {
+    fn emit_enum_variant(v_name: ~str, _v_id: uint, sz: uint, f: fn()) {
         self.write_str(v_name);
-        if sz > 0u { self.write_str("("); }
+        if sz > 0u { self.write_str(~"("); }
         f();
-        if sz > 0u { self.write_str(")"); }
+        if sz > 0u { self.write_str(~")"); }
     }
 
     fn emit_enum_variant_arg(idx: uint, f: fn()) {
-        if idx > 0u { self.write_str(", "); }
+        if idx > 0u { self.write_str(~", "); }
         f();
     }
 
     fn emit_vec(_len: uint, f: fn()) {
-        self.write_str("[");
+        self.write_str(~"[");
         f();
-        self.write_str("]");
+        self.write_str(~"]");
     }
 
     fn emit_vec_elt(idx: uint, f: fn()) {
-        if idx > 0u { self.write_str(", "); }
+        if idx > 0u { self.write_str(~", "); }
         f();
     }
 
     fn emit_box(f: fn()) {
-        self.write_str("@");
+        self.write_str(~"@");
         f();
     }
 
     fn emit_uniq(f: fn()) {
-        self.write_str("~");
+        self.write_str(~"~");
         f();
     }
 
     fn emit_rec(f: fn()) {
-        self.write_str("{");
+        self.write_str(~"{");
         f();
-        self.write_str("}");
+        self.write_str(~"}");
     }
 
-    fn emit_rec_field(f_name: str, f_idx: uint, f: fn()) {
-        if f_idx > 0u { self.write_str(", "); }
+    fn emit_rec_field(f_name: ~str, f_idx: uint, f: fn()) {
+        if f_idx > 0u { self.write_str(~", "); }
         self.write_str(f_name);
-        self.write_str(": ");
+        self.write_str(~": ");
         f();
     }
 
     fn emit_tup(_sz: uint, f: fn()) {
-        self.write_str("(");
+        self.write_str(~"(");
         f();
-        self.write_str(")");
+        self.write_str(~")");
     }
 
     fn emit_tup_elt(idx: uint, f: fn()) {
-        if idx > 0u { self.write_str(", "); }
+        if idx > 0u { self.write_str(~", "); }
         f();
     }
 }

@@ -1,8 +1,8 @@
 
 fn main() {
-    let x = "hello"/&;
-    let v = "hello"/&;
-    let mut y : str/& = "there"/&;
+    let x = &"hello";
+    let v = &"hello";
+    let mut y : &str = &"there";
 
     log(debug, x);
     log(debug, y);
@@ -10,14 +10,14 @@ fn main() {
     assert x[0] == 'h' as u8;
     assert x[4] == 'o' as u8;
 
-    let z : str/& = "thing"/&;
+    let z : &str = &"thing";
     assert v == x;
     assert x != z;
 
-    let a = "aaaa"/&;
-    let b = "bbbb"/&;
-    let c = "cccc"/&;
-    let cc = "ccccc"/&;
+    let a = &"aaaa";
+    let b = &"bbbb";
+    let c = &"cccc";
+    let cc = &"ccccc";
 
     log(debug, a);
 

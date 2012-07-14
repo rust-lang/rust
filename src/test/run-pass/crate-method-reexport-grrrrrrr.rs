@@ -12,5 +12,5 @@ fn main() {
     let x = @();
     x.cx();
     let y = ();
-    y.add("hi");
+    y.add(~"hi");
 }

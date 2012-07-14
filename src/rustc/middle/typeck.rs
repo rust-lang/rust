@@ -176,7 +176,7 @@ fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     alt tcx.def_map.find(id) {
       some(x) { x }
       _ {
-        tcx.sess.span_fatal(sp, "internal error looking up a definition")
+        tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
       }
     }
 }
@@ -195,7 +195,7 @@ fn require_same_types(
     span: span,
     t1: ty::t,
     t2: ty::t,
-    msg: fn() -> str) -> bool {
+    msg: fn() -> ~str) -> bool {
 
     let l_tcx, l_infcx;
     alt maybe_infcx {
@@ -212,7 +212,7 @@ fn require_same_types(
     alt infer::mk_eqty(l_infcx, t1, t2) {
       result::ok(()) { true }
       result::err(terr) {
-        l_tcx.sess.span_err(span, msg() + ": " +
+        l_tcx.sess.span_err(span, msg() + ~": " +
             ty::type_err_to_str(l_tcx, terr));
         false
       }
@@ -246,7 +246,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
              alt it.node {
                ast::item_fn(_,ps,_) if vec::is_not_empty(ps) {
                   tcx.sess.span_err(main_span,
-                    "main function is not allowed to have type parameters");
+                    ~"main function is not allowed to have type parameters");
                   ret;
                }
                _ {}
@@ -269,8 +269,8 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
       }
       _ {
         tcx.sess.span_bug(main_span,
-                          "main has a non-function type: found `" +
-                              ty_to_str(tcx, main_t) + "`");
+                          ~"main has a non-function type: found `" +
+                              ty_to_str(tcx, main_t) + ~"`");
       }
     }
 }
@@ -280,7 +280,7 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
     if !tcx.sess.building_library {
         alt copy tcx.sess.main_fn {
           some((id, sp)) { check_main_fn_ty(ccx, id, sp); }
-          none { tcx.sess.err("main function not found"); }
+          none { tcx.sess.err(~"main function not found"); }
         }
     }
 }

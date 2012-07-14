@@ -1,7 +1,7 @@
 fn main() {
   let mut i = 0u;
   loop {
-    log(error, "a");
+    log(error, ~"a");
     i += 1u;
     if i == 10u {
       break;
@@ -13,7 +13,7 @@ fn main() {
     if i == 21u {
         break;
     }
-    log(error, "b");
+    log(error, ~"b");
     is_even = false;
     i += 1u;
     if i % 2u != 0u {
@@ -23,7 +23,7 @@ fn main() {
   }
   assert !is_even;
   loop {
-    log(error, "c");
+    log(error, ~"c");
     if i == 22u {
         break;
     }

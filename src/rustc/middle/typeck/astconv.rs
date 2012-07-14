@@ -57,7 +57,7 @@ iface ast_conv {
 
 fn get_region_reporting_err(tcx: ty::ctxt,
                             span: span,
-                            res: result<ty::region, str>) -> ty::region {
+                            res: result<ty::region, ~str>) -> ty::region {
 
     alt res {
       result::ok(r) { r }
@@ -197,7 +197,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             if path.types.len() > 0u {
                 tcx.sess.span_err(
                     path.span,
-                    "type parameters are not allowed on this type");
+                    ~"type parameters are not allowed on this type");
             }
         }
 
@@ -205,7 +205,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             if path.rp.is_some() {
                 tcx.sess.span_err(
                     path.span,
-                    "region parameters are not allowed on this type");
+                    ~"region parameters are not allowed on this type");
             }
         }
     }
@@ -215,7 +215,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
       some(ty::atttce_resolved(ty)) { ret ty; }
       some(ty::atttce_unresolved) {
-        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type; \
+        tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
                                           insert an enum in the cycle, \
                                           if this is desired");
       }
@@ -289,7 +289,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
               }
               ast::ty_str {
                 check_path_args(tcx, path, NO_TPS);
-                // This is a bit of a hack, but basically str/& needs to be
+                // This is a bit of a hack, but basically &str needs to be
                 // converted into a vstore:
                 alt path.rp {
                   none {
@@ -317,7 +317,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           }
           _ {
             tcx.sess.span_fatal(ast_ty.span,
-                                "found type name used as a variable");
+                                ~"found type name used as a variable");
           }
         }
       }
@@ -372,7 +372,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
       ast::ty_vstore(_, ast::vstore_fixed(none)) {
         tcx.sess.span_bug(
             ast_ty.span,
-            "implied fixed length for bound");
+            ~"implied fixed length for bound");
       }
 /*
       ast::ty_vstore(_, _) {
@@ -393,11 +393,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
         // routine.
         self.tcx().sess.span_bug(
             ast_ty.span,
-            "found `ty_infer` in unexpected place");
+            ~"found `ty_infer` in unexpected place");
       }
       ast::ty_mac(_) {
         tcx.sess.span_bug(ast_ty.span,
-                          "found `ty_mac` in unexpected place");
+                          ~"found `ty_mac` in unexpected place");
       }
     };
 

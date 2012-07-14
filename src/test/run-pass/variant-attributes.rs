@@ -24,6 +24,6 @@ enum crew_of_enterprise_d {
     geordi_la_forge,
 }
 
-fn boldly_go(_crew_member: crew_of_enterprise_d, _where: str) { }
+fn boldly_go(_crew_member: crew_of_enterprise_d, _where: ~str) { }
 
-fn main() { boldly_go(worf, "where no one has gone before"); }
+fn main() { boldly_go(worf, ~"where no one has gone before"); }

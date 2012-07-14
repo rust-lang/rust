@@ -257,7 +257,7 @@ fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
           ast::ty_i64  { int_ty_set(INT_TY_SET_i64) }
           ast::ty_i    { int_ty_set(INT_TY_SET_i)   }
           ast::ty_char { tcx.sess.bug(
-              "char type passed to convert_integral_ty_to_int_ty_set()"); }
+              ~"char type passed to convert_integral_ty_to_int_ty_set()"); }
         }
       }
       ty_uint(uint_ty) {
@@ -269,7 +269,7 @@ fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
           ast::ty_u   { int_ty_set(INT_TY_SET_u)   }
         }
       }
-      _ { tcx.sess.bug("non-integral type passed to \
+      _ { tcx.sess.bug(~"non-integral type passed to \
                         convert_integral_ty_to_int_ty_set()"); }
     }
 }
@@ -331,13 +331,13 @@ enum fixup_err {
     cyclic_region(region_vid)
 }
 
-fn fixup_err_to_str(f: fixup_err) -> str {
+fn fixup_err_to_str(f: fixup_err) -> ~str {
     alt f {
-      unresolved_int_ty(_) { "unconstrained integral type" }
-      unresolved_ty(_) { "unconstrained type" }
-      cyclic_ty(_) { "cyclic type of infinite size" }
-      unresolved_region(_) { "unconstrained region" }
-      cyclic_region(_) { "cyclic region" }
+      unresolved_int_ty(_) { ~"unconstrained integral type" }
+      unresolved_ty(_) { ~"unconstrained type" }
+      cyclic_ty(_) { ~"cyclic type of infinite size" }
+      unresolved_region(_) { ~"unconstrained region" }
+      cyclic_region(_) { ~"cyclic region" }
     }
 }
 
@@ -442,38 +442,38 @@ impl methods<T:copy> for cres<T> {
 }
 
 iface to_str {
-    fn to_str(cx: infer_ctxt) -> str;
+    fn to_str(cx: infer_ctxt) -> ~str;
 }
 
 impl of to_str for ty::t {
-    fn to_str(cx: infer_ctxt) -> str {
+    fn to_str(cx: infer_ctxt) -> ~str {
         ty_to_str(cx.tcx, self)
     }
 }
 
 impl of to_str for ty::mt {
-    fn to_str(cx: infer_ctxt) -> str {
+    fn to_str(cx: infer_ctxt) -> ~str {
         mt_to_str(cx.tcx, self)
     }
 }
 
 impl of to_str for ty::region {
-    fn to_str(cx: infer_ctxt) -> str {
+    fn to_str(cx: infer_ctxt) -> ~str {
         util::ppaux::region_to_str(cx.tcx, self)
     }
 }
 
 impl<V:copy to_str> of to_str for bound<V> {
-    fn to_str(cx: infer_ctxt) -> str {
+    fn to_str(cx: infer_ctxt) -> ~str {
         alt self {
           some(v) { v.to_str(cx) }
-          none { "none" }
+          none { ~"none" }
         }
     }
 }
 
 impl<T:copy to_str> of to_str for bounds<T> {
-    fn to_str(cx: infer_ctxt) -> str {
+    fn to_str(cx: infer_ctxt) -> ~str {
         #fmt["{%s <: %s}",
              self.lb.to_str(cx),
              self.ub.to_str(cx)]
@@ -481,7 +481,7 @@ impl<T:copy to_str> of to_str for bounds<T> {
 }
 
 impl of to_str for int_ty_set {
-    fn to_str(_cx: infer_ctxt) -> str {
+    fn to_str(_cx: infer_ctxt) -> ~str {
         alt self {
           int_ty_set(v) { uint::to_str(v, 10u) }
         }
@@ -489,7 +489,7 @@ impl of to_str for int_ty_set {
 }
 
 impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
-    fn to_str(cx: infer_ctxt) -> str {
+    fn to_str(cx: infer_ctxt) -> ~str {
         alt self {
           redirect(vid) { #fmt("redirect(%s)", vid.to_str()) }
           root(pt, rk) { #fmt("root(%s, %s)", pt.to_str(cx),
@@ -633,7 +633,7 @@ impl methods for infer_ctxt {
         ty::re_var(self.next_region_var_id())
     }
 
-    fn ty_to_str(t: ty::t) -> str {
+    fn ty_to_str(t: ty::t) -> ~str {
         ty_to_str(self.tcx,
                   self.resolve_type_vars_if_possible(t))
     }
@@ -1523,7 +1523,7 @@ type cres<T> = result<T,ty::type_err>;
 
 iface combine {
     fn infcx() -> infer_ctxt;
-    fn tag() -> str;
+    fn tag() -> ~str;
 
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
@@ -1880,7 +1880,7 @@ fn super_tys<C:combine>(
 
 impl of combine for sub {
     fn infcx() -> infer_ctxt { *self }
-    fn tag() -> str { "sub" }
+    fn tag() -> ~str { ~"sub" }
 
     fn lub() -> lub { lub(*self) }
 
@@ -2059,7 +2059,7 @@ impl of combine for sub {
 
 impl of combine for lub {
     fn infcx() -> infer_ctxt { *self }
-    fn tag() -> str { "lub" }
+    fn tag() -> ~str { ~"lub" }
 
     fn bot_ty(b: ty::t) -> cres<ty::t> { ok(b) }
     fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
@@ -2243,7 +2243,7 @@ impl of combine for lub {
 
 impl of combine for glb {
     fn infcx() -> infer_ctxt { *self }
-    fn tag() -> str { "glb" }
+    fn tag() -> ~str { ~"glb" }
 
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx().tcx;

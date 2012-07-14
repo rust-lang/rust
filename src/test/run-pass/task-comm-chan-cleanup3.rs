@@ -6,5 +6,5 @@ fn main() {
         let p = comm::port();
         comm::chan(p)
     };
-    comm::send(c, "coffee");
+    comm::send(c, ~"coffee");
 }

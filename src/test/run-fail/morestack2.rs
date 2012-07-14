@@ -8,7 +8,7 @@
 use std;
 
 extern mod rustrt {
-    fn last_os_error() -> str;
+    fn last_os_error() -> ~str;
 }
 
 fn getbig_call_c_and_fail(i: int) {

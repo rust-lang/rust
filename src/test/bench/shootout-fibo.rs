@@ -8,11 +8,11 @@ fn fib(n: int) -> int {
     }
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "40"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"40"]
     } else if args.len() <= 1u {
-        ~["", "30"]
+        ~[~"", ~"30"]
     } else {
         args
     };

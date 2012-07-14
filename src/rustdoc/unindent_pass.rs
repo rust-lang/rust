@@ -12,10 +12,10 @@
 export mk_pass;
 
 fn mk_pass() -> pass {
-    text_pass::mk_pass("unindent", unindent)
+    text_pass::mk_pass(~"unindent", unindent)
 }
 
-fn unindent(s: str) -> str {
+fn unindent(s: ~str) -> ~str {
     let lines = str::lines_any(s);
     let mut saw_first_line = false;
     let mut saw_second_line = false;
@@ -70,7 +70,7 @@ fn unindent(s: str) -> str {
                 str::slice(line, min_indent, str::len(line))
             }
         };
-        str::connect(unindented, "\n")
+        str::connect(unindented, ~"\n")
     } else {
         s
     }
@@ -78,25 +78,25 @@ fn unindent(s: str) -> str {
 
 #[test]
 fn should_unindent() {
-    let s = "    line1\n    line2";
+    let s = ~"    line1\n    line2";
     let r = unindent(s);
-    assert r == "line1\nline2";
+    assert r == ~"line1\nline2";
 }
 
 #[test]
 fn should_unindent_multiple_paragraphs() {
-    let s = "    line1\n\n    line2";
+    let s = ~"    line1\n\n    line2";
     let r = unindent(s);
-    assert r == "line1\n\nline2";
+    assert r == ~"line1\n\nline2";
 }
 
 #[test]
 fn should_leave_multiple_indent_levels() {
     // Line 2 is indented another level beyond the
     // base indentation and should be preserved
-    let s = "    line1\n\n        line2";
+    let s = ~"    line1\n\n        line2";
     let r = unindent(s);
-    assert r == "line1\n\n    line2";
+    assert r == ~"line1\n\n    line2";
 }
 
 #[test]
@@ -106,14 +106,14 @@ fn should_ignore_first_line_indent() {
     //
     // #[doc = "Start way over here
     //          and continue here"]
-    let s = "line1\n    line2";
+    let s = ~"line1\n    line2";
     let r = unindent(s);
-    assert r == "line1\nline2";
+    assert r == ~"line1\nline2";
 }
 
 #[test]
 fn should_not_ignore_first_line_indent_in_a_single_line_para() {
-    let s = "line1\n\n    line2";
+    let s = ~"line1\n\n    line2";
     let r = unindent(s);
-    assert r == "line1\n\n    line2";
+    assert r == ~"line1\n\n    line2";
 }

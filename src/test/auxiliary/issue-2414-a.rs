@@ -2,4 +2,4 @@
 #[crate_type = "lib"];
 
 type t1 = uint;
-impl t2 for str { }
+impl t2 for ~str { }

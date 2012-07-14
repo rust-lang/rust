@@ -426,7 +426,7 @@ impl methods for gather_loan_ctxt {
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
               }
               none {
-                tcx.sess.span_bug(pat.span, "Non derefable type");
+                tcx.sess.span_bug(pat.span, ~"Non derefable type");
               }
             }
           }

@@ -20,7 +20,7 @@ fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
         alt local_node_id_to_def(fcx, rhs_id) {
           some(def_upvar(_, _, _)) {
             fcx.ccx.tcx.sess.span_err(sp,
-                                      "tried to deinitialize a variable \
+                                      ~"tried to deinitialize a variable \
               declared in a different scope");
           }
           _ { }
@@ -309,7 +309,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_log(_, lvl, ex) {
         ret find_pre_post_state_two(fcx, pres, lvl, ex, e.id, oper_pure);
       }
-      expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
+      expr_mac(_) { fcx.ccx.tcx.sess.bug(~"unexpanded macro"); }
       expr_lit(l) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_fn(_, _, _, cap_clause) {
         ret find_pre_post_state_cap_clause(fcx, e.id, pres, cap_clause);

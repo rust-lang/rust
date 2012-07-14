@@ -41,7 +41,7 @@ enum opt_result {
     range_result(result, result),
 }
 fn trans_opt(bcx: block, o: opt) -> opt_result {
-    let _icx = bcx.insn_ctxt("alt::trans_opt");
+    let _icx = bcx.insn_ctxt(~"alt::trans_opt");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     alt o {
@@ -275,7 +275,7 @@ fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> ~[opt] {
 fn extract_variant_args(bcx: block, pat_id: ast::node_id,
                         vdefs: {enm: def_id, var: def_id}, val: ValueRef) ->
    {vals: ~[ValueRef], bcx: block} {
-    let _icx = bcx.insn_ctxt("alt::extract_variant_args");
+    let _icx = bcx.insn_ctxt(~"alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = alt check ty::get(node_id_type(bcx, pat_id)).struct {
       ty::ty_enum(id, substs) { assert id == vdefs.enm; substs.tps }
@@ -389,7 +389,7 @@ fn pick_col(m: match) -> uint {
 
 fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
                     chk: option<mk_fail>, &exits: ~[exit_node]) {
-    let _icx = bcx.insn_ctxt("alt::compile_submatch");
+    let _icx = bcx.insn_ctxt(~"alt::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
     if m.len() == 0u { Br(bcx, option::get(chk)()); ret; }
@@ -404,7 +404,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
                 bcx.fcx.lllocals.insert(val, loc);
             };
             let {bcx: guard_cx, val} = {
-                do with_scope_result(bcx, e.info(), "guard") |bcx| {
+                do with_scope_result(bcx, e.info(), ~"guard") |bcx| {
                     trans_temp_expr(bcx, e)
                 }
             };
@@ -460,7 +460,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
         let tup_ty = node_id_type(bcx, pat_id);
         let n_tup_elts = alt ty::get(tup_ty).struct {
           ty::ty_tup(elts) { elts.len() }
-          _ { ccx.sess.bug("non-tuple type in tuple pattern"); }
+          _ { ccx.sess.bug(~"non-tuple type in tuple pattern"); }
         };
         let mut tup_vals = ~[], i = 0u;
         while i < n_tup_elts {
@@ -531,7 +531,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
     }
     let else_cx = alt kind {
       no_branch | single { bcx }
-      _ { sub_block(bcx, "match_else") }
+      _ { sub_block(bcx, ~"match_else") }
     };
     let sw = if kind == switch {
         Switch(bcx, test_val, else_cx.llbb, opts.len())
@@ -546,7 +546,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
         i += 1u;
         let mut opt_cx = else_cx;
         if !exhaustive || i < len {
-            opt_cx = sub_block(bcx, "match_case");
+            opt_cx = sub_block(bcx, ~"match_case");
             alt kind {
               single { Br(bcx, opt_cx.llbb); }
               switch {
@@ -560,7 +560,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
               compare {
                 let t = node_id_type(bcx, pat_id);
                 let {bcx: after_cx, val: matches} = {
-                    do with_scope_result(bcx, none, "compare_scope") |bcx| {
+                    do with_scope_result(bcx, none, ~"compare_scope") |bcx| {
                         alt trans_opt(bcx, opt) {
                           single_result({bcx, val}) {
                             trans_compare(bcx, ast::eq, test_val, t, val, t)
@@ -575,7 +575,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
                         }
                     }
                 };
-                bcx = sub_block(after_cx, "compare_next");
+                bcx = sub_block(after_cx, ~"compare_next");
                 CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
               }
               _ { }
@@ -608,7 +608,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
 // Returns false for unreachable blocks
 fn make_phi_bindings(bcx: block, map: ~[exit_node],
                      ids: pat_util::pat_id_map) -> bool {
-    let _icx = bcx.insn_ctxt("alt::make_phi_bindings");
+    let _icx = bcx.insn_ctxt(~"alt::make_phi_bindings");
     let our_block = bcx.llbb as uint;
     let mut success = true, bcx = bcx;
     for ids.each |name, node_id| {
@@ -642,15 +642,15 @@ fn trans_alt(bcx: block,
              arms: ~[ast::arm],
              mode: ast::alt_mode,
              dest: dest) -> block {
-    let _icx = bcx.insn_ctxt("alt::trans_alt");
-    do with_scope(bcx, alt_expr.info(), "alt") |bcx| {
+    let _icx = bcx.insn_ctxt(~"alt::trans_alt");
+    do with_scope(bcx, alt_expr.info(), ~"alt") |bcx| {
         trans_alt_inner(bcx, expr, arms, mode, dest)
     }
 }
 
 fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
                    mode: ast::alt_mode, dest: dest) -> block {
-    let _icx = scope_cx.insn_ctxt("alt::trans_alt_inner");
+    let _icx = scope_cx.insn_ctxt(~"alt::trans_alt_inner");
     let bcx = scope_cx, tcx = bcx.tcx();
     let mut bodies = ~[], match = ~[];
 
@@ -658,7 +658,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
     if bcx.unreachable { ret bcx; }
 
     for vec::each(arms) |a| {
-        let body = scope_block(bcx, a.body.info(), "case_body");
+        let body = scope_block(bcx, a.body.info(), ~"case_body");
         let id_map = pat_util::pat_id_map(tcx.def_map, a.pats[0]);
         vec::push(bodies, body);
         for vec::each(a.pats) |p| {
@@ -676,8 +676,8 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
         fn mk_fail(bcx: block, sp: span,
                    done: @mut option<BasicBlockRef>) -> BasicBlockRef {
             alt *done { some(bb) { ret bb; } _ { } }
-            let fail_cx = sub_block(bcx, "case_fallthrough");
-            trans_fail(fail_cx, some(sp), "non-exhaustive match failure");;
+            let fail_cx = sub_block(bcx, ~"case_fallthrough");
+            trans_fail(fail_cx, some(sp), ~"non-exhaustive match failure");;
             *done = some(fail_cx.llbb);
             ret fail_cx.llbb;
         }
@@ -709,7 +709,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                         make_copy: bool) -> block {
-    let _icx = bcx.insn_ctxt("alt::bind_irrefutable_pat");
+    let _icx = bcx.insn_ctxt(~"alt::bind_irrefutable_pat");
     let ccx = bcx.fcx.ccx;
     let mut bcx = bcx;
 

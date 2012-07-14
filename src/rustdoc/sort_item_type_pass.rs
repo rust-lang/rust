@@ -3,7 +3,7 @@
 export mk_pass;
 
 fn mk_pass() -> pass {
-    do sort_pass::mk_pass("sort_item_type") |item1, item2| {
+    do sort_pass::mk_pass(~"sort_item_type") |item1, item2| {
         fn score(item: doc::itemtag) -> int {
             alt item {
               doc::consttag(_) { 0 }
@@ -24,7 +24,7 @@ fn mk_pass() -> pass {
 #[test]
 fn test() {
     let source =
-        "mod imod { } \
+        ~"mod imod { } \
          extern mod inmod { } \
          const iconst: int = 0; \
          fn ifn() { } \
@@ -33,15 +33,15 @@ fn test() {
          impl iimpl for int { fn a() { } } \
          type itype = int;";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
+        let doc = extract::from_srv(srv, ~"");
         let doc = mk_pass().f(srv, doc);
-        assert doc.cratemod().items[0].name() == "iconst";
-        assert doc.cratemod().items[1].name() == "itype";
-        assert doc.cratemod().items[2].name() == "ienum";
-        assert doc.cratemod().items[3].name() == "iiface";
-        assert doc.cratemod().items[4].name() == "iimpl";
-        assert doc.cratemod().items[5].name() == "ifn";
-        assert doc.cratemod().items[6].name() == "imod";
-        assert doc.cratemod().items[7].name() == "inmod";
+        assert doc.cratemod().items[0].name() == ~"iconst";
+        assert doc.cratemod().items[1].name() == ~"itype";
+        assert doc.cratemod().items[2].name() == ~"ienum";
+        assert doc.cratemod().items[3].name() == ~"iiface";
+        assert doc.cratemod().items[4].name() == ~"iimpl";
+        assert doc.cratemod().items[5].name() == ~"ifn";
+        assert doc.cratemod().items[6].name() == ~"imod";
+        assert doc.cratemod().items[7].name() == ~"inmod";
     }
 }

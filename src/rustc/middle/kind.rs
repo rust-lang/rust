@@ -39,18 +39,18 @@ import lint::{non_implicitly_copyable_typarams,implicit_copies};
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
-fn kind_to_str(k: kind) -> str {
+fn kind_to_str(k: kind) -> ~str {
     let mut kinds = ~[];
     if ty::kind_lteq(kind_const(), k) {
-        vec::push(kinds, "const");
+        vec::push(kinds, ~"const");
     }
     if ty::kind_can_be_copied(k) {
-        vec::push(kinds, "copy");
+        vec::push(kinds, ~"copy");
     }
     if ty::kind_can_be_sent(k) {
-        vec::push(kinds, "send");
+        vec::push(kinds, ~"send");
     }
-    str::connect(kinds, " ")
+    str::connect(kinds, ~" ")
 }
 
 type rval_map = std::map::hashmap<node_id, ()>;
@@ -125,13 +125,13 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         if fv.is_none() {
             cx.tcx.sess.span_err(
                 sp,
-                "cannot capture values explicitly with a block closure");
+                ~"cannot capture values explicitly with a block closure");
         }
     }
 
     fn check_for_bare(cx: ctx, _id: node_id, _fv: option<@freevar_entry>,
                       _is_move: bool,_var_t: ty::t, sp: span) {
-        cx.tcx.sess.span_err(sp, "attempted dynamic environment capture");
+        cx.tcx.sess.span_err(sp, ~"attempted dynamic environment capture");
     }
 
     let fty = ty::node_id_to_type(cx.tcx, id);
@@ -224,13 +224,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = alt ty::get(t).struct {
               ty::ty_rec(f) { f }
-              _ { cx.tcx.sess.span_bug(ex.span, "bad expr type in record"); }
+              _ { cx.tcx.sess.span_bug(ex.span, ~"bad expr type in record"); }
             };
             for ty_fields.each |tf| {
                 if !vec::any(fields, |f| f.node.ident == tf.ident ) &&
                     !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
                     cx.tcx.sess.span_err(ex.span,
-                                         "copying a noncopyable value");
+                                         ~"copying a noncopyable value");
                 }
             }
           }
@@ -340,15 +340,15 @@ fn check_bounds(cx: ctx, id: node_id, sp: span,
             cx.tcx.sess.span_lint(
                 non_implicitly_copyable_typarams,
                 id, cx.current_item, sp,
-                "instantiating copy type parameter with a \
+                ~"instantiating copy type parameter with a \
                  not implicitly copyable type");
         } else {
             cx.tcx.sess.span_err(
                 sp,
-                "instantiating a type parameter with an incompatible type " +
-                "(needs `" + kind_to_str(p_kind) +
-                "`, got `" + kind_to_str(kind) +
-                "`, missing `" + kind_to_str(p_kind - kind) + "`)");
+                ~"instantiating a type parameter with an incompatible type " +
+                ~"(needs `" + kind_to_str(p_kind) +
+                ~"`, got `" + kind_to_str(kind) +
+                ~"`, missing `" + kind_to_str(p_kind - kind) + ~"`)");
         }
     }
 }
@@ -381,7 +381,7 @@ fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool) {
 }
 
 fn check_imm_free_var(cx: ctx, def: def, sp: span) {
-    let msg = "mutable variables cannot be implicitly captured; \
+    let msg = ~"mutable variables cannot be implicitly captured; \
                use a capture clause";
     alt def {
       def_local(_, is_mutbl) {
@@ -413,18 +413,18 @@ fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
               implicit_copy: bool) {
     let k = ty::type_kind(cx.tcx, ty);
     if !ty::kind_can_be_copied(k) {
-        cx.tcx.sess.span_err(sp, "copying a noncopyable value");
+        cx.tcx.sess.span_err(sp, ~"copying a noncopyable value");
     } else if implicit_copy && !ty::kind_can_be_implicitly_copied(k) {
         cx.tcx.sess.span_lint(
             implicit_copies, id, cx.current_item,
             sp,
-            "implicitly copying a non-implicitly-copyable value");
+            ~"implicitly copying a non-implicitly-copyable value");
     }
 }
 
 fn check_send(cx: ctx, ty: ty::t, sp: span) {
     if !ty::kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
-        cx.tcx.sess.span_err(sp, "not a sendable value");
+        cx.tcx.sess.span_err(sp, ~"not a sendable value");
     }
 }
 

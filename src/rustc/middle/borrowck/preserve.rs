@@ -25,7 +25,8 @@ impl public_methods for borrowck_ctxt {
             if opt_scope_id.is_some() {
                 self.tcx.sess.span_bug(
                     cmt.span,
-                    "preserve() called with local and non-none opt_scope_id");
+                    ~"preserve() called with local and \
+                      non-none opt_scope_id");
             }
             ok(())
           }

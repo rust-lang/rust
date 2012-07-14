@@ -6,14 +6,14 @@ export mk_pass;
 
 fn mk_pass() -> pass {
     {
-        name: "path",
+        name: ~"path",
         f: run
     }
 }
 
 type ctxt = {
     srv: astsrv::srv,
-    mut path: ~[str]
+    mut path: ~[~str]
 };
 
 #[warn(no_non_implicitly_copyable_typarams)]
@@ -65,43 +65,43 @@ fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
 
 #[test]
 fn should_record_mod_paths() {
-    let source = "mod a { mod b { mod c { } } mod d { mod e { } } }";
+    let source = ~"mod a { mod b { mod c { } } mod d { mod e { } } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
+        let doc = extract::from_srv(srv, ~"");
         let doc = run(srv, doc);
         assert doc.cratemod().mods()[0].mods()[0].mods()[0].path()
-            == ~["a", "b"];
+            == ~[~"a", ~"b"];
         assert doc.cratemod().mods()[0].mods()[1].mods()[0].path()
-            == ~["a", "d"];
+            == ~[~"a", ~"d"];
     }
 }
 
 #[test]
 fn should_record_fn_paths() {
-    let source = "mod a { fn b() { } }";
+    let source = ~"mod a { fn b() { } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
+        let doc = extract::from_srv(srv, ~"");
         let doc = run(srv, doc);
-        assert doc.cratemod().mods()[0].fns()[0].path() == ~["a"];
+        assert doc.cratemod().mods()[0].fns()[0].path() == ~[~"a"];
     }
 }
 
 #[test]
 fn should_record_foreign_mod_paths() {
-    let source = "mod a { extern mod b { } }";
+    let source = ~"mod a { extern mod b { } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
+        let doc = extract::from_srv(srv, ~"");
         let doc = run(srv, doc);
-        assert doc.cratemod().mods()[0].nmods()[0].path() == ~["a"];
+        assert doc.cratemod().mods()[0].nmods()[0].path() == ~[~"a"];
     }
 }
 
 #[test]
 fn should_record_foreign_fn_paths() {
-    let source = "extern mod a { fn b(); }";
+    let source = ~"extern mod a { fn b(); }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
+        let doc = extract::from_srv(srv, ~"");
         let doc = run(srv, doc);
-        assert doc.cratemod().nmods()[0].fns[0].path() == ~["a"];
+        assert doc.cratemod().nmods()[0].fns[0].path() == ~[~"a"];
     }
 }

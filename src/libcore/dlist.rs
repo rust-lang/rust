@@ -32,10 +32,10 @@ impl private_methods<T> for dlist_node<T> {
                 alt neighbour.prev {
                     some(me) {
                         if !box::ptr_eq(*self, *me) {
-                            fail "Asymmetric next-link in dlist node."
+                            fail ~"Asymmetric next-link in dlist node."
                         }
                     }
-                    none { fail "One-way next-link in dlist node." }
+                    none { fail ~"One-way next-link in dlist node." }
                 }
             }
             none { }
@@ -45,10 +45,10 @@ impl private_methods<T> for dlist_node<T> {
                 alt neighbour.next {
                     some(me) {
                         if !box::ptr_eq(*me, *self) {
-                            fail "Asymmetric prev-link in dlist node."
+                            fail ~"Asymmetric prev-link in dlist node."
                         }
                     }
-                    none { fail "One-way prev-link in dlist node." }
+                    none { fail ~"One-way prev-link in dlist node." }
                 }
             }
             none { }
@@ -66,7 +66,7 @@ impl extensions<T> for dlist_node<T> {
     pure fn next_node() -> dlist_node<T> {
         alt self.next_link() {
             some(nobe) { nobe }
-            none       { fail "This dlist node has no next neighbour." }
+            none       { fail ~"This dlist node has no next neighbour." }
         }
     }
     /// Get the previous node in the list, if there is one.
@@ -78,7 +78,7 @@ impl extensions<T> for dlist_node<T> {
     pure fn prev_node() -> dlist_node<T> {
         alt self.prev_link() {
             some(nobe) { nobe }
-            none       { fail "This dlist node has no previous neighbour." }
+            none       { fail ~"This dlist node has no previous neighbour." }
         }
     }
 
@@ -87,7 +87,7 @@ impl extensions<T> for dlist_node<T> {
         if option::is_some(self.root) {
             option::get(self.root).remove(self);
         } else {
-            fail "Removing an orphaned dlist node - what do I remove from?"
+            fail ~"Removing an orphaned dlist node - what do I remove from?"
         }
     }
 }
@@ -124,12 +124,12 @@ impl private_methods<T> for dlist<T> {
     pure fn assert_mine(nobe: dlist_node<T>) {
         alt nobe.root {
             some(me) { assert box::ptr_eq(*self, *me); }
-            none     { fail "This node isn't on this dlist." }
+            none     { fail ~"This node isn't on this dlist." }
         }
     }
     fn make_mine(nobe: dlist_node<T>) {
         if option::is_some(nobe.root) {
-            fail "Cannot insert node that's already on a dlist!"
+            fail ~"Cannot insert node that's already on a dlist!"
         }
         nobe.root = some(self);
     }
@@ -287,14 +287,18 @@ impl extensions<T> for dlist<T> {
     pure fn head_n() -> dlist_node<T> {
         alt self.hd {
             some(nobe) { nobe }
-            none       { fail "Attempted to get the head of an empty dlist." }
+            none       {
+              fail ~"Attempted to get the head of an empty dlist."
+            }
         }
     }
     /// Get the node at the list's tail, failing if empty. O(1).
     pure fn tail_n() -> dlist_node<T> {
         alt self.tl {
             some(nobe) { nobe }
-            none       { fail "Attempted to get the tail of an empty dlist." }
+            none       {
+              fail ~"Attempted to get the tail of an empty dlist."
+            }
         }
     }
 

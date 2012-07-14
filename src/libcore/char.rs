@@ -132,15 +132,15 @@ pure fn to_digit(c: char, radix: uint) -> option<uint> {
  *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
  *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
  */
-fn escape_unicode(c: char) -> str {
+fn escape_unicode(c: char) -> ~str {
     let s = u32::to_str(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
                     else { ('U', 8u) });
     assert str::len(s) <= pad;
-    let mut out = "\\";
+    let mut out = ~"\\";
     str::push_str(out, str::from_char(c));
-    for uint::range(str::len(s), pad) |_i| { str::push_str(out, "0"); }
+    for uint::range(str::len(s), pad) |_i| { str::push_str(out, ~"0"); }
     str::push_str(out, s);
     ret out;
 }
@@ -157,14 +157,14 @@ fn escape_unicode(c: char) -> str {
  *   - Any other chars in the range [0x20,0x7e] are not escaped.
  *   - Any other chars are given hex unicode escapes; see `escape_unicode`.
  */
-fn escape_default(c: char) -> str {
+fn escape_default(c: char) -> ~str {
     alt c {
-      '\t' { "\\t" }
-      '\r' { "\\r" }
-      '\n' { "\\n" }
-      '\\' { "\\\\" }
-      '\'' { "\\'" }
-      '"' { "\\\"" }
+      '\t' { ~"\\t" }
+      '\r' { ~"\\r" }
+      '\n' { ~"\\n" }
+      '\\' { ~"\\\\" }
+      '\'' { ~"\\'" }
+      '"' { ~"\\\"" }
       '\x20' to '\x7e' { str::from_char(c) }
       _ { escape_unicode(c) }
     }
@@ -232,8 +232,8 @@ fn test_to_digit() {
 
 #[test]
 fn test_is_ascii() {
-   assert str::all("banana", char::is_ascii);
-   assert ! str::all("ประเทศไทย中华Việt Nam", char::is_ascii);
+   assert str::all(~"banana", char::is_ascii);
+   assert ! str::all(~"ประเทศไทย中华Việt Nam", char::is_ascii);
 }
 
 #[test]
@@ -248,28 +248,28 @@ fn test_is_digit() {
 
 #[test]
 fn test_escape_default() {
-    assert escape_default('\n') == "\\n";
-    assert escape_default('\r') == "\\r";
-    assert escape_default('\'') == "\\'";
-    assert escape_default('"') == "\\\"";
-    assert escape_default(' ') == " ";
-    assert escape_default('a') == "a";
-    assert escape_default('~') == "~";
-    assert escape_default('\x00') == "\\x00";
-    assert escape_default('\x1f') == "\\x1f";
-    assert escape_default('\x7f') == "\\x7f";
-    assert escape_default('\xff') == "\\xff";
-    assert escape_default('\u011b') == "\\u011b";
-    assert escape_default('\U0001d4b6') == "\\U0001d4b6";
+    assert escape_default('\n') == ~"\\n";
+    assert escape_default('\r') == ~"\\r";
+    assert escape_default('\'') == ~"\\'";
+    assert escape_default('"') == ~"\\\"";
+    assert escape_default(' ') == ~" ";
+    assert escape_default('a') == ~"a";
+    assert escape_default('~') == ~"~";
+    assert escape_default('\x00') == ~"\\x00";
+    assert escape_default('\x1f') == ~"\\x1f";
+    assert escape_default('\x7f') == ~"\\x7f";
+    assert escape_default('\xff') == ~"\\xff";
+    assert escape_default('\u011b') == ~"\\u011b";
+    assert escape_default('\U0001d4b6') == ~"\\U0001d4b6";
 }
 
 
 #[test]
 fn test_escape_unicode() {
-    assert escape_unicode('\x00') == "\\x00";
-    assert escape_unicode('\n') == "\\x0a";
-    assert escape_unicode(' ') == "\\x20";
-    assert escape_unicode('a') == "\\x61";
-    assert escape_unicode('\u011b') == "\\u011b";
-    assert escape_unicode('\U0001d4b6') == "\\U0001d4b6";
+    assert escape_unicode('\x00') == ~"\\x00";
+    assert escape_unicode('\n') == ~"\\x0a";
+    assert escape_unicode(' ') == ~"\\x20";
+    assert escape_unicode('a') == ~"\\x61";
+    assert escape_unicode('\u011b') == ~"\\u011b";
+    assert escape_unicode('\U0001d4b6') == ~"\\U0001d4b6";
 }

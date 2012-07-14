@@ -12,22 +12,22 @@ export string_reader_as_reader, tt_reader_as_reader;
 iface reader {
     fn is_eof() -> bool;
     fn next_token() -> {tok: token::token, sp: span};
-    fn fatal(str) -> !;
+    fn fatal(~str) -> !;
     fn span_diag() -> span_handler;
-    fn interner() -> @interner<@str/~>;
+    fn interner() -> @interner<@~str>;
     fn peek() -> {tok: token::token, sp: span};
     fn dup() -> reader;
 }
 
 type string_reader = @{
     span_diagnostic: span_handler,
-    src: @str/~,
+    src: @~str,
     mut col: uint,
     mut pos: uint,
     mut curr: char,
     mut chpos: uint,
     filemap: codemap::filemap,
-    interner: @interner<@str/~>,
+    interner: @interner<@~str>,
     /* cached: */
     mut peek_tok: token::token,
     mut peek_span: span
@@ -35,7 +35,7 @@ type string_reader = @{
 
 fn new_string_reader(span_diagnostic: span_handler,
                      filemap: codemap::filemap,
-                     itr: @interner<@str/~>) -> string_reader {
+                     itr: @interner<@~str>) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
     string_advance_token(r); /* fill in peek_* */
     ret r;
@@ -44,7 +44,7 @@ fn new_string_reader(span_diagnostic: span_handler,
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
 fn new_low_level_string_reader(span_diagnostic: span_handler,
                                filemap: codemap::filemap,
-                               itr: @interner<@str/~>)
+                               itr: @interner<@~str>)
     -> string_reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
@@ -75,11 +75,11 @@ impl string_reader_as_reader of reader for string_reader {
         string_advance_token(self);
         ret ret_val;
     }
-    fn fatal(m: str) -> ! {
+    fn fatal(m: ~str) -> ! {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
     fn span_diag() -> span_handler { self.span_diagnostic }
-    fn interner() -> @interner<@str/~> { self.interner }
+    fn interner() -> @interner<@~str> { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         {tok: self.peek_tok, sp: self.peek_span}
     }
@@ -97,11 +97,11 @@ impl tt_reader_as_reader of reader for tt_reader {
         }
         tt_next_token(self)
     }
-    fn fatal(m: str) -> ! {
+    fn fatal(m: ~str) -> ! {
         self.sp_diag.span_fatal(copy self.cur_span, m);
     }
     fn span_diag() -> span_handler { self.sp_diag }
-    fn interner() -> @interner<@str/~> { self.interner }
+    fn interner() -> @interner<@~str> { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         { tok: self.cur_tok, sp: self.cur_span }
     }
@@ -125,7 +125,7 @@ fn string_advance_token(&&r: string_reader) {
 
 }
 
-fn get_str_from(rdr: string_reader, start: uint) -> str unsafe {
+fn get_str_from(rdr: string_reader, start: uint) -> ~str unsafe {
     // I'm pretty skeptical about this subtraction. What if there's a
     // multi-byte character before the mark?
     ret str::slice(*rdr.src, start - 1u, rdr.pos - 1u);
@@ -211,7 +211,7 @@ fn consume_any_line_comment(rdr: string_reader)
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
                 let start_chpos = rdr.chpos - 2u;
-                let mut acc = "//";
+                let mut acc = ~"//";
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     str::push_char(acc, rdr.curr);
                     bump(rdr);
@@ -250,15 +250,15 @@ fn consume_block_comment(rdr: string_reader)
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
         let start_chpos = rdr.chpos - 2u;
-        let mut acc = "/*";
+        let mut acc = ~"/*";
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
             str::push_char(acc, rdr.curr);
             bump(rdr);
         }
         if is_eof(rdr) {
-            rdr.fatal("unterminated block doc-comment");
+            rdr.fatal(~"unterminated block doc-comment");
         } else {
-            acc += "*/";
+            acc += ~"*/";
             bump(rdr);
             bump(rdr);
             ret some({
@@ -270,7 +270,7 @@ fn consume_block_comment(rdr: string_reader)
 
     let mut level: int = 1;
     while level > 0 {
-        if is_eof(rdr) { rdr.fatal("unterminated block comment"); }
+        if is_eof(rdr) { rdr.fatal(~"unterminated block comment"); }
         if rdr.curr == '/' && nextch(rdr) == '*' {
             bump(rdr);
             bump(rdr);
@@ -288,9 +288,9 @@ fn consume_block_comment(rdr: string_reader)
     ret consume_whitespace_and_comments(rdr);
 }
 
-fn scan_exponent(rdr: string_reader) -> option<str> {
+fn scan_exponent(rdr: string_reader) -> option<~str> {
     let mut c = rdr.curr;
-    let mut rslt = "";
+    let mut rslt = ~"";
     if c == 'e' || c == 'E' {
         str::push_char(rslt, c);
         bump(rdr);
@@ -302,12 +302,12 @@ fn scan_exponent(rdr: string_reader) -> option<str> {
         let exponent = scan_digits(rdr, 10u);
         if str::len(exponent) > 0u {
             ret some(rslt + exponent);
-        } else { rdr.fatal("scan_exponent: bad fp literal"); }
-    } else { ret none::<str>; }
+        } else { rdr.fatal(~"scan_exponent: bad fp literal"); }
+    } else { ret none::<~str>; }
 }
 
-fn scan_digits(rdr: string_reader, radix: uint) -> str {
-    let mut rslt = "";
+fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
+    let mut rslt = ~"";
     loop {
         let c = rdr.curr;
         if c == '_' { bump(rdr); again; }
@@ -366,7 +366,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
                       else { either::right(ast::ty_u64) };
         }
         if str::len(num_str) == 0u {
-            rdr.fatal("no valid digits found for number");
+            rdr.fatal(~"no valid digits found for number");
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
         alt tp {
@@ -379,7 +379,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
-        num_str += "." + dec_part;
+        num_str += ~"." + dec_part;
     }
     alt scan_exponent(rdr) {
       some(s) {
@@ -414,7 +414,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
                              ast::ty_f);
     } else {
         if str::len(num_str) == 0u {
-            rdr.fatal("no valid digits found for number");
+            rdr.fatal(~"no valid digits found for number");
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
 
@@ -440,7 +440,7 @@ fn scan_numeric_escape(rdr: string_reader, n_hex_digits: uint) -> char {
 }
 
 fn next_token_inner(rdr: string_reader) -> token::token {
-    let mut accum_str = "";
+    let mut accum_str = ~"";
     let mut c = rdr.curr;
     if (c >= 'a' && c <= 'z')
         || (c >= 'A' && c <= 'Z')
@@ -455,7 +455,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             bump(rdr);
             c = rdr.curr;
         }
-        if str::eq(accum_str, "_") { ret token::UNDERSCORE; }
+        if str::eq(accum_str, ~"_") { ret token::UNDERSCORE; }
         let is_mod_name = c == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
@@ -578,7 +578,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             }
         }
         if rdr.curr != '\'' {
-            rdr.fatal("unterminated character constant");
+            rdr.fatal(~"unterminated character constant");
         }
         bump(rdr); // advance curr past token
         ret token::LIT_INT(c2 as i64, ast::ty_char);

@@ -11,8 +11,8 @@ fn print_complements() {
     let all = ~[Blue, Red, Yellow];
     for vec::each(all) |aa| {
         for vec::each(all) |bb| {
-            io::println(show_color(aa) + " + " + show_color(bb) +
-                " -> " + show_color(transform(aa,bb)));
+            io::println(show_color(aa) + ~" + " + show_color(bb) +
+                ~" -> " + show_color(transform(aa,bb)));
         }
     }
 }
@@ -21,41 +21,41 @@ enum color { Red, Yellow, Blue }
 
 type creature_info = { name: uint, color: color };
 
-fn show_color(cc: color) -> str {
+fn show_color(cc: color) -> ~str {
     alt (cc) {
-        Red    {"red"}
-        Yellow {"yellow"}
-        Blue   {"blue"}
+        Red    {~"red"}
+        Yellow {~"yellow"}
+        Blue   {~"blue"}
     }
 }
 
-fn show_color_list(set: ~[color]) -> str {
-    let mut out = "";
+fn show_color_list(set: ~[color]) -> ~str {
+    let mut out = ~"";
     for vec::eachi(set) |_ii, col| {
-        out += " ";
+        out += ~" ";
         out += show_color(col);
     }
     ret out;
 }
 
-fn show_digit(nn: uint) -> str {
+fn show_digit(nn: uint) -> ~str {
     alt (nn) {
-        0 {"zero"}
-        1 {"one"}
-        2 {"two"}
-        3 {"three"}
-        4 {"four"}
-        5 {"five"}
-        6 {"six"}
-        7 {"seven"}
-        8 {"eight"}
-        9 {"nine"}
-        _ {fail "expected digits from 0 to 9..."}
+        0 {~"zero"}
+        1 {~"one"}
+        2 {~"two"}
+        3 {~"three"}
+        4 {~"four"}
+        5 {~"five"}
+        6 {~"six"}
+        7 {~"seven"}
+        8 {~"eight"}
+        9 {~"nine"}
+        _ {fail ~"expected digits from 0 to 9..."}
     }
 }
 
-fn show_number(nn: uint) -> str {
-    let mut out = "";
+fn show_number(nn: uint) -> ~str {
+    let mut out = ~"";
     let mut num = nn;
     let mut dig;
 
@@ -64,7 +64,7 @@ fn show_number(nn: uint) -> str {
     while num != 0 {
         dig = num % 10;
         num = num / 10;
-        out = show_digit(dig) + " " + out;
+        out = show_digit(dig) + ~" " + out;
     }
 
     ret out;
@@ -89,7 +89,7 @@ fn creature(
     color: color,
     from_rendezvous: comm::port<option<creature_info>>,
     to_rendezvous: comm::chan<creature_info>,
-    to_rendezvous_log: comm::chan<str>
+    to_rendezvous_log: comm::chan<~str>
 ) {
     let mut color = color;
     let mut creatures_met = 0;
@@ -113,7 +113,7 @@ fn creature(
             }
             option::none {
                 // log creatures met and evil clones of self
-                let report = #fmt("%u", creatures_met) + " " +
+                let report = #fmt("%u", creatures_met) + ~" " +
                              show_number(evil_clones_met);
                 comm::send(to_rendezvous_log, report);
                 break;
@@ -125,7 +125,7 @@ fn creature(
 fn rendezvous(nn: uint, set: ~[color]) {
     // these ports will allow us to hear from the creatures
     let from_creatures:     comm::port<creature_info> = comm::port();
-    let from_creatures_log: comm::port<str> = comm::port();
+    let from_creatures_log: comm::port<~str> = comm::port();
 
     // these channels will be passed to the creatures so they can talk to us
     let to_rendezvous     = comm::chan(from_creatures);
@@ -180,11 +180,11 @@ fn rendezvous(nn: uint, set: ~[color]) {
     io::println(show_number(creatures_met));
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "200000"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"200000"]
     } else if args.len() <= 1u {
-        ~["", "600"]
+        ~[~"", ~"600"]
     } else {
         args
     };
@@ -192,10 +192,10 @@ fn main(args: ~[str]) {
     let nn = uint::from_str(args[1]).get();
 
     print_complements();
-    io::println("");
+    io::println(~"");
 
     rendezvous(nn, ~[Blue, Red, Yellow]);
-    io::println("");
+    io::println(~"");
 
     rendezvous(nn,
         ~[Blue, Red, Yellow, Red, Yellow, Blue, Red, Yellow, Red, Blue]);

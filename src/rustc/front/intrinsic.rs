@@ -64,14 +64,14 @@ mod intrinsic {
 
         fn visit_enter_rec(n_fields: uint,
                            sz: uint, align: uint) -> bool;
-        fn visit_rec_field(i: uint, name: str/&,
+        fn visit_rec_field(i: uint, name: &str,
                            mtbl: uint, inner: *tydesc) -> bool;
         fn visit_leave_rec(n_fields: uint,
                            sz: uint, align: uint) -> bool;
 
         fn visit_enter_class(n_fields: uint,
                              sz: uint, align: uint) -> bool;
-        fn visit_class_field(i: uint, name: str/&,
+        fn visit_class_field(i: uint, name: &str,
                              mtbl: uint, inner: *tydesc) -> bool;
         fn visit_leave_class(n_fields: uint,
                              sz: uint, align: uint) -> bool;
@@ -87,12 +87,12 @@ mod intrinsic {
         fn visit_enter_enum_variant(variant: uint,
                                     disr_val: int,
                                     n_fields: uint,
-                                    name: str/&) -> bool;
+                                    name: &str) -> bool;
         fn visit_enum_variant_field(i: uint, inner: *tydesc) -> bool;
         fn visit_leave_enum_variant(variant: uint,
                                     disr_val: int,
                                     n_fields: uint,
-                                    name: str/&) -> bool;
+                                    name: &str) -> bool;
         fn visit_leave_enum(n_variants: uint,
                             sz: uint, align: uint) -> bool;
 

@@ -433,10 +433,10 @@ fn encode_vtable_res(ecx: @e::encode_ctxt,
 fn encode_vtable_origin(ecx: @e::encode_ctxt,
                       ebml_w: ebml::writer,
                       vtable_origin: typeck::vtable_origin) {
-    do ebml_w.emit_enum("vtable_origin") {
+    do ebml_w.emit_enum(~"vtable_origin") {
         alt vtable_origin {
           typeck::vtable_static(def_id, tys, vtable_res) {
-            do ebml_w.emit_enum_variant("vtable_static", 0u, 3u) {
+            do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
                 }
@@ -449,7 +449,7 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
             }
           }
           typeck::vtable_param(pn, bn) {
-            do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) {
+            do ebml_w.emit_enum_variant(~"vtable_param", 1u, 2u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_uint(pn);
                 }
@@ -459,7 +459,7 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
             }
           }
           typeck::vtable_trait(def_id, tys) {
-            do ebml_w.emit_enum_variant("vtable_trait", 1u, 3u) {
+            do ebml_w.emit_enum_variant(~"vtable_trait", 1u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
                 }
@@ -480,7 +480,7 @@ impl helpers for ebml::ebml_deserializer {
 
     fn read_vtable_origin(xcx: extended_decode_ctxt)
         -> typeck::vtable_origin {
-        do self.read_enum("vtable_origin") {
+        do self.read_enum(~"vtable_origin") {
             do self.read_enum_variant |i| {
                 alt check i {
                   0u {
@@ -552,15 +552,15 @@ impl helpers for ebml::writer {
 
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_rec {
-            do self.emit_rec_field("bounds", 0u) {
+            do self.emit_rec_field(~"bounds", 0u) {
                 do self.emit_from_vec(*tpbt.bounds) |bs| {
                     self.emit_bounds(ecx, bs);
                 }
             }
-            do self.emit_rec_field("rp", 1u) {
+            do self.emit_rec_field(~"rp", 1u) {
                 self.emit_bool(tpbt.rp);
             }
-            do self.emit_rec_field("ty", 2u) {
+            do self.emit_rec_field(~"ty", 2u) {
                 self.emit_ty(ecx, tpbt.ty);
             }
         }
@@ -755,13 +755,13 @@ impl decoder for ebml::ebml_deserializer {
         -> ty::ty_param_bounds_and_ty {
         do self.read_rec {
             {
-                bounds: self.read_rec_field("bounds", 0u, || {
+                bounds: self.read_rec_field(~"bounds", 0u, || {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
                 }),
-                rp: self.read_rec_field("rp", 1u, || {
+                rp: self.read_rec_field(~"rp", 1u, || {
                     self.read_bool()
                 }),
-                ty: self.read_rec_field("ty", 2u, || {
+                ty: self.read_rec_field(~"ty", 2u, || {
                     self.read_ty(xcx)
                 })
             }

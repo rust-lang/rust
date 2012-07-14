@@ -59,7 +59,7 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             T_ptr(T_unique(cx, type_of(cx, mt.ty)))
           }
           _ {
-            cx.sess.bug("non-box in type_of_non_gc_box");
+            cx.sess.bug(~"non-box in type_of_non_gc_box");
           }
         }
     }
@@ -158,11 +158,11 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
             common::T_named_struct(llvm_type_name(cx, t))
           }
-          ty::ty_self { cx.tcx.sess.unimpl("type_of: ty_self"); }
-          ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }
-          ty::ty_param(*) { cx.tcx.sess.bug("type_of with ty_param"); }
+          ty::ty_self { cx.tcx.sess.unimpl(~"type_of: ty_self"); }
+          ty::ty_var(_) { cx.tcx.sess.bug(~"type_of with ty_var"); }
+          ty::ty_param(*) { cx.tcx.sess.bug(~"type_of with ty_param"); }
           ty::ty_var_integral(_) {
-            cx.tcx.sess.bug("type_of shouldn't see a ty_var_integral");
+            cx.tcx.sess.bug(~"type_of shouldn't see a ty_var_integral");
           }
         };
 
@@ -227,13 +227,13 @@ fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
     ret named_llty;
 }
 
-fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> str {
+fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
     let (name, did, tps) = alt check ty::get(t).struct {
       ty::ty_enum(did, substs) {
-        ("enum", did, substs.tps)
+        (~"enum", did, substs.tps)
       }
       ty::ty_class(did, substs) {
-        ("class", did, substs.tps)
+        (~"class", did, substs.tps)
       }
     };
     ret #fmt(

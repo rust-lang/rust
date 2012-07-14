@@ -3,8 +3,8 @@
 
 class foo {
   let i: int;
-  let j: @str/~;
-  new(i:int, j: @str/~) { self.i = i; self.j = j; }
+  let j: @~str;
+  new(i:int, j: @~str) { self.i = i; self.j = j; }
 }
 
 fn main() {

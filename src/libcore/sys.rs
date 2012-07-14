@@ -20,7 +20,7 @@ type rust_cond_lock = *libc::c_void;
 #[abi = "cdecl"]
 extern mod rustrt {
     fn unsupervise();
-    pure fn shape_log_str(t: *sys::type_desc, data: *()) -> str;
+    pure fn shape_log_str(t: *sys::type_desc, data: *()) -> ~str;
 
     fn rust_create_cond_lock() -> rust_cond_lock;
     fn rust_destroy_cond_lock(lock: rust_cond_lock);
@@ -77,7 +77,7 @@ pure fn refcount<T>(+t: @T) -> uint {
     }
 }
 
-pure fn log_str<T>(t: T) -> str {
+pure fn log_str<T>(t: T) -> ~str {
     unsafe {
         let data_ptr: *() = unsafe::reinterpret_cast(ptr::addr_of(t));
         rustrt::shape_log_str(get_type_desc::<T>(), data_ptr)

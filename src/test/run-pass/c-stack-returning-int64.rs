@@ -8,16 +8,16 @@ extern mod libc {
     fn atoll(x: *u8) -> i64;
 }
 
-fn atol(s: str) -> int {
+fn atol(s: ~str) -> int {
     ret str::as_buf(s, { |x| libc::atol(x) });
 }
 
-fn atoll(s: str) -> i64 {
+fn atoll(s: ~str) -> i64 {
     ret str::as_buf(s, { |x| libc::atoll(x) });
 }
 
 fn main() {
-    assert atol("1024") * 10 == atol("10240");
-    assert (atoll("11111111111111111") * 10i64)
-        == atoll("111111111111111110");
+    assert atol(~"1024") * 10 == atol(~"10240");
+    assert (atoll(~"11111111111111111") * 10i64)
+        == atoll(~"111111111111111110");
 }

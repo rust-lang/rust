@@ -5,13 +5,13 @@ use std;
 import str;
 
 fn main() {
-    let a: str = "this \
+    let a: ~str = ~"this \
 is a test";
-    let b: str =
-        "this \
+    let b: ~str =
+        ~"this \
                is \
                another \
                test";
-    assert (str::eq(a, "this is a test"));
-    assert (str::eq(b, "this is another test"));
+    assert (str::eq(a, ~"this is a test"));
+    assert (str::eq(b, ~"this is another test"));
 }

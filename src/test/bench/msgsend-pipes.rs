@@ -40,7 +40,7 @@ fn server(requests: port_set<request>, responses: pipes::chan<uint>) {
     //#error("server exiting");
 }
 
-fn run(args: &[str]) {
+fn run(args: &[~str]) {
     let (to_parent, from_child) = pipes::stream();
     let (to_child, from_parent_) = pipes::stream();
     let from_parent = port_set();
@@ -82,11 +82,11 @@ fn run(args: &[str]) {
     assert result == num_bytes * size;
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "1000000", "8"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"1000000", ~"8"]
     } else if args.len() <= 1u {
-        ~["", "10000", "4"]
+        ~[~"", ~"10000", ~"4"]
     } else {
         copy args
     };        

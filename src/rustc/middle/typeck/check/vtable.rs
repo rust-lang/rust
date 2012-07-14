@@ -96,11 +96,11 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
             for vec::each(*ty::trait_methods(tcx, did)) |m| {
                 if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
                     tcx.sess.span_err(
-                        sp, "a boxed iface with self types may not be \
+                        sp, ~"a boxed iface with self types may not be \
                              passed as a bounded type");
                 } else if (*m.tps).len() > 0u {
                     tcx.sess.span_err(
-                        sp, "a boxed iface with generic methods may not \
+                        sp, ~"a boxed iface with generic methods may not \
                              be passed as a bounded type");
 
                 }
@@ -162,7 +162,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
               1u { ret found[0]; }
               _ {
                 fcx.ccx.tcx.sess.span_err(
-                    sp, "multiple applicable methods in scope");
+                    sp, ~"multiple applicable methods in scope");
                 ret found[0];
               }
             }
@@ -171,8 +171,8 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
     }
 
     tcx.sess.span_fatal(
-        sp, "failed to find an implementation of interface " +
-        ty_to_str(tcx, trait_ty) + " for " +
+        sp, ~"failed to find an implementation of interface " +
+        ty_to_str(tcx, trait_ty) + ~" for " +
         ty_to_str(tcx, ty));
 }
 

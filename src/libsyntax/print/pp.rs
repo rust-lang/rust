@@ -59,33 +59,33 @@ type break_t = {offset: int, blank_space: int};
 
 type begin_t = {offset: int, breaks: breaks};
 
-enum token { STRING(@str/~, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
+enum token { STRING(@~str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
 
-fn tok_str(++t: token) -> str {
+fn tok_str(++t: token) -> ~str {
     alt t {
       STRING(s, len) { ret #fmt["STR(%s,%d)", *s, len]; }
-      BREAK(_) { ret "BREAK"; }
-      BEGIN(_) { ret "BEGIN"; }
-      END { ret "END"; }
-      EOF { ret "EOF"; }
+      BREAK(_) { ret ~"BREAK"; }
+      BEGIN(_) { ret ~"BEGIN"; }
+      END { ret ~"END"; }
+      EOF { ret ~"EOF"; }
     }
 }
 
 fn buf_str(toks: ~[mut token], szs: ~[mut int], left: uint, right: uint,
-           lim: uint) -> str {
+           lim: uint) -> ~str {
     let n = vec::len(toks);
     assert (n == vec::len(szs));
     let mut i = left;
     let mut L = lim;
-    let mut s = "[";
+    let mut s = ~"[";
     while i != right && L != 0u {
         L -= 1u;
-        if i != left { s += ", "; }
+        if i != left { s += ~", "; }
         s += #fmt["%d=%s", szs[i], tok_str(toks[i])];
         i += 1u;
         i %= n;
     }
-    s += "]";
+    s += ~"]";
     ret s;
 }
 
@@ -389,7 +389,7 @@ impl printer for printer {
     }
     fn print_newline(amount: int) {
         #debug("NEWLINE %d", amount);
-        self.out.write_str("\n");
+        self.out.write_str(~"\n");
         self.pending_indentation = 0;
         self.indent(amount);
     }
@@ -405,9 +405,9 @@ impl printer for printer {
             {offset: 0, pbreak: broken(inconsistent)}
         }
     }
-    fn write_str(s: str) {
+    fn write_str(s: ~str) {
         while self.pending_indentation > 0 {
-            self.out.write_str(" ");
+            self.out.write_str(~" ");
             self.pending_indentation -= 1;
         }
         self.out.write_str(s);
@@ -492,15 +492,15 @@ fn end(p: printer) { p.pretty_print(END); }
 
 fn eof(p: printer) { p.pretty_print(EOF); }
 
-fn word(p: printer, wrd: str) {
+fn word(p: printer, wrd: ~str) {
     p.pretty_print(STRING(@wrd, str::len(wrd) as int));
 }
 
-fn huge_word(p: printer, wrd: str) {
+fn huge_word(p: printer, wrd: ~str) {
     p.pretty_print(STRING(@wrd, size_infinity));
 }
 
-fn zero_word(p: printer, wrd: str) { p.pretty_print(STRING(@wrd, 0)); }
+fn zero_word(p: printer, wrd: ~str) { p.pretty_print(STRING(@wrd, 0)); }
 
 fn spaces(p: printer, n: uint) { break_offset(p, n, 0); }
 

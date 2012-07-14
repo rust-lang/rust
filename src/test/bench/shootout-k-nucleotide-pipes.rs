@@ -12,7 +12,7 @@ import std::sort;
 import pipes::{stream, port, chan};
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> str { 
+fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str { 
    fn pct(xx: uint, yy: uint) -> float {
       ret (xx as float) * 100f / (yy as float);
    }
@@ -44,7 +44,7 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> str {
 
    let pairs_sorted = sortKV(pairs);
    
-   let mut buffer = "";
+   let mut buffer = ~"";
 
    pairs_sorted.each(fn&(kv: (~[u8], float)) -> bool unsafe {
       let (k,v) = kv;
@@ -56,7 +56,7 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> str {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: hashmap<~[u8], uint>, key: str) -> uint {
+fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
    alt mm.find(str::bytes(str::to_lower(key))) {
       option::none      { ret 0u; }
       option::some(num) { ret num; }
@@ -90,7 +90,7 @@ fn windows_with_carry(bb: ~[const u8], nn: uint,
 }
 
 fn make_sequence_processor(sz: uint, from_parent: pipes::port<~[u8]>,
-                           to_parent: pipes::chan<str>) {
+                           to_parent: pipes::chan<~str>) {
    
    let freqs: hashmap<~[u8], uint> = map::bytes_hash();
    let mut carry: ~[u8] = ~[];
@@ -112,12 +112,12 @@ fn make_sequence_processor(sz: uint, from_parent: pipes::port<~[u8]>,
    let buffer = alt sz { 
        1u { sort_and_fmt(freqs, total) }
        2u { sort_and_fmt(freqs, total) }
-       3u { #fmt["%u\t%s", find(freqs, "GGT"), "GGT"] }
-       4u { #fmt["%u\t%s", find(freqs, "GGTA"), "GGTA"] }
-       6u { #fmt["%u\t%s", find(freqs, "GGTATT"), "GGTATT"] }
-      12u { #fmt["%u\t%s", find(freqs, "GGTATTTTAATT"), "GGTATTTTAATT"] }
-      18u { #fmt["%u\t%s", find(freqs, "GGTATTTTAATTTATAGT"), "GGTATTTTAATTTATAGT"] }
-        _ { "" }
+       3u { #fmt["%u\t%s", find(freqs, ~"GGT"), ~"GGT"] }
+       4u { #fmt["%u\t%s", find(freqs, ~"GGTA"), ~"GGTA"] }
+       6u { #fmt["%u\t%s", find(freqs, ~"GGTATT"), ~"GGTATT"] }
+      12u { #fmt["%u\t%s", find(freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT"] }
+      18u { #fmt["%u\t%s", find(freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT"] }
+        _ { ~"" }
    };
 
    //comm::send(to_parent, #fmt["yay{%u}", sz]);
@@ -125,13 +125,13 @@ fn make_sequence_processor(sz: uint, from_parent: pipes::port<~[u8]>,
 }
 
 // given a FASTA file on stdin, process sequence THREE
-fn main(args: ~[str]) {
-   let rdr = if os::getenv("RUST_BENCH").is_some() {
+fn main(args: ~[~str]) {
+   let rdr = if os::getenv(~"RUST_BENCH").is_some() {
        // FIXME: Using this compile-time env variable is a crummy way to
        // get to this massive data set, but #include_bin chokes on it (#2598)
        let path = path::connect(
            #env("CFG_SRC_DIR"),
-           "src/test/bench/shootout-k-nucleotide.data"
+           ~"src/test/bench/shootout-k-nucleotide.data"
            );
        result::get(io::file_reader(path))
    } else {
@@ -167,7 +167,7 @@ fn main(args: ~[str]) {
    let mut proc_mode = false;
 
    while !rdr.eof() {
-      let line: str = rdr.read_line();
+      let line: ~str = rdr.read_line();
 
       if str::len(line) == 0u { again; }
 
@@ -175,7 +175,7 @@ fn main(args: ~[str]) {
 
          // start processing if this is the one
          ('>' as u8, false) {
-            alt str::find_str_from(line, "THREE", 1u) {
+            alt str::find_str_from(line, ~"THREE", 1u) {
                option::some(_) { proc_mode = true; }
                option::none    { }
             }

@@ -449,7 +449,7 @@ Two examples of paths with type arguments:
 # import std::map;
 # fn f() {
 # fn id<T:copy>(t: T) -> T { t }
-type t = map::hashmap<int,str>;  // Type arguments used in a type expression
+type t = map::hashmap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
 # }
 ~~~~
@@ -563,7 +563,7 @@ a referencing crate file, or by the filename of the source file itself.
 
 A source file that contains a `main` function can be compiled to an
 executable. If a `main` function is present, it must have no [type parameters](#type-parameters)
-and no [constraints](#constraints). Its return type must be [`nil`](#primitive-types) and it must either have no arguments, or a single argument of type `[str]`.
+and no [constraints](#constraints). Its return type must be [`nil`](#primitive-types) and it must either have no arguments, or a single argument of type `[~str]`.
 
 # Items and attributes
 
@@ -745,8 +745,8 @@ fn main() {
     log(info, some(1.0));
 
     // Equivalent to 'log(core::info,
-    //                    core::str::hash(core::str::slice("foo", 0u, 1u)));'
-    log(info, hash(slice("foo", 0u, 1u)));
+    //                    core::str::hash(core::str::slice(~"foo", 0u, 1u)));'
+    log(info, hash(slice(~"foo", 0u, 1u)));
 }
 ~~~~
 
@@ -861,7 +861,7 @@ A special kind of function can be declared with a `!` character where the
 output slot type would normally be. For example:
 
 ~~~~
-fn my_err(s: str) -> ! {
+fn my_err(s: ~str) -> ! {
     log(info, s);
     fail;
 }
@@ -881,14 +881,14 @@ were declared without the `!` annotation, the following code would not
 typecheck:
 
 ~~~~
-# fn my_err(s: str) -> ! { fail }
+# fn my_err(s: ~str) -> ! { fail }
 
 fn f(i: int) -> int {
    if i == 42 {
      ret 42;
    }
    else {
-     my_err("Bad number!");
+     my_err(~"Bad number!");
    }
 }
 ~~~~
@@ -1497,7 +1497,7 @@ string, boolean value, or the nil value.
 
 ~~~~~~~~ {.literals}
 ();        // nil type
-"hello";   // string type
+~"hello";  // string type
 '5';       // character type
 5;         // integer type
 ~~~~~~~~
@@ -1510,7 +1510,7 @@ values.
 
 ~~~~~~~~ {.tuple}
 (0f, 4.5f);
-("a", 4u, true);
+(~"a", 4u, true);
 ~~~~~~~~
 
 ### Record expressions
@@ -1529,8 +1529,8 @@ written before its name.
 
 ~~~~
 {x: 10f, y: 20f};
-{name: "Joe", age: 35u, score: 100_000};
-{ident: "X", mut count: 0u};
+{name: ~"Joe", age: 35u, score: 100_000};
+{ident: ~"X", mut count: 0u};
 ~~~~
 
 The order of the fields in a record expression is significant, and
@@ -1594,7 +1594,7 @@ When no mutability is specified, the vector is immutable.
 
 ~~~~
 ~[1, 2, 3, 4];
-~["a", "b", "c", "d"];
+~[~"a", ~"b", ~"c", ~"d"];
 ~[mut 0u8, 0u8, 0u8, 0u8];
 ~~~~
 
@@ -1620,7 +1620,7 @@ task in a _failing state_.
 
 (~[1, 2, 3, 4])[0];
 (~[mut 'x', 'y'])[1] = 'z';
-(~["a", "b"])[10]; // fails
+(~[~"a", ~"b"])[10]; // fails
 
 # }
 ~~~~
@@ -1965,7 +1965,7 @@ An example:
 # let println = io::println;
 
 while i < 10 {
-    println("hello\n");
+    println(~"hello\n");
     i = i + 1;
 }
 ~~~~
@@ -2103,9 +2103,9 @@ enum list<X> { nil, cons(X, @list<X>) }
 let x: list<int> = cons(10, @cons(11, @nil));
 
 alt x {
-    cons(_, @nil) { fail "singleton list"; }
+    cons(_, @nil) { fail ~"singleton list"; }
     cons(*)       { ret; }
-    nil           { fail "empty list"; }
+    nil           { fail ~"empty list"; }
 }
 ~~~~
 
@@ -2152,19 +2152,19 @@ When matching fields of a record, the fields being matched are specified
 first, then a placeholder (`_`) represents the remaining fields.
 
 ~~~~
-# type options = {choose: bool, size: str};
-# type player = {player: str, stats: (), options: options};
+# type options = {choose: bool, size: ~str};
+# type player = {player: ~str, stats: (), options: options};
 # fn load_stats() { }
 # fn choose_player(r: player) { }
 # fn next_player() { }
 
 fn main() {
     let r = {
-        player: "ralph",
+        player: ~"ralph",
         stats: load_stats(),
         options: {
             choose: true,
-            size: "small"
+            size: ~"small"
         }
     };
 
@@ -2172,8 +2172,8 @@ fn main() {
       {options: {choose: true, _}, _} {
         choose_player(r)
       }
-      {player: p, options: {size: "small", _}, _} {
-        log(info, p + " is small");
+      {player: p, options: {size: ~"small", _}, _} {
+        log(info, p + ~" is small");
       }
       _ {
         next_player();
@@ -2189,9 +2189,9 @@ range of values may be specified with `to`. For example:
 # let x = 2;
 
 let message = alt x {
-  0 | 1  { "not many" }
-  2 to 9 { "a few" }
-  _      { "lots" }
+  0 | 1  { ~"not many" }
+  2 to 9 { ~"a few" }
+  _      { ~"lots" }
 };
 ~~~~
 
@@ -2250,9 +2250,9 @@ the `note` to the internal logging diagnostic buffer.
 An example of a `note` expression:
 
 ~~~~{.xfail-test}
-fn read_file_lines(path: str) -> ~[str] {
+fn read_file_lines(path: ~str) -> ~[~str] {
     note path;
-    let r: [str];
+    let r: [~str];
     let f: file = open_read(path);
     lines(f) |s| {
         r += ~[s];
@@ -2323,13 +2323,13 @@ The following examples all produce the same output, logged at the `error`
 logging level:
 
 ~~~~
-# let filename = "bulbasaur";
+# let filename = ~"bulbasaur";
 
 // Full version, logging a value.
-log(core::error, "file not found: " + filename);
+log(core::error, ~"file not found: " + filename);
 
 // Log-level abbreviated, since core::* is imported by default.
-log(error, "file not found: " + filename);
+log(error, ~"file not found: " + filename);
 
 // Formatting the message using a format-string and #fmt
 log(error, #fmt("file not found: %s", filename));
@@ -2627,12 +2627,12 @@ type `float` may not be equal to the largest *supported* floating-point type.
 
 ### Textual types
 
-The types `char` and `str` hold textual data.
+The types `char` and `~str` hold textual data.
 
 A value of type `char` is a Unicode character, represented as a 32-bit
 unsigned word holding a UCS-4 codepoint.
 
-A value of type `str` is a Unicode string, represented as a vector of 8-bit
+A value of type `~str` is a Unicode string, represented as a vector of 8-bit
 unsigned bytes holding a sequence of UTF-8 codepoints.
 
 
@@ -2670,10 +2670,10 @@ order specified by the tuple type.
 An example of a tuple type and its use:
 
 ~~~~
-type pair = (int,str);
-let p: pair = (10,"hello");
+type pair = (int,~str);
+let p: pair = (10,~"hello");
 let (a, b) = p;
-assert b != "world";
+assert b != ~"world";
 ~~~~
 
 ### Vector types
@@ -2837,7 +2837,7 @@ For example, this code:
 ~~~~~~~~
 # let mut s;
 
-s = "hello, world";
+s = ~"hello, world";
 io::println(s);
 ~~~~~~~~
 
@@ -2862,8 +2862,8 @@ Whereas this code:
 
 
 ~~~~~~~~
-# fn x() -> str { "" }
-# fn y() -> str { "" }
+# fn x() -> ~str { ~"" }
+# fn y() -> ~str { ~"" }
 
 io::println(x() + y());
 ~~~~~~~~
@@ -3364,7 +3364,7 @@ An example of a send:
 ~~~~
 let po = comm::port();
 let ch = comm::chan(po);
-comm::send(ch, "hello, world");
+comm::send(ch, ~"hello, world");
 ~~~~
 
 
@@ -3380,7 +3380,7 @@ An example of a *receive*:
 ~~~~~~~~
 # let po = comm::port();
 # let ch = comm::chan(po);
-# comm::send(ch, "");
+# comm::send(ch, ~"");
 let s = comm::recv(po);
 ~~~~~~~~
 

@@ -132,13 +132,13 @@ mod tests {
     fn u8_map() {
         let m = treemap();
 
-        let k1 = str::bytes("foo");
-        let k2 = str::bytes("bar");
+        let k1 = str::bytes(~"foo");
+        let k2 = str::bytes(~"bar");
 
-        insert(m, k1, "foo");
-        insert(m, k2, "bar");
+        insert(m, k1, ~"foo");
+        insert(m, k2, ~"bar");
 
-        assert (find(m, k2) == some("bar"));
-        assert (find(m, k1) == some("foo"));
+        assert (find(m, k2) == some(~"bar"));
+        assert (find(m, k1) == some(~"foo"));
     }
 }

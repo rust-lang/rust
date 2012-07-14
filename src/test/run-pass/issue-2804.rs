@@ -9,7 +9,7 @@ enum object
     int_value(i64),
 }
 
-fn lookup(table: std::map::hashmap<str, std::json::json>, key: str, default: str) -> str
+fn lookup(table: std::map::hashmap<~str, std::json::json>, key: ~str, default: ~str) -> ~str
 {
     alt table.find(key)
     {
@@ -29,13 +29,13 @@ fn lookup(table: std::map::hashmap<str, std::json::json>, key: str, default: str
     }
 }
 
-fn add_interface(store: int, managed_ip: str, data: std::json::json) -> (str, object)
+fn add_interface(store: int, managed_ip: ~str, data: std::json::json) -> (~str, object)
 {
     alt data
     {
         std::json::dict(interface)
         {
-            let name = lookup(interface, "ifDescr", "");
+            let name = lookup(interface, ~"ifDescr", ~"");
             let label = #fmt["%s-%s", managed_ip, name];
 
             (label, bool_value(false))
@@ -43,14 +43,14 @@ fn add_interface(store: int, managed_ip: str, data: std::json::json) -> (str, ob
         _
         {
             #error["Expected dict for %s interfaces but found %?", managed_ip, data];
-            ("gnos:missing-interface", bool_value(true))
+            (~"gnos:missing-interface", bool_value(true))
         }
     }
 }
 
-fn add_interfaces(store: int, managed_ip: str, device: std::map::hashmap<str, std::json::json>) -> [(str, object)]/~
+fn add_interfaces(store: int, managed_ip: ~str, device: std::map::hashmap<~str, std::json::json>) -> ~[(~str, object)]
 {
-    alt device["interfaces"]
+    alt device[~"interfaces"]
     {
         std::json::list(interfaces)
         {
@@ -60,8 +60,8 @@ fn add_interfaces(store: int, managed_ip: str, device: std::map::hashmap<str, st
         }
         _
         {
-            #error["Expected list for %s interfaces but found %?", managed_ip, device["interfaces"]];
-            []/~
+            #error["Expected list for %s interfaces but found %?", managed_ip, device[~"interfaces"]];
+            ~[]
         }
     }
 }

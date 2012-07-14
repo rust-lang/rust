@@ -16,14 +16,14 @@ enum opt_span {
 type span = {lo: uint, hi: uint, expanded_from: opt_span};
 type spanned<T> = { data: T, span: span };
 type ty_ = uint;
-type path_ = { global: bool, idents: ~[str], types: ~[@ty] };
+type path_ = { global: bool, idents: ~[~str], types: ~[@ty] };
 type path = spanned<path_>;
 type ty = spanned<ty_>;
 
 fn main() {
     let sp: span = {lo: 57451u, hi: 57542u, expanded_from: os_none};
     let t: @ty = @{ data: 3u, span: sp };
-    let p_: path_ = { global: true, idents: ~["hi"], types: ~[t] };
+    let p_: path_ = { global: true, idents: ~[~"hi"], types: ~[t] };
     let p: path = { data: p_, span: sp };
     let x = { sp: sp, path: p };
     log(error, x.path);

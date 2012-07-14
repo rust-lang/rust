@@ -6,11 +6,11 @@ mod a {
 }
 
 mod b {
-    impl baz for str { fn plus() -> int { 200 } }
+    impl baz for ~str { fn plus() -> int { 200 } }
 }
 
 impl util for uint {
-    fn str() -> str { uint::str(self) }
+    fn str() -> ~str { uint::str(self) }
     fn multi(f: fn(uint)) {
         let mut c = 0u;
         while c < self { f(c); c += 1u; }
@@ -31,9 +31,9 @@ fn main() {
     impl foo for int { fn plus() -> int { self + 10 } }
     assert 10.plus() == 20;
     assert 10u.plus() == 30;
-    assert "hi".plus() == 200;
+    assert (~"hi").plus() == 200;
 
-    assert (~[1]).length_().str() == "1";
+    assert (~[1]).length_().str() == ~"1";
     assert (~[3, 4]).map_(|a| a + 4 )[0] == 7;
     assert (~[3, 4]).map_::<uint>(|a| a as uint + 4u )[0] == 7u;
     let mut x = 0u;

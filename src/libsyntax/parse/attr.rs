@@ -56,7 +56,7 @@ impl parser_attr for parser {
                 let attr = ::attr::mk_sugared_doc_attr(
                         *self.get_str(s), self.span.lo, self.span.hi);
                 if attr.node.style != ast::attr_outer {
-                  self.fatal("expected outer comment");
+                  self.fatal(~"expected outer comment");
                 }
                 attrs += ~[attr];
                 self.bump();

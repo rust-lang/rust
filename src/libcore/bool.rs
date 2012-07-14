@@ -38,16 +38,16 @@ pure fn is_true(v: bool) -> bool { v }
 pure fn is_false(v: bool) -> bool { !v }
 
 /// Parse logic value from `s`
-pure fn from_str(s: str) -> option<bool> {
+pure fn from_str(s: ~str) -> option<bool> {
     alt check s {
-      "true" { some(true) }
-      "false" { some(false) }
+      ~"true" { some(true) }
+      ~"false" { some(false) }
       _ { none }
     }
 }
 
 /// Convert `v` into a string
-pure fn to_str(v: bool) -> str { if v { "true" } else { "false" } }
+pure fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
 
 /**
  * Iterates over all truth values by passing them to `blk` in an unspecified
@@ -70,8 +70,8 @@ fn test_bool_from_str() {
 
 #[test]
 fn test_bool_to_str() {
-    assert to_str(false) == "false";
-    assert to_str(true) == "true";
+    assert to_str(false) == ~"false";
+    assert to_str(true) == ~"true";
 }
 
 #[test]

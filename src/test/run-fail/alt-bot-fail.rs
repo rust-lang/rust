@@ -1,6 +1,6 @@
 // error-pattern:explicit failure
 
-fn foo(s: str) { }
+fn foo(s: ~str) { }
 
 fn main() {
     let i =

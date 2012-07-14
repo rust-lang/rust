@@ -239,7 +239,7 @@ pure fn init<T: copy>(v: &[const T]) -> ~[T] {
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
 pure fn last<T: copy>(v: &[const T]) -> T {
-    if len(v) == 0u { fail "last_unsafe: empty vector" }
+    if len(v) == 0u { fail ~"last_unsafe: empty vector" }
     v[len(v) - 1u]
 }
 

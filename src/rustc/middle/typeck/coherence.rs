@@ -106,7 +106,7 @@ class CoherenceChecker {
                     none {
                         let session = self.crate_context.tcx.sess;
                         session.span_warn(item.span,
-                                          "no base type found for inherent \
+                                          ~"no base type found for inherent \
                                            implementation; implement a trait \
                                            instead");
                     }
@@ -194,8 +194,8 @@ class CoherenceChecker {
                         ret some(def_id);
                     }
                     _ {
-                        fail "get_base_type() returned a type that wasn't an \
-                              enum, class, or trait";
+                        fail ~"get_base_type() returned a type that \
+                               wasn't an enum, class, or trait";
                     }
                 }
             }
@@ -217,10 +217,11 @@ class CoherenceChecker {
                 if self.polytypes_unify(polytype_a, polytype_b) {
                     let session = self.crate_context.tcx.sess;
                     session.span_err(implementation_b.span,
-                                     "conflicting implementations for a \
+                                     ~"conflicting implementations for a \
                                       trait");
-                    session.span_note(implementation_a.span,
-                                      "note conflicting implementation here");
+                    session.span_note(
+                        implementation_a.span,
+                        ~"note conflicting implementation here");
                 }
             }
         }
@@ -265,8 +266,9 @@ class CoherenceChecker {
                 ret self.crate_context.tcx.tcache.get(def);
             }
             _ {
-                self.crate_context.tcx.sess.span_bug(implementation.span,
-                                                     "not an implementation");
+                self.crate_context.tcx.sess.span_bug(
+                    implementation.span,
+                    ~"not an implementation");
             }
         }
     }
@@ -328,7 +330,7 @@ class CoherenceChecker {
                                             let session =
                                                 self.crate_context.tcx.sess;
                                             session.span_warn(item.span,
-                                                              "cannot \
+                                                              ~"cannot \
                                                                implement \
                                                                inherent \
                                                                methods for a \
@@ -356,7 +358,7 @@ class CoherenceChecker {
                                                 let session = self
                                                     .crate_context.tcx.sess;
                                                 session.span_warn(item.span,
-                                                                  "cannot \
+                                                                  ~"cannot \
                                                                    provide \
                                                                    an \
                                                                    extension \

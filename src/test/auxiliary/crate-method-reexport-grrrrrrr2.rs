@@ -9,7 +9,7 @@ mod name_pool {
     type name_pool = ();
 
     impl methods for name_pool {
-        fn add(s: str) {
+        fn add(s: ~str) {
         }
     }
 }

@@ -12,7 +12,7 @@ class r {
 }
 
 fn main() {
-    log(error, "whatever");
+    log(error, ~"whatever");
     do task::spawn {
       let i = r(5);
     };

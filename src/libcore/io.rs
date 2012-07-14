@@ -109,7 +109,7 @@ impl reader_util for reader {
         ret c[0];
     }
 
-    fn read_line() -> str {
+    fn read_line() -> ~str {
         let mut buf = ~[];
         loop {
             let ch = self.read_byte();
@@ -119,7 +119,7 @@ impl reader_util for reader {
         str::from_bytes(buf)
     }
 
-    fn read_c_str() -> str {
+    fn read_c_str() -> ~str {
         let mut buf: ~[u8] = ~[];
         loop {
             let ch = self.read_byte();
@@ -174,7 +174,7 @@ impl reader_util for reader {
         }
     }
 
-    fn each_line(it: fn(str) -> bool) {
+    fn each_line(it: fn(~str) -> bool) {
         while !self.eof() {
             if !it(self.read_line()) { break; }
         }
@@ -244,13 +244,13 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
 
 fn stdin() -> reader { rustrt::rust_get_stdin() as reader }
 
-fn file_reader(path: str) -> result<reader, str> {
+fn file_reader(path: ~str) -> result<reader, ~str> {
     let f = os::as_c_charp(path, |pathbuf| {
-        os::as_c_charp("r", |modebuf|
+        os::as_c_charp(~"r", |modebuf|
             libc::fopen(pathbuf, modebuf)
         )
     });
-    ret if f as uint == 0u { result::err("error opening " + path) }
+    ret if f as uint == 0u { result::err(~"error opening " + path) }
     else {
         result::ok(FILE_reader(f, true))
     }
@@ -303,11 +303,11 @@ fn with_bytes_reader_between<t>(bytes: ~[u8], start: uint, end: uint,
     f(bytes_reader_between(bytes, start, end))
 }
 
-fn str_reader(s: str) -> reader {
+fn str_reader(s: ~str) -> reader {
     bytes_reader(str::bytes(s))
 }
 
-fn with_str_reader<T>(s: str, f: fn(reader) -> T) -> T {
+fn with_str_reader<T>(s: ~str, f: fn(reader) -> T) -> T {
     do str::as_bytes(s) |bytes| {
         with_bytes_reader_between(bytes, 0u, str::len(s), f)
     }
@@ -402,8 +402,8 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
 }
 
 
-fn mk_file_writer(path: str, flags: ~[fileflag])
-    -> result<writer, str> {
+fn mk_file_writer(path: ~str, flags: ~[fileflag])
+    -> result<writer, ~str> {
 
     #[cfg(windows)]
     fn wb() -> c_int { (O_WRONLY | O_BINARY) as c_int }
@@ -514,10 +514,10 @@ impl writer_util for writer {
             self.write_str(str::from_char(ch));
         }
     }
-    fn write_str(s: str/&) { str::byte_slice(s, |v| self.write(v)) }
-    fn write_line(s: str/&) {
+    fn write_str(s: &str) { str::byte_slice(s, |v| self.write(v)) }
+    fn write_line(s: &str) {
         self.write_str(s);
-        self.write_str("\n"/&);
+        self.write_str(&"\n");
     }
     fn write_int(n: int) {
         int::to_str_bytes(n, 10u, |buf| self.write(buf))
@@ -577,19 +577,19 @@ impl writer_util for writer {
     fn write_u8(n: u8) { self.write(&[n]) }
 }
 
-fn file_writer(path: str, flags: ~[fileflag]) -> result<writer, str> {
+fn file_writer(path: ~str, flags: ~[fileflag]) -> result<writer, ~str> {
     result::chain(mk_file_writer(path, flags), |w| result::ok(w))
 }
 
 
 // FIXME: fileflags // #2004
-fn buffered_file_writer(path: str) -> result<writer, str> {
+fn buffered_file_writer(path: ~str) -> result<writer, ~str> {
     let f = do os::as_c_charp(path) |pathbuf| {
-        do os::as_c_charp("w") |modebuf| {
+        do os::as_c_charp(~"w") |modebuf| {
             libc::fopen(pathbuf, modebuf)
         }
     };
-    ret if f as uint == 0u { result::err("error opening " + path) }
+    ret if f as uint == 0u { result::err(~"error opening " + path) }
     else { result::ok(FILE_writer(f, true)) }
 }
 
@@ -599,8 +599,8 @@ fn buffered_file_writer(path: str) -> result<writer, str> {
 fn stdout() -> writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
-fn print(s: str) { stdout().write_str(s); }
-fn println(s: str) { stdout().write_line(s); }
+fn print(s: ~str) { stdout().write_str(s); }
+fn println(s: ~str) { stdout().write_line(s); }
 
 type mem_buffer = @{buf: dvec<u8>, mut pos: uint};
 
@@ -639,11 +639,11 @@ fn mem_buffer() -> mem_buffer {
 }
 fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
 fn mem_buffer_buf(b: mem_buffer) -> ~[u8] { b.buf.get() }
-fn mem_buffer_str(b: mem_buffer) -> str {
+fn mem_buffer_str(b: mem_buffer) -> ~str {
     str::from_bytes(b.buf.get())
 }
 
-fn with_str_writer(f: fn(writer)) -> str {
+fn with_str_writer(f: fn(writer)) -> ~str {
     let buf = mem_buffer();
     let wr = mem_buffer_writer(buf);
     f(wr);
@@ -671,7 +671,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
     ret bpos as uint;
 }
 
-fn read_whole_file_str(file: str) -> result<str, str> {
+fn read_whole_file_str(file: ~str) -> result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
         result::ok(str::from_bytes(bytes))
     })
@@ -679,7 +679,7 @@ fn read_whole_file_str(file: str) -> result<str, str> {
 
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
-fn read_whole_file(file: str) -> result<~[u8], str> {
+fn read_whole_file(file: ~str) -> result<~[u8], ~str> {
     result::chain(file_reader(file), |rdr| {
         result::ok(rdr.read_whole_stream())
     })
@@ -765,9 +765,10 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let tmpfile: str = "tmp/lib-io-test-simple.tmp";
+        let tmpfile: ~str = ~"tmp/lib-io-test-simple.tmp";
         log(debug, tmpfile);
-        let frood: str = "A hoopy frood who really knows where his towel is.";
+        let frood: ~str =
+            ~"A hoopy frood who really knows where his towel is.";
         log(debug, frood);
         {
             let out: io::writer =
@@ -776,28 +777,28 @@ mod tests {
             out.write_str(frood);
         }
         let inp: io::reader = result::get(io::file_reader(tmpfile));
-        let frood2: str = inp.read_c_str();
+        let frood2: ~str = inp.read_c_str();
         log(debug, frood2);
         assert (str::eq(frood, frood2));
     }
 
     #[test]
     fn test_readchars_empty() {
-        let inp : io::reader = io::str_reader("");
+        let inp : io::reader = io::str_reader(~"");
         let res : ~[char] = inp.read_chars(128u);
         assert(vec::len(res) == 0u);
     }
 
     #[test]
     fn test_readchars_wide() {
-        let wide_test = "生锈的汤匙切肉汤hello生锈的汤匙切肉汤";
+        let wide_test = ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤";
         let ivals : ~[int] = ~[
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748,
             104, 101, 108, 108, 111,
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748];
-        fn check_read_ln(len : uint, s: str, ivals: ~[int]) {
+        fn check_read_ln(len : uint, s: ~str, ivals: ~[int]) {
             let inp : io::reader = io::str_reader(s);
             let res : ~[char] = inp.read_chars(len);
             if (len <= vec::len(ivals)) {
@@ -817,23 +818,23 @@ mod tests {
 
     #[test]
     fn test_readchar() {
-        let inp : io::reader = io::str_reader("生");
+        let inp : io::reader = io::str_reader(~"生");
         let res : char = inp.read_char();
         assert(res as int == 29983);
     }
 
     #[test]
     fn test_readchar_empty() {
-        let inp : io::reader = io::str_reader("");
+        let inp : io::reader = io::str_reader(~"");
         let res : char = inp.read_char();
         assert(res as int == -1);
     }
 
     #[test]
     fn file_reader_not_exist() {
-        alt io::file_reader("not a file") {
+        alt io::file_reader(~"not a file") {
           result::err(e) {
-            assert e == "error opening not a file";
+            assert e == ~"error opening not a file";
           }
           result::ok(_) { fail; }
         }
@@ -841,9 +842,9 @@ mod tests {
 
     #[test]
     fn file_writer_bad_name() {
-        alt io::file_writer("?/?", ~[]) {
+        alt io::file_writer(~"?/?", ~[]) {
           result::err(e) {
-            assert str::starts_with(e, "error opening ?/?");
+            assert str::starts_with(e, ~"error opening ?/?");
           }
           result::ok(_) { fail; }
         }
@@ -851,9 +852,9 @@ mod tests {
 
     #[test]
     fn buffered_file_writer_bad_name() {
-        alt io::buffered_file_writer("?/?") {
+        alt io::buffered_file_writer(~"?/?") {
           result::err(e) {
-            assert e == "error opening ?/?";
+            assert e == ~"error opening ?/?";
           }
           result::ok(_) { fail; }
         }

@@ -84,8 +84,8 @@ fn main() {
     do listen |result_from_game| {
 
         let times = 10;
-        let player1 = "graydon";
-        let player2 = "patrick";
+        let player1 = ~"graydon";
+        let player2 = ~"patrick";
 
         for repeat(times) {
             // Start another task to play the game
@@ -102,7 +102,7 @@ fn main() {
         }
     }
 
-    fn play_game(player1: str, player2: str) -> str {
+    fn play_game(player1: ~str, player2: ~str) -> ~str {
 
         // Our rock/paper/scissors types
         enum gesture {
@@ -117,7 +117,7 @@ fn main() {
         alt (pick(), pick()) {
             (rock, scissors) | (paper, rock) | (scissors, paper) { copy player1 }
             (scissors, rock) | (rock, paper) | (paper, scissors) { copy player2 }
-            _ { "tie" }
+            _ { ~"tie" }
         }
     }
 }
@@ -206,8 +206,8 @@ Rust program files are, by convention, given the extension `.rs`. Say
 we have a file `hello.rs` containing this program:
 
 ~~~~
-fn main(args: ~[str]) {
-    io::println("hello world from '" + args[0] + "'!");
+fn main(args: ~[~str]) {
+    io::println(~"hello world from '" + args[0] + ~"'!");
 }
 ~~~~
 
@@ -220,7 +220,7 @@ If you modify the program to make it invalid (for example, by changing
 
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_it
-hello.rs:2     io::print_it("hello world from '" + args[0] + "'!");
+hello.rs:2     io::print_it(~"hello world from '" + args[0] + ~"'!");
                ^~~~~~~~~~~~
 ~~~~
 
@@ -367,7 +367,7 @@ defined with `const`:
 use std;
 const repeat: uint = 5u;
 fn main() {
-    let hi = "Hi!";
+    let hi = ~"Hi!";
     let mut count = 0u;
     while count < repeat {
         io::println(hi);
@@ -437,7 +437,7 @@ The basic types are written like this:
 `char`
   : A character is a 32-bit Unicode code point.
 
-`str`
+`~str`
   : String type. A string contains a UTF-8 encoded sequence of characters.
 
 These can be combined in composite types, which will be described in
@@ -560,13 +560,13 @@ character escapes, using the backslash character:
     form the character code.
 
 String literals allow the same escape sequences. They are written
-between double quotes (`"hello"`). Rust strings may contain newlines.
+between double quotes (`~"hello"`). Rust strings may contain newlines.
 When a newline is preceded by a backslash, it, and all white space
 following it, will not appear in the resulting string literal. So
-this is equivalent to `"abc"`:
+this is equivalent to `~"abc"`:
 
 ~~~~
-let s = "a\
+let s = ~"a\
          b\
          c";
 ~~~~
@@ -649,7 +649,7 @@ one is `#fmt`, a printf-style text formatting macro that is expanded
 at compile time.
 
 ~~~~
-io::println(#fmt("%s is %d", "the answer", 42));
+io::println(#fmt("%s is %d", ~"the answer", 42));
 ~~~~
 
 `#fmt` supports most of the directives that [printf][pf] supports, but
@@ -676,11 +676,11 @@ compulsory, an optional `else` clause can be appended, and multiple
 
 ~~~~
 if false {
-    io::println("that's odd");
+    io::println(~"that's odd");
 } else if true {
-    io::println("right");
+    io::println(~"right");
 } else {
-    io::println("neither true nor false");
+    io::println(~"neither true nor false");
 }
 ~~~~
 
@@ -713,10 +713,10 @@ the value.
 ~~~~
 # let my_number = 1;
 alt my_number {
-  0       { io::println("zero"); }
-  1 | 2   { io::println("one or two"); }
-  3 to 10 { io::println("three to ten"); }
-  _       { io::println("something else"); }
+  0       { io::println(~"zero"); }
+  1 | 2   { io::println(~"one or two"); }
+  3 to 10 { io::println(~"three to ten"); }
+  _       { io::println(~"something else"); }
 }
 ~~~~
 
@@ -822,7 +822,7 @@ failure; failure is nonrecoverable. It is, however, possible for
 running.
 
 `fail` takes an optional argument specifying the reason for the
-failure. It must have type `str`.
+failure. It must have type `~str`.
 
 In addition to the `fail` statement, the following circumstances cause
 task failure:
@@ -860,7 +860,7 @@ runtime will do its best to output a textual representation of the
 value.
 
 ~~~~
-log(warn, "hi");
+log(warn, ~"hi");
 log(error, (1, ~[2.5, -1.8]));
 ~~~~
 
@@ -886,7 +886,7 @@ are available. These take a string and any number of format arguments,
 and will log the formatted string:
 
 ~~~~
-# fn get_error_string() -> str { "boo" }
+# fn get_error_string() -> ~str { ~"boo" }
 #warn("only %d seconds remaining", 10);
 #error("fatal: %s", get_error_string());
 ~~~~
@@ -905,8 +905,8 @@ with the `fn` keyword, the type of arguments are specified following
 colons and the return type follows the arrow.
 
 ~~~~
-fn int_to_str(i: int) -> str {
-    ret "tube sock";
+fn int_to_str(i: int) -> ~str {
+    ret ~"tube sock";
 }
 ~~~~
 
@@ -917,20 +917,20 @@ expression.
 
 ~~~~
 # const copernicus: int = 0;
-fn int_to_str(i: int) -> str {
+fn int_to_str(i: int) -> ~str {
     if i == copernicus {
-        ret "tube sock";
+        ret ~"tube sock";
     } else {
-        ret "violin";
+        ret ~"violin";
     }
 }
 ~~~~
 
 ~~~~
 # const copernicus: int = 0;
-fn int_to_str(i: int) -> str {
-    if i == copernicus { "tube sock" }
-    else { "violin" }
+fn int_to_str(i: int) -> ~str {
+    if i == copernicus { ~"tube sock" }
+    else { ~"violin" }
 }
 ~~~~
 
@@ -1348,7 +1348,7 @@ the pointer is guaranteed not to outlive the value it points to.
 
 ~~~~
 # fn work_with_foo_by_pointer(f: &~str) { }
-let foo = "foo";
+let foo = ~"foo";
 work_with_foo_by_pointer(&foo);
 ~~~~
 
@@ -1359,7 +1359,7 @@ would outlive `foo` itself.
 ~~~~ {.ignore}
 let foo_ptr;
 {
-    let foo = "foo";
+    let foo = ~"foo";
     foo_ptr = &foo;
 }
 ~~~~
@@ -1469,7 +1469,7 @@ my_crayons += your_crayons;
 
 ## Strings
 
-The `str` type in Rust is represented exactly the same way as a unique
+The `~str` type in Rust is represented exactly the same way as a unique
 vector of immutable bytes (`~[u8]`). This sequence of bytes is
 interpreted as an UTF-8 encoded sequence of characters. This has the
 advantage that UTF-8 encoded I/O (which should really be the default
@@ -1479,7 +1479,7 @@ disadvantage that you only get constant-time access by byte, not by
 character.
 
 ~~~~
-let huh = "what?";
+let huh = ~"what?";
 let que: u8 = huh[4]; // indexing a string returns a `u8`
 assert que == '?' as u8;
 ~~~~
@@ -1510,7 +1510,7 @@ brief look at a few common ones.
 # fn unwrap_crayon(c: crayon) -> int { 0 }
 # fn eat_crayon_wax(i: int) { }
 # fn store_crayon_in_nasal_cavity(i: uint, c: crayon) { }
-# fn crayon_to_str(c: crayon) -> str { "" }
+# fn crayon_to_str(c: crayon) -> ~str { ~"" }
 
 let crayons = ~[almond, antique_brass, apricot];
 
@@ -1571,7 +1571,7 @@ them. In the rare case where the compiler needs assistance though, the
 arguments and return types may be annotated.
 
 ~~~~
-# type mygoodness = fn(str) -> str; type what_the = int;
+# type mygoodness = fn(~str) -> ~str; type what_the = int;
 let bloop = |well, oh: mygoodness| -> what_the { fail oh(well) };
 ~~~~
 
@@ -1611,17 +1611,17 @@ returns it from a function, and then calls it:
 ~~~~
 use std;
 
-fn mk_appender(suffix: str) -> fn@(str) -> str {
-    ret fn@(s: str) -> str { s + suffix };
+fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
+    ret fn@(s: ~str) -> ~str { s + suffix };
 }
 
 fn main() {
-    let shout = mk_appender("!");
-    io::println(shout("hey ho, let's go"));
+    let shout = mk_appender(~"!");
+    io::println(shout(~"hey ho, let's go"));
 }
 ~~~~
 
-This example uses the long closure syntax, `fn@(s: str) ...`,
+This example uses the long closure syntax, `fn@(s: ~str) ...`,
 making the fact that we are declaring a box closure explicit. In
 practice boxed closures are usually defined with the short closure
 syntax introduced earlier, in which case the compiler will infer
@@ -1629,7 +1629,7 @@ the type of closure. Thus our boxed closure example could also
 be written:
 
 ~~~~
-fn mk_appender(suffix: str) -> fn@(str) -> str {
+fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
     ret |s| s + suffix;
 }
 ~~~~
@@ -1654,11 +1654,11 @@ that callers have the flexibility to pass whatever they want.
 
 ~~~~
 fn call_twice(f: fn()) { f(); f(); }
-call_twice(|| { "I am an inferred stack closure"; } );
-call_twice(fn&() { "I am also a stack closure"; } );
-call_twice(fn@() { "I am a boxed closure"; });
-call_twice(fn~() { "I am a unique closure"; });
-fn bare_function() { "I am a plain function"; }
+call_twice(|| { ~"I am an inferred stack closure"; } );
+call_twice(fn&() { ~"I am also a stack closure"; } );
+call_twice(fn@() { ~"I am a boxed closure"; });
+call_twice(fn~() { ~"I am a unique closure"; });
+fn bare_function() { ~"I am a plain function"; }
 call_twice(bare_function);
 ~~~~
 
@@ -1762,7 +1762,7 @@ And using this function to iterate over a vector:
 # import println = io::println;
 each(~[2, 4, 8, 5, 16], |n| {
     if n % 2 != 0 {
-        println("found odd number!");
+        println(~"found odd number!");
         false
     } else { true }
 });
@@ -1779,7 +1779,7 @@ to the next iteration, write `again`.
 # import println = io::println;
 for each(~[2, 4, 8, 5, 16]) |n| {
     if n % 2 != 0 {
-        println("found odd number!");
+        println(~"found odd number!");
         break;
     }
 }
@@ -1832,7 +1832,7 @@ class example {
   }
 
   fn a() {
-    io::println("a");
+    io::println(~"a");
   }
 
   drop {
@@ -1953,8 +1953,8 @@ being owned by the data structure, so if that can be done without a
 copy, that's a win.
 
 ~~~~
-type person = {name: str, address: str};
-fn make_person(+name: str, +address: str) -> person {
+type person = {name: ~str, address: ~str};
+fn make_person(+name: ~str, +address: ~str) -> person {
     ret {name: name, address: address};
 }
 ~~~~
@@ -2007,7 +2007,7 @@ enum option<T> { some(T), none }
 ~~~~
 
 You can then declare a function to take a `circular_buf<u8>` or return
-an `option<str>`, or even an `option<T>` if the function itself is
+an `option<~str>`, or even an `option<T>` if the function itself is
 generic.
 
 The `option` type given above exists in the core library and is the
@@ -2051,8 +2051,8 @@ take any type of value and output it.
 More interesting is that Rust also defines an ordering for values of
 all datatypes, and allows you to meaningfully apply comparison
 operators (`<`, `>`, `<=`, `>=`, `==`, `!=`) to them. For structural
-types, the comparison happens left to right, so `"abc" < "bac"` (but
-note that `"bac" < "ác"`, because the ordering acts on UTF-8 sequences
+types, the comparison happens left to right, so `~"abc" < ~"bac"` (but
+note that `~"bac" < ~"ác"`, because the ordering acts on UTF-8 sequences
 without any sophistication).
 
 ## Kinds
@@ -2135,8 +2135,8 @@ explicitly import it, you must refer to it by its long name,
 
 ~~~~
 mod farm {
-    fn chicken() -> str { "cluck cluck" }
-    fn cow() -> str { "mooo" }
+    fn chicken() -> ~str { ~"cluck cluck" }
+    fn cow() -> ~str { ~"mooo" }
 }
 fn main() {
     io::println(farm::chicken());
@@ -2249,14 +2249,14 @@ these two files:
 ~~~~
 // mylib.rs
 #[link(name = "mylib", vers = "1.0")];
-fn world() -> str { "world" }
+fn world() -> ~str { ~"world" }
 ~~~~
 
 ~~~~ {.ignore}
 // main.rs
 use std;
 use mylib;
-fn main() { io::println("hello " + mylib::world()); }
+fn main() { io::println(~"hello " + mylib::world()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
@@ -2279,7 +2279,7 @@ identifiers at the top of a file, module, or block.
 use std;
 import io::println;
 fn main() {
-    println("that was easy");
+    println(~"that was easy");
 }
 ~~~~
 
@@ -2345,7 +2345,7 @@ Identifiers can shadow each other. In this program, `x` is of type
 `int`:
 
 ~~~~
-type t = str;
+type t = ~str;
 fn main() {
     type t = int;
     let x: t;
@@ -2408,7 +2408,7 @@ can be converted to a string, with a single method of the same name:
 
 ~~~~
 iface to_str {
-    fn to_str() -> str;
+    fn to_str() -> ~str;
 }
 ~~~~
 
@@ -2416,20 +2416,20 @@ iface to_str {
 
 To actually implement an interface for a given type, the `impl` form
 is used. This defines implementations of `to_str` for the `int` and
-`str` types.
+`~str` types.
 
 ~~~~
-# iface to_str { fn to_str() -> str; }
+# iface to_str { fn to_str() -> ~str; }
 impl of to_str for int {
-    fn to_str() -> str { int::to_str(self, 10u) }
+    fn to_str() -> ~str { int::to_str(self, 10u) }
 }
-impl of to_str for str {
-    fn to_str() -> str { self }
+impl of to_str for ~str {
+    fn to_str() -> ~str { self }
 }
 ~~~~
 
-Given these, we may call `1.to_str()` to get `"1"`, or
-`"foo".to_str()` to get `"foo"` again. This is basically a form of
+Given these, we may call `1.to_str()` to get `~"1"`, or
+`(~"foo").to_str()` to get `~"foo"` again. This is basically a form of
 static overloading—when the Rust compiler sees the `to_str` method
 call, it looks for an implementation that matches the type with a
 method that matches the name, and simply calls that.
@@ -2444,9 +2444,9 @@ without problems). Or you can give them an explicit name if you
 prefer, using this syntax:
 
 ~~~~
-# iface to_str { fn to_str() -> str; }
+# iface to_str { fn to_str() -> ~str; }
 impl nil_to_str of to_str for () {
-    fn to_str() -> str { "()" }
+    fn to_str() -> ~str { ~"()" }
 }
 ~~~~
 
@@ -2460,12 +2460,12 @@ known at compile time, it is possible to specify 'bounds' for type
 parameters.
 
 ~~~~
-# iface to_str { fn to_str() -> str; }
-fn comma_sep<T: to_str>(elts: ~[T]) -> str {
-    let mut result = "", first = true;
+# iface to_str { fn to_str() -> ~str; }
+fn comma_sep<T: to_str>(elts: ~[T]) -> ~str {
+    let mut result = ~"", first = true;
     for elts.each |elt| {
         if first { first = false; }
-        else { result += ", "; }
+        else { result += ~", "; }
         result += elt.to_str();
     }
     ret result;
@@ -2576,14 +2576,14 @@ to leave off the `of` clause.
 
 ~~~~
 # type currency = ();
-# fn mk_currency(x: int, s: str) {}
+# fn mk_currency(x: int, s: ~str) {}
 impl int_util for int {
     fn times(b: fn(int)) {
         let mut i = 0;
         while i < self { b(i); i += 1; }
     }
     fn dollars() -> currency {
-        mk_currency(self, "USD")
+        mk_currency(self, ~"USD")
     }
 }
 ~~~~
@@ -2615,20 +2615,20 @@ extern mod crypto {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
 
-fn as_hex(data: ~[u8]) -> str {
-    let mut acc = "";
+fn as_hex(data: ~[u8]) -> ~str {
+    let mut acc = ~"";
     for data.each |byte| { acc += #fmt("%02x", byte as uint); }
     ret acc;
 }
 
-fn sha1(data: str) -> str unsafe {
+fn sha1(data: ~str) -> ~str unsafe {
     let bytes = str::bytes(data);
     let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                             vec::len(bytes), ptr::null());
     ret as_hex(vec::unsafe::from_buf(hash, 20u));
 }
 
-fn main(args: ~[str]) {
+fn main(args: ~[~str]) {
     io::println(sha1(args[1]));
 }
 ~~~~
@@ -2719,8 +2719,8 @@ The `sha1` function is the most obscure part of the program.
 
 ~~~~
 # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
-# fn as_hex(data: ~[u8]) -> str { "hi" }
-fn sha1(data: str) -> str {
+# fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
+fn sha1(data: ~str) -> ~str {
     unsafe {
         let bytes = str::bytes(data);
         let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
@@ -2746,7 +2746,7 @@ Unsafe blocks isolate unsafety. Unsafe functions, on the other hand,
 advertise it to the world. An unsafe function is written like this:
 
 ~~~~
-unsafe fn kaboom() { "I'm harmless!"; }
+unsafe fn kaboom() { ~"I'm harmless!"; }
 ~~~~
 
 This function can only be called from an unsafe block or another
@@ -2762,8 +2762,8 @@ Let's look at our `sha1` function again.
 
 ~~~~
 # mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
-# fn as_hex(data: ~[u8]) -> str { "hi" }
-# fn x(data: str) -> str {
+# fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
+# fn x(data: ~str) -> ~str {
 # unsafe {
 let bytes = str::bytes(data);
 let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
@@ -2816,7 +2816,7 @@ fn unix_time_in_microseconds() -> u64 unsafe {
     ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
 
-# fn main() { assert #fmt("%?", unix_time_in_microseconds()) != ""; }
+# fn main() { assert #fmt("%?", unix_time_in_microseconds()) != ~""; }
 ~~~~
 
 The `#[nolink]` attribute indicates that there's no foreign library to
@@ -2855,7 +2855,7 @@ import io::println;
 let some_value = 22;
 
 do spawn {
-    println("This executes in the child task.");
+    println(~"This executes in the child task.");
     println(#fmt("%d", some_value));
 }
 ~~~~
@@ -2957,7 +2957,7 @@ Here is the function which implements the child task:
 ~~~~
 # import comm::{port, chan, methods};
 fn stringifier(from_parent: port<uint>,
-               to_parent: chan<str>) {
+               to_parent: chan<~str>) {
     let mut value: uint;
     loop {
         value = from_parent.recv();
@@ -2981,10 +2981,10 @@ Here is the code for the parent task:
 # import task::{spawn_listener};
 # import comm::{chan, port, methods};
 # fn stringifier(from_parent: comm::port<uint>,
-#                to_parent: comm::chan<str>) {
-#     comm::send(to_parent, "22");
-#     comm::send(to_parent, "23");
-#     comm::send(to_parent, "0");
+#                to_parent: comm::chan<~str>) {
+#     comm::send(to_parent, ~"22");
+#     comm::send(to_parent, ~"23");
+#     comm::send(to_parent, ~"0");
 # }
 # fn main() {
 
@@ -2995,13 +2995,13 @@ let to_child = do spawn_listener |from_parent| {
 };
 
 to_child.send(22u);
-assert from_child.recv() == "22";
+assert from_child.recv() == ~"22";
 
 to_child.send(23u);
-assert from_child.recv() == "23";
+assert from_child.recv() == ~"23";
 
 to_child.send(0u);
-assert from_child.recv() == "0";
+assert from_child.recv() == ~"0";
 
 # }
 ~~~~

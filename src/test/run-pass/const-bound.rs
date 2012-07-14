@@ -6,7 +6,7 @@ fn foo<T: copy const>(x: T) -> T { x }
 
 fn main() {
     foo(1);
-    foo("hi");
+    foo(~"hi");
     foo(~[1, 2, 3]);
     foo({field: 42});
     foo((1, 2u));

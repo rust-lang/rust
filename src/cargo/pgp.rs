@@ -1,9 +1,9 @@
-fn gpg(args: ~[str]) -> { status: int, out: str, err: str } {
-    ret run::program_output("gpg", args);
+fn gpg(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
+    ret run::program_output(~"gpg", args);
 }
 
-fn signing_key() -> str {
-    "
+fn signing_key() -> ~str {
+    ~"
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: SKS 1.1.0
 
@@ -54,42 +54,42 @@ HI1jilzwKSXuV2EmyBk3tKh9NwscT/A78pr30FxxPUg3v72raNgusTo=
 "
 }
 
-fn signing_key_fp() -> str {
-    "FE79 EDB0 3DEF B0D8 27D2  6C41 0B2D 6A28 3033 6376"
+fn signing_key_fp() -> ~str {
+    ~"FE79 EDB0 3DEF B0D8 27D2  6C41 0B2D 6A28 3033 6376"
 }
 
 fn supported() -> bool {
-    let r = gpg(~["--version"]);
+    let r = gpg(~[~"--version"]);
     r.status == 0
 }
 
-fn init(root: str) {
-    let p = path::connect(root, "gpg");
+fn init(root: ~str) {
+    let p = path::connect(root, ~"gpg");
     if !os::path_is_dir(p) {
         os::make_dir(p, 0x1c0i32);
-        let p = run::start_program("gpg", ~["--homedir", p, "--import"]);
+        let p = run::start_program(~"gpg", ~[~"--homedir", p, ~"--import"]);
         p.input().write_str(signing_key());
         let s = p.finish();
         if s != 0 {
-            fail "pgp init failed";
+            fail ~"pgp init failed";
         }
     }
 }
 
-fn add(root: str, key: str) {
-    let path = path::connect(root, "gpg");
+fn add(root: ~str, key: ~str) {
+    let path = path::connect(root, ~"gpg");
     let p =
-        run::program_output("gpg", ~["--homedir", path, "--import", key]);
+        run::program_output(~"gpg", ~[~"--homedir", path, ~"--import", key]);
     if p.status != 0 {
-        fail "pgp add failed: " + p.out;
+        fail ~"pgp add failed: " + p.out;
     }
 }
 
-fn verify(root: str, data: str, sig: str, keyfp: str) -> bool {
-    let path = path::connect(root, "gpg");
-    let p = gpg(~["--homedir", path, "--with-fingerprint", "--verify", sig,
+fn verify(root: ~str, data: ~str, sig: ~str, keyfp: ~str) -> bool {
+    let path = path::connect(root, ~"gpg");
+    let p = gpg(~[~"--homedir", path, ~"--with-fingerprint", ~"--verify", sig,
                  data]);
-    let res = "Primary key fingerprint: " + keyfp;
+    let res = ~"Primary key fingerprint: " + keyfp;
     for str::split_char(p.err, '\n').each |line| {
         if line == res { ret true; }
     }

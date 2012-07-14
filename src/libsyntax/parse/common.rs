@@ -18,7 +18,7 @@ fn seq_sep_none() -> seq_sep {
     ret {sep: option::none, trailing_sep_allowed: false};
 }
 
-fn token_to_str(reader: reader, ++token: token::token) -> str {
+fn token_to_str(reader: reader, ++token: token::token) -> ~str {
     token::to_str(*reader.interner(), token)
 }
 
@@ -28,23 +28,23 @@ impl parser_common for parser {
     fn unexpected_last(t: token::token) -> ! {
         self.span_fatal(
             copy self.last_span,
-            "unexpected token: `" + token_to_str(self.reader, t) + "`");
+            ~"unexpected token: `" + token_to_str(self.reader, t) + ~"`");
     }
 
     fn unexpected() -> ! {
-        self.fatal("unexpected token: `"
-                   + token_to_str(self.reader, self.token) + "`");
+        self.fatal(~"unexpected token: `"
+                   + token_to_str(self.reader, self.token) + ~"`");
     }
 
     fn expect(t: token::token) {
         if self.token == t {
             self.bump();
         } else {
-            let mut s: str = "expected `";
+            let mut s: ~str = ~"expected `";
             s += token_to_str(self.reader, t);
-            s += "` but found `";
+            s += ~"` but found `";
             s += token_to_str(self.reader, self.token);
-            self.fatal(s + "`");
+            self.fatal(s + ~"`");
         }
     }
 
@@ -52,10 +52,10 @@ impl parser_common for parser {
         alt copy self.token {
           token::IDENT(i, _) { self.bump(); ret self.get_str(i); }
           token::ACTUALLY(token::w_ident(*)) { self.bug(
-              "ident interpolation not converted to real token"); }
-          _ { self.fatal("expected ident, found `"
+              ~"ident interpolation not converted to real token"); }
+          _ { self.fatal(~"expected ident, found `"
                          + token_to_str(self.reader, self.token)
-                         + "`"); }
+                         + ~"`"); }
         }
     }
 
@@ -76,13 +76,13 @@ impl parser_common for parser {
     }
 
     // A sanity check that the word we are asking for is a known keyword
-    fn require_keyword(word: str) {
+    fn require_keyword(word: ~str) {
         if !self.keywords.contains_key(word) {
             self.bug(#fmt("unknown keyword: %s", word));
         }
     }
 
-    fn token_is_keyword(word: str, ++tok: token::token) -> bool {
+    fn token_is_keyword(word: ~str, ++tok: token::token) -> bool {
         self.require_keyword(word);
         alt tok {
           token::IDENT(sid, false) { str::eq(word, *self.get_str(sid)) }
@@ -90,7 +90,7 @@ impl parser_common for parser {
         }
     }
 
-    fn is_keyword(word: str) -> bool {
+    fn is_keyword(word: ~str) -> bool {
         self.token_is_keyword(word, self.token)
     }
 
@@ -103,7 +103,7 @@ impl parser_common for parser {
         }
     }
 
-    fn eat_keyword(word: str) -> bool {
+    fn eat_keyword(word: ~str) -> bool {
         self.require_keyword(word);
 
         // FIXME (#13042): this gratuitous use of @ is to
@@ -119,16 +119,16 @@ impl parser_common for parser {
         }
     }
 
-    fn expect_keyword(word: str) {
+    fn expect_keyword(word: ~str) {
         self.require_keyword(word);
         if !self.eat_keyword(word) {
-            self.fatal("expected `" + word + "`, found `" +
+            self.fatal(~"expected `" + word + ~"`, found `" +
                        token_to_str(self.reader, self.token) +
-                       "`");
+                       ~"`");
         }
     }
 
-    fn is_restricted_keyword(word: str) -> bool {
+    fn is_restricted_keyword(word: ~str) -> bool {
         self.restricted_keywords.contains_key(word)
     }
 
@@ -142,9 +142,9 @@ impl parser_common for parser {
         }
     }
 
-    fn check_restricted_keywords_(w: str) {
+    fn check_restricted_keywords_(w: ~str) {
         if self.is_restricted_keyword(w) {
-            self.fatal("found `" + w + "` in restricted position");
+            self.fatal(~"found `" + w + ~"` in restricted position");
         }
     }
 
@@ -154,11 +154,11 @@ impl parser_common for parser {
         } else if self.token == token::BINOP(token::SHR) {
             self.swap(token::GT, self.span.lo + 1u, self.span.hi);
         } else {
-            let mut s: str = "expected `";
+            let mut s: ~str = ~"expected `";
             s += token_to_str(self.reader, token::GT);
-            s += "`, found `";
+            s += ~"`, found `";
             s += token_to_str(self.reader, self.token);
-            s += "`";
+            s += ~"`";
             self.fatal(s);
         }
     }

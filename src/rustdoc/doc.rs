@@ -21,8 +21,8 @@ enum implementation {
  * headers
  */
 type section = {
-    header: str,
-    body: str
+    header: ~str,
+    body: ~str
 };
 
 // FIXME (#2596): We currently give topmod the name of the crate.  There
@@ -45,10 +45,10 @@ enum itemtag {
 
 type itemdoc = {
     id: ast_id,
-    name: str,
-    path: ~[str],
-    brief: option<str>,
-    desc: option<str>,
+    name: ~str,
+    path: ~[~str],
+    brief: option<~str>,
+    desc: option<~str>,
     sections: ~[section],
     // Indicates that this node is a reexport of a different item
     reexport: bool
@@ -56,7 +56,7 @@ type itemdoc = {
 
 type simpleitemdoc = {
     item: itemdoc,
-    sig: option<str>
+    sig: option<~str>
 };
 
 type moddoc = {
@@ -81,9 +81,9 @@ type enumdoc = {
 };
 
 type variantdoc = {
-    name: str,
-    desc: option<str>,
-    sig: option<str>
+    name: ~str,
+    desc: option<~str>,
+    sig: option<~str>
 };
 
 type traitdoc = {
@@ -92,18 +92,18 @@ type traitdoc = {
 };
 
 type methoddoc = {
-    name: str,
-    brief: option<str>,
-    desc: option<str>,
+    name: ~str,
+    brief: option<~str>,
+    desc: option<~str>,
     sections: ~[section],
-    sig: option<str>,
+    sig: option<~str>,
     implementation: implementation,
 };
 
 type impldoc = {
     item: itemdoc,
-    trait_ty: option<str>,
-    self_ty: option<str>,
+    trait_ty: option<~str>,
+    self_ty: option<~str>,
     methods: ~[methoddoc]
 };
 
@@ -124,10 +124,10 @@ type index = {
  * * link - A format-specific string representing the link target
  */
 type index_entry = {
-    kind: str,
-    name: str,
-    brief: option<str>,
-    link: str
+    kind: ~str,
+    name: ~str,
+    brief: option<~str>,
+    link: ~str
 };
 
 impl util for doc {
@@ -344,19 +344,19 @@ impl util<A:item> for A {
         self.item().id
     }
 
-    fn name() -> str {
+    fn name() -> ~str {
         self.item().name
     }
 
-    fn path() -> ~[str] {
+    fn path() -> ~[~str] {
         self.item().path
     }
 
-    fn brief() -> option<str> {
+    fn brief() -> option<~str> {
         self.item().brief
     }
 
-    fn desc() -> option<str> {
+    fn desc() -> option<~str> {
         self.item().desc
     }
 

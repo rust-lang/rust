@@ -11,7 +11,7 @@ export mk_pass;
 
 fn mk_pass(output_style: config::output_style) -> pass {
     {
-        name: "page",
+        name: ~"page",
         f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
             run(srv, doc, output_style)
         }
@@ -129,32 +129,32 @@ fn fold_nmod(
 fn should_not_split_the_doc_into_pages_for_doc_per_crate() {
     let doc = test::mk_doc_(
         config::doc_per_crate,
-        "mod a { } mod b { mod c { } }"
+        ~"mod a { } mod b { mod c { } }"
     );
     assert doc.pages.len() == 1u;
 }
 
 #[test]
 fn should_make_a_page_for_every_mod() {
-    let doc = test::mk_doc("mod a { }");
-    assert doc.pages.mods()[0].name() == "a";
+    let doc = test::mk_doc(~"mod a { }");
+    assert doc.pages.mods()[0].name() == ~"a";
 }
 
 #[test]
 fn should_remove_mods_from_containing_mods() {
-    let doc = test::mk_doc("mod a { }");
+    let doc = test::mk_doc(~"mod a { }");
     assert vec::is_empty(doc.cratemod().mods());
 }
 
 #[test]
 fn should_make_a_page_for_every_foreign_mod() {
-    let doc = test::mk_doc("extern mod a { }");
-    assert doc.pages.nmods()[0].name() == "a";
+    let doc = test::mk_doc(~"extern mod a { }");
+    assert doc.pages.nmods()[0].name() == ~"a";
 }
 
 #[test]
 fn should_remove_foreign_mods_from_containing_mods() {
-    let doc = test::mk_doc("extern mod a { }");
+    let doc = test::mk_doc(~"extern mod a { }");
     assert vec::is_empty(doc.cratemod().nmods());
 }
 
@@ -162,15 +162,15 @@ fn should_remove_foreign_mods_from_containing_mods() {
 mod test {
     fn mk_doc_(
         output_style: config::output_style,
-        source: str
+        source: ~str
     ) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             run(srv, doc, output_style)
         }
     }
 
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         mk_doc_(config::doc_per_mod, source)
     }
 }

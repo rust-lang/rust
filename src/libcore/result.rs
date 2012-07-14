@@ -37,7 +37,7 @@ pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
     alt res {
       err(u) { u }
       ok(_) {
-        fail "get_error called on ok result";
+        fail ~"get_error called on ok result";
       }
     }
 }
@@ -333,7 +333,7 @@ fn unwrap<T, U>(-res: result<T, U>) -> T {
     unsafe {
         let addr = alt res {
           ok(x) { ptr::addr_of(x) }
-          err(_) { fail "error result" }
+          err(_) { fail ~"error result" }
         };
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(res);
@@ -343,13 +343,13 @@ fn unwrap<T, U>(-res: result<T, U>) -> T {
 
 #[cfg(test)]
 mod tests {
-    fn op1() -> result::result<int, str> { result::ok(666) }
+    fn op1() -> result::result<int, ~str> { result::ok(666) }
 
-    fn op2(&&i: int) -> result::result<uint, str> {
+    fn op2(&&i: int) -> result::result<uint, ~str> {
         result::ok(i as uint + 1u)
     }
 
-    fn op3() -> result::result<int, str> { result::err("sadface") }
+    fn op3() -> result::result<int, ~str> { result::err(~"sadface") }
 
     #[test]
     fn chain_success() {
@@ -358,39 +358,39 @@ mod tests {
 
     #[test]
     fn chain_failure() {
-        assert get_err(chain(op3(), op2)) == "sadface";
+        assert get_err(chain(op3(), op2)) == ~"sadface";
     }
 
     #[test]
     fn test_impl_iter() {
         let mut valid = false;
-        ok::<str, str>("a").iter(|_x| valid = true);
+        ok::<~str, ~str>(~"a").iter(|_x| valid = true);
         assert valid;
 
-        err::<str, str>("b").iter(|_x| valid = false);
+        err::<~str, ~str>(~"b").iter(|_x| valid = false);
         assert valid;
     }
 
     #[test]
     fn test_impl_iter_err() {
         let mut valid = true;
-        ok::<str, str>("a").iter_err(|_x| valid = false);
+        ok::<~str, ~str>(~"a").iter_err(|_x| valid = false);
         assert valid;
 
         valid = false;
-        err::<str, str>("b").iter_err(|_x| valid = true);
+        err::<~str, ~str>(~"b").iter_err(|_x| valid = true);
         assert valid;
     }
 
     #[test]
     fn test_impl_map() {
-        assert ok::<str, str>("a").map(|_x| "b") == ok("b");
-        assert err::<str, str>("a").map(|_x| "b") == err("a");
+        assert ok::<~str, ~str>(~"a").map(|_x| ~"b") == ok(~"b");
+        assert err::<~str, ~str>(~"a").map(|_x| ~"b") == err(~"a");
     }
 
     #[test]
     fn test_impl_map_err() {
-        assert ok::<str, str>("a").map_err(|_x| "b") == ok("a");
-        assert err::<str, str>("a").map_err(|_x| "b") == err("b");
+        assert ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == ok(~"a");
+        assert err::<~str, ~str>(~"a").map_err(|_x| ~"b") == err(~"b");
     }
 }

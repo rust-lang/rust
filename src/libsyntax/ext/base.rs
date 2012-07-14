@@ -42,47 +42,47 @@ enum syntax_extension {
 
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-fn syntax_expander_table() -> hashmap<str, syntax_extension> {
+fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
         {normal({expander: f, span: none})}
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
         item_tt({expander: f, span: none})
     }
     let syntax_expanders = str_hash::<syntax_extension>();
-    syntax_expanders.insert("macro",
+    syntax_expanders.insert(~"macro",
                             macro_defining(ext::simplext::add_new_extension));
-    syntax_expanders.insert("macro_rules",
+    syntax_expanders.insert(~"macro_rules",
                             builtin_item_tt(
                                 ext::tt::macro_rules::add_new_extension));
-    syntax_expanders.insert("fmt", builtin(ext::fmt::expand_syntax_ext));
-    syntax_expanders.insert("auto_serialize",
+    syntax_expanders.insert(~"fmt", builtin(ext::fmt::expand_syntax_ext));
+    syntax_expanders.insert(~"auto_serialize",
                             item_decorator(ext::auto_serialize::expand));
-    syntax_expanders.insert("env", builtin(ext::env::expand_syntax_ext));
-    syntax_expanders.insert("concat_idents",
+    syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
+    syntax_expanders.insert(~"concat_idents",
                             builtin(ext::concat_idents::expand_syntax_ext));
-    syntax_expanders.insert("ident_to_str",
+    syntax_expanders.insert(~"ident_to_str",
                             builtin(ext::ident_to_str::expand_syntax_ext));
-    syntax_expanders.insert("log_syntax",
+    syntax_expanders.insert(~"log_syntax",
                             builtin(ext::log_syntax::expand_syntax_ext));
-    syntax_expanders.insert("ast",
+    syntax_expanders.insert(~"ast",
                             builtin(ext::qquote::expand_ast));
-    syntax_expanders.insert("line",
+    syntax_expanders.insert(~"line",
                             builtin(ext::source_util::expand_line));
-    syntax_expanders.insert("col",
+    syntax_expanders.insert(~"col",
                             builtin(ext::source_util::expand_col));
-    syntax_expanders.insert("file",
+    syntax_expanders.insert(~"file",
                             builtin(ext::source_util::expand_file));
-    syntax_expanders.insert("stringify",
+    syntax_expanders.insert(~"stringify",
                             builtin(ext::source_util::expand_stringify));
-    syntax_expanders.insert("include",
+    syntax_expanders.insert(~"include",
                             builtin(ext::source_util::expand_include));
-    syntax_expanders.insert("include_str",
+    syntax_expanders.insert(~"include_str",
                             builtin(ext::source_util::expand_include_str));
-    syntax_expanders.insert("include_bin",
+    syntax_expanders.insert(~"include_bin",
                             builtin(ext::source_util::expand_include_bin));
-    syntax_expanders.insert("mod",
+    syntax_expanders.insert(~"mod",
                             builtin(ext::source_util::expand_mod));
-    syntax_expanders.insert("proto",
+    syntax_expanders.insert(~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
     ret syntax_expanders;
 }
@@ -98,11 +98,11 @@ iface ext_ctxt {
     fn mod_path() -> ~[ast::ident];
     fn bt_push(ei: codemap::expn_info_);
     fn bt_pop();
-    fn span_fatal(sp: span, msg: str) -> !;
-    fn span_err(sp: span, msg: str);
-    fn span_unimpl(sp: span, msg: str) -> !;
-    fn span_bug(sp: span, msg: str) -> !;
-    fn bug(msg: str) -> !;
+    fn span_fatal(sp: span, msg: ~str) -> !;
+    fn span_err(sp: span, msg: ~str);
+    fn span_unimpl(sp: span, msg: ~str) -> !;
+    fn span_bug(sp: span, msg: ~str) -> !;
+    fn bug(msg: ~str) -> !;
     fn next_id() -> ast::node_id;
 }
 
@@ -137,26 +137,26 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
               some(@expanded_from({call_site: {expn_info: prev, _}, _})) {
                 self.backtrace = prev
               }
-              _ { self.bug("tried to pop without a push"); }
+              _ { self.bug(~"tried to pop without a push"); }
             }
         }
-        fn span_fatal(sp: span, msg: str) -> ! {
+        fn span_fatal(sp: span, msg: ~str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_fatal(sp, msg);
         }
-        fn span_err(sp: span, msg: str) {
+        fn span_err(sp: span, msg: ~str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_err(sp, msg);
         }
-        fn span_unimpl(sp: span, msg: str) -> ! {
+        fn span_unimpl(sp: span, msg: ~str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
         }
-        fn span_bug(sp: span, msg: str) -> ! {
+        fn span_bug(sp: span, msg: ~str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_bug(sp, msg);
         }
-        fn bug(msg: str) -> ! {
+        fn bug(msg: ~str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.handler().bug(msg);
         }
@@ -173,7 +173,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
     ret imp as ext_ctxt
 }
 
-fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {
+fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
     alt expr.node {
       ast::expr_lit(l) {
         alt l.node {
@@ -185,7 +185,7 @@ fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {
     }
 }
 
-fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
+fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ast::ident {
     alt expr.node {
       ast::expr_path(p) {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
@@ -197,12 +197,12 @@ fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
 }
 
 fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                       min: uint, name: str) -> ~[@ast::expr] {
+                       min: uint, name: ~str) -> ~[@ast::expr] {
     ret get_mac_args(cx, sp, arg, min, none, name);
 }
 
 fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                min: uint, max: option<uint>, name: str) -> ~[@ast::expr] {
+                min: uint, max: option<uint>, name: ~str) -> ~[@ast::expr] {
     alt arg {
       some(expr) {
         alt expr.node {
@@ -235,7 +235,7 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
 {
     alt (args) {
       some(body) {body}
-      none {cx.span_fatal(sp, "missing macro body")}
+      none {cx.span_fatal(sp, ~"missing macro body")}
     }
 }
 

@@ -35,29 +35,29 @@ enum matchable {
 }
 
 /* for when given an incompatible bit of AST */
-fn match_error(cx: ext_ctxt, m: matchable, expected: str) -> ! {
+fn match_error(cx: ext_ctxt, m: matchable, expected: ~str) -> ! {
     alt m {
       match_expr(x) {
         cx.span_fatal(x.span,
-                      "this argument is an expr, expected " + expected);
+                      ~"this argument is an expr, expected " + expected);
       }
       match_path(x) {
         cx.span_fatal(x.span,
-                      "this argument is a path, expected " + expected);
+                      ~"this argument is a path, expected " + expected);
       }
       match_ident(x) {
         cx.span_fatal(x.span,
-                      "this argument is an ident, expected " + expected);
+                      ~"this argument is an ident, expected " + expected);
       }
       match_ty(x) {
         cx.span_fatal(x.span,
-                      "this argument is a type, expected " + expected);
+                      ~"this argument is a type, expected " + expected);
       }
       match_block(x) {
         cx.span_fatal(x.span,
-                      "this argument is a block, expected " + expected);
+                      ~"this argument is a block, expected " + expected);
       }
-      match_exact { cx.bug("what is a match_exact doing in a bindings?"); }
+      match_exact { cx.bug(~"what is a match_exact doing in a bindings?"); }
     }
 }
 
@@ -80,7 +80,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
             alt m.node {
               ast::mac_ellipsis {
                 if res != none {
-                    cx.span_fatal(m.span, "only one ellipsis allowed");
+                    cx.span_fatal(m.span, ~"only one ellipsis allowed");
                 }
                 res =
                     some({pre: vec::slice(elts, 0u, idx - 1u),
@@ -234,8 +234,8 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: option<arb_depth<matchable>>,
         ret alt follow(m, idx_path) {
               seq(_, sp) {
                 cx.span_fatal(sp,
-                              "syntax matched under ... but not " +
-                                  "used that way.")
+                              ~"syntax matched under ... but not " +
+                                  ~"used that way.")
               }
               leaf(m) { ret some(m) }
             }
@@ -302,8 +302,8 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
             alt repeat {
               none {
                 cx.span_fatal(repeat_me.span,
-                              "'...' surrounds an expression without any" +
-                                  " repeating syntax variables");
+                              ~"'...' surrounds an expression without any" +
+                                  ~" repeating syntax variables");
               }
               some({rep_count: rc, _}) {
                 /* Whew, we now know how how many times to repeat */
@@ -331,7 +331,7 @@ fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
                     &&i: ident, _fld: ast_fold) -> ident {
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
-          some(m) { match_error(cx, m, "an identifier") }
+          some(m) { match_error(cx, m, ~"an identifier") }
           none { i }
         }
 }
@@ -347,7 +347,7 @@ fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
          rp: none, types: ~[]}
       }
       some(match_path(a_pth)) { *a_pth }
-      some(m) { match_error(cx, m, "a path") }
+      some(m) { match_error(cx, m, ~"a path") }
       none { p }
     }
 }
@@ -374,7 +374,7 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
               }
               some(match_path(a_pth)) { (expr_path(a_pth), s) }
               some(match_expr(a_exp)) { (a_exp.node, a_exp.span) }
-              some(m) { match_error(cx, m, "an expression") }
+              some(m) { match_error(cx, m, ~"an expression") }
               none { orig(e, s, fld) }
             }
           }
@@ -393,7 +393,7 @@ fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
               some(id) {
                 alt follow_for_trans(cx, b.find(id), idx_path) {
                   some(match_ty(ty)) { (ty.node, ty.span) }
-                  some(m) { match_error(cx, m, "a type") }
+                  some(m) { match_error(cx, m, ~"a type") }
                   none { orig(t, s, fld) }
                 }
               }
@@ -424,7 +424,7 @@ fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
 
               // possibly allow promotion of ident/path/expr to blocks?
               some(m) {
-                match_error(cx, m, "a block")
+                match_error(cx, m, ~"a block")
               }
               none { orig(blk, s, fld) }
             }
@@ -455,12 +455,12 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
 
                 if vec::len(post) > 0u {
                     cx.span_unimpl(e.span,
-                                   "matching after `...` not yet supported");
+                                   ~"matching after `...` not yet supported");
                 }
               }
               {pre: pre, rep: none, post: post} {
                 if post != ~[] {
-                    cx.bug("elts_to_ell provided an invalid result");
+                    cx.bug(~"elts_to_ell provided an invalid result");
                 }
                 p_t_s_r_length(cx, vec::len(pre), false, s, b);
                 p_t_s_r_actual_vector(cx, pre, false, s, b);
@@ -478,7 +478,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                       match_expr(e) {
                         if e == pat { some(leaf(match_exact)) } else { none }
                       }
-                      _ { cx.bug("broken traversal in p_t_s_r") }
+                      _ { cx.bug(~"broken traversal in p_t_s_r") }
                     }
             }
             b.literal_ast_matchers.push(|x| select(cx, x, e));
@@ -486,7 +486,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
         }
       }
       _ {
-          cx.bug("undocumented invariant in p_t_s_rec");
+          cx.bug(~"undocumented invariant in p_t_s_rec");
       }
     }
 }
@@ -517,11 +517,11 @@ fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
         fn select(cx: ext_ctxt, m: matchable) -> match_result {
             ret alt m {
                   match_expr(e) { some(leaf(specialize_match(m))) }
-                  _ { cx.bug("broken traversal in p_t_s_r") }
+                  _ { cx.bug(~"broken traversal in p_t_s_r") }
                 }
         }
         if b.real_binders.contains_key(p_id) {
-            cx.span_fatal(p.span, "duplicate binding identifier");
+            cx.span_fatal(p.span, ~"duplicate binding identifier");
         }
         b.real_binders.insert(p_id, compose_sels(s, |x| select(cx, x)));
       }
@@ -546,16 +546,16 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
               match_expr(e) {
                 alt e.node { expr_mac(mac) { fn_m(mac) } _ { none } }
               }
-              _ { cx.bug("broken traversal in p_t_s_r") }
+              _ { cx.bug(~"broken traversal in p_t_s_r") }
             }
     }
-    fn no_des(cx: ext_ctxt, sp: span, syn: str) -> ! {
-        cx.span_fatal(sp, "destructuring " + syn + " is not yet supported");
+    fn no_des(cx: ext_ctxt, sp: span, syn: ~str) -> ! {
+        cx.span_fatal(sp, ~"destructuring " + syn + ~" is not yet supported");
     }
     alt mac.node {
-      ast::mac_ellipsis { cx.span_fatal(mac.span, "misused `...`"); }
-      ast::mac_invoc(_, _, _) { no_des(cx, mac.span, "macro calls"); }
-      ast::mac_invoc_tt(_, _) { no_des(cx, mac.span, "macro calls"); }
+      ast::mac_ellipsis { cx.span_fatal(mac.span, ~"misused `...`"); }
+      ast::mac_invoc(_, _, _) { no_des(cx, mac.span, ~"macro calls"); }
+      ast::mac_invoc_tt(_, _) { no_des(cx, mac.span, ~"macro calls"); }
       ast::mac_embed_type(ty) {
         alt ty.node {
           ast::ty_path(pth, _) {
@@ -571,10 +571,10 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
                 let final_step = |x| select_pt_1(cx, x, select_pt_2);
                 b.real_binders.insert(id, compose_sels(s, final_step));
               }
-              none { no_des(cx, pth.span, "under `#<>`"); }
+              none { no_des(cx, pth.span, ~"under `#<>`"); }
             }
           }
-          _ { no_des(cx, ty.span, "under `#<>`"); }
+          _ { no_des(cx, ty.span, ~"under `#<>`"); }
         }
       }
       ast::mac_embed_block(blk) {
@@ -591,11 +591,11 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
             let final_step = |x| select_pt_1(cx, x, select_pt_2);
             b.real_binders.insert(id, compose_sels(s, final_step));
           }
-          none { no_des(cx, blk.span, "under `#{}`"); }
+          none { no_des(cx, blk.span, ~"under `#{}`"); }
         }
       }
-      ast::mac_aq(_,_) { no_des(cx, mac.span, "antiquotes"); }
-      ast::mac_var(_) { no_des(cx, mac.span, "antiquote variables"); }
+      ast::mac_aq(_,_) { no_des(cx, mac.span, ~"antiquotes"); }
+      ast::mac_var(_) { no_des(cx, mac.span, ~"antiquote variables"); }
     }
 }
 
@@ -621,7 +621,7 @@ fn p_t_s_r_ellipses(cx: ext_ctxt, repeat_me: @expr, offset: uint, s: selector,
                   _ { none }
                 }
               }
-              _ { cx.bug("broken traversal in p_t_s_r") }
+              _ { cx.bug(~"broken traversal in p_t_s_r") }
             }
     }
     p_t_s_rec(cx, match_expr(repeat_me),
@@ -666,7 +666,7 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: ~[@expr], _repeat_after: bool,
                       _ { none }
                     }
                   }
-                  _ { cx.bug("broken traversal in p_t_s_r") }
+                  _ { cx.bug(~"broken traversal in p_t_s_r") }
                 }
         }
         p_t_s_rec(cx, match_expr(elts[idx]),
@@ -677,17 +677,17 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: ~[@expr], _repeat_after: bool,
 
 fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> base::macro_def {
-    let args = get_mac_args_no_max(cx, sp, arg, 0u, "macro");
+    let args = get_mac_args_no_max(cx, sp, arg, 0u, ~"macro");
 
-    let mut macro_name: option<@str/~> = none;
+    let mut macro_name: option<@~str> = none;
     let mut clauses: ~[@clause] = ~[];
     for args.each |arg| {
         alt arg.node {
           expr_vec(elts, mutbl) {
             if vec::len(elts) != 2u {
                 cx.span_fatal((*arg).span,
-                              "extension clause must consist of ~[" +
-                                  "macro invocation, expansion body]");
+                              ~"extension clause must consist of ~[" +
+                                  ~"macro invocation, expansion body]");
             }
 
 
@@ -702,21 +702,21 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                           some(other_id) {
                             if id != other_id {
                                 cx.span_fatal(pth.span,
-                                              "macro name must be " +
-                                                  "consistent");
+                                              ~"macro name must be " +
+                                                  ~"consistent");
                             }
                           }
                         }
                       }
                       none {
                         cx.span_fatal(pth.span,
-                                      "macro name must not be a path");
+                                      ~"macro name must not be a path");
                       }
                     }
                     let arg = alt invoc_arg {
                       some(arg) { arg }
                       none { cx.span_fatal(mac.span,
-                                           "macro must have arguments")}
+                                           ~"macro must have arguments")}
                     };
                     vec::push(clauses,
                               @{params: pattern_to_selectors(cx, arg),
@@ -726,21 +726,21 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                     // the macro arg situation)
                   }
                   _ {
-                      cx.span_bug(mac.span, "undocumented invariant in \
+                      cx.span_bug(mac.span, ~"undocumented invariant in \
                          add_extension");
                   }
                 }
               }
               _ {
                 cx.span_fatal(elts[0u].span,
-                              "extension clause must" +
-                                  " start with a macro invocation.");
+                              ~"extension clause must" +
+                                  ~" start with a macro invocation.");
               }
             }
           }
           _ {
             cx.span_fatal((*arg).span,
-                          "extension must be ~[clause, " + " ...]");
+                          ~"extension must be ~[clause, " + ~" ...]");
           }
         }
     }
@@ -751,8 +751,8 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
              alt macro_name {
                some(id) { id }
                none {
-                 cx.span_fatal(sp, "macro definition must have " +
-                               "at least one clause")
+                 cx.span_fatal(sp, ~"macro definition must have " +
+                               ~"at least one clause")
                }
              },
          ext: normal({expander: ext, span: some(option::get(arg).span)})};
@@ -762,7 +762,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          clauses: ~[@clause]) -> @expr {
         let arg = alt arg {
           some(arg) { arg }
-          none { cx.span_fatal(sp, "macro must have arguments")}
+          none { cx.span_fatal(sp, ~"macro must have arguments")}
         };
         for clauses.each |c| {
             alt use_selectors_to_bind(c.params, arg) {
@@ -770,7 +770,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               none { again; }
             }
         }
-        cx.span_fatal(sp, "no clauses match macro invocation");
+        cx.span_fatal(sp, ~"no clauses match macro invocation");
     }
 }
 

@@ -15,9 +15,9 @@ class cat {
   }
 
   let mut how_hungry : int;
-  let name : str;
+  let name : ~str;
 
-  new(in_x : uint, in_y : int, in_name: str)
+  new(in_x : uint, in_y : int, in_name: ~str)
     { self.meows = in_x; self.how_hungry = in_y; self.name = in_name; }
 
   fn speak() { self.meow(); }
@@ -36,16 +36,16 @@ class cat {
 }
 
 impl of to_str for cat {
-  fn to_str() -> str { self.name }
+  fn to_str() -> ~str { self.name }
 }
 
-fn print_out<T: to_str>(thing: T, expected: str) {
+fn print_out<T: to_str>(thing: T, expected: ~str) {
   let actual = thing.to_str();
   #debug("%s", actual);
   assert(actual == expected);
 }
 
 fn main() {
-  let nyan : to_str  = cat(0u, 2, "nyan") as to_str;
-  print_out(nyan, "nyan");
+  let nyan : to_str  = cat(0u, 2, ~"nyan") as to_str;
+  print_out(nyan, ~"nyan");
 }

@@ -15,9 +15,9 @@ class cat : noisy {
   }
 
   let mut how_hungry : int;
-  let name : str;
+  let name : ~str;
 
-  new(in_x : uint, in_y : int, in_name: str)
+  new(in_x : uint, in_y : int, in_name: ~str)
     { self.meows = in_x; self.how_hungry = in_y; self.name = in_name; }
 
   fn speak() { self.meow(); }
@@ -40,7 +40,7 @@ fn make_speak<C: noisy>(c: C) {
 }
 
 fn main() {
-  let nyan = cat(0u, 2, "nyan");
+  let nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
   assert(!nyan.eat());
   for uint::range(1u, 10u) |_i| { make_speak(nyan); };

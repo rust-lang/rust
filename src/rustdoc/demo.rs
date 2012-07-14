@@ -15,7 +15,7 @@
 const price_of_a_muffin: float = 70f;
 
 type waitress = {
-    hair_color: str
+    hair_color: ~str
 };
 
 /// The type of things that produce omnomnom

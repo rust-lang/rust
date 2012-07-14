@@ -32,11 +32,11 @@ unsafe fn chan_from_global_ptr<T: send>(
         abort
     }
 
-    log(debug,"ENTERING chan_from_global_ptr, before is_prob_zero check");
+    log(debug,~"ENTERING chan_from_global_ptr, before is_prob_zero check");
     let is_probably_zero = *global == 0u;
-    log(debug,"after is_prob_zero check");
+    log(debug,~"after is_prob_zero check");
     if is_probably_zero {
-        log(debug,"is probably zero...");
+        log(debug,~"is probably zero...");
         // There's no global channel. We must make it
 
         let setup_po = comm::port();
@@ -54,14 +54,14 @@ unsafe fn chan_from_global_ptr<T: send>(
             }
         };
 
-        log(debug,"before setup recv..");
+        log(debug,~"before setup recv..");
         // This is the proposed global channel
         let ch = comm::recv(setup_po);
         // 0 is our sentinal value. It is not a valid channel
         assert unsafe::reinterpret_cast(ch) != 0u;
 
         // Install the channel
-        log(debug,"BEFORE COMPARE AND SWAP");
+        log(debug,~"BEFORE COMPARE AND SWAP");
         let swapped = compare_and_swap(
             global, 0u, unsafe::reinterpret_cast(ch));
         log(debug,#fmt("AFTER .. swapped? %?", swapped));
@@ -76,7 +76,7 @@ unsafe fn chan_from_global_ptr<T: send>(
             unsafe::reinterpret_cast(*global)
         }
     } else {
-        log(debug, "global != 0");
+        log(debug, ~"global != 0");
         unsafe::reinterpret_cast(*global)
     }
 }

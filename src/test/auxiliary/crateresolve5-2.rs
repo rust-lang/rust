@@ -3,8 +3,8 @@
 
 #[crate_type = "lib"];
 
-fn structural() -> { name: str, val: int } {
-    { name: "crateresolve5", val: 10 }
+fn structural() -> { name: ~str, val: int } {
+    { name: ~"crateresolve5", val: 10 }
 }
 
 enum e {

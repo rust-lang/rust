@@ -17,7 +17,7 @@ import std::map::hashmap;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: ~[@ast::method], tps: ~[ast::ty_param]) {
-    let _icx = ccx.insn_ctxt("impl::trans_impl");
+    let _icx = ccx.insn_ctxt(~"impl::trans_impl");
     if tps.len() > 0u { ret; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |m| {
@@ -33,7 +33,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
 }
 
 fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
-    let _icx = bcx.insn_ctxt("impl::trans_self_arg");
+    let _icx = bcx.insn_ctxt(~"impl::trans_self_arg");
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
     let mut temp_cleanups = ~[];
@@ -51,7 +51,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                        self: @ast::expr, mentry: typeck::method_map_entry)
     -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt("impl::trans_method_callee");
+    let _icx = bcx.insn_ctxt(~"impl::trans_method_callee");
     alt mentry.origin {
       typeck::method_static(did) {
         let {bcx, val} = trans_self_arg(bcx, self, mentry.derefs);
@@ -115,7 +115,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               trait_id: ast::def_id, n_method: uint,
                               n_param: uint, n_bound: uint,
                               substs: param_substs) -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
+    let _icx = bcx.insn_ctxt(~"impl::trans_monomorphized_callee");
     alt find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
       typeck::vtable_static(impl_did, impl_substs, sub_origins) {
         let ccx = bcx.ccx();
@@ -141,7 +141,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         trans_trait_callee(bcx, val, fty, n_method)
       }
       typeck::vtable_param(n_param, n_bound) {
-        fail "vtable_param left in monomorphized function's vtable substs";
+        fail ~"vtable_param left in monomorphized function's vtable substs";
       }
     }
 }
@@ -150,7 +150,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
 fn trans_trait_callee(bcx: block, val: ValueRef,
                       callee_ty: ty::t, n_method: uint)
     -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
+    let _icx = bcx.insn_ctxt(~"impl::trans_trait_callee");
     let ccx = bcx.ccx();
     let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, ~[0u, 0u]),
                                        T_ptr(T_ptr(T_vtable()))));
@@ -238,9 +238,9 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
 }
 
 fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
-    let _icx = ccx.insn_ctxt("impl::make_vtable");
+    let _icx = ccx.insn_ctxt(~"impl::make_vtable");
     let tbl = C_struct(ptrs);
-    let vt_gvar = str::as_c_str(ccx.names("vtable"), |buf| {
+    let vt_gvar = str::as_c_str(ccx.names(~"vtable"), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
     });
     llvm::LLVMSetInitializer(vt_gvar, tbl);
@@ -251,12 +251,12 @@ fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
 
 fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
                     vtables: typeck::vtable_res) -> ValueRef {
-    let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
+    let _icx = ccx.insn_ctxt(~"impl::make_impl_vtable");
     let tcx = ccx.tcx;
     let ifce_id = expect(ccx.sess,
                          ty::ty_to_def_id(option::get(ty::impl_trait(tcx,
                                                              impl_id))),
-                         || "make_impl_vtable: non-trait-type implemented");
+                         || ~"make_impl_vtable: non-trait-type implemented");
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
     make_vtable(ccx, vec::map(*ty::trait_methods(tcx, ifce_id), |im| {
         let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));
@@ -282,7 +282,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
 
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     -> block {
-    let _icx = bcx.insn_ctxt("impl::trans_cast");
+    let _icx = bcx.insn_ctxt(~"impl::trans_cast");
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);

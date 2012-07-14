@@ -114,10 +114,10 @@ fn run_loop(iotask_ch: chan<iotask>) unsafe {
     });
     iotask_ch.send(iotask);
 
-    log(debug, "about to run uv loop");
+    log(debug, ~"about to run uv loop");
     // enter the loop... this blocks until the loop is done..
     ll::run(loop_ptr);
-    log(debug, "uv loop ended");
+    log(debug, ~"uv loop ended");
     ll::loop_delete(loop_ptr);
 }
 
@@ -157,7 +157,7 @@ extern fn wake_up_cb(async_handle: *ll::uv_async_t,
 }
 
 fn begin_teardown(data: *iotask_loop_data) unsafe {
-    log(debug, "iotask begin_teardown() called, close async_handle");
+    log(debug, ~"iotask begin_teardown() called, close async_handle");
     let async_handle = (*data).async_handle;
     ll::close(async_handle as *c_void, tear_down_close_cb);
 }
@@ -250,9 +250,9 @@ mod test {
         for iter::repeat(7u) {
             comm::recv(work_exit_po);
         };
-        log(debug, "sending teardown_loop msg..");
+        log(debug, ~"sending teardown_loop msg..");
         exit(iotask);
         comm::recv(exit_po);
-        log(debug, "after recv on exit_po.. exiting..");
+        log(debug, ~"after recv on exit_po.. exiting..");
     }
 }

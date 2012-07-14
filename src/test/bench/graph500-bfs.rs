@@ -196,7 +196,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         alt c {
           white { -1i64 }
           black(parent) { parent }
-          _ { fail "Found remaining gray nodes in BFS" }
+          _ { fail ~"Found remaining gray nodes in BFS" }
         }
     }
 }
@@ -276,7 +276,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
         alt c {
           white { -1i64 }
           black(parent) { parent }
-          _ { fail "Found remaining gray nodes in BFS" }
+          _ { fail ~"Found remaining gray nodes in BFS" }
         }
     }
 }
@@ -292,7 +292,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // parent chains back to the root. While we do this, we also
     // compute the levels for each node.
 
-    log(info, "Verifying tree structure...");
+    log(info, ~"Verifying tree structure...");
 
     let mut status = true;
     let level = do tree.map() |parent| {
@@ -324,7 +324,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // 2. Each tree edge connects vertices whose BFS levels differ by
     //    exactly one.
 
-    log(info, "Verifying tree edges...");
+    log(info, ~"Verifying tree edges...");
 
     let status = do tree.alli() |k, parent| {
         if parent != root && parent != -1i64 {
@@ -340,7 +340,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // 3. Every edge in the input list has vertices with levels that
     //    differ by at most one or that both are not in the BFS tree.
 
-    log(info, "Verifying graph edges...");
+    log(info, ~"Verifying graph edges...");
 
     let status = do edges.all() |e| {
         let (u, v) = e;
@@ -357,7 +357,7 @@ fn validate(edges: ~[(node_id, node_id)],
     // 5. A node and its parent are joined by an edge of the original
     //    graph.
 
-    log(info, "Verifying tree and graph edges...");
+    log(info, ~"Verifying tree and graph edges...");
 
     let status = do par::alli(tree) |u, v| {
         let u = u as node_id;
@@ -375,11 +375,11 @@ fn validate(edges: ~[(node_id, node_id)],
     true
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "15", "48"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"15", ~"48"]
     } else if args.len() <= 1u {
-        ~["", "10", "16"]
+        ~[~"", ~"10", ~"16"]
     } else {
         args
     };
@@ -413,7 +413,7 @@ fn main(args: ~[str]) {
     let graph_arc = arc::arc(copy graph);
 
     do gen_search_keys(graph, num_keys).map() |root| {
-        io::stdout().write_line("");
+        io::stdout().write_line(~"");
         io::stdout().write_line(#fmt("Search key: %?", root));
 
         if do_sequential {
@@ -477,7 +477,7 @@ fn main(args: ~[str]) {
         }
     };
 
-    io::stdout().write_line("");
+    io::stdout().write_line(~"");
     io::stdout().write_line(
         #fmt("Total sequential: %? \t Total Parallel: %? \t Speedup: %?x",
              total_seq, total_par, total_seq / total_par));

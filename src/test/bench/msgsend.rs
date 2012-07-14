@@ -27,7 +27,7 @@ fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
     comm::send(responses, count);
 }
 
-fn run(args: ~[str]) {
+fn run(args: ~[~str]) {
     let from_child = comm::port();
     let to_parent = comm::chan(from_child);
     let to_child = do task::spawn_listener |po| {
@@ -58,11 +58,11 @@ fn run(args: ~[str]) {
     io::stdout().write_str(#fmt("Throughput=%f per sec\n", thruput));
 }
 
-fn main(args: ~[str]) {
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~["", "1000000", "10000"]
+fn main(args: ~[~str]) {
+    let args = if os::getenv(~"RUST_BENCH").is_some() {
+        ~[~"", ~"1000000", ~"10000"]
     } else if args.len() <= 1u {
-        ~["", "10000", "4"]
+        ~[~"", ~"10000", ~"4"]
     } else {
         args
     };        

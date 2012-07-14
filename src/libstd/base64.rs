@@ -1,17 +1,17 @@
 import io::{reader, reader_util};
 
 iface to_base64 {
-    fn to_base64() -> str;
+    fn to_base64() -> ~str;
 }
 
 impl of to_base64 for ~[u8] {
-    fn to_base64() -> str {
+    fn to_base64() -> ~str {
         let chars = str::chars(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+          ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
         );
 
         let len = self.len();
-        let mut s = "";
+        let mut s = ~"";
         str::reserve(s, ((len + 3u) / 4u) * 3u);
 
         let mut i = 0u;
@@ -52,8 +52,8 @@ impl of to_base64 for ~[u8] {
     }
 }
 
-impl of to_base64 for str {
-    fn to_base64() -> str {
+impl of to_base64 for ~str {
+    fn to_base64() -> ~str {
         str::bytes(self).to_base64()
     }
 }
@@ -64,7 +64,7 @@ iface from_base64 {
 
 impl of from_base64 for ~[u8] {
     fn from_base64() -> ~[u8] {
-        if self.len() % 4u != 0u { fail "invalid base64 length"; }
+        if self.len() % 4u != 0u { fail ~"invalid base64 length"; }
 
         let len = self.len();
         let mut padding = 0u;
@@ -107,11 +107,11 @@ impl of from_base64 for ~[u8] {
                         ret copy r;
                       }
                       _ {
-                        fail "invalid base64 padding";
+                        fail ~"invalid base64 padding";
                       }
                     }
                 } else {
-                    fail "invalid base64 character";
+                    fail ~"invalid base64 character";
                 }
 
                 i += 1u;
@@ -126,7 +126,7 @@ impl of from_base64 for ~[u8] {
     }
 }
 
-impl of from_base64 for str {
+impl of from_base64 for ~str {
     fn from_base64() -> ~[u8] {
         str::bytes(self).from_base64()
     }
@@ -136,23 +136,23 @@ impl of from_base64 for str {
 mod tests {
     #[test]
     fn test_to_base64() {
-        assert "".to_base64()       == "";
-        assert "f".to_base64()      == "Zg==";
-        assert "fo".to_base64()     == "Zm8=";
-        assert "foo".to_base64()    == "Zm9v";
-        assert "foob".to_base64()   == "Zm9vYg==";
-        assert "fooba".to_base64()  == "Zm9vYmE=";
-        assert "foobar".to_base64() == "Zm9vYmFy";
+        assert (~"").to_base64()       == ~"";
+        assert (~"f").to_base64()      == ~"Zg==";
+        assert (~"fo").to_base64()     == ~"Zm8=";
+        assert (~"foo").to_base64()    == ~"Zm9v";
+        assert (~"foob").to_base64()   == ~"Zm9vYg==";
+        assert (~"fooba").to_base64()  == ~"Zm9vYmE=";
+        assert (~"foobar").to_base64() == ~"Zm9vYmFy";
     }
 
     #[test]
     fn test_from_base64() {
-        assert "".from_base64() == str::bytes("");
-        assert "Zg==".from_base64() == str::bytes("f");
-        assert "Zm8=".from_base64() == str::bytes("fo");
-        assert "Zm9v".from_base64() == str::bytes("foo");
-        assert "Zm9vYg==".from_base64() == str::bytes("foob");
-        assert "Zm9vYmE=".from_base64() == str::bytes("fooba");
-        assert "Zm9vYmFy".from_base64() == str::bytes("foobar");
+        assert (~"").from_base64() == str::bytes(~"");
+        assert (~"Zg==").from_base64() == str::bytes(~"f");
+        assert (~"Zm8=").from_base64() == str::bytes(~"fo");
+        assert (~"Zm9v").from_base64() == str::bytes(~"foo");
+        assert (~"Zm9vYg==").from_base64() == str::bytes(~"foob");
+        assert (~"Zm9vYmE=").from_base64() == str::bytes(~"fooba");
+        assert (~"Zm9vYmFy").from_base64() == str::bytes(~"foobar");
     }
 }

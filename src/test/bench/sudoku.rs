@@ -29,7 +29,7 @@ enum grid_t { grid_ctor(grid), }
 
 // read a sudoku problem from file f
 fn read_grid(f: io::reader) -> grid_t {
-    assert f.read_line() == "9,9"; /* assert first line is exactly "9,9" */
+    assert f.read_line() == ~"9,9"; /* assert first line is exactly "9,9" */
 
     let g = vec::from_fn(10u, {|_i|
         vec::to_mut(vec::from_elem(10u, 0 as u8))
@@ -110,7 +110,7 @@ fn solve_grid(g: grid_t) {
             ptr = ptr + 1u;
         } else {
             // no: redo this field aft recoloring pred; unless there is none
-            if ptr == 0u { fail "No solution found for this sudoku"; }
+            if ptr == 0u { fail ~"No solution found for this sudoku"; }
             ptr = ptr - 1u;
         }
     }
@@ -126,7 +126,7 @@ fn write_grid(f: io::writer, g: grid_t) {
      }
 }
 
-fn main(args: ~[str]) {
+fn main(args: ~[~str]) {
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
         // (#571)

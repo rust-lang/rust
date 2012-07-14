@@ -14,14 +14,14 @@ export mk_pass;
 
 fn mk_pass() -> pass {
     {
-        name: "reexport",
+        name: ~"reexport",
         f: run
     }
 }
 
 type def_set = map::set<ast::def_id>;
 type def_map = map::hashmap<ast::def_id, doc::itemtag>;
-type path_map = map::hashmap<str, ~[(str, doc::itemtag)]>;
+type path_map = map::hashmap<~str, ~[(~str, doc::itemtag)]>;
 
 fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
 
@@ -72,8 +72,8 @@ fn from_def_assoc_list<V:copy>(
 }
 
 fn from_str_assoc_list<V:copy>(
-    list: ~[(str, V)]
-) -> map::hashmap<str, V> {
+    list: ~[(~str, V)]
+) -> map::hashmap<~str, V> {
     from_assoc_list(list, map::str_hash)
 }
 
@@ -169,7 +169,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
     let assoc_list = do astsrv::exec(srv) |ctxt| {
 
         let def_map = from_def_assoc_list(def_assoc_list);
-        let path_map = map::str_hash::<~[(str,doc::itemtag)]>();
+        let path_map = map::str_hash::<~[(~str,doc::itemtag)]>();
 
         for ctxt.exp_map.each |exp_id, defs| {
             let path = alt check ctxt.ast_map.get(exp_id) {
@@ -223,7 +223,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
 fn find_reexport_impl_docs(
     ctxt: astsrv::ctxt,
     def_map: def_map
-) -> ~[(str, (str, doc::itemtag))] {
+) -> ~[(~str, (~str, doc::itemtag))] {
     let docs = @mut ~[];
 
     do for_each_reexported_impl(ctxt) |mod_id, i| {
@@ -233,12 +233,12 @@ fn find_reexport_impl_docs(
             if str::is_empty(path) {
                 *item.ident
             } else {
-                path + "::" + *item.ident
+                path + ~"::" + *item.ident
             }
           }
           _ {
             assert mod_id == ast::crate_node_id;
-            ""
+            ~""
           }
         };
         let ident = *i.ident;
@@ -334,9 +334,9 @@ fn merge_reexports(
         }
     }
 
-    fn get_new_items(path: ~[str], path_map: path_map) -> ~[doc::itemtag] {
+    fn get_new_items(path: ~[~str], path_map: path_map) -> ~[doc::itemtag] {
         #debug("looking for reexports in path %?", path);
-        alt path_map.find(str::connect(path, "::")) {
+        alt path_map.find(str::connect(path, ~"::")) {
           some(name_docs) {
             do vec::foldl(~[], name_docs) |v, name_doc| {
                 let (name, doc) = name_doc;
@@ -347,7 +347,7 @@ fn merge_reexports(
         }
     }
 
-    fn reexport_doc(doc: doc::itemtag, name: str) -> doc::itemtag {
+    fn reexport_doc(doc: doc::itemtag, name: ~str) -> doc::itemtag {
         alt doc {
           doc::modtag(doc @ {item, _}) {
             doc::modtag({
@@ -395,7 +395,7 @@ fn merge_reexports(
         }
     }
 
-    fn reexport(doc: doc::itemdoc, name: str) -> doc::itemdoc {
+    fn reexport(doc: doc::itemdoc, name: ~str) -> doc::itemdoc {
         {
             name: name,
             reexport: true
@@ -406,15 +406,15 @@ fn merge_reexports(
 
 #[test]
 fn should_duplicate_reexported_items() {
-    let source = "mod a { export b; fn b() { } } \
+    let source = ~"mod a { export b; fn b() { } } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
-    assert doc.cratemod().mods()[1].fns()[0].name() == "b";
+    assert doc.cratemod().mods()[1].fns()[0].name() == ~"b";
 }
 
 #[test]
 fn should_mark_reepxorts_as_such() {
-    let source = "mod a { export b; fn b() { } } \
+    let source = ~"mod a { export b; fn b() { } } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
     assert doc.cratemod().mods()[1].fns()[0].item.reexport == true;
@@ -422,39 +422,39 @@ fn should_mark_reepxorts_as_such() {
 
 #[test]
 fn should_duplicate_reexported_impls() {
-    let source = "mod a { impl b for int { fn c() { } } } \
+    let source = ~"mod a { impl b for int { fn c() { } } } \
                   mod d { import a::b; export b; }";
     let doc = test::mk_doc(source);
-    assert doc.cratemod().mods()[1].impls()[0].name() == "b";
+    assert doc.cratemod().mods()[1].impls()[0].name() == ~"b";
 }
 
 #[test]
 fn should_duplicate_reexported_impls_deep() {
-    let source = "mod a { impl b for int { fn c() { } } } \
+    let source = ~"mod a { impl b for int { fn c() { } } } \
                   mod d { mod e { import a::b; export b; } }";
     let doc = test::mk_doc(source);
-    assert doc.cratemod().mods()[1].mods()[0].impls()[0].name() == "b";
+    assert doc.cratemod().mods()[1].mods()[0].impls()[0].name() == ~"b";
 }
 
 #[test]
 fn should_duplicate_reexported_impls_crate() {
-    let source = "import a::b; export b; \
+    let source = ~"import a::b; export b; \
                   mod a { impl b for int { fn c() { } } }";
     let doc = test::mk_doc(source);
-    assert doc.cratemod().impls()[0].name() == "b";
+    assert doc.cratemod().impls()[0].name() == ~"b";
 }
 
 #[test]
 fn should_duplicate_reexported_foreign_fns() {
-    let source = "extern mod a { fn b(); } \
+    let source = ~"extern mod a { fn b(); } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
-    assert doc.cratemod().mods()[0].fns()[0].name() == "b";
+    assert doc.cratemod().mods()[0].fns()[0].name() == ~"b";
 }
 
 #[test]
 fn should_duplicate_multiple_reexported_items() {
-    let source = "mod a { \
+    let source = ~"mod a { \
                   export b; export c; \
                   fn b() { } fn c() { } \
                   } \
@@ -463,46 +463,46 @@ fn should_duplicate_multiple_reexported_items() {
                   export b; export c; \
                   }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, "");
+        let doc = extract::from_srv(srv, ~"");
         let doc = path_pass::mk_pass().f(srv, doc);
         let doc = run(srv, doc);
         // Reexports may not be in any specific order
         let doc = sort_item_name_pass::mk_pass().f(srv, doc);
-        assert doc.cratemod().mods()[1].fns()[0].name() == "b";
-        assert doc.cratemod().mods()[1].fns()[1].name() == "c";
+        assert doc.cratemod().mods()[1].fns()[0].name() == ~"b";
+        assert doc.cratemod().mods()[1].fns()[1].name() == ~"c";
     }
 }
 
 #[test]
 fn should_rename_items_reexported_with_different_names() {
-    let source = "mod a { export b; fn b() { } } \
+    let source = ~"mod a { export b; fn b() { } } \
                   mod c { import x = a::b; export x; }";
     let doc = test::mk_doc(source);
-    assert doc.cratemod().mods()[1].fns()[0].name() == "x";
+    assert doc.cratemod().mods()[1].fns()[0].name() == ~"x";
 }
 
 #[test]
 fn should_reexport_in_topmod() {
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "core");
+            let doc = extract::from_srv(srv, ~"core");
             let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }
-    let source = "import option::{some, none}; \
+    let source = ~"import option::{some, none}; \
                   import option = option::t; \
                   export option, some, none; \
                   mod option { \
                   enum t { some, none } \
                   }";
     let doc = mk_doc(source);
-    assert doc.cratemod().enums()[0].name() == "option";
+    assert doc.cratemod().enums()[0].name() == ~"option";
 }
 
 #[test]
 fn should_not_reexport_multiple_times() {
-    let source = "import option = option::t; \
+    let source = ~"import option = option::t; \
                   export option; \
                   export option; \
                   mod option { \
@@ -514,9 +514,9 @@ fn should_not_reexport_multiple_times() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, "");
+            let doc = extract::from_srv(srv, ~"");
             let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }

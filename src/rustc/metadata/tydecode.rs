@@ -42,7 +42,7 @@ fn parse_ident(st: @pstate, last: char) -> ast::ident {
 
 fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
    ast::ident {
-    let mut rslt = "";
+    let mut rslt = ~"";
     while !is_last(peek(st)) {
         rslt += str::from_byte(next_byte(st));
     }
@@ -170,7 +170,7 @@ fn parse_proto(c: char) -> ast::proto {
       '*' { ast::proto_any }
       '&' { ast::proto_block }
       'n' { ast::proto_bare }
-      _ { fail "illegal fn type kind " + str::from_char(c); }
+      _ { fail ~"illegal fn type kind " + str::from_char(c); }
     }
 }
 
@@ -197,7 +197,7 @@ fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
     let self_ty = parse_opt(st, || parse_ty(st, conv) );
 
     assert next(st) == '[';
-    let mut params: [ty::t]/~ = []/~;
+    let mut params: ~[ty::t] = ~[];
     while peek(st) != ']' { vec::push(params, parse_ty(st, conv)); }
     st.pos = st.pos + 1u;
 
@@ -245,8 +245,8 @@ fn parse_opt<T>(st: @pstate, f: fn() -> T) -> option<T> {
     }
 }
 
-fn parse_str(st: @pstate, term: char) -> str {
-    let mut result = "";
+fn parse_str(st: @pstate, term: char) -> ~str {
+    let mut result = ~"";
     while peek(st) != term {
         result += str::from_byte(next_byte(st));
     }
@@ -320,7 +320,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       'R' {
         assert (next(st) == '[');
-        let mut fields: [ty::field]/~ = []/~;
+        let mut fields: ~[ty::field] = ~[];
         while peek(st) != ']' {
             let name = @parse_str(st, '=');
             vec::push(fields, {ident: name, mt: parse_mt(st, conv)});
@@ -330,7 +330,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       'T' {
         assert (next(st) == '[');
-        let mut params = []/~;
+        let mut params = ~[];
         while peek(st) != ']' { vec::push(params, parse_ty(st, conv)); }
         st.pos = st.pos + 1u;
         ret ty::mk_tup(st.tcx, params);
@@ -403,7 +403,7 @@ fn parse_mt(st: @pstate, conv: conv_did) -> ty::mt {
 }
 
 fn parse_def(st: @pstate, conv: conv_did) -> ast::def_id {
-    let mut def = []/~;
+    let mut def = ~[];
     while peek(st) != '|' { vec::push(def, next_byte(st)); }
     st.pos = st.pos + 1u;
     ret conv(parse_def_id(def));
@@ -446,7 +446,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     let proto = parse_proto(next(st));
     let purity = parse_purity(next(st));
     assert (next(st) == '[');
-    let mut inputs: [ty::arg]/~ = []/~;
+    let mut inputs: ~[ty::arg] = ~[];
     while peek(st) != ']' {
         let mode = alt check peek(st) {
           '&' { ast::by_mutbl_ref }

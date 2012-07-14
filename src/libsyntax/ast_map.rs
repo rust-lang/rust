@@ -10,7 +10,7 @@ enum path_elt { path_mod(ident), path_name(ident) }
 type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */
-fn path_to_str_with_sep(p: path, sep: str) -> str {
+fn path_to_str_with_sep(p: path, sep: ~str) -> ~str {
     let strs = do vec::map(p) |e| {
         alt e {
           path_mod(s) { /* FIXME (#2543) */ copy *s }
@@ -20,7 +20,7 @@ fn path_to_str_with_sep(p: path, sep: str) -> str {
     str::connect(strs, sep)
 }
 
-fn path_ident_to_str(p: path, i: ident) -> str {
+fn path_ident_to_str(p: path, i: ident) -> ~str {
     if vec::is_empty(p) {
         /* FIXME (#2543) */ copy *i
     } else {
@@ -28,8 +28,8 @@ fn path_ident_to_str(p: path, i: ident) -> str {
     }
 }
 
-fn path_to_str(p: path) -> str {
-    path_to_str_with_sep(p, "::")
+fn path_to_str(p: path) -> ~str {
+    path_to_str_with_sep(p, ~"::")
 }
 
 enum ast_node {
@@ -267,7 +267,7 @@ fn map_expr(ex: @expr, cx: ctx, v: vt) {
     visit::visit_expr(ex, cx, v);
 }
 
-fn node_id_to_str(map: map, id: node_id) -> str {
+fn node_id_to_str(map: map, id: node_id) -> ~str {
     alt map.find(id) {
       none {
         #fmt["unknown node (id=%d)", id]

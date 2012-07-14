@@ -82,17 +82,17 @@ fn md4(msg: ~[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     ret {a: a, b: b, c: c, d: d};
 }
 
-fn md4_str(msg: ~[u8]) -> str {
+fn md4_str(msg: ~[u8]) -> ~str {
     let {a, b, c, d} = md4(msg);
     fn app(a: u32, b: u32, c: u32, d: u32, f: fn(u32)) {
         f(a); f(b); f(c); f(d);
     }
-    let mut result = "";
+    let mut result = ~"";
     do app(a, b, c, d) |u| {
         let mut i = 0u32;
         while i < 4u32 {
             let byte = (u >> (i * 8u32)) as u8;
-            if byte <= 16u8 { result += "0"; }
+            if byte <= 16u8 { result += ~"0"; }
             result += uint::to_str(byte as uint, 16u);
             i += 1u32;
         }
@@ -100,19 +100,19 @@ fn md4_str(msg: ~[u8]) -> str {
     result
 }
 
-fn md4_text(msg: str) -> str { md4_str(str::bytes(msg)) }
+fn md4_text(msg: ~str) -> ~str { md4_str(str::bytes(msg)) }
 
 #[test]
 fn test_md4() {
-    assert md4_text("") == "31d6cfe0d16ae931b73c59d7e0c089c0";
-    assert md4_text("a") == "bde52cb31de33e46245e05fbdbd6fb24";
-    assert md4_text("abc") == "a448017aaf21d8525fc10ae87aa6729d";
-    assert md4_text("message digest") == "d9130a8164549fe818874806e1c7014b";
-    assert md4_text("abcdefghijklmnopqrstuvwxyz") ==
-        "d79e1c308aa5bbcdeea8ed63df412da9";
-    assert md4_text("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123\
-                     456789") == "043f8582f241db351ce627e153e7f0e4";
-    assert md4_text("12345678901234567890123456789012345678901234567890123456\
-                     789012345678901234567890") ==
-        "e33b4ddc9c38f2199c3e7b164fcc0536";
+    assert md4_text(~"") == ~"31d6cfe0d16ae931b73c59d7e0c089c0";
+    assert md4_text(~"a") == ~"bde52cb31de33e46245e05fbdbd6fb24";
+    assert md4_text(~"abc") == ~"a448017aaf21d8525fc10ae87aa6729d";
+    assert md4_text(~"message digest") == ~"d9130a8164549fe818874806e1c7014b";
+    assert md4_text(~"abcdefghijklmnopqrstuvwxyz") ==
+        ~"d79e1c308aa5bbcdeea8ed63df412da9";
+    assert md4_text(~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\
+                     0123456789") == ~"043f8582f241db351ce627e153e7f0e4";
+    assert md4_text(~"1234567890123456789012345678901234567890123456789\
+                     0123456789012345678901234567890") ==
+        ~"e33b4ddc9c38f2199c3e7b164fcc0536";
 }

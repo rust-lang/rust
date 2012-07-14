@@ -13,7 +13,7 @@ pure fn not_win32(os: session::os) -> bool {
   }
 }
 
-fn get_rpath_flags(sess: session::session, out_filename: str) -> ~[str] {
+fn get_rpath_flags(sess: session::session, out_filename: ~str) -> ~[~str] {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
@@ -40,17 +40,17 @@ fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::path {
     let mut path = vec::append(~[sess.filesearch.sysroot()],
                            filesearch::relative_target_lib_path(
                                sess.opts.target_triple));
-    vec::push(path, os::dll_filename("rustrt"));
+    vec::push(path, os::dll_filename(~"rustrt"));
     path::connect_many(path)
 }
 
-fn rpaths_to_flags(rpaths: ~[str]) -> ~[str] {
+fn rpaths_to_flags(rpaths: ~[~str]) -> ~[~str] {
     vec::map(rpaths, |rpath| #fmt("-Wl,-rpath,%s",rpath) )
 }
 
 fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
               output: path::path, libs: ~[path::path],
-              target_triple: str) -> ~[str] {
+              target_triple: ~str) -> ~[~str] {
     #debug("cwd: %s", cwd);
     #debug("sysroot: %s", sysroot);
     #debug("output: %s", output);
@@ -72,16 +72,16 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
     // And a final backup rpath to the global library location.
     let fallback_rpaths = ~[get_install_prefix_rpath(cwd, target_triple)];
 
-    fn log_rpaths(desc: str, rpaths: ~[str]) {
+    fn log_rpaths(desc: ~str, rpaths: ~[~str]) {
         #debug("%s rpaths:", desc);
         for rpaths.each |rpath| {
             #debug("    %s", rpath);
         }
     }
 
-    log_rpaths("relative", rel_rpaths);
-    log_rpaths("absolute", abs_rpaths);
-    log_rpaths("fallback", fallback_rpaths);
+    log_rpaths(~"relative", rel_rpaths);
+    log_rpaths(~"absolute", abs_rpaths);
+    log_rpaths(~"fallback", fallback_rpaths);
 
     let mut rpaths = rel_rpaths;
     vec::push_all(rpaths, abs_rpaths);
@@ -95,7 +95,7 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
 fn get_rpaths_relative_to_output(os: session::os,
                                  cwd: path::path,
                                  output: path::path,
-                                 libs: ~[path::path]) -> ~[str] {
+                                 libs: ~[path::path]) -> ~[~str] {
     vec::map(libs, |a| {
         check not_win32(os);
         get_rpath_relative_to_output(os, cwd, output, a)
@@ -105,12 +105,12 @@ fn get_rpaths_relative_to_output(os: session::os,
 fn get_rpath_relative_to_output(os: session::os,
                                 cwd: path::path,
                                 output: path::path,
-                                &&lib: path::path) : not_win32(os) -> str {
+                                &&lib: path::path) : not_win32(os) -> ~str {
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
-        session::os_linux { "$ORIGIN" + path::path_sep() }
-        session::os_freebsd { "$ORIGIN" + path::path_sep() }
-        session::os_macos { "@executable_path" + path::path_sep() }
+        session::os_linux { ~"$ORIGIN" + path::path_sep() }
+        session::os_freebsd { ~"$ORIGIN" + path::path_sep() }
+        session::os_macos { ~"@executable_path" + path::path_sep() }
         session::os_win32 { core::unreachable(); }
     };
 
@@ -142,7 +142,7 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     }
 
     let mut path = ~[];
-    for uint::range(start_idx, len1 - 1u) |_i| { vec::push(path, ".."); };
+    for uint::range(start_idx, len1 - 1u) |_i| { vec::push(path, ~".."); };
 
     // FIXME (#2880): use view here.
     vec::push_all(path, vec::slice(split2, start_idx, len2 - 1u));
@@ -150,15 +150,15 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     if check vec::is_not_empty(path) {
         ret path::connect_many(path);
     } else {
-        ret ".";
+        ret ~".";
     }
 }
 
-fn get_absolute_rpaths(cwd: path::path, libs: ~[path::path]) -> ~[str] {
+fn get_absolute_rpaths(cwd: path::path, libs: ~[path::path]) -> ~[~str] {
     vec::map(libs, |a| get_absolute_rpath(cwd, a) )
 }
 
-fn get_absolute_rpath(cwd: path::path, &&lib: path::path) -> str {
+fn get_absolute_rpath(cwd: path::path, &&lib: path::path) -> ~str {
     path::dirname(get_absolute(cwd, lib))
 }
 
@@ -170,11 +170,11 @@ fn get_absolute(cwd: path::path, lib: path::path) -> path::path {
     }
 }
 
-fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
+fn get_install_prefix_rpath(cwd: path::path, target_triple: ~str) -> ~str {
     let install_prefix = #env("CFG_PREFIX");
 
-    if install_prefix == "" {
-        fail "rustc compiled without CFG_PREFIX environment variable";
+    if install_prefix == ~"" {
+        fail ~"rustc compiled without CFG_PREFIX environment variable";
     }
 
     let path = vec::append(
@@ -183,7 +183,7 @@ fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
     get_absolute(cwd, path::connect_many(path))
 }
 
-fn minimize_rpaths(rpaths: ~[str]) -> ~[str] {
+fn minimize_rpaths(rpaths: ~[~str]) -> ~[~str] {
     let set = map::str_hash::<()>();
     let mut minimized = ~[];
     for rpaths.each |rpath| {
@@ -199,116 +199,116 @@ fn minimize_rpaths(rpaths: ~[str]) -> ~[str] {
 mod test {
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags(~["path1", "path2"]);
-        assert flags == ~["-Wl,-rpath,path1", "-Wl,-rpath,path2"];
+        let flags = rpaths_to_flags(~[~"path1", ~"path2"]);
+        assert flags == ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"];
     }
 
     #[test]
     fn test_get_absolute1() {
-        let cwd = "/dir";
-        let lib = "some/path/lib";
+        let cwd = ~"/dir";
+        let lib = ~"some/path/lib";
         let res = get_absolute(cwd, lib);
-        assert res == "/dir/some/path/lib";
+        assert res == ~"/dir/some/path/lib";
     }
 
     #[test]
     fn test_get_absolute2() {
-        let cwd = "/dir";
-        let lib = "/some/path/lib";
+        let cwd = ~"/dir";
+        let lib = ~"/some/path/lib";
         let res = get_absolute(cwd, lib);
-        assert res == "/some/path/lib";
+        assert res == ~"/some/path/lib";
     }
 
     #[test]
     fn test_prefix_rpath() {
-        let res = get_install_prefix_rpath("/usr/lib", "triple");
-        let d = path::connect(#env("CFG_PREFIX"), "/lib/rustc/triple/lib");
+        let res = get_install_prefix_rpath(~"/usr/lib", ~"triple");
+        let d = path::connect(#env("CFG_PREFIX"), ~"/lib/rustc/triple/lib");
         assert str::ends_with(res, d);
     }
 
     #[test]
     fn test_prefix_rpath_abs() {
-        let res = get_install_prefix_rpath("/usr/lib", "triple");
+        let res = get_install_prefix_rpath(~"/usr/lib", ~"triple");
         assert path::path_is_absolute(res);
     }
 
     #[test]
     fn test_minimize1() {
-        let res = minimize_rpaths(~["rpath1", "rpath2", "rpath1"]);
-        assert res == ~["rpath1", "rpath2"];
+        let res = minimize_rpaths(~[~"rpath1", ~"rpath2", ~"rpath1"]);
+        assert res == ~[~"rpath1", ~"rpath2"];
     }
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths(~["1a", "2", "2", "1a", "4a",
-                                   "1a", "2", "3", "4a", "3"]);
-        assert res == ~["1a", "2", "4a", "3"];
+        let res = minimize_rpaths(~[~"1a", ~"2", ~"2", ~"1a", ~"4a",
+                                   ~"1a", ~"2", ~"3", ~"4a", ~"3"]);
+        assert res == ~[~"1a", ~"2", ~"4a", ~"3"];
     }
 
     #[test]
     fn test_relative_to1() {
-        let p1 = "/usr/bin/rustc";
-        let p2 = "/usr/lib/mylib";
+        let p1 = ~"/usr/bin/rustc";
+        let p2 = ~"/usr/lib/mylib";
         let res = get_relative_to(p1, p2);
-        assert res == "../lib";
+        assert res == ~"../lib";
     }
 
     #[test]
     fn test_relative_to2() {
-        let p1 = "/usr/bin/rustc";
-        let p2 = "/usr/bin/../lib/mylib";
+        let p1 = ~"/usr/bin/rustc";
+        let p2 = ~"/usr/bin/../lib/mylib";
         let res = get_relative_to(p1, p2);
-        assert res == "../lib";
+        assert res == ~"../lib";
     }
 
     #[test]
     fn test_relative_to3() {
-        let p1 = "/usr/bin/whatever/rustc";
-        let p2 = "/usr/lib/whatever/mylib";
+        let p1 = ~"/usr/bin/whatever/rustc";
+        let p2 = ~"/usr/lib/whatever/mylib";
         let res = get_relative_to(p1, p2);
-        assert res == "../../lib/whatever";
+        assert res == ~"../../lib/whatever";
     }
 
     #[test]
     fn test_relative_to4() {
-        let p1 = "/usr/bin/whatever/../rustc";
-        let p2 = "/usr/lib/whatever/mylib";
+        let p1 = ~"/usr/bin/whatever/../rustc";
+        let p2 = ~"/usr/lib/whatever/mylib";
         let res = get_relative_to(p1, p2);
-        assert res == "../lib/whatever";
+        assert res == ~"../lib/whatever";
     }
 
     #[test]
     fn test_relative_to5() {
-        let p1 = "/usr/bin/whatever/../rustc";
-        let p2 = "/usr/lib/whatever/../mylib";
+        let p1 = ~"/usr/bin/whatever/../rustc";
+        let p2 = ~"/usr/lib/whatever/../mylib";
         let res = get_relative_to(p1, p2);
-        assert res == "../lib";
+        assert res == ~"../lib";
     }
 
     #[test]
     fn test_relative_to6() {
-        let p1 = "/1";
-        let p2 = "/2/3";
+        let p1 = ~"/1";
+        let p2 = ~"/2/3";
         let res = get_relative_to(p1, p2);
-        assert res == "2";
+        assert res == ~"2";
     }
 
     #[test]
     fn test_relative_to7() {
-        let p1 = "/1/2";
-        let p2 = "/3";
+        let p1 = ~"/1/2";
+        let p2 = ~"/3";
         let res = get_relative_to(p1, p2);
-        assert res == "..";
+        assert res == ~"..";
     }
 
     #[test]
     fn test_relative_to8() {
-        let p1 = "/home/brian/Dev/rust/build/"
-            + "stage2/lib/rustc/i686-unknown-linux-gnu/lib/librustc.so";
-        let p2 = "/home/brian/Dev/rust/build/stage2/bin/.."
-            + "/lib/rustc/i686-unknown-linux-gnu/lib/libstd.so";
+        let p1 = ~"/home/brian/Dev/rust/build/"
+            + ~"stage2/lib/rustc/i686-unknown-linux-gnu/lib/librustc.so";
+        let p2 = ~"/home/brian/Dev/rust/build/stage2/bin/.."
+            + ~"/lib/rustc/i686-unknown-linux-gnu/lib/libstd.so";
         let res = get_relative_to(p1, p2);
-        assert res == ".";
+        assert res == ~".";
     }
 
     #[test]
@@ -317,8 +317,8 @@ mod test {
       let o = session::os_linux;
       check not_win32(o);
       let res = get_rpath_relative_to_output(o,
-            "/usr", "bin/rustc", "lib/libstd.so");
-      assert res == "$ORIGIN/../lib";
+            ~"/usr", ~"bin/rustc", ~"lib/libstd.so");
+      assert res == ~"$ORIGIN/../lib";
     }
 
     #[test]
@@ -344,7 +344,7 @@ mod test {
 
     #[test]
     fn test_get_absolute_rpath() {
-        let res = get_absolute_rpath("/usr", "lib/libstd.so");
-        assert res == "/usr/lib";
+        let res = get_absolute_rpath(~"/usr", ~"lib/libstd.so");
+        assert res == ~"/usr/lib";
     }
 }

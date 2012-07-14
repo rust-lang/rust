@@ -6,8 +6,8 @@
 
 import pipes::try_recv;
 
-type username = str;
-type password = str;
+type username = ~str;
+type password = ~str;
 type money = float;
 type amount = float;
 
@@ -42,26 +42,26 @@ fn macros() {
 fn bank_client(+bank: bank::client::login) {
     import bank::*;
 
-    let bank = client::login(bank, "theincredibleholk", "1234");
+    let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = alt try_recv(bank) {
       some(ok(connected)) {
         #move(connected)
       }
-      some(invalid(_)) { fail "login unsuccessful" }
-      none { fail "bank closed the connection" }
+      some(invalid(_)) { fail ~"login unsuccessful" }
+      none { fail ~"bank closed the connection" }
     };
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
     alt try_recv(bank) {
       some(money(m, _)) {
-        io::println("Yay! I got money!");
+        io::println(~"Yay! I got money!");
       }
       some(insufficient_funds(_)) {
-        fail "someone stole my money"
+        fail ~"someone stole my money"
       }
       none {
-        fail "bank closed the connection"
+        fail ~"bank closed the connection"
       }
     }
 }

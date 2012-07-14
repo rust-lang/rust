@@ -31,11 +31,11 @@ iface filesearch {
 }
 
 fn mk_filesearch(maybe_sysroot: option<path>,
-                 target_triple: str,
+                 target_triple: ~str,
                  addl_lib_search_paths: ~[path]) -> filesearch {
     type filesearch_impl = {sysroot: path,
                             addl_lib_search_paths: ~[path],
-                            target_triple: str};
+                            target_triple: ~str};
     impl of filesearch for filesearch_impl {
         fn sysroot() -> path { self.sysroot }
         fn lib_search_paths() -> ~[path] {
@@ -88,12 +88,12 @@ fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     ret rslt;
 }
 
-fn relative_target_lib_path(target_triple: str) -> ~[path] {
-    ~[libdir(), "rustc", target_triple, libdir()]
+fn relative_target_lib_path(target_triple: ~str) -> ~[path] {
+    ~[libdir(), ~"rustc", target_triple, libdir()]
 }
 
 fn make_target_lib_path(sysroot: path,
-                        target_triple: str) -> path {
+                        target_triple: ~str) -> path {
     let path = vec::append(~[sysroot],
                            relative_target_lib_path(target_triple));
     let path = path::connect_many(path);
@@ -102,9 +102,9 @@ fn make_target_lib_path(sysroot: path,
 
 fn get_default_sysroot() -> path {
     alt os::self_exe_path() {
-      option::some(p) { path::normalize(path::connect(p, "..")) }
+      option::some(p) { path::normalize(path::connect(p, ~"..")) }
       option::none {
-        fail "can't determine value for sysroot";
+        fail ~"can't determine value for sysroot";
       }
     }
 }
@@ -116,30 +116,30 @@ fn get_sysroot(maybe_sysroot: option<path>) -> path {
     }
 }
 
-fn get_cargo_sysroot() -> result<path, str> {
-    let path = ~[get_default_sysroot(), libdir(), "cargo"];
+fn get_cargo_sysroot() -> result<path, ~str> {
+    let path = ~[get_default_sysroot(), libdir(), ~"cargo"];
     result::ok(path::connect_many(path))
 }
 
-fn get_cargo_root() -> result<path, str> {
-    alt os::getenv("CARGO_ROOT") {
+fn get_cargo_root() -> result<path, ~str> {
+    alt os::getenv(~"CARGO_ROOT") {
         some(_p) { result::ok(_p) }
         none {
           alt os::homedir() {
-            some(_q) { result::ok(path::connect(_q, ".cargo")) }
-            none { result::err("no CARGO_ROOT or home directory") }
+            some(_q) { result::ok(path::connect(_q, ~".cargo")) }
+            none { result::err(~"no CARGO_ROOT or home directory") }
           }
         }
     }
 }
 
-fn get_cargo_root_nearest() -> result<path, str> {
+fn get_cargo_root_nearest() -> result<path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         let cwd = os::getcwd();
         let mut dirname = path::dirname(cwd);
         let mut dirpath = path::split(dirname);
-        let cwd_cargo = path::connect(cwd, ".cargo");
-        let mut par_cargo = path::connect(dirname, ".cargo");
+        let cwd_cargo = path::connect(cwd, ~".cargo");
+        let mut par_cargo = path::connect(dirname, ~".cargo");
         let mut rslt = result::ok(cwd_cargo);
 
         if !os::path_is_dir(cwd_cargo) && cwd_cargo != p {
@@ -150,20 +150,20 @@ fn get_cargo_root_nearest() -> result<path, str> {
                 }
                 vec::pop(dirpath);
                 dirname = path::dirname(dirname);
-                par_cargo = path::connect(dirname, ".cargo");
+                par_cargo = path::connect(dirname, ~".cargo");
             }
         }
         rslt
     }
 }
 
-fn get_cargo_lib_path() -> result<path, str> {
+fn get_cargo_lib_path() -> result<path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         result::ok(path::connect(p, libdir()))
     }
 }
 
-fn get_cargo_lib_path_nearest() -> result<path, str> {
+fn get_cargo_lib_path_nearest() -> result<path, ~str> {
     do result::chain(get_cargo_root_nearest()) |p| {
         result::ok(path::connect(p, libdir()))
     }
@@ -171,10 +171,10 @@ fn get_cargo_lib_path_nearest() -> result<path, str> {
 
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
-fn libdir() -> str {
+fn libdir() -> ~str {
    let libdir = #env("CFG_LIBDIR");
    if str::is_empty(libdir) {
-      fail "rustc compiled without CFG_LIBDIR environment variable";
+      fail ~"rustc compiled without CFG_LIBDIR environment variable";
    }
    libdir
 }

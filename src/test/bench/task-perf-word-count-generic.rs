@@ -38,7 +38,7 @@ macro_rules! move {
 }
 
 trait word_reader {
-    fn read_word() -> option<str>;
+    fn read_word() -> option<~str>;
 }
 
 trait hash_key {
@@ -52,9 +52,9 @@ fn mk_hash<K: const hash_key, V: copy>() -> map::hashmap<K, V> {
     map::hashmap(hashfn::<K>, |x, y| x.eq(y))
 }
 
-impl of hash_key for str {
+impl of hash_key for ~str {
     fn hash() -> uint { str::hash(self) }
-    fn eq(&&x: str) -> bool { str::eq(self, x) }
+    fn eq(&&x: ~str) -> bool { str::eq(self, x) }
 }
 
 // These used to be in task, but they disappeard.
@@ -74,17 +74,17 @@ fn join(t: joinable_task) {
 }
 
 impl of word_reader for io::reader {
-    fn read_word() -> option<str> { read_word(self) }
+    fn read_word() -> option<~str> { read_word(self) }
 }
 
-fn file_word_reader(filename: str) -> word_reader {
+fn file_word_reader(filename: ~str) -> word_reader {
     alt io::file_reader(filename) {
       result::ok(f) { f as word_reader }
       result::err(e) { fail #fmt("%?", e) }
     }
 }
 
-fn map(f: fn~() -> word_reader, emit: map_reduce::putter<str, int>) {
+fn map(f: fn~() -> word_reader, emit: map_reduce::putter<~str, int>) {
     let f = f();
     loop {
         alt f.read_word() {
@@ -94,7 +94,7 @@ fn map(f: fn~() -> word_reader, emit: map_reduce::putter<str, int>) {
     }
 }
 
-fn reduce(&&word: str, get: map_reduce::getter<int>) {
+fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
     let mut count = 0;
 
     loop { alt get() { some(_) { count += 1; } none { break; } } }
@@ -299,8 +299,8 @@ mod map_reduce {
     }
 }
 
-fn main(argv: ~[str]) {
-    if vec::len(argv) < 2u && !os::getenv("RUST_BENCH").is_some() {
+fn main(argv: ~[~str]) {
+    if vec::len(argv) < 2u && !os::getenv(~"RUST_BENCH").is_some() {
         let out = io::stdout();
 
         out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
@@ -330,19 +330,19 @@ fn main(argv: ~[str]) {
 
     let elapsed = (stop - start) / 1000000u64;
 
-    log(error, "MapReduce completed in "
-             + u64::str(elapsed) + "ms");
+    log(error, ~"MapReduce completed in "
+             + u64::str(elapsed) + ~"ms");
 }
 
-fn read_word(r: io::reader) -> option<str> {
-    let mut w = "";
+fn read_word(r: io::reader) -> option<~str> {
+    let mut w = ~"";
 
     while !r.eof() {
         let c = r.read_char();
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != "" { ret some(w); } }
+        } else { if w != ~"" { ret some(w); } }
     }
     ret none;
 }
@@ -359,7 +359,7 @@ class random_word_reader: word_reader {
         self.rng = rand::rng();
     }
 
-    fn read_word() -> option<str> {
+    fn read_word() -> option<~str> {
         if self.remaining > 0 {
             self.remaining -= 1;
             let len = self.rng.gen_uint_range(1, 4);

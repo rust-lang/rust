@@ -8,4 +8,4 @@ enum chan_t<T: send> = {task: task_id, port: port_id};
 
 fn send<T: send>(ch: chan_t<T>, -data: T) { fail; }
 
-fn main() { fail "quux"; }
+fn main() { fail ~"quux"; }
