@@ -5027,7 +5027,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
 
     fn create_entry_fn(ccx: @crate_ctxt, rust_main: ValueRef) {
         #[cfg(windows)]
-        fn main_name() -> str { ret "WinMain@16"; }
+        fn main_name() -> ~str { ret ~"WinMain@16"; }
         #[cfg(unix)]
         fn main_name() -> ~str { ret ~"main"; }
         let llfty = T_fn(~[ccx.int_type, ccx.int_type], ccx.int_type);

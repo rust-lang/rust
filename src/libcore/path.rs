@@ -50,7 +50,7 @@ fn path_is_absolute(p: path) -> bool {
 }
 
 #[cfg(windows)]
-fn path_is_absolute(p: str) -> bool {
+fn path_is_absolute(p: ~str) -> bool {
     ret str::char_at(p, 0u) == '/' ||
         str::char_at(p, 1u) == ':'
         && (str::char_at(p, 2u) == consts::path_sep

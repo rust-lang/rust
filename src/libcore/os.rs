@@ -84,7 +84,7 @@ mod win32 {
     import dword = libc::types::os::arch::extra::DWORD;
 
     fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
-        -> option<str> {
+        -> option<~str> {
 
         // FIXME: remove these when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
@@ -105,7 +105,7 @@ mod win32 {
                     n *= (2 as dword);
                 } else {
                     let sub = vec::slice(buf, 0u, k as uint);
-                    res = option::some::<str>(str::from_utf16(sub));
+                    res = option::some(str::from_utf16(sub));
                     done = true;
                 }
             }
@@ -113,7 +113,7 @@ mod win32 {
         ret res;
     }
 
-    fn as_utf16_p<T>(s: str, f: fn(*u16) -> T) -> T {
+    fn as_utf16_p<T>(s: ~str, f: fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
         t += ~[0u16];
@@ -212,7 +212,7 @@ mod global_env {
         }
 
         #[cfg(windows)]
-        fn getenv(n: str) -> option<str> {
+        fn getenv(n: ~str) -> option<~str> {
             import libc::types::os::arch::extra::*;
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -238,7 +238,7 @@ mod global_env {
 
 
         #[cfg(windows)]
-        fn setenv(n: str, v: str) {
+        fn setenv(n: ~str, v: ~str) {
             // FIXME: remove imports when export globs work properly. #1238
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -355,7 +355,7 @@ fn dll_filename(base: ~str) -> ~str {
     fn pre() -> ~str { ~"lib" }
 
     #[cfg(windows)]
-    fn pre() -> str { "" }
+    fn pre() -> ~str { ~"" }
 }
 
 
@@ -448,7 +448,7 @@ fn homedir() -> option<path> {
 
     #[cfg(windows)]
     fn secondary() -> option<path> {
-        do option::chain(getenv("USERPROFILE")) |p| {
+        do option::chain(getenv(~"USERPROFILE")) |p| {
             if !str::is_empty(p) {
                 some(p)
             } else {
@@ -554,13 +554,13 @@ fn list_dir(p: path) -> ~[~str] {
     fn star(p: ~str) -> ~str { p }
 
     #[cfg(windows)]
-    fn star(p: str) -> str {
+    fn star(p: str) -> ~str {
         let pl = str::len(p);
         if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
                         || p[pl - 1u] as char != path::consts::alt_path_sep) {
-            p + path::path_sep() + "*"
+            p + path::path_sep() + ~"*"
         } else {
-            p + "*"
+            p + ~"*"
         }
     }
 
@@ -737,20 +737,20 @@ fn set_exit_status(code: int) {
 fn family() -> ~str { ~"unix" }
 
 #[cfg(windows)]
-fn family() -> str { "windows" }
+fn family() -> ~str { ~"windows" }
 
 #[cfg(target_os = "macos")]
 mod consts {
-    fn sysname() -> str { "macos" }
-    fn exe_suffix() -> str { "" }
-    fn dll_suffix() -> str { ".dylib" }
+    fn sysname() -> ~str { ~"macos" }
+    fn exe_suffix() -> ~str { ~"" }
+    fn dll_suffix() -> ~str { ~".dylib" }
 }
 
 #[cfg(target_os = "freebsd")]
 mod consts {
-    fn sysname() -> str { "freebsd" }
-    fn exe_suffix() -> str { "" }
-    fn dll_suffix() -> str { ".so" }
+    fn sysname() -> ~str { ~"freebsd" }
+    fn exe_suffix() -> ~str { ~"" }
+    fn dll_suffix() -> ~str { ~".so" }
 }
 
 #[cfg(target_os = "linux")]
@@ -762,19 +762,19 @@ mod consts {
 
 #[cfg(target_os = "win32")]
 mod consts {
-    fn sysname() -> str { "win32" }
-    fn exe_suffix() -> str { ".exe" }
-    fn dll_suffix() -> str { ".dll" }
+    fn sysname() -> ~str { ~"win32" }
+    fn exe_suffix() -> ~str { ~".exe" }
+    fn dll_suffix() -> ~str { ~".dll" }
 }
 
 #[cfg(target_arch = "x86")]
-fn arch() -> str { "x86" }
+fn arch() -> ~str { ~"x86" }
 
 #[cfg(target_arch = "x86_64")]
 fn arch() -> ~str { ~"x86_64" }
 
 #[cfg(target_arch = "arm")]
-fn arch() -> str { "arm" }
+fn arch() -> str { ~"arm" }
 
 #[cfg(test)]
 mod tests {
