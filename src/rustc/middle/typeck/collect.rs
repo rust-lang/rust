@@ -257,7 +257,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
           some({mty: m, id, span}) {
             if m.purity != if_m.purity {
                 ccx.tcx.sess.span_err(
-                    span, #fmt["method `%s`'s purity \
+                    span, #fmt["method `%s`'s purity does \
                                 not match the trait method's \
                                 purity", *m.ident]);
             }
