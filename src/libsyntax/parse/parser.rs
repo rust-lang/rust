@@ -1696,14 +1696,33 @@ class parser {
           token::AT {
             self.bump();
             let sub = self.parse_pat();
-            pat = pat_box(sub);
             hi = sub.span.hi;
+            // HACK: parse @"..." as a literal of a vstore @str
+            pat = alt sub.node {
+              pat_lit(e@@{node: expr_lit(@{node: lit_str(_), span: _}), _}) {
+                let vst = @{id: self.get_id(), callee_id: self.get_id(),
+                            node: expr_vstore(e, vstore_box),
+                            span: mk_sp(lo, hi)};
+                pat_lit(vst)
+              }
+              _ { pat_box(sub) }
+            };
           }
           token::TILDE {
             self.bump();
             let sub = self.parse_pat();
-            pat = pat_uniq(sub);
             hi = sub.span.hi;
+            // HACK: parse ~"..." as a literal of a vstore ~str
+            pat = alt sub.node {
+              pat_lit(e@@{node: expr_lit(@{node: lit_str(_), span: _}), _}) {
+                let vst = @{id: self.get_id(), callee_id: self.get_id(),
+                            node: expr_vstore(e, vstore_uniq),
+                            span: mk_sp(lo, hi)};
+                pat_lit(vst)
+              }
+              _ { pat_uniq(sub) }
+            };
+
           }
           token::LBRACE {
             self.bump();
