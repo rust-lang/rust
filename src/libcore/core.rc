@@ -44,6 +44,7 @@ export extfmt;
 export tuple;
 export to_str, to_bytes;
 export dvec, dvec_iter;
+export dlist, dlist_iter;
 export cmp;
 export num;
 
