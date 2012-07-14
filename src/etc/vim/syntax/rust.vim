@@ -12,8 +12,8 @@ endif
 
 syn keyword   rustAssert      assert
 syn match     rustAssert      "assert\(\w\)*"
-syn keyword   rustKeyword     alt as break
-syn keyword   rustKeyword     check claim cont const copy do drop else export extern fail
+syn keyword   rustKeyword     alt again as break
+syn keyword   rustKeyword     check claim const copy do drop else export extern fail
 syn keyword   rustKeyword     for if impl import in let log
 syn keyword   rustKeyword     loop mod mut new of pure
 syn keyword   rustKeyword     ret self to unchecked
