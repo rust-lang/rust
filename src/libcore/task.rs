@@ -589,8 +589,8 @@ class taskgroup {
     let tasks:      taskgroup_arc; // 'none' means the group already failed.
     let me:         *rust_task;
     let my_pos:     uint;
-    // let parent_group: taskgroup_arc; // TODO(bblum)
-    // TODO XXX bblum: add a list of empty slots to get runtime back
+    // let parent_group: taskgroup_arc; // FIXME (#1868) (bblum)
+    // FIXME (#1868) XXX bblum: add a list of empty slots to get runtime back
     // Indicates whether this is the main (root) taskgroup. If so, failure
     // here should take down the entire runtime.
     let is_main:    bool;
