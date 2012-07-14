@@ -237,7 +237,10 @@ mod chained {
         }
 
         fn get(k: K) -> V {
-            self.find(k).expect(~"Key not found in table")
+            alt self.find(k) {
+              some(v) => {v}
+              none => {fail #fmt["Key not found in table: %?", k]}
+            }
         }
 
         fn [](k: K) -> V {
