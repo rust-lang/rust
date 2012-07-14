@@ -38,14 +38,13 @@ fn check_item(sess: session, ast_map: ast_map::map, def_map: resolve::def_map,
 fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         alt e.node {
-          expr_lit(@{node: lit_str(_), _}) |
           expr_vstore(@{node: expr_lit(@{node: lit_str(_), _}), _},
                       vstore_uniq) { true }
           _ { false }
         }
     }
     alt p.node {
-      // Let through plain string literals here
+      // Let through plain ~-string literals here
       pat_lit(a) { if !is_str(a) { v.visit_expr(a, true, v); } }
       pat_range(a, b) {
         if !is_str(a) { v.visit_expr(a, true, v); }

@@ -43,12 +43,10 @@ enum lint {
     unused_imports,
     while_true,
     path_statement,
-    old_vecs,
+    implicit_copies,
     unrecognized_warning,
     non_implicitly_copyable_typarams,
     vecs_not_implicitly_copyable,
-    implicit_copies,
-    old_strs,
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -59,12 +57,10 @@ fn int_to_lint(i: int) -> lint {
       1 { unused_imports }
       2 { while_true }
       3 { path_statement }
-      4 { old_vecs }
+      4 { implicit_copies }
       5 { unrecognized_warning }
       6 { non_implicitly_copyable_typarams }
       7 { vecs_not_implicitly_copyable }
-      8 { implicit_copies }
-      9 { old_strs }
     }
 }
 
@@ -103,16 +99,6 @@ fn get_lint_dict() -> lint_dict {
          @{lint: path_statement,
            desc: ~"path statements with no effect",
            default: warn}),
-
-        (~"old_vecs",
-         @{lint: old_vecs,
-           desc: ~"old (deprecated) vectors",
-           default: error}),
-
-        (~"old_strs",
-         @{lint: old_strs,
-           desc: ~"old (deprecated) strings",
-           default: error}),
 
         (~"unrecognized_warning",
          @{lint: unrecognized_warning,
@@ -321,7 +307,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_ctypes(cx, i);
     check_item_while_true(cx, i);
     check_item_path_statement(cx, i);
-    check_item_old_vecs(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -417,63 +402,6 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
               _ {}
             }
         }
-        with *visit::default_simple_visitor()
-    }));
-    visit::visit_item(it, (), visit);
-}
-
-fn check_item_old_vecs(cx: ty::ctxt, it: @ast::item) {
-    let uses_vstore = int_hash();
-
-    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
-
-        visit_expr:fn@(e: @ast::expr) {
-            alt e.node {
-              ast::expr_vec(_, _)
-              if ! uses_vstore.contains_key(e.id) {
-                cx.sess.span_lint(
-                    old_vecs, e.id, it.id,
-                    e.span, ~"deprecated vec expr");
-              }
-              ast::expr_lit(@{node: ast::lit_str(_), span:_})
-              if ! uses_vstore.contains_key(e.id) {
-                cx.sess.span_lint(
-                    old_strs, e.id, it.id,
-                    e.span, ~"deprecated str expr");
-              }
-
-              ast::expr_vstore(@inner, _) {
-                uses_vstore.insert(inner.id, true);
-              }
-              _ { }
-            }
-        },
-
-        visit_ty: fn@(t: @ast::ty) {
-            alt t.node {
-              ast::ty_vec(_)
-              if ! uses_vstore.contains_key(t.id) {
-                cx.sess.span_lint(
-                    old_vecs, t.id, it.id,
-                    t.span, ~"deprecated vec type");
-              }
-              ast::ty_path(@{span: _, global: _, idents: ids,
-                             rp: none, types: _}, _)
-              if ids == ~[@~"str"] && (! uses_vstore.contains_key(t.id)) {
-                cx.sess.span_lint(
-                    old_strs, t.id, it.id,
-                    t.span, ~"deprecated str type");
-              }
-              ast::ty_fixed_length(inner, _) |
-              ast::ty_box({ty: inner, _}) |
-              ast::ty_uniq({ty: inner, _}) |
-              ast::ty_rptr(_, {ty: inner, _}) {
-                uses_vstore.insert(inner.id, true);
-              }
-              _ { }
-            }
-        }
-
         with *visit::default_simple_visitor()
     }));
     visit::visit_item(it, (), visit);

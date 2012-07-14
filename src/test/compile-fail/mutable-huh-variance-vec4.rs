@@ -8,18 +8,18 @@ fn main() {
     let x = ~[mut ~[mut 0]];
 
     fn f(&&v: ~[mut ~[int]]) {
-        v[0] = [3]
+        v[0] = ~[3]
     }
 
     fn g(&&v: ~[const ~[const int]]) {
     }
 
     fn h(&&v: ~[mut ~[mut int]]) {
-        v[0] = [mut 3]
+        v[0] = ~[mut 3]
     }
 
     fn i(&&v: ~[mut ~[const int]]) {
-        v[0] = [mut 3]
+        v[0] = ~[mut 3]
     }
 
     fn j(&&v: ~[~[const int]]) {

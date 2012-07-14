@@ -47,7 +47,6 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
     alt o {
       lit(l) {
         alt l.node {
-          ast::expr_lit(@{node: ast::lit_str(s), _}) |
           ast::expr_vstore(@{node: ast::expr_lit(
               @{node: ast::lit_str(s), _}), _},
                            ast::vstore_uniq) {

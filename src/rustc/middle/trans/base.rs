@@ -1447,7 +1447,8 @@ fn trans_lit(cx: block, e: @ast::expr, lit: ast::lit, dest: dest) -> block {
     let _icx = cx.insn_ctxt(~"trans_lit");
     if dest == ignore { ret cx; }
     alt lit.node {
-      ast::lit_str(s) { tvec::trans_estr(cx, s, ast::vstore_uniq, dest) }
+      ast::lit_str(s) { tvec::trans_estr(cx, s,
+                                         ast::vstore_fixed(none), dest) }
       _ {
         store_in_dest(cx, trans_crate_lit(cx.ccx(), e, lit), dest)
       }
@@ -3542,7 +3543,8 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_vstore(e, v) { ret tvec::trans_vstore(bcx, e, v, dest); }
           ast::expr_lit(lit) { ret trans_lit(bcx, e, *lit, dest); }
           ast::expr_vec(args, _) {
-            ret tvec::trans_evec(bcx, args, ast::vstore_uniq, e.id, dest);
+            ret tvec::trans_evec(bcx, args, ast::vstore_fixed(none),
+                                 e.id, dest);
           }
           ast::expr_binary(op, lhs, rhs) {
             ret trans_binary(bcx, op, lhs, rhs, dest, e);

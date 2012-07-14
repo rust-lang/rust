@@ -611,7 +611,7 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     alt lit.node {
-      ast::lit_str(_) { ty::mk_estr(tcx, ty::vstore_uniq) }
+      ast::lit_str(s) { ty::mk_estr(tcx, ty::vstore_fixed(s.len())) }
       ast::lit_int(_, t) { ty::mk_mach_int(tcx, t) }
       ast::lit_uint(_, t) { ty::mk_mach_uint(tcx, t) }
       ast::lit_int_unsuffixed(_) {
@@ -1524,7 +1524,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let t: ty::t = fcx.infcx.next_ty_var();
         for args.each |e| { bot |= check_expr_with(fcx, e, t); }
         let typ = ty::mk_evec(tcx, {ty: t, mutbl: mutbl},
-                              ty::vstore_uniq);
+                              ty::vstore_fixed(args.len()));
         fcx.write_ty(id, typ);
       }
       ast::expr_tup(elts) {

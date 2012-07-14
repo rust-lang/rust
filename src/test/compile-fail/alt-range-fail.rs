@@ -9,7 +9,7 @@ fn main() {
     };
 
     alt "wow" {
-      "wow" to "woow" { }
+      "bar" to "foo" { }
     };
 
     alt 5u {
