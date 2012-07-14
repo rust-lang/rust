@@ -30,9 +30,7 @@ for t in os.listdir(run_pass):
                 "xfail-fast" in s or
                 "xfail-win32" in s):
             stage2_tests.append(t)
-            if "main(args: [str])" in s:
-                take_args[t] = True
-            if "main(args: ~[str])" in s:
+            if "main(args: ~[~str])" in s:
                 take_args[t] = True
         f.close()
 
