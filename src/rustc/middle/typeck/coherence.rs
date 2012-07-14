@@ -6,7 +6,7 @@
 
 import middle::ty::{get, t, ty_box, ty_uniq, ty_ptr, ty_rptr, ty_enum};
 import middle::ty::{ty_class, ty_nil, ty_bot, ty_bool, ty_int, ty_uint};
-import middle::ty::{ty_float, ty_str, ty_estr, ty_vec, ty_evec, ty_rec};
+import middle::ty::{ty_float, ty_estr, ty_evec, ty_rec};
 import middle::ty::{ty_fn, ty_trait, ty_tup, ty_var, ty_var_integral};
 import middle::ty::{ty_param, ty_self, ty_constr, ty_type, ty_opaque_box};
 import middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, new_ty_hash};
@@ -171,7 +171,7 @@ class CoherenceChecker {
             }
 
             ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
-            ty_str | ty_estr(*) | ty_vec(*) | ty_evec(*) | ty_rec(*) |
+            ty_estr(*) | ty_evec(*) | ty_rec(*) |
             ty_fn(*) | ty_tup(*) | ty_var(*) | ty_var_integral(*) |
             ty_param(*) | ty_self | ty_constr(*) | ty_type | ty_opaque_box |
             ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) {

@@ -272,7 +272,7 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
                      node: ast::ty_vec(vec_mt),
                      span: dummy_sp()};
     ret @{id: cx.sess.next_node_id(),
-          node: ast::ty_vstore(inner_ty, ast::vstore_uniq),
+          node: ast::ty_uniq({ty: inner_ty, mutbl: ast::m_imm}),
           span: dummy_sp()};
 }
 
@@ -411,14 +411,14 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
                          node: ast::ty_path(str_pt, cx.sess.next_node_id()),
                          span: dummy_sp()};
     let str_ty = @{id: cx.sess.next_node_id(),
-                   node: ast::ty_vstore(str_ty_inner, ast::vstore_uniq),
+                   node: ast::ty_uniq({ty: str_ty_inner, mutbl: ast::m_imm}),
                    span: dummy_sp()};
     let args_mt = {ty: str_ty, mutbl: ast::m_imm};
     let args_ty_inner = @{id: cx.sess.next_node_id(),
                           node: ast::ty_vec(args_mt),
                           span: dummy_sp()};
     let args_ty = {id: cx.sess.next_node_id(),
-                   node: ast::ty_vstore(args_ty_inner, ast::vstore_uniq),
+                   node: ast::ty_uniq({ty: args_ty_inner, mutbl: ast::m_imm}),
                    span: dummy_sp()};
 
 

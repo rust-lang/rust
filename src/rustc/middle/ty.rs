@@ -85,10 +85,8 @@ export ty_fn, fn_ty, mk_fn;
 export ty_fn_proto, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
-export ty_str, mk_str, type_is_str;
-export ty_vec, mk_vec, type_is_vec;
-export ty_estr, mk_estr;
-export ty_evec, mk_evec;
+export ty_estr, mk_estr, type_is_str;
+export ty_evec, mk_evec, type_is_vec;
 export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
 export vstore, vstore_fixed, vstore_uniq, vstore_box, vstore_slice;
 export ty_nil, mk_nil, type_is_nil;
@@ -124,7 +122,6 @@ export operators;
 export type_err, terr_vstore_kind;
 export type_err_to_str;
 export type_needs_drop;
-export type_allows_implicit_copy;
 export type_is_integral;
 export type_is_numeric;
 export type_is_pod;
@@ -364,12 +361,10 @@ enum sty {
     ty_int(ast::int_ty),
     ty_uint(ast::uint_ty),
     ty_float(ast::float_ty),
-    ty_str,
     ty_estr(vstore),
     ty_enum(def_id, substs),
     ty_box(mt),
     ty_uniq(mt),
-    ty_vec(mt),
     ty_evec(mt, vstore),
     ty_ptr(mt),
     ty_rptr(region, mt),
@@ -586,7 +581,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         flags |= get(mt.ty).flags;
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str | ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
+      ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box {}
       ty_param(_, _) { flags |= has_params as uint; }
       ty_var(_) | ty_var_integral(_) { flags |= needs_infer as uint; }
@@ -594,7 +589,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_enum(_, substs) | ty_class(_, substs) | ty_trait(_, substs) {
         flags |= sflags(substs);
       }
-      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_evec(m, _) |
+      ty_box(m) | ty_uniq(m) | ty_evec(m, _) |
       ty_ptr(m) | ty_unboxed_vec(m) {
         flags |= get(m.ty).flags;
       }
@@ -658,8 +653,6 @@ fn mk_mach_float(cx: ctxt, tm: ast::float_ty) -> t { mk_t(cx, ty_float(tm)) }
 
 fn mk_char(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_char)) }
 
-fn mk_str(cx: ctxt) -> t { mk_estr(cx, vstore_uniq) }
-
 fn mk_estr(cx: ctxt, t: vstore) -> t {
     mk_t(cx, ty_estr(t))
 }
@@ -692,8 +685,6 @@ fn mk_imm_ptr(cx: ctxt, ty: t) -> t {
 fn mk_nil_ptr(cx: ctxt) -> t {
     mk_ptr(cx, {ty: mk_nil(cx), mutbl: ast::m_imm})
 }
-
-fn mk_vec(cx: ctxt, tm: mt) -> t { mk_evec(cx, tm, vstore_uniq) }
 
 fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
     mk_t(cx, ty_evec(tm, t))
@@ -779,11 +770,11 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     if !f(ty) { ret; }
     alt get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_estr(_) | ty_type | ty_opaque_box | ty_self |
+      ty_estr(_) | ty_type | ty_opaque_box | ty_self |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_var_integral(_) |
       ty_param(_, _) {
       }
-      ty_box(tm) | ty_vec(tm) | ty_evec(tm, _) | ty_unboxed_vec(tm) |
+      ty_box(tm) | ty_evec(tm, _) | ty_unboxed_vec(tm) |
       ty_ptr(tm) | ty_rptr(_, tm) {
         maybe_walk_ty(tm.ty, f);
       }
@@ -824,9 +815,6 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       }
       ty_ptr(tm) {
         ty_ptr({ty: fldop(tm.ty), mutbl: tm.mutbl})
-      }
-      ty_vec(tm) {
-        ty_vec({ty: fldop(tm.ty), mutbl: tm.mutbl})
       }
       ty_unboxed_vec(tm) {
         ty_unboxed_vec({ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -870,7 +858,7 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
         ty_class(did, fold_substs(substs, fldop))
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
+      ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box | ty_var(_) | ty_var_integral(_) | ty_param(*) | ty_self {
         sty
       }
@@ -1101,22 +1089,22 @@ fn type_is_copyable(cx: ctxt, ty: t) -> bool {
 
 fn type_is_sequence(ty: t) -> bool {
     alt get(ty).struct {
-      ty_str | ty_estr(_) | ty_vec(_) | ty_evec(_, _) { true }
+      ty_estr(_) | ty_evec(_, _) { true }
       _ { false }
     }
 }
 
 fn type_is_str(ty: t) -> bool {
     alt get(ty).struct {
-      ty_str | ty_estr(_) { true }
+      ty_estr(_) { true }
       _ { false }
     }
 }
 
 fn sequence_element_type(cx: ctxt, ty: t) -> t {
     alt get(ty).struct {
-      ty_str | ty_estr(_) { ret mk_mach_uint(cx, ast::ty_u8); }
-      ty_vec(mt) | ty_evec(mt, _) | ty_unboxed_vec(mt) { ret mt.ty; }
+      ty_estr(_) { ret mk_mach_uint(cx, ast::ty_u8); }
+      ty_evec(mt, _) | ty_unboxed_vec(mt) { ret mt.ty; }
       _ { cx.sess.bug(
           ~"sequence_element_type called on non-sequence value");
         }
@@ -1176,8 +1164,8 @@ pure fn type_is_unsafe_ptr(ty: t) -> bool {
 
 pure fn type_is_vec(ty: t) -> bool {
     ret alt get(ty).struct {
-          ty_vec(_) | ty_evec(_, _) | ty_unboxed_vec(_) { true }
-          ty_str | ty_estr(_) { true }
+          ty_evec(_, _) | ty_unboxed_vec(_) { true }
+          ty_estr(_) { true }
           _ { false }
         };
 }
@@ -1185,8 +1173,8 @@ pure fn type_is_vec(ty: t) -> bool {
 pure fn type_is_unique(ty: t) -> bool {
     alt get(ty).struct {
       ty_uniq(_) { ret true; }
-      ty_vec(_) | ty_evec(_, vstore_uniq) { true }
-      ty_str | ty_estr(vstore_uniq) { true }
+      ty_evec(_, vstore_uniq) { true }
+      ty_estr(vstore_uniq) { true }
       _ { ret false; }
     }
 }
@@ -1315,7 +1303,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             }
             !needs_unwind_cleanup
           }
-          ty_uniq(_) | ty_str | ty_vec(_) |
+          ty_uniq(_) |
           ty_estr(vstore_uniq) |
           ty_estr(vstore_box) |
           ty_evec(_, vstore_uniq) |
@@ -1493,7 +1481,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) { kind_implicitly_sendable() | kind_const() }
       // Implicit copyability of strs is configurable
-      ty_str | ty_estr(vstore_uniq) {
+      ty_estr(vstore_uniq) {
         if cx.vecs_implicitly_copyable {
             kind_implicitly_sendable() | kind_const()
         } else { kind_sendable() | kind_const() }
@@ -1523,7 +1511,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         remove_implicit(mutable_type_kind(cx, tm))
       }
       // Implicit copyability of vecs is configurable
-      ty_vec(tm) | ty_evec(tm, vstore_uniq) {
+      ty_evec(tm, vstore_uniq) {
           if cx.vecs_implicitly_copyable {
               mutable_type_kind(cx, tm)
           } else { remove_implicit(mutable_type_kind(cx, tm)) }
@@ -1650,7 +1638,6 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_int(_) |
           ty_uint(_) |
           ty_float(_) |
-          ty_str |
           ty_estr(_) |
           ty_fn(_) |
           ty_var(_) |
@@ -1661,8 +1648,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_opaque_box |
           ty_opaque_closure_ptr(_) |
           ty_evec(_, _) |
-          ty_unboxed_vec(_) |
-          ty_vec(_) {
+          ty_unboxed_vec(_) {
             false
           }
 
@@ -1778,36 +1764,11 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
     }
 }
 
-// Returns true for noncopyable types and types where a copy of a value can be
-// distinguished from the value itself. I.e. types with mut content that's
-// not shared through a pointer.
-fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
-    ret !type_structurally_contains(cx, ty, |sty| {
-        alt sty {
-          ty_param(_, _) { true }
-
-          ty_evec(_, _) | ty_estr(_) {
-            cx.sess.unimpl(~"estr/evec in type_allows_implicit_copy");
-          }
-
-          ty_vec(mt) {
-            mt.mutbl != ast::m_imm
-          }
-          ty_rec(fields) {
-            vec::any(fields, |f| f.mt.mutbl != ast::m_imm)
-          }
-          _ { false }
-        }
-    }) && type_kind(cx, ty) != kind_noncopyable();
-}
-
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
     ret type_structurally_contains(cx, ty, |sty| {
         alt sty {
           ty_uniq(_) |
-          ty_vec(_) |
           ty_evec(_, vstore_uniq) |
-          ty_str |
           ty_estr(vstore_uniq) { true }
           _ { false }
         }
@@ -1848,7 +1809,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) { result = true; }
       // Boxed types
-      ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
+      ty_box(_) | ty_uniq(_) | ty_fn(_) |
       ty_estr(vstore_uniq) | ty_estr(vstore_box) |
       ty_evec(_, vstore_uniq) | ty_evec(_, vstore_box) |
       ty_trait(_, _) | ty_rptr(_,_) | ty_opaque_box { result = false; }
@@ -1974,8 +1935,8 @@ fn index(cx: ctxt, t: t) -> option<mt> {
 
 fn index_sty(cx: ctxt, sty: sty) -> option<mt> {
     alt sty {
-      ty_vec(mt) | ty_evec(mt, _) { some(mt) }
-      ty_str | ty_estr(_) { some({ty: mk_u8(cx), mutbl: ast::m_imm}) }
+      ty_evec(mt, _) { some(mt) }
+      ty_estr(_) { some({ty: mk_u8(cx), mutbl: ast::m_imm}) }
       _ { none }
     }
 }
@@ -2050,14 +2011,12 @@ fn hash_type_structure(st: sty) -> uint {
         alt t { ast::ty_f { 13u } ast::ty_f32 { 14u } ast::ty_f64 { 15u } }
       }
       ty_estr(_) { 16u }
-      ty_str { 17u }
       ty_enum(did, substs) {
         let mut h = hash_def(18u, did);
         hash_substs(h, substs)
       }
       ty_box(mt) { hash_subty(19u, mt.ty) }
       ty_evec(mt, _) { hash_subty(20u, mt.ty) }
-      ty_vec(mt) { hash_subty(21u, mt.ty) }
       ty_unboxed_vec(mt) { hash_subty(22u, mt.ty) }
       ty_tup(ts) { hash_subtys(25u, ts) }
       ty_rec(fields) {
@@ -2405,7 +2364,7 @@ fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
 fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     alt get(t).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) |
-      ty_uint(_) | ty_float(_) | ty_estr(_) | ty_str |
+      ty_uint(_) | ty_float(_) | ty_estr(_) |
       ty_type | ty_opaque_box | ty_opaque_closure_ptr(_) {
         ty_to_str(cx, t)
       }
@@ -2413,7 +2372,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_enum(id, _) { #fmt["enum %s", item_path_str(cx, id)] }
       ty_box(_) { ~"@-ptr" }
       ty_uniq(_) { ~"~-ptr" }
-      ty_evec(_, _) | ty_vec(_) { ~"vector" }
+      ty_evec(_, _) { ~"vector" }
       ty_unboxed_vec(_) { ~"unboxed vector" }
       ty_ptr(_) { ~"*-ptr" }
       ty_rptr(_, _) { ~"&-ptr" }
@@ -2917,10 +2876,8 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     const tycat_bool: int = 1;
     const tycat_int: int = 2;
     const tycat_float: int = 3;
-    const tycat_str: int = 4;
-    const tycat_vec: int = 5;
-    const tycat_struct: int = 6;
-    const tycat_bot: int = 7;
+    const tycat_struct: int = 4;
+    const tycat_bot: int = 5;
 
     const opcat_add: int = 0;
     const opcat_sub: int = 1;
@@ -2959,8 +2916,6 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_bool { tycat_bool }
           ty_int(_) | ty_uint(_) | ty_var_integral(_) { tycat_int }
           ty_float(_) { tycat_float }
-          ty_str { tycat_str }
-          ty_vec(_) { tycat_vec }
           ty_rec(_) | ty_tup(_) | ty_enum(_, _) { tycat_struct }
           ty_bot { tycat_bot }
           _ { tycat_other }
@@ -2978,8 +2933,6 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     /*bool*/    ~[f, f, f, f, t, t, t, t],
     /*int*/     ~[t, t, t, t, t, t, t, f],
     /*float*/   ~[t, t, t, f, t, t, f, f],
-    /*str*/     ~[f, f, f, f, t, t, f, f],
-    /*vec*/     ~[f, f, f, f, t, t, f, f],
     /*bot*/     ~[f, f, f, f, t, t, f, f],
     /*struct*/  ~[t, t, t, t, t, t, t, t]];
 

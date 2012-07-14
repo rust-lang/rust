@@ -516,11 +516,11 @@ impl to_str_methods for borrowck_ctxt {
           cat_comp(_, comp_variant(_)) { ~"enum content" }
           cat_comp(_, comp_index(t, _)) {
             alt ty::get(t).struct {
-              ty::ty_vec(*) | ty::ty_evec(*) {
+              ty::ty_evec(*) {
                 mut_str + ~" vec content"
               }
 
-              ty::ty_str | ty::ty_estr(*) {
+              ty::ty_estr(*) {
                 mut_str + ~" str content"
               }
 

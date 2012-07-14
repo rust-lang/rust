@@ -214,7 +214,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
           ty_f64 { w.write_str(&"MF"); }
         }
       }
-      ty::ty_str { w.write_char('S'); }
       ty::ty_enum(def, substs) {
         w.write_str(&"t[");
         w.write_str(cx.ds(def));
@@ -251,7 +250,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char('v');
         enc_vstore(w, cx, v);
       }
-      ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
       ty::ty_unboxed_vec(mt) { w.write_char('U'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
         w.write_str(&"R[");

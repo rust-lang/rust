@@ -5,7 +5,7 @@ type parser = {
 };
 
 impl parser for parser {
-    fn parse() -> [mut int] {
+    fn parse() -> ~[mut int] {
         dvec::unwrap(self.tokens) //~ ERROR illegal move from self
     }
 }

@@ -7,7 +7,7 @@ enum t = @t; //~ ERROR this type cannot be instantiated
 // the compiler to attempt autoderef and then
 // try to resolve the method.
 impl methods for t {
-    fn to_str() -> str { "t" }
+    fn to_str() -> ~str { "t" }
 }
 
 fn new_t(x: t) {

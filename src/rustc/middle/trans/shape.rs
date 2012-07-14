@@ -228,8 +228,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
       ty::ty_int(ast::ty_i64) { ~[shape_i64] }
       ty::ty_float(ast::ty_f32) { ~[shape_f32] }
       ty::ty_float(ast::ty_f64) { ~[shape_f64] }
-      ty::ty_estr(ty::vstore_uniq) |
-      ty::ty_str {
+      ty::ty_estr(ty::vstore_uniq) {
         shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
       ty::ty_enum(did, substs) {
@@ -268,8 +267,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         add_substr(s, shape_of(ccx, mt.ty));
         s
       }
-      ty::ty_evec(mt, ty::vstore_uniq) |
-      ty::ty_vec(mt) {
+      ty::ty_evec(mt, ty::vstore_uniq) {
         shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
 
@@ -716,7 +714,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
     }
     fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         alt ty::get(typ).struct {
-          ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) | ty::ty_vec(_) |
+          ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) |
           ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
           ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |
           ty::ty_ptr(_) | ty::ty_rptr(_,_) { nilptr(tcx) }

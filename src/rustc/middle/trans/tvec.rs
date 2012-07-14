@@ -20,7 +20,6 @@ fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     alt ty::get(t).struct {
-      ty::ty_vec(_) | ty::ty_str |
       ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) {
         ty::mk_imm_uniq(tcx, unboxed_vec_ty)
       }

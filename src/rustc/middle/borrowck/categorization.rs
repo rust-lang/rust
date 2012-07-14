@@ -44,7 +44,7 @@ export opt_deref_kind;
 // pointer adjustment).
 fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
     alt ty::get(t).struct {
-      ty::ty_uniq(*) | ty::ty_vec(*) | ty::ty_str |
+      ty::ty_uniq(*) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) {
         some(deref_ptr(uniq_ptr))
@@ -100,8 +100,7 @@ impl public_methods for borrowck_ctxt {
         // a borrowed expression must be either an @, ~, or a vec/@, vec/~
         let expr_ty = ty::expr_ty(self.tcx, expr);
         alt ty::get(expr_ty).struct {
-          ty::ty_vec(*) | ty::ty_evec(*) |
-          ty::ty_str | ty::ty_estr(*) {
+          ty::ty_evec(*) | ty::ty_estr(*) {
             self.cat_index(expr, expr)
           }
 

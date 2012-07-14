@@ -6,9 +6,9 @@ import middle::ty::{mt, re_bound, re_free, re_scope, re_var, region, t};
 import middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_constr, ty_enum};
 import middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 import middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
-import middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_str, ty_tup};
+import middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
 import middle::ty::{ty_type, ty_uniq, ty_uint, ty_var, ty_var_integral};
-import middle::ty::{ty_vec, ty_unboxed_vec, vid};
+import middle::ty::{ty_unboxed_vec, vid};
 import metadata::encoder;
 import syntax::codemap;
 import syntax::print::pprust;
@@ -186,7 +186,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uint(t) { ast_util::uint_ty_to_str(t) }
       ty_float(ast::ty_f) { ~"float" }
       ty_float(t) { ast_util::float_ty_to_str(t) }
-      ty_str { ~"str" }
       ty_box(tm) { ~"@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { ~"~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { ~"*" + mt_to_str(cx, tm) }
@@ -198,7 +197,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             rs + ~"/" + mt_to_str(cx, tm)
         }
       }
-      ty_vec(tm) { ~"[" + mt_to_str(cx, tm) + ~"]" }
       ty_unboxed_vec(tm) { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
       ty_type { ~"type" }
       ty_rec(elems) {

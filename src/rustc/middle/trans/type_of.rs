@@ -89,8 +89,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_int(t) { T_int_ty(cx, t) }
           ty::ty_uint(t) { T_uint_ty(cx, t) }
           ty::ty_float(t) { T_float_ty(cx, t) }
-          ty::ty_estr(ty::vstore_uniq) |
-          ty::ty_str {
+          ty::ty_estr(ty::vstore_uniq) {
             T_unique_ptr(T_unique(cx, T_vec(cx, T_i8())))
           }
           ty::ty_enum(did, _) { type_of_enum(cx, did, t) }
@@ -103,8 +102,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_box(mt) { T_box_ptr(T_box(cx, type_of(cx, mt.ty))) }
           ty::ty_opaque_box { T_box_ptr(T_box(cx, T_i8())) }
           ty::ty_uniq(mt) { T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))) }
-          ty::ty_evec(mt, ty::vstore_uniq) |
-          ty::ty_vec(mt) {
+          ty::ty_evec(mt, ty::vstore_uniq) {
             T_unique_ptr(T_unique(cx, T_vec(cx, type_of(cx, mt.ty))))
           }
           ty::ty_unboxed_vec(mt) {

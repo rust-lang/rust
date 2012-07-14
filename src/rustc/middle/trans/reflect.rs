@@ -132,9 +132,7 @@ impl methods for reflector {
           ty::ty_float(ast::ty_f) { self.leaf(~"float") }
           ty::ty_float(ast::ty_f32) { self.leaf(~"f32") }
           ty::ty_float(ast::ty_f64) { self.leaf(~"f64") }
-          ty::ty_str { self.leaf(~"str") }
 
-          ty::ty_vec(mt) { self.visit(~"vec", self.c_mt(mt)) }
           ty::ty_unboxed_vec(mt) { self.visit(~"vec", self.c_mt(mt)) }
           ty::ty_estr(vst) {
             do self.vstore_name_and_extra(t, vst) |name, extra| {

@@ -1,4 +1,4 @@
-fn foo(v: [int]) : vec::is_empty(v) { #debug("%d", v[0]); }
+fn foo(v: ~[int]) : vec::is_empty(v) { #debug("%d", v[0]); }
 
 fn main() {
     let f = fn@() {

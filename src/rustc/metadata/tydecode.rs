@@ -277,7 +277,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         }
       }
       'c' { ret ty::mk_char(st.tcx); }
-      'S' { ret ty::mk_str(st.tcx); }
       't' {
         assert (next(st) == '[');
         let def = parse_def(st, conv);
@@ -307,7 +306,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let mt = parse_mt(st, conv);
         ret ty::mk_rptr(st.tcx, r, mt);
       }
-      'I' { ret ty::mk_vec(st.tcx, parse_mt(st, conv)); }
       'U' { ret ty::mk_unboxed_vec(st.tcx, parse_mt(st, conv)); }
       'V' {
         let mt = parse_mt(st, conv);

@@ -1417,23 +1417,12 @@ impl assignment for infer_ctxt {
                 let nr_b = ty::mk_estr(self.tcx, vs_a);
                 self.crosspollinate(anmnt, a, nr_b, m_imm, r_b)
               }
-              (ty::ty_str,
-               ty::ty_estr(ty::vstore_slice(r_b))) {
-                let nr_b = ty::mk_str(self.tcx);
-                self.crosspollinate(anmnt, a, nr_b, m_imm, r_b)
-              }
 
               (ty::ty_evec(mt_a, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_evec(self.tcx, {ty: mt_b.ty,
                                                   mutbl: m_const}, vs_a);
-                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
-              }
-              (ty::ty_vec(mt_a),
-               ty::ty_evec(mt_b, ty::vstore_slice(r_b))) {
-                let nr_b = ty::mk_vec(self.tcx, {ty: mt_b.ty,
-                                                 mutbl: m_const});
                 self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
               _ {
@@ -1760,8 +1749,7 @@ fn super_tys<C:combine>(
       }
 
       (ty::ty_nil, _) |
-      (ty::ty_bool, _) |
-      (ty::ty_str, _) {
+      (ty::ty_bool, _) {
         let cfg = tcx.sess.targ_cfg;
         if ty::mach_sty(cfg, a) == ty::mach_sty(cfg, b) {
             ok(a)
@@ -1804,12 +1792,6 @@ fn super_tys<C:combine>(
       (ty::ty_uniq(a_mt), ty::ty_uniq(b_mt)) {
         do self.mts(a_mt, b_mt).chain |mt| {
             ok(ty::mk_uniq(tcx, mt))
-        }
-      }
-
-      (ty::ty_vec(a_mt), ty::ty_vec(b_mt)) {
-        do self.mts(a_mt, b_mt).chain |mt| {
-            ok(ty::mk_vec(tcx, mt))
         }
       }
 

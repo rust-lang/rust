@@ -626,7 +626,6 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         Store(bcx, val, v);
         bcx
       }
-      ty::ty_vec(_) | ty::ty_str |
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) {
         let {bcx, val} = tvec::duplicate_uniq(bcx, Load(bcx, v), t);
         Store(bcx, val, v);
@@ -704,8 +703,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         uniq::make_free_glue(bcx, v, t)
       }
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
-      ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) |
-      ty::ty_vec(_) | ty::ty_str {
+      ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) {
         make_free_glue(bcx, v,
                        tvec::expand_boxed_vec_ty(bcx.tcx(), t));
         ret;
@@ -769,7 +767,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
       }
-      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str |
+      ty::ty_uniq(_) |
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) {
         free_ty(bcx, Load(bcx, v0), t)
       }
@@ -1235,7 +1233,7 @@ fn drop_ty(cx: block, v: ValueRef, t: ty::t) -> block {
 fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
     let _icx = bcx.insn_ctxt(~"drop_ty_immediate");
     alt ty::get(t).struct {
-      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str |
+      ty::ty_uniq(_) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) {
         free_ty(bcx, v, t)
@@ -1261,7 +1259,6 @@ fn take_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> result {
       ty::ty_uniq(_) {
         uniq::duplicate(bcx, v, t)
       }
-      ty::ty_str | ty::ty_vec(_) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) {
         tvec::duplicate_uniq(bcx, v, t)
@@ -2972,9 +2969,7 @@ fn adapt_borrowed_value(lv: lval_result,
         ret {lv: lval_temp(bcx, body_ptr), ty: rptr_ty};
       }
 
-      ty::ty_str | ty::ty_vec(_) |
-      ty::ty_estr(_) |
-      ty::ty_evec(_, _) {
+      ty::ty_estr(_) | ty::ty_evec(_, _) {
         let ccx = bcx.ccx();
         let val = alt lv.kind {
           temporary { lv.val }
@@ -4997,10 +4992,11 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
 
     fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef,
                    takes_argv: bool) -> ValueRef {
-        let unit_ty = ty::mk_str(ccx.tcx);
+        let unit_ty = ty::mk_estr(ccx.tcx, ty::vstore_uniq);
         let vecarg_ty: ty::arg =
             {mode: ast::expl(ast::by_val),
-             ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mutbl: ast::m_imm})};
+             ty: ty::mk_evec(ccx.tcx, {ty: unit_ty, mutbl: ast::m_imm},
+                             ty::vstore_uniq)};
         let nt = ty::mk_nil(ccx.tcx);
         let llfty = type_of_fn(ccx, ~[vecarg_ty], nt);
         let llfdecl = decl_fn(ccx.llmod, ~"_rust_main",

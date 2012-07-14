@@ -1242,7 +1242,7 @@ mod tests {
           node::empty { ret ~"" }
           node::content(x) {
             let str = @mut ~"";
-            fn aux(str: @mut str, node: @node::node) unsafe {
+            fn aux(str: @mut ~str, node: @node::node) unsafe {
                 alt(*node) {
                   node::leaf(x) {
                     *str += str::slice(

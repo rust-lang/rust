@@ -2,6 +2,6 @@
 fn main() {
     let pth = break;
 
-    let rs: {t: str} = {t: pth};
+    let rs: {t: ~str} = {t: pth};
 
 }

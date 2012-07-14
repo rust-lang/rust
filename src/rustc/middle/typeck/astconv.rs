@@ -235,7 +235,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
                         |tmt| ty::mk_uniq(tcx, tmt))
       }
       ast::ty_vec(mt) {
-        ty::mk_vec(tcx, ast_mt_to_mt(self, rscope, mt))
+        tcx.sess.span_err(ast_ty.span,
+                          ~"bare `[]` is not a type");
+        // return /something/ so they can at least get more errors
+        ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt),
+                    ty::vstore_uniq)
       }
       ast::ty_ptr(mt) {
         ty::mk_ptr(tcx, ast_mt_to_mt(self, rscope, mt))
@@ -288,19 +292,10 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
                 ty::mk_mach_float(tcx, ft)
               }
               ast::ty_str {
-                check_path_args(tcx, path, NO_TPS);
-                // This is a bit of a hack, but basically &str needs to be
-                // converted into a vstore:
-                alt path.rp {
-                  none {
-                    ty::mk_str(tcx)
-                  }
-                  some(ast_r) {
-                    let r = ast_region_to_region(self, rscope,
-                                                 ast_ty.span, ast_r);
-                    ty::mk_estr(tcx, ty::vstore_slice(r))
-                  }
-                }
+                tcx.sess.span_err(ast_ty.span,
+                                  ~"bare `str` is not a type");
+                // return /something/ so they can at least get more errors
+                ty::mk_estr(tcx, ty::vstore_uniq)
               }
             }
           }
@@ -321,43 +316,6 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           }
         }
       }
-      // This is awful and repetitive but will go away
-      ast::ty_vstore(a_t, ast::vstore_slice(a_r)) {
-        let r = ast_region_to_region(self, rscope, ast_ty.span, a_r);
-        mk_maybe_vstore(self, in_anon_rscope(rscope, r),
-                        {ty: a_t, mutbl: ast::m_imm},
-                        ty::vstore_slice(r),
-                        |ty| {
-                            tcx.sess.span_err(
-                                a_t.span,
-                                #fmt["bound not allowed on a %s",
-                                     ty::ty_sort_str(tcx, ty.ty)]);
-                            ty.ty
-                        })
-
-      }
-      ast::ty_vstore(a_t, ast::vstore_uniq) {
-        mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
-                        ty::vstore_uniq,
-                        |ty| {
-                            tcx.sess.span_err(
-                                a_t.span,
-                                #fmt["bound not allowed on a %s",
-                                     ty::ty_sort_str(tcx, ty.ty)]);
-                            ty.ty
-                        })
-      }
-      ast::ty_vstore(a_t, ast::vstore_box) {
-        mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
-                        ty::vstore_box,
-                        |ty| {
-                            tcx.sess.span_err(
-                                a_t.span,
-                                #fmt["bound not allowed on a %s",
-                                     ty::ty_sort_str(tcx, ty.ty)]);
-                            ty.ty
-                        })
-      }
       ast::ty_vstore(a_t, ast::vstore_fixed(some(u))) {
         mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
                         ty::vstore_fixed(u),
@@ -374,11 +332,9 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             ast_ty.span,
             ~"implied fixed length for bound");
       }
-/*
       ast::ty_vstore(_, _) {
-        tcx.sess.span_bug(ast_ty.span, "some BS");
+        tcx.sess.span_bug(ast_ty.span, ~"vstore in type??");
       }
-*/
       ast::ty_constr(t, cs) {
         let mut out_cs = ~[];
         for cs.each |constr| {
