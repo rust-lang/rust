@@ -63,31 +63,6 @@ fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
     }
 }
 
-fn parse_constrs_gen<T: copy>(st: @pstate, conv: conv_did,
-                                       pser: fn(@pstate)
-  -> ast::constr_arg_general_<T>) -> ~[@ty::constr_general<T>] {
-    let mut rslt: ~[@ty::constr_general<T>] = ~[];
-    alt peek(st) {
-      ':' {
-        loop {
-          next(st);
-          vec::push(rslt, parse_constr(st, conv, pser));
-          if peek(st) != ';' { break; }
-        }
-      }
-      _ {}
-    }
-    rslt
-}
-
-fn parse_constrs(st: @pstate, conv: conv_did) -> ~[@ty::constr] {
-    parse_constrs_gen(st, conv, parse_constr_arg)
-}
-
-fn parse_ty_constrs(st: @pstate, conv: conv_did) -> ~[@ty::type_constr] {
-    parse_constrs_gen(st, conv, parse_ty_constr_arg)
-}
-
 fn parse_path(st: @pstate) -> @ast::path {
     let mut idents: ~[ast::ident] = ~[];
     fn is_last(c: char) -> bool { ret c == '(' || c == ':'; }
@@ -104,59 +79,6 @@ fn parse_path(st: @pstate) -> @ast::path {
           }
         }
     };
-}
-
-fn parse_constr_arg(st: @pstate) -> ast::fn_constr_arg {
-    alt peek(st) {
-      '*' { st.pos += 1u; ret ast::carg_base; }
-      c {
-
-        /* how will we disambiguate between
-           an arg index and a lit argument? */
-        if c >= '0' && c <= '9' {
-            next(st);
-            // FIXME #877
-            ret ast::carg_ident((c as uint) - 48u);
-        } else {
-            #error("Lit args are unimplemented");
-            fail; // FIXME #877
-        }
-        /*
-          else {
-          auto lit = parse_lit(st, conv, ',');
-          vec::push(args, respan(st.span, ast::carg_lit(lit)));
-          }
-        */
-      }
-    }
-}
-
-fn parse_ty_constr_arg(st: @pstate) -> ast::constr_arg_general_<@path> {
-    alt peek(st) {
-      '*' { st.pos += 1u; ret ast::carg_base; }
-      c { ret ast::carg_ident(parse_path(st)); }
-    }
-}
-
-fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
-                         pser: fn(@pstate) -> ast::constr_arg_general_<T>)
-    -> @ty::constr_general<T> {
-    // FIXME: use real spans and not a bogus one (#2407)
-    let sp = ast_util::dummy_sp();
-    let mut args: ~[@sp_constr_arg<T>] = ~[];
-    let pth = parse_path(st);
-    let mut ignore: char = next(st);
-    assert (ignore == '(');
-    let def = parse_def(st, conv);
-    let mut an_arg: constr_arg_general_<T>;
-    loop {
-        an_arg = pser(st);
-        vec::push(args, @respan(sp, an_arg));
-        ignore = next(st);
-        if ignore != ';' { break; }
-    }
-    assert (ignore == ')');
-    ret @respan(sp, {path: pth, args: args, id: def});
 }
 
 fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
@@ -363,13 +285,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
           }
         }
       }
-      'A' {
-        assert (next(st) == '[');
-        let tt = parse_ty(st, conv);
-        let tcs = parse_ty_constrs(st, conv);
-        assert (next(st) == ']');
-        ret ty::mk_constr(st.tcx, tt, tcs);
-      }
       '"' {
         let def = parse_def(st, conv);
         let inner = parse_ty(st, conv);
@@ -457,10 +372,9 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
         vec::push(inputs, {mode: ast::expl(mode), ty: parse_ty(st, conv)});
     }
     st.pos += 1u; // eat the ']'
-    let cs = parse_constrs(st, conv);
     let (ret_style, ret_ty) = parse_ret_ty(st, conv);
     ret {purity: purity, proto: proto, inputs: inputs, output: ret_ty,
-         ret_style: ret_style, constraints: cs};
+         ret_style: ret_style};
 }
 
 

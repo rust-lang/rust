@@ -44,8 +44,6 @@ fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
 }
 
 type visitor<E> =
-    // takes the components so that one function can be
-    // generic over constr and ty_constr
     @{visit_mod: fn@(_mod, span, node_id, E, vt<E>),
       visit_view_item: fn@(@view_item, E, vt<E>),
       visit_foreign_item: fn@(@foreign_item, E, vt<E>),
@@ -59,7 +57,6 @@ type visitor<E> =
       visit_expr: fn@(@expr, E, vt<E>),
       visit_ty: fn@(@ty, E, vt<E>),
       visit_ty_params: fn@(~[ty_param], E, vt<E>),
-      visit_constr: fn@(@path, span, node_id, E, vt<E>),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
       visit_ty_method: fn@(ty_method, E, vt<E>),
       visit_trait_method: fn@(trait_method, E, vt<E>),
@@ -79,7 +76,6 @@ fn default_visitor<E>() -> visitor<E> {
           visit_expr: |a,b,c|visit_expr::<E>(a, b, c),
           visit_ty: |a,b,c|skip_ty::<E>(a, b, c),
           visit_ty_params: |a,b,c|visit_ty_params::<E>(a, b, c),
-          visit_constr: |a,b,c,d,e|visit_constr::<E>(a, b, c, d, e),
           visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
           visit_ty_method: |a,b,c|visit_ty_method::<E>(a, b, c),
           visit_trait_method: |a,b,c|visit_trait_method::<E>(a, b, c),
@@ -194,20 +190,11 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_tup(ts) { for ts.each |tt| { v.visit_ty(tt, e, v); } }
       ty_fn(_, decl) {
         for decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
-        for decl.constraints.each |c| {
-            v.visit_constr(c.node.path, c.span, c.node.id, e, v);
-        }
         v.visit_ty(decl.output, e, v);
       }
       ty_path(p, _) { visit_path(p, e, v); }
       ty_fixed_length(t, _) {
         v.visit_ty(t, e, v);
-      }
-      ty_constr(t, cs) {
-        v.visit_ty(t, e, v);
-        for cs.each |tc| {
-            v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
-        }
       }
       ty_nil |
       ty_bot |
@@ -215,11 +202,6 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_infer {
       }
     }
-}
-
-fn visit_constr<E>(_operator: @path, _sp: span, _id: node_id, _e: E,
-                   _v: vt<E>) {
-    // default
 }
 
 fn visit_path<E>(p: @path, e: E, v: vt<E>) {
@@ -272,9 +254,6 @@ fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
 
 fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
     for fd.inputs.each |a| { v.visit_ty(a.ty, e, v); }
-    for fd.constraints.each |c| {
-        v.visit_constr(c.node.path, c.span, c.node.id, e, v);
-    }
     v.visit_ty(fd.output, e, v);
 }
 
@@ -394,17 +373,10 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_binary(_, a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_addr_of(_, x) | expr_unary(_, x) |
       expr_loop_body(x) | expr_do_body(x) |
-      expr_check(_, x) | expr_assert(x) {
-        v.visit_expr(x, e, v);
-      }
+      expr_assert(x) { v.visit_expr(x, e, v); }
       expr_lit(_) { }
       expr_cast(x, t) { v.visit_expr(x, e, v); v.visit_ty(t, e, v); }
       expr_if(x, b, eo) {
-        v.visit_expr(x, e, v);
-        v.visit_block(b, e, v);
-        visit_expr_opt(eo, e, v);
-      }
-      expr_if_check(x, b, eo) {
         v.visit_expr(x, e, v);
         v.visit_block(b, e, v);
         visit_expr_opt(eo, e, v);
@@ -460,8 +432,6 @@ fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
 // calls the given functions on the nodes.
 
 type simple_visitor =
-    // takes the components so that one function can be
-    // generic over constr and ty_constr
     @{visit_mod: fn@(_mod, span, node_id),
       visit_view_item: fn@(@view_item),
       visit_foreign_item: fn@(@foreign_item),
@@ -475,7 +445,6 @@ type simple_visitor =
       visit_expr: fn@(@expr),
       visit_ty: fn@(@ty),
       visit_ty_params: fn@(~[ty_param]),
-      visit_constr: fn@(@path, span, node_id),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
       visit_ty_method: fn@(ty_method),
       visit_trait_method: fn@(trait_method),
@@ -497,7 +466,6 @@ fn default_simple_visitor() -> simple_visitor {
           visit_expr: fn@(_e: @expr) { },
           visit_ty: simple_ignore_ty,
           visit_ty_params: fn@(_ps: ~[ty_param]) {},
-          visit_constr: fn@(_p: @path, _sp: span, _id: node_id) { },
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
                         _id: node_id) { },
           visit_ty_method: fn@(_m: ty_method) { },
@@ -572,11 +540,6 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(ps);
         visit_ty_params(ps, e, v);
     }
-    fn v_constr(f: fn@(@path, span, node_id), pt: @path, sp: span,
-                id: node_id, &&e: (), v: vt<()>) {
-        f(pt, sp, id);
-        visit_constr(pt, sp, id, e, v);
-    }
     fn v_fn(f: fn@(fn_kind, fn_decl, blk, span, node_id),
             fk: fn_kind, decl: fn_decl, body: blk, sp: span,
             id: node_id, &&e: (), v: vt<()>) {
@@ -610,8 +573,6 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                 visit_ty: visit_ty,
                 visit_ty_params: |a,b,c|
                     v_ty_params(v.visit_ty_params, a, b, c),
-                visit_constr: |a,b,c,d,e|
-                    v_constr(v.visit_constr, a, b, c, d, e),
                 visit_fn: |a,b,c,d,e,f,g|
                     v_fn(v.visit_fn, a, b, c, d, e, f, g),
                 visit_ty_method: |a,b,c|

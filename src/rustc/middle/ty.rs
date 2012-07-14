@@ -15,7 +15,7 @@ import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
                       ignore};
 import syntax::ast::*;
 import syntax::print::pprust::*;
-import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
+import util::ppaux::{ty_to_str, tys_to_str};
 
 export tv_vid, tvi_vid, region_vid, vid;
 export br_hashmap;
@@ -24,12 +24,8 @@ export node_id_to_type;
 export node_id_to_type_params;
 export arg;
 export args_eq;
-export ast_constr_to_constr;
 export block_ty;
 export class_items_as_fields, class_items_as_mutable_fields;
-export constr;
-export constr_general;
-export constr_table;
 export ctxt;
 export deref, deref_sty;
 export index, index_sty;
@@ -76,10 +72,8 @@ export ty_param_bounds_and_ty;
 export ty_bool, mk_bool, type_is_bool;
 export ty_bot, mk_bot, type_is_bot;
 export ty_box, mk_box, mk_imm_box, type_is_box, type_is_boxed;
-export ty_constr, mk_constr;
 export ty_opaque_closure_ptr, mk_opaque_closure_ptr;
 export ty_opaque_box, mk_opaque_box;
-export ty_constr_arg;
 export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, fn_ty, mk_fn;
 export ty_fn_proto, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
@@ -113,7 +107,6 @@ export tbox_has_flag;
 export ty_var_id;
 export ty_to_def_id;
 export ty_fn_args;
-export type_constr;
 export kind, kind_implicitly_copyable, kind_sendable, kind_copyable;
 export kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
@@ -168,7 +161,7 @@ export terr_no_integral_type, terr_ty_param_size, terr_self_substs;
 export terr_in_field, terr_record_fields, terr_vstores_differ, terr_arg_count;
 export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
 export terr_regions_differ, terr_mutability, terr_purity_mismatch;
-export terr_constr_mismatch, terr_constr_len, terr_proto_mismatch;
+export terr_proto_mismatch;
 export terr_ret_style_mismatch;
 
 // Data types
@@ -186,8 +179,6 @@ type method = {ident: ast::ident,
                fty: fn_ty,
                purity: ast::purity,
                vis: ast::visibility};
-
-type constr_table = hashmap<ast::node_id, ~[constr]>;
 
 type mt = {ty: t, mutbl: ast::mutability};
 
@@ -316,8 +307,7 @@ type fn_ty = {purity: ast::purity,
               proto: ast::proto,
               inputs: ~[arg],
               output: t,
-              ret_style: ret_style,
-              constraints: ~[@constr]};
+              ret_style: ret_style};
 
 // See discussion at head of region.rs
 enum region {
@@ -379,7 +369,6 @@ enum sty {
                               // integral types only
     ty_param(uint, def_id), // type parameter
     ty_self, // special, implicit `self` type parameter
-    ty_constr(t, ~[@type_constr]),
 
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
@@ -387,12 +376,6 @@ enum sty {
     ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
     ty_unboxed_vec(mt),
 }
-
-// In the middle end, constraints have a def_id attached, referring
-// to the definition of the operator in the constraint.
-type constr_general<ARG> = spanned<constr_general_<ARG, def_id>>;
-type type_constr = constr_general<@path>;
-type constr = constr_general<uint>;
 
 enum terr_vstore_kind {
     terr_vec, terr_str
@@ -416,8 +399,6 @@ enum type_err {
     terr_record_fields(ast::ident, ast::ident),
     terr_arg_count,
     terr_mode_mismatch(mode, mode),
-    terr_constr_len(uint, uint),
-    terr_constr_mismatch(@type_constr, @type_constr),
     terr_regions_differ(region, region),
     terr_vstores_differ(terr_vstore_kind, vstore, vstore),
     terr_in_field(@type_err, ast::ident),
@@ -607,9 +588,6 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         for f.inputs.each |a| { flags |= get(a.ty).flags; }
         flags |= get(f.output).flags;
       }
-      ty_constr(tt, _) {
-        flags |= get(tt).flags;
-      }
     }
     let t = @{struct: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
     cx.interner.insert(key, t);
@@ -700,10 +678,6 @@ fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
 
 fn mk_rec(cx: ctxt, fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
 
-fn mk_constr(cx: ctxt, t: t, cs: ~[@type_constr]) -> t {
-    mk_t(cx, ty_constr(t, cs))
-}
-
 fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
 fn mk_fn(cx: ctxt, fty: fn_ty) -> t { mk_t(cx, ty_fn(fty)) }
@@ -790,7 +764,6 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
         for ft.inputs.each |a| { maybe_walk_ty(a.ty, f); }
         maybe_walk_ty(ft.output, f);
       }
-      ty_constr(sub, _) { maybe_walk_ty(sub, f); }
       ty_uniq(tm) { maybe_walk_ty(tm.ty, f); }
     }
 }
@@ -850,9 +823,6 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       }
       ty_rptr(r, tm) {
         ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
-      }
-      ty_constr(subty, cs) {
-        ty_constr(fldop(subty), cs)
       }
       ty_class(did, substs) {
         ty_class(did, fold_substs(substs, fldop))
@@ -1589,7 +1559,6 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_param(_, did) {
         param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
-      ty_constr(t, _) { type_kind(cx, t) }
       // FIXME (#2663): is self ever const?
       ty_self { kind_noncopyable() }
       ty_var(_) | ty_var_integral(_) {
@@ -1651,11 +1620,6 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_unboxed_vec(_) {
             false
           }
-
-          ty_constr(t, _) {
-            type_requires(cx, seen, r_ty, t)
-          }
-
           ty_box(mt) |
           ty_uniq(mt) |
           ty_rptr(_, mt) {
@@ -1836,7 +1800,6 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_evec(mt, vstore_fixed(_)) | ty_unboxed_vec(mt) {
         result = type_is_pod(cx, mt.ty);
       }
-      ty_constr(subt, _) { result = type_is_pod(cx, subt); }
       ty_param(_, _) { result = false; }
       ty_opaque_closure_ptr(_) { result = true; }
       ty_class(did, substs) {
@@ -1967,18 +1930,6 @@ fn hash_type_structure(st: sty) -> uint {
         for subtys.each |s| { h = (h << 2u) + type_id(s) }
         h
     }
-    fn hash_type_constr(id: uint, c: @type_constr) -> uint {
-        let mut h = id;
-        h = (h << 2u) + hash_def(h, c.node.id);
-        for c.node.args.each |a| {
-            alt a.node {
-              carg_base { h += h << 2u; }
-              carg_lit(_) { fail ~"lit args not implemented yet"; }
-              carg_ident(p) { h += h << 2u; }
-            }
-        }
-        h
-    }
     fn hash_region(r: region) -> uint {
         alt r { // no idea if this is any good
           re_bound(br) { (hash_bound_region(br)) << 2u | 0u }
@@ -2036,11 +1987,6 @@ fn hash_type_structure(st: sty) -> uint {
       ty_type { 32u }
       ty_bot { 34u }
       ty_ptr(mt) { hash_subty(35u, mt.ty) }
-      ty_constr(t, cs) {
-        let mut h = hash_subty(36u, t);
-        for cs.each |c| { h = (h << 2u) + hash_type_constr(h, c); }
-        h
-      }
       ty_uniq(mt) { hash_subty(37u, mt.ty) }
       ty_trait(did, substs) {
         let mut h = hash_def(40u, did);
@@ -2059,49 +2005,6 @@ fn hash_type_structure(st: sty) -> uint {
         hash_subty(h, mt.ty)
       }
     }
-}
-
-fn arg_eq<T>(eq: fn(T, T) -> bool,
-             a: @sp_constr_arg<T>,
-             b: @sp_constr_arg<T>)
-   -> bool {
-    alt a.node {
-      ast::carg_base {
-        alt b.node { ast::carg_base { ret true; } _ { ret false; } }
-      }
-      ast::carg_ident(s) {
-        alt b.node { ast::carg_ident(t) { ret eq(s, t); } _ { ret false; } }
-      }
-      ast::carg_lit(l) {
-        alt b.node {
-          ast::carg_lit(m) { ret const_eval::lit_eq(l, m); } _ { ret false; }
-        }
-      }
-    }
-}
-
-fn args_eq<T>(eq: fn(T, T) -> bool,
-              a: ~[@sp_constr_arg<T>],
-              b: ~[@sp_constr_arg<T>]) -> bool {
-    let mut i: uint = 0u;
-    for a.each |arg| {
-        if !arg_eq(eq, arg, b[i]) { ret false; }
-        i += 1u;
-    }
-    ret true;
-}
-
-fn constr_eq(c: @constr, d: @constr) -> bool {
-    fn eq_int(&&x: uint, &&y: uint) -> bool { ret x == y; }
-    ret path_to_str(c.node.path) == path_to_str(d.node.path) &&
-            args_eq(eq_int, c.node.args, d.node.args);
-}
-
-fn constrs_eq(cs: ~[@constr], ds: ~[@constr]) -> bool {
-    if vec::len(cs) != vec::len(ds) { ret false; }
-    let mut i = 0u;
-    for cs.each |c| { if !constr_eq(c, ds[i]) { ret false; } i += 1u; }
-    ret true;
 }
 
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
@@ -2385,7 +2288,6 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_var_integral(_) { ~"integral variable" }
       ty_param(_, _) { ~"type parameter" }
       ty_self { ~"self" }
-      ty_constr(t, _) { ty_sort_str(cx, t) }
     }
 }
 
@@ -2442,16 +2344,6 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
       terr_mode_mismatch(e_mode, a_mode) {
         ret ~"expected argument mode " + mode_to_str(e_mode) +
             ~" but found " + mode_to_str(a_mode);
-      }
-      terr_constr_len(e_len, a_len) {
-        ret ~"expected a type with " + uint::str(e_len) +
-            ~" constraints, but found one with " + uint::str(a_len) +
-            ~" constraints";
-      }
-      terr_constr_mismatch(e_constr, a_constr) {
-        ret ~"expected a type with constraint " + ty_constr_to_str(e_constr) +
-            ~" but found one with constraint " +
-            ty_constr_to_str(a_constr);
       }
       terr_regions_differ(subregion, superregion) {
         ret #fmt("references with lifetime %s do not necessarily \
@@ -2784,22 +2676,6 @@ pure fn is_public(f: field_ty) -> bool {
   }
 }
 
-// Look up the list of method names and IDs for a given class
-// Fails if the id is not bound to a class.
-fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
-    : is_local(did) -> ~[{name: ident, id: node_id, vis: visibility}] {
-    alt cx.items.find(did.node) {
-       some(ast_map::node_item(@{node: item_class(_,_,items,_,_), _}, _)) {
-         let (_,ms) = split_class_items(items);
-         vec::map(ms, |m| {name: m.ident, id: m.id,
-                            vis: m.vis})
-       }
-       _ {
-           cx.sess.bug(~"lookup_class_method_ids: id not bound to a class");
-       }
-    }
-}
-
 /* Given a class def_id and a method name, return the method's
  def_id. Needed so we can do static dispatch for methods
  Doesn't care about the method's privacy. (It's assumed that
@@ -2807,7 +2683,26 @@ fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
 */
 fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
                                sp: span) -> def_id {
-    if check is_local(did) {
+
+    // Look up the list of method names and IDs for a given class
+    // Fails if the id is not bound to a class.
+    fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
+        -> ~[{name: ident, id: node_id, vis: visibility}] {
+
+        assert is_local(did);
+        alt cx.items.find(did.node) {
+          some(ast_map::node_item(@{node: item_class(_,_,items,_,_), _}, _)) {
+            let (_,ms) = split_class_items(items);
+            vec::map(ms, |m| {name: m.ident, id: m.id,
+                              vis: m.vis})
+          }
+          _ {
+            cx.sess.bug(~"lookup_class_method_ids: id not bound to a class");
+          }
+        }
+    }
+
+    if is_local(did) {
        let ms = lookup_class_method_ids(cx, did);
         for ms.each |m| {
          if m.name == name {
@@ -2937,24 +2832,6 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     /*struct*/  ~[t, t, t, t, t, t, t, t]];
 
     ret tbl[tycat(ty)][opcat(op)];
-}
-
-fn ast_constr_to_constr<T>(tcx: ctxt, c: @ast::constr_general<T>) ->
-   @constr_general<T> {
-    alt tcx.def_map.find(c.node.id) {
-      some(ast::def_fn(pred_id, ast::pure_fn)) {
-        ret @ast_util::respan(c.span,
-                              {path: c.node.path,
-                               args: c.node.args,
-                               id: pred_id});
-      }
-      _ {
-        tcx.sess.span_fatal(c.span,
-                            ~"predicate " + path_to_str(c.node.path) +
-                            ~" is unbound or bound to a non-function or an \
-            impure function");
-      }
-    }
 }
 
 fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {

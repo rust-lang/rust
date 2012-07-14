@@ -240,7 +240,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let main_t = ty::node_id_to_type(tcx, main_id);
     alt ty::get(main_t).struct {
       ty::ty_fn({purity: ast::impure_fn, proto: ast::proto_bare,
-                 inputs, output, ret_style: ast::return_val, constraints}) {
+                 inputs, output, ret_style: ast::return_val}) {
         alt tcx.items.find(main_id) {
          some(ast_map::node_item(it,_)) {
              alt it.node {
@@ -254,8 +254,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
          }
          _ {}
         }
-        let mut ok = vec::len(constraints) == 0u;
-        ok &= ty::type_is_nil(output);
+        let mut ok = ty::type_is_nil(output);
         let num_args = vec::len(inputs);
         ok &= num_args == 0u || num_args == 1u &&
               arg_is_argv_ty(tcx, inputs[0]);

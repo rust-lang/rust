@@ -20,7 +20,7 @@ import syntax::ast::{item_ty, local, local_crate, method, node_id, pat};
 import syntax::ast::{pat_enum, pat_ident, path, prim_ty, stmt_decl, ty,
                      pat_box, pat_uniq, pat_lit, pat_range, pat_rec,
                      pat_tup, pat_wild};
-import syntax::ast::{ty_bool, ty_char, ty_constr, ty_f, ty_f32, ty_f64};
+import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64};
 import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
 import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
 import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
@@ -3163,21 +3163,6 @@ class Resolver {
                     }
 
                     self.resolve_type(declaration.output, visitor);
-
-                    // Resolve constraints.
-                    for declaration.constraints.each |constraint| {
-                        alt self.resolve_path(constraint.node.path, ValueNS,
-                                              false, visitor) {
-                            none {
-                                self.session.span_err(constraint.span,
-                                    #fmt("unresolved name: %s",
-                                    *constraint.node.path.idents.last()));
-                            }
-                            some(def) {
-                                self.record_def(constraint.node.id, def);
-                            }
-                        }
-                    }
                 }
             }
 
@@ -3556,25 +3541,6 @@ class Resolver {
                             (ty.span, #fmt("use of undeclared type name `%s`",
                                            connect(path.idents.map(|x| *x),
                                                    ~"::")));
-                    }
-                }
-            }
-
-            ty_constr(base_type, constraints) {
-                self.resolve_type(base_type, visitor);
-
-                for constraints.each |constraint| {
-                    alt self.resolve_path(constraint.node.path, ValueNS,
-                                          false, visitor) {
-                        none {
-                            self.session.span_err(constraint.span,
-                                                  ~"(resolving function) \
-                                                   use of undeclared \
-                                                   constraint");
-                        }
-                        some(def) {
-                            self.record_def(constraint.node.id, def);
-                        }
                     }
                 }
             }

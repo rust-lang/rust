@@ -225,7 +225,6 @@ fn check_fn(ccx: @crate_ctxt,
     };
 
     gather_locals(fcx, decl, body, arg_tys);
-    check_constraints(fcx, decl.constraints, decl.inputs);
     check_block(fcx, body);
 
     // We unify the tail expr's type with the
@@ -1342,15 +1341,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         check_expr(fcx, e, none);
         fcx.write_nil(id);
       }
-      ast::expr_check(_, e) {
-        bot = check_pred_expr(fcx, e);
-        fcx.write_nil(id);
-      }
-      ast::expr_if_check(cond, thn, elsopt) {
-        bot =
-            check_pred_expr(fcx, cond) |
-                check_then_else(fcx, thn, elsopt, id, expr.span);
-      }
       ast::expr_assert(e) {
         bot = check_expr_with(fcx, e, ty::mk_bool(tcx));
         fcx.write_nil(id);
@@ -1643,8 +1633,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                 proto: ast::proto_any,
                                 inputs: ~[{mode: m, ty: ty_nilp}],
                                 output: ty_nilp,
-                                ret_style: ast::return_val,
-                                constraints: ~[]})
+                                ret_style: ast::return_val})
             };
 
             demand::suptype(fcx, expr.span,
@@ -1891,119 +1880,6 @@ fn check_enum_variants(ccx: @crate_ctxt,
 
     // Check that it is possible to instantiate this enum:
     check_instantiable(ccx.tcx, sp, id);
-}
-
-// A generic function for checking the pred in a check
-// or if-check
-fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
-    let bot = check_expr_with(fcx, e, ty::mk_bool(fcx.ccx.tcx));
-
-    /* e must be a call expr where all arguments are either
-    literals or slots */
-    alt e.node {
-      ast::expr_call(operator, operands, _) {
-        if !ty::is_pred_ty(fcx.expr_ty(operator)) {
-            fcx.ccx.tcx.sess.span_err
-                (operator.span,
-                 ~"operator in constraint has non-boolean return type");
-        }
-
-        alt operator.node {
-          ast::expr_path(oper_name) {
-            alt fcx.ccx.tcx.def_map.find(operator.id) {
-              some(ast::def_fn(_, ast::pure_fn)) {
-                // do nothing
-              }
-              _ {
-                fcx.ccx.tcx.sess.span_err(operator.span,
-                                            ~"impure function as operator \
-                                             in constraint");
-              }
-            }
-            for operands.each |operand| {
-                if !ast_util::is_constraint_arg(operand) {
-                    let s =
-                        ~"constraint args must be slot variables or literals";
-                    fcx.ccx.tcx.sess.span_err(e.span, s);
-                }
-            }
-          }
-          _ {
-            let s = ~"in a constraint, expected the \
-                     constraint name to be an explicit name";
-            fcx.ccx.tcx.sess.span_err(e.span, s);
-          }
-        }
-      }
-      _ { fcx.ccx.tcx.sess.span_err(e.span, ~"check on non-predicate"); }
-    }
-    ret bot;
-}
-
-fn check_constraints(fcx: @fn_ctxt, cs: ~[@ast::constr],
-                     args: ~[ast::arg]) {
-    let num_args = vec::len(args);
-    for cs.each |c| {
-        let mut c_args = ~[];
-        for c.node.args.each |a| {
-            vec::push(c_args,
-                 // "base" should not occur in a fn type thing, as of
-                 // yet, b/c we don't allow constraints on the return type
-
-                 // Works b/c no higher-order polymorphism
-                 /*
-                 This is kludgy, and we probably shouldn't be assigning
-                 node IDs here, but we're creating exprs that are
-                 ephemeral, just for the purposes of typechecking. So
-                 that's my justification.
-                 */
-                 @alt a.node {
-                    ast::carg_base {
-                      fcx.ccx.tcx.sess.span_bug(a.span,
-                                                ~"check_constraints:\
-                    unexpected carg_base");
-                    }
-                    ast::carg_lit(l) {
-                      let tmp_node_id = fcx.ccx.tcx.sess.next_node_id();
-                      {id: tmp_node_id,
-                       callee_id: fcx.ccx.tcx.sess.next_node_id(),
-                       node: ast::expr_lit(l), span: a.span}
-                    }
-                    ast::carg_ident(i) {
-                      if i < num_args {
-                          let p = @{span: a.span, global: false,
-                                    idents: ~[args[i].ident],
-                                    rp: none, types: ~[]};
-                          let arg_occ_node_id =
-                              fcx.ccx.tcx.sess.next_node_id();
-                          fcx.ccx.tcx.def_map.insert
-                              (arg_occ_node_id,
-                               ast::def_arg(args[i].id, args[i].mode));
-                          {id: arg_occ_node_id,
-                           callee_id: fcx.ccx.tcx.sess.next_node_id(),
-                           node: ast::expr_path(p),
-                           span: a.span}
-                      } else {
-                          fcx.ccx.tcx.sess.span_bug(
-                              a.span, ~"check_constraints:\
-                                       carg_ident index out of bounds");
-                      }
-                    }
-                  });
-        }
-        let p_op: ast::expr_ = ast::expr_path(c.node.path);
-        let oper: @ast::expr = @{id: c.node.id,
-             callee_id: fcx.ccx.tcx.sess.next_node_id(),
-             node: p_op, span: c.span};
-        // Another ephemeral expr
-        let call_expr_id = fcx.ccx.tcx.sess.next_node_id();
-        let call_expr =
-            @{id: call_expr_id,
-              callee_id: fcx.ccx.tcx.sess.next_node_id(),
-              node: ast::expr_call(oper, c_args, false),
-              span: c.span};
-        check_pred_expr(fcx, call_expr);
-    }
 }
 
 // Determines whether the given node ID is a use of the def of
@@ -2305,8 +2181,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
                     ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
             }],
             output: ty::mk_nil(ccx.tcx),
-            ret_style: ast::return_val,
-            constraints: ~[]
+            ret_style: ast::return_val
         });
         (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }
@@ -2319,8 +2194,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
     let fty = ty::mk_fn(tcx, {purity: ast::impure_fn,
                               proto: ast::proto_bare,
                               inputs: inputs, output: output,
-                              ret_style: ast::return_val,
-                              constraints: ~[]});
+                              ret_style: ast::return_val});
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = (*i_ty.bounds).len();
     if i_n_tps != n_tps {

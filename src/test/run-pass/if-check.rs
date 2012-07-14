@@ -5,7 +5,7 @@ pure fn even(x: uint) -> bool {
 }
 
 fn foo(x: uint) {
-    if check even(x) {
+    if even(x) {
         log(debug, x);
     } else {
         fail;

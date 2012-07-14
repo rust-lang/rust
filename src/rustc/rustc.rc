@@ -89,19 +89,6 @@ mod middle {
     mod region;
     mod const_eval;
     mod astencode;
-
-    mod tstate {
-        mod ck;
-        mod annotate;
-        #[path = "auxiliary.rs"]
-        mod aux;
-        mod bitvectors;
-        mod collect_locals;
-        mod pre_post_conditions;
-        mod states;
-        mod ann;
-        mod tritv;
-    }
 }
 
 mod front {

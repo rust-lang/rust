@@ -121,7 +121,6 @@ fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
     if option::is_some(props.pp_exact) {
         // Now we have to care about line endings
         let cr = ~"\r";
-        check (str::is_not_empty(cr));
         actual = str::replace(actual, cr, ~"");
         expected = str::replace(expected, cr, ~"");
     }

@@ -285,12 +285,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_opaque_closure_ptr(ty::ck_block) { w.write_str(&"C&"); }
       ty::ty_opaque_closure_ptr(ty::ck_box) { w.write_str(&"C@"); }
       ty::ty_opaque_closure_ptr(ty::ck_uniq) { w.write_str(&"C~"); }
-      ty::ty_constr(ty, cs) {
-        w.write_str(&"A[");
-        enc_ty(w, cx, ty);
-        for cs.each |tc| { enc_ty_constr(w, cx, tc); }
-        w.write_char(']');
-      }
       ty::ty_opaque_box { w.write_char('B'); }
       ty::ty_class(def, substs) {
           #debug("~~~~ %s", ~"a[");
@@ -344,53 +338,10 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
         enc_ty(w, cx, arg.ty);
     }
     w.write_char(']');
-    let mut colon = true;
-    for ft.constraints.each |c| {
-        if colon {
-            w.write_char(':');
-            colon = false;
-        } else { w.write_char(';'); }
-        enc_constr(w, cx, c);
-    }
     alt ft.ret_style {
       noreturn { w.write_char('!'); }
       _ { enc_ty(w, cx, ft.output); }
     }
-}
-
-fn enc_constr_gen<T>(w: io::writer, cx: @ctxt,
-                  c: @ty::constr_general<T>,
-                  write_arg: fn(@sp_constr_arg<T>)) {
-    w.write_str(path_to_str(c.node.path));
-    w.write_char('(');
-    w.write_str(cx.ds(c.node.id));
-    w.write_char('|');
-    let mut semi = false;
-    for c.node.args.each |a| {
-        if semi { w.write_char(';'); } else { semi = true; }
-        write_arg(a);
-    }
-    w.write_char(')');
-}
-
-fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
-    enc_constr_gen(w, cx, c, |a| {
-      alt a.node {
-        carg_base     { w.write_char('*'); }
-        carg_ident(i) { w.write_uint(i); }
-        carg_lit(l)   { w.write_str(lit_to_str(l)); }
-      }
-    });
-}
-
-fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
-    enc_constr_gen(w, cx, c, |a| {
-      alt a.node {
-        carg_base     { w.write_char('*'); }
-        carg_ident(p) { w.write_str(path_to_str(p)); }
-        carg_lit(l)  { w.write_str(lit_to_str(l)); }
-      }
-    });
 }
 
 fn enc_bounds(w: io::writer, cx: @ctxt, bs: @~[ty::param_bound]) {

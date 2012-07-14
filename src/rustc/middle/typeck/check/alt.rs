@@ -1,5 +1,6 @@
 import middle::typeck::infer::methods; // next_ty_var,
                                        // resolve_type_vars_if_possible
+import syntax::print::pprust;
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
@@ -124,6 +125,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
+
     alt pat.node {
       ast::pat_wild {
         fcx.write_ty(pat.id, expected);

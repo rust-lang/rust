@@ -217,7 +217,7 @@ fn normalize(p: path) -> path {
     let s = strip_dots(s);
     let s = rollup_doubledots(s);
 
-    let s = if check vec::is_not_empty(s) {
+    let s = if vec::is_not_empty(s) {
         connect_many(s)
     } else {
         ~""

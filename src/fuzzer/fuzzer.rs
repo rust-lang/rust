@@ -69,7 +69,6 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           // position, the pretty-printer can't preserve this even by
           // parenthesizing!!  See email to marijn.
           ast::expr_if(_, _, _) { false }
-          ast::expr_if_check(_, _, _) { false }
           ast::expr_block(_) { false }
           ast::expr_alt(_, _, _) { false }
           ast::expr_while(_, _) { false }
@@ -87,10 +86,6 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           // https://github.com/mozilla/rust/issues/953
           ast::expr_fail(option::some(_)) { false }
 
-          // https://github.com/mozilla/rust/issues/927
-          //ast::expr_assert(_) { false }
-          ast::expr_check(_, _) { false }
-
           // https://github.com/mozilla/rust/issues/928
           //ast::expr_cast(_, _) { false }
 
@@ -105,13 +100,8 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
 }
 
 fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
-    alt t.node {
-        // https://github.com/mozilla/rust/issues/971
-        ast::ty_constr(_, _) { false }
-
-        // Other restrictions happen to be the same.
-        _ { safe_to_replace_ty(t.node, tm) }
-    }
+    // Restrictions happen to be the same.
+    safe_to_replace_ty(t.node, tm)
 }
 
 // Not type-parameterized: https://github.com/mozilla/rust/issues/898 (FIXED)

@@ -148,7 +148,6 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             T_struct(tys)
           }
           ty::ty_opaque_closure_ptr(_) { T_opaque_box_ptr(cx) }
-          ty::ty_constr(subt,_) { type_of(cx, subt) }
           ty::ty_class(*) {
             // Only create the named struct, but don't fill it in. We fill it
             // in *after* placing it into the type cache. This prevents

@@ -763,7 +763,6 @@ fn rustc_sysroot() -> ~str {
     alt os::self_exe_path() {
         some(path) {
             let path = ~[path, ~"..", ~"bin", ~"rustc"];
-            check vec::is_not_empty(path);
             let rustc = path::normalize(path::connect_many(path));
             #debug("  rustc: %s", rustc);
             rustc

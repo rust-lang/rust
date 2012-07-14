@@ -89,10 +89,7 @@ impl ast_builder for ext_ctxt {
         {inputs: inputs,
          output: output,
          purity: ast::impure_fn,
-         cf: ast::return_val,
-         // FIXME #2886: we'll probably want a variant that does constrained
-         // types.
-         constraints: ~[]}
+         cf: ast::return_val}
     }
 
     fn item(name: ident,

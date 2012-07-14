@@ -276,7 +276,6 @@ impl methods for reflector {
           ty::ty_self { self.leaf(~"self") }
           ty::ty_type { self.leaf(~"type") }
           ty::ty_opaque_box { self.leaf(~"opaque_box") }
-          ty::ty_constr(t, _) { self.visit(~"constr", ~[self.c_tydesc(t)]) }
           ty::ty_opaque_closure_ptr(ck) {
             let ckval = alt ck {
               ty::ck_block { 0u }

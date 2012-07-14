@@ -213,14 +213,6 @@ pure fn is_call_expr(e: @expr) -> bool {
     alt e.node { expr_call(_, _, _) { true } _ { false } }
 }
 
-fn is_constraint_arg(e: @expr) -> bool {
-    alt e.node {
-      expr_lit(_) { ret true; }
-      expr_path(_) { ret true; }
-      _ { ret false; }
-    }
-}
-
 fn eq_ty(&&a: @ty, &&b: @ty) -> bool { ret box::ptr_eq(a, b); }
 
 fn hash_ty(&&t: @ty) -> uint {
@@ -381,8 +373,8 @@ fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
     // dtor has one argument, of type ()
     {inputs: ~[{mode: ast::expl(ast::by_ref),
-               ty: nil_t, ident: @~"_", id: 0}],
-     output: nil_t, purity: impure_fn, cf: return_val, constraints: ~[]}
+                ty: nil_t, ident: @~"_", id: 0}],
+     output: nil_t, purity: impure_fn, cf: return_val}
 }
 
 // ______________________________________________________________________
@@ -465,10 +457,6 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_ty_params: fn@(ps: ~[ty_param]) {
             vec::iter(ps, |p| vfn(p.id))
-        },
-
-        visit_constr: fn@(_p: @path, _sp: span, id: node_id) {
-            vfn(id);
         },
 
         visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,

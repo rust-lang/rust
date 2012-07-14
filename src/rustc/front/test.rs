@@ -221,8 +221,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
         {inputs: ~[],
          output: ret_ty,
          purity: ast::impure_fn,
-         cf: ast::return_val,
-         constraints: ~[]};
+         cf: ast::return_val};
 
     // The vector of test_descs for this crate
     let test_descs = mk_test_desc_vec(cx);
@@ -382,8 +381,7 @@ fn mk_test_wrapper(cx: test_ctxt,
         inputs: ~[],
         output: @{id: cx.sess.next_node_id(), node: ast::ty_nil, span: span},
         purity: ast::impure_fn,
-        cf: ast::return_val,
-        constraints: ~[]
+        cf: ast::return_val
     };
 
     let wrapper_body: ast::blk = nospan({
@@ -436,8 +434,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
         {inputs: ~[args_arg],
          output: @ret_ty,
          purity: ast::impure_fn,
-         cf: ast::return_val,
-         constraints: ~[]};
+         cf: ast::return_val};
 
     let test_main_call_expr = mk_test_main_call(cx);
 

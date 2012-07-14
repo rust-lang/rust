@@ -126,8 +126,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                             proto: ast::proto_box,
                             inputs: args,
                             output: enum_ty,
-                            ret_style: ast::return_val,
-                            constraints: ~[]})
+                            ret_style: ast::return_val})
         };
         let tpt = {bounds: ty_param_bounds(ccx, ty_params),
                    rp: rp,
@@ -363,8 +362,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                   proto: ast::proto_any,
                   inputs: t_args,
                   output: t_res,
-                  ret_style: ast::return_val,
-                  constraints: ~[]}); // FIXME (#2813): allow ctors to have
+                  ret_style: ast::return_val});
         // constraints, or remove constraints from the language
         write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
         tcx.tcache.insert(local_def(ctor.node.id),
@@ -618,8 +616,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
                                    proto: ast::proto_bare,
                                    inputs: input_tys,
                                    output: output_ty,
-                                   ret_style: ast::return_val,
-                                   constraints: ~[]});
+                                   ret_style: ast::return_val});
     let tpt = {bounds: bounds, rp: false, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
     ret tpt;

@@ -20,14 +20,14 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              by_mutbl_ref, by_ref, by_val, capture_clause, capture_item,
              carg_base, carg_ident, cdir_dir_mod, cdir_src_mod,
              cdir_view_item, checked_expr, claimed_expr, class_immutable,
-             class_member, class_method, class_mutable, constr, constr_arg,
-             constr_general, crate, crate_cfg, crate_directive, decl,
+             class_member, class_method, class_mutable,
+             crate, crate_cfg, crate_directive, decl,
              decl_item, decl_local, default_blk, deref, div, expl, expr,
              expr_, expr_addr_of, expr_alt, expr_again, expr_assert,
              expr_assign, expr_assign_op, expr_binary, expr_block, expr_break,
-             expr_call, expr_cast, expr_check, expr_copy, expr_do_body,
+             expr_call, expr_cast, expr_copy, expr_do_body,
              expr_fail, expr_field, expr_fn, expr_fn_block, expr_if,
-             expr_if_check, expr_index, expr_lit, expr_log, expr_loop,
+             expr_index, expr_lit, expr_log, expr_loop,
              expr_loop_body, expr_mac, expr_move, expr_new, expr_path,
              expr_rec, expr_ret, expr_swap, expr_tup, expr_unary, expr_vec,
              expr_vstore, expr_while, extern_fn, field, fn_decl, foreign_item,
@@ -265,15 +265,9 @@ class parser {
             {mode: mode, ty: p.parse_ty(false), ident: name,
              id: p.get_id()}
         };
-        // FIXME (#34): constrs is empty because right now, higher-order
-        // functions can't have constrained types. Not sure whether
-        // that would be desirable anyway. See bug for the story on
-        // constrained types.
-        let constrs: ~[@constr] = ~[];
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ret {inputs: inputs, output: ret_ty,
-             purity: purity, cf: ret_style,
-             constraints: constrs};
+             purity: purity, cf: ret_style};
     }
 
     fn parse_trait_methods() -> ~[trait_method] {
@@ -339,79 +333,6 @@ class parser {
         self.expect(token::COLON);
         let ty = self.parse_ty(false);
         ret spanned(lo, ty.span.hi, {ident: id, mt: {ty: ty, mutbl: mutbl}});
-    }
-
-    // if i is the jth ident in args, return j
-    // otherwise, fail
-    fn ident_index(args: ~[arg], i: ident) -> uint {
-        let mut j = 0u;
-        for args.each |a| { if a.ident == i { ret j; } j += 1u; }
-        self.fatal(~"unbound variable `" + *i + ~"` in constraint arg");
-    }
-
-    fn parse_type_constr_arg() -> @ty_constr_arg {
-        let sp = self.span;
-        let mut carg = carg_base;
-        self.expect(token::BINOP(token::STAR));
-        if self.token == token::DOT {
-            // "*..." notation for record fields
-            self.bump();
-            let pth = self.parse_path_without_tps();
-            carg = carg_ident(pth);
-        }
-        // No literals yet, I guess?
-        ret @{node: carg, span: sp};
-    }
-
-    fn parse_constr_arg(args: ~[arg]) -> @constr_arg {
-        let sp = self.span;
-        let mut carg = carg_base;
-        if self.token == token::BINOP(token::STAR) {
-            self.bump();
-        } else {
-            let i: ident = self.parse_value_ident();
-            carg = carg_ident(self.ident_index(args, i));
-        }
-        ret @{node: carg, span: sp};
-    }
-
-    fn parse_ty_constr(fn_args: ~[arg]) -> @constr {
-        let lo = self.span.lo;
-        let path = self.parse_path_without_tps();
-        let args = self.parse_unspanned_seq(
-            token::LPAREN, token::RPAREN,
-            seq_sep_trailing_disallowed(token::COMMA),
-            |p| p.parse_constr_arg(fn_args));
-        ret @spanned(lo, self.span.hi,
-                     {path: path, args: args, id: self.get_id()});
-    }
-
-    fn parse_constr_in_type() -> @ty_constr {
-        let lo = self.span.lo;
-        let path = self.parse_path_without_tps();
-        let args: ~[@ty_constr_arg] = self.parse_unspanned_seq(
-            token::LPAREN, token::RPAREN,
-            seq_sep_trailing_disallowed(token::COMMA),
-            |p| p.parse_type_constr_arg());
-        let hi = self.span.lo;
-        let tc: ty_constr_ = {path: path, args: args, id: self.get_id()};
-        ret @spanned(lo, hi, tc);
-    }
-
-
-    fn parse_constrs<T: copy>(pser: fn(parser) -> @constr_general<T>) ->
-        ~[@constr_general<T>] {
-        let mut constrs: ~[@constr_general<T>] = ~[];
-        loop {
-            let constr = pser(self);
-            vec::push(constrs, constr);
-            if self.token == token::COMMA { self.bump(); }
-            else { ret constrs; }
-        };
-    }
-
-    fn parse_type_constraints() -> ~[@ty_constr] {
-        ret self.parse_constrs(|p| p.parse_constr_in_type());
     }
 
     fn parse_ret_ty() -> (ret_style, @ty) {
@@ -519,16 +440,7 @@ class parser {
             if vec::len(elems) == 0u {
                 self.unexpected_last(token::RBRACE);
             }
-            let hi = self.span.hi;
-
-            let t = ty_rec(elems);
-            if self.token == token::COLON {
-                self.bump();
-                ty_constr(@{id: self.get_id(),
-                            node: t,
-                            span: mk_sp(lo, hi)},
-                          self.parse_type_constraints())
-            } else { t }
+            ty_rec(elems)
         } else if self.token == token::LBRACKET {
             self.expect(token::LBRACKET);
             let t = ty_vec(self.parse_mt());
@@ -970,21 +882,6 @@ class parser {
             let e = self.parse_expr();
             ex = expr_assert(e);
             hi = e.span.hi;
-        } else if self.eat_keyword(~"check") {
-            /* Should be a predicate (pure boolean function) applied to
-            arguments that are all either slot variables or literals.
-            but the typechecker enforces that. */
-            let e = self.parse_expr();
-            hi = e.span.hi;
-            ex = expr_check(checked_expr, e);
-        } else if self.eat_keyword(~"claim") {
-            /* Same rules as check, except that if check-claims
-            is enabled (a command-line flag), then the parser turns
-            claims into check */
-
-            let e = self.parse_expr();
-            hi = e.span.hi;
-            ex = expr_check(claimed_expr, e);
         } else if self.eat_keyword(~"ret") {
             if can_begin_expr(self.token) {
                 let e = self.parse_expr();
@@ -1457,12 +1354,7 @@ class parser {
         ret lhs;
     }
 
-    fn parse_if_expr_1() ->
-        {cond: @expr,
-         then: blk,
-         els: option<@expr>,
-         lo: uint,
-         hi: uint} {
+    fn parse_if_expr() -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
         let thn = self.parse_block();
@@ -1473,18 +1365,8 @@ class parser {
             els = some(elexpr);
             hi = elexpr.span.hi;
         }
-        ret {cond: cond, then: thn, els: els, lo: lo, hi: hi};
-    }
-
-    fn parse_if_expr() -> @expr {
-        if self.eat_keyword(~"check") {
-            let q = self.parse_if_expr_1();
-            ret self.mk_expr(q.lo, q.hi,
-                             expr_if_check(q.cond, q.then, q.els));
-        } else {
-            let q = self.parse_if_expr_1();
-            ret self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els));
-        }
+        let q = {cond: cond, then: thn, els: els, lo: lo, hi: hi};
+        ret self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els));
     }
 
     fn parse_fn_expr(proto: proto) -> @expr {
@@ -1520,8 +1402,7 @@ class parser {
                                 span: self.span
                             },
                             purity: impure_fn,
-                            cf: return_val,
-                            constraints: ~[]
+                            cf: return_val
                         }
                     },
                     @~[])
@@ -2083,20 +1964,11 @@ class parser {
         let inputs = either::lefts(args_or_capture_items);
         let capture_clause = @either::rights(args_or_capture_items);
 
-        // Use the args list to translate each bound variable
-        // mentioned in a constraint to an arg index.
-        // Seems weird to do this in the parser, but I'm not sure how else to.
-        let mut constrs = ~[];
-        if self.token == token::COLON {
-            self.bump();
-            constrs = self.parse_constrs(|p| p.parse_ty_constr(inputs));
-        }
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ret ({inputs: inputs,
               output: ret_ty,
               purity: purity,
-              cf: ret_style,
-              constraints: constrs}, capture_clause);
+              cf: ret_style}, capture_clause);
     }
 
     fn parse_fn_block_decl() -> (fn_decl, capture_clause) {
@@ -2118,8 +1990,7 @@ class parser {
         ret ({inputs: either::lefts(inputs_captures),
               output: output,
               purity: impure_fn,
-              cf: return_val,
-              constraints: ~[]},
+              cf: return_val},
              @either::rights(inputs_captures));
     }
 

@@ -974,49 +974,6 @@ impl unify_methods for infer_ctxt {
         uok()
     }
 
-    fn constrs(
-        expected: @ty::type_constr,
-        actual_constr: @ty::type_constr) -> ures {
-
-        let err_res =
-            err(ty::terr_constr_mismatch(expected, actual_constr));
-
-        if expected.node.id != actual_constr.node.id { ret err_res; }
-        let expected_arg_len = vec::len(expected.node.args);
-        let actual_arg_len = vec::len(actual_constr.node.args);
-        if expected_arg_len != actual_arg_len { ret err_res; }
-        let mut i = 0u;
-        for expected.node.args.each |a| {
-            let actual = actual_constr.node.args[i];
-            alt a.node {
-              ast::carg_base {
-                alt actual.node {
-                  ast::carg_base { }
-                  _ { ret err_res; }
-                }
-              }
-              ast::carg_lit(l) {
-                alt actual.node {
-                  ast::carg_lit(m) {
-                    if l != m { ret err_res; }
-                  }
-                  _ { ret err_res; }
-                }
-              }
-              ast::carg_ident(p) {
-                alt actual.node {
-                  ast::carg_ident(q) {
-                    if p.idents != q.idents { ret err_res; }
-                  }
-                  _ { ret err_res; }
-                }
-              }
-            }
-            i += 1u;
-        }
-        ret uok();
-    }
-
     fn bnds<T:copy to_str st>(
         a: bound<T>, b: bound<T>) -> ures {
 
@@ -1032,18 +989,6 @@ impl unify_methods for infer_ctxt {
                 t_a.sub(self, t_b)
               }
             }
-        }
-    }
-
-    fn constrvecs(
-        as: ~[@ty::type_constr], bs: ~[@ty::type_constr]) -> ures {
-
-        if check vec::same_length(as, bs) {
-            do iter_vec2(as, bs) |a,b| {
-                self.constrs(a, b)
-            }
-        } else {
-            err(ty::terr_constr_len(bs.len(), as.len()))
         }
     }
 
@@ -1584,7 +1529,7 @@ fn super_tps<C:combine>(
     // future we could allow type parameters to declare a
     // variance.
 
-    if check vec::same_length(as, bs) {
+    if vec::same_length(as, bs) {
         iter_vec2(as, bs, |a, b| {
             self.infcx().eq_tys(a, b)
         }).then(|| ok(as) )
@@ -1674,7 +1619,7 @@ fn super_fns<C:combine>(
     fn argvecs<C:combine>(self: C, a_args: ~[ty::arg],
                           b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
 
-        if check vec::same_length(a_args, b_args) {
+        if vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args, |a, b| self.args(a, b) )
         } else {
             err(ty::terr_arg_count)
@@ -1693,8 +1638,7 @@ fn super_fns<C:combine>(
                             proto: p,
                             inputs: inputs,
                             output: output,
-                            ret_style: rs,
-                            constraints: a_f.constraints})
+                            ret_style: rs})
                     // }
                     }
                 }
@@ -1824,7 +1768,7 @@ fn super_tys<C:combine>(
       }
 
       (ty::ty_rec(as), ty::ty_rec(bs)) {
-        if check vec::same_length(as, bs) {
+        if vec::same_length(as, bs) {
             map_vec2(as, bs, |a,b| {
                 self.flds(a, b)
             }).chain(|flds| ok(ty::mk_rec(tcx, flds)) )
@@ -1834,7 +1778,7 @@ fn super_tys<C:combine>(
       }
 
       (ty::ty_tup(as), ty::ty_tup(bs)) {
-        if check vec::same_length(as, bs) {
+        if vec::same_length(as, bs) {
             map_vec2(as, bs, |a, b| self.tys(a, b) )
                 .chain(|ts| ok(ty::mk_tup(tcx, ts)) )
         } else {
@@ -1845,14 +1789,6 @@ fn super_tys<C:combine>(
       (ty::ty_fn(a_fty), ty::ty_fn(b_fty)) {
         do self.fns(a_fty, b_fty).chain |fty| {
             ok(ty::mk_fn(tcx, fty))
-        }
-      }
-
-      (ty::ty_constr(a_t, a_constrs), ty::ty_constr(b_t, b_constrs)) {
-        do self.tys(a_t, b_t).chain |t| {
-            do self.infcx().constrvecs(a_constrs, b_constrs).then {
-                ok(ty::mk_constr(tcx, t, a_constrs))
-            }
         }
       }
 

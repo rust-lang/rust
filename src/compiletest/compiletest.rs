@@ -39,7 +39,7 @@ fn parse_config(args: ~[~str]) -> config {
           getopts::optflag(~"verbose"),
           getopts::optopt(~"logfile")];
 
-    check (vec::is_not_empty(args));
+    assert (vec::is_not_empty(args));
     let args_ = vec::tail(args);
     let match =
         alt getopts::getopts(args_, opts) {

@@ -332,13 +332,6 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             ast_ty.span,
             ~"implied fixed length for bound");
       }
-      ast::ty_constr(t, cs) {
-        let mut out_cs = ~[];
-        for cs.each |constr| {
-            vec::push(out_cs, ty::ast_constr_to_constr(tcx, constr));
-        }
-        ty::mk_constr(tcx, ast_ty_to_ty(self, rscope, t), out_cs)
-      }
       ast::ty_infer {
         // ty_infer should only appear as the type of arguments or return
         // values in a fn_expr, or as the type of local variables.  Both of
@@ -429,12 +422,8 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
           _ {ast_ty_to_ty(self, rb, decl.output)}
         };
 
-        let out_constrs = vec::map(decl.constraints, |constr| {
-            ty::ast_constr_to_constr(self.tcx(), constr)
-        });
-
         {purity: decl.purity, proto: proto, inputs: input_tys,
-         output: output_ty, ret_style: decl.cf, constraints: out_constrs}
+         output: output_ty, ret_style: decl.cf}
     }
 }
 

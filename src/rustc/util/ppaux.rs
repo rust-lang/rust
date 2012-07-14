@@ -1,9 +1,9 @@
 import std::map::hashmap;
 import middle::ty;
 import middle::ty::{arg, bound_region, br_anon, br_named, canon_mode};
-import middle::ty::{ck_block, ck_box, ck_uniq, constr, ctxt, field, method};
+import middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
 import middle::ty::{mt, re_bound, re_free, re_scope, re_var, region, t};
-import middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_constr, ty_enum};
+import middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
 import middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 import middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 import middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
@@ -12,7 +12,7 @@ import middle::ty::{ty_unboxed_vec, vid};
 import metadata::encoder;
 import syntax::codemap;
 import syntax::print::pprust;
-import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str,
+import syntax::print::pprust::{path_to_str, proto_to_str,
                                mode_to_str, purity_to_str};
 import syntax::{ast, ast_util};
 import syntax::ast_map;
@@ -134,8 +134,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
     fn fn_to_str(cx: ctxt, purity: ast::purity, proto: ast::proto,
                  ident: option<ast::ident>,
-                 inputs: ~[arg], output: t, cf: ast::ret_style,
-                 constrs: ~[@constr]) -> ~str {
+                 inputs: ~[arg], output: t, cf: ast::ret_style) -> ~str {
         let mut s;
 
         s = alt purity {
@@ -156,13 +155,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
               ast::return_val { s += ty_to_str(cx, output); }
             }
         }
-        s += constrs_str(constrs);
         ret s;
     }
     fn method_to_str(cx: ctxt, m: method) -> ~str {
         ret fn_to_str(
             cx, m.fty.purity, m.fty.proto, some(m.ident), m.fty.inputs,
-            m.fty.output, m.fty.ret_style, m.fty.constraints) + ~";";
+            m.fty.output, m.fty.ret_style) + ~";";
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
         ret *f.ident + ~": " + mt_to_str(cx, f.mt);
@@ -211,7 +209,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_fn(f) {
         fn_to_str(cx, f.purity, f.proto, none, f.inputs,
-                  f.output, f.ret_style, f.constraints)
+                  f.output, f.ret_style)
       }
       ty_var(v) { v.to_str() }
       ty_var_integral(v) { v.to_str() }
@@ -234,7 +232,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_estr(vs) { vstore_ty_to_str(cx, ~"str", vs) }
       ty_opaque_box { ~"@?" }
-      ty_constr(t, _) { ~"@?" }
       ty_opaque_closure_ptr(ck_block) { ~"closure&" }
       ty_opaque_closure_ptr(ck_box) { ~"closure@" }
       ty_opaque_closure_ptr(ck_uniq) { ~"closure~" }
@@ -265,27 +262,6 @@ fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
     let mut s = encoder::encoded_ty(cx, typ);
     if str::len(s) >= 32u { s = str::slice(s, 0u, 32u); }
     ret s;
-}
-
-fn constr_to_str(c: @constr) -> ~str {
-    ret path_to_str(c.node.path) +
-            pprust::constr_args_to_str(pprust::uint_to_str, c.node.args);
-}
-
-fn constrs_str(constrs: ~[@constr]) -> ~str {
-    let mut s = ~"";
-    let mut colon = true;
-    for constrs.each |c| {
-        if colon { s += ~" : "; colon = false; } else { s += ~", "; }
-        s += constr_to_str(c);
-    }
-    ret s;
-}
-
-fn ty_constr_to_str<Q>(c: @ast::spanned<ast::constr_general_<@ast::path, Q>>)
-   -> ~str {
-    ret path_to_str(c.node.path) +
-            constr_args_to_str::<@ast::path>(path_to_str, c.node.args);
 }
 
 // Local Variables:
