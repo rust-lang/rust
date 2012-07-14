@@ -18,7 +18,7 @@ fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
            !box::ptr_eq(*option::get(nobe.root), *self) {
             fail "Iteration encountered a dlist node not on this dlist."
         }
-        f(nobe.data);
+        if !f(nobe.data) { break; }
         // Check that the user didn't do a remove.
         // Note that this makes it ok for the user to remove the node and then
         // immediately put it back in a different position. I allow this.

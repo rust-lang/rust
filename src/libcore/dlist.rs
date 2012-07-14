@@ -441,6 +441,16 @@ mod tests {
         assert iter::foldl(l, 0, |accum,elem| accum+elem) == 5050;
     }
     #[test]
+    fn test_dlist_break_early() {
+        let l = from_vec(~[1,2,3,4,5]);
+        let mut x = 0;
+        for l.each |i| {
+            x += 1;
+            if (i == 3) { break; }
+        }
+        assert x == 3;
+    }
+    #[test]
     fn test_dlist_remove_head() {
         let l = create::<int>();
         l.assert_consistent(); let one = l.push_n(1);
