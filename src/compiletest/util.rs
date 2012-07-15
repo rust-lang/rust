@@ -31,7 +31,7 @@ fn lib_path_env_var() -> ~str { ~"PATH" }
 fn path_div() -> ~str { ~":" }
 
 #[cfg(target_os = "win32")]
-fn path_div() -> str { ~";" }
+fn path_div() -> ~str { ~";" }
 
 fn logv(config: config, s: ~str) {
     log(debug, s);

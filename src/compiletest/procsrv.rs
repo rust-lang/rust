@@ -5,21 +5,21 @@ import libc::{c_int, pid_t};
 export run;
 
 #[cfg(target_os = "win32")]
-fn target_env(lib_path: str, prog: str) -> ~[(str,str)] {
+fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
 
     let mut env = os::env();
 
     // Make sure we include the aux directory in the path
-    assert prog.ends_with(".exe");
-    let aux_path = prog.slice(0u, prog.len() - 4u) + ".libaux";
+    assert prog.ends_with(~".exe");
+    let aux_path = prog.slice(0u, prog.len() - 4u) + ~".libaux";
 
     env = do vec::map(env) |pair| {
         let (k,v) = pair;
-        if k == "PATH" { ("PATH", v + ";" + lib_path + ";" + aux_path) }
+        if k == ~"PATH" { (~"PATH", v + ~";" + lib_path + ~";" + aux_path) }
         else { (k,v) }
     };
-    if str::ends_with(prog, "rustc.exe") {
-        vec::push(env, ("RUST_THREADS", "1"));
+    if str::ends_with(prog, ~"rustc.exe") {
+        vec::push(env, (~"RUST_THREADS", ~"1"));
     }
     ret env;
 }

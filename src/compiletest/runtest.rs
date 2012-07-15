@@ -434,9 +434,9 @@ fn make_cmdline(_libpath: ~str, prog: ~str, args: ~[~str]) -> ~str {
 }
 
 #[cfg(target_os = "win32")]
-fn make_cmdline(libpath: str, prog: str, args: ~[str]) -> str {
+fn make_cmdline(libpath: ~str, prog: ~str, args: ~[~str]) -> ~str {
     #fmt["%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, " ")]
+         str::connect(args, ~" ")]
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
