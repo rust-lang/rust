@@ -593,7 +593,7 @@ There are several kinds of item:
   * [type definitions](#type-definitions)
   * [enumerations](#enumerations)
   * [resources](#resources)
-  * [interfaces](#interfaces)
+  * [traits](#traits)
   * [implementations](#implementations)
 
 Some items form an implicit scope for the declaration of sub-items. In other
@@ -1012,8 +1012,8 @@ parameter is given a [`copy` bound](#type-kinds).
 fn id<T: copy>(x: T) -> T { x }
 ~~~~
 
-Similarly, [interface](#interfaces) bounds can be specified for type
-parameters to allow methods of that interface to be called on values
+Similarly, [trait](#traits) bounds can be specified for type
+parameters to allow methods with that trait to be called on values
 of that type.
 
 #### Extern functions
@@ -1153,11 +1153,11 @@ class file_descriptor {
       self.fd = fd; self.name = none;
     }
     priv {
-      let mut name: option<str>;
+      let mut name: option<~str>;
     }
-    fn get_name() -> str {
+    fn get_name() -> ~str {
       alt self.name {
-         none    { fail "File has no name!"; }
+         none    { fail ~"File has no name!"; }
          some(n) { n }
       }
     }
@@ -1215,17 +1215,17 @@ class file<A: copy> {
 Classes do not support inheritance, except through traits. As a
 result, all class method dispatch is static (non-virtual).
 
-A class may implement a trait (see [interfaces](#interfaces)):
+A class may implement a trait (see [traits](#traits)):
 
 ~~~~
 trait to_str {
-  fn to_str() -> str;
+  fn to_str() -> ~str;
 }
 
 class file : to_str {
   let fd: *libc::FILE;
   new(fd: *libc::FILE) { self.fd = fd; }
-  fn to_str() -> str { "a file" }
+  fn to_str() -> ~str { ~"a file" }
 }
 ~~~~
 
@@ -1249,9 +1249,9 @@ The order of fields in a class instance is significant; its runtime
 representation is the same as that of a record with identical fields
 laid out in the same order.
 
-### Interfaces
+### Traits
 
-An _interface item_ describes a set of method types. _[implementation
+A _trait item_ describes a set of method types. _[implementation
 items](#implementations)_ can be used to provide implementations of
 those methods for a specific type.
 
@@ -1265,12 +1265,12 @@ iface shape {
 }
 ~~~~
 
-This defines an interface with two methods. All values which have
-[implementations](#implementations) of this interface in scope can
+This defines a trait with two methods. All values that have
+[implementations](#implementations) of this trait in scope can
 have their `draw` and `bounding_box` methods called, using
 `value.bounding_box()` [syntax](#field-expressions).
 
-Type parameters can be specified for an interface to make it generic.
+Type parameters can be specified for a trait to make it generic.
 These appear after the name, using the same syntax used in [generic
 functions](#generic-functions).
 
@@ -1282,10 +1282,10 @@ iface seq<T> {
 }
 ~~~~
 
-Generic functions may use interfaces as bounds on their type
-parameters. This will have two effects: only types that implement the
-interface can be used to instantiate the parameter, and within the
-generic function, the methods of the interface can be called on values
+Generic functions may use traits as bounds on their type
+parameters. This will have two effects: only types that have the trait
+may instantiate the parameter, and within the
+generic function, the methods of the trait can be called on values
 that have the parameter's type. For example:
 
 ~~~~
@@ -1298,8 +1298,8 @@ fn draw_twice<T: shape>(surface: surface, sh: T) {
 }
 ~~~~
 
-Interface items also define a type with the same name as the
-interface. Values of this type are created by
+Trait items also define a type with the same name as the
+trait. Values of this type are created by
 [casting](#type-cast-expressions) values (of a type for which an
 implementation of the given interface is in scope) to the interface
 type.
@@ -1321,7 +1321,7 @@ instantiate type parameters that are bounded on their interface.
 ### Implementations
 
 An _implementation item_ provides an implementation of an
-[interface](#interfaces) for a type.
+[interface](#traits) for a type.
 
 ~~~~
 # type point = {x: float, y: float};
@@ -1682,7 +1682,7 @@ When the type of the expression to the left of the dot is a boxed
 record, it is automatically derferenced to make the field access
 possible.
 
-Field access syntax is overloaded for [interface method](#interfaces)
+Field access syntax is overloaded for [trait method](#traits)
 access. When no matching field is found, or the expression to the left
 of the dot is not a (boxed) record, an
 [implementation](#implementations) that matches this type and the
@@ -2067,11 +2067,10 @@ conditional expression evaluates to `false`, the `while` expression completes.
 An example:
 
 ~~~~
-# let mut i = 0;
-# let println = io::println;
+let mut i = 0;
 
 while i < 10 {
-    println(~"hello\n");
+    io::println(~"hello\n");
     i = i + 1;
 }
 ~~~~
@@ -2757,6 +2756,84 @@ type binop = fn(int,int) -> int;
 let bo: binop = add;
 x = bo(5,7);
 ~~~~~~~~
+
+### Trait types
+
+Every trait item (see [traits](#traits)) defines a type with the same name
+as the trait. For a trait `T`, cast expressions introduce values of type `T`:
+
+~~~~~~~~
+// doc extractor doesn't recognize trait -- fix it
+iface printable {
+  fn to_str() -> ~str;
+}
+
+impl of printable for ~str {
+  fn to_str() -> ~str { self }
+}
+
+fn print(a: printable) {
+   io::println(a.to_str());
+}
+
+fn main() {
+   print(~"meow" as printable);
+}
+~~~~~~~~
+
+In this example, the trait `printable` occurs as a type in both the type signature of
+`print`, and the cast expression in `main`.
+
+### Class types
+
+Every class item defines a type. See [classes](#classes).
+
+### Type parameters
+
+Within the body of an item that has type parameter declarations, the names of its type parameters are types:
+
+~~~~~~~
+fn map<A: copy, B: copy>(f: fn(A) -> B, xs: ~[A]) -> ~[B] {
+   if xs.len() == 0 { ret ~[]; }
+   let first: B = f(xs[0]);
+   let rest: ~[B] = map(f, xs.slice(1, xs.len()));
+   ret ~[first] + rest;
+}
+~~~~~~~
+
+Here, `first` has type `B`, referring to `map`'s `B` type parameter; and `rest` has
+type `~[B]`, a vector type with element type `B`.
+
+### Self type
+
+The special type `self` has a meaning within methods inside a class or
+impl item. It refers to the type of the implicit `self` argument. For
+example, in:
+
+~~~~~~
+iface printable {
+  fn to_str() -> ~str;
+}
+
+impl of printable for ~str {
+  fn to_str() -> ~str { self }
+}
+~~~~~~
+
+`self` refers to the value of type `str` that is the receiver for a
+call to the method `to_str`. Similarly, in a class declaration:
+
+~~~~~~
+class cat {
+  let mut meows: uint;
+  new() { self.meows = 0; }
+  fn meow() { self.meows = self.meows + 1; }
+}
+~~~~~~
+
+`self` refers to the class instance that is the receiver of the method
+(except in the constructor `new`, where `self` is the class instance
+that the constructor implicitly returns).
 
 ## Type kinds
 
