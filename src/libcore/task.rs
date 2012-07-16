@@ -878,7 +878,7 @@ unsafe fn key_to_key_value<T>(key: local_data_key<T>) -> *libc::c_void {
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
     // Use reintepret_cast -- transmute would leak (forget) the closure.
     let pair: (*libc::c_void, *libc::c_void) = unsafe::reinterpret_cast(key);
-    tuple::first(pair)
+    pair.first()
 }
 
 // If returning some(..), returns with @T with the map's reference. Careful!

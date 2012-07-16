@@ -1,28 +1,33 @@
 //! Operations on tuples
 
-/// Return the first element of a pair
-pure fn first<T:copy, U:copy>(pair: (T, U)) -> T {
-    let (t, _) = pair;
-    ret t;
-}
 
-/// Return the second element of a pair
-pure fn second<T:copy, U:copy>(pair: (T, U)) -> U {
-    let (_, u) = pair;
-    ret u;
-}
+impl extensions <T:copy, U:copy> for (T, U) {
 
-/// Return the results of swapping the two elements of a pair
-pure fn swap<T:copy, U:copy>(pair: (T, U)) -> (U, T) {
-    let (t, u) = pair;
-    ret (u, t);
+    /// Return the first element of self
+    pure fn first() -> T {
+        let (t, _) = self;
+        ret t;
+    }
+
+    /// Return the second element of self
+    pure fn second() -> U {
+        let (_, u) = self;
+        ret u;
+    }
+
+    /// Return the results of swapping the two elements of self
+    pure fn swap() -> (U, T) {
+        let (t, u) = self;
+        ret (u, t);
+    }
+
 }
 
 
 #[test]
 fn test_tuple() {
-    assert first((948, 4039.48)) == 948;
-    assert second((34.5, ~"foo")) == ~"foo";
-    assert swap(('a', 2)) == (2, 'a');
+    assert (948, 4039.48).first() == 948;
+    assert (34.5, ~"foo").second() == ~"foo";
+    assert ('a', 2).swap() == (2, 'a');
 }
 
