@@ -8,6 +8,9 @@ use libc::c_void;
 use libc::size_t;
 use libc::uintptr_t;
 
+import gc::gc;
+import gc::cleanup_stack_for_failure;
+
 #[allow(non_camel_case_types)]
 type rust_task = c_void;
 
@@ -33,6 +36,7 @@ extern mod rustrt {
 // gather_rust_rtcalls.
 #[rt(fail)]
 fn rt_fail(expr: *c_char, file: *c_char, line: size_t) {
+    cleanup_stack_for_failure();
     rustrt::rust_upcall_fail(expr, file, line);
 }
 
