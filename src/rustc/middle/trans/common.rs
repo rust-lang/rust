@@ -162,6 +162,10 @@ type crate_ctxt = {
      builder: BuilderRef_res,
      shape_cx: shape::ctxt,
      crate_map: ValueRef,
+     // Set when at least one function uses GC. Needed so that
+     // decl_gc_metadata knows whether to link to the module metadata, which
+     // is not emitted by LLVM's GC pass when no functions use GC.
+     mut uses_gc: bool,
      dbg_cx: Option<debuginfo::debug_ctxt>,
      // Mapping from class constructors to parent class --
      // used in base::trans_closure

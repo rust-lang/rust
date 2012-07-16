@@ -4,6 +4,7 @@
 
 
 #include "rust_log.h"
+#include "rust_crate_map.h"
 #include "util/array_list.h"
 #include "rust_util.h"
 #include "rust_task.h"
@@ -160,16 +161,6 @@ rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
 
 // Reading log directives and setting log level vars
 
-struct mod_entry {
-    const char* name;
-    uint32_t* state;
-};
-
-struct cratemap {
-    const mod_entry* entries;
-    const cratemap* children[1];
-};
-
 struct log_directive {
     char* name;
     size_t level;
@@ -212,33 +203,36 @@ size_t parse_logging_spec(char* spec, log_directive* dirs) {
     return dir;
 }
 
+struct update_entry_args {
+    log_directive* dirs;
+    size_t n_dirs;
+    size_t *n_matches;
+};
+
+static void update_entry(const mod_entry* entry, void *cookie) {
+    update_entry_args *args = (update_entry_args *)cookie;
+    size_t level = default_log_level, longest_match = 0;
+    for (size_t d = 0; d < args->n_dirs; d++) {
+        if (strstr(entry->name, args->dirs[d].name) == entry->name &&
+            strlen(args->dirs[d].name) > longest_match) {
+            longest_match = strlen(args->dirs[d].name);
+            level = args->dirs[d].level;
+        }
+    }
+    *entry->state = level;
+    (*args->n_matches)++;
+}
+
 void update_module_map(const mod_entry* map, log_directive* dirs,
                        size_t n_dirs, size_t *n_matches) {
-    for (const mod_entry* cur = map; cur->name; cur++) {
-        size_t level = default_log_level, longest_match = 0;
-        for (size_t d = 0; d < n_dirs; d++) {
-            if (strstr(cur->name, dirs[d].name) == cur->name &&
-                strlen(dirs[d].name) > longest_match) {
-                longest_match = strlen(dirs[d].name);
-                level = dirs[d].level;
-            }
-        }
-        *cur->state = level;
-        (*n_matches)++;
-    }
+    update_entry_args args = { dirs, n_dirs, n_matches };
+    iter_module_map(map, update_entry, &args);
 }
 
 void update_crate_map(const cratemap* map, log_directive* dirs,
                       size_t n_dirs, size_t *n_matches) {
-    // First update log levels for this crate
-    update_module_map(map->entries, dirs, n_dirs, n_matches);
-    // Then recurse on linked crates
-    // FIXME (#2673) this does double work in diamond-shaped deps. could
-    //   keep a set of visited addresses, if it turns out to be actually
-    //   slow
-    for (size_t i = 0; map->children[i]; i++) {
-        update_crate_map(map->children[i], dirs, n_dirs, n_matches);
-    }
+    update_entry_args args = { dirs, n_dirs, n_matches };
+    iter_crate_map(map, update_entry, &args);
 }
 
 void print_crate_log_map(const cratemap* map) {

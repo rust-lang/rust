@@ -1595,6 +1595,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
         do str::as_c_str("generic") |strategy| {
             llvm::LLVMSetGC(fcx.llfn, strategy);
         }
+        ccx.uses_gc = true;
     }
 
     // Create the first basic block in the function and keep a handle on it to
@@ -2438,6 +2439,20 @@ fn gather_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
     }
 }
 
+fn decl_gc_metadata(ccx: @crate_ctxt, llmod_id: ~str) {
+    if !ccx.sess.opts.gc || !ccx.uses_gc {
+        return;
+    }
+
+    let gc_metadata_name = ~"_gc_module_metadata_" + llmod_id;
+    let gc_metadata = do str::as_c_str(gc_metadata_name) |buf| {
+        llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+    };
+    llvm::LLVMSetGlobalConstant(gc_metadata, True);
+    lib::llvm::SetLinkage(gc_metadata, lib::llvm::ExternalLinkage);
+    ccx.module_data.insert(~"_gc_module_metadata", gc_metadata);
+}
+
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
@@ -2679,6 +2694,7 @@ fn trans_crate(sess: session::session,
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: mk_ctxt(llmod),
           crate_map: crate_map,
+          mut uses_gc: false,
           dbg_cx: dbg_cx,
           class_ctors: int_hash::<ast::def_id>(),
           mut do_not_commit_warning_issued: false};
@@ -2696,6 +2712,7 @@ fn trans_crate(sess: session::session,
         trans_mod(ccx, crate.node.module);
     }
 
+    decl_gc_metadata(ccx, llmod_id);
     fill_crate_map(ccx, crate_map);
     // NB: Must call force_declare_tydescs before emit_tydescs to break
     // cyclical dependency with shape code! See shape.rs for details.

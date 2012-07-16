@@ -7,6 +7,7 @@
 #include "rust_kernel.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
+#include "rust_gc_metadata.h"
 
 // Creates a rust argument vector from the platform argument vector
 struct
@@ -84,6 +85,8 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     // FIXME #1497: Should provide a way to get these from the command
     // line as well.
     rust_env *env = load_env();
+
+    update_gc_metadata(crate_map);
 
     update_log_settings(crate_map, env->logspec);
 
