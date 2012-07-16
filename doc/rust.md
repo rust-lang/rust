@@ -574,7 +574,7 @@ of [attributes](#attributes) attached to it.
 
 ~~~~~~~~ {.ebnf .gram}
 item : mod_item | fn_item | type_item | enum_item
-     | res_item | iface_item | impl_item | foreign_mod_item ;
+     | res_item | trait_item | impl_item | foreign_mod_item ;
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in crate
@@ -1259,7 +1259,7 @@ those methods for a specific type.
 # type surface = int;
 # type bounding_box = int;
 
-iface shape {
+trait shape {
     fn draw(surface);
     fn bounding_box() -> bounding_box;
 }
@@ -1275,7 +1275,7 @@ These appear after the name, using the same syntax used in [generic
 functions](#generic-functions).
 
 ~~~~
-iface seq<T> {
+trait seq<T> {
    fn len() -> uint;
    fn elt_at(n: uint) -> T;
    fn iter(fn(T));
@@ -1290,7 +1290,7 @@ that have the parameter's type. For example:
 
 ~~~~
 # type surface = int;
-# iface shape { fn draw(surface); }
+# trait shape { fn draw(surface); }
 
 fn draw_twice<T: shape>(surface: surface, sh: T) {
     sh.draw(surface);
@@ -1301,33 +1301,33 @@ fn draw_twice<T: shape>(surface: surface, sh: T) {
 Trait items also define a type with the same name as the
 trait. Values of this type are created by
 [casting](#type-cast-expressions) values (of a type for which an
-implementation of the given interface is in scope) to the interface
+implementation of the given trait is in scope) to the trait
 type.
 
 ~~~~
-# iface shape { }
+# trait shape { }
 # impl of shape for int { }
 # let mycircle = 0;
 
 let myshape: shape = mycircle as shape;
 ~~~~
 
-The resulting value is a reference counted box containing the value
+The resulting value is a reference-counted box containing the value
 that was cast along with information that identify the methods of the
-implementation that was used. Values with an interface type can always
-have methods of their interface called on them, and can be used to
-instantiate type parameters that are bounded on their interface.
+implementation that was used. Values with a trait type can always
+have methods from their trait called on them, and can be used to
+instantiate type parameters that are bounded by their trait.
 
 ### Implementations
 
-An _implementation item_ provides an implementation of an
-[interface](#traits) for a type.
+An _implementation item_ provides an implementation of a
+[trait](#traits) for a type.
 
 ~~~~
 # type point = {x: float, y: float};
 # type surface = int;
 # type bounding_box = {x: float, y: float, width: float, height: float};
-# iface shape { fn draw(surface); fn bounding_box() -> bounding_box; }
+# trait shape { fn draw(surface); fn bounding_box() -> bounding_box; }
 # fn do_draw_circle(s: surface, c: circle) { }
 
 type circle = {radius: float, center: point};
@@ -1342,16 +1342,16 @@ impl circle_shape of shape for circle {
 }
 ~~~~
 
-This defines an implementation named `circle_shape` of interface
+This defines an implementation named `circle_shape` of trait
 `shape` for type `circle`. The name of the implementation is the name
 by which it is imported and exported, but has no further significance.
-It may be omitted to default to the name of the interface that was
+It may be omitted to default to the name of the trait that was
 implemented. Implementation names do not conflict the way other names
 do: multiple implementations with the same name may exist in a scope at
 the same time.
 
-It is possible to define an implementation without referencing an
-interface. The methods in such an implementation can only be used
+It is possible to define an implementation without referring to a trait.
+The methods in such an implementation can only be used
 statically (as direct calls on the values of the type that the
 implementation targets). In such an implementation, the `of` clause is
 not given, and the name is mandatory.
@@ -1365,17 +1365,17 @@ impl uint_loops for uint {
 }
 ~~~~
 
-_When_ an interface is specified, all methods declared as part of the
-interface must be present, with matching types and type parameter
+_When_ a trait is specified, all methods declared as part of the
+trait must be present, with matching types and type parameter
 counts, in the implementation.
 
 An implementation can take type parameters, which can be different
-from the type parameters taken by the interface it implements. They
+from the type parameters taken by the trait it implements. They
 are written after the name of the implementation, or if that is not
 specified, after the `impl` keyword.
 
 ~~~~
-# iface seq<T> { }
+# trait seq<T> { }
 
 impl <T> of seq<T> for ~[T] {
     /* ... */
@@ -1540,7 +1540,7 @@ statement block. The declared name may denote a new slot or a new item.
 
 An _item declaration statement_ has a syntactic form identical to an
 [item](#items) declaration within a module. Declaring an item -- a function,
-enumeration, type, resource, interface, implementation or module -- locally
+enumeration, type, resource, trait, implementation or module -- locally
 within a statement block is simply a way of restricting its scope to a narrow
 region containing all of its uses; it is otherwise identical in meaning to
 declaring the item outside the statement block.
@@ -2763,8 +2763,7 @@ Every trait item (see [traits](#traits)) defines a type with the same name
 as the trait. For a trait `T`, cast expressions introduce values of type `T`:
 
 ~~~~~~~~
-// doc extractor doesn't recognize trait -- fix it
-iface printable {
+trait printable {
   fn to_str() -> ~str;
 }
 
@@ -2811,7 +2810,7 @@ impl item. It refers to the type of the implicit `self` argument. For
 example, in:
 
 ~~~~~~
-iface printable {
+trait printable {
   fn to_str() -> ~str;
 }
 
@@ -2848,7 +2847,7 @@ Sendable
 Copyable
   : This kind includes all types that can be copied. All types with
     sendable kind are copyable, as are shared boxes, shared closures,
-    interface types, and structural types built out of these.
+    trait types, and structural types built out of these.
 Noncopyable
   : [Resource](#resources) types, and every type that includes a
     resource without storing it in a shared box, may not be copied.
@@ -2933,10 +2932,10 @@ shared or unique boxes, and/or references. Sharing memory between tasks can
 only be accomplished using *unsafe* constructs, such as raw pointer
 operations or calling C code.
 
-When a task sends a value satisfying the `send` interface over a channel, it
+When a task sends a value that has the `send` trait over a channel, it
 loses ownership of the value sent and can no longer refer to it. This is
 statically guaranteed by the combined use of "move semantics" and the
-compiler-checked _meaning_ of the `send` interface: it is only instantiated
+compiler-checked _meaning_ of the `send` trait: it is only instantiated
 for (transitively) unique kinds of data constructor and pointers, never shared
 pointers.
 
@@ -3117,7 +3116,7 @@ channels -- may lead to the same port.]
 Each port and channel can carry only one type of message. The message type is
 encoded as a parameter of the channel or port type. The message type of a
 channel is equal to the message type of the port it is bound to. The types of
-messages must satisfy the `send` built-in interface.
+messages must satisfy the `send` built-in trait.
 
 Messages are generally sent asynchronously, with optional
 rate-limiting on the transmit side.  Each port contains a message
