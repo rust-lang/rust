@@ -1106,11 +1106,12 @@ let a: list<int> = cons(7, @cons(13, @nil));
 
 ### Classes
 
-TODO: more about classes
-
-_Classes_ are named record types that may have a destructor associated
-with them, as well as fields and methods. For historical reasons, we
-may call a class with a destructor and a single field a "resource".
+A _class_ is a named record type that collects together fields and
+methods. It must have a _constructor_ (a function called `new` that
+returns a new instance of the class), and may have a destructor (a
+nullary function called `drop` that executes before the memory manager
+frees the memory for a given class). For historical reasons, we may
+call a class with a destructor and a single field a "resource".
 
 A _class item_ declares a class type:
 
@@ -1123,21 +1124,130 @@ class file_descriptor {
 ~~~~
 
 Calling the `file_descriptor` constructor function on an integer will
-produce a value with the `file_descriptor` type. Resource types have a
-noncopyable [type kind](#type-kinds), and thus may not be
-copied. Class types that don't have destructors may be copied if all
-their fields are copyable. The semantics guarantee that for each
-constructed resource value, the destructor will run once: when the
-value is disposed of (barring drastic program termination that somehow
-prevents unwinding from taking place). For stack-allocated values,
-disposal happens when the value goes out of scope. For values in
-shared boxes, it happens when the reference count of the box reaches
-zero.
+produce a value with the `file_descriptor` type.
 
-The argument or arguments to the class constructor may be stored in
-the class's named fields, and can be accessed by a field reference. In
-this case, the `file_descriptor`'s data field would be accessed like
-`f.fd`, if `f` is a value of type `file_descriptor`.
+_Fields_ are immutable by default, so instances of `file_descriptor`
+can't have their `fd` fields reassigned. A mutable field declaration
+looks like:
+
+~~~~
+    let mut fd: libc::c_int;
+~~~~
+
+The only exception is that the body of the class constructor begins
+with all the class's fields uninitialized, and is allowed to -- in
+fact, must -- initialize all the fields. A special case in the
+typestate pass enforces this invariant.
+
+Usually, the class constructor stores its argument or arguments in the
+class's named fields. In this case, the `file_descriptor`'s data field
+would be accessed like `f.fd`, if `f` is a value of type
+`file_descriptor`. By default, class fields are _public_: they can be
+accessed both from methods inside the class, and code outside the
+class. Classes can also have private fields:
+
+~~~~
+class file_descriptor {
+    let fd: *libc::FILE;
+    new(fd: *libc::FILE) {
+      self.fd = fd; self.name = none;
+    }
+    priv {
+      let mut name: option<str>;
+    }
+    fn get_name() -> str {
+      alt self.name {
+         none    { fail "File has no name!"; }
+         some(n) { n }
+      }
+    }
+}
+~~~~
+
+Private fields are instance-private: methods in a class `C` can access
+`self`'s private fields, but not private fields of other values of
+type `C`. Code outside a class can't access any private fields.
+
+A class item may contain _methods_, which take an implicit `self`
+argument:
+
+~~~~
+class file_descriptor {
+    let fd: *libc::FILE;
+    new(fd: *libc::FILE) { self.fd = fd; }
+    fn flush() {
+       libc::fflush(self.fd);
+    }
+}
+~~~~
+
+In this case, ```open``` is a nullary method that calls the
+```fopen``` function, defined in another library, on the ```fd```
+field. As in this example, methods must refer to their self's fields
+as fields of ```self```; bare references to ```fd``` can't
+occur. Methods can be public or private; just like fields, they are
+public by default and private if enclosed in a `priv` section.
+
+Classes may be polymorphic:
+
+~~~~
+class file<A: copy> {
+  let data: A;
+  let fd: *libc::FILE;
+  new(data: A, fd: *libc::FILE) { self.data = data; self.fd = fd; }
+}
+~~~~
+
+Methods may also be polymorphic, and can have additional type
+parameters other than those bound in the class:
+
+~~~~
+class file<A: copy> {
+  let data: A;
+  let fd: *libc::FILE;
+  new(fd: *libc::FILE, data: A) { self.fd = fd; self.data = data; }
+  fn map_data<B>(f: fn(A) -> B) -> B {
+     f(self.data)
+  }
+}
+~~~~
+
+Classes do not support inheritance, except through traits. As a
+result, all class method dispatch is static (non-virtual).
+
+A class may implement a trait (see [interfaces](#interfaces)):
+
+~~~~
+trait to_str {
+  fn to_str() -> str;
+}
+
+class file : to_str {
+  let fd: *libc::FILE;
+  new(fd: *libc::FILE) { self.fd = fd; }
+  fn to_str() -> str { "a file" }
+}
+~~~~
+
+The syntax `class file: to_str` is pronounced "class `file`
+implements trait `to_str`".
+
+Class instances may be allocated on the stack, in the exchange heap,
+or on the task heap. A value with a class type ```C``` has a
+noncopyable [type kind](#type-kinds) if ```C``` has a destructor, and
+thus may not be copied. Class types that don't have destructors may be
+copied if all their fields are copyable.
+
+The semantics guarantee that for each constructed resource value, the
+destructor will run once: when the value is disposed of (barring
+drastic program termination that somehow prevents unwinding from
+taking place). For stack-allocated values, disposal happens when the
+value goes out of scope. For values in shared boxes, it happens when
+the reference count of the box reaches zero.
+
+The order of fields in a class instance is significant; its runtime
+representation is the same as that of a record with identical fields
+laid out in the same order.
 
 ### Interfaces
 
