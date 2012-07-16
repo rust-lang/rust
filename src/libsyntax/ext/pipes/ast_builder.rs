@@ -160,6 +160,12 @@ impl ast_builder for ext_ctxt {
           span: empty_span()}
     }
 
+    fn ty_nil() -> @ast::ty {
+        @{id: self.next_id(),
+          node: ast::ty_nil,
+          span: empty_span()}
+    }
+
     fn item_ty_poly(name: ident,
                     ty: @ast::ty,
                     +params: ~[ast::ty_param]) -> @ast::item {

@@ -44,33 +44,45 @@ impl proto_parser for parser {
         self.parse_unspanned_seq(
             token::LBRACE, token::RBRACE,
             {sep: some(token::COMMA), trailing_sep_allowed: true},
-            |self| {
-                let mname = self.parse_ident();
+            |self| self.parse_message(state));
+    }
 
-                let args = if self.token == token::LPAREN {
-                    self.parse_unspanned_seq(token::LPAREN,
-                                             token::RPAREN,
-                                             {sep: some(token::COMMA),
-                                              trailing_sep_allowed: true},
-                                             |p| p.parse_ty(false))
-                }
-                else { ~[] };
+    fn parse_message(state: state) {
+        let mname = self.parse_ident();
 
-                self.expect(token::RARROW);
+        let args = if self.token == token::LPAREN {
+            self.parse_unspanned_seq(token::LPAREN,
+                                     token::RPAREN,
+                                     {sep: some(token::COMMA),
+                                      trailing_sep_allowed: true},
+                                     |p| p.parse_ty(false))
+        }
+        else { ~[] };
 
-                let next = self.parse_ident();
+        self.expect(token::RARROW);
 
-                let ntys = if self.token == token::LT {
-                    self.parse_unspanned_seq(token::LT,
-                                             token::GT,
-                                             {sep: some(token::COMMA),
-                                              trailing_sep_allowed: true},
-                                             |p| p.parse_ty(false))
-                }
-                else { ~[] };
+        let next = alt copy self.token {
+          token::IDENT(_, _) {
+            let name = self.parse_ident();
+            let ntys = if self.token == token::LT {
+                self.parse_unspanned_seq(token::LT,
+                                         token::GT,
+                                         {sep: some(token::COMMA),
+                                          trailing_sep_allowed: true},
+                                         |p| p.parse_ty(false))
+            }
+            else { ~[] };
+            some({state: name, tys: ntys})
+          }
+          token::NOT {
+            // -> !
+            self.bump();
+            none
+          }
+          _ { self.fatal(~"invalid next state") }
+        };
 
-                state.add_message(mname, args, next, ntys);
+        state.add_message(mname, args, next);
 
-            });
     }
 }

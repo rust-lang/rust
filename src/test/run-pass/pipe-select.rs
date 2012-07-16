@@ -1,4 +1,3 @@
-// xfail-test
 // xfail-pretty
 // xfail-win32
 
@@ -10,7 +9,7 @@ import pipes::{recv, select};
 
 proto! oneshot {
     waiting:send {
-        signal -> signaled
+        signal -> !
     }
 
     signaled:send { }
@@ -86,14 +85,14 @@ fn test_select2() {
       either::right(*) { fail }
     }
 
-    stream::client::send(bc, "abc");
+    stream::client::send(bc, ~"abc");
 
     #error("done with first select2");
 
     let (ac, ap) = stream::init();
     let (bc, bp) = stream::init();
 
-    stream::client::send(bc, "abc");
+    stream::client::send(bc, ~"abc");
 
     alt pipes::select2(ap, bp) {
       either::left(*) { fail }

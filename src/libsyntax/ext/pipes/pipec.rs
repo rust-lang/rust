@@ -40,15 +40,17 @@ impl methods for direction {
     }
 }
 
+type next_state = option<{state: ident, tys: ~[@ast::ty]}>;
+
 enum message {
-    // name, data, current state, next state, next tys
-    message(ident, ~[@ast::ty], state, ident, ~[@ast::ty])
+    // name, data, current state, next state
+    message(ident, ~[@ast::ty], state, next_state)
 }
 
 impl methods for message {
     fn name() -> ident {
         alt self {
-          message(id, _, _, _, _) {
+          message(id, _, _, _) {
             id
           }
         }
@@ -57,15 +59,17 @@ impl methods for message {
     // Return the type parameters actually used by this message
     fn get_params() -> ~[ast::ty_param] {
         alt self {
-          message(_, _, this, _, _) {
+          message(_, _, this, _) {
             this.ty_params
           }
         }
     }
 
     fn gen_send(cx: ext_ctxt) -> @ast::item {
+        #debug("pipec: gen_send");
         alt self {
-          message(id, tys, this, next, next_tys) {
+          message(id, tys, this, some({state: next, tys: next_tys})) {
+            #debug("pipec: next state exists");
             let next = this.proto.get_state(next);
             assert next_tys.len() == next.ty_params.len();
             let arg_names = tys.mapi(|i, _ty| @(~"x_" + i.to_str()));
@@ -107,6 +111,45 @@ impl methods for message {
                             self.get_params(),
                             cx.expr_block(body))
           }
+
+          message(id, tys, this, none) {
+            #debug("pipec: no next state");
+            let arg_names = tys.mapi(|i, _ty| @(~"x_" + i.to_str()));
+
+            let args_ast = (arg_names, tys).map(
+                |n, t| cx.arg_mode(n, t, ast::by_copy)
+            );
+
+            let args_ast = vec::append(
+                ~[cx.arg_mode(@~"pipe",
+                              cx.ty_path(path(this.data_name())
+                                        .add_tys(cx.ty_vars(this.ty_params))),
+                              ast::by_copy)],
+                args_ast);
+
+            let message_args = if arg_names.len() == 0 {
+                ~""
+            }
+            else {
+                ~"(" + str::connect(arg_names.map(|x| *x), ~", ") + ~")"
+            };
+
+            let mut body = ~"{ ";
+            body += #fmt("let message = %s::%s%s;\n",
+                         *this.proto.name,
+                         *self.name(),
+                         message_args);
+            body += #fmt("pipes::send(pipe, message);\n");
+            body += ~" }";
+
+            let body = cx.parse_expr(body);
+
+            cx.item_fn_poly(self.name(),
+                            args_ast,
+                            cx.ty_nil(),
+                            self.get_params(),
+                            cx.expr_block(body))
+          }
         }
     }
 }
@@ -122,9 +165,9 @@ enum state {
 }
 
 impl methods for state {
-    fn add_message(name: ident, +data: ~[@ast::ty], next: ident,
-                   +next_tys: ~[@ast::ty]) {
-        self.messages.push(message(name, data, self, next, next_tys));
+    fn add_message(name: ident, +data: ~[@ast::ty], next: next_state) {
+        self.messages.push(message(name, data, self,
+                                   next));
     }
 
     fn filename() -> ~str {
@@ -140,6 +183,7 @@ impl methods for state {
     }
 
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
+        #debug("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
         // state is called ping. This will generate both `ping` and
         // `ping_message`. The first contains data that the user cares
@@ -151,22 +195,26 @@ impl methods for state {
         let mut items_msg = ~[];
 
         for self.messages.each |m| {
-            let message(_, tys, this, next, next_tys) = m;
+            let message(name, tys, this, next) = m;
 
-            let name = m.name();
-            let next = this.proto.get_state(next);
-            let next_name = next.data_name();
+            let tys = alt next {
+              some({state: next, tys: next_tys}) {
+                let next = this.proto.get_state(next);
+                let next_name = next.data_name();
 
-            let dir = alt this.dir {
-              send { @~"server" }
-              recv { @~"client" }
+                let dir = alt this.dir {
+                  send { @~"server" }
+                  recv { @~"client" }
+                };
+
+                vec::append_one(tys,
+                                cx.ty_path((dir + next_name)
+                                           .add_tys(next_tys)))
+              }
+              none { tys }
             };
 
-            let v = cx.variant(name,
-                               vec::append_one(
-                                   tys,
-                                   cx.ty_path((dir + next_name)
-                                              .add_tys(next_tys))));
+            let v = cx.variant(name, tys);
 
             vec::push(items_msg, v);
         }
@@ -175,6 +223,7 @@ impl methods for state {
     }
 
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {
+        #debug("pipec: to_endpoint_decls");
         let dir = alt dir {
           send { (*self).dir }
           recv { (*self).dir.reverse() }
