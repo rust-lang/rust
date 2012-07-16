@@ -2,7 +2,6 @@
 
 use std;
 
-import tuple::{first, second};
 import std::list::{list, cons, nil};
 import std::time::precise_time_s;
 
@@ -75,8 +74,8 @@ fn recurse_or_fail(depth: int, st: option<st>) {
                 unique: ~cons((), @*st.unique),
                 fn_box: fn@() -> @nillist { @cons((), fn_box()) },
                 fn_unique: fn~() -> ~nillist { ~cons((), @*fn_unique()) },
-                tuple: (@cons((), first(st.tuple)),
-                        ~cons((), @*second(st.tuple))),
+                tuple: (@cons((), st.tuple.first()),
+                        ~cons((), @*st.tuple.second())),
                 vec: st.vec + ~[@cons((), st.vec.last())],
                 res: r(@cons((), st.res._l))
             })
