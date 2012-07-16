@@ -22,8 +22,8 @@ fn merge_sort<T: copy>(le: le<T>, v: ~[const T]) -> ~[T] {
 
     fn merge_sort_<T: copy>(le: le<T>, v: ~[const T], slice: slice)
         -> ~[T] {
-        let begin = tuple::first(slice);
-        let end = tuple::second(slice);
+        let begin = slice.first();
+        let end = slice.second();
 
         let v_len = end - begin;
         if v_len == 0u { ret ~[]; }

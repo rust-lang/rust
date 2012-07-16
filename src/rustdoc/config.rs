@@ -62,7 +62,7 @@ fn usage() {
     println(~"Usage: rustdoc ~[options] <cratefile>\n");
     println(~"Options:\n");
     for opts().each |opt| {
-        println(#fmt("    %s", tuple::second(opt)));
+        println(#fmt("    %s", opt.second()));
     }
     println(~"");
 }
@@ -99,7 +99,7 @@ fn parse_config_(
     program_output: program_output
 ) -> result<config, ~str> {
     let args = vec::tail(args);
-    let opts = tuple::first(vec::unzip(opts()));
+    let opts = vec::unzip(opts()).first();
     alt getopts::getopts(args, opts) {
         result::ok(match) {
             if vec::len(match.free) == 1u {

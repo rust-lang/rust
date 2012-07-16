@@ -801,7 +801,7 @@ mod test {
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         write_markdown(doc, writer_factory);
-        ret tuple::second(comm::recv(po));
+        ret comm::recv(po).second();
     }
 
     fn write_markdown_str_srv(
@@ -811,7 +811,7 @@ mod test {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         let pass = mk_pass(writer_factory);
         pass.f(srv, doc);
-        ret tuple::second(comm::recv(po));
+        ret comm::recv(po).second();
     }
 
     #[test]

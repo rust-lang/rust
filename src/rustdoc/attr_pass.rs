@@ -229,8 +229,8 @@ fn merge_method_attrs(
     };
 
     do vec::map2(docs, attrs) |doc, attrs| {
-        assert doc.name == tuple::first(attrs);
-        let desc = tuple::second(attrs);
+        assert doc.name == attrs.first();
+        let desc = attrs.second();
 
         {
             desc: desc

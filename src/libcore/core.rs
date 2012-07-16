@@ -6,6 +6,7 @@ import option::{some, none};
 import option = option::option;
 import path = path::path;
 import str::extensions;
+import tuple::extensions;
 import vec::extensions;
 import option::extensions;
 import option_iter::extensions;
