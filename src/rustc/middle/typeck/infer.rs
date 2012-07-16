@@ -1053,16 +1053,40 @@ impl unify_methods for infer_ctxt {
 }
 
 // Resolution is the process of removing type variables and replacing
-// them with their inferred values.  There are several "modes" for
-// resolution.  The first is a shallow resolution: this only resolves
-// one layer, but does not resolve any nested variables.  So, for
-// example, if we have two variables A and B, and the constraint that
-// A <: ~[B] and B <: int, then shallow resolution on A would yield
-// ~[B].  Deep resolution, on the other hand, would yield ~[int].
+// them with their inferred values.  Unfortunately our inference has
+// become fairly complex and so there are a number of options to
+// control *just how much* you want to resolve and how you want to do
+// it.
 //
-// But there is one more knob: the `force_level` variable controls
-// the behavior in the face of unconstrained type and region
-// variables.
+// # Controlling the scope of resolution
+//
+// The options resolve_* determine what kinds of variables get
+// resolved.  Generally resolution starts with a top-level type
+// variable; we will always resolve this.  However, once we have
+// resolved that variable, we may end up with a type that still
+// contains type variables.  For example, if we resolve `<T0>` we may
+// end up with something like `[<T1>]`.  If the option
+// `resolve_nested_tvar` is passed, we will then go and recursively
+// resolve `<T1>`.
+//
+// The options `resolve_rvar` and `resolve_ivar` control whether we
+// resolve region and integral variables, respectively.
+//
+// # What do if things are unconstrained
+//
+// Sometimes we will encounter a variable that has no constraints, and
+// therefore cannot sensibly be mapped to any particular result.  By
+// default, we will leave such variables as is (so you will get back a
+// variable in your result).  The options force_* will cause the
+// resolution to fail in this case intead, except for the case of
+// integral variables, which resolve to `int` if forced.
+//
+// # resolve_all and force_all
+//
+// The options are a bit set, so you can use the *_all to resolve or
+// force all kinds of variables (including those we may add in the
+// future).  If you want to resolve everything but one type, you are
+// probably better off writing `resolve_all - resolve_ivar`.
 
 const resolve_nested_tvar: uint = 0b00000001;
 const resolve_rvar: uint        = 0b00000010;
