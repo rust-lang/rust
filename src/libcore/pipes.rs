@@ -330,7 +330,7 @@ fn select2i<A: selectable, B: selectable>(a: A, b: B) -> either<(), ()> {
     alt wait_many([a.header(), b.header()]/_) {
       0 { left(()) }
       1 { right(()) }
-      _ { fail "wait returned unexpected index" }
+      _ { fail ~"wait returned unexpected index" }
     }
 }
 
