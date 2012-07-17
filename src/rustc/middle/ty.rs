@@ -224,7 +224,7 @@ type ctxt =
       vecs_implicitly_copyable: bool,
       cstore: metadata::cstore::cstore,
       sess: session::session,
-      def_map: resolve::def_map,
+      def_map: resolve3::DefMap,
 
       region_map: middle::region::region_map,
       region_paramd_items: middle::region::region_paramd_items,
@@ -502,7 +502,7 @@ fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
 }
 
 fn mk_ctxt(s: session::session,
-           dm: resolve::def_map,
+           dm: resolve3::DefMap,
            amap: ast_map::map,
            freevars: freevars::freevar_map,
            region_map: middle::region::region_map,

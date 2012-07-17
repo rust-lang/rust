@@ -51,7 +51,6 @@ mod middle {
         mod reachable;
     }
     mod ty;
-    mod resolve;
     mod resolve3;
     mod typeck {
         mod check {

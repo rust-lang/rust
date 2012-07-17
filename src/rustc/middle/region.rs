@@ -161,7 +161,7 @@ type region_map = hashmap<ast::node_id, ast::node_id>;
 
 type ctxt = {
     sess: session,
-    def_map: resolve::def_map,
+    def_map: resolve3::DefMap,
     region_map: region_map,
 
     // The parent scope is the innermost block, call, or alt
@@ -384,8 +384,8 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     visit::visit_fn(fk, decl, body, sp, id, fn_cx, visitor);
 }
 
-fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
-        -> region_map {
+fn resolve_crate(sess: session, def_map: resolve3::DefMap,
+                 crate: @ast::crate) -> region_map {
     let cx: ctxt = {sess: sess,
                     def_map: def_map,
                     region_map: int_hash(),
@@ -429,7 +429,7 @@ type dep_map = hashmap<ast::node_id, @dvec<ast::node_id>>;
 type determine_rp_ctxt_ = {
     sess: session,
     ast_map: ast_map::map,
-    def_map: resolve::def_map,
+    def_map: resolve3::DefMap,
     region_paramd_items: region_paramd_items,
     dep_map: dep_map,
     worklist: dvec<ast::node_id>,
@@ -610,7 +610,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
 
 fn determine_rp_in_crate(sess: session,
                          ast_map: ast_map::map,
-                         def_map: resolve::def_map,
+                         def_map: resolve3::DefMap,
                          crate: @ast::crate) -> region_paramd_items {
     let cx = determine_rp_ctxt_(@{sess: sess,
                                   ast_map: ast_map,

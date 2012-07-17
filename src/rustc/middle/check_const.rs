@@ -5,7 +5,7 @@ import std::map::hashmap;
 import dvec::{dvec, extensions};
 
 fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
-               def_map: resolve::def_map,
+               def_map: resolve3::DefMap,
                 method_map: typeck::method_map, tcx: ty::ctxt) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{
         visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
@@ -17,7 +17,8 @@ fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
     sess.abort_if_errors();
 }
 
-fn check_item(sess: session, ast_map: ast_map::map, def_map: resolve::def_map,
+fn check_item(sess: session, ast_map: ast_map::map,
+              def_map: resolve3::DefMap,
               it: @item, &&_is_const: bool, v: visit::vt<bool>) {
     alt it.node {
       item_const(_, ex) {
@@ -54,7 +55,7 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
 }
 
-fn check_expr(sess: session, def_map: resolve::def_map,
+fn check_expr(sess: session, def_map: resolve3::DefMap,
               method_map: typeck::method_map, tcx: ty::ctxt,
               e: @expr, &&is_const: bool, v: visit::vt<bool>) {
     if is_const {
@@ -130,13 +131,13 @@ fn check_expr(sess: session, def_map: resolve::def_map,
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
 fn check_item_recursion(sess: session, ast_map: ast_map::map,
-                        def_map: resolve::def_map, it: @item) {
+                        def_map: resolve3::DefMap, it: @item) {
 
     type env = {
         root_it: @item,
         sess: session,
         ast_map: ast_map::map,
-        def_map: resolve::def_map,
+        def_map: resolve3::DefMap,
         idstack: @dvec<node_id>,
     };
 

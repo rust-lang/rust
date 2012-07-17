@@ -10,7 +10,7 @@ import syntax::ast_util::{dummy_sp, path_to_ident};
 import syntax::ast::def_id;
 import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;
-import middle::resolve::def_map;
+import middle::resolve3::DefMap;
 import back::abi;
 import std::map::hashmap;
 import dvec::{dvec, extensions};
@@ -130,7 +130,7 @@ fn expand_nested_bindings(m: match, col: uint, val: ValueRef) -> match {
 
 type enter_pat = fn(@ast::pat) -> option<~[@ast::pat]>;
 
-fn enter_match(dm: def_map, m: match, col: uint, val: ValueRef,
+fn enter_match(dm: DefMap, m: match, col: uint, val: ValueRef,
                e: enter_pat) -> match {
     let mut result = ~[];
     for vec::each(m) |br| {
@@ -157,7 +157,7 @@ fn enter_match(dm: def_map, m: match, col: uint, val: ValueRef,
     ret result;
 }
 
-fn enter_default(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
+fn enter_default(dm: DefMap, m: match, col: uint, val: ValueRef) -> match {
     do enter_match(dm, m, col, val) |p| {
         alt p.node {
           ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) { some(~[]) }
@@ -195,7 +195,7 @@ fn enter_opt(tcx: ty::ctxt, m: match, opt: opt, col: uint,
     }
 }
 
-fn enter_rec(dm: def_map, m: match, col: uint, fields: ~[ast::ident],
+fn enter_rec(dm: DefMap, m: match, col: uint, fields: ~[ast::ident],
              val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(dm, m, col, val) |p| {
@@ -216,7 +216,7 @@ fn enter_rec(dm: def_map, m: match, col: uint, fields: ~[ast::ident],
     }
 }
 
-fn enter_tup(dm: def_map, m: match, col: uint, val: ValueRef,
+fn enter_tup(dm: DefMap, m: match, col: uint, val: ValueRef,
              n_elts: uint) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(dm, m, col, val) |p| {
@@ -227,7 +227,7 @@ fn enter_tup(dm: def_map, m: match, col: uint, val: ValueRef,
     }
 }
 
-fn enter_box(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
+fn enter_box(dm: DefMap, m: match, col: uint, val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(dm, m, col, val) |p| {
         alt p.node {
@@ -237,7 +237,7 @@ fn enter_box(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
     }
 }
 
-fn enter_uniq(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
+fn enter_uniq(dm: DefMap, m: match, col: uint, val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(dm, m, col, val) |p| {
         alt p.node {

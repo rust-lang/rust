@@ -10,7 +10,7 @@ fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     })
 }
 
-fn lookup_vtables(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
+fn lookup_vtables(fcx: @fn_ctxt, isc: resolve3::ImplScopes, sp: span,
                   bounds: @~[ty::param_bounds], substs: ty::substs,
                   allow_unsafe: bool) -> vtable_res {
     let tcx = fcx.ccx.tcx;
@@ -53,7 +53,7 @@ as if it has type <trait_ty>
 
 XXX: This doesn't use the coherence tables yet.
 */
-fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
+fn lookup_vtable(fcx: @fn_ctxt, isc: resolve3::ImplScopes, sp: span,
                  ty: ty::t, trait_ty: ty::t, allow_unsafe: bool)
     -> vtable_origin {
 

@@ -5450,7 +5450,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
 }
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
-               output: ~str, emap: resolve::exp_map,
+               output: ~str, emap: resolve3::ExportMap,
                maps: astencode::maps)
     -> (ModuleRef, link_meta) {
     let sha = std::sha1::sha1();

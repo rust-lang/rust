@@ -9,7 +9,7 @@ import std::map::{hashmap,set};
 import syntax::{ast, ast_map};
 import driver::session;
 import session::session;
-import middle::{resolve, ty};
+import middle::ty;
 import back::{link, abi, upcall};
 import syntax::codemap::span;
 import lib::llvm::{llvm, target_data, type_names, associate_type,
@@ -87,7 +87,7 @@ type crate_ctxt = {
      externs: hashmap<~str, ValueRef>,
      intrinsics: hashmap<~str, ValueRef>,
      item_vals: hashmap<ast::node_id, ValueRef>,
-     exp_map: resolve::exp_map,
+     exp_map: resolve3::ExportMap,
      reachable: reachable::map,
      item_symbols: hashmap<ast::node_id, ~str>,
      mut main_fn: option<ValueRef>,

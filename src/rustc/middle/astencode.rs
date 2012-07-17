@@ -54,7 +54,7 @@ type maps = {
     mutbl_map: middle::borrowck::mutbl_map,
     root_map: middle::borrowck::root_map,
     last_use_map: middle::liveness::last_use_map,
-    impl_map: middle::resolve::impl_map,
+    impl_map: middle::resolve3::ImplMap,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
 };

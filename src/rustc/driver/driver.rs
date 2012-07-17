@@ -4,7 +4,7 @@ import session::{session, session_};
 import syntax::parse;
 import syntax::{ast, codemap};
 import syntax::attr;
-import middle::{trans, resolve, freevars, kind, ty, typeck, lint};
+import middle::{trans, freevars, kind, ty, typeck, lint};
 import syntax::print::{pp, pprust};
 import util::ppaux;
 import back::link;

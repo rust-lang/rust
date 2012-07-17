@@ -17,12 +17,12 @@ export map, find_reachable;
 
 type map = std::map::hashmap<node_id, ()>;
 
-type ctx = {exp_map: resolve::exp_map,
+type ctx = {exp_map: resolve3::ExportMap,
             tcx: ty::ctxt,
             method_map: typeck::method_map,
             rmap: map};
 
-fn find_reachable(crate_mod: _mod, exp_map: resolve::exp_map,
+fn find_reachable(crate_mod: _mod, exp_map: resolve3::ExportMap,
                   tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = std::map::int_hash();
     let cx = {exp_map: exp_map, tcx: tcx, method_map: method_map, rmap: rmap};
