@@ -15,6 +15,7 @@ export is_false;
 export to_vec;
 export to_str;
 export eq_vec;
+export methods;
 
 // FIXME (#2341): With recursive object types, we could implement binary
 // methods like union, intersection, and difference. At that point, we could
@@ -22,9 +23,12 @@ export eq_vec;
 // for the case where nbits <= 32.
 
 /// The bitvector type
-type bitv = @{storage: ~[mut uint], nbits: uint};
+type bitv = {storage: ~[mut uint], nbits: uint};
 
-const uint_bits: uint = 32u + (1u << 32u >> 27u);
+#[cfg(target_arch="x86")]
+const uint_bits: uint = 32;
+#[cfg(target_arch="x86_64")]
+const uint_bits: uint = 64;
 
 /**
  * Constructs a bitvector
@@ -37,7 +41,7 @@ const uint_bits: uint = 32u + (1u << 32u >> 27u);
 fn bitv(nbits: uint, init: bool) -> bitv {
     let elt = if init { !0u } else { 0u };
     let storage = vec::to_mut(vec::from_elem(nbits / uint_bits + 1u, elt));
-    ret @{storage: storage, nbits: nbits};
+    ret {storage: storage, nbits: nbits};
 }
 
 fn process(v0: bitv, v1: bitv, op: fn(uint, uint) -> uint) -> bool {
@@ -55,13 +59,15 @@ fn process(v0: bitv, v1: bitv, op: fn(uint, uint) -> uint) -> bool {
 }
 
 
-fn lor(w0: uint, w1: uint) -> uint { ret w0 | w1; }
-
+/**
+ * Calculates the union of two bitvectors
+ *
+ * Sets `v0` to the union of `v0` and `v1`. Both bitvectors must be the
+ * same length. Returns 'true' if `v0` was changed.
+ */
 fn union(v0: bitv, v1: bitv) -> bool {
-    let sub = lor; ret process(v0, v1, sub);
+    process(v0, v1, |a, b| a | b)
 }
-
-fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
 
 /**
  * Calculates the intersection of two bitvectors
@@ -70,8 +76,7 @@ fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
  * same length. Returns 'true' if `v0` was changed.
  */
 fn intersect(v0: bitv, v1: bitv) -> bool {
-    let sub = land;
-    ret process(v0, v1, sub);
+    process(v0, v1, |a, b| a & b)
 }
 
 fn right(_w0: uint, w1: uint) -> uint { ret w1; }
@@ -87,10 +92,7 @@ fn assign(v0: bitv, v1: bitv) -> bool {
 
 /// Makes a copy of a bitvector
 fn clone(v: bitv) -> bitv {
-    let storage = vec::to_mut(vec::from_elem(v.nbits / uint_bits + 1u, 0u));
-    let len = vec::len(v.storage);
-    for uint::range(0u, len) |i| { storage[i] = v.storage[i]; };
-    ret @{storage: storage, nbits: v.nbits};
+    copy v
 }
 
 /// Retrieve the value at index `i`
@@ -174,18 +176,13 @@ fn is_false(v: bitv) -> bool {
     ret true;
 }
 
-fn init_to_vec(v: bitv, i: uint) -> uint {
-    ret if get(v, i) { 1u } else { 0u };
-}
-
 /**
  * Converts the bitvector to a vector of uint with the same length.
  *
  * Each uint in the resulting vector has either value 0u or 1u.
  */
 fn to_vec(v: bitv) -> ~[uint] {
-    let sub = |x| init_to_vec(v, x);
-    ret vec::from_fn::<uint>(v.nbits, sub);
+    vec::from_fn::<uint>(v.nbits, |i| if get(v, i) { 1 } else { 0 })
 }
 
 #[inline(always)]
@@ -236,6 +233,30 @@ fn eq_vec(v0: bitv, v1: ~[uint]) -> bool {
         i = i + 1u;
     }
     ret true;
+}
+
+impl methods for bitv {
+    fn union(rhs: bitv) -> bool { union(self, rhs) }
+    fn intersect(rhs: bitv) -> bool { intersect(self, rhs) }
+    fn assign(rhs: bitv) -> bool { assign(self, rhs) }
+    fn get(i: uint) -> bool { get(self, i) }
+    fn [](i: uint) -> bool { self.get(i) }
+    fn eq(rhs: bitv) -> bool { equal(self, rhs) }
+    fn clear() { clear(self) }
+    fn set_all() { set_all(self) }
+    fn invert() { invert(self) }
+    fn difference(rhs: bitv) -> bool { difference(self, rhs) }
+    fn set(i: uint, x: bool) { set(self, i, x) }
+    fn is_true() -> bool { is_true(self) }
+    fn is_false() -> bool { is_false(self) }
+    fn to_vec() -> ~[uint] { to_vec(self) }
+    fn each(f: fn(bool) -> bool) { each(self, f) }
+    fn each_storage(f: fn(&uint) -> bool) { each_storage(self, f) }
+    fn eq_vec(v: ~[uint]) -> bool { eq_vec(self, v) }
+}
+
+impl of to_str::to_str for bitv {
+    fn to_str() -> ~str { to_str(self) }
 }
 
 #[cfg(test)]
