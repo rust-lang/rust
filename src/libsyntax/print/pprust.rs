@@ -9,6 +9,7 @@ import ast::{required, provided};
 import ast_util::operator_prec;
 import dvec::{dvec, extensions};
 import parse::classify::*;
+import util::interner;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {
@@ -27,6 +28,7 @@ fn no_ann() -> pp_ann {
 type ps =
     @{s: pp::printer,
       cm: option<codemap>,
+      //in: interner::interner<@~str>,
       comments: option<~[comments::cmnt]>,
       literals: option<~[comments::lit]>,
       mut cur_cmnt: uint,
@@ -47,6 +49,7 @@ fn end(s: ps) {
 fn rust_printer(writer: io::writer) -> ps {
     ret @{s: pp::mk_printer(writer, default_columns),
           cm: none::<codemap>,
+        //in: interner::mk::<@~str>(|x| str::hash(*x), |x,y| str::eq(*x, *y)),
           comments: none::<~[comments::cmnt]>,
           literals: none::<~[comments::lit]>,
           mut cur_cmnt: 0u,
@@ -63,7 +66,8 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
+fn print_crate(cm: codemap, //in: interner::interner<@~str>,
+               span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::reader,
                out: io::writer, ann: pp_ann, is_expanded: bool) {
     let r = comments::gather_comments_and_literals(span_diagnostic,
@@ -71,6 +75,7 @@ fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
     let s =
         @{s: pp::mk_printer(out, default_columns),
           cm: some(cm),
+          //in: in,
           comments: some(r.cmnts),
           // If the code is post expansion, don't use the table of
           // literals, since it doesn't correspond with the literals

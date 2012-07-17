@@ -335,7 +335,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         else { ~[shape_struct] }, sub = ~[];
         do option::iter(m_dtor_did) |dtor_did| {
           let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
-          let id = interner::intern(ccx.shape_cx.resources, ri);
+          let id = ccx.shape_cx.resources.intern(ri);
           add_u16(s, id as u16);
         };
         for ty::class_items_as_mutable_fields(ccx.tcx, did, substs).each |f| {
@@ -569,9 +569,9 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
 fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut dtors = ~[];
-    let len = interner::len(ccx.shape_cx.resources);
+    let len = ccx.shape_cx.resources.len();
     for uint::range(0u, len) |i| {
-        let ri = interner::get(ccx.shape_cx.resources, i);
+        let ri = ccx.shape_cx.resources.get(i);
         for ri.tps.each() |s| { assert !ty::type_has_params(s); }
         do option::iter(ri.parent_id) |id| {
             dtors += ~[trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];

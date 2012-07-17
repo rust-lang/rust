@@ -5,7 +5,7 @@ import std::map;
 import std::map::{hashmap, hashfn, eqfn};
 import dvec::{dvec, extensions};
 
-type interner<T: const> =
+type hash_interner<T: const> =
     {map: hashmap<T, uint>,
      vect: dvec<T>,
      hasher: hashfn<T>,
@@ -13,28 +13,34 @@ type interner<T: const> =
 
 fn mk<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
     let m = map::hashmap::<T, uint>(hasher, eqer);
-    ret {map: m, vect: dvec(), hasher: hasher, eqer: eqer};
+    let hi: hash_interner<T> =
+        {map: m, vect: dvec(), hasher: hasher, eqer: eqer};
+    ret hi as interner::<T>;
 }
 
-fn intern<T: const copy>(itr: interner<T>, val: T) -> uint {
-    alt itr.map.find(val) {
-      some(idx) { ret idx; }
-      none {
-        let new_idx = itr.vect.len();
-        itr.map.insert(val, new_idx);
-        itr.vect.push(val);
-        ret new_idx;
-      }
+/* when traits can extend traits, we should extend index<uint,T> to get [] */
+iface interner<T: const copy> {
+    fn intern(T) -> uint;
+    pure fn get(uint) -> T;
+    fn len() -> uint;
+}
+
+impl <T: const copy> of interner<T> for hash_interner<T> {
+    fn intern(val: T) -> uint {
+        alt self.map.find(val) {
+          some(idx) { ret idx; }
+          none {
+            let new_idx = self.vect.len();
+            self.map.insert(val, new_idx);
+            self.vect.push(val);
+            ret new_idx;
+          }
+        }
     }
-}
 
-// |get| isn't "pure" in the traditional sense, because it can go from
-// failing to returning a value as items are interned. But for typestate,
-// where we first check a pred and then rely on it, ceasing to fail is ok.
-pure fn get<T: const copy>(itr: interner<T>, idx: uint) -> T {
-    unchecked {
-        itr.vect.get_elt(idx)
-    }
+    // this isn't "pure" in the traditional sense, because it can go from
+    // failing to returning a value as items are interned. But for typestate,
+    // where we first check a pred and then rely on it, ceasing to fail is ok.
+    pure fn get(idx: uint) -> T { self.vect.get_elt(idx) }
+    fn len() -> uint { ret self.vect.len(); }
 }
-
-fn len<T: const>(itr: interner<T>) -> uint { ret itr.vect.len(); }
