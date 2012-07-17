@@ -1373,23 +1373,23 @@ fn move_val(cx: block, action: copy_action, dst: ValueRef,
     let tcx = cx.tcx();
     let mut cx = cx;
     if ty::type_is_scalar(t) {
-        if src.kind == owned { src_val = Load(cx, src_val); }
+        if src.kind == lv_owned { src_val = Load(cx, src_val); }
         Store(cx, src_val, dst);
         ret cx;
     } else if ty::type_is_nil(t) || ty::type_is_bot(t) {
         ret cx;
     } else if ty::type_is_boxed(t) || ty::type_is_unique(t) {
-        if src.kind == owned { src_val = Load(cx, src_val); }
+        if src.kind == lv_owned { src_val = Load(cx, src_val); }
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         Store(cx, src_val, dst);
-        if src.kind == owned { ret zero_mem(cx, src.val, t); }
+        if src.kind == lv_owned { ret zero_mem(cx, src.val, t); }
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
         ret cx;
     } else if type_is_structural_or_param(t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
         memmove_ty(cx, dst, src_val, t);
-        if src.kind == owned { ret zero_mem(cx, src_val, t); }
+        if src.kind == lv_owned { ret zero_mem(cx, src_val, t); }
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
         ret cx;
@@ -1403,8 +1403,8 @@ fn store_temp_expr(cx: block, action: copy_action, dst: ValueRef,
     -> block {
     let _icx = cx.insn_ctxt(~"trans_temp_expr");
     // Lvals in memory are not temporaries. Copy them.
-    if src.kind != temporary && !last_use {
-        let v = if src.kind == owned {
+    if src.kind != lv_temporary && !last_use {
+        let v = if src.kind == lv_owned {
                     load_if_immediate(cx, src.val, t)
                 } else {
                     src.val
@@ -1518,7 +1518,7 @@ fn trans_addr_of(cx: block, e: @ast::expr, dest: dest) -> block {
     let mut {bcx, val, kind} = trans_temp_lval(cx, e);
     let ety = expr_ty(cx, e);
     let is_immediate = ty::type_is_immediate(ety);
-    if (kind == temporary && is_immediate) || kind == owned_imm {
+    if (kind == lv_temporary && is_immediate) || kind == lv_owned_imm {
         val = do_spill(bcx, val, ety);
     }
     ret store_in_dest(bcx, val, dest);
@@ -1696,7 +1696,7 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
     let _icx = bcx.insn_ctxt(~"trans_assign_op");
     let t = expr_ty(bcx, src);
     let lhs_res = trans_lval(bcx, dst);
-    assert (lhs_res.kind == owned);
+    assert (lhs_res.kind == lv_owned);
 
     // A user-defined operator method
     alt bcx.ccx().maps.method_map.find(ex.id) {
@@ -1720,7 +1720,7 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
             arg_exprs(~[src]), save_in(target));
 
         ret move_val(bcx, DROP_EXISTING, lhs_res.val,
-                     {bcx: bcx, val: target, kind: owned},
+                     {bcx: bcx, val: target, kind: lv_owned},
                      dty);
       }
       _ {}
@@ -1947,9 +1947,9 @@ fn trans_loop(cx:block, body: ast::blk) -> block {
 }
 
 enum lval_kind {
-    temporary, //< Temporary value passed by value if of immediate type
-    owned,     //< Non-temporary value passed by pointer
-    owned_imm, //< Non-temporary value passed by value
+    lv_temporary, //< Temporary value passed by value if of immediate type
+    lv_owned,     //< Non-temporary value passed by pointer
+    lv_owned_imm, //< Non-temporary value passed by value
 }
 type local_var_result = {val: ValueRef, kind: lval_kind};
 type lval_result = {bcx: block, val: ValueRef, kind: lval_kind};
@@ -1972,10 +1972,10 @@ fn lval_from_local_var(bcx: block, r: local_var_result) -> lval_result {
 }
 
 fn lval_owned(bcx: block, val: ValueRef) -> lval_result {
-    ret {bcx: bcx, val: val, kind: owned};
+    ret {bcx: bcx, val: val, kind: lv_owned};
 }
 fn lval_temp(bcx: block, val: ValueRef) -> lval_result {
-    ret {bcx: bcx, val: val, kind: temporary};
+    ret {bcx: bcx, val: val, kind: lv_temporary};
 }
 
 fn lval_no_env(bcx: block, val: ValueRef, kind: lval_kind)
@@ -2355,7 +2355,7 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
             val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
                 ccx, node_id_type(bcx, id))));
         }
-        ret {bcx: bcx, val: val, kind: owned, env: null_env};
+        ret {bcx: bcx, val: val, kind: lv_owned, env: null_env};
     }
 
     let mut val = if fn_id.crate == ast::local_crate {
@@ -2376,7 +2376,7 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
           ast::extern_fn {
             // Extern functions are just opaque pointers
             let val = PointerCast(bcx, val, T_ptr(T_i8()));
-            ret lval_no_env(bcx, val, owned_imm);
+            ret lval_no_env(bcx, val, lv_owned_imm);
           }
           _ { /* fall through */ }
         }
@@ -2384,7 +2384,7 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
       _ { /* fall through */ }
     }
 
-    ret {bcx: bcx, val: val, kind: owned, env: null_env};
+    ret {bcx: bcx, val: val, kind: lv_owned, env: null_env};
 }
 
 fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
@@ -2415,15 +2415,15 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
     fn take_local(table: hashmap<ast::node_id, local_val>,
                   id: ast::node_id) -> local_var_result {
         alt table.find(id) {
-          some(local_mem(v)) { {val: v, kind: owned} }
-          some(local_imm(v)) { {val: v, kind: owned_imm} }
+          some(local_mem(v)) { {val: v, kind: lv_owned} }
+          some(local_imm(v)) { {val: v, kind: lv_owned_imm} }
           r { fail(~"take_local: internal error"); }
         }
     }
     alt def {
       ast::def_upvar(nid, _, _) {
         assert (cx.fcx.llupvars.contains_key(nid));
-        ret { val: cx.fcx.llupvars.get(nid), kind: owned };
+        ret { val: cx.fcx.llupvars.get(nid), kind: lv_owned };
       }
       ast::def_arg(nid, _) {
         assert (cx.fcx.llargs.contains_key(nid));
@@ -2439,7 +2439,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
           none { cx.sess().bug(~"trans_local_var: reference to self \
                                  out of context"); }
         };
-        ret {val: slf, kind: owned};
+        ret {val: slf, kind: lv_owned};
       }
       _ {
         cx.sess().unimpl(#fmt("unsupported def type in trans_local_def: %?",
@@ -2478,16 +2478,17 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id)-> lval_maybe_callee {
             let lldiscrim_gv = lookup_discriminant(ccx, vid);
             let lldiscrim = Load(cx, lldiscrim_gv);
             Store(cx, lldiscrim, lldiscrimptr);
-            ret lval_no_env(cx, llenumptr, temporary);
+            ret lval_no_env(cx, llenumptr, lv_temporary);
         }
       }
       ast::def_const(did) {
         if did.crate == ast::local_crate {
-            ret lval_no_env(cx, get_item_val(ccx, did.node), owned);
+            ret lval_no_env(cx, get_item_val(ccx, did.node), lv_owned);
         } else {
             let tp = node_id_type(cx, id);
             let val = trans_external_path(ccx, did, tp);
-            ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
+            ret lval_no_env(cx, load_if_immediate(cx, val, tp),
+                            lv_owned_imm);
         }
       }
       _ {
@@ -2538,7 +2539,7 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
     }
     else { GEPi(bcx, val, ~[0u, ix]) };
 
-    ret {bcx: bcx, val: val, kind: owned};
+    ret {bcx: bcx, val: val, kind: lv_owned};
 }
 
 
@@ -2717,7 +2718,7 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, sp: span) -> lval_result {
         let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
         let llfn = create_real_fn_pair(c.bcx, llfnty, c.val,
                                        null_env_ptr(c.bcx));
-        {bcx: c.bcx, val: llfn, kind: temporary}
+        {bcx: c.bcx, val: llfn, kind: lv_temporary}
       }
     }
 }
@@ -2863,7 +2864,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
           ast::expr_loop_body(blk) {
             let scratch = alloc_ty(cx, expr_ty(cx, blk));
             let bcx = trans_loop_body(cx, e, ret_flag, save_in(scratch));
-            {bcx: bcx, val: scratch, kind: temporary}
+            {bcx: bcx, val: scratch, kind: lv_temporary}
           }
         }
       }
@@ -2881,7 +2882,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
       let {bcx, val} = lval_result_to_result(lv, e_ty);
       let {bcx, val, ty: e_ty} =
           autoderef(bcx, e.id, val, e_ty, derefs);
-      {lv: {bcx: bcx, val: val, kind: temporary},
+      {lv: {bcx: bcx, val: val, kind: lv_temporary},
        e_ty: e_ty}
     };
 
@@ -2904,14 +2905,14 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         alt arg_mode {
           ast::by_ref | ast::by_mutbl_ref {
             // Ensure that the value is spilled into memory:
-            if lv.kind != owned && ty::type_is_immediate(e_ty) {
+            if lv.kind != lv_owned && ty::type_is_immediate(e_ty) {
                 val = do_spill_noroot(bcx, val);
             }
           }
 
           ast::by_val {
             // Ensure that the value is not spilled into memory:
-            if lv.kind == owned || !ty::type_is_immediate(e_ty) {
+            if lv.kind == lv_owned || !ty::type_is_immediate(e_ty) {
                 val = Load(bcx, val);
             }
           }
@@ -2921,15 +2922,15 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
             let alloc = alloc_ty(bcx, arg.ty);
             let move_out = arg_mode == ast::by_move ||
                 ccx.maps.last_use_map.contains_key(e.id);
-            if lv.kind == temporary { revoke_clean(bcx, val); }
-            if lv.kind == owned || !ty::type_is_immediate(arg.ty) {
+            if lv.kind == lv_temporary { revoke_clean(bcx, val); }
+            if lv.kind == lv_owned || !ty::type_is_immediate(arg.ty) {
                 memmove_ty(bcx, alloc, val, arg.ty);
                 if move_out && ty::type_needs_drop(ccx.tcx, arg.ty) {
                     bcx = zero_mem(bcx, val, arg.ty);
                 }
             } else { Store(bcx, val, alloc); }
             val = alloc;
-            if lv.kind != temporary && !move_out {
+            if lv.kind != lv_temporary && !move_out {
                 bcx = take_ty(bcx, val, arg.ty);
             }
 
@@ -2977,9 +2978,9 @@ fn adapt_borrowed_value(lv: lval_result,
       ty::ty_estr(_) | ty::ty_evec(_, _) {
         let ccx = bcx.ccx();
         let val = alt lv.kind {
-          temporary { lv.val }
-          owned { load_if_immediate(bcx, lv.val, e_ty) }
-          owned_imm { lv.val }
+          lv_temporary { lv.val }
+          lv_owned { load_if_immediate(bcx, lv.val, e_ty) }
+          lv_owned_imm { lv.val }
         };
 
         let unit_ty = ty::sequence_element_type(ccx.tcx, e_ty);
@@ -3150,7 +3151,7 @@ fn trans_call_inner(
           }
           is_closure {
             // It's a closure. Have to fetch the elements
-            if f_res.kind == owned {
+            if f_res.kind == lv_owned {
                 faddr = load_if_immediate(bcx, faddr, fn_expr_ty);
             }
             let pair = faddr;
@@ -3418,17 +3419,17 @@ fn trans_temp_lval(bcx: block, e: @ast::expr) -> lval_result {
         let ty = expr_ty(bcx, e);
         if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
             bcx = trans_expr(bcx, e, ignore);
-            ret {bcx: bcx, val: C_nil(), kind: temporary};
+            ret {bcx: bcx, val: C_nil(), kind: lv_temporary};
         } else if ty::type_is_immediate(ty) {
             let cell = empty_dest_cell();
             bcx = trans_expr(bcx, e, by_val(cell));
             add_clean_temp(bcx, *cell, ty);
-            ret {bcx: bcx, val: *cell, kind: temporary};
+            ret {bcx: bcx, val: *cell, kind: lv_temporary};
         } else {
             let scratch = alloc_ty(bcx, ty);
             let bcx = trans_expr_save_in(bcx, e, scratch);
             add_clean_temp(bcx, scratch, ty);
-            ret {bcx: bcx, val: scratch, kind: temporary};
+            ret {bcx: bcx, val: scratch, kind: lv_temporary};
         }
     }
 }
@@ -3442,9 +3443,9 @@ fn trans_temp_expr(bcx: block, e: @ast::expr) -> result {
 
 fn load_value_from_lval_result(lv: lval_result, ty: ty::t) -> ValueRef {
     alt lv.kind {
-      temporary { lv.val }
-      owned { load_if_immediate(lv.bcx, lv.val, ty) }
-      owned_imm { lv.val }
+      lv_temporary { lv.val }
+      lv_owned { load_if_immediate(lv.bcx, lv.val, ty) }
+      lv_owned_imm { lv.val }
     }
 }
 
@@ -3521,7 +3522,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
 
         let _icx = bcx.insn_ctxt(~"root_value_expr");
         add_root_cleanup(bcx, scope_id, root_loc, ty);
-        let lv = {bcx: bcx, val: root_loc, kind: owned};
+        let lv = {bcx: bcx, val: root_loc, kind: lv_owned};
         lval_result_to_dps(lv, ty, false, dest)
       }
     };
@@ -3647,7 +3648,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             assert dest == ignore;
             let src_r = trans_temp_lval(bcx, src);
             let {bcx, val: addr, kind} = trans_lval(src_r.bcx, dst);
-            assert kind == owned;
+            assert kind == lv_owned;
             let is_last_use =
                 bcx.ccx().maps.last_use_map.contains_key(src.id);
             ret store_temp_expr(bcx, DROP_EXISTING, addr, src_r,
@@ -3658,14 +3659,14 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             assert dest == ignore;
             let src_r = trans_temp_lval(bcx, src);
             let {bcx, val: addr, kind} = trans_lval(src_r.bcx, dst);
-            assert kind == owned;
+            assert kind == lv_owned;
             ret move_val(bcx, DROP_EXISTING, addr, src_r,
                          expr_ty(bcx, src));
           }
           ast::expr_swap(dst, src) {
             assert dest == ignore;
             let lhs_res = trans_lval(bcx, dst);
-            assert lhs_res.kind == owned;
+            assert lhs_res.kind == lv_owned;
             let rhs_res = trans_lval(lhs_res.bcx, src);
             let t = expr_ty(bcx, src);
             let tmp_alloc = alloc_ty(rhs_res.bcx, t);
@@ -3728,7 +3729,7 @@ fn lval_to_dps(bcx: block, e: @ast::expr, dest: dest) -> block {
     let last_use_map = bcx.ccx().maps.last_use_map;
     let ty = expr_ty(bcx, e);
     let lv = trans_lval(bcx, e);
-    let last_use = (lv.kind == owned && last_use_map.contains_key(e.id));
+    let last_use = (lv.kind == lv_owned && last_use_map.contains_key(e.id));
     #debug["is last use (%s) = %b, %d", expr_to_str(e), last_use,
            lv.kind as int];
     lval_result_to_dps(lv, ty, last_use, dest)
@@ -3740,7 +3741,7 @@ fn lval_result_to_dps(lv: lval_result, ty: ty::t,
     let ccx = bcx.ccx();
     alt dest {
       by_val(cell) {
-        if kind == temporary {
+        if kind == lv_temporary {
             revoke_clean(bcx, val);
             *cell = val;
         } else if last_use {
@@ -3749,7 +3750,7 @@ fn lval_result_to_dps(lv: lval_result, ty: ty::t,
                 bcx = zero_mem(bcx, val, ty);
             }
         } else {
-            if kind == owned { val = Load(bcx, val); }
+            if kind == lv_owned { val = Load(bcx, val); }
             let {bcx: cx, val} = take_ty_immediate(bcx, val, ty);
             *cell = val;
             bcx = cx;
@@ -4788,7 +4789,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
 
   // Translate the body of the ctor
   bcx = trans_block(bcx_top, body, ignore);
-  let lval_res = {bcx: bcx, val: selfptr, kind: owned};
+  let lval_res = {bcx: bcx, val: selfptr, kind: lv_owned};
   // Generate the return expression
   bcx = store_temp_expr(bcx, INIT, fcx.llretptr, lval_res,
                         rslt_ty, true);

@@ -62,6 +62,7 @@ enum ty_param_bound {
     bound_copy,
     bound_send,
     bound_const,
+    bound_owned,
     bound_trait(@ty),
 }
 

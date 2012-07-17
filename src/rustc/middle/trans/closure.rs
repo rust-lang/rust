@@ -216,31 +216,31 @@ fn store_environment(bcx: block,
         let bound_data = GEPi(bcx, llbox,
              ~[0u, abi::box_field_body, i]);
         alt bv {
-          env_copy(val, ty, owned) {
+          env_copy(val, ty, lv_owned) {
             let val1 = load_if_immediate(bcx, val, ty);
             bcx = base::copy_val(bcx, INIT, bound_data, val1, ty);
           }
-          env_copy(val, ty, owned_imm) {
+          env_copy(val, ty, lv_owned_imm) {
             bcx = base::copy_val(bcx, INIT, bound_data, val, ty);
           }
-          env_copy(_, _, temporary) {
+          env_copy(_, _, lv_temporary) {
             fail ~"cannot capture temporary upvar";
           }
           env_move(val, ty, kind) {
             let src = {bcx:bcx, val:val, kind:kind};
             bcx = move_val(bcx, INIT, bound_data, src, ty);
           }
-          env_ref(val, ty, owned) {
+          env_ref(val, ty, lv_owned) {
             #debug["> storing %s into %s",
                    val_str(bcx.ccx().tn, val),
                    val_str(bcx.ccx().tn, bound_data)];
             Store(bcx, val, bound_data);
           }
-          env_ref(val, ty, owned_imm) {
+          env_ref(val, ty, lv_owned_imm) {
             let addr = do_spill_noroot(bcx, val);
             Store(bcx, addr, bound_data);
           }
-          env_ref(_, _, temporary) {
+          env_ref(_, _, lv_temporary) {
             fail ~"cannot capture temporary upvar";
           }
         }
@@ -289,7 +289,7 @@ fn build_closure(bcx0: block,
             vec::push(env_vals, env_move(lv.val, ty, lv.kind));
           }
           capture::cap_drop {
-            assert lv.kind == owned;
+            assert lv.kind == lv_owned;
             bcx = drop_ty(bcx, lv.val, ty);
             bcx = zero_mem(bcx, lv.val, ty);
           }
@@ -303,9 +303,9 @@ fn build_closure(bcx0: block,
         let nil_ret = PointerCast(bcx, our_ret, T_ptr(T_nil()));
         vec::push(env_vals,
                   env_ref(flagptr,
-                          ty::mk_mut_ptr(tcx, ty::mk_bool(tcx)), owned));
+                          ty::mk_mut_ptr(tcx, ty::mk_bool(tcx)), lv_owned));
         vec::push(env_vals,
-                  env_ref(nil_ret, ty::mk_nil_ptr(tcx), owned));
+                  env_ref(nil_ret, ty::mk_nil_ptr(tcx), lv_owned));
     }
     ret store_environment(bcx, env_vals, ck);
 }

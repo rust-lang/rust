@@ -135,7 +135,7 @@ fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
 
 fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
     alt tpb {
-      bound_copy | bound_send | bound_const { tpb }
+      bound_copy | bound_send | bound_const | bound_owned { tpb }
       bound_trait(ty) { bound_trait(fld.fold_ty(ty)) }
     }
 }

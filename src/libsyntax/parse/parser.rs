@@ -16,7 +16,8 @@ import dvec::{dvec, extensions};
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
-             bound_copy, bound_send, bound_trait, box, by_copy, by_move,
+             bound_copy, bound_send, bound_trait, bound_owned,
+             box, by_copy, by_move,
              by_mutbl_ref, by_ref, by_val, capture_clause, capture_item,
              carg_base, carg_ident, cdir_dir_mod, cdir_src_mod,
              cdir_view_item, checked_expr, claimed_expr, class_immutable,
@@ -1935,12 +1936,16 @@ class parser {
         let ident = self.parse_ident();
         if self.eat(token::COLON) {
             while self.token != token::COMMA && self.token != token::GT {
-                if self.eat_keyword(~"send") { push(bounds, bound_send); }
-                else if self.eat_keyword(~"copy") { push(bounds, bound_copy) }
+                if self.eat_keyword(~"send") {
+                    push(bounds, bound_send); }
+                else if self.eat_keyword(~"copy") {
+                    push(bounds, bound_copy) }
                 else if self.eat_keyword(~"const") {
-                    push(bounds, bound_const)
-                }
-                else { push(bounds, bound_trait(self.parse_ty(false))); }
+                    push(bounds, bound_const);
+                } else if self.eat_keyword(~"owned") {
+                    push(bounds, bound_owned);
+                } else {
+                    push(bounds, bound_trait(self.parse_ty(false))); }
             }
         }
         ret {ident: ident, id: self.get_id(), bounds: @bounds};

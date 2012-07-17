@@ -162,7 +162,7 @@ fn trans_trait_callee(bcx: block, val: ValueRef,
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, ~[0u, n_method]));
-    {bcx: bcx, val: mptr, kind: owned, env: env}
+    {bcx: bcx, val: mptr, kind: lv_owned, env: env}
 }
 
 fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)

@@ -6,7 +6,7 @@ type pair<A,B> = {
     a: A, b: B
 };
 
-fn f<A:copy>(a: A, b: u16) -> fn@() -> (A, u16) {
+fn f<A:copy owned>(a: A, b: u16) -> fn@() -> (A, u16) {
     fn@() -> (A, u16) { (a, b) }
 }
 

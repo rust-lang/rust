@@ -1377,6 +1377,7 @@ fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
               ast::bound_copy { word(s.s, ~"copy"); }
               ast::bound_send { word(s.s, ~"send"); }
               ast::bound_const { word(s.s, ~"const"); }
+              ast::bound_owned { word(s.s, ~"owned"); }
               ast::bound_trait(t) { print_type(s, t); }
             }
         }

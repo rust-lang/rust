@@ -57,7 +57,6 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
         }
       }
       none {
-        // FIXME(#2586)
         #fmt["<unknown-%d>", node_id]
       }
       _ { cx.sess.bug(

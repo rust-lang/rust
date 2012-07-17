@@ -1,8 +1,7 @@
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
-import ty::{kind, kind_sendable, kind_copyable, kind_noncopyable, kind_const,
-           operators};
+import ty::{kind, kind_copyable, kind_noncopyable, kind_const, operators};
 import driver::session::session;
 import std::map::hashmap;
 import util::ppaux::{ty_to_str, tys_to_str};
@@ -21,6 +20,7 @@ import lint::{non_implicitly_copyable_typarams,implicit_copies};
 //  copy: Things that can be copied.
 //  const: Things thare are deeply immutable. They are guaranteed never to
 //    change, and can be safely shared without copying between tasks.
+//  owned: Things that do not contain borrowed pointers.
 //
 // Send includes scalar types as well as classes and unique types containing
 // only sendable types.
@@ -41,15 +41,21 @@ import lint::{non_implicitly_copyable_typarams,implicit_copies};
 
 fn kind_to_str(k: kind) -> ~str {
     let mut kinds = ~[];
+
     if ty::kind_lteq(kind_const(), k) {
         vec::push(kinds, ~"const");
     }
+
     if ty::kind_can_be_copied(k) {
         vec::push(kinds, ~"copy");
     }
+
     if ty::kind_can_be_sent(k) {
         vec::push(kinds, ~"send");
+    } else if ty::kind_is_owned(k) {
+        vec::push(kinds, ~"owned");
     }
+
     str::connect(kinds, ~" ")
 }
 
@@ -93,8 +99,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     fn check_for_uniq(cx: ctx, id: node_id, fv: option<@freevar_entry>,
                       is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be sendable, regardless of whether it is
-        // moved in or copied in
-        check_send(cx, var_t, sp);
+        // moved in or copied in.  Note that send implies owned.
+        if !check_send(cx, var_t, sp) { ret; }
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
@@ -108,6 +114,9 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
 
     fn check_for_box(cx: ctx, id: node_id, fv: option<@freevar_entry>,
                      is_move: bool, var_t: ty::t, sp: span) {
+        // all captured data must be owned
+        if !check_owned(cx, var_t, sp) { ret; }
+
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
         if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
@@ -422,9 +431,21 @@ fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
     }
 }
 
-fn check_send(cx: ctx, ty: ty::t, sp: span) {
+fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
     if !ty::kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, ~"not a sendable value");
+        false
+    } else {
+        true
+    }
+}
+
+fn check_owned(cx: ctx, ty: ty::t, sp: span) -> bool {
+    if !ty::kind_is_owned(ty::type_kind(cx.tcx, ty)) {
+        cx.tcx.sess.span_err(sp, ~"not an owned value");
+        false
+    } else {
+        true
     }
 }
 

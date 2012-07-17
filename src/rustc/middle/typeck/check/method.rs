@@ -169,7 +169,8 @@ class lookup {
         let bounds = tcx.ty_param_bounds.get(did.node);
         for vec::each(*bounds) |bound| {
             let (iid, bound_substs) = alt bound {
-              ty::bound_copy | ty::bound_send | ty::bound_const {
+              ty::bound_copy | ty::bound_send | ty::bound_const |
+              ty::bound_owned {
                 again; /* ok */
               }
               ty::bound_trait(bound_t) {

@@ -881,7 +881,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         let tp_ty = substs.tys[0];
         let src = {bcx: bcx,
                    val: get_param(decl, first_real_arg + 1u),
-                   kind: owned };
+                   kind: lv_owned};
         bcx = move_val(bcx, DROP_EXISTING,
                        get_param(decl, first_real_arg),
                        src,
@@ -891,7 +891,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         let tp_ty = substs.tys[0];
         let src = {bcx: bcx,
                    val: get_param(decl, first_real_arg + 1u),
-                   kind: owned };
+                   kind: lv_owned};
         bcx = move_val(bcx, INIT,
                        get_param(decl, first_real_arg),
                        src,
@@ -982,7 +982,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                |bcx| lval_no_env(
                                    bcx,
                                    get_param(decl, first_real_arg),
-                                   temporary),
+                                   lv_temporary),
                                arg_vals(~[frameaddress_val]), ignore);
       }
     }

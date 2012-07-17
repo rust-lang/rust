@@ -246,7 +246,7 @@ fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
         for vec::each(*tp.bounds) |bound| {
             alt bound {
               bound_trait(t) { v.visit_ty(t, e, v); }
-              bound_copy | bound_send | bound_const { }
+              bound_copy | bound_send | bound_const | bound_owned { }
             }
         }
     }

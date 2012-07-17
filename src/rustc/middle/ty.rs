@@ -107,9 +107,10 @@ export tbox_has_flag;
 export ty_var_id;
 export ty_to_def_id;
 export ty_fn_args;
-export kind, kind_implicitly_copyable, kind_sendable, kind_copyable;
+export kind, kind_implicitly_copyable, kind_send_copy, kind_copyable;
 export kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
+export kind_is_owned;
 export proto_kind, kind_lteq, type_kind;
 export operators;
 export type_err, terr_vstore_kind;
@@ -144,7 +145,8 @@ export closure_kind;
 export ck_block;
 export ck_box;
 export ck_uniq;
-export param_bound, param_bounds, bound_copy, bound_send, bound_trait;
+export param_bound, param_bounds, bound_copy, bound_owned;
+export bound_send, bound_trait;
 export param_bounds_to_kind;
 export default_arg_mode_for_ty;
 export item_path;
@@ -409,6 +411,7 @@ enum type_err {
 
 enum param_bound {
     bound_copy,
+    bound_owned,
     bound_send,
     bound_const,
     bound_trait(t),
@@ -451,8 +454,15 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
           bound_copy {
             kind = raise_kind(kind, kind_implicitly_copyable());
           }
-          bound_send { kind = raise_kind(kind, kind_send_only()); }
-          bound_const { kind = raise_kind(kind, kind_const()); }
+          bound_owned {
+            kind = raise_kind(kind, kind_owned());
+          }
+          bound_send {
+            kind = raise_kind(kind, kind_send_only() | kind_owned());
+          }
+          bound_const {
+            kind = raise_kind(kind, kind_const());
+          }
           bound_trait(_) {}
         }
     }
@@ -1303,11 +1313,20 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
 enum kind { kind_(u32) }
 
-// *ALL* implicitly copiable things must be copiable
-const KIND_MASK_COPY     : u32 = 0b00000000000000000000000000000001u32;
-const KIND_MASK_SEND     : u32 = 0b00000000000000000000000000000010u32;
-const KIND_MASK_CONST    : u32 = 0b00000000000000000000000000000100u32;
-const KIND_MASK_IMPLICIT : u32 = 0b00000000000000000000000000001000u32;
+/// can be copied (implicitly or explicitly)
+const KIND_MASK_COPY     : u32 = 0b00000000000000000000000000000001_u32;
+
+/// can be sent: no shared box, borrowed ptr (must imply OWNED)
+const KIND_MASK_SEND     : u32 = 0b00000000000000000000000000000010_u32;
+
+/// is owned (no borrowed ptrs)
+const KIND_MASK_OWNED    : u32 = 0b00000000000000000000000000000100_u32;
+
+/// is deeply immutable
+const KIND_MASK_CONST    : u32 = 0b00000000000000000000000000001000_u32;
+
+/// can be implicitly copied (must imply COPY)
+const KIND_MASK_IMPLICIT : u32 = 0b00000000000000000000000000010000_u32;
 
 fn kind_noncopyable() -> kind {
     kind_(0u32)
@@ -1325,7 +1344,7 @@ fn kind_implicitly_sendable() -> kind {
     kind_(KIND_MASK_IMPLICIT | KIND_MASK_COPY | KIND_MASK_SEND)
 }
 
-fn kind_sendable() -> kind {
+fn kind_send_copy() -> kind {
     kind_(KIND_MASK_COPY | KIND_MASK_SEND)
 }
 
@@ -1335,6 +1354,10 @@ fn kind_send_only() -> kind {
 
 fn kind_const() -> kind {
     kind_(KIND_MASK_CONST)
+}
+
+fn kind_owned() -> kind {
+    kind_(KIND_MASK_OWNED)
 }
 
 fn kind_top() -> kind {
@@ -1347,6 +1370,14 @@ fn remove_const(k: kind) -> kind {
 
 fn remove_implicit(k: kind) -> kind {
     k - kind_(KIND_MASK_IMPLICIT)
+}
+
+fn remove_send(k: kind) -> kind {
+    k - kind_(KIND_MASK_SEND)
+}
+
+fn remove_owned_send(k: kind) -> kind {
+    k - kind_(KIND_MASK_OWNED) - kind_(KIND_MASK_SEND)
 }
 
 fn remove_copyable(k: kind) -> kind {
@@ -1371,24 +1402,29 @@ impl operators for kind {
 // against the kind constants, as we may modify the kind hierarchy in the
 // future.
 pure fn kind_can_be_implicitly_copied(k: kind) -> bool {
-    *k & KIND_MASK_IMPLICIT != 0u32
+    *k & KIND_MASK_IMPLICIT == KIND_MASK_IMPLICIT
 }
 
 pure fn kind_can_be_copied(k: kind) -> bool {
-    *k & KIND_MASK_COPY != 0u32
+    *k & KIND_MASK_COPY == KIND_MASK_COPY
 }
 
 pure fn kind_can_be_sent(k: kind) -> bool {
-    *k & KIND_MASK_SEND != 0u32
+    *k & KIND_MASK_SEND == KIND_MASK_SEND
+}
+
+pure fn kind_is_owned(k: kind) -> bool {
+    *k & KIND_MASK_OWNED == KIND_MASK_OWNED
 }
 
 fn proto_kind(p: proto) -> kind {
     alt p {
       ast::proto_any { kind_noncopyable() }
       ast::proto_block { kind_noncopyable() }
-      ast::proto_box { kind_implicitly_copyable() }
-      ast::proto_uniq { kind_sendable() }
-      ast::proto_bare { kind_implicitly_sendable() | kind_const() }
+      ast::proto_box { kind_implicitly_copyable() | kind_owned() }
+      ast::proto_uniq { kind_send_copy() | kind_owned() }
+      ast::proto_bare { kind_implicitly_sendable() | kind_const() |
+                           kind_owned() }
     }
 }
 
@@ -1408,16 +1444,16 @@ fn raise_kind(a: kind, b: kind) -> kind {
 fn test_kinds() {
     // The kind "lattice" is defined by the subset operation on the
     // set of permitted operations.
-    assert kind_lteq(kind_sendable(), kind_sendable());
-    assert kind_lteq(kind_copyable(), kind_sendable());
+    assert kind_lteq(kind_send_copy(), kind_send_copy());
+    assert kind_lteq(kind_copyable(), kind_send_copy());
     assert kind_lteq(kind_copyable(), kind_copyable());
-    assert kind_lteq(kind_noncopyable(), kind_sendable());
+    assert kind_lteq(kind_noncopyable(), kind_send_copy());
     assert kind_lteq(kind_noncopyable(), kind_copyable());
     assert kind_lteq(kind_noncopyable(), kind_noncopyable());
     assert kind_lteq(kind_copyable(), kind_implicitly_copyable());
     assert kind_lteq(kind_copyable(), kind_implicitly_sendable());
-    assert kind_lteq(kind_sendable(), kind_implicitly_sendable());
-    assert !kind_lteq(kind_sendable(), kind_implicitly_copyable());
+    assert kind_lteq(kind_send_copy(), kind_implicitly_sendable());
+    assert !kind_lteq(kind_send_copy(), kind_implicitly_copyable());
     assert !kind_lteq(kind_copyable(), kind_send_only());
 }
 
@@ -1447,66 +1483,73 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     cx.kind_cache.insert(ty, kind_top());
 
     let result = alt get(ty).struct {
-      // Scalar and unique types are sendable
+      // Scalar and unique types are sendable, constant, and owned
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_ptr(_) { kind_implicitly_sendable() | kind_const() }
+      ty_ptr(_) {
+        kind_implicitly_sendable() | kind_const() | kind_owned()
+      }
+
       // Implicit copyability of strs is configurable
       ty_estr(vstore_uniq) {
         if cx.vecs_implicitly_copyable {
-            kind_implicitly_sendable() | kind_const()
-        } else { kind_sendable() | kind_const() }
+            kind_implicitly_sendable() | kind_const() | kind_owned()
+        } else {
+            kind_send_copy() | kind_const() | kind_owned()
+        }
       }
+
+      // functions depend on the protocol
       ty_fn(f) { proto_kind(f.proto) }
 
       // Those with refcounts raise noncopyable to copyable,
       // lower sendable to copyable. Therefore just set result to copyable.
       ty_box(tm) {
-        if tm.mutbl == ast::m_mutbl {
-            kind_implicitly_copyable()
-        }
-        else {
-            let k = type_kind(cx, tm.ty);
-            if kind_lteq(kind_const(), k) {
-                kind_implicitly_copyable() | kind_const()
-            }
-            else { kind_implicitly_copyable() }
-        }
+        remove_send(mutable_type_kind(cx, tm) | kind_implicitly_copyable())
       }
-      ty_trait(_, _) { kind_implicitly_copyable() }
+
+      // Iface instances are (for now) like shared boxes, basically
+      ty_trait(_, _) { kind_implicitly_copyable() | kind_owned() }
+
+      // Region pointers are copyable but NOT owned nor sendable
       ty_rptr(_, _) { kind_implicitly_copyable() }
 
       // Unique boxes and vecs have the kind of their contained type,
       // but unique boxes can't be implicitly copyable.
-      ty_uniq(tm) {
-        remove_implicit(mutable_type_kind(cx, tm))
-      }
+      ty_uniq(tm) { remove_implicit(mutable_type_kind(cx, tm)) }
+
       // Implicit copyability of vecs is configurable
       ty_evec(tm, vstore_uniq) {
           if cx.vecs_implicitly_copyable {
               mutable_type_kind(cx, tm)
-          } else { remove_implicit(mutable_type_kind(cx, tm)) }
+          } else {
+              remove_implicit(mutable_type_kind(cx, tm))
+          }
       }
 
       // Slices, refcounted evecs are copyable; uniques depend on the their
       // contained type, but aren't implicitly copyable.  Fixed vectors have
       // the kind of the element they contain, taking mutability into account.
-      ty_evec(tm, vstore_box) |
+      ty_evec(tm, vstore_box) {
+        remove_send(kind_implicitly_copyable() | mutable_type_kind(cx, tm))
+      }
       ty_evec(tm, vstore_slice(_)) {
-        if kind_lteq(kind_const(), type_kind(cx, tm.ty)) {
-            kind_implicitly_copyable() | kind_const()
-        }
-        else {
-            kind_implicitly_copyable()
-        }
+        remove_owned_send(kind_implicitly_copyable() |
+                          mutable_type_kind(cx, tm))
       }
       ty_evec(tm, vstore_fixed(_)) {
         mutable_type_kind(cx, tm)
       }
 
       // All estrs are copyable; uniques and interiors are sendable.
-      ty_estr(vstore_box) |
-      ty_estr(vstore_slice(_)) { kind_implicitly_copyable() | kind_const() }
-      ty_estr(vstore_fixed(_)) { kind_implicitly_sendable() | kind_const() }
+      ty_estr(vstore_box) {
+        kind_implicitly_copyable() | kind_const() | kind_owned()
+      }
+      ty_estr(vstore_slice(_)) {
+        kind_implicitly_copyable() | kind_const()
+      }
+      ty_estr(vstore_fixed(_)) {
+        kind_implicitly_sendable() | kind_const() | kind_owned()
+      }
 
       // Records lower to the lowest of their members.
       ty_rec(flds) {
@@ -1516,6 +1559,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
+
       ty_class(did, substs) {
         // Classes are sendable if all their fields are sendable,
         // likewise for copyable...
@@ -1532,18 +1576,20 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
+
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
         let mut lowest = kind_top();
         for tys.each |ty| { lowest = lower_kind(lowest, type_kind(cx, ty)); }
         lowest
       }
+
       // Enums lower to the lowest of their variants.
       ty_enum(did, substs) {
         let mut lowest = kind_top();
         let variants = enum_variants(cx, did);
         if vec::len(*variants) == 0u {
-            lowest = kind_send_only();
+            lowest = kind_send_only() | kind_owned();
         } else {
             for vec::each(*variants) |variant| {
                 for variant.args.each |aty| {
@@ -1556,11 +1602,15 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
+
       ty_param(_, did) {
         param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
-      // FIXME (#2663): is self ever const?
+
+      // self is a special type parameter that can only appear in ifaces; it
+      // is never bounded in any way, hence it has the bottom kind.
       ty_self { kind_noncopyable() }
+
       ty_var(_) | ty_var_integral(_) {
         cx.sess.bug(~"Asked to compute kind of a type variable");
       }

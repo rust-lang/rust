@@ -4,6 +4,7 @@ import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 import middle::lint::{error, ignore, level, unused_imports, warn};
 import syntax::ast::{_mod, arm, blk, bound_const, bound_copy, bound_trait};
+import syntax::ast::{bound_owned};
 import syntax::ast::{bound_send, capture_clause, class_ctor, class_dtor};
 import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
@@ -3181,7 +3182,7 @@ class Resolver {
         for type_parameters.each |type_parameter| {
             for (*type_parameter.bounds).each |bound| {
                 alt bound {
-                    bound_copy | bound_send | bound_const {
+                    bound_copy | bound_send | bound_const | bound_owned {
                         // Nothing to do.
                     }
                     bound_trait(interface_type) {
