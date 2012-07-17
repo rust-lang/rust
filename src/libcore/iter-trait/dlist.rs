@@ -13,17 +13,17 @@ fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
     let mut link = self.peek_n();
     while option::is_some(link) {
         let nobe = option::get(link);
-        // Check dlist invariant.
-        if !option::is_some(nobe.root) ||
-           !box::ptr_eq(*option::get(nobe.root), *self) {
-            fail ~"Iteration encountered a dlist node not on this dlist."
-        }
+        assert nobe.linked;
         if !f(nobe.data) { break; }
-        // Check that the user didn't do a remove.
-        // Note that this makes it ok for the user to remove the node and then
-        // immediately put it back in a different position. I allow this.
-        if !option::is_some(nobe.root) ||
-           !box::ptr_eq(*option::get(nobe.root), *self) {
+        // Check (weakly) that the user didn't do a remove.
+        if self.size == 0 {
+            fail ~"The dlist became empty during iteration??"
+        }
+        if !nobe.linked ||
+           (!((nobe.prev.is_some()
+               || box::ptr_eq(*self.hd.expect(~"headless dlist?"), *nobe)) &&
+              (nobe.next.is_some()
+               || box::ptr_eq(*self.tl.expect(~"tailless dlist?"), *nobe)))) {
             fail ~"Removing a dlist node during iteration is forbidden!"
         }
         link = nobe.next_link();

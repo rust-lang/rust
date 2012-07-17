@@ -7,13 +7,13 @@
 import dlist_iter::extensions;
 
 export dlist, dlist_node;
-export create, from_elt, from_vec, extensions;
+export new_dlist, from_elem, from_vec, extensions;
 
 type dlist_link<T> = option<dlist_node<T>>;
 
 enum dlist_node<T> = @{
     data: T,
-    mut root: option<dlist<T>>,
+    mut linked: bool, // for assertions
     mut prev: dlist_link<T>,
     mut next: dlist_link<T>
 };
@@ -81,57 +81,67 @@ impl extensions<T> for dlist_node<T> {
             none       { fail ~"This dlist node has no previous neighbour." }
         }
     }
-
-    /// Remove a node from whatever dlist it's on (failing if none).
-    fn remove() {
-        if option::is_some(self.root) {
-            option::get(self.root).remove(self);
-        } else {
-            fail ~"Removing an orphaned dlist node - what do I remove from?"
-        }
-    }
 }
 
 /// Creates a new dlist node with the given data.
-pure fn create_node<T>(+data: T) -> dlist_node<T> {
-    dlist_node(@{data: data, mut root: none, mut prev: none, mut next: none})
+pure fn new_dlist_node<T>(+data: T) -> dlist_node<T> {
+    dlist_node(@{data: data, mut linked: false,
+                 mut prev: none, mut next: none})
 }
 
 /// Creates a new, empty dlist.
-pure fn create<T>() -> dlist<T> {
+pure fn new_dlist<T>() -> dlist<T> {
     dlist(@{mut size: 0, mut hd: none, mut tl: none})
 }
 
 /// Creates a new dlist with a single element
-fn from_elt<T>(+data: T) -> dlist<T> {
-    let list = create();
-    list.push(data);
+pure fn from_elem<T>(+data: T) -> dlist<T> {
+    let list = new_dlist();
+    unchecked { list.push(data); }
     list
 }
 
 fn from_vec<T: copy>(+vec: &[T]) -> dlist<T> {
-    do vec::foldl(create(), vec) |list,data| {
+    do vec::foldl(new_dlist(), vec) |list,data| {
         list.push(data); // Iterating left-to-right -- add newly to the tail.
         list
     }
 }
 
+/// Produce a list from a list of lists, leaving no elements behind in the
+/// input. O(number of sub-lists).
+fn concat<T>(lists: dlist<dlist<T>>) -> dlist<T> {
+    let result = new_dlist();
+    while !lists.is_empty() {
+        result.append(lists.pop().get());
+    }
+    result
+}
+
 impl private_methods<T> for dlist<T> {
     pure fn new_link(-data: T) -> dlist_link<T> {
-        some(dlist_node(@{data: data, mut root: some(self),
+        some(dlist_node(@{data: data, mut linked: true,
                           mut prev: none, mut next: none}))
     }
     pure fn assert_mine(nobe: dlist_node<T>) {
-        alt nobe.root {
-            some(me) { assert box::ptr_eq(*self, *me); }
-            none     { fail ~"This node isn't on this dlist." }
+        // These asserts could be stronger if we had node-root back-pointers,
+        // but those wouldn't allow for O(1) append.
+        if self.size == 0 {
+            fail ~"This dlist is empty; that node can't be on it."
+        }
+        if !nobe.linked { fail ~"That node isn't linked to any dlist." }
+        if !((nobe.prev.is_some()
+              || box::ptr_eq(*self.hd.expect(~"headless dlist?"), *nobe)) &&
+             (nobe.next.is_some()
+              || box::ptr_eq(*self.tl.expect(~"tailless dlist?"), *nobe))) {
+            fail ~"That node isn't on this dlist."
         }
     }
     fn make_mine(nobe: dlist_node<T>) {
-        if option::is_some(nobe.root) {
+        if nobe.prev.is_some() || nobe.next.is_some() || nobe.linked {
             fail ~"Cannot insert node that's already on a dlist!"
         }
-        nobe.root = some(self);
+        nobe.linked = true;
     }
     // Link two nodes together. If either of them are 'none', also sets
     // the head and/or tail pointers appropriately.
@@ -153,7 +163,7 @@ impl private_methods<T> for dlist<T> {
         self.link(nobe.prev, nobe.next);
         nobe.prev = none; // Release extraneous references.
         nobe.next = none;
-        nobe.root = none;
+        nobe.linked = false;
         self.size -= 1;
     }
 
@@ -278,6 +288,20 @@ impl extensions<T> for dlist<T> {
         tl.map(|nobe| self.unlink(nobe));
         tl
     }
+    /// Remove data from the head of the list. O(1).
+    fn pop() -> option<T> {
+        do option::map_consume(self.pop_n()) |nobe| {
+            let dlist_node(@{ data: x, _ }) <- nobe;
+            x
+        }
+    }
+    /// Remove data from the tail of the list. O(1).
+    fn pop_tail() -> option<T> {
+        do option::map_consume(self.pop_tail_n()) |nobe| {
+            let dlist_node(@{ data: x, _ }) <- nobe;
+            x
+        }
+    }
     /// Get the node at the list's head. O(1).
     pure fn peek_n() -> option<dlist_node<T>> { self.hd }
     /// Get the node at the list's tail. O(1).
@@ -305,6 +329,64 @@ impl extensions<T> for dlist<T> {
     /// Remove a node from anywhere in the list. O(1).
     fn remove(nobe: dlist_node<T>) { self.unlink(nobe); }
 
+    /**
+     * Empty another list onto the end of this list, joining this list's tail
+     * to the other list's head. O(1).
+     */
+    fn append(them: dlist<T>) {
+        if box::ptr_eq(*self, *them) {
+            fail ~"Cannot append a dlist to itself!"
+        }
+        if them.len() > 0 {
+            self.link(self.tl, them.hd);
+            self.tl    = them.tl;
+            self.size += them.size;
+            them.size  = 0;
+            them.hd    = none;
+            them.tl    = none;
+        }
+    }
+    /**
+     * Empty another list onto the start of this list, joining the other
+     * list's tail to this list's head. O(1).
+     */
+    fn prepend(them: dlist<T>) {
+        if box::ptr_eq(*self, *them) {
+            fail ~"Cannot prepend a dlist to itself!"
+        }
+        if them.len() > 0 {
+            self.link(them.tl, self.hd);
+            self.hd    = them.hd;
+            self.size += them.size;
+            them.size  = 0;
+            them.hd    = none;
+            them.tl    = none;
+        }
+    }
+
+    /// Reverse the list's elements in place. O(n).
+    fn reverse() {
+        let temp = new_dlist::<T>();
+        while !self.is_empty() {
+            let nobe = self.pop_n().get();
+            nobe.linked = true; // meh, kind of disorganised.
+            temp.add_head(some(nobe));
+        }
+        self.hd   = temp.hd;
+        self.tl   = temp.tl;
+        self.size = temp.size;
+    }
+
+    /// Iterate over nodes.
+    pure fn each_node(f: fn(dlist_node<T>) -> bool) {
+        let mut link = self.peek_n();
+        while link.is_some() {
+            let nobe = link.get();
+            if !f(nobe) { break; }
+            link = nobe.next_link();
+        }
+    }
+
     /// Check data structure integrity. O(n).
     fn assert_consistent() {
         if option::is_none(self.hd) || option::is_none(self.tl) {
@@ -316,9 +398,7 @@ impl extensions<T> for dlist<T> {
         let mut rabbit = link;
         while option::is_some(link) {
             let nobe = option::get(link);
-            // check self on this list
-            assert option::is_some(nobe.root) &&
-                box::ptr_eq(*option::get(nobe.root), *self);
+            assert nobe.linked;
             // check cycle
             if option::is_some(rabbit) { rabbit = option::get(rabbit).next; }
             if option::is_some(rabbit) { rabbit = option::get(rabbit).next; }
@@ -335,9 +415,7 @@ impl extensions<T> for dlist<T> {
         rabbit = link;
         while option::is_some(link) {
             let nobe = option::get(link);
-            // check self on this list
-            assert option::is_some(nobe.root) &&
-                box::ptr_eq(*option::get(nobe.root), *self);
+            assert nobe.linked;
             // check cycle
             if option::is_some(rabbit) { rabbit = option::get(rabbit).prev; }
             if option::is_some(rabbit) { rabbit = option::get(rabbit).prev; }
@@ -353,25 +431,173 @@ impl extensions<T> for dlist<T> {
 }
 
 impl extensions<T: copy> for dlist<T> {
-    /// Remove data from the head of the list. O(1).
-    fn pop()       -> option<T> { self.pop_n().map       (|nobe| nobe.data) }
-    /// Remove data from the tail of the list. O(1).
-    fn pop_tail()  -> option<T> { self.pop_tail_n().map  (|nobe| nobe.data) }
     /// Get data at the list's head. O(1).
-    fn peek()      -> option<T> { self.peek_n().map      (|nobe| nobe.data) }
+    pure fn peek() -> option<T> { self.peek_n().map      (|nobe| nobe.data) }
     /// Get data at the list's tail. O(1).
-    fn peek_tail() -> option<T> { self.peek_tail_n().map (|nobe| nobe.data) }
+    pure fn peek_tail() -> option<T> {
+        self.peek_tail_n().map (|nobe| nobe.data)
+    }
     /// Get data at the list's head, failing if empty. O(1).
-    pure fn head() -> T         { self.head_n().data }
+    pure fn head() -> T { self.head_n().data }
     /// Get data at the list's tail, failing if empty. O(1).
-    pure fn tail() -> T         { self.tail_n().data }
+    pure fn tail() -> T { self.tail_n().data }
+    /// Get the elements of the list as a vector. O(n).
+    pure fn to_vec() -> ~[mut T] {
+        let mut v = ~[mut];
+        unchecked {
+            vec::reserve(v, self.size);
+            // Take this out of the unchecked when iter's functions are pure
+            for self.eachi |index,data| {
+                v[index] = data;
+            }
+        }
+        v
+    }
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
+    fn test_dlist_concat() {
+        let a = from_vec(~[1,2]);
+        let b = from_vec(~[3,4]);
+        let c = from_vec(~[5,6]);
+        let d = from_vec(~[7,8]);
+        let ab = from_vec(~[a,b]);
+        let cd = from_vec(~[c,d]);
+        let abcd = concat(concat(from_vec(~[ab,cd])));
+        abcd.assert_consistent(); assert abcd.len() == 8;
+        abcd.assert_consistent(); assert abcd.pop().get() == 1;
+        abcd.assert_consistent(); assert abcd.pop().get() == 2;
+        abcd.assert_consistent(); assert abcd.pop().get() == 3;
+        abcd.assert_consistent(); assert abcd.pop().get() == 4;
+        abcd.assert_consistent(); assert abcd.pop().get() == 5;
+        abcd.assert_consistent(); assert abcd.pop().get() == 6;
+        abcd.assert_consistent(); assert abcd.pop().get() == 7;
+        abcd.assert_consistent(); assert abcd.pop().get() == 8;
+        abcd.assert_consistent(); assert abcd.is_empty();
+    }
+    #[test]
+    fn test_dlist_append() {
+        let a = from_vec(~[1,2,3]);
+        let b = from_vec(~[4,5,6]);
+        a.append(b);
+        assert a.len() == 6;
+        assert b.len() == 0;
+        b.assert_consistent();
+        a.assert_consistent(); assert a.pop().get() == 1;
+        a.assert_consistent(); assert a.pop().get() == 2;
+        a.assert_consistent(); assert a.pop().get() == 3;
+        a.assert_consistent(); assert a.pop().get() == 4;
+        a.assert_consistent(); assert a.pop().get() == 5;
+        a.assert_consistent(); assert a.pop().get() == 6;
+        a.assert_consistent(); assert a.is_empty();
+    }
+    #[test]
+    fn test_dlist_append_empty() {
+        let a = from_vec(~[1,2,3]);
+        let b = new_dlist::<int>();
+        a.append(b);
+        assert a.len() == 3;
+        assert b.len() == 0;
+        b.assert_consistent();
+        a.assert_consistent(); assert a.pop().get() == 1;
+        a.assert_consistent(); assert a.pop().get() == 2;
+        a.assert_consistent(); assert a.pop().get() == 3;
+        a.assert_consistent(); assert a.is_empty();
+    }
+    #[test]
+    fn test_dlist_append_to_empty() {
+        let a = new_dlist::<int>();
+        let b = from_vec(~[4,5,6]);
+        a.append(b);
+        assert a.len() == 3;
+        assert b.len() == 0;
+        b.assert_consistent();
+        a.assert_consistent(); assert a.pop().get() == 4;
+        a.assert_consistent(); assert a.pop().get() == 5;
+        a.assert_consistent(); assert a.pop().get() == 6;
+        a.assert_consistent(); assert a.is_empty();
+    }
+    #[test]
+    fn test_dlist_append_two_empty() {
+        let a = new_dlist::<int>();
+        let b = new_dlist::<int>();
+        a.append(b);
+        assert a.len() == 0;
+        assert b.len() == 0;
+        b.assert_consistent();
+        a.assert_consistent();
+    }
+    #[test]
+    #[ignore(cfg(windows))]
+    #[should_fail]
+    fn test_dlist_append_self() {
+        let a = new_dlist::<int>();
+        a.append(a);
+    }
+    #[test]
+    #[ignore(cfg(windows))]
+    #[should_fail]
+    fn test_dlist_prepend_self() {
+        let a = new_dlist::<int>();
+        a.prepend(a);
+    }
+    #[test]
+    fn test_dlist_prepend() {
+        let a = from_vec(~[1,2,3]);
+        let b = from_vec(~[4,5,6]);
+        b.prepend(a);
+        assert a.len() == 0;
+        assert b.len() == 6;
+        a.assert_consistent();
+        b.assert_consistent(); assert b.pop().get() == 1;
+        b.assert_consistent(); assert b.pop().get() == 2;
+        b.assert_consistent(); assert b.pop().get() == 3;
+        b.assert_consistent(); assert b.pop().get() == 4;
+        b.assert_consistent(); assert b.pop().get() == 5;
+        b.assert_consistent(); assert b.pop().get() == 6;
+        b.assert_consistent(); assert b.is_empty();
+    }
+    #[test]
+    fn test_dlist_reverse() {
+        let a = from_vec(~[5,4,3,2,1]);
+        a.reverse();
+        assert a.len() == 5;
+        a.assert_consistent(); assert a.pop().get() == 1;
+        a.assert_consistent(); assert a.pop().get() == 2;
+        a.assert_consistent(); assert a.pop().get() == 3;
+        a.assert_consistent(); assert a.pop().get() == 4;
+        a.assert_consistent(); assert a.pop().get() == 5;
+        a.assert_consistent(); assert a.is_empty();
+    }
+    #[test]
+    fn test_dlist_reverse_empty() {
+        let a = new_dlist::<int>();
+        a.reverse();
+        assert a.len() == 0;
+        a.assert_consistent();
+    }
+    #[test]
+    fn test_dlist_each_node() {
+        let a = from_vec(~[1,2,4,5]);
+        for a.each_node |nobe| {
+            if nobe.data > 3 {
+                a.insert_before(3, nobe);
+            }
+        }
+        assert a.len() == 6;
+        a.assert_consistent(); assert a.pop().get() == 1;
+        a.assert_consistent(); assert a.pop().get() == 2;
+        a.assert_consistent(); assert a.pop().get() == 3;
+        a.assert_consistent(); assert a.pop().get() == 4;
+        a.assert_consistent(); assert a.pop().get() == 3;
+        a.assert_consistent(); assert a.pop().get() == 5;
+        a.assert_consistent(); assert a.is_empty();
+    }
+    #[test]
     fn test_dlist_is_empty() {
-        let empty = create::<int>();
+        let empty = new_dlist::<int>();
         let full1 = from_vec(~[1,2,3]);
         assert empty.is_empty();
         assert !full1.is_empty();
@@ -413,7 +639,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_push() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.push(1);
         assert l.head() == 1;
         assert l.tail() == 1;
@@ -427,7 +653,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_push_head() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.push_head(3);
         assert l.head() == 3;
         assert l.tail() == 3;
@@ -456,7 +682,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_head() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
@@ -471,7 +697,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_mid() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
@@ -486,7 +712,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_tail() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -501,7 +727,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_one_two() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
@@ -517,7 +743,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_one_three() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -532,7 +758,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_two_three() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -547,7 +773,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_all() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -560,10 +786,10 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_n_before() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
-        l.assert_consistent(); let three = create_node(3);
+        l.assert_consistent(); let three = new_dlist_node(3);
         l.assert_consistent(); assert l.len() == 2;
         l.assert_consistent(); l.insert_n_before(three, two);
         l.assert_consistent(); assert l.len() == 3;
@@ -576,10 +802,10 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_n_after() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
-        l.assert_consistent(); let three = create_node(3);
+        l.assert_consistent(); let three = new_dlist_node(3);
         l.assert_consistent(); assert l.len() == 2;
         l.assert_consistent(); l.insert_n_after(three, one);
         l.assert_consistent(); assert l.len() == 3;
@@ -592,7 +818,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_before_head() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); assert l.len() == 2;
@@ -607,7 +833,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_after_tail() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); assert l.len() == 2;
@@ -622,7 +848,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_asymmetric_link() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         let _one = l.push_n(1);
         let two = l.push_n(2);
         two.prev = none;
@@ -630,7 +856,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_cyclic_list() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         let one = l.push_n(1);
         let _two = l.push_n(2);
         let three = l.push_n(3);
@@ -640,34 +866,34 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_headless() {
-        create::<int>().head();
+        new_dlist::<int>().head();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_already_present_before() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_before(two, one);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_already_present_after() {
-        let l = create::<int>();
+        let l = new_dlist::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_after(one, two);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_before_orphan() {
-        let l = create::<int>();
-        let one = create_node(1);
-        let two = create_node(2);
+        let l = new_dlist::<int>();
+        let one = new_dlist_node(1);
+        let two = new_dlist_node(2);
         l.insert_n_before(one, two);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_insert_after_orphan() {
-        let l = create::<int>();
-        let one = create_node(1);
-        let two = create_node(2);
+        let l = new_dlist::<int>();
+        let one = new_dlist_node(1);
+        let two = new_dlist_node(2);
         l.insert_n_after(two, one);
     }
 }
