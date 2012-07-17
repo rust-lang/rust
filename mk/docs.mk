@@ -21,7 +21,7 @@ doc/rust.css: rust.css
 	$(Q)cp -a $< $@ 2> /dev/null
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version.md doc/rust.css
+doc/rust.html: rust.md doc/version_info.html doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	"$(CFG_PANDOC)" \
@@ -30,6 +30,7 @@ doc/rust.html: rust.md doc/version.md doc/rust.css
          --number-sections \
          --from=markdown --to=html \
          --css=rust.css \
+	 --include-before-body=doc/version_info.html \
          --output=$@
   endif
 
@@ -72,12 +73,13 @@ doc/rust.pdf: doc/rust.tex
   else
 
 DOCS += doc/tutorial.html
-doc/tutorial.html: tutorial.md doc/rust.css
+doc/tutorial.html: tutorial.md doc/version_info.html doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
            --from=markdown --to=html --css=rust.css \
+	   --include-before-body=doc/version_info.html \
            --output=$@
 
   endif
@@ -144,6 +146,12 @@ endif
 doc/version.md: $(MKFILE_DEPS) rust.md
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
+
+doc/version_info.html: version_info_template.html
+	@$(call E, version-info: $@)
+	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
+                    $(CFG_VER_HASH) | head -c 8)/;\
+	            s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
 GENERATED += doc/version.md
 
