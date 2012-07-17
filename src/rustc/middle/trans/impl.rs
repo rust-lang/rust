@@ -288,7 +288,7 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
-    let {box: llbox, body: body} = malloc_boxed(bcx, v_ty);
+    let {bcx: bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);
     add_clean_free(bcx, llbox, heap_shared);
     let bcx = trans_expr_save_in(bcx, val, body);
     revoke_clean(bcx, llbox);
