@@ -71,7 +71,7 @@ export zip;
 export swap;
 export reverse;
 export reversed;
-export iter, iter_between, each, eachi;
+export iter, iter_between, each, eachi, reach, reachi;
 export iter2;
 export iteri;
 export riter;
@@ -204,12 +204,12 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
 }
 
 /// Produces a mut vector from an immutable vector.
-fn to_mut<T>(+v: ~[T]) -> ~[mut T] {
+pure fn to_mut<T>(+v: ~[T]) -> ~[mut T] {
     unsafe { ::unsafe::transmute(v) }
 }
 
 /// Produces an immutable vector from a mut vector.
-fn from_mut<T>(+v: ~[mut T]) -> ~[T] {
+pure fn from_mut<T>(+v: ~[mut T]) -> ~[T] {
     unsafe { ::unsafe::transmute(v) }
 }
 
@@ -1034,6 +1034,42 @@ pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
                 p = ptr::offset(p, 1u);
             }
             i += 1u;
+        }
+    }
+}
+
+/**
+ * Iterates over a vector's elements in reverse
+ *
+ * Return true to continue, false to break.
+ */
+#[inline(always)]
+pure fn reach<T>(v: &[T], blk: fn(T) -> bool) {
+    do vec::unpack_slice(v) |p, n| {
+        let mut i = 1;
+        while i <= n {
+            unsafe {
+                if !blk(*ptr::offset(p, n-i)) { break; }
+            }
+            i += 1;
+        }
+    }
+}
+
+/**
+ * Iterates over a vector's elements and indices in reverse
+ *
+ * Return true to continue, false to break.
+ */
+#[inline(always)]
+pure fn reachi<T>(v: &[T], blk: fn(uint, T) -> bool) {
+    do vec::unpack_slice(v) |p, n| {
+        let mut i = 1;
+        while i <= n {
+            unsafe {
+                if !blk(n-i, *ptr::offset(p, n-i)) { break; }
+            }
+            i += 1;
         }
     }
 }

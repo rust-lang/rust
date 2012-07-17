@@ -76,7 +76,7 @@ fn unwrap<A>(-d: dvec<A>) -> ~[mut A] {
 }
 
 impl private_methods<A> for dvec<A> {
-    fn check_not_borrowed() {
+    pure fn check_not_borrowed() {
         unsafe {
             let data: *() = unsafe::reinterpret_cast(self.data);
             if data.is_null() {
@@ -119,11 +119,13 @@ impl extensions<A> for dvec<A> {
     }
 
     /// Returns the number of elements currently in the dvec
-    fn len() -> uint {
-        do self.borrow |v| {
-            let l = v.len();
-            self.return(v);
-            l
+    pure fn len() -> uint {
+        unchecked {
+            do self.borrow |v| {
+                let l = v.len();
+                self.return(v);
+                l
+            }
         }
     }
 
@@ -170,6 +172,13 @@ impl extensions<A> for dvec<A> {
             let result = vec::shift(v);
             self.return(vec::to_mut(v));
             result
+        }
+    }
+
+    // Reverse the elements in the list, in place
+    fn reverse() {
+        do self.borrow |v| {
+            vec::reverse(v);
         }
     }
 }
@@ -229,23 +238,25 @@ impl extensions<A:copy> for dvec<A> {
      *
      * See `unwrap()` if you do not wish to copy the contents.
      */
-    fn get() -> ~[A] {
-        do self.borrow |v| {
-            let w = vec::from_mut(copy v);
-            self.return(v);
-            w
+    pure fn get() -> ~[A] {
+        unchecked {
+            do self.borrow |v| {
+                let w = vec::from_mut(copy v);
+                self.return(v);
+                w
+            }
         }
     }
 
     /// Copy out an individual element
     #[inline(always)]
-    fn [](idx: uint) -> A {
+    pure fn [](idx: uint) -> A {
         self.get_elt(idx)
     }
 
     /// Copy out an individual element
     #[inline(always)]
-    fn get_elt(idx: uint) -> A {
+    pure fn get_elt(idx: uint) -> A {
         self.check_not_borrowed();
         ret self.data[idx];
     }
@@ -271,7 +282,7 @@ impl extensions<A:copy> for dvec<A> {
 
     /// Returns the last element, failing if the vector is empty
     #[inline(always)]
-    fn last() -> A {
+    pure fn last() -> A {
         self.check_not_borrowed();
 
         let length = self.len();
@@ -285,13 +296,12 @@ impl extensions<A:copy> for dvec<A> {
     /// Iterates over the elements in reverse order
     #[inline(always)]
     fn reach(f: fn(A) -> bool) {
-        let length = self.len();
-        let mut i = 0u;
-        while i < length {
-            if !f(self.get_elt(i)) {
-                break;
-            }
-            i += 1u;
-        }
+        do self.swap |v| { vec::reach(v, f); v }
+    }
+
+    /// Iterates over the elements and indices in reverse order
+    #[inline(always)]
+    fn reachi(f: fn(uint, A) -> bool) {
+        do self.swap |v| { vec::reachi(v, f); v }
     }
 }
