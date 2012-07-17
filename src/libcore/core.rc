@@ -36,7 +36,7 @@
 export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;
 export float, f32, f64;
-export box, char, str, ptr, vec, bool;
+export box, char, str, ptr, vec, at_vec, bool;
 export either, option, result, iter;
 export libc, os, io, run, rand, sys, unsafe, logging;
 export arc, comm, task, future, pipes;
@@ -150,6 +150,7 @@ mod f64;
 mod str;
 mod ptr;
 mod vec;
+mod at_vec;
 mod bool;
 mod tuple;
 

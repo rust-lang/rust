@@ -26,6 +26,26 @@ rust_opaque_box *boxed_region::malloc(type_desc *td, size_t body_size) {
     return box;
 }
 
+rust_opaque_box *boxed_region::realloc(rust_opaque_box *box,
+                                       size_t new_size) {
+    assert(box->ref_count == 1);
+
+    size_t total_size = new_size + sizeof(rust_opaque_box);
+    rust_opaque_box *new_box =
+        (rust_opaque_box*)backing_region->realloc(box, total_size);
+    if (new_box->prev) new_box->prev->next = new_box;
+    if (new_box->next) new_box->next->prev = new_box;
+    if (live_allocs == box) live_allocs = new_box;
+
+
+    LOG(rust_get_current_task(), box,
+        "@realloc()=%p with orig=%p, size %lu==%lu+%lu",
+        new_box, box, total_size, sizeof(rust_opaque_box), new_size);
+
+    return new_box;
+}
+
+
 rust_opaque_box *boxed_region::calloc(type_desc *td, size_t body_size) {
     rust_opaque_box *box = malloc(td, body_size);
     memset(box_body(box), 0, td->size);

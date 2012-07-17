@@ -61,6 +61,7 @@ rust_task_unweaken
 sched_threads
 shape_log_str
 start_task
+vec_reserve_shared_actual
 vec_reserve_shared
 str_reserve_shared
 vec_from_buf_shared

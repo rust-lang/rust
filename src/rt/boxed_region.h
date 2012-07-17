@@ -36,6 +36,7 @@ public:
 
     rust_opaque_box *malloc(type_desc *td, size_t body_size);
     rust_opaque_box *calloc(type_desc *td, size_t body_size);
+    rust_opaque_box *realloc(rust_opaque_box *box, size_t new_size);
     void free(rust_opaque_box *box);
 };
 

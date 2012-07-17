@@ -17,6 +17,7 @@ export capacity;
 export len;
 export from_fn;
 export from_elem;
+export build, build_sized;
 export to_mut;
 export from_mut;
 export head;
@@ -209,6 +210,47 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
         unsafe { unsafe::set_len(v, n_elts); }
     }
     ret v;
+}
+
+/**
+ * Builds a vector by calling a provided function with an argument
+ * function that pushes an element to the back of a vector.
+ * This version takes an initial size for the vector.
+ *
+ * # Arguments
+ *
+ * * size - An initial size of the vector to reserve
+ * * builder - A function that will construct the vector. It recieves
+ *             as an argument a function that will push an element
+ *             onto the vector being constructed.
+ */
+#[inline(always)]
+pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
+    let mut vec = ~[];
+    unsafe {
+        reserve(vec, size);
+        // This is an awful hack to be able to make the push function
+        // pure. Is there a better way?
+        ::unsafe::reinterpret_cast::
+            <fn(push: pure fn(+A)), fn(push: fn(+A))>
+            (builder)(|+x| push(vec, x));
+    }
+    ret vec;
+}
+
+/**
+ * Builds a vector by calling a provided function with an argument
+ * function that pushes an element to the back of a vector.
+ *
+ * # Arguments
+ *
+ * * builder - A function that will construct the vector. It recieves
+ *             as an argument a function that will push an element
+ *             onto the vector being constructed.
+ */
+#[inline(always)]
+pure fn build<A>(builder: fn(push: pure fn(+A))) -> ~[A] {
+    build_sized(4, builder)
 }
 
 /// Produces a mut vector from an immutable vector.
@@ -444,8 +486,7 @@ fn push<T>(&v: ~[const T], +initval: T) {
         let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
-            let sz = sys::size_of::<T>();
-            (**repr).fill += sz;
+            (**repr).fill += sys::size_of::<T>();
             let p = ptr::addr_of((**repr).data);
             let p = ptr::offset(p, fill) as *mut T;
             rusti::move_val_init(*p, initval);
@@ -457,17 +498,8 @@ fn push<T>(&v: ~[const T], +initval: T) {
 }
 
 fn push_slow<T>(&v: ~[const T], +initval: T) {
-    unsafe {
-        let ln = v.len();
-        reserve_at_least(v, ln + 1u);
-        let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
-        let fill = (**repr).fill;
-        let sz = sys::size_of::<T>();
-        (**repr).fill += sz;
-        let p = ptr::addr_of((**repr).data);
-        let p = ptr::offset(p, fill) as *mut T;
-        rusti::move_val_init(*p, initval);
-    }
+    reserve_at_least(v, v.len() + 1u);
+    push(v, initval);
 }
 
 // Unchecked vector indexing
