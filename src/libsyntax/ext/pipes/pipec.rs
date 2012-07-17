@@ -9,7 +9,6 @@ import tuple::extensions;
 
 import ast::ident;
 import util::interner;
-import interner::{intern, get};
 import print::pprust;
 import pprust::{item_to_str, ty_to_str};
 import ext::base::{mk_ctxt, ext_ctxt};

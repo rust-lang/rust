@@ -224,7 +224,7 @@ class parser {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
     pure fn get_str(i: token::str_num) -> @~str {
-        interner::get(*self.reader.interner(), i)
+        (*self.reader.interner()).get(i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 
@@ -2121,8 +2121,7 @@ class parser {
             }
 
             if self.eat_keyword(~"of") {
-                let for_atom = interner::intern(*self.reader.interner(),
-                                                @~"for");
+                let for_atom = (*self.reader.interner()).intern(@~"for");
                 traits = self.parse_trait_ref_list
                     (token::IDENT(for_atom, false));
                 if traits.len() >= 1 && option::is_none(ident_old) {

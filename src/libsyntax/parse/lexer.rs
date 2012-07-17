@@ -1,4 +1,4 @@
-import util::interner::{interner,intern};
+import util::interner::interner;
 import diagnostic::span_handler;
 import codemap::span;
 import ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
@@ -217,7 +217,7 @@ fn consume_any_line_comment(rdr: string_reader)
                     bump(rdr);
                 }
                 ret some({
-                    tok: token::DOC_COMMENT(intern(*rdr.interner, @acc)),
+                    tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
                     sp: ast_util::mk_sp(start_chpos, rdr.chpos)
                 });
             } else {
@@ -262,7 +262,7 @@ fn consume_block_comment(rdr: string_reader)
             bump(rdr);
             bump(rdr);
             ret some({
-                tok: token::DOC_COMMENT(intern(*rdr.interner, @acc)),
+                tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
                 sp: ast_util::mk_sp(start_chpos, rdr.chpos)
             });
         }
@@ -395,13 +395,11 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
-                                 ast::ty_f32);
+            ret token::LIT_FLOAT(rdr.interner.intern(@num_str), ast::ty_f32);
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
-                                 ast::ty_f64);
+            ret token::LIT_FLOAT(rdr.interner.intern(@num_str), ast::ty_f64);
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
             back-end.  */
@@ -410,8 +408,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         }
     }
     if is_float {
-        ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
-                             ast::ty_f);
+        ret token::LIT_FLOAT(rdr.interner.intern(@num_str), ast::ty_f);
     } else {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
@@ -459,7 +456,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         let is_mod_name = c == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
-        ret token::IDENT(intern(*rdr.interner, @accum_str), is_mod_name);
+        ret token::IDENT(rdr.interner.intern(@accum_str), is_mod_name);
     }
     if is_dec_digit(c) {
         ret scan_number(c, rdr);
@@ -623,7 +620,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             }
         }
         bump(rdr);
-        ret token::LIT_STR(intern(*rdr.interner, @accum_str));
+        ret token::LIT_STR(rdr.interner.intern(@accum_str));
       }
       '-' {
         if nextch(rdr) == '>' {

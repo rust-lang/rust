@@ -165,24 +165,16 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
       LIT_INT_UNSUFFIXED(i) {
         int::to_str(i as int, 10u)
       }
-      LIT_FLOAT(s, t) {
-        *interner::get(in, s) +
-            ast_util::float_ty_to_str(t)
-      }
-      LIT_STR(s) {
-        ~"\""
-            + str::escape_default(*interner::get(in, s))
-            + ~"\""
-      }
+      LIT_FLOAT(s, t) { *in.get(s) + ast_util::float_ty_to_str(t) }
+      LIT_STR(s) { ~"\"" + str::escape_default( *in.get(s)) + ~"\"" }
 
       /* Name components */
-      IDENT(s, _) {
-        *interner::get(in, s)
-      }
+      IDENT(s, _) { *in.get(s) }
+
       UNDERSCORE { ~"_" }
 
       /* Other */
-      DOC_COMMENT(s) { *interner::get(in, s) }
+      DOC_COMMENT(s) { *in.get(s) }
       EOF { ~"<eof>" }
       INTERPOLATED(nt) {
         ~"an interpolated " +
