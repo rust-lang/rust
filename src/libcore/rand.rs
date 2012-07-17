@@ -94,22 +94,22 @@ impl extensions for rng {
         (self.next() as u64 << 32) | self.next() as u64
     }
 
-    /// Return a random float
+    /// Return a random float in the interval [0,1]
     fn gen_float() -> float {
         self.gen_f64() as float
     }
 
-    /// Return a random f32
+    /// Return a random f32 in the interval [0,1]
     fn gen_f32() -> f32 {
         self.gen_f64() as f32
     }
 
-    /// Return a random f64
+    /// Return a random f64 in the interval [0,1]
     fn gen_f64() -> f64 {
         let u1 = self.next() as f64;
         let u2 = self.next() as f64;
         let u3 = self.next() as f64;
-        let scale = u32::max_value as f64;
+        const scale : f64 = (u32::max_value as f64) + 1.0f64;
         ret ((u1 / scale + u2) / scale + u3) / scale;
     }
 
