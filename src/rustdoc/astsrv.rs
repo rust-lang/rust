@@ -21,6 +21,7 @@ import rustc::back::link;
 import rustc::metadata::filesearch;
 import rustc::front;
 import rustc::middle::resolve;
+import rustc::middle::resolve3;
 
 export ctxt;
 export ctxt_handler;
@@ -115,7 +116,7 @@ fn build_ctxt(sess: session,
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), *ast);
     *ignore_errors = true;
-    let {exp_map, impl_map, _} = resolve::resolve_crate(sess, ast_map, ast);
+    let {exp_map, impl_map, _} = resolve3::resolve_crate(sess, ast_map, ast);
     *ignore_errors = false;
 
     {

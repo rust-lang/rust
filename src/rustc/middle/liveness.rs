@@ -360,7 +360,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     visit::visit_fn(fk, decl, body, sp, id, fn_maps, v);
 
     alt fk {
-      visit::fk_ctor(_, _, _, class_did) {
+      visit::fk_ctor(_, _, _, _, class_did) {
         add_class_fields(fn_maps, class_did);
       }
       _ {}

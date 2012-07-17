@@ -270,8 +270,8 @@ fn for_each_reexported_impl(
         mod_id: ast::node_id
     ) {
         let all_impls = all_impls(m);
-        alt check *ctxt.impl_map.get(mod_id) {
-          list::cons(impls, @list::nil) {
+        alt *ctxt.impl_map.get(mod_id) {
+          list::cons(impls, _) {
             for vec::each(*impls) |i| {
                 // This impl is not an item in the current mod
                 if !all_impls.contains_key(i.did) {
@@ -282,6 +282,9 @@ fn for_each_reexported_impl(
                     }
                 }
             }
+          }
+          list::nil {
+            // Do nothing -- mod has no impls
           }
         }
     }
