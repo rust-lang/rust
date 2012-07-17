@@ -100,6 +100,7 @@ iface ext_ctxt {
     fn bt_pop();
     fn span_fatal(sp: span, msg: ~str) -> !;
     fn span_err(sp: span, msg: ~str);
+    fn span_warn(sp: span, msg: ~str);
     fn span_unimpl(sp: span, msg: ~str) -> !;
     fn span_bug(sp: span, msg: ~str) -> !;
     fn bug(msg: ~str) -> !;
@@ -147,6 +148,10 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn span_err(sp: span, msg: ~str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_err(sp, msg);
+        }
+        fn span_warn(sp: span, msg: ~str) {
+            self.print_backtrace();
+            self.parse_sess.span_diagnostic.span_warn(sp, msg);
         }
         fn span_unimpl(sp: span, msg: ~str) -> ! {
             self.print_backtrace();

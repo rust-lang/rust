@@ -85,5 +85,7 @@ mod ext {
         mod ast_builder;
         mod parse_proto;
         mod pipec;
+        mod proto;
+        mod check;
     }
 }

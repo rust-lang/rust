@@ -8,7 +8,9 @@ import parse::common::parser_common;
 
 import pipes::parse_proto::proto_parser;
 
-import pipes::pipec::methods;
+import pipes::pipec::compile;
+import pipes::proto::{visit, protocol};
+import pipes::check::proto_check;
 
 fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
                 tt: ~[ast::token_tree]) -> base::mac_result
@@ -22,5 +24,9 @@ fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
 
     let proto = rust_parser.parse_proto(id);
 
+    // check for errors
+    visit(proto, cx);
+
+    // compile
     base::mr_item(proto.compile(cx))
 }

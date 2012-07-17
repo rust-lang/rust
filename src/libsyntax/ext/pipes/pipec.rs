@@ -5,6 +5,8 @@ import to_str::to_str;
 import dvec::dvec;
 import dvec::extensions;
 
+import tuple::extensions;
+
 import ast::ident;
 import util::interner;
 import interner::{intern, get};
@@ -14,57 +16,13 @@ import ext::base::{mk_ctxt, ext_ctxt};
 import parse;
 import parse::*;
 
+import proto::*;
+
 import ast_builder::ast_builder;
 import ast_builder::methods;
 import ast_builder::path;
 
-enum direction {
-    send, recv
-}
-
-impl of to_str for direction {
-    fn to_str() -> ~str {
-        alt self {
-          send { ~"send" }
-          recv { ~"recv" }
-        }
-    }
-}
-
-impl methods for direction {
-    fn reverse() -> direction {
-        alt self {
-          send { recv }
-          recv { send }
-        }
-    }
-}
-
-type next_state = option<{state: ident, tys: ~[@ast::ty]}>;
-
-enum message {
-    // name, data, current state, next state
-    message(ident, ~[@ast::ty], state, next_state)
-}
-
-impl methods for message {
-    fn name() -> ident {
-        alt self {
-          message(id, _, _, _) {
-            id
-          }
-        }
-    }
-
-    // Return the type parameters actually used by this message
-    fn get_params() -> ~[ast::ty_param] {
-        alt self {
-          message(_, _, this, _) {
-            this.ty_params
-          }
-        }
-    }
-
+impl compile for message {
     fn gen_send(cx: ext_ctxt) -> @ast::item {
         #debug("pipec: gen_send");
         alt self {
@@ -154,34 +112,7 @@ impl methods for message {
     }
 }
 
-enum state {
-    state_(@{
-        name: ident,
-        dir: direction,
-        ty_params: ~[ast::ty_param],
-        messages: dvec<message>,
-        proto: protocol,
-    }),
-}
-
-impl methods for state {
-    fn add_message(name: ident, +data: ~[@ast::ty], next: next_state) {
-        self.messages.push(message(name, data, self,
-                                   next));
-    }
-
-    fn filename() -> ~str {
-        (*self).proto.filename()
-    }
-
-    fn data_name() -> ident {
-        self.name
-    }
-
-    fn to_ty(cx: ext_ctxt) -> @ast::ty {
-        cx.ty_path(path(self.name).add_tys(cx.ty_vars(self.ty_params)))
-    }
-
+impl compile for state {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
         #debug("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
@@ -248,47 +179,7 @@ impl methods for state {
     }
 }
 
-enum protocol {
-    protocol_(@{
-        name: ident,
-        states: dvec<state>,
-    }),
-}
-
-fn protocol(name: ident) -> protocol {
-    protocol_(@{name: name, states: dvec()})
-}
-
-impl methods for protocol {
-    fn add_state(name: ident, dir: direction) -> state {
-        self.add_state_poly(name, dir, ~[])
-    }
-
-    /// Get or create a state.
-    fn get_state(name: ident) -> state {
-        self.states.find(|i| i.name == name).get()
-    }
-
-    fn add_state_poly(name: ident, dir: direction,
-                      +ty_params: ~[ast::ty_param]) -> state {
-        let messages = dvec();
-
-        let state = state_(@{
-            name: name,
-            dir: dir,
-            ty_params: ty_params,
-            messages: messages,
-            proto: self
-        });
-
-        self.states.push(state);
-        state
-    }
-
-    fn filename() -> ~str {
-        ~"proto://" + *self.name
-    }
-
+impl compile for protocol {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let start_state = self.states[0];
 
@@ -302,18 +193,12 @@ impl methods for protocol {
           }
         };
 
-        parse_item_from_source_str(
-            self.filename(),
-            @#fmt("fn init%s() -> (client::%s, server::%s)\
-                   { %s }",
-                  start_state.ty_params.to_source(),
-                  start_state.to_ty(cx).to_source(),
-                  start_state.to_ty(cx).to_source(),
-                  body.to_source()),
-            cx.cfg(),
-            ~[],
-            ast::public,
-            cx.parse_sess()).get()
+        cx.parse_item(#fmt("fn init%s() -> (client::%s, server::%s)\
+                            { %s }",
+                           start_state.ty_params.to_source(),
+                           start_state.to_ty(cx).to_source(),
+                           start_state.to_ty(cx).to_source(),
+                           body.to_source()))
     }
 
     fn compile(cx: ext_ctxt) -> @ast::item {
@@ -405,17 +290,5 @@ impl parse_utils for ext_ctxt {
             @(copy s),
             self.cfg(),
             self.parse_sess())
-    }
-}
-
-impl methods<A: copy, B: copy> for (~[A], ~[B]) {
-    fn zip() -> ~[(A, B)] {
-        let (a, b) = self;
-        vec::zip(a, b)
-    }
-
-    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
-        let (a, b) = self;
-        vec::map2(a, b, f)
     }
 }

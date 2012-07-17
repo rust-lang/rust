@@ -23,6 +23,29 @@ impl extensions <T:copy, U:copy> for (T, U) {
 
 }
 
+impl extensions<A: copy, B: copy> for (&[A], &[B]) {
+    fn zip() -> ~[(A, B)] {
+        let (a, b) = self;
+        vec::zip(a, b)
+    }
+
+    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
+        let (a, b) = self;
+        vec::map2(a, b, f)
+    }
+}
+
+impl extensions<A: copy, B: copy> for (~[A], ~[B]) {
+    fn zip() -> ~[(A, B)] {
+        let (a, b) = self;
+        vec::zip(a, b)
+    }
+
+    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
+        let (a, b) = self;
+        vec::map2(a, b, f)
+    }
+}
 
 #[test]
 fn test_tuple() {
