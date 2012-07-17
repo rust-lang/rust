@@ -46,7 +46,7 @@ mod intrinsic {
         fn visit_estr_box() -> bool;
         fn visit_estr_uniq() -> bool;
         fn visit_estr_slice() -> bool;
-        fn visit_estr_fixed(sz: uint) -> bool;
+        fn visit_estr_fixed(n: uint, sz: uint, align: uint) -> bool;
 
         fn visit_box(mtbl: uint, inner: *tydesc) -> bool;
         fn visit_uniq(mtbl: uint, inner: *tydesc) -> bool;
@@ -58,9 +58,8 @@ mod intrinsic {
         fn visit_evec_box(mtbl: uint, inner: *tydesc) -> bool;
         fn visit_evec_uniq(mtbl: uint, inner: *tydesc) -> bool;
         fn visit_evec_slice(mtbl: uint, inner: *tydesc) -> bool;
-        fn visit_evec_fixed(n: uint, mtbl: uint,
-                            sz: uint, align: uint,
-                            inner: *tydesc) -> bool;
+        fn visit_evec_fixed(n: uint, sz: uint, align: uint,
+                            mtbl: uint, inner: *tydesc) -> bool;
 
         fn visit_enter_rec(n_fields: uint,
                            sz: uint, align: uint) -> bool;

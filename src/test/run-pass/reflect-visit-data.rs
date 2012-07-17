@@ -199,9 +199,11 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
         true
     }
 
-    fn visit_estr_fixed(sz: uint) -> bool {
-        self.align_to::<u8>();
-        if ! self.inner.visit_estr_fixed(sz) { ret false; }
+    fn visit_estr_fixed(n: uint,
+                        sz: uint,
+                        align: uint) -> bool {
+        self.align(align);
+        if ! self.inner.visit_estr_fixed(n, sz, align) { ret false; }
         self.bump(sz);
         true
     }
@@ -272,11 +274,10 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
         true
     }
 
-    fn visit_evec_fixed(mtbl: uint, n: uint,
-                        sz: uint, align: uint,
-                        inner: *tydesc) -> bool {
+    fn visit_evec_fixed(n: uint, sz: uint, align: uint,
+                        mtbl: uint, inner: *tydesc) -> bool {
         self.align(align);
-        if ! self.inner.visit_evec_fixed(mtbl, n, sz, align, inner) {
+        if ! self.inner.visit_evec_fixed(n, sz, align, mtbl, inner) {
             ret false;
         }
         self.bump(sz);
@@ -522,7 +523,8 @@ impl of ty_visitor for my_visitor {
     fn visit_estr_box() -> bool { true }
     fn visit_estr_uniq() -> bool { true }
     fn visit_estr_slice() -> bool { true }
-    fn visit_estr_fixed(_sz: uint) -> bool { true }
+    fn visit_estr_fixed(_n: uint, _sz: uint,
+                        _align: uint) -> bool { true }
 
     fn visit_box(_mtbl: uint, _inner: *tydesc) -> bool { true }
     fn visit_uniq(_mtbl: uint, _inner: *tydesc) -> bool { true }
@@ -534,9 +536,8 @@ impl of ty_visitor for my_visitor {
     fn visit_evec_box(_mtbl: uint, _inner: *tydesc) -> bool { true }
     fn visit_evec_uniq(_mtbl: uint, _inner: *tydesc) -> bool { true }
     fn visit_evec_slice(_mtbl: uint, _inner: *tydesc) -> bool { true }
-    fn visit_evec_fixed(_n: uint, _mtbl: uint,
-                        _sz: uint, _align: uint,
-                        _inner: *tydesc) -> bool { true }
+    fn visit_evec_fixed(_n: uint, _sz: uint, _align: uint,
+                        _mtbl: uint, _inner: *tydesc) -> bool { true }
 
     fn visit_enter_rec(_n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }

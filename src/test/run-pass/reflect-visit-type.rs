@@ -54,7 +54,8 @@ impl of ty_visitor for my_visitor {
     fn visit_estr_box() -> bool { true }
     fn visit_estr_uniq() -> bool { true }
     fn visit_estr_slice() -> bool { true }
-    fn visit_estr_fixed(_sz: uint) -> bool { true }
+    fn visit_estr_fixed(_sz: uint, _sz: uint,
+                        _align: uint) -> bool { true }
 
     fn visit_box(_mtbl: uint, _inner: *tydesc) -> bool { true }
     fn visit_uniq(_mtbl: uint, _inner: *tydesc) -> bool { true }
@@ -71,9 +72,8 @@ impl of ty_visitor for my_visitor {
     fn visit_evec_box(_mtbl: uint, _inner: *tydesc) -> bool { true }
     fn visit_evec_uniq(_mtbl: uint, _inner: *tydesc) -> bool { true }
     fn visit_evec_slice(_mtbl: uint, _inner: *tydesc) -> bool { true }
-    fn visit_evec_fixed(_n: uint, _mtbl: uint,
-                        _sz: uint, _align: uint,
-                        _inner: *tydesc) -> bool { true }
+    fn visit_evec_fixed(_n: uint, _sz: uint, _align: uint,
+                        _mtbl: uint, _inner: *tydesc) -> bool { true }
 
     fn visit_enter_rec(_n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }

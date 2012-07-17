@@ -1,7 +1,3 @@
-// xfail-pretty
-// xfail-win32
-// xfail-test
-
 // Generated from pipe compiler
 mod stream {
     fn init<T: send>() -> (client::stream<T>, server::stream<T>) {
