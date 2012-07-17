@@ -37,10 +37,18 @@ pure fn expect<T: copy>(opt: option<T>, reason: ~str) -> T {
     alt opt { some(x) { x } none { fail reason; } }
 }
 
-pure fn map<T, U: copy>(opt: option<T>, f: fn(T) -> U) -> option<U> {
+pure fn map<T, U>(opt: option<T>, f: fn(T) -> U) -> option<U> {
     //! Maps a `some` value from one type to another
 
     alt opt { some(x) { some(f(x)) } none { none } }
+}
+
+pure fn map_consume<T, U>(-opt: option<T>, f: fn(-T) -> U) -> option<U> {
+    /*!
+     * As `map`, but consumes the option and gives `f` ownership to avoid
+     * copying.
+     */
+    if opt.is_some() { some(f(option::unwrap(opt))) } else { none }
 }
 
 pure fn chain<T, U>(opt: option<T>, f: fn(T) -> option<U>) -> option<U> {
@@ -128,7 +136,7 @@ impl extensions<T> for option<T> {
     /// Returns true if the option contains some value
     pure fn is_some() -> bool { is_some(self) }
     /// Maps a `some` value from one type to another
-    pure fn map<U:copy>(f: fn(T) -> U) -> option<U> { map(self, f) }
+    pure fn map<U>(f: fn(T) -> U) -> option<U> { map(self, f) }
 }
 
 impl extensions<T: copy> for option<T> {
