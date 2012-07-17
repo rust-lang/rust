@@ -464,13 +464,13 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(id);
 
             alt fk {
-              visit::fk_ctor(nm, tps, self_id, parent_id) {
+              visit::fk_ctor(nm, _, tps, self_id, parent_id) {
                 vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);
                 vfn(parent_id.node);
               }
-              visit::fk_dtor(tps, self_id, parent_id) {
+              visit::fk_dtor(tps, _, self_id, parent_id) {
                 vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);

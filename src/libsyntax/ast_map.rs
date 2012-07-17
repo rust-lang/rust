@@ -126,8 +126,9 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     alt fk {
-      visit::fk_ctor(nm, tps, self_id, parent_id) {
+      visit::fk_ctor(nm, attrs, tps, self_id, parent_id) {
           let ct = @{node: {id: id,
+                            attrs: attrs,
                             self_id: self_id,
                             dec: /* FIXME (#2543) */ copy decl,
                             body: /* FIXME (#2543) */ copy body},
@@ -136,16 +137,15 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
                                       /* FIXME (#2543) */ copy tps,
                                       ct, parent_id,
                                       @/* FIXME (#2543) */ copy cx.path));
-       }
-      visit::fk_dtor(tps, self_id, parent_id) {
-          let dt = @{node: {id: id, self_id: self_id,
+      }
+      visit::fk_dtor(tps, attrs, self_id, parent_id) {
+          let dt = @{node: {id: id, attrs: attrs, self_id: self_id,
                      body: /* FIXME (#2543) */ copy body}, span: sp};
           cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
                                       parent_id,
                                       @/* FIXME (#2543) */ copy cx.path));
-       }
-
-       _ {}
+      }
+      _ {}
     }
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }

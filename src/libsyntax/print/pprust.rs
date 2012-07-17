@@ -195,7 +195,7 @@ fn head(s: ps, w: ~str) {
     // outer-box is consistent
     cbox(s, indent_unit);
     // head-box is inconsistent
-    ibox(s, str::len(w) + 1u);
+    ibox(s, str::len(w) + 1);
     // keyword that starts the head
     word_nbsp(s, w);
 }
@@ -500,13 +500,19 @@ fn print_item(s: ps, &&item: @ast::item) {
           bopen(s);
           hardbreak_if_not_bol(s);
           maybe_print_comment(s, ctor.span.lo);
-          head(s, ~"new");
-          print_fn_args_and_ret(s, ctor.node.dec, ~[]);
+          print_outer_attributes(s, ctor.node.attrs);
+          /* Doesn't call head because there shouldn't be a space after new */
+          cbox(s, indent_unit);
+          ibox(s, 4);
+          word(s.s, ~"new(");
+          print_fn_args(s, ctor.node.dec, ~[]);
+          word(s.s, ~")");
           space(s.s);
           print_block(s, ctor.node.body);
           do option::iter(m_dtor) |dtor| {
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, dtor.span.lo);
+            print_outer_attributes(s, dtor.node.attrs);
             head(s, ~"drop");
             print_block(s, dtor.node.body);
           }

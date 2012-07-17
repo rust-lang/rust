@@ -96,8 +96,8 @@ enum pexpr {
   So that we can distinguish a class ctor or dtor
   from other class members
  */
-enum class_contents { ctor_decl(fn_decl, blk, codemap::span),
-                      dtor_decl(blk, codemap::span),
+enum class_contents { ctor_decl(fn_decl, ~[attribute], blk, codemap::span),
+                      dtor_decl(blk, ~[attribute], codemap::span),
                       members(~[@class_member]) }
 
 type arg_or_capture_item = either<arg, capture_item>;
@@ -2145,31 +2145,34 @@ class parser {
         self.expect(token::LBRACE);
         let mut ms: ~[@class_member] = ~[];
         let ctor_id = self.get_id();
-        let mut the_ctor : option<(fn_decl, blk, codemap::span)> = none;
-        let mut the_dtor : option<(blk, codemap::span)> = none;
+        let mut the_ctor : option<(fn_decl, ~[attribute], blk,
+                                   codemap::span)> = none;
+        let mut the_dtor : option<(blk, ~[attribute], codemap::span)> = none;
         while self.token != token::RBRACE {
             alt self.parse_class_item(class_path) {
-              ctor_decl(a_fn_decl, blk, s) {
-                the_ctor = some((a_fn_decl, blk, s));
+              ctor_decl(a_fn_decl, attrs, blk, s) {
+                the_ctor = some((a_fn_decl, attrs, blk, s));
               }
-              dtor_decl(blk, s) {
-                the_dtor = some((blk, s));
+              dtor_decl(blk, attrs, s) {
+                the_dtor = some((blk, attrs, s));
               }
               members(mms) { ms = vec::append(ms, mms); }
             }
         }
         let actual_dtor = do option::map(the_dtor) |dtor| {
-            let (d_body, d_s) = dtor;
+            let (d_body, d_attrs, d_s) = dtor;
             {node: {id: self.get_id(),
+                    attrs: d_attrs,
                     self_id: self.get_id(),
                     body: d_body},
              span: d_s}};
         self.bump();
         alt the_ctor {
-          some((ct_d, ct_b, ct_s)) {
+          some((ct_d, ct_attrs, ct_b, ct_s)) {
             (class_name,
              item_class(ty_params, traits, ms, {
                  node: {id: ctor_id,
+                        attrs: ct_attrs,
                         self_id: self.get_id(),
                         dec: ct_d,
                         body: ct_b},
@@ -2198,35 +2201,27 @@ class parser {
         }
     }
 
-    fn parse_ctor(result_ty: ast::ty_) -> class_contents {
-        // FIXME (#2660): Can ctors/dtors have attrs?
+    fn parse_ctor(attrs: ~[attribute],
+                  result_ty: ast::ty_) -> class_contents {
         let lo = self.last_span.lo;
         let (decl_, _) = self.parse_fn_decl(impure_fn, |p| p.parse_arg());
         let decl = {output: @{id: self.get_id(),
                               node: result_ty, span: decl_.output.span}
                     with decl_};
         let body = self.parse_block();
-        ctor_decl(decl, body, mk_sp(lo, self.last_span.hi))
+        ctor_decl(decl, attrs, body, mk_sp(lo, self.last_span.hi))
     }
 
-    fn parse_dtor() -> class_contents {
-        // FIXME (#2660): Can ctors/dtors have attrs?
+    fn parse_dtor(attrs: ~[attribute]) -> class_contents {
         let lo = self.last_span.lo;
         let body = self.parse_block();
-        dtor_decl(body, mk_sp(lo, self.last_span.hi))
+        dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
     }
 
     fn parse_class_item(class_name_with_tps: @path)
         -> class_contents {
-        if self.eat_keyword(~"new") {
-            // result type is always the type of the class
-            ret self.parse_ctor(ty_path(class_name_with_tps,
-                                        self.get_id()));
-        }
-        else if self.eat_keyword(~"drop") {
-            ret self.parse_dtor();
-        }
-        else if self.eat_keyword(~"priv") {
+
+        if self.eat_keyword(~"priv") {
             self.expect(token::LBRACE);
             let mut results = ~[];
             while self.token != token::RBRACE {
@@ -2235,9 +2230,19 @@ class parser {
             self.bump();
             ret members(results);
         }
+
+        let attrs = self.parse_outer_attributes();
+
+        if self.eat_keyword(~"new") {
+            // result type is always the type of the class
+           ret self.parse_ctor(attrs, ty_path(class_name_with_tps,
+                                        self.get_id()));
+        }
+        else if self.eat_keyword(~"drop") {
+           ret self.parse_dtor(attrs);
+        }
         else {
-            // Probably need to parse attrs
-            ret members(~[self.parse_single_class_item(public)]);
+           ret members(~[self.parse_single_class_item(public)]);
         }
     }
 

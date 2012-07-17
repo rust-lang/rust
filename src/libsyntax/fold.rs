@@ -16,6 +16,7 @@ export wrap;
 export fold_ty_param;
 export fold_ty_params;
 export fold_fn_decl;
+export extensions;
 
 iface ast_fold {
     fn fold_crate(crate) -> crate;
@@ -698,6 +699,12 @@ impl of ast_fold for ast_fold_precursor {
     }
     fn new_span(span: span) -> span {
         self.new_span(span)
+    }
+}
+
+impl extensions for ast_fold {
+    fn fold_attributes(attrs: ~[attribute]) -> ~[attribute] {
+        attrs.map(|x| fold_attribute_(x, self))
     }
 }
 

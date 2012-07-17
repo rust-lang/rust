@@ -17,9 +17,9 @@ enum fn_kind {
     fk_method(ident, ~[ty_param], @method),
     fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
-    fk_ctor(ident, ~[ty_param], node_id /* self id */,
+    fk_ctor(ident, ~[attribute], ~[ty_param], node_id /* self id */,
             def_id /* parent class id */), // class constructor
-    fk_dtor(~[ty_param], node_id /* self id */,
+    fk_dtor(~[ty_param], ~[attribute], node_id /* self id */,
             def_id /* parent class id */) // class destructor
 
 }
@@ -27,7 +27,7 @@ enum fn_kind {
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
       fk_item_fn(name, _) | fk_method(name, _, _)
-          | fk_ctor(name, _, _, _) { /* FIXME (#2543) */ copy name }
+          | fk_ctor(name, _, _, _, _) { /* FIXME (#2543) */ copy name }
       fk_anon(*) | fk_fn_block(*) { @~"anon" }
       fk_dtor(*)                  { @~"drop" }
     }
@@ -36,7 +36,7 @@ fn name_of_fn(fk: fn_kind) -> ident {
 fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
     alt fk {
       fk_item_fn(_, tps) | fk_method(_, tps, _)
-              | fk_ctor(_, tps, _, _) | fk_dtor(tps, _, _) {
+          | fk_ctor(_, _, tps, _, _) | fk_dtor(tps, _, _, _) {
           /* FIXME (#2543) */ copy tps
       }
       fk_anon(*) | fk_fn_block(*) { ~[] }
@@ -271,16 +271,17 @@ fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
 fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: ~[ty_param],
                               parent_id: def_id, e: E, v: vt<E>) {
     v.visit_fn(fk_ctor(/* FIXME (#2543) */ copy nm,
+                       ctor.node.attrs,
                        /* FIXME (#2543) */ copy tps,
-                       ctor.node.self_id, parent_id), ctor.node.dec,
-               ctor.node.body, ctor.span, ctor.node.id, e, v)
+                       ctor.node.self_id, parent_id),
+        ctor.node.dec, ctor.node.body, ctor.span, ctor.node.id, e, v)
 
 }
 
 fn visit_class_dtor_helper<E>(dtor: class_dtor, tps: ~[ty_param],
                               parent_id: def_id, e: E, v: vt<E>) {
-    v.visit_fn(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.self_id,
-                       parent_id), ast_util::dtor_dec(),
+    v.visit_fn(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.attrs,
+                       dtor.node.self_id, parent_id), ast_util::dtor_dec(),
                dtor.node.body, dtor.span, dtor.node.id, e, v)
 
 }

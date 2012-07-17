@@ -3,6 +3,7 @@ import util::ppaux::ty_to_str;
 import dvec::extensions;
 import syntax::ast;
 import syntax::fold;
+import syntax::fold::*;
 import syntax::visit;
 import syntax::ast_map;
 import syntax::ast_util;
@@ -295,21 +296,25 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
       }
       ast::ii_ctor(ctor, nm, tps, parent_id) {
         let ctor_body = fld.fold_block(ctor.node.body);
+        let ctor_attrs = fld.fold_attributes(ctor.node.attrs);
         let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
         let new_params = fold::fold_ty_params(tps, fld);
         let ctor_id = fld.new_id(ctor.node.id);
         let new_parent = xcx.tr_def_id(parent_id);
-        ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl, id: ctor_id
+        ast::ii_ctor({node: {body: ctor_body, attrs: ctor_attrs,
+                dec: ctor_decl, id: ctor_id
                               with ctor.node}
             with ctor}, nm, new_params, new_parent)
       }
       ast::ii_dtor(dtor, nm, tps, parent_id) {
         let dtor_body = fld.fold_block(dtor.node.body);
+        let dtor_attrs = fld.fold_attributes(dtor.node.attrs);
         let new_params = fold::fold_ty_params(tps, fld);
         let dtor_id = fld.new_id(dtor.node.id);
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id(dtor.node.self_id);
-        ast::ii_dtor({node: {id: dtor_id, self_id: new_self, body: dtor_body}
+        ast::ii_dtor({node: {id: dtor_id, attrs: dtor_attrs,
+                self_id: new_self, body: dtor_body}
                         with dtor},
           nm, new_params, new_parent)
       }
