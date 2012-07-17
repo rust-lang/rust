@@ -66,8 +66,8 @@ syn keyword   rustConstant    STDIN_FILENO STDOUT_FILENO STDERR_FILENO
 syn match     rustModPath     "\w\(\w\)*::[^<]"he=e-3,me=e-3
 syn match     rustModPathSep  "::"
 
-syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1
-syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 " foo::<T>();
+syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1 contains=rustAssert
+syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 contains=rustAssert " foo::<T>();
 
 syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo
 
