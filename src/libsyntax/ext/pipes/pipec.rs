@@ -22,7 +22,21 @@ import ast_builder::ast_builder;
 import ast_builder::methods;
 import ast_builder::path;
 
-impl compile for message {
+trait gen_send {
+    fn gen_send(cx: ext_ctxt) -> @ast::item;
+}
+
+trait to_type_decls {
+    fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item];
+    fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item];
+}
+
+trait gen_init {
+    fn gen_init(cx: ext_ctxt) -> @ast::item;
+    fn compile(cx: ext_ctxt) -> @ast::item;
+}
+
+impl compile of gen_send for message {
     fn gen_send(cx: ext_ctxt) -> @ast::item {
         #debug("pipec: gen_send");
         alt self {
@@ -80,7 +94,7 @@ impl compile for message {
 
             let args_ast = vec::append(
                 ~[cx.arg_mode(@~"pipe",
-                              cx.ty_path(path(this.data_name())
+                              cx.ty_path_ast_builder(path(this.data_name())
                                         .add_tys(cx.ty_vars(this.ty_params))),
                               ast::by_copy)],
                 args_ast);
@@ -104,7 +118,7 @@ impl compile for message {
 
             cx.item_fn_poly(self.name(),
                             args_ast,
-                            cx.ty_nil(),
+                            cx.ty_nil_ast_builder(),
                             self.get_params(),
                             cx.expr_block(body))
           }
@@ -112,12 +126,12 @@ impl compile for message {
     }
 
     fn to_ty(cx: ext_ctxt) -> @ast::ty {
-        cx.ty_path_ast_builder(path(self.name)
-          .add_tys(cx.ty_vars(self.ty_params)))
+        cx.ty_path_ast_builder(path(self.name())
+          .add_tys(cx.ty_vars(self.get_params())))
     }
 }
 
-impl compile for state {
+impl compile of to_type_decls for state {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
         #debug("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
@@ -144,7 +158,7 @@ impl compile for state {
                 };
 
                 vec::append_one(tys,
-                                cx.ty_path((dir + next_name)
+                                cx.ty_path_ast_builder((dir + next_name)
                                            .add_tys(next_tys)))
               }
               none { tys }
@@ -184,7 +198,7 @@ impl compile for state {
     }
 }
 
-impl compile for protocol {
+impl compile of gen_init for protocol {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let start_state = self.states[0];
 
@@ -303,19 +317,3 @@ impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
     }
 }
 
-trait two_vector_utils<A, B> {
-    fn zip() -> ~[(A, B)];
-    fn map<C>(f: fn(A, B) -> C) -> ~[C];
-}
-
-impl methods<A: copy, B: copy> of two_vector_utils<A, B> for (~[A], ~[B]) {
-    fn zip() -> ~[(A, B)] {
-        let (a, b) = self;
-        vec::zip(a, b)
-    }
-
-    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
-        let (a, b) = self;
-        vec::map2(a, b, f)
-    }
-}

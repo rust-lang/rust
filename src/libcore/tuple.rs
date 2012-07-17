@@ -1,7 +1,12 @@
 //! Operations on tuples
 
+trait tuple_ops<T,U> {
+    pure fn first() -> T;
+    pure fn second() -> U;
+    pure fn swap() -> (U, T);
+}
 
-impl extensions <T:copy, U:copy> for (T, U) {
+impl extensions <T:copy, U:copy> of tuple_ops<T,U> for (T, U) {
 
     /// Return the first element of self
     pure fn first() -> T {
@@ -23,7 +28,14 @@ impl extensions <T:copy, U:copy> for (T, U) {
 
 }
 
-impl extensions<A: copy, B: copy> for (&[A], &[B]) {
+trait extended_tuple_ops<A,B> {
+    fn zip() -> ~[(A, B)];
+    fn map<C>(f: fn(A, B) -> C) -> ~[C];
+}
+
+impl extensions<A: copy, B: copy> of extended_tuple_ops<A,B>
+        for (&[A], &[B]) {
+
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;
         vec::zip(a, b)
@@ -35,7 +47,9 @@ impl extensions<A: copy, B: copy> for (&[A], &[B]) {
     }
 }
 
-impl extensions<A: copy, B: copy> for (~[A], ~[B]) {
+impl extensions<A: copy, B: copy> of extended_tuple_ops<A,B>
+        for (~[A], ~[B]) {
+
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;
         vec::zip(a, b)

@@ -5,7 +5,7 @@
 import option::{some, none};
 import option = option::option;
 import path = path::path;
-import tuple::extensions;
+import tuple::{extensions, tuple_ops, extended_tuple_ops};
 import str::{extensions, str_slice, unique_str};
 import vec::extensions;
 import vec::{const_vector, copyable_vector, immutable_vector};
@@ -40,6 +40,7 @@ export str_slice, unique_str;
 export const_vector, copyable_vector, immutable_vector;
 export immutable_copyable_vector, iter_trait_extensions, vec_concat;
 export base_iter, copyable_iter, extended_iter;
+export tuple_ops, extended_tuple_ops;
 export ptr;
 
 // Export the log levels as global constants. Higher levels mean

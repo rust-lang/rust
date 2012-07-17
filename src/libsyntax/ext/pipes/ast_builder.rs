@@ -202,7 +202,7 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
           span: empty_span()}
     }
 
-    fn ty_nil() -> @ast::ty {
+    fn ty_nil_ast_builder() -> @ast::ty {
         @{id: self.next_id(),
           node: ast::ty_nil,
           span: empty_span()}

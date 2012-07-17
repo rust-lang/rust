@@ -3,7 +3,7 @@ import dvec::{dvec, extensions};
 
 import ast::{ident};
 
-import ast_builder::{path, methods, ast_builder};
+import ast_builder::{path, methods, ast_builder, append_types};
 
 enum direction {
     send, recv
@@ -78,7 +78,8 @@ impl methods for state {
     }
 
     fn to_ty(cx: ext_ctxt) -> @ast::ty {
-        cx.ty_path(path(self.name).add_tys(cx.ty_vars(self.ty_params)))
+        cx.ty_path_ast_builder
+            (path(self.name).add_tys(cx.ty_vars(self.ty_params)))
     }
 }
 
