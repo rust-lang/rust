@@ -1350,20 +1350,13 @@ implemented. Implementation names do not conflict the way other names
 do: multiple implementations with the same name may exist in a scope at
 the same time.
 
-It is possible to define an implementation without referring to a trait.
-The methods in such an implementation can only be used
+It is possible to define an implementation without referring to a
+trait.  The methods in such an implementation can only be used
 statically (as direct calls on the values of the type that the
 implementation targets). In such an implementation, the `of` clause is
-not given, and the name is mandatory.
-
-~~~~
-impl uint_loops for uint {
-    fn times(f: fn(uint)) {
-        let mut i = 0u;
-        while i < self { f(i); i += 1u; }
-    }
-}
-~~~~
+not given, and the name is mandatory.  Such implementations are
+limited to nominal types (enums, classes) and the implementation must
+appear in the same module or a sub-module as the receiver type.
 
 _When_ a trait is specified, all methods declared as part of the
 trait must be present, with matching types and type parameter
