@@ -584,7 +584,8 @@ type rust_closure = libc::c_void;
 
 /* linked failure */
 
-type taskgroup_arc = arc::exclusive<option<dvec::dvec<option<*rust_task>>>>;
+type taskgroup_arc =
+    arc::exclusive<option<(dvec::dvec<option<*rust_task>>,dvec::dvec<uint>)>>;
 
 class taskgroup {
     // FIXME (#2816): Change dvec to an O(1) data structure (and change 'me'
@@ -594,9 +595,6 @@ class taskgroup {
     let me:         *rust_task;
     let my_pos:     uint;
     // let parent_group: taskgroup_arc; // FIXME (#1868) (bblum)
-    // FIXME (#1868) XXX bblum: add a list of empty slots to get runtime back
-    // Indicates whether this is the main (root) taskgroup. If so, failure
-    // here should take down the entire runtime.
     let is_main:    bool;
     new(-tasks: taskgroup_arc, me: *rust_task, my_pos: uint, is_main: bool) {
         self.tasks   = tasks;
@@ -621,18 +619,24 @@ fn enlist_in_taskgroup(group_arc: taskgroup_arc,
                        me: *rust_task) -> option<uint> {
     do group_arc.with |_c, state| {
         // If 'none', the group was failing. Can't enlist.
-        do state.map |tasks| {
+        let mut newstate = none;
+        *state <-> newstate;
+        if newstate.is_some() {
+            let (tasks,empty_slots) = option::unwrap(newstate);
             // Try to find an empty slot.
-            alt tasks.position(|x| x == none) {
-                some(empty_index) {
-                    tasks.set_elt(empty_index, some(me));
-                    empty_index
-                }
-                none {
-                    tasks.push(some(me));
-                    tasks.len() - 1
-                }
-            }
+            let slotno = if empty_slots.len() > 0 {
+                let empty_index = empty_slots.pop();
+                assert tasks[empty_index] == none;
+                tasks.set_elt(empty_index, some(me));
+                empty_index
+            } else {
+                tasks.push(some(me));
+                tasks.len() - 1
+            };
+            *state = some((tasks,empty_slots));
+            some(slotno)
+        } else {
+            none
         }
     }
 }
@@ -640,10 +644,15 @@ fn enlist_in_taskgroup(group_arc: taskgroup_arc,
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
 fn leave_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint) {
     do group_arc.with |_c, state| {
+        let mut newstate = none;
+        *state <-> newstate;
         // If 'none', already failing and we've already gotten a kill signal.
-        do state.map |tasks| {
+        if newstate.is_some() {
+            let (tasks,empty_slots) = option::unwrap(newstate);
             assert tasks[index] == some(me);
             tasks.set_elt(index, none);
+            empty_slots.push(index);
+            *state = some((tasks,empty_slots));
         };
     };
 }
@@ -664,7 +673,8 @@ fn kill_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint,
         // Might already be none, if somebody is failing simultaneously.
         // That's ok; only one task needs to do the dirty work. (Might also
         // see 'none' if somebody already failed and we got a kill signal.)
-        do newstate.map |tasks| {
+        if newstate.is_some() {
+            let (tasks,_empty_slots) = option::unwrap(newstate);
             // First remove ourself (killing ourself won't do much good). This
             // is duplicated here to avoid having to lock twice.
             assert tasks[index] == some(me);
@@ -679,7 +689,9 @@ fn kill_taskgroup(group_arc: taskgroup_arc, me: *rust_task, index: uint,
             if is_main {
                 rustrt::rust_task_kill_all(me);
             }
-        };
+            // Do NOT restore state to some(..)! It stays none to indicate
+            // that the whole taskgroup is failing, to forbid new spawns.
+        }
         // (note: multiple tasks may reach this point)
     };
 }
@@ -700,7 +712,8 @@ fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
         }
         none {
             // Main task, doing first spawn ever.
-            let tasks = arc::exclusive(some(dvec::from_elem(some(me))));
+            let tasks = arc::exclusive(some((dvec::from_elem(some(me)),
+                                             dvec::dvec())));
             let group = @taskgroup(tasks.clone(), me, 0, true);
             unsafe { local_set(me, taskgroup_key(), group); }
             // Tell child task it's also in the main group.
@@ -715,7 +728,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
         share_parent_taskgroup()
     } else {
         // Detached from the parent group; create a new (non-main) one.
-        (arc::exclusive(some(dvec::from_elem(none))), false)
+        (arc::exclusive(some((dvec::dvec(),dvec::dvec()))), false)
     };
 
     unsafe {
