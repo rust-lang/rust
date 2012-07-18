@@ -211,7 +211,18 @@ fn recv_<T: send>(p: *rust_port) -> T {
 }
 
 fn peek_(p: *rust_port) -> bool {
-    rustrt::rust_port_size(p) != 0u as libc::size_t
+    let res = rustrt::rust_port_size(p) != 0u as libc::size_t;
+    if !res {
+        // Don't have to yield here, but task is involved in comms,
+        // so it might be a good idea
+        task::yield();
+    }
+    else {
+        // As in recv, this is a good place to yield anyway until
+        // the compiler generates yield calls
+        task::yield();
+    }
+    ret res;
 }
 
 /// Receive on one of two ports
