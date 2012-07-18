@@ -229,7 +229,7 @@ pure fn from_char(ch: char) -> ~str {
 }
 
 /// Convert a vector of chars to a string
-pure fn from_chars(chs: &[const char]) -> ~str {
+pure fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
     unchecked {
         reserve(buf, chs.len());
@@ -283,14 +283,14 @@ pure fn append(+lhs: ~str, rhs: &str) -> ~str {
 
 
 /// Concatenate a vector of strings
-pure fn concat(v: &[const ~str]) -> ~str {
+pure fn concat(v: &[~str]) -> ~str {
     let mut s: ~str = ~"";
     for vec::each(v) |ss| { unchecked { push_str(s, ss) }; }
     ret s;
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
-pure fn connect(v: &[const ~str], sep: ~str) -> ~str {
+pure fn connect(v: &[~str], sep: ~str) -> ~str {
     let mut s = ~"", first = true;
     for vec::each(v) |ss| {
         if first { first = false; } else { unchecked { push_str(s, sep); } }
@@ -1288,7 +1288,7 @@ Section: Misc
 */
 
 /// Determines if a vector of bytes contains valid UTF-8
-pure fn is_utf8(v: &[const u8]) -> bool {
+pure fn is_utf8(v: &[u8]) -> bool {
     let mut i = 0u;
     let total = vec::len::<u8>(v);
     while i < total {
@@ -1306,7 +1306,7 @@ pure fn is_utf8(v: &[const u8]) -> bool {
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
-pure fn is_utf16(v: &[const u16]) -> bool {
+pure fn is_utf16(v: &[u16]) -> bool {
     let len = vec::len(v);
     let mut i = 0u;
     while (i < len) {
@@ -1349,7 +1349,7 @@ pure fn to_utf16(s: &str) -> ~[u16] {
     ret u;
 }
 
-pure fn utf16_chars(v: &[const u16], f: fn(char)) {
+pure fn utf16_chars(v: &[u16], f: fn(char)) {
     let len = vec::len(v);
     let mut i = 0u;
     while (i < len && v[i] != 0u16) {
@@ -1374,7 +1374,7 @@ pure fn utf16_chars(v: &[const u16], f: fn(char)) {
 }
 
 
-pure fn from_utf16(v: &[const u16]) -> ~str {
+pure fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
     unchecked {
         reserve(buf, vec::len(v));

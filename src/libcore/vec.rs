@@ -314,7 +314,7 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
 }
 
 #[doc = "Return a slice that points into another slice."]
-pure fn view<T>(v: &a.[T], start: uint, end: uint) -> &a.[T] {
+pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
     assert (start <= end);
     assert (end <= len(v));
     do unpack_slice(v) |p, _len| {
@@ -1054,7 +1054,7 @@ pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
+pure fn each<T>(v: &[T], f: fn(T) -> bool) {
     do vec::unpack_slice(v) |p, n| {
         let mut n = n;
         let mut p = p;
@@ -1074,7 +1074,7 @@ pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
+pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
     do vec::unpack_slice(v) |p, n| {
         let mut i = 0u;
         let mut p = p;
@@ -1331,7 +1331,7 @@ impl extensions/&<T: copy> of copyable_vector<T> for &[const T] {
     pure fn tail() -> ~[T] { tail(self) }
 }
 
-trait immutable_vector/&<T> {
+trait immutable_vector<T> {
     pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U;
     pure fn iter(f: fn(T));
     pure fn iteri(f: fn(uint, T));
@@ -1343,7 +1343,7 @@ trait immutable_vector/&<T> {
     pure fn rposition_elem(x: T) -> option<uint>;
     pure fn map<U>(f: fn(T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U];
-    fn map_r<U>(f: fn(x: &self.T) -> U) -> ~[U];
+    fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
     pure fn alli(f: fn(uint, T) -> bool) -> bool;
     pure fn flat_map<U>(f: fn(T) -> ~[U]) -> ~[U];
     pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> ~[U];
@@ -1422,7 +1422,7 @@ impl extensions/&<T> of immutable_vector<T> for &[T] {
     }
 
     #[inline]
-    fn map_r<U>(f: fn(x: &self.T) -> U) -> ~[U] {
+    fn map_r<U>(f: fn(x: &T) -> U) -> ~[U] {
         let mut r = ~[];
         let mut i = 0;
         while i < self.len() {
@@ -1570,7 +1570,7 @@ mod unsafe {
     #[inline(always)]
     unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(&& &[T]) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
-        let v : *(&blk.[T]) =
+        let v : *(&blk/[T]) =
             ::unsafe::reinterpret_cast(ptr::addr_of(pair));
         f(*v)
     }
@@ -1638,12 +1638,13 @@ mod u8 {
 //
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
-impl extensions/&<A> of iter::base_iter<A> for &[const A] {
+
+impl extensions/&<A> of iter::base_iter<A> for &[A] {
     fn each(blk: fn(A) -> bool) { each(self, blk) }
     fn size_hint() -> option<uint> { some(len(self)) }
 }
 
-impl extensions/&<A> of iter::extended_iter<A> for &[const A] {
+impl extensions/&<A> of iter::extended_iter<A> for &[A] {
     fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
     fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
@@ -1663,7 +1664,7 @@ trait iter_trait_extensions<A> {
     fn max() -> A;
 }
 
-impl extensions/&<A:copy> of iter_trait_extensions<A> for &[const A] {
+impl extensions/&<A:copy> of iter_trait_extensions<A> for &[A] {
     fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }

@@ -56,7 +56,7 @@ fn arc<T: const send>(-data: T) -> arc<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-fn get<T: const send>(rc: &a.arc<T>) -> &a.T {
+fn get<T: const send>(rc: &arc<T>) -> &T {
     unsafe {
         let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
         // Cast us back into the correct region
