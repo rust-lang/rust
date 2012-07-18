@@ -396,32 +396,34 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     let impls = ecx.impl_map(id);
     for impls.each |i| {
         let (ident, did) = i;
-        #debug("(encoding info for module) ... encoding impl %s (%?), \
+        #debug("(encoding info for module) ... encoding impl %s (%?/%?), \
                 exported? %?",
-               *ident, did, ast_util::is_exported(ident, md));
-        if ast_util::is_exported(ident, md) {
-            ebml_w.start_tag(tag_mod_impl);
-            alt ecx.tcx.items.find(did.node) {
-              some(ast_map::node_item(it@@{node: cl@item_class(*),_},_)) {
-            /* If did stands for a trait
-            ref, we need to map it to its parent class */
-                ebml_w.wr_str(def_to_str(local_def(it.id)));
-              }
-              some(ast_map::node_item(@{node: item_impl(_,
-                                                   some(ifce),_,_),_},_)) {
-                ebml_w.wr_str(def_to_str(did));
-              }
-              some(_) {
-                ebml_w.wr_str(def_to_str(did));
-              }
-              none {
-                // Must be a re-export, then!
-                // ...or an iface ref
-                ebml_w.wr_str(def_to_str(did));
-              }
-            };
-            ebml_w.end_tag();
-        } // if
+               *ident,
+               did,
+               ast_map::node_id_to_str(ecx.tcx.items, did.node),
+               ast_util::is_exported(ident, md));
+
+        ebml_w.start_tag(tag_mod_impl);
+        alt ecx.tcx.items.find(did.node) {
+          some(ast_map::node_item(it@@{node: cl@item_class(*),_},_)) {
+        /* If did stands for a trait
+        ref, we need to map it to its parent class */
+            ebml_w.wr_str(def_to_str(local_def(it.id)));
+          }
+          some(ast_map::node_item(@{node: item_impl(_,
+                                               some(ifce),_,_),_},_)) {
+            ebml_w.wr_str(def_to_str(did));
+          }
+          some(_) {
+            ebml_w.wr_str(def_to_str(did));
+          }
+          none {
+            // Must be a re-export, then!
+            // ...or an iface ref
+            ebml_w.wr_str(def_to_str(did));
+          }
+        };
+        ebml_w.end_tag();
     } // for
 
     encode_path(ebml_w, path, ast_map::path_mod(name));
@@ -552,7 +554,14 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
     let tcx = ecx.tcx;
     let must_write =
-        alt item.node { item_enum(_, _) { true } _ { false } };
+        alt item.node {
+            item_enum(_, _) | item_impl(*) | item_trait(*) | item_class(*) {
+                true
+            }
+            _ {
+                false
+            }
+        };
     if !must_write && !reachable(ecx, item.id) { ret; }
 
     fn add_to_index_(item: @item, ebml_w: ebml::writer,

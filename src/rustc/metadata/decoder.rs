@@ -600,6 +600,8 @@ fn get_impls_for_mod(cdata: cmd,
     do ebml::tagged_docs(mod_item, tag_mod_impl) |doc| {
         let did = ebml::with_doc_data(doc, |d| parse_def_id(d));
         let local_did = translate_def_id(cdata, did);
+        #debug("(get impls for mod) getting did %? for '%?'",
+               local_did, name);
           // The impl may be defined in a different crate. Ask the caller
           // to give us the metadata
         let impl_cdata = get_cdata(local_did.crate);
