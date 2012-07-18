@@ -69,6 +69,8 @@ syn match     rustModPathSep  "::"
 syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1 contains=rustAssert
 syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 contains=rustAssert " foo::<T>();
 
+syn match     rustMacro       '\w\(\w\)*!'
+
 syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString
@@ -122,7 +124,7 @@ hi def link rustAttribute     PreProc
 " Other Suggestions:
 " hi def link rustModPathSep    Conceal
 " hi rustAssert ctermfg=yellow
-" hi rustFuncCall ctermfg=magenta
+" hi rustMacro ctermfg=magenta
 
 syn sync minlines=200
 syn sync maxlines=500
