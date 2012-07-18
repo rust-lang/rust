@@ -624,7 +624,7 @@ class Resolver {
     let mut xray_context: XrayFlag;
 
     // The trait that the current context can refer to.
-    let mut current_trait_ref: option<def_id>;
+    let mut current_trait_refs: option<@dvec<def_id>>;
 
     // The atom for the keyword "self".
     let self_atom: Atom;
@@ -665,7 +665,7 @@ class Resolver {
         self.type_ribs = @dvec();
 
         self.xray_context = NoXray;
-        self.current_trait_ref = none;
+        self.current_trait_refs = none;
 
         self.self_atom = (*self.atom_table).intern(@~"self");
         self.primitive_type_table = @PrimitiveTypeTable(self.atom_table);
@@ -2969,16 +2969,9 @@ class Resolver {
             item_impl(type_parameters, implemented_traits, self_type,
                       methods) {
 
-                // XXX: Should take an array of traits.
-                let trait_reference;
-                if implemented_traits.len() == 0 {
-                    trait_reference = none;
-                } else {
-                    trait_reference = some(implemented_traits[0]);
-                }
-
                 self.resolve_implementation(item.id, item.span,
-                                            type_parameters, trait_reference,
+                                            type_parameters,
+                                            implemented_traits,
                                             self_type, methods, visitor);
             }
 
@@ -3376,7 +3369,7 @@ class Resolver {
     fn resolve_implementation(id: node_id,
                               span: span,
                               type_parameters: ~[ty_param],
-                              interface_reference: option<@trait_ref>,
+                              trait_references: ~[@trait_ref],
                               self_type: @ty,
                               methods: ~[@method],
                               visitor: ResolveVisitor) {
@@ -3392,27 +3385,28 @@ class Resolver {
             self.resolve_type_parameters(type_parameters, visitor);
 
             // Resolve the interface reference, if necessary.
-            let original_trait_ref = self.current_trait_ref;
-            alt interface_reference {
-                none {
-                    // Nothing to do.
-                }
-                some(interface_reference) {
-                    alt self.resolve_path(interface_reference.path, TypeNS,
-                                          true, visitor) {
+            let original_trait_refs = self.current_trait_refs;
+            if trait_references.len() >= 1 {
+                let mut new_trait_refs = @dvec();
+                for trait_references.each |trait_reference| {
+                    alt self.resolve_path(trait_reference.path, TypeNS, true,
+                                          visitor) {
                         none {
                             self.session.span_err(span,
                                                   ~"attempt to implement an \
-                                                   unknown interface");
+                                                    unknown trait");
                         }
                         some(def) {
-                            self.record_def(interface_reference.ref_id, def);
+                            self.record_def(trait_reference.ref_id, def);
 
                             // Record the current trait reference.
-                            self.current_trait_ref = some(def_id_of_def(def));
+                            (*new_trait_refs).push(def_id_of_def(def));
                         }
                     }
                 }
+
+                // Record the current set of trait references.
+                self.current_trait_refs = some(new_trait_refs);
             }
 
             // Resolve the self type.
@@ -3436,8 +3430,8 @@ class Resolver {
                                       visitor);
             }
 
-            // Restore the original trait reference.
-            self.current_trait_ref = original_trait_ref;
+            // Restore the original trait references.
+            self.current_trait_refs = original_trait_refs;
         }
     }
 
@@ -4202,11 +4196,12 @@ class Resolver {
         let mut search_module = self.current_module;
         loop {
             // Look for the current trait.
-            alt copy self.current_trait_ref {
-                some(trait_def_id) {
-                    self.add_trait_info_if_containing_method(found_traits,
-                                                             trait_def_id,
-                                                             name);
+            alt copy self.current_trait_refs {
+                some(trait_def_ids) {
+                    for trait_def_ids.each |trait_def_id| {
+                        self.add_trait_info_if_containing_method
+                            (found_traits, trait_def_id, name);
+                    }
                 }
                 none {
                     // Nothing to do.
