@@ -263,7 +263,9 @@ fn build_closure(bcx0: block,
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
         debug!{"Node id is %s",
-               syntax::ast_map::node_id_to_str(bcx.ccx().tcx.items, nid)};
+               syntax::ast_map::node_id_to_str
+                   (bcx.ccx().tcx.items, nid,
+                    bcx.ccx().sess.parse_sess.interner)};
         let mut ty = node_id_type(bcx, nid);
         match cap_var.mode {
           capture::cap_ref => {
@@ -359,7 +361,8 @@ fn trans_expr_fn(bcx: block,
     let ccx = bcx.ccx();
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
-    let sub_path = vec::append_one(bcx.fcx.path, path_name(@~"anon"));
+    let sub_path = vec::append_one(bcx.fcx.path,
+                                   path_name(special_idents::anon));
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 

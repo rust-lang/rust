@@ -90,7 +90,8 @@ fn req_loans_in_expr(ex: @ast::expr,
     let tcx = bccx.tcx;
     let old_root_ub = self.root_ub;
 
-    debug!{"req_loans_in_expr(ex=%s)", pprust::expr_to_str(ex)};
+    debug!{"req_loans_in_expr(ex=%s)",
+           pprust::expr_to_str(ex, tcx.sess.intr())};
 
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.borrowings.find(ex.id).each |borrow| {

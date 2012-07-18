@@ -54,17 +54,17 @@ fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
 fn each_path(cstore: cstore::cstore, cnum: ast::crate_num,
              f: fn(decoder::path_entry) -> bool) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
-    decoder::each_path(crate_data, f);
+    decoder::each_path(cstore.intr, crate_data, f);
 }
 
 fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    let path = decoder::get_item_path(cdata, def.node);
+    let path = decoder::get_item_path(cstore.intr, cdata, def.node);
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(~[ast_map::path_mod(@cdata.name)], path)
+    vec::append(~[ast_map::path_mod(tcx.sess.ident_of(cdata.name))], path)
 }
 
 enum found_ast {
@@ -81,7 +81,7 @@ fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
     -> found_ast {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::maybe_get_item_ast(cdata, tcx, def.node,
+    decoder::maybe_get_item_ast(cstore.intr, cdata, tcx, def.node,
                                 decode_inlined_item)
 }
 
@@ -89,14 +89,14 @@ fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
     -> ~[ty::variant_info] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    return decoder::get_enum_variants(cdata, def.node, tcx)
+    return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
 }
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
                      name: option<ast::ident>)
     -> @~[@decoder::_impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    do decoder::get_impls_for_mod(cdata, def.node, name) |cnum| {
+    do decoder::get_impls_for_mod(cstore.intr, cdata, def.node, name) |cnum| {
         cstore::get_crate_data(cstore, cnum)
     }
 }
@@ -104,14 +104,14 @@ fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
 fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_trait_methods(cdata, def.node, tcx)
+    decoder::get_trait_methods(cstore.intr, cdata, def.node, tcx)
 }
 
 fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
-    -> option<@DVec<(@~str, ast::self_ty_)>> {
+    -> option<@DVec<(ast::ident, ast::self_ty_)>> {
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    return decoder::get_method_names_if_trait(cdata, def.node);
+    return decoder::get_method_names_if_trait(cstore.intr, cdata, def.node);
 }
 
 fn get_item_attrs(cstore: cstore::cstore,
@@ -125,7 +125,7 @@ fn get_item_attrs(cstore: cstore::cstore,
 fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_fields(cdata, def.node)
+    decoder::get_class_fields(cstore.intr, cdata, def.node)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
@@ -173,7 +173,7 @@ fn get_impl_method(cstore: cstore::cstore,
                    def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_impl_method(cdata, def.node, mname)
+    decoder::get_impl_method(cstore.intr, cdata, def.node, mname)
 }
 
 /* Because classes use the trait format rather than the impl format
@@ -184,7 +184,7 @@ fn get_class_method(cstore: cstore::cstore,
                     def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_method(cdata, def.node, mname)
+    decoder::get_class_method(cstore.intr, cdata, def.node, mname)
 }
 
 /* If def names a class with a dtor, return it. Otherwise, return none. */

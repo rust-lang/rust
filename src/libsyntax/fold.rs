@@ -81,15 +81,14 @@ type ast_fold_precursor = @{
 fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
     return @{node:
               match mi.node {
-                meta_word(id) => meta_word(fld.fold_ident(id)),
+                meta_word(id) => meta_word(id),
                 meta_list(id, mis) => {
                   let fold_meta_item = |x|fold_meta_item_(x, fld);
                   meta_list(/* FIXME: (#2543) */ copy id,
                             vec::map(mis, fold_meta_item))
                 }
                 meta_name_value(id, s) => {
-                  meta_name_value(fld.fold_ident(id),
-                                  /* FIXME (#2543) */ copy s)
+                  meta_name_value(id, /* FIXME (#2543) */ copy s)
                 }
               },
           span: fld.new_span(mi.span)};

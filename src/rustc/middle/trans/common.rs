@@ -20,11 +20,14 @@ import metadata::{csearch};
 import metadata::common::link_meta;
 import syntax::ast_map::path;
 import util::ppaux::ty_to_str;
+import syntax::parse::token::ident_interner;
+import syntax::ast::ident;
 
-type namegen = fn@(~str) -> ~str;
-fn new_namegen() -> namegen {
-    let i = @mut 0;
-    return fn@(prefix: ~str) -> ~str { *i += 1; prefix + int::str(*i) };
+type namegen = fn@(~str) -> ident;
+fn new_namegen(intr: ident_interner) -> namegen {
+    return fn@(prefix: ~str) -> ident {
+        return intr.gensym(@fmt!("%s_%u", prefix, intr.gensym(@prefix)))
+    };
 }
 
 type tydesc_info =
@@ -873,7 +876,7 @@ fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
-        str::as_c_str(cx.names(~"str"),
+        str::as_c_str(fmt!{"str%u", cx.names(~"str")},
                     |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
@@ -927,7 +930,7 @@ fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let llglobal = str::as_c_str(ccx.names(~"shape"), |buf| {
+    let llglobal = str::as_c_str(fmt!{"shape%u", ccx.names(~"shape")}, |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llshape);
@@ -983,13 +986,13 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     return build::And(cx, bumped, build::Not(cx, mask));
 }
 
-fn path_str(p: path) -> ~str {
+fn path_str(sess: session::session, p: path) -> ~str {
     let mut r = ~"", first = true;
     for vec::each(p) |e| {
         match e { ast_map::path_name(s) | ast_map::path_mod(s) => {
           if first { first = false; }
           else { r += ~"::"; }
-          r += *s;
+          r += sess.str_of(s);
         } }
     }
     r
@@ -1023,7 +1026,7 @@ fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
     match ty::field_idx(ident, fields) {
        none => cx.sess.span_bug(
            sp, fmt!{"base expr doesn't appear to \
-                         have a field named %s", *ident}),
+                         have a field named %s", cx.sess.str_of(ident)}),
        some(i) => i
     }
 }

@@ -10,7 +10,7 @@ import parse::parse_sess;
 import dvec::{DVec, dvec};
 import ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 import ast_util::mk_sp;
-import std::map::{hashmap, box_str_hash};
+import std::map::{hashmap, uint_hash};
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 onlyl calling out to the main rust parser for named nonterminals (which it
@@ -120,14 +120,14 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
           }
           {node: match_nonterminal(bind_name, _, idx), span: sp} => {
             if ret_val.contains_key(bind_name) {
-                p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "
-                                               + *bind_name)
+                p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
+                                               *p_s.interner.get(bind_name))
             }
             ret_val.insert(bind_name, res[idx]);
           }
         }
     }
-    let ret_val = box_str_hash::<@named_match>();
+    let ret_val = uint_hash::<@named_match>();
     for ms.each() |m| { n_rec(p_s, m, res, ret_val) }
     return ret_val;
 }
@@ -274,7 +274,8 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     match ei.elts[ei.idx].node {
                       match_nonterminal(bind,name,_) => {
-                        fmt!{"%s ('%s')", *name, *bind}
+                        fmt!{"%s ('%s')", *sess.interner.get(name),
+                             *sess.interner.get(bind)}
                       }
                       _ => fail
                     } }), ~" or ");
@@ -298,7 +299,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(rust_parser, *name)));
+                        parse_nt(rust_parser, *sess.interner.get(name))));
                     ei.idx += 1u;
                   }
                   _ => fail

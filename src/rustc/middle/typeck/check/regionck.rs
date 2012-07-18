@@ -156,7 +156,8 @@ fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
 }
 
 fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
-    debug!{"visit_expr(e=%s)", pprust::expr_to_str(e)};
+    debug!{"visit_expr(e=%s)",
+           pprust::expr_to_str(e, rcx.fcx.tcx().sess.intr())};
 
     match e.node {
       ast::expr_path(*) => {

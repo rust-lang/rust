@@ -134,5 +134,5 @@ fn hash_path(&&s: ~str) -> uint {
     return h;
 }
 
-type link_meta = {name: @~str, vers: @~str, extras_hash: ~str};
+type link_meta = {name: ~str, vers: ~str, extras_hash: ~str};
 

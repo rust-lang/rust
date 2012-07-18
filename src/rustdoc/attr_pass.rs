@@ -7,6 +7,7 @@
 )];
 
 import doc::item_utils;
+import extract::to_str;
 import syntax::ast;
 import syntax::ast_map;
 import std::map::hashmap;
@@ -150,7 +151,7 @@ fn fold_enum(
                   }, _) => {
                     let ast_variant = option::get(
                         vec::find(enum_definition.variants, |v| {
-                            *v.node.name == variant.name
+                            to_str(v.node.name) == variant.name
                         }));
 
                     attr_parser::parse_desc(ast_variant.node.attrs)
@@ -208,10 +209,10 @@ fn merge_method_attrs(
             vec::map(methods, |method| {
                 match method {
                   ast::required(ty_m) => {
-                    (*ty_m.ident, attr_parser::parse_desc(ty_m.attrs))
+                    (to_str(ty_m.ident), attr_parser::parse_desc(ty_m.attrs))
                   }
                   ast::provided(m) => {
-                    (*m.ident, attr_parser::parse_desc(m.attrs))
+                    (to_str(m.ident), attr_parser::parse_desc(m.attrs))
                   }
                 }
             })
@@ -220,7 +221,7 @@ fn merge_method_attrs(
             node: ast::item_impl(_, _, _, methods), _
           }, _) => {
             vec::map(methods, |method| {
-                (*method.ident, attr_parser::parse_desc(method.attrs))
+                (to_str(method.ident), attr_parser::parse_desc(method.attrs))
             })
           }
           _ => fail ~"unexpected item"

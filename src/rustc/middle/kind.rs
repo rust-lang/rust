@@ -214,7 +214,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 }
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
-    debug!{"kind::check_expr(%s)", expr_to_str(e)};
+    debug!{"kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr())};
 
     // Handle any kind bounds on type parameters
     do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {

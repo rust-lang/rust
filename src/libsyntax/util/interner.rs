@@ -21,7 +21,7 @@ fn mk<T: const copy>(+hasher: hashfn<T>, +eqer: eqfn<T>) -> interner<T> {
 fn mk_prefill<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>,
                              init: ~[T]) -> interner<T> {
 
-    let rv = mk(hasher, eqer);
+    let rv = mk(copy hasher, copy eqer);
     for init.each() |v| { rv.intern(v); }
     return rv;
 }
@@ -30,6 +30,7 @@ fn mk_prefill<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>,
 /* when traits can extend traits, we should extend index<uint,T> to get [] */
 trait interner<T: const copy> {
     fn intern(T) -> uint;
+    fn gensym(T) -> uint;
     pure fn get(uint) -> T;
     fn len() -> uint;
 }
@@ -45,6 +46,12 @@ impl <T: const copy> hash_interner<T>: interner<T> {
             return new_idx;
           }
         }
+    }
+    fn gensym(val: T) -> uint {
+        let new_idx = self.vect.len();
+        // leave out of .map to avoid colliding
+        self.vect.push(val);
+        return new_idx;
     }
 
     // this isn't "pure" in the traditional sense, because it can go from

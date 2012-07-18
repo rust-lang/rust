@@ -25,7 +25,9 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
             match mac.node {
               mac_invoc(pth, args, body) => {
                 assert (vec::len(pth.idents) > 0u);
-                let extname = pth.idents[0];
+                /* using idents and token::special_idents would make the
+                the macro names be hygienic */
+                let extname = cx.parse_sess().interner.get(pth.idents[0]);
                 match exts.find(*extname) {
                   none => {
                     cx.span_fatal(pth.span,
@@ -49,7 +51,7 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                   }
                   some(macro_defining(ext)) => {
                     let named_extension = ext(cx, mac.span, args, body);
-                    exts.insert(*named_extension.ident, named_extension.ext);
+                    exts.insert(named_extension.name, named_extension.ext);
                     (ast::expr_rec(~[], none), s)
                   }
                   some(expr_tt(_)) => {
@@ -68,7 +70,9 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
               // finished transitioning.
               mac_invoc_tt(pth, tts) => {
                 assert (vec::len(pth.idents) == 1u);
-                let extname = pth.idents[0];
+                /* using idents and token::special_idents would make the
+                the macro names be hygienic */
+                let extname = cx.parse_sess().interner.get(pth.idents[0]);
                 match exts.find(*extname) {
                   none => {
                     cx.span_fatal(pth.span,
@@ -146,7 +150,7 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
               ast::meta_name_value(n, _) => n,
               ast::meta_list(n, _) => n
             };
-            match exts.find(*mname) {
+            match exts.find(mname) {
               none | some(normal(_)) | some(macro_defining(_))
               | some(expr_tt(_)) | some(item_tt(*)) => items,
               some(item_decorator(dec_fn)) => {
@@ -194,7 +198,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                    fld: ast_fold) -> option<@ast::item> {
     match it.node {
       item_mac({node: mac_invoc_tt(pth, tts), span}) => {
-        let extname = pth.idents[0];
+        let extname = cx.parse_sess().interner.get(pth.idents[0]);
         match exts.find(*extname) {
           none => {
             cx.span_fatal(pth.span,
@@ -211,7 +215,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                                          ~"expr macro in item position: " +
                                          *extname),
               mr_def(mdef) => {
-                exts.insert(*mdef.ident, mdef.ext);
+                exts.insert(mdef.name, mdef.ext);
                 none
               }
             };

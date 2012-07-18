@@ -6,7 +6,7 @@ import std::map::{hashmap, str_hash};
 import token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
                INTERPOLATED};
 import codemap::{span,fss_none};
-import util::interner;
+import util::interner::interner;
 import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
 import lexer::reader;
 import prec::{as_prec, token_to_binop};
@@ -193,12 +193,14 @@ struct parser {
     let mut restriction: restriction;
     let mut quote_depth: uint; // not (yet) related to the quasiquoter
     let reader: reader;
+    let interner: interner<@~str>;
     let keywords: hashmap<~str, ()>;
     let restricted_keywords: hashmap<~str, ()>;
 
     new(sess: parse_sess, cfg: ast::crate_cfg, +rdr: reader, ftype: file_type)
     {
         self.reader <- rdr;
+        self.interner = self.reader.interner();
         let tok0 = self.reader.next_token();
         let span0 = tok0.sp;
         self.sess = sess;
@@ -268,10 +270,9 @@ struct parser {
     fn warn(m: ~str) {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
-    pure fn get_str(i: token::str_num) -> @~str {
-        self.reader.interner().get(i)
-    }
     fn get_id() -> node_id { next_node_id(self.sess) }
+
+    pure fn id_to_str(id: ident) -> @~str { self.sess.interner.get(id) }
 
     fn parse_ty_fn(purity: ast::purity) -> ty_ {
         let proto, bounds;
@@ -398,9 +399,9 @@ struct parser {
         }
     }
 
-    fn region_from_name(s: option<@~str>) -> @region {
+    fn region_from_name(s: option<ident>) -> @region {
         let r = match s {
-          some (string) => re_named(string),
+          some (id) => re_named(id),
           none => re_anon
         };
 
@@ -414,8 +415,7 @@ struct parser {
         match copy self.token {
           token::IDENT(sid, _) => {
             self.bump();
-            let n = self.get_str(sid);
-            self.region_from_name(some(n))
+            self.region_from_name(some(sid))
           }
           _ => {
             self.region_from_name(none)
@@ -430,7 +430,7 @@ struct parser {
               token::IDENT(sid, _) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) {
                     self.bump(); self.bump();
-                    some(self.get_str(sid))
+                    some(sid)
                 } else {
                     none
                 }
@@ -583,7 +583,7 @@ struct parser {
                 let name = self.parse_value_ident();
                 self.bump();
                 name
-            } else { @~"" }
+            } else { token::special_idents::invalid }
         };
 
         let t = self.parse_ty(false);
@@ -678,10 +678,10 @@ struct parser {
           token::LIT_INT(i, it) => lit_int(i, it),
           token::LIT_UINT(u, ut) => lit_uint(u, ut),
           token::LIT_INT_UNSUFFIXED(i) => lit_int_unsuffixed(i),
-          token::LIT_FLOAT(s, ft) => lit_float(self.get_str(s), ft),
-          token::LIT_STR(s) => lit_str(self.get_str(s)),
-          token::LPAREN => { self.expect(token::RPAREN); lit_nil }
-          _ => self.unexpected_last(tok)
+          token::LIT_FLOAT(s, ft) => lit_float(self.id_to_str(s), ft),
+          token::LIT_STR(s) => lit_str(self.id_to_str(s)),
+          token::LPAREN => { self.expect(token::RPAREN); lit_nil },
+          _ => { self.unexpected_last(tok); }
         }
     }
 
@@ -1140,8 +1140,7 @@ struct parser {
                         self.parse_seq_to_gt(some(token::COMMA),
                                              |p| p.parse_ty(false))
                     } else { ~[] };
-                    e = self.mk_pexpr(lo, hi, expr_field(self.to_expr(e),
-                                                         self.get_str(i),
+                    e = self.mk_pexpr(lo, hi, expr_field(self.to_expr(e), i,
                                                          tys));
                   }
                   _ => self.unexpected()
@@ -2123,9 +2122,6 @@ struct parser {
     }
 
     fn expr_is_complete(e: pexpr) -> bool {
-        log(debug, (~"expr_is_complete", self.restriction,
-                    print::pprust::expr_to_str(*e),
-                    classify::expr_requires_semi_to_be_stmt(*e)));
         return self.restriction == RESTRICT_STMT_EXPR &&
             !classify::expr_requires_semi_to_be_stmt(*e);
     }
@@ -2306,8 +2302,9 @@ struct parser {
 
     fn is_self_ident() -> bool {
         match self.token {
-            token::IDENT(sid, false) if ~"self" == *self.get_str(sid) => true,
-            _ => false
+          token::IDENT(id, false) if id == token::special_idents::self_
+            => true,
+          _ => false
         }
     }
 
@@ -2522,10 +2519,12 @@ struct parser {
         }
 
         // This is a new-style impl declaration.
-        let ident = @~"__extensions__";     // XXX: clownshoes
+        // XXX: clownshoes
+        let ident = token::special_idents::clownshoes_extensions;
 
         // Parse the type.
         let ty = self.parse_ty(false);
+
 
         // Parse traits, if necessary.
         let traits = if self.token == token::COLON {
@@ -2595,7 +2594,8 @@ struct parser {
                       match the_ctor {
                         some((_, _, _, s_first)) => {
                           self.span_note(s, #fmt("Duplicate constructor \
-                                     declaration for class %s", *class_name));
+                                     declaration for class %s",
+                                     *self.interner.get(class_name)));
                            self.span_fatal(copy s_first, ~"First constructor \
                                                           declared here");
                         }
@@ -2608,7 +2608,8 @@ struct parser {
                       match the_dtor {
                         some((_, _, s_first)) => {
                           self.span_note(s, #fmt("Duplicate destructor \
-                                     declaration for class %s", *class_name));
+                                     declaration for class %s",
+                                     *self.interner.get(class_name)));
                           self.span_fatal(copy s_first, ~"First destructor \
                                                           declared here");
                         }
@@ -3081,7 +3082,7 @@ struct parser {
         let ty_params = self.parse_ty_params();
         // Newtype syntax
         if self.token == token::EQ {
-            self.check_restricted_keywords_(*id);
+            self.check_restricted_keywords_(*self.id_to_str(id));
             self.bump();
             let ty = self.parse_ty(false);
             self.expect(token::SEMI);
@@ -3297,7 +3298,7 @@ struct parser {
         let lo = self.span.lo;
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        debug!{"parsed view_path: %s", *first_ident};
+        debug!{"parsed view_path: %s", *self.id_to_str(first_ident)};
         match self.token {
           token::EQ => {
             // x = foo::bar
@@ -3323,7 +3324,7 @@ struct parser {
 
                   token::IDENT(i, _) => {
                     self.bump();
-                    vec::push(path, self.get_str(i));
+                    vec::push(path, i);
                   }
 
                   // foo::bar::{a,b,c}
@@ -3458,8 +3459,8 @@ struct parser {
 
     fn parse_str() -> @~str {
         match copy self.token {
-          token::LIT_STR(s) => { self.bump(); self.get_str(s) }
-          _ => self.fatal(~"expected string literal")
+          token::LIT_STR(s) => { self.bump(); self.id_to_str(s) }
+          _ =>  self.fatal(~"expected string literal")
         }
     }
 

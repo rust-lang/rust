@@ -616,7 +616,7 @@ fn mk_ctxt(s: session::session,
       node_types: @smallintmap::mk(),
       node_type_substs: map::int_hash(),
       items: amap,
-      intrinsic_defs: map::box_str_hash(),
+      intrinsic_defs: map::uint_hash(),
       freevars: freevars,
       tcache: ast_util::new_def_hash(),
       rcache: mk_rcache(),
@@ -2200,7 +2200,7 @@ pure fn hash_bound_region(br: &bound_region) -> uint {
     match *br { // no idea if this is any good
       ty::br_self => 0u,
       ty::br_anon(idx) => 1u | (idx << 2),
-      ty::br_named(str) => 2u | (str::hash(str) << 2),
+      ty::br_named(ident) => 2u | (ident << 2),
       ty::br_cap_avoid(id, br) =>
         3u | (id as uint << 2) | hash_bound_region(br)
     }
@@ -2310,10 +2310,13 @@ pure fn hash_type_structure(st: &sty) -> uint {
 }
 
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
+    //io::println(fmt!("%?/%?", id, cx.node_types.size()));
     match smallintmap::find(*cx.node_types, id as uint) {
        some(t) => t,
-       none => cx.sess.bug(fmt!{"node_id_to_type: unbound node ID %s",
-                                ast_map::node_id_to_str(cx.items, id)})
+       none => cx.sess.bug(
+           fmt!{"node_id_to_type: unbound node ID %s",
+                ast_map::node_id_to_str(cx.items, id,
+                                        cx.sess.parse_sess.interner)})
     }
 }
 
@@ -2482,7 +2485,7 @@ fn field_idx(id: ast::ident, fields: ~[field]) -> option<uint> {
 }
 
 fn get_field(rec_ty: t, id: ast::ident) -> field {
-    match check vec::find(get_fields(rec_ty), |f| str::eq(f.ident, id)) {
+    match check vec::find(get_fields(rec_ty), |f| f.ident == id) {
       some(f) => f
     }
 }
@@ -2703,9 +2706,9 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         ~"record elements differ in mutability"
       }
       terr_record_fields(values) => {
-        fmt!("expected a record with field `%s` \
-              but found one with field `%s`",
-             *values.expected, *values.found)
+        fmt!("expected a record with field `%s` but found one with field \
+              `%s`",
+             cx.sess.str_of(values.expected), cx.sess.str_of(values.found))
       }
       terr_arg_count => ~"incorrect number of function parameters",
       terr_mode_mismatch(values) => {
@@ -2734,7 +2737,8 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                     vstore_to_str(cx, values.found))
       }
       terr_in_field(err, fname) => {
-        fmt!{"in field `%s`, %s", *fname, type_err_to_str(cx, err)}
+        fmt!("in field `%s`, %s", cx.sess.str_of(fname),
+             type_err_to_str(cx, err))
       }
       terr_sorts(values) => {
         fmt!{"expected %s but found %s",
@@ -2844,7 +2848,7 @@ fn substd_enum_variants(cx: ctxt,
 }
 
 fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
-    ast_map::path_to_str(item_path(cx, id))
+    ast_map::path_to_str(item_path(cx, id), cx.sess.parse_sess.interner)
 }
 
 /* If class_id names a class with a dtor, return some(the dtor's id).
@@ -2909,7 +2913,8 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(*path, ast_map::path_name(nm))
           }
           ast_map::node_dtor(_, _, _, path) => {
-            vec::append_one(*path, ast_map::path_name(@~"dtor"))
+            vec::append_one(*path, ast_map::path_name(
+                syntax::parse::token::special_idents::literally_dtor))
           }
 
           ast_map::node_stmt(*) | ast_map::node_expr(*) |
@@ -3062,8 +3067,10 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
          }
        }
        _ => {
-           cx.sess.bug(fmt!{"class ID not bound to an item: %s",
-                            ast_map::node_id_to_str(cx.items, did.node)});
+           cx.sess.bug(
+               fmt!{"class ID not bound to an item: %s",
+                    ast_map::node_id_to_str(cx.items, did.node,
+                                            cx.sess.parse_sess.interner)});
        }
     }
         }
@@ -3129,7 +3136,7 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
          }
        }
        cx.sess.span_fatal(sp, fmt!{"Class doesn't have a method \
-           named %s", *name});
+           named %s", cx.sess.str_of(name)});
     }
     else {
       csearch::get_class_method(cx.sess.cstore, did, name)

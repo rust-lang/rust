@@ -51,15 +51,15 @@ fn default_configuration(sess: session, argv0: ~str, input: input) ->
     };
 
     return ~[ // Target bindings.
-         attr::mk_word_item(@os::family()),
-         mk(@~"target_os", os::sysname()),
-         mk(@~"target_family", os::family()),
-         mk(@~"target_arch", arch),
-         mk(@~"target_word_size", wordsz),
-         mk(@~"target_libc", libc),
+         attr::mk_word_item(os::family()),
+         mk(~"target_os", os::sysname()),
+         mk(~"target_family", os::family()),
+         mk(~"target_arch", arch),
+         mk(~"target_word_size", wordsz),
+         mk(~"target_libc", libc),
          // Build bindings.
-         mk(@~"build_compiler", argv0),
-         mk(@~"build_input", source_name(input))];
+         mk(~"build_compiler", argv0),
+         mk(~"build_input", source_name(input))];
 }
 
 fn build_configuration(sess: session, argv0: ~str, input: input) ->
@@ -72,9 +72,9 @@ fn build_configuration(sess: session, argv0: ~str, input: input) ->
     let gen_cfg =
         {
             if sess.opts.test && !attr::contains_name(user_cfg, ~"test") {
-                ~[attr::mk_word_item(@~"test")]
+                ~[attr::mk_word_item(~"test")]
             } else {
-                ~[attr::mk_word_item(@~"notest")]
+                ~[attr::mk_word_item(~"notest")]
             }
         };
     return vec::append(vec::append(user_cfg, gen_cfg), default_cfg);
@@ -86,7 +86,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // varieties of meta_item here. At the moment we just support the
     // meta_word variant.
     let mut words = ~[];
-    for cfgspecs.each |s| { vec::push(words, attr::mk_word_item(@s)); }
+    for cfgspecs.each |s| { vec::push(words, attr::mk_word_item(s)); }
     return words;
 }
 
@@ -169,7 +169,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         creader::read_crates(sess.diagnostic(), *crate, sess.cstore,
                              sess.filesearch,
                              session::sess_os_to_meta_os(sess.targ_cfg.os),
-                             sess.opts.static));
+                             sess.opts.static,
+                             sess.parse_sess.interner));
 
     let lang_items = time(time_passes, ~"language item collection", ||
          middle::lang_items::collect_language_items(crate, sess));
@@ -552,7 +553,9 @@ fn build_session_(sopts: @session::options,
                -> session {
 
     let target_cfg = build_target_config(sopts, demitter);
-    let cstore = cstore::mk_cstore();
+    let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
+                                                    cm);
+    let cstore = cstore::mk_cstore(p_s.interner);
     let filesearch = filesearch::mk_filesearch(
         sopts.maybe_sysroot,
         sopts.target_triple,
@@ -561,8 +564,7 @@ fn build_session_(sopts: @session::options,
     session_(@{targ_cfg: target_cfg,
                opts: sopts,
                cstore: cstore,
-               parse_sess:
-          parse::new_parse_sess_special_handler(span_diagnostic_handler, cm),
+               parse_sess: p_s,
                codemap: cm,
                // For a library crate, this is always none
                mut main_fn: none,
@@ -701,6 +703,7 @@ fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
 
 fn list_metadata(sess: session, path: ~str, out: io::Writer) {
     metadata::loader::list_file_metadata(
+        sess.parse_sess.interner,
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
 }
 

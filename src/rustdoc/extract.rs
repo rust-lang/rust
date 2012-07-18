@@ -3,7 +3,21 @@
 import syntax::ast;
 import doc::item_utils;
 
-export from_srv, extract;
+export from_srv, extract, to_str, interner;
+
+// Hack; rather than thread an interner through everywhere, rely on
+// thread-local data
+fn to_str(id: ast::ident) -> ~str {
+    let intr = unsafe{ task::local_data_get(
+        syntax::parse::token::interner_key) };
+
+    return *(*intr.get()).get(id);
+}
+
+fn interner() -> syntax::parse::token::ident_interner {
+    return *(unsafe{ task::local_data_get(
+        syntax::parse::token::interner_key) }).get();
+}
 
 fn from_srv(
     srv: astsrv::srv,
@@ -34,14 +48,14 @@ fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: ~str
 ) -> doc::moddoc {
-    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, @default_name),
+    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
                     crate.node.module)
 }
 
-fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
+fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::itemdoc {
     {
         id: id,
-        name: *name,
+        name: name,
         path: ~[],
         brief: none,
         desc: none,
@@ -57,7 +71,7 @@ fn moddoc_from_mod(
     doc::moddoc_({
         item: itemdoc,
         items: do vec::filter_map(module_.items) |item| {
-            let itemdoc = mk_itemdoc(item.id, item.ident);
+            let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
             match item.node {
               ast::item_mod(m) => {
                 some(doc::modtag(
@@ -113,7 +127,7 @@ fn nmoddoc_from_mod(
     {
         item: itemdoc,
         fns: do vec::map(module_.items) |item| {
-            let itemdoc = mk_itemdoc(item.id, item.ident);
+            let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
             match item.node {
               ast::foreign_item_fn(_, _) => {
                 fndoc_from_fn(itemdoc)
@@ -162,8 +176,9 @@ fn variantdocs_from_variants(
 }
 
 fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
+
     {
-        name: *variant.node.name,
+        name: to_str(variant.node.name),
         desc: none,
         sig: none
     }
@@ -192,7 +207,7 @@ fn traitdoc_from_trait(
             match method {
               ast::required(ty_m) => {
                 {
-                    name: *ty_m.ident,
+                    name: to_str(ty_m.ident),
                     brief: none,
                     desc: none,
                     sections: ~[],
@@ -202,7 +217,7 @@ fn traitdoc_from_trait(
               }
               ast::provided(m) => {
                 {
-                    name: *m.ident,
+                    name: to_str(m.ident),
                     brief: none,
                     desc: none,
                     sections: ~[],
@@ -237,7 +252,7 @@ fn impldoc_from_impl(
         self_ty: none,
         methods: do vec::map(methods) |method| {
             {
-                name: *method.ident,
+                name: to_str(method.ident),
                 brief: none,
                 desc: none,
                 sections: ~[],

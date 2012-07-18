@@ -163,7 +163,7 @@ fn trans_static_method_callee(bcx: block, method_id: ast::def_id,
         }
     };
     debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
-            name=%s", method_id, callee_id, *mname);
+            name=%s", method_id, callee_id, ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get(callee_id));
@@ -361,7 +361,7 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
 fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
     let _icx = ccx.insn_ctxt("impl::make_vtable");
     let tbl = C_struct(ptrs);
-    let vt_gvar = str::as_c_str(ccx.names(~"vtable"), |buf| {
+    let vt_gvar = str::as_c_str(ccx.sess.str_of(ccx.names(~"vtable")), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
     });
     llvm::LLVMSetInitializer(vt_gvar, tbl);

@@ -215,11 +215,9 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                       fields",
                                 ex_f_count, f_count});
         }
-        fn matches(name: ast::ident, f: ty::field) -> bool {
-            str::eq(name, f.ident)
-        }
+
         for fields.each |f| {
-            match vec::find(ex_fields, |a| matches(f.ident, a)) {
+            match vec::find(ex_fields, |a| f.ident == a.ident) {
               some(field) => {
                 check_pat(pcx, f.pat, field.mt.ty);
               }
@@ -227,7 +225,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 tcx.sess.span_fatal(pat.span,
                                     fmt!{"mismatched types: did not \
                                           expect a record with a field `%s`",
-                                         *f.ident});
+                                          tcx.sess.str_of(f.ident)});
               }
             }
         }
@@ -259,7 +257,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 // OK.
             }
             ast::def_class(*) => {
-                let name = syntax::print::pprust::path_to_str(path);
+                let name = pprust::path_to_str(path, tcx.sess.intr());
                 tcx.sess.span_err(pat.span,
                                   fmt!("mismatched types: expected `%s` but \
                                         found `%s`",
@@ -278,7 +276,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
 
         // Index the class fields.
-        let field_map = std::map::box_str_hash();
+        let field_map = std::map::uint_hash();
         for class_fields.eachi |i, class_field| {
             field_map.insert(class_field.ident, i);
         }
@@ -297,10 +295,11 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                     found_fields.insert(index, ());
                 }
                 none => {
-                    let name = syntax::print::pprust::path_to_str(path);
+                    let name = pprust::path_to_str(path, tcx.sess.intr());
                     tcx.sess.span_err(pat.span,
                                       fmt!("struct `%s` does not have a field
-                                            named `%s`", name, *field.ident));
+                                            named `%s`", name,
+                                           tcx.sess.str_of(field.ident)));
                 }
             }
         }
@@ -313,7 +312,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 }
                 tcx.sess.span_err(pat.span,
                                   fmt!("pattern does not mention field `%s`",
-                                       *field.ident));
+                                       tcx.sess.str_of(field.ident)));
             }
         }
 

@@ -91,15 +91,15 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
         match ty::get(ty).struct {
           ty::ty_bool => {
             match check ctor {
-              val(const_int(1i64)) => some(@~"true"),
-              val(const_int(0i64)) => some(@~"false")
+              val(const_int(1i64)) => some(~"true"),
+              val(const_int(0i64)) => some(~"false")
             }
           }
           ty::ty_enum(id, _) => {
             let vid = match check ctor { variant(id) => id };
             match check vec::find(*ty::enum_variants(tcx, id),
                                 |v| v.id == vid) {
-              some(v) => some(v.name)
+              some(v) => some(tcx.sess.str_of(v.name))
             }
           }
           _ => none
@@ -107,7 +107,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
       }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-      some(s) => ~": " + *s + ~" not covered",
+      some(s) => ~": " + s + ~" not covered",
       none => ~""
     };
     tcx.sess.span_err(sp, msg);

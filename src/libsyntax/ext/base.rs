@@ -23,7 +23,7 @@ type syntax_expander_ =
 // second argument is the origin of the macro, if user-defined
 type syntax_expander = {expander: syntax_expander_, span: option<span>};
 
-type macro_def = {ident: ast::ident, ext: syntax_extension};
+type macro_def = {name: ~str, ext: syntax_extension};
 
 // macro_definer is obsolete, remove when #old_macros go away.
 type macro_definer =
@@ -141,6 +141,9 @@ trait ext_ctxt {
     fn next_id() -> ast::node_id;
     pure fn trace_macros() -> bool;
     fn set_trace_macros(x: bool);
+    /* for unhygienic identifier transformation */
+    fn str_of(id: ast::ident) -> ~str;
+    fn ident_of(st: ~str) -> ast::ident;
 }
 
 fn mk_ctxt(parse_sess: parse::parse_sess,
@@ -211,6 +214,13 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn set_trace_macros(x: bool) {
             self.trace_mac = x
         }
+
+        fn str_of(id: ast::ident) -> ~str {
+            *self.parse_sess.interner.get(id)
+        }
+        fn ident_of(st: ~str) -> ast::ident {
+            self.parse_sess.interner.intern(@st)
+        }
     }
     let imp : ctxt_repr = {
         parse_sess: parse_sess,
@@ -264,12 +274,12 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                   cx.span_fatal(sp, fmt!{"#%s needs at least %u arguments.",
                                          name, min});
                 }
-                _ => return elts /* we're good */
+                _ => return elts /* we are good */
               }
           }
         _ => {
             cx.span_fatal(sp, fmt!{"#%s: malformed invocation", name})
-          }
+        }
       },
       none => cx.span_fatal(sp, fmt!{"#%s: missing arguments", name})
     }
@@ -298,22 +308,24 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     fn ms(m: matcher_) -> matcher {
         {node: m, span: {lo: 0u, hi: 0u, expn_info: none}}
     }
+    let arg_nm = cx.parse_sess().interner.gensym(@~"arg");
 
     let argument_gram = ~[ms(match_seq(~[
-        ms(match_nonterminal(@~"arg",@~"expr", 0u))
+        ms(match_nonterminal(arg_nm, parse::token::special_idents::expr, 0u))
     ], some(parse::token::COMMA), true, 0u, 1u))];
 
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
                                    cx.parse_sess().interner, none, arg);
     let args =
         match parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
-                          argument_gram).get(@~"arg") {
-          @matched_seq(s, _) => do s.map() |lf| {
-            match lf {
-              @matched_nonterminal(parse::token::nt_expr(arg)) => {
-                arg /* whew! list of exprs, here we come! */
-              }
-              _ => fail ~"badly-structured parse result"
+                          argument_gram).get(arg_nm) {
+          @matched_seq(s, _) => {
+            do s.map() |lf| {
+                match lf {
+                  @matched_nonterminal(parse::token::nt_expr(arg)) =>
+                    arg, /* whew! list of exprs, here we come! */
+                  _ => fail ~"badly-structured parse result"
+                }
             }
           },
           _ => fail ~"badly-structured parse result"

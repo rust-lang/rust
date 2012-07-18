@@ -7,6 +7,7 @@ import trans::base;
 import trans::build::B;
 import middle::ty;
 import syntax::{ast, codemap, ast_util, ast_map};
+import syntax::parse::token::ident_interner;
 import codemap::span;
 import ast::ty;
 import pat_util::*;
@@ -89,9 +90,9 @@ type debug_ctxt = {
     crate_file: ~str
 };
 
-fn mk_ctxt(crate: ~str) -> debug_ctxt {
+fn mk_ctxt(crate: ~str, intr: ident_interner) -> debug_ctxt {
     {llmetadata: map::int_hash(),
-     names: new_namegen(),
+     names: new_namegen(intr),
      crate_file: crate}
 }
 
@@ -392,14 +393,15 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: ~[ast::ty_field],
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     let scx = create_structure(file_node,
-                               option::get(cx.dbg_cx).names(~"rec"),
+                               cx.sess.str_of(
+                                   option::get(cx.dbg_cx).names(~"rec")),
                                line_from_span(cx.sess.codemap,
                                               span) as int);
     for fields.each |field| {
         let field_t = ty::get_field(t, field.node.ident).mt.ty;
         let ty_md = create_ty(cx, field_t, field.node.mt.ty);
         let (size, align) = size_and_align_of(cx, field_t);
-        add_member(scx, *field.node.ident,
+        add_member(scx, cx.sess.str_of(field.node.ident),
                    line_from_span(cx.sess.codemap, field.span) as int,
                    size as int, align as int, ty_md.node);
     }
@@ -635,7 +637,7 @@ fn create_local_var(bcx: block, local: @ast::local)
         none => create_function(bcx.fcx).node,
         some(_) => create_block(bcx).node
     };
-    let mdnode = create_var(tg, context, *name, filemd.node,
+    let mdnode = create_var(tg, context, cx.sess.str_of(name), filemd.node,
                             loc.line as int, tymd.node);
     let mdval = @{node: mdnode, data: {id: local.node.id}};
     update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
@@ -677,8 +679,8 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let tymd = create_ty(cx, ty, arg.ty);
     let filemd = create_file(cx, loc.file.name);
     let context = create_function(bcx.fcx);
-    let mdnode = create_var(tg, context.node, *arg.ident, filemd.node,
-                            loc.line as int, tymd.node);
+    let mdnode = create_var(tg, context.node, cx.sess.str_of(arg.ident),
+                            filemd.node, loc.line as int, tymd.node);
     let mdval = @{node: mdnode, data: {id: arg.id}};
     update_cache(cache, tg, argument_metadata(mdval));
 
@@ -736,10 +738,10 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       ast_map::node_expr(expr) => {
         match expr.node {
           ast::expr_fn(_, decl, _, _) => {
-            (@dbg_cx.names(~"fn"), decl.output, expr.id)
+            (dbg_cx.names(~"fn"), decl.output, expr.id)
           }
           ast::expr_fn_block(decl, _, _) => {
-            (@dbg_cx.names(~"fn"), decl.output, expr.id)
+            (dbg_cx.names(~"fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
                                      ~"create_function: \
@@ -778,8 +780,9 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let fn_metadata = ~[lltag(SubprogramTag),
                        llunused(),
                        file_node,
-                       llstr(*ident),
-                       llstr(*ident), //XXX fully-qualified C++ name
+                       llstr(cx.sess.str_of(ident)),
+                        //XXX fully-qualified C++ name:
+                       llstr(cx.sess.str_of(ident)),
                        llstr(~""), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),

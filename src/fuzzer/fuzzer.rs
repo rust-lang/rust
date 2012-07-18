@@ -238,12 +238,15 @@ fn check_variants_T<T: copy>(
   filename: ~str,
   thing_label: ~str,
   things: ~[T],
-  stringifier: fn@(@T) -> ~str,
+  stringifier: fn@(@T, syntax::parse::token::ident_interner) -> ~str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
     error!{"%s contains %u %s objects", filename,
            vec::len(things), thing_label};
+
+    // Assuming we're not generating any token_trees
+    let intr = syntax::parse::token::mk_fake_ident_interner();
 
     let L = vec::len(things);
 
@@ -251,7 +254,7 @@ fn check_variants_T<T: copy>(
         do under(uint::min(L, 20u)) |i| {
             log(error, ~"Replacing... #" + uint::str(i));
             do under(uint::min(L, 30u)) |j| {
-                log(error, ~"With... " + stringifier(@things[j]));
+                log(error, ~"With... " + stringifier(@things[j], intr));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
@@ -259,8 +262,7 @@ fn check_variants_T<T: copy>(
                 let str3 =
                     @as_str(|a|pprust::print_crate(
                         codemap,
-                        // Assuming we're not generating any token_trees
-                        syntax::parse::token::mk_ident_interner(),
+                        intr,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
@@ -422,7 +424,7 @@ fn parse_and_print(code: @~str) -> ~str {
                pprust::print_crate(
                    sess.cm,
                    // Assuming there are no token_trees
-                   syntax::parse::token::mk_ident_interner(),
+                   syntax::parse::token::mk_fake_ident_interner(),
                    sess.span_diagnostic,
                    crate,
                    filename,
@@ -570,7 +572,7 @@ fn check_variants(files: ~[~str], cx: context) {
                    as_str(|a| pprust::print_crate(
                        sess.cm,
                        // Assuming no token_trees
-                       syntax::parse::token::mk_ident_interner(),
+                       syntax::parse::token::mk_fake_ident_interner(),
                        sess.span_diagnostic,
                        crate,
                        file,

@@ -1,18 +1,17 @@
 // Parsing pipes protocols from token trees.
 
 import parse::parser;
-import ast::ident;
 import parse::token;
 
 import pipec::*;
 
 trait proto_parser {
-    fn parse_proto(id: ident) -> protocol;
+    fn parse_proto(id: ~str) -> protocol;
     fn parse_state(proto: protocol);
 }
 
 impl parser: proto_parser {
-    fn parse_proto(id: ident) -> protocol {
+    fn parse_proto(id: ~str) -> protocol {
         let proto = protocol(id, self.span);
 
         self.parse_seq_to_before_end(token::EOF,
@@ -24,9 +23,11 @@ impl parser: proto_parser {
 
     fn parse_state(proto: protocol) {
         let id = self.parse_ident();
+        let name = *self.interner.get(id);
+
         self.expect(token::COLON);
         let dir = match copy self.token {
-          token::IDENT(n, _) => self.get_str(n),
+          token::IDENT(n, _) => self.interner.get(n),
           _ => fail
         };
         self.bump();
@@ -41,7 +42,7 @@ impl parser: proto_parser {
         }
         else { ~[] };
 
-        let state = proto.add_state_poly(id, dir, typarms);
+        let state = proto.add_state_poly(name, id, dir, typarms);
 
         // parse the messages
         self.parse_unspanned_seq(
@@ -51,7 +52,7 @@ impl parser: proto_parser {
     }
 
     fn parse_message(state: state) {
-        let mname = self.parse_ident();
+        let mname = *self.interner.get(self.parse_ident());
 
         let args = if self.token == token::LPAREN {
             self.parse_unspanned_seq(token::LPAREN,
@@ -66,7 +67,7 @@ impl parser: proto_parser {
 
         let next = match copy self.token {
           token::IDENT(_, _) => {
-            let name = self.parse_ident();
+            let name = *self.interner.get(self.parse_ident());
             let ntys = if self.token == token::LT {
                 self.parse_unspanned_seq(token::LT,
                                          token::GT,

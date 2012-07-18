@@ -8,6 +8,7 @@ import parse::parser::{parser, SOURCE_FILE};
 import earley_parser::{parse, parse_or_else, success, failure, named_match,
                        matched_seq, matched_nonterminal, error};
 import std::map::hashmap;
+import parse::token::special_idents;
 
 fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                      arg: ~[ast::token_tree]) -> base::mac_result {
@@ -16,14 +17,17 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         {node: m, span: {lo: 0u, hi: 0u, expn_info: none}}
     }
 
+    let lhs_nm =  cx.parse_sess().interner.gensym(@~"lhs");
+    let rhs_nm =  cx.parse_sess().interner.gensym(@~"rhs");
+
     // The grammar for macro_rules! is:
     // $( $lhs:mtcs => $rhs:tt );+
     // ...quasiquoting this would be nice.
     let argument_gram = ~[
         ms(match_seq(~[
-            ms(match_nonterminal(@~"lhs",@~"matchers", 0u)),
+            ms(match_nonterminal(lhs_nm, special_idents::matchers, 0u)),
             ms(match_tok(FAT_ARROW)),
-            ms(match_nonterminal(@~"rhs",@~"tt", 1u)),
+            ms(match_nonterminal(rhs_nm, special_idents::tt, 1u)),
         ], some(SEMI), false, 0u, 2u)),
         //to phase into semicolon-termination instead of
         //semicolon-separation
@@ -37,11 +41,11 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                                      arg_reader as reader, argument_gram);
 
     // Extract the arguments:
-    let lhses:~[@named_match] = match argument_map.get(@~"lhs") {
+    let lhses:~[@named_match] = match argument_map.get(lhs_nm) {
       @matched_seq(s, sp) => s,
       _ => cx.span_bug(sp, ~"wrong-structured lhs")
     };
-    let rhses:~[@named_match] = match argument_map.get(@~"rhs") {
+    let rhses:~[@named_match] = match argument_map.get(rhs_nm) {
       @matched_seq(s, sp) => s,
       _ => cx.span_bug(sp, ~"wrong-structured rhs")
     };
@@ -53,8 +57,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     -> mac_result {
 
         if cx.trace_macros() {
-            io::println(fmt!("%s! { %s }", *name,
-                             print::pprust::unexpanded_tt_to_str(
+            io::println(fmt!("%s! { %s }",
+                             cx.str_of(name),
+                             print::pprust::tt_to_str(
                                  ast::tt_delim(arg),
                                  cx.parse_sess().interner)));
         }
@@ -103,7 +108,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                                               arg, lhses, rhses);
 
     return mr_def({
-        ident: name,
+        name: *cx.parse_sess().interner.get(name),
         ext: expr_tt({expander: exp, span: some(sp)})
     });
 }

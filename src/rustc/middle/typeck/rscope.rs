@@ -1,4 +1,5 @@
 import result::result;
+import syntax::parse::token::special_idents;
 
 trait region_scope {
     fn anon_region(span: span) -> result<ty::region, ~str>;
@@ -11,7 +12,7 @@ impl empty_rscope: region_scope {
         result::ok(ty::re_static)
     }
     fn named_region(_span: span, id: ast::ident) -> result<ty::region, ~str> {
-        if *id == ~"static" { result::ok(ty::re_static) }
+        if id == special_idents::static { result::ok(ty::re_static) }
         else { result::err(~"only the static region is allowed here") }
     }
 }
@@ -28,7 +29,7 @@ impl type_rscope: region_scope {
     }
     fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
         do empty_rscope.named_region(span, id).chain_err |_e| {
-            if *id == ~"self" {
+            if id == special_idents::self_ {
                 self.anon_region(span)
             } else {
                 result::err(~"named regions other than `self` are not \

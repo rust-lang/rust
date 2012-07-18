@@ -1,8 +1,6 @@
 import to_str::ToStr;
 import dvec::{DVec, dvec};
 
-import ast::{ident};
-
 import ast_builder::{path, append_types};
 
 enum direction {
@@ -27,15 +25,15 @@ impl direction {
     }
 }
 
-type next_state = option<{state: ident, tys: ~[@ast::ty]}>;
+type next_state = option<{state: ~str, tys: ~[@ast::ty]}>;
 
 enum message {
     // name, span, data, current state, next state
-    message(ident, span, ~[@ast::ty], state, next_state)
+    message(~str, span, ~[@ast::ty], state, next_state)
 }
 
 impl message {
-    fn name() -> ident {
+    fn name() -> ~str {
         match self {
           message(id, _, _, _, _) => id
         }
@@ -58,7 +56,8 @@ impl message {
 enum state {
     state_(@{
         id: uint,
-        name: ident,
+        name: ~str,
+        ident: ast::ident,
         span: span,
         dir: direction,
         ty_params: ~[ast::ty_param],
@@ -68,7 +67,7 @@ enum state {
 }
 
 impl state {
-    fn add_message(name: ident, span: span,
+    fn add_message(name: ~str, span: span,
                    +data: ~[@ast::ty], next: next_state) {
         self.messages.push(message(name, span, data, self,
                                    next));
@@ -78,14 +77,15 @@ impl state {
         (*self).proto.filename()
     }
 
-    fn data_name() -> ident {
-        self.name
+    fn data_name() -> ast::ident {
+        self.ident
     }
 
     /// Returns the type that is used for the messages.
     fn to_ty(cx: ext_ctxt) -> @ast::ty {
         cx.ty_path_ast_builder
-            (path(self.name, self.span).add_tys(cx.ty_vars(self.ty_params)))
+            (path(~[cx.ident_of(self.name)],self.span).add_tys(
+                cx.ty_vars(self.ty_params)))
     }
 
     /// Iterate over the states that can be reached in one message
@@ -105,18 +105,18 @@ impl state {
 
 type protocol = @protocol_;
 
-fn protocol(name: ident, +span: span) -> protocol {
+fn protocol(name: ~str, +span: span) -> protocol {
     @protocol_(name, span)
 }
 
 struct protocol_ {
-    let name: ident;
+    let name: ~str;
     let span: span;
     let states: DVec<state>;
 
     let mut bounded: option<bool>;
 
-    new(name: ident, span: span) {
+    new(name: ~str, span: span) {
         self.name = name;
         self.span = span;
         self.states = dvec();
@@ -124,18 +124,18 @@ struct protocol_ {
     }
 
     /// Get a state.
-    fn get_state(name: ident) -> state {
+    fn get_state(name: ~str) -> state {
         self.states.find(|i| i.name == name).get()
     }
 
     fn get_state_by_id(id: uint) -> state { self.states[id] }
 
-    fn has_state(name: ident) -> bool {
+    fn has_state(name: ~str) -> bool {
         self.states.find(|i| i.name == name) != none
     }
 
     fn filename() -> ~str {
-        ~"proto://" + *self.name
+        ~"proto://" + self.name
     }
 
     fn num_states() -> uint { self.states.len() }
@@ -162,17 +162,14 @@ struct protocol_ {
 }
 
 impl protocol {
-    fn add_state(name: ident, dir: direction) -> state {
-        self.add_state_poly(name, dir, ~[])
-    }
-
-    fn add_state_poly(name: ident, dir: direction,
+    fn add_state_poly(name: ~str, ident: ast::ident, dir: direction,
                       +ty_params: ~[ast::ty_param]) -> state {
         let messages = dvec();
 
         let state = state_(@{
             id: self.states.len(),
             name: name,
+            ident: ident,
             span: self.span,
             dir: dir,
             ty_params: ty_params,
@@ -188,7 +185,7 @@ impl protocol {
 trait visitor<Tproto, Tstate, Tmessage> {
     fn visit_proto(proto: protocol, st: &[Tstate]) -> Tproto;
     fn visit_state(state: state, m: &[Tmessage]) -> Tstate;
-    fn visit_message(name: ident, spane: span, tys: &[@ast::ty],
+    fn visit_message(name: ~str, spane: span, tys: &[@ast::ty],
                      this: state, next: next_state) -> Tmessage;
 }
 

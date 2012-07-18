@@ -106,7 +106,7 @@ fn explain_region_and_span(cx: ctxt, region: ty::region)
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
     match br {
-      br_named(str)                  => fmt!{"&%s", *str},
+      br_named(id)                   => fmt!("&%s", cx.sess.str_of(id)),
       br_self if cx.sess.ppregions() => ~"&<self>",
       br_self                        => ~"&self",
 
@@ -161,7 +161,8 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
       }
       _ => { cx.sess.bug(
           fmt!{"re_scope refers to %s",
-               ast_map::node_id_to_str(cx.items, node_id)}) }
+               ast_map::node_id_to_str(cx.items, node_id,
+                                       cx.sess.parse_sess.interner)}) }
     }
 }
 
@@ -257,7 +258,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 
         s += proto_ty_to_str(cx, proto);
         match ident {
-          some(i) => { s += ~" "; s += *i; }
+          some(i) => { s += ~" "; s += cx.sess.str_of(i); }
           _ => { }
         }
         s += ~"(";
@@ -280,13 +281,13 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             m.fty.output, m.fty.ret_style) + ~";";
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return *f.ident + ~": " + mt_to_str(cx, f.mt);
+        return cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, f.mt);
     }
 
     // if there is an id, print that instead of the structural type:
     for ty::type_def_id(typ).each |def_id| {
         // note that this typedef cannot have type parameters
-        return ast_map::path_to_str(ty::item_path(cx, def_id));
+        return ast_map::path_to_str(ty::item_path(cx, def_id),cx.sess.intr());
     }
 
     // pretty print the structural type representation:
@@ -336,12 +337,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_self => ~"self",
       ty_enum(did, substs) | ty_class(did, substs) => {
         let path = ty::item_path(cx, did);
-        let base = ast_map::path_to_str(path);
+        let base = ast_map::path_to_str(path, cx.sess.intr());
         parameterized(cx, base, substs.self_r, substs.tps)
       }
       ty_trait(did, substs, vs) => {
         let path = ty::item_path(cx, did);
-        let base = ast_map::path_to_str(path);
+        let base = ast_map::path_to_str(path, cx.sess.intr());
         let result = parameterized(cx, base, substs.self_r, substs.tps);
         vstore_ty_to_str(cx, result, vs)
       }

@@ -46,7 +46,7 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
     while !is_last(peek(st)) {
         rslt += str::from_byte(next_byte(st));
     }
-    return @rslt;
+    return st.tcx.sess.ident_of(rslt);
 }
 
 
@@ -133,7 +133,7 @@ fn parse_bound_region(st: @pstate) -> ty::bound_region {
         assert next(st) == '|';
         ty::br_anon(id)
       }
-      '[' => ty::br_named(@parse_str(st, ']')),
+      '[' => ty::br_named(st.tcx.sess.ident_of(parse_str(st, ']'))),
       'c' => {
         let id = parse_int(st);
         assert next(st) == '|';
@@ -249,7 +249,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) == '[');
         let mut fields: ~[ty::field] = ~[];
         while peek(st) != ']' {
-            let name = @parse_str(st, '=');
+            let name = st.tcx.sess.ident_of(parse_str(st, '='));
             vec::push(fields, {ident: name, mt: parse_mt(st, conv)});
         }
         st.pos = st.pos + 1u;

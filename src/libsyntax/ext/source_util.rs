@@ -43,14 +43,15 @@ fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn expand_stringify(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                     _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), ~"stringify");
-    return mk_uniq_str(cx, sp, pprust::expr_to_str(args[0]));
+    let s = pprust::expr_to_str(args[0], cx.parse_sess().interner);
+    return mk_uniq_str(cx, sp, s);
 }
 
 fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
     -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"file");
     return mk_uniq_str(cx, sp,
-                    str::connect(cx.mod_path().map(|x|*x), ~"::"));
+                    str::connect(cx.mod_path().map(|x| cx.str_of(x)), ~"::"));
 }
 
 fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,

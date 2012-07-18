@@ -7,6 +7,7 @@ import syntax::codemap::span;
 import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 import filesearch::filesearch;
 import io::WriterUtil;
+import syntax::parse::token::ident_interner;
 
 export os;
 export os_macos, os_win32, os_linux, os_freebsd;
@@ -33,7 +34,8 @@ type ctxt = {
     metas: ~[@ast::meta_item],
     hash: ~str,
     os: os,
-    static: bool
+    static: bool,
+    intr: ident_interner
 };
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
@@ -41,7 +43,8 @@ fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
       some(t) => return t,
       none => {
         cx.diag.span_fatal(
-            cx.span, fmt!{"can't find crate for `%s`", *cx.ident});
+            cx.span, fmt!{"can't find crate for `%s`",
+                          *cx.intr.get(cx.ident)});
       }
     }
 }
@@ -66,7 +69,7 @@ fn find_library_crate_aux(cx: ctxt,
                           filesearch: filesearch::filesearch) ->
    option<{ident: ~str, data: @~[u8]}> {
     let crate_name = crate_name_from_metas(cx.metas);
-    let prefix: ~str = nn.prefix + *crate_name + ~"-";
+    let prefix: ~str = nn.prefix + crate_name + ~"-";
     let suffix: ~str = nn.suffix;
 
     let mut matches = ~[];
@@ -104,19 +107,19 @@ fn find_library_crate_aux(cx: ctxt,
         some(matches[0])
     } else {
         cx.diag.span_err(
-            cx.span, fmt!{"multiple matching crates for `%s`", *crate_name});
+            cx.span, fmt!{"multiple matching crates for `%s`", crate_name});
         cx.diag.handler().note(~"candidates:");
         for matches.each |match_| {
             cx.diag.handler().note(fmt!{"path: %s", match_.ident});
             let attrs = decoder::get_crate_attributes(match_.data);
-            note_linkage_attrs(cx.diag, attrs);
+            note_linkage_attrs(cx.intr, cx.diag, attrs);
         }
         cx.diag.handler().abort_if_errors();
         none
     }
 }
 
-fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @~str {
+fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
     match vec::last_opt(name_items) {
       some(i) => {
@@ -131,9 +134,10 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @~str {
     }
 }
 
-fn note_linkage_attrs(diag: span_handler, attrs: ~[ast::attribute]) {
+fn note_linkage_attrs(intr: ident_interner, diag: span_handler,
+                      attrs: ~[ast::attribute]) {
     for attr::find_linkage_attrs(attrs).each |attr| {
-        diag.handler().note(fmt!{"meta: %s", pprust::attr_to_str(attr)});
+        diag.handler().note(fmt!{"meta: %s", pprust::attr_to_str(attr,intr)});
     }
 }
 
@@ -143,7 +147,7 @@ fn crate_matches(crate_data: @~[u8], metas: ~[@ast::meta_item],
     let linkage_metas = attr::find_linkage_metas(attrs);
     if hash.is_not_empty() {
         let chash = decoder::get_crate_hash(crate_data);
-        if *chash != hash { return false; }
+        if chash != hash { return false; }
     }
     metadata_matches(linkage_metas, metas)
 }
@@ -154,15 +158,8 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
     debug!{"matching %u metadata requirements against %u items",
            vec::len(local_metas), vec::len(extern_metas)};
 
-    debug!{"crate metadata:"};
-    for extern_metas.each |have| {
-        debug!{"  %s", pprust::meta_item_to_str(*have)};
-    }
-
     for local_metas.each |needed| {
-        debug!{"looking for %s", pprust::meta_item_to_str(*needed)};
         if !attr::contains(extern_metas, needed) {
-            debug!{"missing %s", pprust::meta_item_to_str(*needed)};
             return false;
         }
     }
@@ -206,9 +203,10 @@ fn meta_section_name(os: os) -> ~str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(os: os, path: ~str, out: io::Writer) {
+fn list_file_metadata(intr: ident_interner, os: os, path: ~str,
+                      out: io::Writer) {
     match get_metadata_section(os, path) {
-      option::some(bytes) => decoder::list_crate_metadata(bytes, out),
+      option::some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::none => {
         out.write_str(~"could not find metadata in " + path + ~".\n");
       }

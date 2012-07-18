@@ -175,7 +175,8 @@ fn traverse_inline_body(cx: ctx, body: blk) {
                   traverse_def_id(cx, def_id_of_def(d));
                 }
                 none      => cx.tcx.sess.span_bug(e.span, fmt!{"Unbound node \
-                  id %? while traversing %s", e.id, expr_to_str(e)})
+                  id %? while traversing %s", e.id,
+                  expr_to_str(e, cx.tcx.sess.intr())})
             }
           }
           expr_field(_, _, _) => {

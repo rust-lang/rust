@@ -101,7 +101,7 @@
  */
 
 import dvec::{DVec, dvec};
-import std::map::{hashmap, int_hash, str_hash, box_str_hash};
+import std::map::{hashmap, int_hash, str_hash, uint_hash};
 import syntax::{visit, ast_util};
 import syntax::print::pprust::{expr_to_str};
 import visit::vt;
@@ -233,7 +233,7 @@ struct ir_maps {
         self.live_node_map = int_hash();
         self.variable_map = int_hash();
         self.capture_map = int_hash();
-        self.field_map = box_str_hash();
+        self.field_map = uint_hash();
         self.var_kinds = ~[];
         self.lnks = ~[];
     }
@@ -286,12 +286,12 @@ struct ir_maps {
         }
     }
 
-    fn variable_name(var: variable) -> ident {
-        match self.var_kinds[*var] {
-          vk_local(_, name) | vk_arg(_, name, _) => name,
-          vk_field(name) => @(~"self." + *name),
-          vk_self => @~"self",
-          vk_implicit_return => @~"<implicit-ret>"
+    fn variable_name(var: variable) -> ~str {
+        match copy self.var_kinds[*var] {
+          vk_local(_, nm) | vk_arg(_, nm, _) => self.tcx.sess.str_of(nm),
+          vk_field(nm) => ~"self." + self.tcx.sess.str_of(nm),
+          vk_self => ~"self",
+          vk_implicit_return => ~"<implicit-ret>"
         }
     }
 
@@ -1492,7 +1492,8 @@ impl @liveness {
               none => { /* ok */ }
               some(lnk_exit) => {
                 self.tcx.sess.span_err(
-                    sp, fmt!{"field `self.%s` is never initialized", *nm});
+                    sp, fmt!{"field `self.%s` is never initialized",
+                             self.tcx.sess.str_of(nm)});
               }
               some(lnk) => {
                 self.report_illegal_read(
@@ -1548,7 +1549,7 @@ impl @liveness {
 
     fn check_move_from_expr(expr: @expr, vt: vt<@liveness>) {
         debug!{"check_move_from_expr(node %d: %s)",
-               expr.id, expr_to_str(expr)};
+               expr.id, expr_to_str(expr, self.tcx.sess.intr())};
 
         if self.ir.method_map.contains_key(expr.id) {
             // actually an rvalue, since this calls a method
@@ -1664,13 +1665,14 @@ impl @liveness {
                 self.tcx.sess.span_err(
                     move_span,
                     fmt!{"illegal move from argument `%s`, which is not \
-                          copy or move mode", *name});
+                          copy or move mode", self.tcx.sess.str_of(name)});
                 return;
               }
               vk_field(name) => {
                 self.tcx.sess.span_err(
                     move_span,
-                    fmt!{"illegal move from field `%s`", *name});
+                    fmt!{"illegal move from field `%s`",
+                         self.tcx.sess.str_of(name)});
                 return;
               }
               vk_self => {
@@ -1711,12 +1713,12 @@ impl @liveness {
           lnk_freevar(span) => {
             self.tcx.sess.span_err(
                 span,
-                fmt!{"capture of %s: `%s`", msg, *name});
+                fmt!{"capture of %s: `%s`", msg, name});
           }
           lnk_expr(span) => {
             self.tcx.sess.span_err(
                 span,
-                fmt!{"use of %s: `%s`", msg, *name});
+                fmt!{"use of %s: `%s`", msg, name});
           }
           lnk_exit |
           lnk_vdef(_) => {
@@ -1727,9 +1729,9 @@ impl @liveness {
         }
     }
 
-    fn should_warn(var: variable) -> option<ident> {
+    fn should_warn(var: variable) -> option<~str> {
         let name = (*self.ir).variable_name(var);
-        if (*name)[0] == ('_' as u8) {none} else {some(name)}
+        if name[0] == ('_' as u8) {none} else {some(name)}
     }
 
     fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: live_node) {
@@ -1780,10 +1782,10 @@ impl @liveness {
                 if is_assigned {
                     self.tcx.sess.span_warn(
                         sp, fmt!{"variable `%s` is assigned to, \
-                                  but never used", *name});
+                                  but never used", name});
                 } else {
                     self.tcx.sess.span_warn(
-                        sp, fmt!{"unused variable: `%s`", *name});
+                        sp, fmt!{"unused variable: `%s`", name});
                 }
             }
             return true;
@@ -1796,7 +1798,7 @@ impl @liveness {
             for self.should_warn(var).each |name| {
                 self.tcx.sess.span_warn(
                     sp,
-                    fmt!{"value assigned to `%s` is never read", *name});
+                    fmt!{"value assigned to `%s` is never read", name});
             }
         }
     }

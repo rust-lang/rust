@@ -95,7 +95,7 @@ type bind_map = ~[{
 
 fn assoc(key: ast::ident, list: bind_map) -> option<binding> {
     for vec::each(list) |elt| {
-        if str::eq(elt.ident, key) {
+        if elt.ident == key {
             return some(elt.binding);
         }
     }
@@ -232,7 +232,7 @@ fn enter_rec_or_struct(bcx: block, dm: DefMap, m: match_, col: uint,
             for vec::each(fields) |fname| {
                 let mut pat = dummy;
                 for vec::each(fpats) |fpat| {
-                    if str::eq(fpat.ident, fname) { pat = fpat.pat; break; }
+                    if fpat.ident == fname { pat = fpat.pat; break; }
                 }
                 vec::push(pats, pat);
             }
@@ -334,7 +334,7 @@ fn collect_record_fields(m: match_, col: uint) -> ~[ast::ident] {
         match br.pats[col].node {
           ast::pat_rec(fs, _) => {
             for vec::each(fs) |f| {
-                if !vec::any(fields, |x| str::eq(f.ident, x)) {
+                if !vec::any(fields, |x| f.ident == x) {
                     vec::push(fields, f.ident);
                 }
             }
@@ -351,7 +351,7 @@ fn collect_struct_fields(m: match_, col: uint) -> ~[ast::ident] {
         match br.pats[col].node {
           ast::pat_struct(_, fs, _) => {
             for vec::each(fs) |f| {
-                if !vec::any(fields, |x| str::eq(f.ident, x)) {
+                if !vec::any(fields, |x| f.ident == x) {
                     vec::push(fields, f.ident);
                 }
             }
@@ -550,7 +550,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
         }
 
         // Index the class fields.
-        let field_map = std::map::box_str_hash();
+        let field_map = std::map::uint_hash();
         for class_fields.eachi |i, class_field| {
             field_map.insert(class_field.ident, i);
         }
@@ -951,7 +951,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         }
 
         // Index the class fields.
-        let field_map = std::map::box_str_hash();
+        let field_map = std::map::uint_hash();
         for class_fields.eachi |i, class_field| {
             field_map.insert(class_field.ident, i);
         }

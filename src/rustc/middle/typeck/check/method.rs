@@ -107,7 +107,8 @@ struct lookup {
     // Entrypoint:
     fn method() -> option<method_map_entry> {
         debug!{"method lookup(m_name=%s, self_ty=%s, %?)",
-               *self.m_name, self.fcx.infcx.ty_to_str(self.self_ty),
+               self.fcx.tcx().sess.str_of(self.m_name),
+               self.fcx.infcx.ty_to_str(self.self_ty),
                ty::get(self.self_ty).struct};
 
         // Determine if there are any inherent methods we can call.
@@ -533,7 +534,9 @@ struct lookup {
                 debug!{"(adding inherent and extension candidates) \
                         adding candidates from impl: %s",
                         node_id_to_str(self.tcx().items,
-                                       implementation.did.node)};
+                                       implementation.did.node,
+                                       self.fcx.tcx().sess.parse_sess
+                                           .interner)};
                 self.add_candidates_from_impl(implementation, mode);
             }
           }
@@ -572,9 +575,11 @@ struct lookup {
 
     fn def_id_to_str(def_id: ast::def_id) -> ~str {
         if def_id.crate == ast::local_crate {
-            node_id_to_str(self.tcx().items, def_id.node)
+            node_id_to_str(self.tcx().items, def_id.node,
+                           self.fcx.tcx().sess.parse_sess.interner)
         } else {
-            ast_map::path_to_str(csearch::get_item_path(self.tcx(), def_id))
+            ast_map::path_to_str(csearch::get_item_path(self.tcx(), def_id),
+                                 self.fcx.tcx().sess.parse_sess.interner)
         }
     }
 

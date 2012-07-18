@@ -37,12 +37,13 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   pieces: ~[piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> ~[ast::ident] {
-        return ~[@~"extfmt", @~"rt", ident];
+    fn make_path_vec(_cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
+        let intr = _cx.parse_sess().interner;
+        return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt"),
+                 intr.intern(ident)];
     }
-    fn make_rt_path_expr(cx: ext_ctxt, sp: span,
-                         ident: ast::ident) -> @ast::expr {
-        let path = make_path_vec(cx, ident);
+    fn make_rt_path_expr(cx: ext_ctxt, sp: span, nm: @~str) -> @ast::expr {
+        let path = make_path_vec(cx, nm);
         return mk_path(cx, sp, path);
     }
     // Produces an AST expression that represents a RT::conv record,
@@ -94,11 +95,13 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         fn make_conv_rec(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
+            let intr = cx.parse_sess().interner;
             return mk_rec_e(cx, sp,
-                         ~[{ident: @~"flags", ex: flags_expr},
-                          {ident: @~"width", ex: width_expr},
-                          {ident: @~"precision", ex: precision_expr},
-                          {ident: @~"ty", ex: ty_expr}]);
+                         ~[{ident: intr.intern(@~"flags"), ex: flags_expr},
+                           {ident: intr.intern(@~"width"), ex: width_expr},
+                           {ident: intr.intern(@~"precision"),
+                            ex: precision_expr},
+                           {ident: intr.intern(@~"ty"), ex: ty_expr}]);
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
@@ -268,7 +271,10 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
 
     let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
-    return mk_call(cx, fmt_sp, ~[@~"str", @~"concat"], ~[arg_vec]);
+    return mk_call(cx, fmt_sp,
+                   ~[cx.parse_sess().interner.intern(@~"str"),
+                     cx.parse_sess().interner.intern(@~"concat")],
+                   ~[arg_vec]);
 }
 //
 // Local Variables:
