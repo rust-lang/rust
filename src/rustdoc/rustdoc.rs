@@ -139,8 +139,6 @@ fn run(config: config::config) {
             extract::from_srv(srv, default_name)
         });
         run_passes(srv, doc, ~[
-            reexport_pass::mk_pass(),
-            prune_unexported_pass::mk_pass(),
             tystr_pass::mk_pass(),
             path_pass::mk_pass(),
             attr_pass::mk_pass(),

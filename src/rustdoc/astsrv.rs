@@ -20,8 +20,6 @@ import syntax::ast_map;
 import rustc::back::link;
 import rustc::metadata::filesearch;
 import rustc::front;
-import rustc::middle::resolve;
-import rustc::middle::resolve3;
 
 export ctxt;
 export ctxt_handler;
@@ -32,9 +30,7 @@ export exec;
 
 type ctxt = {
     ast: @ast::crate,
-    ast_map: ast_map::map,
-    exp_map: resolve::exp_map,
-    impl_map: resolve::impl_map
+    ast_map: ast_map::map
 };
 
 type srv_owner<T> = fn(srv: srv) -> T;
@@ -72,12 +68,11 @@ fn run<T>(owner: srv_owner<T>, source: ~str, +parse: parser) -> T {
 }
 
 fn act(po: comm::port<msg>, source: ~str, parse: parser) {
-    let (sess, ignore_errors) = build_session();
+    let sess = build_session();
 
     let ctxt = build_ctxt(
         sess,
-        parse(sess, source),
-        ignore_errors
+        parse(sess, source)
     );
 
     let mut keep_going = true;
@@ -107,41 +102,34 @@ fn exec<T:send>(
 }
 
 fn build_ctxt(sess: session,
-              ast: @ast::crate,
-              ignore_errors: @mut bool) -> ctxt {
+              ast: @ast::crate) -> ctxt {
 
     import rustc::front::config;
 
     let ast = config::strip_unconfigured_items(ast);
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), *ast);
-    *ignore_errors = true;
-    let {exp_map, impl_map, _} = resolve3::resolve_crate(sess, ast_map, ast);
-    *ignore_errors = false;
 
     {
         ast: ast,
         ast_map: ast_map,
-        exp_map: exp_map,
-        impl_map: impl_map
     }
 }
 
-fn build_session() -> (session, @mut bool) {
+fn build_session() -> session {
     let sopts: @options = basic_options();
     let codemap = codemap::new_codemap();
     let error_handlers = build_error_handlers(codemap);
-    let {emitter, span_handler, ignore_errors} = error_handlers;
+    let {emitter, span_handler} = error_handlers;
 
     let session = driver::build_session_(sopts, codemap, emitter,
                                          span_handler);
-    (session, ignore_errors)
+    session
 }
 
 type error_handlers = {
     emitter: diagnostic::emitter,
-    span_handler: diagnostic::span_handler,
-    ignore_errors: @mut bool
+    span_handler: diagnostic::span_handler
 };
 
 // Build a custom error handler that will allow us to ignore non-fatal
@@ -152,16 +140,13 @@ fn build_error_handlers(
 
     type diagnostic_handler = {
         inner: diagnostic::handler,
-        ignore_errors: @mut bool
     };
 
     impl of diagnostic::handler for diagnostic_handler {
         fn fatal(msg: ~str) -> ! { self.inner.fatal(msg) }
         fn err(msg: ~str) { self.inner.err(msg) }
         fn bump_err_count() {
-            if !(*self.ignore_errors) {
-                self.inner.bump_err_count();
-            }
+            self.inner.bump_err_count();
         }
         fn has_errors() -> bool { self.inner.has_errors() }
         fn abort_if_errors() { self.inner.abort_if_errors() }
@@ -175,25 +160,20 @@ fn build_error_handlers(
         }
     }
 
-    let ignore_errors = @mut false;
     let emitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
                        msg: ~str, lvl: diagnostic::level) {
-        if !(*ignore_errors) {
-            diagnostic::emit(cmsp, msg, lvl);
-        }
+        diagnostic::emit(cmsp, msg, lvl);
     };
     let inner_handler = diagnostic::mk_handler(some(emitter));
     let handler = {
         inner: inner_handler,
-        ignore_errors: ignore_errors
     };
     let span_handler = diagnostic::mk_span_handler(
         handler as diagnostic::handler, codemap);
 
     {
         emitter: emitter,
-        span_handler: span_handler,
-        ignore_errors: ignore_errors
+        span_handler: span_handler
     }
 }
 
@@ -215,48 +195,6 @@ fn srv_should_build_ast_map() {
             assert ctxt.ast_map.size() != 0u
         };
     }
-}
-
-#[test]
-fn srv_should_build_reexport_map() {
-    let source = ~"import a::b; export b; mod a { mod b { } }";
-    do from_str(source) |srv| {
-        do exec(srv) |ctxt| {
-            assert ctxt.exp_map.size() != 0u
-        };
-    }
-}
-
-#[test]
-fn srv_should_resolve_external_crates() {
-    let source = ~"use std;\
-                  fn f() -> std::sha1::sha1 {\
-                  std::sha1::mk_sha1() }";
-    // Just testing that resolve doesn't crash
-    from_str(source, |_srv| { } )
-}
-
-#[test]
-fn srv_should_resolve_core_crate() {
-    let source = ~"fn a() -> option { fail }";
-    // Just testing that resolve doesn't crash
-    from_str(source, |_srv| { } )
-}
-
-#[test]
-fn srv_should_resolve_non_existant_imports() {
-    // XXX: XFAIL'd
-
-    // We want to ignore things we can't resolve. Shouldn't
-    // need to be able to find external crates to create docs.
-    //let source = ~"import wooboo; fn a() { }";
-    //from_str(source, |_srv| { } )
-}
-
-#[test]
-fn srv_should_resolve_non_existant_uses() {
-    let source = ~"use forble; fn a() { }";
-    from_str(source, |_srv| { } )
 }
 
 #[test]
