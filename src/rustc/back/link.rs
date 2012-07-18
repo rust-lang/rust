@@ -310,24 +310,24 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                    symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
-        {name: option<@~str>,
-         vers: option<@~str>,
+        {name: option<~str>,
+         vers: option<~str>,
          cmh_items: ~[@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let mut name: option<@~str> = none;
-        let mut vers: option<@~str> = none;
+        let mut name: option<~str> = none;
+        let mut vers: option<~str> = none;
         let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if *attr::get_meta_item_name(meta) == ~"name" {
+            if attr::get_meta_item_name(meta) == ~"name" {
                 match attr::get_meta_item_value_str(meta) {
                   some(v) => { name = some(v); }
                   none => vec::push(cmh_items, meta)
                 }
-            } else if *attr::get_meta_item_name(meta) == ~"vers" {
+            } else if attr::get_meta_item_name(meta) == ~"vers" {
                 match attr::get_meta_item_value_str(meta) {
                   some(v) => { vers = some(v); }
                   none => vec::push(cmh_items, meta)
@@ -341,7 +341,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
                               _crate: ast::crate,
                               metas: provided_metas,
-                              dep_hashes: ~[@~str]) -> ~str {
+                              dep_hashes: ~[~str]) -> ~str {
         fn len_and_str(s: ~str) -> ~str {
             return fmt!{"%u_%s", str::len(s), s};
         }
@@ -357,11 +357,11 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
             let m = m_;
             match m.node {
               ast::meta_name_value(key, value) => {
-                symbol_hasher.write_str(len_and_str(*key));
+                symbol_hasher.write_str(len_and_str(key));
                 symbol_hasher.write_str(len_and_str_lit(value));
               }
               ast::meta_word(name) => {
-                symbol_hasher.write_str(len_and_str(*name));
+                symbol_hasher.write_str(len_and_str(name));
               }
               ast::meta_list(_, _) => {
                 // FIXME (#607): Implement this
@@ -371,7 +371,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
         }
 
         for dep_hashes.each |dh| {
-            symbol_hasher.write_str(len_and_str(*dh));
+            symbol_hasher.write_str(len_and_str(dh));
         }
 
         return truncated_hash_result(symbol_hasher);
@@ -384,7 +384,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
-                       output: ~str, metas: provided_metas) -> @~str {
+                       output: ~str, metas: provided_metas) -> ~str {
         return match metas.name {
               some(v) => v,
               none => {
@@ -400,19 +400,19 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                         str::connect(os, ~".")
                     };
                 warn_missing(sess, ~"name", name);
-                @name
+                name
               }
             };
     }
 
     fn crate_meta_vers(sess: session, _crate: ast::crate,
-                       metas: provided_metas) -> @~str {
+                       metas: provided_metas) -> ~str {
         return match metas.vers {
               some(v) => v,
               none => {
                 let vers = ~"0.0";
                 warn_missing(sess, ~"vers", vers);
-                @vers
+                vers
               }
             };
     }
@@ -439,7 +439,7 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.write_str(*link_meta.name);
+    symbol_hasher.write_str(link_meta.name);
     symbol_hasher.write_str(~"-");
     symbol_hasher.write_str(link_meta.extras_hash);
     symbol_hasher.write_str(~"-");
@@ -497,14 +497,14 @@ fn sanitize(s: ~str) -> ~str {
     return result;
 }
 
-fn mangle(ss: path) -> ~str {
+fn mangle(sess: session, ss: path) -> ~str {
     // Follow C++ namespace-mangling style
 
     let mut n = ~"_ZN"; // Begin name-sequence.
 
     for ss.each |s| {
         match s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(*s);
+          let sani = sanitize(sess.str_of(s));
           n += fmt!{"%u%s", str::len(sani), sani};
         } }
     }
@@ -512,36 +512,41 @@ fn mangle(ss: path) -> ~str {
     n
 }
 
-fn exported_name(path: path, hash: @~str, vers: @~str) -> ~str {
-    return mangle(
-        vec::append_one(vec::append_one(path, path_name(hash)),
-                        path_name(vers)));
+fn exported_name(sess: session, path: path, hash: ~str, vers: ~str) -> ~str {
+    return mangle(sess,
+                  vec::append_one(
+                      vec::append_one(path, path_name(sess.ident_of(hash))),
+                      path_name(sess.ident_of(vers))));
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
-    return exported_name(path, @hash, ccx.link_meta.vers);
+    return exported_name(ccx.sess, path, hash, ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
-                                     t: ty::t, name: @~str) ->
+                                     t: ty::t, name: ~str) ->
    ~str {
-    let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
+    let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    return mangle(~[path_name(name), path_name(s), path_name(@hash)]);
+    return mangle(ccx.sess,
+                  ~[path_name(ccx.sess.ident_of(name)),
+                    path_name(ccx.sess.ident_of(s)),
+                    path_name(ccx.sess.ident_of(hash))]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
-                                        flav: @~str) -> ~str {
-    return mangle(vec::append_one(path, path_name(@ccx.names(*flav))));
+                                        flav: ~str) -> ~str {
+    return mangle(ccx.sess,
+                  vec::append_one(path, path_name(ccx.names(flav))));
 }
 
-fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> ~str {
-    return mangle(path);
+fn mangle_internal_name_by_path(ccx: @crate_ctxt, path: path) -> ~str {
+    return mangle(ccx.sess, path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @~str) -> ~str {
-    return ccx.names(*flav);
+fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
+    return fmt!("%s_%u", flav, ccx.names(flav));
 }
 
 // If the user wants an exe generated we need to invoke
@@ -577,8 +582,8 @@ fn link_binary(sess: session,
     let output = if sess.building_library {
         let long_libname =
             os::dll_filename(fmt!{"%s-%s-%s",
-                                  *lm.name, lm.extras_hash, *lm.vers});
-        debug!{"link_meta.name:  %s", *lm.name};
+                                  lm.name, lm.extras_hash, lm.vers});
+        debug!{"link_meta.name:  %s", lm.name};
         debug!{"long_libname: %s", long_libname};
         debug!{"out_filename: %s", out_filename};
         debug!{"dirname(out_filename): %s", path::dirname(out_filename)};

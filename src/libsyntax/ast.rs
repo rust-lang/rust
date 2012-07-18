@@ -30,8 +30,18 @@ fn deserialize_span<D>(_d: D) -> span {
 #[auto_serialize]
 type spanned<T> = {node: T, span: span};
 
-#[auto_serialize]
-type ident = @~str;
+fn serialize_ident<S: serializer>(s: S, i: ident) {
+    let intr = unsafe{ task::local_data_get(parse::token::interner_key) };
+
+    s.emit_str(*(*intr.get()).get(i));
+}
+fn deserialize_ident<D: deserializer>(d: D) -> ident  {
+    let intr = unsafe{ task::local_data_get(parse::token::interner_key) };
+
+    (*intr.get()).intern(@d.read_str())
+}
+
+type ident = token::str_num;
 
 // Functions may or may not have names.
 #[auto_serialize]
@@ -127,9 +137,9 @@ type meta_item = spanned<meta_item_>;
 
 #[auto_serialize]
 enum meta_item_ {
-    meta_word(ident),
-    meta_list(ident, ~[@meta_item]),
-    meta_name_value(ident, lit),
+    meta_word(~str),
+    meta_list(~str, ~[@meta_item]),
+    meta_name_value(~str, lit),
 }
 
 #[auto_serialize]
@@ -815,36 +825,6 @@ enum inlined_item {
     ii_dtor(class_dtor, ident, ~[ty_param], def_id /* parent id */)
 }
 
-// Convenience functions
-
-pure fn simple_path(id: ident, span: span) -> @path {
-    @{span: span,
-      global: false,
-      idents: ~[id],
-      rp: none,
-      types: ~[]}
-}
-
-pure fn empty_span() -> span {
-    {lo: 0, hi: 0, expn_info: none}
-}
-
-// Convenience implementations
-
-impl ident: ops::add<ident,@path> {
-    pure fn add(&&id: ident) -> @path {
-        simple_path(self, empty_span()) + id
-    }
-}
-
-impl @path: ops::add<ident,@path> {
-    pure fn add(&&id: ident) -> @path {
-        @{
-            idents: vec::append_one(self.idents, id)
-            with *self
-        }
-    }
-}
 
 //
 // Local Variables:

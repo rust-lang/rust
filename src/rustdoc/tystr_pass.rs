@@ -5,6 +5,7 @@ import syntax::ast;
 import syntax::print::pprust;
 import syntax::ast_map;
 import std::map::hashmap;
+import extract::to_str;
 
 export mk_pass;
 
@@ -55,7 +56,7 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<~str> {
             ident: ident,
             node: ast::foreign_item_fn(decl, tys), _
           }, _, _) => {
-            some(pprust::fun_to_str(decl, ident, tys))
+            some(pprust::fun_to_str(decl, ident, tys, extract::interner()))
           }
         }
     }
@@ -85,7 +86,7 @@ fn fold_const(
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
               }, _) => {
-                pprust::ty_to_str(ty)
+                pprust::ty_to_str(ty, extract::interner())
               }
             }
         })
@@ -115,10 +116,10 @@ fn fold_enum(
                   }, _) => {
                     let ast_variant = option::get(
                         do vec::find(enum_definition.variants) |v| {
-                            *v.node.name == variant.name
+                            to_str(v.node.name) == variant.name
                         });
 
-                    pprust::variant_to_str(ast_variant)
+                    pprust::variant_to_str(ast_variant, extract::interner())
                   }
                 }
             };
@@ -173,8 +174,8 @@ fn get_method_sig(
           }, _) => {
             match check vec::find(methods, |method| {
                 match method {
-                  ast::required(ty_m) => *ty_m.ident == method_name,
-                  ast::provided(m) => *m.ident == method_name,
+                  ast::required(ty_m) => to_str(ty_m.ident) == method_name,
+                  ast::provided(m) => to_str(m.ident) == method_name,
                 }
             }) {
                 some(method) => {
@@ -183,14 +184,16 @@ fn get_method_sig(
                       some(pprust::fun_to_str(
                           ty_m.decl,
                           ty_m.ident,
-                          ty_m.tps
+                          ty_m.tps,
+                          extract::interner()
                       ))
                     }
                     ast::provided(m) => {
                       some(pprust::fun_to_str(
                           m.decl,
                           m.ident,
-                          m.tps
+                          m.tps,
+                          extract::interner()
                       ))
                     }
                   }
@@ -201,13 +204,14 @@ fn get_method_sig(
             node: ast::item_impl(_, _, _, methods), _
           }, _) => {
             match check vec::find(methods, |method| {
-                *method.ident == method_name
+                to_str(method.ident) == method_name
             }) {
                 some(method) => {
                     some(pprust::fun_to_str(
                         method.decl,
                         method.ident,
-                        method.tps
+                        method.tps,
+                        extract::interner()
                     ))
                 }
             }
@@ -236,9 +240,10 @@ fn fold_impl(
             node: ast::item_impl(_, trait_types, self_ty, _), _
           }, _) => {
             let trait_types = vec::map(trait_types, |p| {
-                pprust::path_to_str(p.path)
+                pprust::path_to_str(p.path, extract::interner())
             });
-            (trait_types, some(pprust::ty_to_str(self_ty)))
+            (trait_types, some(pprust::ty_to_str(self_ty,
+                                                 extract::interner())))
           }
           _ => fail ~"expected impl"
         }
@@ -293,9 +298,9 @@ fn fold_type(
               }, _) => {
                 some(fmt!{
                     "type %s%s = %s",
-                    *ident,
-                    pprust::typarams_to_str(params),
-                    pprust::ty_to_str(ty)
+                    to_str(ident),
+                    pprust::typarams_to_str(params, extract::interner()),
+                    pprust::ty_to_str(ty, extract::interner())
                 })
               }
               _ => fail ~"expected type"

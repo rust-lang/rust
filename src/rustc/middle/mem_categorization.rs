@@ -263,7 +263,7 @@ impl &mem_categorization_ctxt {
 
     fn cat_expr(expr: @ast::expr) -> cmt {
         debug!{"cat_expr: id=%d expr=%s",
-               expr.id, pprust::expr_to_str(expr)};
+               expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr())};
 
         let tcx = self.tcx;
         let expr_ty = tcx.ty(expr);
@@ -468,7 +468,8 @@ impl &mem_categorization_ctxt {
             self.tcx.sess.span_bug(
                 node.span(),
                 fmt!{"Cannot find field `%s` in type `%s`",
-                     *f_name, ty_to_str(self.tcx, base_cmt.ty)});
+                     self.tcx.sess.str_of(f_name),
+                     ty_to_str(self.tcx, base_cmt.ty)});
           }
         };
         let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
@@ -650,12 +651,13 @@ impl &mem_categorization_ctxt {
         // in the alt, the id of `local(x)->@` is the `@y` pattern,
         // and the id of `local(x)->@->@` is the id of the `y` pattern.
 
-        debug!{"cat_pattern: id=%d pat=%s cmt=%s",
-               pat.id, pprust::pat_to_str(pat),
-               self.cmt_to_repr(cmt)};
-        let _i = indenter();
 
+        let _i = indenter();
         let tcx = self.tcx;
+        debug!{"cat_pattern: id=%d pat=%s cmt=%s",
+               pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
+               self.cmt_to_repr(cmt)};
+
         match pat.node {
           ast::pat_wild => {
             // _
@@ -767,7 +769,7 @@ impl &mem_categorization_ctxt {
 
     fn comp_to_repr(comp: comp_kind) -> ~str {
         match comp {
-          comp_field(fld, _) => *fld,
+          comp_field(fld, _) => self.tcx.sess.str_of(fld),
           comp_index(*) => ~"[]",
           comp_tuple => ~"()",
           comp_variant(_) => ~"<enum>"

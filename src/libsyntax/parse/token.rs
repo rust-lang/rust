@@ -277,21 +277,81 @@ pure fn is_bar(t: token) -> bool {
     match t { BINOP(OR) | OROR => true, _ => false }
 }
 
-type ident_interner = util::interner::interner<@~str>;
 
 mod special_idents {
-    const underscore : uint = 0u;
-    const anon : uint = 1u;
-    const destr : uint = 2u; // 'drop', but that's reserved
+    import ast::ident;
+    const underscore : ident = 0u;
+    const anon : ident = 1u;
+    const dtor : ident = 2u; // 'drop', but that's reserved
+    const invalid : ident = 3u; // ''
+    const unary : ident = 4u;
+    const not_fn : ident = 5u;
+    const idx_fn : ident = 6u;
+    const unary_minus_fn : ident = 7u;
+    const clownshoes_extensions : ident = 8u;
+
+    const self_ : ident = 9u; // 'self'
+
+    /* for matcher NTs */
+    const item : ident = 10u;
+    const block : ident = 11u;
+    const stmt : ident = 12u;
+    const pat : ident = 13u;
+    const expr : ident = 14u;
+    const ty : ident = 15u;
+    const ident : ident = 16u;
+    const path : ident = 17u;
+    const tt : ident = 18u;
+    const matchers : ident = 19u;
+
+    const str : ident = 20u; // for the type
+
+    /* outside of libsyntax */
+    const ty_visitor : ident = 21u;
+    const arg : ident = 22u;
+    const descrim : ident = 23u;
+    const clownshoe_abi : ident = 24u;
+    const clownshoe_stack_shim : ident = 25u;
+    const tydesc : ident = 26u;
+    const literally_dtor : ident = 27u;
+    const main : ident = 28u;
+    const opaque : ident = 29u;
+    const blk : ident = 30u;
+    const static : ident = 31u;
+    const intrinsic : ident = 32u;
+
 }
+
+type ident_interner = util::interner::interner<@~str>;
+
+/** Key for thread-local data for sneaking interner information to the
+ * serializer/deserializer. It sounds like a hack because it is one. */
+fn interner_key(+_x: @@ident_interner) { }
 
 fn mk_ident_interner() -> ident_interner {
     /* the indices here must correspond to the numbers in special_idents */
-    let init_vec = ~[@~"_", @~"anon", @~"drop"];
+    let init_vec = ~[@~"_", @~"anon", @~"drop", @~"", @~"unary", @~"!",
+                     @~"[]", @~"unary-", @~"__extensions__", @~"self",
+                     @~"item", @~"block", @~"stmt", @~"pat", @~"expr",
+                     @~"ty", @~"ident", @~"path", @~"tt", @~"matchers",
+                     @~"str", @~"ty_visitor", @~"arg", @~"descrim",
+                     @~"__rust_abi", @~"__rust_stack_shim", @~"tydesc",
+                     @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
+                     @~"intrinsic"];
 
-    let rv = @interner::mk_prefill::<@~str>(|x| str::hash(*x),
-                                            |x,y| str::eq(*x, *y), init_vec);
+    let rv = interner::mk_prefill::<@~str>(|x| str::hash(*x),
+                                           |x,y| str::eq(*x, *y), init_vec);
+
+    /* having multiple interners will just confuse the serializer */
+    unsafe{ assert task::local_data_get(interner_key) == none };
+    unsafe{ task::local_data_set(interner_key, @rv) };
     rv
+}
+
+/* for when we don't care about the contents; doesn't interact with TLD or
+   serialization */
+fn mk_fake_ident_interner() -> ident_interner {
+    interner::mk::<@~str>(|x| str::hash(*x), |x,y| str::eq(*x, *y))
 }
 
 /**

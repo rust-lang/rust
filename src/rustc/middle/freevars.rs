@@ -50,7 +50,7 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
               ast::expr_path(path) => {
                   let mut i = 0;
                   match def_map.find(expr.id) {
-                    none => fail (~"Not found: " + path_to_str(path)),
+                    none => fail ~"path not found",
                     some(df) => {
                       let mut def = df;
                       while i < depth {

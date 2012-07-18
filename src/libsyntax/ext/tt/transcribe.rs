@@ -47,7 +47,7 @@ fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: none, up: tt_frame_up(option::none)},
               interpolations: match interp { /* just a convienience */
-                none => std::map::box_str_hash::<@named_match>(),
+                none => std::map::uint_hash::<@named_match>(),
                 some(x) => x
               },
               mut repeat_idx: ~[mut], mut repeat_len: ~[],
@@ -100,8 +100,8 @@ enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
 }
 
-fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
-    fn lis_merge(lhs: lis, rhs: lis) -> lis {
+fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
+    fn lis_merge(lhs: lis, rhs: lis, r: tt_reader) -> lis {
         match lhs {
           lis_unconstrained => rhs,
           lis_contradiction(_) => lhs,
@@ -110,9 +110,11 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
             lis_contradiction(_) => rhs,
             lis_constraint(r_len, _) if l_len == r_len => lhs,
             lis_constraint(r_len, r_id) => {
+                let l_n = *r.interner.get(l_id);
+                let r_n = *r.interner.get(r_id);
                 lis_contradiction(fmt!{"Inconsistent lockstep iteration: \
                                        '%s' has %u items, but '%s' has %u",
-                                        *l_id, l_len, *r_id, r_len})
+                                        l_n, l_len, r_n, r_len})
             }
           }
         }
@@ -120,7 +122,7 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
     match t {
       tt_delim(tts) | tt_seq(_, tts, _, _) => {
         vec::foldl(lis_unconstrained, tts, {|lis, tt|
-            lis_merge(lis, lockstep_iter_size(tt, r)) })
+            lis_merge(lis, lockstep_iter_size(tt, r), r) })
       }
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
@@ -230,7 +232,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
                     fmt!{"variable '%s' is still repeating at this depth",
-                         *ident});
+                         *r.interner.get(ident)});
               }
             }
           }

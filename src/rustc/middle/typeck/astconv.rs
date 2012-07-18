@@ -309,8 +309,9 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
       }
       ast::ty_path(path, id) => {
         let a_def = match tcx.def_map.find(id) {
-          none => tcx.sess.span_fatal(ast_ty.span, fmt!{"unbound path %s",
-                                                        path_to_str(path)}),
+          none => tcx.sess.span_fatal(
+              ast_ty.span, fmt!{"unbound path %s",
+                                path_to_str(path, tcx.sess.intr())}),
           some(d) => d
         };
         match a_def {

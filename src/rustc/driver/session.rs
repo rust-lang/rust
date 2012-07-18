@@ -204,6 +204,16 @@ impl session {
     fn borrowck_stats() -> bool { self.debugging_opt(borrowck_stats) }
     fn borrowck_note_pure() -> bool { self.debugging_opt(borrowck_note_pure) }
     fn borrowck_note_loan() -> bool { self.debugging_opt(borrowck_note_loan) }
+
+    fn str_of(id: ast::ident) -> ~str {
+        *self.parse_sess.interner.get(id)
+    }
+    fn ident_of(st: ~str) -> ast::ident {
+        self.parse_sess.interner.intern(@st)
+    }
+    fn intr() -> syntax::parse::token::ident_interner {
+        self.parse_sess.interner
+    }
 }
 
 /// Some reasonable defaults
@@ -245,7 +255,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 ~"crate_type") {
-              option::some(@~"lib") => true,
+              option::some(~"lib") => true,
               _ => false
             }
         }
@@ -273,7 +283,7 @@ mod test {
             style: ast::attr_outer,
             value: ast_util::respan(ast_util::dummy_sp(),
                 ast::meta_name_value(
-                    @~"crate_type",
+                    ~"crate_type",
                     ast_util::respan(ast_util::dummy_sp(),
                                      ast::lit_str(@t)))),
             is_sugared_doc: false

@@ -55,8 +55,9 @@ impl reflector {
 
     fn visit(ty_name: ~str, args: ~[ValueRef]) {
         let tcx = self.bcx.tcx();
-        let mth_idx = option::get(ty::method_idx(@(~"visit_" + ty_name),
-                                                 *self.visitor_methods));
+        let mth_idx = option::get(ty::method_idx(
+            tcx.sess.ident_of(~"visit_" + ty_name),
+            *self.visitor_methods));
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
         let get_lval = |bcx| {
@@ -157,7 +158,8 @@ impl reflector {
                 for fields.eachi |i, field| {
                     self.visit(~"rec_field",
                                ~[self.c_uint(i),
-                                 self.c_slice(*field.ident)]
+                                 self.c_slice(
+                                     bcx.ccx().sess.str_of(field.ident))]
                                + self.c_mt(field.mt));
                 }
             }
@@ -233,7 +235,8 @@ impl reflector {
                 for fields.eachi |i, field| {
                     self.visit(~"class_field",
                                ~[self.c_uint(i),
-                                self.c_slice(*field.ident)]
+                                 self.c_slice(
+                                     bcx.ccx().sess.str_of(field.ident))]
                                + self.c_mt(field.mt));
                 }
             }
@@ -256,7 +259,8 @@ impl reflector {
                                       ~[self.c_uint(i),
                                         self.c_int(v.disr_val),
                                         self.c_uint(vec::len(v.args)),
-                                        self.c_slice(*v.name)]) {
+                                        self.c_slice(
+                                            bcx.ccx().sess.str_of(v.name))]) {
                         for v.args.eachi |j, a| {
                             self.visit(~"enum_variant_field",
                                        ~[self.c_uint(j),
@@ -291,10 +295,10 @@ impl reflector {
 fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
                                 visitor_val: ValueRef,
                                 visitor_trait_id: def_id) -> block {
-
+    import syntax::parse::token::special_idents::tydesc;
     let final = sub_block(bcx, ~"final");
-    assert bcx.ccx().tcx.intrinsic_defs.contains_key(@~"tydesc");
-    let (_, tydesc_ty) = bcx.ccx().tcx.intrinsic_defs.get(@~"tydesc");
+    assert bcx.ccx().tcx.intrinsic_defs.contains_key(tydesc);
+    let (_, tydesc_ty) = bcx.ccx().tcx.intrinsic_defs.get(tydesc);
     let tydesc_ty = type_of::type_of(bcx.ccx(), tydesc_ty);
     let r = reflector({
         visitor_val: visitor_val,

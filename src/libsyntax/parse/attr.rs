@@ -66,7 +66,7 @@ impl parser: parser_attr {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.get_str(s), self.span.lo, self.span.hi);
+                        *self.id_to_str(s), self.span.lo, self.span.hi);
                 if attr.node.style != ast::attr_outer {
                   self.fatal(~"expected outer comment");
                 }
@@ -128,7 +128,7 @@ impl parser: parser_attr {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.get_str(s), self.span.lo, self.span.hi);
+                        *self.id_to_str(s), self.span.lo, self.span.hi);
                 self.bump();
                 if attr.node.style == ast::attr_inner {
                   inner_attrs += ~[attr];
@@ -145,22 +145,22 @@ impl parser: parser_attr {
 
     fn parse_meta_item() -> @ast::meta_item {
         let lo = self.span.lo;
-        let ident = self.parse_ident();
+        let name = *self.id_to_str(self.parse_ident());
         match self.token {
           token::EQ => {
             self.bump();
             let lit = self.parse_lit();
             let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_name_value(ident, lit));
+            return @spanned(lo, hi, ast::meta_name_value(name, lit));
           }
           token::LPAREN => {
             let inner_items = self.parse_meta_seq();
             let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_list(ident, inner_items));
+            return @spanned(lo, hi, ast::meta_list(name, inner_items));
           }
           _ => {
             let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_word(ident));
+            return @spanned(lo, hi, ast::meta_word(name));
           }
         }
     }

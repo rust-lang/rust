@@ -57,9 +57,10 @@ import dvec::{DVec, dvec};
 import option::{get, is_some};
 import str::{connect, split_str};
 import vec::pop;
+import syntax::parse::token::ident_interner;
 
 import std::list::{cons, list, nil};
-import std::map::{hashmap, int_hash, box_str_hash};
+import std::map::{hashmap, int_hash, uint_hash};
 import str_eq = str::eq;
 
 // Definition mapping
@@ -248,63 +249,6 @@ type Atom = uint;
 
 fn Atom(n: uint) -> Atom {
     return n;
-}
-
-struct AtomTable {
-    let atoms: hashmap<@~str,Atom>;
-    let strings: DVec<@~str>;
-    let mut atom_count: uint;
-
-    new() {
-        self.atoms = hashmap::<@~str,Atom>(|x| str::hash(*x),
-                                          |x, y| str::eq(*x, *y));
-        self.strings = dvec();
-        self.atom_count = 0u;
-    }
-
-    fn intern(string: @~str) -> Atom {
-        match self.atoms.find(string) {
-            none => { /* fall through */ }
-            some(atom) => return atom
-        }
-
-        let atom = Atom(self.atom_count);
-        self.atom_count += 1u;
-        self.atoms.insert(string, atom);
-        self.strings.push(string);
-
-        return atom;
-    }
-
-    fn atom_to_str(atom: Atom) -> @~str {
-        return self.strings.get_elt(atom);
-    }
-
-    fn atoms_to_strs(atoms: ~[Atom], f: fn(@~str) -> bool) {
-        for atoms.each |atom| {
-            if !f(self.atom_to_str(atom)) {
-                return;
-            }
-        }
-    }
-
-    fn atoms_to_str(atoms: ~[Atom]) -> @~str {
-        // XXX: str::connect should do this.
-        let mut result = ~"";
-        let mut first = true;
-        for self.atoms_to_strs(atoms) |string| {
-            if first {
-                first = false;
-            } else {
-                result += ~"::";
-            }
-
-            result += *string;
-        }
-
-        // XXX: Shouldn't copy here. We need string builder functionality.
-        return @result;
-    }
 }
 
 /// Creates a hash table of atoms.
@@ -601,30 +545,30 @@ struct NameBindings {
 struct PrimitiveTypeTable {
     let primitive_types: hashmap<Atom,prim_ty>;
 
-    new(atom_table: @AtomTable) {
+    new(intr: ident_interner) {
         self.primitive_types = atom_hashmap();
 
-        self.intern(atom_table, @~"bool",    ty_bool);
-        self.intern(atom_table, @~"char",    ty_int(ty_char));
-        self.intern(atom_table, @~"float",   ty_float(ty_f));
-        self.intern(atom_table, @~"f32",     ty_float(ty_f32));
-        self.intern(atom_table, @~"f64",     ty_float(ty_f64));
-        self.intern(atom_table, @~"int",     ty_int(ty_i));
-        self.intern(atom_table, @~"i8",      ty_int(ty_i8));
-        self.intern(atom_table, @~"i16",     ty_int(ty_i16));
-        self.intern(atom_table, @~"i32",     ty_int(ty_i32));
-        self.intern(atom_table, @~"i64",     ty_int(ty_i64));
-        self.intern(atom_table, @~"str",     ty_str);
-        self.intern(atom_table, @~"uint",    ty_uint(ty_u));
-        self.intern(atom_table, @~"u8",      ty_uint(ty_u8));
-        self.intern(atom_table, @~"u16",     ty_uint(ty_u16));
-        self.intern(atom_table, @~"u32",     ty_uint(ty_u32));
-        self.intern(atom_table, @~"u64",     ty_uint(ty_u64));
+        self.intern(intr, @~"bool",    ty_bool);
+        self.intern(intr, @~"char",    ty_int(ty_char));
+        self.intern(intr, @~"float",   ty_float(ty_f));
+        self.intern(intr, @~"f32",     ty_float(ty_f32));
+        self.intern(intr, @~"f64",     ty_float(ty_f64));
+        self.intern(intr, @~"int",     ty_int(ty_i));
+        self.intern(intr, @~"i8",      ty_int(ty_i8));
+        self.intern(intr, @~"i16",     ty_int(ty_i16));
+        self.intern(intr, @~"i32",     ty_int(ty_i32));
+        self.intern(intr, @~"i64",     ty_int(ty_i64));
+        self.intern(intr, @~"str",     ty_str);
+        self.intern(intr, @~"uint",    ty_uint(ty_u));
+        self.intern(intr, @~"u8",      ty_uint(ty_u8));
+        self.intern(intr, @~"u16",     ty_uint(ty_u16));
+        self.intern(intr, @~"u32",     ty_uint(ty_u32));
+        self.intern(intr, @~"u64",     ty_uint(ty_u64));
     }
 
-    fn intern(atom_table: @AtomTable, string: @~str,
+    fn intern(intr: ident_interner, string: @~str,
               primitive_type: prim_ty) {
-        let atom = (*atom_table).intern(string);
+        let atom = intr.intern(string);
         self.primitive_types.insert(atom, primitive_type);
     }
 }
@@ -643,7 +587,7 @@ struct Resolver {
     let lang_items: LanguageItems;
     let crate: @crate;
 
-    let atom_table: @AtomTable;
+    let intr: ident_interner;
 
     let graph_root: @NameBindings;
 
@@ -694,8 +638,6 @@ struct Resolver {
         self.lang_items = copy lang_items;
         self.crate = crate;
 
-        self.atom_table = @AtomTable();
-
         // The outermost module has def ID 0; this is not reflected in the
         // AST.
 
@@ -719,8 +661,9 @@ struct Resolver {
         self.xray_context = NoXray;
         self.current_trait_refs = none;
 
-        self.self_atom = (*self.atom_table).intern(@~"self");
-        self.primitive_type_table = @PrimitiveTypeTable(self.atom_table);
+        self.self_atom = syntax::parse::token::special_idents::self_;
+        self.primitive_type_table = @PrimitiveTypeTable(self.session.
+                                                        parse_sess.interner);
 
         self.namespaces = ~[ ModuleNS, TypeNS, ValueNS ];
 
@@ -728,6 +671,8 @@ struct Resolver {
         self.export_map = int_hash();
         self.export_map2 = int_hash();
         self.trait_map = @int_hash();
+
+        self.intr = session.intr();
     }
 
     /// The main name resolution procedure.
@@ -844,12 +789,12 @@ struct Resolver {
                   self.session.span_err(sp,
                        #fmt("Duplicate definition of %s %s",
                             namespace_to_str(ns),
-                            *(*self.atom_table).atom_to_str(name)));
+                            self.session.str_of(name)));
                   do child.span_for_namespace(ns).iter() |sp| {
                       self.session.span_note(sp,
                            #fmt("First definition of %s %s here:",
-                            namespace_to_str(ns),
-                            *(*self.atom_table).atom_to_str(name)));
+                                namespace_to_str(ns),
+                                self.session.str_of(name)));
                   }
                 }
                 _ => {}
@@ -903,7 +848,7 @@ struct Resolver {
                                     parent: ReducedGraphParent,
                                     &&visitor: vt<ReducedGraphParent>) {
 
-        let atom = (*self.atom_table).intern(item.ident);
+        let atom = item.ident;
         let sp = item.span;
 
         match item.node {
@@ -1037,7 +982,7 @@ struct Resolver {
                 for methods.each |method| {
                     let ty_m = trait_method_to_ty_method(method);
 
-                    let atom = (*self.atom_table).intern(ty_m.ident);
+                    let atom = ty_m.ident;
                     // Add it to the trait info if not static,
                     // add it as a name in the enclosing module otherwise.
                     match ty_m.self_ty.node {
@@ -1080,7 +1025,7 @@ struct Resolver {
                                        parent: ReducedGraphParent,
                                        &&visitor: vt<ReducedGraphParent>) {
 
-        let atom = (*self.atom_table).intern(variant.node.name);
+        let atom = variant.node.name;
         let (child, _) = self.add_child(atom, parent, ~[ValueNS],
                                         variant.span);
 
@@ -1132,9 +1077,7 @@ struct Resolver {
 
                             for full_path.idents.eachi |i, ident| {
                                 if i != path_len - 1u {
-                                    let atom =
-                                        (*self.atom_table).intern(ident);
-                                    (*module_path).push(atom);
+                                    (*module_path).push(ident);
                                 }
                             }
                         }
@@ -1142,8 +1085,7 @@ struct Resolver {
                         view_path_glob(module_ident_path, _) |
                         view_path_list(module_ident_path, _, _) => {
                             for module_ident_path.idents.each |ident| {
-                                let atom = (*self.atom_table).intern(ident);
-                                (*module_path).push(atom);
+                                (*module_path).push(ident);
                             }
                         }
                     }
@@ -1152,13 +1094,9 @@ struct Resolver {
                     let module_ = self.get_module_from_parent(parent);
                     match view_path.node {
                         view_path_simple(binding, full_path, _) => {
-                            let target_atom =
-                                (*self.atom_table).intern(binding);
                             let source_ident = full_path.idents.last();
-                            let source_atom =
-                                (*self.atom_table).intern(source_ident);
-                            let subclass = @SingleImport(target_atom,
-                                                         source_atom);
+                            let subclass = @SingleImport(binding,
+                                                         source_ident);
                             self.build_import_directive(module_,
                                                         module_path,
                                                         subclass,
@@ -1167,8 +1105,7 @@ struct Resolver {
                         view_path_list(_, source_idents, _) => {
                             for source_idents.each |source_ident| {
                                 let name = source_ident.node.name;
-                                let atom = (*self.atom_table).intern(name);
-                                let subclass = @SingleImport(atom, atom);
+                                let subclass = @SingleImport(name, name);
                                 self.build_import_directive(module_,
                                                             module_path,
                                                             subclass,
@@ -1204,8 +1141,7 @@ struct Resolver {
                                       module");
                             }
 
-                            let atom = (*self.atom_table).intern(ident);
-                            module_.exported_names.insert(atom, ident_id);
+                            module_.exported_names.insert(ident, ident_id);
                         }
 
                         view_path_glob(*) => {
@@ -1234,8 +1170,7 @@ struct Resolver {
                                 }
 
                                 for path_list_idents.each |path_list_ident| {
-                                    let atom = (*self.atom_table).intern
-                                        (path_list_ident.node.name);
+                                    let atom = path_list_ident.node.name;
                                     let id = path_list_ident.node.id;
                                     module_.exported_names.insert(atom, id);
                                 }
@@ -1248,15 +1183,14 @@ struct Resolver {
             view_item_use(name, _, node_id) => {
                 match find_use_stmt_cnum(self.session.cstore, node_id) {
                     some(crate_id) => {
-                        let atom = (*self.atom_table).intern(name);
                         let (child_name_bindings, new_parent) =
                             // should this be in ModuleNS? --tjc
-                            self.add_child(atom, parent, ~[ModuleNS],
+                            self.add_child(name, parent, ~[ModuleNS],
                                            view_item.span);
 
                         let def_id = { crate: crate_id, node: 0 };
                         let parent_link = ModuleParentLink
-                            (self.get_module_from_parent(new_parent), atom);
+                            (self.get_module_from_parent(new_parent), name);
 
                         (*child_name_bindings).define_module(parent_link,
                                                              some(def_id),
@@ -1278,7 +1212,7 @@ struct Resolver {
                                             &&visitor:
                                                 vt<ReducedGraphParent>) {
 
-        let name = (*self.atom_table).intern(foreign_item.ident);
+        let name = foreign_item.ident;
 
         match foreign_item.node {
             foreign_item_fn(fn_decl, type_parameters) => {
@@ -1398,7 +1332,7 @@ struct Resolver {
             // to the trait info.
 
             match get_method_names_if_trait(self.session.cstore,
-                                          def_id) {
+                                            def_id) {
               none => {
                 // Nothing to do.
               }
@@ -1408,13 +1342,12 @@ struct Resolver {
                     let (method_name, self_ty) = method_data;
                     debug!("(building reduced graph for \
                             external crate) ... adding \
-                            trait method '%?'", method_name);
-
-                    let m_atom = self.atom_table.intern(method_name);
+                            trait method '%s'",
+                           self.session.str_of(method_name));
 
                     // Add it to the trait info if not static.
                     if self_ty != sty_static {
-                        interned_method_names.insert(m_atom, ());
+                        interned_method_names.insert(method_name, ());
                     }
                 }
                 self.trait_info.insert(def_id, interned_method_names);
@@ -1456,23 +1389,24 @@ struct Resolver {
         for each_path(self.session.cstore, get(root.def_id).crate)
                 |path_entry| {
 
-            debug!{"(building reduced graph for external crate) found path \
-                    entry: %s (%?)",
-                   path_entry.path_string,
-                   path_entry.def_like};
+            debug!("(building reduced graph for external crate) found path \
+                        entry: %s (%?)",
+                    path_entry.path_string,
+                    path_entry.def_like);
 
             let mut pieces = split_str(path_entry.path_string, ~"::");
-            let final_ident = pop(pieces);
+            let final_ident_str = pop(pieces);
+            let final_ident = self.session.ident_of(final_ident_str);
 
             // Find the module we need, creating modules along the way if we
             // need to.
 
             let mut current_module = root;
-            for pieces.each |ident| {
+            for pieces.each |ident_str| {
+                let ident = self.session.ident_of(ident_str);
                 // Create or reuse a graph node for the child.
-                let atom = (*self.atom_table).intern(@copy ident);
                 let (child_name_bindings, new_parent) =
-                    self.add_child(atom,
+                    self.add_child(ident,
                                    ModuleReducedGraphParent(current_module),
                                    // May want a better span
                                    ~[], dummy_sp());
@@ -1481,9 +1415,9 @@ struct Resolver {
                 match child_name_bindings.module_def {
                     NoModuleDef => {
                         debug!{"(building reduced graph for external crate) \
-                                autovivifying %s", ident};
+                                autovivifying %s", ident_str};
                         let parent_link = self.get_parent_link(new_parent,
-                                                               atom);
+                                                               ident);
                         (*child_name_bindings).define_module(parent_link,
                                                        none, dummy_sp());
                     }
@@ -1494,9 +1428,8 @@ struct Resolver {
             }
 
             // Add the new child item.
-            let atom = (*self.atom_table).intern(@copy final_ident);
             let (child_name_bindings, new_parent) =
-                self.add_child(atom,
+                self.add_child(final_ident,
                                ModuleReducedGraphParent(current_module),
                               ~[], dummy_sp());
 
@@ -1504,7 +1437,8 @@ struct Resolver {
                 dl_def(def) => {
                     self.handle_external_def(def, modules,
                                              child_name_bindings,
-                                             final_ident, atom, new_parent);
+                                             self.session.str_of(final_ident),
+                                             final_ident, new_parent);
                 }
                 dl_impl(_) => {
                     // Because of the infelicitous way the metadata is
@@ -1512,11 +1446,11 @@ struct Resolver {
                     // later.
 
                     debug!{"(building reduced graph for external crate) \
-                            ignoring impl %s", final_ident};
+                            ignoring impl %s", final_ident_str};
                 }
                 dl_field => {
                     debug!{"(building reduced graph for external crate) \
-                            ignoring field %s", final_ident};
+                            ignoring field %s", final_ident_str};
                 }
             }
         }
@@ -1653,6 +1587,21 @@ struct Resolver {
         }
     }
 
+    fn atoms_to_str(atoms: ~[Atom]) -> ~str {
+        // XXX: str::connect should do this.
+        let mut result = ~"";
+        let mut first = true;
+        for atoms.each() |atom| {
+            if first {
+                first = false;
+            } else {
+                result += ~"::";
+            }
+            result += self.session.str_of(atom);
+        }
+        // XXX: Shouldn't copy here. We need string builder functionality.
+        return result;
+    }
     /**
      * Attempts to resolve the given import. The return value indicates
      * failure if we're certain the name does not exist, indeterminate if we
@@ -1669,7 +1618,7 @@ struct Resolver {
 
         debug!{"(resolving import for module) resolving import `%s::...` in \
                 `%s`",
-               *(*self.atom_table).atoms_to_str((*module_path).get()),
+               self.atoms_to_str((*module_path).get()),
                self.module_to_str(module_)};
 
         // One-level renaming imports of the form `import foo = bar;` are
@@ -1753,14 +1702,14 @@ struct Resolver {
 
         debug!{"(resolving single import) resolving `%s` = `%s::%s` from \
                 `%s`",
-               *(*self.atom_table).atom_to_str(target),
+               self.session.str_of(target),
                self.module_to_str(containing_module),
-               *(*self.atom_table).atom_to_str(source),
+               self.session.str_of(source),
                self.module_to_str(module_)};
 
         if !self.name_is_exported(containing_module, source) {
             debug!{"(resolving single import) name `%s` is unexported",
-                   *(*self.atom_table).atom_to_str(source)};
+                   self.session.str_of(source)};
             return Failed;
         }
 
@@ -1966,7 +1915,7 @@ struct Resolver {
 
             if !self.name_is_exported(containing_module, atom) {
                 debug!{"(resolving glob import) name `%s` is unexported",
-                       *(*self.atom_table).atom_to_str(atom)};
+                       self.session.str_of(atom)};
                 again;
             }
 
@@ -2030,7 +1979,7 @@ struct Resolver {
         for containing_module.children.each |atom, name_bindings| {
             if !self.name_is_exported(containing_module, atom) {
                 debug!{"(resolving glob import) name `%s` is unexported",
-                       *(*self.atom_table).atom_to_str(atom)};
+                       self.session.str_of(atom)};
                 again;
             }
 
@@ -2050,7 +1999,7 @@ struct Resolver {
 
             debug!{"(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`",
-                   *(*self.atom_table).atom_to_str(atom),
+                   self.session.str_of(atom),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_)};
 
@@ -2103,7 +2052,7 @@ struct Resolver {
                 Indeterminate => {
                     debug!{"(resolving module path for import) module \
                             resolution is indeterminate: %s",
-                            *(*self.atom_table).atom_to_str(name)};
+                            self.session.str_of(name)};
                     return Indeterminate;
                 }
                 Success(target) => {
@@ -2112,8 +2061,8 @@ struct Resolver {
                             // Not a module.
                             self.session.span_err(span,
                                                   fmt!{"not a module: %s",
-                                                       *(*self.atom_table).
-                                                         atom_to_str(name)});
+                                                       self.session.
+                                                           str_of(name)});
                             return Failed;
                         }
                         ModuleDef(module_) => {
@@ -2144,7 +2093,7 @@ struct Resolver {
 
         debug!{"(resolving module path for import) processing `%s` rooted at \
                `%s`",
-               *(*self.atom_table).atoms_to_str((*module_path).get()),
+               self.atoms_to_str((*module_path).get()),
                self.module_to_str(module_)};
 
         // The first element of the module path must be in the current scope
@@ -2181,7 +2130,7 @@ struct Resolver {
 
         debug!{"(resolving item in lexical scope) resolving `%s` in \
                 namespace %? in `%s`",
-               *(*self.atom_table).atom_to_str(name),
+               self.session.str_of(name),
                namespace,
                self.module_to_str(module_)};
 
@@ -2307,12 +2256,12 @@ struct Resolver {
                            -> ResolveResult<Target> {
 
         debug!{"(resolving name in module) resolving `%s` in `%s`",
-               *(*self.atom_table).atom_to_str(name),
+               self.session.str_of(name),
                self.module_to_str(module_)};
 
         if xray == NoXray && !self.name_is_exported(module_, name) {
             debug!{"(resolving name in module) name `%s` is unexported",
-                   *(*self.atom_table).atom_to_str(name)};
+                   self.session.str_of(name)};
             return Failed;
         }
 
@@ -2367,7 +2316,7 @@ struct Resolver {
 
         // We're out of luck.
         debug!{"(resolving name in module) failed to resolve %s",
-               *(*self.atom_table).atom_to_str(name)};
+               self.session.str_of(name)};
         return Failed;
     }
 
@@ -2394,8 +2343,8 @@ struct Resolver {
 
         debug!{"(resolving one-level naming result) resolving import `%s` = \
                 `%s` in `%s`",
-                *(*self.atom_table).atom_to_str(target_name),
-                *(*self.atom_table).atom_to_str(source_name),
+                self.session.str_of(target_name),
+                self.session.str_of(source_name),
                 self.module_to_str(module_)};
 
         // Find the matching items in the lexical scope chain for every
@@ -2509,7 +2458,7 @@ struct Resolver {
                 debug!{"(resolving one-level renaming import) writing module \
                         result %? for `%s` into `%s`",
                        is_none(module_result),
-                       *(*self.atom_table).atom_to_str(target_name),
+                       self.session.str_of(target_name),
                        self.module_to_str(module_)};
 
                 import_resolution.module_target = module_result;
@@ -2617,7 +2566,7 @@ struct Resolver {
                     ChildNameDefinition(target_def) => {
                         debug!("(computing exports) found child export '%s' \
                                 for %?",
-                               *self.atom_table.atom_to_str(name),
+                               self.session.str_of(name),
                                module_.def_id);
                         vec::push(exports, {
                             reexp: false,
@@ -2625,14 +2574,14 @@ struct Resolver {
                         });
                         vec::push(exports2, Export2 {
                             reexport: false,
-                            name: copy *self.atom_table.atom_to_str(name),
+                            name: self.session.str_of(name),
                             def_id: def_id_of_def(target_def)
                         });
                     }
                     ImportNameDefinition(target_def) => {
                         debug!("(computing exports) found reexport '%s' for \
                                 %?",
-                               *self.atom_table.atom_to_str(name),
+                               self.session.str_of(name),
                                module_.def_id);
                         vec::push(exports, {
                             reexp: true,
@@ -2640,7 +2589,7 @@ struct Resolver {
                         });
                         vec::push(exports2, Export2 {
                             reexport: true,
-                            name: copy *self.atom_table.atom_to_str(name),
+                            name: self.session.str_of(name),
                             def_id: def_id_of_def(target_def)
                         });
                     }
@@ -2690,7 +2639,7 @@ struct Resolver {
                 match orig_module.children.find(name) {
                     none => {
                         debug!{"!!! (with scope) didn't find `%s` in `%s`",
-                               *(*self.atom_table).atom_to_str(name),
+                               self.session.str_of(name),
                                self.module_to_str(orig_module)};
                     }
                     some(name_bindings) => {
@@ -2698,7 +2647,7 @@ struct Resolver {
                             none => {
                                 debug!{"!!! (with scope) didn't find module \
                                         for `%s` in `%s`",
-                                       *(*self.atom_table).atom_to_str(name),
+                                       self.session.str_of(name),
                                        self.module_to_str(orig_module)};
                             }
                             some(module_) => {
@@ -2867,7 +2816,8 @@ struct Resolver {
     }
 
     fn resolve_item(item: @item, visitor: ResolveVisitor) {
-        debug!{"(resolving item) resolving %s", *item.ident};
+        debug!{"(resolving item) resolving %s",
+               self.session.str_of(item.ident)};
 
         // Items with the !resolve_unexported attribute are X-ray contexts.
         // This is used to allow the test runner to run unexported tests.
@@ -2984,16 +2934,14 @@ struct Resolver {
             }
 
             item_mod(module_) => {
-                let atom = (*self.atom_table).intern(item.ident);
-                do self.with_scope(some(atom)) {
+                do self.with_scope(some(item.ident)) {
                     self.resolve_module(module_, item.span, item.ident,
                                         item.id, visitor);
                 }
             }
 
             item_foreign_mod(foreign_module) => {
-                let atom = (*self.atom_table).intern(item.ident);
-                do self.with_scope(some(atom)) {
+                do self.with_scope(some(item.ident)) {
                     for foreign_module.items.each |foreign_item| {
                         match foreign_item.node {
                             foreign_item_fn(_, type_parameters) => {
@@ -3021,8 +2969,8 @@ struct Resolver {
                 // of conditionals.
 
                 if !self.session.building_library &&
-                        is_none(self.session.main_fn) &&
-                        *item.ident == ~"main" {
+                    is_none(self.session.main_fn) &&
+                    item.ident == syntax::parse::token::special_idents::main {
 
                     self.session.main_fn = some((item.id, item.span));
                 }
@@ -3061,8 +3009,7 @@ struct Resolver {
                 (*self.type_ribs).push(function_type_rib);
 
                 for (*type_parameters).eachi |index, type_parameter| {
-                    let name =
-                        (*self.atom_table).intern(type_parameter.ident);
+                    let name = type_parameter.ident;
                     debug!{"with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id};
                     let def_like = dl_def(def_ty_param
@@ -3172,7 +3119,7 @@ struct Resolver {
                 }
                 some(declaration) => {
                     for declaration.inputs.each |argument| {
-                        let name = (*self.atom_table).intern(argument.ident);
+                        let name = argument.ident;
                         let def_like = dl_def(def_arg(argument.id,
                                                       argument.mode));
                         (*function_value_rib).bindings.insert(name, def_like);
@@ -3180,7 +3127,7 @@ struct Resolver {
                         self.resolve_type(argument.ty, visitor);
 
                         debug!{"(resolving function) recorded argument `%s`",
-                               *(*self.atom_table).atom_to_str(name)};
+                               self.session.str_of(name)};
                     }
 
                     self.resolve_type(declaration.output, visitor);
@@ -3443,7 +3390,7 @@ struct Resolver {
     }
 
     fn binding_mode_map(pat: @pat) -> BindingMap {
-        let result = box_str_hash();
+        let result = uint_hash();
         do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
             let ident = path_to_ident(path);
             result.insert(ident,
@@ -3466,7 +3413,7 @@ struct Resolver {
                         p.span,
                         fmt!{"variable `%s` from pattern #1 is \
                                   not bound in pattern #%u",
-                             *key, i + 1});
+                             self.session.str_of(key), i + 1});
                   }
                   some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
@@ -3474,7 +3421,7 @@ struct Resolver {
                             binding_i.span,
                             fmt!{"variable `%s` is bound with different \
                                       mode in pattern #%u than in pattern #1",
-                                 *key, i + 1});
+                                 self.session.str_of(key), i + 1});
                     }
                   }
                 }
@@ -3486,7 +3433,7 @@ struct Resolver {
                         binding.span,
                         fmt!{"variable `%s` from pattern #%u is \
                                   not bound in pattern #1",
-                             *key, i + 1});
+                             self.session.str_of(key), i + 1});
                 }
             }
         }
@@ -3549,7 +3496,7 @@ struct Resolver {
                 match self.resolve_path(path, TypeNS, true, visitor) {
                     some(def) => {
                         debug!{"(resolving type) resolved `%s` to type",
-                               *path.idents.last()};
+                               self.session.str_of(path.idents.last())};
                         result_def = some(def);
                     }
                     none => {
@@ -3564,8 +3511,7 @@ struct Resolver {
                     none => {
                         // Check to see whether the name is a primitive type.
                         if path.idents.len() == 1u {
-                            let name =
-                                (*self.atom_table).intern(path.idents.last());
+                            let name = path.idents.last();
 
                             match self.primitive_type_table
                                     .primitive_types
@@ -3588,14 +3534,16 @@ struct Resolver {
                         // Write the result into the def map.
                         debug!{"(resolving type) writing resolution for `%s` \
                                 (id %d)",
-                               connect(path.idents.map(|x| *x), ~"::"),
+                               connect(path.idents.map(
+                                   |x| self.session.str_of(x)), ~"::"),
                                path_id};
                         self.record_def(path_id, def);
                     }
                     none => {
                         self.session.span_err
                             (ty.span, fmt!{"use of undeclared type name `%s`",
-                                           connect(path.idents.map(|x| *x),
+                                           connect(path.idents.map(
+                                               |x| self.session.str_of(x)),
                                                    ~"::")});
                     }
                 }
@@ -3630,13 +3578,13 @@ struct Resolver {
                     // matching such a variant is simply disallowed (since
                     // it's rarely what you want).
 
-                    let atom = (*self.atom_table).intern(path.idents[0]);
+                    let atom = path.idents[0];
 
                     match self.resolve_enum_variant_or_const(atom) {
                         FoundEnumVariant(def) if mode == RefutableMode => {
                             debug!{"(resolving pattern) resolving `%s` to \
                                     enum variant",
-                                   *path.idents[0]};
+                                    self.session.str_of(atom)};
 
                             self.record_def(pattern.id, def);
                         }
@@ -3645,9 +3593,8 @@ struct Resolver {
                                                   fmt!{"declaration of `%s` \
                                                         shadows an enum \
                                                         that's in scope",
-                                                       *(*self.atom_table).
-                                                            atom_to_str
-                                                            (atom)});
+                                                        self.session
+                                                        .str_of(atom)});
                         }
                         FoundConst => {
                             self.session.span_err(pattern.span,
@@ -3657,7 +3604,7 @@ struct Resolver {
                         }
                         EnumVariantOrConstNotFound => {
                             debug!{"(resolving pattern) binding `%s`",
-                                   *path.idents[0]};
+                                   self.session.str_of(atom)};
 
                             let is_mutable = mutability == Mutable;
 
@@ -3702,7 +3649,8 @@ struct Resolver {
                                      self.session.span_err(pattern.span,
                                        fmt!{"Identifier %s is bound more \
                                              than once in the same pattern",
-                                            path_to_str(path)});
+                                            path_to_str(path, self.session
+                                                        .intr())});
                                   }
                                   // Not bound in the same pattern: do nothing
                                 }
@@ -3728,10 +3676,11 @@ struct Resolver {
                             self.record_def(pattern.id, def);
                         }
                         some(_) => {
-                            self.session.span_err(path.span,
-                                                  fmt!{"not an enum \
-                                                        variant: %s",
-                                                       *path.idents.last()});
+                            self.session.span_err(
+                                path.span,
+                                fmt!{"not an enum variant: %s",
+                                     self.session.str_of(
+                                         path.idents.last())});
                         }
                         none => {
                             self.session.span_err(path.span,
@@ -3768,12 +3717,12 @@ struct Resolver {
                             self.record_def(pattern.id, definition);
                         }
                         _ => {
-                            self.session.span_err(path.span,
-                                                  fmt!("`%s` does not name a \
-                                                        structure",
-                                                       connect(path.idents.map
-                                                               (|x| *x),
-                                                               ~"::")));
+                            self.session.span_err(
+                                path.span,
+                                fmt!("`%s` does not name a structure",
+                                     connect(path.idents.map(
+                                         |x| self.session.str_of(x)),
+                                             ~"::")));
                         }
                     }
                 }
@@ -3888,7 +3837,7 @@ struct Resolver {
         if xray == NoXray && !self.name_is_exported(containing_module, name) {
             debug!{"(resolving definition of name in module) name `%s` is \
                     unexported",
-                   *(*self.atom_table).atom_to_str(name)};
+                   self.session.str_of(name)};
             return NoNameDefinition;
         }
 
@@ -3948,7 +3897,7 @@ struct Resolver {
                 break;
             }
 
-            (*module_path_atoms).push((*self.atom_table).intern(ident));
+            (*module_path_atoms).push(ident);
         }
 
         return module_path_atoms;
@@ -3970,8 +3919,8 @@ struct Resolver {
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!{"use of undeclared module `%s`",
-                                            *(*self.atom_table).atoms_to_str
-                                              ((*module_path_atoms).get())});
+                                           self.atoms_to_str(
+                                               (*module_path_atoms).get())});
                 return none;
             }
 
@@ -3984,19 +3933,18 @@ struct Resolver {
             }
         }
 
-        let name = (*self.atom_table).intern(path.idents.last());
+        let name = path.idents.last();
         match self.resolve_definition_of_name_in_module(containing_module,
-                                                      name,
-                                                      namespace,
-                                                      xray) {
+                                                        name,
+                                                        namespace,
+                                                        xray) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
-                self.session.span_err(path.span,
-                                      fmt!{"unresolved name: %s::%s",
-                                           *(*self.atom_table).atoms_to_str
-                                               ((*module_path_atoms).get()),
-                                           *(*self.atom_table).atom_to_str
-                                               (name)});
+                self.session.span_err(
+                    path.span,
+                    fmt!{"unresolved name: %s::%s",
+                         self.atoms_to_str((*module_path_atoms).get()),
+                         self.session.str_of(name)});
                 return none;
             }
             ChildNameDefinition(def) | ImportNameDefinition(def) => {
@@ -4024,7 +3972,7 @@ struct Resolver {
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!{"use of undeclared module `::%s`",
-                                            *(*self.atom_table).atoms_to_str
+                                            self.atoms_to_str
                                               ((*module_path_atoms).get())});
                 return none;
             }
@@ -4038,19 +3986,18 @@ struct Resolver {
             }
         }
 
-        let name = (*self.atom_table).intern(path.idents.last());
+        let name = path.idents.last();
         match self.resolve_definition_of_name_in_module(containing_module,
                                                       name,
                                                       namespace,
                                                       xray) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
-                self.session.span_err(path.span,
-                                      fmt!{"unresolved name: %s::%s",
-                                           *(*self.atom_table).atoms_to_str
-                                               ((*module_path_atoms).get()),
-                                           *(*self.atom_table).atom_to_str
-                                               (name)});
+                self.session.span_err(
+                    path.span,
+                    fmt!{"unresolved name: %s::%s", self.atoms_to_str(
+                        (*module_path_atoms).get()),
+                         self.session.str_of(name)});
                 return none;
             }
             ChildNameDefinition(def) | ImportNameDefinition(def) => {
@@ -4059,22 +4006,19 @@ struct Resolver {
         }
     }
 
-    fn resolve_identifier_in_local_ribs(identifier: ident,
+    fn resolve_identifier_in_local_ribs(ident: ident,
                                         namespace: Namespace,
                                         span: span)
                                      -> option<def> {
-
-        let name = (*self.atom_table).intern(identifier);
-
         // Check the local set of ribs.
         let mut search_result;
         match namespace {
             ValueNS => {
-                search_result = self.search_ribs(self.value_ribs, name, span,
+                search_result = self.search_ribs(self.value_ribs, ident, span,
                                                  DontAllowCapturingSelf);
             }
             TypeNS => {
-                search_result = self.search_ribs(self.type_ribs, name, span,
+                search_result = self.search_ribs(self.type_ribs, ident, span,
                                                  AllowCapturingSelf);
             }
             ModuleNS => {
@@ -4086,7 +4030,7 @@ struct Resolver {
             some(dl_def(def)) => {
                 debug!{"(resolving path in local ribs) resolved `%s` to \
                         local: %?",
-                       *(*self.atom_table).atom_to_str(name),
+                       self.session.str_of(ident),
                        def};
                 return some(def);
             }
@@ -4100,11 +4044,9 @@ struct Resolver {
                                                    namespace: Namespace)
                                                 -> option<def> {
 
-        let name = (*self.atom_table).intern(ident);
-
         // Check the items.
         match self.resolve_item_in_lexical_scope(self.current_module,
-                                               name,
+                                               ident,
                                                namespace) {
 
             Success(target) => {
@@ -4116,7 +4058,7 @@ struct Resolver {
                     some(def) => {
                         debug!{"(resolving item path in lexical scope) \
                                 resolved `%s` to item",
-                               *(*self.atom_table).atom_to_str(name)};
+                               self.session.str_of(ident)};
                         return some(def.def);
                     }
                 }
@@ -4149,14 +4091,17 @@ struct Resolver {
                     some(def) => {
                         // Write the result into the def map.
                         debug!{"(resolving expr) resolved `%s`",
-                               connect(path.idents.map(|x| *x), ~"::")};
+                               connect(path.idents.map(
+                                   |x| self.session.str_of(x)), ~"::")};
                         self.record_def(expr.id, def);
                     }
                     none => {
-                        self.session.span_err(expr.span,
-                                              fmt!{"unresolved name: %s",
-                                              connect(path.idents.map(|x| *x),
-                                                      ~"::")});
+                        self.session.span_err(
+                            expr.span,
+                            fmt!{"unresolved name: %s",
+                                 connect(path.idents.map(
+                                     |x| self.session.str_of(x)),
+                                         ~"::")});
                     }
                 }
 
@@ -4202,12 +4147,12 @@ struct Resolver {
                         self.record_def(expr.id, definition);
                     }
                     _ => {
-                        self.session.span_err(path.span,
-                                              fmt!{"`%s` does not name a \
-                                                    structure",
-                                                   connect(path.idents.map
-                                                           (|x| *x),
-                                                           ~"::")});
+                        self.session.span_err(
+                            path.span,
+                            fmt!{"`%s` does not name a structure",
+                                 connect(path.idents.map(
+                                     |x| self.session.str_of(x)),
+                                         ~"::")});
                     }
                 }
 
@@ -4216,22 +4161,21 @@ struct Resolver {
 
             expr_loop(_, some(label)) => {
                 do self.with_label_rib {
-                    let atom = self.atom_table.intern(label);
                     let def_like = dl_def(def_label(expr.id));
-                    self.label_ribs.last().bindings.insert(atom, def_like);
+                    self.label_ribs.last().bindings.insert(label, def_like);
 
                     visit_expr(expr, (), visitor);
                 }
             }
 
             expr_break(some(label)) | expr_again(some(label)) => {
-                let atom = self.atom_table.intern(label);
-                match self.search_ribs(self.label_ribs, atom, expr.span,
+                match self.search_ribs(self.label_ribs, label, expr.span,
                                        DontAllowCapturingSelf) {
                     none =>
                         self.session.span_err(expr.span,
                                               fmt!("use of undeclared label \
-                                                   `%s`", *label)),
+                                                   `%s`", self.session.str_of(
+                                                  label))),
                     some(dl_def(def @ def_label(id))) =>
                         self.record_def(expr.id, def),
                     some(_) =>
@@ -4250,8 +4194,7 @@ struct Resolver {
     fn record_candidate_traits_for_expr_if_necessary(expr: @expr) {
         match expr.node {
             expr_field(_, ident, _) => {
-                let atom = (*self.atom_table).intern(ident);
-                let traits = self.search_for_traits_containing_method(atom);
+                let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, traits);
             }
             expr_binary(add, _, _) | expr_assign_op(add, _, _) => {
@@ -4401,7 +4344,7 @@ struct Resolver {
                         %d:%d for method '%s'",
                        trait_def_id.crate,
                        trait_def_id.node,
-                       *(*self.atom_table).atom_to_str(name)};
+                       self.session.str_of(name)};
                 (*found_traits).push(trait_def_id);
             }
             some(_) | none => {
@@ -4498,6 +4441,7 @@ struct Resolver {
         }
     }
 
+
     //
     // Diagnostics
     //
@@ -4519,7 +4463,7 @@ struct Resolver {
                     current_module = module_;
                 }
                 BlockParentLink(module_, node_id) => {
-                    atoms.push((*self.atom_table).intern(@~"<opaque>"));
+                    atoms.push(syntax::parse::token::special_idents::opaque);
                     current_module = module_;
                 }
             }
@@ -4535,7 +4479,7 @@ struct Resolver {
             if i < atoms.len() - 1u {
                 string += ~"::";
             }
-            string += *(*self.atom_table).atom_to_str(atoms.get_elt(i));
+            string += self.session.str_of(atoms.get_elt(i));
 
             if i == 0u {
                 break;
@@ -4551,7 +4495,7 @@ struct Resolver {
 
         debug!{"Children:"};
         for module_.children.each |name, _child| {
-            debug!{"* %s", *(*self.atom_table).atom_to_str(name)};
+            debug!{"* %s", self.session.str_of(name)};
         }
 
         debug!{"Import resolutions:"};
@@ -4584,7 +4528,7 @@ struct Resolver {
             }
 
             debug!{"* %s:%s%s%s",
-                   *(*self.atom_table).atom_to_str(name),
+                   self.session.str_of(name),
                    module_repr, value_repr, type_repr};
         }
     }

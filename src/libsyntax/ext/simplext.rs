@@ -1,5 +1,5 @@
 import codemap::span;
-import std::map::{hashmap, str_hash, box_str_hash};
+import std::map::{hashmap, str_hash, uint_hash};
 import dvec::{DVec, dvec};
 
 import base::*;
@@ -135,7 +135,7 @@ fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 
 fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
     let res: binders =
-        {real_binders: box_str_hash::<selector>(),
+        {real_binders: uint_hash::<selector>(),
          literal_ast_matchers: dvec()};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
@@ -153,7 +153,7 @@ bindings. Most of the work is done in p_t_s, which generates the
 selectors. */
 
 fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
-    let res = box_str_hash::<arb_depth<matchable>>();
+    let res = uint_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
     for b.literal_ast_matchers.each |sel| {
         match sel(match_expr(e)) { none => return none, _ => () }
@@ -237,7 +237,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: option<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
-    let idents: hashmap<ident, ()> = box_str_hash::<()>();
+    let idents: hashmap<ident, ()> = uint_hash::<()>();
     fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
                   idents: hashmap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }
@@ -253,6 +253,12 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
     for idents.each_key |x| { it(x); };
 }
 
+fn wrong_occurs(cx: ext_ctxt, l: ident, l_c: uint, r: ident, r_c: uint)
+    -> ~str {
+    fmt!{"'%s' occurs %u times, but '%s' occurs %u times",
+         *cx.parse_sess().interner.get(l), l_c,
+         *cx.parse_sess().interner.get(r), r_c}
+}
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
 fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
@@ -279,10 +285,8 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
                       some({rep_count: old_len, name: old_name}) => {
                         let len = vec::len(*ms);
                         if old_len != len {
-                            let msg =
-                                fmt!{"'%s' occurs %u times, but ", *fv, len} +
-                                    fmt!{"'%s' occurs %u times", *old_name,
-                                         old_len};
+                            let msg = wrong_occurs(cx, fv, len,
+                                                   old_name, old_len);
                             cx.span_fatal(repeat_me.span, msg);
                         }
                       }
@@ -626,7 +630,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> base::macro_def {
     let args = get_mac_args_no_max(cx, sp, arg, 0u, ~"macro");
 
-    let mut macro_name: option<@~str> = none;
+    let mut macro_name: option<~str> = none;
     let mut clauses: ~[@clause] = ~[];
     for args.each |arg| {
         match arg.node {
@@ -643,12 +647,15 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                 match mac.node {
                   mac_invoc(pth, invoc_arg, body) => {
                     match path_to_ident(pth) {
-                      some(id) => match macro_name {
-                        none => macro_name = some(id),
-                        some(other_id) => if id != other_id {
+                      some(id) => {
+                        let id_str = cx.str_of(id);
+                        match macro_name {
+                          none => macro_name = some(id_str),
+                          some(other_id) => if id_str != other_id {
                             cx.span_fatal(pth.span,
                                           ~"macro name must be " +
                                           ~"consistent");
+                          }
                         }
                       },
                       none => cx.span_fatal(pth.span,
@@ -688,7 +695,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 
     let ext = |a,b,c,d, move clauses| generic_extension(a,b,c,d,clauses);
 
-    return {ident:
+    return {name:
              match macro_name {
                some(id) => id,
                none => cx.span_fatal(sp, ~"macro definition must have " +

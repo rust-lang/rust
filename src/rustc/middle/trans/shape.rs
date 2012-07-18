@@ -391,7 +391,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             let variant_shape = shape_of_variant(ccx, v);
             add_substr(data, variant_shape);
 
-            let zname = str::bytes(*v.name) + ~[0u8];
+            let zname = str::bytes(ccx.sess.str_of(v.name)) + ~[0u8];
             add_substr(data, zname);
         }
         enum_variants += ~[variants];
@@ -732,9 +732,9 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_class(did, ref substs) => {
             let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
                 // remember the drop flag
-                  ~[{ident: @~"drop", mt: {ty:
-                                        ty::mk_u8(tcx),
-                                        mutbl: ast::m_mutbl}}] }
+                  ~[{ident: syntax::parse::token::special_idents::dtor,
+                     mt: {ty: ty::mk_u8(tcx),
+                          mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +
                 do ty::lookup_class_fields(tcx, did).map |f| {
                  let t = ty::lookup_field_type(tcx, did, f.id, substs);

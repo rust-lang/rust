@@ -30,7 +30,9 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     // There ought to be a better approach. Attributes?
 
     for crate.node.module.items.each |crate_item| {
-        if *crate_item.ident == ~"intrinsic" {
+        if crate_item.ident
+            == syntax::parse::token::special_idents::intrinsic {
+
             match crate_item.node {
               ast::item_mod(m) => {
                 for m.items.each |intrinsic_item| {
@@ -246,7 +248,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         tcx.sess.span_err(
             sp, fmt!{"method `%s`'s purity does \
                           not match the trait method's \
-                          purity", *impl_m.ident});
+                          purity", tcx.sess.str_of(impl_m.ident)});
     }
 
     // is this check right?
@@ -254,11 +256,11 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         tcx.sess.span_err(
             sp, fmt!{"method `%s`'s self type does \
                           not match the trait method's \
-                          self type", *impl_m.ident});
+                          self type", tcx.sess.str_of(impl_m.ident)});
     }
 
     if impl_m.tps != trait_m.tps {
-        tcx.sess.span_err(sp, ~"method `" + *trait_m.ident +
+        tcx.sess.span_err(sp, ~"method `" + tcx.sess.str_of(trait_m.ident) +
                           ~"` has an incompatible set of type parameters");
         return;
     }
@@ -266,9 +268,9 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     if vec::len(impl_m.fty.inputs) != vec::len(trait_m.fty.inputs) {
         tcx.sess.span_err(sp,fmt!{"method `%s` has %u parameters \
                                    but the trait has %u",
-                                  *trait_m.ident,
-                                  vec::len(impl_m.fty.inputs),
-                                  vec::len(trait_m.fty.inputs)});
+                                   tcx.sess.str_of(trait_m.ident),
+                                   vec::len(impl_m.fty.inputs),
+                                   vec::len(trait_m.fty.inputs)});
         return;
     }
 
@@ -299,7 +301,8 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     };
     require_same_types(
         tcx, none, false, sp, impl_fty, trait_fty,
-        || ~"method `" + *trait_m.ident + ~"` has an incompatible type");
+        || ~"method `" + tcx.sess.str_of(trait_m.ident)
+           + ~"` has an incompatible type");
     return;
 
     // Replaces bound references to the self region with `with_r`.
@@ -351,7 +354,8 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
                     none => {
                       tcx.sess.span_err(
                           a_trait_ty.path.span,
-                          fmt!{"missing method `%s`", *trait_m.ident});
+                          fmt!{"missing method `%s`",
+                               tcx.sess.str_of(trait_m.ident)});
                     }
                   }
                 }
@@ -402,7 +406,8 @@ fn convert_methods(ccx: @crate_ctxt,
 fn convert(ccx: @crate_ctxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.contains_key(it.id);
-    debug!{"convert: item %s with id %d rp %b", *it.ident, it.id, rp};
+    debug!{"convert: item %s with id %d rp %b", tcx.sess.str_of(it.ident),
+           it.id, rp};
     match it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
@@ -607,7 +612,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
                    rp: false, // functions do not have a self
                    ty: ty::mk_fn(ccx.tcx, tofd)};
         debug!{"type of %s (id %d) is %s",
-               *it.ident, it.id, ty_to_str(tcx, tpt.ty)};
+               tcx.sess.str_of(it.ident), it.id, ty_to_str(tcx, tpt.ty)};
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }

@@ -4,31 +4,33 @@ import ast::*;
 import print::pprust;
 import ast_util::{path_to_ident, stmt_id};
 import diagnostic::span_handler;
+import parse::token::ident_interner;
 
 enum path_elt { path_mod(ident), path_name(ident) }
 type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */
-fn path_to_str_with_sep(p: path, sep: ~str) -> ~str {
+fn path_to_str_with_sep(p: path, sep: ~str, itr: ident_interner) -> ~str {
     let strs = do vec::map(p) |e| {
         match e {
-          path_mod(s) => /* FIXME (#2543) */ copy *s,
-          path_name(s) => /* FIXME (#2543) */ copy *s
+          path_mod(s) => *itr.get(s),
+          path_name(s) => *itr.get(s)
         }
     };
     str::connect(strs, sep)
 }
 
-fn path_ident_to_str(p: path, i: ident) -> ~str {
+fn path_ident_to_str(p: path, i: ident, itr: ident_interner) -> ~str {
     if vec::is_empty(p) {
-        /* FIXME (#2543) */ copy *i
+        //FIXME /* FIXME (#2543) */ copy *i
+        *itr.get(i)
     } else {
-        fmt!{"%s::%s", path_to_str(p), *i}
+        fmt!{"%s::%s", path_to_str(p, itr), *itr.get(i)}
     }
 }
 
-fn path_to_str(p: path) -> ~str {
-    path_to_str_with_sep(p, ~"::")
+fn path_to_str(p: path, itr: ident_interner) -> ~str {
+    path_to_str_with_sep(p, ~"::", itr)
 }
 
 enum ast_node {
@@ -291,43 +293,42 @@ fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
     visit::visit_stmt(stmt, cx, v);
 }
 
-fn node_id_to_str(map: map, id: node_id) -> ~str {
+fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
     match map.find(id) {
       none => {
         fmt!{"unknown node (id=%d)", id}
       }
       some(node_item(item, path)) => {
-        fmt!{"item %s (id=%?)", path_ident_to_str(*path, item.ident), id}
+        fmt!{"item %s (id=%?)", path_ident_to_str(*path, item.ident, itr), id}
       }
       some(node_foreign_item(item, abi, path)) => {
         fmt!{"foreign item %s with abi %? (id=%?)",
-             path_ident_to_str(*path, item.ident), abi, id}
+             path_ident_to_str(*path, item.ident, itr), abi, id}
       }
       some(node_method(m, impl_did, path)) => {
         fmt!{"method %s in %s (id=%?)",
-             *m.ident, path_to_str(*path), id}
+             *itr.get(m.ident), path_to_str(*path, itr), id}
       }
       some(node_trait_method(tm, impl_did, path)) => {
         let m = ast_util::trait_method_to_ty_method(*tm);
         fmt!{"method %s in %s (id=%?)",
-             *m.ident, path_to_str(*path), id}
+             *itr.get(m.ident), path_to_str(*path, itr), id}
       }
       some(node_variant(variant, def_id, path)) => {
         fmt!{"variant %s in %s (id=%?)",
-             *variant.node.name, path_to_str(*path), id}
+             *itr.get(variant.node.name), path_to_str(*path, itr), id}
       }
       some(node_expr(expr)) => {
-        fmt!{"expr %s (id=%?)",
-             pprust::expr_to_str(expr), id}
+        fmt!{"expr %s (id=%?)", pprust::expr_to_str(expr, itr), id}
       }
       some(node_stmt(stmt)) => {
         fmt!{"stmt %s (id=%?)",
-             pprust::stmt_to_str(*stmt), id}
+             pprust::stmt_to_str(*stmt, itr), id}
       }
       // FIXMEs are as per #2410
       some(node_export(_, path)) => {
         fmt!{"export %s (id=%?)", // add more info here
-             path_to_str(*path), id}
+             path_to_str(*path, itr), id}
       }
       some(node_arg(_, _)) => { // add more info here
         fmt!{"arg (id=%?)", id}

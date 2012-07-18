@@ -225,7 +225,7 @@ fn load_link(mis: ~[@ast::meta_item]) -> (option<~str>,
     for mis.each |a| {
         match a.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) => {
-                match *v {
+                match v {
                     ~"name" => name = some(*s),
                     ~"vers" => vers = some(*s),
                     ~"uuid" => uuid = some(*s),
@@ -252,15 +252,15 @@ fn load_crate(filename: ~str) -> option<crate> {
     for c.node.attrs.each |a| {
         match a.node.value.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) => {
-                match *v {
-                    ~"desc" => desc = some(*v),
-                    ~"sigs" => sigs = some(*v),
-                    ~"crate_type" => crate_type = some(*v),
+                match v {
+                    ~"desc" => desc = some(v),
+                    ~"sigs" => sigs = some(v),
+                    ~"crate_type" => crate_type = some(v),
                     _ => { }
                 }
             }
             ast::meta_list(v, mis) => {
-                if *v == ~"link" {
+                if v == ~"link" {
                     let (n, v, u) = load_link(mis);
                     name = n;
                     vers = v;
@@ -278,13 +278,15 @@ fn load_crate(filename: ~str) -> option<crate> {
         mut deps: ~[~str]
     };
 
-    fn goto_view_item(e: env, i: @ast::view_item) {
+    fn goto_view_item(ps: syntax::parse::parse_sess, e: env,
+                      i: @ast::view_item) {
         match i.node {
             ast::view_item_use(ident, metas, id) => {
                 let name_items =
                     attr::find_meta_items_by_name(metas, ~"name");
                 let m = if name_items.is_empty() {
-                    metas + ~[attr::mk_name_value_item_str(@~"name", *ident)]
+                    metas + ~[attr::mk_name_value_item_str(
+                        ~"name", *ps.interner.get(ident))]
                 } else {
                     metas
                 };
@@ -297,9 +299,9 @@ fn load_crate(filename: ~str) -> option<crate> {
                         some(value) => {
                             let name = attr::get_meta_item_name(item);
 
-                            match *name {
-                                ~"vers" => attr_vers = *value,
-                                ~"from" => attr_from = *value,
+                            match name {
+                                ~"vers" => attr_vers = value,
+                                ~"from" => attr_from = value,
                                 _ => ()
                             }
                         }
@@ -311,11 +313,11 @@ fn load_crate(filename: ~str) -> option<crate> {
                     attr_from
                 } else {
                     if !str::is_empty(attr_vers) {
-                        *attr_name + ~"@" + attr_vers
-                    } else { *attr_name }
+                        ps.interner.get(attr_name) + ~"@" + attr_vers
+                    } else { *ps.interner.get(attr_name) }
                 };
 
-                match *attr_name {
+                match *ps.interner.get(attr_name) {
                     ~"std" | ~"core" => (),
                     _ => vec::push(e.deps, query)
                 }
@@ -330,7 +332,7 @@ fn load_crate(filename: ~str) -> option<crate> {
         mut deps: ~[]
     };
     let v = visit::mk_simple_visitor(@{
-        visit_view_item: |a| goto_view_item(e, a),
+        visit_view_item: |a| goto_view_item(sess, e, a),
         visit_item: |a| goto_item(e, a),
         with *visit::default_simple_visitor()
     });

@@ -15,14 +15,10 @@ mod syntax {
     export parse;
 }
 
-fn ident(s: &str) -> ast::ident {
-    @(s.to_unique())
-}
-
-fn path(id: ident, span: span) -> @ast::path {
+fn path(ids: ~[ident], span: span) -> @ast::path {
     @{span: span,
       global: false,
-      idents: ~[id],
+      idents: ids,
       rp: none,
       types: ~[]}
 }
@@ -94,7 +90,8 @@ trait ext_ctxt_ast_builder {
 
 impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::ty) -> @ast::ty {
-        self.ty_path_ast_builder(path(@~"option", self.empty_span())
+        self.ty_path_ast_builder(path(~[self.ident_of(~"option")],
+                                      self.empty_span())
                                  .add_ty(ty))
     }
 
@@ -126,7 +123,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                      ty: self.ty_infer(),
                      pat: @{id: self.next_id(),
                             node: ast::pat_ident(ast::bind_by_implicit_ref,
-                                                 path(ident,
+                                                 path(~[ident],
                                                       self.empty_span()),
                                                  none),
                             span: self.empty_span()},
@@ -301,6 +298,6 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::ty] {
         ty_params.map(|p| self.ty_path_ast_builder(
-            path(p.ident, self.empty_span())))
+            path(~[p.ident], self.empty_span())))
     }
 }

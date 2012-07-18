@@ -287,7 +287,7 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
 
 fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id %?: %s",
-           ex.id, expr_to_str(ex));
+           ex.id, expr_to_str(ex, fcx.tcx().sess.intr()));
     let cx = fcx.ccx;
     match ex.node {
       ast::expr_path(*) => {

@@ -78,10 +78,10 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
     }
 }
 
-fn cdir_path_opt(id: ast::ident, attrs: ~[ast::attribute]) -> @~str {
+fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
     match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
-      some(d) => return d,
-      none => return id
+      some(d) => d,
+      none => default
     }
 }
 
@@ -90,11 +90,12 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
                         &items: ~[@ast::item]) {
     match cdir.node {
       ast::cdir_src_mod(id, attrs) => {
-        let file_path = cdir_path_opt(@(*id + ~".rs"), attrs);
+        let file_path = cdir_path_opt((cx.sess.interner.get(id) + ~".rs"),
+                                      attrs);
         let full_path =
-            if path::path_is_absolute(*file_path) {
-                *file_path
-            } else { prefix + path::path_sep() + *file_path };
+            if path::path_is_absolute(file_path) {
+                file_path
+            } else { prefix + path::path_sep() + file_path };
         let (p0, r0) =
             new_parser_etc_from_file(cx.sess, cx.cfg, full_path, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
@@ -111,11 +112,11 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
         vec::push(items, i);
       }
       ast::cdir_dir_mod(id, cdirs, attrs) => {
-        let path = cdir_path_opt(id, attrs);
+        let path = cdir_path_opt(*cx.sess.interner.get(id), attrs);
         let full_path =
-            if path::path_is_absolute(*path) {
-                *path
-            } else { prefix + path::path_sep() + *path };
+            if path::path_is_absolute(path) {
+                path
+            } else { prefix + path::path_sep() + path };
         let (m0, a0) = eval_crate_directives_to_mod(
             cx, cdirs, full_path, none);
         let i =

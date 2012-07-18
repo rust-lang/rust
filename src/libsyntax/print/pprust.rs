@@ -8,9 +8,7 @@ import ast::{required, provided};
 import ast_util::{operator_prec};
 import dvec::{DVec, dvec};
 import parse::classify::*;
-import util::interner;
-
-type ident_interner = interner::interner<@~str>;
+import parse::token::ident_interner;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {
@@ -47,19 +45,7 @@ fn end(s: ps) {
     pp::end(s.s);
 }
 
-fn rust_printer(writer: io::Writer) -> ps {
-    return @{s: pp::mk_printer(writer, default_columns),
-             cm: none::<codemap>,
-             intr: token::mk_ident_interner(),
-             comments: none::<~[comments::cmnt]>,
-             literals: none::<~[comments::lit]>,
-             mut cur_cmnt: 0u,
-             mut cur_lit: 0u,
-             boxes: dvec(),
-             ann: no_ann()};
-}
-
-fn unexpanded_rust_printer(writer: io::Writer, intr: ident_interner) -> ps {
+fn rust_printer(writer: io::Writer, intr: ident_interner) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
              cm: none::<codemap>,
              intr: intr,
@@ -79,7 +65,7 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: codemap, intr: interner::interner<@~str>,
+fn print_crate(cm: codemap, intr: ident_interner,
                span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::Reader,
                out: io::Writer, ann: pp_ann, is_expanded: bool) {
@@ -107,41 +93,46 @@ fn print_crate_(s: ps, &&crate: @ast::crate) {
     eof(s.s);
 }
 
-fn ty_to_str(ty: @ast::ty) -> ~str { return to_str(ty, print_type); }
-
-fn pat_to_str(pat: @ast::pat) -> ~str { return to_str(pat, print_pat); }
-
-fn expr_to_str(e: @ast::expr) -> ~str { return to_str(e, print_expr); }
-
-fn unexpanded_tt_to_str(tt: ast::token_tree, intr: ident_interner)
-    -> ~str {
-    let buffer = io::mem_buffer();
-    let s = unexpanded_rust_printer(io::mem_buffer_writer(buffer), intr);
-    print_tt(s, tt);
-    eof(s.s);
-    io::mem_buffer_str(buffer)
+fn ty_to_str(ty: @ast::ty, intr: ident_interner) -> ~str {
+    to_str(ty, print_type, intr)
 }
 
-fn stmt_to_str(s: ast::stmt) -> ~str { return to_str(s, print_stmt); }
-
-fn item_to_str(i: @ast::item) -> ~str { return to_str(i, print_item); }
-
-fn attr_to_str(i: ast::attribute) -> ~str {
-    return to_str(i, print_attribute);
+fn pat_to_str(pat: @ast::pat, intr: ident_interner) -> ~str {
+    to_str(pat, print_pat, intr)
 }
 
-fn typarams_to_str(tps: ~[ast::ty_param]) -> ~str {
-    return to_str(tps, print_type_params)
+fn expr_to_str(e: @ast::expr, intr: ident_interner) -> ~str {
+    to_str(e, print_expr, intr)
 }
 
-fn path_to_str(&&p: @ast::path) -> ~str {
-    return to_str(p, |a,b| print_path(a, b, false));
+fn tt_to_str(tt: ast::token_tree, intr: ident_interner) -> ~str {
+    to_str(tt, print_tt, intr)
+}
+
+fn stmt_to_str(s: ast::stmt, intr: ident_interner) -> ~str {
+    to_str(s, print_stmt, intr)
+}
+
+fn item_to_str(i: @ast::item, intr: ident_interner) -> ~str {
+    to_str(i, print_item, intr)
+}
+
+fn attr_to_str(i: ast::attribute, intr: ident_interner) -> ~str {
+    to_str(i, print_attribute, intr)
+}
+
+fn typarams_to_str(tps: ~[ast::ty_param], intr: ident_interner) -> ~str {
+    to_str(tps, print_type_params, intr)
+}
+
+fn path_to_str(&&p: @ast::path, intr: ident_interner) -> ~str {
+    to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
-              params: ~[ast::ty_param]) -> ~str {
+              params: ~[ast::ty_param], intr: ident_interner) -> ~str {
     let buffer = io::mem_buffer();
-    let s = rust_printer(io::mem_buffer_writer(buffer));
+    let s = rust_printer(io::mem_buffer_writer(buffer), intr);
     print_fn(s, decl, name, params, none);
     end(s); // Close the head box
     end(s); // Close the outer box
@@ -162,9 +153,9 @@ fn test_fun_to_str() {
     assert fun_to_str(decl, "a", ~[]) == "fn a()";
 }
 
-fn block_to_str(blk: ast::blk) -> ~str {
+fn block_to_str(blk: ast::blk, intr: ident_interner) -> ~str {
     let buffer = io::mem_buffer();
-    let s = rust_printer(io::mem_buffer_writer(buffer));
+    let s = rust_printer(io::mem_buffer_writer(buffer), intr);
     // containing cbox, will be closed by print-block at }
     cbox(s, indent_unit);
     // head-ibox, will be closed by print-block after {
@@ -174,16 +165,16 @@ fn block_to_str(blk: ast::blk) -> ~str {
     io::mem_buffer_str(buffer)
 }
 
-fn meta_item_to_str(mi: ast::meta_item) -> ~str {
-    return to_str(@mi, print_meta_item);
+fn meta_item_to_str(mi: ast::meta_item, intr: ident_interner) -> ~str {
+    to_str(@mi, print_meta_item, intr)
 }
 
-fn attribute_to_str(attr: ast::attribute) -> ~str {
-    return to_str(attr, print_attribute);
+fn attribute_to_str(attr: ast::attribute, intr: ident_interner) -> ~str {
+    to_str(attr, print_attribute, intr)
 }
 
-fn variant_to_str(var: ast::variant) -> ~str {
-    return to_str(var, print_variant);
+fn variant_to_str(var: ast::variant, intr: ident_interner) -> ~str {
+    to_str(var, print_variant, intr)
 }
 
 #[test]
@@ -349,7 +340,7 @@ fn print_region(s: ps, region: @ast::region) {
       ast::re_anon => word_space(s, ~"&"),
       ast::re_named(name) => {
         word(s.s, ~"&");
-        word(s.s, *name);
+        print_ident(s, name);
       }
     }
 }
@@ -389,7 +380,7 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         fn print_field(s: ps, f: ast::ty_field) {
             cbox(s, indent_unit);
             print_mutability(s, f.node.mt.mutbl);
-            word(s.s, *f.node.ident);
+            print_ident(s, f.node.ident);
             word_space(s, ~":");
             print_type(s, f.node.mt.ty);
             end(s);
@@ -446,7 +437,8 @@ fn print_item(s: ps, &&item: @ast::item) {
     match item.node {
       ast::item_const(ty, expr) => {
         head(s, ~"const");
-        word_space(s, *item.ident + ~":");
+        print_ident(s, item.ident);
+        word_space(s, ~":");
         print_type(s, ty);
         space(s.s);
         end(s); // end the head-ibox
@@ -464,7 +456,8 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_mod(_mod) => {
         head(s, ~"mod");
-        word_nbsp(s, *item.ident);
+        print_ident(s, item.ident);
+        nbsp(s);
         bopen(s);
         print_mod(s, _mod, item.attrs);
         bclose(s, item.span);
@@ -472,7 +465,8 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_foreign_mod(nmod) => {
         head(s, ~"extern");
         word_nbsp(s, ~"mod");
-        word_nbsp(s, *item.ident);
+        print_ident(s, item.ident);
+        nbsp(s);
         bopen(s);
         print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
@@ -481,7 +475,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, ~"type");
-        word(s.s, *item.ident);
+        print_ident(s, item.ident);
         print_type_params(s, params);
         end(s); // end the inner ibox
 
@@ -498,6 +492,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           head(s, ~"struct");
           print_struct(s, struct_def, tps, item.ident, item.span);
       }
+
       ast::item_impl(tps, traits, ty, methods) => {
         head(s, ~"impl");
         if tps.is_not_empty() {
@@ -522,7 +517,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_trait(tps, traits, methods) => {
         head(s, ~"trait");
-        word(s.s, *item.ident);
+        print_ident(s, item.ident);
         print_type_params(s, tps);
         if vec::len(traits) != 0u {
             word_space(s, ~":");
@@ -535,7 +530,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) => {
-        head(s, path_to_str(pth) + ~"! " + *item.ident);
+        print_path(s, pth, false);
+        head(s, ~"! ");
+        print_ident(s, item.ident);
         bopen(s);
         for tts.each |tt| { print_tt(s, tt);  }
         bclose(s, item.span);
@@ -552,7 +549,7 @@ fn print_enum_def(s: ps, enum_definition: ast::enum_def,
                   span: ast::span) {
     let mut newtype =
         vec::len(enum_definition.variants) == 1u &&
-            str::eq(ident, enum_definition.variants[0].node.name);
+        ident == enum_definition.variants[0].node.name;
     if newtype {
         match enum_definition.variants[0].node.kind {
             ast::tuple_variant_kind(args) if args.len() == 1 => {}
@@ -566,7 +563,7 @@ fn print_enum_def(s: ps, enum_definition: ast::enum_def,
         head(s, ~"enum");
     }
 
-    word(s.s, *ident);
+    print_ident(s, ident);
     print_type_params(s, params);
     space(s.s);
     if newtype {
@@ -599,7 +596,8 @@ fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
 
 fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
                 ident: ast::ident, span: ast::span) {
-    word_nbsp(s, *ident);
+    print_ident(s, ident);
+    nbsp(s);
     print_type_params(s, tps);
     if vec::len(struct_def.traits) != 0u {
         word_space(s, ~":");
@@ -639,7 +637,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
                 if mutability == ast::class_mutable {
                     word_nbsp(s, ~"mut");
                 }
-                word(s.s, *ident);
+                print_ident(s, ident);
                 word_nbsp(s, ~":");
                 print_type(s, field.node.ty);
                 word(s.s, ~";");
@@ -684,7 +682,8 @@ fn print_tt(s: ps, tt: ast::token_tree) {
         s.s.token_tree_last_was_ident = false;
       }
       ast::tt_nonterminal(_, name) => {
-        word(s.s, ~"$" + *name);
+        word(s.s, ~"$");
+        print_ident(s, name);
         s.s.token_tree_last_was_ident = true;
       }
     }
@@ -693,7 +692,7 @@ fn print_tt(s: ps, tt: ast::token_tree) {
 fn print_variant(s: ps, v: ast::variant) {
     match v.node.kind {
         ast::tuple_variant_kind(args) => {
-            word(s.s, *v.node.name);
+            print_ident(s, v.node.name);
             if vec::len(args) > 0u {
                 popen(s);
                 fn print_variant_arg(s: ps, arg: ast::variant_arg) {
@@ -780,7 +779,7 @@ fn print_attribute(s: ps, attr: ast::attribute) {
     if attr.node.is_sugared_doc {
         let meta = attr::attr_meta(attr);
         let comment = attr::get_meta_item_value_str(meta).get();
-        word(s.s, *comment);
+        word(s.s, comment);
     } else {
         word(s.s, ~"#[");
         print_meta_item(s, @attr.node.value);
@@ -935,7 +934,8 @@ fn print_mac(s: ps, m: ast::mac) {
         // FIXME: extension 'body' (#2339)
       }
       ast::mac_invoc_tt(pth, tts) => {
-        head(s, path_to_str(pth) + ~"!");
+        print_path(s, pth, false);
+        head(s, ~"!");
         bopen(s);
         for tts.each() |tt| { print_tt(s, tt); }
         bclose(s, m.span);
@@ -956,7 +956,7 @@ fn print_vstore(s: ps, t: ast::vstore) {
         ast::re_anon => word(s.s, ~"&"),
         ast::re_named(name) => {
             word(s.s, ~"&");
-            word(s.s, *name);
+            print_ident(s, name);
             word(s.s, ~".");
         }
       }
@@ -967,7 +967,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
     fn print_field(s: ps, field: ast::field) {
         ibox(s, indent_unit);
         if field.node.mutbl == ast::m_mutbl { word_nbsp(s, ~"mut"); }
-        word(s.s, *field.node.ident);
+        print_ident(s, field.node.ident);
         word_space(s, ~":");
         print_expr(s, field.node.expr);
         end(s);
@@ -1125,7 +1125,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_loop(blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
-        option::iter(opt_ident, |ident| word_space(s, *ident));
+        option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
         print_block(s, blk);
       }
       ast::expr_match(expr, arms, mode) => {
@@ -1270,7 +1270,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             print_expr_parens_if_not_bot(s, expr);
         }
         word(s.s, ~".");
-        word(s.s, *id);
+        print_ident(s, id);
         if vec::len(tys) > 0u {
             word(s.s, ~"::<");
             commasep(s, inconsistent, tys, print_type);
@@ -1294,12 +1294,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
-        option::iter(opt_ident, |ident| word_space(s, *ident));
+        option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
       }
       ast::expr_again(opt_ident) => {
         word(s.s, ~"again");
         space(s.s);
-        option::iter(opt_ident, |ident| word_space(s, *ident));
+        option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
       }
       ast::expr_ret(result) => {
         word(s.s, ~"return");
@@ -1395,7 +1395,7 @@ fn print_decl(s: ps, decl: @ast::decl) {
     }
 }
 
-fn print_ident(s: ps, ident: ast::ident) { word(s.s, *ident); }
+fn print_ident(s: ps, ident: ast::ident) { word(s.s, *s.intr.get(ident)); }
 
 fn print_for_decl(s: ps, loc: @ast::local, coll: @ast::expr) {
     print_local_decl(s, loc);
@@ -1410,7 +1410,7 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     let mut first = true;
     for path.idents.each |id| {
         if first { first = false; } else { word(s.s, ~"::"); }
-        word(s.s, *id);
+        print_ident(s, id);
     }
     if path.rp.is_some() || !path.types.is_empty() {
         if colons_before_params { word(s.s, ~"::"); }
@@ -1471,7 +1471,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         word(s.s, ~"{");
         fn print_field(s: ps, f: ast::field_pat) {
             cbox(s, indent_unit);
-            word(s.s, *f.ident);
+            print_ident(s, f.ident);
             word_space(s, ~":");
             print_pat(s, f.pat);
             end(s);
@@ -1489,7 +1489,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         word(s.s, ~"{");
         fn print_field(s: ps, f: ast::field_pat) {
             cbox(s, indent_unit);
-            word(s.s, *f.ident);
+            print_ident(s, f.ident);
             word_space(s, ~":");
             print_pat(s, f.pat);
             end(s);
@@ -1542,7 +1542,7 @@ fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
             typarams: ~[ast::ty_param],
             opt_self_ty: option<ast::self_ty_>) {
     head(s, fn_header_info_to_str(opt_self_ty, decl.purity, none));
-    word(s.s, *name);
+    print_ident(s, name);
     print_type_params(s, typarams);
     print_fn_args_and_ret(s, decl, ~[], opt_self_ty);
 }
@@ -1568,7 +1568,7 @@ fn print_fn_args(s: ps, decl: ast::fn_decl,
         if first { first = false; } else { word_space(s, ~","); }
         if cap_item.is_move { word_nbsp(s, ~"move") }
         else { word_nbsp(s, ~"copy") }
-        word(s.s, *cap_item.name);
+        print_ident(s, cap_item.name);
     }
 
     end(s);
@@ -1638,7 +1638,7 @@ fn print_type_params(s: ps, &&params: ~[ast::ty_param]) {
     if vec::len(params) > 0u {
         word(s.s, ~"<");
         fn printParam(s: ps, param: ast::ty_param) {
-            word(s.s, *param.ident);
+            print_ident(s, param.ident);
             print_bounds(s, param.bounds);
         }
         commasep(s, inconsistent, params, printParam);
@@ -1649,14 +1649,14 @@ fn print_type_params(s: ps, &&params: ~[ast::ty_param]) {
 fn print_meta_item(s: ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
-      ast::meta_word(name) => word(s.s, *name),
+      ast::meta_word(name) => word(s.s, name),
       ast::meta_name_value(name, value) => {
-        word_space(s, *name);
+        word_space(s, name);
         word_space(s, ~"=");
         print_literal(s, @value);
       }
       ast::meta_list(name, items) => {
-        word(s.s, *name);
+        word(s.s, name);
         popen(s);
         commasep(s, consistent, items, print_meta_item);
         pclose(s);
@@ -1669,7 +1669,8 @@ fn print_view_path(s: ps, &&vp: @ast::view_path) {
     match vp.node {
       ast::view_path_simple(ident, path, _) => {
         if path.idents[vec::len(path.idents)-1u] != ident {
-            word_space(s, *ident);
+            print_ident(s, ident);
+            space(s.s);
             word_space(s, ~"=");
         }
         print_path(s, path, false);
@@ -1684,7 +1685,7 @@ fn print_view_path(s: ps, &&vp: @ast::view_path) {
         print_path(s, path, false);
         word(s.s, ~"::{");
         do commasep(s, inconsistent, idents) |s, w| {
-            word(s.s, *w.node.name)
+            print_ident(s, w.node.name);
         }
         word(s.s, ~"}");
       }
@@ -1702,7 +1703,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     match item.node {
       ast::view_item_use(id, mta, _) => {
         head(s, ~"use");
-        word(s.s, *id);
+        print_ident(s, id);
         if vec::len(mta) > 0u {
             popen(s);
             commasep(s, consistent, mta, print_meta_item);
@@ -1749,10 +1750,12 @@ fn print_arg(s: ps, input: ast::arg) {
     ibox(s, indent_unit);
     print_arg_mode(s, input.mode);
     match input.ty.node {
-      ast::ty_infer => word(s.s, *input.ident),
+      ast::ty_infer => print_ident(s, input.ident),
       _ => {
-        if str::len(*input.ident) > 0u {
-            word_space(s, *input.ident + ~":");
+        if input.ident != parse::token::special_idents::invalid {
+            print_ident(s, input.ident);
+            word(s.s, ~":");
+            space(s.s);
         }
         print_type(s, input.ty);
       }
@@ -1768,7 +1771,7 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
     ibox(s, indent_unit);
     word(s.s, fn_header_info_to_str(opt_self_ty, decl.purity, opt_proto));
     print_bounds(s, bounds);
-    match id { some(id) => { word(s.s, ~" "); word(s.s, *id); } _ => () }
+    match id { some(id) => { word(s.s, ~" "); print_ident(s, id); } _ => () }
     match tps { some(tps) => print_type_params(s, tps), _ => () }
     zerobreak(s.s);
 
@@ -1880,7 +1883,9 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
     }
 }
 
-fn lit_to_str(l: @ast::lit) -> ~str { return to_str(l, print_literal); }
+fn lit_to_str(l: @ast::lit) -> ~str {
+    return to_str(l, print_literal, parse::token::mk_fake_ident_interner());
+}
 
 fn next_lit(s: ps, pos: uint) -> option<comments::lit> {
     match s.literals {
@@ -1961,9 +1966,9 @@ fn print_string(s: ps, st: ~str) {
     word(s.s, ~"\"");
 }
 
-fn to_str<T>(t: T, f: fn@(ps, T)) -> ~str {
+fn to_str<T>(t: T, f: fn@(ps, T), intr: ident_interner) -> ~str {
     let buffer = io::mem_buffer();
-    let s = rust_printer(io::mem_buffer_writer(buffer));
+    let s = rust_printer(io::mem_buffer_writer(buffer), intr);
     f(s, t);
     eof(s.s);
     io::mem_buffer_str(buffer)

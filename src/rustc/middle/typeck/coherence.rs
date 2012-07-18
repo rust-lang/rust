@@ -164,6 +164,7 @@ struct CoherenceChecker {
     // Create a mapping containing a MethodInfo for every provided
     // method in every trait.
     fn build_provided_methods_map(crate: @crate) {
+        let sess = self.crate_context.tcx.sess;
 
         let pmm = self.crate_context.provided_methods_map;
 
@@ -173,7 +174,8 @@ struct CoherenceChecker {
                   item_trait(_, _, trait_methods) => {
                     for trait_methods.each |trait_method| {
                         debug!{"(building provided methods map) checking \
-                                trait `%s` with id %d", *item.ident, item.id};
+                                trait `%s` with id %d",
+                                sess.str_of(item.ident), item.id};
 
                         match trait_method {
                             required(_) => { /* fall through */}
@@ -193,7 +195,7 @@ struct CoherenceChecker {
                                               methods map) adding \
                                               method `%s` to entry for \
                                               existing trait",
-                                              *mi.ident};
+                                              sess.str_of(mi.ident)};
                                       let mut method_infos = mis;
                                       push(method_infos, mi);
                                       pmm.insert(item.id, method_infos);
@@ -204,7 +206,7 @@ struct CoherenceChecker {
                                       debug!{"(building provided \
                                               methods map) creating new \
                                               entry for method `%s`",
-                                              *mi.ident};
+                                              sess.str_of(mi.ident)};
                                       pmm.insert(item.id, ~[mi]);
                                     }
                                 }
@@ -227,7 +229,8 @@ struct CoherenceChecker {
         // inherent methods and extension methods.
         visit_crate(*crate, (), mk_simple_visitor(@{
             visit_item: |item| {
-                debug!{"(checking coherence) item '%s'", *item.ident};
+                debug!{"(checking coherence) item '%s'",
+                       self.crate_context.tcx.sess.str_of(item.ident)};
 
                 match item.node {
                     item_impl(_, associated_traits, _, _) => {
@@ -269,7 +272,7 @@ struct CoherenceChecker {
         if associated_traits.len() == 0 {
             debug!{"(checking implementation) no associated traits for item \
                     '%s'",
-                   *item.ident};
+                   self.crate_context.tcx.sess.str_of(item.ident)};
 
             match get_base_type_def_id(self.inference_context,
                                        item.span,
@@ -292,9 +295,10 @@ struct CoherenceChecker {
                 self.trait_ref_to_trait_def_id(associated_trait);
             debug!{"(checking implementation) adding impl for trait \
                     '%s', item '%s'",
-                   ast_map::node_id_to_str(self.crate_context.tcx.items,
-                                           trait_did.node),
-                   *item.ident};
+                    ast_map::node_id_to_str(
+                        self.crate_context.tcx.items, trait_did.node,
+                        self.crate_context.tcx.sess.parse_sess.interner),
+                    self.crate_context.tcx.sess.str_of(item.ident)};
 
             let implementation = self.create_impl_from_item(item);
             self.add_trait_method(trait_did, implementation);
@@ -567,7 +571,8 @@ struct CoherenceChecker {
     fn create_impl_from_item(item: @item) -> @Impl {
 
         fn add_provided_methods(inherent_methods: ~[@MethodInfo],
-                                all_provided_methods: ~[@MethodInfo])
+                                all_provided_methods: ~[@MethodInfo],
+                                sess: driver::session::session)
             -> ~[@MethodInfo] {
 
             let mut methods = inherent_methods;
@@ -583,8 +588,9 @@ struct CoherenceChecker {
                 }
 
                 if !method_inherent_to_impl {
-                    debug!{"(creating impl) adding provided method `%s` to \
-                            impl", *provided_method.ident};
+                    debug!{
+                        "(creating impl) adding provided method `%s` to impl",
+                        sess.str_of(provided_method.ident)};
                     push(methods, provided_method);
                 }
             }
@@ -625,8 +631,9 @@ struct CoherenceChecker {
                             // trait.
 
                             // XXX: could probably be doing this with filter.
-                            methods = add_provided_methods(methods,
-                                                           all_provided);
+                            methods = add_provided_methods(
+                                methods, all_provided,
+                                self.crate_context.tcx.sess);
                         }
                     }
                 }
@@ -717,11 +724,11 @@ struct CoherenceChecker {
                                            self_type.ty) {
                     none => {
                         let session = self.crate_context.tcx.sess;
-                        session.bug(fmt!{"no base type for external impl \
-                                          with no trait: %s (type %s)!",
-                                         *implementation.ident,
-                                         ty_to_str(self.crate_context.tcx,
-                                                   self_type.ty)});
+                        session.bug(fmt!{
+                            "no base type for external impl \
+                             with no trait: %s (type %s)!",
+                             session.str_of(implementation.ident),
+                             ty_to_str(self.crate_context.tcx,self_type.ty)});
                     }
                     some(_) => {
                         // Nothing to do.

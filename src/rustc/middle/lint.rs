@@ -246,13 +246,13 @@ impl ctxt {
 
         for triples.each |pair| {
             let (meta, level, lintname) = pair;
-            match self.dict.find(*lintname) {
+            match self.dict.find(lintname) {
               none => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
                     meta.span,
                     fmt!{"unknown `%s` attribute: `%s`",
-                         level_to_str(level), *lintname});
+                         level_to_str(level), lintname});
               }
               some(lint) => {
 
@@ -263,7 +263,7 @@ impl ctxt {
                         meta.span,
                         fmt!{"%s(%s) overruled by outer forbid(%s)",
                              level_to_str(level),
-                             *lintname, *lintname});
+                             lintname, lintname});
                 }
 
                 // we do multiple unneeded copies of the
@@ -433,9 +433,10 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
-    fn is_camel_case(ident: ast::ident) -> bool {
+    fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
+        let ident = cx.sess.str_of(ident);
         assert ident.is_not_empty();
-        let ident = ident_without_trailing_underscores(*ident);
+        let ident = ident_without_trailing_underscores(ident);
         let ident = ident_without_leading_underscores(ident);
         char::is_uppercase(str::char_at(ident, 0)) &&
             !ident.contains_char('_')
@@ -443,11 +444,8 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
 
     fn ident_without_trailing_underscores(ident: ~str) -> ~str {
         match str::rfind(ident, |c| c != '_') {
-          some(idx) => ident.slice(0, idx + 1),
-          none => {
-            // all underscores
-            ident
-          }
+            some(idx) => (ident).slice(0, idx + 1),
+            none => { ident } // all underscores
         }
     }
 
@@ -464,7 +462,7 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     fn check_case(cx: ty::ctxt, ident: ast::ident,
                   expr_id: ast::node_id, item_id: ast::node_id,
                   span: span) {
-        if !is_camel_case(ident) {
+        if !is_camel_case(cx, ident) {
             cx.sess.span_lint(
                 non_camel_case_types, expr_id, item_id, span,
                 ~"type, variant, or trait must be camel case");
@@ -488,7 +486,7 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
-    debug!{"lint check_pat pat=%s", pat_to_str(pat)};
+    debug!{"lint check_pat pat=%s", pat_to_str(pat, tcx.sess.intr())};
 
     do pat_bindings(tcx.def_map, pat) |binding_mode, id, span, path| {
         match binding_mode {
@@ -501,7 +499,7 @@ fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
                     deprecated_pattern, id, id,
                     span,
                     fmt!{"binding `%s` should use ref or copy mode",
-                         *path_to_ident(path)});
+                         tcx.sess.str_of(path_to_ident(path))});
             }
           }
         }

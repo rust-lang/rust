@@ -254,11 +254,13 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     let mut new_cx = cx;
     match expr.node {
       ast::expr_call(*) => {
-        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr)};
+        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr,
+                                                           cx.sess.intr())};
         new_cx.parent = some(expr.id);
       }
       ast::expr_match(subexpr, _, _) => {
-        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr)};
+        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr,
+                                                           cx.sess.intr())};
         new_cx.parent = some(expr.id);
       }
       ast::expr_fn(_, _, _, cap_clause) |
@@ -390,8 +392,9 @@ impl determine_rp_ctxt {
     fn add_rp(id: ast::node_id) {
         assert id != 0;
         if self.region_paramd_items.insert(id, ()) {
-            debug!{"add region-parameterized item: %d (%s)",
-                   id, ast_map::node_id_to_str(self.ast_map, id)};
+            debug!{"add region-parameterized item: %d (%s)", id,
+                   ast_map::node_id_to_str(self.ast_map, id,
+                                           self.sess.parse_sess.interner)};
             self.worklist.push(id);
         } else {
             debug!{"item %d already region-parameterized", id};
@@ -401,8 +404,10 @@ impl determine_rp_ctxt {
     fn add_dep(from: ast::node_id, to: ast::node_id) {
         debug!{"add dependency from %d -> %d (%s -> %s)",
                from, to,
-               ast_map::node_id_to_str(self.ast_map, from),
-               ast_map::node_id_to_str(self.ast_map, to)};
+               ast_map::node_id_to_str(self.ast_map, from,
+                                       self.sess.parse_sess.interner),
+               ast_map::node_id_to_str(self.ast_map, to,
+                                       self.sess.parse_sess.interner)};
         let vec = match self.dep_map.find(from) {
             some(vec) => {vec}
             none => {
@@ -448,9 +453,10 @@ impl determine_rp_ctxt {
     // that flag to false when we enter a method.
     fn region_is_relevant(r: @ast::region) -> bool {
         match r.node {
-          ast::re_anon => self.anon_implies_rp,
-          ast::re_named(@~"self") => true,
-          ast::re_named(_) => false
+            ast::re_anon => self.anon_implies_rp,
+            ast::re_named(id) => {
+                id == syntax::parse::token::special_idents::self_
+            }
         }
     }
 
@@ -511,7 +517,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
     match ty.node {
       ast::ty_rptr(r, _) |
       ast::ty_path(@{rp: some(r), _}, _) => {
-        debug!{"referenced type with regions %s", pprust::ty_to_str(ty)};
+        debug!{"referenced type with regions %s",
+               pprust::ty_to_str(ty, cx.sess.intr())};
         if cx.region_is_relevant(r) {
             cx.add_rp(cx.item_id);
         }
@@ -520,7 +527,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
       ast::ty_fn(ast::proto_bare, _, _) |
       ast::ty_fn(ast::proto_block, _, _) if cx.anon_implies_rp => {
         debug!("referenced bare fn type with regions %s",
-               pprust::ty_to_str(ty));
+               pprust::ty_to_str(ty, cx.sess.intr()));
         cx.add_rp(cx.item_id);
       }
 
@@ -541,7 +548,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
                 let cstore = cx.sess.cstore;
                 if csearch::get_region_param(cstore, did) {
                     debug!{"reference to external, rp'd type %s",
-                           pprust::ty_to_str(ty)};
+                           pprust::ty_to_str(ty, cx.sess.intr())};
                     cx.add_rp(cx.item_id);
                 }
             }

@@ -85,7 +85,7 @@ impl parser: parser_common {
 
     fn parse_ident() -> ast::ident {
         match copy self.token {
-          token::IDENT(i, _) => { self.bump(); return self.get_str(i); }
+          token::IDENT(i, _) => { self.bump(); return i; }
           token::INTERPOLATED(token::nt_ident(*)) => { self.bug(
               ~"ident interpolation not converted to real token"); }
           _ => { self.fatal(~"expected ident, found `"
@@ -110,6 +110,8 @@ impl parser: parser_common {
         return if self.token == tok { self.bump(); true } else { false };
     }
 
+    // Storing keywords as interned idents instead of strings would be nifty.
+
     // A sanity check that the word we are asking for is a known keyword
     fn require_keyword(word: ~str) {
         if !self.keywords.contains_key_ref(&word) {
@@ -119,7 +121,7 @@ impl parser: parser_common {
 
     fn token_is_word(word: ~str, ++tok: token::token) -> bool {
         match tok {
-          token::IDENT(sid, false) => { word == *self.get_str(sid) }
+          token::IDENT(sid, false) => { *self.id_to_str(sid) == word }
           _ => { false }
         }
     }
@@ -136,7 +138,7 @@ impl parser: parser_common {
     fn is_any_keyword(tok: token::token) -> bool {
         match tok {
           token::IDENT(sid, false) => {
-            self.keywords.contains_key_ref(self.get_str(sid))
+            self.keywords.contains_key_ref(self.id_to_str(sid))
           }
           _ => false
         }
@@ -148,7 +150,7 @@ impl parser: parser_common {
         let mut bump = false;
         let val = match self.token {
           token::IDENT(sid, false) => {
-            if word == *self.get_str(sid) {
+            if word == *self.id_to_str(sid) {
                 bump = true;
                 true
             } else { false }

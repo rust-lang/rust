@@ -5,6 +5,7 @@ import std::map;
 import std::map::hashmap;
 import syntax::{ast, attr};
 import syntax::ast_util::new_def_hash;
+import syntax::parse::token::ident_interner;
 
 export cstore;
 export cnum_map;
@@ -57,7 +58,8 @@ type cstore_private =
       mod_path_map: mod_path_map,
       mut used_crate_files: ~[~str],
       mut used_libraries: ~[~str],
-      mut used_link_args: ~[~str]};
+      mut used_link_args: ~[~str],
+      intr: ident_interner};
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
@@ -67,28 +69,29 @@ pure fn p(cstore: cstore) -> cstore_private {
     match cstore { private(p) => p }
 }
 
-fn mk_cstore() -> cstore {
+fn mk_cstore(intr: ident_interner) -> cstore {
     let meta_cache = map::int_hash::<crate_metadata>();
     let crate_map = map::int_hash::<ast::crate_num>();
     let mod_path_map = new_def_hash();
     return private(@{metas: meta_cache,
-                  use_crate_map: crate_map,
-                  mod_path_map: mod_path_map,
-                  mut used_crate_files: ~[],
-                  mut used_libraries: ~[],
-                  mut used_link_args: ~[]});
+                     use_crate_map: crate_map,
+                     mod_path_map: mod_path_map,
+                     mut used_crate_files: ~[],
+                     mut used_libraries: ~[],
+                     mut used_link_args: ~[],
+                     intr: intr});
 }
 
 fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {
     return p(cstore).metas.get(cnum);
 }
 
-fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> @~str {
+fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> ~str {
     let cdata = get_crate_data(cstore, cnum);
     return decoder::get_crate_hash(cdata.data);
 }
 
-fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @~str {
+fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> ~str {
     let cdata = get_crate_data(cstore, cnum);
     return decoder::get_crate_vers(cdata.data);
 }
@@ -96,7 +99,7 @@ fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @~str {
 fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
                   data: crate_metadata) {
     p(cstore).metas.insert(cnum, data);
-    do vec::iter(decoder::get_crate_module_paths(data)) |dp| {
+    do vec::iter(decoder::get_crate_module_paths(cstore.intr, data)) |dp| {
         let (did, path) = dp;
         let d = {crate: cnum, node: did.node};
         p(cstore).mod_path_map.insert(d, @path);
@@ -153,32 +156,29 @@ fn find_use_stmt_cnum(cstore: cstore,
 
 // returns hashes of crates directly used by this crate. Hashes are
 // sorted by crate name.
-fn get_dep_hashes(cstore: cstore) -> ~[@~str] {
-    type crate_hash = {name: @~str, hash: @~str};
+fn get_dep_hashes(cstore: cstore) -> ~[~str] {
+    type crate_hash = {name: ~str, hash: ~str};
     let mut result = ~[];
 
     for p(cstore).use_crate_map.each_value |cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
-        debug!{"Add hash[%s]: %s", cdata.name, *hash};
-        vec::push(result, {name: @cdata.name, hash: hash});
+        debug!{"Add hash[%s]: %s", cdata.name, hash};
+        vec::push(result, {name: cdata.name, hash: hash});
     };
-    pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {
-        *a.name <= *b.name
-    }
+    pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {a.name <= b.name}
     let sorted = std::sort::merge_sort(lteq, result);
     debug!{"sorted:"};
     for sorted.each |x| {
-        debug!{"  hash[%s]: %s", *x.name, *x.hash};
+        debug!{"  hash[%s]: %s", x.name, x.hash};
     }
-    fn mapper(ch: crate_hash) -> @~str { return ch.hash; }
+    fn mapper(ch: crate_hash) -> ~str { return ch.hash; }
     return vec::map(sorted, mapper);
 }
 
-fn get_path(cstore: cstore, d: ast::def_id) -> ~[ast::ident] {
-    // let f = bind str::split_str(_, "::");
+fn get_path(cstore: cstore, d: ast::def_id) -> ~[~str] {
     option::map_default(p(cstore).mod_path_map.find(d), ~[],
-                        |ds| str::split_str(*ds, ~"::").map(|x| @x ) )
+                        |ds| str::split_str(*ds, ~"::"))
 }
 // Local Variables:
 // mode: rust

@@ -83,7 +83,8 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
                        ii: ast::inlined_item,
                        maps: maps) {
     debug!{"> Encoding inlined item: %s::%s (%u)",
-           ast_map::path_to_str(path), *ii.ident(),
+           ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
+           ecx.tcx.sess.str_of(ii.ident()),
            ebml_w.writer.tell()};
 
     let id_range = ast_util::compute_id_range_for_inlined_item(ii);
@@ -94,7 +95,8 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
     }
 
     debug!{"< Encoded inlined fn: %s::%s (%u)",
-           ast_map::path_to_str(path), *ii.ident(),
+           ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
+           ecx.tcx.sess.str_of(ii.ident()),
            ebml_w.writer.tell()};
 }
 
@@ -107,7 +109,8 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
     match par_doc.opt_child(c::tag_ast) {
       none => none,
       some(ast_doc) => {
-        debug!{"> Decoding inlined fn: %s::?", ast_map::path_to_str(path)};
+        debug!{"> Decoding inlined fn: %s::?",
+               ast_map::path_to_str(path, tcx.sess.parse_sess.interner)};
         let ast_dsr = ebml::ebml_deserializer(ast_doc);
         let from_id_range = ast_util::deserialize_id_range(ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
@@ -118,14 +121,15 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         let ii = renumber_ast(xcx, raw_ii);
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
                                   dcx.tcx.items, path, ii);
-        debug!{"Fn named: %s", *ii.ident()};
+        debug!{"Fn named: %s", tcx.sess.str_of(ii.ident())};
         decode_side_tables(xcx, ast_doc);
         debug!{"< Decoded inlined fn: %s::%s",
-               ast_map::path_to_str(path), *ii.ident()};
+               ast_map::path_to_str(path, tcx.sess.parse_sess.interner),
+               tcx.sess.str_of(ii.ident())};
         match ii {
           ast::ii_item(i) => {
             debug!{">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
-                   syntax::print::pprust::item_to_str(i)};
+                   syntax::print::pprust::item_to_str(i, tcx.sess.intr())};
           }
           _ => { }
         }
@@ -915,28 +919,26 @@ trait fake_ext_ctxt {
 }
 
 #[cfg(test)]
-type fake_session = ();
+type fake_session = parse::parse_sess;
 
 #[cfg(test)]
 impl fake_session: fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg { ~[] }
-    fn parse_sess() -> parse::parse_sess { parse::new_parse_sess(none) }
+    fn parse_sess() -> parse::parse_sess { self }
 }
 
 #[cfg(test)]
 fn mk_ctxt() -> fake_ext_ctxt {
-    () as fake_ext_ctxt
+    parse::new_parse_sess(none) as fake_ext_ctxt
 }
 
 #[cfg(test)]
 fn roundtrip(in_item: @ast::item) {
-    debug!{"in_item = %s", pprust::item_to_str(in_item)};
     let mbuf = io::mem_buffer();
     let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
     encode_item_ast(ebml_w, in_item);
     let ebml_doc = ebml::doc(@io::mem_buffer_buf(mbuf));
     let out_item = decode_item_ast(ebml_doc);
-    debug!{"out_item = %s", pprust::item_to_str(out_item)};
 
     let exp_str =
         io::with_str_writer(|w| ast::serialize_item(w, *in_item) );
@@ -993,7 +995,8 @@ fn test_simplification() {
     });
     match (item_out, item_exp) {
       (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
-        assert pprust::item_to_str(item_out) == pprust::item_to_str(item_exp);
+        assert pprust::item_to_str(item_out, ext_cx.parse_sess().interner)
+            == pprust::item_to_str(item_exp, ext_cx.parse_sess().interner);
       }
       _ => fail
     }

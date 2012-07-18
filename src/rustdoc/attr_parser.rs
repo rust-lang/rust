@@ -63,8 +63,7 @@ fn parse_crate(attrs: ~[ast::attribute]) -> crate_attrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
     {
-        name: attr::last_meta_item_value_str_by_name(
-            link_metas, ~"name").map(|x| *x )
+        name: attr::last_meta_item_value_str_by_name(link_metas, ~"name")
     }
 }
 
@@ -95,7 +94,7 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
 fn parse_desc(attrs: ~[ast::attribute]) -> option<~str> {
     match doc_meta(attrs) {
       some(meta) => {
-        attr::get_meta_item_value_str(meta).map(|x| *x )
+        attr::get_meta_item_value_str(meta)
       }
       none => none
     }

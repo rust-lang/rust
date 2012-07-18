@@ -117,7 +117,7 @@ fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, p.span, p.id);
     debug!{"Type for pattern binding %s (id %d) resolved to %s",
-           pat_to_str(p), p.id,
+           pat_to_str(p, wbcx.fcx.ccx.tcx.sess.intr()), p.id,
            wbcx.fcx.infcx.ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
                                    p.id))};
@@ -130,7 +130,7 @@ fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     match resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
       result::ok(lty) => {
         debug!{"Type for local %s (id %d) resolved to %s",
-               pat_to_str(l.node.pat), l.node.id,
+               pat_to_str(l.node.pat, wbcx.fcx.ccx.tcx.sess.intr()),l.node.id,
                wbcx.fcx.infcx.ty_to_str(lty)};
         write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.node.id, lty);
       }

@@ -21,8 +21,6 @@ that.
 
 import ext::base::ext_ctxt;
 
-import ast::{ident};
-
 import proto::{state, protocol, next_state};
 import ast_builder::empty_span;
 
@@ -36,11 +34,11 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
                 state.span, // use a real span!
                 fmt!{"state %s contains no messages, \
                       consider stepping to a terminal state instead",
-                     *state.name})
+                      state.name})
         }
     }
 
-    fn visit_message(name: ident, _span: span, _tys: &[@ast::ty],
+    fn visit_message(name: ~str, _span: span, _tys: &[@ast::ty],
                      this: state, next: next_state) {
         match next {
           some({state: next, tys: next_tys}) => {
@@ -51,7 +49,7 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
                 self.span_err(
                     proto.get_state(next).span,
                     fmt!{"message %s steps to undefined state, %s",
-                         *name, *next});
+                         name, next});
             }
             else {
                 let next = proto.get_state(next);
@@ -61,7 +59,7 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
                         next.span, // use a real span
                         fmt!{"message %s target (%s) \
                               needs %u type parameters, but got %u",
-                             *name, *next.name,
+                             name, next.name,
                              next.ty_params.len(),
                              next_tys.len()});
                 }
