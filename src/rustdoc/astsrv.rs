@@ -107,6 +107,8 @@ fn build_ctxt(sess: session,
     import rustc::front::config;
 
     let ast = config::strip_unconfigured_items(ast);
+    let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
+                                                sess.opts.cfg, ast);
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), *ast);
 
