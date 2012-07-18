@@ -154,9 +154,21 @@ class CoherenceChecker {
 
         visit_crate(*crate, (), mk_simple_visitor(@{
             visit_item: |item| {
+                #debug("(checking coherence) item '%s'", *item.ident);
+
                 alt item.node {
-                    item_impl(_, associated_trait, self_type, _) {
-                        self.check_implementation(item, associated_trait);
+                    item_impl(_, associated_traits, self_type, _) {
+                        // XXX: Accept an array of traits.
+                        let optional_associated_trait;
+                        if associated_traits.len() == 0 {
+                            optional_associated_trait = none;
+                        } else {
+                            optional_associated_trait =
+                                some(associated_traits[0]);
+                        }
+
+                        self.check_implementation(item,
+                                                  optional_associated_trait);
                     }
                     _ {
                         // Nothing to do.
@@ -189,6 +201,10 @@ class CoherenceChecker {
         let self_type = self.crate_context.tcx.tcache.get(local_def(item.id));
         alt optional_associated_trait {
             none {
+                #debug("(checking implementation) no associated trait for \
+                        item '%s'",
+                       *item.ident);
+
                 alt get_base_type_def_id(self.inference_context,
                                          item.span,
                                          self_type.ty) {
@@ -207,6 +223,12 @@ class CoherenceChecker {
             some(associated_trait) {
                 let def = self.crate_context.tcx.def_map.get
                     (associated_trait.ref_id);
+                #debug("(checking implementation) adding impl for trait \
+                        '%s', item '%s'",
+                       ast_map::node_id_to_str(self.crate_context.tcx.items,
+                                               associated_trait.ref_id),
+                       *item.ident);
+
                 let implementation = self.create_impl_from_item(item);
                 self.add_trait_method(def_id_of_def(def), implementation);
             }
@@ -362,7 +384,15 @@ class CoherenceChecker {
                             self.privileged_types.remove(privileged_type);
                         }
                     }
-                    item_impl(_, optional_trait_ref, _, _) {
+                    item_impl(_, associated_traits, _, _) {
+                        // XXX: Accept an array of traits.
+                        let optional_trait_ref;
+                        if associated_traits.len() == 0 {
+                            optional_trait_ref = none;
+                        } else {
+                            optional_trait_ref = some(associated_traits[0]);
+                        }
+
                         alt self.base_type_def_ids.find(local_def(item.id)) {
                             none {
                                 // Nothing to do.

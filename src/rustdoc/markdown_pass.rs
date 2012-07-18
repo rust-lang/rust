@@ -224,14 +224,16 @@ fn header_name(doc: doc::itemtag) -> ~str {
       doc::impltag(doc) {
         assert option::is_some(doc.self_ty);
         let self_ty = option::get(doc.self_ty);
-        alt doc.trait_ty {
-          some(trait_ty) {
-            #fmt("%s of %s for %s", doc.name(), trait_ty, self_ty)
-          }
-          none {
-            #fmt("%s for %s", doc.name(), self_ty)
-          }
+        let mut trait_part = ~"";
+        for doc.trait_types.eachi |i, trait_type| {
+            if i == 0 {
+                trait_part += ~" of ";
+            } else {
+                trait_part += ", ";
+            }
+            trait_part += trait_type;
         }
+        #fmt("%s%s for %s", doc.name(), trait_part, self_ty)
       }
       _ {
         doc.name()

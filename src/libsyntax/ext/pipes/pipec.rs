@@ -21,6 +21,7 @@ import ast_builder::append_types;
 import ast_builder::ast_builder;
 import ast_builder::methods;
 import ast_builder::path;
+import ast_builder::path_concat;
 
 trait gen_send {
     fn gen_send(cx: ext_ctxt) -> @ast::item;

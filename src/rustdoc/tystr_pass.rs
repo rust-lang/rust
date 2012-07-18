@@ -230,22 +230,22 @@ fn fold_impl(
 
     let srv = fold.ctxt;
 
-    let (trait_ty, self_ty) = do astsrv::exec(srv) |ctxt| {
+    let (trait_types, self_ty) = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
-            node: ast::item_impl(_, trait_ty, self_ty, _), _
+            node: ast::item_impl(_, trait_types, self_ty, _), _
           }, _) {
-            let trait_ty = option::map(trait_ty, |p| {
+            let trait_types = vec::map(trait_types, |p| {
                 pprust::path_to_str(p.path)
             });
-            (trait_ty, some(pprust::ty_to_str(self_ty)))
+            (trait_types, some(pprust::ty_to_str(self_ty)))
           }
           _ { fail ~"expected impl" }
         }
     };
 
     {
-        trait_ty: trait_ty,
+        trait_types: trait_types,
         self_ty: self_ty,
         methods: merge_methods(fold.ctxt, doc.id(), doc.methods)
         with doc
@@ -253,15 +253,15 @@ fn fold_impl(
 }
 
 #[test]
-fn should_add_impl_trait_ty() {
+fn should_add_impl_trait_types() {
     let doc = test::mk_doc(~"impl i of j for int { fn a<T>() { } }");
-    assert doc.cratemod().impls()[0].trait_ty == some(~"j");
+    assert doc.cratemod().impls()[0].trait_types[0] == ~"j";
 }
 
 #[test]
-fn should_not_add_impl_trait_ty_if_none() {
+fn should_not_add_impl_trait_types_if_none() {
     let doc = test::mk_doc(~"impl i for int { fn a() { } }");
-    assert doc.cratemod().impls()[0].trait_ty == none;
+    assert vec::len(doc.cratemod().impls()[0].trait_types) == 0;
 }
 
 #[test]

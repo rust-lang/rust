@@ -2966,16 +2966,20 @@ class Resolver {
                 }
             }
 
-            item_impl(type_parameters, interface_reference, self_type,
+            item_impl(type_parameters, implemented_traits, self_type,
                       methods) {
 
-                self.resolve_implementation(item.id,
-                                            item.span,
-                                            type_parameters,
-                                            interface_reference,
-                                            self_type,
-                                            methods,
-                                            visitor);
+                // XXX: Should take an array of traits.
+                let trait_reference;
+                if implemented_traits.len() == 0 {
+                    trait_reference = none;
+                } else {
+                    trait_reference = some(implemented_traits[0]);
+                }
+
+                self.resolve_implementation(item.id, item.span,
+                                            type_parameters, trait_reference,
+                                            self_type, methods, visitor);
             }
 
             item_trait(type_parameters, methods) {

@@ -235,7 +235,7 @@ fn impldoc_from_impl(
 ) -> doc::impldoc {
     {
         item: itemdoc,
-        trait_ty: none,
+        trait_types: ~[],
         self_ty: none,
         methods: do vec::map(methods) |method| {
             {

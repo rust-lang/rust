@@ -454,7 +454,7 @@ class lookup {
                 for (*trait_ids).each |trait_id| {
                     #debug("(adding inherent and extension candidates) \
                             trying trait: %s",
-                           node_id_to_str(self.tcx().items, trait_id.node));
+                           self.def_id_to_str(trait_id));
 
                     let coherence_info = self.fcx.ccx.coherence_info;
                     alt coherence_info.extension_methods.find(trait_id) {
@@ -463,6 +463,10 @@ class lookup {
                         }
                         some(extension_methods) {
                             for extension_methods.each |implementation| {
+                                #debug("(adding inherent and extension \
+                                         candidates) adding impl %s",
+                                       self.def_id_to_str
+                                        (implementation.did));
                                 self.add_candidates_from_impl
                                     (implementation, use_assignability);
                             }
@@ -470,6 +474,14 @@ class lookup {
                     }
                 }
             }
+        }
+    }
+
+    fn def_id_to_str(def_id: ast::def_id) -> ~str {
+        if def_id.crate == ast::local_crate {
+            node_id_to_str(self.tcx().items, def_id.node)
+        } else {
+            ast_map::path_to_str(csearch::get_item_path(self.tcx(), def_id))
         }
     }
 

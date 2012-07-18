@@ -558,16 +558,18 @@ fn print_item(s: ps, &&item: @ast::item) {
           }
           bclose(s, item.span);
        }
-      ast::item_impl(tps, ifce, ty, methods) {
+      ast::item_impl(tps, traits, ty, methods) {
         head(s, ~"impl");
         word(s.s, *item.ident);
         print_type_params(s, tps);
         space(s.s);
-        option::iter(ifce, |p| {
+        if vec::len(traits) != 0u {
             word_nbsp(s, ~"of");
-            print_path(s, p.path, false);
+            do commasep(s, inconsistent, traits) |s, p| {
+                print_path(s, p.path, false);
+            }
             space(s.s);
-            });
+        }
         word_nbsp(s, ~"for");
         print_type(s, ty);
         space(s.s);

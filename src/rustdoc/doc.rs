@@ -110,7 +110,7 @@ type methoddoc = {
 
 type impldoc = {
     item: itemdoc,
-    trait_ty: option<~str>,
+    trait_types: ~[~str],
     self_ty: option<~str>,
     methods: ~[methoddoc]
 };

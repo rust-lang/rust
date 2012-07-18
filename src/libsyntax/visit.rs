@@ -135,9 +135,11 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             for vr.node.args.each |va| { v.visit_ty(va.ty, e, v); }
         }
       }
-      item_impl(tps, ifce, ty, methods) {
+      item_impl(tps, traits, ty, methods) {
         v.visit_ty_params(tps, e, v);
-        option::iter(ifce, |p| visit_path(p.path, e, v));
+        for traits.each |p| {
+            visit_path(p.path, e, v);
+        }
         v.visit_ty(ty, e, v);
         for methods.each |m| {
             visit_method_helper(m, e, v)

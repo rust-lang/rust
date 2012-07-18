@@ -635,8 +635,10 @@ enum item_ {
                option<class_dtor>
                ),
     item_trait(~[ty_param], ~[trait_method]),
-    item_impl(~[ty_param], option<@trait_ref> /* trait */,
-              @ty /* self */, ~[@method]),
+    item_impl(~[ty_param],
+              ~[@trait_ref], /* traits this impl implements */
+              @ty, /* self */
+              ~[@method]),
     item_mac(mac),
 }
 

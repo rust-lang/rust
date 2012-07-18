@@ -410,14 +410,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
         ref, we need to map it to its parent class */
             ebml_w.wr_str(def_to_str(local_def(it.id)));
           }
-          some(ast_map::node_item(@{node: item_impl(_,
-                                               some(ifce),_,_),_},_)) {
-            ebml_w.wr_str(def_to_str(did));
-          }
-          some(_) {
-            ebml_w.wr_str(def_to_str(did));
-          }
-          none {
+          _ {
             // Must be a re-export, then!
             // ...or an iface ref
             ebml_w.wr_str(def_to_str(did));
@@ -715,7 +708,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
-      item_impl(tps, ifce, _, methods) {
+      item_impl(tps, traits, _, methods) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -729,9 +722,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
             ebml_w.end_tag();
         }
-        do option::iter(ifce) |t| {
-           encode_trait_ref(ebml_w, ecx, t)
-        };
+        if traits.len() > 1 {
+            fail ~"multiple traits!!";
+        }
+        for traits.each |associated_trait| {
+           encode_trait_ref(ebml_w, ecx, associated_trait)
+        }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
 

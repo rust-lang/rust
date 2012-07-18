@@ -2085,13 +2085,22 @@ class parser {
                 (some(id), self.parse_ty_params())
             }
         };
-        let ifce = if self.eat_keyword(~"of") {
-            let path = self.parse_path_with_tps(false);
-            if option::is_none(ident) {
-                ident = some(vec::last(path.idents));
+        let traits;
+        if self.eat_keyword(~"of") {
+            let for_atom = interner::intern(*self.reader.interner(), @~"for");
+            traits = self.parse_trait_ref_list(token::IDENT(for_atom, false));
+            if traits.len() >= 1 && option::is_none(ident) {
+                ident = some(vec::last(traits[0].path.idents));
             }
-            some(@{path: path, ref_id: self.get_id(), impl_id: self.get_id()})
-        } else { none };
+            if traits.len() == 0 {
+                self.fatal(~"BUG: 'of' but no trait");
+            }
+            if traits.len() > 1 {
+                self.fatal(~"BUG: multiple traits");
+            }
+        } else {
+            traits = ~[];
+        };
         let ident = alt ident {
           some(name) { name }
           none { self.expect_keyword(~"of"); fail; }
@@ -2103,7 +2112,7 @@ class parser {
         while !self.eat(token::RBRACE) {
             vec::push(meths, self.parse_method(public));
         }
-        (ident, item_impl(tps, ifce, ty, meths), none)
+        (ident, item_impl(tps, traits, ty, meths), none)
     }
 
     // Instantiates ident <i> with references to <typarams> as arguments.
@@ -2127,9 +2136,9 @@ class parser {
           ref_id: self.get_id(), impl_id: self.get_id()}
     }
 
-    fn parse_trait_ref_list() -> ~[@trait_ref] {
+    fn parse_trait_ref_list(ket: token::token) -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
-            token::LBRACE, seq_sep_trailing_disallowed(token::COMMA),
+            ket, seq_sep_trailing_disallowed(token::COMMA),
             |p| p.parse_trait_ref())
     }
 
@@ -2139,7 +2148,7 @@ class parser {
         let ty_params = self.parse_ty_params();
         let class_path = self.ident_to_path_tys(class_name, ty_params);
         let traits : ~[@trait_ref] = if self.eat(token::COLON)
-            { self.parse_trait_ref_list() }
+            { self.parse_trait_ref_list(token::LBRACE) }
         else { ~[] };
         self.expect(token::LBRACE);
         let mut ms: ~[@class_member] = ~[];
