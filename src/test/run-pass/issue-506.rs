@@ -9,7 +9,10 @@ import task;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn get_task_id();
+    fn get_task_id() -> libc::intptr_t;
 }
 
-fn main() { task::spawn(rustrt::get_task_id); }
+fn main() {
+    let f: fn() -> libc::intptr_t = rustrt::get_task_id;
+    task::spawn(unsafe { unsafe::reinterpret_cast(f) });
+}

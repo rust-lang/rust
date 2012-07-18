@@ -11,7 +11,7 @@ extern mod rustrt {
     fn rust_get_sched_id() -> libc::intptr_t;
     fn last_os_error() -> ~str;
     fn rust_getcwd() -> ~str;
-    fn get_task_id();
+    fn get_task_id() -> libc::intptr_t;
     fn sched_threads();
     fn rust_get_task();
 }
