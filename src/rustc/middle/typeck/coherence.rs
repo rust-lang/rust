@@ -20,7 +20,7 @@ import middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 import syntax::ast::{crate, def_id, def_mod, item, item_class, item_const};
 import syntax::ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 import syntax::ast::{item_mac, item_mod, item_trait, item_ty, local_crate};
-import syntax::ast::{method, node_id, region_param, rp_none, rp_self};
+import syntax::ast::{method, node_id};
 import syntax::ast::{trait_ref};
 import syntax::ast_map::node_item;
 import syntax::ast_util::{def_id_of_def, dummy_sp, new_def_hash};
