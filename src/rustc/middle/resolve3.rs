@@ -1904,6 +1904,16 @@ class Resolver {
             }
         }
 
+        let i = import_resolution;
+        alt (i.module_target, i.value_target, i.type_target, i.impl_target) {
+          /*
+            If this name wasn't found in any of the four namespaces, it's
+            definitely unresolved
+           */
+          (none, none, none, v) if v.len() == 0 { ret Failed; }
+          _ {}
+        }
+
         assert import_resolution.outstanding_references >= 1u;
         import_resolution.outstanding_references -= 1u;
 
