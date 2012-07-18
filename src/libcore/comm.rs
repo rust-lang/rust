@@ -211,6 +211,9 @@ fn recv_<T: send>(p: *rust_port) -> T {
 }
 
 fn peek_(p: *rust_port) -> bool {
+    // Yield here before we check to see if someone sent us a message
+    // FIXME #524, if the compilergenerates yields, we don't need this
+    task::yield();
     rustrt::rust_port_size(p) != 0u as libc::size_t
 }
 
