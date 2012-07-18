@@ -8,7 +8,7 @@ import std::rand;
 extern mod rustrt {
     fn debug_get_stk_seg() -> *u8;
 
-    fn rust_get_sched_id() -> int;
+    fn rust_get_sched_id() -> libc::intptr_t;
     fn last_os_error() -> ~str;
     fn rust_getcwd() -> ~str;
     fn get_task_id();

@@ -163,7 +163,7 @@ mod test_foreign_items {
         #[attr];
 
         #[attr]
-        fn get_task_id() -> int;
+        fn get_task_id() -> libc::intptr_t;
     }
 }
 
