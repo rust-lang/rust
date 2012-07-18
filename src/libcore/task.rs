@@ -731,8 +731,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             // Getting killed after here would leak the task.
 
             let child_wrapper =
-                make_child_wrapper(new_task, child_tg,
-                                   opts.supervise, is_main, f);
+                make_child_wrapper(new_task, child_tg, is_main, f);
             let fptr = ptr::addr_of(child_wrapper);
             let closure: *rust_closure = unsafe::reinterpret_cast(fptr);
 
@@ -750,8 +749,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
     }
 
     fn make_child_wrapper(child_task: *rust_task, -child_tg: taskgroup_arc,
-                          supervise: bool, is_main: bool,
-                          -f: fn~()) -> fn~() {
+                          is_main: bool, -f: fn~()) -> fn~() {
         let child_tg_ptr = ~mut some(child_tg);
         fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
@@ -759,10 +757,6 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             *child_tg_ptr <-> child_tg_opt;
             let child_tg = option::unwrap(child_tg_opt);
             // Child task runs this code.
-            if !supervise {
-                // FIXME (#1868, #1789) take this out later
-                rustrt::unsupervise();
-            }
             // Set up membership in taskgroup. If this returns none, the
             // parent was already failing, so don't bother doing anything.
             alt enlist_in_taskgroup(child_tg, child_task) {
@@ -1018,7 +1012,6 @@ extern mod rustrt {
     fn start_task(task: *rust_task, closure: *rust_closure);
 
     fn rust_task_is_unwinding(task: *rust_task) -> bool;
-    fn unsupervise();
     fn rust_osmain_sched_id() -> sched_id;
     fn rust_task_inhibit_kill();
     fn rust_task_allow_kill();
@@ -1462,6 +1455,21 @@ fn test_unkillable_nested() {
 
     // Now we can be killed
     po.recv();
+}
+
+#[test]
+fn test_child_doesnt_ref_parent() {
+    // If the child refcounts the parent task, this will stack overflow when
+    // climbing the task tree to dereference each ancestor. (See #1789)
+    const generations: uint = 8192;
+    fn child_no(x: uint) -> fn~() {
+        ret || {
+            if x < generations {
+                task::spawn(child_no(x+1));
+            }
+        }
+    }
+    task::spawn(child_no(0));
 }
 
 #[test]

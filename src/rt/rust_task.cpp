@@ -10,12 +10,9 @@
 #include "rust_env.h"
 #include "rust_port.h"
 
-// FIXME (#1789) (bblum): get rid of supervisors
-
 // Tasks
 rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
-                     rust_task *spawner, const char *name,
-                     size_t init_stack_sz) :
+                     const char *name, size_t init_stack_sz) :
     ref_count(1),
     id(0),
     notify_enabled(false),
@@ -30,7 +27,6 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     local_region(&sched_loop->local_region),
     boxed(sched_loop->kernel->env, &local_region),
     unwinding(false),
-    propagate_failure(true),
     cc_counter(0),
     total_stack_sz(0),
     task_local_data(NULL),
@@ -45,17 +41,13 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     disallow_kill(0),
     c_stack(NULL),
     next_c_sp(0),
-    next_rust_sp(0),
-    supervisor(spawner)
+    next_rust_sp(0)
 {
     LOGPTR(sched_loop, "new task", (uintptr_t)this);
     DLOG(sched_loop, task, "sizeof(task) = %d (0x%x)",
          sizeof *this, sizeof *this);
 
     new_stack(init_stack_sz);
-    if (supervisor) {
-        supervisor->ref();
-    }
 }
 
 // NB: This does not always run on the task's scheduler thread
@@ -64,15 +56,6 @@ rust_task::delete_this()
 {
     DLOG(sched_loop, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
-
-    // FIXME (#2677): We should do this when the task exits, not in the
-    // destructor
-    {
-        scoped_lock with(supervisor_lock);
-        if (supervisor) {
-            supervisor->deref();
-        }
-    }
 
     /* FIXME (#2677): tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
@@ -333,21 +316,6 @@ rust_task::begin_failure(char const *expr, char const *file, size_t line) {
 
 void rust_task::fail_sched_loop() {
     sched_loop->fail();
-}
-
-void
-rust_task::unsupervise()
-{
-    scoped_lock with(supervisor_lock);
-    if (supervisor) {
-        DLOG(sched_loop, task,
-             "task %s @0x%" PRIxPTR
-             " disconnecting from supervisor %s @0x%" PRIxPTR,
-             name, this, supervisor->name, supervisor);
-        supervisor->deref();
-    }
-    supervisor = NULL;
-    propagate_failure = false;
 }
 
 frame_glue_fns*

@@ -129,8 +129,7 @@ rust_env_pairs() {
 
 extern "C" CDECL void
 unsupervise() {
-    rust_task *task = rust_get_current_task();
-    task->unsupervise();
+    // FIXME(#1789): bblum: remove this; requires a snapshot
 }
 
 extern "C" CDECL void

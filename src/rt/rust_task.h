@@ -122,6 +122,8 @@ rust_task_fail(rust_task *task,
 struct
 rust_task : public kernel_owned<rust_task>
 {
+    // FIXME(#1789) Refcounting no longer seems needed now that tasks don't
+    // ref their parents. I'll leave it in just in case... -- bblum
     RUST_ATOMIC_REFCOUNT();
 
     rust_task_id id;
@@ -193,9 +195,6 @@ private:
 
     rust_port_selector port_selector;
 
-    lock_and_signal supervisor_lock;
-    rust_task *supervisor;     // Parent-link for failure propagation.
-
     // Called when the atomic refcount reaches zero
     void delete_this();
 
@@ -237,7 +236,6 @@ public:
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_sched_loop *sched_loop,
               rust_task_state state,
-              rust_task *spawner,
               const char *name,
               size_t init_stack_sz);
 
@@ -278,9 +276,6 @@ public:
     // Propagate failure to the entire rust runtime.
     // FIXME (#1868) (bblum): maybe this can be done at rust-level?
     void fail_sched_loop();
-
-    // Disconnect from our supervisor.
-    void unsupervise();
 
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
 

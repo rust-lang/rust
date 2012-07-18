@@ -76,9 +76,6 @@ rust_sched_loop::kill_all_tasks() {
     while (!all_tasks.empty()) {
         rust_task *task = all_tasks.back();
         all_tasks.pop_back();
-        // We don't want the failure of these tasks to propagate back
-        // to the kernel again since we're already failing everything
-        task->unsupervise();
         task->kill();
     }
 }
@@ -261,9 +258,9 @@ rust_sched_loop::create_task(rust_task *spawner, const char *name) {
     rust_task *task =
         new (this->kernel, "rust_task")
         rust_task(this, task_state_newborn,
-                  spawner, name, kernel->env->min_stack_size);
+                  name, kernel->env->min_stack_size);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
-                        task, spawner ? spawner->name : "null", name);
+                        task, spawner ? spawner->name : "(none)", name);
 
     task->id = kernel->generate_task_id();
     return task;
