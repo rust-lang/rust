@@ -8,7 +8,7 @@ import std::rand;
 extern mod rustrt {
     fn debug_get_stk_seg() -> *u8;
 
-    fn unsupervise();
+    fn rust_get_sched_id() -> int;
     fn last_os_error() -> ~str;
     fn rust_getcwd() -> ~str;
     fn get_task_id();
@@ -16,7 +16,7 @@ extern mod rustrt {
     fn rust_get_task();
 }
 
-fn calllink01() { rustrt::unsupervise(); }
+fn calllink01() { rustrt::rust_get_sched_id(); }
 fn calllink02() { rustrt::last_os_error(); }
 fn calllink03() { rustrt::rust_getcwd(); }
 fn calllink08() { rustrt::get_task_id(); }

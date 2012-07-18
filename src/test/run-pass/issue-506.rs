@@ -9,7 +9,7 @@ import task;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn unsupervise();
+    fn get_task_id();
 }
 
-fn main() { task::spawn(rustrt::unsupervise); }
+fn main() { task::spawn(rustrt::get_task_id); }

@@ -1,9 +1,9 @@
 // ABI is cdecl by default
 
 extern mod rustrt {
-    fn unsupervise();
+    fn get_task_id() -> int;
 }
 
 fn main() {
-    rustrt::unsupervise();
+    rustrt::get_task_id();
 }

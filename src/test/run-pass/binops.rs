@@ -116,13 +116,13 @@ fn test_fn() {
 #[abi = "cdecl"]
 #[nolink]
 extern mod test {
-    fn unsupervise();
+    fn rust_get_sched_id();
     fn get_task_id();
 }
 
 fn test_foreign_fn() {
-    assert test::unsupervise != test::get_task_id;
-    assert test::unsupervise == test::unsupervise;
+    assert test::rust_get_sched_id != test::get_task_id;
+    assert test::rust_get_sched_id == test::rust_get_sched_id;
 }
 
 class p {

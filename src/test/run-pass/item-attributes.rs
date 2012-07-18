@@ -163,7 +163,7 @@ mod test_foreign_items {
         #[attr];
 
         #[attr]
-        fn unsupervise();
+        fn get_task_id() -> int;
     }
 }
 

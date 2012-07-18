@@ -1,10 +1,3 @@
-
-
-#[abi = "cdecl"]
-extern mod rustrt {
-    fn unsupervise();
-}
-
 #[abi = "cdecl"]
 #[nolink]
 extern mod bar { }

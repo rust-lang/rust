@@ -1,8 +1,8 @@
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn unsupervise();
+    fn get_task_id();
 }
 
 fn main() {
-    let _foo = rustrt::unsupervise;
+    let _foo = rustrt::get_task_id;
 }
