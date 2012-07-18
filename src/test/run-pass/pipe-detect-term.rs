@@ -11,16 +11,14 @@ import pipes::{try_recv, recv};
 
 proto! oneshot {
     waiting:send {
-        signal -> signaled
+        signal -> !
     }
-
-    signaled:send { }
 }
 
 fn main() {
     let iotask = uv::global_loop::get();
     
-    let c = pipes::spawn_service(oneshot::init, |p| { 
+    pipes::spawn_service(oneshot::init, |p| { 
         alt try_recv(p) {
           some(*) { fail }
           none { }
@@ -36,8 +34,6 @@ fn main() {
 
 // Make sure the right thing happens during failure.
 fn failtest() {
-    let iotask = uv::global_loop::get();
-    
     let (c, p) = oneshot::init();
 
     do task::spawn_with(c) |_c| { 

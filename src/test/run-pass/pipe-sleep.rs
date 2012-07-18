@@ -7,10 +7,8 @@ import pipes::recv;
 
 proto! oneshot {
     waiting:send {
-        signal -> signaled
+        signal -> !
     }
-
-    signaled:send { }
 }
 
 fn main() {
@@ -19,7 +17,7 @@ fn main() {
     let c = pipes::spawn_service(oneshot::init, |p| { recv(p); });
 
     let iotask = uv::global_loop::get();
-    sleep(iotask, 5000);
+    sleep(iotask, 500);
     
     signal(c);
 }

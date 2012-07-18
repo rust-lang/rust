@@ -27,6 +27,9 @@ fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
     // check for errors
     visit(proto, cx);
 
+    // do analysis
+    liveness::analyze(proto, cx);
+
     // compile
     base::mr_item(proto.compile(cx))
 }

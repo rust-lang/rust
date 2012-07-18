@@ -87,5 +87,6 @@ mod ext {
         mod pipec;
         mod proto;
         mod check;
+        mod liveness;
     }
 }

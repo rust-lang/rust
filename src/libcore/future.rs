@@ -81,7 +81,7 @@ fn from_port<A:send>(-port: future_pipe::client::waiting<A>) -> future<A> {
         port_ <-> *port;
         let port = option::unwrap(port_);
         alt recv(port) {
-          future_pipe::completed(data, _next) { #move(data) }
+          future_pipe::completed(data) { #move(data) }
         }
     }
 }
@@ -135,10 +135,8 @@ fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
 
 proto! future_pipe {
     waiting:recv<T:send> {
-        completed(T) -> terminated
+        completed(T) -> !
     }
-
-    terminated:send { }
 }
 
 #[test]

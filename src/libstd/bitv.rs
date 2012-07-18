@@ -253,6 +253,14 @@ impl methods for bitv {
     fn each(f: fn(bool) -> bool) { each(self, f) }
     fn each_storage(f: fn(&uint) -> bool) { each_storage(self, f) }
     fn eq_vec(v: ~[uint]) -> bool { eq_vec(self, v) }
+
+    fn ones(f: fn(uint) -> bool) {
+        for uint::range(0, self.nbits) |i| {
+            if self.get(i) {
+                if !f(i) { break }
+            }
+        }
+    }
 }
 
 impl of to_str::to_str for bitv {

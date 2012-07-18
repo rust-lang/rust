@@ -11,8 +11,6 @@ proto! oneshot {
     waiting:send {
         signal -> !
     }
-
-    signaled:send { }
 }
 
 proto! stream {

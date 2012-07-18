@@ -6,10 +6,8 @@ import std::uv;
 
 proto! oneshot {
     waiting:send {
-        signal -> signaled
+        signal -> !
     }
-
-    signaled:send { }
 }
 
 fn main() {

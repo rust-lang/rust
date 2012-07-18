@@ -55,6 +55,7 @@ impl methods for message {
 
 enum state {
     state_(@{
+        id: uint,
         name: ident,
         dir: direction,
         ty_params: ~[ast::ty_param],
@@ -81,6 +82,20 @@ impl methods for state {
         cx.ty_path_ast_builder
             (path(self.name).add_tys(cx.ty_vars(self.ty_params)))
     }
+
+    /// Iterate over the states that can be reached in one message
+    /// from this state.
+    fn reachable(f: fn(state) -> bool) {
+        for self.messages.each |m| {
+            alt m {
+              message(_, _, _, some({state: id, _})) {
+                let state = self.proto.get_state(id);
+                if !f(state) { break }
+              }
+              _ { }
+            }
+        }
+    }
 }
 
 enum protocol {
@@ -104,6 +119,8 @@ impl methods for protocol {
         self.states.find(|i| i.name == name).get()
     }
 
+    fn get_state_by_id(id: uint) -> state { self.states[id] }
+
     fn has_state(name: ident) -> bool {
         self.states.find(|i| i.name == name) != none
     }
@@ -113,6 +130,7 @@ impl methods for protocol {
         let messages = dvec();
 
         let state = state_(@{
+            id: self.states.len(),
             name: name,
             dir: dir,
             ty_params: ty_params,
@@ -127,6 +145,8 @@ impl methods for protocol {
     fn filename() -> ~str {
         ~"proto://" + *self.name
     }
+
+    fn num_states() -> uint { self.states.len() }
 }
 
 trait visitor<Tproto, Tstate, Tmessage> {
