@@ -8,14 +8,14 @@ fn ok(f: fn@(x: &uint)) {
     // f's type should be a subtype of g's type), because f can be
     // used in any context that expects g's type.  But this currently
     // fails.
-    let mut g: fn@(y: &r.uint) = fn@(x: &r.uint) { };
+    let mut g: fn@(y: &r/uint) = fn@(x: &r/uint) { };
     g = f;
 }
 
 // This version is the same as above, except that here, g's type is
 // inferred.
 fn ok_inferred(f: fn@(x: &uint)) {
-    let mut g = fn@(x: &r.uint) { };
+    let mut g = fn@(x: &r/uint) { };
     g = f;
 }
 

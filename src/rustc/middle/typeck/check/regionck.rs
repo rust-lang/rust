@@ -20,23 +20,59 @@ this point a bit better.
 import util::ppaux;
 import syntax::print::pprust;
 import infer::{resolve_type, resolve_all, force_all,
-               resolve_rvar, force_rvar};
+               resolve_rvar, force_rvar, fres};
+import middle::kind::check_owned;
 
-type rcx = @{fcx: @fn_ctxt, mut errors_reported: uint};
-type rvt = visit::vt<rcx>;
+enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
+type rvt = visit::vt<@rcx>;
+
+impl methods for @rcx {
+    /// Try to resolve the type for the given node.
+    ///
+    /// Note one important point: we do not attempt to resolve *region
+    /// variables* here.  This is because regionck is essentially adding
+    /// constraints to those region variables and so may yet influence
+    /// how they are resolved.
+    ///
+    /// Consider this silly example:
+    ///
+    ///     fn borrow(x: &int) -> &int {x}
+    ///     fn foo(x: @int) -> int {  /* block: B */
+    ///         let b = borrow(x);    /* region: <R0> */
+    ///         *b
+    ///     }
+    ///
+    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrainted
+    /// to be some subregion of the block B and some superregion of
+    /// the call.  If we forced it now, we'd choose the smaller region
+    /// (the call).  But that would make the *b illegal.  Since we don't
+    /// resolve, the type of b will be `&<R0>.int` and then `*b` will require
+    /// that `<R0>` be bigger than the let and the `*b` expression, so we
+    /// will effectively resolve `<R0>` to be the block B.
+    fn resolve_type(unresolved_ty: ty::t) -> fres<ty::t> {
+        resolve_type(self.fcx.infcx, unresolved_ty,
+                     (resolve_all | force_all) -
+                     (resolve_rvar | force_rvar))
+    }
+
+    /// Try to resolve the type for the given node.
+    fn resolve_node_type(id: ast::node_id) -> fres<ty::t> {
+        self.resolve_type(self.fcx.node_ty(id))
+    }
+}
 
 fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
-    let rcx = @{fcx:fcx, mut errors_reported: 0u};
+    let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
-    v.visit_expr(e, rcx, v);
+    v.visit_expr(e, @rcx, v);
 }
 
 fn regionck_fn(fcx: @fn_ctxt,
                _decl: ast::fn_decl,
                blk: ast::blk) {
-    let rcx = @{fcx:fcx, mut errors_reported: 0u};
+    let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
-    v.visit_block(blk, rcx, v);
+    v.visit_block(blk, @rcx, v);
 }
 
 fn regionck_visitor() -> rvt {
@@ -49,11 +85,11 @@ fn regionck_visitor() -> rvt {
                    with *visit::default_visitor()})
 }
 
-fn visit_item(_item: @ast::item, &&_rcx: rcx, _v: rvt) {
+fn visit_item(_item: @ast::item, &&_rcx: @rcx, _v: rvt) {
     // Ignore items
 }
 
-fn visit_local(l: @ast::local, &&rcx: rcx, v: rvt) {
+fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
     let e = rcx.errors_reported;
     v.visit_pat(l.node.pat, rcx, v);
     if e != rcx.errors_reported {
@@ -66,7 +102,7 @@ fn visit_local(l: @ast::local, &&rcx: rcx, v: rvt) {
     }
 }
 
-fn visit_pat(p: @ast::pat, &&rcx: rcx, v: rvt) {
+fn visit_pat(p: @ast::pat, &&rcx: @rcx, v: rvt) {
     let fcx = rcx.fcx;
     alt p.node {
       ast::pat_ident(path, _)
@@ -80,11 +116,11 @@ fn visit_pat(p: @ast::pat, &&rcx: rcx, v: rvt) {
     visit::visit_pat(p, rcx, v);
 }
 
-fn visit_block(b: ast::blk, &&rcx: rcx, v: rvt) {
+fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
     visit::visit_block(b, rcx, v);
 }
 
-fn visit_expr(e: @ast::expr, &&rcx: rcx, v: rvt) {
+fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
     #debug["visit_expr(e=%s)", pprust::expr_to_str(e)];
 
     alt e.node {
@@ -99,6 +135,41 @@ fn visit_expr(e: @ast::expr, &&rcx: rcx, v: rvt) {
           _ { }
         }
       }
+
+      ast::expr_cast(source, _) {
+        // Determine if we are casting `source` to an iface instance.
+        // If so, we have to be sure that the type of the source obeys
+        // the iface's region bound.
+        //
+        // Note: there is a subtle point here concerning type
+        // parameters.  It is possible that the type of `source`
+        // contains type parameters, which in turn may contain regions
+        // that are not visible to us (only the caller knows about
+        // them).  The kind checker is ultimately responsible for
+        // guaranteeing region safety in that particular case.  There
+        // is an extensive comment on the function
+        // check_cast_for_escaping_regions() in kind.rs explaining how
+        // it goes about doing that.
+        alt rcx.resolve_node_type(e.id) {
+          result::err(_) => { ret; /* typeck will fail anyhow */ }
+          result::ok(target_ty) => {
+            alt ty::get(target_ty).struct {
+              ty::ty_trait(_, substs) {
+                let iface_region = alt substs.self_r {
+                  some(r) => {r}
+                  none => {ty::re_static}
+                };
+                let source_ty = rcx.fcx.expr_ty(source);
+                constrain_regions_in_type(rcx, iface_region,
+                                          e.span, source_ty);
+              }
+              _ { }
+            }
+          }
+        };
+
+      }
+
       _ { }
     }
 
@@ -106,7 +177,7 @@ fn visit_expr(e: @ast::expr, &&rcx: rcx, v: rvt) {
     visit::visit_expr(e, rcx, v);
 }
 
-fn visit_stmt(s: @ast::stmt, &&rcx: rcx, v: rvt) {
+fn visit_stmt(s: @ast::stmt, &&rcx: @rcx, v: rvt) {
     visit::visit_stmt(s, rcx, v);
 }
 
@@ -114,37 +185,13 @@ fn visit_stmt(s: @ast::stmt, &&rcx: rcx, v: rvt) {
 // references a region that is not in scope for that node.  Returns
 // false if an error is reported; this is used to cause us to cut off
 // region checking for that subtree to avoid reporting tons of errors.
-fn visit_node(id: ast::node_id, span: span, rcx: rcx) -> bool {
+fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     let fcx = rcx.fcx;
 
     // Try to resolve the type.  If we encounter an error, then typeck
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
-    //
-    // Note one important point: we do not attempt to resolve *region
-    // variables* here.  This is because regionck is essentially adding
-    // constraints to those region variables and so may yet influence
-    // how they are resolved.
-    //
-    // Consider this silly example:
-    //
-    //     fn borrow(x: &int) -> &int {x}
-    //     fn foo(x: @int) -> int {  /* block: B */
-    //         let b = borrow(x);    /* region: <R0> */
-    //         *b
-    //     }
-    //
-    // Here, the region of `b` will be `<R0>`.  `<R0>` is constrainted
-    // to be some subregion of the block B and some superregion of
-    // the call.  If we forced it now, we'd choose the smaller region
-    // (the call).  But that would make the *b illegal.  Since we don't
-    // resolve, the type of b will be `&<R0>.int` and then `*b` will require
-    // that `<R0>` be bigger than the let and the `*b` expression, so we
-    // will effectively resolve `<R0>` to be the block B.
-    let ty0 = fcx.node_ty(id);
-    let ty = alt resolve_type(fcx.infcx, ty0,
-                              (resolve_all | force_all) -
-                              (resolve_rvar | force_rvar)) {
+    let ty = alt rcx.resolve_node_type(id) {
       result::err(_) { ret true; }
       result::ok(ty) { ty }
     };
@@ -153,21 +200,29 @@ fn visit_node(id: ast::node_id, span: span, rcx: rcx) -> bool {
     let tcx = fcx.ccx.tcx;
     let encl_region = ty::encl_region(tcx, id);
 
-    #debug["visit_node(ty=%s, id=%d, encl_region=%s, ty0=%s)",
+    #debug["visit_node(ty=%s, id=%d, encl_region=%s)",
            ppaux::ty_to_str(tcx, ty),
            id,
-           ppaux::region_to_str(tcx, encl_region),
-           ppaux::ty_to_str(tcx, ty0)];
+           ppaux::region_to_str(tcx, encl_region)];
 
     // Otherwise, look at the type and see if it is a region pointer.
+    ret constrain_regions_in_type(rcx, encl_region, span, ty);
+}
+
+fn constrain_regions_in_type(
+    rcx: @rcx,
+    encl_region: ty::region,
+    span: span,
+    ty: ty::t) -> bool {
+
     let e = rcx.errors_reported;
     ty::walk_regions_and_ty(
-        tcx, ty,
+        rcx.fcx.ccx.tcx, ty,
         |r| constrain_region(rcx, encl_region, span, r),
         |t| ty::type_has_regions(t));
     ret (e == rcx.errors_reported);
 
-    fn constrain_region(rcx: rcx,
+    fn constrain_region(rcx: @rcx,
                         encl_region: ty::region,
                         span: span,
                         region: ty::region) {

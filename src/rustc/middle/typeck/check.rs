@@ -2154,7 +2154,7 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
         |_r| {},
         |t| {
             alt ty::get(t).struct {
-              ty::ty_param(idx, _) { tps_used[idx] = true; }
+              ty::ty_param({idx, _}) { tps_used[idx] = true; }
               _ { }
             }
             true

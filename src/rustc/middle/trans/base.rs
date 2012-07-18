@@ -1317,7 +1317,7 @@ enum copy_action { INIT, DROP_EXISTING, }
 fn type_is_structural_or_param(t: ty::t) -> bool {
     if ty::type_is_structural(t) { ret true; }
     alt ty::get(t).struct {
-      ty::ty_param(_, _) { ret true; }
+      ty::ty_param(*) { ret true; }
       _ { ret false; }
     }
 }

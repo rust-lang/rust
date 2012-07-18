@@ -137,8 +137,8 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                 }
                 false
               }
-              ty::ty_param(n, _) {
-                cx.uses[n] |= use;
+              ty::ty_param(p) {
+                cx.uses[p.idx] |= use;
                 false
               }
               _ { true }

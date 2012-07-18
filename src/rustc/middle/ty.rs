@@ -166,6 +166,7 @@ export terr_regions_differ, terr_mutability, terr_purity_mismatch;
 export terr_proto_mismatch;
 export terr_ret_style_mismatch;
 export purity_to_str;
+export param_tys_in_type;
 
 // Data types
 
@@ -312,6 +313,8 @@ type fn_ty = {purity: ast::purity,
               output: t,
               ret_style: ret_style};
 
+type param_ty = {idx: uint, def_id: def_id};
+
 // See discussion at head of region.rs
 enum region {
     re_bound(bound_region),
@@ -370,7 +373,7 @@ enum sty {
     ty_var(tv_vid), // type variable during typechecking
     ty_var_integral(tvi_vid), // type variable during typechecking, for
                               // integral types only
-    ty_param(uint, def_id), // type parameter
+    ty_param(param_ty), // type parameter
     ty_self, // special, implicit `self` type parameter
 
     // "Fake" types, used for trans purposes
@@ -579,7 +582,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box {}
-      ty_param(_, _) { flags |= has_params as uint; }
+      ty_param(_) { flags |= has_params as uint; }
       ty_var(_) | ty_var_integral(_) { flags |= needs_infer as uint; }
       ty_self { flags |= has_self as uint; }
       ty_enum(_, substs) | ty_class(_, substs) | ty_trait(_, substs) {
@@ -713,7 +716,9 @@ fn mk_var_integral(cx: ctxt, v: tvi_vid) -> t {
 
 fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
-fn mk_param(cx: ctxt, n: uint, k: def_id) -> t { mk_t(cx, ty_param(n, k)) }
+fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
+    mk_t(cx, ty_param({idx: n, def_id: k}))
+}
 
 fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
 
@@ -761,7 +766,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_var_integral(_) |
-      ty_param(_, _) {
+      ty_param(_) {
       }
       ty_box(tm) | ty_evec(tm, _) | ty_unboxed_vec(tm) |
       ty_ptr(tm) | ty_rptr(_, tm) {
@@ -982,7 +987,7 @@ fn subst_tps(cx: ctxt, tps: ~[t], typ: t) -> t {
     let tb = ty::get(typ);
     if !tbox_has_flag(tb, has_params) { ret typ; }
     alt tb.struct {
-      ty_param(idx, _) { tps[idx] }
+      ty_param(p) { tps[p.idx] }
       sty { fold_sty_to_ty(cx, sty, |t| subst_tps(cx, tps, t)) }
     }
 }
@@ -1019,7 +1024,7 @@ fn subst(cx: ctxt,
         let tb = get(typ);
         if !tbox_has_flag(tb, needs_subst) { ret typ; }
         alt tb.struct {
-          ty_param(idx, _) {substs.tps[idx]}
+          ty_param(p) {substs.tps[p.idx]}
           ty_self {substs.self_ty.get()}
           _ {
             fold_regions_and_ty(
@@ -1608,8 +1613,8 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         lowest
       }
 
-      ty_param(_, did) {
-        param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
+      ty_param(p) {
+        param_bounds_to_kind(cx.ty_param_bounds.get(p.def_id.node))
       }
 
       // self is a special type parameter that can only appear in ifaces; it
@@ -1666,7 +1671,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_fn(_) |
           ty_var(_) |
           ty_var_integral(_) |
-          ty_param(_, _) |
+          ty_param(_) |
           ty_self |
           ty_type |
           ty_opaque_box |
@@ -1855,7 +1860,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_evec(mt, vstore_fixed(_)) | ty_unboxed_vec(mt) {
         result = type_is_pod(cx, mt.ty);
       }
-      ty_param(_, _) { result = false; }
+      ty_param(_) { result = false; }
       ty_opaque_closure_ptr(_) { result = true; }
       ty_class(did, substs) {
         result = vec::any(lookup_class_fields(cx, did), |f| {
@@ -1899,7 +1904,7 @@ fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
 
 fn type_param(ty: t) -> option<uint> {
     alt get(ty).struct {
-      ty_param(id, _) { ret some(id); }
+      ty_param(p) { ret some(p.idx); }
       _ {/* fall through */ }
     }
     ret none;
@@ -2038,7 +2043,7 @@ fn hash_type_structure(st: sty) -> uint {
       ty_self { 28u }
       ty_var(v) { hash_uint(29u, v.to_uint()) }
       ty_var_integral(v) { hash_uint(30u, v.to_uint()) }
-      ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
+      ty_param(p) { hash_def(hash_uint(31u, p.idx), p.def_id) }
       ty_type { 32u }
       ty_bot { 34u }
       ty_ptr(mt) { hash_subty(35u, mt.ty) }
@@ -2219,6 +2224,22 @@ fn method_idx(id: ast::ident, meths: ~[method]) -> option<uint> {
     ret none;
 }
 
+/// Returns a vector containing the indices of all type parameters that appear
+/// in `ty`.  The vector may contain duplicates.  Probably should be converted
+/// to a bitset or some other representation.
+fn param_tys_in_type(ty: t) -> ~[param_ty] {
+    let mut rslt = ~[];
+    do walk_ty(ty) |ty| {
+        alt get(ty).struct {
+          ty_param(p) {
+            vec::push(rslt, p);
+          }
+          _ { }
+        }
+    }
+    rslt
+}
+
 fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
 
     // Returns a vec of all the type variables occurring in `ty`. It may
@@ -2341,7 +2362,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_tup(_) { ~"tuple" }
       ty_var(_) { ~"variable" }
       ty_var_integral(_) { ~"integral variable" }
-      ty_param(_, _) { ~"type parameter" }
+      ty_param(_) { ~"type parameter" }
       ty_self { ~"self" }
     }
 }

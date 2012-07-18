@@ -272,7 +272,7 @@ impl methods for reflector {
           ty::ty_trait(_, _) { self.leaf(~"trait") }
           ty::ty_var(_) { self.leaf(~"var") }
           ty::ty_var_integral(_) { self.leaf(~"var_integral") }
-          ty::ty_param(n, _) { self.visit(~"param", ~[self.c_uint(n)]) }
+          ty::ty_param(p) { self.visit(~"param", ~[self.c_uint(p.idx)]) }
           ty::ty_self { self.leaf(~"self") }
           ty::ty_type { self.leaf(~"type") }
           ty::ty_opaque_box { self.leaf(~"opaque_box") }

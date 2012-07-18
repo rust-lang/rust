@@ -13,7 +13,7 @@ fn item_check(t: &tree) -> int {
     }
 }
 
-fn bottom_up_tree(arena: &a.arena::arena, item: int, depth: int) -> &a.tree {
+fn bottom_up_tree(arena: &arena::arena, item: int, depth: int) -> &tree {
     if depth > 0 {
         ret new(*arena) node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
                              bottom_up_tree(arena, 2 * item, depth - 1),

@@ -15,12 +15,12 @@ type ccx = {
     x: int
 };
 
-fn alloc(_bcx : &a.arena) -> &a.bcx unsafe {
+fn alloc(_bcx : &arena) -> &bcx unsafe {
     ret unsafe::reinterpret_cast(
         libc::malloc(sys::size_of::<bcx/&blk>() as libc::size_t));
 }
 
-fn h(bcx : &a.bcx) -> &a.bcx {
+fn h(bcx : &bcx) -> &bcx {
     ret alloc(bcx.fcx.arena);
 }
 

@@ -115,7 +115,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     fn check_for_box(cx: ctx, id: node_id, fv: option<@freevar_entry>,
                      is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be owned
-        if !check_owned(cx, var_t, sp) { ret; }
+        if !check_owned(cx.tcx, var_t, sp) { ret; }
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
@@ -217,7 +217,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     alt e.node {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
-      expr_ret(some(ex)) | expr_cast(ex, _) { maybe_copy(cx, ex); }
+      expr_ret(some(ex)) {
+        maybe_copy(cx, ex);
+      }
+      expr_cast(source, _) {
+        maybe_copy(cx, source);
+        check_cast_for_escaping_regions(cx, source, e);
+      }
       expr_copy(expr) { check_copy_ex(cx, expr, false); }
       // Vector add copies, but not "implicitly"
       expr_assign_op(_, _, ex) { check_copy_ex(cx, ex, false) }
@@ -440,12 +446,89 @@ fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
     }
 }
 
-fn check_owned(cx: ctx, ty: ty::t, sp: span) -> bool {
-    if !ty::kind_is_owned(ty::type_kind(cx.tcx, ty)) {
-        cx.tcx.sess.span_err(sp, ~"not an owned value");
+// note: also used from middle::typeck::regionck!
+fn check_owned(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
+    if !ty::kind_is_owned(ty::type_kind(tcx, ty)) {
+        alt ty::get(ty).struct {
+          ty::ty_param(*) {
+            tcx.sess.span_err(sp, ~"value may contain borrowed \
+                                    pointers; use `owned` bound");
+          }
+          _ {
+            tcx.sess.span_err(sp, ~"value may contain borrowed \
+                                    pointers");
+          }
+        }
         false
     } else {
         true
+    }
+}
+
+/// This is rather subtle.  When we are casting a value to a
+/// instantiated iface like `a as iface/&r`, regionck already ensures
+/// that any borrowed pointers that appear in the type of `a` are
+/// bounded by `&r`.  However, it is possible that there are *type
+/// parameters* in the type of `a`, and those *type parameters* may
+/// have borrowed pointers within them.  We have to guarantee that the
+/// regions which appear in those type parameters are not obscured.
+///
+/// Therefore, we ensure that one of three conditions holds:
+///
+/// (1) The iface instance cannot escape the current fn.  This is
+/// guaranteed if the region bound `&r` is some scope within the fn
+/// itself.  This case is safe because whatever borrowed pointers are
+/// found within the type parameter, they must enclose the fn body
+/// itself.
+///
+/// (2) The type parameter appears in the type of the iface.  For
+/// example, if the type parameter is `T` and the iface type is
+/// `deque<T>`, then whatever borrowed ptrs may appear in `T` also
+/// appear in `deque<T>`.
+///
+/// (3) The type parameter is owned (and therefore does not contain
+/// borrowed ptrs).
+fn check_cast_for_escaping_regions(
+    cx: ctx,
+    source: @expr,
+    target: @expr) {
+
+    // Determine what type we are casting to; if it is not an iface, then no
+    // worries.
+    let target_ty = ty::expr_ty(cx.tcx, target);
+    let target_substs = alt ty::get(target_ty).struct {
+      ty::ty_trait(_, substs) => {substs}
+      _ => { ret; /* not a cast to a trait */ }
+    };
+
+    // Check, based on the region associated with the iface, whether it can
+    // possibly escape the enclosing fn item (note that all type parameters
+    // must have been declared on the enclosing fn item):
+    alt target_substs.self_r {
+      some(ty::re_scope(*)) => { ret; /* case (1) */ }
+      none | some(ty::re_static) | some(ty::re_free(*)) => {}
+      some(ty::re_bound(*)) | some(ty::re_var(*)) => {
+        cx.tcx.sess.span_bug(
+            source.span,
+            #fmt["bad region found in kind: %?", target_substs.self_r]);
+      }
+    }
+
+    // Assuming the iface instance can escape, then ensure that each parameter
+    // either appears in the iface type or is owned:
+    let target_params = ty::param_tys_in_type(target_ty);
+    let source_ty = ty::expr_ty(cx.tcx, source);
+    do ty::walk_ty(source_ty) |ty| {
+        alt ty::get(ty).struct {
+          ty::ty_param(source_param) => {
+            if target_params.contains(source_param) {
+                /* case (2) */
+            } else {
+                check_owned(cx.tcx, ty, source.span); /* case (3) */
+            }
+          }
+          _ => {}
+        }
     }
 }
 

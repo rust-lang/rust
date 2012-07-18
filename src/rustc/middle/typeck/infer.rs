@@ -195,7 +195,7 @@ export resolve_type, resolve_region;
 export resolve_borrowings;
 export methods; // for infer_ctxt
 export unify_methods; // for infer_ctxt
-export fixup_err, fixup_err_to_str;
+export fres, fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
 export int_ty_set_all;
@@ -1789,7 +1789,7 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_param(a_n, _), ty::ty_param(b_n, _)) if a_n == b_n {
+      (ty::ty_param(a_p), ty::ty_param(b_p)) if a_p.idx == b_p.idx {
         ok(a)
       }
 

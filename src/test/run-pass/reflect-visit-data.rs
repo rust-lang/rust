@@ -230,9 +230,9 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     }
 
     fn visit_rptr(mtbl: uint, inner: *tydesc) -> bool {
-        self.align_to::<&static.u8>();
+        self.align_to::<&static/u8>();
         if ! self.inner.visit_rptr(mtbl, inner) { ret false; }
-        self.bump_past::<&static.u8>();
+        self.bump_past::<&static/u8>();
         true
     }
 
@@ -268,9 +268,9 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     }
 
     fn visit_evec_slice(mtbl: uint, inner: *tydesc) -> bool {
-        self.align_to::<&static.[u8]>();
+        self.align_to::<&static/[u8]>();
         if ! self.inner.visit_evec_slice(mtbl, inner) { ret false; }
-        self.bump_past::<&static.[u8]>();
+        self.bump_past::<&static/[u8]>();
         true
     }
 
@@ -427,9 +427,9 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     }
 
     fn visit_self() -> bool {
-        self.align_to::<&static.u8>();
+        self.align_to::<&static/u8>();
         if ! self.inner.visit_self() { ret false; }
-        self.align_to::<&static.u8>();
+        self.align_to::<&static/u8>();
         true
     }
 

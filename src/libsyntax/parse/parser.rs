@@ -383,8 +383,7 @@ class parser {
         let name =
             alt copy self.token {
               token::IDENT(sid, _) => {
-                if self.look_ahead(1u) == token::DOT || // backwards compat
-                    self.look_ahead(1u) == token::BINOP(token::SLASH) {
+                if self.look_ahead(1u) == token::BINOP(token::SLASH) {
                     self.bump(); self.bump();
                     some(self.get_str(sid))
                 } else {

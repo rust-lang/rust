@@ -1,4 +1,4 @@
-fn f(x : &a.int) -> &a.int {
+fn f(x : &a/int) -> &a/int {
     ret &*x;
 }
 

@@ -64,7 +64,7 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
     };
     let ty = fixup_ty(fcx, sp, ty);
     alt ty::get(ty).struct {
-      ty::ty_param(n, did) {
+      ty::ty_param({idx: n, def_id: did}) {
         let mut n_bound = 0u;
         for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
             alt bound {

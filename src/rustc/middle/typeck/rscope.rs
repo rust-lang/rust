@@ -38,7 +38,7 @@ impl of region_scope for type_rscope {
 }
 
 enum anon_rscope = {anon: ty::region, base: region_scope};
-fn in_anon_rscope<RS: region_scope copy>(self: RS, r: ty::region)
+fn in_anon_rscope<RS: region_scope copy owned>(self: RS, r: ty::region)
     -> @anon_rscope {
     @anon_rscope({anon: r, base: self as region_scope})
 }
@@ -52,7 +52,8 @@ impl of region_scope for @anon_rscope {
 }
 
 enum binding_rscope = {base: region_scope};
-fn in_binding_rscope<RS: region_scope copy>(self: RS) -> @binding_rscope {
+fn in_binding_rscope<RS: region_scope copy owned>(self: RS)
+    -> @binding_rscope {
     let base = self as region_scope;
     @binding_rscope({base: base})
 }

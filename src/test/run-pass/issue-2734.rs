@@ -1,7 +1,7 @@
 iface hax { } 
 impl <A> of hax for A { } 
 
-fn perform_hax<T>(x: @T) -> hax {
+fn perform_hax<T: owned>(x: @T) -> hax {
     x as hax 
 }
 

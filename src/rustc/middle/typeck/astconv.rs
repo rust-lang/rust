@@ -68,7 +68,7 @@ fn get_region_reporting_err(tcx: ty::ctxt,
     }
 }
 
-fn ast_region_to_region<AC: ast_conv, RS: region_scope>(
+fn ast_region_to_region<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
 
     let res = alt a_r.node {
@@ -79,7 +79,7 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope>(
     get_region_reporting_err(self.tcx(), span, res)
 }
 
-fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy>(
+fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, did: ast::def_id,
     path: @ast::path) -> ty_param_substs_and_ty {
 
@@ -128,7 +128,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy>(
     {substs: substs, ty: ty::subst(tcx, substs, decl_ty)}
 }
 
-fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy>(
+fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     self: AC,
     rscope: RS,
     did: ast::def_id,
@@ -151,10 +151,10 @@ const NO_TPS: uint = 2u;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
+fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, &&ast_ty: @ast::ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope copy>(
+    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope copy owned>(
         self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
         ret {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
@@ -162,7 +162,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
 
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec
-    fn mk_maybe_vstore<AC: ast_conv, RS: region_scope copy>(
+    fn mk_maybe_vstore<AC: ast_conv, RS: region_scope copy owned>(
         self: AC, rscope: RS, a_seq_ty: ast::mt, vst: ty::vstore,
         constr: fn(ty::mt) -> ty::t) -> ty::t {
 
@@ -351,7 +351,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
     ret typ;
 }
 
-fn ty_of_arg<AC: ast_conv, RS: region_scope copy>(
+fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, a: ast::arg,
     expected_ty: option<ty::arg>) -> ty::arg {
 
@@ -394,7 +394,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy>(
 type expected_tys = option<{inputs: ~[ty::arg],
                             output: ty::t}>;
 
-fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
+fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS,
     proto: ast::proto,
     decl: ast::fn_decl,

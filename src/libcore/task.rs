@@ -832,10 +832,10 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
  * types; arbitrary type coercion is possible this way. The interface is safe
  * as long as all key functions are monomorphic.
  */
-type local_data_key<T> = fn@(+@T);
+type local_data_key<T: owned> = fn@(+@T);
 
 iface local_data { }
-impl<T> of local_data for @T { }
+impl<T: owned> of local_data for @T { }
 
 // We use dvec because it's the best data structure in core. If TLS is used
 // heavily in future, this could be made more efficient with a proper map.
@@ -852,6 +852,7 @@ extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_task_local_map(task: *rust_task) -> task_local_map {
+
     // Relies on the runtime initialising the pointer to null.
     // NOTE: The map's box lives in TLS invisibly referenced once. Each time
     // we retrieve it for get/set, we make another reference, which get/set
@@ -872,7 +873,9 @@ unsafe fn get_task_local_map(task: *rust_task) -> task_local_map {
     }
 }
 
-unsafe fn key_to_key_value<T>(key: local_data_key<T>) -> *libc::c_void {
+unsafe fn key_to_key_value<T: owned>(
+    key: local_data_key<T>) -> *libc::c_void {
+
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
     // Use reintepret_cast -- transmute would leak (forget) the closure.
     let pair: (*libc::c_void, *libc::c_void) = unsafe::reinterpret_cast(key);
@@ -880,8 +883,10 @@ unsafe fn key_to_key_value<T>(key: local_data_key<T>) -> *libc::c_void {
 }
 
 // If returning some(..), returns with @T with the map's reference. Careful!
-unsafe fn local_data_lookup<T>(map: task_local_map, key: local_data_key<T>)
-        -> option<(uint, *libc::c_void)> {
+unsafe fn local_data_lookup<T: owned>(
+    map: task_local_map, key: local_data_key<T>)
+    -> option<(uint, *libc::c_void)> {
+
     let key_value = key_to_key_value(key);
     let map_pos = (*map).position(|entry|
         alt entry { some((k,_,_)) { k == key_value } none { false } }
@@ -893,8 +898,10 @@ unsafe fn local_data_lookup<T>(map: task_local_map, key: local_data_key<T>)
     }
 }
 
-unsafe fn local_get_helper<T>(task: *rust_task, key: local_data_key<T>,
-                              do_pop: bool) -> option<@T> {
+unsafe fn local_get_helper<T: owned>(
+    task: *rust_task, key: local_data_key<T>,
+    do_pop: bool) -> option<@T> {
+
     let map = get_task_local_map(task);
     // Interpret our findings from the map
     do local_data_lookup(map, key).map |result| {
@@ -912,17 +919,23 @@ unsafe fn local_get_helper<T>(task: *rust_task, key: local_data_key<T>,
     }
 }
 
-unsafe fn local_pop<T>(task: *rust_task,
-                       key: local_data_key<T>) -> option<@T> {
+unsafe fn local_pop<T: owned>(
+    task: *rust_task,
+    key: local_data_key<T>) -> option<@T> {
+
     local_get_helper(task, key, true)
 }
 
-unsafe fn local_get<T>(task: *rust_task,
-                       key: local_data_key<T>) -> option<@T> {
+unsafe fn local_get<T: owned>(
+    task: *rust_task,
+    key: local_data_key<T>) -> option<@T> {
+
     local_get_helper(task, key, false)
 }
 
-unsafe fn local_set<T>(task: *rust_task, key: local_data_key<T>, +data: @T) {
+unsafe fn local_set<T: owned>(
+    task: *rust_task, key: local_data_key<T>, +data: @T) {
+
     let map = get_task_local_map(task);
     // Store key+data as *voids. Data is invisibly referenced once; key isn't.
     let keyval = key_to_key_value(key);
@@ -956,8 +969,10 @@ unsafe fn local_set<T>(task: *rust_task, key: local_data_key<T>, +data: @T) {
     }
 }
 
-unsafe fn local_modify<T>(task: *rust_task, key: local_data_key<T>,
-                          modify_fn: fn(option<@T>) -> option<@T>) {
+unsafe fn local_modify<T: owned>(
+    task: *rust_task, key: local_data_key<T>,
+    modify_fn: fn(option<@T>) -> option<@T>) {
+
     // Could be more efficient by doing the lookup work, but this is easy.
     let newdata = modify_fn(local_pop(task, key));
     if newdata.is_some() {
@@ -970,29 +985,37 @@ unsafe fn local_modify<T>(task: *rust_task, key: local_data_key<T>,
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-unsafe fn local_data_pop<T>(key: local_data_key<T>) -> option<@T> {
+unsafe fn local_data_pop<T: owned>(
+    key: local_data_key<T>) -> option<@T> {
+
     local_pop(rustrt::rust_get_task(), key)
 }
 /**
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-unsafe fn local_data_get<T>(key: local_data_key<T>) -> option<@T> {
+unsafe fn local_data_get<T: owned>(
+    key: local_data_key<T>) -> option<@T> {
+
     local_get(rustrt::rust_get_task(), key)
 }
 /**
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-unsafe fn local_data_set<T>(key: local_data_key<T>, +data: @T) {
+unsafe fn local_data_set<T: owned>(
+    key: local_data_key<T>, +data: @T) {
+
     local_set(rustrt::rust_get_task(), key, data)
 }
 /**
  * Modify a task-local data value. If the function returns 'none', the
  * data is removed (and its reference dropped).
  */
-unsafe fn local_data_modify<T>(key: local_data_key<T>,
-                               modify_fn: fn(option<@T>) -> option<@T>) {
+unsafe fn local_data_modify<T: owned>(
+    key: local_data_key<T>,
+    modify_fn: fn(option<@T>) -> option<@T>) {
+
     local_modify(rustrt::rust_get_task(), key, modify_fn)
 }
 

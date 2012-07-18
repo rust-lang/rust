@@ -272,7 +272,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char('I');
         w.write_uint(id.to_uint());
       }
-      ty::ty_param(id, did) {
+      ty::ty_param({idx: id, def_id: did}) {
         w.write_char('p');
         w.write_str(cx.ds(did));
         w.write_char('|');
