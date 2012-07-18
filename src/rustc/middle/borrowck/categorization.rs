@@ -361,12 +361,18 @@ impl public_methods for borrowck_ctxt {
 
         ret alt deref_kind(self.tcx, base_cmt.ty) {
           deref_ptr(ptr) {
-            // make deref of vectors explicit, as explained in the comment at
-            // the head of this section
-            let deref_lp = base_cmt.lp.map(|lp| @lp_deref(lp, ptr) );
+            // (a) the contents are loanable if the base is loanable
+            // and this is a *unique* vector
+            let deref_lp = alt ptr {
+              uniq_ptr => {base_cmt.lp.map(|lp| @lp_deref(lp, uniq_ptr))}
+              _ => {none}
+            };
+
+            // (b) the deref is explicit in the resulting cmt
             let deref_cmt = @{id:expr.id, span:expr.span,
-                              cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
-                              mutbl:m_imm, ty:mt.ty};
+              cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
+              mutbl:m_imm, ty:mt.ty};
+
             comp(expr, deref_cmt, base_cmt.ty, mt)
           }
 
