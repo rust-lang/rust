@@ -485,7 +485,7 @@ and function signatures in the surrounding program.  For example, here
 the type of `x` is inferred to be `u16` because it is passed to a
 function that takes a `u16` argument:
 
-~~~~~
+~~~~
 let x = 3;
 
 fn identity_u16(n: u16) -> u16 { n }
@@ -497,7 +497,7 @@ On the other hand, if the program gives conflicting information about
 what the type of the unsuffixed literal should be, you'll get an error
 message.
 
-~~~~~{.xfail-test}
+~~~~{.xfail-test}
 let x = 3;
 let y: i32 = 3;
 
@@ -2572,27 +2572,11 @@ more expensive than statically resolved method calls.
 
 If you only intend to use an implementation for static overloading,
 and there is no interface available that it conforms to, you are free
-to leave off the `of` clause.
-
-~~~~
-# type currency = ();
-# fn mk_currency(x: int, s: ~str) {}
-impl int_util for int {
-    fn times(b: fn(int)) {
-        let mut i = 0;
-        while i < self { b(i); i += 1; }
-    }
-    fn dollars() -> currency {
-        mk_currency(self, ~"USD")
-    }
-}
-~~~~
-
-This allows cutesy things like `send_payment(10.dollars())`. And the
-nice thing is that it's fully scoped, so the uneasy feeling that
-anybody with experience in object-oriented languages (with the
-possible exception of Rubyists) gets at the sight of such things is
-not justified. It's harmless!
+to leave off the `of` clause.  However, this is only possible when you
+are defining an implementation in the same module as the receiver
+type, and the receiver type is a named type (i.e., an enum or a
+class); [single-variant enums](#single_variant_enum) are a common
+choice.
 
 # Interacting with foreign code
 
