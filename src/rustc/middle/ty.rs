@@ -65,7 +65,7 @@ export subst, subst_tps, substs_is_noop, substs_to_str, substs;
 export t;
 export new_ty_hash;
 export enum_variants, substd_enum_variants, enum_is_univariant;
-export trait_methods, store_trait_methods, impl_trait;
+export trait_methods, store_trait_methods, impl_traits;
 export enum_variant_with_id;
 export ty_dtor;
 export ty_param_bounds_and_ty;
@@ -2474,38 +2474,48 @@ fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     result
 }
 
-// XXX: Needs to return an array of traits.
-fn impl_trait(cx: ctxt, id: ast::def_id) -> option<t> {
+fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
     if id.crate == ast::local_crate {
-        #debug("(impl_trait) searching for trait impl %?", id);
+        #debug("(impl_traits) searching for trait impl %?", id);
         alt cx.items.find(id.node) {
            some(ast_map::node_item(@{
-                    node: ast::item_impl(_, traits, _, _),
-                    _},
-                _)) if traits.len() >= 1 {
-              some(node_id_to_type(cx, traits[0].ref_id))
+                        node: ast::item_impl(_, trait_refs, _, _),
+                        _},
+                    _)) {
+
+                do vec::map(trait_refs) |trait_ref| {
+                    node_id_to_type(cx, trait_ref.ref_id)
+                }
            }
            some(ast_map::node_item(@{node: ast::item_class(*),
                            _},_)) {
              alt cx.def_map.find(id.node) {
                some(def_ty(trait_id)) {
                    // XXX: Doesn't work cross-crate.
-                   #debug("(impl_trait) found trait id %?", trait_id);
-                   some(node_id_to_type(cx, trait_id.node))
+                   #debug("(impl_traits) found trait id %?", trait_id);
+                   ~[node_id_to_type(cx, trait_id.node)]
                }
                some(x) {
-                 cx.sess.bug(#fmt("impl_trait: trait ref is in trait map \
+                 cx.sess.bug(#fmt("impl_traits: trait ref is in trait map \
                                    but is bound to %?", x));
                }
                none {
-                 none
+                 ~[]
                }
              }
            }
-           _ { none }
+           _ { ~[] }
         }
     } else {
-        csearch::get_impl_trait(cx, id)
+        // XXX: csearch::get_impl_trait should return a vector.
+        alt csearch::get_impl_trait(cx, id) {
+            none {
+                ~[]
+            }
+            some(trait_ref) {
+                ~[trait_ref]
+            }
+        }
     }
 }
 

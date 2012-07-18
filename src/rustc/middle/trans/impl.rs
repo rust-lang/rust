@@ -253,10 +253,12 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
                     vtables: typeck::vtable_res) -> ValueRef {
     let _icx = ccx.insn_ctxt(~"impl::make_impl_vtable");
     let tcx = ccx.tcx;
+
+    // XXX: This should support multiple traits.
     let ifce_id = expect(ccx.sess,
-                         ty::ty_to_def_id(option::get(ty::impl_trait(tcx,
-                                                             impl_id))),
+                         ty::ty_to_def_id(ty::impl_traits(tcx, impl_id)[0]),
                          || ~"make_impl_vtable: non-trait-type implemented");
+
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
     make_vtable(ccx, vec::map(*ty::trait_methods(tcx, ifce_id), |im| {
         let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));

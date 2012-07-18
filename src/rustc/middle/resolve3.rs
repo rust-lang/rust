@@ -3263,7 +3263,7 @@ class Resolver {
                      visitor: ResolveVisitor) {
 
         // Add a type into the def map. This is needed to prevent an ICE in
-        // ty::impl_trait.
+        // ty::impl_traits.
 
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = (*type_parameters).len();

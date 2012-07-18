@@ -119,44 +119,41 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
             for vec::each(*impls) |im| {
                 // im = one specific impl
                 // find the trait that im implements (if any)
-                let of_ty = alt ty::impl_trait(tcx, im.did) {
-                  some(of_ty) { of_ty }
-                  _ { again; }
-                };
+                for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
+                    // it must have the same id as the expected one
+                    alt ty::get(of_ty).struct {
+                      ty::ty_trait(id, _) if id != trait_id { again; }
+                      _ { /* ok */ }
+                    }
 
-                // it must have the same id as the expected one
-                alt ty::get(of_ty).struct {
-                  ty::ty_trait(id, _) if id != trait_id { again; }
-                  _ { /* ok */ }
+                    // check whether the type unifies with the type
+                    // that the impl is for, and continue if not
+                    let {substs: substs, ty: for_ty} =
+                        impl_self_ty(fcx, im.did);
+                    let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
+                    alt fcx.mk_subty(ty, for_ty) {
+                      result::err(_) { again; }
+                      result::ok(()) { }
+                    }
+
+                    // check that desired trait type unifies
+                    #debug("(checking vtable) @2 relating trait ty %s to \
+                            of_ty %s",
+                           fcx.infcx.ty_to_str(trait_ty),
+                           fcx.infcx.ty_to_str(of_ty));
+                    let of_ty = ty::subst(tcx, substs, of_ty);
+                    relate_trait_tys(fcx, sp, trait_ty, of_ty);
+
+                    // recursively process the bounds
+                    let trait_tps = trait_substs.tps;
+                    let substs_f = fixup_substs(fcx, sp, trait_id, substs);
+                    connect_trait_tps(fcx, sp, substs_f.tps,
+                                      trait_tps, im.did);
+                    let subres = lookup_vtables(fcx, isc, sp,
+                                                im_bs, substs_f, false);
+                    vec::push(found,
+                              vtable_static(im.did, substs_f.tps, subres));
                 }
-
-                // check whether the type unifies with the type
-                // that the impl is for, and continue if not
-                let {substs: substs, ty: for_ty} =
-                    impl_self_ty(fcx, im.did);
-                let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                alt fcx.mk_subty(ty, for_ty) {
-                  result::err(_) { again; }
-                  result::ok(()) { }
-                }
-
-                // check that desired trait type unifies
-                #debug("(checking vtable) @2 relating trait ty %s to \
-                        of_ty %s",
-                       fcx.infcx.ty_to_str(trait_ty),
-                       fcx.infcx.ty_to_str(of_ty));
-                let of_ty = ty::subst(tcx, substs, of_ty);
-                relate_trait_tys(fcx, sp, trait_ty, of_ty);
-
-                // recursively process the bounds
-                let trait_tps = trait_substs.tps;
-                let substs_f = fixup_substs(fcx, sp, trait_id, substs);
-                connect_trait_tps(fcx, sp, substs_f.tps,
-                                  trait_tps, im.did);
-                let subres = lookup_vtables(fcx, isc, sp,
-                                            im_bs, substs_f, false);
-                vec::push(found,
-                          vtable_static(im.did, substs_f.tps, subres));
             }
 
             alt found.len() {
@@ -195,7 +192,9 @@ fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
 fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
                      trait_tys: ~[ty::t], impl_did: ast::def_id) {
     let tcx = fcx.ccx.tcx;
-    let ity = option::get(ty::impl_trait(tcx, impl_did));
+
+    // XXX: This should work for multiple traits.
+    let ity = ty::impl_traits(tcx, impl_did)[0];
     let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
     #debug("(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).struct, impl_did);
