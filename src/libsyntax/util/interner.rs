@@ -42,5 +42,6 @@ impl <T: const copy> of interner<T> for hash_interner<T> {
     // failing to returning a value as items are interned. But for typestate,
     // where we first check a pred and then rely on it, ceasing to fail is ok.
     pure fn get(idx: uint) -> T { self.vect.get_elt(idx) }
+
     fn len() -> uint { ret self.vect.len(); }
 }
