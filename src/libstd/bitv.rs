@@ -235,7 +235,29 @@ fn eq_vec(v0: bitv, v1: ~[uint]) -> bool {
     ret true;
 }
 
-impl methods for bitv {
+trait methods {
+    fn union(rhs: bitv) -> bool;
+    fn intersect(rhs: bitv) -> bool;
+    fn assign(rhs: bitv) -> bool;
+    fn get(i: uint) -> bool;
+    fn [](i: uint) -> bool;
+    fn eq(rhs: bitv) -> bool;
+    fn clear();
+    fn set_all();
+    fn invert();
+    fn difference(rhs: bitv) -> bool;
+    fn set(i: uint, x: bool);
+    fn is_true() -> bool;
+    fn is_false() -> bool;
+    fn to_vec() -> ~[uint];
+    fn each(f: fn(bool) -> bool);
+    fn each_storage(f: fn(&uint) -> bool);
+    fn eq_vec(v: ~[uint]) -> bool;
+
+    fn ones(f: fn(uint) -> bool);
+}
+
+impl of methods for bitv {
     fn union(rhs: bitv) -> bool { union(self, rhs) }
     fn intersect(rhs: bitv) -> bool { intersect(self, rhs) }
     fn assign(rhs: bitv) -> bool { assign(self, rhs) }
