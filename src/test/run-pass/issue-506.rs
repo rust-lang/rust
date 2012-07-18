@@ -1,3 +1,4 @@
+// xfail-test
 /*
   A reduced test case for Issue #506, provided by Rob Arnold.
 
