@@ -6,7 +6,7 @@ import pp::{break_offset, word, printer,
             inconsistent, eof};
 import diagnostic;
 import ast::{required, provided};
-import ast_util::{operator_prec, lone_block_expr};
+import ast_util::operator_prec;
 import dvec::{dvec, extensions};
 import parse::classify::*;
 
@@ -998,8 +998,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_maybe_parens_discrim(s, expr);
         space(s.s);
         bopen(s);
-        let len = arms.len();
-        for arms.eachi |i, arm| {
+        for arms.each |arm| {
             space(s.s);
             cbox(s, alt_indent_unit);
             ibox(s, 0u);
@@ -1015,19 +1014,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
               some(e) { word_space(s, ~"if"); print_expr(s, e); space(s.s); }
               none { }
             }
-            word_space(s, ~"=>");
-            alt lone_block_expr(arm.body) {
-              some(expr) => {
-                end(s); // close the ibox for the pattern
-                print_expr(s, expr);
-                if i < len - 1 { word_space(s, ~","); }
-                end(s); // close enclosing cbox
-              }
-              none => {
-                print_possibly_embedded_block(s, arm.body, block_normal,
-                                              alt_indent_unit);
-              }
-            }
+            print_possibly_embedded_block(s, arm.body, block_normal,
+                                          alt_indent_unit);
         }
         bclose_(s, expr.span, alt_indent_unit);
       }
