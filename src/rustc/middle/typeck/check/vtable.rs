@@ -1,5 +1,6 @@
 import check::{fn_ctxt, impl_self_ty, methods};
 import infer::{resolve_type, resolve_all, force_all, fixup_err_to_str};
+import ast_util::new_def_hash;
 
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
@@ -49,6 +50,8 @@ fn relate_trait_tys(fcx: @fn_ctxt, sp: span,
 /*
 Look up the vtable to use when treating an item of type <t>
 as if it has type <trait_ty>
+
+XXX: This doesn't use the coherence tables yet.
 */
 fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                  ty: ty::t, trait_ty: ty::t, allow_unsafe: bool)
@@ -114,10 +117,19 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
       _ {
         let mut found = ~[];
 
+        let mut impls_seen = new_def_hash();
+
         for list::each(isc) |impls| {
             /* For each impl in scope... */
             for vec::each(*impls) |im| {
                 // im = one specific impl
+
+                // First, ensure that we haven't processed this impl yet.
+                if impls_seen.contains_key(im.did) {
+                    again;
+                }
+                impls_seen.insert(im.did, ());
+
                 // find the trait that im implements (if any)
                 for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
                     // it must have the same id as the expected one
