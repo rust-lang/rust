@@ -27,7 +27,7 @@ export get_trait_methods;
 export get_method_names_if_trait;
 export each_path;
 export get_type;
-export get_impl_trait;
+export get_impl_traits;
 export get_impl_method;
 export get_item_path;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
@@ -187,12 +187,13 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     ret {bounds: @~[], rp: false, ty: ty};
 }
 
-// Given a def_id for an impl or class, return the trait it implements,
-// or none if it's not for an impl or for a class that implements traits
-fn get_impl_trait(tcx: ty::ctxt, def: ast::def_id) -> option<ty::t> {
+// Given a def_id for an impl or class, return the traits it implements,
+// or the empty vector if it's not for an impl or for a class that implements
+// traits
+fn get_impl_traits(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::t] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_impl_trait(cdata, def.node, tcx)
+    decoder::get_impl_traits(cdata, def.node, tcx)
 }
 
 fn get_impl_method(cstore: cstore::cstore,

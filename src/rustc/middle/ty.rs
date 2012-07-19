@@ -2507,15 +2507,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
            _ { ~[] }
         }
     } else {
-        // XXX: csearch::get_impl_trait should return a vector.
-        alt csearch::get_impl_trait(cx, id) {
-            none {
-                ~[]
-            }
-            some(trait_ref) {
-                ~[trait_ref]
-            }
-        }
+        csearch::get_impl_traits(cx, id)
     }
 }
 

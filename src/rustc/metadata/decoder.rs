@@ -24,7 +24,7 @@ export get_enum_variants;
 export get_type;
 export get_region_param;
 export get_type_param_count;
-export get_impl_trait;
+export get_impl_traits;
 export get_class_method;
 export get_impl_method;
 export lookup_def;
@@ -168,13 +168,12 @@ fn item_type(item_id: ast::def_id, item: ebml::doc,
     } else { t }
 }
 
-fn item_impl_trait(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
-    -> option<ty::t> {
-    let mut result = none;
+fn item_impl_traits(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ~[ty::t] {
+    let mut results = ~[];
     do ebml::tagged_docs(item, tag_impl_trait) |ity| {
-        result = some(doc_type(ity, tcx, cdata));
+        vec::push(results, doc_type(ity, tcx, cdata));
     };
-    result
+    results
 }
 
 fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
@@ -333,9 +332,8 @@ fn get_type_param_count(data: @~[u8], id: ast::node_id) -> uint {
     item_ty_param_count(lookup_item(id, data))
 }
 
-fn get_impl_trait(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
-    -> option<ty::t> {
-    item_impl_trait(lookup_item(id, cdata.data), tcx, cdata)
+fn get_impl_traits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
+    item_impl_traits(lookup_item(id, cdata.data), tcx, cdata)
 }
 
 fn get_impl_method(cdata: cmd, id: ast::node_id,

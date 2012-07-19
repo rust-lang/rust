@@ -4,7 +4,7 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
-import metadata::csearch::{each_path, get_impl_trait, get_impls_for_mod};
+import metadata::csearch::{each_path, get_impl_traits, get_impls_for_mod};
 import metadata::cstore::{cstore, iter_crate_data};
 import metadata::decoder::{dl_def, dl_field, dl_impl};
 import middle::resolve3::Impl;
@@ -546,45 +546,40 @@ class CoherenceChecker {
 
             let self_type = lookup_item_type(self.crate_context.tcx,
                                              implementation.did);
-            let optional_trait =
-                get_impl_trait(self.crate_context.tcx,
-                               implementation.did);
-            alt optional_trait {
-                none {
-                    // This is an inherent method. There should be
-                    // no problems here, but perform a sanity check
-                    // anyway.
+            let associated_traits = get_impl_traits(self.crate_context.tcx,
+                                                    implementation.did);
 
-                    alt get_base_type_def_id(self.inference_context,
-                                             dummy_sp(),
-                                             self_type.ty) {
-                        none {
-                            let session = self.crate_context.tcx.sess;
-                            session.bug(#fmt("no base type for \
-                                              external impl with no \
-                                              trait: %s (type %s)!",
-                                             *implementation.ident,
-                                             ty_to_str
-                                             (self.crate_context.tcx,
-                                              self_type.ty)));
-                        }
-                        some(_) {
-                            // Nothing to do.
-                        }
+            // Do a sanity check to make sure that inherent methods have base
+            // types.
+
+            if associated_traits.len() == 0 {
+                alt get_base_type_def_id(self.inference_context,
+                                         dummy_sp(),
+                                         self_type.ty) {
+                    none {
+                        let session = self.crate_context.tcx.sess;
+                        session.bug(#fmt("no base type for external impl \
+                                          with no trait: %s (type %s)!",
+                                         *implementation.ident,
+                                         ty_to_str(self.crate_context.tcx,
+                                                   self_type.ty)));
+                    }
+                    some(_) {
+                        // Nothing to do.
                     }
                 }
+            }
 
-                some(trait_type) {
-                    alt get(trait_type).struct {
-                        ty_trait(trait_id, _) {
-                            self.add_trait_method(trait_id,
-                                                  implementation);
-                        }
-                        _ {
-                            self.crate_context.tcx.sess
-                                .bug(~"trait type returned is not a \
-                                       trait");
-                        }
+            // Record all the trait methods.
+            for associated_traits.each |trait_type| {
+                alt get(trait_type).struct {
+                    ty_trait(trait_id, _) {
+                        self.add_trait_method(trait_id, implementation);
+                    }
+                    _ {
+                        self.crate_context.tcx.sess.bug(~"trait type \
+                                                          returned is not a \
+                                                          trait");
                     }
                 }
             }
