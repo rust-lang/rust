@@ -225,8 +225,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                 r.cur.idx += 1u;
                 ret ret_val;
               }
-              matched_nonterminal(nt) {
-                r.cur_span = sp; r.cur_tok = INTERPOLATED(nt);
+              matched_nonterminal(other_whole_nt) {
+                r.cur_span = sp; r.cur_tok = INTERPOLATED(other_whole_nt);
                 r.cur.idx += 1u;
                 ret ret_val;
               }
