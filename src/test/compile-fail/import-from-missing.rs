@@ -1,4 +1,5 @@
 // error-pattern:unresolved
+// xfail-test
 import spam::{ham, eggs};
 
 mod spam {
