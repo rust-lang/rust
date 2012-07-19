@@ -2371,7 +2371,8 @@ impl of combine for glb {
                 }
               }
 
-              (ty::re_scope(a_id), ty::re_scope(b_id)) {
+              (ty::re_scope(a_id), ty::re_scope(b_id)) |
+              (ty::re_free(a_id, _), ty::re_free(b_id, _)) {
                 // We want to generate a region that is contained by both of
                 // these: so, if one of these scopes is a subscope of the
                 // other, return it.  Otherwise fail.
@@ -2385,7 +2386,6 @@ impl of combine for glb {
 
               // For these types, we cannot define any additional
               // relationship:
-              (ty::re_free(_, _), ty::re_free(_, _)) |
               (ty::re_bound(_), ty::re_bound(_)) |
               (ty::re_bound(_), ty::re_free(_, _)) |
               (ty::re_bound(_), ty::re_scope(_)) |
