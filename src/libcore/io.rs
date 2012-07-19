@@ -599,8 +599,8 @@ fn buffered_file_writer(path: ~str) -> result<writer, ~str> {
 fn stdout() -> writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
-fn print(s: ~str) { stdout().write_str(s); }
-fn println(s: ~str) { stdout().write_line(s); }
+fn print(s: &str) { stdout().write_str(s); }
+fn println(s: &str) { stdout().write_line(s); }
 
 type mem_buffer = @{buf: dvec<u8>, mut pos: uint};
 
