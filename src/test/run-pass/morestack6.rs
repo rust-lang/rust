@@ -1,10 +1,6 @@
 // This test attempts to force the dynamic linker to resolve
 // external symbols as close to the red zone as possible.
 
-use std;
-import task;
-import std::rand;
-
 extern mod rustrt {
     fn debug_get_stk_seg() -> *u8;
 
