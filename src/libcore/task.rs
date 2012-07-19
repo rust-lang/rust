@@ -46,6 +46,7 @@ export run;
 export future_result;
 export future_task;
 export unsupervise;
+export parent;
 export run_listener;
 export run_with;
 
@@ -169,6 +170,7 @@ type sched_opts = {
  */
 type task_opts = {
     supervise: bool,
+    parented: bool,
     notify_chan: option<comm::chan<notification>>,
     sched: option<sched_opts>,
 };
@@ -206,6 +208,7 @@ fn default_task_opts() -> task_opts {
 
     {
         supervise: true,
+        parented: false,
         notify_chan: none,
         sched: none
     }
@@ -360,6 +363,11 @@ fn unsupervise(builder: builder) {
         supervise: false
         with get_opts(builder)
     });
+}
+
+fn parent(builder: builder) {
+    //! Configures the new task to be killed if the parent group is killed.
+    set_opts(builder, { parented: true with get_opts(builder) });
 }
 
 fn run_with<A:send>(-builder: builder,
@@ -591,15 +599,19 @@ class taskgroup {
     // FIXME (#2816): Change dvec to an O(1) data structure (and change 'me'
     // to a node-handle or somesuch when so done (or remove the field entirely
     // if keyed by *rust_task)).
-    let tasks:      taskgroup_arc; // 'none' means the group already failed.
     let me:         *rust_task;
-    let my_pos:     uint;
-    // let parent_group: taskgroup_arc; // FIXME (#1868) (bblum)
+    // List of tasks with whose fates this one's is intertwined.
+    let tasks:      taskgroup_arc; // 'none' means the group already failed.
+    let my_pos:     uint;          // Index into above for this task's slot.
+    // Lists of tasks who will kill us if they fail, but whom we won't kill.
+    let parents:    option<(taskgroup_arc,uint)>;
     let is_main:    bool;
-    new(-tasks: taskgroup_arc, me: *rust_task, my_pos: uint, is_main: bool) {
-        self.tasks   = tasks;
+    new(me: *rust_task, -tasks: taskgroup_arc, my_pos: uint,
+        -parents: option<(taskgroup_arc,uint)>, is_main: bool) {
         self.me      = me;
+        self.tasks   = tasks;
         self.my_pos  = my_pos;
+        self.parents = parents;
         self.is_main = is_main;
     }
     // Runs on task exit.
@@ -609,8 +621,16 @@ class taskgroup {
             // Take everybody down with us.
             kill_taskgroup(self.tasks, self.me, self.my_pos, self.is_main);
         } else {
-            // Remove ourselves from the group.
+            // Remove ourselves from the group(s).
             leave_taskgroup(self.tasks, self.me, self.my_pos);
+        }
+        // It doesn't matter whether this happens before or after dealing with
+        // our own taskgroup, so long as both happen before we die.
+        alt self.parents {
+            some((parent_group,pos_in_group)) {
+                leave_taskgroup(parent_group, self.me, pos_in_group);
+            }
+            none { }
         }
     }
 }
@@ -714,7 +734,8 @@ fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
             // Main task, doing first spawn ever.
             let tasks = arc::exclusive(some((dvec::from_elem(some(me)),
                                              dvec::dvec())));
-            let group = @taskgroup(tasks.clone(), me, 0, true);
+            // Main group has no parent group.
+            let group = @taskgroup(me, tasks.clone(), 0, none, true);
             unsafe { local_set(me, taskgroup_key(), group); }
             // Tell child task it's also in the main group.
             (tasks, true)
@@ -724,21 +745,29 @@ fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
 
 fn spawn_raw(opts: task_opts, +f: fn~()) {
     // Decide whether the child needs to be in a new linked failure group.
-    let (child_tg, is_main) = if opts.supervise {
-        share_parent_taskgroup()
+    let ((child_tg, is_main), parent_tg) = if opts.supervise {
+        // It doesn't mean anything for a linked-spawned-task to have a parent
+        // group. The spawning task is already bidirectionally linked to it.
+        (share_parent_taskgroup(), none)
     } else {
         // Detached from the parent group; create a new (non-main) one.
-        (arc::exclusive(some((dvec::dvec(),dvec::dvec()))), false)
+        ((arc::exclusive(some((dvec::dvec(),dvec::dvec()))), false),
+         // Allow the parent to unidirectionally fail the child?
+         if opts.parented { // FIXME(#1868) rename to unsupervise.
+             let (pg,_) = share_parent_taskgroup(); some(pg)
+         } else {
+             none
+         })
     };
 
     unsafe {
-        let child_data_ptr = ~mut some((child_tg, f));
+        let child_data_ptr = ~mut some((child_tg, parent_tg, f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let mut child_data = none;
             *child_data_ptr <-> child_data;
-            let (child_tg, f) = option::unwrap(child_data);
+            let (child_tg, parent_tg, f) = option::unwrap(child_data);
             // Create child task.
             let new_task = alt opts.sched {
               none             { rustrt::new_task() }
@@ -748,7 +777,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             // Getting killed after here would leak the task.
 
             let child_wrapper =
-                make_child_wrapper(new_task, child_tg, is_main, f);
+                make_child_wrapper(new_task, child_tg, parent_tg, is_main, f);
             let fptr = ptr::addr_of(child_wrapper);
             let closure: *rust_closure = unsafe::reinterpret_cast(fptr);
 
@@ -765,28 +794,63 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
         }
     }
 
-    fn make_child_wrapper(child_task: *rust_task, -child_tg: taskgroup_arc,
-                          is_main: bool, -f: fn~()) -> fn~() {
-        let child_tg_ptr = ~mut some(child_tg);
+    // This function returns a closure-wrapper that we pass to the child task.
+    // In brief, it does the following:
+    //     if enlist_in_group(child_group) {
+    //         if parent_group {
+    //             if !enlist_in_group(parent_group) {
+    //                 leave_group(child_group); // Roll back
+    //                 ret; // Parent group failed. Don't run child's f().
+    //             }
+    //         }
+    //         stash_taskgroup_data_in_TLS(child_group, parent_group);
+    //         f();
+    //     } else {
+    //         // My group failed. Don't run chid's f().
+    //     }
+    fn make_child_wrapper(child: *rust_task, -child_tg: taskgroup_arc,
+                          -parent_tg: option<taskgroup_arc>, is_main: bool,
+                          -f: fn~()) -> fn~() {
+        let child_tg_ptr = ~mut some((child_tg, parent_tg));
         fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut child_tg_opt = none;
-            *child_tg_ptr <-> child_tg_opt;
-            let child_tg = option::unwrap(child_tg_opt);
+            let mut tg_data_opt = none;
+            *child_tg_ptr <-> tg_data_opt;
+            let (child_tg, parent_tg) = option::unwrap(tg_data_opt);
             // Child task runs this code.
-            // Set up membership in taskgroup. If this returns none, the
-            // parent was already failing, so don't bother doing anything.
-            alt enlist_in_taskgroup(child_tg, child_task) {
-                some(my_index) {
-                    let group =
-                        @taskgroup(child_tg, child_task, my_index, is_main);
-                    unsafe { local_set(child_task, taskgroup_key(), group); }
-                    // Run the child's body.
-                    f();
-                    // TLS cleanup code will exit the taskgroup.
+            // Set up membership in taskgroup. If this returns none, some
+            // task was already failing, so don't bother doing anything.
+            alt enlist_in_taskgroup(child_tg, child) {
+                some(my_pos) {
+                    // Enlist in parent group too. If enlist returns none, a
+                    // parent was failing: don't spawn; leave this group too.
+                    let (pg, enlist_ok) = if parent_tg.is_some() {
+                        let parent_group = option::unwrap(parent_tg);
+                        alt enlist_in_taskgroup(parent_group, child) {
+                            some(my_p_index) {
+                                // Successful enlist.
+                                (some((parent_group, my_p_index)), true)
+                            }
+                            none {
+                                // Couldn't enlist. Have to quit here too.
+                                leave_taskgroup(child_tg, child, my_pos);
+                                (none, false)
+                            }
+                        }
+                    } else {
+                        // No parent group to enlist in. No worry.
+                        (none, true)
+                    };
+                    if enlist_ok {
+                        let group = @taskgroup(child, child_tg, my_pos,
+                                               pg, is_main);
+                        unsafe { local_set(child, taskgroup_key(), group); }
+                        // Run the child's body.
+                        f();
+                        // TLS cleanup code will exit the taskgroup.
+                    }
                 }
-                none {
-                }
+                none { }
             }
         }
     }
