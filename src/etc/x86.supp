@@ -378,7 +378,7 @@
    Memcheck:Leak
    fun:malloc
    ...
-   fun:uv_loop_delete
+   fun:*uv_loop_delete*
 }
 
 {
