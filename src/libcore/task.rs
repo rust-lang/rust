@@ -1153,6 +1153,83 @@ fn test_spawn_raw_unsupervise() {
     }
 }
 
+// The following 8 tests test the following 2^3 combinations:
+// {un,}linked {un,}supervised failure propagation {up,down}wards.
+
+#[test] #[ignore(cfg(windows))]
+fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
+    let po = comm::port();
+    let ch = comm::chan(po);
+    let builder = task::builder();
+    task::unsupervise(builder);
+    do task::run(builder) {
+        let builder = task::builder();
+        task::unsupervise(builder);
+        do task::run(builder) {
+            // Give middle task a chance to fail-but-not-kill-us.
+            for iter::repeat(8192) { task::yield(); }
+            comm::send(ch, ()); // If killed first, grandparent hangs.
+        }
+        fail; // Shouldn't kill either (grand)parent or (grand)child.
+    }
+    comm::recv(po);
+}
+#[test] #[ignore(cfg(windows))]
+fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
+    let builder = task::builder();
+    task::unsupervise(builder);
+    do task::run(builder) { fail; }
+}
+#[test] #[ignore(cfg(windows))]
+fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
+    let builder = task::builder();
+    task::unsupervise(builder);
+    task::parent(builder);
+    do task::run(builder) { fail; }
+    // Give child a chance to fail-but-not-kill-us.
+    for iter::repeat(8192) { task::yield(); }
+}
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_unlinked_sup_fail_down() {
+    let builder = task::builder();
+    task::unsupervise(builder);
+    task::parent(builder);
+    do task::run(builder) { loop { task::yield(); } }
+    fail; // Shouldn't leave a child hanging around.
+}
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
+    let po = comm::port::<()>();
+    let _ch = comm::chan(po);
+    let builder = task::builder();
+    task::parent(builder);
+    // Unidirectional "parenting" shouldn't override bidirectional linked.
+    do task::run(builder) { fail; }
+    comm::recv(po); // We should get punted awake
+}
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
+    let builder = task::builder();
+    task::parent(builder);
+    do task::run(builder) { loop { task::yield(); } }
+    fail; // *both* mechanisms would be wrong if this didn't kill the child...
+}
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
+    let po = comm::port::<()>();
+    let _ch = comm::chan(po);
+    // Default options are to spawn linked & unsupervised.
+    do task::spawn { fail; }
+    comm::recv(po); // We should get punted awake
+}
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
+    // Default options are to spawn linked & unsupervised.
+    do task::spawn { loop { task::yield(); } }
+    fail;
+}
+
 #[test]
 #[ignore(cfg(windows))]
 fn test_spawn_raw_notify() {
