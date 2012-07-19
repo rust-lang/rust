@@ -111,6 +111,7 @@ fn get_base_type_def_id(inference_context: infer_ctxt,
 class CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
+
     let inherent_methods: hashmap<def_id,@dvec<@Impl>>;
 
     // Contains implementations of methods associated with a trait. For these,
@@ -129,14 +130,17 @@ class CoherenceChecker {
 
     // A mapping from implementations to the corresponding base type
     // definition ID.
+
     let base_type_def_ids: hashmap<def_id,def_id>;
 
     // A set of implementations in privileged scopes; i.e. those
     // implementations that are defined in the same scope as their base types.
+
     let privileged_implementations: hashmap<node_id,()>;
 
     // The set of types that we are currently in the privileged scope of. This
     // is used while we traverse the AST while checking privileged scopes.
+
     let privileged_types: hashmap<def_id,()>;
 
     new(crate_context: @crate_ctxt) {
@@ -158,17 +162,7 @@ class CoherenceChecker {
 
                 alt item.node {
                     item_impl(_, associated_traits, self_type, _) {
-                        // XXX: Accept an array of traits.
-                        let optional_associated_trait;
-                        if associated_traits.len() == 0 {
-                            optional_associated_trait = none;
-                        } else {
-                            optional_associated_trait =
-                                some(associated_traits[0]);
-                        }
-
-                        self.check_implementation(item,
-                                                  optional_associated_trait);
+                        self.check_implementation(item, associated_traits);
                     }
                     _ {
                         // Nothing to do.
@@ -195,47 +189,49 @@ class CoherenceChecker {
         self.add_external_crates();
     }
 
-    fn check_implementation(item: @item,
-                            optional_associated_trait: option<@trait_ref>) {
-
+    fn check_implementation(item: @item, associated_traits: ~[@trait_ref]) {
         let self_type = self.crate_context.tcx.tcache.get(local_def(item.id));
-        alt optional_associated_trait {
-            none {
-                #debug("(checking implementation) no associated trait for \
-                        item '%s'",
-                       *item.ident);
 
-                alt get_base_type_def_id(self.inference_context,
-                                         item.span,
-                                         self_type.ty) {
-                    none {
-                        let session = self.crate_context.tcx.sess;
-                        session.span_err(item.span,
-                                         ~"no base type found for inherent \
-                                           implementation; implement a \
-                                           trait instead");
-                    }
-                    some(_) {
-                        // Nothing to do.
-                    }
+        // If there are no traits, then this implementation must have a
+        // base type.
+
+        if associated_traits.len() == 0 {
+            #debug("(checking implementation) no associated traits for item \
+                    '%s'",
+                   *item.ident);
+
+            alt get_base_type_def_id(self.inference_context,
+                                     item.span,
+                                     self_type.ty) {
+                none {
+                    let session = self.crate_context.tcx.sess;
+                    session.span_err(item.span,
+                                     ~"no base type found for inherent \
+                                       implementation; implement a \
+                                       trait instead");
+                }
+                some(_) {
+                    // Nothing to do.
                 }
             }
-            some(associated_trait) {
-                let def = self.crate_context.tcx.def_map.get
-                    (associated_trait.ref_id);
-                #debug("(checking implementation) adding impl for trait \
-                        '%s', item '%s'",
-                       ast_map::node_id_to_str(self.crate_context.tcx.items,
-                                               associated_trait.ref_id),
-                       *item.ident);
+        }
 
-                let implementation = self.create_impl_from_item(item);
-                self.add_trait_method(def_id_of_def(def), implementation);
-            }
+        for associated_traits.each |associated_trait| {
+            let def = self.crate_context.tcx.def_map.get
+                (associated_trait.ref_id);
+            #debug("(checking implementation) adding impl for trait \
+                    '%s', item '%s'",
+                   ast_map::node_id_to_str(self.crate_context.tcx.items,
+                                           associated_trait.ref_id),
+                   *item.ident);
+
+            let implementation = self.create_impl_from_item(item);
+            self.add_trait_method(def_id_of_def(def), implementation);
         }
 
         // Add the implementation to the mapping from implementation to base
         // type def ID, if there is a base type for this implementation.
+
         alt get_base_type_def_id(self.inference_context,
                                  item.span,
                                  self_type.ty) {
@@ -326,6 +322,7 @@ class CoherenceChecker {
 
     // Converts a polytype to a monotype by replacing all parameters with
     // type variables.
+
     fn universally_quantify_polytype(polytype: ty_param_bounds_and_ty) -> t {
         let self_region =
             if !polytype.rp {none}
@@ -385,14 +382,6 @@ class CoherenceChecker {
                         }
                     }
                     item_impl(_, associated_traits, _, _) {
-                        // XXX: Accept an array of traits.
-                        let optional_trait_ref;
-                        if associated_traits.len() == 0 {
-                            optional_trait_ref = none;
-                        } else {
-                            optional_trait_ref = some(associated_traits[0]);
-                        }
-
                         alt self.base_type_def_ids.find(local_def(item.id)) {
                             none {
                                 // Nothing to do.
@@ -411,56 +400,50 @@ class CoherenceChecker {
                                 } else {
                                     // This implementation is not in scope of
                                     // its base type. This still might be OK
-                                    // if the trait is defined in the same
+                                    // if the traits are defined in the same
                                     // crate.
 
-                                    alt optional_trait_ref {
-                                        none {
-                                            // There is no trait to implement,
-                                            // so this is an error.
+                                    if associated_traits.len() == 0 {
+                                        // There is no trait to implement, so
+                                        // this is an error.
 
-                                            let session =
-                                                self.crate_context.tcx.sess;
+                                        let session =
+                                            self.crate_context.tcx.sess;
+                                        session.span_err(item.span,
+                                                         ~"cannot implement \
+                                                          inherent methods \
+                                                          for a type outside \
+                                                          the scope the type \
+                                                          was defined in; \
+                                                          define and \
+                                                          implement a trait \
+                                                          instead");
+                                    }
+
+                                    for associated_traits.each |trait_ref| {
+                                        // This is OK if and only if the
+                                        // trait was defined in this
+                                        // crate.
+
+                                        let def_map = self.crate_context.tcx
+                                            .def_map;
+                                        let trait_def = def_map.get
+                                            (trait_ref.ref_id);
+                                        let trait_id =
+                                            def_id_of_def(trait_def);
+                                        if trait_id.crate != local_crate {
+                                            let session = self.crate_context
+                                                .tcx.sess;
                                             session.span_err(item.span,
                                                              ~"cannot \
-                                                              implement \
-                                                              inherent \
-                                                              methods for a \
-                                                              type outside \
-                                                              the scope the \
-                                                              type was \
-                                                              defined in; \
-                                                              define and \
-                                                              implement a \
-                                                              trait instead");
-                                        }
-                                        some(trait_ref) {
-                                            // This is OK if and only if the
-                                            // trait was defined in this
-                                            // crate.
-
-                                            let def_map = self.crate_context
-                                                .tcx.def_map;
-                                            let trait_def =
-                                                def_map.get(trait_ref.ref_id);
-                                            let trait_id =
-                                                def_id_of_def(trait_def);
-                                            if trait_id.crate != local_crate {
-                                                let session = self
-                                                    .crate_context.tcx.sess;
-                                                session.span_err(item.span,
-                                                                 ~"cannot \
-                                                                   provide \
-                                                                   an \
-                                                                   extension \
-                                                                   implementa\
-                                                                      tion \
-                                                                   for a \
-                                                                   trait not \
-                                                                   defined \
-                                                                   in this \
-                                                                   crate");
-                                            }
+                                                               provide an \
+                                                               extension \
+                                                               implementa\
+                                                                  tion \
+                                                               for a trait \
+                                                               not defined \
+                                                               in this \
+                                                               crate");
                                         }
                                     }
                                 }
