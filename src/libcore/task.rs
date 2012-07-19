@@ -1230,6 +1230,26 @@ fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
     fail;
 }
 
+// A bonus linked failure test
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+#[ignore] // FIXME (#1868) (bblum) make this work
+fn test_spawn_unlinked_sup_propagate_grandchild() {
+    let builder = task::builder();
+    task::unsupervise(builder);
+    task::parent(builder);
+    do task::run(builder) {
+        let builder = task::builder();
+        task::unsupervise(builder);
+        task::parent(builder);
+        do task::run(builder) {
+            loop { task::yield(); }
+        }
+    }
+    for iter::repeat(8192) { task::yield(); }
+    fail;
+}
+
 #[test]
 #[ignore(cfg(windows))]
 fn test_spawn_raw_notify() {
