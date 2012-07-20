@@ -146,7 +146,7 @@ type sched_opts = {
  *
  * # Fields
  *
- * * supervise - Do not propagate failure to the parent task
+ * * linked - Do not propagate failure to the parent task
  *
  *     All tasks are linked together via a tree, from parents to children. By
  *     default children are 'supervised' by their parent and when they fail
@@ -169,7 +169,7 @@ type sched_opts = {
  *     scheduler other tasks will be impeded or even blocked indefinitely.
  */
 type task_opts = {
-    supervise: bool,
+    linked: bool,
     parented: bool,
     notify_chan: option<comm::chan<notification>>,
     sched: option<sched_opts>,
@@ -207,7 +207,7 @@ fn default_task_opts() -> task_opts {
      */
 
     {
-        supervise: true,
+        linked: true,
         parented: false,
         notify_chan: none,
         sched: none
@@ -239,7 +239,7 @@ fn set_opts(builder: builder, opts: task_opts) {
      * To update a single option use a pattern like the following:
      *
      *     set_opts(builder, {
-     *         supervise: false
+     *         linked: false
      *         with get_opts(builder)
      *     });
      */
@@ -360,7 +360,7 @@ fn unsupervise(builder: builder) {
     //! Configures the new task to not propagate failure to its parent
 
     set_opts(builder, {
-        supervise: false
+        linked: false
         with get_opts(builder)
     });
 }
@@ -745,7 +745,7 @@ fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
 
 fn spawn_raw(opts: task_opts, +f: fn~()) {
     // Decide whether the child needs to be in a new linked failure group.
-    let ((child_tg, is_main), parent_tg) = if opts.supervise {
+    let ((child_tg, is_main), parent_tg) = if opts.linked {
         // It doesn't mean anything for a linked-spawned-task to have a parent
         // group. The spawning task is already bidirectionally linked to it.
         (share_parent_taskgroup(), none)
@@ -753,7 +753,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
         // Detached from the parent group; create a new (non-main) one.
         ((arc::exclusive(some((dvec::dvec(),dvec::dvec()))), false),
          // Allow the parent to unidirectionally fail the child?
-         if opts.parented { // FIXME(#1868) rename to unsupervise.
+         if opts.parented {
              let (pg,_) = share_parent_taskgroup(); some(pg)
          } else {
              none
@@ -1145,7 +1145,7 @@ fn test_spawn_raw_simple() {
 #[ignore(cfg(windows))]
 fn test_spawn_raw_unsupervise() {
     let opts = {
-        supervise: false
+        linked: false
         with default_task_opts()
     };
     do spawn_raw(opts) {
@@ -1269,7 +1269,7 @@ fn test_spawn_raw_notify() {
     assert comm::recv(notify_po) == exit(task_, success);
 
     let opts = {
-        supervise: false,
+        linked: false,
         notify_chan: some(notify_ch)
         with default_task_opts()
     };
@@ -1592,7 +1592,7 @@ fn test_unkillable() {
     let ch = po.chan();
 
     // We want to do this after failing
-    do spawn_raw({ supervise: false with default_task_opts() }) {
+    do spawn_raw({ linked: false with default_task_opts() }) {
         for iter::repeat(10u) { yield() }
         ch.send(());
     }
@@ -1629,7 +1629,7 @@ fn test_unkillable_nested() {
     let ch = po.chan();
 
     // We want to do this after failing
-    do spawn_raw({ supervise: false with default_task_opts() }) {
+    do spawn_raw({ linked: false with default_task_opts() }) {
         for iter::repeat(10u) { yield() }
         ch.send(());
     }
