@@ -1,4 +1,4 @@
-import libc::{c_int, c_uint};
+import libc::{c_int, c_uint, c_char};
 import driver::session;
 import session::session;
 import lib::llvm::llvm;
@@ -30,6 +30,21 @@ fn llvm_err(sess: session, msg: ~str) -> ! unsafe {
     if cstr == ptr::null() {
         sess.fatal(msg);
     } else { sess.fatal(msg + ~": " + str::unsafe::from_c_str(cstr)); }
+}
+
+fn WriteOutputFile(sess:session,
+        PM: lib::llvm::PassManagerRef, M: ModuleRef,
+        Triple: *c_char,
+        // FIXME: When #2334 is fixed, change
+        // c_uint to FileType
+        Output: *c_char, FileType: c_uint,
+        OptLevel: c_int,
+        EnableSegmentedStacks: bool) {
+    let result = llvm::LLVMRustWriteOutputFile(
+            PM, M, Triple, Output, FileType, OptLevel, EnableSegmentedStacks);
+    if (!result) {
+        llvm_err(sess, "Could not write output");
+    }
 }
 
 mod write {
@@ -161,7 +176,8 @@ mod write {
                         sess.targ_cfg.target_strs.target_triple,
                         |buf_t| {
                             str::as_c_str(output, |buf_o| {
-                                llvm::LLVMRustWriteOutputFile(
+                                WriteOutputFile(
+                                    sess,
                                     pm.llpm,
                                     llmod,
                                     buf_t,
@@ -182,7 +198,8 @@ mod write {
                         sess.targ_cfg.target_strs.target_triple,
                         |buf_t| {
                             str::as_c_str(output, |buf_o| {
-                                llvm::LLVMRustWriteOutputFile(
+                                WriteOutputFile(
+                                    sess,
                                     pm.llpm,
                                     llmod,
                                     buf_t,
@@ -201,7 +218,8 @@ mod write {
                     sess.targ_cfg.target_strs.target_triple,
                     |buf_t| {
                         str::as_c_str(output, |buf_o| {
-                            llvm::LLVMRustWriteOutputFile(
+                            WriteOutputFile(
+                                sess,
                                 pm.llpm,
                                 llmod,
                                 buf_t,
