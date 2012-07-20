@@ -68,11 +68,15 @@ rust_sched_loop::kill_all_tasks() {
         killed = true;
 
         for (size_t i = 0; i < running_tasks.length(); i++) {
-            all_tasks.push_back(running_tasks[i]);
+            rust_task *t = running_tasks[i];
+            t->ref();
+            all_tasks.push_back(t);
         }
 
         for (size_t i = 0; i < blocked_tasks.length(); i++) {
-            all_tasks.push_back(blocked_tasks[i]);
+            rust_task *t = blocked_tasks[i];
+            t->ref();
+            all_tasks.push_back(t);
         }
     }
 
@@ -80,6 +84,7 @@ rust_sched_loop::kill_all_tasks() {
         rust_task *task = all_tasks.back();
         all_tasks.pop_back();
         task->kill();
+        task->deref();
     }
 }
 
