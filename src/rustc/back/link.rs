@@ -43,7 +43,7 @@ fn WriteOutputFile(sess:session,
     let result = llvm::LLVMRustWriteOutputFile(
             PM, M, Triple, Output, FileType, OptLevel, EnableSegmentedStacks);
     if (!result) {
-        llvm_err(sess, "Could not write output");
+        llvm_err(sess, ~"Could not write output");
     }
 }
 
