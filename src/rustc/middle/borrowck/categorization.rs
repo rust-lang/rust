@@ -97,7 +97,7 @@ fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
 
 impl public_methods for borrowck_ctxt {
     fn cat_borrow_of_expr(expr: @ast::expr) -> cmt {
-        // a borrowed expression must be either an @, ~, or a vec/@, vec/~
+        // a borrowed expression must be either an @, ~, or a @vec, ~vec
         let expr_ty = ty::expr_ty(self.tcx, expr);
         alt ty::get(expr_ty).struct {
           ty::ty_evec(*) | ty::ty_estr(*) {
@@ -108,6 +108,12 @@ impl public_methods for borrowck_ctxt {
             let cmt = self.cat_expr(expr);
             self.cat_deref(expr, cmt, 0u, true).get()
           }
+
+          /*
+          ty::ty_fn({proto, _}) {
+            self.cat_call(expr, expr, proto)
+          }
+          */
 
           _ {
             self.tcx.sess.span_bug(
@@ -341,9 +347,20 @@ impl public_methods for borrowck_ctxt {
                     }
                 };
 
+                // for unique ptrs, we inherit mutability from the
+                // owning reference.
+                let m = alt ptr {
+                  uniq_ptr => {
+                    self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
+                  }
+                  gc_ptr | region_ptr | unsafe_ptr => {
+                    mt.mutbl
+                  }
+                };
+
                 @{id:node.id(), span:node.span(),
                   cat:cat_deref(base_cmt, derefs, ptr), lp:lp,
-                  mutbl:mt.mutbl, ty:mt.ty}
+                  mutbl:m, ty:mt.ty}
               }
 
               deref_comp(comp) {
@@ -379,27 +396,38 @@ impl public_methods for borrowck_ctxt {
               _ => {none}
             };
 
-            // (b) the deref is explicit in the resulting cmt
+            // (b) for unique ptrs, we inherit mutability from the
+            // owning reference.
+            let m = alt ptr {
+              uniq_ptr => {
+                self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
+              }
+              gc_ptr | region_ptr | unsafe_ptr => {
+                mt.mutbl
+              }
+            };
+
+            // (c) the deref is explicit in the resulting cmt
             let deref_cmt = @{id:expr.id, span:expr.span,
               cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
-              mutbl:m_imm, ty:mt.ty};
+              mutbl:m, ty:mt.ty};
 
-            comp(expr, deref_cmt, base_cmt.ty, mt)
+            comp(expr, deref_cmt, base_cmt.ty, m, mt.ty)
           }
 
           deref_comp(_) {
             // fixed-length vectors have no deref
-            comp(expr, base_cmt, base_cmt.ty, mt)
+            comp(expr, base_cmt, base_cmt.ty, mt.mutbl, mt.ty)
           }
         };
 
         fn comp(expr: @ast::expr, of_cmt: cmt,
-                vect: ty::t, mt: ty::mt) -> cmt {
-            let comp = comp_index(vect, mt.mutbl);
+                vect: ty::t, mutbl: ast::mutability, ty: ty::t) -> cmt {
+            let comp = comp_index(vect, mutbl);
             let index_lp = of_cmt.lp.map(|lp| @lp_comp(lp, comp) );
             @{id:expr.id, span:expr.span,
               cat:cat_comp(of_cmt, comp), lp:index_lp,
-              mutbl:mt.mutbl, ty:mt.ty}
+              mutbl:mutbl, ty:ty}
         }
     }
 
