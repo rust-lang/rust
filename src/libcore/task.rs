@@ -1156,6 +1156,9 @@ fn test_spawn_raw_unsupervise() {
 // The following 8 tests test the following 2^3 combinations:
 // {un,}linked {un,}supervised failure propagation {up,down}wards.
 
+// !!! These tests are dangerous. If something is buggy, they will hang, !!!
+// !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
+
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     let po = comm::port();
@@ -1232,7 +1235,7 @@ fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
 
 // A bonus linked failure test
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[should_fail] // #[ignore(cfg(windows))]
 #[ignore] // FIXME (#1868) (bblum) make this work
 fn test_spawn_unlinked_sup_propagate_grandchild() {
     let builder = task::builder();
