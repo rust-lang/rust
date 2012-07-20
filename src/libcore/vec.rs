@@ -185,7 +185,7 @@ pure fn len<T>(&&v: &[const T]) -> uint {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pure fn from_fn<T: copy>(n_elts: uint, op: init_op<T>) -> ~[T] {
+pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
@@ -532,7 +532,7 @@ unsafe fn ref<T: copy>(v: &[const T], i: uint) -> T {
 }
 
 #[inline(always)]
-unsafe fn ref_set<T: copy>(v: &[mut T], i: uint, +val: T) {
+unsafe fn ref_set<T>(v: &[mut T], i: uint, +val: T) {
     let mut box = some(val);
     do as_mut_buf(v) |p, _len| {
         let mut box2 = none;
