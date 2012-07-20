@@ -39,7 +39,7 @@ pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
-fn range(lo: T, hi: T, it: fn(T) -> bool) {
+pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
     let mut i = lo;
     while i < hi {
         if !it(i) { break }
