@@ -16,6 +16,9 @@ trait extended_iter<A> {
 iface times {
     fn times(it: fn() -> bool);
 }
+iface timesi{
+    fn timesi(it: fn(uint) -> bool);
+}
 
 trait copyable_iter<A:copy> {
     fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];

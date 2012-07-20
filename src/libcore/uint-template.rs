@@ -11,7 +11,7 @@ export range;
 export compl;
 export to_str, to_str_bytes;
 export from_str, from_str_radix, str, parse_buf;
-export num, ord, eq, times;
+export num, ord, eq, times, timesi;
 
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
@@ -116,6 +116,19 @@ impl times of iter::times for T {
         while i > 0 {
             if !it() { break }
             i -= 1;
+        }
+    }
+}
+
+impl timesi of iter::timesi for T {
+    #[inline(always)]
+    /// Like `times`, but with an index, `eachi`-style.
+    fn timesi(it: fn(uint) -> bool) {
+        let slf = self as uint;
+        let mut i = 0u;
+        while i < slf {
+            if !it(i) { break }
+            i += 1u;
         }
     }
 }
