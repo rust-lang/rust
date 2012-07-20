@@ -39,6 +39,7 @@ Haitao Li <lihaitao@gmail.com>
 Ian D. Bollinger <ian.bollinger@gmail.com>
 Jacob Parker <j3parker@csclub.uwaterloo.ca>
 Jason Orendorff <jorendorff@mozilla.com>
+Jed Davis <jld@panix.com>
 Jeff Balogh <jbalogh@mozilla.com>
 Jeff Muizelaar <jmuizelaar@mozilla.com>
 Jeff Olson <olson.jeffery@gmail.com>
