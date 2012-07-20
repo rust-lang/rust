@@ -190,7 +190,7 @@ rust_kernel::run() {
 
 void
 rust_kernel::fail() {
-    // FIXME (#2671): On windows we're getting "Application has
+    // FIXME (#908): On windows we're getting "Application has
     // requested the Runtime to terminate it in an unusual way" when
     // trying to shutdown cleanly.
     set_exit_status(PROC_FAIL_CODE);
