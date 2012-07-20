@@ -122,8 +122,6 @@ rust_task_fail(rust_task *task,
 struct
 rust_task : public kernel_owned<rust_task>
 {
-    // FIXME(#1789) Refcounting no longer seems needed now that tasks don't
-    // ref their parents. I'll leave it in just in case... -- bblum
     RUST_ATOMIC_REFCOUNT();
 
     rust_task_id id;

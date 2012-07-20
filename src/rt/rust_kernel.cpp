@@ -162,7 +162,7 @@ rust_kernel::wait_for_schedulers()
             rust_scheduler *sched = iter->second;
             sched_table.erase(iter);
             sched->join_task_threads();
-            delete sched;
+            sched->deref();
             if (sched_table.size() == 1) {
                 KLOG_("Allowing osmain scheduler to exit");
                 // It's only the osmain scheduler left. Tell it to exit
@@ -197,23 +197,21 @@ rust_kernel::fail() {
 #if defined(__WIN32__)
     exit(rval);
 #endif
-    // Copy the list of schedulers so that we don't hold the lock while
-    // running kill_all_tasks.
     // I think this only needs to be done by one task ever; as it is,
     // multiple tasks invoking kill_all might get here. Currently libcore
     // ensures only one task will ever invoke it, but this would really be
     // fine either way, so I'm leaving it as it is. -- bblum
-    // FIXME (#2671): There's a lot that happens under kill_all_tasks,
-    // and I don't know that holding sched_lock here is ok, but we need
-    // to hold the sched lock to prevent the scheduler from being
-    // destroyed while we are using it. Probably we need to make
-    // rust_scheduler atomicly reference counted.
+
+    // Copy the list of schedulers so that we don't hold the lock while
+    // running kill_all_tasks. Refcount to ensure they stay alive.
     std::vector<rust_scheduler*> scheds;
     {
         scoped_lock with(sched_lock);
+        // All schedulers created after this flag is set will be doomed.
         killed = true;
         for (sched_map::iterator iter = sched_table.begin();
              iter != sched_table.end(); iter++) {
+            iter->second->ref();
             scheds.push_back(iter->second);
         }
     }
@@ -221,6 +219,7 @@ rust_kernel::fail() {
     for (std::vector<rust_scheduler*>::iterator iter = scheds.begin();
          iter != scheds.end(); iter++) {
         (*iter)->kill_all_tasks();
+        (*iter)->deref();
     }
 }
 

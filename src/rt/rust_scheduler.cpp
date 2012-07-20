@@ -11,6 +11,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                bool allow_exit,
                                bool killed,
                                rust_sched_launcher_factory *launchfac) :
+    ref_count(1),
     kernel(kernel),
     live_threads(num_threads),
     live_tasks(0),
@@ -22,8 +23,9 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     create_task_threads(launchfac, killed);
 }
 
-rust_scheduler::~rust_scheduler() {
+void rust_scheduler::delete_this() {
     destroy_task_threads();
+    delete this;
 }
 
 rust_sched_launcher *

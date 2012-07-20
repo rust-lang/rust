@@ -11,11 +11,13 @@
 #include "rust_globals.h"
 #include "util/array_list.h"
 #include "rust_kernel.h"
+#include "rust_refcount.h"
 
 class rust_sched_launcher;
 class rust_sched_launcher_factory;
 
 class rust_scheduler : public kernel_owned<rust_scheduler> {
+    RUST_ATOMIC_REFCOUNT();
     // FIXME (#2693): Make these private
 public:
     rust_kernel *kernel;
@@ -45,11 +47,13 @@ private:
 
     void exit();
 
+    // Called when refcount reaches zero
+    void delete_this();
+
 public:
     rust_scheduler(rust_kernel *kernel, size_t num_threads,
                    rust_sched_id id, bool allow_exit, bool killed,
                    rust_sched_launcher_factory *launchfac);
-    ~rust_scheduler();
 
     void start_task_threads();
     void join_task_threads();
