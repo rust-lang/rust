@@ -2504,19 +2504,30 @@ needed because it could also, for example, specify an implementation
 of `seq<int>`—the `of` clause *refers* to a type, rather than defining
 one.
 
-Note that functions do not explicitly have the type parameters that 
-are provided by the iface. It will cause a compile-time error if you
-include them in the iface or impl.
+The type parameters bound by an iface are in scope in each of the
+method declarations. So, re-declaring the type parameter
+`T` as an explicit type parameter for `len` -- in either the iface or
+the impl -- would be a compile-time error.
 
-## Use of the type `self` in interfaces
+## The `self` type in interfaces
 
-Interfaces may use `self` as a type where the implementation uses its
-own type. This defines an interface for testing equality of a type with
-itself:
+In an interface, `self` is a special type that you can think of as a
+type parameter. An implementation of the interface for any given type
+`T` replaces the `self` type parameter with `T`. The following
+interface describes types that support an equality operation:
 
 ~~~~
 iface eq {
   fn equals(other: self) -> bool;
+}
+~~~~
+
+In an implementation for type `int`, the `equals` method takes an
+`int` argument:
+
+~~~~
+impl of eq for int {
+  fn equals(other: int) { other == self }
 }
 ~~~~
 
