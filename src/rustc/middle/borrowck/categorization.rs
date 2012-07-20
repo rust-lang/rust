@@ -293,6 +293,18 @@ impl public_methods for borrowck_ctxt {
         ret @{cat:cat_discr(cmt, alt_id) with *cmt};
     }
 
+    /// inherited mutability: used in cases where the mutability of a
+    /// component is inherited from the base it is a part of. For
+    /// example, a record field is mutable if it is declared mutable
+    /// or if the container is mutable.
+    fn inherited_mutability(base_m: ast::mutability,
+                          comp_m: ast::mutability) -> ast::mutability {
+        alt comp_m {
+          m_imm => {base_m}  // imm: as mutable as the container
+          m_mutbl | m_const => {comp_m}
+        }
+    }
+
     fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
                              f_name: ast::ident) -> cmt {
         let f_mutbl = alt field_mutbl(self.tcx, base_cmt.ty, f_name) {
@@ -304,10 +316,7 @@ impl public_methods for borrowck_ctxt {
                      *f_name, ty_to_str(self.tcx, base_cmt.ty)]);
           }
         };
-        let m = alt f_mutbl {
-          m_imm { base_cmt.mutbl } // imm: as mutable as the container
-          m_mutbl | m_const { f_mutbl }
-        };
+        let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
         let f_comp = comp_field(f_name, f_mutbl);
         let lp = base_cmt.lp.map(|lp| @lp_comp(lp, f_comp) );
         @{id: node.id(), span: node.span(),
@@ -327,10 +336,11 @@ impl public_methods for borrowck_ctxt {
                     // Other ptr types admit aliases and are therefore
                     // not loanable.
                     alt ptr {
-                      uniq_ptr {some(@lp_deref(l, ptr))}
-                      gc_ptr | region_ptr | unsafe_ptr {none}
+                      uniq_ptr => {some(@lp_deref(l, ptr))}
+                      gc_ptr | region_ptr | unsafe_ptr => {none}
                     }
                 };
+
                 @{id:node.id(), span:node.span(),
                   cat:cat_deref(base_cmt, derefs, ptr), lp:lp,
                   mutbl:mt.mutbl, ty:mt.ty}
@@ -338,9 +348,10 @@ impl public_methods for borrowck_ctxt {
 
               deref_comp(comp) {
                 let lp = base_cmt.lp.map(|l| @lp_comp(l, comp) );
+                let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
                 @{id:node.id(), span:node.span(),
                   cat:cat_comp(base_cmt, comp), lp:lp,
-                  mutbl:mt.mutbl, ty:mt.ty}
+                  mutbl:m, ty:mt.ty}
               }
             }
         }
