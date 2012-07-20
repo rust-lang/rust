@@ -422,7 +422,7 @@ type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 
 A _path_ is a sequence of one or more path components _logically_ separated by
 a namespace qualifier (`::`). If a path consists of only one component, it may
-refer to either an [item](#items) or a [slot](#slot-declarations) in a local
+refer to either an [item](#items) or a [slot](#memory-slots) in a local
 control scope. If a path has multiple components, it refers to an item.
 
 Every item has a _canonical path_ within its crate, but the path naming an
@@ -831,9 +831,9 @@ Here, `foo` imports `t`, but not `a`, `b`, and `c`.
 A _function item_ defines a sequence of [statements](#statements) and an
 optional final [expression](#expressions) associated with a name and a set of
 parameters. Functions are declared with the keyword `fn`. Functions declare a
-set of *input [slots](#slot-declarations)* as parameters, through which the
-caller passes arguments into the function, and an *output
-[slot](#slot-declarations)* through which the function passes results back to
+set of *input* [*slots*](#memory-slots) as parameters, through which the
+caller passes arguments into the function, and an *output*
+[*slot*](#memory-slots) through which the function passes results back to
 the caller.
 
 A function may also be copied into a first class *value*, in which case the
@@ -1251,8 +1251,8 @@ laid out in the same order.
 
 ### Traits
 
-A _trait item_ describes a set of method types. _[implementation
-items](#implementations)_ can be used to provide implementations of
+A _trait item_ describes a set of method types. [_implementation
+items_](#implementations) can be used to provide implementations of
 those methods for a specific type.
 
 ~~~~
@@ -1624,7 +1624,7 @@ rec_expr : '{' ident ':' expr
                [ "with" expr ] '}'
 ~~~~~~~~
 
-A _[record](#record-types) expression_ is one or more comma-separated
+A [_record_](#record-types) _expression_ is one or more comma-separated
 name-value pairs enclosed by braces. A fieldname can be any identifier
 (including keywords), and is separated from its value expression by a
 colon. To indicate that a field is mutable, the `mut` keyword is
@@ -1689,7 +1689,7 @@ expression on the left of the dot.
 vec_expr : '[' "mut" ? [ expr [ ',' expr ] * ] ? ']'
 ~~~~~~~~
 
-A _[vector](#vector-types) expression_ is written by enclosing zero or
+A [_vector_](#vector-types) _expression_ is written by enclosing zero or
 more comma-separated expressions of uniform type in square brackets.
 The keyword `mut` can be written after the opening bracket to
 indicate that the elements of the resulting vector may be mutated.
