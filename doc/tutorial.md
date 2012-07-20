@@ -2518,18 +2518,16 @@ interface describes types that support an equality operation:
 
 ~~~~
 iface eq {
-  fn equals(other: self) -> bool;
+  fn equals(&&other: self) -> bool;
 }
-~~~~
 
-In an implementation for type `int`, the `equals` method takes an
-`int` argument:
-
-~~~~
 impl of eq for int {
-  fn equals(other: int) { other == self }
+  fn equals(&&other: int) -> bool { other == self }
 }
 ~~~~
+
+Notice that `equals` takes an `int` argument, rather than a `self` argument, in
+an implementation for type `int`.
 
 ## Casting to an interface type
 
