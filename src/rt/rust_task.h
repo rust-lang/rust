@@ -264,6 +264,7 @@ public:
 
     // Fail this task (assuming caller-on-stack is different task).
     void kill();
+    void kill_inner();
 
     // Indicates that we've been killed and now is an apropriate
     // time to fail as a result

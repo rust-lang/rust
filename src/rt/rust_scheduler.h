@@ -34,18 +34,20 @@ private:
 
     rust_sched_id id;
 
-    void create_task_threads(rust_sched_launcher_factory *launchfac);
+    void create_task_threads(rust_sched_launcher_factory *launchfac,
+                             bool killed);
     void destroy_task_threads();
 
     rust_sched_launcher *
-    create_task_thread(rust_sched_launcher_factory *launchfac, int id);
+    create_task_thread(rust_sched_launcher_factory *launchfac, int id,
+                       bool killed);
     void destroy_task_thread(rust_sched_launcher *thread);
 
     void exit();
 
 public:
     rust_scheduler(rust_kernel *kernel, size_t num_threads,
-                   rust_sched_id id, bool allow_exit,
+                   rust_sched_id id, bool allow_exit, bool killed,
                    rust_sched_launcher_factory *launchfac);
     ~rust_scheduler();
 

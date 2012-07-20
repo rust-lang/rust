@@ -60,6 +60,7 @@ private:
     rust_task_list running_tasks;
     rust_task_list blocked_tasks;
     rust_task *dead_task;
+    bool killed;
 
     rust_signal *pump_signal;
 
@@ -91,7 +92,7 @@ public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_sched_loop(rust_scheduler *sched, int id);
+    rust_sched_loop(rust_scheduler *sched, int id, bool killed);
     void activate(rust_task *task);
     rust_log & get_log();
     void fail();
@@ -107,6 +108,7 @@ public:
     void log_state();
 
     void kill_all_tasks();
+    bool doomed();
 
     rust_task *create_task(rust_task *spawner, const char *name);
 

@@ -13,12 +13,13 @@ const size_t C_STACK_SIZE = 1024*1024;
 
 bool rust_sched_loop::tls_initialized = false;
 
-rust_sched_loop::rust_sched_loop(rust_scheduler *sched,int id) :
+rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     _log(this),
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
     dead_task(NULL),
+    killed(killed),
     pump_signal(NULL),
     kernel(sched->kernel),
     sched(sched),
@@ -63,6 +64,8 @@ rust_sched_loop::kill_all_tasks() {
 
     {
         scoped_lock with(lock);
+        // Any task created after this will be killed. See transition, below.
+        killed = true;
 
         for (size_t i = 0; i < running_tasks.length(); i++) {
             all_tasks.push_back(running_tasks[i]);
@@ -318,6 +321,11 @@ rust_sched_loop::transition(rust_task *task,
         dead_task = task;
     }
     task->set_state(dst, cond, cond_name);
+
+    // If the entire runtime is failing, newborn tasks must be doomed.
+    if (src == task_state_newborn && killed) {
+        task->kill_inner();
+    }
 
     pump_loop();
 }

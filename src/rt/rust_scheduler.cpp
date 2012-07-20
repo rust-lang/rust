@@ -9,6 +9,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                size_t num_threads,
                                rust_sched_id id,
                                bool allow_exit,
+                               bool killed,
                                rust_sched_launcher_factory *launchfac) :
     kernel(kernel),
     live_threads(num_threads),
@@ -18,7 +19,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     num_threads(num_threads),
     id(id)
 {
-    create_task_threads(launchfac);
+    create_task_threads(launchfac, killed);
 }
 
 rust_scheduler::~rust_scheduler() {
@@ -27,8 +28,8 @@ rust_scheduler::~rust_scheduler() {
 
 rust_sched_launcher *
 rust_scheduler::create_task_thread(rust_sched_launcher_factory *launchfac,
-                                   int id) {
-    rust_sched_launcher *thread = launchfac->create(this, id);
+                                   int id, bool killed) {
+    rust_sched_launcher *thread = launchfac->create(this, id, killed);
     KLOG(kernel, kern, "created task thread: " PTR ", id: %d",
           thread, id);
     return thread;
@@ -41,11 +42,12 @@ rust_scheduler::destroy_task_thread(rust_sched_launcher *thread) {
 }
 
 void
-rust_scheduler::create_task_threads(rust_sched_launcher_factory *launchfac) {
+rust_scheduler::create_task_threads(rust_sched_launcher_factory *launchfac,
+                                    bool killed) {
     KLOG(kernel, kern, "Using %d scheduler threads.", num_threads);
 
     for(size_t i = 0; i < num_threads; ++i) {
-        threads.push(create_task_thread(launchfac, i));
+        threads.push(create_task_thread(launchfac, i, killed));
     }
 }
 

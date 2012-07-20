@@ -17,7 +17,7 @@ protected:
     rust_sched_driver driver;
 
 public:
-    rust_sched_launcher(rust_scheduler *sched, int id);
+    rust_sched_launcher(rust_scheduler *sched, int id, bool killed);
     virtual ~rust_sched_launcher() { }
 
     virtual void start() = 0;
@@ -29,7 +29,7 @@ class rust_thread_sched_launcher
   :public rust_sched_launcher,
    private rust_thread {
 public:
-    rust_thread_sched_launcher(rust_scheduler *sched, int id);
+    rust_thread_sched_launcher(rust_scheduler *sched, int id, bool killed);
     virtual void start() { rust_thread::start(); }
     virtual void join() { rust_thread::join(); }
     virtual void run() { driver.start_main_loop(); }
@@ -37,7 +37,7 @@ public:
 
 class rust_manual_sched_launcher : public rust_sched_launcher {
 public:
-    rust_manual_sched_launcher(rust_scheduler *sched, int id);
+    rust_manual_sched_launcher(rust_scheduler *sched, int id, bool killed);
     virtual void start() { }
     virtual void join() { }
     rust_sched_driver *get_driver() { return &driver; };
@@ -47,13 +47,14 @@ class rust_sched_launcher_factory {
 public:
     virtual ~rust_sched_launcher_factory() { }
     virtual rust_sched_launcher *
-    create(rust_scheduler *sched, int id) = 0;
+    create(rust_scheduler *sched, int id, bool killed) = 0;
 };
 
 class rust_thread_sched_launcher_factory
     : public rust_sched_launcher_factory {
 public:
-    virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
+    virtual rust_sched_launcher *create(rust_scheduler *sched, int id,
+                                        bool killed);
 };
 
 class rust_manual_sched_launcher_factory
@@ -62,7 +63,8 @@ private:
     rust_manual_sched_launcher *launcher;
 public:
     rust_manual_sched_launcher_factory() : launcher(NULL) { }
-    virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
+    virtual rust_sched_launcher *create(rust_scheduler *sched, int id,
+                                        bool killed);
     rust_sched_driver *get_driver() {
         assert(launcher != NULL);
         return launcher->get_driver();

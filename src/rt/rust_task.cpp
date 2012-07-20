@@ -257,8 +257,17 @@ rust_task::yield(bool *killed) {
 void
 rust_task::kill() {
     scoped_lock with(lifecycle_lock);
+    kill_inner();
+}
 
-    // XXX: bblum: kill/kill race
+void rust_task::kill_inner() {
+    lifecycle_lock.must_have_lock();
+
+    // Multiple kills should be able to safely race, but check anyway.
+    if (killed) {
+        LOG(this, task, "task %s @0x%" PRIxPTR " already killed", name, this);
+        return;
+    }
 
     // Note the distinction here: kill() is when you're in an upcall
     // from task A and want to force-fail task B, you do B->kill().

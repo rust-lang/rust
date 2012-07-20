@@ -19,6 +19,7 @@ rust_kernel::rust_kernel(rust_env *env) :
     max_port_id(1),
     rval(0),
     max_sched_id(1),
+    killed(false),
     sched_reaper(this),
     osmain_driver(NULL),
     non_weak_tasks(0),
@@ -103,7 +104,8 @@ rust_kernel::create_scheduler(rust_sched_launcher_factory *launchfac,
         id = max_sched_id++;
         assert(id != INTPTR_MAX && "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
-            rust_scheduler(this, num_threads, id, allow_exit, launchfac);
+            rust_scheduler(this, num_threads, id, allow_exit, killed,
+                           launchfac);
         bool is_new = sched_table
             .insert(std::pair<rust_sched_id,
                               rust_scheduler*>(id, sched)).second;
@@ -197,6 +199,10 @@ rust_kernel::fail() {
 #endif
     // Copy the list of schedulers so that we don't hold the lock while
     // running kill_all_tasks.
+    // I think this only needs to be done by one task ever; as it is,
+    // multiple tasks invoking kill_all might get here. Currently libcore
+    // ensures only one task will ever invoke it, but this would really be
+    // fine either way, so I'm leaving it as it is. -- bblum
     // FIXME (#2671): There's a lot that happens under kill_all_tasks,
     // and I don't know that holding sched_lock here is ok, but we need
     // to hold the sched lock to prevent the scheduler from being
@@ -205,15 +211,13 @@ rust_kernel::fail() {
     std::vector<rust_scheduler*> scheds;
     {
         scoped_lock with(sched_lock);
+        killed = true;
         for (sched_map::iterator iter = sched_table.begin();
              iter != sched_table.end(); iter++) {
             scheds.push_back(iter->second);
         }
     }
 
-    // FIXME (#2671): This is not a foolproof way to kill all tasks
-    // while ensuring that no new tasks or schedulers are created in the
-    // meantime that keep the scheduler alive.
     for (std::vector<rust_scheduler*>::iterator iter = scheds.begin();
          iter != scheds.end(); iter++) {
         (*iter)->kill_all_tasks();

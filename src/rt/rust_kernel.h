@@ -72,7 +72,7 @@ class rust_kernel {
     lock_and_signal rval_lock;
     int rval;
 
-    // Protects max_sched_id and sched_table, join_list
+    // Protects max_sched_id and sched_table, join_list, killed
     lock_and_signal sched_lock;
     // The next scheduler id
     rust_sched_id max_sched_id;
@@ -81,6 +81,10 @@ class rust_kernel {
     sched_map sched_table;
     // A list of scheduler ids that are ready to exit
     std::vector<rust_sched_id> join_list;
+    // Whether or not the runtime has to die (triggered when the root/main
+    // task group fails). This propagates to all new schedulers and tasks
+    // created after it is set.
+    bool killed;
 
     rust_sched_reaper sched_reaper;
     // The single-threaded scheduler that uses the main thread
