@@ -1,4 +1,4 @@
-#[link(name = "zmq",
+#[link(name = "issue_2526",
        vers = "0.2",
        uuid = "54cc1bc9-02b8-447c-a227-75ebc923bc29")];
 #[crate_type = "lib"];
