@@ -75,6 +75,12 @@ extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   return true;
 }
 
+void LLVMInitializeX86TargetInfo();
+void LLVMInitializeX86Target();
+void LLVMInitializeX86TargetMC();
+void LLVMInitializeX86AsmPrinter();
+void LLVMInitializeX86AsmParser();
+
 extern "C" bool
 LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         LLVMModuleRef M,
@@ -84,10 +90,16 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         CodeGenOpt::Level OptLevel,
 			bool EnableSegmentedStacks) {
 
-  InitializeAllTargets();
-  InitializeAllTargetMCs();
-  InitializeAllAsmPrinters();
-  InitializeAllAsmParsers();
+  // Only initialize the platforms supported by Rust here,
+  // because using --llvm-root will have multiple platforms
+  // that rustllvm doesn't actually link to and it's pointless to put target info
+  // into the registry that Rust can not generate machine code for.
+
+  LLVMInitializeX86TargetInfo();
+  LLVMInitializeX86Target();
+  LLVMInitializeX86TargetMC();
+  LLVMInitializeX86AsmPrinter();
+  LLVMInitializeX86AsmParser();
 
   TargetOptions Options;
   Options.NoFramePointerElim = true;
