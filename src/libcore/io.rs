@@ -30,7 +30,9 @@ enum seek_style { seek_set, seek_end, seek_cur, }
 // The raw underlying reader iface. All readers must implement this.
 iface reader {
     // FIXME (#2004): Seekable really should be orthogonal.
-    fn read_bytes(uint) -> ~[u8];
+
+    // FIXME (#2982): This should probably return an error.
+    fn read(buf: &[mut u8], len: uint) -> uint;
     fn read_byte() -> int;
     fn unread_byte(int);
     fn eof() -> bool;
@@ -41,6 +43,16 @@ iface reader {
 // Generic utility functions defined on readers
 
 impl reader_util for reader {
+    fn read_bytes(len: uint) -> ~[u8] {
+        let mut buf = ~[mut];
+        vec::reserve(buf, len);
+        unsafe { vec::unsafe::set_len(buf, len); }
+
+        let count = self.read(buf, len);
+
+        unsafe { vec::unsafe::set_len(buf, count); }
+        vec::from_mut(buf)
+    }
     fn read_chars(n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
         fn chars_from_buf(buf: ~[u8], &chars: ~[char]) -> (uint, uint) {
@@ -192,15 +204,15 @@ fn convert_whence(whence: seek_style) -> i32 {
 }
 
 impl of reader for *libc::FILE {
-    fn read_bytes(len: uint) -> ~[u8] {
-        let mut buf : ~[mut u8] = ~[mut];
-        vec::reserve(buf, len);
-        do vec::as_mut_buf(buf) |b| {
-            let read = libc::fread(b as *mut c_void, 1u as size_t,
-                                   len as size_t, self);
-            unsafe { vec::unsafe::set_len(buf, read as uint) };
+    fn read(buf: &[mut u8], len: uint) -> uint {
+        do vec::unpack_slice(buf) |buf_p, buf_len| {
+            assert buf_len <= len;
+
+            let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
+                                    len as size_t, self);
+
+            count as uint
         }
-        ret vec::from_mut(buf);
     }
     fn read_byte() -> int { ret libc::fgetc(self) as int; }
     fn unread_byte(byte: int) { libc::ungetc(byte as c_int, self); }
@@ -216,7 +228,7 @@ impl of reader for *libc::FILE {
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
 impl <T: reader, C> of reader for {base: T, cleanup: C} {
-    fn read_bytes(len: uint) -> ~[u8] { self.base.read_bytes(len) }
+    fn read(buf: &[mut u8], len: uint) -> uint { self.base.read(buf, len) }
     fn read_byte() -> int { self.base.read_byte() }
     fn unread_byte(byte: int) { self.base.unread_byte(byte); }
     fn eof() -> bool { self.base.eof() }
@@ -262,13 +274,15 @@ fn file_reader(path: ~str) -> result<reader, ~str> {
 type byte_buf = {buf: ~[const u8], mut pos: uint, len: uint};
 
 impl of reader for byte_buf {
-    fn read_bytes(len: uint) -> ~[u8] {
-        let rest = self.len - self.pos;
-        let mut to_read = len;
-        if rest < to_read { to_read = rest; }
-        let range = vec::slice(self.buf, self.pos, self.pos + to_read);
-        self.pos += to_read;
-        ret range;
+    fn read(buf: &[mut u8], len: uint) -> uint {
+        let count = uint::min(len, self.len - self.pos);
+
+        vec::u8::memcpy(buf, vec::const_view(self.buf, self.pos, self.len),
+                        count);
+
+        self.pos += count;
+
+        count
     }
     fn read_byte() -> int {
         if self.pos == self.len { ret -1; }

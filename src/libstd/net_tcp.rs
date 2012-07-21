@@ -11,7 +11,7 @@ import future::extensions;
 import result::*;
 import libc::size_t;
 import str::extensions;
-import io::{reader, writer};
+import io::{reader, reader_util, writer};
 
 // tcp interfaces
 export tcp_socket;
@@ -766,34 +766,41 @@ impl tcp_socket for tcp_socket {
 
 /// Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
 impl tcp_socket_buf of io::reader for @tcp_socket_buf {
-    fn read_bytes(amt: uint) -> ~[u8] {
-        let has_amt_available =
-            vec::len((*(self.data)).buf) >= amt;
-        if has_amt_available {
-            // no arbitrary-length shift in vec::?
-            let mut ret_buf = ~[];
-            while vec::len(ret_buf) < amt {
-                ret_buf += ~[vec::shift((*(self.data)).buf)];
-            }
-            ret_buf
-        }
-        else {
-            let read_result = read((*(self.data)).sock, 0u);
+    fn read(buf: &[mut u8], len: uint) -> uint {
+        // Loop until our buffer has enough data in it for us to read from.
+        while self.data.buf.len() < len {
+            let read_result = read(self.data.sock, 0u);
             if read_result.is_err() {
                 let err_data = read_result.get_err();
-                log(debug, #fmt("ERROR sock_buf as io::reader.read err %? %?",
-                                 err_data.err_name, err_data.err_msg));
-                ~[]
+
+                if err_data.err_name == ~"EOF" {
+                    break;
+                } else {
+                    #debug("ERROR sock_buf as io::reader.read err %? %?",
+                           err_data.err_name, err_data.err_msg);
+
+                    ret 0;
+                }
             }
             else {
-                let new_chunk = result::unwrap(read_result);
-                (*(self.data)).buf += new_chunk;
-                self.read_bytes(amt)
+                vec::push_all(self.data.buf, result::unwrap(read_result));
             }
         }
+
+        let count = uint::min(len, self.data.buf.len());
+
+        let mut data = ~[];
+        self.data.buf <-> data;
+
+        vec::u8::memcpy(buf, vec::view(data, 0, data.len()), count);
+
+        vec::push_all(self.data.buf, vec::view(data, count, data.len()));
+
+        count
     }
     fn read_byte() -> int {
-        self.read_bytes(1u)[0] as int
+        let bytes = ~[0];
+        if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
     }
     fn unread_byte(amt: int) {
         vec::unshift((*(self.data)).buf, amt as u8);
