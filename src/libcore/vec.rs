@@ -313,7 +313,7 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     ret result;
 }
 
-#[doc = "Return a slice that points into another slice."]
+/// Return a slice that points into another slice.
 pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
     assert (start <= end);
     assert (end <= len(v));
