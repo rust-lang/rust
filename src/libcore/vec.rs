@@ -651,7 +651,6 @@ fn grow_set<T: copy>(&v: ~[mut T], index: uint, initval: T, val: T) {
     v[index] = val;
 }
 
-
 // Functional utilities
 
 /// Apply a function to each element of a vector and return the results
