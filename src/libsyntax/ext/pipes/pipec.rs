@@ -51,10 +51,12 @@ impl compile of gen_send for message {
                 |n, t| cx.arg_mode(n, t, ast::by_copy)
             );
 
+            let pipe_ty = cx.ty_path_ast_builder(
+                path(this.data_name())
+                .add_tys(cx.ty_vars(this.ty_params)));
             let args_ast = vec::append(
                 ~[cx.arg_mode(@~"pipe",
-                              cx.ty_path_ast_builder(path(this.data_name())
-                                        .add_tys(cx.ty_vars(this.ty_params))),
+                              pipe_ty,
                               ast::by_copy)],
                 args_ast);
 
@@ -73,6 +75,7 @@ impl compile of gen_send for message {
                                       .map(|x| *x),
                                       ~", "));
             body += #fmt("pipes::send(pipe, message);\n");
+            // return the new channel
             body += ~"c }";
 
             let body = cx.parse_expr(body);
