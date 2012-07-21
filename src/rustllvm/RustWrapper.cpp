@@ -75,6 +75,11 @@ extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
   return true;
 }
 
+void LLVMInitializeX86TargetInfo();
+void LLVMInitializeX86TargetMCs();
+void LLVMInitializeX86AsmPrinters();
+void LLVMInitializeX86AsmParsers();
+
 extern "C" bool
 LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         LLVMModuleRef M,
