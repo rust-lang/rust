@@ -390,6 +390,8 @@ LLVMInitializeX86Disassembler
 LLVMInitializeX86Disassembler
 LLVMInitializeX86Target
 LLVMInitializeX86Target
+LLVMInitializeX86TargetMC
+LLVMInitializeX86TargetMC
 LLVMInitializeX86TargetInfo
 LLVMInitializeX86TargetInfo
 LLVMInsertBasicBlock
