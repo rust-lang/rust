@@ -27,7 +27,7 @@ export init;
 export last;
 export last_opt;
 export slice;
-export view;
+export view, mut_view, const_view;
 export split;
 export splitn;
 export rsplit;
@@ -315,6 +315,30 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
 
 /// Return a slice that points into another slice.
 pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
+    assert (start <= end);
+    assert (end <= len(v));
+    do unpack_slice(v) |p, _len| {
+        unsafe {
+            ::unsafe::reinterpret_cast(
+                (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+        }
+    }
+}
+
+/// Return a slice that points into another slice.
+pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
+    assert (start <= end);
+    assert (end <= len(v));
+    do unpack_slice(v) |p, _len| {
+        unsafe {
+            ::unsafe::reinterpret_cast(
+                (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+        }
+    }
+}
+
+/// Return a slice that points into another slice.
+pure fn const_view<T>(v: &[const T], start: uint, end: uint) -> &[const T] {
     assert (start <= end);
     assert (end <= len(v));
     do unpack_slice(v) |p, _len| {
