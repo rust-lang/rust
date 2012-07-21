@@ -1598,6 +1598,34 @@ mod unsafe {
             ::unsafe::reinterpret_cast(ptr::addr_of(pair));
         f(*v)
     }
+
+    /**
+      * Copies data from one vector to another.
+      *
+      * Copies `count` bytes from `src` to `dst`. The source and destination
+      * may overlap.
+      */
+    unsafe fn memcpy<T>(dst: &[mut T], src: &[const T], count: uint) {
+        do unpack_slice(dst) |p_dst, _len_dst| {
+            do unpack_slice(src) |p_src, _len_src| {
+                ptr::memcpy(p_dst, p_src, count)
+            }
+        }
+    }
+
+    /**
+      * Copies data from one vector to another.
+      *
+      * Copies `count` bytes from `src` to `dst`. The source and destination
+      * may overlap.
+      */
+    unsafe fn memmove<T>(dst: &[mut T], src: &[const T], count: uint) {
+        do unpack_slice(dst) |p_dst, _len_dst| {
+            do unpack_slice(src) |p_src, _len_src| {
+                ptr::memmove(p_dst, p_src, count)
+            }
+        }
+    }
 }
 
 /// Operations on `[u8]`
@@ -1605,6 +1633,7 @@ mod u8 {
     export cmp;
     export lt, le, eq, ne, ge, gt;
     export hash;
+    export memcpy, memmove;
 
     /// Bytewise string comparison
     pure fn cmp(&&a: ~[u8], &&b: ~[u8]) -> int {
@@ -1654,6 +1683,32 @@ mod u8 {
         let mut u: uint = 5381u;
         vec::iter(s, |c| {u *= 33u; u += c as uint;});
         ret u;
+    }
+
+    /**
+      * Copies data from one vector to another.
+      *
+      * Copies `count` bytes from `src` to `dst`. The source and destination
+      * may not overlap.
+      */
+    fn memcpy(dst: &[mut u8], src: &[const u8], count: uint) {
+        assert dst.len() >= count;
+        assert src.len() >= count;
+
+        unsafe { vec::unsafe::memcpy(dst, src, count) }
+    }
+
+    /**
+      * Copies data from one vector to another.
+      *
+      * Copies `count` bytes from `src` to `dst`. The source and destination
+      * may overlap.
+      */
+    fn memmove(dst: &[mut u8], src: &[const u8], count: uint) {
+        assert dst.len() >= count;
+        assert src.len() >= count;
+
+        unsafe { vec::unsafe::memmove(dst, src, count) }
     }
 }
 
