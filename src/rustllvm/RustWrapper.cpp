@@ -84,10 +84,15 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         CodeGenOpt::Level OptLevel,
 			bool EnableSegmentedStacks) {
 
-  InitializeAllTargets();
-  InitializeAllTargetMCs();
-  InitializeAllAsmPrinters();
-  InitializeAllAsmParsers();
+  // Only initialize the platforms supported by Rust here,
+  // because using --llvm-root will have multiple platforms
+  // that rustllvm doesn't actually link to and it's pointless to put target info
+  // into the registry that Rust can not generate machine code for.
+
+  LLVMInitializeX86TargetInfo();
+  LLVMInitializeX86TargetMCs();
+  LLVMInitializeX86AsmPrinters();
+  LLVMInitializeX86AsmParsers();
 
   TargetOptions Options;
   Options.NoFramePointerElim = true;
