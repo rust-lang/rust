@@ -76,6 +76,7 @@ extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
 }
 
 void LLVMInitializeX86TargetInfo();
+void LLVMInitializeX86Target();
 void LLVMInitializeX86TargetMC();
 void LLVMInitializeX86AsmPrinter();
 void LLVMInitializeX86AsmParser();
@@ -95,6 +96,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   // into the registry that Rust can not generate machine code for.
 
   LLVMInitializeX86TargetInfo();
+  LLVMInitializeX86Target();
   LLVMInitializeX86TargetMC();
   LLVMInitializeX86AsmPrinter();
   LLVMInitializeX86AsmParser();
