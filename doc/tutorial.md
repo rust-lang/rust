@@ -206,8 +206,8 @@ Rust program files are, by convention, given the extension `.rs`. Say
 we have a file `hello.rs` containing this program:
 
 ~~~~
-fn main(args: ~[~str]) {
-    io::println(~"hello world from '" + args[0] + ~"'!");
+fn main(args: ~[str]) {
+    io::println("hello world from '" + args[0] + "'!");
 }
 ~~~~
 
