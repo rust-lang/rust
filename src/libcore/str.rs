@@ -1944,6 +1944,7 @@ trait str_slice {
     fn to_upper() -> ~str;
     fn escape_default() -> ~str;
     fn escape_unicode() -> ~str;
+    fn to_unique() -> ~str;
 }
 
 /// Extension methods for strings
@@ -2050,6 +2051,9 @@ impl extensions/& of str_slice for &str {
     /// Escape each char in `s` with char::escape_unicode.
     #[inline]
     fn escape_unicode() -> ~str { escape_unicode(self) }
+
+    #[inline]
+    fn to_unique() -> ~str { self.slice(0, self.len()) }
 }
 
 #[cfg(test)]
