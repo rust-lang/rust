@@ -471,7 +471,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       expr_unary(*) | expr_fail(*) |
       expr_break | expr_again | expr_lit(_) | expr_ret(*) |
       expr_block(*) | expr_move(*) | expr_assign(*) | expr_swap(*) |
-      expr_assign_op(*) | expr_mac(*) {
+      expr_assign_op(*) | expr_mac(*) | expr_struct(*) {
           visit::visit_expr(expr, self, vt);
       }
     }
@@ -1064,6 +1064,12 @@ class liveness {
             }
           }
 
+          expr_struct(_, fields) {
+            do fields.foldr(succ) |field, succ| {
+                self.propagate_through_expr(field.node.expr, succ)
+            }
+          }
+
           expr_call(f, args, _) {
             // calling a fn with bot return type means that the fn
             // will fail, and hence the successors can be ignored
@@ -1455,7 +1461,8 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_loop_body(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_ret(*) | expr_break | expr_again | expr_lit(_) |
-      expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) {
+      expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) |
+      expr_struct(*) {
         visit::visit_expr(expr, self, vt);
       }
     }

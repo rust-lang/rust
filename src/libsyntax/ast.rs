@@ -343,6 +343,11 @@ enum expr_ {
     expr_assert(@expr),
 
     expr_mac(mac),
+
+    // A struct literal expression.
+    //
+    // XXX: Add functional record update.
+    expr_struct(@path, ~[field])
 }
 
 #[auto_serialize]

@@ -467,6 +467,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                                         fld.fold_expr(e)) }
           expr_assert(e) { expr_assert(fld.fold_expr(e)) }
           expr_mac(mac) { expr_mac(fold_mac(mac)) }
+          expr_struct(path, fields) {
+            expr_struct(fld.fold_path(path), vec::map(fields, fold_field))
+          }
         }
 }
 

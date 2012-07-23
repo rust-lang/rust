@@ -873,6 +873,16 @@ fn print_vstore(s: ps, t: ast::vstore) {
 }
 
 fn print_expr(s: ps, &&expr: @ast::expr) {
+    fn print_field(s: ps, field: ast::field) {
+        ibox(s, indent_unit);
+        if field.node.mutbl == ast::m_mutbl { word_nbsp(s, ~"mut"); }
+        word(s.s, *field.node.ident);
+        word_space(s, ~":");
+        print_expr(s, field.node.expr);
+        end(s);
+    }
+    fn get_span(field: ast::field) -> codemap::span { ret field.span; }
+
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
     let ann_node = node_expr(s, expr);
@@ -903,15 +913,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         end(s);
       }
       ast::expr_rec(fields, wth) {
-        fn print_field(s: ps, field: ast::field) {
-            ibox(s, indent_unit);
-            if field.node.mutbl == ast::m_mutbl { word_nbsp(s, ~"mut"); }
-            word(s.s, *field.node.ident);
-            word_space(s, ~":");
-            print_expr(s, field.node.expr);
-            end(s);
-        }
-        fn get_span(field: ast::field) -> codemap::span { ret field.span; }
         word(s.s, ~"{");
         commasep_cmnt(s, consistent, fields, print_field, get_span);
         alt wth {
@@ -924,6 +925,13 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           }
           _ { word(s.s, ~","); }
         }
+        word(s.s, ~"}");
+      }
+      ast::expr_struct(path, fields) {
+        print_path(s, path, true);
+        word(s.s, ~"{");
+        commasep_cmnt(s, consistent, fields, print_field, get_span);
+        word(s.s, ~",");
         word(s.s, ~"}");
       }
       ast::expr_tup(exprs) {

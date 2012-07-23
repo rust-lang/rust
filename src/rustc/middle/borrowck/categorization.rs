@@ -175,7 +175,7 @@ impl public_methods for borrowck_ctxt {
           ast::expr_new(*) | ast::expr_binary(*) | ast::expr_while(*) |
           ast::expr_block(*) | ast::expr_loop(*) | ast::expr_alt(*) |
           ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
-          ast::expr_again | ast::expr_rec(*) {
+          ast::expr_again | ast::expr_rec(*) | ast::expr_struct(*) {
             ret self.cat_rvalue(expr, expr_ty);
           }
         }
