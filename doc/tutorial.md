@@ -15,28 +15,31 @@ the whole language, though not with the depth and precision of the
 
 Rust is a systems programming language with a focus on type safety,
 memory safety, concurrency and performance. It is intended for writing
-large, high performance applications while preventing several classes
+large, high-performance applications while preventing several classes
 of errors commonly found in languages like C++. Rust has a
-sophisticated memory model that enables many of the efficient data
-structures used in C++ while disallowing invalid memory access that
-would otherwise cause segmentation faults. Like other systems
-languages it is statically typed and compiled ahead of time.
+sophisticated memory model that makes possible many of the efficient
+data structures used in C++, while disallowing invalid memory accesses
+that would otherwise cause segmentation faults. Like other systems
+languages, it is statically typed and compiled ahead of time.
 
-As a multi-paradigm language it has strong support for writing code in
-procedural, functional and object-oriented styles. Some of it's nice
+As a multi-paradigm language, Rust supports writing code in
+procedural, functional and object-oriented styles. Some of its nice
 high-level features include:
 
-* Pattern matching and algebraic data types (enums) - common in functional
-  languages, pattern matching on ADTs provides a compact and expressive
-  way to encode program logic
-* Task-based concurrency - Rust uses lightweight tasks that do not share
-  memory
-* Higher-order functions - Closures in Rust are very powerful and used
-  pervasively
-* Polymorphism - Rust's type system features a unique combination of
-  Java-style interfaces and Haskell-style typeclasses
-* Generics - Functions and types can be parameterized over generic
-  types with optional type constraints
+* ***Pattern matching and algebraic data types (enums).*** Common in
+  functional languages, pattern matching on ADTs provides a compact
+  and expressive way to encode program logic.
+* ***Task-based concurrency.*** Rust uses lightweight tasks that do
+  not share memory.
+* ***Higher-order functions.*** Rust functions may take closures as
+  arguments or return closures as return values.  Closures in Rust are
+  very powerful and used pervasively.
+* ***Interface polymorphism.*** Rust's type system features a unique
+  combination of Java-style interfaces and Haskell-style typeclasses.
+* ***Parametric polymorphism (generics).*** Functions and types can be
+  parameterized over type variables with optional type constraints.
+* ***Type inference.*** Type annotations on local variable
+  declarations can be omitted.
 
 ## First impressions
 
@@ -229,7 +232,7 @@ into an error.
 
 ## Anatomy of a Rust program
 
-In its simplest form, a Rust program is simply a `.rs` file with some
+In its simplest form, a Rust program is a `.rs` file with some
 types and functions defined in it. If it has a `main` function, it can
 be compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file—all statements must
@@ -1181,61 +1184,60 @@ several of Rust's unique features as we encounter them.
 
 Rust has three competing goals that inform its view of memory:
 
-* Memory safety - memory that is managed by and is accessible to
-  the Rust language must be guaranteed to be valid. Under normal
-  circumstances it is impossible for Rust to trigger a segmentation
-  fault or leak memory
-* Performance - high-performance low-level code tends to employ
-  a number of allocation strategies. low-performance high-level
-  code often uses a single, GC-based, heap allocation strategy
-* Concurrency - Rust must maintain memory safety guarantees even
-  for code running in parallel
+* Memory safety: memory that is managed by and is accessible to the
+  Rust language must be guaranteed to be valid; under normal
+  circumstances it must be impossible for Rust to trigger a
+  segmentation fault or leak memory
+* Performance: high-performance low-level code must be able to employ
+  a number of allocation strategies; low-performance high-level code
+  must be able to employ a single, garbage-collection-based, heap
+  allocation strategy
+* Concurrency: Rust must maintain memory safety guarantees, even for
+  code running in parallel
 
 ## How performance considerations influence the memory model
 
-Many languages that ofter the kinds of memory safety guarentees that
+Many languages that offer the kinds of memory safety guarantees that
 Rust does have a single allocation strategy: objects live on the heap,
-live for as long as they are needed, and are periodically garbage
-collected. This is very straightforword both conceptually and in
-implementation, but has very significant costs. Such languages tend to
-aggressively pursue ways to ameliorate allocation costs (think the
-Java virtual machine). Rust supports this strategy with _shared
-boxes_, memory allocated on the heap that may be referred to (shared)
-by multiple variables.
+live for as long as they are needed, and are periodically
+garbage-collected. This approach is straightforward both in concept
+and in implementation, but has significant costs. Languages that take
+this approach tend to aggressively pursue ways to ameliorate
+allocation costs (think the Java Virtual Machine). Rust supports this
+strategy with _shared boxes_: memory allocated on the heap that may be
+referred to (shared) by multiple variables.
 
-In comparison, languages like C++ offer a very precise control over
-where objects are allocated. In particular, it is common to put
-them directly on the stack, avoiding expensive heap allocation. In
-Rust this is possible as well, and the compiler will use a clever
-lifetime analysis to ensure that no variable can refer to stack
+By comparison, languages like C++ offer very precise control over
+where objects are allocated. In particular, it is common to put them
+directly on the stack, avoiding expensive heap allocation. In Rust
+this is possible as well, and the compiler will use a clever _pointer
+lifetime analysis_ to ensure that no variable can refer to stack
 objects after they are destroyed.
 
 ## How concurrency considerations influence the memory model
 
-Memory safety in a concurrent environment tends to mean avoiding race
+Memory safety in a concurrent environment involves avoiding race
 conditions between two threads of execution accessing the same
-memory. Even high-level languages frequently avoid solving this
-problem, requiring programmers to correctly employ locking to unsure
-their program is free of races.
+memory. Even high-level languages often require programmers to
+correctly employ locking to ensure that a program is free of races.
 
-Rust starts from the position that memory simply cannot be shared
-between tasks. Experience in other languages has proven that isolating
-each tasks' heap from each other is a reliable strategy and one that
-is easy for programmers to reason about. Having isolated heaps
-additionally means that garbage collection must only be done
-per-heap. Rust never 'stops the world' to garbage collect memory.
+Rust starts from the position that memory cannot be shared between
+tasks. Experience in other languages has proven that isolating each
+task's heap from the others is a reliable strategy and one that is
+easy for programmers to reason about. Heap isolation has the
+additional benefit that garbage collection must only be done
+per-heap. Rust never "stops the world" to garbage-collect memory.
 
-If Rust tasks have completely isolated heaps then that seems to imply
-that any data transferred between them must be copied. While this
-is a fine and useful way to implement communication between tasks,
-it is also very inefficient for large data structures.
-
-Because of this Rust also introduces a global "exchange heap". Objects
-allocated here have _ownership semantics_, meaning that there is only
-a single variable that refers to them. For this reason they are
-refered to as _unique boxes_. All tasks may allocate objects on this
-heap, then transfer ownership of those allocations to other tasks,
-avoiding expensive copies.
+Complete isolation of heaps between tasks implies that any data
+transferred between tasks must be copied. While this is a fine and
+useful way to implement communication between tasks, it is also very
+inefficient for large data structures.  Because of this, Rust also
+employs a global _exchange heap_. Objects allocated in the exchange
+heap have _ownership semantics_, meaning that there is only a single
+variable that refers to them. For this reason, they are referred to as
+_unique boxes_. All tasks may allocate objects on the exchange heap,
+then transfer ownership of those objects to other tasks, avoiding
+expensive copies.
 
 ## What to be aware of
 
@@ -1249,11 +1251,11 @@ of each is key to using Rust effectively.
 # Boxes and pointers
 
 In contrast to a lot of modern languages, aggregate types like records
-and enums are not represented as pointers to allocated memory. They
-are, like in C and C++, represented directly. This means that if you
-`let x = {x: 1f, y: 1f};`, you are creating a record on the stack. If
-you then copy it into a data structure, the whole record is copied,
-not just a pointer.
+and enums are _not_ represented as pointers to allocated memory in
+Rust. They are, as in C and C++, represented directly. This means that
+if you `let x = {x: 1f, y: 1f};`, you are creating a record on the
+stack. If you then copy it into a data structure, the whole record is
+copied, not just a pointer.
 
 For small records like `point`, this is usually more efficient than
 allocating memory and going through a pointer. But for big records, or
@@ -1859,7 +1861,7 @@ like methods named 'new' and 'drop', but without 'fn', and without arguments
 for drop.
 
 In the constructor, the compiler will enforce that all fields are initialized
-before doing anything which might allow them to be accessed. This includes
+before doing anything that might allow them to be accessed. This includes
 returning from the constructor, calling any method on 'self', calling any
 function with 'self' as an argument, or taking a reference to 'self'. Mutation
 of immutable fields is possible only in the constructor, and only before doing
@@ -2959,9 +2961,9 @@ other. The function `task::spawn_listener()` supports this pattern. We'll look
 briefly at how it is used.
 
 To see how `spawn_listener()` works, we will create a child task
-which receives `uint` messages, converts them to a string, and sends
+that receives `uint` messages, converts them to a string, and sends
 the string in response.  The child terminates when `0` is received.
-Here is the function which implements the child task:
+Here is the function that implements the child task:
 
 ~~~~
 # import comm::{port, chan, methods};
