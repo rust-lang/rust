@@ -3224,6 +3224,10 @@ fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef]) -> block {
 }
 
 fn need_invoke(bcx: block) -> bool {
+    if (bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0) {
+        ret false;
+    }
+
     if have_cached_lpad(bcx) {
         ret true;
     }
