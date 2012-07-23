@@ -339,7 +339,7 @@ enum expr_ {
              /* id for the alloc() call */ node_id,
              /* value */ @expr),
 
-    /* just an assert, no significance to typestate */
+    /* just an assert */
     expr_assert(@expr),
 
     expr_mac(mac),
