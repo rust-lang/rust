@@ -1197,15 +1197,14 @@ Rust has three competing goals that inform its view of memory:
 
 ## How performance considerations influence the memory model
 
-Many languages that offer the kinds of memory safety guarantees that
-Rust does have a single allocation strategy: objects live on the heap,
-live for as long as they are needed, and are periodically
-garbage-collected. This approach is straightforward both in concept
-and in implementation, but has significant costs. Languages that take
-this approach tend to aggressively pursue ways to ameliorate
-allocation costs (think the Java Virtual Machine). Rust supports this
-strategy with _shared boxes_: memory allocated on the heap that may be
-referred to (shared) by multiple variables.
+Most languages that offer strong memory safety guarantees rely upon a
+garbage-collected heap to manage all of the objects. This approach is
+straightforward both in concept and in implementation, but has
+significant costs. Languages that take this approach tend to
+aggressively pursue ways to ameliorate allocation costs (think the
+Java Virtual Machine). Rust supports this strategy with _shared
+boxes_: memory allocated on the heap that may be referred to (shared)
+by multiple variables.
 
 By comparison, languages like C++ offer very precise control over
 where objects are allocated. In particular, it is common to put them
