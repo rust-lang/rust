@@ -22,13 +22,11 @@ mod pingpong {
                 pong: mk_packet::<pong>()
             }
         };
-        unsafe {
-            buffer.data.ping.header.set_buffer(buffer);
-            buffer.data.pong.header.set_buffer(buffer);
+        do pipes::entangle_buffer(buffer) |buffer, data| {
+            data.ping.set_buffer(buffer);
+            data.pong.set_buffer(buffer);
+            ptr::addr_of(data.ping)
         }
-        let client = send_packet_buffered(ptr::addr_of(buffer.data.ping));
-        let server = recv_packet_buffered(ptr::addr_of(buffer.data.ping));
-        (client, server)
     }
     enum ping = server::pong;
     enum pong = client::ping;
