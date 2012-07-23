@@ -16,9 +16,8 @@ fn test00() {
     let number_of_messages: int = 10;
     let ch = comm::chan(p);
 
-    let builder = task::builder();
-    let r = task::future_result(builder);
-    do task::run(builder) {
+    let mut result = none;
+    do task::task().future_result(|-r| { result = some(r); }).spawn {
         test00_start(ch, number_of_messages);
     }
 
@@ -29,7 +28,7 @@ fn test00() {
         i += 1;
     }
 
-    future::get(r);
+    future::get(option::unwrap(result));
 
     assert (sum == number_of_messages * (number_of_messages - 1) / 2);
 }

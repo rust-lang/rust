@@ -14,29 +14,9 @@ fn run(i: int) {
         ret;
     }
 
-    let builder = task::builder();
-    let opts = {
-        sched: some({
-            mode: task::osmain,
-            foreign_stack_size: none
-        })
-        with task::get_opts(builder)
-    };
-    task::set_opts(builder, opts);
-    task::unsupervise(builder);
-    do task::run(builder) {
+    do task::task().sched_mode(task::osmain).unlinked().spawn {
         task::yield();
-        let builder = task::builder();
-        let opts = {
-            sched: some({
-                mode: task::single_threaded,
-                foreign_stack_size: none
-            })
-            with task::get_opts(builder)
-        };
-        task::set_opts(builder, opts);
-        task::unsupervise(builder);
-        do task::run(builder) {
+        do task::task().sched_mode(task::single_threaded).unlinked().spawn {
             task::yield();
             run(i - 1);
             task::yield();

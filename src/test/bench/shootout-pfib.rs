@@ -71,9 +71,11 @@ fn stress_task(&&id: int) {
 fn stress(num_tasks: int) {
     let mut results = ~[];
     for range(0, num_tasks) |i| {
-        let builder = task::builder();
-        results += ~[task::future_result(builder)];
-        task::run(builder, || stress_task(i) );
+        do task::task().future_result(|-r| {
+            results += ~[r];
+        }).spawn {
+            stress_task(i);
+        }
     }
     for results.each |r| { future::get(r); }
 }

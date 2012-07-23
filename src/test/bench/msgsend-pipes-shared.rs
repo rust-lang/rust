@@ -57,10 +57,10 @@ fn run(args: &[~str]) {
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0u, workers) |i| {
-        let builder = task::builder();
-        vec::push(worker_results, task::future_result(builder));
         let to_child = to_child.clone();
-        do task::run(builder) {
+        do task::task().future_result(|-r| {
+            vec::push(worker_results, r);
+        }).spawn {
             for uint::range(0u, size / workers) |_i| {
                 //#error("worker %?: sending %? bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
