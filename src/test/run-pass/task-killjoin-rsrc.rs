@@ -1,5 +1,3 @@
-// xfail-test
-
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
@@ -10,7 +8,7 @@ class notify {
     let ch: comm::chan<bool>; let v: @mut bool;
     new(ch: comm::chan<bool>, v: @mut bool) { self.ch = ch; self.v = v; }
     drop {
-        #error~["notify: task=%? v=%x unwinding=%b b=%b",
+        #error["notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),
                ptr::addr_of(*(self.v)) as uint,
                task::failing(),
@@ -20,11 +18,10 @@ class notify {
     }
 }
 
-fn joinable(f: fn~()) -> comm::port<bool> {
-    fn wrapper(+pair: (comm::chan<bool>, fn())) {
-        let (c, f) = pair;
+fn joinable(+f: fn~()) -> comm::port<bool> {
+    fn wrapper(+c: comm::chan<bool>, +f: fn()) {
         let b = @mut false;
-        #error~["wrapper: task=%? allocated v=%x",
+        #error["wrapper: task=%? allocated v=%x",
                task::get_task(),
                ptr::addr_of(*b) as uint];
         let _r = notify(c, b);
@@ -33,7 +30,7 @@ fn joinable(f: fn~()) -> comm::port<bool> {
     }
     let p = comm::port();
     let c = comm::chan(p);
-    let _ = task::spawn_unlinked {|| wrapper((c, f)) };
+    do task::spawn_unlinked { wrapper(c, copy f) };
     p
 }
 
@@ -57,7 +54,7 @@ fn supervisor() {
 }
 
 fn main() {
-    join(joinable({|| supervisor()}));
+    join(joinable(supervisor));
 }
 
 // Local Variables:
