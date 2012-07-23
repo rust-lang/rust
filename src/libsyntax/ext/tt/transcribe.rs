@@ -86,6 +86,8 @@ pure fn lookup_cur_ad_by_ad(r: tt_reader, start: @arb_depth) -> @arb_depth {
           seq(ads, _) { ads[idx] }
         }
     }
+    unchecked {io::println(#fmt["%? / %?", copy r.repeat_idx,
+                                copy r.repeat_len]);};
     vec::foldl(start, r.repeat_idx, red)
 }
 
