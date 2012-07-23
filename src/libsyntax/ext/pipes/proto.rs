@@ -98,23 +98,23 @@ impl methods for state {
     }
 }
 
-enum protocol {
-    protocol_(@{
-        name: ident,
-        states: dvec<state>,
-    }),
-}
+type protocol = @protocol_;
 
-fn protocol(name: ident) -> protocol {
-    protocol_(@{name: name, states: dvec()})
-}
+fn protocol(name: ident) -> protocol { @protocol_(name) }
 
-impl methods for protocol {
-    fn add_state(name: ident, dir: direction) -> state {
-        self.add_state_poly(name, dir, ~[])
+class protocol_ {
+    let name: ident;
+    let states: dvec<state>;
+
+    let mut bounded: option<bool>;
+
+    new(name: ident) {
+        self.name = name;
+        self.states = dvec();
+        self.bounded = none;
     }
 
-    /// Get or create a state.
+    /// Get a state.
     fn get_state(name: ident) -> state {
         self.states.find(|i| i.name == name).get()
     }
@@ -123,6 +123,20 @@ impl methods for protocol {
 
     fn has_state(name: ident) -> bool {
         self.states.find(|i| i.name == name) != none
+    }
+
+    fn filename() -> ~str {
+        ~"proto://" + *self.name
+    }
+
+    fn num_states() -> uint { self.states.len() }
+
+    fn is_bounded() -> bool { self.bounded.get() }
+}
+
+impl methods for protocol {
+    fn add_state(name: ident, dir: direction) -> state {
+        self.add_state_poly(name, dir, ~[])
     }
 
     fn add_state_poly(name: ident, dir: direction,
@@ -141,12 +155,6 @@ impl methods for protocol {
         self.states.push(state);
         state
     }
-
-    fn filename() -> ~str {
-        ~"proto://" + *self.name
-    }
-
-    fn num_states() -> uint { self.states.len() }
 }
 
 trait visitor<Tproto, Tstate, Tmessage> {

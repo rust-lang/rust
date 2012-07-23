@@ -84,8 +84,11 @@ fn analyze(proto: protocol, _cx: ext_ctxt) {
         //                    involving these states: %s",
         //                   *proto.name,
         //                   states));
+
+        proto.bounded = some(false);
     }
     else {
         #debug("protocol %s is bounded. yay!", *proto.name);
+        proto.bounded = some(true);
     }
 }
