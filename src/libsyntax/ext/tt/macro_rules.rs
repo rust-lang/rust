@@ -21,7 +21,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
             ms(mtc_bb(@~"lhs",@~"mtcs", 0u)),
             ms(mtc_tok(FAT_ARROW)),
             ms(mtc_bb(@~"rhs",@~"tt", 1u)),
-        ], some(SEMI), false))];
+        ], some(SEMI), false, 0u, 2u))];
 
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
                                    cx.parse_sess().interner, none, arg);

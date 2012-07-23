@@ -1194,13 +1194,14 @@ class parser {
         let m = if self.token == token::DOLLAR {
             self.bump();
             if self.token == token::LPAREN {
+                let name_idx_lo = *name_idx;
                 let ms = self.parse_matcher_subseq(name_idx, token::LPAREN,
                                                    token::RPAREN);
                 if ms.len() == 0u {
                     self.fatal(~"repetition body must be nonempty");
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
-                mtc_rep(ms, sep, zerok)
+                mtc_rep(ms, sep, zerok, name_idx_lo, *name_idx)
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(token::COLON);

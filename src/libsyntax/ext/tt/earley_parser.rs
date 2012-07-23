@@ -41,6 +41,7 @@ type matcher_pos = ~{
     mut idx: uint,
     mut up: matcher_pos_up, // mutable for swapping only
     matches: ~[dvec<@arb_depth>],
+    match_lo: uint, match_hi: uint,
     sp_lo: uint,
 };
 
@@ -55,17 +56,25 @@ fn count_names(ms: &[matcher]) -> uint {
     vec::foldl(0u, ms, |ct, m| {
         ct + alt m.node {
           mtc_tok(_) { 0u }
-          mtc_rep(more_ms, _, _) { count_names(more_ms) }
+          mtc_rep(more_ms, _, _, _, _) { count_names(more_ms) }
           mtc_bb(_,_,_) { 1u }
         }})
 }
 
 #[warn(no_non_implicitly_copyable_typarams)]
-fn new_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
+fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
     -> matcher_pos {
+    let mut match_idx_hi = 0u;
+    for ms.each() |elt| {
+        alt elt.node {
+          mtc_tok(_) {}
+          mtc_rep(_,_,_,_,hi) { match_idx_hi = hi; } //it is monotonic...
+          mtc_bb(_,_,pos) { match_idx_hi = pos+1u; } //...so latest is highest
+        }
+    }
     ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(none),
       matches: copy vec::from_fn(count_names(ms), |_i| dvec::dvec()),
-      sp_lo: lo}
+      match_lo: 0u, match_hi: match_idx_hi, sp_lo: lo}
 }
 
 /* logically, an arb_depth should contain only one kind of nonterminal */
@@ -79,7 +88,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@arb_depth])
              ret_val: hashmap<ident, @arb_depth>) {
         alt m {
           {node: mtc_tok(_), span: _} { }
-          {node: mtc_rep(more_ms, _, _), span: _} {
+          {node: mtc_rep(more_ms, _, _, _, _), span: _} {
             for more_ms.each() |next_m| { n_rec(p_s, next_m, res, ret_val) };
           }
           {node: mtc_bb(bind_name, _, idx), span: sp} {
@@ -104,7 +113,7 @@ enum parse_result {
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     -> parse_result {
     let mut cur_eis = ~[];
-    vec::push(cur_eis, new_matcher_pos(ms, none, rdr.peek().sp.lo));
+    vec::push(cur_eis, initial_matcher_pos(ms, none, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
@@ -141,10 +150,10 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         // I bet this is a perf problem: we're preemptively
                         // doing a lot of array work that will get thrown away
                         // most of the time.
-                        for ei.matches.eachi() |idx, elt| {
-                            let sub = elt.get();
-                            // Some subtrees don't contain the name at all
-                            if sub.len() == 0u { again; }
+
+                        // Only touch the binders we have actually bound
+                        for uint::range(ei.match_lo, ei.match_hi) |idx| {
+                            let sub = ei.matches[idx].get();
                             new_pos.matches[idx]
                                 .push(@seq(sub, mk_sp(ei.sp_lo,sp.hi)));
                         }
@@ -176,10 +185,15 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
             } else {
                 alt copy ei.elts[idx].node {
                   /* need to descend into sequence */
-                  mtc_rep(matchers, sep, zero_ok) {
+                  mtc_rep(matchers, sep, zero_ok, match_idx_lo, match_idx_hi){
                     if zero_ok {
                         let new_ei = copy ei;
                         new_ei.idx += 1u;
+                        //we specifically matched zero repeats.
+                        for uint::range(match_idx_lo, match_idx_hi) |idx| {
+                            new_ei.matches[idx].push(@seq(~[], sp));
+                        }
+
                         vec::push(cur_eis, new_ei);
                     }
 
@@ -189,7 +203,9 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     vec::push(cur_eis, ~{
                         elts: matchers, sep: sep, mut idx: 0u,
                         mut up: matcher_pos_up(some(ei_t)),
-                        matches: matches, sp_lo: sp.lo
+                        matches: matches,
+                        match_lo: match_idx_lo, match_hi: match_idx_hi,
+                        sp_lo: sp.lo
                     });
                   }
                   mtc_bb(_,_,_) { vec::push(bb_eis, ei) }
