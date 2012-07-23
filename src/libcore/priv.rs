@@ -3,6 +3,7 @@
 export chan_from_global_ptr, weaken_task;
 
 import compare_and_swap = rustrt::rust_compare_and_swap_ptr;
+import task::task_builder;
 
 type rust_port_id = uint;
 
@@ -23,7 +24,7 @@ type global_ptr = *libc::uintptr_t;
  */
 unsafe fn chan_from_global_ptr<T: send>(
     global: global_ptr,
-    builder: fn() -> task::builder,
+    task_fn: fn() -> task::task_builder,
     +f: fn~(comm::port<T>)
 ) -> comm::chan<T> {
 
@@ -41,7 +42,7 @@ unsafe fn chan_from_global_ptr<T: send>(
 
         let setup_po = comm::port();
         let setup_ch = comm::chan(setup_po);
-        let setup_ch = do task::run_listener(builder()) |setup_po| {
+        let setup_ch = do task_fn().spawn_listener |setup_po| {
             let po = comm::port::<T>();
             let ch = comm::chan(po);
             comm::send(setup_ch, ch);
@@ -92,7 +93,7 @@ fn test_from_global_chan1() {
 
     // Create the global channel, attached to a new task
     let ch = unsafe {
-        do chan_from_global_ptr(globchanp, task::builder) |po| {
+        do chan_from_global_ptr(globchanp, task::task) |po| {
             let ch = comm::recv(po);
             comm::send(ch, true);
             let ch = comm::recv(po);
@@ -106,7 +107,7 @@ fn test_from_global_chan1() {
 
     // This one just reuses the previous channel
     let ch = unsafe {
-        do chan_from_global_ptr(globchanp, task::builder) |po| {
+        do chan_from_global_ptr(globchanp, task::task) |po| {
             let ch = comm::recv(po);
             comm::send(ch, false);
         }
@@ -135,7 +136,7 @@ fn test_from_global_chan2() {
             do task::spawn {
                 let ch = unsafe {
                     do chan_from_global_ptr(
-                        globchanp, task::builder) |po| {
+                        globchanp, task::task) |po| {
 
                         for uint::range(0u, 10u) |_j| {
                             let ch = comm::recv(po);

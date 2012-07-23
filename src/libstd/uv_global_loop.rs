@@ -8,6 +8,7 @@ import get_gl = get;
 import iotask::{iotask, spawn_iotask};
 import priv::{chan_from_global_ptr, weaken_task};
 import comm::{port, chan, methods, select2, listen};
+import task::task_builder;
 import either::{left, right};
 
 extern mod rustrt {
@@ -39,10 +40,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
            monitor_loop_chan_ptr);
 
     let builder_fn = || {
-        let builder = task::builder();
-        task::unsupervise(builder);
-        task::set_sched_mode(builder, task::single_threaded);
-        builder
+        task::task().sched_mode(task::single_threaded).unlinked()
     };
 
     #debug("before priv::chan_from_global_ptr");
@@ -86,8 +84,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
 }
 
 fn spawn_loop() -> iotask unsafe {
-    let builder = task::builder();
-    do task::add_wrapper(builder) |task_body| {
+    let builder = do task::task().add_wrapper |task_body| {
         fn~(move task_body) {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
@@ -102,7 +99,7 @@ fn spawn_loop() -> iotask unsafe {
                 #debug("global libuv task is leaving weakened state");
             }
         }
-    }
+    };
     spawn_iotask(builder)
 }
 

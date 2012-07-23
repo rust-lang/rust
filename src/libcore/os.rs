@@ -24,6 +24,7 @@ import option::{some, none};
 
 import getcwd = rustrt::rust_getcwd;
 import consts::*;
+import task::task_builder;
 
 export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
@@ -160,19 +161,14 @@ mod global_env {
 
     fn get_global_env_chan() -> comm::chan<msg> {
         let global_ptr = rustrt::rust_global_env_chan_ptr();
-        let builder_fn = || {
-            let builder = task::builder();
-            task::unsupervise(builder);
-
+        let task_build_fn = || {
             // FIXME (#2621): This would be a good place to use a very small
             // foreign stack
-            task::set_sched_mode(builder, task::single_threaded);
-
-            builder
+            task::task().sched_mode(task::single_threaded).unlinked()
         };
         unsafe {
             priv::chan_from_global_ptr(
-                global_ptr, builder_fn, global_env_task)
+                global_ptr, task_build_fn, global_env_task)
         }
     }
 
