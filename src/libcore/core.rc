@@ -41,6 +41,10 @@ export either, option, result, iter;
 export libc, os, io, run, rand, sys, unsafe, logging;
 export arc, comm, task, future, pipes;
 export extfmt;
+// The test harness links against core, so don't include runtime in tests.
+// FIXME (#2861): Uncomment this after snapshot gets updated.
+//#[cfg(notest)]
+export rt;
 export tuple;
 export to_str, to_bytes;
 export dvec, dvec_iter;
@@ -206,6 +210,9 @@ mod unsafe;
 // Exported but not part of the public interface
 
 mod extfmt;
+// The test harness links against core, so don't include runtime in tests.
+#[cfg(notest)]
+mod rt;
 
 
 // For internal use, not exported
