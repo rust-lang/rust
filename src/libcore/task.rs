@@ -45,7 +45,6 @@ export add_wrapper;
 export run;
 
 export future_result;
-export future_task;
 export unsupervise;
 export run_listener;
 export run_with;
@@ -462,30 +461,6 @@ fn future_result(builder: builder) -> future::future<task_result> {
           exit(_, result) { result }
         }
     }
-}
-
-fn future_task(builder: builder) -> future::future<task> {
-    //! Get a future representing the handle to the new task
-
-    import future::future_pipe;
-
-    let (po, ch) = future_pipe::init();
-
-    let ch = ~mut some(ch);
-
-    do add_wrapper(builder) |body, move ch| {
-        let ch = { let mut t = none;
-                  t <-> *ch;
-                  ~mut t};
-        fn~(move ch) {
-            let mut po = none;
-            po <-> *ch;
-            future_pipe::server::completed(option::unwrap(po),
-                                           get_task());
-            body();
-        }
-    }
-    future::from_port(po)
 }
 
 fn unsupervise(builder: builder) {
@@ -1477,16 +1452,6 @@ fn test_future_result() {
 }
 
 #[test]
-fn test_future_task() {
-    let po = comm::port();
-    let ch = comm::chan(po);
-    let buildr = builder();
-    let task1 = future_task(buildr);
-    do run(buildr) { comm::send(ch, get_task()) }
-    assert future::get(task1) == comm::recv(po);
-}
-
-#[test]
 fn test_spawn_listiner_bidi() {
     let po = comm::port();
     let ch = comm::chan(po);
@@ -1697,17 +1662,6 @@ fn test_avoid_copying_the_body_try() {
         do try {
             f()
         };
-    }
-}
-
-#[test]
-fn test_avoid_copying_the_body_future_task() {
-    do avoid_copying_the_body |f| {
-        let buildr = builder();
-        future_task(buildr);
-        do run(buildr) {
-            f();
-        }
     }
 }
 
