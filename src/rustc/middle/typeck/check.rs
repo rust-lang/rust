@@ -1628,6 +1628,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         }
       }
+      ast::expr_struct(*) {
+        fail ~"XXX structs";
+      }
       ast::expr_field(base, field, tys) {
         bot = check_field(fcx, expr, false, base, field, tys);
       }
