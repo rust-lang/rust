@@ -474,9 +474,7 @@ fn test_listen() {
 #[ignore(cfg(windows))]
 fn test_port_detach_fail() {
     for iter::repeat(100u) {
-        let builder = task::builder();
-        task::unsupervise(builder);
-        do task::run(builder) {
+        do task::spawn_unlinked {
             let po = port();
             let ch = po.chan();
 

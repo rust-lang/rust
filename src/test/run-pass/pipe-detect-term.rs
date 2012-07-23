@@ -27,9 +27,7 @@ fn main() {
 
     sleep(iotask, 100);
 
-    let b = task::builder();
-    task::unsupervise(b);
-    task::run(b, failtest);
+    task::spawn_unlinked(failtest);
 }
 
 // Make sure the right thing happens during failure.

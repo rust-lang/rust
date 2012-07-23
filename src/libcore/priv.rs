@@ -210,9 +210,7 @@ fn test_weaken_task_then_unweaken() {
 
 #[test]
 fn test_weaken_task_wait() {
-    let builder = task::builder();
-    task::unsupervise(builder);
-    do task::run(builder) {
+    do task::spawn_unlinked {
         unsafe {
             do weaken_task |po| {
                 comm::recv(po);
@@ -231,9 +229,7 @@ fn test_weaken_task_stress() {
                 }
             }
         }
-        let builder = task::builder();
-        task::unsupervise(builder);
-        do task::run(builder) {
+        do task::spawn_unlinked {
             unsafe {
                 do weaken_task |po| {
                     // Wait for it to tell us to die

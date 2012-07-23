@@ -51,6 +51,7 @@ export run_listener;
 export run_with;
 
 export spawn;
+export spawn_unlinked;
 export spawn_with;
 export spawn_listener;
 export spawn_sched;
@@ -428,6 +429,17 @@ fn spawn(+f: fn~()) {
      */
 
     run(builder(), f);
+}
+
+fn spawn_unlinked(+f: fn~()) {
+    /*!
+     * Creates a child task unlinked from the current one. If either this
+     * task or the child task fails, the other will not be killed.
+     */
+
+    let b = builder();
+    unsupervise(b);
+    run(b, f);
 }
 
 fn spawn_with<A:send>(+arg: A, +f: fn~(+A)) {
@@ -1159,12 +1171,8 @@ fn test_spawn_raw_unsupervise() {
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = task::builder();
-    task::unsupervise(builder);
-    do task::run(builder) {
-        let builder = task::builder();
-        task::unsupervise(builder);
-        do task::run(builder) {
+    do task::spawn_unlinked {
+        do task::spawn_unlinked {
             // Give middle task a chance to fail-but-not-kill-us.
             for iter::repeat(8192) { task::yield(); }
             comm::send(ch, ()); // If killed first, grandparent hangs.
@@ -1175,9 +1183,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
 }
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
-    let builder = task::builder();
-    task::unsupervise(builder);
-    do task::run(builder) { fail; }
+    do task::spawn_unlinked { fail; }
 }
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails

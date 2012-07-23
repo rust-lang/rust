@@ -33,7 +33,7 @@ fn joinable(f: fn~()) -> comm::port<bool> {
     }
     let p = comm::port();
     let c = comm::chan(p);
-    let _ = task::spawn {|| wrapper((c, f)) };
+    let _ = task::spawn_unlinked {|| wrapper((c, f)) };
     p
 }
 
@@ -50,17 +50,14 @@ fn supervised() {
     fail;
 }
 
-fn supervisor(b: task::builder) {
-    // Unsupervise this task so the process doesn't return a failure status as
-    // a result of the main task being killed.
-    task::unsupervise(b);
+fn supervisor() {
     #error["supervisor task=%?", task::get_task()];
     let t = joinable(supervised);
     join(t);
 }
 
 fn main() {
-    join(joinable({|| supervisor(task::builder())}));
+    join(joinable({|| supervisor()}));
 }
 
 // Local Variables:
