@@ -73,10 +73,6 @@ export thread_per_task;
 export manual_threads;
 export osmain;
 
-// FIXME (See #2945): This shouldn't be exported, but is to work around
-// what appears to be a metadata bug.
-export local_data;
-
 /* Data types */
 
 /// A handle to a task
