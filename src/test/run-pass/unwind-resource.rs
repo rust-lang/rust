@@ -21,9 +21,7 @@ fn f(c: comm::chan<bool>) {
 fn main() {
     let p = comm::port();
     let c = comm::chan(p);
-    let builder = task::builder();
-    task::unsupervise(builder);
-    task::run(builder, || f(c) );
+    task::spawn_unlinked(|| f(c) );
     #error("hiiiiiiiii");
     assert comm::recv(p);
 }

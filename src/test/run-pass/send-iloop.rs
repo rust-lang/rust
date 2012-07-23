@@ -22,8 +22,6 @@ fn iloop() {
 
 fn main() {
     for uint::range(0u, 16u) |_i| {
-        let builder = task::builder();
-        task::unsupervise(builder);
-        task::run(builder, || iloop() );
+        task::spawn_unlinked(|| iloop() );
     }
 }
