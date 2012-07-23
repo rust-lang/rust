@@ -13,6 +13,7 @@ export exit;
 import libc::c_void;
 import ptr::addr_of;
 import comm::{port, chan, methods, listen};
+import task::task_builder;
 import ll = uv_ll;
 
 /// Used to abstract-away direct interaction with a libuv loop.
@@ -23,13 +24,11 @@ enum iotask {
     })
 }
 
-fn spawn_iotask(-builder: task::builder) -> iotask {
-
-    task::set_sched_mode(builder, task::single_threaded);
+fn spawn_iotask(-task: task::task_builder) -> iotask {
 
     do listen |iotask_ch| {
 
-        do task::run(copy(builder)) {
+        do task.sched_mode(task::single_threaded).spawn {
             #debug("entering libuv task");
             run_loop(iotask_ch);
             #debug("libuv task exiting");
