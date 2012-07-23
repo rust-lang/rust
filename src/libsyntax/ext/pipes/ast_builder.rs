@@ -91,9 +91,22 @@ trait ext_ctxt_ast_builder {
                     +params: ~[ast::ty_param]) -> @ast::item;
     fn item_ty(name: ident, ty: @ast::ty) -> @ast::item;
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::ty];
+    fn ty_field_imm(name: ident, ty: @ast::ty) -> ast::ty_field;
+    fn ty_rec(+~[ast::ty_field]) -> @ast::ty;
 }
 
 impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
+    fn ty_field_imm(name: ident, ty: @ast::ty) -> ast::ty_field {
+        {node: {ident: name, mt: { ty: ty, mutbl: ast::m_imm } },
+          span: empty_span()}
+    }
+
+    fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::ty {
+        @{id: self.next_id(),
+          node: ast::ty_rec(fields),
+          span: empty_span()}
+    }
+
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
         -> ast::ty_param
     {

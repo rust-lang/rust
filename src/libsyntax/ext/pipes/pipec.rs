@@ -204,6 +204,7 @@ impl compile of to_type_decls for state {
 
 impl compile of gen_init for protocol {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
+        #debug("gen_init");
         let start_state = self.states[0];
 
         let body = alt start_state.dir {
@@ -235,6 +236,23 @@ impl compile of gen_init for protocol {
 
             client_states += s.to_endpoint_decls(cx, send);
             server_states += s.to_endpoint_decls(cx, recv);
+        }
+
+        if self.is_bounded() {
+            vec::push(
+                items,
+                cx.item_ty(
+                    @~"buffer",
+                    cx.ty_rec(
+                        (copy self.states).map_to_vec(
+                            |s| cx.ty_field_imm(
+                                s.name,
+                                cx.ty_path_ast_builder(
+                                    (path(@~"pipes")
+                                     + @~"packet")
+                                    .add_ty(
+                                        cx.ty_path_ast_builder(
+                                            path(s.name)))))))))
         }
 
         vec::push(items,
