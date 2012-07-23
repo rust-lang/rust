@@ -4,12 +4,11 @@ import task;
 import task::*;
 
 fn main() {
-    let builder = task::builder();
-    let result = task::future_result(builder);
-    task::run(builder, || child() );
+    let mut result = none;
+    task::task().future_result(|-r| { result = some(r); }).spawn(child);
     #error("1");
     yield();
-    future::get(result);
+    future::get(option::unwrap(result));
 }
 
 fn child() { #error("2"); }

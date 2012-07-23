@@ -39,9 +39,9 @@ fn run(args: ~[~str]) {
     let to_child = to_child;
     let mut worker_results = ~[];
     for uint::range(0u, workers) |_i| {
-        let builder = task::builder();
-        vec::push(worker_results, task::future_result(builder));
-        do task::run(builder) {
+        do task::task().future_result(|-r| {
+            vec::push(worker_results, r);
+        }).spawn {
             for uint::range(0u, size / workers) |_i| {
                 comm::send(to_child, bytes(100u));
             }
