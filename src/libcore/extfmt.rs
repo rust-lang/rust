@@ -312,15 +312,15 @@ mod rt {
         let mut s = str::from_char(c);
         ret pad(cv, s, pad_nozero);
     }
-    fn conv_str(cv: conv, s: ~str) -> ~str {
+    fn conv_str(cv: conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = alt cv.precision {
-          count_implied { s }
+          count_implied { s.to_unique() }
           count_is(max) {
             if max as uint < str::char_len(s) {
                 str::substr(s, 0u, max as uint)
-            } else { s }
+            } else { s.to_unique() }
           }
         };
         ret pad(cv, unpadded, pad_nozero);
@@ -433,6 +433,14 @@ mod rt {
     }
 }
 
+#[cfg(test)]
+mod test {
+    #[test]
+    fn fmt_slice() {
+        let s = "abc";
+        let _s = #fmt("%s", s);
+    }
+}
 
 // Local Variables:
 // mode: rust;
