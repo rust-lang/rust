@@ -1,6 +1,7 @@
 import check::{fn_ctxt, impl_self_ty, methods};
 import infer::{resolve_type, resolve_all, force_all, fixup_err_to_str};
 import ast_util::new_def_hash;
+import dvec::extensions;
 
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
@@ -10,7 +11,7 @@ fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     })
 }
 
-fn lookup_vtables(fcx: @fn_ctxt, isc: resolve3::ImplScopes, sp: span,
+fn lookup_vtables(fcx: @fn_ctxt, sp: span,
                   bounds: @~[ty::param_bounds], substs: ty::substs,
                   allow_unsafe: bool) -> vtable_res {
     let tcx = fcx.ccx.tcx;
@@ -20,8 +21,8 @@ fn lookup_vtables(fcx: @fn_ctxt, isc: resolve3::ImplScopes, sp: span,
             alt bound {
               ty::bound_trait(i_ty) {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                vec::push(result, lookup_vtable(fcx, isc, sp, ty, i_ty,
-                                         allow_unsafe));
+                vec::push(result, lookup_vtable(fcx, sp, ty, i_ty,
+                                                allow_unsafe));
               }
               _ {}
             }
@@ -50,12 +51,10 @@ fn relate_trait_tys(fcx: @fn_ctxt, sp: span,
 /*
 Look up the vtable to use when treating an item of type <t>
 as if it has type <trait_ty>
-
-XXX: This doesn't use the coherence tables yet.
 */
-fn lookup_vtable(fcx: @fn_ctxt, isc: resolve3::ImplScopes, sp: span,
-                 ty: ty::t, trait_ty: ty::t, allow_unsafe: bool)
-    -> vtable_origin {
+fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
+                 allow_unsafe: bool)
+              -> vtable_origin {
 
     #debug["lookup_vtable(ty=%s, trait_ty=%s)",
            fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(trait_ty)];
@@ -119,64 +118,72 @@ fn lookup_vtable(fcx: @fn_ctxt, isc: resolve3::ImplScopes, sp: span,
 
         let mut impls_seen = new_def_hash();
 
-        for list::each(isc) |impls| {
-            /* For each impl in scope... */
-            for vec::each(*impls) |im| {
-                // im = one specific impl
+        alt fcx.ccx.coherence_info.extension_methods.find(trait_id) {
+            none {
+                // Nothing found. Continue.
+            }
+            some(implementations) {
+                for uint::range(0, implementations.len()) |i| {
+                    let im = implementations[i];
 
-                // First, ensure that we haven't processed this impl yet.
-                if impls_seen.contains_key(im.did) {
-                    again;
-                }
-                impls_seen.insert(im.did, ());
+                    // im = one specific impl
 
-                // find the trait that im implements (if any)
-                for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
-                    // it must have the same id as the expected one
-                    alt ty::get(of_ty).struct {
-                      ty::ty_trait(id, _) if id != trait_id { again; }
-                      _ { /* ok */ }
+                    // First, ensure that we haven't processed this impl yet.
+                    if impls_seen.contains_key(im.did) {
+                        again;
                     }
+                    impls_seen.insert(im.did, ());
 
-                    // check whether the type unifies with the type
-                    // that the impl is for, and continue if not
-                    let {substs: substs, ty: for_ty} =
-                        impl_self_ty(fcx, im.did);
-                    let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                    alt fcx.mk_subty(ty, for_ty) {
-                      result::err(_) { again; }
-                      result::ok(()) { }
+                    // find the trait that im implements (if any)
+                    for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
+                        // it must have the same id as the expected one
+                        alt ty::get(of_ty).struct {
+                          ty::ty_trait(id, _) if id != trait_id { again; }
+                          _ { /* ok */ }
+                        }
+
+                        // check whether the type unifies with the type
+                        // that the impl is for, and continue if not
+                        let {substs: substs, ty: for_ty} =
+                            impl_self_ty(fcx, im.did);
+                        let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
+                        alt fcx.mk_subty(ty, for_ty) {
+                          result::err(_) { again; }
+                          result::ok(()) { }
+                        }
+
+                        // check that desired trait type unifies
+                        #debug("(checking vtable) @2 relating trait ty %s to \
+                                of_ty %s",
+                               fcx.infcx.ty_to_str(trait_ty),
+                               fcx.infcx.ty_to_str(of_ty));
+                        let of_ty = ty::subst(tcx, substs, of_ty);
+                        relate_trait_tys(fcx, sp, trait_ty, of_ty);
+
+                        // recursively process the bounds
+                        let trait_tps = trait_substs.tps;
+                        let substs_f = fixup_substs(fcx, sp, trait_id,
+                                                    substs);
+                        connect_trait_tps(fcx, sp, substs_f.tps,
+                                          trait_tps, im.did);
+                        let subres = lookup_vtables(fcx, sp, im_bs, substs_f,
+                                                    false);
+                        vec::push(found,
+                                  vtable_static(im.did, substs_f.tps,
+                                                subres));
                     }
-
-                    // check that desired trait type unifies
-                    #debug("(checking vtable) @2 relating trait ty %s to \
-                            of_ty %s",
-                           fcx.infcx.ty_to_str(trait_ty),
-                           fcx.infcx.ty_to_str(of_ty));
-                    let of_ty = ty::subst(tcx, substs, of_ty);
-                    relate_trait_tys(fcx, sp, trait_ty, of_ty);
-
-                    // recursively process the bounds
-                    let trait_tps = trait_substs.tps;
-                    let substs_f = fixup_substs(fcx, sp, trait_id, substs);
-                    connect_trait_tps(fcx, sp, substs_f.tps,
-                                      trait_tps, im.did);
-                    let subres = lookup_vtables(fcx, isc, sp,
-                                                im_bs, substs_f, false);
-                    vec::push(found,
-                              vtable_static(im.did, substs_f.tps, subres));
                 }
             }
+        }
 
-            alt found.len() {
-              0u { /* fallthrough */ }
-              1u { ret found[0]; }
-              _ {
-                fcx.ccx.tcx.sess.span_err(
-                    sp, ~"multiple applicable methods in scope");
-                ret found[0];
-              }
-            }
+        alt found.len() {
+          0u { /* fallthrough */ }
+          1u { ret found[0]; }
+          _ {
+            fcx.ccx.tcx.sess.span_err(
+                sp, ~"multiple applicable methods in scope");
+            ret found[0];
+          }
         }
       }
     }
@@ -227,10 +234,11 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             if has_trait_bounds(*item_ty.bounds) {
-                let impls = cx.impl_map.get(ex.id);
-                cx.vtable_map.insert(ex.id, lookup_vtables(
-                    fcx, impls, ex.span,
-                    item_ty.bounds, substs, false));
+                cx.vtable_map.insert(ex.id, lookup_vtables(fcx,
+                                                           ex.span,
+                                                           item_ty.bounds,
+                                                           substs,
+                                                           false));
             }
           }
           _ {}
@@ -249,9 +257,11 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
                   _ { ex.callee_id }
                 };
                 let substs = fcx.node_ty_substs(callee_id);
-                let iscs = cx.impl_map.get(ex.id);
-                cx.vtable_map.insert(callee_id, lookup_vtables(
-                    fcx, iscs, ex.span, bounds, substs, false));
+                cx.vtable_map.insert(callee_id, lookup_vtables(fcx,
+                                                               ex.span,
+                                                               bounds,
+                                                               substs,
+                                                               false));
             }
           }
           _ {}
@@ -261,17 +271,12 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
         let target_ty = fcx.expr_ty(ex);
         alt ty::get(target_ty).struct {
           ty::ty_trait(*) {
-            /* Casting to an interface type.
-            Look up all impls for the cast expr...
-            */
-            let impls = cx.impl_map.get(ex.id);
             /*
             Look up vtables for the type we're casting to,
             passing in the source and target type
             */
-            let vtable = lookup_vtable(fcx, impls, ex.span,
-                                       fcx.expr_ty(src), target_ty,
-                                       true);
+            let vtable = lookup_vtable(fcx, ex.span, fcx.expr_ty(src),
+                                       target_ty, true);
             /*
             Map this expression to that vtable (that is: "ex has
             vtable <vtable>")

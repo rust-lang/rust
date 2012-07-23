@@ -17,10 +17,10 @@ import middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
 import middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_var};
 import middle::typeck::infer::{infer_ctxt, mk_subty};
 import middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
-import syntax::ast::{crate, def_id, def_mod, item, item_class, item_const};
-import syntax::ast::{item_enum, item_fn, item_foreign_mod, item_impl};
-import syntax::ast::{item_mac, item_mod, item_trait, item_ty, local_crate};
-import syntax::ast::{method, node_id};
+import syntax::ast::{class_method, crate, def_id, def_mod, instance_var};
+import syntax::ast::{item, item_class, item_const, item_enum, item_fn};
+import syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
+import syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
 import syntax::ast::{trait_ref};
 import syntax::ast_map::node_item;
 import syntax::ast_util::{def_id_of_def, dummy_sp, new_def_hash};
@@ -161,7 +161,10 @@ class CoherenceChecker {
                 #debug("(checking coherence) item '%s'", *item.ident);
 
                 alt item.node {
-                    item_impl(_, associated_traits, self_type, _) {
+                    item_impl(_, associated_traits, _, _) {
+                        self.check_implementation(item, associated_traits);
+                    }
+                    item_class(_, associated_traits, _, _, _) {
                         self.check_implementation(item, associated_traits);
                     }
                     _ {
@@ -491,6 +494,29 @@ class CoherenceChecker {
                         n_tps: ast_method.tps.len(),
                         ident: ast_method.ident
                     });
+                }
+
+                ret @{
+                    did: local_def(item.id),
+                    ident: item.ident,
+                    methods: methods
+                };
+            }
+            item_class(ty_params, _, class_members, _, _) {
+                let mut methods = ~[];
+                for class_members.each |class_member| {
+                    alt class_member.node {
+                        instance_var(*) {
+                            // Nothing to do.
+                        }
+                        class_method(ast_method) {
+                            push(methods, @{
+                                did: local_def(ast_method.id),
+                                n_tps: ast_method.tps.len(),
+                                ident: ast_method.ident
+                            });
+                        }
+                    }
                 }
 
                 ret @{
