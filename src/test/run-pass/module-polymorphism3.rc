@@ -1,5 +1,3 @@
-#[no_core];
-
 // Use one template module to specify in a single file the implementation
 // of functions for multiple types
 

@@ -34,7 +34,8 @@ fn autoderef(bcx: block, v: ValueRef, t: ty::t) -> {v: ValueRef, t: ty::t} {
 fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let _icx = bcx.insn_ctxt(~"uniq::duplicate");
     let content_ty = content_ty(t);
-    let {box: dst_box, body: dst_body} = malloc_unique(bcx, content_ty);
+    let {bcx: bcx, box: dst_box, body: dst_body} =
+        malloc_unique(bcx, content_ty);
 
     let src_box = v;
     let src_body = opaque_box_body(bcx, content_ty, src_box);

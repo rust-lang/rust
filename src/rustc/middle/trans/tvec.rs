@@ -68,7 +68,8 @@ fn alloc_raw(bcx: block, unit_ty: ty::t,
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let {box, body} = base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
+    let {bcx, box, body} =
+        base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, ~[0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, ~[0u, abi::vec_elt_alloc]));
     ret {bcx: bcx, val: box};

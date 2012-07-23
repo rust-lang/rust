@@ -37,7 +37,7 @@ import link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_path,
               mangle_internal_name_by_path_and_seq,
               mangle_exported_name};
-import metadata::{csearch, cstore, encoder};
+import metadata::{csearch, cstore, decoder, encoder};
 import metadata::common::link_meta;
 import util::ppaux;
 import util::ppaux::{ty_to_str, ty_to_short_str};
@@ -244,15 +244,13 @@ fn trans_foreign_call(cx: block, externs: hashmap<~str, ValueRef>,
 
 fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt(~"trans_free");
-    Call(cx, cx.ccx().upcalls.free, ~[PointerCast(cx, v, T_ptr(T_i8()))]);
-    cx
+    trans_rtcall(cx, ~"free", ~[PointerCast(cx, v, T_ptr(T_i8()))], ignore)
 }
 
 fn trans_unique_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt(~"trans_unique_free");
-    Call(cx, cx.ccx().upcalls.exchange_free,
-         ~[PointerCast(cx, v, T_ptr(T_i8()))]);
-    ret cx;
+    trans_rtcall(cx, ~"exchange_free", ~[PointerCast(cx, v, T_ptr(T_i8()))],
+                 ignore)
 }
 
 fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
@@ -356,15 +354,13 @@ fn opaque_box_body(bcx: block,
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
 // potentially dynamic size.
 fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
-                  size: ValueRef) -> ValueRef {
+                  size: ValueRef) -> result {
     let _icx = bcx.insn_ctxt(~"malloc_raw");
     let ccx = bcx.ccx();
 
-    let (mk_fn, upcall) = alt heap {
-      heap_shared { (ty::mk_imm_box, ccx.upcalls.malloc) }
-      heap_exchange {
-        (ty::mk_imm_uniq, ccx.upcalls.exchange_malloc )
-      }
+    let (mk_fn, rtcall) = alt heap {
+      heap_shared { (ty::mk_imm_box, ~"malloc") }
+      heap_exchange { (ty::mk_imm_uniq, ~"exchange_malloc") }
     };
 
     // Grab the TypeRef type of box_ptr_ty.
@@ -376,37 +372,42 @@ fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
     lazily_emit_all_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
-    let rval = Call(bcx, upcall, ~[static_ti.tydesc, size]);
-    ret PointerCast(bcx, rval, llty);
+    let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
+    let rval = alloca_zeroed(bcx, T_ptr(T_i8()));
+    let bcx = trans_rtcall(bcx, rtcall, ~[tydesc, size], save_in(rval));
+    let retval = {bcx: bcx, val: PointerCast(bcx, Load(bcx, rval), llty)};
+    ret retval;
 }
 
 // malloc_raw: expects an unboxed type and returns a pointer to
 // enough space for a box of that type.  This includes a rust_opaque_box
 // header.
-fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> ValueRef {
+fn malloc_raw(bcx: block, t: ty::t, heap: heap) -> result {
     malloc_raw_dyn(bcx, t, heap, llsize_of(bcx.ccx(), type_of(bcx.ccx(), t)))
 }
 
 // malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a box,
 // and pulls out the body
-fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef) ->
-    {box: ValueRef, body: ValueRef} {
+fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
+    -> {bcx: block, box: ValueRef, body: ValueRef} {
     let _icx = bcx.insn_ctxt(~"malloc_general");
-    let llbox = malloc_raw_dyn(bcx, t, heap, size);
+    let {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
     let non_gc_box = non_gc_box_cast(bcx, llbox);
     let body = GEPi(bcx, non_gc_box, ~[0u, abi::box_field_body]);
-    ret {box: llbox, body: body};
+    ret {bcx: bcx, box: llbox, body: body};
 }
 
-fn malloc_general(bcx: block, t: ty::t, heap: heap) ->
-    {box: ValueRef, body: ValueRef} {
+fn malloc_general(bcx: block, t: ty::t, heap: heap)
+    -> {bcx: block, box: ValueRef, body: ValueRef} {
     malloc_general_dyn(bcx, t, heap,
                        llsize_of(bcx.ccx(), type_of(bcx.ccx(), t)))
 }
-fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
+fn malloc_boxed(bcx: block, t: ty::t)
+    -> {bcx: block, box: ValueRef, body: ValueRef} {
     malloc_general(bcx, t, heap_shared)
 }
-fn malloc_unique(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
+fn malloc_unique(bcx: block, t: ty::t)
+    -> {bcx: block, box: ValueRef, body: ValueRef} {
     malloc_general(bcx, t, heap_exchange)
 }
 
@@ -1464,7 +1465,7 @@ fn trans_boxed_expr(bcx: block, contents: @ast::expr,
                     t: ty::t, heap: heap,
                     dest: dest) -> block {
     let _icx = bcx.insn_ctxt(~"trans_boxed_expr");
-    let {box, body} = malloc_general(bcx, t, heap);
+    let {bcx, box, body} = malloc_general(bcx, t, heap);
     add_clean_free(bcx, box, heap);
     let bcx = trans_expr_save_in(bcx, contents, body);
     revoke_clean(bcx, box);
@@ -3942,9 +3943,24 @@ fn trans_fail_value(bcx: block, sp_opt: option<span>,
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = invoke(bcx, bcx.ccx().upcalls._fail, args);
+    let bcx = trans_rtcall(bcx, ~"fail", args, ignore);
     Unreachable(bcx);
     ret bcx;
+}
+
+fn trans_rtcall(bcx: block, name: ~str, args: ~[ValueRef], dest: dest)
+    -> block {
+    let did = bcx.ccx().rtcalls[name];
+    let fty = if did.crate == ast::local_crate {
+        ty::node_id_to_type(bcx.ccx().tcx, did.node)
+    } else {
+        csearch::get_type(bcx.ccx().tcx, did).ty
+    };
+    let rty = ty::ty_fn_ret(fty);
+    ret trans_call_inner(
+        bcx, none, fty, rty,
+        |bcx| lval_static_fn_inner(bcx, did, 0, ~[], none),
+        arg_vals(args), dest);
 }
 
 fn trans_break_cont(bcx: block, to_end: bool)
@@ -5314,6 +5330,83 @@ fn trap(bcx: block) {
     }
 }
 
+fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
+    if ccx.rtcalls.contains_key(name) {
+        fail #fmt("multiple definitions for runtime call %s", name);
+    }
+    ccx.rtcalls.insert(name, did);
+}
+
+fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
+    visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
+        visit_item: |item| alt item.node {
+          ast::item_fn(decl, _, _) {
+            let attr_metas = attr::attr_metas(
+                attr::find_attrs_by_name(item.attrs, ~"rt"));
+            do vec::iter(attr_metas) |attr_meta| {
+                alt attr::get_meta_item_list(attr_meta) {
+                  some(list) {
+                    let name = *attr::get_meta_item_name(vec::head(list));
+                    push_rtcall(ccx, name, {crate: ast::local_crate,
+                                            node: item.id});
+                  }
+                  none {}
+                }
+            }
+          }
+          _ {}
+        }
+        with *visit::default_simple_visitor()
+    }));
+}
+
+fn gather_external_rtcalls(ccx: @crate_ctxt) {
+    do cstore::iter_crate_data(ccx.sess.cstore) |_cnum, cmeta| {
+        do decoder::each_path(cmeta) |path| {
+            let pathname = path.path_string;
+            alt path.def_like {
+              decoder::dl_def(d) {
+                alt d {
+                  ast::def_fn(did, _) {
+                    // FIXME (#2861): This should really iterate attributes
+                    // like gather_local_rtcalls, but we'll need to
+                    // export attributes in metadata/encoder before we can do
+                    // that.
+                    let sentinel = "rt::rt_";
+                    let slen = str::len(sentinel);
+                    if str::starts_with(pathname, sentinel) {
+                        let name = str::substr(pathname,
+                                               slen, str::len(pathname)-slen);
+                        push_rtcall(ccx, name, did);
+                    }
+                  }
+                  _ {}
+                }
+              }
+              _ {}
+            }
+            true
+        }
+    }
+}
+
+fn gather_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
+    gather_local_rtcalls(ccx, crate);
+    gather_external_rtcalls(ccx);
+
+    // FIXME (#2861): Check for other rtcalls too, once they are
+    // supported. Also probably want to check type signature so we don't crash
+    // in some obscure place in LLVM if the user provides the wrong signature
+    // for an rtcall.
+    let expected_rtcalls =
+        ~[~"exchange_free", ~"exchange_malloc", ~"fail", ~"free", ~"malloc"];
+    for vec::each(expected_rtcalls) |name| {
+        if !ccx.rtcalls.contains_key(name) {
+            fail #fmt("no definition for runtime call %s", name);
+        }
+    }
+}
+
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
@@ -5544,6 +5637,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           upcalls:
               upcall::declare_upcalls(targ_cfg, tn, tydesc_type,
                                       llmod),
+          rtcalls: str_hash::<ast::def_id>(),
           tydesc_type: tydesc_type,
           int_type: int_type,
           float_type: float_type,
@@ -5556,6 +5650,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           class_ctors: int_hash::<ast::def_id>(),
           mut do_not_commit_warning_issued: false};
 
+
+    gather_rtcalls(ccx, crate);
 
     {
         let _icx = ccx.insn_ctxt(~"data");

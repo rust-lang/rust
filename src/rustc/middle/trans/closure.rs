@@ -138,7 +138,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
 fn allocate_cbox(bcx: block,
                  ck: ty::closure_kind,
                  cdata_ty: ty::t)
-    -> ValueRef {
+    -> result {
     let _icx = bcx.insn_ctxt(~"closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -153,7 +153,7 @@ fn allocate_cbox(bcx: block,
     }
 
     // Allocate and initialize the box:
-    let llbox = alt ck {
+    let {bcx, val} = alt ck {
       ty::ck_box {
         malloc_raw(bcx, cdata_ty, heap_shared)
       }
@@ -164,11 +164,11 @@ fn allocate_cbox(bcx: block,
         let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
         let llbox = base::alloc_ty(bcx, cbox_ty);
         nuke_ref_count(bcx, llbox);
-        llbox
+        {bcx: bcx, val: llbox}
       }
     };
 
-    ret llbox;
+    ret {bcx: bcx, val: val};
 }
 
 type closure_result = {
@@ -191,7 +191,7 @@ fn store_environment(bcx: block,
     let cdata_ty = mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
-    let llbox = allocate_cbox(bcx, ck, cdata_ty);
+    let {bcx: bcx, val: llbox} = allocate_cbox(bcx, ck, cdata_ty);
     let mut temp_cleanups = ~[];
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
@@ -362,14 +362,14 @@ fn trans_expr_fn(bcx: block,
                  dest: dest) -> block {
     let _icx = bcx.insn_ctxt(~"closure::trans_expr_fn");
     if dest == ignore { ret bcx; }
-    let ccx = bcx.ccx(), bcx = bcx;
+    let ccx = bcx.ccx();
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
     let sub_path = vec::append_one(bcx.fcx.path, path_name(@~"anon"));
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
+    let trans_closure_env = fn@(ck: ty::closure_kind) -> result {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
         let ret_handle = alt is_loop_body { some(x) { x } none { none } };
@@ -384,20 +384,21 @@ fn trans_expr_fn(bcx: block,
                 Store(bcx, C_bool(true), bcx.fcx.llretptr);
             }
         });
-        llbox
+        {bcx: bcx, val: llbox}
     };
 
-    let closure = alt proto {
+    let {bcx: bcx, val: closure} = alt proto {
       ast::proto_any | ast::proto_block { trans_closure_env(ty::ck_block) }
       ast::proto_box { trans_closure_env(ty::ck_box) }
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {
         trans_closure(ccx, sub_path, decl, body, llfn, no_self, none,
                       id, |_fcx| { }, |_bcx| { });
-        C_null(T_opaque_box_ptr(ccx))
+        {bcx: bcx, val: C_null(T_opaque_box_ptr(ccx))}
       }
     };
     fill_fn_pair(bcx, get_dest_addr(dest), llfn, closure);
+
     ret bcx;
 }
 
@@ -459,9 +460,12 @@ fn make_opaque_cbox_take_glue(
         let sz = Add(bcx, sz, shape::llsize_of(ccx, T_box_header(ccx)));
 
         // Allocate memory, update original ptr, and copy existing data
-        let malloc = ccx.upcalls.exchange_malloc;
-        let cbox_out = Call(bcx, malloc, ~[tydesc, sz]);
-        let cbox_out = PointerCast(bcx, cbox_out, llopaquecboxty);
+        let malloc = ~"exchange_malloc";
+        let opaque_tydesc = PointerCast(bcx, tydesc, T_ptr(T_i8()));
+        let rval = alloca_zeroed(bcx, T_ptr(T_i8()));
+        let bcx = trans_rtcall(bcx, malloc, ~[opaque_tydesc, sz],
+                               save_in(rval));
+        let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
         call_memmove(bcx, cbox_out, cbox_in, sz);
         Store(bcx, cbox_out, cboxptr);
 
