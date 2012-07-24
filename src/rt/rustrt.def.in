@@ -68,7 +68,6 @@ vec_from_buf_shared
 task_clear_event_reject
 task_wait_event
 task_signal_event
-unsupervise
 upcall_cmp_type
 upcall_fail
 upcall_trace

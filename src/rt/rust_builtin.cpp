@@ -128,11 +128,6 @@ rust_env_pairs() {
 #endif
 
 extern "C" CDECL void
-unsupervise() {
-    // FIXME(#1789): bblum: remove this; requires a snapshot
-}
-
-extern "C" CDECL void
 vec_reserve_shared_actual(type_desc* ty, rust_vec_box** vp,
                           size_t n_elts) {
     rust_task *task = rust_get_current_task();
