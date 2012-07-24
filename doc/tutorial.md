@@ -1541,7 +1541,7 @@ if favorite_crayon_name.len() > 5 {
 # Closures
 
 Named functions, like those we've seen so far, may not refer to local
-variables decalared outside the function - they do not "close over
+variables declared outside the function - they do not "close over
 their environment". For example you couldn't write the following:
 
 ~~~~ {.ignore}
@@ -1898,7 +1898,7 @@ gets access to them.
 
 ## Safe references
 
-*This system has recently changed.  An explanantion is forthcoming.*
+*This system has recently changed.  An explanation is forthcoming.*
 
 ## Other uses of safe references
 
