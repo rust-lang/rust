@@ -934,6 +934,7 @@ class parser {
                     }
 
                     hi = pth.span.hi;
+                    self.expect(token::RBRACE);
                     ex = expr_struct(pth, fields);
                     ret self.mk_pexpr(lo, hi, ex);
                 }
