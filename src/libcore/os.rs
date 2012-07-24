@@ -118,7 +118,7 @@ mod win32 {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
         t += ~[0u16];
-        vec::as_buf(t, f)
+        vec::as_buf(t, |buf, _len| f(buf))
     }
 }
 
