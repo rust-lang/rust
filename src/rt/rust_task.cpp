@@ -39,6 +39,7 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     killed(false),
     reentered_rust_stack(false),
     disallow_kill(0),
+    disallow_yield(0),
     c_stack(NULL),
     next_c_sp(0),
     next_rust_sp(0)
@@ -234,9 +235,18 @@ rust_task::must_fail_from_being_killed_inner() {
     return killed && !reentered_rust_stack && disallow_kill == 0;
 }
 
+void rust_task_yield_fail(rust_task *task) {
+    LOG_ERR(task, task, "task %" PRIxPTR " yielded in an atomic section",
+            task);
+    task->fail();
+}
+
 // Only run this on the rust stack
 void
 rust_task::yield(bool *killed) {
+    if (disallow_yield > 0) {
+        call_on_c_stack(this, (void *)rust_task_yield_fail);
+    }
     // FIXME (#2875): clean this up
     if (must_fail_from_being_killed()) {
         {
@@ -670,6 +680,17 @@ rust_task::allow_kill() {
     scoped_lock with(lifecycle_lock);
     assert(disallow_kill > 0 && "Illegal allow_kill(): already killable!");
     disallow_kill--;
+}
+
+void rust_task::inhibit_yield() {
+    scoped_lock with(lifecycle_lock);
+    disallow_yield++;
+}
+
+void rust_task::allow_yield() {
+    scoped_lock with(lifecycle_lock);
+    assert(disallow_yield > 0 && "Illegal allow_yield(): already yieldable!");
+    disallow_yield--;
 }
 
 void *

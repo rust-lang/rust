@@ -9,6 +9,8 @@ export refcount;
 export log_str;
 export lock_and_signal, condition, methods;
 
+import task::atomically;
+
 enum type_desc = {
     size: uint,
     align: uint
@@ -105,13 +107,17 @@ impl methods for lock_and_signal {
     unsafe fn lock<T>(f: fn() -> T) -> T {
         rustrt::rust_lock_cond_lock(self.lock);
         let _r = unlock(self.lock);
-        f()
+        do atomically {
+            f()
+        }
     }
 
     unsafe fn lock_cond<T>(f: fn(condition) -> T) -> T {
         rustrt::rust_lock_cond_lock(self.lock);
         let _r = unlock(self.lock);
-        f(condition_(self.lock))
+        do atomically {
+            f(condition_(self.lock))
+        }
     }
 }
 
