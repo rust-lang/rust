@@ -242,26 +242,30 @@ void rust_task_yield_fail(rust_task *task) {
 }
 
 // Only run this on the rust stack
-void
-rust_task::yield(bool *killed) {
+MUST_CHECK bool rust_task::yield() {
+    bool killed = false;
+
     if (disallow_yield > 0) {
         call_on_c_stack(this, (void *)rust_task_yield_fail);
     }
-    // FIXME (#2875): clean this up
+
+    // This check is largely superfluous; it's the one after the context swap
+    // that really matters. This one allows us to assert a useful invariant.
     if (must_fail_from_being_killed()) {
         {
             scoped_lock with(lifecycle_lock);
             assert(!(state == task_state_blocked));
         }
-        *killed = true;
+        killed = true;
     }
 
     // Return to the scheduler.
     ctx.next->swap(ctx);
 
     if (must_fail_from_being_killed()) {
-        *killed = true;
+        killed = true;
     }
+    return killed;
 }
 
 void
@@ -687,19 +691,24 @@ void rust_task::allow_yield() {
     disallow_yield--;
 }
 
-void *
-rust_task::wait_event(bool *killed) {
+MUST_CHECK bool rust_task::wait_event(void **result) {
+    bool killed = false;
     scoped_lock with(lifecycle_lock);
 
     if(!event_reject) {
         block_inner(&event_cond, "waiting on event");
         lifecycle_lock.unlock();
-        yield(killed);
+        killed = yield();
         lifecycle_lock.lock();
+    } else if (must_fail_from_being_killed_inner()) {
+        // If the deschedule was rejected, yield won't do our killed check for
+        // us. For thoroughness, do it here. FIXME (#524)
+        killed = true;
     }
 
     event_reject = false;
-    return event;
+    *result = event;
+    return killed;
 }
 
 void

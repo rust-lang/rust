@@ -69,7 +69,7 @@ extern mod rustrt {
     #[rust_stack]
     fn task_clear_event_reject(task: *rust_task);
 
-    fn task_wait_event(this: *rust_task, killed: &mut bool) -> *libc::c_void;
+    fn task_wait_event(this: *rust_task, killed: &mut *libc::c_void) -> bool;
     fn task_signal_event(target: *rust_task, event: *libc::c_void);
 }
 
@@ -80,13 +80,13 @@ unsafe fn uniquify<T>(x: *T) -> ~T {
 }
 
 fn wait_event(this: *rust_task) -> *libc::c_void {
-    let mut killed = false;
+    let mut event = ptr::null();
 
-    let res = rustrt::task_wait_event(this, &mut killed);
+    let killed = rustrt::task_wait_event(this, &mut event);
     if killed && !task::failing() {
         fail ~"killed"
     }
-    res
+    event
 }
 
 fn swap_state_acq(&dst: state, src: state) -> state {

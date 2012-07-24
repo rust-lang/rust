@@ -515,8 +515,7 @@ fn yield() {
     //! Yield control to the task scheduler
 
     let task_ = rustrt::rust_get_task();
-    let mut killed = false;
-    rustrt::rust_task_yield(task_, killed);
+    let killed = rustrt::rust_task_yield(task_);
     if killed && !failing() {
         fail ~"killed";
     }
@@ -1104,7 +1103,7 @@ unsafe fn local_data_modify<T: owned>(
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_task_yield(task: *rust_task, &killed: bool);
+    fn rust_task_yield(task: *rust_task) -> bool;
 
     fn rust_get_sched_id() -> sched_id;
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
