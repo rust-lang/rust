@@ -9,11 +9,11 @@ extern mod libc {
 }
 
 fn atol(s: ~str) -> int {
-    ret str::as_buf(s, { |x| libc::atol(x) });
+    ret str::as_buf(s, { |x, _len| libc::atol(x) });
 }
 
 fn atoll(s: ~str) -> i64 {
-    ret str::as_buf(s, { |x| libc::atoll(x) });
+    ret str::as_buf(s, { |x, _len| libc::atoll(x) });
 }
 
 fn main() {

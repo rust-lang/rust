@@ -1699,7 +1699,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
 
         let struct_type = ty::subst(tcx, substitutions, raw_type);
-        
+
         // Look up the class fields and build up a map.
         let class_fields = ty::lookup_class_fields(tcx, class_id);
         let class_field_map = str_hash();
