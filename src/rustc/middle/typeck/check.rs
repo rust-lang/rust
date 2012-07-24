@@ -1084,11 +1084,21 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                      expected: option<ty::t>) {
         let tcx = fcx.ccx.tcx;
 
+        // Find the expected input/output types (if any).  Careful to
+        // avoid capture of bound regions in the expected type.  See
+        // def'n of br_cap_avoid() for a more lengthy explanation of
+        // what's going on here.
         let expected_tys = do unpack_expected(fcx, expected) |sty| {
             alt sty {
-              ty::ty_fn(fn_ty) {some({inputs:fn_ty.inputs,
-                                      output:fn_ty.output})}
-              _ {none}
+              ty::ty_fn(fn_ty) => {
+                let {fn_ty, _} =
+                    replace_bound_regions_in_fn_ty(
+                        tcx, @nil, none, fn_ty,
+                        |br| ty::re_bound(ty::br_cap_avoid(expr.id, @br)));
+                some({inputs:fn_ty.inputs,
+                      output:fn_ty.output})
+              }
+              _ => {none}
             }
         };
 
@@ -1984,15 +1994,26 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     writeback::resolve_type_vars_in_expr(fcx, e);
 }
 
+/// Checks whether a type can be created without an instance of itself.
+/// This is similar but different from the question of whether a type
+/// can be represented.  For example, the following type:
+///
+///     enum foo { none, some(foo) }
+///
+/// is instantiable but is not representable.  Similarly, the type
+///
+///     enum foo { some(@foo) }
+///
+/// is representable, but not instantiable.
 fn check_instantiable(tcx: ty::ctxt,
                       sp: span,
                       item_id: ast::node_id) {
-    let rty = ty::node_id_to_type(tcx, item_id);
-    if !ty::is_instantiable(tcx, rty) {
+    let item_ty = ty::node_id_to_type(tcx, item_id);
+    if !ty::is_instantiable(tcx, item_ty) {
         tcx.sess.span_err(sp, #fmt["this type cannot be instantiated \
                                     without an instance of itself; \
                                     consider using `option<%s>`",
-                                   ty_to_str(tcx, rty)]);
+                                   ty_to_str(tcx, item_ty)]);
     }
 }
 
@@ -2063,6 +2084,9 @@ fn check_enum_variants(ccx: @crate_ctxt,
     }
 
     // Check that it is possible to instantiate this enum:
+    //
+    // This *sounds* like the same that as representable, but it's
+    // not.  See def'n of `check_instantiable()` for details.
     check_instantiable(ccx.tcx, sp, id);
 }
 
