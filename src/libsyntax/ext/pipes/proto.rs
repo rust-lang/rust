@@ -30,15 +30,23 @@ impl methods for direction {
 type next_state = option<{state: ident, tys: ~[@ast::ty]}>;
 
 enum message {
-    // name, data, current state, next state
-    message(ident, ~[@ast::ty], state, next_state)
+    // name, span, data, current state, next state
+    message(ident, span, ~[@ast::ty], state, next_state)
 }
 
 impl methods for message {
     fn name() -> ident {
         alt self {
-          message(id, _, _, _) {
+          message(id, _, _, _, _) {
             id
+          }
+        }
+    }
+
+    fn span() -> span {
+        alt self {
+          message(_, span, _, _, _) {
+            span
           }
         }
     }
@@ -46,7 +54,7 @@ impl methods for message {
     /// Return the type parameters actually used by this message
     fn get_params() -> ~[ast::ty_param] {
         alt self {
-          message(_, _, this, _) {
+          message(_, _, _, this, _) {
             this.ty_params
           }
         }
@@ -57,6 +65,7 @@ enum state {
     state_(@{
         id: uint,
         name: ident,
+        span: span,
         dir: direction,
         ty_params: ~[ast::ty_param],
         messages: dvec<message>,
@@ -65,8 +74,9 @@ enum state {
 }
 
 impl methods for state {
-    fn add_message(name: ident, +data: ~[@ast::ty], next: next_state) {
-        self.messages.push(message(name, data, self,
+    fn add_message(name: ident, span: span, 
+                   +data: ~[@ast::ty], next: next_state) {
+        self.messages.push(message(name, span, data, self,
                                    next));
     }
 
@@ -80,7 +90,7 @@ impl methods for state {
 
     fn to_ty(cx: ext_ctxt) -> @ast::ty {
         cx.ty_path_ast_builder
-            (path(self.name).add_tys(cx.ty_vars(self.ty_params)))
+            (path(self.name, self.span).add_tys(cx.ty_vars(self.ty_params)))
     }
 
     /// Iterate over the states that can be reached in one message
@@ -88,7 +98,7 @@ impl methods for state {
     fn reachable(f: fn(state) -> bool) {
         for self.messages.each |m| {
             alt m {
-              message(_, _, _, some({state: id, _})) {
+              message(_, _, _, _, some({state: id, _})) {
                 let state = self.proto.get_state(id);
                 if !f(state) { break }
               }
@@ -100,16 +110,20 @@ impl methods for state {
 
 type protocol = @protocol_;
 
-fn protocol(name: ident) -> protocol { @protocol_(name) }
+fn protocol(name: ident, +span: span) -> protocol {
+    @protocol_(name, span)
+}
 
 class protocol_ {
     let name: ident;
+    let span: span;
     let states: dvec<state>;
 
     let mut bounded: option<bool>;
 
-    new(name: ident) {
+    new(name: ident, span: span) {
         self.name = name;
+        self.span = span;
         self.states = dvec();
         self.bounded = none;
     }
@@ -141,13 +155,14 @@ class protocol_ {
     }
     fn is_bounded() -> bool {
         let bounded = self.bounded.get();
-        if bounded && self.has_ty_params() {
-            #debug("protocol %s has is bounded, but type parameters\
-                    are not yet supported.",
-                   *self.name);
-            false
-        }
-        else { bounded }
+        bounded
+        //if bounded && self.has_ty_params() {
+        //    #debug("protocol %s has is bounded, but type parameters\
+        //            are not yet supported.",
+        //           *self.name);
+        //    false
+        //}
+        //else { bounded }
     }
 }
 
@@ -163,6 +178,7 @@ impl methods for protocol {
         let state = state_(@{
             id: self.states.len(),
             name: name,
+            span: self.span,
             dir: dir,
             ty_params: ty_params,
             messages: messages,
@@ -177,7 +193,7 @@ impl methods for protocol {
 trait visitor<Tproto, Tstate, Tmessage> {
     fn visit_proto(proto: protocol, st: &[Tstate]) -> Tproto;
     fn visit_state(state: state, m: &[Tmessage]) -> Tstate;
-    fn visit_message(name: ident, tys: &[@ast::ty],
+    fn visit_message(name: ident, spane: span, tys: &[@ast::ty],
                      this: state, next: next_state) -> Tmessage;
 }
 
@@ -187,8 +203,8 @@ fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     // the copy keywords prevent recursive use of dvec
     let states = do (copy proto.states).map_to_vec |s| {
         let messages = do (copy s.messages).map_to_vec |m| {
-            let message(name, tys, this, next) = m;
-            visitor.visit_message(name, tys, this, next)
+            let message(name, span, tys, this, next) = m;
+            visitor.visit_message(name, span, tys, this, next)
         };
         visitor.visit_state(s, messages)
     };

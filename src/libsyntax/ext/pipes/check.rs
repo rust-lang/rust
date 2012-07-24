@@ -35,14 +35,14 @@ impl proto_check of proto::visitor<(), (), ()>  for ext_ctxt {
     fn visit_state(state: state, _m: &[()]) {
         if state.messages.len() == 0 {
             self.span_warn(
-                empty_span(), // use a real span!
+                state.span, // use a real span!
                 #fmt("state %s contains no messages, \
                       consider stepping to a terminal state instead",
                      *state.name))
         }
     }
 
-    fn visit_message(name: ident, _tys: &[@ast::ty],
+    fn visit_message(name: ident, _span: span, _tys: &[@ast::ty],
                      this: state, next: next_state) {
         alt next {
           some({state: next, tys: next_tys}) {
@@ -51,7 +51,7 @@ impl proto_check of proto::visitor<(), (), ()>  for ext_ctxt {
                 // This should be a span fatal, but then we need to
                 // track span information.
                 self.span_err(
-                    empty_span(),
+                    proto.get_state(next).span,
                     #fmt("message %s steps to undefined state, %s",
                          *name, *next));
             }
@@ -60,7 +60,7 @@ impl proto_check of proto::visitor<(), (), ()>  for ext_ctxt {
 
                 if next.ty_params.len() != next_tys.len() {
                     self.span_err(
-                        empty_span(), // use a real span
+                        next.span, // use a real span
                         #fmt("message %s target (%s) \
                               needs %u type parameters, but got %u",
                              *name, *next.name,
