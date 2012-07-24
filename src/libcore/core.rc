@@ -49,6 +49,7 @@ export tuple;
 export to_str, to_bytes;
 export dvec, dvec_iter;
 export dlist, dlist_iter;
+export hash;
 export cmp;
 export num;
 
@@ -162,6 +163,7 @@ mod tuple;
 
 mod cmp;
 mod num;
+mod hash;
 mod either;
 mod iter;
 mod logging;
