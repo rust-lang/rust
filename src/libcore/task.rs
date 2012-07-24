@@ -60,6 +60,7 @@ export yield;
 export failing;
 export get_task;
 export unkillable;
+export atomically;
 
 export local_data_key;
 export local_data_pop;
@@ -683,16 +684,36 @@ fn get_task() -> task {
  */
 unsafe fn unkillable(f: fn()) {
     class allow_failure {
-      let i: (); // since a class must have at least one field
-      new(_i: ()) { self.i = (); }
-      drop { rustrt::rust_task_allow_kill(); }
+        let t: *rust_task;
+        new(t: *rust_task) { self.t = t; }
+        drop { rustrt::rust_task_allow_kill(self.t); }
     }
 
-    let _allow_failure = allow_failure(());
-    rustrt::rust_task_inhibit_kill();
+    let t = rustrt::rust_get_task();
+    let _allow_failure = allow_failure(t);
+    rustrt::rust_task_inhibit_kill(t);
     f();
 }
 
+/**
+ * A stronger version of unkillable that also inhibits scheduling operations.
+ * For use with exclusive ARCs, which use pthread mutexes directly.
+ */
+unsafe fn atomically<U>(f: fn() -> U) -> U {
+    class defer_interrupts {
+        let t: *rust_task;
+        new(t: *rust_task) { self.t = t; }
+        drop {
+            rustrt::rust_task_allow_yield(self.t);
+            rustrt::rust_task_allow_kill(self.t);
+        }
+    }
+    let t = rustrt::rust_get_task();
+    let _interrupts = defer_interrupts(t);
+    rustrt::rust_task_inhibit_kill(t);
+    rustrt::rust_task_inhibit_yield(t);
+    f()
+}
 
 /****************************************************************************
  * Internal
@@ -1235,8 +1256,10 @@ extern mod rustrt {
 
     fn rust_task_is_unwinding(task: *rust_task) -> bool;
     fn rust_osmain_sched_id() -> sched_id;
-    fn rust_task_inhibit_kill();
-    fn rust_task_allow_kill();
+    fn rust_task_inhibit_kill(t: *rust_task);
+    fn rust_task_allow_kill(t: *rust_task);
+    fn rust_task_inhibit_yield(t: *rust_task);
+    fn rust_task_allow_yield(t: *rust_task);
     fn rust_task_kill_other(task: *rust_task);
     fn rust_task_kill_all(task: *rust_task);
 
@@ -1757,6 +1780,21 @@ fn test_unkillable_nested() {
 
     // Now we can be killed
     po.recv();
+}
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_atomically() {
+    unsafe { do atomically { yield(); } }
+}
+
+#[test]
+fn test_atomically2() {
+    unsafe { do atomically { } } yield(); // shouldn't fail
+}
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_atomically_nested() {
+    unsafe { do atomically { do atomically { } yield(); } }
 }
 
 #[test]

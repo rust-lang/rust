@@ -185,6 +185,7 @@ private:
     // Indicates that we've called back into Rust from C
     bool reentered_rust_stack;
     unsigned long disallow_kill;
+    unsigned long disallow_yield;
 
     // The stack used for running C code, borrowed from the scheduler thread
     stk_seg *c_stack;
@@ -318,6 +319,8 @@ public:
 
     void inhibit_kill();
     void allow_kill();
+    void inhibit_yield();
+    void allow_yield();
 };
 
 // FIXME (#2697): It would be really nice to be able to get rid of this.

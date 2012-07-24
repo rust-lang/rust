@@ -854,15 +854,23 @@ rust_global_env_chan_ptr() {
 }
 
 extern "C" void
-rust_task_inhibit_kill() {
-    rust_task *task = rust_get_current_task();
+rust_task_inhibit_kill(rust_task *task) {
     task->inhibit_kill();
 }
 
 extern "C" void
-rust_task_allow_kill() {
-    rust_task *task = rust_get_current_task();
+rust_task_allow_kill(rust_task *task) {
     task->allow_kill();
+}
+
+extern "C" void
+rust_task_inhibit_yield(rust_task *task) {
+    task->inhibit_yield();
+}
+
+extern "C" void
+rust_task_allow_yield(rust_task *task) {
+    task->allow_yield();
 }
 
 extern "C" void
