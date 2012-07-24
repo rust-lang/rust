@@ -7,6 +7,14 @@ import ast::{ident, node_id};
 import codemap::span;
 import ext::base::mk_ctxt;
 
+// Transitional reexports so qquote can find the paths it is looking for
+mod syntax {
+    import ext;
+    export ext;
+    import parse;
+    export parse;
+}
+
 fn ident(s: ~str) -> ast::ident {
     @(copy s)
 }
@@ -93,9 +101,60 @@ trait ext_ctxt_ast_builder {
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::ty];
     fn ty_field_imm(name: ident, ty: @ast::ty) -> ast::ty_field;
     fn ty_rec(+~[ast::ty_field]) -> @ast::ty;
+    fn field_imm(name: ident, e: @ast::expr) -> ast::field;
+    fn rec(+~[ast::field]) -> @ast::expr;
+    fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk;
+    fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt;
+    fn stmt_expr(e: @ast::expr) -> @ast::stmt;
+    fn block_expr(b: ast::blk) -> @ast::expr;
 }
 
 impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
+    fn block_expr(b: ast::blk) -> @ast::expr {
+        @{id: self.next_id(),
+          callee_id: self.next_id(),
+          node: ast::expr_block(b),
+          span: empty_span()}
+    }
+
+    fn stmt_expr(e: @ast::expr) -> @ast::stmt {
+        @{node: ast::stmt_expr(e, self.next_id()),
+          span: empty_span()}
+    }
+
+    fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt {
+        // If the quasiquoter could interpolate idents, this is all
+        // we'd need.
+        //
+        //let ext_cx = self;
+        //#ast[stmt] { let $(ident) = $(e) }
+
+        @{node: ast::stmt_decl(@{node: ast::decl_local(~[
+            @{node: {is_mutbl: false,
+                     ty: self.ty_infer(),
+                     pat: @{id: self.next_id(),
+                            node: ast::pat_ident(path(ident), none),
+                            span: empty_span()},
+                     init: some({op: ast::init_move,
+                                 expr: e}),
+                     id: self.next_id()},
+              span: empty_span()}]),
+                               span: empty_span()}, self.next_id()),
+         span: empty_span()}
+    }
+
+    fn field_imm(name: ident, e: @ast::expr) -> ast::field {
+        {node: {mutbl: ast::m_imm, ident: name, expr: e},
+         span: empty_span()}
+    }
+
+    fn rec(+fields: ~[ast::field]) -> @ast::expr {
+        @{id: self.next_id(),
+          callee_id: self.next_id(),
+          node: ast::expr_rec(fields, none),
+          span: empty_span()}
+    }
+
     fn ty_field_imm(name: ident, ty: @ast::ty) -> ast::ty_field {
         {node: {ident: name, mt: { ty: ty, mutbl: ast::m_imm } },
           span: empty_span()}
@@ -104,6 +163,12 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
     fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::ty {
         @{id: self.next_id(),
           node: ast::ty_rec(fields),
+          span: empty_span()}
+    }
+
+    fn ty_infer() -> @ast::ty {
+        @{id: self.next_id(),
+          node: ast::ty_infer,
           span: empty_span()}
     }
 
@@ -128,15 +193,19 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
          id: self.next_id()}
     }
 
-    fn expr_block(e: @ast::expr) -> ast::blk {
+    fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk {
         let blk = {view_items: ~[],
-                   stmts: ~[],
+                   stmts: stmts,
                    expr: some(e),
                    id: self.next_id(),
                    rules: ast::default_blk};
 
         {node: blk,
          span: empty_span()}
+    }
+
+    fn expr_block(e: @ast::expr) -> ast::blk {
+        self.block(~[], e)
     }
 
     fn fn_decl(+inputs: ~[ast::arg],

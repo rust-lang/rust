@@ -10,6 +10,8 @@ mod pingpong {
     import pipes::*;
 
     type packets = {
+        // This is probably a resolve bug, I forgot to export packet,
+        // but since I didn't import pipes::*, it worked anyway.
         ping: packet<ping>,
         pong: packet<pong>,
     };

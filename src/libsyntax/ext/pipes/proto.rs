@@ -131,7 +131,24 @@ class protocol_ {
 
     fn num_states() -> uint { self.states.len() }
 
-    fn is_bounded() -> bool { self.bounded.get() }
+    fn has_ty_params() -> bool {
+        for self.states.each |s| {
+            if s.ty_params.len() > 0 {
+                ret true;
+            }
+        }
+        false
+    }
+    fn is_bounded() -> bool {
+        let bounded = self.bounded.get();
+        if bounded && self.has_ty_params() {
+            #debug("protocol %s has is bounded, but type parameters\
+                    are not yet supported.",
+                   *self.name);
+            false
+        }
+        else { bounded }
+    }
 }
 
 impl methods for protocol {

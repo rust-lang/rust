@@ -23,6 +23,14 @@ import ast_builder::methods;
 import ast_builder::path;
 import ast_builder::path_concat;
 
+// Transitional reexports so qquote can find the paths it is looking for
+mod syntax {
+    import ext;
+    export ext;
+    import parse;
+    export parse;
+}
+
 trait gen_send {
     fn gen_send(cx: ext_ctxt) -> @ast::item;
 }
@@ -60,14 +68,34 @@ impl compile of gen_send for message {
                               ast::by_copy)],
                 args_ast);
 
-            let pat = alt (this.dir, next.dir) {
-              (send, send) { ~"(c, s)" }
-              (send, recv) { ~"(s, c)" }
-              (recv, send) { ~"(s, c)" }
-              (recv, recv) { ~"(c, s)" }
-            };
+            let mut body = ~"{\n";
 
-            let mut body = #fmt("{ let %s = pipes::entangle();\n", pat);
+            if this.proto.is_bounded() {
+                let (sp, rp) = alt (this.dir, next.dir) {
+                  (send, send) { ("c", "s") }
+                  (send, recv) { ("s", "c") }
+                  (recv, send) { ("s", "c") }
+                  (recv, recv) { ("c", "s") }
+                };
+
+                body += "let b = pipe.reuse_buffer();\n";
+                body += #fmt("let %s = pipes::send_packet_buffered(\
+                              ptr::addr_of(b.buffer.data.%s));\n",
+                             sp, *next.name);
+                body += #fmt("let %s = pipes::recv_packet_buffered(\
+                              ptr::addr_of(b.buffer.data.%s));\n",
+                             rp, *next.name);
+            }
+            else {
+                let pat = alt (this.dir, next.dir) {
+                  (send, send) { ~"(c, s)" }
+                  (send, recv) { ~"(s, c)" }
+                  (recv, send) { ~"(s, c)" }
+                  (recv, recv) { ~"(c, s)" }
+                };
+
+                body += #fmt("let %s = pipes::entangle();\n", pat);
+            }
             body += #fmt("let message = %s::%s(%s);\n",
                          *this.proto.name,
                          *self.name(),
@@ -189,40 +217,119 @@ impl compile of to_type_decls for state {
             }
         }
 
-        vec::push(items,
-                  cx.item_ty_poly(
-                      self.data_name(),
-                      cx.ty_path_ast_builder(
-                          (@~"pipes" + @(dir.to_str() + ~"_packet"))
-                          .add_ty(cx.ty_path_ast_builder(
-                              (self.proto.name + self.data_name())
-                              .add_tys(cx.ty_vars(self.ty_params))))),
-                      self.ty_params));
+        if !self.proto.is_bounded() {
+            vec::push(items,
+                      cx.item_ty_poly(
+                          self.data_name(),
+                          cx.ty_path_ast_builder(
+                              (@~"pipes" + @(dir.to_str() + ~"_packet"))
+                              .add_ty(cx.ty_path_ast_builder(
+                                  (self.proto.name + self.data_name())
+                                  .add_tys(cx.ty_vars(self.ty_params))))),
+                          self.ty_params));
+        }
+        else {
+            let ext_cx = cx;
+            vec::push(items,
+                      cx.item_ty_poly(
+                          self.data_name(),
+                          cx.ty_path_ast_builder(
+                              (@~"pipes" + @(dir.to_str()
+                                             + ~"_packet_buffered"))
+                              .add_tys(~[cx.ty_path_ast_builder(
+                                  (self.proto.name + self.data_name())
+                                  .add_tys(cx.ty_vars(self.ty_params))),
+                                         #ast[ty] { buffer }])),
+                          self.ty_params));
+        };
         items
     }
 }
 
 impl compile of gen_init for protocol {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
+        let ext_cx = cx;
+
         #debug("gen_init");
         let start_state = self.states[0];
 
-        let body = alt start_state.dir {
-          send { cx.parse_expr(~"pipes::entangle()") }
-          recv {
-            cx.parse_expr(~"{ \
-                           let (s, c) = pipes::entangle(); \
-                           (c, s) \
-                           }")
-          }
+        let body = if !self.is_bounded() {
+            alt start_state.dir {
+              send { #ast { pipes::entangle() } }
+              recv {
+                #ast {{
+                    let (s, c) = pipes::entangle();
+                    (c, s)
+                }}
+              }
+            }
+        }
+        else {
+            let body = self.gen_init_bounded(ext_cx);
+            alt start_state.dir {
+              send { body }
+              recv {
+                #ast {{
+                    let (s, c) = $(body);
+                    (c, s)
+                }}
+              }
+            }
         };
 
         cx.parse_item(#fmt("fn init%s() -> (client::%s, server::%s)\
-                            { %s }",
+                            { import pipes::has_buffer; %s }",
                            start_state.ty_params.to_source(),
                            start_state.to_ty(cx).to_source(),
                            start_state.to_ty(cx).to_source(),
                            body.to_source()))
+    }
+
+    fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
+        ext_cx.rec(self.states.map_to_vec(|s| {
+            let fty = ext_cx.ty_path_ast_builder(path(s.name));
+            ext_cx.field_imm(s.name, #ast { pipes::mk_packet::<$(fty)>() })
+        }))
+    }
+
+    fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
+        #debug("gen_init_bounded");
+        let buffer_fields = self.gen_buffer_init(ext_cx);
+
+        let buffer = #ast {
+            ~{header: pipes::buffer_header(),
+              data: $(buffer_fields)}
+        };
+
+        let entangle_body = ext_cx.block_expr(
+            ext_cx.block(
+                self.states.map_to_vec(
+                    |s| ext_cx.parse_stmt(
+                        #fmt("data.%s.set_buffer(buffer)", *s.name))),
+                ext_cx.parse_expr(
+                    #fmt("ptr::addr_of(data.%s)", *self.states[0].name))));
+
+        #ast {{
+            let buffer = $(buffer);
+            do pipes::entangle_buffer(buffer) |buffer, data| {
+                $(entangle_body)
+            }
+        }}
+    }
+
+    fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
+        let ext_cx = cx;
+        cx.item_ty(
+            @~"buffer",
+            cx.ty_rec(
+                (copy self.states).map_to_vec(
+                    |s| {
+                        let ty = cx.ty_path_ast_builder(path(s.name));
+                        let fty = #ast[ty] {
+                            pipes::packet<$(ty)>
+                        };
+                        cx.ty_field_imm(s.name, fty)
+                    })))
     }
 
     fn compile(cx: ext_ctxt) -> @ast::item {
@@ -239,20 +346,7 @@ impl compile of gen_init for protocol {
         }
 
         if self.is_bounded() {
-            vec::push(
-                items,
-                cx.item_ty(
-                    @~"buffer",
-                    cx.ty_rec(
-                        (copy self.states).map_to_vec(
-                            |s| cx.ty_field_imm(
-                                s.name,
-                                cx.ty_path_ast_builder(
-                                    (path(@~"pipes")
-                                     + @~"packet")
-                                    .add_ty(
-                                        cx.ty_path_ast_builder(
-                                            path(s.name)))))))))
+            vec::push(items, self.gen_buffer_type(cx))
         }
 
         vec::push(items,
@@ -310,6 +404,7 @@ impl of to_source for @ast::expr {
 trait ext_ctxt_parse_utils {
     fn parse_item(s: ~str) -> @ast::item;
     fn parse_expr(s: ~str) -> @ast::expr;
+    fn parse_stmt(s: ~str) -> @ast::stmt;
 }
 
 impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
@@ -330,6 +425,15 @@ impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
         }
     }
 
+    fn parse_stmt(s: ~str) -> @ast::stmt {
+        parse::parse_stmt_from_source_str(
+            ~"***protocol expansion***",
+            @(copy s),
+            self.cfg(),
+            ~[],
+            self.parse_sess())
+    }
+
     fn parse_expr(s: ~str) -> @ast::expr {
         parse::parse_expr_from_source_str(
             ~"***protocol expansion***",
@@ -338,4 +442,3 @@ impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
             self.parse_sess())
     }
 }
-
