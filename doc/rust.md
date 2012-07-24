@@ -1717,9 +1717,7 @@ is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
 ~~~~
-# let buildr = task::builder();
-# task::unsupervise(buildr);
-# do task::run(buildr) {
+# do task::spawn_unlinked {
 
 (~[1, 2, 3, 4])[0];
 (~[mut 'x', 'y'])[1] = 'z';
