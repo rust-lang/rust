@@ -273,7 +273,7 @@ class buffer_resource<T: send> {
     let buffer: ~buffer<T>;
     new(+b: ~buffer<T>) {
         let p = ptr::addr_of(*b);
-        #error("take %?", p);
+        //#error("take %?", p);
         atomic_add_acq(b.header.ref_count, 1);
         self.buffer = b;
     }
@@ -281,7 +281,7 @@ class buffer_resource<T: send> {
     drop unsafe {
         let b = move!{self.buffer};
         let p = ptr::addr_of(*b);
-        #error("drop %?", p);
+        //#error("drop %?", p);
         let old_count = atomic_sub_rel(b.header.ref_count, 1);
         //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
         if old_count == 1 {
@@ -363,7 +363,7 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
           full {
             let mut payload = none;
             payload <-> p.payload;
-            p.header.state = terminated;
+            p.header.state = empty;
             ret some(option::unwrap(payload))
           }
           terminated {
@@ -560,10 +560,10 @@ class send_packet_buffered<T: send, Tbuffer: send> {
             p <-> self.p;
             sender_terminate(option::unwrap(p))
         }
-        unsafe { #error("send_drop: %?",
-                        if self.buffer == none {
-                            "none"
-                        } else { "some" }); }
+        //unsafe { #error("send_drop: %?",
+        //                if self.buffer == none {
+        //                    "none"
+        //                } else { "some" }); }
     }
     fn unwrap() -> *packet<T> {
         let mut p = none;
@@ -586,7 +586,7 @@ class send_packet_buffered<T: send, Tbuffer: send> {
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
-        #error("send reuse_buffer");
+        //#error("send reuse_buffer");
         let mut tmp = none;
         tmp <-> self.buffer;
         option::unwrap(tmp)
@@ -620,10 +620,10 @@ class recv_packet_buffered<T: send, Tbuffer: send> : selectable {
             p <-> self.p;
             receiver_terminate(option::unwrap(p))
         }
-        unsafe { #error("recv_drop: %?",
-                        if self.buffer == none {
-                            "none"
-                        } else { "some" }); }
+        //unsafe { #error("recv_drop: %?",
+        //                if self.buffer == none {
+        //                    "none"
+        //                } else { "some" }); }
     }
     fn unwrap() -> *packet<T> {
         let mut p = none;
@@ -646,7 +646,7 @@ class recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
-        #error("recv reuse_buffer");
+        //#error("recv reuse_buffer");
         let mut tmp = none;
         tmp <-> self.buffer;
         option::unwrap(tmp)
