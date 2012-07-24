@@ -66,7 +66,8 @@ type parameter).
 
 */
 
-import astconv::{ast_conv, ast_ty_to_ty, ast_region_to_region};
+import astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
+import astconv::{ast_region_to_region};
 import collect::{methods}; // ccx.to_ty()
 import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
@@ -75,6 +76,8 @@ import rscope::{in_binding_rscope, region_scope, type_rscope};
 import syntax::ast::ty_i;
 import typeck::infer::{unify_methods}; // infcx.set()
 import typeck::infer::{resolve_type, force_tvar};
+
+import std::map::str_hash;
 
 type fn_ctxt_ =
     // var_bindings, locals and next_var_id are shared
@@ -1628,8 +1631,136 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         }
       }
-      ast::expr_struct(*) {
-        fail ~"XXX structs";
+      ast::expr_struct(path, fields) {
+        // Resolve the path.
+        let class_id;
+        alt tcx.def_map.find(id) {
+            some(ast::def_class(type_def_id)) => {
+                class_id = type_def_id;
+            }
+            _ => {
+                tcx.sess.span_bug(path.span, ~"structure constructor does \
+                                               not name a structure type");
+            }
+        }
+
+        // Look up the number of type parameters and the raw type, and
+        // determine whether the class is region-parameterized.
+        let type_parameter_count, region_parameterized, raw_type;
+        if class_id.crate == ast::local_crate {
+            region_parameterized =
+                tcx.region_paramd_items.contains_key(class_id.node);
+            alt tcx.items.find(class_id.node) {
+                some(ast_map::node_item(@{
+                        node: ast::item_class(type_parameters, _, _, _, _),
+                        _
+                    }, _)) => {
+
+                    type_parameter_count = type_parameters.len();
+
+                    let self_region;
+                    if region_parameterized {
+                        self_region = some(ty::re_bound(ty::br_self));
+                    } else {
+                        self_region = none;
+                    }
+
+                    raw_type = ty::mk_class(tcx, class_id, {
+                        self_r: self_region,
+                        self_ty: none,
+                        tps: ty::ty_params_to_tys(tcx, type_parameters)
+                    });
+                }
+                _ => {
+                    tcx.sess.span_bug(expr.span,
+                                      ~"resolve didn't map this to a class");
+                }
+            }
+        } else {
+            let item_type = ty::lookup_item_type(tcx, class_id);
+            type_parameter_count = (*item_type.bounds).len();
+            region_parameterized = item_type.rp;
+            raw_type = item_type.ty;
+        }
+
+        // Generate the struct type.
+        let self_region;
+        if region_parameterized {
+            self_region = some(fcx.infcx.next_region_var_nb());
+        } else {
+            self_region = none;
+        }
+
+        let type_parameters = fcx.infcx.next_ty_vars(type_parameter_count);
+        let substitutions = {
+            self_r: self_region,
+            self_ty: none,
+            tps: type_parameters
+        };
+
+        let struct_type = ty::subst(tcx, substitutions, raw_type);
+        
+        // Look up the class fields and build up a map.
+        let class_fields = ty::lookup_class_fields(tcx, class_id);
+        let class_field_map = str_hash();
+        let mut fields_found = 0;
+        for class_fields.each |field| {
+            // XXX: Check visibility here.
+            class_field_map.insert(*field.ident, (field.id, false));
+        }
+
+        // Typecheck each field.
+        for fields.each |field| {
+            alt class_field_map.find(*field.node.ident) {
+                none => {
+                    tcx.sess.span_err(field.span,
+                                      #fmt("structure has no field named \
+                                            field named `%s`",
+                                           *field.node.ident));
+                }
+                some((_, true)) => {
+                    tcx.sess.span_err(field.span,
+                                      #fmt("field `%s` specified more than \
+                                            once",
+                                           *field.node.ident));
+                }
+                some((field_id, false)) => {
+                    let expected_field_type =
+                        ty::lookup_field_type(tcx, class_id, field_id,
+                                              substitutions);
+                    bot |= check_expr(fcx,
+                                      field.node.expr,
+                                      some(expected_field_type));
+                    fields_found += 1;
+                }
+            }
+        }
+
+        // Make sure the programmer specified all the fields.
+        assert fields_found <= class_fields.len();
+        if fields_found < class_fields.len() {
+            let mut missing_fields = ~[];
+            for class_fields.each |class_field| {
+                let name = *class_field.ident;
+                let (_, seen) = class_field_map.get(name);
+                if !seen {
+                    vec::push(missing_fields,
+                              ~"`" + name + ~"`");
+                }
+            }
+
+            tcx.sess.span_err(expr.span,
+                              #fmt("missing field%s: %s",
+                                   if missing_fields.len() == 1 {
+                                       ~""
+                                   } else {
+                                       ~"s"
+                                   },
+                                   str::connect(missing_fields, ~", ")));
+        }
+
+        // Write in the resulting type.
+        fcx.write_ty(id, struct_type);
       }
       ast::expr_field(base, field, tys) {
         bot = check_field(fcx, expr, false, base, field, tys);
