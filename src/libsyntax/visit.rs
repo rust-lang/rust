@@ -145,17 +145,20 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, traits, members, ctor, m_dtor) {
+      item_class(tps, traits, members, m_ctor, m_dtor) {
           v.visit_ty_params(tps, e, v);
           for members.each |m| {
              v.visit_class_item(m, e, v);
           }
           for traits.each |p| { visit_path(p.path, e, v); }
-          visit_class_ctor_helper(ctor, i.ident, tps,
-                                  ast_util::local_def(i.id), e, v);
+          do option::iter(m_ctor) |ctor| {
+            visit_class_ctor_helper(ctor, i.ident, tps,
+                                    ast_util::local_def(i.id), e, v);
+          };
           do option::iter(m_dtor) |dtor| {
-                  visit_class_dtor_helper(dtor, tps,
-                     ast_util::local_def(i.id), e, v)};
+            visit_class_dtor_helper(dtor, tps,
+                                    ast_util::local_def(i.id), e, v)
+          };
       }
       item_trait(tps, methods) {
         v.visit_ty_params(tps, e, v);

@@ -242,10 +242,24 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_enum(vec::map(variants, |x| fld.fold_variant(x)),
                       fold_ty_params(typms, fld))
           }
-          item_class(typms, traits, items, ctor, m_dtor) {
-              let ctor_body = fld.fold_block(ctor.node.body);
-              let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
-              let ctor_id   = fld.new_id(ctor.node.id);
+          item_class(typms, traits, items, m_ctor, m_dtor) {
+            let resulting_optional_constructor;
+            alt m_ctor {
+                none => {
+                    resulting_optional_constructor = none;
+                }
+                some(constructor) => {
+                    resulting_optional_constructor = some({
+                        node: {
+                            body: fld.fold_block(constructor.node.body),
+                            dec: fold_fn_decl(constructor.node.dec, fld),
+                            id: fld.new_id(constructor.node.id)
+                            with constructor.node
+                        }
+                        with constructor
+                    });
+                }
+            }
             let dtor = do option::map(m_dtor) |dtor| {
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
@@ -256,10 +270,8 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                   /* FIXME (#2543) */ copy typms,
                   vec::map(traits, |p| fold_trait_ref(p, fld)),
                   vec::map(items, |x| fld.fold_class_item(x)),
-                  {node: {body: ctor_body,
-                          dec: ctor_decl,
-                          id: ctor_id with ctor.node}
-                      with ctor}, dtor)
+                  resulting_optional_constructor,
+                  dtor)
           }
           item_impl(tps, ifce, ty, methods) {
               item_impl(fold_ty_params(tps, fld),

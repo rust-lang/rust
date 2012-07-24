@@ -109,11 +109,13 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, _traits, items, ctor, m_dtor) {
-        cx.rmap.insert(ctor.node.id, ());
-        if tps.len() > 0u || attr::find_inline_attr(ctor.node.attrs)
-                 != attr::ia_none {
-            traverse_inline_body(cx, ctor.node.body);
+      item_class(tps, _traits, items, m_ctor, m_dtor) {
+        do option::iter(m_ctor) |ctor| {
+            cx.rmap.insert(ctor.node.id, ());
+            if tps.len() > 0u || attr::find_inline_attr(ctor.node.attrs)
+                     != attr::ia_none {
+                traverse_inline_body(cx, ctor.node.body);
+            }
         }
         do option::iter(m_dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());

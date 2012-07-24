@@ -878,12 +878,20 @@ class Resolver {
                                                          visitor);
                 }
             }
-            item_class(_, _, class_members, ctor, _) {
+            item_class(_, _, class_members, optional_ctor, _) {
                 (*name_bindings).define_type(def_ty(local_def(item.id)));
 
-                let purity = ctor.node.dec.purity;
-                let ctor_def = def_fn(local_def(ctor.node.id), purity);
-                (*name_bindings).define_value(ctor_def);
+                alt optional_ctor {
+                    none => {
+                        // Nothing to do.
+                    }
+                    some(ctor) => {
+                        let purity = ctor.node.dec.purity;
+                        let ctor_def = def_fn(local_def(ctor.node.id),
+                                              purity);
+                        (*name_bindings).define_value(ctor_def);
+                    }
+                }
 
                 // Create the set of implementation information that the
                 // implementation scopes (ImplScopes) need and write it into
@@ -3043,14 +3051,14 @@ class Resolver {
                 (*self.type_ribs).pop();
             }
 
-            item_class(ty_params, interfaces, class_members, constructor,
-                       optional_destructor) {
+            item_class(ty_params, interfaces, class_members,
+                       optional_constructor, optional_destructor) {
 
                 self.resolve_class(item.id,
                                    @copy ty_params,
                                    interfaces,
                                    class_members,
-                                   constructor,
+                                   optional_constructor,
                                    optional_destructor,
                                    visitor);
             }
@@ -3273,7 +3281,7 @@ class Resolver {
                      type_parameters: @~[ty_param],
                      interfaces: ~[@trait_ref],
                      class_members: ~[@class_member],
-                     constructor: class_ctor,
+                     optional_constructor: option<class_ctor>,
                      optional_destructor: option<class_dtor>,
                      visitor: ResolveVisitor) {
 
@@ -3285,8 +3293,7 @@ class Resolver {
         let borrowed_type_parameters: &~[ty_param] = &*type_parameters;
         do self.with_type_parameter_rib(HasTypeParameters
                                         (borrowed_type_parameters, id, 0u,
-                                         NormalRibKind))
-                || {
+                                         NormalRibKind)) {
 
             // Resolve the type parameters.
             self.resolve_type_parameters(*type_parameters, visitor);
@@ -3331,15 +3338,22 @@ class Resolver {
                 }
             }
 
-            // Resolve the constructor.
-            self.resolve_function(NormalRibKind,
-                                  some(@constructor.node.dec),
-                                  NoTypeParameters,
-                                  constructor.node.body,
-                                  HasSelfBinding(constructor.node.self_id),
-                                  NoCaptureClause,
-                                  visitor);
-
+            // Resolve the constructor, if applicable.
+            alt optional_constructor {
+                none => {
+                    // Nothing to do.
+                }
+                some(constructor) => {
+                    self.resolve_function(NormalRibKind,
+                                          some(@constructor.node.dec),
+                                          NoTypeParameters,
+                                          constructor.node.body,
+                                          HasSelfBinding(constructor.node.
+                                                         self_id),
+                                          NoCaptureClause,
+                                          visitor);
+                }
+            }
 
             // Resolve the destructor, if applicable.
             alt optional_destructor {

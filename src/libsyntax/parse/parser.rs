@@ -2205,20 +2205,22 @@ class parser {
         alt the_ctor {
           some((ct_d, ct_attrs, ct_b, ct_s)) {
             (class_name,
-             item_class(ty_params, traits, ms, {
+             item_class(ty_params, traits, ms, some({
                  node: {id: ctor_id,
                         attrs: ct_attrs,
                         self_id: self.get_id(),
                         dec: ct_d,
                         body: ct_b},
-                 span: ct_s}, actual_dtor),
+                 span: ct_s}), actual_dtor),
              none)
           }
           /*
           Is it strange for the parser to check this?
           */
           none {
-            self.fatal(~"class with no constructor");
+            (class_name,
+             item_class(ty_params, traits, ms, none, actual_dtor),
+             none)
           }
         }
     }

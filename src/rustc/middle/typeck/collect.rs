@@ -346,31 +346,34 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         ensure_trait_methods(ccx, it.id);
       }
-      ast::item_class(tps, traits, members, ctor, m_dtor) {
+      ast::item_class(tps, traits, members, m_ctor, m_dtor) {
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
-        // Write the ctor type
-        let t_args = ctor.node.dec.inputs.map(
-            |a| ty_of_arg(ccx, type_rscope(rp), a, none) );
-        let t_res = ty::mk_class(
-            tcx, local_def(it.id),
-            {self_r: if rp {some(ty::re_bound(ty::br_self))} else {none},
-             self_ty: none,
-             tps: ty::ty_params_to_tys(tcx, tps)});
-        let t_ctor = ty::mk_fn(
-            tcx, {purity: ast::impure_fn,
-                  proto: ast::proto_any,
-                  inputs: t_args,
-                  output: t_res,
-                  ret_style: ast::return_val});
-        // constraints, or remove constraints from the language
-        write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
-        tcx.tcache.insert(local_def(ctor.node.id),
-                          {bounds: tpt.bounds,
-                           rp: rp,
-                           ty: t_ctor});
+
+        do option::iter(m_ctor) |ctor| {
+            // Write the ctor type
+            let t_args = ctor.node.dec.inputs.map(
+                |a| ty_of_arg(ccx, type_rscope(rp), a, none) );
+            let t_res = ty::mk_class(
+                tcx, local_def(it.id),
+                {self_r: if rp {some(ty::re_bound(ty::br_self))} else {none},
+                 self_ty: none,
+                 tps: ty::ty_params_to_tys(tcx, tps)});
+            let t_ctor = ty::mk_fn(
+                tcx, {purity: ast::impure_fn,
+                      proto: ast::proto_any,
+                      inputs: t_args,
+                      output: t_res,
+                      ret_style: ast::return_val});
+            write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
+            tcx.tcache.insert(local_def(ctor.node.id),
+                              {bounds: tpt.bounds,
+                               rp: rp,
+                               ty: t_ctor});
+        }
+
         do option::iter(m_dtor) |dtor| {
             // Write the dtor type
             let t_dtor = ty::mk_fn(
