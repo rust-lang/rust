@@ -722,9 +722,9 @@ rust_port_id_send(rust_port_id target_port_id, void *sptr) {
 
 // This is called by an intrinsic on the Rust stack and must run
 // entirely in the red zone. Do not call on the C stack.
-extern "C" CDECL void
+extern "C" CDECL MUST_CHECK bool
 rust_task_yield(rust_task *task, bool *killed) {
-    task->yield(killed);
+    return task->yield();
 }
 
 extern "C" CDECL void
@@ -920,8 +920,8 @@ rust_wait_cond_lock(rust_cond_lock *lock) {
     lock->waiting = task;
     task->block(lock, "waiting for signal");
     lock->lock.unlock();
-    bool killed = false;
-    task->yield(&killed);
+    bool killed = task->yield();
+    assert(!killed && "unimplemented");
     lock->lock.lock();
 }
 
@@ -960,12 +960,12 @@ task_clear_event_reject(rust_task *task) {
 
 // Waits on an event, returning the pointer to the event that unblocked this
 // task.
-extern "C" void *
-task_wait_event(rust_task *task, bool *killed) {
-    // FIXME #2890: we should assert that the passed in task is the currently
+extern "C" MUST_CHECK bool
+task_wait_event(rust_task *task, void **result) {
+    // Maybe (if not too slow) assert that the passed in task is the currently
     // running task. We wouldn't want to wait some other task.
 
-    return task->wait_event(killed);
+    return task->wait_event(result);
 }
 
 extern "C" void

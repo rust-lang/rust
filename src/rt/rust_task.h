@@ -259,7 +259,8 @@ public:
     void backtrace();
 
     // Yields control to the scheduler. Called from the Rust stack
-    void yield(bool *killed);
+    // Returns TRUE if the task was killed and needs to fail.
+    MUST_CHECK bool yield();
 
     // Fail this task (assuming caller-on-stack is different task).
     void kill();
@@ -311,7 +312,8 @@ public:
         this->event_reject = false;
     }
 
-    void *wait_event(bool *killed);
+    // Returns TRUE if the task was killed and needs to fail.
+    MUST_CHECK bool wait_event(void **result);
     void signal_event(void *event);
 
     void cleanup_after_turn();

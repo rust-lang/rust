@@ -85,6 +85,8 @@ extern "C" int check_claims;
         }                                                           \
     }
 
+#define MUST_CHECK __attribute__((warn_unused_result))
+
 #define PTR "0x%" PRIxPTR
 
 // This accounts for logging buffers.
