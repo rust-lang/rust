@@ -312,7 +312,7 @@ mod rt {
         let mut s = str::from_char(c);
         ret pad(cv, s, pad_nozero);
     }
-    fn conv_str(cv: conv, s: &str) -> ~str {
+    pure fn conv_str(cv: conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = alt cv.precision {
@@ -323,7 +323,7 @@ mod rt {
             } else { s.to_unique() }
           }
         };
-        ret pad(cv, unpadded, pad_nozero);
+        ret unchecked { pad(cv, unpadded, pad_nozero) };
     }
     fn conv_float(cv: conv, f: float) -> ~str {
         let (to_str, digits) = alt cv.precision {
@@ -398,7 +398,7 @@ mod rt {
           pad_float {   {might_zero_pad:true,  signed:true } }
           pad_unsigned { {might_zero_pad:true,  signed:false} }
         };
-        fn have_precision(cv: conv) -> bool {
+        pure fn have_precision(cv: conv) -> bool {
             ret alt cv.precision { count_implied { false } _ { true } };
         }
         let zero_padding = {
@@ -428,7 +428,7 @@ mod rt {
         }
         ret padstr + s;
     }
-    fn have_flag(flags: u32, f: u32) -> bool {
+    pure fn have_flag(flags: u32, f: u32) -> bool {
         flags & f != 0
     }
 }
