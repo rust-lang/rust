@@ -86,8 +86,6 @@ pure fn lookup_cur_ad_by_ad(r: tt_reader, start: @arb_depth) -> @arb_depth {
           seq(ads, _) { ads[idx] }
         }
     }
-    unchecked {io::println(#fmt["%? / %?", copy r.repeat_idx,
-                                copy r.repeat_len]);};
     vec::foldl(start, r.repeat_idx, red)
 }
 
@@ -135,7 +133,7 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
 
 fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
     let ret_val = { tok: r.cur_tok, sp: r.cur_span };
-    while r.cur.idx >= vec::len(r.cur.readme) {
+    while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */
         if ! r.cur.dotdotdoted
             || r.repeat_idx.last() == r.repeat_len.last() - 1 {
@@ -193,11 +191,6 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                 r.sp_diag.span_fatal(sp, msg);
               }
               lis_constraint(len, _) {
-                vec::push(r.repeat_len, len);
-                vec::push(r.repeat_idx, 0u);
-                r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
-                          sep: sep, up: tt_frame_up(option::some(r.cur)) };
-
                 if len == 0 {
                     if !zerok {
                         r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
@@ -205,8 +198,14 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                                              ~"this must repeat at least \
                                               once");
                     }
-                    /* we need to pop before we proceed, so recur */
+
+                    r.cur.idx += 1u;
                     ret tt_next_token(r);
+                } else {
+                    vec::push(r.repeat_len, len);
+                    vec::push(r.repeat_idx, 0u);
+                    r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
+                              sep: sep, up: tt_frame_up(option::some(r.cur))};
                 }
               }
             }
