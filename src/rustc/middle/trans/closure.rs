@@ -319,7 +319,7 @@ fn load_environment(fcx: fn_ctxt,
                     load_ret_handle: bool,
                     ck: ty::closure_kind) {
     let _icx = fcx.insn_ctxt(~"closure::load_environment");
-    let bcx = raw_block(fcx, fcx.llloadenv);
+    let bcx = raw_block(fcx, false, fcx.llloadenv);
 
     // Load a pointer to the closure data, skipping over the box header:
     let llcdata = base::opaque_box_body(bcx, cdata_ty, fcx.llenv);

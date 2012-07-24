@@ -537,7 +537,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
     tie_up_header_blocks(fcx, lltop);
 
     // Make sure our standard return block (that we didn't use) is terminated
-    let ret_cx = raw_block(fcx, fcx.llreturn);
+    let ret_cx = raw_block(fcx, false, fcx.llreturn);
     Unreachable(ret_cx);
 }
 

@@ -276,7 +276,7 @@ fn alloca_zeroed(cx: block, t: TypeRef) -> ValueRef {
 fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     let _icx = cx.insn_ctxt(~"alloca");
     if cx.unreachable { ret llvm::LLVMGetUndef(t); }
-    let initcx = raw_block(cx.fcx, cx.fcx.llstaticallocas);
+    let initcx = raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
     let p = Alloca(initcx, t);
     if zero { Store(initcx, C_null(t), p); }
     ret p;
@@ -294,7 +294,7 @@ fn zero_mem(cx: block, llptr: ValueRef, t: ty::t) -> block {
 fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt(~"arrayalloca");
     if cx.unreachable { ret llvm::LLVMGetUndef(t); }
-    ret ArrayAlloca(raw_block(cx.fcx, cx.fcx.llstaticallocas), t, v);
+    ret ArrayAlloca(raw_block(cx.fcx, false, cx.fcx.llstaticallocas), t, v);
 }
 
 // Given a pointer p, returns a pointer sz(p) (i.e., inc'd by sz bytes).
@@ -3228,6 +3228,11 @@ fn need_invoke(bcx: block) -> bool {
         ret false;
     }
 
+    // Avoid using invoke if we are already inside a landing pad.
+    if bcx.is_lpad {
+        ret false;
+    }
+
     if have_cached_lpad(bcx) {
         ret true;
     }
@@ -3291,7 +3296,7 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
         alt copy inf.landing_pad {
           some(target) { cached = some(target); }
           none {
-            pad_bcx = sub_block(bcx, ~"unwind");
+            pad_bcx = lpad_block(bcx, ~"unwind");
             inf.landing_pad = some(pad_bcx.llbb);
           }
         }
@@ -4107,7 +4112,8 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block(cx: fn_ctxt, parent: option<block>, +kind: block_kind,
-             name: ~str, opt_node_info: option<node_info>) -> block {
+             is_lpad: bool, name: ~str, opt_node_info: option<node_info>)
+    -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
         cx.ccx.names(name)
@@ -4115,7 +4121,7 @@ fn new_block(cx: fn_ctxt, parent: option<block>, +kind: block_kind,
     let llbb: BasicBlockRef = str::as_c_str(s, |buf| {
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
-    let bcx = mk_block(llbb, parent, kind, opt_node_info, cx);
+    let bcx = mk_block(llbb, parent, kind, is_lpad, opt_node_info, cx);
     do option::iter(parent) |cx| {
         if cx.unreachable { Unreachable(bcx); }
     };
@@ -4129,14 +4135,14 @@ fn simple_block_scope() -> block_kind {
 
 // Use this when you're at the top block of a function or the like.
 fn top_scope_block(fcx: fn_ctxt, opt_node_info: option<node_info>) -> block {
-    ret new_block(fcx, none, simple_block_scope(),
+    ret new_block(fcx, none, simple_block_scope(), false,
                   ~"function top level", opt_node_info);
 }
 
 fn scope_block(bcx: block,
                opt_node_info: option<node_info>,
                n: ~str) -> block {
-    ret new_block(bcx.fcx, some(bcx), simple_block_scope(),
+    ret new_block(bcx.fcx, some(bcx), simple_block_scope(), bcx.is_lpad,
                   n, opt_node_info);
 }
 
@@ -4147,17 +4153,21 @@ fn loop_scope_block(bcx: block, loop_break: block, n: ~str,
         mut cleanups: ~[],
         mut cleanup_paths: ~[],
         mut landing_pad: none
-    }), n, opt_node_info);
+    }), bcx.is_lpad, n, opt_node_info);
 }
 
+// Use this when creating a block for the inside of a landing pad.
+fn lpad_block(bcx: block, n: ~str) -> block {
+    new_block(bcx.fcx, some(bcx), block_non_scope, true, n, none)
+}
 
 // Use this when you're making a general CFG BB within a scope.
 fn sub_block(bcx: block, n: ~str) -> block {
-    new_block(bcx.fcx, some(bcx), block_non_scope, n, none)
+    new_block(bcx.fcx, some(bcx), block_non_scope, bcx.is_lpad, n, none)
 }
 
-fn raw_block(fcx: fn_ctxt, llbb: BasicBlockRef) -> block {
-    mk_block(llbb, none, block_non_scope, none, fcx)
+fn raw_block(fcx: fn_ctxt, is_lpad: bool, llbb: BasicBlockRef) -> block {
+    mk_block(llbb, none, block_non_scope, is_lpad, none, fcx)
 }
 
 
@@ -4475,14 +4485,14 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: ~[ast::arg],
 fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt(~"finish_fn");
     tie_up_header_blocks(fcx, lltop);
-    let ret_cx = raw_block(fcx, fcx.llreturn);
+    let ret_cx = raw_block(fcx, false, fcx.llreturn);
     RetVoid(ret_cx);
 }
 
 fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt(~"tie_up_header_blocks");
-    Br(raw_block(fcx, fcx.llstaticallocas), fcx.llloadenv);
-    Br(raw_block(fcx, fcx.llloadenv), lltop);
+    Br(raw_block(fcx, false, fcx.llstaticallocas), fcx.llloadenv);
+    Br(raw_block(fcx, false, fcx.llloadenv), lltop);
 }
 
 enum self_arg { impl_self(ty::t), no_self, }

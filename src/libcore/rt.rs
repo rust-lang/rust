@@ -37,6 +37,9 @@ fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     ret rustrt::rust_upcall_exchange_malloc(td, size);
 }
 
+// NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
+// inside a landing pad may corrupt the state of the exception handler. If a
+// problem occurs, call exit instead.
 #[rt(exchange_free)]
 fn rt_exchange_free(ptr: *c_char) {
     rustrt::rust_upcall_exchange_free(ptr);
@@ -47,6 +50,9 @@ fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     ret rustrt::rust_upcall_malloc(td, size);
 }
 
+// NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
+// inside a landing pad may corrupt the state of the exception handler. If a
+// problem occurs, call exit instead.
 #[rt(free)]
 fn rt_free(ptr: *c_char) {
     rustrt::rust_upcall_free(ptr);
