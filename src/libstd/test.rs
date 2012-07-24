@@ -9,6 +9,7 @@ import either::either;
 import result::{ok, err};
 import io::writer_util;
 import libc::size_t;
+import task::task_builder;
 
 export test_name;
 export test_fn;
@@ -392,11 +393,11 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
 
     do task::spawn {
         let testfn = copy test.fn;
-        let mut builder = task::builder();
-        let result_future = task::future_result(builder);
-        task::unsupervise(builder);
-        task::run(builder, testfn);
-        let task_result = future::get(result_future);
+        let mut result_future = none; // task::future_result(builder);
+        task::task().unlinked().future_result(|-r| {
+            result_future = some(r);
+        }).spawn(testfn);
+        let task_result = future::get(option::unwrap(result_future));
         let test_result = calc_result(test, task_result == task::success);
         comm::send(monitor_ch, (copy test, test_result));
     };
