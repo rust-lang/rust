@@ -636,7 +636,8 @@ enum item_ {
                ~[@trait_ref],   /* traits this class implements */
                ~[@class_member], /* methods, etc. */
                                /* (not including ctor or dtor) */
-               class_ctor,
+               /* ctor is optional, and will soon go away */
+               option<class_ctor>,
                /* dtor is optional */
                option<class_dtor>
                ),

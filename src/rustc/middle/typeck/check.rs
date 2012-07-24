@@ -392,25 +392,29 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| { check_method(ccx, m, self_ty);}
       }
-      ast::item_class(tps, traits, members, ctor, m_dtor) {
-          let tcx = ccx.tcx;
-          let class_t = ty::node_id_to_type(tcx, it.id);
-          // typecheck the ctor
-          check_bare_fn(ccx, ctor.node.dec,
-                        ctor.node.body, ctor.node.id,
-                        some(class_t));
-          // Write the ctor's self's type
-          write_ty_to_tcx(tcx, ctor.node.self_id, class_t);
+      ast::item_class(tps, traits, members, m_ctor, m_dtor) {
+        let tcx = ccx.tcx;
+        let class_t = ty::node_id_to_type(tcx, it.id);
+
+        do option::iter(m_ctor) |ctor| {
+            // typecheck the ctor
+            check_bare_fn(ccx, ctor.node.dec,
+                          ctor.node.body, ctor.node.id,
+                          some(class_t));
+            // Write the ctor's self's type
+            write_ty_to_tcx(tcx, ctor.node.self_id, class_t);
+        }
 
         do option::iter(m_dtor) |dtor| {
             // typecheck the dtor
-           check_bare_fn(ccx, ast_util::dtor_dec(),
-                           dtor.node.body, dtor.node.id,
-                           some(class_t));
-           // Write the dtor's self's type
-           write_ty_to_tcx(tcx, dtor.node.self_id, class_t);
-          };
-          // typecheck the members
+            check_bare_fn(ccx, ast_util::dtor_dec(),
+                         dtor.node.body, dtor.node.id,
+                         some(class_t));
+            // Write the dtor's self's type
+            write_ty_to_tcx(tcx, dtor.node.self_id, class_t);
+        };
+
+        // typecheck the members
         for members.each |m| { check_class_member(ccx, class_t, m); }
           // Check that there's at least one field
           let (fields,_) = split_class_items(members);

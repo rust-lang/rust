@@ -488,7 +488,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps, traits, items, ctor, m_dtor) {
+      ast::item_class(tps, traits, items, m_ctor, m_dtor) {
           head(s, ~"class");
           word_nbsp(s, *item.ident);
           print_type_params(s, tps);
@@ -499,16 +499,18 @@ fn print_item(s: ps, &&item: @ast::item) {
           }
           bopen(s);
           hardbreak_if_not_bol(s);
-          maybe_print_comment(s, ctor.span.lo);
-          print_outer_attributes(s, ctor.node.attrs);
-          /* Doesn't call head because there shouldn't be a space after new */
-          cbox(s, indent_unit);
-          ibox(s, 4);
-          word(s.s, ~"new(");
-          print_fn_args(s, ctor.node.dec, ~[]);
-          word(s.s, ~")");
-          space(s.s);
-          print_block(s, ctor.node.body);
+          do option::iter(m_ctor) |ctor| {
+            maybe_print_comment(s, ctor.span.lo);
+            print_outer_attributes(s, ctor.node.attrs);
+            // Doesn't call head because there shouldn't be a space after new.
+            cbox(s, indent_unit);
+            ibox(s, 4);
+            word(s.s, ~"new(");
+            print_fn_args(s, ctor.node.dec, ~[]);
+            word(s.s, ~")");
+            space(s.s);
+            print_block(s, ctor.node.body);
+          }
           do option::iter(m_dtor) |dtor| {
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, dtor.span.lo);

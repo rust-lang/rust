@@ -193,7 +193,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
               encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
           }
-          item_class(_, _, items, ctor, m_dtor) {
+          item_class(_, _, items, m_ctor, m_dtor) {
             do ebml_w.wr_tag(tag_paths_data_item) {
                 encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
@@ -201,8 +201,17 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 // We add the same ident twice: for the
                 // class and for its ctor
                 add_to_index(ebml_w, path, index, it.ident);
-                encode_named_def_id(ebml_w, it.ident,
-                                    local_def(ctor.node.id));
+
+                alt m_ctor {
+                    none => {
+                        // Nothing to do.
+                    }
+                    some(ctor) {
+                        encode_named_def_id(ebml_w, it.ident,
+                                            local_def(ctor.node.id));
+                    }
+                }
+
                 encode_class_item_paths(ebml_w, items,
                                         vec::append_one(path, it.ident),
                                         index);
@@ -817,18 +826,20 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
                 alt i.node {
-                   item_class(tps, _, _, ctor, m_dtor) {
-                   #debug("encoding info for ctor %s %d", *i.ident,
-                          ctor.node.id);
-                   vec::push(*index,
-                             {val: ctor.node.id, pos: ebml_w.writer.tell()});
-                   encode_info_for_fn(ecx, ebml_w, ctor.node.id, i.ident,
-                      *pt, if tps.len() > 0u {
-                             some(ii_ctor(ctor, i.ident, tps,
-                                          local_def(i.id))) }
-                      else { none }, tps, ctor.node.dec);
-                  }
-                  _ {}
+                   item_class(tps, _, _, some(ctor), m_dtor) {
+                       #debug("encoding info for ctor %s %d", *i.ident,
+                              ctor.node.id);
+                       vec::push(*index, {
+                            val: ctor.node.id,
+                            pos: ebml_w.writer.tell()
+                       });
+                       encode_info_for_fn(ecx, ebml_w, ctor.node.id, i.ident,
+                          *pt, if tps.len() > 0u {
+                                 some(ii_ctor(ctor, i.ident, tps,
+                                              local_def(i.id))) }
+                          else { none }, tps, ctor.node.dec);
+                   }
+                   _ {}
                 }
               }
             }
