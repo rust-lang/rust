@@ -1,134 +1,9 @@
-/*
+/*!
 
-Region resolution. This pass runs before typechecking and resolves region
-names to the appropriate block.
-
-This seems to be as good a place as any to explain in detail how
-region naming, representation, and type check works.
-
-### Naming and so forth
-
-We really want regions to be very lightweight to use. Therefore,
-unlike other named things, the scopes for regions are not explicitly
-declared: instead, they are implicitly defined.  Functions declare new
-scopes: if the function is not a bare function, then as always it
-inherits the names in scope from the outer scope.  Within a function
-declaration, new names implicitly declare new region variables.  Outside
-of function declarations, new names are illegal.  To make this more
-concrete, here is an example:
-
-    fn foo(s: &a.S, t: &b.T) {
-        let s1: &a.S = s; // a refers to the same a as in the decl
-        let t1: &c.T = t; // illegal: cannot introduce new name here
-    }
-
-The code in this file is what actually handles resolving these names.
-It creates a couple of maps that map from the AST node representing a
-region ptr type to the resolved form of its region parameter.  If new
-names are introduced where they shouldn't be, then an error is
-reported.
-
-If regions are not given an explicit name, then the behavior depends
-a bit on the context.  Within a function declaration, all unnamed regions
-are mapped to a single, anonymous parameter.  That is, a function like:
-
-    fn foo(s: &S) -> &S { s }
-
-is equivalent to a declaration like:
-
-    fn foo(s: &a.S) -> &a.S { s }
-
-Within a function body or other non-binding context, an unnamed region
-reference is mapped to a fresh region variable whose value can be
-inferred as normal.
-
-The resolved form of regions is `ty::region`.  Before I can explain
-why this type is setup the way it is, I have to digress a little bit
-into some ill-explained type theory.
-
-### Universal Quantification
-
-Regions are more complex than type parameters because, unlike type
-parameters, they can be universally quantified within a type.  To put
-it another way, you cannot (at least at the time of this writing) have
-a variable `x` of type `fn<T>(T) -> T`.  You can have an *item* of
-type `fn<T>(T) -> T`, but whenever it is referenced within a method,
-that type parameter `T` is replaced with a concrete type *variable*
-`$T`.  To make this more concrete, imagine this code:
-
-    fn identity<T>(x: T) -> T { x }
-    let f = identity; // f has type fn($T) -> $T
-    f(3u); // $T is bound to uint
-    f(3);  // Type error
-
-You can see here that a type error will result because the type of `f`
-(as opposed to the type of `identity`) is not universally quantified
-over `$T`.  That's fancy math speak for saying that the type variable
-`$T` refers to a specific type that may not yet be known, unlike the
-type parameter `T` which refers to some type which will never be
-known.
-
-Anyway, regions work differently.  If you have an item of type
-`fn(&a.T) -> &a.T` and you reference it, its type remains the same:
-only when the function *is called* is `&a` instantiated with a
-concrete region variable.  This means you could call it twice and give
-different values for `&a` each time.
-
-This more general form is possible for regions because they do not
-impact code generation.  We do not need to monomorphize functions
-differently just because they contain region pointers.  In fact, we
-don't really do *anything* differently.
-
-### Representing regions; or, why do I care about all that?
-
-The point of this discussion is that the representation of regions
-must distinguish between a *bound* reference to a region and a *free*
-reference.  A bound reference is one which will be replaced with a
-fresh type variable when the function is called, like the type
-parameter `T` in `identity`.  They can only appear within function
-types.  A free reference is a region that may not yet be concretely
-known, like the variable `$T`.
-
-To see why we must distinguish them carefully, consider this program:
-
-    fn item1(s: &a.S) {
-        let choose = fn@(s1: &a.S) -> &a.S {
-            if some_cond { s } else { s1 }
-        };
-    }
-
-Here, the variable `s1: &a.S` that appears within the `fn@` is a free
-reference to `a`.  That is, when you call `choose()`, you don't
-replace `&a` with a fresh region variable, but rather you expect `s1`
-to be in the same region as the parameter `s`.
-
-But in this program, this is not the case at all:
-
-    fn item2() {
-        let identity = fn@(s1: &a.S) -> &a.S { s1 };
-    }
-
-To distinguish between these two cases, `ty::region` contains two
-variants: `re_bound` and `re_free`.  In `item1()`, the outer reference
-to `&a` would be `re_bound(rid_param("a", 0u))`, and the inner reference
-would be `re_free(rid_param("a", 0u))`.  In `item2()`, the inner reference
-would be `re_bound(rid_param("a", 0u))`.
-
-#### Implications for typeck
-
-In typeck, whenever we call a function, we must go over and replace
-all references to `re_bound()` regions within its parameters with
-fresh type variables (we do not, however, replace bound regions within
-nested function types, as those nested functions have not yet been
-called).
-
-Also, when we typecheck the *body* of an item, we must replace all
-`re_bound` references with `re_free` references.  This means that the
-region in the type of the argument `s` in `item1()` *within `item1()`*
-is not `re_bound(re_param("a", 0u))` but rather `re_free(re_param("a",
-0u))`.  This is because, for any particular *invocation of `item1()`*,
-`&a` will be bound to some specific region, and hence it is no longer
-bound.
+This file actually contains two passes related to regions.  The first
+pass builds up the `region_map`, which describes the parent links in
+the region hierarchy.  The second pass infers which types must be
+region parameterized.
 
 */
 
@@ -153,10 +28,10 @@ type binding = {node_id: ast::node_id,
                 name: ~str,
                 br: ty::bound_region};
 
-// Mapping from a block/expr/binding to the innermost scope that
-// bounds its lifetime.  For a block/expression, this is the lifetime
-// in which it will be evaluated.  For a binding, this is the lifetime
-// in which is in scope.
+/// Mapping from a block/expr/binding to the innermost scope that
+/// bounds its lifetime.  For a block/expression, this is the lifetime
+/// in which it will be evaluated.  For a binding, this is the lifetime
+/// in which is in scope.
 type region_map = hashmap<ast::node_id, ast::node_id>;
 
 type ctxt = {
@@ -198,8 +73,8 @@ type ctxt = {
     parent: parent
 };
 
-// Returns true if `subscope` is equal to or is lexically nested inside
-// `superscope` and false otherwise.
+/// Returns true if `subscope` is equal to or is lexically nested inside
+/// `superscope` and false otherwise.
 fn scope_contains(region_map: region_map, superscope: ast::node_id,
                   subscope: ast::node_id) -> bool {
     let mut subscope = subscope;
@@ -212,6 +87,9 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
     ret true;
 }
 
+/// Finds the nearest common ancestor (if any) of two scopes.  That
+/// is, finds the smallest scope which is greater than or equal to
+/// both `scope_a` and `scope_b`.
 fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
                            scope_b: ast::node_id) -> option<ast::node_id> {
 
@@ -262,6 +140,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
     }
 }
 
+/// Extracts that current parent from cx, failing if there is none.
 fn parent_id(cx: ctxt, span: span) -> ast::node_id {
     alt cx.parent {
       none {
@@ -273,6 +152,7 @@ fn parent_id(cx: ctxt, span: span) -> ast::node_id {
     }
 }
 
+/// Records the current parent (if any) as the parent of `child_id`.
 fn record_parent(cx: ctxt, child_id: ast::node_id) {
     alt cx.parent {
       none { /* no-op */ }

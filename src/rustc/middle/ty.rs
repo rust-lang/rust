@@ -307,6 +307,13 @@ enum closure_kind {
     ck_uniq,
 }
 
+/// Innards of a function type:
+///
+/// - `purity` is the function's effect (pure, impure, unsafe).
+/// - `proto` is the protocol (fn@, fn~, etc).
+/// - `inputs` is the list of arguments and their modes.
+/// - `output` is the return type.
+/// - `ret_style`indicates whether the function returns a value or fails.
 type fn_ty = {purity: ast::purity,
               proto: ast::proto,
               inputs: ~[arg],
@@ -315,13 +322,32 @@ type fn_ty = {purity: ast::purity,
 
 type param_ty = {idx: uint, def_id: def_id};
 
-// See discussion at head of region.rs
+/// Representation of regions:
 enum region {
+    /// Bound regions are found (primarily) in function types.  They indicate
+    /// region parameters that have yet to be replaced with actual regions
+    /// (analogous to type parameters, except that due to the monomorphic
+    /// nature of our type system, bound type parameters are always replaced
+    /// with fresh type variables whenever an item is referenced, so type
+    /// parameters only appear "free" in types.  Regions in contrast can
+    /// appear free or bound.).  When a function is called, all bound regions
+    /// tied to that function's node-id are replaced with fresh region
+    /// variables whose value is then inferred.
     re_bound(bound_region),
+
+    /// When checking a function body, the types of all arguments and so forth
+    /// that refer to bound region parameters are modified to refer to free
+    /// region parameters.
     re_free(node_id, bound_region),
+
+    /// A concrete region naming some expression within the current function.
     re_scope(node_id),
+
+    /// Static data that has an "infinite" lifetime.
+    re_static,
+
+    /// A region variable.  Should not exist after typeck.
     re_var(region_vid),
-    re_static // effectively `top` in the region lattice
 }
 
 enum bound_region {
@@ -332,16 +358,22 @@ enum bound_region {
 
 type opt_region = option<region>;
 
-// The type substs represents the kinds of things that can be substituted into
-// a type.  There may be at most one region parameter (self_r), along with
-// some number of type parameters (tps).
-//
-// The region parameter is present on nominative types (enums, resources,
-// classes) that are declared as having a region parameter.  If the type is
-// declared as `enum foo&`, then self_r should always be non-none.  If the
-// type is declared as `enum foo`, then self_r will always be none.  In the
-// latter case, typeck::ast_ty_to_ty() will reject any references to `&T` or
-// `&self.T` within the type and report an error.
+/// The type substs represents the kinds of things that can be substituted to
+/// convert a polytype into a monotype.  Note however that substituting bound
+/// regions other than `self` is done through a different mechanism.
+///
+/// `tps` represents the type parameters in scope.  They are indexed according
+/// to the order in which they were declared.
+///
+/// `self_r` indicates the region parameter `self` that is present on nominal
+/// types (enums, classes) declared as having a region parameter.  `self_r`
+/// should always be none for types that are not region-parameterized and
+/// some(_) for types that are.  The only bound region parameter that should
+/// appear within a region-parameterized type is `self`.
+///
+/// `self_ty` is the type to which `self` should be remapped, if any.  The
+/// `self` type is rather funny in that it can only appear on interfaces and
+/// is always substituted away to the implementing type for an interface.
 type substs = {
     self_r: opt_region,
     self_ty: option<ty::t>,
