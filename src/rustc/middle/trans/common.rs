@@ -393,17 +393,19 @@ class block_ {
     let parent: option<block>;
     // The 'kind' of basic block this is.
     let kind: block_kind;
+    // Is this block part of a landing pad?
+    let is_lpad: bool;
     // info about the AST node this block originated from, if any
     let node_info: option<node_info>;
     // The function context for the function to which this block is
     // attached.
     let fcx: fn_ctxt;
     new(llbb: BasicBlockRef, parent: option<block>, -kind: block_kind,
-        node_info: option<node_info>, fcx: fn_ctxt) {
+        is_lpad: bool, node_info: option<node_info>, fcx: fn_ctxt) {
         // sigh
         self.llbb = llbb; self.terminated = false; self.unreachable = false;
-        self.parent = parent; self.kind = kind; self.node_info = node_info;
-        self.fcx = fcx;
+        self.parent = parent; self.kind = kind; self.is_lpad = is_lpad;
+        self.node_info = node_info; self.fcx = fcx;
     }
 }
 
@@ -412,8 +414,9 @@ class block_ {
 enum block = @block_;
 
 fn mk_block(llbb: BasicBlockRef, parent: option<block>, -kind: block_kind,
-         node_info: option<node_info>, fcx: fn_ctxt) -> block {
-   block(@block_(llbb, parent, kind, node_info, fcx))
+            is_lpad: bool, node_info: option<node_info>, fcx: fn_ctxt)
+    -> block {
+    block(@block_(llbb, parent, kind, is_lpad, node_info, fcx))
 }
 
 // First two args are retptr, env
