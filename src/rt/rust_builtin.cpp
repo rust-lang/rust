@@ -882,6 +882,11 @@ rust_task_kill_all(rust_task *task) { /* Used for linked failure */
     main_taskgroup_failed = true;
 }
 
+extern "C" CDECL
+bool rust_task_is_unwinding(rust_task *rt) {
+    return rt->unwinding;
+}
+
 extern "C" rust_cond_lock*
 rust_create_cond_lock() {
     return new rust_cond_lock();

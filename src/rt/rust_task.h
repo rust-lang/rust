@@ -274,7 +274,6 @@ public:
     void fail(char const *expr, char const *file, size_t line);
 
     // Propagate failure to the entire rust runtime.
-    // FIXME (#1868) (bblum): maybe this can be done at rust-level?
     void fail_sched_loop();
 
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);

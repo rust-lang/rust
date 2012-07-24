@@ -295,12 +295,6 @@ void rust_task::kill_inner() {
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
 }
 
-// (bblum): Move this to rust_builtin.cpp (cleanup)
-extern "C" CDECL
-bool rust_task_is_unwinding(rust_task *rt) {
-    return rt->unwinding;
-}
-
 void
 rust_task::fail() {
     // See note in ::kill() regarding who should call this.
