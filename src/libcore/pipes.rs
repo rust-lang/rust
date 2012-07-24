@@ -20,6 +20,8 @@ export select, select2, selecti, select2i, selectable;
 export spawn_service, spawn_service_recv;
 export stream, port, chan, shared_chan, port_set, channel;
 
+const SPIN_COUNT: uint = 0;
+
 macro_rules! move {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
@@ -272,7 +274,7 @@ unsafe fn get_buffer<T: send>(p: *packet_header) -> ~buffer<T> {
 class buffer_resource<T: send> {
     let buffer: ~buffer<T>;
     new(+b: ~buffer<T>) {
-        let p = ptr::addr_of(*b);
+        //let p = ptr::addr_of(*b);
         //#error("take %?", p);
         atomic_add_acq(b.header.ref_count, 1);
         self.buffer = b;
@@ -280,7 +282,7 @@ class buffer_resource<T: send> {
 
     drop unsafe {
         let b = move!{self.buffer};
-        let p = ptr::addr_of(*b);
+        //let p = ptr::addr_of(*b);
         //#error("drop %?", p);
         let old_count = atomic_sub_rel(b.header.ref_count, 1);
         //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
@@ -345,6 +347,7 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
     rustrt::task_clear_event_reject(this);
     p.header.blocked_task = some(this);
     let mut first = true;
+    let mut count = SPIN_COUNT;
     loop {
         rustrt::task_clear_event_reject(this);
         let old_state = swap_state_acq(p.header.state,
@@ -352,7 +355,18 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
         alt old_state {
           empty {
             #debug("no data available on %?, going to sleep.", p_);
-            wait_event(this);
+            if count == 0 {
+                wait_event(this);
+            }
+            else {
+                count -= 1;
+                // FIXME (#524): Putting the yield here destroys a lot
+                // of the benefit of spinning, since we still go into
+                // the scheduler at every iteration. However, without
+                // this everything spins too much because we end up
+                // sometimes blocking the thing we are waiting on.
+                task::yield();
+            }
             #debug("woke up, p.state = %?", copy p.header.state);
           }
           blocked {
