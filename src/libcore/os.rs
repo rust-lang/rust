@@ -96,7 +96,7 @@ mod win32 {
         let mut done = false;
         while !done {
             let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
-            do vec::as_mut_buf(buf) |b| {
+            do vec::as_mut_buf(buf) |b, _sz| {
                 let k : dword = f(b, tmpbuf_sz as dword);
                 if k == (0 as dword) {
                     done = true;
