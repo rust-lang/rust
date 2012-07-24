@@ -136,7 +136,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
                 ::unsafe::forget(v);
             }
             blk += ~[0_u8];
-            vec::as_buf(blk, |p| cb(::unsafe::reinterpret_cast(p)))
+            vec::as_buf(blk, |p, _len| cb(::unsafe::reinterpret_cast(p)))
           }
           _ {
             cb(ptr::null())
