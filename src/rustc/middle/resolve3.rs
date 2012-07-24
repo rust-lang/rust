@@ -14,15 +14,15 @@ import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_new, expr_path};
-import syntax::ast::{expr_unary, fn_decl, foreign_item, foreign_item_fn};
-import syntax::ast::{ident, trait_ref, impure_fn, instance_var, item};
-import syntax::ast::{item_class, item_const, item_enum, item_fn, item_mac};
-import syntax::ast::{item_foreign_mod, item_trait, item_impl, item_mod};
-import syntax::ast::{item_ty, local, local_crate, method, node_id, pat};
-import syntax::ast::{pat_enum, pat_ident, path, prim_ty, stmt_decl, ty,
-                     pat_box, pat_uniq, pat_lit, pat_range, pat_rec,
-                     pat_tup, pat_wild};
-import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64};
+import syntax::ast::{expr_struct, expr_unary, fn_decl, foreign_item};
+import syntax::ast::{foreign_item_fn, ident, trait_ref, impure_fn};
+import syntax::ast::{instance_var, item, item_class, item_const, item_enum};
+import syntax::ast::{item_fn, item_mac, item_foreign_mod, item_impl};
+import syntax::ast::{item_mod, item_trait, item_ty, local, local_crate};
+import syntax::ast::{method, node_id, pat, pat_enum, pat_ident};
+import syntax::ast::{path, prim_ty, pat_box, pat_uniq, pat_lit, pat_range};
+import syntax::ast::{pat_rec, pat_tup, pat_wild, stmt_decl};
+import syntax::ast::{ty, ty_bool, ty_char, ty_f, ty_f32, ty_f64};
 import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
 import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
 import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
@@ -604,6 +604,7 @@ class Resolver {
     let unused_import_lint_level: level;
 
     let trait_info: hashmap<def_id,@hashmap<Atom,()>>;
+    let structs: hashmap<def_id,()>;
 
     // The number of imports that are currently unresolved.
     let mut unresolved_imports: uint;
@@ -657,6 +658,7 @@ class Resolver {
         self.unused_import_lint_level = unused_import_lint_level(session);
 
         self.trait_info = new_def_hash();
+        self.structs = new_def_hash();
 
         self.unresolved_imports = 0u;
 
@@ -914,6 +916,9 @@ class Resolver {
                 };
 
                 (*name_bindings).define_impl(impl_info);
+
+                // Record the def ID of this struct.
+                self.structs.insert(local_def(item.id), ());
 
                 visit_item(item, new_parent, visitor);
             }
@@ -4160,6 +4165,41 @@ class Resolver {
                                       NoSelfBinding,
                                       HasCaptureClause(capture_clause),
                                       visitor);
+            }
+
+            expr_struct(path, _) {
+                // Resolve the path to the structure it goes to.
+                //
+                // XXX: We might want to support explicit type parameters in
+                // the path, in which case this gets a little more
+                // complicated:
+                //
+                // 1. Should we go through the ast_path_to_ty() path, which
+                //    handles typedefs and the like?
+                //
+                // 2. If so, should programmers be able to write this?
+                //
+                //    class Foo<A> { ... }
+                //    type Bar<A> = Foo<A>;
+                //    let bar = Bar { ... } // no type parameters
+
+                alt self.resolve_path(path, TypeNS, false, visitor) {
+                    some(definition @ def_ty(class_id))
+                            if self.structs.contains_key(class_id) {
+
+                        self.record_def(expr.id, def_class(class_id));
+                    }
+                    _ {
+                        self.session.span_err(path.span,
+                                              #fmt("`%s` does not name a \
+                                                    structure",
+                                                   connect(path.idents.map
+                                                           (|x| *x),
+                                                           ~"::")));
+                    }
+                }
+
+                visit_expr(expr, (), visitor);
             }
 
             _ {
