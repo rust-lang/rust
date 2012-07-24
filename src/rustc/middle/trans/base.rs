@@ -3410,6 +3410,90 @@ fn trans_rec(bcx: block, fields: ~[ast::field],
     ret bcx;
 }
 
+fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
+                id: ast::node_id, dest: dest) -> block {
+
+    let _instruction_context = block_context.insn_ctxt(~"trans_struct");
+    let mut block_context = block_context;
+    let type_context = block_context.ccx().tcx;
+
+    let struct_type = node_id_type(block_context, id);
+
+    // Get the address to store the structure into. If there is no address,
+    // just translate each field and be done with it.
+    let dest_address;
+    alt dest {
+        ignore => {
+            for fields.each |field| {
+                block_context = trans_expr(block_context,
+                                           field.node.expr,
+                                           ignore);
+            }
+            ret block_context;
+        }
+        save_in(destination_address) => {
+            dest_address = destination_address;
+        }
+        by_val(_) => {
+            type_context.sess.span_bug(span, ~"didn't expect by_val");
+        }
+    }
+
+    // Get the class ID and its fields.
+    let class_fields, class_id, substitutions;
+    alt ty::get(struct_type).struct {
+        ty::ty_class(existing_class_id, existing_substitutions) => {
+            class_id = existing_class_id;
+            substitutions = existing_substitutions;
+            class_fields = ty::lookup_class_fields(type_context, class_id);
+        }
+        _ => {
+            type_context.sess.span_bug(span, ~"didn't resolve to a struct");
+        }
+    }
+
+    // Now translate each field.
+    let mut temp_cleanups = ~[];
+    for fields.each |field| {
+        let mut found = none;
+        for class_fields.eachi |i, class_field| {
+            if str::eq(*class_field.ident, *field.node.ident) {
+                found = some((i, class_field.id));
+                break;
+            }
+        }
+
+        let index, field_id;
+        alt found {
+            some((found_index, found_field_id)) => {
+                index = found_index;
+                field_id = found_field_id;
+            }
+            none => {
+                type_context.sess.span_bug(span, ~"unknown field");
+            }
+        }
+
+        let dest = GEPi(block_context, dest_address, ~[0, index]);
+        block_context = trans_expr_save_in(block_context,
+                                           field.node.expr,
+                                           dest);
+
+        let field_type = ty::lookup_field_type(type_context, class_id,
+                                               field_id, substitutions);
+        add_clean_temp_mem(block_context, dest, field_type);
+        vec::push(temp_cleanups, dest);
+    }
+
+    // Now revoke the cleanups, as we pass responsibility for the data
+    // structure onto the caller.
+    for temp_cleanups.each |temp_cleanup| {
+        revoke_clean(block_context, temp_cleanup);
+    }
+
+    block_context
+}
+
 // Store the result of an expression in the given memory location, ensuring
 // that nil or bot expressions get ignore rather than save_in as destination.
 fn trans_expr_save_in(bcx: block, e: @ast::expr, dest: ValueRef)
@@ -3557,6 +3641,9 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
           ast::expr_rec(args, base) {
             ret trans_rec(bcx, args, base, e.id, dest);
+          }
+          ast::expr_struct(_, fields) {
+            ret trans_struct(bcx, e.span, fields, e.id, dest);
           }
           ast::expr_tup(args) { ret trans_tup(bcx, args, dest); }
           ast::expr_vstore(e, v) { ret tvec::trans_vstore(bcx, e, v, dest); }
