@@ -221,14 +221,13 @@ fn peek_(p: *rust_port) -> bool {
 fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     -> either<A, B> {
     let ports = ~[(**p_a).po, (**p_b).po];
-    let n_ports = 2 as libc::size_t;
     let yield = 0u, yieldp = ptr::addr_of(yield);
 
     let mut resport: *rust_port;
     resport = rusti::init::<*rust_port>();
-    do vec::as_buf(ports) |ports| {
-        rustrt::rust_port_select(ptr::addr_of(resport), ports, n_ports,
-                                 yieldp);
+    do vec::as_buf(ports) |ports, n_ports| {
+        rustrt::rust_port_select(ptr::addr_of(resport), ports,
+                                 n_ports as size_t, yieldp);
     }
 
     if yield != 0u {

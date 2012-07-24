@@ -205,7 +205,7 @@ fn convert_whence(whence: seek_style) -> i32 {
 
 impl of reader for *libc::FILE {
     fn read(buf: &[mut u8], len: uint) -> uint {
-        do vec::unpack_slice(buf) |buf_p, buf_len| {
+        do vec::as_buf(buf) |buf_p, buf_len| {
             assert buf_len <= len;
 
             let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
@@ -348,7 +348,7 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
 
 impl of writer for *libc::FILE {
     fn write(v: &[const u8]) {
-        do vec::unpack_const_slice(v) |vbuf, len| {
+        do vec::as_const_buf(v) |vbuf, len| {
             let nout = libc::fwrite(vbuf as *c_void, len as size_t,
                                     1u as size_t, self);
             if nout < 1 as size_t {
@@ -377,7 +377,7 @@ fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
 impl of writer for fd_t {
     fn write(v: &[const u8]) {
         let mut count = 0u;
-        do vec::unpack_const_slice(v) |vbuf, len| {
+        do vec::as_const_buf(v) |vbuf, len| {
             while count < len {
                 let vb = ptr::const_offset(vbuf, count) as *c_void;
                 let nout = libc::write(self, vb, len as size_t);

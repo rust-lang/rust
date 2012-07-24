@@ -192,8 +192,9 @@ fn test_buf_len() {
         do str::as_c_str(s1) |p1| {
             do str::as_c_str(s2) |p2| {
                 let v = ~[p0, p1, p2, null()];
-                do vec::as_buf(v) |vp| {
+                do vec::as_buf(v) |vp, len| {
                     assert unsafe { buf_len(vp) } == 3u;
+                    assert len == 4u;
                 }
             }
         }

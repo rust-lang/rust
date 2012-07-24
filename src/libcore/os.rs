@@ -71,8 +71,8 @@ fn as_c_charp<T>(s: ~str, f: fn(*c_char) -> T) -> T {
 fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     -> option<~str> {
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
-    do vec::as_mut_buf(buf) |b| {
-        if f(b, tmpbuf_sz as size_t) unsafe {
+    do vec::as_mut_buf(buf) |b, sz| {
+        if f(b, sz as size_t) unsafe {
             some(str::unsafe::from_buf(b as *u8))
         } else {
             none
@@ -667,7 +667,7 @@ fn copy_file(from: path, to: path) -> bool {
         let mut done = false;
         let mut ok = true;
         while !done {
-            do vec::as_mut_buf(buf) |b| {
+            do vec::as_mut_buf(buf) |b, _sz| {
               let nread = libc::fread(b as *mut c_void, 1u as size_t,
                                       bufsize as size_t,
                                       istream);
@@ -970,7 +970,7 @@ mod tests {
       assert (ostream as uint != 0u);
       let s = ~"hello";
       let mut buf = vec::to_mut(str::bytes(s) + ~[0 as u8]);
-      do vec::as_mut_buf(buf) |b| {
+      do vec::as_mut_buf(buf) |b, _len| {
           assert (libc::fwrite(b as *c_void, 1u as size_t,
                                (str::len(s) + 1u) as size_t, ostream)
                   == buf.len() as size_t)};

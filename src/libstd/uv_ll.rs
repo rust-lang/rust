@@ -821,10 +821,9 @@ unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
     // ipv4 addr max size: 15 + 1 trailing null byte
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                      0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
-    let size = 16 as libc::size_t;
-    do vec::as_buf(dst) |dst_buf| {
+    do vec::as_buf(dst) |dst_buf, size| {
         rustrt::rust_uv_ip4_name(src as *sockaddr_in,
-                                              dst_buf, size);
+                                 dst_buf, size as libc::size_t);
         // seems that checking the result of uv_ip4_name
         // doesn't work too well..
         // you're stuck looking at the value of dst_buf
@@ -842,13 +841,12 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
                        0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                        0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                        0u8,0u8,0u8,0u8,0u8,0u8];
-    let size = 46 as libc::size_t;
-    do vec::as_buf(dst) |dst_buf| {
+    do vec::as_buf(dst) |dst_buf, size| {
         let src_unsafe_ptr = src as *sockaddr_in6;
         log(debug, #fmt("val of src *sockaddr_in6: %? sockaddr_in6: %?",
                         src_unsafe_ptr, src));
         let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,
-                                              dst_buf, size);
+                                              dst_buf, size as libc::size_t);
         alt result {
           0i32 {
             str::unsafe::from_buf(dst_buf)
