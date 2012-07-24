@@ -120,6 +120,12 @@ pure fn unwrap<T>(-opt: option<T>) -> T {
     }
 }
 
+pure fn unwrap_expect<T>(-opt: option<T>, reason: ~str) -> T {
+    //! As unwrap, but with a specified failure message.
+    if opt.is_none() { fail reason; }
+    unwrap(opt)
+}
+
 impl extensions<T> for option<T> {
     /**
      * Update an optional value by optionally running its content through a
