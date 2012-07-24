@@ -232,9 +232,11 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
                 let nts = str::connect(vec::map(bb_eis, |ei| {
-                    alt ei.elts[ei.idx].node
-                        { mtc_bb(_,name,_) { *name } _ { fail; } }
-                }), ~" or ");
+                    alt ei.elts[ei.idx].node {
+                      mtc_bb(bind,name,_) {
+                        #fmt["%s ('%s')", *name, *bind]
+                      }
+                      _ { fail; } } }), ~" or ");
                 ret failure(sp, #fmt[
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
