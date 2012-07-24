@@ -94,7 +94,7 @@ fn from_str(s: ~str) -> option<T> { parse_buf(str::bytes(s), 10u) }
 /// Convert to a string in a given base
 fn to_str(n: T, radix: uint) -> ~str {
     do to_str_bytes(n, radix) |slice| {
-        do vec::unpack_slice(slice) |p, len| {
+        do vec::as_buf(slice) |p, len| {
             unsafe { str::unsafe::from_buf_len(p, len) }
         }
     }

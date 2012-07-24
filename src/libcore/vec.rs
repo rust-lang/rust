@@ -81,8 +81,7 @@ export permute;
 export windowed;
 export as_buf;
 export as_mut_buf;
-export unpack_slice;
-export unpack_const_slice;
+export as_const_buf;
 export unsafe;
 export u8;
 export extensions;
@@ -113,12 +112,12 @@ type init_op<T> = fn(uint) -> T;
 
 /// Returns true if a vector contains no elements
 pure fn is_empty<T>(v: &[const T]) -> bool {
-    unpack_const_slice(v, |_p, len| len == 0u)
+    as_const_buf(v, |_p, len| len == 0u)
 }
 
 /// Returns true if a vector contains some elements
 pure fn is_not_empty<T>(v: &[const T]) -> bool {
-    unpack_const_slice(v, |_p, len| len > 0u)
+    as_const_buf(v, |_p, len| len > 0u)
 }
 
 /// Returns true if two vectors have the same length
@@ -177,7 +176,7 @@ pure fn capacity<T>(&&v: ~[const T]) -> uint {
 /// Returns the length of a vector
 #[inline(always)]
 pure fn len<T>(&&v: &[const T]) -> uint {
-    unpack_const_slice(v, |_p, len| len)
+    as_const_buf(v, |_p, len| len)
 }
 
 /**
@@ -317,7 +316,7 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
 pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
     assert (start <= end);
     assert (end <= len(v));
-    do unpack_slice(v) |p, _len| {
+    do as_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
                 (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
@@ -329,7 +328,7 @@ pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
 pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
     assert (start <= end);
     assert (end <= len(v));
-    do unpack_slice(v) |p, _len| {
+    do as_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
                 (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
@@ -341,7 +340,7 @@ pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
 pure fn const_view<T>(v: &[const T], start: uint, end: uint) -> &[const T] {
     assert (start <= end);
     assert (end <= len(v));
-    do unpack_slice(v) |p, _len| {
+    do as_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
                 (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
@@ -481,7 +480,7 @@ fn unshift<T>(&v: ~[T], +x: T) {
 }
 
 fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
-    do unpack_slice(v) |p, ln| {
+    do as_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
             let x <- *ptr::offset(p, i);
             f(i, x);
@@ -529,13 +528,13 @@ fn push_slow<T>(&v: ~[const T], +initval: T) {
 // Unchecked vector indexing
 #[inline(always)]
 unsafe fn ref<T: copy>(v: &[const T], i: uint) -> T {
-    unpack_slice(v, |p, _len| *ptr::offset(p, i))
+    as_buf(v, |p, _len| *ptr::offset(p, i))
 }
 
 #[inline(always)]
 unsafe fn ref_set<T: copy>(v: &[mut T], i: uint, +val: T) {
     let mut box = some(val);
-    do unpack_mut_slice(v) |p, _len| {
+    do as_mut_buf(v) |p, _len| {
         let mut box2 = none;
         box2 <-> box;
         rusti::move_val_init(*ptr::mut_offset(p, i), option::unwrap(box2));
@@ -555,7 +554,7 @@ fn push_all<T: copy>(&v: ~[const T], rhs: &[const T]) {
 fn push_all_move<T>(&v: ~[const T], -rhs: ~[const T]) {
     reserve(v, v.len() + rhs.len());
     unsafe {
-        do unpack_slice(rhs) |p, len| {
+        do as_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
                 let x <- *ptr::offset(p, i);
                 push(v, x);
@@ -1056,7 +1055,7 @@ element's value.
 */
 #[inline(always)]
 pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
-    do unpack_slice(v) |base_ptr, len| {
+    do as_buf(v) |base_ptr, len| {
         assert start <= end;
         assert end <= len;
         unsafe {
@@ -1078,7 +1077,7 @@ pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
  */
 #[inline(always)]
 pure fn each<T>(v: &[T], f: fn(T) -> bool) {
-    do vec::unpack_slice(v) |p, n| {
+    do vec::as_buf(v) |p, n| {
         let mut n = n;
         let mut p = p;
         while n > 0u {
@@ -1098,7 +1097,7 @@ pure fn each<T>(v: &[T], f: fn(T) -> bool) {
  */
 #[inline(always)]
 pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
-    do vec::unpack_slice(v) |p, n| {
+    do vec::as_buf(v) |p, n| {
         let mut i = 0u;
         let mut p = p;
         while i < n {
@@ -1118,7 +1117,7 @@ pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
  */
 #[inline(always)]
 pure fn reach<T>(v: &[T], blk: fn(T) -> bool) {
-    do vec::unpack_slice(v) |p, n| {
+    do vec::as_buf(v) |p, n| {
         let mut i = 1;
         while i <= n {
             unsafe {
@@ -1136,7 +1135,7 @@ pure fn reach<T>(v: &[T], blk: fn(T) -> bool) {
  */
 #[inline(always)]
 pure fn reachi<T>(v: &[T], blk: fn(uint, T) -> bool) {
-    do vec::unpack_slice(v) |p, n| {
+    do vec::as_buf(v) |p, n| {
         let mut i = 1;
         while i <= n {
             unsafe {
@@ -1247,18 +1246,9 @@ pure fn windowed<TT: copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
  * Allows for unsafe manipulation of vector contents, which is useful for
  * foreign interop.
  */
-fn as_buf<E,T>(v: &[E], f: fn(*E) -> T) -> T {
-    unpack_slice(v, |buf, _len| f(buf))
-}
-
-fn as_mut_buf<E,T>(v: &[mut E], f: fn(*mut E) -> T) -> T {
-    unpack_mut_slice(v, |buf, _len| f(buf))
-}
-
-/// Work with the buffer and length of a slice.
 #[inline(always)]
-pure fn unpack_slice<T,U>(s: &[const T],
-                          f: fn(*T, uint) -> U) -> U {
+pure fn as_buf<T,U>(s: &[const T],
+                    f: fn(*T, uint) -> U) -> U {
     unsafe {
         let v : *(*T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
         let (buf,len) = *v;
@@ -1266,27 +1256,27 @@ pure fn unpack_slice<T,U>(s: &[const T],
     }
 }
 
-/// Work with the buffer and length of a slice.
+/// Similar to `as_buf` but passing a `*const T`
 #[inline(always)]
-pure fn unpack_const_slice<T,U>(s: &[const T],
-                                f: fn(*const T, uint) -> U) -> U {
-    unsafe {
-        let v : *(*const T,uint) =
-            ::unsafe::reinterpret_cast(ptr::addr_of(s));
-        let (buf,len) = *v;
-        f(buf, len / sys::size_of::<T>())
+pure fn as_const_buf<T,U>(s: &[const T],
+                          f: fn(*const T, uint) -> U) -> U {
+    do as_buf(s) |p, len| {
+        unsafe {
+            let pp : *const T = ::unsafe::reinterpret_cast(p);
+            f(pp, len)
+        }
     }
 }
 
-/// Work with the buffer and length of a slice.
+/// Similar to `as_buf` but passing a `*mut T`
 #[inline(always)]
-pure fn unpack_mut_slice<T,U>(s: &[mut T],
-                              f: fn(*mut T, uint) -> U) -> U {
-    unsafe {
-        let v : *(*const T,uint) =
-            ::unsafe::reinterpret_cast(ptr::addr_of(s));
-        let (buf,len) = *v;
-        f(buf, len / sys::size_of::<T>())
+pure fn as_mut_buf<T,U>(s: &[mut T],
+                        f: fn(*mut T, uint) -> U) -> U {
+    do as_buf(s) |p, len| {
+        unsafe {
+            let pp : *mut T = ::unsafe::reinterpret_cast(p);
+            f(pp, len)
+        }
     }
 }
 
@@ -1605,8 +1595,8 @@ mod unsafe {
       * may overlap.
       */
     unsafe fn memcpy<T>(dst: &[mut T], src: &[const T], count: uint) {
-        do unpack_slice(dst) |p_dst, _len_dst| {
-            do unpack_slice(src) |p_src, _len_src| {
+        do as_buf(dst) |p_dst, _len_dst| {
+            do as_buf(src) |p_src, _len_src| {
                 ptr::memcpy(p_dst, p_src, count)
             }
         }
@@ -1619,8 +1609,8 @@ mod unsafe {
       * may overlap.
       */
     unsafe fn memmove<T>(dst: &[mut T], src: &[const T], count: uint) {
-        do unpack_slice(dst) |p_dst, _len_dst| {
-            do unpack_slice(src) |p_src, _len_src| {
+        do as_buf(dst) |p_dst, _len_dst| {
+            do as_buf(src) |p_src, _len_src| {
                 ptr::memmove(p_dst, p_src, count)
             }
         }

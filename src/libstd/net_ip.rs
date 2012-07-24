@@ -91,7 +91,7 @@ enum ip_get_addr_err {
 fn get_addr(++node: ~str, iotask: iotask)
         -> result::result<~[ip_addr], ip_get_addr_err> unsafe {
     do comm::listen |output_ch| {
-        do str::unpack_slice(node) |node_ptr, len| {
+        do str::as_buf(node) |node_ptr, len| {
             log(debug, #fmt("slice len %?", len));
             let handle = create_uv_getaddrinfo_t();
             let handle_ptr = ptr::addr_of(handle);
