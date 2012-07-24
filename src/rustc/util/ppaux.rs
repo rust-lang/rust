@@ -1,6 +1,7 @@
 import std::map::hashmap;
 import middle::ty;
-import middle::ty::{arg, bound_region, br_anon, br_named, canon_mode};
+import middle::ty::{arg, canon_mode};
+import middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 import middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
 import middle::ty::{mt, re_bound, re_free, re_scope, re_var, region, t};
 import middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
@@ -20,10 +21,20 @@ import driver::session::session;
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
     alt br {
-      br_anon                        { ~"&" }
-      br_named(str)                  { #fmt["&%s", *str] }
-      br_self if cx.sess.ppregions() { ~"&<self>" }
-      br_self                        { ~"&self" }
+      br_anon                        => { ~"&" }
+      br_named(str)                  => { #fmt["&%s", *str] }
+      br_self if cx.sess.ppregions() => { ~"&<self>" }
+      br_self                        => { ~"&self" }
+
+      // FIXME(#3011) -- even if this arm is removed, exhaustiveness checking
+      // does not fail
+      br_cap_avoid(id, br) => {
+        if cx.sess.ppregions() {
+            #fmt["br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br)]
+        } else {
+            bound_region_to_str(cx, *br)
+        }
+      }
     }
 }
 

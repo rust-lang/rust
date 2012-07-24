@@ -100,7 +100,7 @@ export ty_self, mk_self, type_has_self;
 export ty_class;
 export region, bound_region, encl_region;
 export re_bound, re_free, re_scope, re_static, re_var;
-export br_self, br_anon, br_named;
+export br_self, br_anon, br_named, br_cap_avoid;
 export get, type_has_params, type_needs_infer, type_has_regions;
 export type_has_resources, type_id;
 export tbox_has_flag;
@@ -351,9 +351,24 @@ enum region {
 }
 
 enum bound_region {
-    br_self,      // The self region for classes, impls
-    br_anon,      // The anonymous region parameter for a given function.
-    br_named(ast::ident) // A named region parameter.
+    /// The self region for classes, impls (&T in a type defn or &self/T)
+    br_self,
+
+    /// Anonymous region parameter for a given fn (&T)
+    br_anon,
+
+    /// Named region parameters for functions (a in &a/T)
+    br_named(ast::ident),
+
+    /// Handles capture-avoiding substitution in a rather subtle case.  If you
+    /// have a closure whose argument types are being inferred based on the
+    /// expected type, and the expected type includes bound regions, then we
+    /// will wrap those bound regions in a br_cap_avoid() with the id of the
+    /// fn expression.  This ensures that the names are not "captured" by the
+    /// enclosing scope, which may define the same names.  For an example of
+    /// where this comes up, see src/test/compile-fail/regions-ret-borrowed.rs
+    /// and regions-ret-borrowed-1.rs.
+    br_cap_avoid(ast::node_id, @bound_region),
 }
 
 type opt_region = option<region>;
@@ -1665,7 +1680,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     ret result;
 }
 
-// True if instantiating an instance of `ty` requires an instance of `r_ty`.
+// True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
 fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
     fn type_requires(cx: ctxt, seen: @mut ~[def_id],
@@ -2001,6 +2016,7 @@ fn hash_bound_region(br: bound_region) -> uint {
       ty::br_self { 0u }
       ty::br_anon { 1u }
       ty::br_named(str) { str::hash(*str) }
+      ty::br_cap_avoid(id, br) { id as uint | hash_bound_region(*br) }
     }
 }
 
