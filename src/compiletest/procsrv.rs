@@ -1,5 +1,5 @@
 import run::spawn_process;
-import io::writer_util;
+import io::{writer_util, reader_util};
 import libc::{c_int, pid_t};
 
 export run;
