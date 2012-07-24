@@ -34,7 +34,6 @@ export notification;
 export sched_mode;
 export sched_opts;
 export task_opts;
-export builder;
 export task_builder;
 
 export default_task_opts;
@@ -184,14 +183,6 @@ type task_opts = {
 // when you try to reuse the builder to spawn a new task. We'll just
 // sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
-enum builder {
-  builder_({
-        mut opts: task_opts,
-        mut gen_body: fn@(+fn~()) -> fn~(),
-        can_not_copy: option<comm::port<()>>
-    })
-}
-
 class dummy { let x: (); new() { self.x = (); } drop { } }
 
 // FIXME (#2585): Replace the 'consumed' bit with move mode on self
@@ -262,8 +253,26 @@ impl task_builder for task_builder {
         })
     }
 
-    /// Configure a future result notification for this task.
+    /**
+     * Get a future representing the exit status of the task.
+     *
+     * Taking the value of the future will block until the child task
+     * terminates. The future-receiving callback specified will be called
+     * *before* the task is spawned; as such, do not invoke .get() within the
+     * closure; rather, store it in an outer variable/list for later use.
+     *
+     * Note that the future returning by this function is only useful for
+     * obtaining the value of the next task to be spawning with the
+     * builder. If additional tasks are spawned with the same builder
+     * then a new result future must be obtained prior to spawning each
+     * task.
+     */
     fn future_result(blk: fn(-future::future<task_result>)) -> task_builder {
+        // FIXME (#1087, #1857): Once linked failure and notification are
+        // handled in the library, I can imagine implementing this by just
+        // registering an arbitrary number of task::on_exit handlers and
+        // sending out messages.
+
         // Construct the future and give it to the caller.
         let po = comm::port::<notification>();
         let ch = comm::chan(po);
@@ -290,6 +299,19 @@ impl task_builder for task_builder {
             with *self.consume()
         })
     }
+
+    /**
+     * Add a wrapper to the body of the spawned task.
+     *
+     * Before the task is spawned it is passed through a 'body generator'
+     * function that may perform local setup operations as well as wrap
+     * the task body in remote setup operations. With this the behavior
+     * of tasks can be extended in simple ways.
+     *
+     * This function augments the current body generator with a new body
+     * generator by applying the task body which results from the
+     * existing body generator to the new body generator.
+     */
     fn add_wrapper(wrapper: fn@(+fn~()) -> fn~()) -> task_builder {
         let prev_gen_body = self.gen_body;
         task_builder({
@@ -299,7 +321,18 @@ impl task_builder for task_builder {
         })
     }
 
-    /// Run the task.
+    /**
+     * Creates and exucutes a new child task
+     *
+     * Sets up a new task with its own call stack and schedules it to run
+     * the provided unique closure. The task has the properties and behavior
+     * specified by the task_builder.
+     *
+     * # Failure
+     *
+     * When spawning into a new scheduler, the number of threads requested
+     * must be greater than zero.
+     */
     fn spawn(+f: fn~()) {
         let x = self.consume();
         spawn_raw(x.opts, x.gen_body(f));
@@ -313,7 +346,18 @@ impl task_builder for task_builder {
             f(option::unwrap(my_arg))
         }
     }
-    /// Runs a task with a listening port, returning the associated channel.
+
+    /**
+     * Runs a new task while providing a channel from the parent to the child
+     *
+     * Sets up a communication channel from the current task to the new
+     * child task, passes the port to child's body, and returns a channel
+     * linked to the port to the parent.
+     *
+     * This encapsulates some boilerplate handshaking logic that would
+     * otherwise be required to establish communication from the parent
+     * to the child.
+     */
     fn spawn_listener<A: send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
         let setup_po = comm::port();
         let setup_ch = comm::chan(setup_po);
@@ -346,182 +390,6 @@ fn default_task_opts() -> task_opts {
     }
 }
 
-fn builder() -> builder {
-    //! Construct a builder
-
-    let body_identity = fn@(+body: fn~()) -> fn~() { body };
-
-    builder_({
-        mut opts: default_task_opts(),
-        mut gen_body: body_identity,
-        can_not_copy: none
-    })
-}
-
-fn get_opts(builder: builder) -> task_opts {
-    //! Get the task_opts associated with a builder
-
-    builder.opts
-}
-
-fn set_opts(builder: builder, opts: task_opts) {
-    /*!
-     * Set the task_opts associated with a builder
-     *
-     * To update a single option use a pattern like the following:
-     *
-     *     set_opts(builder, {
-     *         linked: false
-     *         with get_opts(builder)
-     *     });
-     */
-
-    builder.opts = opts;
-}
-
-fn set_sched_mode(builder: builder, mode: sched_mode) {
-    set_opts(builder, {
-        sched: some({
-            mode: mode,
-            foreign_stack_size: none
-        })
-        with get_opts(builder)
-    });
-}
-
-fn add_wrapper(builder: builder, gen_body: fn@(+fn~()) -> fn~()) {
-    /*!
-     * Add a wrapper to the body of the spawned task.
-     *
-     * Before the task is spawned it is passed through a 'body generator'
-     * function that may perform local setup operations as well as wrap
-     * the task body in remote setup operations. With this the behavior
-     * of tasks can be extended in simple ways.
-     *
-     * This function augments the current body generator with a new body
-     * generator by applying the task body which results from the
-     * existing body generator to the new body generator.
-     */
-
-    let prev_gen_body = builder.gen_body;
-    builder.gen_body = fn@(+body: fn~()) -> fn~() {
-        gen_body(prev_gen_body(body))
-    };
-}
-
-fn run(-builder: builder, +f: fn~()) {
-    /*!
-     * Creates and exucutes a new child task
-     *
-     * Sets up a new task with its own call stack and schedules it to run
-     * the provided unique closure. The task has the properties and behavior
-     * specified by `builder`.
-     *
-     * # Failure
-     *
-     * When spawning into a new scheduler, the number of threads requested
-     * must be greater than zero.
-     */
-
-    let body = builder.gen_body(f);
-    spawn_raw(builder.opts, body);
-}
-
-
-/* Builder convenience functions */
-
-fn future_result(builder: builder) -> future::future<task_result> {
-    /*!
-     * Get a future representing the exit status of the task.
-     *
-     * Taking the value of the future will block until the child task
-     * terminates.
-     *
-     * Note that the future returning by this function is only useful for
-     * obtaining the value of the next task to be spawning with the
-     * builder. If additional tasks are spawned with the same builder
-     * then a new result future must be obtained prior to spawning each
-     * task.
-     */
-
-    // FIXME (#1087, #1857): Once linked failure and notification are
-    // handled in the library, I can imagine implementing this by just
-    // registering an arbitrary number of task::on_exit handlers and
-    // sending out messages.
-
-    let po = comm::port();
-    let ch = comm::chan(po);
-
-    set_opts(builder, {
-        notify_chan: some(ch)
-        with get_opts(builder)
-    });
-
-    do future::from_fn {
-        alt comm::recv(po) {
-          exit(_, result) { result }
-        }
-    }
-}
-
-fn unsupervise(builder: builder) {
-    //! Configures the new task to not propagate failure to its parent
-
-    set_opts(builder, {
-        linked: false
-        with get_opts(builder)
-    });
-}
-
-fn run_with<A:send>(-builder: builder,
-                    +arg: A,
-                    +f: fn~(+A)) {
-
-    /*!
-     * Runs a task, while transfering ownership of one argument to the
-     * child.
-     *
-     * This is useful for transfering ownership of noncopyables to
-     * another task.
-     *
-     */
-
-    let arg = ~mut some(arg);
-    do run(builder) {
-        let mut my_arg = none;
-        my_arg <-> *arg;
-        f(option::unwrap(my_arg))
-    }
-}
-
-fn run_listener<A:send>(-builder: builder,
-                        +f: fn~(comm::port<A>)) -> comm::chan<A> {
-    /*!
-     * Runs a new task while providing a channel from the parent to the child
-     *
-     * Sets up a communication channel from the current task to the new
-     * child task, passes the port to child's body, and returns a channel
-     * linked to the port to the parent.
-     *
-     * This encapsulates some boilerplate handshaking logic that would
-     * otherwise be required to establish communication from the parent
-     * to the child.
-     */
-
-    let setup_po = comm::port();
-    let setup_ch = comm::chan(setup_po);
-
-    do run(builder) {
-        let po = comm::port();
-        let mut ch = comm::chan(po);
-        comm::send(setup_ch, ch);
-        f(po);
-    }
-
-    comm::recv(setup_po)
-}
-
-
 /* Spawn convenience functions */
 
 fn spawn(+f: fn~()) {
@@ -531,7 +399,7 @@ fn spawn(+f: fn~()) {
      * Sets up a new task with its own call stack and schedules it to run
      * the provided unique closure.
      *
-     * This function is equivalent to `run(new_builder(), f)`.
+     * This function is equivalent to `task().spawn(f)`.
      */
 
     task().spawn(f)
@@ -563,7 +431,7 @@ fn spawn_with<A:send>(+arg: A, +f: fn~(+A)) {
      * This is useful for transfering ownership of noncopyables to
      * another task.
      *
-     * This function is equivalent to `run_with(builder(), arg, f)`.
+     * This function is equivalent to `task().spawn_with(arg, f)`.
      */
 
     task().spawn_with(arg, f)
@@ -592,7 +460,7 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
      *     };
      *     // Likewise, the parent has both a 'po' and 'ch'
      *
-     * This function is equivalent to `run_listener(builder(), f)`.
+     * This function is equivalent to `task().spawn_listener(f)`.
      */
 
     task().spawn_listener(f)
