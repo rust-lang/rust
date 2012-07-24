@@ -1663,15 +1663,9 @@ mod u8 {
     /// Bytewise greater than
     pure fn gt(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) > 0 }
 
-    /// String hash function
+    /// Byte-vec hash function
     fn hash(&&s: ~[u8]) -> uint {
-        /* Seems to have been tragically copy/pasted from str.rs,
-           or vice versa. But I couldn't figure out how to abstract
-           it out. -- tjc */
-
-        let mut u: uint = 5381u;
-        vec::iter(s, |c| {u *= 33u; u += c as uint;});
-        ret u;
+        hash::hash_bytes(s) as uint
     }
 
     /**
