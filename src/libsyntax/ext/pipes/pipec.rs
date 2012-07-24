@@ -49,7 +49,7 @@ impl compile of gen_send for message {
     fn gen_send(cx: ext_ctxt) -> @ast::item {
         #debug("pipec: gen_send");
         alt self {
-          message(id, tys, this, some({state: next, tys: next_tys})) {
+          message(id, span, tys, this, some({state: next, tys: next_tys})) {
             #debug("pipec: next state exists");
             let next = this.proto.get_state(next);
             assert next_tys.len() == next.ty_params.len();
@@ -60,7 +60,7 @@ impl compile of gen_send for message {
             );
 
             let pipe_ty = cx.ty_path_ast_builder(
-                path(this.data_name())
+                path(this.data_name(), span)
                 .add_tys(cx.ty_vars(this.ty_params)));
             let args_ast = vec::append(
                 ~[cx.arg_mode(@~"pipe",
@@ -110,13 +110,13 @@ impl compile of gen_send for message {
 
             cx.item_fn_poly(self.name(),
                             args_ast,
-                            cx.ty_path_ast_builder(path(next.data_name())
+                            cx.ty_path_ast_builder(path(next.data_name(), span)
                                       .add_tys(next_tys)),
                             self.get_params(),
                             cx.expr_block(body))
           }
 
-          message(id, tys, this, none) {
+          message(id, span, tys, this, none) {
             #debug("pipec: no next state");
             let arg_names = tys.mapi(|i, _ty| @(~"x_" + i.to_str()));
 
@@ -126,7 +126,8 @@ impl compile of gen_send for message {
 
             let args_ast = vec::append(
                 ~[cx.arg_mode(@~"pipe",
-                              cx.ty_path_ast_builder(path(this.data_name())
+                              cx.ty_path_ast_builder(path(this.data_name(),
+                                                          span)
                                         .add_tys(cx.ty_vars(this.ty_params))),
                               ast::by_copy)],
                 args_ast);
@@ -158,7 +159,7 @@ impl compile of gen_send for message {
     }
 
     fn to_ty(cx: ext_ctxt) -> @ast::ty {
-        cx.ty_path_ast_builder(path(self.name())
+        cx.ty_path_ast_builder(path(self.name(), self.span())
           .add_tys(cx.ty_vars(self.get_params())))
     }
 }
@@ -177,7 +178,7 @@ impl compile of to_type_decls for state {
         let mut items_msg = ~[];
 
         for self.messages.each |m| {
-            let message(name, tys, this, next) = m;
+            let message(name, _span, tys, this, next) = m;
 
             let tys = alt next {
               some({state: next, tys: next_tys}) {
@@ -287,7 +288,7 @@ impl compile of gen_init for protocol {
 
     fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
         ext_cx.rec(self.states.map_to_vec(|s| {
-            let fty = ext_cx.ty_path_ast_builder(path(s.name));
+            let fty = ext_cx.ty_path_ast_builder(path(s.name, s.span));
             ext_cx.field_imm(s.name, #ast { pipes::mk_packet::<$(fty)>() })
         }))
     }
@@ -324,7 +325,7 @@ impl compile of gen_init for protocol {
             cx.ty_rec(
                 (copy self.states).map_to_vec(
                     |s| {
-                        let ty = cx.ty_path_ast_builder(path(s.name));
+                        let ty = cx.ty_path_ast_builder(path(s.name, s.span));
                         let fty = #ast[ty] {
                             pipes::packet<$(ty)>
                         };

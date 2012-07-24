@@ -13,7 +13,7 @@ trait proto_parser {
 
 impl proto_parser of proto_parser for parser {
     fn parse_proto(id: ident) -> protocol {
-        let proto = protocol(id);
+        let proto = protocol(id, self.span);
 
         self.parse_seq_to_before_end(token::EOF,
                                      {sep: none, trailing_sep_allowed: false},
@@ -87,7 +87,7 @@ impl proto_parser of proto_parser for parser {
           _ { self.fatal(~"invalid next state") }
         };
 
-        state.add_message(mname, args, next);
+        state.add_message(mname, copy self.span, args, next);
 
     }
 }
