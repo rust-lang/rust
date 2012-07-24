@@ -44,7 +44,6 @@ export add_wrapper;
 export run;
 
 export future_result;
-export unsupervise;
 export run_listener;
 export run_with;
 
