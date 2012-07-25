@@ -74,7 +74,7 @@ enum state {
 }
 
 impl methods for state {
-    fn add_message(name: ident, span: span, 
+    fn add_message(name: ident, span: span,
                    +data: ~[@ast::ty], next: next_state) {
         self.messages.push(message(name, span, data, self,
                                    next));
@@ -88,6 +88,7 @@ impl methods for state {
         self.name
     }
 
+    /// Returns the type that is used for the messages.
     fn to_ty(cx: ext_ctxt) -> @ast::ty {
         cx.ty_path_ast_builder
             (path(self.name, self.span).add_tys(cx.ty_vars(self.ty_params)))
