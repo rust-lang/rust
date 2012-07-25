@@ -319,11 +319,12 @@ impl compile of gen_init for protocol {
     }
 
     fn buffer_ty_path(cx: ext_ctxt) -> @ast::ty {
-        let mut params = ~[];
+        let mut params: ~[ast::ty_param] = ~[];
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
-                if !params.contains(tp) {
-                    vec::push(params, tp);
+                alt params.find(|tpp| *tp.ident == *tpp.ident) {
+                  none { vec::push(params, tp) }
+                  _ { }
                 }
             }
         }
@@ -334,11 +335,12 @@ impl compile of gen_init for protocol {
 
     fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
-        let mut params = ~[];
+        let mut params: ~[ast::ty_param] = ~[];
         let fields = do (copy self.states).map_to_vec |s| {
             for s.ty_params.each |tp| {
-                if !params.contains(tp) {
-                    vec::push(params, tp);
+                alt params.find(|tpp| *tp.ident == *tpp.ident) {
+                  none { vec::push(params, tp) }
+                  _ { }
                 }
             }
             let ty = s.to_ty(cx);
