@@ -20,7 +20,7 @@ syn keyword   rustKeyword     ret self to unchecked
 syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
 syn keyword   rustKeyword     use while with
 " FIXME: Scoped impl's name is also fallen in this category
-syn keyword   rustKeyword     mod iface trait class enum type nextgroup=rustIdentifier skipwhite
+syn keyword   rustKeyword     mod iface trait class struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
 
 syn match     rustIdentifier  "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
