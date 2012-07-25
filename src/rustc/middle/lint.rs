@@ -421,6 +421,14 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
 fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
             _body: ast::blk, span: span, id: ast::node_id) {
     #debug["lint check_fn fk=%? id=%?", fk, id];
+
+    // don't complain about blocks, since they tend to get their modes
+    // specified from the outside
+    alt fk {
+      visit::fk_fn_block(*) => { ret; }
+      _ => {}
+    }
+
     let fn_ty = ty::node_id_to_type(tcx, id);
     alt check ty::get(fn_ty).struct {
       ty::ty_fn(fn_ty) {
