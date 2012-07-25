@@ -637,11 +637,6 @@ rust_new_task_in_sched(rust_sched_id id) {
     return new_task_common(sched, task);
 }
 
-extern "C" CDECL void
-rust_task_config_notify(rust_task *target, rust_port_id *port) {
-    target->config_notify(*port);
-}
-
 extern "C" rust_task *
 rust_get_task() {
     return rust_get_current_task();

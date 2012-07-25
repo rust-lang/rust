@@ -15,7 +15,6 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
                      const char *name, size_t init_stack_sz) :
     ref_count(1),
     id(0),
-    notify_enabled(false),
     stk(NULL),
     runtime_sp(0),
     sched(sched_loop->sched),
@@ -140,8 +139,6 @@ cleanup_task(cleanup_args *args) {
     cc::do_final_cc(task);
 
     task->die();
-
-    task->notify(!threw_exception);
 
 #ifdef __WIN32__
     assert(!threw_exception && "No exception-handling yet on windows builds");
@@ -454,23 +451,6 @@ rust_task::calloc(size_t size, const char *tag) {
     return local_region.calloc(size, tag);
 }
 
-void
-rust_task::notify(bool success) {
-    // FIXME (#1078) Do this in rust code
-    if(notify_enabled) {
-        rust_port *target_port =
-            kernel->get_port_by_id(notify_port);
-        if(target_port) {
-            task_notification msg;
-            msg.id = id;
-            msg.result = !success ? tr_failure : tr_success;
-
-            target_port->send(&msg);
-            target_port->deref();
-        }
-    }
-}
-
 size_t
 rust_task::get_next_stack_size(size_t min, size_t current, size_t requested) {
     LOG(this, mem, "calculating new stack size for 0x%" PRIxPTR, this);
@@ -634,12 +614,6 @@ rust_task::delete_all_stacks() {
         free_stack(stk);
         stk = prev;
     }
-}
-
-void
-rust_task::config_notify(rust_port_id port) {
-    notify_enabled = true;
-    notify_port = port;
 }
 
 /*
