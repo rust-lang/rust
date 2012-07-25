@@ -110,6 +110,7 @@ export ty_fn_args;
 export kind, kind_implicitly_copyable, kind_send_copy, kind_copyable;
 export kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
+export kind_is_safe_for_default_mode;
 export kind_is_owned;
 export proto_kind, kind_lteq, type_kind;
 export operators;
@@ -1371,19 +1372,22 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 enum kind { kind_(u32) }
 
 /// can be copied (implicitly or explicitly)
-const KIND_MASK_COPY     : u32 = 0b00000000000000000000000000000001_u32;
+const KIND_MASK_COPY         : u32 = 0b000000000000000000000000001_u32;
 
 /// can be sent: no shared box, borrowed ptr (must imply OWNED)
-const KIND_MASK_SEND     : u32 = 0b00000000000000000000000000000010_u32;
+const KIND_MASK_SEND         : u32 = 0b000000000000000000000000010_u32;
 
 /// is owned (no borrowed ptrs)
-const KIND_MASK_OWNED    : u32 = 0b00000000000000000000000000000100_u32;
+const KIND_MASK_OWNED        : u32 = 0b000000000000000000000000100_u32;
 
 /// is deeply immutable
-const KIND_MASK_CONST    : u32 = 0b00000000000000000000000000001000_u32;
+const KIND_MASK_CONST        : u32 = 0b000000000000000000000001000_u32;
 
 /// can be implicitly copied (must imply COPY)
-const KIND_MASK_IMPLICIT : u32 = 0b00000000000000000000000000010000_u32;
+const KIND_MASK_IMPLICIT     : u32 = 0b000000000000000000000010000_u32;
+
+/// safe for default mode (subset of KIND_MASK_IMPLICIT)
+const KIND_MASK_DEFAULT_MODE : u32 = 0b000000000000000000000100000_u32;
 
 fn kind_noncopyable() -> kind {
     kind_(0u32)
@@ -1397,9 +1401,21 @@ fn kind_implicitly_copyable() -> kind {
     kind_(KIND_MASK_IMPLICIT | KIND_MASK_COPY)
 }
 
+fn kind_safe_for_default_mode() -> kind {
+    // similar to implicit copy, but always includes vectors and strings
+    kind_(KIND_MASK_DEFAULT_MODE | KIND_MASK_IMPLICIT | KIND_MASK_COPY)
+}
+
 fn kind_implicitly_sendable() -> kind {
     kind_(KIND_MASK_IMPLICIT | KIND_MASK_COPY | KIND_MASK_SEND)
 }
+
+fn kind_safe_for_default_mode_send() -> kind {
+    // similar to implicit copy, but always includes vectors and strings
+    kind_(KIND_MASK_DEFAULT_MODE | KIND_MASK_IMPLICIT |
+          KIND_MASK_COPY | KIND_MASK_SEND)
+}
+
 
 fn kind_send_copy() -> kind {
     kind_(KIND_MASK_COPY | KIND_MASK_SEND)
@@ -1426,7 +1442,7 @@ fn remove_const(k: kind) -> kind {
 }
 
 fn remove_implicit(k: kind) -> kind {
-    k - kind_(KIND_MASK_IMPLICIT)
+    k - kind_(KIND_MASK_IMPLICIT | KIND_MASK_DEFAULT_MODE)
 }
 
 fn remove_send(k: kind) -> kind {
@@ -1462,6 +1478,10 @@ pure fn kind_can_be_implicitly_copied(k: kind) -> bool {
     *k & KIND_MASK_IMPLICIT == KIND_MASK_IMPLICIT
 }
 
+pure fn kind_is_safe_for_default_mode(k: kind) -> bool {
+    *k & KIND_MASK_DEFAULT_MODE == KIND_MASK_DEFAULT_MODE
+}
+
 pure fn kind_can_be_copied(k: kind) -> bool {
     *k & KIND_MASK_COPY == KIND_MASK_COPY
 }
@@ -1478,9 +1498,9 @@ fn proto_kind(p: proto) -> kind {
     alt p {
       ast::proto_any { kind_noncopyable() }
       ast::proto_block { kind_noncopyable() }
-      ast::proto_box { kind_implicitly_copyable() | kind_owned() }
+      ast::proto_box { kind_safe_for_default_mode() | kind_owned() }
       ast::proto_uniq { kind_send_copy() | kind_owned() }
-      ast::proto_bare { kind_implicitly_sendable() | kind_const() |
+      ast::proto_bare { kind_safe_for_default_mode_send() | kind_const() |
                            kind_owned() }
     }
 }
@@ -1539,11 +1559,11 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     // Insert a default in case we loop back on self recursively.
     cx.kind_cache.insert(ty, kind_top());
 
-    let result = alt get(ty).struct {
+    let mut result = alt get(ty).struct {
       // Scalar and unique types are sendable, constant, and owned
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) {
-        kind_implicitly_sendable() | kind_const() | kind_owned()
+        kind_safe_for_default_mode_send() | kind_const() | kind_owned()
       }
 
       // Implicit copyability of strs is configurable
@@ -1561,14 +1581,14 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Those with refcounts raise noncopyable to copyable,
       // lower sendable to copyable. Therefore just set result to copyable.
       ty_box(tm) {
-        remove_send(mutable_type_kind(cx, tm) | kind_implicitly_copyable())
+        remove_send(mutable_type_kind(cx, tm) | kind_safe_for_default_mode())
       }
 
       // Iface instances are (for now) like shared boxes, basically
-      ty_trait(_, _) { kind_implicitly_copyable() | kind_owned() }
+      ty_trait(_, _) { kind_safe_for_default_mode() | kind_owned() }
 
       // Region pointers are copyable but NOT owned nor sendable
-      ty_rptr(_, _) { kind_implicitly_copyable() }
+      ty_rptr(_, _) { kind_safe_for_default_mode() }
 
       // Unique boxes and vecs have the kind of their contained type,
       // but unique boxes can't be implicitly copyable.
@@ -1587,10 +1607,10 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // contained type, but aren't implicitly copyable.  Fixed vectors have
       // the kind of the element they contain, taking mutability into account.
       ty_evec(tm, vstore_box) {
-        remove_send(kind_implicitly_copyable() | mutable_type_kind(cx, tm))
+        remove_send(kind_safe_for_default_mode() | mutable_type_kind(cx, tm))
       }
       ty_evec(tm, vstore_slice(_)) {
-        remove_owned_send(kind_implicitly_copyable() |
+        remove_owned_send(kind_safe_for_default_mode() |
                           mutable_type_kind(cx, tm))
       }
       ty_evec(tm, vstore_fixed(_)) {
@@ -1599,13 +1619,13 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
 
       // All estrs are copyable; uniques and interiors are sendable.
       ty_estr(vstore_box) {
-        kind_implicitly_copyable() | kind_const() | kind_owned()
+        kind_safe_for_default_mode() | kind_const() | kind_owned()
       }
       ty_estr(vstore_slice(_)) {
-        kind_implicitly_copyable() | kind_const()
+        kind_safe_for_default_mode() | kind_const()
       }
       ty_estr(vstore_fixed(_)) {
-        kind_implicitly_sendable() | kind_const() | kind_owned()
+        kind_safe_for_default_mode_send() | kind_const() | kind_owned()
       }
 
       // Records lower to the lowest of their members.
@@ -1676,8 +1696,75 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
     };
 
+    // arbitrary threshold to prevent by-value copying of big records
+    if kind_is_safe_for_default_mode(result) {
+        if type_size(cx, ty) > 4 {
+            result -= kind_(KIND_MASK_DEFAULT_MODE);
+        }
+    }
+
     cx.kind_cache.insert(ty, result);
     ret result;
+}
+
+/// gives a rough estimate of how much space it takes to represent
+/// an instance of `ty`.  Used for the mode transition.
+fn type_size(cx: ctxt, ty: t) -> uint {
+    alt get(ty).struct {
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
+      ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
+      ty_evec(_, vstore_box) | ty_estr(vstore_box) => {
+        1
+      }
+
+      ty_evec(_, vstore_slice(_)) |
+      ty_estr(vstore_slice(_)) |
+      ty_fn(_) => {
+        2
+      }
+
+      ty_evec(t, vstore_fixed(n)) => {
+        type_size(cx, t.ty) * n
+      }
+
+      ty_estr(vstore_fixed(n)) => {
+        n
+      }
+
+      ty_rec(flds) => {
+        flds.foldl(0, |s, f| s + type_size(cx, f.mt.ty))
+      }
+
+      ty_class(did, substs) {
+        let flds = class_items_as_fields(cx, did, substs);
+        flds.foldl(0, |s, f| s + type_size(cx, f.mt.ty))
+      }
+
+      ty_tup(tys) {
+        tys.foldl(0, |s, t| s + type_size(cx, t))
+      }
+
+      ty_enum(did, substs) {
+        let variants = substd_enum_variants(cx, did, substs);
+        variants.foldl( // find max size of any variant
+            0,
+            |m, v| uint::max(m,
+                             // find size of this variant:
+                             v.args.foldl(0, |s, a| s + type_size(cx, a))))
+      }
+
+      ty_param(_) | ty_self {
+        1
+      }
+
+      ty_var(_) | ty_var_integral(_) {
+        cx.sess.bug(~"Asked to compute kind of a type variable");
+      }
+      ty_type | ty_opaque_closure_ptr(_) | ty_opaque_box | ty_unboxed_vec(_) {
+        cx.sess.bug(~"Asked to compute kind of fictitious type");
+      }
+    }
 }
 
 // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
