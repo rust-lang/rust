@@ -1,44 +1,41 @@
 // -*- rust -*-
 
 use std;
-import comm;
-import comm::send;
-import comm::port;
-import comm::recv;
-import comm::chan;
+import pipes;
+import pipes::send;
+import pipes::port;
+import pipes::recv;
+import pipes::chan;
 
 // Tests of ports and channels on various types
 fn test_rec() {
     type r = {val0: int, val1: u8, val2: char};
 
-    let po = comm::port();
-    let ch = chan(po);
+    let (ch, po) = pipes::stream();
     let r0: r = {val0: 0, val1: 1u8, val2: '2'};
-    send(ch, r0);
+    ch.send(r0);
     let mut r1: r;
-    r1 = recv(po);
+    r1 = po.recv();
     assert (r1.val0 == 0);
     assert (r1.val1 == 1u8);
     assert (r1.val2 == '2');
 }
 
 fn test_vec() {
-    let po = port();
-    let ch = chan(po);
+    let (ch, po) = pipes::stream();
     let v0: ~[int] = ~[0, 1, 2];
-    send(ch, v0);
-    let v1 = recv(po);
+    ch.send(v0);
+    let v1 = po.recv();
     assert (v1[0] == 0);
     assert (v1[1] == 1);
     assert (v1[2] == 2);
 }
 
 fn test_str() {
-    let po = port();
-    let ch = chan(po);
-    let s0 = ~"test";
-    send(ch, s0);
-    let s1 = recv(po);
+    let (ch, po) = pipes::stream();
+    let s0 = "test";
+    ch.send(s0);
+    let s1 = po.recv();
     assert (s1[0] == 't' as u8);
     assert (s1[1] == 'e' as u8);
     assert (s1[2] == 's' as u8);
@@ -47,33 +44,36 @@ fn test_str() {
 
 fn test_tag() {
     enum t { tag1, tag2(int), tag3(int, u8, char), }
-    let po = port();
-    let ch = chan(po);
-    send(ch, tag1);
-    send(ch, tag2(10));
-    send(ch, tag3(10, 11u8, 'A'));
+    let (ch, po) = pipes::stream();
+    ch.send(tag1);
+    ch.send(tag2(10));
+    ch.send(tag3(10, 11u8, 'A'));
     let mut t1: t;
-    t1 = recv(po);
+    t1 = po.recv();
     assert (t1 == tag1);
-    t1 = recv(po);
+    t1 = po.recv();
     assert (t1 == tag2(10));
-    t1 = recv(po);
+    t1 = po.recv();
     assert (t1 == tag3(10, 11u8, 'A'));
 }
 
 fn test_chan() {
-    let po = port();
-    let ch = chan(po);
-    let po0 = port();
-    let ch0 = chan(po0);
-    send(ch, ch0);
-    let ch1 = recv(po);
+    let (ch, po) = pipes::stream();
+    let (ch0, po0) = pipes::stream();
+    ch.send(ch0);
+    let ch1 = po.recv();
     // Does the transmitted channel still work?
 
-    send(ch1, 10);
+    ch1.send(10);
     let mut i: int;
-    i = recv(po0);
+    i = po0.recv();
     assert (i == 10);
 }
 
-fn main() { test_rec(); test_vec(); test_str(); test_tag(); test_chan(); }
+fn main() {
+    test_rec();
+    test_vec();
+    test_str();
+    test_tag();
+    test_chan();
+}

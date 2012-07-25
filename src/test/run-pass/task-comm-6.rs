@@ -1,37 +1,37 @@
 use std;
-import comm;
-import comm::send;
-import comm::chan;
-import comm::recv;
+import pipes;
+import pipes::send;
+import pipes::chan;
+import pipes::recv;
 
 fn main() { test00(); }
 
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = comm::port();
-    let c0 = chan(p);
-    let c1 = chan(p);
-    let c2 = chan(p);
-    let c3 = chan(p);
+    let p = pipes::port_set();
+    let c0 = p.chan();
+    let c1 = p.chan();
+    let c2 = p.chan();
+    let c3 = p.chan();
     let number_of_messages: int = 1000;
     let mut i: int = 0;
     while i < number_of_messages {
-        send(c0, i + 0);
-        send(c1, i + 0);
-        send(c2, i + 0);
-        send(c3, i + 0);
+        c0.send(i + 0);
+        c1.send(i + 0);
+        c2.send(i + 0);
+        c3.send(i + 0);
         i += 1;
     }
     i = 0;
     while i < number_of_messages {
-        r = recv(p);
+        r = p.recv();
         sum += r;
-        r = recv(p);
+        r = p.recv();
         sum += r;
-        r = recv(p);
+        r = p.recv();
         sum += r;
-        r = recv(p);
+        r = p.recv();
         sum += r;
         i += 1;
     }
