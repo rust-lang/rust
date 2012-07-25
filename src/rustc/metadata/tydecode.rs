@@ -133,6 +133,11 @@ fn parse_bound_region(st: @pstate) -> ty::bound_region {
       's' { ty::br_self }
       'a' { ty::br_anon }
       '[' { ty::br_named(@parse_str(st, ']')) }
+      'c' {
+        let id = parse_int(st);
+        assert next(st) == '|';
+        ty::br_cap_avoid(id, @parse_bound_region(st))
+      }
     }
 }
 
