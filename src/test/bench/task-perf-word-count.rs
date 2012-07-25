@@ -1,3 +1,4 @@
+// xfail-test
 /**
    A parallel word-frequency counting program.
 
