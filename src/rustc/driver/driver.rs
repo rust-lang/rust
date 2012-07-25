@@ -14,6 +14,7 @@ import io::{reader_util, writer_util};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 import std::map::hashmap;
+import lib::llvm::llvm;
 
 enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
               ppm_expanded_identified }
@@ -439,6 +440,9 @@ fn build_session_options(match: getopts::match,
             early_error(demitter, #fmt("unknown debug flag: %s", debug_flag))
         }
         debugging_opts |= this_bit;
+    }
+    if debugging_opts & session::debug_llvm != 0 {
+        llvm::LLVMSetDebug(1);
     }
 
     let output_type =
