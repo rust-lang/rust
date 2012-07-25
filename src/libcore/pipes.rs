@@ -822,3 +822,52 @@ impl chan<T: send> of channel<T> for shared_chan<T> {
 fn shared_chan<T:send>(+c: chan<T>) -> shared_chan<T> {
     arc::exclusive(c)
 }
+
+trait select2<T: send, U: send> {
+    fn try_select() -> either<option<T>, option<U>>;
+    fn select() -> either<T, U>;
+}
+
+impl<T: send, U: send, Left: selectable recv<T>, Right: selectable recv<U>>
+    of select2<T, U> for (Left, Right) {
+
+    fn select() -> either<T, U> {
+        alt self {
+          (lp, rp) {
+            alt select2i(lp, rp) {
+              left(())  { left (lp.recv()) }
+              right(()) { right(rp.recv()) }
+            }
+          }
+        }
+    }
+
+    fn try_select() -> either<option<T>, option<U>> {
+        alt self {
+          (lp, rp) {
+            alt select2i(lp, rp) {
+              left(())  { left (lp.try_recv()) }
+              right(()) { right(rp.try_recv()) }
+            }
+          }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_select2() {
+        let (c1, p1) = pipes::stream();
+        let (c2, p2) = pipes::stream();
+
+        c1.send("abc");
+
+        alt (p1, p2).select() {
+          right(_) { fail }
+          _ { }
+        }
+
+        c2.send(123);
+    }
+}
