@@ -7,7 +7,8 @@ import syntax::codemap::span;
 import std::map::{map,hashmap,int_hash,hash_from_strs};
 import std::smallintmap::{map,smallintmap};
 import io::writer_util;
-import syntax::print::pprust::expr_to_str;
+import util::ppaux::{ty_to_str};
+import syntax::print::pprust::{expr_to_str, mode_to_str};
 export lint, ctypes, unused_imports, while_true, path_statement, old_vecs;
 export unrecognized_warning, non_implicitly_copyable_typarams;
 export vecs_not_implicitly_copyable, implicit_copies;
@@ -47,6 +48,7 @@ enum lint {
     unrecognized_warning,
     non_implicitly_copyable_typarams,
     vecs_not_implicitly_copyable,
+    deprecated_mode,
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -61,6 +63,7 @@ fn int_to_lint(i: int) -> lint {
       5 { unrecognized_warning }
       6 { non_implicitly_copyable_typarams }
       7 { vecs_not_implicitly_copyable }
+      8 { deprecated_mode }
     }
 }
 
@@ -119,8 +122,12 @@ fn get_lint_dict() -> lint_dict {
         (~"implicit_copies",
          @{lint: implicit_copies,
            desc: ~"implicit copies of non implicitly copyable data",
-           default: warn})
+           default: warn}),
 
+        (~"deprecated_mode",
+         @{lint: deprecated_mode,
+           desc: ~"warn about deprecated uses of modes",
+           default: ignore})
     ];
     hash_from_strs(v)
 }
@@ -411,10 +418,56 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
     visit::visit_item(it, (), visit);
 }
 
+fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
+            _body: ast::blk, span: span, id: ast::node_id) {
+    #debug["lint check_fn fk=%? id=%?", fk, id];
+    let fn_ty = ty::node_id_to_type(tcx, id);
+    alt check ty::get(fn_ty).struct {
+      ty::ty_fn(fn_ty) {
+        let mut counter = 0;
+        do vec::iter2(fn_ty.inputs, decl.inputs) |arg_ty, arg_ast| {
+            counter += 1;
+            #debug["arg %d, ty=%s, mode=%s",
+                   counter,
+                   ty_to_str(tcx, arg_ty.ty),
+                   mode_to_str(arg_ast.mode)];
+            alt arg_ast.mode {
+              ast::expl(ast::by_copy) => {
+                /* always allow by-copy */
+              }
+
+              ast::expl(_) => {
+                tcx.sess.span_lint(
+                    deprecated_mode, id, id,
+                    span,
+                    #fmt["argument %d uses an explicit mode", counter]);
+              }
+
+              ast::infer(_) {
+                let kind = ty::type_kind(tcx, arg_ty.ty);
+                if !ty::kind_is_safe_for_default_mode(kind) {
+                    tcx.sess.span_lint(
+                        deprecated_mode, id, id,
+                        span,
+                        #fmt["argument %d uses the default mode \
+                              but shouldn't",
+                             counter]);
+                }
+              }
+            }
+        }
+      }
+    }
+}
+
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
     let v = visit::mk_simple_visitor(@{
-        visit_item: fn@(it: @ast::item) { check_item(it, tcx); }
+        visit_item:
+            |it| check_item(it, tcx),
+        visit_fn:
+            |fk, decl, body, span, id| check_fn(tcx, fk, decl, body,
+                                                span, id),
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), v);
