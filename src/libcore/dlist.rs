@@ -18,12 +18,28 @@ enum dlist_node<T> = @{
     mut next: dlist_link<T>
 };
 
-// Needs to be an @-box so nodes can back-reference it.
-enum dlist<T> = @{
-    mut size: uint,
-    mut hd: dlist_link<T>,
-    mut tl: dlist_link<T>
-};
+class dlist_root<T> {
+    let mut size: uint;
+    let mut hd:   dlist_link<T>;
+    let mut tl:   dlist_link<T>;
+    new() {
+        self.size = 0; self.hd = none; self.tl = none;
+    }
+    drop {
+        /* FIXME (#????) This doesn't work during task failure - the box
+         * annihilator might have killed some of our nodes already. This will
+         * be safe to uncomment when the box annihilator is safer. As is,
+         * this makes test_dlist_cyclic_link below crash the runtime.
+        // Empty the list. Not doing this explicitly would leave cyclic links
+        // around, not to be freed until cycle collection at task exit.
+        while self.hd.is_some() {
+            self.unlink(self.hd.get());
+        }
+        */
+    }
+}
+
+type dlist<T> = @dlist_root<T>;
 
 impl private_methods<T> for dlist_node<T> {
     pure fn assert_links() {
@@ -91,7 +107,7 @@ pure fn new_dlist_node<T>(+data: T) -> dlist_node<T> {
 
 /// Creates a new, empty dlist.
 pure fn new_dlist<T>() -> dlist<T> {
-    dlist(@{mut size: 0, mut hd: none, mut tl: none})
+    @unchecked { dlist_root() }
 }
 
 /// Creates a new dlist with a single element
@@ -118,7 +134,7 @@ fn concat<T>(lists: dlist<dlist<T>>) -> dlist<T> {
     result
 }
 
-impl private_methods<T> for dlist<T> {
+impl private_methods<T> for dlist_root<T> {
     pure fn new_link(-data: T) -> dlist_link<T> {
         some(dlist_node(@{data: data, mut linked: true,
                           mut prev: none, mut next: none}))
@@ -334,7 +350,7 @@ impl extensions<T> for dlist<T> {
      * to the other list's head. O(1).
      */
     fn append(them: dlist<T>) {
-        if box::ptr_eq(*self, *them) {
+        if box::ptr_eq(self, them) {
             fail ~"Cannot append a dlist to itself!"
         }
         if them.len() > 0 {
@@ -351,7 +367,7 @@ impl extensions<T> for dlist<T> {
      * list's tail to this list's head. O(1).
      */
     fn prepend(them: dlist<T>) {
-        if box::ptr_eq(*self, *them) {
+        if box::ptr_eq(self, them) {
             fail ~"Cannot prepend a dlist to itself!"
         }
         if them.len() > 0 {
@@ -366,15 +382,25 @@ impl extensions<T> for dlist<T> {
 
     /// Reverse the list's elements in place. O(n).
     fn reverse() {
-        let temp = new_dlist::<T>();
-        while !self.is_empty() {
-            let nobe = self.pop_n().get();
-            nobe.linked = true; // meh, kind of disorganised.
-            temp.add_head(some(nobe));
+        do option::while_some(self.hd) |nobe| {
+            let next_nobe = nobe.next;
+            self.remove(nobe);
+            self.make_mine(nobe);
+            self.add_head(some(nobe));
+            next_nobe
         }
-        self.hd   = temp.hd;
-        self.tl   = temp.tl;
-        self.size = temp.size;
+    }
+
+    /**
+     * Remove everything from the list. This is important because the cyclic
+     * links won't otherwise be automatically refcounted-collected. O(n).
+     */
+    fn clear() {
+        // Cute as it would be to simply detach the list and proclaim "O(1)!",
+        // the GC would still be a hidden O(n). Better to be honest about it.
+        while !self.is_empty() {
+            let _ = self.pop();
+        }
     }
 
     /// Iterate over nodes.
@@ -847,7 +873,7 @@ mod tests {
         l.assert_consistent(); assert l.is_empty();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_asymmetric_link() {
+    fn test_dlist_asymmetric_link() {
         let l = new_dlist::<int>();
         let _one = l.push_n(1);
         let two = l.push_n(2);
@@ -855,7 +881,7 @@ mod tests {
         l.assert_consistent();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_cyclic_list() {
+    fn test_dlist_cyclic_list() {
         let l = new_dlist::<int>();
         let one = l.push_n(1);
         let _two = l.push_n(2);
@@ -865,32 +891,32 @@ mod tests {
         l.assert_consistent();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_headless() {
+    fn test_dlist_headless() {
         new_dlist::<int>().head();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_insert_already_present_before() {
+    fn test_dlist_insert_already_present_before() {
         let l = new_dlist::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_before(two, one);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_insert_already_present_after() {
+    fn test_dlist_insert_already_present_after() {
         let l = new_dlist::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_after(one, two);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_insert_before_orphan() {
+    fn test_dlist_insert_before_orphan() {
         let l = new_dlist::<int>();
         let one = new_dlist_node(1);
         let two = new_dlist_node(2);
         l.insert_n_before(one, two);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_insert_after_orphan() {
+    fn test_dlist_insert_after_orphan() {
         let l = new_dlist::<int>();
         let one = new_dlist_node(1);
         let two = new_dlist_node(2);
