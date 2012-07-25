@@ -726,6 +726,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
+        encode_attributes(ebml_w, item.attrs);
         for methods.each |m| {
             ebml_w.start_tag(tag_item_impl_method);
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
