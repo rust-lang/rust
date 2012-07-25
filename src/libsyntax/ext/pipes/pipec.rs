@@ -110,7 +110,8 @@ impl compile of gen_send for message {
 
             cx.item_fn_poly(self.name(),
                             args_ast,
-                            cx.ty_path_ast_builder(path(next.data_name(), span)
+                            cx.ty_path_ast_builder(path(next.data_name(),
+                                                        span)
                                       .add_tys(next_tys)),
                             self.get_params(),
                             cx.expr_block(body))
@@ -230,7 +231,6 @@ impl compile of to_type_decls for state {
                           self.ty_params));
         }
         else {
-            let ext_cx = cx;
             vec::push(items,
                       cx.item_ty_poly(
                           self.data_name(),
@@ -240,7 +240,7 @@ impl compile of to_type_decls for state {
                               .add_tys(~[cx.ty_path_ast_builder(
                                   (self.proto.name + self.data_name())
                                   .add_tys(cx.ty_vars(self.ty_params))),
-                                         #ast[ty] { buffer }])),
+                                         self.proto.buffer_ty_path(cx)])),
                           self.ty_params));
         };
         items
@@ -288,7 +288,7 @@ impl compile of gen_init for protocol {
 
     fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
         ext_cx.rec(self.states.map_to_vec(|s| {
-            let fty = ext_cx.ty_path_ast_builder(path(s.name, s.span));
+            let fty = s.to_ty(ext_cx);
             ext_cx.field_imm(s.name, #ast { pipes::mk_packet::<$(fty)>() })
         }))
     }
@@ -318,19 +318,40 @@ impl compile of gen_init for protocol {
         }}
     }
 
+    fn buffer_ty_path(cx: ext_ctxt) -> @ast::ty {
+        let mut params = ~[];
+        for (copy self.states).each |s| {
+            for s.ty_params.each |tp| {
+                if !params.contains(tp) {
+                    vec::push(params, tp);
+                }
+            }
+        }
+
+        cx.ty_path_ast_builder(path(@~"buffer", self.span)
+                               .add_tys(cx.ty_vars(params)))
+    }
+
     fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
-        cx.item_ty(
+        let mut params = ~[];
+        let fields = do (copy self.states).map_to_vec |s| {
+            for s.ty_params.each |tp| {
+                if !params.contains(tp) {
+                    vec::push(params, tp);
+                }
+            }
+            let ty = s.to_ty(cx);
+            let fty = #ast[ty] {
+                pipes::packet<$(ty)>
+            };
+            cx.ty_field_imm(s.name, fty)
+        };
+
+        cx.item_ty_poly(
             @~"buffer",
-            cx.ty_rec(
-                (copy self.states).map_to_vec(
-                    |s| {
-                        let ty = cx.ty_path_ast_builder(path(s.name, s.span));
-                        let fty = #ast[ty] {
-                            pipes::packet<$(ty)>
-                        };
-                        cx.ty_field_imm(s.name, fty)
-                    })))
+            cx.ty_rec(fields),
+            params)
     }
 
     fn compile(cx: ext_ctxt) -> @ast::item {
