@@ -687,7 +687,11 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
 
 fn read_whole_file_str(file: ~str) -> result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
-        result::ok(str::from_bytes(bytes))
+        if str::is_utf8(bytes) {
+            result::ok(str::from_bytes(bytes))
+       } else {
+           result::err(file + ~" is not UTF-8")
+       }
     })
 }
 
