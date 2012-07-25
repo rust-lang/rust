@@ -574,15 +574,6 @@ sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
     return (uintptr_t)stk->data <= sp && sp <= stk->end;
 }
 
-struct reset_args {
-    rust_task *task;
-    uintptr_t sp;
-};
-
-void
-reset_stack_limit_on_c_stack(reset_args *args) {
-}
-
 /*
 Called by landing pads during unwinding to figure out which stack segment we
 are currently running on and record the stack limit (which was not restored
