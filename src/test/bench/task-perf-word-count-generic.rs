@@ -143,14 +143,12 @@ mod map_reduce {
     proto! ctrl_proto {
         open: send<K: copy send, V: copy send> {
             find_reducer(K) -> reducer_response<K, V>,
-            mapper_done -> terminated
+            mapper_done -> !
         }
 
         reducer_response: recv<K: copy send, V: copy send> {
             reducer(chan<reduce_proto<V>>) -> open<K, V>
         }
-
-        terminated: send { }
     }
 
     enum reduce_proto<V: copy send> { emit_val(V), done, ref, release }
@@ -261,7 +259,7 @@ mod map_reduce {
         while num_mappers > 0 {
             let (_ready, message, ctrls) = pipes::select(ctrl);
             alt option::unwrap(message) {
-              ctrl_proto::mapper_done(_) {
+              ctrl_proto::mapper_done {
                 // #error("received mapper terminated.");
                 num_mappers -= 1;
                 ctrl = ctrls;
