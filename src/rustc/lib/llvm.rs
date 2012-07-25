@@ -969,10 +969,6 @@ extern mod llvm {
 
     fn LLVMConstNamedStruct(S: TypeRef, ConstantVals: *ValueRef,
                             Count: c_uint) -> ValueRef;
-
-    /** Links LLVM modules together. `Src` is destroyed by this call and
-        must never be referenced again. */
-    fn LLVMLinkModules(Dest: ModuleRef, Src: ModuleRef) -> Bool;
 }
 
 fn SetInstructionCallConv(Instr: ValueRef, CC: CallConv) {

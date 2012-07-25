@@ -49,6 +49,7 @@ export run_with;
 
 export spawn;
 export spawn_unlinked;
+export spawn_supervised;
 export spawn_with;
 export spawn_listener;
 export spawn_sched;
@@ -728,12 +729,21 @@ unsafe fn taskgroup_key() -> local_data_key<taskgroup> {
     unsafe::transmute((-2 as uint, 0u))
 }
 
-fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
+// The 'linked' arg tells whether or not to also ref the unidirectionally-
+// linked supervisors' group. False when the spawn is supervised, not linked.
+fn share_spawner_taskgroup(linked: bool)
+        -> (taskgroup_arc, option<taskgroup_arc>, bool) {
     let me = rustrt::rust_get_task();
     alt unsafe { local_get(me, taskgroup_key()) } {
         some(group) {
+            // If they are linked to us, they share our parent group.
+            let parent_arc_opt = if linked {
+                group.parents.map(|x| alt x { (pg,_) { pg.clone() } })
+            } else {
+                none
+            };
             // Clone the shared state for the child; propagate main-ness.
-            (group.tasks.clone(), group.is_main)
+            (group.tasks.clone(), parent_arc_opt, group.is_main)
         }
         none {
             // Main task, doing first spawn ever.
@@ -743,26 +753,30 @@ fn share_parent_taskgroup() -> (taskgroup_arc, bool) {
             let group = @taskgroup(me, tasks.clone(), 0, none, true);
             unsafe { local_set(me, taskgroup_key(), group); }
             // Tell child task it's also in the main group.
-            (tasks, true)
+            // Whether or not it wanted our parent group, we haven't got one.
+            (tasks, none, true)
         }
     }
 }
 
 fn spawn_raw(opts: task_opts, +f: fn~()) {
     // Decide whether the child needs to be in a new linked failure group.
-    let ((child_tg, is_main), parent_tg) = if opts.linked {
+    // This whole conditional should be consolidated with share_spawner above.
+    let (child_tg, parent_tg, is_main) = if opts.linked {
         // It doesn't mean anything for a linked-spawned-task to have a parent
         // group. The spawning task is already bidirectionally linked to it.
-        (share_parent_taskgroup(), none)
+        share_spawner_taskgroup(true)
     } else {
         // Detached from the parent group; create a new (non-main) one.
-        ((arc::exclusive(some((dvec::dvec(),dvec::dvec()))), false),
+        (arc::exclusive(some((dvec::dvec(),dvec::dvec()))),
          // Allow the parent to unidirectionally fail the child?
          if opts.parented {
-             let (pg,_) = share_parent_taskgroup(); some(pg)
+             // Use the spawner's own group as the child's parent group.
+             let (pg,_,_) = share_spawner_taskgroup(false); some(pg)
          } else {
              none
-         })
+         },
+         false)
     };
 
     unsafe {
@@ -1256,13 +1270,51 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
     fail;
 }
 
-// A bonus linked failure test
+// A couple bonus linked failure tests - testing for failure propagation even
+// when the middle task exits successfully early before kill signals are sent.
 
 #[test] #[should_fail] // #[ignore(cfg(windows))]
 #[ignore] // FIXME (#1868) (bblum) make this work
-fn test_spawn_unlinked_sup_propagate_grandchild() {
+fn test_spawn_failure_propagate_grandchild() {
+    // Middle task exits; does grandparent's failure propagate across the gap?
     do spawn_supervised {
         do spawn_supervised {
+            loop { task::yield(); }
+        }
+    }
+    for iter::repeat(8192) { task::yield(); }
+    fail;
+}
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_failure_propagate_secondborn() {
+    // First-born child exits; does parent's failure propagate to sibling?
+    do spawn_supervised {
+        do spawn { // linked
+            loop { task::yield(); }
+        }
+    }
+    for iter::repeat(8192) { task::yield(); }
+    fail;
+}
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_failure_propagate_nephew_or_niece() {
+    // Our sibling exits; does our failure propagate to sibling's child?
+    do spawn { // linked
+        do spawn_supervised {
+            loop { task::yield(); }
+        }
+    }
+    for iter::repeat(8192) { task::yield(); }
+    fail;
+}
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_spawn_linked_sup_propagate_sibling() {
+    // Middle sibling exits - does eldest's failure propagate to youngest?
+    do spawn { // linked
+        do spawn { // linked
             loop { task::yield(); }
         }
     }

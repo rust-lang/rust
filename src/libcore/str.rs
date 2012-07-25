@@ -660,11 +660,10 @@ pure fn le(&&a: ~str, &&b: ~str) -> bool { a <= b }
 
 /// String hash function
 pure fn hash(&&s: ~str) -> uint {
-    // djb hash.
-    // FIXME: replace with murmur. (see #859 and #1616)
-    let mut u: uint = 5381u;
-    for each(s) |c| { u *= 33u; u += c as uint; }
-    ret u;
+    let x = do as_bytes(s) |bytes| {
+        hash::hash_bytes(bytes)
+    };
+    ret x as uint;
 }
 
 /*
