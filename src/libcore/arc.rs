@@ -3,10 +3,9 @@
  * share immutable data between tasks.
  */
 
-import comm::{port, chan, methods};
 import sys::methods;
 
-export arc, get, clone, shared_arc, get_arc;
+export arc, get, clone;
 
 export exclusive, methods;
 
@@ -122,49 +121,6 @@ impl methods<T: send> for exclusive<T> {
     }
 }
 
-// Convenience code for sharing arcs between tasks
-
-type get_chan<T: const send> = chan<chan<arc<T>>>;
-
-// (terminate, get)
-type shared_arc<T: const send> = (shared_arc_res, get_chan<T>);
-
-class shared_arc_res {
-   let c: comm::chan<()>;
-   new(c: comm::chan<()>) { self.c = c; }
-   drop { self.c.send(()); }
-}
-
-fn shared_arc<T: send const>(-data: T) -> shared_arc<T> {
-    let a = arc::arc(data);
-    let p = port();
-    let c = chan(p);
-    do task::spawn() |move a| {
-        let mut live = true;
-        let terminate = port();
-        let get = port();
-
-        c.send((chan(terminate), chan(get)));
-
-        while live {
-            alt comm::select2(terminate, get) {
-              either::left(()) { live = false; }
-              either::right(cc) {
-                comm::send(cc, arc::clone(&a));
-              }
-            }
-        }
-    };
-    let (terminate, get) = p.recv();
-    (shared_arc_res(terminate), get)
-}
-
-fn get_arc<T: send const>(c: get_chan<T>) -> arc::arc<T> {
-    let p = port();
-    c.send(chan(p));
-    p.recv()
-}
-
 #[cfg(test)]
 mod tests {
     import comm::*;
@@ -194,25 +150,6 @@ mod tests {
         assert (*arc::get(&arc_v))[2] == 3;
 
         log(info, arc_v);
-    }
-
-    #[test]
-    fn auto_share_arc() {
-        let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let (_res, arc_c) = shared_arc(v);
-
-        let p = port();
-        let c = chan(p);
-
-        do task::spawn() {
-            let arc_v = get_arc(arc_c);
-            let v = *get(&arc_v);
-            assert v[2] == 3;
-
-            c.send(());
-        };
-
-        assert p.recv() == ();
     }
 
     #[test]

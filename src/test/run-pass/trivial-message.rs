@@ -1,4 +1,4 @@
-import pipes::{port, chan}
+import pipes::{port, chan};
 
 /*
   This is about the simplest program that can successfully send a
