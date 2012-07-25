@@ -55,7 +55,6 @@ rust_env_pairs
 rust_task_yield
 rust_task_is_unwinding
 rust_get_task
-rust_task_config_notify
 rust_task_weaken
 rust_task_unweaken
 sched_threads
