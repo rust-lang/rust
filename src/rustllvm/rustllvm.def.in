@@ -528,6 +528,7 @@ LLVMSetAlignment
 LLVMSetCleanup
 LLVMSetCurrentDebugLocation
 LLVMSetDataLayout
+LLVMSetDebug
 LLVMSetFunctionCallConv
 LLVMSetGC
 LLVMSetGlobalConstant
