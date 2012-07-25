@@ -125,8 +125,6 @@ rust_task : public kernel_owned<rust_task>
     RUST_ATOMIC_REFCOUNT();
 
     rust_task_id id;
-    bool notify_enabled;
-    rust_port_id notify_port;
 
     context ctx;
     stk_seg *stk;
@@ -285,8 +283,6 @@ public:
     // not at all safe.
     intptr_t get_ref_count() const { return ref_count; }
 
-    void notify(bool success);
-
     void *next_stack(size_t stk_sz, void *args_addr, size_t args_sz);
     void prev_stack();
     void record_stack_limit();
@@ -295,8 +291,6 @@ public:
     bool on_rust_stack();
     void check_stack_canary();
     void delete_all_stacks();
-
-    void config_notify(rust_port_id port);
 
     void call_on_c_stack(void *args, void *fn_ptr);
     void call_on_rust_stack(void *args, void *fn_ptr);
