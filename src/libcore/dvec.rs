@@ -108,6 +108,11 @@ impl private_methods<A> for dvec<A> {
 // almost nothing works without the copy bound due to limitations
 // around closures.
 impl extensions<A> for dvec<A> {
+    /// Reserves space for N elements
+    fn reserve(count: uint) {
+        vec::reserve(self.data, count)
+    }
+
     /**
      * Swaps out the current vector and hands it off to a user-provided
      * function `f`.  The function should transform it however is desired
