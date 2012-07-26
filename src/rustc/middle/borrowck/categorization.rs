@@ -192,12 +192,12 @@ impl public_methods for borrowck_ctxt {
                expr_ty: ty::t,
                def: ast::def) -> cmt {
         alt def {
-          ast::def_fn(_, _) | ast::def_mod(_) |
+          ast::def_fn(*) | ast::def_mod(_) |
           ast::def_foreign_mod(_) | ast::def_const(_) |
-          ast::def_use(_) | ast::def_variant(_, _) |
+          ast::def_use(_) | ast::def_variant(*) |
           ast::def_ty(_) | ast::def_prim_ty(_) |
-          ast::def_ty_param(_, _) | ast::def_class(_, _) |
-          ast::def_region(_) {
+          ast::def_ty_param(*) | ast::def_class(*) |
+          ast::def_typaram_binder(*) | ast::def_region(_) {
             @{id:id, span:span,
               cat:cat_special(sk_static_item), lp:none,
               mutbl:m_imm, ty:expr_ty}

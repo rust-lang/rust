@@ -373,6 +373,9 @@ impl of tr for ast::def {
             ast::def_class(did.tr(xcx), has_constructor)
           }
           ast::def_region(nid) { ast::def_region(xcx.tr_id(nid)) }
+          ast::def_typaram_binder(nid) {
+            ast::def_typaram_binder(xcx.tr_id(nid))
+          }
         }
     }
 }
