@@ -26,7 +26,7 @@ type userinfo = {
     pass: option<~str>
 };
 
-type query = map::hashmap<~str, ~str>;
+type query = map::hashmap<~str, @~str>;
 
 fn url(-scheme: ~str, -user: option<userinfo>, -host: ~str,
        -path: ~str, -query: query, -fragment: option<~str>) -> url {
@@ -262,11 +262,25 @@ fn decode_form_urlencoded(s: ~[u8]) -> hashmap<~str, @dvec<@~str>> {
 
 
 fn split_char_first(s: ~str, c: char) -> (~str, ~str) {
-    let mut v = str::splitn_char(s, c, 1);
-    if v.len() == 1 {
-        ret (s, ~"");
+    let len = str::len(s);
+    let mut index = len;
+    let mut match = 0;
+    do io::with_str_reader(s) |rdr| {
+        let mut ch : char;
+        while !rdr.eof() {
+            ch = rdr.read_byte() as char;
+            if ch == c {
+                // found a match, adjust markers
+                index = rdr.tell()-1;
+                match = 1;
+                break;
+            }
+        }
+    }
+    if index+match == len {
+        ret (str::slice(s, 0, index), ~"");
     } else {
-        ret (vec::shift(v), vec::pop(v));
+        ret (str::slice(s, 0, index), str::slice(s, index + match, str::len(s)));
     }
 }
 
@@ -295,7 +309,7 @@ fn query_from_str(rawquery: ~str) -> query {
     if str::len(rawquery) != 0 {
         for str::split_char(rawquery, '&').each |p| {
             let (k, v) = split_char_first(p, '=');
-            query.insert(decode_component(k), decode_component(v));
+            query.insert(decode_component(k), @decode_component(v));
         };
     }
     ret query;
@@ -304,23 +318,35 @@ fn query_from_str(rawquery: ~str) -> query {
 fn query_to_str(query: query) -> ~str {
     let mut strvec = ~[];
     for query.each |k, v| {
-        strvec += ~[#fmt("%s=%s", encode_component(k), encode_component(v))];
+        strvec += ~[#fmt("%s=%s", encode_component(k), encode_component(*v))];
     };
     ret str::connect(strvec, ~"&");
 }
 
-fn get_scheme(rawurl: ~str) -> option::option<(~str, ~str)> {
+fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
-        if char::is_alphabetic(c) {
+        alt c {
+          'A' to 'Z' | 'a' to 'z' { again; }
+          '0' to '9' | '+' | '-' | '.' {
+            if i == 0 {
+                ret result::err(@~"url: Scheme must begin with a letter.");
+            }
             again;
-        } else if c == ':' && i != 0 {
-            ret option::some((rawurl.slice(0,i),
-                              rawurl.slice(i+3,str::len(rawurl))));
-        } else {
-            ret option::none;
+          }
+          ':' {
+            if i == 0 {
+                ret result::err(@~"url: Scheme cannot be empty.");
+            } else {
+                ret result::ok((rawurl.slice(0,i),
+                                rawurl.slice(i+3,str::len(rawurl))));
+            }
+          }
+          _  {
+            ret result::err(@~"url: Invalid character in scheme.");
+          }
         }
     };
-    ret option::none;
+    ret result::ok((copy rawurl, ~""));
 }
 
 /**
@@ -338,10 +364,10 @@ fn get_scheme(rawurl: ~str) -> option::option<(~str, ~str)> {
 
 fn from_str(rawurl: ~str) -> result::result<url, ~str> {
     let mut schm = get_scheme(rawurl);
-    if option::is_none(schm) {
-        ret result::err(~"invalid scheme");
+    if result::is_err(schm) {
+        ret result::err(copy *result::get_err(schm));
     }
-    let (scheme, rest) = option::unwrap(schm);
+    let (scheme, rest) = result::unwrap(schm);
     let (u, rest) = split_char_first(rest, '@');
     let user = if str::len(rest) == 0 {
         option::none
@@ -414,17 +440,31 @@ fn to_str(url: url) -> ~str {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn test_split_char_first() {
+        let (u,v) = split_char_first(~"hello, sweet world", ',');
+        assert u == ~"hello";
+        assert v == ~" sweet world";
+    }
+
+    #[test]
     fn test_url_parse() {
         let url = ~"http://user:pass@rust-lang.org/doc?s=v#something";
         let u = result::unwrap(from_str(url));
         assert u.scheme == ~"http";
-        assert option::unwrap(u.user).user == ~"user";
-        assert option::unwrap(option::unwrap(u.user).pass) == ~"pass";
+        assert option::unwrap(copy u.user).user == ~"user";
+        assert option::unwrap(copy option::unwrap(copy u.user).pass) == ~"pass";
         assert u.host == ~"rust-lang.org";
         assert u.path == ~"/doc";
-        assert u.query.get(~"s") == ~"v";
-        assert option::unwrap(u.fragment) == "something";
+        assert *u.query.get(~"s") == ~"v";
+        assert option::unwrap(copy u.fragment) == ~"something";
     }
+
+    #[test]
+    fn test_invalid_scheme_errors() {
+        assert result::is_err(from_str(~"99://something"));
+        assert result::is_err(from_str(~"://something"));
+    }
+
     #[test]
     fn test_full_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc?s=v#something";
@@ -485,7 +525,7 @@ mod tests {
         let url = ~"http://rust-lang.org/doc%20uments?ba%25d%20=%23%26%2B";
         let u = result::unwrap(from_str(url));
         assert u.path == ~"/doc uments";
-        assert u.query.get(~"ba%d ") == ~"#&+";
+        assert *u.query.get(~"ba%d ") == ~"#&+";
     }
 
     #[test]
