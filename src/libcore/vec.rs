@@ -509,10 +509,7 @@ fn push<T>(&v: ~[const T], +initval: T) {
         let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
-            (**repr).fill += sys::size_of::<T>();
-            let p = ptr::addr_of((**repr).data);
-            let p = ptr::offset(p, fill) as *mut T;
-            rusti::move_val_init(*p, initval);
+            push_fast(v, initval);
         }
         else {
             push_slow(v, initval);
@@ -520,9 +517,21 @@ fn push<T>(&v: ~[const T], +initval: T) {
     }
 }
 
+// This doesn't bother to make sure we have space.
+#[inline(always)] // really pretty please
+unsafe fn push_fast<T>(&v: ~[const T], +initval: T) {
+    let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+    let fill = (**repr).fill;
+    (**repr).fill += sys::size_of::<T>();
+    let p = ptr::addr_of((**repr).data);
+    let p = ptr::offset(p, fill) as *mut T;
+    rusti::move_val_init(*p, initval);
+}
+
+#[inline(never)]
 fn push_slow<T>(&v: ~[const T], +initval: T) {
     reserve_at_least(v, v.len() + 1u);
-    push(v, initval);
+    unsafe { push_fast(v, initval) }
 }
 
 // Unchecked vector indexing
@@ -644,7 +653,6 @@ fn grow_fn<T>(&v: ~[const T], n: uint, op: init_op<T>) {
  * of the vector, expands the vector by replicating `initval` to fill the
  * intervening space.
  */
-#[inline(always)]
 fn grow_set<T: copy>(&v: ~[mut T], index: uint, initval: T, val: T) {
     if index >= len(v) { grow(v, index - len(v) + 1u, initval); }
     v[index] = val;

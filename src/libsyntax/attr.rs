@@ -364,7 +364,8 @@ fn foreign_abi(attrs: ~[ast::attribute]) -> either<~str, ast::foreign_abi> {
 enum inline_attr {
     ia_none,
     ia_hint,
-    ia_always
+    ia_always,
+    ia_never,
 }
 
 /// True if something like #[inline] is found in the list of attrs.
@@ -376,6 +377,9 @@ fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
           ast::meta_list(@~"inline", items) {
             if !vec::is_empty(find_meta_items_by_name(items, ~"always")) {
                 ia_always
+            } else if !vec::is_empty(
+                find_meta_items_by_name(items, ~"never")) {
+                ia_never
             } else {
                 ia_hint
             }

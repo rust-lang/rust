@@ -17,7 +17,8 @@ enum smallintmap<T:copy> {
 
 /// Create a smallintmap
 fn mk<T: copy>() -> smallintmap<T> {
-    ret smallintmap_(@{v: dvec()});
+    let v = dvec();
+    ret smallintmap_(@{v: v});
 }
 
 /**
@@ -26,6 +27,7 @@ fn mk<T: copy>() -> smallintmap<T> {
  */
 #[inline(always)]
 fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
+    //#error("inserting key %?", key);
     self.v.grow_set_elt(key, none, some(val));
 }
 
