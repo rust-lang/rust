@@ -50,10 +50,10 @@ fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
         some(deref_ptr(uniq_ptr))
       }
 
-      ty::ty_rptr(*) |
-      ty::ty_evec(_, ty::vstore_slice(_)) |
-      ty::ty_estr(ty::vstore_slice(_)) {
-        some(deref_ptr(region_ptr))
+      ty::ty_rptr(r, _) |
+      ty::ty_evec(_, ty::vstore_slice(r)) |
+      ty::ty_estr(ty::vstore_slice(r)) {
+        some(deref_ptr(region_ptr(r)))
       }
 
       ty::ty_box(*) |
@@ -343,7 +343,7 @@ impl public_methods for borrowck_ctxt {
                     // not loanable.
                     alt ptr {
                       uniq_ptr => {some(@lp_deref(l, ptr))}
-                      gc_ptr | region_ptr | unsafe_ptr => {none}
+                      gc_ptr | region_ptr(_) | unsafe_ptr => {none}
                     }
                 };
 
@@ -353,7 +353,7 @@ impl public_methods for borrowck_ctxt {
                   uniq_ptr => {
                     self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
                   }
-                  gc_ptr | region_ptr | unsafe_ptr => {
+                  gc_ptr | region_ptr(_) | unsafe_ptr => {
                     mt.mutbl
                   }
                 };
@@ -402,7 +402,7 @@ impl public_methods for borrowck_ctxt {
               uniq_ptr => {
                 self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
               }
-              gc_ptr | region_ptr | unsafe_ptr => {
+              gc_ptr | region_ptr(_) | unsafe_ptr => {
                 mt.mutbl
               }
             };

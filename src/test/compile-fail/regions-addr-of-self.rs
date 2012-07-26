@@ -6,7 +6,7 @@ class dog {
     }
 
     fn chase_cat() {
-        let p: &static/mut uint = &mut self.cats_chased; //~ ERROR mismatched types
+        let p: &static/mut uint = &mut self.cats_chased; //~ ERROR illegal borrow
         *p += 1u;
     }
 

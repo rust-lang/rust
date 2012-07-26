@@ -321,9 +321,10 @@ type binding_map = std::map::hashmap<ast::node_id, ast::mutability>;
 enum bckerr_code {
     err_mut_uniq,
     err_mut_variant,
-    err_preserve_gc,
-    err_mutbl(ast::mutability,
-              ast::mutability)
+    err_root_not_permitted,
+    err_mutbl(ast::mutability, ast::mutability),
+    err_out_of_root_scope(ty::region, ty::region), // superscope, subscope
+    err_out_of_scope(ty::region, ty::region) // superscope, subscope
 }
 
 // Combination of an error code and the categorization of the expression
@@ -346,7 +347,7 @@ enum categorization {
 }
 
 // different kinds of pointers:
-enum ptr_kind {uniq_ptr, gc_ptr, region_ptr, unsafe_ptr}
+enum ptr_kind {uniq_ptr, gc_ptr, region_ptr(ty::region), unsafe_ptr}
 
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
@@ -391,10 +392,15 @@ enum loan_path {
     lp_comp(@loan_path, comp_kind)
 }
 
-// a complete record of a loan that was granted
+/// a complete record of a loan that was granted
 type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
 
-// maps computed by `gather_loans` that are then used by `check_loans`
+/// maps computed by `gather_loans` that are then used by `check_loans`
+///
+/// - `req_loan_map`: map from each block/expr to the required loans needed
+///   for the duration of that block/expr
+/// - `pure_map`: map from block/expr that must be pure to the error message
+///   that should be reported if they are not pure
 type req_maps = {
     req_loan_map: hashmap<ast::node_id, @dvec<@dvec<loan>>>,
     pure_map: hashmap<ast::node_id, bckerr>
@@ -519,7 +525,7 @@ impl to_str_methods for borrowck_ctxt {
         alt ptr {
           uniq_ptr { ~"~" }
           gc_ptr { ~"@" }
-          region_ptr { ~"&" }
+          region_ptr(_) { ~"&" }
           unsafe_ptr { ~"*" }
         }
     }
@@ -561,15 +567,6 @@ impl to_str_methods for borrowck_ctxt {
              ty_to_str(self.tcx, cmt.ty)]
     }
 
-    fn pk_to_sigil(pk: ptr_kind) -> ~str {
-        alt pk {
-          uniq_ptr {~"~"}
-          gc_ptr {~"@"}
-          region_ptr {~"&"}
-          unsafe_ptr {~"*"}
-        }
-    }
-
     fn cmt_to_str(cmt: cmt) -> ~str {
         let mut_str = self.mut_to_str(cmt.mutbl);
         alt cmt.cat {
@@ -584,7 +581,7 @@ impl to_str_methods for borrowck_ctxt {
           cat_binding(_) { ~"pattern binding" }
           cat_arg(_) { ~"argument" }
           cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
-                                     mut_str, self.pk_to_sigil(pk)] }
+                                     mut_str, self.ptr_sigil(pk)] }
           cat_stack_upvar(_) {
             ~"captured outer " + mut_str + ~" variable in a stack closure"
           }
@@ -622,11 +619,29 @@ impl to_str_methods for borrowck_ctxt {
           err_mut_variant {
             ~"enum variant in aliasable, mutable location"
           }
-          err_preserve_gc {
-            ~"GC'd value would have to be preserved for longer \
-                 than the scope of the function"
+          err_root_not_permitted {
+            // note: I don't expect users to ever see this error
+            // message, reasons are discussed in attempt_root() in
+            // preserve.rs.
+            ~"rooting is not permitted"
+          }
+          err_out_of_root_scope(super_scope, sub_scope) {
+            #fmt["managed value would have to be rooted for lifetime %s, \
+                  but can only be rooted for lifetime %s",
+                 self.region_to_str(sub_scope),
+                 self.region_to_str(super_scope)]
+          }
+          err_out_of_scope(super_scope, sub_scope) {
+            #fmt["borrowed pointer has lifetime %s, \
+                  but the borrowed value only has lifetime %s",
+                 self.region_to_str(sub_scope),
+                 self.region_to_str(super_scope)]
           }
         }
+    }
+
+    fn region_to_str(r: ty::region) -> ~str {
+        region_to_str(self.tcx, r)
     }
 }
 

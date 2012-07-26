@@ -276,13 +276,13 @@ fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
 }
 
 // Extra information needed to perform an assignment that may borrow.
-// The `expr_id` is the is of the expression whose type is being
-// assigned, and `borrow_scope` is the region scope to use if the
-// value should be borrowed.
+// The `expr_id` and `span` are the id/span of the expression
+// whose type is being assigned, and `borrow_scope` is the region
+// scope to use if the value should be borrowed.
 type assignment = {
     expr_id: ast::node_id,
+    span: span,
     borrow_lb: ast::node_id,
-    borrow_ub: ast::node_id,
 };
 
 type bound<T:copy> = option<T>;
@@ -325,6 +325,7 @@ enum infer_ctxt = @{
     region_var_counter: @mut uint,
 
     borrowings: dvec<{expr_id: ast::node_id,
+                      span: span,
                       scope: ty::region,
                       mutbl: ast::mutability}>
 };
@@ -422,16 +423,18 @@ fn resolve_region(cx: infer_ctxt, r: ty::region, modes: uint)
 fn resolve_borrowings(cx: infer_ctxt) {
     for cx.borrowings.each |item| {
         alt resolve_region(cx, item.scope, resolve_all|force_all) {
-          ok(ty::re_scope(scope_id)) => {
-            #debug["borrowing for expr %d resolved to scope %d, mutbl %?",
-                   item.expr_id, scope_id, item.mutbl];
+          ok(region) => {
+            #debug["borrowing for expr %d resolved to region %?, mutbl %?",
+                   item.expr_id, region, item.mutbl];
             cx.tcx.borrowings.insert(
-                item.expr_id, {scope_id: scope_id, mutbl: item.mutbl});
+                item.expr_id, {region: region, mutbl: item.mutbl});
           }
 
-          r => {
-            cx.tcx.sess.bug(
-                #fmt["borrowing resolved to %?, not a valid scope", r]);
+          err(e) => {
+            let str = fixup_err_to_str(e);
+            cx.tcx.sess.span_err(
+                item.span,
+                #fmt["could not resolve lifetime for borrow: %s", str]);
           }
         }
     }
@@ -661,6 +664,11 @@ impl methods for infer_ctxt {
         *self.region_var_counter += 1u;
         self.rb.vals.insert(id, root(bnds, 0));
         ret region_vid(id);
+    }
+
+    fn next_region_var_with_scope_lb(scope_id: ast::node_id) -> ty::region {
+        self.next_region_var({lb: some(ty::re_scope(scope_id)),
+                              ub: none})
     }
 
     fn next_region_var(bnds: bounds<ty::region>) -> ty::region {
@@ -1475,10 +1483,7 @@ impl assignment for infer_ctxt {
             do self.sub_tys(a, nr_b).then {
                 // Create a fresh region variable `r_a` with the given
                 // borrow bounds:
-                let r_lb = ty::re_scope(anmnt.borrow_lb);
-                let r_ub = ty::re_scope(anmnt.borrow_ub);
-                let r_a = self.next_region_var({lb: some(r_lb),
-                                                ub: some(r_ub)});
+                let r_a = self.next_region_var_with_scope_lb(anmnt.borrow_lb);
 
                 #debug["anmnt=%?", anmnt];
                 do sub(self).contraregions(r_a, r_b).chain |_r| {
@@ -1487,6 +1492,7 @@ impl assignment for infer_ctxt {
                     #debug["borrowing expression #%?, scope=%?, m=%?",
                            anmnt, r_a, m];
                     self.borrowings.push({expr_id: anmnt.expr_id,
+                                          span: anmnt.span,
                                           scope: r_a,
                                           mutbl: m});
                     uok()

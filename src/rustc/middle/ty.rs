@@ -213,9 +213,11 @@ enum ast_ty_to_ty_cache_entry {
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
 
-#[auto_serialize]
+// N.B.: Borrows from inlined content are not accurately deserialized.  This
+// is because we don't need the details in trans, we only care if there is an
+// entry in the table or not.
 type borrow = {
-    scope_id: ast::node_id,
+    region: ty::region,
     mutbl: ast::mutability
 };
 

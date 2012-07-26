@@ -105,7 +105,6 @@ type fn_ctxt_ =
      // use.  In practice, this is the innermost loop or function
      // body.
      mut region_lb: ast::node_id,
-     mut region_ub: ast::node_id,
 
      in_scope_regions: isr_alist,
 
@@ -130,7 +129,6 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
                infcx: infer::new_infer_ctxt(ccx.tcx),
                locals: int_hash(),
                mut region_lb: region_bnd,
-               mut region_ub: region_bnd,
                in_scope_regions: @nil,
                node_types: map::int_hash(),
                node_type_substs: map::int_hash(),
@@ -246,7 +244,6 @@ fn check_fn(ccx: @crate_ctxt,
                    infcx: infcx,
                    locals: locals,
                    mut region_lb: body.node.id,
-                   mut region_ub: body.node.id,
                    in_scope_regions: isr,
                    node_types: node_types,
                    node_type_substs: node_type_substs,
@@ -600,15 +597,13 @@ impl methods for @fn_ctxt {
 
     fn mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
                    sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, borrow_lb: borrow_lb,
-                     borrow_ub: self.region_ub};
+        let anmnt = {expr_id: expr.id, span: expr.span, borrow_lb: borrow_lb};
         infer::mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
     fn can_mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
-                      sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, borrow_lb: borrow_lb,
-                     borrow_ub: self.region_ub};
+                       sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+        let anmnt = {expr_id: expr.id, span: expr.span, borrow_lb: borrow_lb};
         infer::can_mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
@@ -635,13 +630,6 @@ impl methods for @fn_ctxt {
         self.region_lb = lb;
         let v <- f();
         self.region_lb = old_region_lb;
-        ret v;
-    }
-    fn with_region_ub<R>(ub: ast::node_id, f: fn() -> R) -> R {
-        let old_region_ub = self.region_ub;
-        self.region_ub = ub;
-        let v <- f();
-        self.region_ub = old_region_ub;
         ret v;
     }
 }
@@ -1376,7 +1364,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_expr(fcx, oprnd, unpack_expected(fcx, expected, |ty|
             alt ty { ty::ty_rptr(_, mt) { some(mt.ty) } _ { none } }
         ));
-        let region = region_of(fcx, oprnd);
+        //let region = region_of(fcx, oprnd);
+        let region = fcx.infcx.next_region_var_with_scope_lb(expr.id);
         let tm = { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = ty::mk_rptr(tcx, region, tm);
         fcx.write_ty(id, oprnd_t);
@@ -1446,15 +1435,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_while(cond, body) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
-        do fcx.with_region_ub(body.node.id) {
-            check_block_no_value(fcx, body);
-        }
+        check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
       }
       ast::expr_loop(body) {
-        do fcx.with_region_ub(body.node.id) {
-            check_block_no_value(fcx, body);
-        }
+        check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
         bot = !may_break(body);
       }
