@@ -88,6 +88,7 @@ impl of io::writer for devnull {
     fn seek(_i: int, _s: io::seek_style) {}
     fn tell() -> uint {0_u}
     fn flush() -> int {0}
+    fn get_type() -> io::writer_type { io::file }
 }
 
 fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
