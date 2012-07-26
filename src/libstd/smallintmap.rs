@@ -27,7 +27,7 @@ fn mk<T: copy>() -> smallintmap<T> {
  */
 #[inline(always)]
 fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
-    //#error("inserting key %?", key);
+    //io::println(#fmt("%?", key));
     self.v.grow_set_elt(key, none, some(val));
 }
 
