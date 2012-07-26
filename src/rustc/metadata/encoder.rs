@@ -663,7 +663,16 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         /* Now, make an item for the class itself */
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'C');
+
+        alt ctor {
+            none {
+                encode_family(ebml_w, 'S');
+            }
+            some(_) {
+                encode_family(ebml_w, 'C');
+            }
+        }
+
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);

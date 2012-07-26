@@ -41,7 +41,7 @@ import syntax::visit::{visit_mod, visit_ty, vt};
 
 import box::ptr_eq;
 import dvec::{dvec, extensions};
-import option::get;
+import option::{get, is_some};
 import str::{connect, split_str};
 import vec::pop;
 
@@ -604,7 +604,7 @@ class Resolver {
     let unused_import_lint_level: level;
 
     let trait_info: hashmap<def_id,@hashmap<Atom,()>>;
-    let structs: hashmap<def_id,()>;
+    let structs: hashmap<def_id,bool>;
 
     // The number of imports that are currently unresolved.
     let mut unresolved_imports: uint;
@@ -926,7 +926,8 @@ class Resolver {
                 (*name_bindings).define_impl(impl_info);
 
                 // Record the def ID of this struct.
-                self.structs.insert(local_def(item.id), ());
+                self.structs.insert(local_def(item.id),
+                                    is_some(optional_ctor));
 
                 visit_item(item, new_parent, visitor);
             }
@@ -1378,12 +1379,16 @@ class Resolver {
 
                             (*child_name_bindings).define_type(def);
                         }
-                        def_class(def_id) {
+                        def_class(def_id, has_constructor) {
                             #debug("(building reduced graph for external \
-                                    crate) building value and type %s",
-                                    final_ident);
-                            (*child_name_bindings).define_value(def);
+                                    crate) building type %s (value? %d)",
+                                    final_ident,
+                                    if has_constructor { 1 } else { 0 });
                             (*child_name_bindings).define_type(def);
+
+                            if has_constructor {
+                                (*child_name_bindings).define_value(def);
+                            }
                         }
                         def_self(*) | def_arg(*) | def_local(*) |
                         def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
@@ -4201,7 +4206,9 @@ class Resolver {
                     some(definition @ def_ty(class_id))
                             if self.structs.contains_key(class_id) {
 
-                        self.record_def(expr.id, def_class(class_id));
+                        let has_constructor = self.structs.get(class_id);
+                        let class_def = def_class(class_id, has_constructor);
+                        self.record_def(expr.id, class_def);
                     }
                     _ {
                         self.session.span_err(path.span,

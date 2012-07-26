@@ -200,7 +200,7 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
           ast::def_foreign_mod(_) | ast::def_const(_) |
           ast::def_use(_) | ast::def_variant(_, _) |
           ast::def_ty(_) | ast::def_prim_ty(_) |
-          ast::def_ty_param(_, _) | ast::def_class(_) |
+          ast::def_ty_param(_, _) | ast::def_class(_, _) |
           ast::def_region(_) {
             ty::re_static
           }

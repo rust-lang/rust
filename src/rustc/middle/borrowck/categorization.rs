@@ -196,7 +196,7 @@ impl public_methods for borrowck_ctxt {
           ast::def_foreign_mod(_) | ast::def_const(_) |
           ast::def_use(_) | ast::def_variant(_, _) |
           ast::def_ty(_) | ast::def_prim_ty(_) |
-          ast::def_ty_param(_, _) | ast::def_class(_) |
+          ast::def_ty_param(_, _) | ast::def_class(_, _) |
           ast::def_region(_) {
             @{id:id, span:span,
               cat:cat_special(sk_static_item), lp:none,
