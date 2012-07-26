@@ -59,7 +59,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
 fn maybe_resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span,
                                     id: ast::node_id)
     -> option<ty::t> {
-    if wbcx.fcx.node_types.contains_key(id as uint) {
+    if wbcx.fcx.node_types.contains_key(id) {
         resolve_type_vars_for_node(wbcx, sp, id)
     } else {
         none
