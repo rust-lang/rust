@@ -840,6 +840,9 @@ impl tcp_socket_buf of io::writer for @tcp_socket_buf {
     fn flush() -> int {
         0
     }
+    fn get_type() -> io::writer_type {
+        io::file
+    }
 }
 
 // INTERNAL API
