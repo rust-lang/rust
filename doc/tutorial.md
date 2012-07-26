@@ -735,9 +735,12 @@ of numeric literal patterns can be expressed with `to`. The underscore
 (`_`) is a wildcard pattern that matches everything.
 
 If the arm with the wildcard pattern was left off in the above
-example, running it on a number greater than ten (or negative) would
-cause a run-time failure. When no arm matches, `alt` constructs do not
-silently fall through—they blow up instead.
+example, the typechecker would reject it at compile time. `alt`
+constructs must be exhaustive: they must have an arm covering every
+possible case. (You may use the `alt check` construct to write a
+non-exhaustive match, but it's highly undesirable to do so. You may
+reason that the missing cases will never occur, but the typechecker
+provides you with no assurance that your reasoning is correct.)
 
 A powerful application of pattern matching is *destructuring*, where
 you use the matching to get at the contents of data types. Remember
@@ -2500,8 +2503,8 @@ impl <T> of seq<T> for ~[T] {
 }
 ~~~~
 
-Note that the implementation has to explicitly declare the its
-parameter `T` before using it to specify its trait type. This is
+Note that the implementation has to explicitly declare the type
+parameter that it binds, `T`, before using it to specify its trait type. This is
 needed because it could also, for example, specify an implementation
 of `seq<int>`—the `of` clause *refers* to a type, rather than defining
 one.
@@ -2621,9 +2624,10 @@ OpenSSL libraries installed, it should 'just work'.
 
 ~~~~ {.xfail-test}
 use std;
+import libc::c_uint;
 
 extern mod crypto {
-    fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
+    fn SHA1(src: *u8, sz: c_uint, out: *u8) -> *u8;
 }
 
 fn as_hex(data: ~[u8]) -> ~str {
@@ -2635,7 +2639,7 @@ fn as_hex(data: ~[u8]) -> ~str {
 fn sha1(data: ~str) -> ~str unsafe {
     let bytes = str::bytes(data);
     let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
-                            vec::len(bytes), ptr::null());
+                            vec::len(bytes) as c_uint, ptr::null());
     ret as_hex(vec::unsafe::from_buf(hash, 20u));
 }
 
@@ -2701,7 +2705,7 @@ return a pointer.
 
 ~~~~ {.xfail-test}
 # extern mod crypto {
-fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
+fn SHA1(src: *u8, sz: libc::c_uint, out: *u8) -> *u8;
 # }
 ~~~~
 
@@ -2792,7 +2796,7 @@ This pointer will become invalid as soon as the vector it points into
 is cleaned up, so you should be very careful how you use it. In this
 case, the local variable `bytes` outlives the pointer, so we're good.
 
-Passing a null pointer as third argument to `SHA1` causes it to use a
+Passing a null pointer as the third argument to `SHA1` makes it use a
 static buffer, and thus save us the effort of allocating memory
 ourselves. `ptr::null` is a generic function that will return an
 unsafe null pointer of the correct type (Rust generics are awesome
@@ -2815,15 +2819,17 @@ microsecond-resolution timer.
 
 ~~~~
 use std;
-type timeval = {mut tv_sec: uint,
-                mut tv_usec: uint};
+import libc::c_ulonglong;
+
+type timeval = {mut tv_sec: c_ulonglong,
+                mut tv_usec: c_ulonglong};
 #[nolink]
-extern mod libc {
+extern mod lib_c {
     fn gettimeofday(tv: *timeval, tz: *()) -> i32;
 }
 fn unix_time_in_microseconds() -> u64 unsafe {
-    let x = {mut tv_sec: 0u, mut tv_usec: 0u};
-    libc::gettimeofday(ptr::addr_of(x), ptr::null());
+    let x = {mut tv_sec: 0 as c_ulonglong, mut tv_usec: 0 as c_ulonglong};
+    lib_c::gettimeofday(ptr::addr_of(x), ptr::null());
     ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
 
@@ -2839,8 +2845,8 @@ define a record type with the same contents, and declare
 
 The second argument to `gettimeofday` (the time zone) is not used by
 this program, so it simply declares it to be a pointer to the nil
-type. Since null pointer look the same, no matter which type they are
-supposed to point at, this is safe.
+type. Since all null pointers have the same representation regardless of
+their referent type, this is safe.
 
 # Tasks
 
