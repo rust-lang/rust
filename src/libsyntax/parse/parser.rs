@@ -101,51 +101,42 @@ enum class_contents { ctor_decl(fn_decl, ~[attribute], blk, codemap::span),
 type arg_or_capture_item = either<arg, capture_item>;
 type item_info = (ident, item_, option<~[attribute]>);
 
+
+/* The expr situation is not as complex as I thought it would be.
+The important thing is to make sure that lookahead doesn't balk
+at ACTUALLY tokens */
+macro_rules! maybe_whole_expr{
+    {$p:expr} => { alt copy $p.token {
+      ACTUALLY(token::w_expr(e)) {
+        $p.bump();
+        ret pexpr(e);
+      }
+      ACTUALLY(token::w_path(pt)) {
+        $p.bump();
+        ret $p.mk_pexpr($p.span.lo, $p.span.lo,
+                       expr_path(pt));
+      }
+      _ {}
+    }}
+}
+
+macro_rules! maybe_whole {
+    {$p:expr, $constructor:path} => { alt copy $p.token {
+      ACTUALLY($constructor(x)) { $p.bump(); ret x; }
+      _ {}
+    }}
+}
+
+/* ident is handled by common.rs */
+
 fn dummy() {
-
-
-
-    #macro[[#maybe_whole_item[p],
-            alt copy p.token {
-                ACTUALLY(token::w_item(i)) { p.bump(); ret i; }
-                _ {} }]];
-    #macro[[#maybe_whole_block[p],
-            alt copy p.token {
-                ACTUALLY(token::w_block(b)) { p.bump(); ret b; }
-                _ {} }]];
-    #macro[[#maybe_whole_stmt[p],
-            alt copy p.token {
-                ACTUALLY(token::w_stmt(s)) { p.bump(); ret s; }
-                _ {} }]];
-    #macro[[#maybe_whole_pat[p],
-            alt copy p.token {
-                ACTUALLY(token::w_pat(pt)) { p.bump(); ret pt; }
-                _ {} }]];
-    /* The expr situation is not as complex as I thought it would be.
-    The important thing is to make sure that lookahead doesn't balk
-    at ACTUALLY tokens */
-    #macro[[#maybe_whole_expr_pexpr[p], /* ack! */
-            alt copy p.token {
-                ACTUALLY(token::w_expr(e)) {
-                    p.bump();
-                    ret pexpr(e);
-                }
-                ACTUALLY(token::w_path(pt)) {
-                    p.bump();
-                    ret p.mk_pexpr(p.span.lo, p.span.lo,
-                                   expr_path(pt));
-                }
-                _ {} }]];
-    #macro[[#maybe_whole_ty[p],
-            alt copy p.token {
-                ACTUALLY(token::w_ty(t)) { p.bump(); ret t; }
-                _ {} }]];
-    /* ident is handled by common.rs */
+    /* we will need this to bootstrap maybe_whole! */
     #macro[[#maybe_whole_path[p],
             alt p.token {
                 ACTUALLY(token::w_path(pt)) { p.bump(); ret pt; }
                 _ {} }]];
 }
+
 
 class parser {
     let sess: parse_sess;
@@ -734,7 +725,7 @@ class parser {
     }
 
     fn parse_bottom_expr() -> pexpr {
-        #maybe_whole_expr_pexpr[self];
+        maybe_whole_expr!{self};
         let lo = self.span.lo;
         let mut hi = self.span.hi;
 
