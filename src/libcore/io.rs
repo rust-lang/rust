@@ -330,6 +330,9 @@ fn with_str_reader<T>(s: ~str, f: fn(reader) -> T) -> T {
 // Writing
 enum fileflag { append, create, truncate, no_flag, }
 
+// What type of writer are we?
+enum writer_type { screen, file }
+
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64
 iface writer {
@@ -337,6 +340,7 @@ iface writer {
     fn seek(int, seek_style);
     fn tell() -> uint;
     fn flush() -> int;
+    fn get_type() -> writer_type;
 }
 
 impl <T: writer, C> of writer for {base: T, cleanup: C} {
@@ -344,6 +348,7 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
     fn seek(off: int, style: seek_style) { self.base.seek(off, style); }
     fn tell() -> uint { self.base.tell() }
     fn flush() -> int { self.base.flush() }
+    fn get_type() -> writer_type { file }
 }
 
 impl of writer for *libc::FILE {
@@ -364,6 +369,13 @@ impl of writer for *libc::FILE {
     }
     fn tell() -> uint { libc::ftell(self) as uint }
     fn flush() -> int { libc::fflush(self) as int }
+    fn get_type() -> writer_type {
+        let fd = libc::fileno(self);
+        if libc::isatty(fd) == 0 {
+            ret file;
+        }
+        ret screen;
+    }
 }
 
 fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
@@ -399,6 +411,9 @@ impl of writer for fd_t {
         fail;
     }
     fn flush() -> int { 0 }
+    fn get_type() -> writer_type {
+        if libc::isatty(self) == 0 { file } else { screen }
+    }
 }
 
 class fd_res {
@@ -646,6 +661,7 @@ impl of writer for mem_buffer {
     }
     fn tell() -> uint { self.pos }
     fn flush() -> int { 0 }
+    fn get_type() -> writer_type { ret file }
 }
 
 fn mem_buffer() -> mem_buffer {
