@@ -73,7 +73,7 @@ fn update_freq(mm: hashmap<~[u8], uint>, key: &[u8]) {
 // given a ~[u8], for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
-fn windows_with_carry(bb: ~[const u8], nn: uint,
+fn windows_with_carry(bb: &[u8], nn: uint,
                       it: fn(window: &[u8])) -> ~[u8] {
    let mut ii = 0u;
 
