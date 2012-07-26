@@ -39,6 +39,15 @@ type ctxt = {
     def_map: resolve3::DefMap,
     region_map: region_map,
 
+    // Generally speaking, expressions are parented to their innermost
+    // enclosing block. But some kinds of expressions serve as
+    // parents: calls, methods, etc.  In addition, some expressions
+    // serve as parents by virtue of where they appear.  For example,
+    // the condition in a while loop is always a parent.  In those
+    // cases, we add the node id of such an expression to this set so
+    // that when we visit it we can view it as a parent.
+    root_exprs: hashmap<ast::node_id, ()>,
+
     // The parent scope is the innermost block, call, or alt
     // expression during the execution of which the current expression
     // will be evaluated.  Generally speaking, the innermost parent
@@ -85,6 +94,27 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
         }
     }
     ret true;
+}
+
+/// Determines whether one region is a subregion of another.  This is
+/// intended to run *after inference* and sadly the logic is somewhat
+/// duplicated with the code in infer.rs.
+fn subregion(region_map: region_map,
+             super_region: ty::region,
+             sub_region: ty::region) -> bool {
+    super_region == sub_region ||
+        alt (super_region, sub_region) {
+          (ty::re_static, _) => {true}
+
+          (ty::re_scope(super_scope), ty::re_scope(sub_scope)) |
+          (ty::re_free(super_scope, _), ty::re_scope(sub_scope)) => {
+            scope_contains(region_map, super_scope, sub_scope)
+          }
+
+          _ => {
+            false
+          }
+        }
 }
 
 /// Finds the nearest common ancestor (if any) of two scopes.  That
@@ -198,31 +228,37 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, expr.id);
+
+    let mut new_cx = cx;
     alt expr.node {
-      ast::expr_call(*) {
+      ast::expr_call(*) => {
         #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
-        let new_cx = {parent: some(expr.id) with cx};
-        visit::visit_expr(expr, new_cx, visitor);
+        new_cx.parent = some(expr.id);
       }
-      ast::expr_alt(subexpr, _, _) {
+      ast::expr_alt(subexpr, _, _) => {
         #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
-        let new_cx = {parent: some(expr.id) with cx};
-        visit::visit_expr(expr, new_cx, visitor);
+        new_cx.parent = some(expr.id);
       }
       ast::expr_fn(_, _, _, cap_clause) |
-      ast::expr_fn_block(_, _, cap_clause) {
+      ast::expr_fn_block(_, _, cap_clause) => {
         // although the capture items are not expressions per se, they
         // do get "evaluated" in some sense as copies or moves of the
         // relevant variables so we parent them like an expression
         for (*cap_clause).each |cap_item| {
-            record_parent(cx, cap_item.id);
+            record_parent(new_cx, cap_item.id);
         }
-        visit::visit_expr(expr, cx, visitor);
       }
-      _ {
-        visit::visit_expr(expr, cx, visitor);
+      ast::expr_while(cond, _) => {
+        new_cx.root_exprs.insert(cond.id, ());
       }
+      _ => {}
+    };
+
+    if new_cx.root_exprs.contains_key(expr.id) {
+        new_cx.parent = some(expr.id);
     }
+
+    visit::visit_expr(expr, new_cx, visitor);
 }
 
 fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
@@ -269,6 +305,7 @@ fn resolve_crate(sess: session, def_map: resolve3::DefMap,
     let cx: ctxt = {sess: sess,
                     def_map: def_map,
                     region_map: int_hash(),
+                    root_exprs: int_hash(),
                     parent: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,

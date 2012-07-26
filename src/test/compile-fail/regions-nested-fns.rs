@@ -12,7 +12,6 @@ fn nested(x: &x/int) {
 
     ignore(fn&(z: &z/int) -> &z/int {
         if false { ret x; }  //~ ERROR references with lifetime
-        if false { ret &y; } //~ ERROR references with lifetime
         if false { ret ay; } //~ ERROR references with lifetime
         ret z;
     });

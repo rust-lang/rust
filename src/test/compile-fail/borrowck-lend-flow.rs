@@ -24,10 +24,25 @@ fn post_aliased_mut() {
 }
 
 fn post_aliased_scope(cond: bool) {
-    // NDM--scope of &
     let mut v = ~3;
-    borrow(v);  //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
-    if cond { inc(&mut v); } //~ NOTE prior loan as mutable granted here
+    borrow(v);
+    if cond { inc(&mut v); }
+}
+
+fn loop_overarching_alias_mut() {
+    let mut v = ~3;
+    let mut _x = &mut v; //~ NOTE prior loan as mutable granted here
+    loop {
+        borrow(v); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+    }
+}
+
+fn block_overarching_alias_mut() {
+    let mut v = ~3;
+    let mut _x = &mut v; //~ NOTE prior loan as mutable granted here
+    for 3.times {
+        borrow(v); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+    }
 }
 
 fn loop_aliased_mut() {
@@ -63,7 +78,7 @@ fn loop_in_block() {
     let mut v = ~3, w = ~4;
     let mut _x = &mut w;
     for uint::range(0u, 10u) |_i| {
-        borrow(v); //~ ERROR loan of captured outer mutable variable in a stack closure as immutable conflicts with prior loan
+        borrow(v); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
         _x = &mut v; //~ NOTE prior loan as mutable granted here
     }
 }
@@ -77,7 +92,7 @@ fn at_most_once_block() {
     let mut v = ~3, w = ~4;
     let mut _x = &mut w;
     do at_most_once {
-        borrow(v); //~ ERROR loan of captured outer mutable variable in a stack closure as immutable conflicts with prior loan
+        borrow(v); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
         _x = &mut v; //~ NOTE prior loan as mutable granted here
     }
 }

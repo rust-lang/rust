@@ -437,21 +437,6 @@ impl of tr for method_origin {
 }
 
 // ______________________________________________________________________
-// Encoding and decoding of borrow
-
-trait read_borrow_helper {
-    fn read_borrow(xcx: extended_decode_ctxt) -> ty::borrow;
-}
-
-impl helper of read_borrow_helper for ebml::ebml_deserializer {
-    fn read_borrow(xcx: extended_decode_ctxt) -> ty::borrow {
-        let borrow = ty::deserialize_borrow(self);
-        {scope_id: xcx.tr_id(borrow.scope_id),
-         mutbl: borrow.mutbl}
-    }
-}
-
-// ______________________________________________________________________
 // Encoding and decoding vtable_res
 
 fn encode_vtable_res(ecx: @e::encode_ctxt,
@@ -766,11 +751,13 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(tcx.borrowings.find(id)) |borrow| {
+    do option::iter(tcx.borrowings.find(id)) |_borrow| {
         do ebml_w.tag(c::tag_table_borrowings) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                ty::serialize_borrow(ebml_w, borrow)
+                // N.B. We don't actually serialize borrows as, in
+                // trans, we only care whether a value is borrowed or
+                // not.
             }
         }
     }
@@ -890,7 +877,10 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.maps.vtable_map.insert(id,
                                            val_dsr.read_vtable_res(xcx));
             } else if tag == (c::tag_table_borrowings as uint) {
-                let borrow = val_dsr.read_borrow(xcx);
+                // N.B.: we don't actually *serialize* borrows because, in
+                // trans, the only thing we care about is whether a value was
+                // borrowed or not.
+                let borrow = {region: ty::re_static, mutbl: ast::m_imm};
                 dcx.tcx.borrowings.insert(id, borrow);
             } else {
                 xcx.dcx.tcx.sess.bug(

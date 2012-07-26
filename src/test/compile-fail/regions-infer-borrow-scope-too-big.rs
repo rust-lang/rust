@@ -5,9 +5,9 @@ fn x_coord(p: &point) -> &int {
 }
 
 fn foo(p: @point) -> &int {
-    let xc = x_coord(p);
+    let xc = x_coord(p); //~ ERROR illegal borrow
     assert *xc == 3;
-    ret xc; //~ ERROR mismatched types: expected `&int` but found
+    ret xc;
 }
 
 fn main() {}

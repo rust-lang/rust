@@ -63,24 +63,19 @@ class LanguageItems {
 }
 
 class LanguageItemCollector {
-    let items: LanguageItems;
+    let items: &LanguageItems;
 
     let crate: @crate;
     let session: session;
 
     let item_refs: hashmap<~str,&mut option<def_id>>;
 
-    new(crate: @crate, session: session) {
+    new(crate: @crate, session: session, items: &self/LanguageItems) {
         self.crate = crate;
         self.session = session;
-
-        self.items = LanguageItems();
-
+        self.items = items;
         self.item_refs = str_hash();
-    }
 
-    // XXX: Needed to work around an issue with constructors.
-    fn init() {
         self.item_refs.insert(~"const", &mut self.items.const_trait);
         self.item_refs.insert(~"copy", &mut self.items.copy_trait);
         self.item_refs.insert(~"send", &mut self.items.send_trait);
@@ -206,7 +201,6 @@ class LanguageItemCollector {
     }
 
     fn collect() {
-        self.init();
         self.collect_local_language_items();
         self.collect_external_language_items();
         self.check_completeness();
@@ -214,8 +208,9 @@ class LanguageItemCollector {
 }
 
 fn collect_language_items(crate: @crate, session: session) -> LanguageItems {
-    let collector = LanguageItemCollector(crate, session);
+    let items = LanguageItems();
+    let collector = LanguageItemCollector(crate, session, &items);
     collector.collect();
-    copy collector.items
+    copy items
 }
 

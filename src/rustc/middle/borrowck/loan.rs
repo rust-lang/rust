@@ -3,17 +3,29 @@
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
 export public_methods;
+import result::{result, ok, err};
 
 impl public_methods for borrowck_ctxt {
-    fn loan(cmt: cmt, mutbl: ast::mutability) -> @dvec<loan> {
-        let lc = loan_ctxt_(@{bccx: self, loans: @dvec()});
-        lc.loan(cmt, mutbl);
-        ret lc.loans;
+    fn loan(cmt: cmt,
+            scope_region: ty::region,
+            mutbl: ast::mutability) -> bckres<@dvec<loan>> {
+        let lc = loan_ctxt_(@{bccx: self,
+                              scope_region: scope_region,
+                              loans: @dvec()});
+        alt lc.loan(cmt, mutbl) {
+          ok(()) => {ok(lc.loans)}
+          err(e) => {err(e)}
+        }
     }
 }
 
 type loan_ctxt_ = {
     bccx: borrowck_ctxt,
+
+    // the region scope for which we must preserve the memory
+    scope_region: ty::region,
+
+    // accumulated list of loans that will be required
     loans: @dvec<loan>
 };
 
@@ -22,18 +34,30 @@ enum loan_ctxt {
 }
 
 impl loan_methods for loan_ctxt {
+    fn tcx() -> ty::ctxt { self.bccx.tcx }
+
     fn ok_with_loan_of(cmt: cmt,
-                       mutbl: ast::mutability) {
-        // Note: all cmt's that we deal with will have a non-none lp, because
-        // the entry point into this routine, `borrowck_ctxt::loan()`, rejects
-        // any cmt with a none-lp.
-        (*self.loans).push({lp:option::get(cmt.lp),
-                            cmt:cmt,
-                            mutbl:mutbl});
+                       scope_ub: ty::region,
+                       mutbl: ast::mutability) -> bckres<()> {
+        let region_map = self.tcx().region_map;
+        if region::subregion(region_map, scope_ub, self.scope_region) {
+            // Note: all cmt's that we deal with will have a non-none
+            // lp, because the entry point into this routine,
+            // `borrowck_ctxt::loan()`, rejects any cmt with a
+            // none-lp.
+            (*self.loans).push({lp: option::get(cmt.lp),
+                                cmt: cmt,
+                                mutbl: mutbl});
+            ok(())
+        } else {
+            // The loan being requested lives longer than the data
+            // being loaned out!
+            err({cmt:cmt, code:err_out_of_scope(scope_ub,
+                                                self.scope_region)})
+        }
     }
 
-    fn loan(cmt: cmt, req_mutbl: ast::mutability) {
-
+    fn loan(cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
         #debug["loan(%s, %s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl)];
@@ -53,8 +77,12 @@ impl loan_methods for loan_ctxt {
                 cmt.span,
                 ~"rvalue with a non-none lp");
           }
-          cat_local(_) | cat_arg(_) | cat_stack_upvar(_) {
-            self.ok_with_loan_of(cmt, req_mutbl)
+          cat_local(local_id) | cat_arg(local_id) {
+            let local_scope_id = self.tcx().region_map.get(local_id);
+            self.ok_with_loan_of(cmt, ty::re_scope(local_scope_id), req_mutbl)
+          }
+          cat_stack_upvar(cmt) {
+            self.loan(cmt, req_mutbl) // NDM correct?
           }
           cat_discr(base, _) {
             self.loan(base, req_mutbl)
@@ -88,7 +116,7 @@ impl loan_methods for loan_ctxt {
           }
           cat_deref(cmt1, _, unsafe_ptr) |
           cat_deref(cmt1, _, gc_ptr) |
-          cat_deref(cmt1, _, region_ptr) {
+          cat_deref(cmt1, _, region_ptr(_)) {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
@@ -102,14 +130,17 @@ impl loan_methods for loan_ctxt {
     // Example: record fields.
     fn loan_stable_comp(cmt: cmt,
                         cmt_base: cmt,
-                        req_mutbl: ast::mutability) {
+                        req_mutbl: ast::mutability) -> bckres<()> {
         let base_mutbl = alt req_mutbl {
           m_imm { m_imm }
           m_const | m_mutbl { m_const }
         };
 
-        self.loan(cmt_base, base_mutbl);
-        self.ok_with_loan_of(cmt, req_mutbl)
+        do self.loan(cmt_base, base_mutbl).chain |_ok| {
+            // can use static for the scope because the base
+            // determines the lifetime, ultimately
+            self.ok_with_loan_of(cmt, ty::re_static, req_mutbl)
+        }
     }
 
     // An "unstable deref" means a deref of a ptr/comp where, if the
@@ -117,11 +148,13 @@ impl loan_methods for loan_ctxt {
     // deref would be invalidated. Examples: interior of variants, uniques.
     fn loan_unstable_deref(cmt: cmt,
                            cmt_base: cmt,
-                           req_mutbl: ast::mutability) {
+                           req_mutbl: ast::mutability) -> bckres<()> {
         // Variant components: the base must be immutable, because
         // if it is overwritten, the types of the embedded data
         // could change.
-        self.loan(cmt_base, m_imm);
-        self.ok_with_loan_of(cmt, req_mutbl)
+        do self.loan(cmt_base, m_imm).chain |_ok| {
+            // can use static, as in loan_stable_comp()
+            self.ok_with_loan_of(cmt, ty::re_static, req_mutbl)
+        }
     }
 }
