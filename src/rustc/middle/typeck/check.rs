@@ -109,7 +109,7 @@ type fn_ctxt_ =
 
      in_scope_regions: isr_alist,
 
-     node_types: smallintmap::smallintmap<ty::t>,
+     node_types: hashmap<ast::node_id, ty::t>,
      node_type_substs: hashmap<ast::node_id, ty::substs>,
 
      ccx: @crate_ctxt};
@@ -132,7 +132,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
                mut region_lb: region_bnd,
                mut region_ub: region_bnd,
                in_scope_regions: @nil,
-               node_types: smallintmap::mk(),
+               node_types: map::int_hash(),
                node_type_substs: map::int_hash(),
                ccx: ccx})
 }
@@ -218,7 +218,7 @@ fn check_fn(ccx: @crate_ctxt,
             {infcx: infer::new_infer_ctxt(tcx),
              locals: int_hash(),
              purity: decl.purity,
-             node_types: smallintmap::mk(),
+             node_types: map::int_hash(),
              node_type_substs: map::int_hash()}
           }
           some(fcx) {
@@ -490,7 +490,7 @@ impl methods for @fn_ctxt {
     fn write_ty(node_id: ast::node_id, ty: ty::t) {
         #debug["write_ty(%d, %s) in fcx %s",
                node_id, ty_to_str(self.tcx(), ty), self.tag()];
-        self.node_types.insert(node_id as uint, ty);
+        self.node_types.insert(node_id, ty);
     }
     fn write_substs(node_id: ast::node_id, +substs: ty::substs) {
         if !ty::substs_is_noop(substs) {
@@ -515,7 +515,7 @@ impl methods for @fn_ctxt {
     }
 
     fn expr_ty(ex: @ast::expr) -> ty::t {
-        alt self.node_types.find(ex.id as uint) {
+        alt self.node_types.find(ex.id) {
           some(t) { t }
           none {
             self.tcx().sess.bug(#fmt["no type for expr %d (%s) in fcx %s",
@@ -524,7 +524,7 @@ impl methods for @fn_ctxt {
         }
     }
     fn node_ty(id: ast::node_id) -> ty::t {
-        alt self.node_types.find(id as uint) {
+        alt self.node_types.find(id) {
           some(t) { t }
           none {
             self.tcx().sess.bug(
