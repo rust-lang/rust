@@ -39,6 +39,7 @@ export get_crate_vers;
 export get_impls_for_mod;
 export get_trait_methods;
 export get_method_names_if_trait;
+export get_item_attrs;
 export get_crate_module_paths;
 export def_like;
 export dl_def;
@@ -657,6 +658,18 @@ fn get_method_names_if_trait(cdata: cmd, node_id: ast::node_id)
         (*resulting_method_names).push(item_name(method));
     }
     ret some(resulting_method_names);
+}
+
+fn get_item_attrs(cdata: cmd,
+                  node_id: ast::node_id,
+                  f: fn(~[@ast::meta_item])) {
+
+    let item = lookup_item(node_id, cdata.data);
+    do ebml::tagged_docs(item, tag_attributes) |attributes| {
+        do ebml::tagged_docs(attributes, tag_attribute) |attribute| {
+            f(get_meta_items(attribute));
+        }
+    }
 }
 
 // Helper function that gets either fields or methods

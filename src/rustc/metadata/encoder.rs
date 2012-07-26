@@ -759,6 +759,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
+        encode_attributes(ebml_w, item.attrs);
         let mut i = 0u;
         for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
             alt ms[i] {

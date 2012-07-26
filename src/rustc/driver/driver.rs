@@ -170,6 +170,9 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                              session::sess_os_to_meta_os(sess.targ_cfg.os),
                              sess.opts.static));
 
+    time(time_passes, ~"language item collection", ||
+         middle::lang_items::collect_language_items(crate, sess));
+
     let { def_map: def_map,
           exp_map: exp_map,
           impl_map: impl_map,
