@@ -467,7 +467,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
     alt ty.node {
       ast::ty_path(_, id) {
         alt cx.def_map.get(id) {
-          ast::def_ty(did) | ast::def_class(did) {
+          ast::def_ty(did) | ast::def_class(did, _) {
             if did.crate == ast::local_crate {
                 cx.add_dep(did.node, cx.item_id);
             } else {

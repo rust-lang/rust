@@ -2587,7 +2587,7 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     alt def {
-      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_)
+      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_, _)
         { true }
       _ { false }
     }

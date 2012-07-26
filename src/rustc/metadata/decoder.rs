@@ -283,7 +283,8 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
     let fam_ch = item_family(item);
     alt fam_ch {
       'c' { dl_def(ast::def_const(did)) }
-      'C' { dl_def(ast::def_class(did)) }
+      'C' { dl_def(ast::def_class(did, true)) }
+      'S' { dl_def(ast::def_class(did, false)) }
       'u' { dl_def(ast::def_fn(did, ast::unsafe_fn)) }
       'f' { dl_def(ast::def_fn(did, ast::impure_fn)) }
       'p' { dl_def(ast::def_fn(did, ast::pure_fn)) }
@@ -707,7 +708,7 @@ fn family_has_type_params(fam_ch: char) -> bool {
     alt check fam_ch {
       'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' { false }
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
-          | 'a'
+          | 'a' | 'S'
           { true }
     }
 }
@@ -751,6 +752,7 @@ fn item_family_to_str(fam: char) -> ~str {
       'i' { ret ~"impl"; }
       'I' { ret ~"trait"; }
       'C' { ret ~"class"; }
+      'S' { ret ~"struct"; }
       'g' { ret ~"public field"; }
       'j' { ret ~"private field"; }
     }

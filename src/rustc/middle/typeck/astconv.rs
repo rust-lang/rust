@@ -270,7 +270,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
                                                        path_to_str(path))); }
           some(d) { d }};
         alt a_def {
-          ast::def_ty(did) | ast::def_class(did) {
+          ast::def_ty(did) | ast::def_class(did, _) {
             ast_path_to_ty(self, rscope, did, path, id).ty
           }
           ast::def_prim_ty(nty) {

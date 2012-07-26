@@ -369,8 +369,8 @@ impl of tr for ast::def {
           ast::def_upvar(nid1, def, nid2) {
             ast::def_upvar(xcx.tr_id(nid1), @(*def).tr(xcx), xcx.tr_id(nid2))
           }
-          ast::def_class(did) {
-            ast::def_class(did.tr(xcx))
+          ast::def_class(did, has_constructor) {
+            ast::def_class(did.tr(xcx), has_constructor)
           }
           ast::def_region(nid) { ast::def_region(xcx.tr_id(nid)) }
         }
