@@ -14,7 +14,7 @@ iface reader {
     fn next_token() -> {tok: token::token, sp: span};
     fn fatal(~str) -> !;
     fn span_diag() -> span_handler;
-    fn interner() -> @interner<@~str>;
+    pure fn interner() -> @interner<@~str>;
     fn peek() -> {tok: token::token, sp: span};
     fn dup() -> reader;
 }
@@ -79,7 +79,7 @@ impl string_reader_as_reader of reader for string_reader {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
     fn span_diag() -> span_handler { self.span_diagnostic }
-    fn interner() -> @interner<@~str> { self.interner }
+    pure fn interner() -> @interner<@~str> { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         {tok: self.peek_tok, sp: self.peek_span}
     }
@@ -101,7 +101,7 @@ impl tt_reader_as_reader of reader for tt_reader {
         self.sp_diag.span_fatal(copy self.cur_span, m);
     }
     fn span_diag() -> span_handler { self.sp_diag }
-    fn interner() -> @interner<@~str> { self.interner }
+    pure fn interner() -> @interner<@~str> { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         { tok: self.cur_tok, sp: self.cur_span }
     }
