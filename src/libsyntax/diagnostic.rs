@@ -163,14 +163,16 @@ fn diagnosticcolor(lvl: level) -> u8 {
 }
 
 fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
+    let use_color = term::color_supported() &&
+        io::stderr().get_type() == io::screen;
     if str::is_not_empty(topic) {
         io::stderr().write_str(#fmt["%s ", topic]);
     }
-    if term::color_supported() {
+    if use_color {
         term::fg(io::stderr(), diagnosticcolor(lvl));
     }
     io::stderr().write_str(#fmt["%s:", diagnosticstr(lvl)]);
-    if term::color_supported() {
+    if use_color {
         term::reset(io::stderr());
     }
     io::stderr().write_str(#fmt[" %s\n", msg]);
