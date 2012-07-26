@@ -304,20 +304,6 @@ impl extensions<T> for dlist<T> {
         tl.map(|nobe| self.unlink(nobe));
         tl
     }
-    /// Remove data from the head of the list. O(1).
-    fn pop() -> option<T> {
-        do option::map_consume(self.pop_n()) |nobe| {
-            let dlist_node(@{ data: x, _ }) <- nobe;
-            x
-        }
-    }
-    /// Remove data from the tail of the list. O(1).
-    fn pop_tail() -> option<T> {
-        do option::map_consume(self.pop_tail_n()) |nobe| {
-            let dlist_node(@{ data: x, _ }) <- nobe;
-            x
-        }
-    }
     /// Get the node at the list's head. O(1).
     pure fn peek_n() -> option<dlist_node<T>> { self.hd }
     /// Get the node at the list's tail. O(1).
@@ -399,7 +385,7 @@ impl extensions<T> for dlist<T> {
         // Cute as it would be to simply detach the list and proclaim "O(1)!",
         // the GC would still be a hidden O(n). Better to be honest about it.
         while !self.is_empty() {
-            let _ = self.pop();
+            let _ = self.pop_n();
         }
     }
 
@@ -457,6 +443,10 @@ impl extensions<T> for dlist<T> {
 }
 
 impl extensions<T: copy> for dlist<T> {
+    /// Remove data from the head of the list. O(1).
+    fn pop()       -> option<T> { self.pop_n().map       (|nobe| nobe.data) }
+    /// Remove data from the tail of the list. O(1).
+    fn pop_tail()  -> option<T> { self.pop_tail_n().map  (|nobe| nobe.data) }
     /// Get data at the list's head. O(1).
     pure fn peek() -> option<T> { self.peek_n().map      (|nobe| nobe.data) }
     /// Get data at the list's tail. O(1).
@@ -620,6 +610,13 @@ mod tests {
         a.assert_consistent(); assert a.pop().get() == 3;
         a.assert_consistent(); assert a.pop().get() == 5;
         a.assert_consistent(); assert a.is_empty();
+    }
+    #[test]
+    fn test_dlist_clear() {
+        let a = from_vec(~[5,4,3,2,1]);
+        a.clear();
+        assert a.len() == 0;
+        a.assert_consistent();
     }
     #[test]
     fn test_dlist_is_empty() {
