@@ -26,7 +26,7 @@ class dlist_root<T> {
         self.size = 0; self.hd = none; self.tl = none;
     }
     drop {
-        /* FIXME (#????) This doesn't work during task failure - the box
+        /* FIXME (#3039) This doesn't work during task failure - the box
          * annihilator might have killed some of our nodes already. This will
          * be safe to uncomment when the box annihilator is safer. As is,
          * this makes test_dlist_cyclic_link below crash the runtime.
