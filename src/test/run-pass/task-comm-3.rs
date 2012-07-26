@@ -1,9 +1,9 @@
 use std;
 import task;
-import comm;
-import comm::chan;
-import comm::send;
-import comm::recv;
+import pipes;
+import pipes::chan;
+import pipes::send;
+import pipes::recv;
 
 fn main() { #debug("===== WITHOUT THREADS ====="); test00(); }
 
@@ -12,7 +12,7 @@ fn test00_start(ch: chan<int>, message: int, count: int) {
     let mut i: int = 0;
     while i < count {
         #debug("Sending Message");
-        send(ch, message + 0);
+        ch.send(message + 0);
         i = i + 1;
     }
     #debug("Ending test00_start");
@@ -24,14 +24,14 @@ fn test00() {
 
     #debug("Creating tasks");
 
-    let po = comm::port();
-    let ch = chan(po);
+    let po = pipes::port_set();
 
     let mut i: int = 0;
 
     // Create and spawn tasks...
     let mut results = ~[];
     while i < number_of_tasks {
+        let ch = po.chan();        
         do task::task().future_result(|-r| {
             results += ~[r];
         }).spawn |copy i| {
@@ -45,7 +45,7 @@ fn test00() {
     for results.each |r| {
         i = 0;
         while i < number_of_messages {
-            let value = recv(po);
+            let value = po.recv();
             sum += value;
             i = i + 1;
         }

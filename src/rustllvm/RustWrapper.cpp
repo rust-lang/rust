@@ -27,6 +27,7 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Support/Host.h"
+#include "llvm/Support/Debug.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Object.h"
@@ -184,4 +185,8 @@ extern "C" LLVMValueRef LLVMBuildAtomicRMW(LLVMBuilderRef B,
     return wrap(unwrap(B)->CreateAtomicRMW(op,
                                            unwrap(target), unwrap(source),
                                            order));
+}
+
+extern "C" void LLVMSetDebug(int Enabled) {
+  DebugFlag = Enabled;
 }

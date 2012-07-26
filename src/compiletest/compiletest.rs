@@ -8,11 +8,6 @@ import task;
 import core::result;
 import result::{ok, err};
 
-import comm::port;
-import comm::chan;
-import comm::send;
-import comm::recv;
-
 import common::config;
 import common::mode_run_pass;
 import common::mode_run_fail;

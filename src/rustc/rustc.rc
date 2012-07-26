@@ -88,6 +88,7 @@ mod middle {
     mod region;
     mod const_eval;
     mod astencode;
+    mod lang_items;
 }
 
 mod front {

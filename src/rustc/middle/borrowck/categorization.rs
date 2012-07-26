@@ -97,7 +97,7 @@ fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
 
 impl public_methods for borrowck_ctxt {
     fn cat_borrow_of_expr(expr: @ast::expr) -> cmt {
-        // a borrowed expression must be either an @, ~, or a vec/@, vec/~
+        // a borrowed expression must be either an @, ~, or a @vec, ~vec
         let expr_ty = ty::expr_ty(self.tcx, expr);
         alt ty::get(expr_ty).struct {
           ty::ty_evec(*) | ty::ty_estr(*) {
@@ -108,6 +108,12 @@ impl public_methods for borrowck_ctxt {
             let cmt = self.cat_expr(expr);
             self.cat_deref(expr, cmt, 0u, true).get()
           }
+
+          /*
+          ty::ty_fn({proto, _}) {
+            self.cat_call(expr, expr, proto)
+          }
+          */
 
           _ {
             self.tcx.sess.span_bug(
@@ -293,6 +299,18 @@ impl public_methods for borrowck_ctxt {
         ret @{cat:cat_discr(cmt, alt_id) with *cmt};
     }
 
+    /// inherited mutability: used in cases where the mutability of a
+    /// component is inherited from the base it is a part of. For
+    /// example, a record field is mutable if it is declared mutable
+    /// or if the container is mutable.
+    fn inherited_mutability(base_m: ast::mutability,
+                          comp_m: ast::mutability) -> ast::mutability {
+        alt comp_m {
+          m_imm => {base_m}  // imm: as mutable as the container
+          m_mutbl | m_const => {comp_m}
+        }
+    }
+
     fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
                              f_name: ast::ident) -> cmt {
         let f_mutbl = alt field_mutbl(self.tcx, base_cmt.ty, f_name) {
@@ -304,10 +322,7 @@ impl public_methods for borrowck_ctxt {
                      *f_name, ty_to_str(self.tcx, base_cmt.ty)]);
           }
         };
-        let m = alt f_mutbl {
-          m_imm { base_cmt.mutbl } // imm: as mutable as the container
-          m_mutbl | m_const { f_mutbl }
-        };
+        let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
         let f_comp = comp_field(f_name, f_mutbl);
         let lp = base_cmt.lp.map(|lp| @lp_comp(lp, f_comp) );
         @{id: node.id(), span: node.span(),
@@ -327,20 +342,33 @@ impl public_methods for borrowck_ctxt {
                     // Other ptr types admit aliases and are therefore
                     // not loanable.
                     alt ptr {
-                      uniq_ptr {some(@lp_deref(l, ptr))}
-                      gc_ptr | region_ptr | unsafe_ptr {none}
+                      uniq_ptr => {some(@lp_deref(l, ptr))}
+                      gc_ptr | region_ptr | unsafe_ptr => {none}
                     }
                 };
+
+                // for unique ptrs, we inherit mutability from the
+                // owning reference.
+                let m = alt ptr {
+                  uniq_ptr => {
+                    self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
+                  }
+                  gc_ptr | region_ptr | unsafe_ptr => {
+                    mt.mutbl
+                  }
+                };
+
                 @{id:node.id(), span:node.span(),
                   cat:cat_deref(base_cmt, derefs, ptr), lp:lp,
-                  mutbl:mt.mutbl, ty:mt.ty}
+                  mutbl:m, ty:mt.ty}
               }
 
               deref_comp(comp) {
                 let lp = base_cmt.lp.map(|l| @lp_comp(l, comp) );
+                let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
                 @{id:node.id(), span:node.span(),
                   cat:cat_comp(base_cmt, comp), lp:lp,
-                  mutbl:mt.mutbl, ty:mt.ty}
+                  mutbl:m, ty:mt.ty}
               }
             }
         }
@@ -368,27 +396,38 @@ impl public_methods for borrowck_ctxt {
               _ => {none}
             };
 
-            // (b) the deref is explicit in the resulting cmt
+            // (b) for unique ptrs, we inherit mutability from the
+            // owning reference.
+            let m = alt ptr {
+              uniq_ptr => {
+                self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
+              }
+              gc_ptr | region_ptr | unsafe_ptr => {
+                mt.mutbl
+              }
+            };
+
+            // (c) the deref is explicit in the resulting cmt
             let deref_cmt = @{id:expr.id, span:expr.span,
               cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
-              mutbl:m_imm, ty:mt.ty};
+              mutbl:m, ty:mt.ty};
 
-            comp(expr, deref_cmt, base_cmt.ty, mt)
+            comp(expr, deref_cmt, base_cmt.ty, m, mt.ty)
           }
 
           deref_comp(_) {
             // fixed-length vectors have no deref
-            comp(expr, base_cmt, base_cmt.ty, mt)
+            comp(expr, base_cmt, base_cmt.ty, mt.mutbl, mt.ty)
           }
         };
 
         fn comp(expr: @ast::expr, of_cmt: cmt,
-                vect: ty::t, mt: ty::mt) -> cmt {
-            let comp = comp_index(vect, mt.mutbl);
+                vect: ty::t, mutbl: ast::mutability, ty: ty::t) -> cmt {
+            let comp = comp_index(vect, mutbl);
             let index_lp = of_cmt.lp.map(|lp| @lp_comp(lp, comp) );
             @{id:expr.id, span:expr.span,
               cat:cat_comp(of_cmt, comp), lp:index_lp,
-              mutbl:mt.mutbl, ty:mt.ty}
+              mutbl:mutbl, ty:ty}
         }
     }
 

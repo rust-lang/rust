@@ -41,7 +41,6 @@ export walk_dir;
 export as_c_charp, fill_charp_buf;
 
 extern mod rustrt {
-    fn rust_env_pairs() -> ~[~str];
     fn rust_getcwd() -> ~str;
     fn rust_path_is_dir(path: *libc::c_char) -> c_int;
     fn rust_path_exists(path: *libc::c_char) -> c_int;
@@ -51,16 +50,6 @@ extern mod rustrt {
     fn rust_set_exit_status(code: libc::intptr_t);
 }
 
-
-fn env() -> ~[(~str,~str)] {
-    let mut pairs = ~[];
-    for vec::each(rustrt::rust_env_pairs()) |p| {
-        let vs = str::splitn_char(p, '=', 1u);
-        assert vec::len(vs) == 2u;
-        vec::push(pairs, (vs[0], vs[1]));
-    }
-    ret pairs;
-}
 
 const tmpbuf_sz : uint = 1000u;
 
@@ -130,11 +119,16 @@ fn setenv(n: ~str, v: ~str) {
     global_env::setenv(n, v)
 }
 
+fn env() -> ~[(~str,~str)] {
+    global_env::env()
+}
+
 mod global_env {
     //! Internal module for serializing access to getenv/setenv
 
     export getenv;
     export setenv;
+    export env;
 
     extern mod rustrt {
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
@@ -142,7 +136,8 @@ mod global_env {
 
     enum msg {
         msg_getenv(~str, comm::chan<option<~str>>),
-        msg_setenv(~str, ~str, comm::chan<()>)
+        msg_setenv(~str, ~str, comm::chan<()>),
+        msg_env(comm::chan<~[(~str,~str)]>)
     }
 
     fn getenv(n: ~str) -> option<~str> {
@@ -156,6 +151,13 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = comm::port();
         comm::send(env_ch, msg_setenv(n, v, comm::chan(po)));
+        comm::recv(po)
+    }
+
+    fn env() -> ~[(~str,~str)] {
+        let env_ch = get_global_env_chan();
+        let po = comm::port();
+        comm::send(env_ch, msg_env(comm::chan(po)));
         comm::recv(po)
     }
 
@@ -183,6 +185,9 @@ mod global_env {
                       either::left(msg_setenv(n, v, resp_ch)) {
                         comm::send(resp_ch, impl::setenv(n, v))
                       }
+                      either::left(msg_env(resp_ch)) {
+                        comm::send(resp_ch, impl::env())
+                      }
                       either::right(_) {
                         break;
                       }
@@ -193,6 +198,19 @@ mod global_env {
     }
 
     mod impl {
+        extern mod rustrt {
+            fn rust_env_pairs() -> ~[~str];
+        }
+
+        fn env() -> ~[(~str,~str)] {
+            let mut pairs = ~[];
+            for vec::each(rustrt::rust_env_pairs()) |p| {
+                let vs = str::splitn_char(p, '=', 1u);
+                assert vec::len(vs) == 2u;
+                vec::push(pairs, (vs[0], vs[1]));
+            }
+            ret pairs;
+        }
 
         #[cfg(unix)]
         fn getenv(n: ~str) -> option<~str> {

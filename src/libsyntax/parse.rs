@@ -10,6 +10,7 @@ export new_parser_from_tt;
 export parse_crate_from_file, parse_crate_from_crate_file;
 export parse_crate_from_source_str;
 export parse_expr_from_source_str, parse_item_from_source_str;
+export parse_stmt_from_source_str;
 export parse_from_source_str;
 
 import parser::parser;
@@ -124,6 +125,17 @@ fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
     let r = p.parse_item(attrs, vis);
+    sess.chpos = rdr.chpos;
+    sess.byte_pos = sess.byte_pos + rdr.pos;
+    ret r;
+}
+
+fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
+                              +attrs: ~[ast::attribute],
+                              sess: parse_sess) -> @ast::stmt {
+    let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
+                                                  codemap::fss_none, source);
+    let r = p.parse_stmt(attrs);
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     ret r;

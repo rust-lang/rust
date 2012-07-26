@@ -5,7 +5,7 @@ fn borrow_from_arg_imm_ref(&&v: ~int) {
 }
 
 fn borrow_from_arg_mut_ref(&v: ~int) {
-    borrow(v); //~ ERROR illegal borrow unless pure: unique value in aliasable, mutable location
+    borrow(v); //~ ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
     //~^ NOTE impure due to access to impure function
 }
 

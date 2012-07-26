@@ -969,6 +969,9 @@ extern mod llvm {
 
     fn LLVMConstNamedStruct(S: TypeRef, ConstantVals: *ValueRef,
                             Count: c_uint) -> ValueRef;
+
+    /** Enables LLVM debug output. */
+    fn LLVMSetDebug(Enabled: c_int);
 }
 
 fn SetInstructionCallConv(Instr: ValueRef, CC: CallConv) {

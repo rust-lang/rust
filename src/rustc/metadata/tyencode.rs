@@ -160,6 +160,12 @@ fn enc_bound_region(w: io::writer, br: ty::bound_region) {
         w.write_str(*s);
         w.write_char(']')
       }
+      ty::br_cap_avoid(id, br) {
+        w.write_char('c');
+        w.write_int(id);
+        w.write_char('|');
+        enc_bound_region(w, *br);
+      }
     }
 }
 

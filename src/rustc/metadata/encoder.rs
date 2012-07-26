@@ -545,8 +545,8 @@ fn purity_fn_family(p: purity) -> char {
 
 fn should_inline(attrs: ~[attribute]) -> bool {
     alt attr::find_inline_attr(attrs) {
-        attr::ia_none { false }
-        attr::ia_hint | attr::ia_always { true }
+        attr::ia_none | attr::ia_never  { false }
+        attr::ia_hint | attr::ia_always { true  }
     }
 }
 
@@ -759,6 +759,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
+        encode_attributes(ebml_w, item.attrs);
         let mut i = 0u;
         for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
             alt ms[i] {

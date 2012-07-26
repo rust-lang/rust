@@ -1,6 +1,6 @@
 type IMPL_T<A> = option<A>;
 
-fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
+pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
     alt self {
       none { }
       some(a) { f(a); }

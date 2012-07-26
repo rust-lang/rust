@@ -128,9 +128,8 @@ inline size_t get_box_size(size_t body_size, size_t body_align) {
 
 // Initialization helpers for ISAAC RNG
 
-inline void isaac_seed(rust_kernel* kernel, uint8_t* dest)
+inline void isaac_seed(rust_kernel* kernel, uint8_t* dest, size_t size)
 {
-    size_t size = sizeof(ub4) * RANDSIZ;
 #ifdef __WIN32__
     HCRYPTPROV hProv;
     kernel->win32_require
@@ -144,8 +143,14 @@ inline void isaac_seed(rust_kernel* kernel, uint8_t* dest)
 #else
     int fd = open("/dev/urandom", O_RDONLY);
     assert(fd > 0);
-    assert(read(fd, dest, size) == (int) size);
-    assert(close(fd) == 0);
+    size_t amount = 0;
+    do {
+        ssize_t ret = read(fd, dest+amount, size-amount);
+        assert(ret >= 0);
+        amount += (size_t)ret;
+    } while (amount < size);
+    int ret = close(fd);
+    assert(ret == 0);
 #endif
 }
 
@@ -167,7 +172,7 @@ isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed)
             seed = (seed + 0x7ed55d16) + (seed << 12);
         }
     } else {
-        isaac_seed(kernel, (uint8_t*) &rctx->randrsl);
+        isaac_seed(kernel, (uint8_t*) &rctx->randrsl, sizeof(rctx->randrsl));
     }
 
     randinit(rctx, 1);

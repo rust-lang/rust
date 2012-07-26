@@ -4,7 +4,7 @@ fn test1(x: @mut ~int) {
     // Here, evaluating the second argument actually invalidates the
     // first borrow, even though it occurs outside of the scope of the
     // borrow!
-    pure_borrow(*x, *x = ~5);  //~ ERROR illegal borrow unless pure: unique value in aliasable, mutable location
+    pure_borrow(*x, *x = ~5);  //~ ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
     //~^ NOTE impure due to assigning to dereference of mutable @ pointer
 }
 

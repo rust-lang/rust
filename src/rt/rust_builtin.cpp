@@ -182,7 +182,7 @@ rand_seed() {
     rust_vec *v = (rust_vec *) task->kernel->malloc(vec_size<uint8_t>(size),
                                             "rand_seed");
     v->fill = v->alloc = size;
-    isaac_seed(task->kernel, (uint8_t*) &v->data);
+    isaac_seed(task->kernel, (uint8_t*) &v->data, size);
     return v;
 }
 
@@ -635,11 +635,6 @@ rust_new_task_in_sched(rust_sched_id id) {
     if (sched == NULL)
         return NULL;
     return new_task_common(sched, task);
-}
-
-extern "C" CDECL void
-rust_task_config_notify(rust_task *target, rust_port_id *port) {
-    target->config_notify(*port);
 }
 
 extern "C" rust_task *

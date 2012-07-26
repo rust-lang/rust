@@ -1,15 +1,14 @@
 use std;
-import comm;
+import pipes;
 import task;
 
-fn start(c: comm::chan<comm::chan<int>>) {
-    let p: comm::port<int> = comm::port();
-    comm::send(c, comm::chan(p));
+fn start(c: pipes::chan<pipes::chan<int>>) {
+    let (ch, p) = pipes::stream();
+    c.send(ch);
 }
 
 fn main() {
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let (ch, p) = pipes::stream();
     let child = task::spawn(|| start(ch) );
-    let c = comm::recv(p);
+    let c = p.recv();
 }

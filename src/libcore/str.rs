@@ -1934,7 +1934,7 @@ trait str_slice {
     fn is_whitespace() -> bool;
     fn is_alphanumeric() -> bool;
     pure fn len() -> uint;
-    fn slice(begin: uint, end: uint) -> ~str;
+    pure fn slice(begin: uint, end: uint) -> ~str;
     fn split(sepfn: fn(char) -> bool) -> ~[~str];
     fn split_char(sep: char) -> ~[~str];
     fn split_str(sep: &a/str) -> ~[~str];
@@ -1944,6 +1944,7 @@ trait str_slice {
     fn to_upper() -> ~str;
     fn escape_default() -> ~str;
     fn escape_unicode() -> ~str;
+    pure fn to_unique() -> ~str;
 }
 
 /// Extension methods for strings
@@ -2012,7 +2013,7 @@ impl extensions/& of str_slice for &str {
      * beyond the last character of the string
      */
     #[inline]
-    fn slice(begin: uint, end: uint) -> ~str { slice(self, begin, end) }
+    pure fn slice(begin: uint, end: uint) -> ~str { slice(self, begin, end) }
     /// Splits a string into substrings using a character function
     #[inline]
     fn split(sepfn: fn(char) -> bool) -> ~[~str] { split(self, sepfn) }
@@ -2050,6 +2051,9 @@ impl extensions/& of str_slice for &str {
     /// Escape each char in `s` with char::escape_unicode.
     #[inline]
     fn escape_unicode() -> ~str { escape_unicode(self) }
+
+    #[inline]
+    pure fn to_unique() -> ~str { self.slice(0, self.len()) }
 }
 
 #[cfg(test)]

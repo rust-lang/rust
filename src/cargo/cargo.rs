@@ -1616,7 +1616,7 @@ fn cmd_sources(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         for c.sources.each_value |v| {
             info(#fmt("%s (%s) via %s",
-                      copy v.name, copy v.url, copy v.method));
+                      v.name, v.url, v.method));
         }
         ret;
     }

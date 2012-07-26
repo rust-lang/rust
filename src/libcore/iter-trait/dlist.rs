@@ -7,7 +7,7 @@ type IMPL_T<A> = dlist::dlist<A>;
  * e.g. breadth-first search with in-place enqueues), but removing the current
  * node is forbidden.
  */
-fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
+pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
     import dlist::extensions;
 
     let mut link = self.peek_n();

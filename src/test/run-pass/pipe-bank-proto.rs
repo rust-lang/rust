@@ -32,12 +32,78 @@ proto! bank {
     }
 }
 
-fn macros() {
-    #macro[
-        [#move[x],
-         unsafe { let y <- *ptr::addr_of(x); y }]
-    ];
+macro_rules! move {
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
+
+fn switch<T: send, U>(+endp: pipes::recv_packet<T>,
+                      f: fn(+option<T>) -> U) -> U {
+    f(pipes::try_recv(endp))
+}
+
+fn move<T>(-x: T) -> T { x }
+
+macro_rules! follow {
+    { 
+        $($message:path($($x: ident),+) => $next:ident $e:expr)+
+    } => (
+        |m| alt move(m) {
+          $(some($message($($x,)* next)) {
+            let $next = move!{next};
+            $e })+
+          _ { fail }
+        }
+    );
+
+    { 
+        $($message:path => $next:ident $e:expr)+
+    } => (
+        |m| alt move(m) {
+            $(some($message(next)) {
+                let $next = move!{next};
+                $e })+
+                _ { fail }
+        } 
+    )
+}
+
+/*
+fn client_follow(+bank: bank::client::login) {
+    import bank::*;
+
+    let bank = client::login(bank, ~"theincredibleholk", ~"1234");
+    let bank = switch(bank, follow! {
+        ok => connected { connected }
+        invalid => _next { fail ~"bank closed the connected" }
+    });
+
+    /* // potential alternate syntax
+    let bank = recv_alt! {
+        bank => {
+            | ok -> connected { connected }
+            | invalid -> _next { fail }
+        }
+        bank2 => {
+            | foo -> _n { fail }
+        }
+    }
+    */
+
+    let bank = client::deposit(bank, 100.00);
+    let bank = client::withdrawal(bank, 50.00);
+    alt try_recv(bank) {
+      some(money(m, _)) {
+        io::println(~"Yay! I got money!");
+      }
+      some(insufficient_funds(_)) {
+        fail ~"someone stole my money"
+      }
+      none {
+        fail ~"bank closed the connection"
+      }
+    }    
+}
+*/
 
 fn bank_client(+bank: bank::client::login) {
     import bank::*;
@@ -45,7 +111,7 @@ fn bank_client(+bank: bank::client::login) {
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = alt try_recv(bank) {
       some(ok(connected)) {
-        #move(connected)
+        move!{connected}
       }
       some(invalid(_)) { fail ~"login unsuccessful" }
       none { fail ~"bank closed the connection" }
