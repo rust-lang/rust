@@ -53,27 +53,27 @@ pure fn compl(i: T) -> T {
 }
 
 impl ord of ord for T {
-    fn lt(&&other: T) -> bool {
+    pure fn lt(&&other: T) -> bool {
         ret self < other;
     }
 }
 
 impl eq of eq for T {
-    fn eq(&&other: T) -> bool {
+    pure fn eq(&&other: T) -> bool {
         ret self == other;
     }
 }
 
 impl num of num::num for T {
-    fn add(&&other: T)    -> T { ret self + other; }
-    fn sub(&&other: T)    -> T { ret self - other; }
-    fn mul(&&other: T)    -> T { ret self * other; }
-    fn div(&&other: T)    -> T { ret self / other; }
-    fn modulo(&&other: T) -> T { ret self % other; }
-    fn neg()              -> T { ret -self;        }
+    pure fn add(&&other: T)    -> T { ret self + other; }
+    pure fn sub(&&other: T)    -> T { ret self - other; }
+    pure fn mul(&&other: T)    -> T { ret self * other; }
+    pure fn div(&&other: T)    -> T { ret self / other; }
+    pure fn modulo(&&other: T) -> T { ret self % other; }
+    pure fn neg()              -> T { ret -self;        }
 
-    fn to_int()         -> int { ret self as int; }
-    fn from_int(n: int) -> T   { ret n as T;      }
+    pure fn to_int()         -> int { ret self as int; }
+    pure fn from_int(n: int) -> T   { ret n as T;      }
 }
 
 /**

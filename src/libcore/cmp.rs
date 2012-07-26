@@ -1,10 +1,10 @@
 /// Interfaces used for comparison.
 
-iface ord {
-    fn lt(&&other: self) -> bool;
+trait ord {
+    pure fn lt(&&other: self) -> bool;
 }
 
-iface eq {
-    fn eq(&&other: self) -> bool;
+trait eq {
+    pure fn eq(&&other: self) -> bool;
 }
 
