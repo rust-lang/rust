@@ -79,8 +79,7 @@ fn windows_with_carry(bb: ~[const u8], nn: uint,
 
    let len = vec::len(bb);
    while ii < len - (nn - 1u) {
-       // FIXME (#2880)
-      it(vec::slice(bb, ii, ii+nn));
+      it(vec::view(bb, ii, ii+nn));
       ii += 1u;
    }
 

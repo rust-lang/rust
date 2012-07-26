@@ -63,25 +63,22 @@ export translate_def_id;
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
 
-fn lookup_hash(d: ebml::doc, eq_fn: fn@(x:&[u8]) -> bool, hash: uint) ->
-   ~[ebml::doc] {
+fn lookup_hash(d: ebml::doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
+   option<ebml::doc> {
     let index = ebml::get_doc(d, tag_index);
     let table = ebml::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
     let pos = io::u64_from_be_bytes(*d.data, hash_pos, 4u) as uint;
     let {tag:_, doc:bucket} = ebml::doc_at(d.data, pos);
-    // Awkward logic because we can't ret from foreach yet
 
-    let mut result: ~[ebml::doc] = ~[];
     let belt = tag_index_buckets_bucket_elt;
-    do ebml::tagged_docs(bucket, belt) |elt| {
+    for ebml::tagged_docs(bucket, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
-        // FIXME (#2880): use view here.
-        if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
-            vec::push(result, ebml::doc_at(d.data, pos).doc);
+        if eq_fn(vec::slice(*elt.data, elt.start + 4u, elt.end)) {
+            ret some(ebml::doc_at(d.data, pos).doc);
         }
     };
-    ret result;
+    none
 }
 
 fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
@@ -89,11 +86,9 @@ fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
         ret io::u64_from_be_bytes(vec::slice(bytes, 0u, 4u), 0u, 4u) as int
             == item_id;
     }
-    let eqer = |a| eq_item(a, item_id);
-    let found = lookup_hash(items, eqer, hash_node_id(item_id));
-    if vec::len(found) == 0u {
-        ret option::none::<ebml::doc>;
-    } else { ret option::some::<ebml::doc>(found[0]); }
+    lookup_hash(items,
+                |a| eq_item(a, item_id),
+                hash_node_id(item_id))
 }
 
 fn find_item(item_id: int, items: ebml::doc) -> ebml::doc {
@@ -121,11 +116,10 @@ fn item_symbol(item: ebml::doc) -> ~str {
 }
 
 fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
-    let mut found = none;
-    do ebml::tagged_docs(d, tag_items_data_parent_item) |did| {
-        found = some(ebml::with_doc_data(did, |d| parse_def_id(d)));
+    for ebml::tagged_docs(d, tag_items_data_parent_item) |did| {
+        ret some(ebml::with_doc_data(did, |d| parse_def_id(d)));
     }
-    found
+    none
 }
 
 // XXX: This has nothing to do with classes.
@@ -171,7 +165,7 @@ fn item_type(item_id: ast::def_id, item: ebml::doc,
 
 fn item_impl_traits(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ~[ty::t] {
     let mut results = ~[];
-    do ebml::tagged_docs(item, tag_impl_trait) |ity| {
+    for ebml::tagged_docs(item, tag_impl_trait) |ity| {
         vec::push(results, doc_type(ity, tcx, cdata));
     };
     results
@@ -180,7 +174,7 @@ fn item_impl_traits(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ~[ty::t] {
 fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> @~[ty::param_bounds] {
     let mut bounds = ~[];
-    do ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) |p| {
+    for ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) |p| {
         let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx, |did| {
             translate_def_id(cdata, did)
         });
@@ -199,14 +193,14 @@ fn item_ty_region_param(item: ebml::doc) -> bool {
 fn item_ty_param_count(item: ebml::doc) -> uint {
     let mut n = 0u;
     ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds,
-                      |_p| n += 1u );
+                      |_p| { n += 1u; true } );
     n
 }
 
 fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> ~[ast::def_id] {
     let mut ids: ~[ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
-    do ebml::tagged_docs(item, v) |p| {
+    for ebml::tagged_docs(item, v) |p| {
         let ext = ebml::with_doc_data(p, |d| parse_def_id(d));
         vec::push(ids, {crate: cdata.cnum, node: ext.node});
     };
@@ -254,7 +248,7 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
     let mut result = ~[];
     vec::reserve(result, len);
 
-    do ebml::docs(path_doc) |tag, elt_doc| {
+    for ebml::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
             let str = ebml::doc_as_str(elt_doc);
             vec::push(result, ast_map::path_mod(@str));
@@ -342,7 +336,7 @@ fn get_impl_method(cdata: cmd, id: ast::node_id,
                    name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
-    do ebml::tagged_docs(find_item(id, items), tag_item_impl_method) |mid| {
+    for ebml::tagged_docs(find_item(id, items), tag_item_impl_method) |mid| {
         let m_did = ebml::with_doc_data(mid, |d| parse_def_id(d));
         if item_name(find_item(m_did.node, items)) == name {
             found = some(translate_def_id(cdata, m_did));
@@ -359,7 +353,7 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
             some(it) { it }
             none { fail (#fmt("get_class_method: class id not found \
              when looking up method %s", *name)) }};
-    do ebml::tagged_docs(cls_items, tag_item_trait_method) |mid| {
+    for ebml::tagged_docs(cls_items, tag_item_trait_method) |mid| {
         let m_did = class_member_id(mid, cdata);
         if item_name(mid) == name {
             found = some(m_did);
@@ -379,7 +373,7 @@ fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
             none     { fail (#fmt("class_dtor: class id not found \
               when looking up dtor for %d", id)); }
     };
-    do ebml::tagged_docs(cls_items, tag_item_dtor) |doc| {
+    for ebml::tagged_docs(cls_items, tag_item_dtor) |doc| {
          let doc1 = ebml::get_doc(doc, tag_def_id);
          let did = ebml::with_doc_data(doc1, |d| parse_def_id(d));
          found = some(translate_def_id(cdata, did));
@@ -428,7 +422,7 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
     let mut broken = false;
 
     // First, go through all the explicit items.
-    do ebml::tagged_docs(items_data, tag_items_data_item) |item_doc| {
+    for ebml::tagged_docs(items_data, tag_items_data_item) |item_doc| {
         if !broken {
             let name = ast_map::path_to_str_with_sep(item_path(item_doc),
                                                      ~"::");
@@ -494,11 +488,11 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
         }
     }
 
-    do ebml::tagged_docs(inner_paths, tag_paths_data_item) |path_doc| {
+    for ebml::tagged_docs(inner_paths, tag_paths_data_item) |path_doc| {
         g(cdata, items, path_doc, broken, f);
     }
 
-    do ebml::tagged_docs(inner_paths, tag_paths_foreign_path) |path_doc| {
+    for ebml::tagged_docs(inner_paths, tag_paths_foreign_path) |path_doc| {
         g(cdata, items, path_doc, broken, f);
     }
 }
@@ -577,7 +571,7 @@ type _impl = {did: ast::def_id, ident: ast::ident, methods: ~[@method_info]};
 fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     -> ~[@method_info] {
     let mut rslt = ~[];
-    do ebml::tagged_docs(item, tag_item_impl_method) |doc| {
+    for ebml::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = ebml::with_doc_data(doc, |d| parse_def_id(d));
         let mth_item = lookup_item(m_did.node, cdata.data);
         vec::push(rslt, @{did: translate_def_id(cdata, m_did),
@@ -597,7 +591,7 @@ fn get_impls_for_mod(cdata: cmd,
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
-    do ebml::tagged_docs(mod_item, tag_mod_impl) |doc| {
+    for ebml::tagged_docs(mod_item, tag_mod_impl) |doc| {
         let did = ebml::with_doc_data(doc, |d| parse_def_id(d));
         let local_did = translate_def_id(cdata, did);
         #debug("(get impls for mod) getting did %? for '%?'",
@@ -625,7 +619,7 @@ fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
-    do ebml::tagged_docs(item, tag_item_trait_method) |mth| {
+    for ebml::tagged_docs(item, tag_item_trait_method) |mth| {
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
@@ -655,7 +649,7 @@ fn get_method_names_if_trait(cdata: cmd, node_id: ast::node_id)
     }
 
     let resulting_method_names = @dvec();
-    do ebml::tagged_docs(item, tag_item_trait_method) |method| {
+    for ebml::tagged_docs(item, tag_item_trait_method) |method| {
         (*resulting_method_names).push(item_name(method));
     }
     ret some(resulting_method_names);
@@ -666,8 +660,8 @@ fn get_item_attrs(cdata: cmd,
                   f: fn(~[@ast::meta_item])) {
 
     let item = lookup_item(node_id, cdata.data);
-    do ebml::tagged_docs(item, tag_attributes) |attributes| {
-        do ebml::tagged_docs(attributes, tag_attribute) |attribute| {
+    for ebml::tagged_docs(item, tag_attributes) |attributes| {
+        for ebml::tagged_docs(attributes, tag_attribute) |attribute| {
             f(get_meta_items(attribute));
         }
     }
@@ -679,7 +673,7 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
-    do ebml::tagged_docs(item, tag_item_field) |an_item| {
+    for ebml::tagged_docs(item, tag_item_field) |an_item| {
        let f = item_family(an_item);
        if p(f) {
           let name = item_name(an_item);
@@ -760,12 +754,12 @@ fn item_family_to_str(fam: char) -> ~str {
 
 fn get_meta_items(md: ebml::doc) -> ~[@ast::meta_item] {
     let mut items: ~[@ast::meta_item] = ~[];
-    do ebml::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
+    for ebml::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
         vec::push(items, attr::mk_word_item(@n));
     };
-    do ebml::tagged_docs(md, tag_meta_item_name_value) |meta_item_doc| {
+    for ebml::tagged_docs(md, tag_meta_item_name_value) |meta_item_doc| {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
         let n = str::from_bytes(ebml::doc_data(nd));
@@ -774,7 +768,7 @@ fn get_meta_items(md: ebml::doc) -> ~[@ast::meta_item] {
         // but currently the encoder just drops them
         vec::push(items, attr::mk_name_value_item_str(@n, v));
     };
-    do ebml::tagged_docs(md, tag_meta_item_list) |meta_item_doc| {
+    for ebml::tagged_docs(md, tag_meta_item_list) |meta_item_doc| {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
@@ -787,7 +781,7 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
     let mut attrs: ~[ast::attribute] = ~[];
     alt ebml::maybe_get_doc(md, tag_attributes) {
       option::some(attrs_d) {
-        do ebml::tagged_docs(attrs_d, tag_attribute) |attr_doc| {
+        for ebml::tagged_docs(attrs_d, tag_attribute) |attr_doc| {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
@@ -835,7 +829,7 @@ fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
     fn docstr(doc: ebml::doc, tag_: uint) -> ~str {
         str::from_bytes(ebml::doc_data(ebml::get_doc(doc, tag_)))
     }
-    do ebml::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
+    for ebml::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         vec::push(deps, {cnum: crate_num,
                   name: @docstr(depdoc, tag_crate_dep_name),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
@@ -889,9 +883,9 @@ fn iter_crate_items(bytes: @~[u8], proc: fn(uint, ~str, ast::def_id)) {
     let paths = ebml::get_doc(md, tag_paths);
     let index = ebml::get_doc(paths, tag_index);
     let bs = ebml::get_doc(index, tag_index_buckets);
-    do ebml::tagged_docs(bs, tag_index_buckets_bucket) |bucket| {
+    for ebml::tagged_docs(bs, tag_index_buckets_bucket) |bucket| {
         let et = tag_index_buckets_bucket_elt;
-        do ebml::tagged_docs(bucket, et) |elt| {
+        for ebml::tagged_docs(bucket, et) |elt| {
             let data = read_path(elt);
             let {tag:t, doc:def} = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);

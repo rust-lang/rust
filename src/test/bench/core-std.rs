@@ -15,8 +15,7 @@ fn main(argv: ~[~str]) {
         ]
     ];
 
-    // FIXME (#2880)
-    let tests = vec::slice(argv, 1, argv.len());
+    let tests = vec::view(argv, 1, argv.len());
 
     #bench[shift_push];
     #bench[read_line];

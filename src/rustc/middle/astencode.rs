@@ -841,7 +841,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                       ast_doc: ebml::doc) {
     let dcx = xcx.dcx;
     let tbl_doc = ast_doc[c::tag_table];
-    do ebml::docs(tbl_doc) |tag, entry_doc| {
+    for ebml::docs(tbl_doc) |tag, entry_doc| {
         let id0 = entry_doc[c::tag_table_id].as_int();
         let id = xcx.tr_id(id0);
 
