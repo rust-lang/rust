@@ -545,8 +545,8 @@ fn purity_fn_family(p: purity) -> char {
 
 fn should_inline(attrs: ~[attribute]) -> bool {
     alt attr::find_inline_attr(attrs) {
-        attr::ia_none { false }
-        attr::ia_hint | attr::ia_always { true }
+        attr::ia_none | attr::ia_never  { false }
+        attr::ia_hint | attr::ia_always { true  }
     }
 }
 

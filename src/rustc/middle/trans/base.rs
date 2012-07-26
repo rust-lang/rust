@@ -456,6 +456,7 @@ fn set_inline_hint_if_appr(attrs: ~[ast::attribute],
     alt attr::find_inline_attr(attrs) {
       attr::ia_hint { set_inline_hint(llfn); }
       attr::ia_always { set_always_inline(llfn); }
+      attr::ia_never { set_no_inline(llfn); }
       attr::ia_none { /* fallthrough */ }
     }
 }
