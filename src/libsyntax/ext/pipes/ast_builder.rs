@@ -183,7 +183,6 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
         {mode: ast::infer(self.next_id()),
          ty: ty,
          ident: name,
-         // FIXME #2886: should this be the same as the infer id?
          id: self.next_id()}
     }
 
@@ -280,7 +279,6 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
     }
 
     fn ty_path_ast_builder(path: @ast::path) -> @ast::ty {
-        // FIXME #2886: make sure the node ids are legal.
         @{id: self.next_id(),
           node: ast::ty_path(path, self.next_id()),
           span: self.empty_span()}

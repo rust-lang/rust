@@ -1,15 +1,14 @@
-use std;
-import comm;
 import task;
 
 fn main() {
-    let po = comm::port::<int>();
-    let ch = comm::chan(po);
+    let po = pipes::port_set();
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
         log(debug, i);
+        let (ch, p) = pipes::stream();
+        po.add(p);
         task::spawn(|copy i| child(i, ch) );
         i = i - 1;
     }
@@ -18,17 +17,16 @@ fn main() {
     // anything back, so we deadlock here.
 
     i = 10;
-    let mut value = 0;
     while (i > 0) {
         log(debug, i);
-        value = comm::recv(po);
+        po.recv();
         i = i - 1;
     }
 
     #debug("main thread exiting");
 }
 
-fn child(x: int, ch: comm::chan<int>) {
+fn child(x: int, ch: pipes::chan<int>) {
     log(debug, x);
-    comm::send(ch, copy x);
+    ch.send(x);
 }

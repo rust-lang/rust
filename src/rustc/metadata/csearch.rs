@@ -25,6 +25,7 @@ export get_enum_variants;
 export get_impls_for_mod;
 export get_trait_methods;
 export get_method_names_if_trait;
+export get_item_attrs;
 export each_path;
 export get_type;
 export get_impl_traits;
@@ -147,6 +148,14 @@ fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
     ret decoder::get_method_names_if_trait(cdata, def.node);
+}
+
+fn get_item_attrs(cstore: cstore::cstore,
+                  def_id: ast::def_id,
+                  f: fn(~[@ast::meta_item])) {
+
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::get_item_attrs(cdata, def_id.node, f)
 }
 
 fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {

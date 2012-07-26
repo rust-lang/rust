@@ -1,14 +1,12 @@
-use std;
-import comm::*;
+import pipes::{port, chan};
 
 /*
   This is about the simplest program that can successfully send a
   message.
  */
 fn main() {
-    let po = port();
-    let ch = chan(po);
-    send(ch, 42);
-    let r = recv(po);
+    let (ch, po) = pipes::stream();
+    ch.send(42);
+    let r = po.recv();
     log(error, r);
 }

@@ -30,59 +30,6 @@ macro_rules! move {
 // places. Once there is unary move, it can be removed.
 fn move<T>(-x: T) -> T { x }
 
-/**
-
-Some thoughts about fixed buffers.
-
-The idea is if a protocol is bounded, we will synthesize a record that
-has a field for each state. Each of these states contains a packet for
-the messages that are legal to be sent in that state. Then, instead of
-allocating, the send code just finds a pointer to the right field and
-uses that instead.
-
-Unforunately, this makes things kind of tricky. We need to be able to
-find the buffer, which means we need to pass it around. This could
-either be associated with the (send|recv)_packet classes, or with the
-packet itself. We will also need some form of reference counting so we
-can track who has the responsibility of freeing the buffer.
-
-We want to preserve the ability to do things like optimistic buffer
-re-use, and skipping over to a new buffer when necessary. What I mean
-is, suppose we had the typical stream protocol. It'd make sense to
-amortize allocation costs by allocating a buffer with say 16
-messages. When the sender gets to the end of the buffer, it could
-check if the receiver is done with the packet in slot 0. If so, it can
-just reuse that one, checking if the receiver is done with the next
-one in each case. If it is ever not done, it just allocates a new
-buffer and skips over to that.
-
-Also, since protocols are in libcore, we have to do this in a way that
-maintains backwards compatibility.
-
-buffer header and buffer. Cast as c_void when necessary.
-
-===
-
-Okay, here are some new ideas.
-
-It'd be nice to keep the bounded/unbounded case as uniform as
-possible. It leads to less code duplication, and less things that can
-go sublty wrong. For the bounded case, we could either have a struct
-with a bunch of unique pointers to pre-allocated packets, or we could
-lay them out inline. Inline layout is better, if for no other reason
-than that we don't have to allocate each packet
-individually. Currently we pass unique packets around as unsafe
-pointers, but they are actually unique pointers. We should instead use
-real unsafe pointers. This makes freeing data and running destructors
-trickier though. Thus, we should allocate all packets in parter of a
-higher level buffer structure. Packets can maintain a pointer to their
-buffer, and this is the part that gets freed.
-
-It might be helpful to have some idea of a semi-unique pointer (like
-being partially pregnant, also like an ARC).
-
-*/
-
 enum state {
     empty,
     full,
@@ -805,6 +752,12 @@ class port_set<T: send> : recv<T> {
         vec::push(self.ports, port)
     }
 
+    fn chan() -> chan<T> {
+        let (ch, po) = stream();
+        self.add(po);
+        ch
+    }
+
     fn try_recv() -> option<T> {
         let mut result = none;
         while result == none && self.ports.len() > 0 {
@@ -868,4 +821,53 @@ impl chan<T: send> of channel<T> for shared_chan<T> {
 
 fn shared_chan<T:send>(+c: chan<T>) -> shared_chan<T> {
     arc::exclusive(c)
+}
+
+trait select2<T: send, U: send> {
+    fn try_select() -> either<option<T>, option<U>>;
+    fn select() -> either<T, U>;
+}
+
+impl<T: send, U: send, Left: selectable recv<T>, Right: selectable recv<U>>
+    of select2<T, U> for (Left, Right) {
+
+    fn select() -> either<T, U> {
+        alt self {
+          (lp, rp) {
+            alt select2i(lp, rp) {
+              left(())  { left (lp.recv()) }
+              right(()) { right(rp.recv()) }
+            }
+          }
+        }
+    }
+
+    fn try_select() -> either<option<T>, option<U>> {
+        alt self {
+          (lp, rp) {
+            alt select2i(lp, rp) {
+              left(())  { left (lp.try_recv()) }
+              right(()) { right(rp.try_recv()) }
+            }
+          }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_select2() {
+        let (c1, p1) = pipes::stream();
+        let (c2, p2) = pipes::stream();
+
+        c1.send("abc");
+
+        alt (p1, p2).select() {
+          right(_) { fail }
+          _ { }
+        }
+
+        c2.send(123);
+    }
 }

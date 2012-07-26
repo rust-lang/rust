@@ -95,6 +95,9 @@ cleantestlibs:
 check: cleantestlibs cleantmptestlogs tidy all check-stage2
 	$(Q)$(S)src/etc/check-summary.py tmp/*.log
 
+check-notidy: cleantestlibs cleantmptestlogs all check-stage2
+	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+
 check-full: cleantestlibs cleantmptestlogs tidy \
             all check-stage1 check-stage2 check-stage3
 	$(Q)$(S)src/etc/check-summary.py tmp/*.log

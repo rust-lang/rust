@@ -195,15 +195,15 @@ pure fn log2(n: f64) -> f64 {
 }
 
 impl num of num::num for f64 {
-    fn add(&&other: f64)    -> f64 { ret self + other; }
-    fn sub(&&other: f64)    -> f64 { ret self - other; }
-    fn mul(&&other: f64)    -> f64 { ret self * other; }
-    fn div(&&other: f64)    -> f64 { ret self / other; }
-    fn modulo(&&other: f64) -> f64 { ret self % other; }
-    fn neg()                -> f64 { ret -self;        }
+    pure fn add(&&other: f64)    -> f64 { ret self + other; }
+    pure fn sub(&&other: f64)    -> f64 { ret self - other; }
+    pure fn mul(&&other: f64)    -> f64 { ret self * other; }
+    pure fn div(&&other: f64)    -> f64 { ret self / other; }
+    pure fn modulo(&&other: f64) -> f64 { ret self % other; }
+    pure fn neg()                -> f64 { ret -self;        }
 
-    fn to_int()         -> int { ret self as int; }
-    fn from_int(n: int) -> f64 { ret n as f64;    }
+    pure fn to_int()         -> int { ret self as int; }
+    pure fn from_int(n: int) -> f64 { ret n as f64;    }
 }
 
 //

@@ -1,20 +1,19 @@
 use std;
 import task;
-import comm;
 
 fn main() { test00(); }
 
-fn test00_start(c: comm::chan<int>, number_of_messages: int) {
+fn test00_start(c: pipes::chan<int>, number_of_messages: int) {
     let mut i: int = 0;
-    while i < number_of_messages { comm::send(c, i + 0); i += 1; }
+    while i < number_of_messages { c.send(i + 0); i += 1; }
 }
 
 fn test00() {
     let r: int = 0;
     let mut sum: int = 0;
-    let p = comm::port();
+    let p = pipes::port_set();
     let number_of_messages: int = 10;
-    let ch = comm::chan(p);
+    let ch = p.chan();
 
     let mut result = none;
     do task::task().future_result(|-r| { result = some(r); }).spawn {
@@ -23,7 +22,7 @@ fn test00() {
 
     let mut i: int = 0;
     while i < number_of_messages {
-        sum += comm::recv(p);
+        sum += p.recv();
         log(debug, r);
         i += 1;
     }

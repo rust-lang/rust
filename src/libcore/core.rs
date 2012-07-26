@@ -30,6 +30,8 @@ import float::num;
 import f32::num;
 import f64::num;
 import num::num;
+import ops::{const, copy, send, owned};
+import ops::{add, sub, mul, div, modulo, neg, bitops, index};
 
 export path, option, some, none, unreachable;
 export extensions;
@@ -42,6 +44,9 @@ export immutable_copyable_vector, iter_trait_extensions, vec_concat;
 export base_iter, copyable_iter, extended_iter;
 export tuple_ops, extended_tuple_ops;
 export ptr;
+// The following exports are the core operators and kinds
+export const, copy, send, owned;
+export add, sub, mul, div, modulo, neg, bitops, index;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
