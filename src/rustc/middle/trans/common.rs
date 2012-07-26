@@ -314,8 +314,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
         })) |i| {
             info.cleanups =
                 vec::append(vec::slice(info.cleanups, 0u, i),
-                            // FIXME (#2880): use view here.
-                            vec::slice(info.cleanups,
+                            vec::view(info.cleanups,
                                       i + 1u,
                                       info.cleanups.len()));
             scope_clean_changed(info);

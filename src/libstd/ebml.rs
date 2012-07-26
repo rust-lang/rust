@@ -127,7 +127,7 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc) -> bool) {
 fn doc_data(d: doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
 
 fn with_doc_data<T>(d: doc, f: fn(x: &[u8]) -> T) -> T {
-    ret f(vec::slice(*d.data, d.start, d.end));
+    ret f(vec::view(*d.data, d.start, d.end));
 }
 
 fn doc_as_str(d: doc) -> ~str { ret str::from_bytes(doc_data(d)); }
