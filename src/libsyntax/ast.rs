@@ -88,6 +88,7 @@ enum def {
               @def    /* closed over def */,
               node_id /* expr node that creates the closure */),
     def_class(def_id, bool /* has constructor */),
+    def_typaram_binder(node_id), /* class, impl or trait that has ty params */
     def_region(node_id)
 }
 

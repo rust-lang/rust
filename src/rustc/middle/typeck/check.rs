@@ -2186,6 +2186,10 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_region(*) {
         fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found region");
       }
+      ast::def_typaram_binder(*) {
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type \
+                                          parameter");
+      }
     }
 }
 

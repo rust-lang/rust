@@ -10,7 +10,8 @@ import syntax::ast::{bound_send, capture_clause, class_ctor, class_dtor};
 import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
-import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
+import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param,
+                     def_typaram_binder};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_new, expr_path};
@@ -171,8 +172,21 @@ enum RibKind {
     // upvars as appropriate.
     FunctionRibKind(node_id),
 
+    // We passed through a class, impl, or trait and are now in one of its
+    // methods. Allow references to ty params that that class, impl or trait
+    // binds. Disallow any other upvars (including other ty params that are
+    // upvars).
+              // parent;   method itself
+    MethodRibKind(node_id, MethodSort),
+
     // We passed through a function *item* scope. Disallow upvars.
     OpaqueFunctionRibKind
+}
+
+// Methods can be required or provided. Required methods only occur in traits.
+enum MethodSort {
+    Required,
+    Provided(node_id)
 }
 
 // The X-ray flag indicates that a context has the X-ray privilege, which
@@ -1392,7 +1406,8 @@ class Resolver {
                         }
                         def_self(*) | def_arg(*) | def_local(*) |
                         def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
-                        def_use(*) | def_upvar(*) | def_region(*) {
+                        def_use(*) | def_upvar(*) | def_region(*) |
+                          def_typaram_binder(*) {
                             fail #fmt("didn't expect `%?`", def);
                         }
                     }
@@ -2891,6 +2906,36 @@ class Resolver {
                                         function_id);
                     }
                 }
+                MethodRibKind(item_id, method_id) {
+                  // If the def is a ty param, and came from the parent
+                  // item, it's ok
+                  alt def {
+                    def_ty_param(did, _) if self.def_map.find(copy(did.node))
+                      == some(def_typaram_binder(item_id)) {
+                      // ok
+                    }
+                    _ {
+                    if !is_ty_param {
+                        // This was an attempt to access an upvar inside a
+                        // named function item. This is not allowed, so we
+                        // report an error.
+
+                        self.session.span_err(
+                            span,
+                            ~"attempted dynamic environment-capture");
+                    } else {
+                        // This was an attempt to use a type parameter outside
+                        // its scope.
+
+                        self.session.span_err(span,
+                                              ~"attempt to use a type \
+                                               argument out of scope");
+                    }
+
+                    ret none;
+                    }
+                  }
+                }
                 OpaqueFunctionRibKind {
                     if !is_ty_param {
                         // This was an attempt to access an upvar inside a
@@ -3029,7 +3074,7 @@ class Resolver {
                                 (HasTypeParameters(&ty_m.tps,
                                                    item.id,
                                                    type_parameters.len(),
-                                                   NormalRibKind)) {
+                                        MethodRibKind(item.id, Required))) {
 
                                 // Resolve the method-specific type
                                 // parameters.
@@ -3044,7 +3089,8 @@ class Resolver {
                             }
                           }
                           provided(m) {
-                              self.resolve_method(NormalRibKind,
+                              self.resolve_method(MethodRibKind(item.id,
+                                                     Provided(m.id)),
                                                   m,
                                                   type_parameters.len(),
                                                   visitor)
@@ -3148,9 +3194,15 @@ class Resolver {
                 for (*type_parameters).eachi |index, type_parameter| {
                     let name =
                         (*self.atom_table).intern(type_parameter.ident);
+                    #debug("with_type_parameter_rib: %d %d", node_id,
+                           type_parameter.id);
                     let def_like = dl_def(def_ty_param
                         (local_def(type_parameter.id),
                          index + initial_index));
+                    // Associate this type parameter with
+                    // the item that bound it
+                    self.record_def(type_parameter.id,
+                                    def_typaram_binder(node_id));
                     (*function_type_rib).bindings.insert(name, def_like);
                 }
             }
@@ -3332,7 +3384,8 @@ class Resolver {
             for class_members.each |class_member| {
                 alt class_member.node {
                     class_method(method) {
-                      self.resolve_method(NormalRibKind,
+                      self.resolve_method(MethodRibKind(id,
+                                               Provided(method.id)),
                                           method,
                                           outer_type_parameter_count,
                                           visitor);
@@ -3451,7 +3504,7 @@ class Resolver {
                 // type parameters.
 
                 let borrowed_type_parameters = &method.tps;
-                self.resolve_function(NormalRibKind,
+                self.resolve_function(MethodRibKind(id, Provided(method.id)),
                                       some(@method.decl),
                                       HasTypeParameters
                                         (borrowed_type_parameters,
