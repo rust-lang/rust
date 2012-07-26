@@ -113,8 +113,7 @@ fn expand_nested_bindings(m: match, col: uint, val: ValueRef) -> match {
             let pats = vec::append(
                 vec::slice(br.pats, 0u, col),
                 vec::append(~[inner],
-                            // FIXME (#2880): use view here.
-                            vec::slice(br.pats, col + 1u, br.pats.len())));
+                            vec::view(br.pats, col + 1u, br.pats.len())));
             vec::push(result,
                       @{pats: pats,
                         bound: vec::append(
@@ -137,10 +136,8 @@ fn enter_match(dm: DefMap, m: match, col: uint, val: ValueRef,
         alt e(br.pats[col]) {
           some(sub) {
             let pats = vec::append(
-                // FIXME (#2880): use view here.
-                vec::append(sub, vec::slice(br.pats, 0u, col)),
-                // FIXME (#2880): use view here.
-                vec::slice(br.pats, col + 1u, br.pats.len()));
+                vec::append(sub, vec::view(br.pats, 0u, col)),
+                vec::view(br.pats, col + 1u, br.pats.len()));
             let self = br.pats[col];
             let bound = alt self.node {
               ast::pat_ident(name, none) if !pat_is_variant(dm, self) {
@@ -429,8 +426,7 @@ fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
             } else { m };
 
     let vals_left = vec::append(vec::slice(vals, 0u, col),
-                                // FIXME (#2880): use view here.
-                                vec::slice(vals, col + 1u, vals.len()));
+                                vec::view(vals, col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
     for vec::each(m) |br| {
