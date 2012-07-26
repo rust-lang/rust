@@ -403,32 +403,32 @@ fn pow_with_uint(base: uint, pow: uint) -> float {
     ret total;
 }
 
-fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
-fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
-fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
-fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
-fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
-fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
-fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
-fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
+pure fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
+pure fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
+pure fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
+pure fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
+pure fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
+pure fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
+pure fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
+pure fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
 
-fn abs(x: float) -> float { f64::abs(x as f64) as float }
-fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
-fn atan(x: float) -> float { f64::atan(x as f64) as float }
-fn sin(x: float) -> float { f64::sin(x as f64) as float }
-fn cos(x: float) -> float { f64::cos(x as f64) as float }
-fn tan(x: float) -> float { f64::tan(x as f64) as float }
+pure fn abs(x: float) -> float { f64::abs(x as f64) as float }
+pure fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
+pure fn atan(x: float) -> float { f64::atan(x as f64) as float }
+pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
+pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
+pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
 impl num of num::num for float {
-    fn add(&&other: float)    -> float { ret self + other; }
-    fn sub(&&other: float)    -> float { ret self - other; }
-    fn mul(&&other: float)    -> float { ret self * other; }
-    fn div(&&other: float)    -> float { ret self / other; }
-    fn modulo(&&other: float) -> float { ret self % other; }
-    fn neg()                  -> float { ret -self;        }
+    pure fn add(&&other: float)    -> float { ret self + other; }
+    pure fn sub(&&other: float)    -> float { ret self - other; }
+    pure fn mul(&&other: float)    -> float { ret self * other; }
+    pure fn div(&&other: float)    -> float { ret self / other; }
+    pure fn modulo(&&other: float) -> float { ret self % other; }
+    pure fn neg()                  -> float { ret -self;        }
 
-    fn to_int()         -> int   { ret self as int; }
-    fn from_int(n: int) -> float { ret n as float;  }
+    pure fn to_int()         -> int   { ret self as int; }
+    pure fn from_int(n: int) -> float { ret n as float;  }
 }
 
 #[test]

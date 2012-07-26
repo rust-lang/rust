@@ -87,7 +87,7 @@ enum def {
     def_upvar(node_id /* local id of closed over var */,
               @def    /* closed over def */,
               node_id /* expr node that creates the closure */),
-    def_class(def_id),
+    def_class(def_id, bool /* has constructor */),
     def_region(node_id)
 }
 

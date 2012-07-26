@@ -1,31 +1,29 @@
 use std;
 
-import comm;
-import comm::chan;
-import comm::send;
+import pipes;
+import pipes::chan;
+import pipes::port;
 import task;
 
 fn main() { test05(); }
 
 fn test05_start(ch : chan<int>) {
-    log(error, ch);
-    send(ch, 10);
+    ch.send(10);
     #error("sent 10");
-    send(ch, 20);
+    ch.send(20);
     #error("sent 20");
-    send(ch, 30);
+    ch.send(30);
     #error("sent 30");
 }
 
 fn test05() {
-    let po = comm::port();
-    let ch = comm::chan(po);
+    let (ch, po) = pipes::stream();
     task::spawn(|| test05_start(ch) );
-    let mut value = comm::recv(po);
+    let mut value = po.recv();
     log(error, value);
-    value = comm::recv(po);
+    value = po.recv();
     log(error, value);
-    value = comm::recv(po);
+    value = po.recv();
     log(error, value);
     assert (value == 30);
 }

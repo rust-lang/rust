@@ -39,6 +39,7 @@ export get_crate_vers;
 export get_impls_for_mod;
 export get_trait_methods;
 export get_method_names_if_trait;
+export get_item_attrs;
 export get_crate_module_paths;
 export def_like;
 export dl_def;
@@ -282,7 +283,8 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
     let fam_ch = item_family(item);
     alt fam_ch {
       'c' { dl_def(ast::def_const(did)) }
-      'C' { dl_def(ast::def_class(did)) }
+      'C' { dl_def(ast::def_class(did, true)) }
+      'S' { dl_def(ast::def_class(did, false)) }
       'u' { dl_def(ast::def_fn(did, ast::unsafe_fn)) }
       'f' { dl_def(ast::def_fn(did, ast::impure_fn)) }
       'p' { dl_def(ast::def_fn(did, ast::pure_fn)) }
@@ -659,6 +661,18 @@ fn get_method_names_if_trait(cdata: cmd, node_id: ast::node_id)
     ret some(resulting_method_names);
 }
 
+fn get_item_attrs(cdata: cmd,
+                  node_id: ast::node_id,
+                  f: fn(~[@ast::meta_item])) {
+
+    let item = lookup_item(node_id, cdata.data);
+    do ebml::tagged_docs(item, tag_attributes) |attributes| {
+        do ebml::tagged_docs(attributes, tag_attribute) |attribute| {
+            f(get_meta_items(attribute));
+        }
+    }
+}
+
 // Helper function that gets either fields or methods
 fn get_class_members(cdata: cmd, id: ast::node_id,
                      p: fn(char) -> bool) -> ~[ty::field_ty] {
@@ -694,7 +708,7 @@ fn family_has_type_params(fam_ch: char) -> bool {
     alt check fam_ch {
       'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' { false }
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
-          | 'a'
+          | 'a' | 'S'
           { true }
     }
 }
@@ -738,6 +752,7 @@ fn item_family_to_str(fam: char) -> ~str {
       'i' { ret ~"impl"; }
       'I' { ret ~"trait"; }
       'C' { ret ~"class"; }
+      'S' { ret ~"struct"; }
       'g' { ret ~"public field"; }
       'j' { ret ~"private field"; }
     }

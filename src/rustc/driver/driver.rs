@@ -14,6 +14,7 @@ import io::{reader_util, writer_util};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 import std::map::hashmap;
+import lib::llvm::llvm;
 
 enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
               ppm_expanded_identified }
@@ -168,6 +169,9 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                              sess.filesearch,
                              session::sess_os_to_meta_os(sess.targ_cfg.os),
                              sess.opts.static));
+
+    time(time_passes, ~"language item collection", ||
+         middle::lang_items::collect_language_items(crate, sess));
 
     let { def_map: def_map,
           exp_map: exp_map,
@@ -439,6 +443,9 @@ fn build_session_options(match: getopts::match,
             early_error(demitter, #fmt("unknown debug flag: %s", debug_flag))
         }
         debugging_opts |= this_bit;
+    }
+    if debugging_opts & session::debug_llvm != 0 {
+        llvm::LLVMSetDebug(1);
     }
 
     let output_type =

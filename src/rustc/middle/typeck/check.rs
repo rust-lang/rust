@@ -1649,7 +1649,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Resolve the path.
         let class_id;
         alt tcx.def_map.find(id) {
-            some(ast::def_class(type_def_id)) => {
+            some(ast::def_class(type_def_id, _)) => {
                 class_id = type_def_id;
             }
             _ => {
@@ -2160,7 +2160,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       }
 
       ast::def_fn(id, _) | ast::def_const(id) |
-      ast::def_variant(_, id) | ast::def_class(id) {
+      ast::def_variant(_, id) | ast::def_class(id, _) {
         ret ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       ast::def_binding(nid) {

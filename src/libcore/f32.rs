@@ -168,15 +168,15 @@ pure fn log2(n: f32) -> f32 {
 }
 
 impl num of num::num for f32 {
-    fn add(&&other: f32)    -> f32 { ret self + other; }
-    fn sub(&&other: f32)    -> f32 { ret self - other; }
-    fn mul(&&other: f32)    -> f32 { ret self * other; }
-    fn div(&&other: f32)    -> f32 { ret self / other; }
-    fn modulo(&&other: f32) -> f32 { ret self % other; }
-    fn neg()                -> f32 { ret -self;        }
+    pure fn add(&&other: f32)    -> f32 { ret self + other; }
+    pure fn sub(&&other: f32)    -> f32 { ret self - other; }
+    pure fn mul(&&other: f32)    -> f32 { ret self * other; }
+    pure fn div(&&other: f32)    -> f32 { ret self / other; }
+    pure fn modulo(&&other: f32) -> f32 { ret self % other; }
+    pure fn neg()                -> f32 { ret -self;        }
 
-    fn to_int()         -> int { ret self as int; }
-    fn from_int(n: int) -> f32 { ret n as f32;    }
+    pure fn to_int()         -> int { ret self as int; }
+    pure fn from_int(n: int) -> f32 { ret n as f32;    }
 }
 
 //

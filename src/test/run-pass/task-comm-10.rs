@@ -1,28 +1,27 @@
 use std;
 import task;
-import comm;
+import pipes;
 
-fn start(c: comm::chan<comm::chan<~str>>) {
-    let p = comm::port();
-    comm::send(c, comm::chan(p));
+fn start(c: pipes::chan<pipes::chan<~str>>) {
+    let (ch, p) = pipes::stream();
+    c.send(ch);
 
     let mut a;
     let mut b;
-    a = comm::recv(p);
+    a = p.recv();
     assert a == ~"A";
     log(error, a);
-    b = comm::recv(p);
+    b = p.recv();
     assert b == ~"B";
     log(error, b);
 }
 
 fn main() {
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let (ch, p) = pipes::stream();
     let child = task::spawn(|| start(ch) );
 
-    let c = comm::recv(p);
-    comm::send(c, ~"A");
-    comm::send(c, ~"B");
+    let c = p.recv();
+    c.send(~"A");
+    c.send(~"B");
     task::yield();
 }
