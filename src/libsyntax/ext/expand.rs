@@ -162,8 +162,8 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     ret {items: new_items with module};
 }
 
-// Support for item-position macro invocations, exactly the same
-// logic as for expression-position macro invocations.
+
+// When we enter a module, record it, for the sake of `module!`
 fn expand_item(exts: hashmap<~str, syntax_extension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                orig: fn@(&&@ast::item, ast_fold) -> option<@ast::item>)
@@ -191,6 +191,9 @@ fn expand_item(exts: hashmap<~str, syntax_extension>,
     }
 }
 
+
+// Support for item-position macro invocations, exactly the same
+// logic as for expression-position macro invocations.
 fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                    cx: ext_ctxt, &&it: @ast::item,
                    fld: ast_fold) -> option<@ast::item> {

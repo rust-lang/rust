@@ -3,7 +3,7 @@
 
 mod m1 {
     mod m2 {
-        fn where_am_i() -> ~str { #mod[] }
+        fn where_am_i() -> ~str { #module[] }
     }
 }
 
