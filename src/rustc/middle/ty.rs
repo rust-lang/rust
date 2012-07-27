@@ -117,6 +117,7 @@ export operators;
 export type_err, terr_vstore_kind;
 export type_err_to_str;
 export type_needs_drop;
+export type_is_empty;
 export type_is_integral;
 export type_is_numeric;
 export type_is_pod;
@@ -2746,6 +2747,15 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
 
 fn enum_is_univariant(cx: ctxt, id: ast::def_id) -> bool {
     vec::len(*enum_variants(cx, id)) == 1u
+}
+
+fn type_is_empty(cx: ctxt, t: t) -> bool {
+    alt ty::get(t).struct {
+       ty_enum(did, _) {
+           (*enum_variants(cx, did)).is_empty()
+        }
+       _ { false }
+     }
 }
 
 fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {

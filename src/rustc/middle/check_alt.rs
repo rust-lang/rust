@@ -26,6 +26,23 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
       expr_alt(scrut, arms, mode) {
         check_arms(tcx, arms);
         /* Check for exhaustiveness */
+         // Check for empty enum, because is_useful only works on inhabited
+         // types.
+       let pat_ty = node_id_to_type(tcx, scrut.id);
+       if type_is_empty(tcx, pat_ty) && arms.is_empty() {
+               // Vacuously exhaustive
+               ret;
+           }
+       alt ty::get(pat_ty).struct {
+          ty_enum(did, _) {
+              if (*enum_variants(tcx, did)).is_empty() && arms.is_empty() {
+
+               ret;
+            }
+          }
+          _ { /* We assume only enum types can be uninhabited */ }
+       }
+
         if mode == alt_exhaustive {
             let arms = vec::concat(vec::filter_map(arms, unguarded_pat));
             check_exhaustive(tcx, ex.span, arms);
@@ -60,6 +77,7 @@ fn raw_pat(p: @pat) -> @pat {
 }
 
 fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
+    assert(pats.is_not_empty());
     let ext = alt is_useful(tcx, vec::map(pats, |p| ~[p]), ~[wild()]) {
       not_useful { ret; } // This is good, wildcard pattern isn't reachable
       useful_ { none }
@@ -111,6 +129,8 @@ enum ctor {
 // checking (if a wildcard pattern is useful in relation to a matrix, the
 // matrix isn't exhaustive).
 
+// Note: is_useful doesn't work on empty types, as the paper notes.
+// So it assumes that v is non-empty.
 fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
     if m.len() == 0u { ret useful_; }
     if m[0].len() == 0u { ret not_useful; }

@@ -385,6 +385,10 @@ fn pick_col(m: match) -> uint {
 
 fn compile_submatch(bcx: block, m: match, vals: ~[ValueRef],
                     chk: option<mk_fail>, &exits: ~[exit_node]) {
+    /*
+      For an empty match, a fall-through case must exist
+     */
+    assert(m.len() > 0u || is_some(chk));
     let _icx = bcx.insn_ctxt(~"alt::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
@@ -664,24 +668,35 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
         }
     }
 
-    let mk_fail = alt mode {
-      ast::alt_check {
-        // Cached fail-on-fallthrough block
-        let fail_cx = @mut none;
-        fn mk_fail(bcx: block, sp: span,
+    fn mk_fail(bcx: block, sp: span, msg: ~str,
                    done: @mut option<BasicBlockRef>) -> BasicBlockRef {
             alt *done { some(bb) { ret bb; } _ { } }
             let fail_cx = sub_block(bcx, ~"case_fallthrough");
-            trans_fail(fail_cx, some(sp), ~"non-exhaustive match failure");;
+            trans_fail(fail_cx, some(sp), msg);
             *done = some(fail_cx.llbb);
             ret fail_cx.llbb;
-        }
-        some(|| mk_fail(scope_cx, expr.span, fail_cx))
+    }
+    let t = node_id_type(bcx, expr.id);
+    let mk_fail = alt mode {
+      ast::alt_check {
+        let fail_cx = @mut none;
+        // Cached fail-on-fallthrough block
+        some(|| mk_fail(scope_cx, expr.span, ~"non-exhaustive match failure",
+                        fail_cx))
       }
-      ast::alt_exhaustive { none }
+      ast::alt_exhaustive {
+          let fail_cx = @mut none;
+          // special case for uninhabited type
+          if ty::type_is_empty(tcx, t) {
+                  some(|| mk_fail(scope_cx, expr.span,
+                            ~"scrutinizing value that can't exist", fail_cx))
+          }
+          else {
+              none
+          }
+      }
     };
     let mut exit_map = ~[];
-    let t = node_id_type(bcx, expr.id);
     let spilled = spill_if_immediate(bcx, val, t);
     compile_submatch(bcx, match, ~[spilled], mk_fail, exit_map);
 
