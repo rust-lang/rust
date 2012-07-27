@@ -263,6 +263,9 @@ fn check_variants_T<T: copy>(
                 let str3 =
                     @as_str(|a|pprust::print_crate(
                         codemap,
+                        // Assuming we're not generating any token_trees
+                        @syntax::util::interner::mk::<@~str>(
+                            |x| str::hash(*x), |x,y| str::eq(*x,*y)),
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
@@ -420,13 +423,18 @@ fn parse_and_print(code: @~str) -> ~str {
     let crate = parse::parse_crate_from_source_str(
         filename, code, ~[], sess);
     io::with_str_reader(*code, |rdr| {
-        as_str(|a| pprust::print_crate(sess.cm,
-                                       sess.span_diagnostic,
-                                       crate,
-                                       filename,
-                                       rdr, a,
-                                       pprust::no_ann(),
-                                       false) )
+        as_str(|a|
+               pprust::print_crate(
+                   sess.cm,
+                   // Assuming there are no token_trees
+                   @syntax::util::interner::mk::<@~str>(
+                       |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                   sess.span_diagnostic,
+                   crate,
+                   filename,
+                   rdr, a,
+                   pprust::no_ann(),
+                   false) )
     })
 }
 
@@ -565,13 +573,17 @@ fn check_variants(files: ~[~str], cx: context) {
                 s, ~[], sess);
         io::with_str_reader(*s, |rdr| {
             #error("%s",
-                   as_str(|a| pprust::print_crate(sess.cm,
-                                                  sess.span_diagnostic,
-                                                  crate,
-                                                  file,
-                                                  rdr, a,
-                                                  pprust::no_ann(),
-                                                  false) ))
+                   as_str(|a| pprust::print_crate(
+                       sess.cm,
+                       // Assuming no token_trees
+                       @syntax::util::interner::mk::<@~str>(
+                            |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                       sess.span_diagnostic,
+                       crate,
+                       file,
+                       rdr, a,
+                       pprust::no_ann(),
+                       false) ))
         });
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }

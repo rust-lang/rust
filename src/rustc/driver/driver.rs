@@ -327,7 +327,8 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     let is_expanded = upto != cu_parse;
     let src = codemap::get_filemap(sess.codemap, source_name(input)).src;
     do io::with_str_reader(*src) |rdr| {
-        pprust::print_crate(sess.codemap, sess.span_diagnostic, crate,
+        pprust::print_crate(sess.codemap, sess.parse_sess.interner,
+                            sess.span_diagnostic, crate,
                             source_name(input),
                             rdr, io::stdout(), ann, is_expanded);
     }
