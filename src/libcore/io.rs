@@ -371,10 +371,8 @@ impl of writer for *libc::FILE {
     fn flush() -> int { libc::fflush(self) as int }
     fn get_type() -> writer_type {
         let fd = libc::fileno(self);
-        if libc::isatty(fd) == 0 {
-            ret file;
-        }
-        ret screen;
+        if libc::isatty(fd) == 0 { file   }
+        else                     { screen }
     }
 }
 
@@ -661,7 +659,7 @@ impl of writer for mem_buffer {
     }
     fn tell() -> uint { self.pos }
     fn flush() -> int { 0 }
-    fn get_type() -> writer_type { ret file }
+    fn get_type() -> writer_type { file }
 }
 
 fn mem_buffer() -> mem_buffer {
