@@ -18,28 +18,11 @@ enum dlist_node<T> = @{
     mut next: dlist_link<T>
 };
 
-class dlist_root<T> {
-    let mut size: uint;
-    let mut hd:   dlist_link<T>;
-    let mut tl:   dlist_link<T>;
-    new() {
-        self.size = 0; self.hd = none; self.tl = none;
-    }
-    drop {
-        /* FIXME (#3039) This doesn't work during task failure - the box
-         * annihilator might have killed some of our nodes already. This will
-         * be safe to uncomment when the box annihilator is safer. As is,
-         * this makes test_dlist_cyclic_link below crash the runtime.
-        // Empty the list. Not doing this explicitly would leave cyclic links
-        // around, not to be freed until cycle collection at task exit.
-        while self.hd.is_some() {
-            self.unlink(self.hd.get());
-        }
-        */
-    }
-}
-
-type dlist<T> = @dlist_root<T>;
+enum dlist<T> = @{
+    mut size: uint,
+    mut hd:   dlist_link<T>,
+    mut tl:   dlist_link<T>,
+};
 
 impl private_methods<T> for dlist_node<T> {
     pure fn assert_links() {
@@ -107,7 +90,7 @@ pure fn new_dlist_node<T>(+data: T) -> dlist_node<T> {
 
 /// Creates a new, empty dlist.
 pure fn new_dlist<T>() -> dlist<T> {
-    @unchecked { dlist_root() }
+    dlist(@{mut size: 0, mut hd: none, mut tl: none})
 }
 
 /// Creates a new dlist with a single element
@@ -134,7 +117,7 @@ fn concat<T>(lists: dlist<dlist<T>>) -> dlist<T> {
     result
 }
 
-impl private_methods<T> for dlist_root<T> {
+impl private_methods<T> for dlist<T> {
     pure fn new_link(-data: T) -> dlist_link<T> {
         some(dlist_node(@{data: data, mut linked: true,
                           mut prev: none, mut next: none}))
@@ -336,7 +319,7 @@ impl extensions<T> for dlist<T> {
      * to the other list's head. O(1).
      */
     fn append(them: dlist<T>) {
-        if box::ptr_eq(self, them) {
+        if box::ptr_eq(*self, *them) {
             fail ~"Cannot append a dlist to itself!"
         }
         if them.len() > 0 {
@@ -353,7 +336,7 @@ impl extensions<T> for dlist<T> {
      * list's tail to this list's head. O(1).
      */
     fn prepend(them: dlist<T>) {
-        if box::ptr_eq(self, them) {
+        if box::ptr_eq(*self, *them) {
             fail ~"Cannot prepend a dlist to itself!"
         }
         if them.len() > 0 {
