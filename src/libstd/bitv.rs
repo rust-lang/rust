@@ -239,7 +239,7 @@ trait methods {
     fn union(rhs: bitv) -> bool;
     fn intersect(rhs: bitv) -> bool;
     fn assign(rhs: bitv) -> bool;
-    fn get(i: uint) -> bool;
+    pure fn get(i: uint) -> bool;
     fn [](i: uint) -> bool;
     fn eq(rhs: bitv) -> bool;
     fn clear();
@@ -261,7 +261,7 @@ impl of methods for bitv {
     fn union(rhs: bitv) -> bool { union(self, rhs) }
     fn intersect(rhs: bitv) -> bool { intersect(self, rhs) }
     fn assign(rhs: bitv) -> bool { assign(self, rhs) }
-    fn get(i: uint) -> bool { get(self, i) }
+    pure fn get(i: uint) -> bool { get(self, i) }
     fn [](i: uint) -> bool { self.get(i) }
     fn eq(rhs: bitv) -> bool { equal(self, rhs) }
     fn clear() { clear(self) }
@@ -282,6 +282,12 @@ impl of methods for bitv {
                 if !f(i) { break }
             }
         }
+    }
+}
+
+impl extensions of ops::index<uint,bool> for bitv {
+    pure fn index(&&i: uint) -> bool {
+        self.get(i)
     }
 }
 

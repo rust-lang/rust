@@ -35,7 +35,7 @@ fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
  * Get the value for the specified key. If the key does not exist
  * in the map then returns none
  */
-fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
+pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
     if key < self.v.len() { ret self.v.get_elt(key); }
     ret none::<T>;
 }
@@ -47,7 +47,7 @@ fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
  *
  * If the key does not exist in the map
  */
-fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
+pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     alt find(self, key) {
       none { #error("smallintmap::get(): key not present"); fail; }
       some(v) { ret v; }
@@ -111,6 +111,14 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     }
     fn each_value(it: fn(V) -> bool) {
         self.each(|_i, v| it(v));
+    }
+}
+
+impl extensions<V: copy> of ops::index<uint, V> for smallintmap<V> {
+    pure fn index(&&key: uint) -> V {
+        unchecked {
+            get(self, key)
+        }
     }
 }
 

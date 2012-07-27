@@ -1897,7 +1897,6 @@ trait unique_str {
     fn trim() -> self;
     fn trim_left() -> self;
     fn trim_right() -> self;
-    pure fn +(rhs: &str) -> self;
 }
 
 /// Extension methods for strings
@@ -1915,6 +1914,13 @@ impl extensions of unique_str for ~str {
     /// Concatenate two strings: operator version
     #[inline(always)]
     pure fn +(rhs: &str) -> ~str {
+        append(self, rhs)
+    }
+}
+
+impl extensions of ops::add<&str,~str> for ~str {
+    #[inline(always)]
+    pure fn add(rhs: &str) -> ~str {
         append(self, rhs)
     }
 }

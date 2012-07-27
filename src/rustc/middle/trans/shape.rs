@@ -16,6 +16,7 @@ import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import syntax::codemap::span;
 import dvec::{dvec, extensions};
+import vec::extensions;
 
 import std::map::hashmap;
 import option::is_some;
