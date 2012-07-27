@@ -376,6 +376,29 @@ fn check_class_member(ccx: @crate_ctxt, class_t: ty::t,
     }
 }
 
+fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
+                             ~[(ast::ident, span)]) {
+    let field_names = hashmap::<@~str, span>(|x| str::hash(*x),
+                                             |x,y| str::eq(*x, *y));
+    for fields.each |p| {
+        let (id, sp) = p;
+        alt field_names.find(id) {
+          some(orig_sp) {
+            tcx.sess.span_err(sp, #fmt("Duplicate field \
+                                   name %s in record type declaration",
+                                   *id));
+            tcx.sess.span_note(orig_sp, ~"First declaration of \
+                                          this field occurred here");
+            break;
+          }
+          none {
+            field_names.insert(id, sp);
+          }
+        }
+    }
+
+}
+
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
@@ -429,6 +452,14 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_ty(t, tps) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, tps, tpt_ty);
+        // If this is a record ty, check for duplicate fields
+        alt t.node {
+            ast::ty_rec(fields) {
+              check_no_duplicate_fields(ccx.tcx, fields.map(|f|
+                                              (f.node.ident, f.span)));
+            }
+            _ {}
+        }
       }
       ast::item_foreign_mod(m) {
         if syntax::attr::foreign_abi(it.attrs) ==
@@ -1617,6 +1648,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fn get_node(f: spanned<field>) -> field { f.node }
             let typ = ty::mk_rec(tcx, vec::map(fields_t, get_node));
             fcx.write_ty(id, typ);
+            /* Check for duplicate fields */
+            /* Only do this check if there's no base expr -- the reason is
+               that we're extending a record we know has no dup fields, and
+               it would be ill-typed anyway if we duplicated one of its
+               fields */
+            check_no_duplicate_fields(tcx, fields.map(|f|
+                                                    (f.node.ident, f.span)));
           }
           some(bexpr) {
             let bexpr_t = fcx.expr_ty(bexpr);

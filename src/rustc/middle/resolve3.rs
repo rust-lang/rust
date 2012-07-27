@@ -47,7 +47,7 @@ import str::{connect, split_str};
 import vec::pop;
 
 import std::list::{cons, list, nil};
-import std::map::{hashmap, int_hash, str_hash};
+import std::map::{hashmap, int_hash};
 import ASTMap = syntax::ast_map::map;
 import str_eq = str::eq;
 
