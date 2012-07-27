@@ -70,6 +70,7 @@ syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1 contains=rustAssert
 syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 contains=rustAssert " foo::<T>();
 
 syn match     rustMacro       '\w\(\w\)*!'
+syn match     rustMacro       '#\w\(\w\)*'
 
 syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo
 
