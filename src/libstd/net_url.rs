@@ -1,8 +1,5 @@
 //! Types/fns concerning URLs (see RFC 3986)
 
-import map;
-import map::*;
-
 export url, userinfo, query, from_str, to_str;
 
 type url = {
@@ -19,7 +16,7 @@ type userinfo = {
     pass: option<~str>
 };
 
-type query = map::hashmap<~str, ~str>;
+type query = ~[(~str, ~str)];
 
 fn url(-scheme: ~str, -user: option<userinfo>, -host: ~str,
        -path: ~str, -query: query, -fragment: option<~str>) -> url {
@@ -61,11 +58,11 @@ fn userinfo_to_str(-userinfo: userinfo) -> ~str {
 }
 
 fn query_from_str(rawquery: ~str) -> query {
-    let query: query = map::str_hash();
+    let mut query: query = ~[];
     if str::len(rawquery) != 0 {
         for str::split_char(rawquery, '&').each |p| {
             let (k, v) = split_char_first(p, '=');
-            query.insert(k, v);
+            vec::push(query, (k, v));
         };
     }
     ret query;
@@ -73,7 +70,8 @@ fn query_from_str(rawquery: ~str) -> query {
 
 fn query_to_str(query: query) -> ~str {
     let mut strvec = ~[];
-    for query.each |k, v| {
+    for query.each |kv| {
+        let (k, v) = kv;
         strvec += ~[#fmt("%s=%s", k, v)];
     };
     ret str::connect(strvec, ~"&");
@@ -161,7 +159,7 @@ fn to_str(url: url) -> ~str {
     } else {
        ~""
     };
-    let query = if url.query.size() == 0 {
+    let query = if url.query.len() == 0 {
         ~""
     } else {
         str::concat(~[~"?", query_to_str(url.query)])
