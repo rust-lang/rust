@@ -11,8 +11,8 @@ import syntax::codemap::span;
 import metadata::csearch;
 import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
-import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
-                      ignore};
+import middle::lint;
+import middle::lint::{get_lint_level, allow};
 import syntax::ast::*;
 import syntax::print::pprust::*;
 import util::ppaux::{ty_to_str, tys_to_str};
@@ -560,8 +560,8 @@ fn mk_ctxt(s: session::session,
             option::map_default(k.o_def_id, 0u, ast_util::hash_def)
     }, |&&a, &&b| a == b);
     let vecs_implicitly_copyable =
-        get_warning_level(s.warning_settings.default_settings,
-                          vecs_not_implicitly_copyable) == ignore;
+        get_lint_level(s.lint_settings.default_settings,
+                       lint::vecs_implicitly_copyable) == allow;
     @{diag: s.diagnostic(),
       interner: interner,
       mut next_id: 0u,

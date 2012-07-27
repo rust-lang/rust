@@ -4,7 +4,12 @@
 
 #[no_core];
 
+// NB: transitional for stage0:
+#[allow(unrecognized_lint)];
+#[warn(no_unrecognized_warning)];
 #[warn(no_vecs_not_implicitly_copyable)];
+// The new version:
+#[allow(vecs_implicitly_copyable)];
 
 use core(vers = "0.3");
 use std(vers = "0.3");
@@ -17,5 +22,4 @@ import core::*;
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:

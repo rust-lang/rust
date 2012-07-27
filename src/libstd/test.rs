@@ -328,7 +328,9 @@ fn get_concurrency() -> uint {
     else { threads * sched_overcommit }
 }
 
+// NB: transitional duplication here.
 #[warn(no_non_implicitly_copyable_typarams)]
+#[allow(non_implicitly_copyable_typarams)]
 fn filter_tests(opts: test_opts,
                 tests: ~[test_desc]) -> ~[test_desc] {
     let mut filtered = copy tests;

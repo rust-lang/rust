@@ -1,4 +1,4 @@
-// compile-flags:-W err-ctypes
+// compile-flags:-D ctypes
 // error-pattern:found rust type
 #[nolink]
 extern mod libc {
