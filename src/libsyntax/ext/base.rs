@@ -103,7 +103,7 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
                             builtin(ext::source_util::expand_include_str));
     syntax_expanders.insert(~"include_bin",
                             builtin(ext::source_util::expand_include_bin));
-    syntax_expanders.insert(~"mod",
+    syntax_expanders.insert(~"module",
                             builtin(ext::source_util::expand_mod));
     syntax_expanders.insert(~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
