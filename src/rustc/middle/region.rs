@@ -485,7 +485,16 @@ fn determine_rp_in_ty(ty: @ast::ty,
       _ {}
     }
 
-    visit::visit_ty(ty, cx, visitor);
+    alt ty.node {
+      ast::ty_fn(*) => {
+        do cx.with(cx.item_id, false) {
+            visit::visit_ty(ty, cx, visitor);
+        }
+      }
+      _ => {
+        visit::visit_ty(ty, cx, visitor);
+      }
+    }
 }
 
 fn determine_rp_in_crate(sess: session,
