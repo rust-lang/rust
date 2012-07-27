@@ -32,7 +32,7 @@ import syntax::ast::{required, provided};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{walk_pat};
 import syntax::attr::{attr_metas, contains_name};
-import syntax::print::pprust::path_to_str;
+import syntax::print::pprust::{pat_to_str, path_to_str};
 import syntax::codemap::span;
 import syntax::visit::{default_visitor, fk_method, mk_vt, visit_block};
 import syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
@@ -3658,9 +3658,12 @@ class Resolver {
     fn resolve_pattern(pattern: @pat,
                        mode: PatternBindingMode,
                        mutability: Mutability,
-                       bindings_list: option<hashmap<Atom,()>>,
+                       // Maps idents to the node ID for the (outermost)
+                       // pattern that binds them
+                       bindings_list: option<hashmap<Atom,node_id>>,
                        visitor: ResolveVisitor) {
 
+        let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
             alt pattern.node {
                 pat_ident(path, _)
@@ -3705,19 +3708,18 @@ class Resolver {
 
                             let is_mutable = mutability == Mutable;
 
-                            let mut def;
-                            alt mode {
+                            let def = alt mode {
                                 RefutableMode {
                                     // For pattern arms, we must use
                                     // `def_binding` definitions.
 
-                                    def = def_binding(pattern.id);
+                                    def_binding(pattern.id)
                                 }
                                 IrrefutableMode {
                                     // But for locals, we use `def_local`.
-                                    def = def_local(pattern.id, is_mutable);
+                                    def_local(pattern.id, is_mutable)
                                 }
-                            }
+                            };
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from
@@ -3737,10 +3739,19 @@ class Resolver {
                                     let last_rib = (*self.value_ribs).last();
                                     last_rib.bindings.insert(atom,
                                                              dl_def(def));
-                                    bindings_list.insert(atom, ());
+                                    bindings_list.insert(atom, pat_id);
                                 }
-                                some(_) {
-                                    // Do nothing.
+                                some(b) {
+                                  if b.find(atom) == some(pat_id) {
+                                      // Then this is a duplicate variable
+                                      // in the same disjunct, which is an
+                                      // error
+                                     self.session.span_err(pattern.span,
+                                       #fmt("Identifier %s is bound more \
+                                             than once in the same pattern",
+                                            path_to_str(path)));
+                                  }
+                                  // Not bound in the same pattern: do nothing
                                 }
                                 none {
                                     let last_rib = (*self.value_ribs).last();
