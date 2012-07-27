@@ -1,5 +1,6 @@
 // Compare bounded and unbounded protocol performance.
 
+// xfail-test
 // xfail-pretty
 
 use std;
