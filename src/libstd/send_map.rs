@@ -15,7 +15,7 @@ type eqfn<K> = pure fn~(K, K) -> bool;
 
 /// Open addressing with linear probing.
 mod linear {
-    export linear_map, linear_map_with_capacity;
+    export linear_map, linear_map_with_capacity, public_methods;
 
     const initial_capacity: uint = 32u; // 2^5
     type bucket<K,V> = {hash: uint, key: K, value: V};
@@ -64,7 +64,7 @@ mod linear {
         p as &K
     }
 
-    impl private_const_methods<K,V> for &const linear_map<K,V> {
+    impl private_methods<K,V> for &const linear_map<K,V> {
         #[inline(always)]
         pure fn to_bucket(h: uint) -> uint {
             // FIXME(#3041) borrow a more sophisticated technique here from
@@ -130,7 +130,7 @@ mod linear {
         }
     }
 
-    impl private_mut_methods<K,V> for &mut linear_map<K,V> {
+    impl private_methods<K,V> for &mut linear_map<K,V> {
         /// Expands the capacity of the array and re-inserts each
         /// of the existing buckets.
         fn expand() {
@@ -179,7 +179,7 @@ mod linear {
         }
     }
 
-    impl mut_methods<K,V> for &mut linear_map<K,V> {
+    impl public_methods<K,V> for &mut linear_map<K,V> {
         fn insert(+k: K, +v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
@@ -233,13 +233,13 @@ mod linear {
         }
     }
 
-    impl private_imm_methods<K,V> for &linear_map<K,V> {
+    impl private_methods<K,V> for &linear_map<K,V> {
         fn search(hash: uint, op: fn(x: &option<bucket<K,V>>) -> bool) {
             let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
         }
     }
 
-    impl const_methods<K,V> for &const linear_map<K,V> {
+    impl public_methods<K,V> for &const linear_map<K,V> {
         fn size() -> uint {
             self.size
         }
@@ -252,7 +252,7 @@ mod linear {
         }
     }
 
-    impl const_methods<K,V: copy> for &const linear_map<K,V> {
+    impl public_methods<K,V: copy> for &const linear_map<K,V> {
         fn find(k: &K) -> option<V> {
             alt self.bucket_for_key(self.buckets, k) {
               found_entry(idx) => {
