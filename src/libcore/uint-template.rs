@@ -159,7 +159,7 @@ fn from_str_radix(buf: ~str, radix: u64) -> option<u64> {
  *
  * Fails if `radix` < 2 or `radix` > 16
  */
-fn to_str(num: T, radix: uint) -> ~str {
+pure fn to_str(num: T, radix: uint) -> ~str {
     do to_str_bytes(false, num, radix) |slice| {
         do vec::as_buf(slice) |p, len| {
             unsafe { str::unsafe::from_buf_len(p, len) }
@@ -168,7 +168,7 @@ fn to_str(num: T, radix: uint) -> ~str {
 }
 
 /// Low-level helper routine for string conversion.
-fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
+pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
                    f: fn(v: &[u8]) -> U) -> U {
 
     #[inline(always)]
