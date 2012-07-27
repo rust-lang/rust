@@ -945,8 +945,13 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
  * task-local data slot (and use class destructors, not code inside the
  * function, if specific teardown is needed). DO NOT use multiple
  * instantiations of a single polymorphic function to index data of different
- * types; arbitrary type coercion is possible this way. The interface is safe
- * as long as all key functions are monomorphic.
+ * types; arbitrary type coercion is possible this way.
+ *
+ * One other exception is that this global state can be used in a destructor
+ * context to create a circular @-box reference, which will crash during task
+ * failure (see issue #3039).
+ *
+ * These two cases aside, the interface is safe.
  */
 type local_data_key<T: owned> = fn@(+@T);
 
