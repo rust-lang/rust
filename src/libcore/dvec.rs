@@ -310,3 +310,10 @@ impl extensions<A:copy> for dvec<A> {
         do self.swap |v| { vec::reachi(v, f); v }
     }
 }
+
+impl extensions<A:copy> of ops::index<uint,A> for dvec<A> {
+    pure fn index(&&idx: uint) -> A {
+        self.get_elt(idx)
+    }
+}
+

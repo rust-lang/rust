@@ -314,6 +314,14 @@ mod chained {
         }
     }
 
+    impl hashmap<K, V: copy> of ops::index<K, V> for t<K, V> {
+        pure fn index(k: K) -> V {
+            unchecked {
+                self.get(k)
+            }
+        }
+    }
+
 
     fn chains<K,V>(nchains: uint) -> ~[mut chain<K,V>] {
         ret vec::to_mut(vec::from_elem(nchains, absent));
