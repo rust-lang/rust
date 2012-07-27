@@ -305,41 +305,41 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut m = int_linear_map();
-        assert (&mut m).insert(1, 2);
-        assert (&mut m).insert(2, 4);
-        assert (&m).get(&1) == 2;
-        assert (&m).get(&2) == 4;
+        let mut m = ~int_linear_map();
+        assert m.insert(1, 2);
+        assert m.insert(2, 4);
+        assert m.get(&1) == 2;
+        assert m.get(&2) == 4;
     }
 
     #[test]
     fn overwrite() {
-        let mut m = int_linear_map();
-        assert (&mut m).insert(1, 2);
-        assert (&m).get(&1) == 2;
-        assert !(&mut m).insert(1, 3);
-        assert (&m).get(&1) == 3;
+        let mut m = ~int_linear_map();
+        assert m.insert(1, 2);
+        assert m.get(&1) == 2;
+        assert !m.insert(1, 3);
+        assert m.get(&1) == 3;
     }
 
     #[test]
     fn conflicts() {
-        let mut m = linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
-        assert (&mut m).insert(1, 2);
-        assert (&mut m).insert(5, 3);
-        assert (&mut m).insert(9, 4);
-        assert (&m).get(&9) == 4;
-        assert (&m).get(&5) == 3;
-        assert (&m).get(&1) == 2;
+        let mut m = ~linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        assert m.insert(1, 2);
+        assert m.insert(5, 3);
+        assert m.insert(9, 4);
+        assert m.get(&9) == 4;
+        assert m.get(&5) == 3;
+        assert m.get(&1) == 2;
     }
 
     #[test]
     fn conflict_remove() {
-        let mut m = linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
-        assert (&mut m).insert(1, 2);
-        assert (&mut m).insert(5, 3);
-        assert (&mut m).insert(9, 4);
-        assert (&mut m).remove(&1);
-        assert (&m).get(&9) == 4;
-        assert (&m).get(&5) == 3;
+        let mut m = ~linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        assert m.insert(1, 2);
+        assert m.insert(5, 3);
+        assert m.insert(9, 4);
+        assert m.remove(&1);
+        assert m.get(&9) == 4;
+        assert m.get(&5) == 3;
     }
 }
