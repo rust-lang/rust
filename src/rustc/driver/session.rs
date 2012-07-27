@@ -101,7 +101,7 @@ type session_ = {targ_cfg: @config,
                  filesearch: filesearch::filesearch,
                  mut building_library: bool,
                  working_dir: ~str,
-                 warning_settings: lint::warning_settings};
+                 lint_settings: lint::lint_settings};
 
 enum session {
     session_(@session_)
@@ -153,16 +153,18 @@ impl session for session {
     fn span_lint_level(level: lint::level,
                        sp: span, msg: ~str) {
         alt level {
-          lint::ignore { }
+          lint::allow { }
           lint::warn { self.span_warn(sp, msg); }
-          lint::error { self.span_err(sp, msg); }
+          lint::deny | lint::forbid {
+            self.span_err(sp, msg);
+          }
         }
     }
     fn span_lint(lint_mode: lint::lint,
                  expr_id: ast::node_id, item_id: ast::node_id,
                  span: span, msg: ~str) {
-        let level = lint::get_warning_settings_level(
-            self.warning_settings, lint_mode, expr_id, item_id);
+        let level = lint::get_lint_settings_level(
+            self.lint_settings, lint_mode, expr_id, item_id);
         self.span_lint_level(level, span, msg);
     }
     fn next_node_id() -> ast::node_id {

@@ -1,4 +1,4 @@
-// compile-flags: -W err-path-statement
+// compile-flags: -D path-statement
 fn main() {
 
     let x = 10;

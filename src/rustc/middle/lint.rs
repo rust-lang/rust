@@ -10,13 +10,13 @@ import io::writer_util;
 import util::ppaux::{ty_to_str};
 import syntax::print::pprust::{expr_to_str, mode_to_str};
 export lint, ctypes, unused_imports, while_true, path_statement, old_vecs;
-export unrecognized_warning, non_implicitly_copyable_typarams;
-export vecs_not_implicitly_copyable, implicit_copies;
-export level, ignore, warn, error;
-export lookup_lint, lint_dict, get_lint_dict;
-export get_warning_level, get_warning_settings_level;
-export check_crate, build_settings_crate, mk_warning_settings;
-export warning_settings;
+export unrecognized_lint, non_implicitly_copyable_typarams;
+export vecs_implicitly_copyable, implicit_copies;
+export level, allow, warn, deny, forbid;
+export lint_dict, get_lint_dict, level_to_str;
+export get_lint_level, get_lint_settings_level;
+export check_crate, build_settings_crate, mk_lint_settings;
+export lint_settings;
 
 /**
  * A 'lint' check is a kind of miscellaneous constraint that a user _might_
@@ -26,14 +26,14 @@ export warning_settings;
  * to compile the program at all.
  *
  * We also build up a table containing information about lint settings, in
- * order to allow other passes to take advantage of the warning attribute
+ * order to allow other passes to take advantage of the lint attribute
  * infrastructure. To save space, the table is keyed by the id of /items/, not
  * of every expression. When an item has the default settings, the entry will
- * be omitted. If we start allowing warn attributes on expressions, we will
+ * be omitted. If we start allowing lint attributes on expressions, we will
  * start having entries for expressions that do not share their enclosing
  * items settings.
  *
- * This module then, exports two passes: one that populates the warning
+ * This module then, exports two passes: one that populates the lint
  * settings table in the session and is run early in the compile process, and
  * one that does a variety of lint checks, and is run late in the compile
  * process.
@@ -45,9 +45,9 @@ enum lint {
     while_true,
     path_statement,
     implicit_copies,
-    unrecognized_warning,
+    unrecognized_lint,
     non_implicitly_copyable_typarams,
-    vecs_not_implicitly_copyable,
+    vecs_implicitly_copyable,
     deprecated_mode,
 }
 
@@ -60,15 +60,24 @@ fn int_to_lint(i: int) -> lint {
       2 { while_true }
       3 { path_statement }
       4 { implicit_copies }
-      5 { unrecognized_warning }
+      5 { unrecognized_lint }
       6 { non_implicitly_copyable_typarams }
-      7 { vecs_not_implicitly_copyable }
+      7 { vecs_implicitly_copyable }
       8 { deprecated_mode }
     }
 }
 
+fn level_to_str(lv: level) -> ~str {
+    alt lv {
+      allow { ~"allow" }
+      warn { ~"warn" }
+      deny { ~"deny" }
+      forbid { ~"forbid" }
+    }
+}
+
 enum level {
-    ignore, warn, error
+    allow, warn, deny, forbid
 }
 
 type lint_spec = @{lint: lint,
@@ -91,7 +100,7 @@ fn get_lint_dict() -> lint_dict {
         (~"unused_imports",
          @{lint: unused_imports,
            desc: ~"imports that are never used",
-           default: ignore}),
+           default: allow}),
 
         (~"while_true",
          @{lint: while_true,
@@ -103,9 +112,9 @@ fn get_lint_dict() -> lint_dict {
            desc: ~"path statements with no effect",
            default: warn}),
 
-        (~"unrecognized_warning",
-         @{lint: unrecognized_warning,
-           desc: ~"unrecognized warning attribute",
+        (~"unrecognized_lint",
+         @{lint: unrecognized_lint,
+           desc: ~"unrecognized lint attribute",
            default: warn}),
 
         (~"non_implicitly_copyable_typarams",
@@ -113,10 +122,10 @@ fn get_lint_dict() -> lint_dict {
            desc: ~"passing non implicitly copyable types as copy type params",
            default: warn}),
 
-        (~"vecs_not_implicitly_copyable",
-         @{lint: vecs_not_implicitly_copyable,
-           desc: ~"make vecs and strs not implicitly copyable\
-                  (`err` is ignored; only checked at top level",
+        (~"vecs_implicitly_copyable",
+         @{lint: vecs_implicitly_copyable,
+           desc: ~"make vecs and strs not implicitly copyable \
+                  (only checked at top level)",
            default: warn}),
 
         (~"implicit_copies",
@@ -127,7 +136,7 @@ fn get_lint_dict() -> lint_dict {
         (~"deprecated_mode",
          @{lint: deprecated_mode,
            desc: ~"warn about deprecated uses of modes",
-           default: ignore})
+           default: allow})
     ];
     hash_from_strs(v)
 }
@@ -136,33 +145,33 @@ fn get_lint_dict() -> lint_dict {
 type lint_modes = smallintmap<level>;
 type lint_mode_map = hashmap<ast::node_id, lint_modes>;
 
-// settings_map maps node ids of items with non-default warning settings
+// settings_map maps node ids of items with non-default lint settings
 // to their settings; default_settings contains the settings for everything
 // not in the map.
-type warning_settings = {
+type lint_settings = {
     default_settings: lint_modes,
     settings_map: lint_mode_map
 };
 
-fn mk_warning_settings() -> warning_settings {
+fn mk_lint_settings() -> lint_settings {
     {default_settings: std::smallintmap::mk(),
      settings_map: int_hash()}
 }
 
-fn get_warning_level(modes: lint_modes, lint: lint) -> level {
+fn get_lint_level(modes: lint_modes, lint: lint) -> level {
     alt modes.find(lint as uint) {
       some(c) { c }
-      none { ignore }
+      none { allow }
     }
 }
 
-fn get_warning_settings_level(settings: warning_settings,
+fn get_lint_settings_level(settings: lint_settings,
                               lint_mode: lint,
                               _expr_id: ast::node_id,
                               item_id: ast::node_id) -> level {
     alt settings.settings_map.find(item_id) {
-      some(modes) { get_warning_level(modes, lint_mode) }
-      none { get_warning_level(settings.default_settings, lint_mode) }
+      some(modes) { get_lint_level(modes, lint_mode) }
+      none { get_lint_level(settings.default_settings, lint_mode) }
     }
 }
 
@@ -183,11 +192,11 @@ enum ctxt {
 
 impl methods for ctxt {
     fn get_level(lint: lint) -> level {
-        get_warning_level(self.curr, lint)
+        get_lint_level(self.curr, lint)
     }
 
     fn set_level(lint: lint, level: level) {
-        if level == ignore {
+        if level == allow {
             self.curr.remove(lint as uint);
         } else {
             self.curr.insert(lint as uint, level);
@@ -199,82 +208,88 @@ impl methods for ctxt {
     }
 
     /**
-     * Merge the warnings specified by any `warn(...)` attributes into the
+     * Merge the lints specified by any lint attributes into the
      * current lint context, call the provided function, then reset the
-     * warnings in effect to their previous state.
+     * lints in effect to their previous state.
      */
-    fn with_warn_attrs(attrs: ~[ast::attribute], f: fn(ctxt)) {
+    fn with_lint_attrs(attrs: ~[ast::attribute], f: fn(ctxt)) {
 
         let mut new_ctxt = self;
+        let mut triples = ~[];
 
-        let metas = attr::attr_metas(
-            attr::find_attrs_by_name(attrs, ~"warn"));
-        for metas.each |meta| {
-            alt meta.node {
-              ast::meta_list(_, metas) {
-                for metas.each |meta| {
-                    alt meta.node {
-                      ast::meta_word(lintname) {
-                        alt lookup_lint(self.dict, *lintname) {
-                          (name, none) {
-                            self.span_lint(
-                                self.get_level(unrecognized_warning),
-                                meta.span,
-                                #fmt("unknown warning: `%s`", name));
+        for [allow, warn, deny, forbid].each |level| {
+            let level_name = level_to_str(level);
+            let metas =
+                attr::attr_metas(attr::find_attrs_by_name(attrs,
+                                                          level_name));
+            for metas.each |meta| {
+                alt meta.node {
+                  ast::meta_list(_, metas) {
+                    for metas.each |meta| {
+                        alt meta.node {
+                          ast::meta_word(lintname) {
+                            vec::push(triples, (meta, level, lintname));
                           }
-                          (_, some((lint, new_level))) {
-                            // we do multiple unneeded copies of the map
-                            // if many attributes are set, but this shouldn't
-                            // actually be a problem...
-                            new_ctxt =
-                                ctxt_({is_default: false,
-                                       curr: clone_lint_modes(new_ctxt.curr)
-                                      with *new_ctxt});
-                            new_ctxt.set_level(lint, new_level);
+                          _ {
+                            self.sess.span_err(
+                                meta.span,
+                                ~"malformed lint attribute");
                           }
                         }
-                      }
-                      _ {
-                        self.sess.span_err(
-                            meta.span,
-                            ~"malformed warning attribute");
-                      }
                     }
+                  }
+                  _  {
+                    self.sess.span_err(meta.span,
+                                       ~"malformed lint attribute");
+                  }
                 }
-              }
-              _ {
-                self.sess.span_err(meta.span,
-                                   ~"malformed warning attribute");
-              }
             }
         }
 
+        for triples.each |pair| {
+            let (meta, level, lintname) = pair;
+            alt self.dict.find(*lintname) {
+              none {
+                self.span_lint(
+                    new_ctxt.get_level(unrecognized_lint),
+                    meta.span,
+                    #fmt("unknown `%s` attribute: `%s`",
+                         level_to_str(level), *lintname));
+              }
+              some(lint) {
+
+                if new_ctxt.get_level(lint.lint) == forbid &&
+                    level != forbid {
+                    self.span_lint(
+                        forbid,
+                        meta.span,
+                        #fmt("%s(%s) overruled by outer forbid(%s)",
+                             level_to_str(level),
+                             *lintname, *lintname));
+                }
+
+                // we do multiple unneeded copies of the
+                // map if many attributes are set, but
+                // this shouldn't actually be a problem...
+
+                let c = clone_lint_modes(new_ctxt.curr);
+                new_ctxt =
+                    ctxt_({is_default: false,
+                           curr: c,
+                           with *new_ctxt});
+                new_ctxt.set_level(lint.lint, level);
+              }
+            }
+        }
         f(new_ctxt);
     }
 }
 
 
-fn lookup_lint(dict: lint_dict, s: ~str)
-    -> (~str, option<(lint, level)>) {
-    let s = str::replace(s, ~"-", ~"_");
-    let (name, level) = if s.starts_with(~"no_") {
-        (s.substr(3u, s.len() - 3u), ignore)
-    } else if s.starts_with(~"err_") {
-        (s.substr(4u, s.len() - 4u), error)
-    } else {
-        (s, warn)
-    };
-    (name,
-     alt dict.find(name) {
-         none { none }
-         some(spec) { some((spec.lint, level)) }
-     })
-}
-
 fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
-    do cx.with_warn_attrs(i.attrs) |cx| {
+    do cx.with_lint_attrs(i.attrs) |cx| {
         if !cx.is_default {
-            cx.sess.warning_settings.settings_map.insert(i.id, cx.curr);
+            cx.sess.lint_settings.settings_map.insert(i.id, cx.curr);
         }
         visit::visit_item(i, cx, v);
     }
@@ -296,10 +311,10 @@ fn build_settings_crate(sess: session::session, crate: @ast::crate) {
         cx.set_level(lint, level);
     }
 
-    do cx.with_warn_attrs(crate.node.attrs) |cx| {
+    do cx.with_lint_attrs(crate.node.attrs) |cx| {
         // Copy out the default settings
         for cx.curr.each |k, v| {
-            sess.warning_settings.default_settings.insert(k, v);
+            sess.lint_settings.default_settings.insert(k, v);
         }
 
         let cx = ctxt_({is_default: true with *cx});

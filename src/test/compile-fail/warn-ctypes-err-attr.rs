@@ -1,5 +1,5 @@
 // error-pattern:found rust type
-#[warn(err_ctypes)];
+#[deny(ctypes)];
 
 #[nolink]
 extern mod libc {

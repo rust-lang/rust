@@ -3,7 +3,7 @@ import metadata::csearch::{each_path, get_impls_for_mod};
 import metadata::csearch::{get_method_names_if_trait, lookup_defs};
 import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
-import middle::lint::{error, ignore, level, unused_imports, warn};
+import middle::lint::{deny, allow, forbid, level, unused_imports, warn};
 import syntax::ast::{_mod, arm, blk, bound_const, bound_copy, bound_trait};
 import syntax::ast::{bound_owned};
 import syntax::ast::{bound_send, capture_clause, class_ctor, class_dtor};
@@ -447,7 +447,7 @@ fn unused_import_lint_level(session: session) -> level {
             ret lint_level;
         }
     }
-    ret ignore;
+    ret allow;
 }
 
 // Records the definitions (at most one for each namespace) that a name is
@@ -4363,7 +4363,7 @@ class Resolver {
     //
 
     fn check_for_unused_imports_if_necessary() {
-        if self.unused_import_lint_level == ignore {
+        if self.unused_import_lint_level == allow {
             ret;
         }
 
@@ -4418,14 +4418,14 @@ class Resolver {
                         self.session.span_warn(import_resolution.span,
                                                ~"unused import");
                     }
-                    error {
-                        self.session.span_err(import_resolution.span,
-                                              ~"unused import");
+                    deny | forbid {
+                      self.session.span_err(import_resolution.span,
+                                            ~"unused import");
                     }
-                    ignore {
-                        self.session.span_bug(import_resolution.span,
-                                              ~"shouldn't be here if lint \
-                                               pass is ignored");
+                    allow {
+                      self.session.span_bug(import_resolution.span,
+                                            ~"shouldn't be here if lint \
+                                              is allowed");
                     }
                 }
             }

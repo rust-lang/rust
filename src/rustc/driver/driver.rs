@@ -158,7 +158,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     crate = time(time_passes, ~"core injection", ||
         front::core_inject::maybe_inject_libcore_ref(sess, crate));
 
-    time(time_passes, ~"building warning settings table", ||
+    time(time_passes, ~"building lint settings table", ||
         lint::build_settings_crate(sess, crate));
 
     let ast_map = time(time_passes, ~"ast indexing", ||
@@ -418,17 +418,28 @@ fn build_session_options(match: getopts::match,
     let parse_only = opt_present(match, ~"parse-only");
     let no_trans = opt_present(match, ~"no-trans");
 
-    let lint_flags = vec::append(getopts::opt_strs(match, ~"W"),
-                                 getopts::opt_strs(match, ~"warn"));
+    let lint_levels = [lint::allow, lint::warn,
+                       lint::deny, lint::forbid];
+    let mut lint_opts = ~[];
     let lint_dict = lint::get_lint_dict();
-    let lint_opts = do vec::map(lint_flags) |flag| {
-        alt lint::lookup_lint(lint_dict, flag) {
-          (flag, none) {
-            early_error(demitter, #fmt("unknown warning: %s", flag))
-          }
-          (_, some(x)) { x }
+    for lint_levels.each |level| {
+        let level_name = lint::level_to_str(level);
+        let level_short = level_name.substr(0,1).to_upper();
+        let flags = vec::append(getopts::opt_strs(match, level_short),
+                                getopts::opt_strs(match, level_name));
+        for flags.each |lint_name| {
+            let lint_name = str::replace(lint_name, ~"-", ~"_");
+            alt lint_dict.find(lint_name) {
+              none {
+                early_error(demitter, #fmt("unknown %s flag: %s",
+                                           level_name, lint_name));
+              }
+              some(lint) {
+                vec::push(lint_opts, (lint.lint, level));
+              }
+            }
         }
-    };
+    }
 
     let mut debugging_opts = 0u;
     let debug_flags = getopts::opt_strs(match, ~"Z");
@@ -540,7 +551,7 @@ fn build_session_(sopts: @session::options,
         sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
-    let warning_settings = lint::mk_warning_settings();
+    let lint_settings = lint::mk_lint_settings();
     session_(@{targ_cfg: target_cfg,
                opts: sopts,
                cstore: cstore,
@@ -553,7 +564,7 @@ fn build_session_(sopts: @session::options,
                filesearch: filesearch,
                mut building_library: false,
                working_dir: os::getcwd(),
-               warning_settings: warning_settings})
+               lint_settings: lint_settings})
 }
 
 fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
@@ -582,6 +593,9 @@ fn opts() -> ~[getopts::opt] {
           optopt(~"sysroot"), optopt(~"target"),
 
           optmulti(~"W"), optmulti(~"warn"),
+          optmulti(~"A"), optmulti(~"allow"),
+          optmulti(~"D"), optmulti(~"deny"),
+          optmulti(~"F"), optmulti(~"forbid"),
 
           optmulti(~"Z"),
 
