@@ -597,10 +597,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) {
-
-        word(s.s, *item.ident);
+        head(s, path_to_str(pth) + "! " + *item.ident);
         bopen(s);
-        for tts.each |tt| { print_tt(s, tt); }
+        for tts.each |tt| { print_tt(s, tt);  }
         bclose(s, item.span);
       }
       ast::item_mac(_) {
@@ -610,13 +609,40 @@ fn print_item(s: ps, &&item: @ast::item) {
     s.ann.post(ann_node);
 }
 
-/// Unimplemented because ident tokens lose their meaning without the interner
-/// present. Fixing that would make invoking the pretty printer painful.
-/// If this did work, the naive way of implementing it would be really ugly.
-/// A prettier option would involve scraping the macro grammar for formatting
-/// advice. But that would be hard.
-fn print_tt(_s: ps, _tt: ast::token_tree) {
-    fail ~"token trees cannot be pretty-printed"
+/// This doesn't deserve to be called "pretty" printing, but it should be
+/// meaning-preserving. A quick hack that might help would be to look at the
+/// spans embedded in the TTs to decide where to put spaces and newlines.
+/// But it'd be better to parse these according to the grammar of the
+/// appropriate macro, transcribe back into the grammar we just parsed from,
+/// and then pretty-print the resulting AST nodes (so, e.g., we print
+/// expression arguments as expressions). It can be done! I think.
+fn print_tt(s: ps, tt: ast::token_tree) {
+    alt tt {
+      ast::tt_delim(tts) {
+        for tts.each() |tt_elt| { print_tt(s, tt_elt); }
+      }
+      ast::tt_tok(_, tk) {
+        word(s.s, parse::token::to_str(*s.intr, tk));
+        alt tk {
+          // gotta keep them separated
+          parse::token::IDENT(*) { word(s.s, ~" ") }
+          _ {}
+        }
+      }
+      ast::tt_seq(_, tts, sep, zerok) {
+        word(s.s, ~"$(");
+        for tts.each() |tt_elt| { print_tt(s, tt_elt); }
+        word(s.s, ~")");
+        alt sep {
+          some(tk) { word(s.s, parse::token::to_str(*s.intr, tk)); }
+          none {}
+        }
+        word(s.s, if zerok { ~"*" } else { ~"+" });
+      }
+      ast::tt_nonterminal(_, name) {
+        word(s.s, ~"$" + *name);
+      }
+    }
 }
 
 fn print_variant(s: ps, v: ast::variant) {
@@ -839,9 +865,8 @@ fn print_mac(s: ps, m: ast::mac) {
         option::iter(arg, |a| print_expr(s, a));
         // FIXME: extension 'body' (#2339)
       }
-      ast::mac_invoc_tt(path, tts) {
-        print_path(s, path, false);
-        word(s.s, ~"!");
+      ast::mac_invoc_tt(pth, tts) {
+        head(s, path_to_str(pth) + "!");
         bopen(s);
         for tts.each() |tt| { print_tt(s, tt); }
         bclose(s, m.span);
