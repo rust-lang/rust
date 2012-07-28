@@ -179,6 +179,12 @@ fn to_str(url: url) -> ~str {
                       fragment]);
 }
 
+impl of to_str::to_str for url {
+    fn to_str() -> ~str {
+        to_str(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
