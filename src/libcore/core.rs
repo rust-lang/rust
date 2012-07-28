@@ -60,6 +60,17 @@ export add, sub, mul, div, modulo, neg, bitand, bitor, bitxor;
 #[cfg(notest)]
 export shl, shr, index;
 
+#[cfg(test)]
+use coreops(name = "core", vers = "0.3");
+
+#[cfg(test)]
+import coreops::ops::{const, copy, send, owned};
+#[cfg(test)]
+import coreops::ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor};
+#[cfg(test)]
+import coreops::ops::{shl, shr, index};
+
+
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
 // warn-and-below.

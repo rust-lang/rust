@@ -1918,7 +1918,8 @@ impl extensions of unique_str for ~str {
     }
 }
 
-impl extensions of ops::add<&str,~str> for ~str {
+#[cfg(notest)]
+impl extensions of add<&str,~str> for ~str {
     #[inline(always)]
     pure fn add(rhs: &str) -> ~str {
         append(self, rhs)
