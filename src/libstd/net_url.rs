@@ -1,6 +1,6 @@
 //! Types/fns concerning URLs (see RFC 3986)
 
-export url, userinfo, query, from_str, to_str;
+export url, userinfo, query, from_str, to_str, get_scheme;
 
 type url = {
     scheme: ~str,
