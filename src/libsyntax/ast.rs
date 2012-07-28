@@ -371,7 +371,7 @@ type capture_clause = @~[capture_item];
 // If the syntax extension is an MBE macro, it will attempt to match its
 // LHS "matchers" against the provided token tree, and if it finds a
 // match, will transcribe the RHS token tree, splicing in any captured
-// early_parser::matched_nonterminals into the tt_nonterminals it finds.
+// earley_parser::matched_nonterminals into the tt_nonterminals it finds.
 //
 // The RHS of an MBE macro is the only place a tt_nonterminal or tt_seq
 // makes any real sense. You could write them elsewhere but nothing
