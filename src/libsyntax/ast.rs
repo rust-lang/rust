@@ -406,7 +406,8 @@ type matcher = spanned<matcher_>;
 //        $foo:expr   =>     1 + $foo    // interpolate an expr
 //        $foo:tt     =>     $foo        // interpolate a token-tree
 //        $foo:tt     =>     bar! $foo   // only other valid interpolation
-//                                       // is in arg position for another macro
+//                                       // is in arg position for another
+//                                       // macro
 //
 // As a final, horrifying aside, note that macro-by-example's input is
 // also matched by one of these matchers. Holy self-referential! It is matched
@@ -441,11 +442,9 @@ type mac_body = option<mac_body_>;
 
 #[auto_serialize]
 enum mac_ {
-    mac_invoc(@path, mac_arg, mac_body),
-    mac_invoc_tt(@path,~[token_tree]), // will kill mac_invoc and steal its name
-    mac_embed_type(@ty),  // obsolete quoter
-    mac_embed_block(blk), // obsolete quoter
-    mac_ellipsis,         // obsolete pattern-match terminal
+    mac_invoc(@path, mac_arg, mac_body), // old macro-invocation
+    mac_invoc_tt(@path,~[token_tree]),   // new macro-invocation
+    mac_ellipsis,                        // old pattern-match (obsolete)
 
     // the span is used by the quoter/anti-quoter ...
     mac_aq(span /* span of quote */, @expr), // anti-quote

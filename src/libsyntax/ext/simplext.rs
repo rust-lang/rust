@@ -539,7 +539,7 @@ fn block_to_ident(blk: blk_) -> option<ident> {
         }
 }
 
-fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
+fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, _s: selector, _b: binders) {
     fn select_pt_1(cx: ext_ctxt, m: matchable,
                    fn_m: fn(ast::mac) -> match_result) -> match_result {
         ret alt m {
@@ -556,44 +556,6 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
       ast::mac_ellipsis { cx.span_fatal(mac.span, ~"misused `...`"); }
       ast::mac_invoc(_, _, _) { no_des(cx, mac.span, ~"macro calls"); }
       ast::mac_invoc_tt(_, _) { no_des(cx, mac.span, ~"macro calls"); }
-      ast::mac_embed_type(ty) {
-        alt ty.node {
-          ast::ty_path(pth, _) {
-            alt path_to_ident(pth) {
-              some(id) {
-                /* look for an embedded type */
-                fn select_pt_2(m: ast::mac) -> match_result {
-                    ret alt m.node {
-                          ast::mac_embed_type(t) { some(leaf(match_ty(t))) }
-                          _ { none }
-                        }
-                }
-                let final_step = |x| select_pt_1(cx, x, select_pt_2);
-                b.real_binders.insert(id, compose_sels(s, final_step));
-              }
-              none { no_des(cx, pth.span, ~"under `#<>`"); }
-            }
-          }
-          _ { no_des(cx, ty.span, ~"under `#<>`"); }
-        }
-      }
-      ast::mac_embed_block(blk) {
-        alt block_to_ident(blk.node) {
-          some(id) {
-            fn select_pt_2(m: ast::mac) -> match_result {
-                ret alt m.node {
-                      ast::mac_embed_block(blk) {
-                        some(leaf(match_block(blk)))
-                      }
-                      _ { none }
-                    }
-            }
-            let final_step = |x| select_pt_1(cx, x, select_pt_2);
-            b.real_binders.insert(id, compose_sels(s, final_step));
-          }
-          none { no_des(cx, blk.span, ~"under `#{}`"); }
-        }
-      }
       ast::mac_aq(_,_) { no_des(cx, mac.span, ~"antiquotes"); }
       ast::mac_var(_) { no_des(cx, mac.span, ~"antiquote variables"); }
     }
