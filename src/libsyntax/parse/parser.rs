@@ -38,8 +38,8 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
              item_ty, lit, lit_, lit_bool, lit_float, lit_int,
              lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const,
-             m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis, mac_embed_block,
-             mac_embed_type, mac_invoc, mac_invoc_tt, mac_var, matcher,
+             m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis,
+             mac_invoc, mac_invoc_tt, mac_var, matcher,
              method, mode, mt, mtc_bb, mtc_rep, mtc_tok, mul, mutability, neg,
              noreturn, not, pat, pat_box, pat_enum, pat_ident, pat_lit,
              pat_range, pat_rec, pat_tup, pat_uniq, pat_wild, path, private,
@@ -831,21 +831,6 @@ class parser {
                 |p| p.parse_expr());
             hi = self.span.hi;
             ex = expr_vec(es, mutbl);
-        } else if self.token == token::POUND
-            && self.look_ahead(1u) == token::LT {
-            self.bump(); self.bump();
-            let ty = self.parse_ty(false);
-            self.expect(token::GT);
-
-            /* hack: early return to take advantage of specialized function */
-            ret pexpr(self.mk_mac_expr(lo, self.span.hi,
-                                       mac_embed_type(ty)));
-        } else if self.token == token::POUND
-            && self.look_ahead(1u) == token::LBRACE {
-            self.bump(); self.bump();
-            let blk = mac_embed_block(
-                self.parse_block_tail(lo, default_blk));
-            ret pexpr(self.mk_mac_expr(lo, self.span.hi, blk));
         } else if self.token == token::ELLIPSIS {
             self.bump();
             ret pexpr(self.mk_mac_expr(lo, self.span.hi, mac_ellipsis));
