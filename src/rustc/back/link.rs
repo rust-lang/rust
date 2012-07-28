@@ -307,7 +307,7 @@ mod write {
  */
 
 fn build_link_meta(sess: session, c: ast::crate, output: ~str,
-                   sha: sha1) -> link_meta {
+                   symbol_hasher: hash::streaming) -> link_meta {
 
     type provided_metas =
         {name: option<@~str>,
@@ -338,7 +338,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     }
 
     // This calculates CMH as defined above
-    fn crate_meta_extras_hash(sha: sha1, _crate: ast::crate,
+    fn crate_meta_extras_hash(symbol_hasher: hash::streaming, _crate: ast::crate,
                               metas: provided_metas,
                               dep_hashes: ~[@~str]) -> ~str {
         fn len_and_str(s: ~str) -> ~str {
@@ -351,15 +351,15 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
 
         let cmh_items = attr::sort_meta_items(metas.cmh_items);
 
-        sha.reset();
+        symbol_hasher.reset();
         for cmh_items.each |m_| {
             let m = m_;
             alt m.node {
               ast::meta_name_value(key, value) {
-                sha.input_str(len_and_str(*key));
-                sha.input_str(len_and_str_lit(value));
+                symbol_hasher.input_str(len_and_str(*key));
+                symbol_hasher.input_str(len_and_str_lit(value));
               }
-              ast::meta_word(name) { sha.input_str(len_and_str(*name)); }
+              ast::meta_word(name) { symbol_hasher.input_str(len_and_str(*name)); }
               ast::meta_list(_, _) {
                 // FIXME (#607): Implement this
                 fail ~"unimplemented meta_item variant";
@@ -368,10 +368,10 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
         }
 
         for dep_hashes.each |dh| {
-            sha.input_str(len_and_str(*dh));
+            symbol_hasher.input_str(len_and_str(*dh));
         }
 
-        ret truncated_sha1_result(sha);
+        ret truncated_hash_result(symbol_hasher);
     }
 
     fn warn_missing(sess: session, name: ~str, default: ~str) {
@@ -419,40 +419,40 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     let vers = crate_meta_vers(sess, c, provided_metas);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
-        crate_meta_extras_hash(sha, c, provided_metas, dep_hashes);
+        crate_meta_extras_hash(symbol_hasher, c, provided_metas, dep_hashes);
 
     ret {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_sha1_result(sha: sha1) -> ~str unsafe {
-    ret str::slice(sha.result_str(), 0u, 16u);
+fn truncated_hash_result(symbol_hasher: hash::streaming) -> ~str unsafe {
+    symbol_hasher.result_str()
 }
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t,
+fn symbol_hash(tcx: ty::ctxt, symbol_hasher: hash::streaming, t: ty::t,
                link_meta: link_meta) -> ~str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
-    sha.reset();
-    sha.input_str(*link_meta.name);
-    sha.input_str(~"-");
-    sha.input_str(link_meta.extras_hash);
-    sha.input_str(~"-");
-    sha.input_str(encoder::encoded_ty(tcx, t));
-    let hash = truncated_sha1_result(sha);
+    symbol_hasher.reset();
+    symbol_hasher.input_str(*link_meta.name);
+    symbol_hasher.input_str(~"-");
+    symbol_hasher.input_str(link_meta.extras_hash);
+    symbol_hasher.input_str(~"-");
+    symbol_hasher.input_str(encoder::encoded_ty(tcx, t));
+    let hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
 
     ret ~"_" + hash;
 }
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
-    alt ccx.type_sha1s.find(t) {
+    alt ccx.type_hashcodes.find(t) {
       some(h) { ret h; }
       none {
-        let hash = symbol_hash(ccx.tcx, ccx.sha, t, ccx.link_meta);
-        ccx.type_sha1s.insert(t, hash);
+        let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
+        ccx.type_hashcodes.insert(t, hash);
         ret hash;
       }
     }
