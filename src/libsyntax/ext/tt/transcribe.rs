@@ -1,10 +1,10 @@
 import util::interner::interner;
 import diagnostic::span_handler;
-import ast::{token_tree,tt_delim,tt_flat,tt_dotdotdot,tt_interpolate,ident};
-import earley_parser::{arb_depth,seq,leaf};
+import ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
+import earley_parser::{named_match, matched_seq, matched_nonterminal};
 import codemap::span;
-import parse::token::{EOF,ACTUALLY,IDENT,token,w_ident};
-import std::map::{hashmap,box_str_hash};
+import parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident};
+import std::map::{hashmap, box_str_hash};
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
 
@@ -28,7 +28,7 @@ type tt_reader = @{
     interner: @interner<@~str>,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
-    interpolations: std::map::hashmap<ident, @arb_depth>,
+    interpolations: std::map::hashmap<ident, @named_match>,
     mut repeat_idx: ~[mut uint],
     mut repeat_len: ~[uint],
     /* cached: */
@@ -37,17 +37,17 @@ type tt_reader = @{
 };
 
 /** This can do Macro-By-Example transcription. On the other hand, if
- *  `src` contains no `tt_dotdotdot`s and `tt_interpolate`s, `interp` can (and
+ *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
 fn new_tt_reader(sp_diag: span_handler, itr: @interner<@~str>,
-                 interp: option<std::map::hashmap<ident,@arb_depth>>,
+                 interp: option<std::map::hashmap<ident,@named_match>>,
                  src: ~[ast::token_tree])
     -> tt_reader {
     let r = @{sp_diag: sp_diag, interner: itr,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: none, up: tt_frame_up(option::none)},
               interpolations: alt interp { /* just a convienience */
-                none { std::map::box_str_hash::<@arb_depth>() }
+                none { std::map::box_str_hash::<@named_match>() }
                 some(x) { x }
               },
               mut repeat_idx: ~[mut], mut repeat_len: ~[],
@@ -79,18 +79,22 @@ pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
 }
 
 
-pure fn lookup_cur_ad_by_ad(r: tt_reader, start: @arb_depth) -> @arb_depth {
-    pure fn red(&&ad: @arb_depth, &&idx: uint) -> @arb_depth {
+pure fn lookup_cur_matched_by_matched(r: tt_reader,
+                                      start: @named_match) -> @named_match {
+    pure fn red(&&ad: @named_match, &&idx: uint) -> @named_match {
         alt *ad {
-          leaf(_) { ad /* end of the line; duplicate henceforth */ }
-          seq(ads, _) { ads[idx] }
+          matched_nonterminal(_) {
+            // end of the line; duplicate henceforth
+            ad
+          }
+          matched_seq(ads, _) { ads[idx] }
         }
     }
     vec::foldl(start, r.repeat_idx, red)
 }
 
-fn lookup_cur_ad(r: tt_reader, name: ident) -> @arb_depth {
-    lookup_cur_ad_by_ad(r, r.interpolations.get(name))
+fn lookup_cur_matched(r: tt_reader, name: ident) -> @named_match {
+    lookup_cur_matched_by_matched(r, r.interpolations.get(name))
 }
 enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
@@ -116,15 +120,15 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
         }
     }
     alt t {
-      tt_delim(tts) | tt_dotdotdot(_, tts, _, _) {
+      tt_delim(tts) | tt_seq(_, tts, _, _) {
         vec::foldl(lis_unconstrained, tts, {|lis, tt|
             lis_merge(lis, lockstep_iter_size(tt, r)) })
       }
-      tt_flat(*) { lis_unconstrained }
-      tt_interpolate(_, name) {
-        alt *lookup_cur_ad(r, name) {
-          leaf(_) { lis_unconstrained }
-          seq(ads, _) { lis_constraint(ads.len(), name) }
+      tt_tok(*) { lis_unconstrained }
+      tt_nonterminal(_, name) {
+        alt *lookup_cur_matched(r, name) {
+          matched_nonterminal(_) { lis_unconstrained }
+          matched_seq(ads, _) { lis_constraint(ads.len(), name) }
         }
       }
     }
@@ -166,20 +170,20 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
         }
     }
     loop { /* because it's easiest, this handles `tt_delim` not starting
-    with a `tt_flat`, even though it won't happen */
+    with a `tt_tok`, even though it won't happen */
         alt r.cur.readme[r.cur.idx] {
           tt_delim(tts) {
             r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: false,
                       sep: none, up: tt_frame_up(option::some(r.cur)) };
             // if this could be 0-length, we'd need to potentially recur here
           }
-          tt_flat(sp, tok) {
+          tt_tok(sp, tok) {
             r.cur_span = sp; r.cur_tok = tok;
             r.cur.idx += 1u;
             ret ret_val;
           }
-          tt_dotdotdot(sp, tts, sep, zerok) {
-            alt lockstep_iter_size(tt_dotdotdot(sp, tts, sep, zerok), r) {
+          tt_seq(sp, tts, sep, zerok) {
+            alt lockstep_iter_size(tt_seq(sp, tts, sep, zerok), r) {
               lis_unconstrained {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
@@ -211,22 +215,22 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             }
           }
           // FIXME #2887: think about span stuff here
-          tt_interpolate(sp, ident) {
-            alt *lookup_cur_ad(r, ident) {
+          tt_nonterminal(sp, ident) {
+            alt *lookup_cur_matched(r, ident) {
               /* sidestep the interpolation tricks for ident because
               (a) idents can be in lots of places, so it'd be a pain
               (b) we actually can, since it's a token. */
-              leaf(w_ident(sn,b)) {
+              matched_nonterminal(nt_ident(sn,b)) {
                 r.cur_span = sp; r.cur_tok = IDENT(sn,b);
                 r.cur.idx += 1u;
                 ret ret_val;
               }
-              leaf(w_nt) {
-                r.cur_span = sp; r.cur_tok = ACTUALLY(w_nt);
+              matched_nonterminal(nt) {
+                r.cur_span = sp; r.cur_tok = INTERPOLATED(nt);
                 r.cur.idx += 1u;
                 ret ret_val;
               }
-              seq(*) {
+              matched_seq(*) {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
                     #fmt["variable '%s' is still repeating at this depth",

@@ -3,7 +3,7 @@ import print::pprust::expr_to_str;
 import result::result;
 import either::{either, left, right};
 import std::map::{hashmap, str_hash};
-import token::{can_begin_expr, is_ident, is_plain_ident, ACTUALLY};
+import token::{can_begin_expr, is_ident, is_plain_ident, INTERPOLATED};
 import codemap::{span,fss_none};
 import util::interner;
 import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
@@ -39,15 +39,15 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              item_ty, lit, lit_, lit_bool, lit_float, lit_int,
              lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const,
              m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis,
-             mac_invoc, mac_invoc_tt, mac_var, matcher,
-             method, mode, mt, mtc_bb, mtc_rep, mtc_tok, mul, mutability, neg,
+             mac_invoc, mac_invoc_tt, mac_var, matcher, match_nonterminal,
+             match_seq, match_tok, method, mode, mt, mul, mutability, neg,
              noreturn, not, pat, pat_box, pat_enum, pat_ident, pat_lit,
              pat_range, pat_rec, pat_tup, pat_uniq, pat_wild, path, private,
              proto, proto_any, proto_bare, proto_block, proto_box, proto_uniq,
              provided, public, pure_fn, purity, re_anon, re_named, region,
              rem, required, ret_style, return_val, shl, shr, stmt, stmt_decl,
              stmt_expr, stmt_semi, subtract, token_tree, trait_method,
-             trait_ref, tt_delim, tt_dotdotdot, tt_flat, tt_interpolate, ty,
+             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty,
              ty_, ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac,
              ty_method, ty_nil, ty_param, ty_path, ty_ptr, ty_rec, ty_rptr,
              ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk,
@@ -104,14 +104,14 @@ type item_info = (ident, item_, option<~[attribute]>);
 
 /* The expr situation is not as complex as I thought it would be.
 The important thing is to make sure that lookahead doesn't balk
-at ACTUALLY tokens */
-macro_rules! maybe_whole_expr{
+at INTERPOLATED tokens */
+macro_rules! maybe_whole_expr {
     {$p:expr} => { alt copy $p.token {
-      ACTUALLY(token::w_expr(e)) {
+      INTERPOLATED(token::nt_expr(e)) {
         $p.bump();
         ret pexpr(e);
       }
-      ACTUALLY(token::w_path(pt)) {
+      INTERPOLATED(token::nt_path(pt)) {
         $p.bump();
         ret $p.mk_pexpr($p.span.lo, $p.span.lo,
                        expr_path(pt));
@@ -122,7 +122,7 @@ macro_rules! maybe_whole_expr{
 
 macro_rules! maybe_whole {
     {$p:expr, $constructor:path} => { alt copy $p.token {
-      ACTUALLY($constructor(x)) { $p.bump(); ret x; }
+      INTERPOLATED($constructor(x)) { $p.bump(); ret x; }
       _ {}
     }}
 }
@@ -133,7 +133,7 @@ fn dummy() {
     /* we will need this to bootstrap maybe_whole! */
     #macro[[#maybe_whole_path[p],
             alt p.token {
-                ACTUALLY(token::w_path(pt)) { p.bump(); ret pt; }
+                INTERPOLATED(token::nt_path(pt)) { p.bump(); ret pt; }
                 _ {} }]];
 }
 
@@ -1090,7 +1090,7 @@ class parser {
             }
         }
 
-        fn parse_tt_flat(p: parser, delim_ok: bool) -> token_tree {
+        fn parse_tt_tok(p: parser, delim_ok: bool) -> token_tree {
             alt p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
               if !delim_ok {
@@ -1110,14 +1110,14 @@ class parser {
                                           seq_sep_none(),
                                           |p| p.parse_token_tree());
                     let (s, z) = p.parse_sep_and_zerok();
-                    ret tt_dotdotdot(mk_sp(sp.lo ,p.span.hi), seq.node, s, z);
+                    ret tt_seq(mk_sp(sp.lo ,p.span.hi), seq.node, s, z);
                 } else {
-                    ret tt_interpolate(sp, p.parse_ident());
+                    ret tt_nonterminal(sp, p.parse_ident());
                 }
               }
               _ { /* ok */ }
             }
-            let res = tt_flat(p.span, p.token);
+            let res = tt_tok(p.span, p.token);
             p.bump();
             ret res;
         }
@@ -1126,14 +1126,14 @@ class parser {
           token::LPAREN | token::LBRACE | token::LBRACKET {
             let ket = flip(self.token);
             tt_delim(vec::append(
-                ~[parse_tt_flat(self, true)],
+                ~[parse_tt_tok(self, true)],
                 vec::append(
                     self.parse_seq_to_before_end(
                         ket, seq_sep_none(),
                         |p| p.parse_token_tree()),
-                    ~[parse_tt_flat(self, true)])))
+                    ~[parse_tt_tok(self, true)])))
           }
-          _ { parse_tt_flat(self, false) }
+          _ { parse_tt_tok(self, false) }
         };
     }
 
@@ -1177,17 +1177,17 @@ class parser {
                     self.fatal(~"repetition body must be nonempty");
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
-                mtc_rep(ms, sep, zerok, name_idx_lo, *name_idx)
+                match_seq(ms, sep, zerok, name_idx_lo, *name_idx)
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(token::COLON);
                 let nt_name = self.parse_ident();
-                let m = mtc_bb(bound_to, nt_name, *name_idx);
+                let m = match_nonterminal(bound_to, nt_name, *name_idx);
                 *name_idx += 1u;
                 m
             }
         } else {
-            let m = mtc_tok(self.token);
+            let m = match_tok(self.token);
             self.bump();
             m
         };

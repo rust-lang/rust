@@ -79,7 +79,7 @@ enum token {
     UNDERSCORE,
 
     /* For interpolation */
-    ACTUALLY(whole_nt),
+    INTERPOLATED(nonterminal),
 
     DOC_COMMENT(str_num),
     EOF,
@@ -87,17 +87,17 @@ enum token {
 
 #[auto_serialize]
 /// For interpolation during macro expansion.
-enum whole_nt {
-    w_item(@ast::item),
-    w_block(ast::blk),
-    w_stmt(@ast::stmt),
-    w_pat( @ast::pat),
-    w_expr(@ast::expr),
-    w_ty(  @ast::ty),
-    w_ident(str_num, bool),
-    w_path(@ast::path),
-    w_tt(  @ast::token_tree), //needs @ed to break a circularity
-    w_mtcs(~[ast::matcher])
+enum nonterminal {
+    nt_item(@ast::item),
+    nt_block(ast::blk),
+    nt_stmt(@ast::stmt),
+    nt_pat( @ast::pat),
+    nt_expr(@ast::expr),
+    nt_ty(  @ast::ty),
+    nt_ident(str_num, bool),
+    nt_path(@ast::path),
+    nt_tt(  @ast::token_tree), //needs @ed to break a circularity
+    nt_matchers(~[ast::matcher])
 }
 
 fn binop_to_str(o: binop) -> ~str {
@@ -184,14 +184,14 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
       /* Other */
       DOC_COMMENT(s) { *interner::get(in, s) }
       EOF { ~"<eof>" }
-      ACTUALLY(w_nt) {
+      INTERPOLATED(nt) {
         ~"an interpolated " +
-            alt w_nt {
-              w_item(*) { ~"item" } w_block(*) { ~"block" }
-              w_stmt(*) { ~"statement" } w_pat(*) { ~"pattern" }
-              w_expr(*) { ~"expression" } w_ty(*) { ~"type" }
-              w_ident(*) { ~"identifier" } w_path(*) { ~"path" }
-              w_tt(*) { ~"tt" } w_mtcs(*) { ~"matcher sequence" }
+            alt nt {
+              nt_item(*) { ~"item" } nt_block(*) { ~"block" }
+              nt_stmt(*) { ~"statement" } nt_pat(*) { ~"pattern" }
+              nt_expr(*) { ~"expression" } nt_ty(*) { ~"type" }
+              nt_ident(*) { ~"identifier" } nt_path(*) { ~"path" }
+              nt_tt(*) { ~"tt" } nt_matchers(*) { ~"matcher sequence" }
             }
       }
     }
@@ -219,8 +219,10 @@ pure fn can_begin_expr(t: token) -> bool {
       BINOP(OR) { true } // in lambda syntax
       OROR { true } // in lambda syntax
       MOD_SEP { true }
-      ACTUALLY(w_expr(*)) | ACTUALLY(w_ident(*)) | ACTUALLY(w_block(*))
-      | ACTUALLY(w_path(*)) { true }
+      INTERPOLATED(nt_expr(*))
+      | INTERPOLATED(nt_ident(*))
+      | INTERPOLATED(nt_block(*))
+      | INTERPOLATED(nt_path(*)) { true }
       _ { false }
     }
 }

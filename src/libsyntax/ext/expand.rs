@@ -1,7 +1,7 @@
 import std::map::hashmap;
 
 import ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
-             tt_delim, tt_flat, item_mac};
+             tt_delim, tt_tok, item_mac};
 import fold::*;
 import ext::base::*;
 import ext::qquote::{qq_helper};
