@@ -1299,7 +1299,8 @@ impl extensions<T: copy> of vec_concat<T> for ~[T] {
     }
 }
 
-impl extensions<T: copy> of ops::add<&[const T],~[T]> for ~[T] {
+#[cfg(notest)]
+impl extensions<T: copy> of add<&[const T],~[T]> for ~[T] {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[T] {
         append(self, rhs)
@@ -1313,7 +1314,7 @@ impl extensions<T: copy> of vec_concat<T> for ~[mut T] {
     }
 }
 
-impl extensions<T: copy> of ops::add<&[const T],~[mut T]> for ~[mut T] {
+impl extensions<T: copy> of add<&[const T],~[mut T]> for ~[mut T] {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[mut T] {
         append_mut(self, rhs)

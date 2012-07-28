@@ -311,7 +311,7 @@ impl extensions<A:copy> for dvec<A> {
     }
 }
 
-impl extensions<A:copy> of ops::index<uint,A> for dvec<A> {
+impl extensions<A:copy> of index<uint,A> for dvec<A> {
     pure fn index(&&idx: uint) -> A {
         self.get_elt(idx)
     }
