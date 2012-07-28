@@ -362,33 +362,53 @@ type capture_item = @{
 #[auto_serialize]
 type capture_clause = @~[capture_item];
 
+//
+// When the main rust parser encounters a syntax-extension invocation, it
+// parses the arguments to the invocation as a token-tree. This is a very
+// loose structure, such that all sorts of different AST-fragments can
+// be passed to syntax extensions using a uniform type.
+//
+// If the syntax extension is an MBE macro, it will attempt to match its
+// LHS "matchers" against the provided token tree, and if it finds a
+// match, will transcribe the RHS token tree, splicing in any captured
+// early_parser::matched_nonterminals into the tt_nonterminals it finds.
+//
+// The RHS of an MBE macro is the only place a tt_nonterminal or tt_seq
+// makes any real sense. You could write them elsewhere but nothing
+// else knows what to do with them, so you'll probably get a syntax
+// error.
+//
 #[auto_serialize]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 enum token_tree {
+    tt_tok(span, token::token),
     tt_delim(~[token_tree]),
-    tt_flat(span, token::token),
-    /* These only make sense for right-hand-sides of MBE macros*/
-    tt_dotdotdot(span, ~[token_tree], option<token::token>, bool),
-    tt_interpolate(span, ident)
+    // These only make sense for right-hand-sides of MBE macros
+    tt_seq(span, ~[token_tree], option<token::token>, bool),
+    tt_nonterminal(span, ident)
 }
 
-#[auto_serialize]
-type matcher = spanned<matcher_>;
-
-#[auto_serialize]
 //
 // Matchers are nodes defined-by and recognized-by the main rust parser and
-// language, but they're only ever found inside syntax-extension invocations.
-// They represent a small sub-language for pattern-matching token-trees, and
-// are thus primarily used by the macro-defining extension itself.
+// language, but they're only ever found inside syntax-extension invocations;
+// indeed, the only thing that ever _activates_ the rules in the rust parser
+// for parsing a matcher is a matcher looking for the 'mtcs' nonterminal
+// itself. Matchers represent a small sub-language for pattern-matching
+// token-trees, and are thus primarily used by the macro-defining extension
+// itself.
 //
-// mtc_tok   ===>   A matcher that matches a single token,
-//                  denoted by the token itself. So long as
-//                  there's no $ involved.
+// match_tok
+// ---------
+//
+//     A matcher that matches a single token, denoted by the token itself. So
+//     long as there's no $ involved.
 //
 //
-// mtc_rep   ===>   A matcher that matches a sequence of
-//                  sub-matchers, denoted various ways:
+// match_seq
+// ---------
+//
+//     A matcher that matches a sequence of sub-matchers, denoted various
+//     possible ways:
 //
 //             $(M)*       zero or more Ms
 //             $(M)+       one or more Ms
@@ -396,12 +416,14 @@ type matcher = spanned<matcher_>;
 //             $(A B C);*  zero or more semi-separated 'A B C' seqs
 //
 //
-// mtc_bb ===> A matcher that matches one of a few interesting named rust
-//             nonterminals, such as types, expressions, items, or raw
-//             token-trees. A black-box matcher on expr, for example, binds an
-//             expr to a given ident, and that ident can re-occur as an
-//             interpolation in the RHS of a macro-by-example rule. For
-//             example:
+// match_nonterminal
+// -----------------
+//
+//     A matcher that matches one of a few interesting named rust
+//     nonterminals, such as types, expressions, items, or raw token-trees. A
+//     black-box matcher on expr, for example, binds an expr to a given ident,
+//     and that ident can re-occur as an interpolation in the RHS of a
+//     macro-by-example rule. For example:
 //
 //        $foo:expr   =>     1 + $foo    // interpolate an expr
 //        $foo:tt     =>     $foo        // interpolate a token-tree
@@ -411,21 +433,25 @@ type matcher = spanned<matcher_>;
 //
 // As a final, horrifying aside, note that macro-by-example's input is
 // also matched by one of these matchers. Holy self-referential! It is matched
-// by an mtc_rep, specifically this one:
+// by an match_seq, specifically this one:
 //
 //                   $( $lhs:mtcs => $rhs:tt );+
 //
 // If you understand that, you have closed to loop and understand the whole
 // macro system. Congratulations.
 //
+#[auto_serialize]
+type matcher = spanned<matcher_>;
+
+#[auto_serialize]
 enum matcher_ {
-    /* match one token */
-    mtc_tok(token::token),
-    /* match repetitions of a sequence: body, separator, zero ok?,
-    lo, hi position-in-match-array used: */
-    mtc_rep(~[matcher], option<token::token>, bool, uint, uint),
-    /* parse a Rust NT: name to bind, name of NT, position in match array : */
-    mtc_bb(ident, ident, uint)
+    // match one token
+    match_tok(token::token),
+    // match repetitions of a sequence: body, separator, zero ok?,
+    // lo, hi position-in-match-array used:
+    match_seq(~[matcher], option<token::token>, bool, uint, uint),
+    // parse a Rust NT: name to bind, name of NT, position in match array:
+    match_nonterminal(ident, ident, uint)
 }
 
 #[auto_serialize]

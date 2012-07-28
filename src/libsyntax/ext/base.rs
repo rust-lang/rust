@@ -4,18 +4,6 @@ import diagnostic::span_handler;
 import codemap::{codemap, span, expn_info, expanded_from};
 import std::map::str_hash;
 
-
-// Nomenclature / abbreviations in the ext modules:
-//
-//     ms: matcher span, wraps a matcher with fake span
-//    mtc: matcher
-//   mtcs: matchers
-//     tt: token tree
-//     bt: backtrace
-//     cx: expansion context
-//     mr: macro result
-//
-
 // obsolete old-style #macro code:
 //
 //    syntax_expander, normal, macro_defining, macro_definer,
@@ -288,17 +276,18 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
 // using new syntax. This will be obsolete when #old_macros go away.
 fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     -> ast::mac_arg {
-    import ast::{matcher, matcher_, mtc_tok, mtc_rep, mtc_bb};
+    import ast::{matcher, matcher_, match_tok, match_seq, match_nonterminal};
     import parse::lexer::{new_tt_reader, tt_reader_as_reader, reader};
-    import tt::earley_parser::{parse_or_else, seq, leaf};
+    import tt::earley_parser::{parse_or_else, matched_seq,
+                               matched_nonterminal};
 
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
         {node: m, span: {lo: 0u, hi: 0u, expn_info: none}}
     }
 
-    let argument_gram = ~[ms(mtc_rep(~[
-        ms(mtc_bb(@~"arg",@~"expr", 0u))
+    let argument_gram = ~[ms(match_seq(~[
+        ms(match_nonterminal(@~"arg",@~"expr", 0u))
     ], some(parse::token::COMMA), true, 0u, 1u))];
 
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
@@ -306,10 +295,10 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     let args =
         alt parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
                           argument_gram).get(@~"arg") {
-          @seq(s, _) {
+          @matched_seq(s, _) {
             do s.map() |lf| {
                 alt lf {
-                  @leaf(parse::token::w_expr(arg)) {
+                  @matched_nonterminal(parse::token::nt_expr(arg)) {
                     arg /* whew! list of exprs, here we come! */
                   }
                   _ { fail ~"badly-structured parse result"; }
