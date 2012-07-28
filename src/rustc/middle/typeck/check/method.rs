@@ -447,8 +447,7 @@ class lookup {
         // Add trait methods.
         alt self.fcx.ccx.trait_map.find(self.expr.id) {
             none {
-                // XXX: This particular operation is not yet trait-ified;
-                // leave it alone for now.
+                // Should only happen for placement new right now.
             }
             some(trait_ids) {
                 for (*trait_ids).each |trait_id| {

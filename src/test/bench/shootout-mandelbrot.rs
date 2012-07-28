@@ -16,23 +16,30 @@ use std;
 import io::writer_util;
 import std::map::hashmap;
 
-type cmplx = {re: f64, im: f64};
+struct cmplx {
+    re: f64;
+    im: f64;
+}
+
+impl cmplx : ops::mul<cmplx,cmplx> {
+    pure fn mul(x: cmplx) -> cmplx {
+        cmplx {
+            re: self.re*x.re - self.im*x.im,
+            im: self.re*x.im + self.im*x.re
+        }
+    }
+}
+
+impl cmplx : ops::add<cmplx,cmplx> {
+    pure fn add(x: cmplx) -> cmplx {
+        cmplx {
+            re: self.re + x.re,
+            im: self.im + x.im
+        }
+    }
+}
+
 type line = {i: uint, b: ~[u8]};
-
-trait times_and_plus {
-    fn *(x: cmplx) -> cmplx;
-    fn +(x: cmplx) -> cmplx;
-}
-
-impl arith of times_and_plus for cmplx {
-    fn *(x: cmplx) -> cmplx {
-        {re: self.re*x.re - self.im*x.im, im: self.re*x.im + self.im*x.re}
-    }
-
-    fn +(x: cmplx) -> cmplx {
-        {re: self.re + x.re, im: self.im + x.im}
-    }
-}
 
 pure fn cabs(x: cmplx) -> f64
 {
@@ -41,7 +48,7 @@ pure fn cabs(x: cmplx) -> f64
 
 fn mb(x: cmplx) -> bool
 {
-    let mut z = {re: 0f64, im: 0f64};
+    let mut z = cmplx {re: 0f64, im: 0f64};
     let mut i = 0;
     let mut in = true;
     while i < 50 {
@@ -59,7 +66,7 @@ fn fillbyte(x: cmplx, incr: f64) -> u8 {
     let mut rv = 0_u8;
     let mut i = 0_u8;
     while i < 8_u8 {
-        let z = {re: x.re + (i as f64)*incr, im: x.im};
+        let z = cmplx {re: x.re + (i as f64)*incr, im: x.im};
         if mb(z) {
             rv += 1_u8 << (7_u8 - i);
         }
@@ -75,7 +82,7 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
     let y = incr*(i as f64) - 1f64;
     let xincr = 8f64*incr;
     for uint::range(0_u, size/8_u) |j| {
-        let x = {re: xincr*(j as f64) - 1.5f64, im: y};
+        let x = cmplx {re: xincr*(j as f64) - 1.5f64, im: y};
         vec::push(crv, fillbyte(x, incr));
     };
     comm::send(ch, {i:i, b:crv});

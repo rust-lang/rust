@@ -31,23 +31,6 @@ fn empty_span() -> span {
     {lo: 0, hi: 0, expn_info: none}
 }
 
-trait path_concat {
-    fn +(id: ident) -> @ast::path;
-}
-
-impl methods of path_concat for ident {
-    fn +(id: ident) -> @ast::path {
-        path(self, empty_span()) + id
-    }
-}
-
-impl methods of path_concat for @ast::path {
-    fn +(id: ident) -> @ast::path {
-        @{idents: vec::append_one(self.idents, id)
-          with *self}
-    }
-}
-
 trait append_types {
     fn add_ty(ty: @ast::ty) -> @ast::path;
     fn add_tys(+tys: ~[@ast::ty]) -> @ast::path;

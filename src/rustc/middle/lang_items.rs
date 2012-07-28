@@ -34,7 +34,11 @@ class LanguageItems {
     let mut div_trait: option<def_id>;
     let mut modulo_trait: option<def_id>;
     let mut neg_trait: option<def_id>;
-    let mut bitops_trait: option<def_id>;
+    let mut bitxor_trait: option<def_id>;
+    let mut bitand_trait: option<def_id>;
+    let mut bitor_trait: option<def_id>;
+    let mut shl_trait: option<def_id>;
+    let mut shr_trait: option<def_id>;
     let mut index_trait: option<def_id>;
 
     new() {
@@ -49,7 +53,11 @@ class LanguageItems {
         self.div_trait = none;
         self.modulo_trait = none;
         self.neg_trait = none;
-        self.bitops_trait = none;
+        self.bitxor_trait = none;
+        self.bitand_trait = none;
+        self.bitor_trait = none;
+        self.shl_trait = none;
+        self.shr_trait = none;
         self.index_trait = none;
     }
 }
@@ -84,7 +92,11 @@ class LanguageItemCollector {
         self.item_refs.insert(~"div", &mut self.items.div_trait);
         self.item_refs.insert(~"modulo", &mut self.items.modulo_trait);
         self.item_refs.insert(~"neg", &mut self.items.neg_trait);
-        self.item_refs.insert(~"bitops", &mut self.items.bitops_trait);
+        self.item_refs.insert(~"bitxor", &mut self.items.bitxor_trait);
+        self.item_refs.insert(~"bitand", &mut self.items.bitand_trait);
+        self.item_refs.insert(~"bitor", &mut self.items.bitor_trait);
+        self.item_refs.insert(~"shl", &mut self.items.shl_trait);
+        self.item_refs.insert(~"shr", &mut self.items.shr_trait);
         self.item_refs.insert(~"index", &mut self.items.index_trait);
     }
 
@@ -125,8 +137,8 @@ class LanguageItemCollector {
                     some(original_def_id)
                             if original_def_id != item_def_id => {
 
-                        self.session.warn(#fmt("duplicate entry for `%s`",
-                                               value));
+                        self.session.err(#fmt("duplicate entry for `%s`",
+                                              value));
                     }
                     some(_) | none => {
                         // OK.
@@ -184,7 +196,7 @@ class LanguageItemCollector {
         for self.item_refs.each |key, item_ref| {
             alt copy *item_ref {
                 none => {
-                    self.session.warn(#fmt("no item found for `%s`", key));
+                    self.session.err(#fmt("no item found for `%s`", key));
                 }
                 some(did) => {
                     // OK.

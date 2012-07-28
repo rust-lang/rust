@@ -87,6 +87,22 @@ pure fn binop_to_str(op: binop) -> ~str {
     }
 }
 
+pure fn binop_to_method_name(op: binop) -> option<~str> {
+    alt op {
+      add { ret some(~"add"); }
+      subtract { ret some(~"sub"); }
+      mul { ret some(~"mul"); }
+      div { ret some(~"div"); }
+      rem { ret some(~"modulo"); }
+      bitxor { ret some(~"bitxor"); }
+      bitand { ret some(~"bitand"); }
+      bitor { ret some(~"bitor"); }
+      shl { ret some(~"shl"); }
+      shr { ret some(~"shr"); }
+      and | or | eq | lt | le | ne | ge | gt { ret none; }
+    }
+}
+
 pure fn lazy_binop(b: binop) -> bool {
     alt b { and { true } or { true } _ { false } }
 }

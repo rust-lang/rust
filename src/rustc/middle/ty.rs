@@ -1472,6 +1472,30 @@ impl operators for kind {
     }
 }
 
+impl operators of ops::bitand<kind,kind> for kind {
+    pure fn bitand(other: kind) -> kind {
+        unchecked {
+            lower_kind(self, other)
+        }
+    }
+}
+
+impl operators of ops::bitor<kind,kind> for kind {
+    pure fn bitor(other: kind) -> kind {
+        unchecked {
+            raise_kind(self, other)
+        }
+    }
+}
+
+impl operators of ops::sub<kind,kind> for kind {
+    pure fn sub(other: kind) -> kind {
+        unchecked {
+            kind_(*self & !*other)
+        }
+    }
+}
+
 // Using these query functions is preferable to direct comparison or matching
 // against the kind constants, as we may modify the kind hierarchy in the
 // future.

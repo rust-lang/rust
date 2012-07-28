@@ -170,7 +170,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                              session::sess_os_to_meta_os(sess.targ_cfg.os),
                              sess.opts.static));
 
-    time(time_passes, ~"language item collection", ||
+    let lang_items = time(time_passes, ~"language item collection", ||
          middle::lang_items::collect_language_items(crate, sess));
 
     let { def_map: def_map,
@@ -178,7 +178,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
           impl_map: impl_map,
           trait_map: trait_map } =
         time(time_passes, ~"resolution", ||
-             middle::resolve3::resolve_crate(sess, ast_map, crate));
+             middle::resolve3::resolve_crate(sess, lang_items, crate));
 
     let freevars = time(time_passes, ~"freevar finding", ||
         freevars::annotate_freevars(def_map, crate));

@@ -13,6 +13,8 @@ import std::ebml;
 import std::ebml::writer;
 import std::ebml::serializer;
 import std::ebml::deserializer;
+import std::ebml::extensions;
+import std::ebml::get_doc;
 import std::map::hashmap;
 import std::serialization::serializer;
 import std::serialization::deserializer;
@@ -285,7 +287,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 }
 
 fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
-    let chi_doc = par_doc[c::tag_tree];
+    let chi_doc = par_doc[c::tag_tree as uint];
     let d = ebml::ebml_deserializer(chi_doc);
     ast::deserialize_inlined_item(d)
 }
@@ -776,15 +778,11 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
 
 trait doc_decoder_helpers {
     fn as_int() -> int;
-    fn [](tag: c::astencode_tag) -> ebml::doc;
     fn opt_child(tag: c::astencode_tag) -> option<ebml::doc>;
 }
 
 impl decoder of doc_decoder_helpers for ebml::doc {
     fn as_int() -> int { ebml::doc_as_u64(self) as int }
-    fn [](tag: c::astencode_tag) -> ebml::doc {
-        ebml::get_doc(self, tag as uint)
-    }
     fn opt_child(tag: c::astencode_tag) -> option<ebml::doc> {
         ebml::maybe_get_doc(self, tag as uint)
     }
@@ -843,9 +841,9 @@ impl decoder of ebml_deserializer_decoder_helpers
 fn decode_side_tables(xcx: extended_decode_ctxt,
                       ast_doc: ebml::doc) {
     let dcx = xcx.dcx;
-    let tbl_doc = ast_doc[c::tag_table];
+    let tbl_doc = ast_doc[c::tag_table as uint];
     for ebml::docs(tbl_doc) |tag, entry_doc| {
-        let id0 = entry_doc[c::tag_table_id].as_int();
+        let id0 = entry_doc[c::tag_table_id as uint].as_int();
         let id = xcx.tr_id(id0);
 
         #debug[">> Side table document with tag 0x%x \
@@ -855,7 +853,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
         } else {
-            let val_doc = entry_doc[c::tag_table_val];
+            let val_doc = entry_doc[c::tag_table_val as uint];
             let val_dsr = ebml::ebml_deserializer(val_doc);
             if tag == (c::tag_table_def as uint) {
                 let def = decode_def(xcx, val_doc);
@@ -916,7 +914,7 @@ fn encode_item_ast(ebml_w: ebml::writer, item: @ast::item) {
 
 #[cfg(test)]
 fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
-    let chi_doc = par_doc[c::tag_tree];
+    let chi_doc = par_doc[c::tag_tree as uint];
     let d = ebml::ebml_deserializer(chi_doc);
     @ast::deserialize_item(d)
 }

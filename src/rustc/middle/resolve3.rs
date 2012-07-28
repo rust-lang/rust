@@ -3,33 +3,38 @@ import metadata::csearch::{each_path, get_impls_for_mod};
 import metadata::csearch::{get_method_names_if_trait, lookup_defs};
 import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
+import middle::lang_items::LanguageItems;
 import middle::lint::{deny, allow, forbid, level, unused_imports, warn};
-import syntax::ast::{_mod, arm, blk, bound_const, bound_copy, bound_trait};
-import syntax::ast::{bound_owned};
-import syntax::ast::{bound_send, capture_clause, class_ctor, class_dtor};
-import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
-import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
+import syntax::ast::{_mod, add, arm, bitand, bitor, bitxor, blk, bound_const};
+import syntax::ast::{bound_copy, bound_owned, bound_send, bound_trait};
+import syntax::ast::{capture_clause, class_ctor, class_dtor, class_member};
+import syntax::ast::{class_method, crate, crate_num, decl_item, def, def_arg};
+import syntax::ast::{def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param,
                      def_typaram_binder};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_new, expr_path};
+import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
+import syntax::ast::{def_upvar, def_use, def_variant, div, eq, expr};
+import syntax::ast::{expr_assign_op, expr_binary, expr_cast, expr_field};
+import syntax::ast::{expr_fn, expr_fn_block, expr_index, expr_new, expr_path};
 import syntax::ast::{expr_struct, expr_unary, fn_decl, foreign_item};
-import syntax::ast::{foreign_item_fn, ident, trait_ref, impure_fn};
+import syntax::ast::{foreign_item_fn, ge, gt, ident, trait_ref, impure_fn};
 import syntax::ast::{instance_var, item, item_class, item_const, item_enum};
 import syntax::ast::{item_fn, item_mac, item_foreign_mod, item_impl};
-import syntax::ast::{item_mod, item_trait, item_ty, local, local_crate};
-import syntax::ast::{method, node_id, pat, pat_enum, pat_ident};
-import syntax::ast::{path, prim_ty, pat_box, pat_uniq, pat_lit, pat_range};
-import syntax::ast::{pat_rec, pat_tup, pat_wild, stmt_decl};
-import syntax::ast::{ty, ty_bool, ty_char, ty_f, ty_f32, ty_f64};
-import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
-import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
-import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
-import syntax::ast::{view_item_import, view_item_use, view_path_glob};
-import syntax::ast::{view_path_list, view_path_simple};
-import syntax::ast::{required, provided};
+import syntax::ast::{item_mod, item_trait, item_ty, le, local, local_crate};
+import syntax::ast::{lt, method, mul, ne, neg, node_id, pat, pat_enum};
+import syntax::ast::{pat_ident, path, prim_ty, pat_box, pat_uniq, pat_lit};
+import syntax::ast::{pat_range, pat_rec, pat_tup, pat_wild, provided};
+import syntax::ast::{required, rem, shl, stmt_decl, subtract, ty, ty_bool};
+import syntax::ast::{ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16};
+import syntax::ast::{ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path};
+import syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
+import syntax::ast::{variant, view_item, view_item_export, view_item_import};
+import syntax::ast::{view_item_use, view_path_glob, view_path_list};
+import syntax::ast::{view_path_simple};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{walk_pat};
 import syntax::attr::{attr_metas, contains_name};
@@ -47,8 +52,7 @@ import str::{connect, split_str};
 import vec::pop;
 
 import std::list::{cons, list, nil};
-import std::map::{hashmap, int_hash};
-import ASTMap = syntax::ast_map::map;
+import std::map::{hashmap, int_hash, str_hash};
 import str_eq = str::eq;
 
 // Definition mapping
@@ -608,7 +612,7 @@ class PrimitiveTypeTable {
 /// The main resolver class.
 class Resolver {
     let session: session;
-    let ast_map: ASTMap;
+    let lang_items: LanguageItems;
     let crate: @crate;
 
     let atom_table: @AtomTable;
@@ -655,9 +659,9 @@ class Resolver {
     let export_map: ExportMap;
     let trait_map: TraitMap;
 
-    new(session: session, ast_map: ASTMap, crate: @crate) {
+    new(session: session, lang_items: LanguageItems, crate: @crate) {
         self.session = session;
-        self.ast_map = ast_map;
+        self.lang_items = copy lang_items;
         self.crate = crate;
 
         self.atom_table = @AtomTable();
@@ -4312,16 +4316,61 @@ class Resolver {
 
     fn record_candidate_traits_for_expr_if_necessary(expr: @expr) {
         alt expr.node {
-            expr_field(_, ident, _) {
+            expr_field(_, ident, _) => {
                 let atom = (*self.atom_table).intern(ident);
                 let traits = self.search_for_traits_containing_method(atom);
                 self.trait_map.insert(expr.id, traits);
             }
-            _ {
+            expr_binary(add, _, _) | expr_assign_op(add, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.add_trait);
+            }
+            expr_binary(subtract, _, _) | expr_assign_op(subtract, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.sub_trait);
+            }
+            expr_binary(mul, _, _) | expr_assign_op(mul, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.mul_trait);
+            }
+            expr_binary(div, _, _) | expr_assign_op(div, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.div_trait);
+            }
+            expr_binary(rem, _, _) | expr_assign_op(rem, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.modulo_trait);
+            }
+            expr_binary(bitxor, _, _) | expr_assign_op(bitxor, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.bitxor_trait);
+            }
+            expr_binary(bitand, _, _) | expr_assign_op(bitand, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.bitand_trait);
+            }
+            expr_binary(bitor, _, _) | expr_assign_op(bitor, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.bitor_trait);
+            }
+            expr_binary(shl, _, _) | expr_assign_op(shl, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.shl_trait);
+            }
+            expr_binary(shr, _, _) | expr_assign_op(shr, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.shr_trait);
+            }
+            expr_unary(neg, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.neg_trait);
+            }
+            expr_index(*) {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.index_trait);
+            }
+            _ => {
                 // Nothing to do.
-                //
-                // XXX: Handle more here... operator overloading, placement
-                // new, etc.
             }
         }
     }
@@ -4412,6 +4461,12 @@ class Resolver {
                 // Continue.
             }
         }
+    }
+
+    fn add_fixed_trait_for_expr(expr_id: node_id, +trait_id: option<def_id>) {
+        let traits = @dvec();
+        traits.push(trait_id.get());
+        self.trait_map.insert(expr_id, traits);
     }
 
     fn record_def(node_id: node_id, def: def) {
@@ -4622,13 +4677,13 @@ class Resolver {
 }
 
 /// Entry point to crate resolution.
-fn resolve_crate(session: session, ast_map: ASTMap, crate: @crate)
+fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
               -> { def_map: DefMap,
                    exp_map: ExportMap,
                    impl_map: ImplMap,
                    trait_map: TraitMap } {
 
-    let resolver = @Resolver(session, ast_map, crate);
+    let resolver = @Resolver(session, lang_items, crate);
     (*resolver).resolve(resolver);
     ret {
         def_map: resolver.def_map,

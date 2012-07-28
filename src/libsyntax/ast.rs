@@ -773,6 +773,59 @@ enum inlined_item {
     ii_dtor(class_dtor, ident, ~[ty_param], def_id /* parent id */)
 }
 
+// Convenience functions
+
+pure fn simple_path(id: ident, span: span) -> @path {
+    @{span: span,
+      global: false,
+      idents: ~[id],
+      rp: none,
+      types: ~[]}
+}
+
+pure fn empty_span() -> span {
+    {lo: 0, hi: 0, expn_info: none}
+}
+
+// Convenience implementations
+
+// Remove after snapshot!
+trait path_concat {
+    pure fn +(&&id: ident) -> @path;
+}
+
+// Remove after snapshot!
+impl methods of path_concat for ident {
+    pure fn +(&&id: ident) -> @path {
+        simple_path(self, empty_span()) + id
+    }
+}
+
+impl methods of ops::add<ident,@path> for ident {
+    pure fn add(&&id: ident) -> @path {
+        simple_path(self, empty_span()) + id
+    }
+}
+
+// Remove after snapshot!
+impl methods of path_concat for @path {
+    pure fn +(&&id: ident) -> @path {
+        @{
+            idents: vec::append_one(self.idents, id)
+            with *self
+        }
+    }
+}
+
+impl methods of ops::add<ident,@path> for @path {
+    pure fn add(&&id: ident) -> @path {
+        @{
+            idents: vec::append_one(self.idents, id)
+            with *self
+        }
+    }
+}
+
 //
 // Local Variables:
 // mode: rust
