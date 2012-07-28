@@ -166,6 +166,7 @@ mod tuple;
 
 // Ubiquitous-utility-type modules
 
+#[cfg(notest)]
 mod ops;
 mod cmp;
 mod num;

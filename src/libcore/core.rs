@@ -30,9 +30,6 @@ import float::num;
 import f32::num;
 import f64::num;
 import num::num;
-import ops::{const, copy, send, owned};
-import ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor, shl};
-import ops::{shr, index};
 
 export path, option, some, none, unreachable;
 export extensions;
@@ -45,8 +42,20 @@ export immutable_copyable_vector, iter_trait_extensions, vec_concat;
 export base_iter, copyable_iter, extended_iter;
 export tuple_ops, extended_tuple_ops;
 export ptr;
+
 // The following exports are the core operators and kinds
+// The compiler has special knowlege of these so we must not duplicate them
+// when compiling for testing
+#[cfg(notest)]
+import ops::{const, copy, send, owned};
+#[cfg(notest)]
+import ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor, shl};
+#[cfg(notest)]
+import ops::{shr, index};
+
+#[cfg(notest)]
 export const, copy, send, owned;
+#[cfg(notest)]
 export add, sub, mul, div, modulo, neg, bitops, index;
 
 // Export the log levels as global constants. Higher levels mean
