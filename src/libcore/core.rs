@@ -49,14 +49,16 @@ export ptr;
 #[cfg(notest)]
 import ops::{const, copy, send, owned};
 #[cfg(notest)]
-import ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor, shl};
+import ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor};
 #[cfg(notest)]
-import ops::{shr, index};
+import ops::{shl, shr, index};
 
 #[cfg(notest)]
 export const, copy, send, owned;
 #[cfg(notest)]
-export add, sub, mul, div, modulo, neg, bitops, index;
+export add, sub, mul, div, modulo, neg, bitand, bitor, bitxor;
+#[cfg(notest)]
+export shl, shr, index;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
