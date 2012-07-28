@@ -5650,8 +5650,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: ~str, emap: resolve3::ExportMap,
                maps: astencode::maps)
     -> (ModuleRef, link_meta) {
-    let sha = std::sha1::sha1();
-    let link_meta = link::build_link_meta(sess, *crate, output, sha);
+    let symbol_hasher = hash::siphash(0,0);
+    let link_meta = link::build_link_meta(sess, *crate, output, symbol_hasher);
     let reachable = reachable::find_reachable(crate.node.module, emap, tcx,
                                               maps.method_map);
 
@@ -5724,8 +5724,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           module_data: str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
           names: new_namegen(),
-          sha: sha,
-          type_sha1s: ty::new_ty_hash(),
+          symbol_hasher: symbol_hasher,
+          type_hashcodes: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),
           all_llvm_symbols: str_hash::<()>(),
           tcx: tcx,
