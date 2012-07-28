@@ -32,7 +32,7 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
 
     #macro([#rotl(x,b), (x << b) | (x >> (64 - b))]);
 
-    #macro([#compress(), {
+    #macro([#compress(v0,v1,v2,v3), {
         v0 += v1; v1 = #rotl(v1, 13); v1 ^= v0; v0 = #rotl(v0, 32);
         v2 += v3; v3 = #rotl(v3, 16); v3 ^= v2;
         v0 += v3; v3 = #rotl(v3, 21); v3 ^= v0;
@@ -47,8 +47,8 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
     while i < end {
         let m = #u8to64_le(buf, i);
         v3 ^= m;
-        #compress();
-        #compress();
+        #compress(v0,v1,v2,v3);
+        #compress(v0,v1,v2,v3);
         v0 ^= m;
         i += 8;
     }
@@ -64,17 +64,180 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
     if left > 6 { b |= buf[i + 6] as u64 << 48; }
 
     v3 ^= b;
-    #compress();
-    #compress();
+    #compress(v0,v1,v2,v3);
+    #compress(v0,v1,v2,v3);
     v0 ^= b;
 
     v2 ^= 0xff;
-    #compress();
-    #compress();
-    #compress();
-    #compress();
+
+    #compress(v0,v1,v2,v3);
+    #compress(v0,v1,v2,v3);
+    #compress(v0,v1,v2,v3);
+    #compress(v0,v1,v2,v3);
 
     ret v0 ^ v1 ^ v2 ^ v3;
+}
+
+
+iface streaming {
+    fn input(~[u8]);
+    fn input_str(~str);
+    fn result() -> ~[u8];
+    fn result_str() -> ~str;
+    fn reset();
+}
+
+fn siphash(key0 : u64, key1 : u64) -> streaming {
+    type sipstate = {
+        k0 : u64,
+        k1 : u64,
+        mut length : uint, // how many bytes we've processed
+        mut v0 : u64,      // hash state
+        mut v1 : u64,
+        mut v2 : u64,
+        mut v3 : u64,
+        tail : ~[mut u8]/8, // unprocessed bytes
+        mut ntail : uint,   //  how many bytes in tail are valid
+    };
+
+    fn add_input(st : sipstate, msg : ~[u8]) {
+        let length = vec::len(msg);
+        st.length += length;
+
+        let mut needed = 0u;
+
+        if st.ntail != 0 {
+            needed = 8 - st.ntail;
+
+            if length < needed {
+
+                let mut t = 0;
+                while t < length {
+                    st.tail[st.ntail+t] = msg[t];
+                    t += 1;
+                }
+                st.ntail += length;
+
+                ret;
+            }
+
+            let mut t = 0;
+            while t < needed {
+                st.tail[st.ntail+t] = msg[t];
+                t += 1;
+            }
+
+            let m = #u8to64_le(st.tail, 0);
+
+            st.v3 ^= m;
+            #compress(st.v0, st.v1, st.v2, st.v3);
+            #compress(st.v0, st.v1, st.v2, st.v3);
+            st.v0 ^= m;
+
+            st.ntail = 0;
+        }
+
+        let len = length - needed;
+        let end = len & (!0x7);
+        let left = len & 0x7;
+
+        let mut i = needed;
+        while i < end {
+            let mi = #u8to64_le(msg, i);
+
+            st.v3 ^= mi;
+            #compress(st.v0, st.v1, st.v2, st.v3);
+            #compress(st.v0, st.v1, st.v2, st.v3);
+            st.v0 ^= mi;
+
+            i += 8;
+        }
+
+        let mut t = 0u;
+        while t < left {
+            st.tail[t] = msg[i+t];
+            t += 1
+        }
+        st.ntail = left;
+    }
+
+    fn mk_result(st : sipstate) -> ~[u8] {
+
+        let mut v0 = st.v0;
+        let mut v1 = st.v1;
+        let mut v2 = st.v2;
+        let mut v3 = st.v3;
+
+        let mut b : u64 = (st.length as u64 & 0xff) << 56;
+
+        if st.ntail > 0 { b |= st.tail[0] as u64 <<  0; }
+        if st.ntail > 1 { b |= st.tail[1] as u64 <<  8; }
+        if st.ntail > 2 { b |= st.tail[2] as u64 << 16; }
+        if st.ntail > 3 { b |= st.tail[3] as u64 << 24; }
+        if st.ntail > 4 { b |= st.tail[4] as u64 << 32; }
+        if st.ntail > 5 { b |= st.tail[5] as u64 << 40; }
+        if st.ntail > 6 { b |= st.tail[6] as u64 << 48; }
+
+        v3 ^= b;
+        #compress(v0, v1, v2, v3);
+        #compress(v0, v1, v2, v3);
+        v0 ^= b;
+
+        v2 ^= 0xff;
+        #compress(v0, v1, v2, v3);
+        #compress(v0, v1, v2, v3);
+        #compress(v0, v1, v2, v3);
+        #compress(v0, v1, v2, v3);
+
+        let h = v0 ^ v1 ^ v2 ^ v3;
+
+        ret ~[
+            (h >> 0) as u8,
+            (h >> 8) as u8,
+            (h >> 16) as u8,
+            (h >> 24) as u8,
+            (h >> 32) as u8,
+            (h >> 40) as u8,
+            (h >> 48) as u8,
+            (h >> 56) as u8,
+        ];
+    }
+
+   impl of streaming for sipstate {
+        fn reset() {
+            self.length = 0;
+            self.v0 = self.k0 ^ 0x736f6d6570736575;
+            self.v1 = self.k1 ^ 0x646f72616e646f6d;
+            self.v2 = self.k0 ^ 0x6c7967656e657261;
+            self.v3 = self.k1 ^ 0x7465646279746573;
+            self.ntail = 0;
+        }
+        fn input(msg: ~[u8]) { add_input(self, msg); }
+        fn input_str(msg: ~str) { add_input(self, str::bytes(msg)); }
+        fn result() -> ~[u8] { ret mk_result(self); }
+        fn result_str() -> ~str {
+            let r = mk_result(self);
+            let mut s = ~"";
+            for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
+            ret s;
+        }
+    }
+
+    let st = {
+        k0 : key0,
+        k1 : key1,
+        mut length : 0u,
+        mut v0 : 0u64,
+        mut v1 : 0u64,
+        mut v2 : 0u64,
+        mut v3 : 0u64,
+        tail : ~[mut 0u8,0,0,0,0,0,0,0]/8,
+        mut ntail : 0u,
+    };
+
+    let sh = st as streaming;
+    sh.reset();
+    ret sh;
 }
 
 #[test]
@@ -150,14 +313,34 @@ fn test_siphash() {
     let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08_u64;
     let mut buf : ~[u8] = ~[];
     let mut t = 0;
+    let stream_inc = siphash(k0,k1);
+    let stream_full = siphash(k0,k1);
+
+    fn to_hex_str(r:[u8]/8) -> ~str {
+        let mut s = ~"";
+        for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
+        ret s;
+    }
+
     while t < 64 {
         #debug("siphash test %?", t);
         let vec = #u8to64_le(vecs[t], 0);
         let out = hash_bytes_keyed(buf, k0, k1);
         #debug("got %?, expected %?", out, vec);
         assert vec == out;
+
+        stream_full.reset();
+        stream_full.input(buf);
+        let f = stream_full.result_str();
+        let i = stream_inc.result_str();
+        let v = to_hex_str(vecs[t]);
+        #debug["%d: (%s) => inc=%s full=%s", t, v, i, f];
+
+        assert f == i && f == v;
+
         buf += ~[t as u8];
+        stream_inc.input(~[t as u8]);
+
         t += 1;
     }
-
 }
