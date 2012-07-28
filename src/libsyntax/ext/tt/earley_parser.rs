@@ -77,7 +77,24 @@ fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
       match_lo: 0u, match_hi: match_idx_hi, sp_lo: lo}
 }
 
-/* logically, an arb_depth should contain only one kind of nonterminal */
+// arb_depth is a pattern-match result for a single black-box matcher
+// (ast::mtc_bb): so it is associated with a single ident in a parse, and all
+// leaves in the arb_depth have the same nonterminal type (expr, item,
+// etc). All the leaves in a single arb_depth correspond to a single mtc_bb in
+// the ast::matcher that produced it.
+//
+// It should probably be renamed, it has more or less exact correspondence to
+// ast::match nodes, and the in-memory structure of a particular arb_depth
+// represents the match that occurred when a particular subset of an
+// ast::match -- those ast::matcher nodes leading to a single mtc_bb -- was
+// applied to a particular token tree.
+//
+// The width of each seq in the arb_depth, and the identity of the leaf nodes,
+// will depend on the token tree it was applied to: each seq corresponds to a
+// single mtc_rep in the originating ast::matcher. The depth of the arb_depth
+// structure will therefore depend only on the nesting depth of mtc_reps in
+// the originating ast::matcher it was derived from.
+
 enum arb_depth { leaf(whole_nt), seq(~[@arb_depth], codemap::span) }
 
 type earley_item = matcher_pos;
