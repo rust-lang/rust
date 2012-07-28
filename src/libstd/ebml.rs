@@ -27,6 +27,8 @@ export serializer;
 export ebml_deserializer;
 export deserializer;
 export with_doc_data;
+export get_doc;
+export extensions;
 
 type ebml_tag = {id: uint, size: uint};
 
@@ -39,6 +41,24 @@ type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 type doc = {data: @~[u8], start: uint, end: uint};
 
 type tagged_doc = {tag: uint, doc: doc};
+
+trait get_doc {
+    fn [](tag: uint) -> doc;
+}
+
+impl extensions of get_doc for doc {
+    fn [](tag: uint) -> doc {
+        get_doc(self, tag)
+    }
+}
+
+impl extensions of ops::index<uint,doc> for doc {
+    pure fn index(&&tag: uint) -> doc {
+        unchecked {
+            get_doc(self, tag)
+        }
+    }
+}
 
 fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     let a = data[start];

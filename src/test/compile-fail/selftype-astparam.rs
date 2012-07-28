@@ -1,12 +1,12 @@
 iface add {
-    fn +(++x: self) -> self;
+    fn plus(++x: self) -> self;
 }
 
 impl of add for int {
-    fn +(++x: int) -> int { self + x }
+    fn plus(++x: int) -> int { self + x }
 }
 
-fn do_add<A:add>(x: A, y: A) -> A { x + y }
+fn do_add<A:add>(x: A, y: A) -> A { x.plus(y) }
 
 fn main() {
     let x = 3 as add;

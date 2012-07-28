@@ -31,7 +31,8 @@ import f32::num;
 import f64::num;
 import num::num;
 import ops::{const, copy, send, owned};
-import ops::{add, sub, mul, div, modulo, neg, bitops, index};
+import ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor, shl};
+import ops::{shr, index};
 
 export path, option, some, none, unreachable;
 export extensions;

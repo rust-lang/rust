@@ -961,14 +961,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         ret if_bot;
     }
 
-    fn binop_method(op: ast::binop) -> option<~str> {
-        alt op {
-          ast::add | ast::subtract | ast::mul | ast::div | ast::rem |
-          ast::bitxor | ast::bitand | ast::bitor | ast::shl | ast::shr
-          { some(ast_util::binop_to_str(op)) }
-          _ { none }
-        }
-    }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
                         self_ex: @ast::expr, self_t: ty::t,
                         opname: ~str, args: ~[@ast::expr])
@@ -1041,7 +1033,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         lhs_expr: @ast::expr, lhs_resolved_t: ty::t,
                         op: ast::binop, rhs: @ast::expr) -> (ty::t, bool) {
         let tcx = fcx.ccx.tcx;
-        alt binop_method(op) {
+        alt ast_util::binop_to_method_name(op) {
           some(name) {
             alt lookup_op_method(fcx, ex,
                                  lhs_expr, lhs_resolved_t,
@@ -1365,7 +1357,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::get(oprnd_t).struct == ty::ty_bool) {
-                oprnd_t = check_user_unop(fcx, ~"!", ~"!", expr,
+                oprnd_t = check_user_unop(fcx, ~"!", ~"not", expr,
                                          oprnd, oprnd_t);
             }
           }
@@ -1373,7 +1365,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::type_is_fp(oprnd_t)) {
-                oprnd_t = check_user_unop(fcx, ~"-", ~"unary-", expr,
+                oprnd_t = check_user_unop(fcx, ~"-", ~"neg", expr,
                                          oprnd, oprnd_t);
             }
           }
@@ -1831,7 +1823,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           none {
             let resolved = structurally_resolved_type(fcx, expr.span,
                                                       raw_base_t);
-            alt lookup_op_method(fcx, expr, base, resolved, ~"[]",
+            alt lookup_op_method(fcx, expr, base, resolved, ~"index",
                                  ~[idx]) {
               some((ret_ty, _)) { fcx.write_ty(id, ret_ty); }
               _ {
