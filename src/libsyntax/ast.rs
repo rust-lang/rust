@@ -392,7 +392,7 @@ enum token_tree {
 // Matchers are nodes defined-by and recognized-by the main rust parser and
 // language, but they're only ever found inside syntax-extension invocations;
 // indeed, the only thing that ever _activates_ the rules in the rust parser
-// for parsing a matcher is a matcher looking for the 'mtcs' nonterminal
+// for parsing a matcher is a matcher looking for the 'matchers' nonterminal
 // itself. Matchers represent a small sub-language for pattern-matching
 // token-trees, and are thus primarily used by the macro-defining extension
 // itself.
@@ -435,7 +435,7 @@ enum token_tree {
 // also matched by one of these matchers. Holy self-referential! It is matched
 // by an match_seq, specifically this one:
 //
-//                   $( $lhs:mtcs => $rhs:tt );+
+//                   $( $lhs:matchers => $rhs:tt );+
 //
 // If you understand that, you have closed to loop and understand the whole
 // macro system. Congratulations.
