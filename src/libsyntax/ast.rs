@@ -376,6 +376,47 @@ enum token_tree {
 type matcher = spanned<matcher_>;
 
 #[auto_serialize]
+//
+// Matchers are nodes defined-by and recognized-by the main rust parser and
+// language, but they're only ever found inside syntax-extension invocations.
+// They represent a small sub-language for pattern-matching token-trees, and
+// are thus primarily used by the macro-defining extension itself.
+//
+// mtc_tok   ===>   A matcher that matches a single token,
+//                  denoted by the token itself. So long as
+//                  there's no $ involved.
+//
+//
+// mtc_rep   ===>   A matcher that matches a sequence of
+//                  sub-matchers, denoted various ways:
+//
+//             $(M)*       zero or more Ms
+//             $(M)+       one or more Ms
+//             $(M),+      one or more comma-separated Ms
+//             $(A B C);*  zero or more semi-separated 'A B C' seqs
+//
+//
+// mtc_bb ===> A matcher that matches one of a few interesting named rust
+//             nonterminals, such as types, expressions, items, or raw
+//             token-trees. A black-box matcher on expr, for example, binds an
+//             expr to a given ident, and that ident can re-occur as an
+//             interpolation in the RHS of a macro-by-example rule. For
+//             example:
+//
+//        $foo:expr   =>     1 + $foo    // interpolate an expr
+//        $foo:tt     =>     $foo        // interpolate a token-tree
+//        $foo:tt     =>     bar! $foo   // only other valid interpolation
+//                                       // is in arg position for another macro
+//
+// As a final, horrifying aside, note that macro-by-example's input is
+// also matched by one of these matchers. Holy self-referential! It is matched
+// by an mtc_rep, specifically this one:
+//
+//                   $( $lhs:mtcs => $rhs:tt );+
+//
+// If you understand that, you have closed to loop and understand the whole
+// macro system. Congratulations.
+//
 enum matcher_ {
     /* match one token */
     mtc_tok(token::token),
@@ -401,10 +442,11 @@ type mac_body = option<mac_body_>;
 #[auto_serialize]
 enum mac_ {
     mac_invoc(@path, mac_arg, mac_body),
-    mac_invoc_tt(@path,~[token_tree]),//will kill mac_invoc and steal its name
-    mac_embed_type(@ty),
-    mac_embed_block(blk),
-    mac_ellipsis,
+    mac_invoc_tt(@path,~[token_tree]), // will kill mac_invoc and steal its name
+    mac_embed_type(@ty),  // obsolete quoter
+    mac_embed_block(blk), // obsolete quoter
+    mac_ellipsis,         // obsolete pattern-match terminal
+
     // the span is used by the quoter/anti-quoter ...
     mac_aq(span /* span of quote */, @expr), // anti-quote
     mac_var(uint)

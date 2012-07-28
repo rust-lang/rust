@@ -4,6 +4,31 @@ import diagnostic::span_handler;
 import codemap::{codemap, span, expn_info, expanded_from};
 import std::map::str_hash;
 
+
+// Nomenclature / abbreviations in the ext modules:
+//
+//     ms: matcher span, wraps a matcher with fake span
+//    mtc: matcher
+//   mtcs: matchers
+//     tt: token tree
+//     bt: backtrace
+//     cx: expansion context
+//     mr: macro result
+//
+
+// obsolete old-style #macro code:
+//
+//    syntax_expander, normal, macro_defining, macro_definer,
+//    builtin
+//
+// new-style macro! tt code:
+//
+//    syntax_expander_tt, syntax_expander_tt_item, mac_result,
+//    expr_tt, item_tt
+//
+// also note that ast::mac has way too many cases and can probably
+// be trimmed down substantially.
+
 // second argument is the span to blame for general argument problems
 type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
@@ -11,8 +36,11 @@ type syntax_expander_ =
 type syntax_expander = {expander: syntax_expander_, span: option<span>};
 
 type macro_def = {ident: ast::ident, ext: syntax_extension};
+
+// macro_definer is obsolete, remove when #old_macros go away.
 type macro_definer =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
+
 type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
@@ -32,10 +60,17 @@ enum mac_result {
 }
 
 enum syntax_extension {
+
+    // normal() is obsolete, remove when #old_macros go away.
     normal(syntax_expander),
+
+    // macro_defining() is obsolete, remove when #old_macros go away.
     macro_defining(macro_definer),
+
+    // #[auto_serialize] and such. will probably survive death of #old_macros
     item_decorator(item_decorator),
 
+    // Token-tree expanders
     expr_tt(syntax_expander_tt),
     item_tt(syntax_expander_tt_item),
 }
@@ -87,6 +122,10 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
     ret syntax_expanders;
 }
 
+
+// One of these is made during expansion and incrementally updated as we go;
+// when a macro expansion occurs, the resulting nodes have the backtrace()
+// -> expn_info of their expansion context stored into their span.
 iface ext_ctxt {
     fn codemap() -> codemap;
     fn parse_sess() -> parse::parse_sess;
@@ -244,6 +283,9 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
     }
 }
 
+// Massage syntactic form of new-style arguments to internal representation
+// of old-style macro args, such that old-style macro can be run and invoked
+// using new syntax. This will be obsolete when #old_macros go away.
 fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     -> ast::mac_arg {
     import ast::{matcher, matcher_, mtc_tok, mtc_rep, mtc_bb};

@@ -16,7 +16,12 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     -> (expr_, span)
 {
     ret alt e {
+      // expr_mac should really be expr_ext or something; it's the
+      // entry-point for all syntax extensions.
           expr_mac(mac) {
+
+            // Old-style macros, for compatibility, will erase this whole
+            // block once we've transitioned.
             alt mac.node {
               mac_invoc(pth, args, body) {
                 assert (vec::len(pth.idents) > 0u);
@@ -58,6 +63,9 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                   }
                 }
               }
+
+              // Token-tree macros, these will be the only case when we're
+              // finished transitioning.
               mac_invoc_tt(pth, tts) {
                 assert (vec::len(pth.idents) == 1u);
                 let extname = pth.idents[0];
@@ -111,6 +119,15 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
         };
 }
 
+// This is a secondary mechanism for invoking syntax extensions on items:
+// "decorator" attributes, such as #[auto_serialize]. These are invoked by an
+// attribute prefixing an item, and are interpreted by feeding the item
+// through the named attribute _as a syntax extension_ and splicing in the
+// resulting item vec into place in favour of the decorator. Note that
+// these do _not_ work for macro extensions, just item_decorator ones.
+//
+// NB: there is some redundancy between this and expand_item, below, and
+// they might benefit from some amount of semantic and language-UI merger.
 fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                     module: ast::_mod, fld: ast_fold,
                     orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
@@ -145,7 +162,8 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     ret {items: new_items with module};
 }
 
-/* record module we enter for `#mod` */
+// Support for item-position macro invocations, exactly the same
+// logic as for expression-position macro invocations.
 fn expand_item(exts: hashmap<~str, syntax_extension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                orig: fn@(&&@ast::item, ast_fold) -> option<@ast::item>)
