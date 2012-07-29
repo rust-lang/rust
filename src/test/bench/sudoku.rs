@@ -52,7 +52,7 @@ fn solve_grid(g: grid_t) {
             // colors not yet used
             let avail = bitv::bitv(10u, false);
             for u8::range(start_color, 10u8) |color| {
-                bitv::set(avail, color as uint, true);
+                avail.set(color as uint, true);
             }
 
             // drop colors already in use in neighbourhood
@@ -60,7 +60,7 @@ fn solve_grid(g: grid_t) {
 
             // find first remaining color that is available
             for uint::range(1u, 10u) |i| {
-                if bitv::get(avail, i) {
+                if avail.get(i) {
                     g[row][col] = i as u8;
                     ret true;
                 }
@@ -74,7 +74,7 @@ fn solve_grid(g: grid_t) {
     fn drop_colors(g: grid, avail: bitv::bitv, row: u8, col: u8) {
         fn drop_color(g: grid, colors: bitv::bitv, row: u8, col: u8) {
             let color = g[row][col];
-            if color != 0u8 { bitv::set(colors, color as uint, false); }
+            if color != 0u8 { colors.set(color as uint, false); }
         }
 
         let it = |a,b| drop_color(g, avail, a, b);

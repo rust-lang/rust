@@ -184,7 +184,7 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
     alt lhs.node {
       expr_path(p) {
         let post = expr_postcond(fcx.ccx, parent);
-        let tmp = tritv_clone(post);
+        let tmp = post.clone();
 
         alt ty {
           oper_move {
@@ -497,7 +497,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                     /* Clear out anything that the previous initializer
                     guaranteed */
                     let e_pp = expr_pp(fcx.ccx, an_init.expr);
-                    tritv_copy(prev_pp.precondition,
+                    prev_pp.precondition.become(
                                seq_preconds(fcx, ~[prev_pp, e_pp]));
 
                     /* Include the LHSs too, since those aren't in the

@@ -1,6 +1,6 @@
 import ann::*;
 import aux::*;
-import tritv::{tritv_clone, tritv_set, ttrue};
+import tritv::*;
 
 import syntax::print::pprust::block_to_str;
 import bitvectors::*;
@@ -57,14 +57,14 @@ fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
 fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: ~[binding]) ->
    {changed: bool, post: poststate} {
     let mut changed = false;
-    let mut post = tritv_clone(pres);
+    let mut post = pres.clone();
     for bindings.each |b| {
         alt b.rhs {
           some(an_init) {
             // an expression, with or without a destination
             changed |=
                 find_pre_post_state_expr(fcx, post, an_init.expr) || changed;
-            post = tritv_clone(expr_poststate(fcx.ccx, an_init.expr));
+            post = expr_poststate(fcx.ccx, an_init.expr).clone();
             for b.lhs.each |d| {
                 alt an_init.expr.node {
                   expr_path(p) {
@@ -93,7 +93,7 @@ fn find_pre_post_state_sub(fcx: fn_ctxt, pres: prestate, e: @expr,
 
     changed = set_prestate_ann(fcx.ccx, parent, pres) || changed;
 
-    let post = tritv_clone(expr_poststate(fcx.ccx, e));
+    let post = expr_poststate(fcx.ccx, e).clone();
     alt c {
       none { }
       some(c1) { set_in_poststate_(bit_num(fcx, c1), post); }
@@ -113,7 +113,7 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
             changed;
     forbid_upvar(fcx, rhs.id, rhs.span, ty);
 
-    let post = tritv_clone(expr_poststate(fcx.ccx, rhs));
+    let post = expr_poststate(fcx.ccx, rhs).clone();
 
     alt lhs.node {
       expr_path(p) {
@@ -121,7 +121,7 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
         // changed flag
         // tmp remembers "old" constraints we'd otherwise forget,
         // for substitution purposes
-        let tmp = tritv_clone(post);
+        let tmp = post.clone();
 
         alt ty {
           oper_move {
@@ -210,8 +210,8 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
         alt chk {
           if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
-            let conseq_prestate = tritv_clone(expr_poststate(fcx.ccx, antec));
-            tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
+            let conseq_prestate = expr_poststate(fcx.ccx, antec).clone();
+            conseq_prestate.set(bit_num(fcx, c.node), ttrue);
             changed |=
                 find_pre_post_state_block(fcx, conseq_prestate, conseq) |
                     set_poststate_ann(fcx.ccx, id,
@@ -235,8 +235,8 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
         alt chk {
           if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
-            conseq_prestate = tritv_clone(conseq_prestate);
-            tritv_set(bit_num(fcx, c.node), conseq_prestate, ttrue);
+            conseq_prestate = conseq_prestate.clone();
+            conseq_prestate.set(bit_num(fcx, c.node),  ttrue);
           }
           _ { }
         }
@@ -270,7 +270,7 @@ fn find_pre_post_state_cap_clause(fcx: fn_ctxt, e_id: node_id,
 {
     let ccx = fcx.ccx;
     let pres_changed = set_prestate_ann(ccx, e_id, pres);
-    let post = tritv_clone(pres);
+    let post = pres.clone();
     for (*cap_clause).each |cap_item| {
         if cap_item.is_move {
             forget_in_poststate(fcx, post, cap_item.id);
@@ -432,7 +432,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                 worst case, the body could invalidate all preds and
                 deinitialize everything before breaking */
             let post = empty_poststate(num_constrs);
-            tritv::tritv_kill(post);
+            post.kill();
             ret changed | set_poststate_ann(fcx.ccx, e.id, post);
         } else {
             ret changed | set_poststate_ann(fcx.ccx, e.id,
@@ -507,8 +507,8 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
 
     #debug["[ %s ]", *fcx.name];
     #debug["*At beginning: stmt = %s", stmt_to_str(*s)];
-    #debug["*prestate = %s", tritv::to_str(stmt_ann.states.prestate)];
-    #debug["*poststate = %s", tritv::to_str(stmt_ann.states.prestate)];
+    #debug["*prestate = %s", stmt_ann.states.prestate.to_str()];
+    #debug["*poststate = %s", stmt_ann.states.prestate.to_str()];
 
     alt s.node {
       stmt_decl(adecl, id) {
@@ -525,8 +525,8 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
                 set_poststate(stmt_ann, c_and_p.post) | c_and_p.changed;
 
             #debug["Summary: stmt = %s", stmt_to_str(*s)];
-            #debug["prestate = %s", tritv::to_str(stmt_ann.states.prestate)];
-            #debug["poststate = %s",tritv::to_str(stmt_ann.states.poststate)];
+            #debug["prestate = %s", stmt_ann.states.prestate.to_str()];
+            #debug["poststate = %s", stmt_ann.states.poststate.to_str()];
             #debug["changed = %s", bool::to_str(changed)];
 
             ret changed;
@@ -545,8 +545,8 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
 
 
         #debug["Finally: %s", stmt_to_str(*s)];
-        #debug["prestate = %s", tritv::to_str(stmt_ann.states.prestate)];
-        #debug["poststate = %s", tritv::to_str(stmt_ann.states.poststate)];
+        #debug["prestate = %s", stmt_ann.states.prestate.to_str()];
+        #debug["poststate = %s", stmt_ann.states.poststate.to_str()];
         #debug["changed = %s", bool::to_str(changed)];
 
         ret changed;
