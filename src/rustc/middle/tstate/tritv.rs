@@ -1,24 +1,8 @@
-import std::bitv;
+import std::bitv::*;
 
 export t;
 export create_tritv;
-export tritv_clone;
-export tritv_set;
-export to_vec;
-export trit;
-export dont_care;
-export ttrue;
-export tfalse;
-export tritv_get;
-export tritv_set_all;
-export tritv_difference;
-export tritv_union;
-export tritv_intersect;
-export tritv_copy;
-export tritv_clear;
-export tritv_kill;
-export tritv_doesntcare;
-export to_str;
+export trit, tfalse, ttrue, dont_care;
 
 /* for a fixed index:
    10 = "this constraint may or may not be true after execution"
@@ -31,17 +15,160 @@ export to_str;
  per discussion at).
 */
 
-type t = {uncertain: bitv::bitv, val: bitv::bitv, nbits: uint};
 enum trit { ttrue, tfalse, dont_care, }
 
-fn create_tritv(len: uint) -> t {
-    ret {uncertain: bitv::bitv(len, true),
-         val: bitv::bitv(len, false),
-         nbits: len};
+class t {
+    // Shouldn't be mut; instead we should have a different
+    // constructor that takes two bitvs
+    let mut uncertain: bitv;
+    let mut val: bitv;
+    let nbits: uint;
+    // next two should be private (#2297)
+    fn set_uncertain(-b: bitv) {
+        self.uncertain <- b;
+    }
+    fn set_val(-b: bitv) {
+        self.val <- b;
+    }
+    fn clone() -> t {
+        let rs = t(self.nbits);
+        let r = self.uncertain.clone();
+        rs.set_uncertain(r);
+        let r1 = self.val.clone();
+        rs.set_val(r1);
+        rs
+    }
+    fn difference(p: t) -> bool {
+        assert (self.nbits == p.nbits);
+        let mut changed = false;
+        for uint::range(0, p.nbits) |i| {
+           let old = p.get(i);
+           let newv = minus(old, p.get(i));
+           changed = change(changed, old, newv);
+           self.set(i, newv);
+        };
+        changed
+    }
+    pure fn get(i: uint) -> trit {
+        let b1 = self.uncertain.get(i);
+        let b2 = self.val.get(i);
+        assert (!(b1 && b2));
+        if b1 { dont_care } else if b2 { ttrue } else { tfalse }
+    }
+    pure fn set(i: uint, t: trit) -> bool {
+        let old = self.get(i);
+        alt t {
+          dont_care {
+            self.uncertain.set(i, true);
+            self.val.set(i, false);
+          }
+          ttrue {
+            self.uncertain.set(i, false);
+            self.val.set(i, true);
+          }
+          tfalse {
+            self.uncertain.set(i, false);
+            self.val.set(i, false);
+          }
+        }
+        change(false, old, t)
+    }
+
+    fn set_all() {
+      for uint::range(0u, self.nbits) |i| {
+         self.set(i, ttrue);
+      }
+    }
+
+    fn clear() {
+      for uint::range(0, self.nbits) |i| {
+         self.set(i, dont_care);
+      }
+    }
+
+    fn kill() {
+       for uint::range(0, self.nbits) |i| {
+           self.set(i, dont_care);
+       }
+    }
+
+    fn doesntcare() -> bool {
+        for uint::range(0, self.nbits) |i| {
+           if self.get(i) != dont_care { ret false; }
+        }
+        true
+    }
+
+    fn to_vec() -> ~[uint] {
+      let mut rslt: ~[uint] = ~[];
+      for uint::range(0, self.nbits) |i| {
+        vec::push(rslt,
+                  alt self.get(i) {
+                      dont_care { 2 }
+                      ttrue     { 1 }
+                      tfalse    { 0 }
+                  });
+      };
+      rslt
+    }
+
+    fn to_str() -> str {
+       let mut rs: str = "";
+       for uint::range(0, self.nbits) |i| {
+        rs +=
+            alt self.get(i) {
+              dont_care { "?" }
+              ttrue { "1" }
+              tfalse { "0" }
+            };
+       };
+       rs
+    }
+
+    fn intersect(p: t) -> bool {
+      assert (self.nbits == p.nbits);
+      let mut changed = false;
+      for uint::range(0, self.nbits) |i| {
+        let old = self.get(i);
+        let newv = trit_and(old, p.get(i));
+        changed = change(changed, old, newv);
+        self.set(i, newv);
+       }
+      ret changed;
+    }
+
+    fn become(source: t) -> bool {
+      assert (self.nbits == source.nbits);
+      let changed = !self.uncertain.equal(source.uncertain) ||
+          !self.val.equal(source.val);
+      self.uncertain.assign(source.uncertain);
+      self.val.assign(source.val);
+      changed
+    }
+
+    fn union(p: t) -> bool {
+        assert (self.nbits == p.nbits);
+        let mut changed = false;
+        for uint::range(0, self.nbits) |i| {
+           let old = self.get(i);
+           let newv = trit_or(old, p.get(i));
+           changed = change(changed, old, newv);
+           self.set(i, newv);
+        }
+        ret changed;
+    }
+
+    new(len: uint) {
+        self.uncertain = mk_bitv(len, true);
+        self.val = mk_bitv(len, false);
+        self.nbits = len;
+    }
 }
 
+fn create_tritv(len: uint) -> t { t(len) }
 
-fn trit_minus(a: trit, b: trit) -> trit {
+
+fn minus(a: trit, b: trit) -> trit {
 
     /*   2 - anything = 2
          1 - 1 = 2
@@ -56,10 +183,6 @@ fn trit_minus(a: trit, b: trit) -> trit {
         alt b {
           ttrue { dont_care }
           tfalse { ttrue }
-
-
-
-
           /* internally contradictory, but
              I guess it'll get flagged? */
           dont_care {
@@ -70,18 +193,14 @@ fn trit_minus(a: trit, b: trit) -> trit {
       tfalse {
         alt b {
           ttrue { tfalse }
-
-
-
-
           /* see above comment */
           _ {
             tfalse
           }
         }
       }
+     }
     }
-}
 
 fn trit_or(a: trit, b: trit) -> trit {
     alt a {
@@ -137,148 +256,9 @@ fn trit_and(a: trit, b: trit) -> trit {
     // a and b were both dont_care
 }
 
-fn change(changed: bool, old: trit, newv: trit) -> bool {
+pure fn change(changed: bool, old: trit, newv: trit) -> bool {
     changed || newv != old
 }
-
-fn tritv_difference(p1: t, p2: t) -> bool {
-    let mut i: uint = 0u;
-    assert (p1.nbits == p2.nbits);
-    let sz: uint = p1.nbits;
-    let mut changed = false;
-    while i < sz {
-        let old = tritv_get(p1, i);
-        let newv = trit_minus(old, tritv_get(p2, i));
-        changed = change(changed, old, newv);
-        tritv_set(i, p1, newv);
-        i += 1u;
-    }
-    ret changed;
-}
-
-fn tritv_union(p1: t, p2: t) -> bool {
-    let mut i: uint = 0u;
-    assert (p1.nbits == p2.nbits);
-    let sz: uint = p1.nbits;
-    let mut changed = false;
-    while i < sz {
-        let old = tritv_get(p1, i);
-        let newv = trit_or(old, tritv_get(p2, i));
-        changed = change(changed, old, newv);
-        tritv_set(i, p1, newv);
-        i += 1u;
-    }
-    ret changed;
-}
-
-fn tritv_intersect(p1: t, p2: t) -> bool {
-    let mut i: uint = 0u;
-    assert (p1.nbits == p2.nbits);
-    let sz: uint = p1.nbits;
-    let mut changed = false;
-    while i < sz {
-        let old = tritv_get(p1, i);
-        let newv = trit_and(old, tritv_get(p2, i));
-        changed = change(changed, old, newv);
-        tritv_set(i, p1, newv);
-        i += 1u;
-    }
-    ret changed;
-}
-
-fn tritv_get(v: t, i: uint) -> trit {
-    let b1 = bitv::get(v.uncertain, i);
-    let b2 = bitv::get(v.val, i);
-    assert (!(b1 && b2));
-    if b1 { dont_care } else if b2 { ttrue } else { tfalse }
-}
-
-fn tritv_set(i: uint, v: t, t: trit) -> bool {
-    let old = tritv_get(v, i);
-    alt t {
-      dont_care {
-        bitv::set(v.uncertain, i, true);
-        bitv::set(v.val, i, false);
-      }
-      ttrue { bitv::set(v.uncertain, i, false); bitv::set(v.val, i, true); }
-      tfalse {
-        bitv::set(v.uncertain, i, false);
-        bitv::set(v.val, i, false);
-      }
-    }
-    ret change(false, old, t);
-}
-
-fn tritv_copy(target: t, source: t) -> bool {
-    assert (target.nbits == source.nbits);
-    let changed =
-        !bitv::equal(target.uncertain, source.uncertain) ||
-            !bitv::equal(target.val, source.val);
-    bitv::assign(target.uncertain, source.uncertain);
-    bitv::assign(target.val, source.val);
-    ret changed;
-}
-
-fn tritv_set_all(v: t) {
-    let mut i: uint = 0u;
-    while i < v.nbits { tritv_set(i, v, ttrue); i += 1u; }
-}
-
-fn tritv_clear(v: t) {
-    let mut i: uint = 0u;
-    while i < v.nbits { tritv_set(i, v, dont_care); i += 1u; }
-}
-
-fn tritv_kill(v: t) {
-    let mut i: uint = 0u;
-    while i < v.nbits { tritv_set(i, v, tfalse); i += 1u; }
-}
-
-fn tritv_clone(v: t) -> t {
-    ret {uncertain: bitv::clone(v.uncertain),
-         val: bitv::clone(v.val),
-         nbits: v.nbits};
-}
-
-fn tritv_doesntcare(v: t) -> bool {
-    let mut i: uint = 0u;
-    while i < v.nbits {
-        if tritv_get(v, i) != dont_care { ret false; }
-        i += 1u;
-    }
-    ret true;
-}
-
-fn to_vec(v: t) -> ~[uint] {
-    let mut i: uint = 0u;
-    let mut rslt: ~[uint] = ~[];
-    while i < v.nbits {
-        vec::push(rslt,
-                  alt tritv_get(v, i) {
-                      dont_care { 2u }
-                      ttrue { 1u }
-                      tfalse { 0u }
-                  });
-        i += 1u;
-    }
-    ret rslt;
-}
-
-fn to_str(v: t) -> ~str {
-    let mut i: uint = 0u;
-    let mut rs: ~str = ~"";
-    while i < v.nbits {
-        rs +=
-            alt tritv_get(v, i) {
-              dont_care { ~"?" }
-              ttrue { ~"1" }
-              tfalse { ~"0" }
-            };
-        i += 1u;
-    }
-    ret rs;
-}
-
 //
 // Local Variables:
 // mode: rust
