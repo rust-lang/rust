@@ -32,6 +32,7 @@ Eric Holk <eric.holk@gmail.com>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Erik Rose <erik@mozilla.com>
 Evan McClanahan <evan@evanmcc.com>
+Francisco Souza <f@souza.cc>
 Gareth Daniel Smith <garethdanielsmith@gmail.com>
 Glenn Willen <gwillen@nerdnet.org>
 Graham Fawcett <fawcett@uwindsor.ca>
