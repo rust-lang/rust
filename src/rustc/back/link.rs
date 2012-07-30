@@ -338,7 +338,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     }
 
     // This calculates CMH as defined above
-    fn crate_meta_extras_hash(symbol_hasher: hash::streaming, _crate: ast::crate,
+    fn crate_meta_extras_hash(symbol_hasher: hash::streaming,
+                              _crate: ast::crate,
                               metas: provided_metas,
                               dep_hashes: ~[@~str]) -> ~str {
         fn len_and_str(s: ~str) -> ~str {
@@ -359,7 +360,9 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                 symbol_hasher.input_str(len_and_str(*key));
                 symbol_hasher.input_str(len_and_str_lit(value));
               }
-              ast::meta_word(name) { symbol_hasher.input_str(len_and_str(*name)); }
+              ast::meta_word(name) {
+                symbol_hasher.input_str(len_and_str(*name));
+              }
               ast::meta_list(_, _) {
                 // FIXME (#607): Implement this
                 fail ~"unimplemented meta_item variant";
