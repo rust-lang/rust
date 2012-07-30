@@ -3099,6 +3099,10 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
     }
 
     let t = alt get(t).struct {
+        ty_rptr(region, mt) {
+            // This type has a region. Get rid of it
+            mk_rptr(cx, re_static, mt)
+        }
         ty_enum(did, r) {
             alt r.self_r {
               some(_) {
