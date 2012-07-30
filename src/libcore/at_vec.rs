@@ -131,25 +131,33 @@ mod unsafe {
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
-    /// Append an element to a vector
     #[inline(always)]
     unsafe fn push<T>(&v: @[const T], +initval: T) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
-            (**repr).fill += sys::size_of::<T>();
-            let p = addr_of((**repr).data);
-            let p = ptr::offset(p, fill) as *mut T;
-            rusti::move_val_init(*p, initval);
+            push_fast(v, initval);
         }
         else {
             push_slow(v, initval);
         }
     }
+    // This doesn't bother to make sure we have space.
+    #[inline(always)] // really pretty please
+    unsafe fn push_fast<T>(&v: @[const T], +initval: T) {
+        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let fill = (**repr).fill;
+        (**repr).fill += sys::size_of::<T>();
+        let p = ptr::addr_of((**repr).data);
+        let p = ptr::offset(p, fill) as *mut T;
+        rusti::move_val_init(*p, initval);
+    }
+
     unsafe fn push_slow<T>(&v: @[const T], +initval: T) {
         reserve_at_least(v, v.len() + 1u);
-        push(v, initval);
+        push_fast(v, initval);
     }
+
     /**
      * Reserves capacity for exactly `n` elements in the given vector.
      *
