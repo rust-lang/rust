@@ -14,7 +14,7 @@
 /// The base price of a muffin on a non-holiday
 const price_of_a_muffin: float = 70f;
 
-type waitress = {
+type waitperson = {
     hair_color: ~str
 };
 
@@ -27,7 +27,7 @@ enum omnomnomy {
 }
 
 fn take_my_order_please(
-    _waitress: waitress,
+    _waitperson: waitperson,
     _order: ~[omnomnomy]
 ) -> uint {
 
@@ -36,7 +36,7 @@ fn take_my_order_please(
      *
      * # Arguments
      *
-     * * _waitress - The waitress that you want to bother
+     * * _waitperson - The waitperson that you want to bother
      * * _order - The order vector. It should be filled with food
      *
      * # Return
