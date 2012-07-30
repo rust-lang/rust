@@ -51,7 +51,7 @@ fn doc_meta(
 
     if vec::is_not_empty(doc_metas) {
         if vec::len(doc_metas) != 1u {
-            #warn("ignoring %u doc attributes", vec::len(doc_metas) - 1u);
+            warn!{"ignoring %u doc attributes", vec::len(doc_metas) - 1u};
         }
         some(doc_metas[0])
     } else {

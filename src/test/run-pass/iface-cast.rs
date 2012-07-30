@@ -27,8 +27,8 @@ impl of to_str for int {
 impl of to_str for Tree {
     fn to_str() -> ~str {
         let l = self.left, r = self.right;
-        #fmt["[%s, %s, %s]", self.val.to_str(),
-             l.to_str(), r.to_str()]
+        fmt!{"[%s, %s, %s]", self.val.to_str(),
+             l.to_str(), r.to_str()}
     }
 }
 

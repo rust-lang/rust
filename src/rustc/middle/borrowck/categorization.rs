@@ -89,8 +89,8 @@ fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
       some(k) {k}
       none {
         tcx.sess.bug(
-            #fmt["deref_cat() invoked on non-derefable type %s",
-                 ty_to_str(tcx, t)]);
+            fmt!{"deref_cat() invoked on non-derefable type %s",
+                 ty_to_str(tcx, t)});
       }
     }
 }
@@ -118,15 +118,15 @@ impl public_methods for borrowck_ctxt {
           _ {
             self.tcx.sess.span_bug(
                 expr.span,
-                #fmt["Borrowing of non-derefable type `%s`",
-                     ty_to_str(self.tcx, expr_ty)]);
+                fmt!{"Borrowing of non-derefable type `%s`",
+                     ty_to_str(self.tcx, expr_ty)});
           }
         }
     }
 
     fn cat_expr(expr: @ast::expr) -> cmt {
-        #debug["cat_expr: id=%d expr=%s",
-               expr.id, pprust::expr_to_str(expr)];
+        debug!{"cat_expr: id=%d expr=%s",
+               expr.id, pprust::expr_to_str(expr)};
 
         let tcx = self.tcx;
         let expr_ty = tcx.ty(expr);
@@ -142,8 +142,8 @@ impl public_methods for borrowck_ctxt {
               none {
                 tcx.sess.span_bug(
                     e_base.span,
-                    #fmt["Explicit deref of non-derefable type `%s`",
-                         ty_to_str(tcx, tcx.ty(e_base))]);
+                    fmt!{"Explicit deref of non-derefable type `%s`",
+                         ty_to_str(tcx, tcx.ty(e_base))});
               }
             }
           }
@@ -318,8 +318,8 @@ impl public_methods for borrowck_ctxt {
           none {
             self.tcx.sess.span_bug(
                 node.span(),
-                #fmt["Cannot find field `%s` in type `%s`",
-                     *f_name, ty_to_str(self.tcx, base_cmt.ty)]);
+                fmt!{"Cannot find field `%s` in type `%s`",
+                     *f_name, ty_to_str(self.tcx, base_cmt.ty)});
           }
         };
         let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
@@ -382,8 +382,8 @@ impl public_methods for borrowck_ctxt {
           none {
             self.tcx.sess.span_bug(
                 expr.span,
-                #fmt["Explicit index of non-index type `%s`",
-                     ty_to_str(self.tcx, base_cmt.ty)]);
+                fmt!{"Explicit index of non-index type `%s`",
+                     ty_to_str(self.tcx, base_cmt.ty)});
           }
         };
 

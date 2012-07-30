@@ -16,7 +16,7 @@ class frame {
 
 fn walk_stack(visit: fn(frame) -> bool) {
 
-    #debug("beginning stack walk");
+    debug!{"beginning stack walk"};
 
     do frame_address |frame_pointer| {
         let mut frame_address: *word = unsafe {
@@ -25,14 +25,14 @@ fn walk_stack(visit: fn(frame) -> bool) {
         loop {
             let fr = frame(frame_address);
 
-            #debug("frame: %x", unsafe { reinterpret_cast(fr.fp) });
+            debug!{"frame: %x", unsafe { reinterpret_cast(fr.fp) }};
             visit(fr);
 
             unsafe {
                 let next_fp: **word = reinterpret_cast(frame_address);
                 frame_address = *next_fp;
                 if *frame_address == 0u {
-                    #debug("encountered task_start_wrapper. ending walk");
+                    debug!{"encountered task_start_wrapper. ending walk"};
                     // This is the task_start_wrapper_frame. There is
                     // no stack beneath it and it is a foreign frame.
                     break;

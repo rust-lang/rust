@@ -248,9 +248,9 @@ fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
 
 fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
-    #debug["add_clean(%s, %s, %s)",
+    debug!{"add_clean(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty)];
+           ty_to_str(cx.ccx().tcx, ty)};
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |info| {
         vec::push(info.cleanups, clean(|a| base::drop_ty(a, val, ty),
@@ -260,9 +260,9 @@ fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
-    #debug["add_clean_temp(%s, %s, %s)",
+    debug!{"add_clean_temp(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty)];
+           ty_to_str(cx.ccx().tcx, ty)};
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
        block {
@@ -280,9 +280,9 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
-    #debug["add_clean_temp_mem(%s, %s, %s)",
+    debug!{"add_clean_temp_mem(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty)];
+           ty_to_str(cx.ccx().tcx, ty)};
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |info| {
         vec::push(info.cleanups,
@@ -459,8 +459,8 @@ fn in_scope_cx(cx: block, f: fn(scope_info)) {
 fn block_parent(cx: block) -> block {
     alt cx.parent {
       some(b) { b }
-      none    { cx.sess().bug(#fmt("block_parent called on root block %?",
-                                   cx)); }
+      none    { cx.sess().bug(fmt!{"block_parent called on root block %?",
+                                   cx}); }
     }
 }
 
@@ -480,10 +480,10 @@ impl bcx_cxs for block {
     fn to_str() -> ~str {
         alt self.node_info {
           some(node_info) {
-            #fmt["[block %d]", node_info.id]
+            fmt!{"[block %d]", node_info.id}
           }
           none {
-            #fmt["[block %x]", ptr::addr_of(*self) as uint]
+            fmt!{"[block %x]", ptr::addr_of(*self) as uint}
           }
         }
     }
@@ -997,8 +997,8 @@ fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
                     fields: ~[ty::field])
     -> uint {
     alt ty::field_idx(ident, fields) {
-       none { cx.sess.span_bug(sp, #fmt("base expr doesn't appear to \
-                 have a field named %s", *ident)); }
+       none { cx.sess.span_bug(sp, fmt!{"base expr doesn't appear to \
+                 have a field named %s", *ident}); }
        some(i) { i }
     }
 }

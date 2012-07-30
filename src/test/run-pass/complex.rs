@@ -28,6 +28,6 @@ fn foo(x: int) -> int {
 fn main() {
     let x: int = 2 + 2;
     log(debug, x);
-    #debug("hello, world");
+    debug!{"hello, world"};
     log(debug, 10);
 }

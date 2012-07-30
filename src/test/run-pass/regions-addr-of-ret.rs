@@ -4,6 +4,6 @@ fn f(x : &a/int) -> &a/int {
 
 fn main() {
     let three = &3;
-    log(error, #fmt("%d", *f(three)));
+    log(error, fmt!{"%d", *f(three)});
 }
 

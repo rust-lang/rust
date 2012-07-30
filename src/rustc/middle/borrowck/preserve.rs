@@ -58,9 +58,9 @@ impl private_methods for &preserve_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
     fn preserve(cmt: cmt) -> bckres<preserve_condition> {
-        #debug["preserve(cmt=%s, root_ub=%?, root_managed_data=%b)",
+        debug!{"preserve(cmt=%s, root_ub=%?, root_managed_data=%b)",
                self.bccx.cmt_to_repr(cmt), self.root_ub,
-               self.root_managed_data];
+               self.root_managed_data};
         let _i = indenter();
 
         alt cmt.cat {
@@ -148,7 +148,7 @@ impl private_methods for &preserve_ctxt {
             // otherwise we have no guarantee the pointer will stay
             // live, so we must root the pointer (i.e., inc the ref
             // count) for the duration of the loan.
-            #debug["base.mutbl = %?", self.bccx.mut_to_str(base.mutbl)];
+            debug!{"base.mutbl = %?", self.bccx.mut_to_str(base.mutbl)};
             if base.mutbl == m_imm {
                 let non_rooting_ctxt =
                     preserve_ctxt({root_managed_data: false with **self});
@@ -157,12 +157,12 @@ impl private_methods for &preserve_ctxt {
                     ok(pc_ok)
                   }
                   ok(pc_if_pure(_)) {
-                    #debug["must root @T, otherwise purity req'd"];
+                    debug!{"must root @T, otherwise purity req'd"};
                     self.attempt_root(cmt, base, derefs)
                   }
                   err(e) => {
-                    #debug["must root @T, err: %s",
-                           self.bccx.bckerr_code_to_str(e.code)];
+                    debug!{"must root @T, err: %s",
+                           self.bccx.bckerr_code_to_str(e.code)};
                     self.attempt_root(cmt, base, derefs)
                   }
                 }

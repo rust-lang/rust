@@ -13,7 +13,7 @@ class cat<T: copy> : map<int, T> {
     let mut meows : int;
     fn meow() {
       self.meows += 1;
-      #error("Meow %d", self.meows);
+      error!{"Meow %d", self.meows};
       if self.meows % 5 == 0 {
           self.how_hungry += 1;
       }
@@ -30,12 +30,12 @@ class cat<T: copy> : map<int, T> {
 
   fn eat() -> bool {
     if self.how_hungry > 0 {
-        #error("OM NOM NOM");
+        error!{"OM NOM NOM"};
         self.how_hungry -= 2;
         ret true;
     }
     else {
-        #error("Not hungry!");
+        error!{"Not hungry!"};
         ret false;
     }
   }

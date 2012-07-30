@@ -20,7 +20,7 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
     let mut v2 : u64 = k0 ^ 0x6c79_6765_6e65_7261;
     let mut v3 : u64 = k1 ^ 0x7465_6462_7974_6573;
 
-    #macro([#u8to64_le(buf,i),
+    #macro[[#u8to64_le(buf,i),
             (buf[0+i] as u64 |
              buf[1+i] as u64 << 8 |
              buf[2+i] as u64 << 16 |
@@ -28,16 +28,16 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
              buf[4+i] as u64 << 32 |
              buf[5+i] as u64 << 40 |
              buf[6+i] as u64 << 48 |
-             buf[7+i] as u64 << 56)]);
+             buf[7+i] as u64 << 56)]];
 
-    #macro([#rotl(x,b), (x << b) | (x >> (64 - b))]);
+    #macro[[#rotl(x,b), (x << b) | (x >> (64 - b))]];
 
-    #macro([#compress(v0,v1,v2,v3), {
+    #macro[[#compress(v0,v1,v2,v3), {
         v0 += v1; v1 = #rotl(v1, 13); v1 ^= v0; v0 = #rotl(v0, 32);
         v2 += v3; v3 = #rotl(v3, 16); v3 ^= v2;
         v0 += v3; v3 = #rotl(v3, 21); v3 ^= v0;
         v2 += v1; v1 = #rotl(v1, 17); v1 ^= v2; v2 = #rotl(v2, 32);
-    }]);
+    }]];
 
     let len = vec::len(buf);
     let end = len & (!0x7);
@@ -45,10 +45,10 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
 
     let mut i = 0;
     while i < end {
-        let m = #u8to64_le(buf, i);
+        let m = u8to64_le!{buf, i};
         v3 ^= m;
-        #compress(v0,v1,v2,v3);
-        #compress(v0,v1,v2,v3);
+        compress!{v0,v1,v2,v3};
+        compress!{v0,v1,v2,v3};
         v0 ^= m;
         i += 8;
     }
@@ -64,16 +64,16 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
     if left > 6 { b |= buf[i + 6] as u64 << 48; }
 
     v3 ^= b;
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
     v0 ^= b;
 
     v2 ^= 0xff;
 
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
 
     ret v0 ^ v1 ^ v2 ^ v3;
 }
@@ -127,11 +127,11 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
                 t += 1;
             }
 
-            let m = #u8to64_le(st.tail, 0);
+            let m = u8to64_le!{st.tail, 0};
 
             st.v3 ^= m;
-            #compress(st.v0, st.v1, st.v2, st.v3);
-            #compress(st.v0, st.v1, st.v2, st.v3);
+            compress!{st.v0, st.v1, st.v2, st.v3};
+            compress!{st.v0, st.v1, st.v2, st.v3};
             st.v0 ^= m;
 
             st.ntail = 0;
@@ -143,11 +143,11 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
 
         let mut i = needed;
         while i < end {
-            let mi = #u8to64_le(msg, i);
+            let mi = u8to64_le!{msg, i};
 
             st.v3 ^= mi;
-            #compress(st.v0, st.v1, st.v2, st.v3);
-            #compress(st.v0, st.v1, st.v2, st.v3);
+            compress!{st.v0, st.v1, st.v2, st.v3};
+            compress!{st.v0, st.v1, st.v2, st.v3};
             st.v0 ^= mi;
 
             i += 8;
@@ -179,15 +179,15 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
         if st.ntail > 6 { b |= st.tail[6] as u64 << 48; }
 
         v3 ^= b;
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
         v0 ^= b;
 
         v2 ^= 0xff;
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
 
         let h = v0 ^ v1 ^ v2 ^ v3;
 
@@ -323,10 +323,10 @@ fn test_siphash() {
     }
 
     while t < 64 {
-        #debug("siphash test %?", t);
-        let vec = #u8to64_le(vecs[t], 0);
+        debug!{"siphash test %?", t};
+        let vec = u8to64_le!{vecs[t], 0};
         let out = hash_bytes_keyed(buf, k0, k1);
-        #debug("got %?, expected %?", out, vec);
+        debug!{"got %?, expected %?", out, vec};
         assert vec == out;
 
         stream_full.reset();
@@ -334,7 +334,7 @@ fn test_siphash() {
         let f = stream_full.result_str();
         let i = stream_inc.result_str();
         let v = to_hex_str(vecs[t]);
-        #debug["%d: (%s) => inc=%s full=%s", t, v, i, f];
+        debug!{"%d: (%s) => inc=%s full=%s", t, v, i, f};
 
         assert f == i && f == v;
 

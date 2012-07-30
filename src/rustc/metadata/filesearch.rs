@@ -62,7 +62,7 @@ fn mk_filesearch(maybe_sysroot: option<path>,
     }
 
     let sysroot = get_sysroot(maybe_sysroot);
-    #debug("using sysroot = %s", sysroot);
+    debug!{"using sysroot = %s", sysroot};
     {sysroot: sysroot,
      addl_lib_search_paths: addl_lib_search_paths,
      target_triple: target_triple} as filesearch
@@ -71,16 +71,16 @@ fn mk_filesearch(maybe_sysroot: option<path>,
 fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     let mut rslt = none;
     for filesearch.lib_search_paths().each |lib_search_path| {
-        #debug("searching %s", lib_search_path);
+        debug!{"searching %s", lib_search_path};
         for os::list_dir_path(lib_search_path).each |path| {
-            #debug("testing %s", path);
+            debug!{"testing %s", path};
             let maybe_picked = pick(path);
             if option::is_some(maybe_picked) {
-                #debug("picked %s", path);
+                debug!{"picked %s", path};
                 rslt = maybe_picked;
                 break;
             } else {
-                #debug("rejected %s", path);
+                debug!{"rejected %s", path};
             }
         }
         if option::is_some(rslt) { break; }
@@ -172,7 +172,7 @@ fn get_cargo_lib_path_nearest() -> result<path, ~str> {
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
 fn libdir() -> ~str {
-   let libdir = #env("CFG_LIBDIR");
+   let libdir = env!{"CFG_LIBDIR"};
    if str::is_empty(libdir) {
       fail ~"rustc compiled without CFG_LIBDIR environment variable";
    }

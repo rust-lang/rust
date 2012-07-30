@@ -9,7 +9,7 @@ mod foo {
 mod bar {
     export y;
 
-    fn x() { #debug("x"); }
+    fn x() { debug!{"x"}; }
 
     fn y() { }
 }

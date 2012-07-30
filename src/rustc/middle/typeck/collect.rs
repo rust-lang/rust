@@ -92,8 +92,8 @@ impl of ast_conv for @crate_ctxt {
                 ty_of_foreign_item(self, foreign_item)
               }
               x {
-                self.tcx.sess.bug(#fmt["unexpected sort of item \
-                                        in get_item_ty(): %?", x]);
+                self.tcx.sess.bug(fmt!{"unexpected sort of item \
+                                        in get_item_ty(): %?", x});
               }
             }
         }
@@ -194,11 +194,11 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     }
 
     if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
-        tcx.sess.span_err(sp,#fmt["method `%s` has %u parameters \
+        tcx.sess.span_err(sp,fmt!{"method `%s` has %u parameters \
                                    but the trait has %u",
                                   *if_m.ident,
                                   vec::len(impl_m.fty.inputs),
-                                  vec::len(if_m.fty.inputs)]);
+                                  vec::len(if_m.fty.inputs)});
         ret;
     }
 
@@ -258,9 +258,9 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
           some({mty: m, id, span}) {
             if m.purity != if_m.purity {
                 ccx.tcx.sess.span_err(
-                    span, #fmt["method `%s`'s purity does \
+                    span, fmt!{"method `%s`'s purity does \
                                 not match the trait method's \
-                                purity", *m.ident]);
+                                purity", *m.ident});
             }
             compare_impl_method(
                 ccx.tcx, span, m, vec::len(tps),
@@ -272,7 +272,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
 
             tcx.sess.span_err(
                 a_trait_ty.path.span,
-                #fmt["missing method `%s`", *if_m.ident]);
+                fmt!{"missing method `%s`", *if_m.ident});
           }
         } // alt
     } // |if_m|
@@ -316,7 +316,7 @@ fn convert_methods(ccx: @crate_ctxt,
 fn convert(ccx: @crate_ctxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.contains_key(it.id);
-    #debug["convert: item %s with id %d rp %b", *it.ident, it.id, rp];
+    debug!{"convert: item %s with id %d rp %b", *it.ident, it.id, rp};
     alt it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) {}
@@ -341,8 +341,8 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
       }
       ast::item_trait(*) {
         let tpt = ty_of_item(ccx, it);
-        #debug["item_trait(it.id=%d, tpt.ty=%s)",
-               it.id, ty_to_str(tcx, tpt.ty)];
+        debug!{"item_trait(it.id=%d, tpt.ty=%s)",
+               it.id, ty_to_str(tcx, tpt.ty)};
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         ensure_trait_methods(ccx, it.id);
       }
@@ -501,8 +501,8 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         let tpt = {bounds: bounds,
                    rp: false, // functions do not have a self
                    ty: ty::mk_fn(ccx.tcx, tofd)};
-        #debug["type of %s (id %d) is %s",
-               *it.ident, it.id, ty_to_str(tcx, tpt.ty)];
+        debug!{"type of %s (id %d) is %s",
+               *it.ident, it.id, ty_to_str(tcx, tpt.ty)};
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }

@@ -40,25 +40,25 @@ fn main() {
     let expr4 = #ast{2 - $(#ast{3}) + 9};
     check_pp(expr4,  pprust::print_expr, ~"2 - 3 + 9");
 
-    let ty = #ast(ty){int};
+    let ty = #ast[ty]{int};
     check_pp(ty, pprust::print_type, ~"int");
 
-    let ty2 = #ast(ty){option<$(ty)>};
+    let ty2 = #ast[ty]{option<$(ty)>};
     check_pp(ty2, pprust::print_type, ~"option<int>");
 
-    let item = #ast(item){const x : int = 10;};
+    let item = #ast[item]{const x : int = 10;};
     check_pp(item, pprust::print_item, ~"const x: int = 10;");
 
-    let item2: @ast::item = #ast(item){const x : int = $(abc);};
+    let item2: @ast::item = #ast[item]{const x : int = $(abc);};
     check_pp(item2, pprust::print_item, ~"const x: int = 23;");
 
-    let stmt = #ast(stmt){let x = 20;};
+    let stmt = #ast[stmt]{let x = 20;};
     check_pp(*stmt, pprust::print_stmt, ~"let x = 20;");
 
-    let stmt2 = #ast(stmt){let x : $(ty) = $(abc);};
+    let stmt2 = #ast[stmt]{let x : $(ty) = $(abc);};
     check_pp(*stmt2, pprust::print_stmt, ~"let x: int = 23;");
 
-    let pat = #ast(pat){some(_)};
+    let pat = #ast[pat]{some(_)};
     check_pp(pat, pprust::print_pat, ~"some(_)");
 
     // issue #1785
@@ -73,13 +73,13 @@ fn main() {
     let test3 = #ast{$(x) + $(y)};
     check_pp(test3, pprust::print_expr, ~"1 + 2");
 
-    let crate = #ast(crate) { fn a() { } };
+    let crate = #ast[crate] { fn a() { } };
     check_pp(crate, pprust::print_crate_, ~"fn a() { }\n");
 
     // issue #1926
-    let s = #ast(expr){__s};
-    let e = #ast(expr){__e};
-    let call = #ast(expr){$(s).foo(|__e| $(e) )};
+    let s = #ast[expr]{__s};
+    let e = #ast[expr]{__e};
+    let call = #ast[expr]{$(s).foo(|__e| $(e) )};
     check_pp(call, pprust::print_expr, ~"__s.foo(|__e| __e)")
 }
 
@@ -91,7 +91,7 @@ fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: ~str) {
     let str = mem_buffer_str(buf);
     stdout().write_line(str);
     if expect != ~"" {
-        #error("expect: '%s', got: '%s'", expect, str);
+        error!{"expect: '%s', got: '%s'", expect, str};
         assert str == expect;
     }
 }

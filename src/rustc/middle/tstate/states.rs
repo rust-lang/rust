@@ -174,9 +174,9 @@ fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
     // bug)
     if vec::len(bs) != vec::len(ops) {
         fcx.ccx.tcx.sess.span_bug(a.span,
-                                  #fmt["mismatched arg lengths: \
+                                  fmt!{"mismatched arg lengths: \
                                         %u exprs vs. %u ops",
-                                       vec::len(bs), vec::len(ops)]);
+                                       vec::len(bs), vec::len(ops)});
     }
     ret find_pre_post_state_exprs(fcx, pres, id, ops,
                                    bs, cf) || changed;
@@ -299,7 +299,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                       return_val);
       }
       expr_call(operator, operands, _) {
-        #debug["hey it's a call: %s", expr_to_str(e)];
+        debug!{"hey it's a call: %s", expr_to_str(e)};
         ret find_pre_post_state_call(fcx, pres, operator, e.id,
                                      callee_arg_init_ops(fcx, operator.id),
                                      operands,
@@ -505,10 +505,10 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     let stmt_ann = stmt_to_ann(fcx.ccx, *s);
 
-    #debug["[ %s ]", *fcx.name];
-    #debug["*At beginning: stmt = %s", stmt_to_str(*s)];
-    #debug["*prestate = %s", stmt_ann.states.prestate.to_str()];
-    #debug["*poststate = %s", stmt_ann.states.prestate.to_str()];
+    debug!{"[ %s ]", *fcx.name};
+    debug!{"*At beginning: stmt = %s", stmt_to_str(*s)};
+    debug!{"*prestate = %s", stmt_ann.states.prestate.to_str()};
+    debug!{"*poststate = %s", stmt_ann.states.prestate.to_str()};
 
     alt s.node {
       stmt_decl(adecl, id) {
@@ -524,10 +524,10 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
             let mut changed =
                 set_poststate(stmt_ann, c_and_p.post) | c_and_p.changed;
 
-            #debug["Summary: stmt = %s", stmt_to_str(*s)];
-            #debug["prestate = %s", stmt_ann.states.prestate.to_str()];
-            #debug["poststate = %s", stmt_ann.states.poststate.to_str()];
-            #debug["changed = %s", bool::to_str(changed)];
+            debug!{"Summary: stmt = %s", stmt_to_str(*s)};
+            debug!{"prestate = %s", stmt_ann.states.prestate.to_str()};
+            debug!{"poststate = %s", stmt_ann.states.poststate.to_str()};
+            debug!{"changed = %s", bool::to_str(changed)};
 
             ret changed;
           }
@@ -544,10 +544,10 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
                 set_poststate(stmt_ann, expr_poststate(fcx.ccx, ex));
 
 
-        #debug["Finally: %s", stmt_to_str(*s)];
-        #debug["prestate = %s", stmt_ann.states.prestate.to_str()];
-        #debug["poststate = %s", stmt_ann.states.poststate.to_str()];
-        #debug["changed = %s", bool::to_str(changed)];
+        debug!{"Finally: %s", stmt_to_str(*s)};
+        debug!{"prestate = %s", stmt_ann.states.prestate.to_str()};
+        debug!{"poststate = %s", stmt_ann.states.poststate.to_str()};
+        debug!{"changed = %s", bool::to_str(changed)};
 
         ret changed;
       }
@@ -602,7 +602,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
     let mut changed = find_pre_post_state_block(fcx, block_pre, f_body);
 
     /*
-        #error("find_pre_post_state_fn");
+        error!{"find_pre_post_state_fn"};
         log(error, changed);
         fcx.ccx.tcx.sess.span_note(f_body.span, fcx.name);
     */

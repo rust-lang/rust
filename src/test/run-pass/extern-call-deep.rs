@@ -12,12 +12,12 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
 }
 
 fn count(n: uint) -> uint {
-    #debug("n = %?", n);
+    debug!{"n = %?", n};
     rustrt::rust_dbg_call(cb, n)
 }
 
 fn main() {
     let result = count(1000u);
-    #debug("result = %?", result);
+    debug!{"result = %?", result};
     assert result == 1000u;
 }

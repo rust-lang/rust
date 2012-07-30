@@ -632,7 +632,7 @@ impl of to_str::to_str for json {
 
 impl of to_str::to_str for error {
     fn to_str() -> ~str {
-        #fmt("%u:%u: %s", self.line, self.col, *self.msg)
+        fmt!{"%u:%u: %s", self.line, self.col, *self.msg}
     }
 }
 

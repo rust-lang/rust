@@ -10,8 +10,8 @@ fn main() {
     // wrap around to a small number.
 
     let idx = uint::max_value & !(uint::max_value >> 1u);
-    #error("ov2 idx = 0x%x", idx);
+    error!{"ov2 idx = 0x%x", idx};
 
     // This should fail.
-    #error("ov2 0x%x",  x[idx]);
+    error!{"ov2 0x%x",  x[idx]};
 }

@@ -16,7 +16,7 @@ fn run(config: config, testfile: ~str) {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str(~"\n\n");
     }
-    #debug("running %s", testfile);
+    debug!{"running %s", testfile};
     let props = load_props(testfile);
     alt config.mode {
       mode_compile_fail { run_cfail_test(config, props, testfile); }
@@ -68,8 +68,8 @@ fn check_correct_failure_status(procres: procres) {
     const rust_err: int = 101;
     if procres.status != rust_err {
         fatal_procres(
-            #fmt("failure produced the wrong error code: %d",
-                 procres.status),
+            fmt!{"failure produced the wrong error code: %d",
+                 procres.status},
             procres);
     }
 }
@@ -96,11 +96,11 @@ fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
 
     let mut round = 0;
     while round < rounds {
-        logv(config, #fmt["pretty-printing round %d", round]);
+        logv(config, fmt!{"pretty-printing round %d", round});
         let procres = print_source(config, testfile, srcs[round]);
 
         if procres.status != 0 {
-            fatal_procres(#fmt["pretty-printing failed in round %d", round],
+            fatal_procres(fmt!{"pretty-printing failed in round %d", round},
                           procres);
         }
 
@@ -151,7 +151,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
         if expected != actual {
             error(~"pretty-printed source does not match expected source");
             let msg =
-                #fmt["\n\
+                fmt!{"\n\
 expected:\n\
 ------------------------------------------\n\
 %s\n\
@@ -161,7 +161,7 @@ actual:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-                     expected, actual];
+                     expected, actual};
             io::stdout().write_str(msg);
             fail;
         }
@@ -201,10 +201,10 @@ fn check_error_patterns(props: test_props,
     let mut done = false;
     for str::split_char(procres.stderr, '\n').each |line| {
         if str::contains(line, next_err_pat) {
-            #debug("found error pattern %s", next_err_pat);
+            debug!{"found error pattern %s", next_err_pat};
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
-                #debug("found all error patterns");
+                debug!{"found all error patterns"};
                 done = true;
                 break;
             }
@@ -217,11 +217,11 @@ fn check_error_patterns(props: test_props,
         vec::slice(props.error_patterns, next_err_idx,
                    vec::len(props.error_patterns));
     if vec::len(missing_patterns) == 1u {
-        fatal_procres(#fmt["error pattern '%s' not found!",
-                           missing_patterns[0]], procres);
+        fatal_procres(fmt!{"error pattern '%s' not found!",
+                           missing_patterns[0]}, procres);
     } else {
         for missing_patterns.each |pattern| {
-            error(#fmt["error pattern '%s' not found!", pattern]);
+            error(fmt!{"error pattern '%s' not found!", pattern});
         }
         fatal_procres(~"multiple error patterns not found", procres);
     }
@@ -240,7 +240,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
     }
 
     let prefixes = vec::map(expected_errors, |ee| {
-        #fmt("%s:%u:", testfile, ee.line)
+        fmt!{"%s:%u:", testfile, ee.line}
     });
 
     // Scan and extract our error/warning messages,
@@ -253,8 +253,8 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
-                #debug["prefix=%s ee.kind=%s ee.msg=%s line=%s",
-                       prefixes[i], ee.kind, ee.msg, line];
+                debug!{"prefix=%s ee.kind=%s ee.msg=%s line=%s",
+                       prefixes[i], ee.kind, ee.msg, line};
                 if (str::starts_with(line, prefixes[i]) &&
                     str::contains(line, ee.kind) &&
                     str::contains(line, ee.msg)) {
@@ -272,7 +272,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
 
         if !was_expected && (str::contains(line, ~"error") ||
                              str::contains(line, ~"warning")) {
-            fatal_procres(#fmt["unexpected error pattern '%s'!", line],
+            fatal_procres(fmt!{"unexpected error pattern '%s'!", line},
                           procres);
         }
     }
@@ -280,8 +280,8 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
     for uint::range(0u, vec::len(found_flags)) |i| {
         if !found_flags[i] {
             let ee = expected_errors[i];
-            fatal_procres(#fmt["expected %s on line %u not found: %s",
-                               ee.kind, ee.line, ee.msg], procres);
+            fatal_procres(fmt!{"expected %s on line %u not found: %s",
+                               ee.kind, ee.line, ee.msg}, procres);
         }
     }
 }
@@ -330,7 +330,7 @@ fn compose_and_run_compiler(
                                      config.compile_lib_path, option::none);
         if auxres.status != 0 {
             fatal_procres(
-                #fmt["auxiliary build of %s failed to compile: ", abs_ab],
+                fmt!{"auxiliary build of %s failed to compile: ", abs_ab},
                 auxres);
         }
     }
@@ -342,7 +342,7 @@ fn compose_and_run_compiler(
 fn ensure_dir(path: path) {
     if os::path_is_dir(path) { ret; }
     if !os::make_dir(path, 0x1c0i32) {
-        fail #fmt("can't make dir %s", path);
+        fail fmt!{"can't make dir %s", path};
     }
 }
 
@@ -414,7 +414,7 @@ fn program_output(config: config, testfile: ~str, lib_path: ~str, prog: ~str,
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
-            logv(config, #fmt["executing %s", cmdline]);
+            logv(config, fmt!{"executing %s", cmdline});
             cmdline
         };
     let res = procsrv::run(lib_path, prog, args, env, input);
@@ -430,19 +430,19 @@ fn program_output(config: config, testfile: ~str, lib_path: ~str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: ~str, prog: ~str, args: ~[~str]) -> ~str {
-    #fmt["%s %s", prog, str::connect(args, ~" ")]
+    fmt!{"%s %s", prog, str::connect(args, ~" ")}
 }
 
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: ~str, prog: ~str, args: ~[~str]) -> ~str {
-    #fmt["%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, ~" ")]
+    fmt!{"%s %s %s", lib_path_cmd_prefix(libpath), prog,
+         str::connect(args, ~" ")}
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
 fn lib_path_cmd_prefix(path: ~str) -> ~str {
-    #fmt["%s=\"%s\"", util::lib_path_env_var(), util::make_new_path(path)]
+    fmt!{"%s=\"%s\"", util::lib_path_env_var(), util::make_new_path(path)}
 }
 
 fn dump_output(config: config, testfile: ~str, out: ~str, err: ~str) {
@@ -475,13 +475,13 @@ fn output_testname(testfile: ~str) -> ~str {
 fn output_base_name(config: config, testfile: ~str) -> ~str {
     let base = config.build_base;
     let filename = output_testname(testfile);
-    #fmt["%s%s.%s", base, filename, config.stage_id]
+    fmt!{"%s%s.%s", base, filename, config.stage_id}
 }
 
 fn maybe_dump_to_stdout(config: config, out: ~str, err: ~str) {
     if config.verbose {
-        let sep1 = #fmt["------%s------------------------------", ~"stdout"];
-        let sep2 = #fmt["------%s------------------------------", ~"stderr"];
+        let sep1 = fmt!{"------%s------------------------------", ~"stdout"};
+        let sep2 = fmt!{"------%s------------------------------", ~"stderr"};
         let sep3 = ~"------------------------------------------";
         io::stdout().write_line(sep1);
         io::stdout().write_line(out);
@@ -491,13 +491,13 @@ fn maybe_dump_to_stdout(config: config, out: ~str, err: ~str) {
     }
 }
 
-fn error(err: ~str) { io::stdout().write_line(#fmt["\nerror: %s", err]); }
+fn error(err: ~str) { io::stdout().write_line(fmt!{"\nerror: %s", err}); }
 
 fn fatal(err: ~str) -> ! { error(err); fail; }
 
 fn fatal_procres(err: ~str, procres: procres) -> ! {
     let msg =
-        #fmt["\n\
+        fmt!{"\n\
 error: %s\n\
 command: %s\n\
 stdout:\n\
@@ -509,7 +509,7 @@ stderr:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-             err, procres.cmdline, procres.stdout, procres.stderr];
+             err, procres.cmdline, procres.stdout, procres.stderr};
     io::stdout().write_str(msg);
     fail;
 }

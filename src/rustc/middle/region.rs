@@ -187,7 +187,7 @@ fn record_parent(cx: ctxt, child_id: ast::node_id) {
     alt cx.parent {
       none { /* no-op */ }
       some(parent_id) {
-        #debug["parent of node %d is node %d", child_id, parent_id];
+        debug!{"parent of node %d is node %d", child_id, parent_id};
         cx.region_map.insert(child_id, parent_id);
       }
     }
@@ -232,11 +232,11 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     let mut new_cx = cx;
     alt expr.node {
       ast::expr_call(*) => {
-        #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
+        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr)};
         new_cx.parent = some(expr.id);
       }
       ast::expr_alt(subexpr, _, _) => {
-        #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
+        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr)};
         new_cx.parent = some(expr.id);
       }
       ast::expr_fn(_, _, _, cap_clause) |
@@ -289,9 +289,9 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
       }
     };
 
-    #debug["visiting fn with body %d. cx.parent: %? \
+    debug!{"visiting fn with body %d. cx.parent: %? \
             fn_cx.parent: %?",
-           body.node.id, cx.parent, fn_cx.parent];
+           body.node.id, cx.parent, fn_cx.parent};
 
     for decl.inputs.each |input| {
         cx.region_map.insert(input.id, body.node.id);
@@ -367,19 +367,19 @@ impl methods for determine_rp_ctxt {
     fn add_rp(id: ast::node_id) {
         assert id != 0;
         if self.region_paramd_items.insert(id, ()) {
-            #debug["add region-parameterized item: %d (%s)",
-                   id, ast_map::node_id_to_str(self.ast_map, id)];
+            debug!{"add region-parameterized item: %d (%s)",
+                   id, ast_map::node_id_to_str(self.ast_map, id)};
             self.worklist.push(id);
         } else {
-            #debug["item %d already region-parameterized", id];
+            debug!{"item %d already region-parameterized", id};
         }
     }
 
     fn add_dep(from: ast::node_id, to: ast::node_id) {
-        #debug["add dependency from %d -> %d (%s -> %s)",
+        debug!{"add dependency from %d -> %d (%s -> %s)",
                from, to,
                ast_map::node_id_to_str(self.ast_map, from),
-               ast_map::node_id_to_str(self.ast_map, to)];
+               ast_map::node_id_to_str(self.ast_map, to)};
         let vec = alt self.dep_map.find(from) {
             some(vec) => {vec}
             none => {
@@ -436,7 +436,7 @@ impl methods for determine_rp_ctxt {
         let old_anon_implies_rp = self.anon_implies_rp;
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
-        #debug["with_item_id(%d, %b)", item_id, anon_implies_rp];
+        debug!{"with_item_id(%d, %b)", item_id, anon_implies_rp};
         let _i = util::common::indenter();
         f();
         self.item_id = old_item_id;
@@ -488,7 +488,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
     alt ty.node {
       ast::ty_rptr(r, _) |
       ast::ty_path(@{rp: some(r), _}, _) => {
-        #debug["referenced type with regions %s", pprust::ty_to_str(ty)];
+        debug!{"referenced type with regions %s", pprust::ty_to_str(ty)};
         if cx.region_is_relevant(r) {
             cx.add_rp(cx.item_id);
         }
@@ -510,8 +510,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
             } else {
                 let cstore = cx.sess.cstore;
                 if csearch::get_region_param(cstore, did) {
-                    #debug["reference to external, rp'd type %s",
-                           pprust::ty_to_str(ty)];
+                    debug!{"reference to external, rp'd type %s",
+                           pprust::ty_to_str(ty)};
                     cx.add_rp(cx.item_id);
                 }
             }
@@ -560,7 +560,7 @@ fn determine_rp_in_crate(sess: session,
     // propagate indirect dependencies
     while cx.worklist.len() != 0 {
         let id = cx.worklist.pop();
-        #debug["popped %d from worklist", id];
+        debug!{"popped %d from worklist", id};
         alt cx.dep_map.find(id) {
           none {}
           some(vec) {

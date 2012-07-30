@@ -164,7 +164,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     let mut i = 0u;
     while vec::any(colors, is_gray) {
         // Do the BFS.
-        log(info, #fmt("PBFS iteration %?", i));
+        log(info, fmt!{"PBFS iteration %?", i});
         i += 1u;
         colors = do colors.mapi() |i, c| {
             let c : color = c;
@@ -234,7 +234,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
     let mut i = 0u;
     while par::any(colors, is_gray) {
         // Do the BFS.
-        log(info, #fmt("PBFS iteration %?", i));
+        log(info, fmt!{"PBFS iteration %?", i});
         i += 1u;
         let old_len = colors.len();
 
@@ -394,8 +394,8 @@ fn main(args: ~[~str]) {
     let edges = make_edges(scale, 16u);
     let stop = time::precise_time_s();
 
-    io::stdout().write_line(#fmt("Generated %? edges in %? seconds.",
-                                 vec::len(edges), stop - start));
+    io::stdout().write_line(fmt!{"Generated %? edges in %? seconds.",
+                                 vec::len(edges), stop - start});
 
     let start = time::precise_time_s();
     let graph = make_graph(1u << scale, edges);
@@ -404,9 +404,9 @@ fn main(args: ~[~str]) {
     let mut total_edges = 0u;
     vec::each(graph, |edges| { total_edges += edges.len(); true });
 
-    io::stdout().write_line(#fmt("Generated graph with %? edges in %? seconds.",
+    io::stdout().write_line(fmt!{"Generated graph with %? edges in %? seconds.",
                                  total_edges / 2u,
-                                 stop - start));
+                                 stop - start});
 
     let mut total_seq = 0.0;
     let mut total_par = 0.0;
@@ -415,7 +415,7 @@ fn main(args: ~[~str]) {
 
     do gen_search_keys(graph, num_keys).map() |root| {
         io::stdout().write_line(~"");
-        io::stdout().write_line(#fmt("Search key: %?", root));
+        io::stdout().write_line(fmt!{"Search key: %?", root});
 
         if do_sequential {
             let start = time::precise_time_s();
@@ -425,8 +425,8 @@ fn main(args: ~[~str]) {
             //total_seq += stop - start;
 
             io::stdout().write_line(
-                #fmt("Sequential BFS completed in %? seconds.",
-                     stop - start));
+                fmt!{"Sequential BFS completed in %? seconds.",
+                     stop - start});
             
             if do_validate {
                 let start = time::precise_time_s();
@@ -434,8 +434,8 @@ fn main(args: ~[~str]) {
                 let stop = time::precise_time_s();
                 
                 io::stdout().write_line(
-                    #fmt("Validation completed in %? seconds.",
-                         stop - start));
+                    fmt!{"Validation completed in %? seconds.",
+                         stop - start});
             }
             
             let start = time::precise_time_s();
@@ -445,8 +445,8 @@ fn main(args: ~[~str]) {
             total_seq += stop - start;
             
             io::stdout().write_line(
-                #fmt("Alternate Sequential BFS completed in %? seconds.",
-                     stop - start));
+                fmt!{"Alternate Sequential BFS completed in %? seconds.",
+                     stop - start});
             
             if do_validate {
                 let start = time::precise_time_s();
@@ -454,8 +454,8 @@ fn main(args: ~[~str]) {
                 let stop = time::precise_time_s();
                 
                 io::stdout().write_line(
-                    #fmt("Validation completed in %? seconds.",
-                         stop - start));
+                    fmt!{"Validation completed in %? seconds.",
+                         stop - start});
             }
         }
         
@@ -465,21 +465,21 @@ fn main(args: ~[~str]) {
 
         total_par += stop - start;
 
-        io::stdout().write_line(#fmt("Parallel BFS completed in %? seconds.",
-                                     stop - start));
+        io::stdout().write_line(fmt!{"Parallel BFS completed in %? seconds.",
+                                     stop - start});
 
         if do_validate {
             let start = time::precise_time_s();
             assert(validate(edges, root, bfs_tree));
             let stop = time::precise_time_s();
             
-            io::stdout().write_line(#fmt("Validation completed in %? seconds.",
-                                         stop - start));
+            io::stdout().write_line(fmt!{"Validation completed in %? seconds.",
+                                         stop - start});
         }
     };
 
     io::stdout().write_line(~"");
     io::stdout().write_line(
-        #fmt("Total sequential: %? \t Total Parallel: %? \t Speedup: %?x",
-             total_seq, total_par, total_seq / total_par));
+        fmt!{"Total sequential: %? \t Total Parallel: %? \t Speedup: %?x",
+             total_seq, total_par, total_seq / total_par});
 }

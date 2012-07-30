@@ -33,7 +33,7 @@ class cat : noisy, scratchy, bitey {
     let bite_counts : hashmap<body_part, uint>;
 
     fn meow() -> uint {
-      #debug("Meow: %u", *self.meows);
+      debug!{"Meow: %u", *self.meows};
       *self.meows += 1u;
       if *self.meows % 5u == 0u {
           *self.how_hungry += 1;
@@ -72,16 +72,16 @@ class cat : noisy, scratchy, bitey {
     rslt
   }
   fn bite() -> body_part {
-    #error("In bite()");
+    error!{"In bite()"};
     let all = ~[toe, nose, ear];
     let mut min = finger;
     do iter(all) |next| {
-      #debug("min = %?", min);
+      debug!{"min = %?", min};
         if self.bite_counts.get(next) < self.bite_counts.get(min) {
             min = next;
           }};
     self.bite_counts.insert(min, self.bite_counts.get(min) + 1u);
-    #debug("Bit %?", min);
+    debug!{"Bit %?", min};
     min
   }
 }
@@ -89,7 +89,7 @@ class cat : noisy, scratchy, bitey {
 fn annoy_neighbors<T: noisy>(critter: T) {
   for uint::range(0u, 10u) |i| {
       let what = critter.speak();
-      #debug("%u %d", i, what);
+      debug!{"%u %d", i, what};
   }
 }
 
@@ -97,7 +97,7 @@ fn bite_everything<T: bitey>(critter: T) -> bool {
   let mut left : ~[body_part] = ~[finger, toe, nose, ear];
   while vec::len(left) > 0u {
     let part = critter.bite();
-    #debug("%? %?", left, part);
+    debug!{"%? %?", left, part};
     if vec_includes(left, part) {
         left = vec::filter(left, |p| p != part );
     }

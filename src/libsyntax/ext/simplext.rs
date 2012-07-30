@@ -289,9 +289,9 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
                         let len = vec::len(*ms);
                         if old_len != len {
                             let msg =
-                                #fmt["'%s' occurs %u times, but ", *fv, len] +
-                                    #fmt["'%s' occurs %u times", *old_name,
-                                         old_len];
+                                fmt!{"'%s' occurs %u times, but ", *fv, len} +
+                                    fmt!{"'%s' occurs %u times", *old_name,
+                                         old_len};
                             cx.span_fatal(repeat_me.span, msg);
                         }
                       }

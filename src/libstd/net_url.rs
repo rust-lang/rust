@@ -72,7 +72,7 @@ fn query_to_str(query: query) -> ~str {
     let mut strvec = ~[];
     for query.each |kv| {
         let (k, v) = kv;
-        strvec += ~[#fmt("%s=%s", k, v)];
+        strvec += ~[fmt!{"%s=%s", k, v}];
     };
     ret str::connect(strvec, ~"&");
 }

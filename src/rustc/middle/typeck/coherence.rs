@@ -60,13 +60,13 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_uniq(base_mutability_and_type) |
         ty_ptr(base_mutability_and_type) |
         ty_rptr(_, base_mutability_and_type) {
-            #debug("(getting base type) recurring");
+            debug!{"(getting base type) recurring"};
             get_base_type(inference_context, span,
                           base_mutability_and_type.ty)
         }
 
         ty_enum(*) | ty_trait(*) | ty_class(*) {
-            #debug("(getting base type) found base type");
+            debug!{"(getting base type) found base type"};
             some(resolved_type)
         }
 
@@ -75,8 +75,8 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_fn(*) | ty_tup(*) | ty_var(*) | ty_var_integral(*) |
         ty_param(*) | ty_self | ty_type | ty_opaque_box |
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) {
-            #debug("(getting base type) no base type; found %?",
-                   get(original_type).struct);
+            debug!{"(getting base type) no base type; found %?",
+                   get(original_type).struct};
             none
         }
     }
@@ -158,7 +158,7 @@ class CoherenceChecker {
 
         visit_crate(*crate, (), mk_simple_visitor(@{
             visit_item: |item| {
-                #debug("(checking coherence) item '%s'", *item.ident);
+                debug!{"(checking coherence) item '%s'", *item.ident};
 
                 alt item.node {
                     item_impl(_, associated_traits, _, _) {
@@ -199,9 +199,9 @@ class CoherenceChecker {
         // base type.
 
         if associated_traits.len() == 0 {
-            #debug("(checking implementation) no associated traits for item \
+            debug!{"(checking implementation) no associated traits for item \
                     '%s'",
-                   *item.ident);
+                   *item.ident};
 
             alt get_base_type_def_id(self.inference_context,
                                      item.span,
@@ -222,11 +222,11 @@ class CoherenceChecker {
         for associated_traits.each |associated_trait| {
             let def = self.crate_context.tcx.def_map.get
                 (associated_trait.ref_id);
-            #debug("(checking implementation) adding impl for trait \
+            debug!{"(checking implementation) adding impl for trait \
                     '%s', item '%s'",
                    ast_map::node_id_to_str(self.crate_context.tcx.items,
                                            associated_trait.ref_id),
-                   *item.ident);
+                   *item.ident};
 
             let implementation = self.create_impl_from_item(item);
             self.add_trait_method(def_id_of_def(def), implementation);
@@ -368,10 +368,10 @@ class CoherenceChecker {
                         let privileged_types =
                             self.gather_privileged_types(module.items);
                         for privileged_types.each |privileged_type| {
-                            #debug("(checking privileged scopes) entering \
+                            debug!{"(checking privileged scopes) entering \
                                     privileged scope of %d:%d",
                                    privileged_type.crate,
-                                   privileged_type.node);
+                                   privileged_type.node};
 
                             self.privileged_types.insert(privileged_type, ());
                         }
@@ -584,11 +584,11 @@ class CoherenceChecker {
                                          self_type.ty) {
                     none {
                         let session = self.crate_context.tcx.sess;
-                        session.bug(#fmt("no base type for external impl \
+                        session.bug(fmt!{"no base type for external impl \
                                           with no trait: %s (type %s)!",
                                          *implementation.ident,
                                          ty_to_str(self.crate_context.tcx,
-                                                   self_type.ty)));
+                                                   self_type.ty)});
                     }
                     some(_) {
                         // Nothing to do.

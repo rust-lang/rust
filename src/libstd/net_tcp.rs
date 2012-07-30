@@ -142,15 +142,15 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
         iotask: iotask
     };
     let socket_data_ptr = ptr::addr_of(*socket_data);
-    log(debug, #fmt("tcp_connect result_ch %?", conn_data.result_ch));
+    log(debug, fmt!{"tcp_connect result_ch %?", conn_data.result_ch});
     // get an unsafe representation of our stream_handle_ptr that
     // we can send into the interact cb to be handled in libuv..
-    log(debug, #fmt("stream_handle_ptr outside interact %?",
-        stream_handle_ptr));
+    log(debug, fmt!{"stream_handle_ptr outside interact %?",
+        stream_handle_ptr});
     do iotask::interact(iotask) |loop_ptr| {
         log(debug, ~"in interact cb for tcp client connect..");
-        log(debug, #fmt("stream_handle_ptr in interact %?",
-            stream_handle_ptr));
+        log(debug, fmt!{"stream_handle_ptr in interact %?",
+            stream_handle_ptr});
         alt uv::ll::tcp_init( loop_ptr, stream_handle_ptr) {
           0i32 {
             log(debug, ~"tcp_init successful");
@@ -167,7 +167,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
                     // info.. should probably add an additional
                     // rust type that actually is closer to
                     // what the libuv API expects (ip str + port num)
-                    log(debug, #fmt("addr: %?", addr));
+                    log(debug, fmt!{"addr: %?", addr});
                     let in_addr = uv::ll::ip4_addr(addr_str, port as int);
                     uv::ll::tcp_connect(
                         connect_req_ptr,
@@ -176,7 +176,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
                         tcp_connect_on_connect_cb)
                   }
                   ip::ipv6(addr) {
-                    log(debug, #fmt("addr: %?", addr));
+                    log(debug, fmt!{"addr: %?", addr});
                     let in_addr = uv::ll::ip6_addr(addr_str, port as int);
                     uv::ll::tcp_connect6(
                         connect_req_ptr,
@@ -334,7 +334,7 @@ fn read_start(sock: tcp_socket)
 fn read_stop(sock: tcp_socket,
              -read_port: comm::port<result::result<~[u8], tcp_err_data>>) ->
     result::result<(), tcp_err_data> unsafe {
-    log(debug, #fmt("taking the read_port out of commission %?", read_port));
+    log(debug, fmt!{"taking the read_port out of commission %?", read_port});
     let socket_data = ptr::addr_of(*sock.socket_data);
     read_stop_common_impl(socket_data)
 }
@@ -622,13 +622,13 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
                 let addr_str = ip::format_addr(loc_ip);
                 let bind_result = alt loc_ip {
                   ip::ipv4(addr) {
-                    log(debug, #fmt("addr: %?", addr));
+                    log(debug, fmt!{"addr: %?", addr});
                     let in_addr = uv::ll::ip4_addr(addr_str, port as int);
                     uv::ll::tcp_bind(server_stream_ptr,
                                      ptr::addr_of(in_addr))
                   }
                   ip::ipv6(addr) {
-                    log(debug, #fmt("addr: %?", addr));
+                    log(debug, fmt!{"addr: %?", addr});
                     let in_addr = uv::ll::ip6_addr(addr_str, port as int);
                     uv::ll::tcp_bind6(server_stream_ptr,
                                      ptr::addr_of(in_addr))
@@ -668,8 +668,8 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
     alt setup_result {
       some(err_data) {
         do iotask::interact(iotask) |loop_ptr| {
-            log(debug, #fmt("tcp::listen post-kill recv hl interact %?",
-                            loop_ptr));
+            log(debug, fmt!{"tcp::listen post-kill recv hl interact %?",
+                            loop_ptr});
             (*server_data_ptr).active = false;
             uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
         };
@@ -684,8 +684,8 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
             result::err(address_in_use)
           }
           _ {
-            log(debug, #fmt("Got '%s' '%s' libuv error",
-                            err_data.err_name, err_data.err_msg));
+            log(debug, fmt!{"Got '%s' '%s' libuv error",
+                            err_data.err_name, err_data.err_msg});
             result::err(
                 generic_listen_err(err_data.err_name, err_data.err_msg))
           }
@@ -695,8 +695,8 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
         on_establish_cb(kill_ch);
         let kill_result = comm::recv(kill_po);
         do iotask::interact(iotask) |loop_ptr| {
-            log(debug, #fmt("tcp::listen post-kill recv hl interact %?",
-                            loop_ptr));
+            log(debug, fmt!{"tcp::listen post-kill recv hl interact %?",
+                            loop_ptr});
             (*server_data_ptr).active = false;
             uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
         };
@@ -776,8 +776,8 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
                 if err_data.err_name == ~"EOF" {
                     break;
                 } else {
-                    #debug("ERROR sock_buf as io::reader.read err %? %?",
-                           err_data.err_name, err_data.err_msg);
+                    debug!{"ERROR sock_buf as io::reader.read err %? %?",
+                           err_data.err_name, err_data.err_msg};
 
                     ret 0;
                 }
@@ -809,7 +809,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
         false // noop
     }
     fn seek(dist: int, seek: io::seek_style) {
-        log(debug, #fmt("tcp_socket_buf seek stub %? %?", dist, seek));
+        log(debug, fmt!{"tcp_socket_buf seek stub %? %?", dist, seek});
         // noop
     }
     fn tell() -> uint {
@@ -826,12 +826,12 @@ impl tcp_socket_buf of io::writer for @tcp_socket_buf {
                                         vec::slice(data, 0, vec::len(data)));
         if w_result.is_err() {
             let err_data = w_result.get_err();
-            log(debug, #fmt("ERROR sock_buf as io::writer.writer err: %? %?",
-                             err_data.err_name, err_data.err_msg));
+            log(debug, fmt!{"ERROR sock_buf as io::writer.writer err: %? %?",
+                             err_data.err_name, err_data.err_msg});
         }
     }
     fn seek(dist: int, seek: io::seek_style) {
-      log(debug, #fmt("tcp_socket_buf seek stub %? %?", dist, seek));
+      log(debug, fmt!{"tcp_socket_buf seek stub %? %?", dist, seek});
         // noop
     }
     fn tell() -> uint {
@@ -856,14 +856,14 @@ fn tear_down_socket_data(socket_data: @tcp_socket_data) unsafe {
     let close_data_ptr = ptr::addr_of(close_data);
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     do iotask::interact((*socket_data).iotask) |loop_ptr| {
-        log(debug, #fmt("interact dtor for tcp_socket stream %? loop %?",
-            stream_handle_ptr, loop_ptr));
+        log(debug, fmt!{"interact dtor for tcp_socket stream %? loop %?",
+            stream_handle_ptr, loop_ptr});
         uv::ll::set_data_for_uv_handle(stream_handle_ptr,
                                        close_data_ptr);
         uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
     };
     comm::recv(closed_po);
-    log(debug, #fmt("about to free socket_data at %?", socket_data));
+    log(debug, fmt!{"about to free socket_data at %?", socket_data});
     rustrt::rust_uv_current_kernel_free(stream_handle_ptr
                                        as *libc::c_void);
     log(debug, ~"exiting dtor for tcp_socket");
@@ -946,7 +946,7 @@ fn read_start_common_impl(socket_data: *tcp_socket_data)
     let start_ch = comm::chan(start_po);
     log(debug, ~"in tcp::read_start before interact loop");
     do iotask::interact((*socket_data).iotask) |loop_ptr| {
-        log(debug, #fmt("in tcp::read_start interact cb %?", loop_ptr));
+        log(debug, fmt!{"in tcp::read_start interact cb %?", loop_ptr});
         alt uv::ll::read_start(stream_handle_ptr as *uv::ll::uv_stream_t,
                                on_alloc_cb,
                                on_tcp_read_cb) {
@@ -990,7 +990,7 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
     };
     let write_data_ptr = ptr::addr_of(write_data);
     do iotask::interact((*socket_data_ptr).iotask) |loop_ptr| {
-        log(debug, #fmt("in interact cb for tcp::write %?", loop_ptr));
+        log(debug, fmt!{"in interact cb for tcp::write %?", loop_ptr});
         alt uv::ll::write(write_req_ptr,
                           stream_handle_ptr,
                           write_buf_vec_ptr,
@@ -1096,8 +1096,8 @@ impl of to_tcp_err_iface for uv::ll::uv_err_data {
 extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
                     nread: libc::ssize_t,
                     ++buf: uv::ll::uv_buf_t) unsafe {
-    log(debug, #fmt("entering on_tcp_read_cb stream: %? nread: %?",
-                    stream, nread));
+    log(debug, fmt!{"entering on_tcp_read_cb stream: %? nread: %?",
+                    stream, nread});
     let loop_ptr = uv::ll::get_loop_for_uv_handle(stream);
     let socket_data_ptr = uv::ll::get_data_for_uv_handle(stream)
         as *tcp_socket_data;
@@ -1105,8 +1105,8 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
       // incoming err.. probably eof
       -1 {
         let err_data = uv::ll::get_last_err_data(loop_ptr).to_tcp_err();
-        log(debug, #fmt("on_tcp_read_cb: incoming err.. name %? msg %?",
-                        err_data.err_name, err_data.err_msg));
+        log(debug, fmt!{"on_tcp_read_cb: incoming err.. name %? msg %?",
+                        err_data.err_name, err_data.err_msg});
         let reader_ch = (*socket_data_ptr).reader_ch;
         comm::send(reader_ch, result::err(err_data));
       }
@@ -1115,7 +1115,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
       // have data
       _ {
         // we have data
-        log(debug, #fmt("tcp on_read_cb nread: %d", nread as int));
+        log(debug, fmt!{"tcp on_read_cb nread: %d", nread as int});
         let reader_ch = (*socket_data_ptr).reader_ch;
         let buf_base = uv::ll::get_base_from_buf(buf);
         let new_bytes = vec::unsafe::from_buf(buf_base, nread as uint);
@@ -1131,10 +1131,10 @@ extern fn on_alloc_cb(handle: *libc::c_void,
     -> uv::ll::uv_buf_t unsafe {
     log(debug, ~"tcp read on_alloc_cb!");
     let char_ptr = uv::ll::malloc_buf_base_of(suggested_size);
-    log(debug, #fmt("tcp read on_alloc_cb h: %? char_ptr: %u sugsize: %u",
+    log(debug, fmt!{"tcp read on_alloc_cb h: %? char_ptr: %u sugsize: %u",
                      handle,
                      char_ptr as uint,
-                     suggested_size as uint));
+                     suggested_size as uint});
     uv::ll::buf_init(char_ptr, suggested_size as uint)
 }
 
@@ -1180,11 +1180,11 @@ extern fn stream_error_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
     let data = uv::ll::get_data_for_uv_handle(handle) as
         *connect_req_data;
     comm::send((*data).closed_signal_ch, ());
-    log(debug, #fmt("exiting steam_error_close_cb for %?", handle));
+    log(debug, fmt!{"exiting steam_error_close_cb for %?", handle});
 }
 
 extern fn tcp_connect_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
-    log(debug, #fmt("closed client tcp handle %?", handle));
+    log(debug, fmt!{"closed client tcp handle %?", handle});
 }
 
 extern fn tcp_connect_on_connect_cb(connect_req_ptr: *uv::ll::uv_connect_t,
@@ -1192,7 +1192,7 @@ extern fn tcp_connect_on_connect_cb(connect_req_ptr: *uv::ll::uv_connect_t,
     let conn_data_ptr = (uv::ll::get_data_for_req(connect_req_ptr)
                       as *connect_req_data);
     let result_ch = (*conn_data_ptr).result_ch;
-    log(debug, #fmt("tcp_connect result_ch %?", result_ch));
+    log(debug, fmt!{"tcp_connect result_ch %?", result_ch});
     let tcp_stream_ptr =
         uv::ll::get_stream_handle_from_connect_req(connect_req_ptr);
     alt status {
@@ -1204,8 +1204,8 @@ extern fn tcp_connect_on_connect_cb(connect_req_ptr: *uv::ll::uv_connect_t,
         log(debug, ~"error in tcp_connect_on_connect_cb");
         let loop_ptr = uv::ll::get_loop_for_uv_handle(tcp_stream_ptr);
         let err_data = uv::ll::get_last_err_data(loop_ptr);
-        log(debug, #fmt("err_data %? %?", err_data.err_name,
-                        err_data.err_msg));
+        log(debug, fmt!{"err_data %? %?", err_data.err_name,
+                        err_data.err_msg});
         comm::send(result_ch, conn_failure(err_data));
         uv::ll::set_data_for_uv_handle(tcp_stream_ptr,
                                        conn_data_ptr);
@@ -1334,10 +1334,10 @@ mod test {
         assert actual_resp_result.is_ok();
         let actual_resp = actual_resp_result.get();
         let actual_req = comm::recv(server_result_po);
-        log(debug, #fmt("REQ: expected: '%s' actual: '%s'",
-                       expected_req, actual_req));
-        log(debug, #fmt("RESP: expected: '%s' actual: '%s'",
-                       expected_resp, actual_resp));
+        log(debug, fmt!{"REQ: expected: '%s' actual: '%s'",
+                       expected_req, actual_req});
+        log(debug, fmt!{"RESP: expected: '%s' actual: '%s'",
+                       expected_resp, actual_resp});
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
     }
@@ -1476,27 +1476,27 @@ mod test {
         };
 
         let actual_req = comm::recv(server_result_po);
-        log(debug, #fmt("REQ: expected: '%s' actual: '%s'",
-                       expected_req, actual_req));
-        log(debug, #fmt("RESP: expected: '%s' actual: '%s'",
-                       expected_resp, actual_resp));
+        log(debug, fmt!{"REQ: expected: '%s' actual: '%s'",
+                       expected_req, actual_req});
+        log(debug, fmt!{"RESP: expected: '%s' actual: '%s'",
+                       expected_resp, actual_resp});
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
     }
 
     fn buf_write(+w: io::writer, val: ~str) {
-        log(debug, #fmt("BUF_WRITE: val len %?", str::len(val)));
+        log(debug, fmt!{"BUF_WRITE: val len %?", str::len(val)});
         do str::byte_slice(val) |b_slice| {
-            log(debug, #fmt("BUF_WRITE: b_slice len %?",
-                            vec::len(b_slice)));
+            log(debug, fmt!{"BUF_WRITE: b_slice len %?",
+                            vec::len(b_slice)});
             w.write(b_slice)
         }
     }
 
     fn buf_read(+r: io::reader, len: uint) -> ~str {
         let new_bytes = r.read_bytes(len);
-        log(debug, #fmt("in buf_read.. new_bytes len: %?",
-                        vec::len(new_bytes)));
+        log(debug, fmt!{"in buf_read.. new_bytes len: %?",
+                        vec::len(new_bytes)});
         str::from_bytes(new_bytes)
     }
 
@@ -1508,8 +1508,8 @@ mod test {
         let listen_result = listen(server_ip_addr, server_port, 128u, iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
-                log(debug, #fmt("establish_cb %?",
-                    kill_ch));
+                log(debug, fmt!{"establish_cb %?",
+                    kill_ch});
                 comm::send(cont_ch, ());
             },
             // risky to run this on the loop, but some users
@@ -1541,8 +1541,8 @@ mod test {
                         alt received_req_bytes {
                           result::ok(data) {
                             log(debug, ~"SERVER: got REQ str::from_bytes..");
-                            log(debug, #fmt("SERVER: REQ data len: %?",
-                                            vec::len(data)));
+                            log(debug, fmt!{"SERVER: REQ data len: %?",
+                                            vec::len(data)});
                             server_ch.send(
                                 str::from_bytes(data));
                             log(debug, ~"SERVER: before write");
@@ -1551,8 +1551,8 @@ mod test {
                             comm::send(kill_ch, none);
                           }
                           result::err(err_data) {
-                            log(debug, #fmt("SERVER: error recvd: %s %s",
-                                err_data.err_name, err_data.err_msg));
+                            log(debug, fmt!{"SERVER: error recvd: %s %s",
+                                err_data.err_name, err_data.err_msg});
                             comm::send(kill_ch, some(err_data));
                             server_ch.send(~"");
                           }
@@ -1569,8 +1569,8 @@ mod test {
         if result::is_err(listen_result) {
             alt result::get_err(listen_result) {
               generic_listen_err(name, msg) {
-                fail #fmt("SERVER: exited abnormally name %s msg %s",
-                                name, msg);
+                fail fmt!{"SERVER: exited abnormally name %s msg %s",
+                                name, msg};
               }
               access_denied {
                 fail ~"SERVER: exited abnormally, got access denied..";
@@ -1581,7 +1581,7 @@ mod test {
             }
         }
         let ret_val = server_ch.recv();
-        log(debug, #fmt("SERVER: exited and got ret val: '%s'", ret_val));
+        log(debug, fmt!{"SERVER: exited and got ret val: '%s'", ret_val});
         ret_val
     }
 
@@ -1591,12 +1591,12 @@ mod test {
         let listen_result = listen(server_ip_addr, server_port, 128u, iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
-                log(debug, #fmt("establish_cb %?",
-                    kill_ch));
+                log(debug, fmt!{"establish_cb %?",
+                    kill_ch});
             },
             |new_conn, kill_ch| {
-                fail #fmt("SERVER: shouldn't be called.. %? %?",
-                           new_conn, kill_ch);
+                fail fmt!{"SERVER: shouldn't be called.. %? %?",
+                           new_conn, kill_ch};
         });
         // err check on listen_result
         if result::is_err(listen_result) {
@@ -1632,8 +1632,8 @@ mod test {
             else {
                 client_ch.send(str::from_bytes(read_result.get()));
                 let ret_val = client_ch.recv();
-                log(debug, #fmt("CLIENT: after client_ch recv ret: '%s'",
-                   ret_val));
+                log(debug, fmt!{"CLIENT: after client_ch recv ret: '%s'",
+                   ret_val});
                 ok(ret_val)
             }
         }
@@ -1645,8 +1645,8 @@ mod test {
         if result::is_err(write_result) {
             log(debug, ~"tcp_write_single: write failed!");
             let err_data = result::get_err(write_result);
-            log(debug, #fmt("tcp_write_single err name: %s msg: %s",
-                err_data.err_name, err_data.err_msg));
+            log(debug, fmt!{"tcp_write_single err name: %s msg: %s",
+                err_data.err_name, err_data.err_msg});
             // meh. torn on what to do here.
             fail ~"tcp_write_single failed";
         }

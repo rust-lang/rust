@@ -43,7 +43,7 @@ fn fannkuch(n: int) -> int {
         let mut go = true;
         while go {
             if r == n {
-                io::println(#fmt("%d", checksum));
+                io::println(fmt!{"%d", checksum});
                 ret flips;
             }
             let p0 = perm1[0];
@@ -68,5 +68,5 @@ fn main(args: ~[~str]) {
     };
 
     let n = int::from_str(args[1]).get();
-    io::println(#fmt("Pfannkuchen(%d) = %d", n, fannkuch(n)));
+    io::println(fmt!{"Pfannkuchen(%d) = %d", n, fannkuch(n)});
 }

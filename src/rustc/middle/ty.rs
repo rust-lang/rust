@@ -483,17 +483,17 @@ iface vid {
 
 impl of vid for tv_vid {
     fn to_uint() -> uint { *self }
-    fn to_str() -> ~str { #fmt["<V%u>", self.to_uint()] }
+    fn to_str() -> ~str { fmt!{"<V%u>", self.to_uint()} }
 }
 
 impl of vid for tvi_vid {
     fn to_uint() -> uint { *self }
-    fn to_str() -> ~str { #fmt["<VI%u>", self.to_uint()] }
+    fn to_str() -> ~str { fmt!{"<VI%u>", self.to_uint()} }
 }
 
 impl of vid for region_vid {
     fn to_uint() -> uint { *self }
-    fn to_str() -> ~str { #fmt["<R%u>", self.to_uint()] }
+    fn to_str() -> ~str { fmt!{"<R%u>", self.to_uint()} }
 }
 
 trait purity_to_str {
@@ -1050,23 +1050,23 @@ fn substs_is_noop(substs: substs) -> bool {
 }
 
 fn substs_to_str(cx: ctxt, substs: substs) -> ~str {
-    #fmt["substs(self_r=%s, self_ty=%s, tps=%?)",
+    fmt!{"substs(self_r=%s, self_ty=%s, tps=%?)",
          substs.self_r.map_default(~"none", |r| region_to_str(cx, r)),
          substs.self_ty.map_default(~"none", |t| ty_to_str(cx, t)),
-         substs.tps.map(|t| ty_to_str(cx, t))]
+         substs.tps.map(|t| ty_to_str(cx, t))}
 }
 
 fn subst(cx: ctxt,
          substs: substs,
          typ: t) -> t {
 
-    #debug["subst(substs=%s, typ=%s)",
+    debug!{"subst(substs=%s, typ=%s)",
            substs_to_str(cx, substs),
-           ty_to_str(cx, typ)];
+           ty_to_str(cx, typ)};
 
     if substs_is_noop(substs) { ret typ; }
     let r = do_subst(cx, substs, typ);
-    #debug["  r = %s", ty_to_str(cx, r)];
+    debug!{"  r = %s", ty_to_str(cx, r)};
     ret r;
 
     fn do_subst(cx: ctxt,
@@ -1799,27 +1799,27 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
     fn type_requires(cx: ctxt, seen: @mut ~[def_id],
                      r_ty: t, ty: t) -> bool {
-        #debug["type_requires(%s, %s)?",
+        debug!{"type_requires(%s, %s)?",
                ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty)];
+               ty_to_str(cx, ty)};
 
         let r = {
             get(r_ty).struct == get(ty).struct ||
                 subtypes_require(cx, seen, r_ty, ty)
         };
 
-        #debug["type_requires(%s, %s)? %b",
+        debug!{"type_requires(%s, %s)? %b",
                ty_to_str(cx, r_ty),
                ty_to_str(cx, ty),
-               r];
+               r};
         ret r;
     }
 
     fn subtypes_require(cx: ctxt, seen: @mut ~[def_id],
                         r_ty: t, ty: t) -> bool {
-        #debug["subtypes_require(%s, %s)?",
+        debug!{"subtypes_require(%s, %s)?",
                ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty)];
+               ty_to_str(cx, ty)};
 
         let r = alt get(ty).struct {
           ty_nil |
@@ -1895,10 +1895,10 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           }
         };
 
-        #debug["subtypes_require(%s, %s)? %b",
+        debug!{"subtypes_require(%s, %s)? %b",
                ty_to_str(cx, r_ty),
                ty_to_str(cx, ty),
-               r];
+               r};
 
         ret r;
     }
@@ -1910,7 +1910,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
    bool {
     let sty = get(ty).struct;
-    #debug("type_structurally_contains: %s", ty_to_str(cx, ty));
+    debug!{"type_structurally_contains: %s", ty_to_str(cx, ty)};
     if test(sty) { ret true; }
     alt sty {
       ty_enum(did, substs) {
@@ -2232,8 +2232,8 @@ fn hash_type_structure(st: sty) -> uint {
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     alt smallintmap::find(*cx.node_types, id as uint) {
        some(t) { t }
-       none { cx.sess.bug(#fmt("node_id_to_type: unbound node ID %s",
-                               ast_map::node_id_to_str(cx.items, id))); }
+       none { cx.sess.bug(fmt!{"node_id_to_type: unbound node ID %s",
+                               ast_map::node_id_to_str(cx.items, id)}); }
     }
 }
 
@@ -2298,15 +2298,15 @@ fn is_pred_ty(fty: t) -> bool {
 fn ty_var_id(typ: t) -> tv_vid {
     alt get(typ).struct {
       ty_var(vid) { ret vid; }
-      _ { #error("ty_var_id called on non-var ty"); fail; }
+      _ { error!{"ty_var_id called on non-var ty"}; fail; }
     }
 }
 
 fn ty_var_integral_id(typ: t) -> tvi_vid {
     alt get(typ).struct {
       ty_var_integral(vid) { ret vid; }
-      _ { #error("ty_var_integral_id called on ty other than \
-                  ty_var_integral");
+      _ { error!{"ty_var_integral_id called on ty other than \
+                  ty_var_integral"};
          fail; }
     }
 }
@@ -2462,7 +2462,7 @@ fn canon_mode(cx: ctxt, m0: ast::mode) -> ast::mode {
 fn resolved_mode(cx: ctxt, m: ast::mode) -> ast::rmode {
     alt canon_mode(cx, m) {
       ast::infer(_) {
-        cx.sess.bug(#fmt["mode %? was never resolved", m]);
+        cx.sess.bug(fmt!{"mode %? was never resolved", m});
       }
       ast::expl(m0) { m0 }
     }
@@ -2510,7 +2510,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
         ty_to_str(cx, t)
       }
 
-      ty_enum(id, _) { #fmt["enum %s", item_path_str(cx, id)] }
+      ty_enum(id, _) { fmt!{"enum %s", item_path_str(cx, id)} }
       ty_box(_) { ~"@-ptr" }
       ty_uniq(_) { ~"~-ptr" }
       ty_evec(_, _) { ~"vector" }
@@ -2519,8 +2519,8 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_rptr(_, _) { ~"&-ptr" }
       ty_rec(_) { ~"record" }
       ty_fn(_) { ~"fn" }
-      ty_trait(id, _) { #fmt["trait %s", item_path_str(cx, id)] }
-      ty_class(id, _) { #fmt["class %s", item_path_str(cx, id)] }
+      ty_trait(id, _) { fmt!{"trait %s", item_path_str(cx, id)} }
+      ty_class(id, _) { fmt!{"class %s", item_path_str(cx, id)} }
       ty_tup(_) { ~"tuple" }
       ty_var(_) { ~"variable" }
       ty_var_integral(_) { ~"integral variable" }
@@ -2547,12 +2547,12 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
             ~" function was expected";
       }
       terr_purity_mismatch(f1, f2) {
-        ret #fmt["expected %s fn but found %s fn",
-                 purity_to_str(f1), purity_to_str(f2)];
+        ret fmt!{"expected %s fn but found %s fn",
+                 purity_to_str(f1), purity_to_str(f2)};
       }
       terr_proto_mismatch(e, a) {
-        ret #fmt["closure protocol mismatch (%s vs %s)",
-                 proto_to_str(e), proto_to_str(a)];
+        ret fmt!{"closure protocol mismatch (%s vs %s)",
+                 proto_to_str(e), proto_to_str(a)};
       }
       terr_mutability { ret ~"values differ in mutability"; }
       terr_box_mutability { ret ~"boxed values differ in mutability"; }
@@ -2585,22 +2585,22 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
             ~" but found " + mode_to_str(a_mode);
       }
       terr_regions_differ(subregion, superregion) {
-        ret #fmt("references with lifetime %s do not necessarily \
+        ret fmt!{"references with lifetime %s do not necessarily \
                   outlive references with lifetime %s",
                  region_to_str(cx, subregion),
-                 region_to_str(cx, superregion));
+                 region_to_str(cx, superregion)};
       }
       terr_vstores_differ(k, e_vs, a_vs) {
-        ret #fmt("%s storage differs: expected %s but found %s",
+        ret fmt!{"%s storage differs: expected %s but found %s",
                  terr_vstore_kind_to_str(k),
                  vstore_to_str(cx, e_vs),
-                 vstore_to_str(cx, a_vs));
+                 vstore_to_str(cx, a_vs)};
       }
       terr_in_field(err, fname) {
-        ret #fmt("in field `%s`, %s", *fname, type_err_to_str(cx, *err));
+        ret fmt!{"in field `%s`, %s", *fname, type_err_to_str(cx, *err)};
       }
       terr_sorts(exp, act) {
-        ret #fmt("%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act));
+        ret fmt!{"%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act)};
       }
       terr_self_substs {
         ret ~"inconsistent self substitution"; // XXX this is more of a bug
@@ -2638,7 +2638,7 @@ fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
 
 fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
     if id.crate == ast::local_crate {
-        #debug("(impl_traits) searching for trait impl %?", id);
+        debug!{"(impl_traits) searching for trait impl %?", id};
         alt cx.items.find(id.node) {
            some(ast_map::node_item(@{
                         node: ast::item_impl(_, trait_refs, _, _),
@@ -2654,12 +2654,12 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
              alt cx.def_map.find(id.node) {
                some(def_ty(trait_id)) {
                    // XXX: Doesn't work cross-crate.
-                   #debug("(impl_traits) found trait id %?", trait_id);
+                   debug!{"(impl_traits) found trait id %?", trait_id};
                    ~[node_id_to_type(cx, trait_id.node)]
                }
                some(x) {
-                 cx.sess.bug(#fmt("impl_traits: trait ref is in trait map \
-                                   but is bound to %?", x));
+                 cx.sess.bug(fmt!{"impl_traits: trait ref is in trait map \
+                                   but is bound to %?", x});
                }
                none {
                  ~[]
@@ -2765,7 +2765,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           ast_map::node_expr(_) | ast_map::node_arg(_, _) |
           ast_map::node_local(_) | ast_map::node_export(_, _) |
           ast_map::node_block(_) {
-            cx.sess.bug(#fmt["cannot find item_path for node %?", node]);
+            cx.sess.bug(fmt!{"cannot find item_path for node %?", node});
           }
         }
     }
@@ -2899,8 +2899,8 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
          }
        }
        _ {
-           cx.sess.bug(#fmt("class ID not bound to an item: %s",
-                            ast_map::node_id_to_str(cx.items, did.node)));
+           cx.sess.bug(fmt!{"class ID not bound to an item: %s",
+                            ast_map::node_id_to_str(cx.items, did.node)});
        }
     }
         }
@@ -2962,8 +2962,8 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
              ret ast_util::local_def(m.id);
          }
        }
-       cx.sess.span_fatal(sp, #fmt("Class doesn't have a method \
-           named %s", *name));
+       cx.sess.span_fatal(sp, fmt!{"Class doesn't have a method \
+           named %s", *name});
     }
     else {
       csearch::get_class_method(cx.sess.cstore, did, name)

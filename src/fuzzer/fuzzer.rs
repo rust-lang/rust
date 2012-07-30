@@ -246,8 +246,8 @@ fn check_variants_T<T: copy>(
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
-    #error("%s contains %u %s objects", filename,
-           vec::len(things), thing_label);
+    error!{"%s contains %u %s objects", filename,
+           vec::len(things), thing_label};
 
     let L = vec::len(things);
 
@@ -277,9 +277,9 @@ fn check_variants_T<T: copy>(
                     check_roundtrip_convergence(str3, 1u);
                   }
                   tm_run {
-                    let file_label = #fmt("rusttmp/%s_%s_%u_%u",
+                    let file_label = fmt!{"rusttmp/%s_%s_%u_%u",
                                           last_part(filename),
-                                          thing_label, i, j);
+                                          thing_label, i, j};
                     let safe_to_run = !(content_is_dangerous_to_run(*str3)
                                         || has_raw_pointers(*crate2));
                     check_whole_compiler(*str3, file_label, safe_to_run);
@@ -389,7 +389,7 @@ fn check_compiling(filename: ~str) -> happiness {
          stage1/bin/rustc",
         ~[filename]);
 
-    //#error("Status: %d", p.status);
+    //error!{"Status: %d", p.status};
     if p.status == 0 {
         passed
     } else if p.err != ~"" {
@@ -519,9 +519,9 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
     }
 
     if oldv == newv {
-        #error("Converged after %u iterations", i);
+        error!{"Converged after %u iterations", i};
     } else {
-        #error("Did not converge after %u iterations!", i);
+        error!{"Did not converge after %u iterations!", i};
         write_file(~"round-trip-a.rs", *oldv);
         write_file(~"round-trip-b.rs", *newv);
         run::run_program(~"diff",
@@ -532,12 +532,12 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
 }
 
 fn check_convergence(files: ~[~str]) {
-    #error("pp convergence tests: %u files", vec::len(files));
+    error!{"pp convergence tests: %u files", vec::len(files)};
     for files.each |file| {
         if !file_might_not_converge(file) {
             let s = @result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
-                #error("pp converge: %s", file);
+                error!{"pp converge: %s", file};
                 // Change from 7u to 2u once
                 // https://github.com/mozilla/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
@@ -549,8 +549,8 @@ fn check_convergence(files: ~[~str]) {
 fn check_variants(files: ~[~str], cx: context) {
     for files.each |file| {
         if cx.mode == tm_converge && file_might_not_converge(file) {
-            #error("Skipping convergence test based on\
-                    file_might_not_converge");
+            error!{"Skipping convergence test based on\
+                    file_might_not_converge"};
             again;
         }
 
@@ -572,7 +572,7 @@ fn check_variants(files: ~[~str], cx: context) {
                 file,
                 s, ~[], sess);
         io::with_str_reader(*s, |rdr| {
-            #error("%s",
+            error!{"%s",
                    as_str(|a| pprust::print_crate(
                        sess.cm,
                        // Assuming no token_trees
@@ -583,7 +583,7 @@ fn check_variants(files: ~[~str], cx: context) {
                        file,
                        rdr, a,
                        pprust::no_ann(),
-                       false) ))
+                       false) )}
         });
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
@@ -591,21 +591,21 @@ fn check_variants(files: ~[~str], cx: context) {
 
 fn main(args: ~[~str]) {
     if vec::len(args) != 2u {
-        #error("usage: %s <testdir>", args[0]);
+        error!{"usage: %s <testdir>", args[0]};
         ret;
     }
     let mut files = ~[];
     let root = args[1];
 
     find_rust_files(files, root);
-    #error("== check_convergence ==");
+    error!{"== check_convergence =="};
     check_convergence(files);
-    #error("== check_variants: converge ==");
+    error!{"== check_variants: converge =="};
     check_variants(files, { mode: tm_converge });
-    #error("== check_variants: run ==");
+    error!{"== check_variants: run =="};
     check_variants(files, { mode: tm_run });
 
-    #error("Fuzzer done");
+    error!{"Fuzzer done"};
 }
 
 // Local Variables:

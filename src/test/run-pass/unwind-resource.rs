@@ -6,11 +6,11 @@ import comm;
 class complainer {
   let c: comm::chan<bool>;
   new(c: comm::chan<bool>) {
-    #error("Hello!");
+    error!{"Hello!"};
     self.c = c; }
-  drop { #error("About to send!");
+  drop { error!{"About to send!"};
     comm::send(self.c, true);
-    #error("Sent!"); }
+    error!{"Sent!"}; }
 }
 
 fn f(c: comm::chan<bool>) {
@@ -22,6 +22,6 @@ fn main() {
     let p = comm::port();
     let c = comm::chan(p);
     task::spawn_unlinked(|| f(c) );
-    #error("hiiiiiiiii");
+    error!{"hiiiiiiiii"};
     assert comm::recv(p);
 }

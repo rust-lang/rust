@@ -253,8 +253,8 @@ impl methods for ctxt {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
                     meta.span,
-                    #fmt("unknown `%s` attribute: `%s`",
-                         level_to_str(level), *lintname));
+                    fmt!{"unknown `%s` attribute: `%s`",
+                         level_to_str(level), *lintname});
               }
               some(lint) {
 
@@ -263,9 +263,9 @@ impl methods for ctxt {
                     self.span_lint(
                         forbid,
                         meta.span,
-                        #fmt("%s(%s) overruled by outer forbid(%s)",
+                        fmt!{"%s(%s) overruled by outer forbid(%s)",
                              level_to_str(level),
-                             *lintname, *lintname));
+                             *lintname, *lintname});
                 }
 
                 // we do multiple unneeded copies of the
@@ -435,7 +435,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
 
 fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
             _body: ast::blk, span: span, id: ast::node_id) {
-    #debug["lint check_fn fk=%? id=%?", fk, id];
+    debug!{"lint check_fn fk=%? id=%?", fk, id};
 
     // don't complain about blocks, since they tend to get their modes
     // specified from the outside
@@ -450,10 +450,10 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
         let mut counter = 0;
         do vec::iter2(fn_ty.inputs, decl.inputs) |arg_ty, arg_ast| {
             counter += 1;
-            #debug["arg %d, ty=%s, mode=%s",
+            debug!{"arg %d, ty=%s, mode=%s",
                    counter,
                    ty_to_str(tcx, arg_ty.ty),
-                   mode_to_str(arg_ast.mode)];
+                   mode_to_str(arg_ast.mode)};
             alt arg_ast.mode {
               ast::expl(ast::by_copy) => {
                 /* always allow by-copy */
@@ -463,7 +463,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
                 tcx.sess.span_lint(
                     deprecated_mode, id, id,
                     span,
-                    #fmt["argument %d uses an explicit mode", counter]);
+                    fmt!{"argument %d uses an explicit mode", counter});
               }
 
               ast::infer(_) {
@@ -472,9 +472,9 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
                     tcx.sess.span_lint(
                         deprecated_mode, id, id,
                         span,
-                        #fmt["argument %d uses the default mode \
+                        fmt!{"argument %d uses the default mode \
                               but shouldn't",
-                             counter]);
+                             counter});
                 }
               }
             }

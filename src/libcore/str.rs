@@ -1461,7 +1461,7 @@ pure fn is_char_boundary(s: &str, index: uint) -> bool {
  * let i = 0u;
  * while i < str::len(s) {
  *     let {ch, next} = str::char_range_at(s, i);
- *     std::io::println(#fmt("%u: %c",i,ch));
+ *     std::io::println(fmt!{"%u: %c",i,ch});
  *     i = next;
  * }
  * ~~~
@@ -2141,7 +2141,7 @@ mod tests {
         fn t(s: ~str, c: char, u: ~[~str]) {
             log(debug, ~"split_byte: " + s);
             let v = split_char(s, c);
-            #debug("split_byte to: %?", v);
+            debug!{"split_byte to: %?", v};
             assert vec::all2(v, u, |a,b| a == b);
         }
         t(~"abc.hello.there", '.', ~[~"abc", ~"hello", ~"there"]);
@@ -2170,8 +2170,8 @@ mod tests {
         fn t(s: ~str, c: char, n: uint, u: ~[~str]) {
             log(debug, ~"splitn_byte: " + s);
             let v = splitn_char(s, c, n);
-            #debug("split_byte to: %?", v);
-            #debug("comparing vs. %?", u);
+            debug!{"split_byte to: %?", v};
+            debug!{"comparing vs. %?", u};
             assert vec::all2(v, u, |a,b| a == b);
         }
         t(~"abc.hello.there", '.', 0u, ~[~"abc.hello.there"]);

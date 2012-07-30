@@ -12,13 +12,13 @@ fn main() {
     let ch = comm::chan(p);
     let t = task::spawn(|| child(ch) );
     let y = recv(p);
-    #error("received");
+    error!{"received"};
     log(error, y);
     assert (y == 10);
 }
 
 fn child(c: chan<int>) {
-    #error("sending");
+    error!{"sending"};
     send(c, 10);
-    #error("value sent");
+    error!{"value sent"};
 }

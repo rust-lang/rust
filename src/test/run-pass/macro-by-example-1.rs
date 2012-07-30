@@ -9,7 +9,7 @@ fn main() {
 
     fn add(a: int, b: int) -> int { ret a + b; }
 
-    assert(#apply[add, [1, 15]] == 16);
+    assert(apply!{add, [1, 15]} == 16);
     assert(apply!{add, [1, 15]} == 16);
     assert(apply_tt!{add, (1, 15)} == 16);
 }
