@@ -3365,7 +3365,7 @@ class Resolver {
                     none {
                         self.session.span_err(interface.path.span,
                                               ~"attempt to implement a \
-                                               nonexistent interface");
+                                               nonexistent trait");
                     }
                     some(def) {
                         // Write a mapping from the interface ID to the

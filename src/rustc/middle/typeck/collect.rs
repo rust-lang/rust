@@ -195,7 +195,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
 
     if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
         tcx.sess.span_err(sp,#fmt["method `%s` has %u parameters \
-                                   but the iface has %u",
+                                   but the trait has %u",
                                   *if_m.ident,
                                   vec::len(impl_m.fty.inputs),
                                   vec::len(if_m.fty.inputs)]);
@@ -398,7 +398,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let cms = convert_methods(ccx, methods, rp, bounds, selfty);
         for traits.each |trt| {
             check_methods_against_trait(ccx, tps, rp, selfty, trt, cms);
-            // trt.impl_id represents (class, iface) pair
+            // trt.impl_id represents (class, trait) pair
             write_ty_to_tcx(tcx, trt.impl_id, tpt.ty);
             tcx.tcache.insert(local_def(trt.impl_id), tpt);
         }
@@ -455,7 +455,7 @@ fn ty_of_ty_method(self: @crate_ctxt,
 fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref, rp: bool)
     -> (ast::def_id, ty_param_substs_and_ty) {
 
-    let sp = t.path.span, err = ~"can only implement interface types",
+    let sp = t.path.span, err = ~"can only implement trait types",
         sess = ccx.tcx.sess;
 
     let rscope = type_rscope(rp);

@@ -100,11 +100,11 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
             for vec::each(*ty::trait_methods(tcx, did)) |m| {
                 if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
                     tcx.sess.span_err(
-                        sp, ~"a boxed iface with self types may not be \
+                        sp, ~"a boxed trait with self types may not be \
                              passed as a bounded type");
                 } else if (*m.tps).len() > 0u {
                     tcx.sess.span_err(
-                        sp, ~"a boxed iface with generic methods may not \
+                        sp, ~"a boxed trait with generic methods may not \
                              be passed as a bounded type");
 
                 }

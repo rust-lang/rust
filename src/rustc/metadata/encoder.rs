@@ -421,7 +421,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
           }
           _ {
             // Must be a re-export, then!
-            // ...or an iface ref
+            // ...or a trait ref
             ebml_w.wr_str(def_to_str(did));
           }
         };

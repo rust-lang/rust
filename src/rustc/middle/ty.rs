@@ -1611,7 +1611,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         remove_send(mutable_type_kind(cx, tm) | kind_safe_for_default_mode())
       }
 
-      // Iface instances are (for now) like shared boxes, basically
+      // Trait instances are (for now) like shared boxes, basically
       ty_trait(_, _) { kind_safe_for_default_mode() | kind_owned() }
 
       // Region pointers are copyable but NOT owned nor sendable
@@ -1711,7 +1711,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         param_bounds_to_kind(cx.ty_param_bounds.get(p.def_id.node))
       }
 
-      // self is a special type parameter that can only appear in ifaces; it
+      // self is a special type parameter that can only appear in traits; it
       // is never bounded in any way, hence it has the bottom kind.
       ty_self { kind_noncopyable() }
 
