@@ -466,7 +466,7 @@ fn check_owned(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 }
 
 /// This is rather subtle.  When we are casting a value to a
-/// instantiated iface like `a as iface/&r`, regionck already ensures
+/// instantiated trait like `a as trait/&r`, regionck already ensures
 /// that any borrowed pointers that appear in the type of `a` are
 /// bounded by `&r`.  However, it is possible that there are *type
 /// parameters* in the type of `a`, and those *type parameters* may
@@ -475,14 +475,14 @@ fn check_owned(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 ///
 /// Therefore, we ensure that one of three conditions holds:
 ///
-/// (1) The iface instance cannot escape the current fn.  This is
+/// (1) The trait instance cannot escape the current fn.  This is
 /// guaranteed if the region bound `&r` is some scope within the fn
 /// itself.  This case is safe because whatever borrowed pointers are
 /// found within the type parameter, they must enclose the fn body
 /// itself.
 ///
-/// (2) The type parameter appears in the type of the iface.  For
-/// example, if the type parameter is `T` and the iface type is
+/// (2) The type parameter appears in the type of the trait.  For
+/// example, if the type parameter is `T` and the trait type is
 /// `deque<T>`, then whatever borrowed ptrs may appear in `T` also
 /// appear in `deque<T>`.
 ///
@@ -493,7 +493,7 @@ fn check_cast_for_escaping_regions(
     source: @expr,
     target: @expr) {
 
-    // Determine what type we are casting to; if it is not an iface, then no
+    // Determine what type we are casting to; if it is not an trait, then no
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
     let target_substs = alt ty::get(target_ty).struct {
@@ -501,7 +501,7 @@ fn check_cast_for_escaping_regions(
       _ => { ret; /* not a cast to a trait */ }
     };
 
-    // Check, based on the region associated with the iface, whether it can
+    // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item):
     alt target_substs.self_r {
@@ -514,8 +514,8 @@ fn check_cast_for_escaping_regions(
       }
     }
 
-    // Assuming the iface instance can escape, then ensure that each parameter
-    // either appears in the iface type or is owned:
+    // Assuming the trait instance can escape, then ensure that each parameter
+    // either appears in the trait type or is owned:
     let target_params = ty::param_tys_in_type(target_ty);
     let source_ty = ty::expr_ty(cx.tcx, source);
     do ty::walk_ty(source_ty) |ty| {

@@ -258,7 +258,7 @@ class lookup {
                 self.tcx().sess.span_err(
                     self.expr.span,
                     ~"can not call a method that contains a \
-                     self type through a boxed iface");
+                     self type through a boxed trait");
             }
 
             if (*m.tps).len() > 0u {
