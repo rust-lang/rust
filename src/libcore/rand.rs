@@ -327,7 +327,7 @@ mod tests {
         let ra = rand::seeded_rng(seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
-        #error("%?", r);
+        error!{"%?", r};
         assert r == 890007737u32 // on x86_64
             || r == 2935188040u32; // on x86
     }

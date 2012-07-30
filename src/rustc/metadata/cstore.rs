@@ -160,16 +160,16 @@ fn get_dep_hashes(cstore: cstore) -> ~[@~str] {
     for p(cstore).use_crate_map.each_value |cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
-        #debug("Add hash[%s]: %s", cdata.name, *hash);
+        debug!{"Add hash[%s]: %s", cdata.name, *hash};
         vec::push(result, {name: @cdata.name, hash: hash});
     };
     fn lteq(a: crate_hash, b: crate_hash) -> bool {
         ret *a.name <= *b.name;
     }
     let sorted = std::sort::merge_sort(lteq, result);
-    #debug("sorted:");
+    debug!{"sorted:"};
     for sorted.each |x| {
-        #debug("  hash[%s]: %s", *x.name, *x.hash);
+        debug!{"  hash[%s]: %s", *x.name, *x.hash};
     }
     fn mapper(ch: crate_hash) -> @~str { ret ch.hash; }
     ret vec::map(sorted, mapper);

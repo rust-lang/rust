@@ -46,11 +46,11 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     let prec: precond = ann_precond(a);
     let pres: prestate = ann_prestate(a);
 
-    #debug("check_states_stmt:");
+    debug!{"check_states_stmt:"};
     log(debug, print::pprust::stmt_to_str(*s));
-    #debug("prec = ");
+    debug!{"prec = "};
     log_tritv(fcx, prec);
-    #debug("pres = ");
+    debug!{"pres = "};
     log_tritv(fcx, pres);
 
     if !implies(pres, prec) {

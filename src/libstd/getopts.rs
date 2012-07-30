@@ -314,7 +314,7 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
 fn opt_vals(m: match, nm: ~str) -> ~[optval] {
     ret alt find_opt(m.opts, mkname(nm)) {
           some(id) { m.vals[id] }
-          none { #error("No option '%s' defined", nm); fail }
+          none { error!{"No option '%s' defined", nm}; fail }
         };
 }
 

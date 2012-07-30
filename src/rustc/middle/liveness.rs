@@ -153,11 +153,11 @@ fn check_crate(tcx: ty::ctxt,
 }
 
 impl of to_str::to_str for live_node {
-    fn to_str() -> ~str { #fmt["ln(%u)", *self] }
+    fn to_str() -> ~str { fmt!{"ln(%u)", *self} }
 }
 
 impl of to_str::to_str for variable {
-    fn to_str() -> ~str { #fmt["v(%u)", *self] }
+    fn to_str() -> ~str { fmt!{"v(%u)", *self} }
 }
 
 // ______________________________________________________________________
@@ -243,7 +243,7 @@ class ir_maps {
         vec::push(self.lnks, lnk);
         self.num_live_nodes += 1u;
 
-        #debug["%s is of kind %?", ln.to_str(), lnk];
+        debug!{"%s is of kind %?", ln.to_str(), lnk};
 
         ln
     }
@@ -252,7 +252,7 @@ class ir_maps {
         let ln = self.add_live_node(lnk);
         self.live_node_map.insert(node_id, ln);
 
-        #debug["%s is node %d", ln.to_str(), node_id];
+        debug!{"%s is node %d", ln.to_str(), node_id};
     }
 
     fn add_variable(vk: var_kind) -> variable {
@@ -271,7 +271,7 @@ class ir_maps {
           }
         }
 
-        #debug["%s is %?", v.to_str(), vk];
+        debug!{"%s is %?", v.to_str(), vk};
 
         v
     }
@@ -281,7 +281,7 @@ class ir_maps {
           some(var) {var}
           none {
             self.tcx.sess.span_bug(
-                span, #fmt("No variable registered for id %d", node_id));
+                span, fmt!{"No variable registered for id %d", node_id});
           }
         }
     }
@@ -314,7 +314,7 @@ class ir_maps {
 
     fn add_last_use(expr_id: node_id, var: variable) {
         let vk = self.var_kinds[*var];
-        #debug["Node %d is a last use of variable %?", expr_id, vk];
+        debug!{"Node %d is a last use of variable %?", expr_id, vk};
         alt vk {
           vk_arg(id, name, by_move) |
           vk_arg(id, name, by_copy) |
@@ -332,7 +332,7 @@ class ir_maps {
           }
           vk_arg(_, _, by_ref) | vk_arg(_, _, by_mutbl_ref) |
           vk_arg(_, _, by_val) | vk_self | vk_field(_) | vk_implicit_ret {
-            #debug["--but it is not owned"];
+            debug!{"--but it is not owned"};
           }
         }
     }
@@ -340,17 +340,17 @@ class ir_maps {
 
 fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             sp: span, id: node_id, &&self: @ir_maps, v: vt<@ir_maps>) {
-    #debug["visit_fn: id=%d", id];
+    debug!{"visit_fn: id=%d", id};
     let _i = util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
     let fn_maps = @ir_maps(self.tcx, self.method_map,
                            self.last_use_map);
 
-    #debug["creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint];
+    debug!{"creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint};
 
     for decl.inputs.each |arg| {
-        #debug["adding argument %d", arg.id];
+        debug!{"adding argument %d", arg.id};
         let mode = ty::resolved_mode(self.tcx, arg.mode);
         (*fn_maps).add_variable(vk_arg(arg.id, arg.ident, mode));
     };
@@ -405,7 +405,7 @@ fn add_class_fields(self: @ir_maps, did: def_id) {
 fn visit_local(local: @local, &&self: @ir_maps, vt: vt<@ir_maps>) {
     let def_map = self.tcx.def_map;
     do pat_util::pat_bindings(def_map, local.node.pat) |p_id, sp, path| {
-        #debug["adding local variable %d", p_id];
+        debug!{"adding local variable %d", p_id};
         let name = ast_util::path_to_ident(path);
         (*self).add_live_node_for_node(p_id, lnk_vdef(sp));
         (*self).add_variable(vk_local(p_id, name));
@@ -418,7 +418,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       // live nodes required for uses or definitions of variables:
       expr_path(_) {
         let def = self.tcx.def_map.get(expr.id);
-        #debug["expr %d: path that leads to %?", expr.id, def];
+        debug!{"expr %d: path that leads to %?", expr.id, def};
         if relevant_def(def).is_some() {
             (*self).add_live_node_for_node(expr.id, lnk_expr(expr.span));
         }
@@ -540,8 +540,8 @@ class liveness {
             // code have to agree about which AST nodes are worth
             // creating liveness nodes for.
             self.tcx.sess.span_bug(
-                span, #fmt["No live node registered for node %d",
-                           node_id]);
+                span, fmt!{"No live node registered for node %d",
+                           node_id});
           }
         }
     }
@@ -664,7 +664,7 @@ class liveness {
             wr.write_str(~"[ln(");
             wr.write_uint(*ln);
             wr.write_str(~") of kind ");
-            wr.write_str(#fmt["%?", copy self.ir.lnks[*ln]]);
+            wr.write_str(fmt!{"%?", copy self.ir.lnks[*ln]});
             wr.write_str(~" reads");
             self.write_vars(wr, ln, |idx| self.users[idx].reader );
             wr.write_str(~"  writes");
@@ -695,8 +695,8 @@ class liveness {
         self.indices2(ln, succ_ln, |idx, succ_idx| {
             self.users[idx] = self.users[succ_idx]
         });
-        #debug["init_from_succ(ln=%s, succ=%s)",
-               self.ln_str(ln), self.ln_str(succ_ln)];
+        debug!{"init_from_succ(ln=%s, succ=%s)",
+               self.ln_str(ln), self.ln_str(succ_ln)};
     }
 
     fn merge_from_succ(ln: live_node, succ_ln: live_node,
@@ -715,8 +715,8 @@ class liveness {
             }
         }
 
-        #debug["merge_from_succ(ln=%s, succ=%s, first_merge=%b, changed=%b)",
-               ln.to_str(), self.ln_str(succ_ln), first_merge, changed];
+        debug!{"merge_from_succ(ln=%s, succ=%s, first_merge=%b, changed=%b)",
+               ln.to_str(), self.ln_str(succ_ln), first_merge, changed};
         ret changed;
 
         fn copy_if_invalid(src: live_node, &dst: live_node) -> bool {
@@ -738,8 +738,8 @@ class liveness {
         self.users[idx].reader = invalid_node();
         self.users[idx].writer = invalid_node();
 
-        #debug["%s defines %s (idx=%u): %s", writer.to_str(), var.to_str(),
-               idx, self.ln_str(writer)];
+        debug!{"%s defines %s (idx=%u): %s", writer.to_str(), var.to_str(),
+               idx, self.ln_str(writer)};
     }
 
     // Either read, write, or both depending on the acc bitset
@@ -762,8 +762,8 @@ class liveness {
             self.users[idx].used = true;
         }
 
-        #debug["%s accesses[%x] %s: %s",
-               ln.to_str(), acc, var.to_str(), self.ln_str(ln)];
+        debug!{"%s accesses[%x] %s: %s",
+               ln.to_str(), acc, var.to_str(), self.ln_str(ln)};
     }
 
     // _______________________________________________________________________
@@ -778,14 +778,14 @@ class liveness {
             });
 
         // hack to skip the loop unless #debug is enabled:
-        #debug["^^ liveness computation results for body %d (entry=%s)",
+        debug!{"^^ liveness computation results for body %d (entry=%s)",
                {
                    for uint::range(0u, self.ir.num_live_nodes) |ln_idx| {
                        #debug["%s", self.ln_str(live_node(ln_idx))];
                    }
                    body.node.id
                },
-               entry_ln.to_str()];
+               entry_ln.to_str()};
 
         entry_ln
     }
@@ -1373,7 +1373,7 @@ fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
         // No initializer: the variable might be unused; if not, it
         // should not be live at this point.
 
-        #debug["check_local() with no initializer"];
+        debug!{"check_local() with no initializer"};
         do (*self).pat_bindings(local.node.pat) |ln, var, sp| {
             if !self.warn_about_unused(sp, ln, var) {
                 alt (*self).live_on_exit(ln, var) {
@@ -1487,7 +1487,7 @@ impl check_methods for @liveness {
               none { /* ok */ }
               some(lnk_exit) {
                 self.tcx.sess.span_err(
-                    sp, #fmt["field `self.%s` is never initialized", *nm]);
+                    sp, fmt!{"field `self.%s` is never initialized", *nm});
               }
               some(lnk) {
                 self.report_illegal_read(
@@ -1525,8 +1525,8 @@ impl check_methods for @liveness {
     }
 
     fn check_move_from_var(span: span, ln: live_node, var: variable) {
-        #debug["check_move_from_var(%s, %s)",
-               ln.to_str(), var.to_str()];
+        debug!{"check_move_from_var(%s, %s)",
+               ln.to_str(), var.to_str()};
 
         alt (*self).live_on_exit(ln, var) {
           none { }
@@ -1546,8 +1546,8 @@ impl check_methods for @liveness {
     }
 
     fn check_move_from_expr(expr: @expr, vt: vt<@liveness>) {
-        #debug["check_move_from_expr(node %d: %s)",
-               expr.id, expr_to_str(expr)];
+        debug!{"check_move_from_expr(node %d: %s)",
+               expr.id, expr_to_str(expr)};
 
         if self.ir.method_map.contains_key(expr.id) {
             // actually an rvalue, since this calls a method
@@ -1643,7 +1643,7 @@ impl check_methods for @liveness {
           some(lnk) {
             self.tcx.sess.span_bug(
                 orig_span,
-                #fmt["illegal writer: %?", lnk]);
+                fmt!{"illegal writer: %?", lnk});
           }
           none {}
         }
@@ -1662,14 +1662,14 @@ impl check_methods for @liveness {
               vk_arg(_, name, _) {
                 self.tcx.sess.span_err(
                     move_span,
-                    #fmt["illegal move from argument `%s`, which is not \
-                          copy or move mode", *name]);
+                    fmt!{"illegal move from argument `%s`, which is not \
+                          copy or move mode", *name});
                 ret;
               }
               vk_field(name) {
                 self.tcx.sess.span_err(
                     move_span,
-                    #fmt["illegal move from field `%s`", *name]);
+                    fmt!{"illegal move from field `%s`", *name});
                 ret;
               }
               vk_self {
@@ -1682,8 +1682,8 @@ impl check_methods for @liveness {
               vk_local(*) | vk_implicit_ret {
                 self.tcx.sess.span_bug(
                     move_span,
-                    #fmt["illegal reader (%?) for `%?`",
-                         lnk, vk]);
+                    fmt!{"illegal reader (%?) for `%?`",
+                         lnk, vk});
               }
             }
         }
@@ -1708,18 +1708,18 @@ impl check_methods for @liveness {
           lnk_freevar(span) {
             self.tcx.sess.span_err(
                 span,
-                #fmt["capture of %s: `%s`", msg, *name]);
+                fmt!{"capture of %s: `%s`", msg, *name});
           }
           lnk_expr(span) {
             self.tcx.sess.span_err(
                 span,
-                #fmt["use of %s: `%s`", msg, *name]);
+                fmt!{"use of %s: `%s`", msg, *name});
           }
           lnk_exit |
           lnk_vdef(_) {
             self.tcx.sess.span_bug(
                 chk_span,
-                #fmt["illegal reader: %?", lnk]);
+                fmt!{"illegal reader: %?", lnk});
           }
         }
     }
@@ -1776,11 +1776,11 @@ impl check_methods for @liveness {
 
                 if is_assigned {
                     self.tcx.sess.span_warn(
-                        sp, #fmt["variable `%s` is assigned to, \
-                                  but never used", *name]);
+                        sp, fmt!{"variable `%s` is assigned to, \
+                                  but never used", *name});
                 } else {
                     self.tcx.sess.span_warn(
-                        sp, #fmt["unused variable: `%s`", *name]);
+                        sp, fmt!{"unused variable: `%s`", *name});
                 }
             }
             ret true;
@@ -1793,7 +1793,7 @@ impl check_methods for @liveness {
             for self.should_warn(var).each |name| {
                 self.tcx.sess.span_warn(
                     sp,
-                    #fmt["value assigned to `%s` is never read", *name]);
+                    fmt!{"value assigned to `%s` is never read", *name});
             }
         }
     }

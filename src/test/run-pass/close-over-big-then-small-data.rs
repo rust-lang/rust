@@ -12,7 +12,7 @@ fn f<A:copy owned>(a: A, b: u16) -> fn@() -> (A, u16) {
 
 fn main() {
     let (a, b) = f(22_u64, 44u16)();
-    #debug["a=%? b=%?", a, b];
+    debug!{"a=%? b=%?", a, b};
     assert a == 22u64;
     assert b == 44u16;
 }

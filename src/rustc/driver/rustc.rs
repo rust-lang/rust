@@ -27,14 +27,14 @@ import io::reader_util;
 
 fn version(argv0: ~str) {
     let mut vers = ~"unknown version";
-    let env_vers = #env["CFG_VERSION"];
+    let env_vers = env!{"CFG_VERSION"};
     if str::len(env_vers) != 0u { vers = env_vers; }
-    io::println(#fmt("%s %s", argv0, vers));
-    io::println(#fmt("host: %s", host_triple()));
+    io::println(fmt!{"%s %s", argv0, vers});
+    io::println(fmt!{"host: %s", host_triple()});
 }
 
 fn usage(argv0: ~str) {
-    io::println(#fmt("Usage: %s [options] <input>\n", argv0) +
+    io::println(fmt!{"Usage: %s [options] <input>\n", argv0} +
                  ~"
 Options:
 
@@ -91,14 +91,14 @@ fn describe_warnings() {
     fn padded(max: uint, s: ~str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
-    io::println(#fmt("\nAvailable lint checks:\n"));
-    io::println(#fmt("    %s  %7.7s  %s",
-                     padded(max_key, ~"name"), ~"default", ~"meaning"));
-    io::println(#fmt("    %s  %7.7s  %s\n",
-                     padded(max_key, ~"----"), ~"-------", ~"-------"));
+    io::println(fmt!{"\nAvailable lint checks:\n"});
+    io::println(fmt!{"    %s  %7.7s  %s",
+                     padded(max_key, ~"name"), ~"default", ~"meaning"});
+    io::println(fmt!{"    %s  %7.7s  %s\n",
+                     padded(max_key, ~"----"), ~"-------", ~"-------"});
     for lint_dict.each |k, v| {
         let k = str::replace(k, ~"_", ~"-");
-        io::println(#fmt("    %s  %7.7s  %s",
+        io::println(fmt!{"    %s  %7.7s  %s",
                          padded(max_key, k),
                          alt v.default {
                              lint::allow { ~"allow" }
@@ -106,16 +106,16 @@ fn describe_warnings() {
                              lint::deny { ~"deny" }
                              lint::forbid { ~"forbid" }
                          },
-                         v.desc));
+                         v.desc});
     }
     io::println(~"");
 }
 
 fn describe_debug_flags() {
-    io::println(#fmt("\nAvailable debug options:\n"));
+    io::println(fmt!{"\nAvailable debug options:\n"});
     for session::debugging_opts_map().each |pair| {
         let (name, desc, _) = pair;
-        io::println(#fmt("    -Z%-20s -- %s", name, desc));
+        io::println(fmt!{"    -Z%-20s -- %s", name, desc});
     }
 }
 

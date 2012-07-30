@@ -197,12 +197,12 @@ fn find_meta_items_by_name(metas: ~[@ast::meta_item], +name: ~str) ->
  * comparison is performed structurally.
  */
 fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item) -> bool {
-    #debug("looking for %s",
-           print::pprust::meta_item_to_str(*needle));
+    debug!{"looking for %s",
+           print::pprust::meta_item_to_str(*needle)};
     for haystack.each |item| {
-        #debug("looking in %s",
-               print::pprust::meta_item_to_str(*item));
-        if eq(item, needle) { #debug("found it!"); ret true; }
+        debug!{"looking in %s",
+               print::pprust::meta_item_to_str(*item)};
+        if eq(item, needle) { debug!{"found it!"}; ret true; }
     }
     #debug("found it not :(");
     ret false;
@@ -323,7 +323,7 @@ fn find_linkage_attrs(attrs: ~[ast::attribute]) -> ~[ast::attribute] {
     for find_attrs_by_name(attrs, ~"link").each |attr| {
         alt attr.node.value.node {
           ast::meta_list(_, _) { vec::push(found, attr) }
-          _ { #debug("ignoring link attribute that has incorrect type"); }
+          _ { debug!{"ignoring link attribute that has incorrect type"}; }
         }
     }
     ret found;
@@ -399,7 +399,7 @@ fn require_unique_names(diagnostic: span_handler,
         // FIXME: How do I silence the warnings? --pcw (#2619)
         if map.contains_key(*name) {
             diagnostic.span_fatal(meta.span,
-                                  #fmt["duplicate meta item `%s`", *name]);
+                                  fmt!{"duplicate meta item `%s`", *name});
         }
         map.insert(*name, ());
     }

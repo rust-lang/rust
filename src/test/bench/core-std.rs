@@ -17,12 +17,12 @@ fn main(argv: ~[~str]) {
 
     let tests = vec::view(argv, 1, argv.len());
 
-    #bench[shift_push];
-    #bench[read_line];
-    #bench[str_set];
-    #bench[vec_plus];
-    #bench[vec_append];
-    #bench[vec_push_all];
+    bench!{shift_push};
+    bench!{read_line};
+    bench!{str_set};
+    bench!{vec_plus};
+    bench!{vec_append};
+    bench!{vec_push_all};
 }
 
 fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
@@ -39,7 +39,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
     test();
     let stop = precise_time_s();
 
-    io::println(#fmt("%s:\t\t%f ms", name, (stop - start) * 1000f));
+    io::println(fmt!{"%s:\t\t%f ms", name, (stop - start) * 1000f});
 }
 
 fn shift_push() {
@@ -53,7 +53,7 @@ fn shift_push() {
 
 fn read_line() {
     let path = path::connect(
-        #env("CFG_SRC_DIR"),
+        env!{"CFG_SRC_DIR"},
         ~"src/test/bench/shootout-k-nucleotide.data"
     );
 

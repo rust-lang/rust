@@ -113,11 +113,11 @@ mod map_reduce {
             while !state.is_done || state.ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {
-                    // #error("received %d", v);
+                    // error!{"received %d", v};
                     ret some(v);
                   }
                   done {
-                    // #error("all done");
+                    // error!{"all done"};
                     state.is_done = true;
                   }
                   ref { state.ref_count += 1; }
@@ -146,7 +146,7 @@ mod map_reduce {
         while num_mappers > 0 {
             alt recv(ctrl) {
               mapper_done {
-                // #error("received mapper terminated.");
+                // error!{"received mapper terminated."};
                 num_mappers -= 1;
               }
               find_reducer(k, cc) {

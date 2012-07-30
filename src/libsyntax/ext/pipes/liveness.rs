@@ -35,7 +35,7 @@ import proto::methods;
 import ast_builder::empty_span;
 
 fn analyze(proto: protocol, _cx: ext_ctxt) {
-    #debug("initializing colive analysis");
+    debug!{"initializing colive analysis"};
     let num_states = proto.num_states();
     let colive = do (copy proto.states).map_to_vec |state| {
         let bv = ~bitv(num_states, false);
@@ -49,7 +49,7 @@ fn analyze(proto: protocol, _cx: ext_ctxt) {
     let mut changed = true;
     while changed {
         changed = false;
-        #debug("colive iteration %?", i);
+        debug!{"colive iteration %?", i};
         for colive.eachi |i, this_colive| {
             let this = proto.get_state_by_id(i);
             for this_colive.ones |j| {
@@ -62,7 +62,7 @@ fn analyze(proto: protocol, _cx: ext_ctxt) {
         i += 1;
     }
 
-    #debug("colive analysis complete");
+    debug!{"colive analysis complete"};
 
     // Determine if we're bounded
     let mut self_live = ~[];
@@ -75,20 +75,20 @@ fn analyze(proto: protocol, _cx: ext_ctxt) {
     if self_live.len() > 0 {
         let states = str::connect(self_live.map(|s| *s.name), ~" ");
 
-        #debug("protocol %s is unbounded due to loops involving: %s",
-               *proto.name, states);
+        debug!{"protocol %s is unbounded due to loops involving: %s",
+               *proto.name, states};
 
         // Someday this will be configurable with a warning
         //cx.span_warn(empty_span(),
-        //              #fmt("protocol %s is unbounded due to loops \
+        //              fmt!{"protocol %s is unbounded due to loops \
         //                    involving these states: %s",
         //                   *proto.name,
-        //                   states));
+        //                   states});
 
         proto.bounded = some(false);
     }
     else {
-        #debug("protocol %s is bounded. yay!", *proto.name);
+        debug!{"protocol %s is bounded. yay!", *proto.name};
         proto.bounded = some(true);
     }
 }

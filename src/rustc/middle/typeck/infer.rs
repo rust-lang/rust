@@ -231,7 +231,7 @@ fn intersection(a: int_ty_set, b: int_ty_set) -> int_ty_set {
 
 fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
     option<ty::t> {
-    #debug["single_type_contained_in(a=%s)", uint::to_str(*a, 10u)];
+    debug!{"single_type_contained_in(a=%s)", uint::to_str(*a, 10u)};
 
     if *a == INT_TY_SET_i8    { ret some(ty::mk_i8(tcx)); }
     if *a == INT_TY_SET_u8    { ret some(ty::mk_u8(tcx)); }
@@ -345,8 +345,8 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
       cyclic_ty(_) { ~"cyclic type of infinite size" }
       unresolved_region(_) { ~"unconstrained region" }
       region_var_bound_by_region_var(r1, r2) {
-        #fmt["region var %? bound by another region var %?; this is \
-              a bug in rustc", r1, r2]
+        fmt!{"region var %? bound by another region var %?; this is \
+              a bug in rustc", r1, r2}
       }
     }
 }
@@ -365,29 +365,29 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
                  borrowings: dvec()})}
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    #debug["mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    debug!{"mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
     indent(|| cx.commit(|| sub(cx).tys(a, b) ) ).to_ures()
 }
 
 fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    #debug["can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    debug!{"can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
     indent(|| cx.probe(|| sub(cx).tys(a, b) ) ).to_ures()
 }
 
 fn mk_subr(cx: infer_ctxt, a: ty::region, b: ty::region) -> ures {
-    #debug["mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    debug!{"mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx)};
     indent(|| cx.commit(|| sub(cx).regions(a, b) ) ).to_ures()
 }
 
 fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    #debug["mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    debug!{"mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
     indent(|| cx.commit(|| cx.eq_tys(a, b) ) ).to_ures()
 }
 
 fn mk_assignty(cx: infer_ctxt, anmnt: assignment,
                a: ty::t, b: ty::t) -> ures {
-    #debug["mk_assignty(%? / %s <: %s)",
-           anmnt, a.to_str(cx), b.to_str(cx)];
+    debug!{"mk_assignty(%? / %s <: %s)",
+           anmnt, a.to_str(cx), b.to_str(cx)};
     indent(|| cx.commit(||
         cx.assign_tys(anmnt, a, b)
     ) ).to_ures()
@@ -395,8 +395,8 @@ fn mk_assignty(cx: infer_ctxt, anmnt: assignment,
 
 fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
                 a: ty::t, b: ty::t) -> ures {
-    #debug["can_mk_assignty(%? / %s <: %s)",
-           anmnt, a.to_str(cx), b.to_str(cx)];
+    debug!{"can_mk_assignty(%? / %s <: %s)",
+           anmnt, a.to_str(cx), b.to_str(cx)};
 
     // FIXME(#2593)---this will not unroll any entries we make in the
     // borrowings table.  But this is OK for the moment because this
@@ -424,8 +424,8 @@ fn resolve_borrowings(cx: infer_ctxt) {
     for cx.borrowings.each |item| {
         alt resolve_region(cx, item.scope, resolve_all|force_all) {
           ok(region) => {
-            #debug["borrowing for expr %d resolved to region %?, mutbl %?",
-                   item.expr_id, region, item.mutbl];
+            debug!{"borrowing for expr %d resolved to region %?, mutbl %?",
+                   item.expr_id, region, item.mutbl};
             cx.tcx.borrowings.insert(
                 item.expr_id, {region: region, mutbl: item.mutbl});
           }
@@ -434,7 +434,7 @@ fn resolve_borrowings(cx: infer_ctxt) {
             let str = fixup_err_to_str(e);
             cx.tcx.sess.span_err(
                 item.span,
-                #fmt["could not resolve lifetime for borrow: %s", str]);
+                fmt!{"could not resolve lifetime for borrow: %s", str});
           }
         }
     }
@@ -509,9 +509,9 @@ impl<V:copy to_str> of to_str for bound<V> {
 
 impl<T:copy to_str> of to_str for bounds<T> {
     fn to_str(cx: infer_ctxt) -> ~str {
-        #fmt["{%s <: %s}",
+        fmt!{"{%s <: %s}",
              self.lb.to_str(cx),
-             self.ub.to_str(cx)]
+             self.ub.to_str(cx)}
     }
 }
 
@@ -526,9 +526,9 @@ impl of to_str for int_ty_set {
 impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
     fn to_str(cx: infer_ctxt) -> ~str {
         alt self {
-          redirect(vid) { #fmt("redirect(%s)", vid.to_str()) }
-          root(pt, rk) { #fmt("root(%s, %s)", pt.to_str(cx),
-                              uint::to_str(rk, 10u)) }
+          redirect(vid) { fmt!{"redirect(%s)", vid.to_str()} }
+          root(pt, rk) { fmt!{"root(%s, %s)", pt.to_str(cx),
+                              uint::to_str(rk, 10u)} }
         }
     }
 }
@@ -604,12 +604,12 @@ impl transaction_methods for infer_ctxt {
         let rbl = self.rb.bindings.len();
         let bl = self.borrowings.len();
 
-        #debug["try(tvbl=%u, rbl=%u)", tvbl, rbl];
+        debug!{"try(tvbl=%u, rbl=%u)", tvbl, rbl};
         let r <- f();
         alt r {
-          result::ok(_) { #debug["try--ok"]; }
+          result::ok(_) { debug!{"try--ok"}; }
           result::err(_) {
-            #debug["try--rollback"];
+            debug!{"try--rollback"};
             rollback_to(self.tvb, tvbl);
             rollback_to(self.rb, rbl);
             while self.borrowings.len() != bl { self.borrowings.pop(); }
@@ -709,8 +709,8 @@ impl unify_methods for infer_ctxt {
         vec::push(vb.bindings, (vid, old_v));
         vb.vals.insert(vid.to_uint(), new_v);
 
-        #debug["Updating variable %s from %s to %s",
-               vid.to_str(), old_v.to_str(self), new_v.to_str(self)];
+        debug!{"Updating variable %s from %s to %s",
+               vid.to_str(), old_v.to_str(self), new_v.to_str(self)};
     }
 
     fn get<V:copy vid, T:copy>(
@@ -720,7 +720,7 @@ impl unify_methods for infer_ctxt {
         let vid_u = vid.to_uint();
         alt vb.vals.find(vid_u) {
           none {
-            self.tcx.sess.bug(#fmt["failed lookup of vid `%u`", vid_u]);
+            self.tcx.sess.bug(fmt!{"failed lookup of vid `%u`", vid_u});
           }
           some(var_val) {
             alt var_val {
@@ -745,7 +745,7 @@ impl unify_methods for infer_ctxt {
         a: bound<V>, b: bound<V>,
         merge_op: fn(V,V) -> cres<V>) -> cres<bound<V>> {
 
-        #debug["merge_bnd(%s,%s)", a.to_str(self), b.to_str(self)];
+        debug!{"merge_bnd(%s,%s)", a.to_str(self), b.to_str(self)};
         let _r = indenter();
 
         alt (a, b) {
@@ -773,13 +773,13 @@ impl unify_methods for infer_ctxt {
 
         let _r = indenter();
         do self.merge_bnd(a.ub, b.ub, glb).chain |ub| {
-            #debug["glb of ubs %s and %s is %s",
+            debug!{"glb of ubs %s and %s is %s",
                    a.ub.to_str(self), b.ub.to_str(self),
-                   ub.to_str(self)];
+                   ub.to_str(self)};
             do self.merge_bnd(a.lb, b.lb, lub).chain |lb| {
-                #debug["lub of lbs %s and %s is %s",
+                debug!{"lub of lbs %s and %s is %s",
                        a.lb.to_str(self), b.lb.to_str(self),
-                       lb.to_str(self)];
+                       lb.to_str(self)};
                 ok({lb: lb, ub: ub})
             }
         }
@@ -813,10 +813,10 @@ impl unify_methods for infer_ctxt {
         //       A     \ / A
         //              B
 
-        #debug["merge(%s,%s,%s)",
+        debug!{"merge(%s,%s,%s)",
                v_id.to_str(),
                a.to_str(self),
-               b.to_str(self)];
+               b.to_str(self)};
 
         // First, relate the lower/upper bounds of A and B.
         // Note that these relations *must* hold for us to
@@ -830,9 +830,9 @@ impl unify_methods for infer_ctxt {
         do self.merge_bnd(a.ub, b.ub, |x, y| x.glb(self, y) ).chain |ub| {
         do self.merge_bnd(a.lb, b.lb, |x, y| x.lub(self, y) ).chain |lb| {
             let bnds = {lb: lb, ub: ub};
-            #debug["merge(%s): bnds=%s",
+            debug!{"merge(%s): bnds=%s",
                    v_id.to_str(),
-                   bnds.to_str(self)];
+                   bnds.to_str(self)};
 
             // the new bounds must themselves
             // be relatable:
@@ -855,9 +855,9 @@ impl unify_methods for infer_ctxt {
         let a_bounds = nde_a.possible_types;
         let b_bounds = nde_b.possible_types;
 
-        #debug["vars(%s=%s <: %s=%s)",
+        debug!{"vars(%s=%s <: %s=%s)",
                a_id.to_str(), a_bounds.to_str(self),
-               b_id.to_str(), b_bounds.to_str(self)];
+               b_id.to_str(), b_bounds.to_str(self)};
 
         if a_id == b_id { ret uok(); }
 
@@ -883,20 +883,20 @@ impl unify_methods for infer_ctxt {
         // Make the node with greater rank the parent of the node with
         // smaller rank.
         if nde_a.rank > nde_b.rank {
-            #debug["vars(): a has smaller rank"];
+            debug!{"vars(): a has smaller rank"};
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
             self.set(vb, b_id, redirect(a_id));
             self.set_var_to_merged_bounds(
                 vb, a_id, a_bounds, b_bounds, nde_a.rank).then(|| uok() )
         } else if nde_a.rank < nde_b.rank {
-            #debug["vars(): b has smaller rank"];
+            debug!{"vars(): b has smaller rank"};
             // b has greater rank, so a should redirect to b.
             self.set(vb, a_id, redirect(b_id));
             self.set_var_to_merged_bounds(
                 vb, b_id, a_bounds, b_bounds, nde_b.rank).then(|| uok() )
         } else {
-            #debug["vars(): a and b have equal rank"];
+            debug!{"vars(): a and b have equal rank"};
             assert nde_a.rank == nde_b.rank;
             // If equal, just redirect one to the other and increment
             // the other's rank.  We choose arbitrarily to redirect b
@@ -932,18 +932,18 @@ impl unify_methods for infer_ctxt {
 
         // Rank optimization
         if nde_a.rank > nde_b.rank {
-            #debug["vars_integral(): a has smaller rank"];
+            debug!{"vars_integral(): a has smaller rank"};
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
             self.set(vb, a_id, root(intersection, nde_a.rank));
             self.set(vb, b_id, redirect(a_id));
         } else if nde_a.rank < nde_b.rank {
-            #debug["vars_integral(): b has smaller rank"];
+            debug!{"vars_integral(): b has smaller rank"};
             // b has greater rank, so a should redirect to b.
             self.set(vb, b_id, root(intersection, nde_b.rank));
             self.set(vb, a_id, redirect(b_id));
         } else {
-            #debug["vars_integral(): a and b have equal rank"];
+            debug!{"vars_integral(): a and b have equal rank"};
             assert nde_a.rank == nde_b.rank;
             // If equal, just redirect one to the other and increment
             // the other's rank.  We choose arbitrarily to redirect b
@@ -963,9 +963,9 @@ impl unify_methods for infer_ctxt {
         let a_id = nde_a.root;
         let a_bounds = nde_a.possible_types;
 
-        #debug["vart(%s=%s <: %s)",
+        debug!{"vart(%s=%s <: %s)",
                a_id.to_str(), a_bounds.to_str(self),
-               b.to_str(self)];
+               b.to_str(self)};
         let b_bounds = {lb: none, ub: some(b)};
         self.set_var_to_merged_bounds(vb, a_id, a_bounds, b_bounds,
                                       nde_a.rank)
@@ -1000,9 +1000,9 @@ impl unify_methods for infer_ctxt {
         let b_id = nde_b.root;
         let b_bounds = nde_b.possible_types;
 
-        #debug["tvar(%s <: %s=%s)",
+        debug!{"tvar(%s <: %s=%s)",
                a.to_str(self),
-               b_id.to_str(), b_bounds.to_str(self)];
+               b_id.to_str(), b_bounds.to_str(self)};
         self.set_var_to_merged_bounds(vb, b_id, a_bounds, b_bounds,
                                       nde_b.rank)
     }
@@ -1030,7 +1030,7 @@ impl unify_methods for infer_ctxt {
     fn bnds<T:copy to_str st>(
         a: bound<T>, b: bound<T>) -> ures {
 
-        #debug("bnds(%s <: %s)", a.to_str(self), b.to_str(self));
+        debug!{"bnds(%s <: %s)", a.to_str(self), b.to_str(self)};
         do indent {
             alt (a, b) {
               (none, none) |
@@ -1060,8 +1060,8 @@ impl unify_methods for infer_ctxt {
     }
 
     fn eq_regions(a: ty::region, b: ty::region) -> ures {
-        #debug["eq_regions(%s, %s)",
-               a.to_str(self), b.to_str(self)];
+        debug!{"eq_regions(%s, %s)",
+               a.to_str(self), b.to_str(self)};
         do indent {
             do self.sub_regions(a, b).then {
                 self.sub_regions(b, a)
@@ -1141,9 +1141,9 @@ impl methods for resolve_state {
     fn resolve_type_chk(typ: ty::t) -> fres<ty::t> {
         self.err = none;
 
-        #debug["Resolving %s (modes=%x)",
+        debug!{"Resolving %s (modes=%x)",
                ty_to_str(self.infcx.tcx, typ),
-               self.modes];
+               self.modes};
 
         // n.b. This is a hokey mess because the current fold doesn't
         // allow us to pass back errors in any useful way.
@@ -1153,9 +1153,9 @@ impl methods for resolve_state {
         assert vec::is_empty(self.v_seen);
         alt self.err {
           none {
-            #debug["Resolved to %s (modes=%x)",
+            debug!{"Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
-                   self.modes];
+                   self.modes};
             ret ok(rty);
           }
           some(e) { ret err(e); }
@@ -1172,7 +1172,7 @@ impl methods for resolve_state {
     }
 
     fn resolve_type(typ: ty::t) -> ty::t {
-        #debug("resolve_type(%s)", typ.to_str(self.infcx));
+        debug!{"resolve_type(%s)", typ.to_str(self.infcx)};
         indent(fn&() -> ty::t {
             if !ty::type_needs_infer(typ) { ret typ; }
 
@@ -1201,7 +1201,7 @@ impl methods for resolve_state {
     }
 
     fn resolve_nested_tvar(typ: ty::t) -> ty::t {
-        #debug("Resolve_if_deep(%s)", typ.to_str(self.infcx));
+        debug!{"Resolve_if_deep(%s)", typ.to_str(self.infcx)};
         if !self.should(resolve_nested_tvar) {
             typ
         } else {
@@ -1210,7 +1210,7 @@ impl methods for resolve_state {
     }
 
     fn resolve_region(orig: ty::region) -> ty::region {
-        #debug("Resolve_region(%s)", orig.to_str(self.infcx));
+        debug!{"Resolve_region(%s)", orig.to_str(self.infcx)};
         alt orig {
           ty::re_var(rid) { self.resolve_region_var(rid) }
           _ { orig }
@@ -1372,8 +1372,8 @@ impl assignment for infer_ctxt {
             }
         }
 
-        #debug["assign_tys(anmnt=%?, %s -> %s)",
-               anmnt, a.to_str(self), b.to_str(self)];
+        debug!{"assign_tys(anmnt=%?, %s -> %s)",
+               anmnt, a.to_str(self), b.to_str(self)};
         let _r = indenter();
 
         alt (ty::get(a).struct, ty::get(b).struct) {
@@ -1419,9 +1419,9 @@ impl assignment for infer_ctxt {
         a: ty::t, b: ty::t,
         a_bnd: option<ty::t>, b_bnd: option<ty::t>) -> ures {
 
-        #debug["assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
+        debug!{"assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
                anmnt, a.to_str(self), b.to_str(self),
-               a_bnd.to_str(self), b_bnd.to_str(self)];
+               a_bnd.to_str(self), b_bnd.to_str(self)};
         let _r = indenter();
 
         fn is_borrowable(v: ty::vstore) -> bool {
@@ -1475,9 +1475,9 @@ impl assignment for infer_ctxt {
                       m: ast::mutability,
                       r_b: ty::region) -> ures {
 
-        #debug["crosspollinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
+        debug!{"crosspollinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
                anmnt, a.to_str(self), nr_b.to_str(self),
-               r_b.to_str(self)];
+               r_b.to_str(self)};
 
         do indent {
             do self.sub_tys(a, nr_b).then {
@@ -1485,12 +1485,12 @@ impl assignment for infer_ctxt {
                 // borrow bounds:
                 let r_a = self.next_region_var_with_scope_lb(anmnt.borrow_lb);
 
-                #debug["anmnt=%?", anmnt];
+                debug!{"anmnt=%?", anmnt};
                 do sub(self).contraregions(r_a, r_b).chain |_r| {
                     // if successful, add an entry indicating that
                     // borrowing occurred
-                    #debug["borrowing expression #%?, scope=%?, m=%?",
-                           anmnt, r_a, m];
+                    debug!{"borrowing expression #%?, scope=%?, m=%?",
+                           anmnt, r_a, m};
                     self.borrowings.push({expr_id: anmnt.expr_id,
                                           span: anmnt.span,
                                           scope: r_a,
@@ -1596,10 +1596,10 @@ fn super_substs<C:combine>(
             // consistently have a region parameter or not have a
             // region parameter.
             infcx.tcx.sess.bug(
-                #fmt["substitution a had opt_region %s and \
+                fmt!{"substitution a had opt_region %s and \
                       b had opt_region %s",
                      a.to_str(infcx),
-                     b.to_str(infcx)]);
+                     b.to_str(infcx)});
           }
         }
     }
@@ -1751,10 +1751,10 @@ fn super_tys<C:combine>(
       (ty::ty_var(_), _) |
       (_, ty::ty_var(_)) {
         tcx.sess.bug(
-            #fmt["%s: bot and var types should have been handled (%s,%s)",
+            fmt!{"%s: bot and var types should have been handled (%s,%s)",
                  self.tag(),
                  a.to_str(self.infcx()),
-                 b.to_str(self.infcx())]);
+                 b.to_str(self.infcx())});
       }
 
       // Have to handle these first
@@ -1904,10 +1904,10 @@ impl of combine for sub {
     }
 
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
-        #debug["%s.regions(%s, %s)",
+        debug!{"%s.regions(%s, %s)",
                self.tag(),
                a.to_str(self.infcx()),
-               b.to_str(self.infcx())];
+               b.to_str(self.infcx())};
         do indent {
             alt (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) {
@@ -1935,7 +1935,7 @@ impl of combine for sub {
     }
 
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
-        #debug("mts(%s <: %s)", a.to_str(*self), b.to_str(*self));
+        debug!{"mts(%s <: %s)", a.to_str(*self), b.to_str(*self)};
 
         if a.mutbl != b.mutbl && b.mutbl != m_const {
             ret err(ty::terr_mutability);
@@ -1973,8 +1973,8 @@ impl of combine for sub {
     }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        #debug("%s.tys(%s, %s)", self.tag(),
-               a.to_str(*self), b.to_str(*self));
+        debug!{"%s.tys(%s, %s)", self.tag(),
+               a.to_str(*self), b.to_str(*self)};
         if a == b { ret ok(a); }
         do indent {
             alt (ty::get(a).struct, ty::get(b).struct) {
@@ -2015,9 +2015,9 @@ impl of combine for sub {
                 // for it.  The only thing we're doing with `br` here is
                 // using it in the debug message.
                 let rvar = self.infcx().next_region_var_nb();
-                #debug["Bound region %s maps to %s",
+                debug!{"Bound region %s maps to %s",
                        bound_region_to_str(self.tcx, br),
-                       region_to_str(self.tcx, rvar)];
+                       region_to_str(self.tcx, rvar)};
                 rvar
             }
         };
@@ -2078,10 +2078,10 @@ impl of combine for lub {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx().tcx;
 
-        #debug("%s.mts(%s, %s)",
+        debug!{"%s.mts(%s, %s)",
                self.tag(),
                mt_to_str(tcx, a),
-               mt_to_str(tcx, b));
+               mt_to_str(tcx, b)};
 
         let m = if a.mutbl == b.mutbl {
             a.mutbl
@@ -2150,10 +2150,10 @@ impl of combine for lub {
     }
 
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
-        #debug["%s.regions(%?, %?)",
+        debug!{"%s.regions(%?, %?)",
                self.tag(),
                a.to_str(self.infcx()),
-               b.to_str(self.infcx())];
+               b.to_str(self.infcx())};
 
         do indent {
             alt (a, b) {
@@ -2259,10 +2259,10 @@ impl of combine for glb {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx().tcx;
 
-        #debug("%s.mts(%s, %s)",
+        debug!{"%s.mts(%s, %s)",
                self.tag(),
                mt_to_str(tcx, a),
-               mt_to_str(tcx, b));
+               mt_to_str(tcx, b)};
 
         alt (a.mutbl, b.mutbl) {
           // If one side or both is mut, then the GLB must use
@@ -2347,10 +2347,10 @@ impl of combine for glb {
     }
 
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
-        #debug["%s.regions(%?, %?)",
+        debug!{"%s.regions(%?, %?)",
                self.tag(),
                a.to_str(self.infcx()),
-               b.to_str(self.infcx())];
+               b.to_str(self.infcx())};
 
         do indent {
             alt (a, b) {
@@ -2486,9 +2486,9 @@ impl of lattice_ops for glb {
 fn lattice_tys<L:lattice_ops combine>(
     self: L, a: ty::t, b: ty::t) -> cres<ty::t> {
 
-    #debug("%s.lattice_tys(%s, %s)", self.tag(),
+    debug!{"%s.lattice_tys(%s, %s)", self.tag(),
            a.to_str(self.infcx()),
-           b.to_str(self.infcx()));
+           b.to_str(self.infcx())};
     if a == b { ret ok(a); }
     do indent {
         alt (ty::get(a).struct, ty::get(b).struct) {
@@ -2536,11 +2536,11 @@ fn lattice_rvars<L:lattice_ops combine>(
 
       _ {
         self.infcx().tcx.sess.bug(
-            #fmt["%s: lattice_rvars invoked with a=%s and b=%s, \
+            fmt!{"%s: lattice_rvars invoked with a=%s and b=%s, \
                   neither of which are region variables",
                  self.tag(),
                  a.to_str(self.infcx()),
-                 b.to_str(self.infcx())]);
+                 b.to_str(self.infcx())});
       }
     }
 }
@@ -2562,10 +2562,10 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     let a_bounds = nde_a.possible_types;
     let b_bounds = nde_b.possible_types;
 
-    #debug["%s.lattice_vars(%s=%s <: %s=%s)",
+    debug!{"%s.lattice_vars(%s=%s <: %s=%s)",
            self.tag(),
            a_vid.to_str(), a_bounds.to_str(self.infcx()),
-           b_vid.to_str(), b_bounds.to_str(self.infcx())];
+           b_vid.to_str(), b_bounds.to_str(self.infcx())};
 
     if a_vid == b_vid {
         ret ok(a_t);
@@ -2601,21 +2601,21 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     // The comments in this function are written for LUB, but they
     // apply equally well to GLB if you inverse upper/lower/sub/super/etc.
 
-    #debug["%s.lattice_vart(%s=%s <: %s)",
+    debug!{"%s.lattice_vart(%s=%s <: %s)",
            self.tag(),
            a_id.to_str(), a_bounds.to_str(self.infcx()),
-           b.to_str(self.infcx())];
+           b.to_str(self.infcx())};
 
     alt self.bnd(a_bounds) {
       some(a_bnd) {
         // If a has an upper bound, return the LUB(a.ub, b)
-        #debug["bnd=some(%s)", a_bnd.to_str(self.infcx())];
+        debug!{"bnd=some(%s)", a_bnd.to_str(self.infcx())};
         ret c_ts(a_bnd, b);
       }
       none {
         // If a does not have an upper bound, make b the upper bound of a
         // and then return b.
-        #debug["bnd=none"];
+        debug!{"bnd=none"};
         let a_bounds = self.with_bnd(a_bounds, b);
         do self.infcx().bnds(a_bounds.lb, a_bounds.ub).then {
             self.infcx().set(vb, a_id, root(a_bounds,

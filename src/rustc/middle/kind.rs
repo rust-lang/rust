@@ -213,7 +213,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 }
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
-    #debug["kind::check_expr(%s)", expr_to_str(e)];
+    debug!{"kind::check_expr(%s)", expr_to_str(e)};
     alt e.node {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
@@ -296,10 +296,10 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             };
             if vec::len(ts) != vec::len(*bounds) {
               // Fail earlier to make debugging easier
-              fail #fmt("Internal error: in kind::check_expr, length \
+              fail fmt!{"Internal error: in kind::check_expr, length \
                   mismatch between actual and declared bounds: actual = \
                   %s (%u tys), declared = %? (%u tys)",
-                  tys_to_str(cx.tcx, ts), ts.len(), *bounds, (*bounds).len());
+                  tys_to_str(cx.tcx, ts), ts.len(), *bounds, (*bounds).len()};
             }
             do vec::iter2(ts, *bounds) |ty, bound| {
                 check_bounds(cx, e.id, e.span, ty, bound)
@@ -419,7 +419,7 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
       _ {
         cx.tcx.sess.span_bug(
             sp,
-            #fmt["unknown def for free variable: %?", def]);
+            fmt!{"unknown def for free variable: %?", def});
       }
     }
 }
@@ -510,7 +510,7 @@ fn check_cast_for_escaping_regions(
       some(ty::re_bound(*)) | some(ty::re_var(*)) => {
         cx.tcx.sess.span_bug(
             source.span,
-            #fmt["bad region found in kind: %?", target_substs.self_r]);
+            fmt!{"bad region found in kind: %?", target_substs.self_r});
       }
     }
 

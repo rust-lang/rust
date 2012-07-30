@@ -22,7 +22,7 @@ import driver::session::session;
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
     alt br {
       br_anon                        => { ~"&" }
-      br_named(str)                  => { #fmt["&%s", *str] }
+      br_named(str)                  => { fmt!{"&%s", *str} }
       br_self if cx.sess.ppregions() => { ~"&<self>" }
       br_self                        => { ~"&self" }
 
@@ -30,7 +30,7 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
       // does not fail
       br_cap_avoid(id, br) => {
         if cx.sess.ppregions() {
-            #fmt["br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br)]
+            fmt!{"br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br)}
         } else {
             bound_region_to_str(cx, *br)
         }
@@ -41,50 +41,50 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
 fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     alt cx.items.find(node_id) {
       some(ast_map::node_block(blk)) {
-        #fmt("<block at %s>",
-             codemap::span_to_str(blk.span, cx.sess.codemap))
+        fmt!{"<block at %s>",
+             codemap::span_to_str(blk.span, cx.sess.codemap)}
       }
       some(ast_map::node_expr(expr)) {
         alt expr.node {
           ast::expr_call(*) {
-            #fmt("<call at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+            fmt!{"<call at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
           ast::expr_alt(*) {
-            #fmt("<alt at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+            fmt!{"<alt at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
           ast::expr_assign_op(*) |
           ast::expr_field(*) |
           ast::expr_unary(*) |
           ast::expr_binary(*) |
           ast::expr_index(*) {
-            #fmt("<method at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+            fmt!{"<method at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
           _ {
-            #fmt("<expression at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+            fmt!{"<expression at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
         }
       }
       none {
-        #fmt["<unknown-%d>", node_id]
+        fmt!{"<unknown-%d>", node_id}
       }
       _ { cx.sess.bug(
-          #fmt["re_scope refers to %s",
-               ast_map::node_id_to_str(cx.items, node_id)]) }
+          fmt!{"re_scope refers to %s",
+               ast_map::node_id_to_str(cx.items, node_id)}) }
     }
 }
 
 fn region_to_str(cx: ctxt, region: region) -> ~str {
     alt region {
-      re_scope(node_id) { #fmt["&%s", re_scope_id_to_str(cx, node_id)] }
+      re_scope(node_id) { fmt!{"&%s", re_scope_id_to_str(cx, node_id)} }
       re_bound(br) { bound_region_to_str(cx, br) }
       re_free(id, br) {
         if cx.sess.ppregions() {
             // For debugging, this version is sometimes helpful:
-            #fmt["{%d} %s", id, bound_region_to_str(cx, br)]
+            fmt!{"{%d} %s", id, bound_region_to_str(cx, br)}
         } else {
             // But this version is what the user expects to see:
             bound_region_to_str(cx, br)
@@ -92,7 +92,7 @@ fn region_to_str(cx: ctxt, region: region) -> ~str {
       }
 
       // These two should not be seen by end-users (very often, anyhow):
-      re_var(id)    { #fmt("&%s", id.to_str()) }
+      re_var(id)    { fmt!{"&%s", id.to_str()} }
       re_static     { ~"&static" }
     }
 }
@@ -108,7 +108,7 @@ fn mt_to_str(cx: ctxt, m: mt) -> ~str {
 
 fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
     alt vs {
-      ty::vstore_fixed(n) { #fmt["%u", n] }
+      ty::vstore_fixed(n) { fmt!{"%u", n} }
       ty::vstore_uniq { ~"~" }
       ty::vstore_box { ~"@" }
       ty::vstore_slice(r) { region_to_str(cx, r) }
@@ -118,9 +118,9 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
 fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     alt vs {
       ty::vstore_fixed(_) {
-        #fmt["%s/%s", ty, vstore_to_str(cx, vs)]
+        fmt!{"%s/%s", ty, vstore_to_str(cx, vs)}
       }
-      _ { #fmt["%s%s", vstore_to_str(cx, vs), ty] }
+      _ { fmt!{"%s%s", vstore_to_str(cx, vs), ty} }
     }
 }
 
@@ -243,7 +243,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         parameterized(cx, base, substs.self_r, substs.tps)
       }
       ty_evec(mt, vs) {
-        vstore_ty_to_str(cx, #fmt["[%s]", mt_to_str(cx, mt)], vs)
+        vstore_ty_to_str(cx, fmt!{"[%s]", mt_to_str(cx, mt)}, vs)
       }
       ty_estr(vs) { vstore_ty_to_str(cx, ~"str", vs) }
       ty_opaque_box { ~"@?" }
@@ -261,15 +261,15 @@ fn parameterized(cx: ctxt,
     let r_str = alt self_r {
       none { ~"" }
       some(r) {
-        #fmt["/%s", region_to_str(cx, r)]
+        fmt!{"/%s", region_to_str(cx, r)}
       }
     };
 
     if vec::len(tps) > 0u {
         let strs = vec::map(tps, |t| ty_to_str(cx, t) );
-        #fmt["%s%s<%s>", base, r_str, str::connect(strs, ~",")]
+        fmt!{"%s%s<%s>", base, r_str, str::connect(strs, ~",")}
     } else {
-        #fmt["%s%s", base, r_str]
+        fmt!{"%s%s", base, r_str}
     }
 }
 

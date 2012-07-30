@@ -274,13 +274,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     alt ei.elts[ei.idx].node {
                       match_nonterminal(bind,name,_) {
-                        #fmt["%s ('%s')", *name, *bind]
+                        fmt!{"%s ('%s')", *name, *bind}
                       }
                       _ { fail; } } }), ~" or ");
-                ret failure(sp, #fmt[
+                ret failure(sp, fmt!{
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
-                    nts, next_eis.len()]);
+                    nts, next_eis.len()});
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 ret failure(sp, ~"No rules expected the token "
                             + to_str(*rdr.interner(), tok));

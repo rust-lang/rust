@@ -29,12 +29,12 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                 alt exts.find(*extname) {
                   none {
                     cx.span_fatal(pth.span,
-                                  #fmt["macro undefined: '%s'", *extname])
+                                  fmt!{"macro undefined: '%s'", *extname})
                   }
                   some(item_decorator(_)) {
                     cx.span_fatal(
                         pth.span,
-                        #fmt["%s can only be used as a decorator", *extname]);
+                        fmt!{"%s can only be used as a decorator", *extname});
                   }
                   some(normal({expander: exp, span: exp_sp})) {
                     let expanded = exp(cx, mac.span, args, body);
@@ -54,8 +54,8 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                   }
                   some(expr_tt(_)) {
                     cx.span_fatal(pth.span,
-                                  #fmt["this tt-style macro should be \
-                                        invoked '%s!{...}'", *extname])
+                                  fmt!{"this tt-style macro should be \
+                                        invoked '%s!{...}'", *extname})
                   }
                   some(item_tt(*)) {
                     cx.span_fatal(pth.span,
@@ -72,14 +72,14 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                 alt exts.find(*extname) {
                   none {
                     cx.span_fatal(pth.span,
-                                  #fmt["macro undefined: '%s'", *extname])
+                                  fmt!{"macro undefined: '%s'", *extname})
                   }
                   some(expr_tt({expander: exp, span: exp_sp})) {
                     let expanded = alt exp(cx, mac.span, tts) {
                       mr_expr(e) { e }
                       _ { cx.span_fatal(
-                          pth.span, #fmt["non-expr macro in expr pos: %s",
-                                         *extname]) }
+                          pth.span, fmt!{"non-expr macro in expr pos: %s",
+                                         *extname}) }
                     };
 
                     cx.bt_push(expanded_from({call_site: s,
@@ -106,8 +106,8 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                   }
                   _ {
                     cx.span_fatal(pth.span,
-                                  #fmt["'%s' is not a tt-style macro",
-                                       *extname])
+                                  fmt!{"'%s' is not a tt-style macro",
+                                       *extname})
                   }
 
                 }
@@ -203,7 +203,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
         alt exts.find(*extname) {
           none {
             cx.span_fatal(pth.span,
-                          #fmt("macro undefined: '%s'", *extname))
+                          fmt!{"macro undefined: '%s'", *extname})
           }
           some(item_tt(expand)) {
             let expanded = expand.expander(cx, it.span, it.ident, tts);
@@ -224,7 +224,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
             ret maybe_it
           }
           _ { cx.span_fatal(it.span,
-                            #fmt("%s is not a legal here", *extname)) }
+                            fmt!{"%s is not a legal here", *extname}) }
         }
       }
       _ {
@@ -246,10 +246,10 @@ fn new_span(cx: ext_ctxt, sp: span) -> span {
 fn core_macros() -> ~str {
     ret
 ~"{
-    #macro([#error[f, ...], log(core::error, #fmt[f, ...])]);
-    #macro([#warn[f, ...], log(core::warn, #fmt[f, ...])]);
-    #macro([#info[f, ...], log(core::info, #fmt[f, ...])]);
-    #macro([#debug[f, ...], log(core::debug, #fmt[f, ...])]);
+    #macro[[#error[f, ...], log(core::error, #fmt[f, ...])]];
+    #macro[[#warn[f, ...], log(core::warn, #fmt[f, ...])]];
+    #macro[[#info[f, ...], log(core::info, #fmt[f, ...])]];
+    #macro[[#debug[f, ...], log(core::debug, #fmt[f, ...])]];
 }";
 }
 

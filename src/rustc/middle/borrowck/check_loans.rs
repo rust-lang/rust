@@ -157,12 +157,12 @@ impl methods for check_loan_ctxt {
                                 callee_span: span) {
         let tcx = self.tcx();
 
-        #debug["check_pure_callee_or_arg(pc=%?, expr=%?, \
+        debug!{"check_pure_callee_or_arg(pc=%?, expr=%?, \
                 callee_id=%d, ty=%s)",
                pc,
                opt_expr.map(|e| pprust::expr_to_str(e) ),
                callee_id,
-               ty_to_str(self.tcx(), ty::node_id_to_type(tcx, callee_id))];
+               ty_to_str(self.tcx(), ty::node_id_to_type(tcx, callee_id))};
 
         // Purity rules: an expr B is a legal callee or argument to a
         // call within a pure function A if at least one of the
@@ -202,8 +202,8 @@ impl methods for check_loan_ctxt {
               ast::impure_fn | ast::unsafe_fn | ast::extern_fn {
                 self.report_purity_error(
                     pc, callee_span,
-                    #fmt["access to %s function",
-                         pprust::purity_to_str(fn_ty.purity)]);
+                    fmt!{"access to %s function",
+                         pprust::purity_to_str(fn_ty.purity)});
               }
             }
           }
@@ -257,14 +257,14 @@ impl methods for check_loan_ctxt {
                       (m_mutbl, m_imm) | (m_imm, m_mutbl) {
                         self.bccx.span_err(
                             new_loan.cmt.span,
-                            #fmt["loan of %s as %s \
+                            fmt!{"loan of %s as %s \
                                   conflicts with prior loan",
                                  self.bccx.cmt_to_str(new_loan.cmt),
-                                 self.bccx.mut_to_str(new_loan.mutbl)]);
+                                 self.bccx.mut_to_str(new_loan.mutbl)});
                         self.bccx.span_note(
                             old_loan.cmt.span,
-                            #fmt["prior loan as %s granted here",
-                                 self.bccx.mut_to_str(old_loan.mutbl)]);
+                            fmt!{"prior loan as %s granted here",
+                                 self.bccx.mut_to_str(old_loan.mutbl)});
                       }
                     }
                 }
@@ -294,8 +294,8 @@ impl methods for check_loan_ctxt {
     fn check_assignment(at: assignment_type, ex: @ast::expr) {
         let cmt = self.bccx.cat_expr(ex);
 
-        #debug["check_assignment(cmt=%s)",
-               self.bccx.cmt_to_repr(cmt)];
+        debug!{"check_assignment(cmt=%s)",
+               self.bccx.cmt_to_repr(cmt)};
 
         if self.in_ctor && self.is_self_field(cmt)
             && at.checked_by_liveness() {
@@ -354,12 +354,12 @@ impl methods for check_loan_ctxt {
               m_imm {
                 self.bccx.span_err(
                     ex.span,
-                    #fmt["%s prohibited due to outstanding loan",
-                         at.ing_form(self.bccx.cmt_to_str(cmt))]);
+                    fmt!{"%s prohibited due to outstanding loan",
+                         at.ing_form(self.bccx.cmt_to_str(cmt))});
                 self.bccx.span_note(
                     loan.cmt.span,
-                    #fmt["loan of %s granted here",
-                         self.bccx.cmt_to_str(loan.cmt)]);
+                    fmt!{"loan of %s granted here",
+                         self.bccx.cmt_to_str(loan.cmt)});
                 ret;
               }
             }
@@ -386,17 +386,17 @@ impl methods for check_loan_ctxt {
           pc_pure_fn {
             self.tcx().sess.span_err(
                 sp,
-                #fmt["%s prohibited in pure context", msg]);
+                fmt!{"%s prohibited in pure context", msg});
           }
           pc_cmt(e) {
             if self.reported.insert(e.cmt.id, ()) {
                 self.tcx().sess.span_err(
                     e.cmt.span,
-                    #fmt["illegal borrow unless pure: %s",
-                         self.bccx.bckerr_code_to_str(e.code)]);
+                    fmt!{"illegal borrow unless pure: %s",
+                         self.bccx.bckerr_code_to_str(e.code)});
                 self.tcx().sess.span_note(
                     sp,
-                    #fmt["impure due to %s", msg]);
+                    fmt!{"impure due to %s", msg});
             }
           }
         }
@@ -408,8 +408,8 @@ impl methods for check_loan_ctxt {
     }
 
     fn check_move_out_from_cmt(cmt: cmt) {
-        #debug["check_move_out_from_cmt(cmt=%s)",
-               self.bccx.cmt_to_repr(cmt)];
+        debug!{"check_move_out_from_cmt(cmt=%s)",
+               self.bccx.cmt_to_repr(cmt)};
 
         alt cmt.cat {
           // Rvalues, locals, and arguments can be moved:
@@ -427,7 +427,7 @@ impl methods for check_loan_ctxt {
           _ {
             self.bccx.span_err(
                 cmt.span,
-                #fmt["moving out of %s", self.bccx.cmt_to_str(cmt)]);
+                fmt!{"moving out of %s", self.bccx.cmt_to_str(cmt)});
             ret;
           }
         }
@@ -442,12 +442,12 @@ impl methods for check_loan_ctxt {
         for self.walk_loans_of(cmt.id, lp) |loan| {
             self.bccx.span_err(
                 cmt.span,
-                #fmt["moving out of %s prohibited due to outstanding loan",
-                     self.bccx.cmt_to_str(cmt)]);
+                fmt!{"moving out of %s prohibited due to outstanding loan",
+                     self.bccx.cmt_to_str(cmt)});
             self.bccx.span_note(
                 loan.cmt.span,
-                #fmt["loan of %s granted here",
-                     self.bccx.cmt_to_str(loan.cmt)]);
+                fmt!{"loan of %s granted here",
+                     self.bccx.cmt_to_str(loan.cmt)});
             ret;
         }
     }
@@ -462,8 +462,8 @@ impl methods for check_loan_ctxt {
           some(lp) { lp }
         };
         for self.walk_loans_of(cmt.id, lp) |_loan| {
-            #debug["Removing last use entry %? due to outstanding loan",
-                   expr.id];
+            debug!{"Removing last use entry %? due to outstanding loan",
+                   expr.id};
             self.bccx.last_use_map.remove(expr.id);
             ret;
         }
@@ -507,7 +507,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      sp: span, id: ast::node_id, &&self: check_loan_ctxt,
                      visitor: visit::vt<check_loan_ctxt>) {
 
-    #debug["purity on entry=%?", copy self.declared_purity];
+    debug!{"purity on entry=%?", copy self.declared_purity};
     do save_and_restore(self.in_ctor) {
         do save_and_restore(self.declared_purity) {
             do save_and_restore(self.fn_args) {
@@ -543,7 +543,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
             }
         }
     }
-    #debug["purity on exit=%?", copy self.declared_purity];
+    debug!{"purity on exit=%?", copy self.declared_purity};
 }
 
 fn check_loans_in_local(local: @ast::local,

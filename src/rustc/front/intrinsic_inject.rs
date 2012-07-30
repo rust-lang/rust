@@ -7,7 +7,7 @@ export inject_intrinsic;
 fn inject_intrinsic(sess: session,
                     crate: @ast::crate) -> @ast::crate {
 
-    let intrinsic_module = @#include_str("intrinsic.rs");
+    let intrinsic_module = @include_str!{"intrinsic.rs"};
 
     let item = parse::parse_item_from_source_str(~"<intrinsic>",
                                                  intrinsic_module,

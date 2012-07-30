@@ -21,7 +21,7 @@ combinations at the moment.
 
 Example:
 
-#debug("hello, %s!", "world");
+debug!{"hello, %s!", "world"};
 
 */
 
@@ -438,7 +438,7 @@ mod test {
     #[test]
     fn fmt_slice() {
         let s = "abc";
-        let _s = #fmt("%s", s);
+        let _s = fmt!{"%s", s};
     }
 }
 

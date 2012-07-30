@@ -32,7 +32,7 @@ mod a2 {
     mod b2 {
         //   |
         fn word_traveler() { //   |
-            #debug("ahoy!"); //  -/
+            debug!{"ahoy!"}; //  -/
         } //
     } //
 }

@@ -113,7 +113,7 @@ impl parser_common of parser_common for parser {
     // A sanity check that the word we are asking for is a known keyword
     fn require_keyword(word: ~str) {
         if !self.keywords.contains_key(word) {
-            self.bug(#fmt("unknown keyword: %s", word));
+            self.bug(fmt!{"unknown keyword: %s", word});
         }
     }
 

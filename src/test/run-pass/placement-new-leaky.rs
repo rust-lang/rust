@@ -19,7 +19,7 @@ impl methods for malloc_pool {
 fn main() {
     let p = &malloc_pool(());
     let x = new(*p) 4u;
-    io::print(#fmt["%u", *x]);
+    io::print(fmt!{"%u", *x});
     assert *x == 4u;
     unsafe {
         libc::free(unsafe::reinterpret_cast(x));

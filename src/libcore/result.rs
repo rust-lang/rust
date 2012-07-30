@@ -21,7 +21,7 @@ pure fn get<T: copy, U>(res: result<T, U>) -> T {
     alt res {
       ok(t) { t }
       err(the_err) {
-        unchecked{ fail #fmt("get called on error result: %?", the_err); }
+        unchecked{ fail fmt!{"get called on error result: %?", the_err}; }
       }
     }
 }

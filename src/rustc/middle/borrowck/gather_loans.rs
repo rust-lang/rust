@@ -90,7 +90,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     let tcx = bccx.tcx;
     let old_root_ub = self.root_ub;
 
-    #debug["req_loans_in_expr(ex=%s)", pprust::expr_to_str(ex)];
+    debug!{"req_loans_in_expr(ex=%s)", pprust::expr_to_str(ex)};
 
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.borrowings.find(ex.id).each |borrow| {
@@ -258,10 +258,10 @@ impl methods for gather_loan_ctxt {
 
         self.bccx.guaranteed_paths += 1;
 
-        #debug["guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
+        debug!{"guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl),
-               region_to_str(self.tcx(), scope_r)];
+               region_to_str(self.tcx(), scope_r)};
         let _i = indenter();
 
         alt cmt.lp {
@@ -290,7 +290,7 @@ impl methods for gather_loan_ctxt {
                         if self.tcx().sess.borrowck_note_loan() {
                             self.bccx.span_note(
                                 cmt.span,
-                                #fmt["immutable loan required"]);
+                                fmt!{"immutable loan required"});
                         }
                     } else {
                         self.bccx.loaned_paths_same += 1;
@@ -344,7 +344,7 @@ impl methods for gather_loan_ctxt {
                     if self.tcx().sess.borrowck_note_pure() {
                         self.bccx.span_note(
                             cmt.span,
-                            #fmt["purity required"]);
+                            fmt!{"purity required"});
                     }
                   }
                   _ => {
@@ -443,9 +443,9 @@ impl methods for gather_loan_ctxt {
         // in the alt, the id of `local(x)->@` is the `@y` pattern,
         // and the id of `local(x)->@->@` is the id of the `y` pattern.
 
-        #debug["gather_pat: id=%d pat=%s cmt=%s arm_id=%d alt_id=%d",
+        debug!{"gather_pat: id=%d pat=%s cmt=%s arm_id=%d alt_id=%d",
                pat.id, pprust::pat_to_str(pat),
-               self.bccx.cmt_to_repr(cmt), arm_id, alt_id];
+               self.bccx.cmt_to_repr(cmt), arm_id, alt_id};
         let _i = indenter();
 
         let tcx = self.tcx();
@@ -463,8 +463,8 @@ impl methods for gather_loan_ctxt {
 .find(pat.id) {
               some(ast::def_variant(enum_did, _)) {enum_did}
               e {tcx.sess.span_bug(pat.span,
-                                   #fmt["resolved to %?, \
-                                         not variant", e])}
+                                   fmt!{"resolved to %?, \
+                                         not variant", e})}
             };
 
             for subpats.each |subpat| {
@@ -475,11 +475,11 @@ impl methods for gather_loan_ctxt {
 
           ast::pat_ident(_, none) if self.pat_is_variant(pat) {
             // nullary variant
-            #debug["nullary variant"];
+            debug!{"nullary variant"};
           }
           ast::pat_ident(id, o_pat) {
             // x or x @ p --- `x` must remain valid for the scope of the alt
-            #debug["defines identifier %s", pprust::path_to_str(id)];
+            debug!{"defines identifier %s", pprust::path_to_str(id)};
 
             // Note: there is a discussion of the function of
             // cat_discr in the method preserve():

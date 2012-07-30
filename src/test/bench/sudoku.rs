@@ -118,9 +118,9 @@ fn solve_grid(g: grid_t) {
 
 fn write_grid(f: io::writer, g: grid_t) {
     for u8::range(0u8, 9u8) |row| {
-        f.write_str(#fmt("%u", (*g)[row][0] as uint));
+        f.write_str(fmt!{"%u", (*g)[row][0] as uint});
         for u8::range(1u8, 9u8) |col| {
-            f.write_str(#fmt(" %u", (*g)[row][col] as uint));
+            f.write_str(fmt!{" %u", (*g)[row][col] as uint});
         }
         f.write_char('\n');
      }

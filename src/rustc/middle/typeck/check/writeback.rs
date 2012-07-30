@@ -16,9 +16,9 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
         if !fcx.ccx.tcx.sess.has_errors() {
             fcx.ccx.tcx.sess.span_err(
                 sp,
-                #fmt["cannot determine a type \
+                fmt!{"cannot determine a type \
                       for this expression: %s",
-                     infer::fixup_err_to_str(e)])
+                     infer::fixup_err_to_str(e)})
         }
         ret none;
       }
@@ -35,8 +35,8 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
       }
 
       some(t) {
-        #debug["resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
-               id, ty_to_str(tcx, n_ty), ty_to_str(tcx, t)];
+        debug!{"resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
+               id, ty_to_str(tcx, n_ty), ty_to_str(tcx, t)};
         write_ty_to_tcx(tcx, id, t);
         alt fcx.opt_node_ty_substs(id) {
           some(substs) {
@@ -120,11 +120,11 @@ fn visit_block(b: ast::blk, wbcx: wb_ctxt, v: wb_vt) {
 fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { ret; }
     resolve_type_vars_for_node(wbcx, p.span, p.id);
-    #debug["Type for pattern binding %s (id %d) resolved to %s",
+    debug!{"Type for pattern binding %s (id %d) resolved to %s",
            pat_to_str(p), p.id,
            wbcx.fcx.infcx.ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
-                                   p.id))];
+                                   p.id))};
     visit::visit_pat(p, wbcx, v);
 }
 fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
@@ -133,17 +133,17 @@ fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
     alt resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
       result::ok(lty) {
-        #debug["Type for local %s (id %d) resolved to %s",
+        debug!{"Type for local %s (id %d) resolved to %s",
                pat_to_str(l.node.pat), l.node.id,
-               wbcx.fcx.infcx.ty_to_str(lty)];
+               wbcx.fcx.infcx.ty_to_str(lty)};
         write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.node.id, lty);
       }
       result::err(e) {
         wbcx.fcx.ccx.tcx.sess.span_err(
             l.span,
-            #fmt["cannot determine a type \
+            fmt!{"cannot determine a type \
                   for this local variable: %s",
-                 infer::fixup_err_to_str(e)]);
+                 infer::fixup_err_to_str(e)});
         wbcx.success = false;
       }
     }

@@ -100,7 +100,7 @@ fn find_item(item_id: int, items: ebml::doc) -> ebml::doc {
 fn lookup_item(item_id: int, data: @~[u8]) -> ebml::doc {
     let items = ebml::get_doc(ebml::doc(data), tag_items);
     alt maybe_find_item(item_id, items) {
-       none { fail(#fmt("lookup_item: id not found: %d", item_id)); }
+       none { fail(fmt!{"lookup_item: id not found: %d", item_id}); }
        some(d) { d }
     }
 }
@@ -231,7 +231,7 @@ fn resolve_path(path: ~[ast::ident], data: @~[u8]) -> ~[ast::def_id] {
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = |a| eq_item(a, s);
     let mut result: ~[ast::def_id] = ~[];
-    #debug("resolve_path: looking up %s", s);
+    debug!{"resolve_path: looking up %s", s};
     for lookup_hash(paths, eqer, hash_path(s)).each |doc| {
         let did_doc = ebml::get_doc(doc, tag_def_id);
         vec::push(result, ebml::with_doc_data(did_doc, |d| parse_def_id(d)));
@@ -295,7 +295,7 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
       'I' { dl_def(ast::def_ty(did)) }
       'i' { dl_impl(did) }
       'g' | 'j' { dl_field }
-      ch { fail #fmt("unexpected family code: '%c'", ch) }
+      ch { fail fmt!{"unexpected family code: '%c'", ch} }
     }
 }
 
@@ -351,8 +351,8 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
     let mut found = none;
     let cls_items = alt maybe_find_item(id, items) {
             some(it) { it }
-            none { fail (#fmt("get_class_method: class id not found \
-             when looking up method %s", *name)) }};
+            none { fail (fmt!{"get_class_method: class id not found \
+             when looking up method %s", *name}) }};
     for ebml::tagged_docs(cls_items, tag_item_trait_method) |mid| {
         let m_did = class_member_id(mid, cdata);
         if item_name(mid) == name {
@@ -361,7 +361,7 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
     }
     alt found {
       some(found) { found }
-      none { fail (#fmt("get_class_method: no method named %s", *name)) }
+      none { fail (fmt!{"get_class_method: no method named %s", *name}) }
     }
 }
 
@@ -370,8 +370,8 @@ fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
     let mut found = none;
     let cls_items = alt maybe_find_item(id, items) {
             some(it) { it }
-            none     { fail (#fmt("class_dtor: class id not found \
-              when looking up dtor for %d", id)); }
+            none     { fail (fmt!{"class_dtor: class id not found \
+              when looking up dtor for %d", id}); }
     };
     for ebml::tagged_docs(cls_items, tag_item_dtor) |doc| {
          let doc1 = ebml::get_doc(doc, tag_def_id);
@@ -431,7 +431,7 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
                 let def_id = class_member_id(item_doc, cdata);
 
                 // Construct the def for this item.
-                #debug("(each_path) yielding explicit item: %s", name);
+                debug!{"(each_path) yielding explicit item: %s", name};
                 let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
 
                 // Hand the information off to the iteratee.
@@ -468,8 +468,8 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
             // Get the item.
             alt maybe_find_item(def_id.node, items) {
                 none {
-                    #debug("(each_path) ignoring implicit item: %s",
-                            *path);
+                    debug!{"(each_path) ignoring implicit item: %s",
+                            *path};
                 }
                 some(item_doc) {
                     // Construct the def for this item.
@@ -477,8 +477,8 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
                                                     cdata.cnum);
 
                     // Hand the information off to the iteratee.
-                    #debug("(each_path) yielding implicit item: %s",
-                            *path);
+                    debug!{"(each_path) yielding implicit item: %s",
+                            *path};
                     let this_path_entry = path_entry(*path, def_like);
                     if (!f(this_path_entry)) {
                         broken = true;      // XXX: This is awful.
@@ -511,7 +511,7 @@ fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
                       id: ast::node_id,
                       decode_inlined_item: decode_inlined_item
                      ) -> csearch::found_ast {
-    #debug("Looking up item: %d", id);
+    debug!{"Looking up item: %d", id};
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(item_doc));
     alt decode_inlined_item(cdata, tcx, path, item_doc) {
@@ -594,8 +594,8 @@ fn get_impls_for_mod(cdata: cmd,
     for ebml::tagged_docs(mod_item, tag_mod_impl) |doc| {
         let did = ebml::with_doc_data(doc, |d| parse_def_id(d));
         let local_did = translate_def_id(cdata, did);
-        #debug("(get impls for mod) getting did %? for '%?'",
-               local_did, name);
+        debug!{"(get impls for mod) getting did %? for '%?'",
+               local_did, name};
           // The impl may be defined in a different crate. Ask the caller
           // to give us the metadata
         let impl_cdata = get_cdata(local_did.crate);
@@ -723,7 +723,7 @@ fn describe_def(items: ebml::doc, id: ast::def_id) -> ~str {
     if id.crate != ast::local_crate { ret ~"external"; }
     let it = alt maybe_find_item(id.node, items) {
         some(it) { it }
-        none { fail (#fmt("describe_def: item not found %?", id)); }
+        none { fail (fmt!{"describe_def: item not found %?", id}); }
     };
     ret item_family_to_str(item_family(it));
 }
@@ -800,15 +800,15 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
 
 fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
     for get_meta_items(meta_items).each |mi| {
-        out.write_str(#fmt["%s\n", pprust::meta_item_to_str(*mi)]);
+        out.write_str(fmt!{"%s\n", pprust::meta_item_to_str(*mi)});
     }
 }
 
 fn list_crate_attributes(md: ebml::doc, hash: @~str, out: io::writer) {
-    out.write_str(#fmt("=Crate Attributes (%s)=\n", *hash));
+    out.write_str(fmt!{"=Crate Attributes (%s)=\n", *hash});
 
     for get_attributes(md).each |attr| {
-        out.write_str(#fmt["%s\n", pprust::attribute_to_str(attr)]);
+        out.write_str(fmt!{"%s\n", pprust::attribute_to_str(attr)});
     }
 
     out.write_str(~"\n\n");
@@ -843,8 +843,8 @@ fn list_crate_deps(data: @~[u8], out: io::writer) {
     out.write_str(~"=External Dependencies=\n");
 
     for get_crate_deps(data).each |dep| {
-        out.write_str(#fmt["%d %s-%s-%s\n",
-                           dep.cnum, *dep.name, *dep.hash, *dep.vers]);
+        out.write_str(fmt!{"%d %s-%s-%s\n",
+                           dep.cnum, *dep.name, *dep.hash, *dep.vers});
     }
 
     out.write_str(~"\n");
@@ -871,8 +871,8 @@ fn list_crate_items(bytes: @~[u8], md: ebml::doc, out: io::writer) {
     do iter_crate_items(bytes) |tag, path, did| {
       // Don't print out any metadata info about intrinsics
        if tag != tag_paths_foreign_path {
-            out.write_str(#fmt["%s (%s)\n", path,
-                               describe_def(items, did)]);
+            out.write_str(fmt!{"%s (%s)\n", path,
+                               describe_def(items, did)});
        }
     }
     out.write_str(~"\n");

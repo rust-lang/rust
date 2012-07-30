@@ -136,9 +136,9 @@ fn test_class() {
   let r = p(1, 2);
   
   unsafe {
-  #error("q = %x, r = %x",
+  error!{"q = %x, r = %x",
          (unsafe::reinterpret_cast::<*p, uint>(ptr::addr_of(q))),
-         (unsafe::reinterpret_cast::<*p, uint>(ptr::addr_of(r))));
+         (unsafe::reinterpret_cast::<*p, uint>(ptr::addr_of(r)))};
   }
   assert(q == r);
   r.y = 17;

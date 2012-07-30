@@ -87,15 +87,15 @@ fn contains_constrained_calls(tcx: ty::ctxt, body: blk) -> bool {
 
     fn visit_expr(e: @expr, &&cx: cx, v: visit::vt<cx>) {
         import syntax::print::pprust;
-        #debug("visiting %?", pprust::expr_to_str(e));
+        debug!{"visiting %?", pprust::expr_to_str(e)};
 
         visit::visit_expr(e, cx, v);
 
         if constraints_expr(cx.tcx, e).is_not_empty() {
-            #debug("has constraints");
+            debug!{"has constraints"};
             cx.has = true;
         } else {
-            #debug("has not constraints");
+            debug!{"has not constraints"};
         }
     }
 }
@@ -140,7 +140,7 @@ fn mk_fn_info(ccx: crate_ctxt,
          used_vars: v,
          ignore: ignore};
     ccx.fm.insert(id, rslt);
-    #debug("%s has %u constraints", *name, num_constraints(rslt));
+    debug!{"%s has %u constraints", *name, num_constraints(rslt)};
 }
 
 

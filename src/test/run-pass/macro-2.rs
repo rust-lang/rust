@@ -7,7 +7,7 @@ fn main() {
                 f
             }]];
 
-    assert (#mylambda[y, y * 2](8) == 16);
+    assert (mylambda!{y, y * 2}(8) == 16);
 
     macro_rules! mylambda_tt{
         {$x:ident, $body:expr} => {

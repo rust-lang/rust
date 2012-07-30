@@ -99,7 +99,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
    option<@ast::item> {
 
     vec::push(cx.path, i.ident);
-    #debug("current path: %s", ast_util::path_name_i(cx.path));
+    debug!{"current path: %s", ast_util::path_name_i(cx.path)};
 
     if is_test_fn(i) {
         alt i.node {
@@ -109,12 +109,12 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
                 ~"unsafe functions cannot be used for tests");
           }
           _ {
-            #debug("this is a test function");
+            debug!{"this is a test function"};
             let test = {span: i.span,
                         path: cx.path, ignore: is_ignored(cx, i),
                         should_fail: should_fail(i)};
             cx.testfns.push(test);
-            #debug("have %u test functions", cx.testfns.len());
+            debug!{"have %u test functions", cx.testfns.len()};
           }
         }
     }
@@ -201,7 +201,7 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
          vis: ast::public,
          span: dummy_sp()};
 
-    #debug("Synthetic test module:\n%s\n", pprust::item_to_str(@item));
+    debug!{"Synthetic test module:\n%s\n", pprust::item_to_str(@item)};
 
     ret @item;
 }
@@ -276,7 +276,7 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
 }
 
 fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
-    #debug("building test vector from %u tests", cx.testfns.len());
+    debug!{"building test vector from %u tests", cx.testfns.len()};
     let mut descs = ~[];
     for cx.testfns.each |test| {
         vec::push(descs, mk_test_desc_rec(cx, test));
@@ -296,7 +296,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let span = test.span;
     let path = test.path;
 
-    #debug("encoding %s", ast_util::path_name_i(path));
+    debug!{"encoding %s", ast_util::path_name_i(path)};
 
     let name_lit: ast::lit =
         nospan(ast::lit_str(@ast_util::path_name_i(path)));

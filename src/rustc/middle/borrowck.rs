@@ -255,16 +255,16 @@ fn check_crate(tcx: ty::ctxt,
 
     if tcx.sess.borrowck_stats() {
         io::println(~"--- borrowck stats ---");
-        io::println(#fmt["paths requiring guarantees: %u",
-                        bccx.guaranteed_paths]);
-        io::println(#fmt["paths requiring loans     : %s",
-                         make_stat(bccx, bccx.loaned_paths_same)]);
-        io::println(#fmt["paths requiring imm loans : %s",
-                         make_stat(bccx, bccx.loaned_paths_imm)]);
-        io::println(#fmt["stable paths              : %s",
-                         make_stat(bccx, bccx.stable_paths)]);
-        io::println(#fmt["paths requiring purity    : %s",
-                         make_stat(bccx, bccx.req_pure_paths)]);
+        io::println(fmt!{"paths requiring guarantees: %u",
+                        bccx.guaranteed_paths});
+        io::println(fmt!{"paths requiring loans     : %s",
+                         make_stat(bccx, bccx.loaned_paths_same)});
+        io::println(fmt!{"paths requiring imm loans : %s",
+                         make_stat(bccx, bccx.loaned_paths_imm)});
+        io::println(fmt!{"stable paths              : %s",
+                         make_stat(bccx, bccx.stable_paths)});
+        io::println(fmt!{"paths requiring purity    : %s",
+                         make_stat(bccx, bccx.req_pure_paths)});
     }
 
     ret (bccx.root_map, bccx.mutbl_map);
@@ -272,7 +272,7 @@ fn check_crate(tcx: ty::ctxt,
     fn make_stat(bccx: borrowck_ctxt, stat: uint) -> ~str {
         let stat_f = stat as float;
         let total = bccx.guaranteed_paths as float;
-        #fmt["%u (%.0f%%)", stat  , stat_f * 100f / total]
+        fmt!{"%u (%.0f%%)", stat  , stat_f * 100f / total}
     }
 }
 
@@ -465,8 +465,8 @@ impl error_methods for borrowck_ctxt {
     fn report(err: bckerr) {
         self.span_err(
             err.cmt.span,
-            #fmt["illegal borrow: %s",
-                 self.bckerr_code_to_str(err.code)]);
+            fmt!{"illegal borrow: %s",
+                 self.bckerr_code_to_str(err.code)});
     }
 
     fn span_err(s: span, m: ~str) {
@@ -499,15 +499,15 @@ impl to_str_methods for borrowck_ctxt {
           cat_special(sk_heap_upvar) { ~"heap-upvar" }
           cat_stack_upvar(_) { ~"stack-upvar" }
           cat_rvalue { ~"rvalue" }
-          cat_local(node_id) { #fmt["local(%d)", node_id] }
-          cat_binding(node_id) { #fmt["binding(%d)", node_id] }
-          cat_arg(node_id) { #fmt["arg(%d)", node_id] }
+          cat_local(node_id) { fmt!{"local(%d)", node_id} }
+          cat_binding(node_id) { fmt!{"binding(%d)", node_id} }
+          cat_arg(node_id) { fmt!{"arg(%d)", node_id} }
           cat_deref(cmt, derefs, ptr) {
-            #fmt["%s->(%s, %u)", self.cat_to_repr(cmt.cat),
-                 self.ptr_sigil(ptr), derefs]
+            fmt!{"%s->(%s, %u)", self.cat_to_repr(cmt.cat),
+                 self.ptr_sigil(ptr), derefs}
           }
           cat_comp(cmt, comp) {
-            #fmt["%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)]
+            fmt!{"%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)}
           }
           cat_discr(cmt, _) { self.cat_to_repr(cmt.cat) }
         }
@@ -542,29 +542,29 @@ impl to_str_methods for borrowck_ctxt {
     fn lp_to_str(lp: @loan_path) -> ~str {
         alt *lp {
           lp_local(node_id) {
-            #fmt["local(%d)", node_id]
+            fmt!{"local(%d)", node_id}
           }
           lp_arg(node_id) {
-            #fmt["arg(%d)", node_id]
+            fmt!{"arg(%d)", node_id}
           }
           lp_deref(lp, ptr) {
-            #fmt["%s->(%s)", self.lp_to_str(lp),
-                 self.ptr_sigil(ptr)]
+            fmt!{"%s->(%s)", self.lp_to_str(lp),
+                 self.ptr_sigil(ptr)}
           }
           lp_comp(lp, comp) {
-            #fmt["%s.%s", self.lp_to_str(lp),
-                 self.comp_to_repr(comp)]
+            fmt!{"%s.%s", self.lp_to_str(lp),
+                 self.comp_to_repr(comp)}
           }
         }
     }
 
     fn cmt_to_repr(cmt: cmt) -> ~str {
-        #fmt["{%s id:%d m:%s lp:%s ty:%s}",
+        fmt!{"{%s id:%d m:%s lp:%s ty:%s}",
              self.cat_to_repr(cmt.cat),
              cmt.id,
              self.mut_to_str(cmt.mutbl),
              cmt.lp.map_default(~"none", |p| self.lp_to_str(p) ),
-             ty_to_str(self.tcx, cmt.ty)]
+             ty_to_str(self.tcx, cmt.ty)}
     }
 
     fn cmt_to_str(cmt: cmt) -> ~str {
@@ -580,8 +580,8 @@ impl to_str_methods for borrowck_ctxt {
           cat_local(_) { mut_str + ~" local variable" }
           cat_binding(_) { ~"pattern binding" }
           cat_arg(_) { ~"argument" }
-          cat_deref(_, _, pk) { #fmt["dereference of %s %s pointer",
-                                     mut_str, self.ptr_sigil(pk)] }
+          cat_deref(_, _, pk) { fmt!{"dereference of %s %s pointer",
+                                     mut_str, self.ptr_sigil(pk)} }
           cat_stack_upvar(_) {
             ~"captured outer " + mut_str + ~" variable in a stack closure"
           }
@@ -610,8 +610,8 @@ impl to_str_methods for borrowck_ctxt {
     fn bckerr_code_to_str(code: bckerr_code) -> ~str {
         alt code {
           err_mutbl(req, act) {
-            #fmt["creating %s alias to aliasable, %s memory",
-                 self.mut_to_str(req), self.mut_to_str(act)]
+            fmt!{"creating %s alias to aliasable, %s memory",
+                 self.mut_to_str(req), self.mut_to_str(act)}
           }
           err_mut_uniq {
             ~"unique value in aliasable, mutable location"
@@ -626,16 +626,16 @@ impl to_str_methods for borrowck_ctxt {
             ~"rooting is not permitted"
           }
           err_out_of_root_scope(super_scope, sub_scope) {
-            #fmt["managed value would have to be rooted for lifetime %s, \
+            fmt!{"managed value would have to be rooted for lifetime %s, \
                   but can only be rooted for lifetime %s",
                  self.region_to_str(sub_scope),
-                 self.region_to_str(super_scope)]
+                 self.region_to_str(super_scope)}
           }
           err_out_of_scope(super_scope, sub_scope) {
-            #fmt["borrowed pointer has lifetime %s, \
+            fmt!{"borrowed pointer has lifetime %s, \
                   but the borrowed value only has lifetime %s",
                  self.region_to_str(sub_scope),
-                 self.region_to_str(super_scope)]
+                 self.region_to_str(super_scope)}
           }
         }
     }

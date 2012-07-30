@@ -2,6 +2,6 @@
 // xfail-test
 
 fn main() {
-    #error["%?", os::getenv(~"RUST_CC_ZEAL")];
+    error!{"%?", os::getenv(~"RUST_CC_ZEAL")};
     let _x = @{a: @10, b: ~true};
 }

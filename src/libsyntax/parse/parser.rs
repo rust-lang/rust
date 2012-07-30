@@ -273,13 +273,13 @@ class parser {
             let tps = p.parse_ty_params();
             let d = p.parse_ty_fn_decl(pur);
             let hi = p.last_span.hi;
-            #debug["parse_trait_methods(): trait method signature ends in \
+            debug!{"parse_trait_methods(): trait method signature ends in \
                     `%s`",
-                   token_to_str(p.reader, p.token)];
+                   token_to_str(p.reader, p.token)};
             alt p.token {
               token::SEMI {
                 p.bump();
-                #debug["parse_trait_methods(): parsing required method"];
+                debug!{"parse_trait_methods(): parsing required method"};
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
                 required({ident: ident, attrs: attrs,
@@ -287,7 +287,7 @@ class parser {
                           span: mk_sp(lo, hi)})
               }
               token::LBRACE {
-                #debug["parse_trait_methods(): parsing provided method"];
+                debug!{"parse_trait_methods(): parsing provided method"};
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block(true);
                 let attrs = vec::append(attrs, inner_attrs);
@@ -632,7 +632,7 @@ class parser {
     }
 
     fn parse_path_with_tps(colons: bool) -> @path {
-        #debug["parse_path_with_tps(colons=%b)", colons];
+        debug!{"parse_path_with_tps(colons=%b)", colons};
 
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
@@ -1479,9 +1479,9 @@ class parser {
             // There may be other types of expressions that can
             // represent the callee in `for` and `do` expressions
             // but they aren't represented by tests
-            #debug("sugary call on %?", e.node);
+            debug!{"sugary call on %?", e.node};
             self.span_fatal(
-                lo, #fmt("`%s` must be followed by a block call", keyword));
+                lo, fmt!{"`%s` must be followed by a block call", keyword});
           }
         }
     }
@@ -2321,7 +2321,7 @@ class parser {
                 attrs = vec::append(attrs_remaining, attrs);
                 first = false;
             }
-            #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
+            debug!{"parse_mod_items: parse_item(attrs=%?)", attrs};
             let vis = self.parse_visibility(private);
             alt self.parse_item(attrs, vis) {
               some(i) { vec::push(items, i); }
@@ -2330,7 +2330,7 @@ class parser {
                            token_to_str(self.reader, self.token) + ~"`");
               }
             }
-            #debug["parse_mod_items: attrs=%?", attrs];
+            debug!{"parse_mod_items: attrs=%?", attrs};
         }
 
         if first && attrs_remaining.len() > 0u {
@@ -2603,7 +2603,7 @@ class parser {
         let lo = self.span.lo;
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        #debug("parsed view_path: %s", *first_ident);
+        debug!{"parsed view_path: %s", *first_ident};
         alt self.token {
           token::EQ {
             // x = foo::bar

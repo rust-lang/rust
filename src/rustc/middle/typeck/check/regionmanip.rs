@@ -14,14 +14,14 @@ fn replace_bound_regions_in_fn_ty(
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
     for self_ty.each |t| { vec::push(all_tys, t) }
 
-    #debug["replace_bound_regions_in_fn_ty(self_ty=%?, fn_ty=%s, all_tys=%?)",
+    debug!{"replace_bound_regions_in_fn_ty(self_ty=%?, fn_ty=%s, all_tys=%?)",
            self_ty.map(|t| ty_to_str(tcx, t)),
            ty_to_str(tcx, ty::mk_fn(tcx, fn_ty)),
-           all_tys.map(|t| ty_to_str(tcx, t))];
+           all_tys.map(|t| ty_to_str(tcx, t))};
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
-        #debug["br=%?", br];
+        debug!{"br=%?", br};
         mapf(br)
     };
     let t_fn = ty::fold_sty_to_ty(tcx, ty::ty_fn(fn_ty), |t| {
@@ -29,9 +29,9 @@ fn replace_bound_regions_in_fn_ty(
     });
     let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, t));
 
-    #debug["result of replace_bound_regions_in_fn_ty: self_ty=%?, fn_ty=%s",
+    debug!{"result of replace_bound_regions_in_fn_ty: self_ty=%?, fn_ty=%s",
            t_self.map(|t| ty_to_str(tcx, t)),
-           ty_to_str(tcx, t_fn)];
+           ty_to_str(tcx, t_fn)};
 
     ret {isr: isr,
          self_ty: t_self,
@@ -122,9 +122,9 @@ fn replace_bound_regions_in_fn_ty(
                   none if in_fn { r }
                   none {
                     tcx.sess.bug(
-                        #fmt["Bound region not found in \
+                        fmt!{"Bound region not found in \
                               in_scope_regions list: %s",
-                             region_to_str(tcx, r)]);
+                             region_to_str(tcx, r)});
                   }
                 }
               }
@@ -145,7 +145,7 @@ fn replace_bound_regions_in_fn_ty(
  * stack position and so the resulting region will be the enclosing block.
  */
 fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
-    #debug["region_of(expr=%s)", expr_to_str(expr)];
+    debug!{"region_of(expr=%s)", expr_to_str(expr)};
     ret alt expr.node {
       ast::expr_path(path) {
         def(fcx, expr, lookup_def(fcx, path.span, expr.id))}
@@ -178,12 +178,12 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
           ast::def_arg(local_id, _) |
           ast::def_local(local_id, _) |
           ast::def_binding(local_id) {
-            #debug["region_of.def/arg/local/binding(id=%d)", local_id];
+            debug!{"region_of.def/arg/local/binding(id=%d)", local_id};
             let local_scope = fcx.ccx.tcx.region_map.get(local_id);
             ty::re_scope(local_scope)
           }
           ast::def_upvar(_, inner, _) {
-            #debug["region_of.def/upvar"];
+            debug!{"region_of.def/upvar"};
             def(fcx, expr, *inner)
           }
           ast::def_self(*) {

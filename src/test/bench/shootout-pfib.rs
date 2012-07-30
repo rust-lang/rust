@@ -64,7 +64,7 @@ fn stress_task(&&id: int) {
         let n = 15;
         assert (fib(n) == fib(n));
         i += 1;
-        #error("%d: Completed %d iterations", id, i);
+        error!{"%d: Completed %d iterations", id, i};
     }
 }
 
@@ -109,8 +109,8 @@ fn main(args: ~[~str]) {
 
                 let elapsed = stop - start;
 
-                out.write_line(#fmt["%d\t%d\t%s", n, fibn,
-                                    u64::str(elapsed)]);
+                out.write_line(fmt!{"%d\t%d\t%s", n, fibn,
+                                    u64::str(elapsed)});
             }
         }
     }

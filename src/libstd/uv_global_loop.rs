@@ -36,43 +36,43 @@ fn get_monitor_task_gl() -> iotask unsafe {
 
     let monitor_loop_chan_ptr = rustrt::rust_uv_get_kernel_global_chan_ptr();
 
-    #debug("ENTERING global_loop::get() loop chan: %?",
-           monitor_loop_chan_ptr);
+    debug!{"ENTERING global_loop::get() loop chan: %?",
+           monitor_loop_chan_ptr};
 
     let builder_fn = || {
         task::task().sched_mode(task::single_threaded).unlinked()
     };
 
-    #debug("before priv::chan_from_global_ptr");
+    debug!{"before priv::chan_from_global_ptr"};
     type monchan = chan<iotask>;
 
     let monitor_ch = do chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
                                                         builder_fn) |msg_po| {
-        #debug("global monitor task starting");
+        debug!{"global monitor task starting"};
 
         // As a weak task the runtime will notify us when to exit
         do weaken_task() |weak_exit_po| {
-            #debug("global monitor task is now weak");
+            debug!{"global monitor task is now weak"};
             let hl_loop = spawn_loop();
             loop {
-                #debug("in outer_loop...");
+                debug!{"in outer_loop..."};
                 alt select2(weak_exit_po, msg_po) {
                   left(weak_exit) {
                     // all normal tasks have ended, tell the
                     // libuv loop to tear_down, then exit
-                    #debug("weak_exit_po recv'd msg: %?", weak_exit);
+                    debug!{"weak_exit_po recv'd msg: %?", weak_exit};
                     iotask::exit(hl_loop);
                     break;
                   }
                   right(fetch_ch) {
-                    #debug("hl_loop req recv'd: %?", fetch_ch);
+                    debug!{"hl_loop req recv'd: %?", fetch_ch};
                     fetch_ch.send(hl_loop);
                   }
                 }
             }
-            #debug("global monitor task is leaving weakend state");
+            debug!{"global monitor task is leaving weakend state"};
         };
-        #debug("global monitor task exiting");
+        debug!{"global monitor task exiting"};
     };
 
     // once we have a chan to the monitor loop, we ask it for
@@ -89,14 +89,14 @@ fn spawn_loop() -> iotask unsafe {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
             do weaken_task |weak_exit_po| {
-                #debug("global libuv task is now weak %?", weak_exit_po);
+                debug!{"global libuv task is now weak %?", weak_exit_po};
                 task_body();
 
                 // We don't wait for the exit message on weak_exit_po
                 // because the monitor task will tell the uv loop when to
                 // exit
 
-                #debug("global libuv task is leaving weakened state");
+                debug!{"global libuv task is leaving weakened state"};
             }
         }
     };
@@ -110,8 +110,8 @@ mod test {
             timer_ptr as *libc::c_void) as *comm::chan<bool>;
         let exit_ch = *exit_ch_ptr;
         comm::send(exit_ch, true);
-        log(debug, #fmt("EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
-                       exit_ch_ptr));
+        log(debug, fmt!{"EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
+                       exit_ch_ptr});
     }
     extern fn simple_timer_cb(timer_ptr: *ll::uv_timer_t,
                              _status: libc::c_int) unsafe {
@@ -131,8 +131,8 @@ mod test {
         let exit_po = comm::port::<bool>();
         let exit_ch = comm::chan(exit_po);
         let exit_ch_ptr = ptr::addr_of(exit_ch);
-        log(debug, #fmt("EXIT_CH_PTR newly created exit_ch_ptr: %?",
-                       exit_ch_ptr));
+        log(debug, fmt!{"EXIT_CH_PTR newly created exit_ch_ptr: %?",
+                       exit_ch_ptr});
         let timer_handle = ll::timer_t();
         let timer_ptr = ptr::addr_of(timer_handle);
         do iotask::interact(iotask) |loop_ptr| {

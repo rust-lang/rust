@@ -21,5 +21,5 @@ fn main(args: ~[~str]) {
         args
     };
     let n = int::from_str(args[1]).get();
-    io::println(#fmt("Ack(3,%d): %d\n", n, ack(3, n)));
+    io::println(fmt!{"Ack(3,%d): %d\n", n, ack(3, n)});
 }

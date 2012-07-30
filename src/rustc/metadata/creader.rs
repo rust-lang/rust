@@ -43,16 +43,16 @@ type cache_entry = {
 };
 
 fn dump_crates(crate_cache: dvec<cache_entry>) {
-    #debug("resolved crates:");
+    debug!{"resolved crates:"};
     for crate_cache.each |entry| {
-        #debug("cnum: %?", entry.cnum);
-        #debug("span: %?", entry.span);
-        #debug("hash: %?", entry.hash);
+        debug!{"cnum: %?", entry.cnum};
+        debug!{"span: %?", entry.span};
+        debug!{"hash: %?", entry.hash};
         let attrs = ~[
             attr::mk_attr(attr::mk_list_item(@~"link", *entry.metas))
         ];
         for attr::find_linkage_attrs(attrs).each |attr| {
-            #debug("meta: %s", pprust::attr_to_str(attr));
+            debug!{"meta: %s", pprust::attr_to_str(attr)};
         }
     }
 }
@@ -77,7 +77,7 @@ fn warn_if_multiple_versions(diag: span_handler,
 
         if matches.len() != 1u {
             diag.handler().warn(
-                #fmt("using multiple versions of crate `%s`", *name));
+                fmt!{"using multiple versions of crate `%s`", *name});
             for matches.each |match| {
                 diag.span_note(match.span, ~"used here");
                 let attrs = ~[
@@ -102,7 +102,7 @@ type env = @{diag: span_handler,
 fn visit_view_item(e: env, i: @ast::view_item) {
     alt i.node {
       ast::view_item_use(ident, meta_items, id) {
-        #debug("resolving use stmt. ident: %?, meta: %?", ident, meta_items);
+        debug!{"resolving use stmt. ident: %?, meta: %?", ident, meta_items};
         let cnum = resolve_crate(e, ident, meta_items, ~"", i.span);
         cstore::add_use_stmt_cnum(e.cstore, id, cnum);
       }
@@ -238,7 +238,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
 
 // Go through the crate metadata and load any crates that it references
 fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
-    #debug("resolving deps of external crate");
+    debug!{"resolving deps of external crate"};
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let cnum_map = int_hash::<ast::crate_num>();
@@ -246,16 +246,16 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
         let cmetas = metas_with(dep.vers, @~"vers", ~[]);
-        #debug("resolving dep crate %s ver: %s hash: %s",
-               *dep.name, *dep.vers, *dep.hash);
+        debug!{"resolving dep crate %s ver: %s hash: %s",
+               *dep.name, *dep.vers, *dep.hash};
         alt existing_match(e, metas_with_ident(cname, cmetas), *dep.hash) {
           some(local_cnum) {
-            #debug("already have it");
+            debug!{"already have it"};
             // We've already seen this crate
             cnum_map.insert(extrn_cnum, local_cnum);
           }
           none {
-            #debug("need to load it");
+            debug!{"need to load it"};
             // This is a new one so we've got to load it
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.

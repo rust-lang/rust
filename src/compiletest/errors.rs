@@ -47,7 +47,7 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] unsafe {
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
     let msg = str::slice(line, idx, len);
 
-    #debug("line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg);
+    debug!{"line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg};
 
     ret ~[{line: line_num - adjust_line, kind: kind, msg: msg}];
 }

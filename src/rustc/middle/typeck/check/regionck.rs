@@ -107,7 +107,7 @@ fn visit_pat(p: @ast::pat, &&rcx: @rcx, v: rvt) {
     alt p.node {
       ast::pat_ident(path, _)
       if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
-        #debug["visit_pat binding=%s", *path.idents[0]];
+        debug!{"visit_pat binding=%s", *path.idents[0]};
         visit_node(p.id, p.span, rcx);
       }
       _ {}
@@ -121,7 +121,7 @@ fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
 }
 
 fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
-    #debug["visit_expr(e=%s)", pprust::expr_to_str(e)];
+    debug!{"visit_expr(e=%s)", pprust::expr_to_str(e)};
 
     alt e.node {
       ast::expr_path(*) {
@@ -200,10 +200,10 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     let tcx = fcx.ccx.tcx;
     let encl_region = ty::encl_region(tcx, id);
 
-    #debug["visit_node(ty=%s, id=%d, encl_region=%s)",
+    debug!{"visit_node(ty=%s, id=%d, encl_region=%s)",
            ppaux::ty_to_str(tcx, ty),
            id,
-           ppaux::region_to_str(tcx, encl_region)];
+           ppaux::region_to_str(tcx, encl_region)};
 
     // Otherwise, look at the type and see if it is a region pointer.
     ret constrain_regions_in_type(rcx, encl_region, span, ty);
@@ -228,9 +228,9 @@ fn constrain_regions_in_type(
                         region: ty::region) {
         let tcx = rcx.fcx.ccx.tcx;
 
-        #debug["constrain_region(encl_region=%s, region=%s)",
+        debug!{"constrain_region(encl_region=%s, region=%s)",
                ppaux::region_to_str(tcx, encl_region),
-               ppaux::region_to_str(tcx, region)];
+               ppaux::region_to_str(tcx, region)};
 
         alt region {
           ty::re_bound(_) {
@@ -248,9 +248,9 @@ fn constrain_regions_in_type(
             let region1 = rcx.fcx.infcx.resolve_region_if_possible(region);
             tcx.sess.span_err(
                 span,
-                #fmt["reference is not valid outside \
+                fmt!{"reference is not valid outside \
                       of its lifetime, %s",
-                     ppaux::region_to_str(tcx, region1)]);
+                     ppaux::region_to_str(tcx, region1)});
             rcx.errors_reported += 1u;
           }
           result::ok(()) {

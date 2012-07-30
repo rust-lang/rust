@@ -18,20 +18,20 @@ fn main() {
 }
 
 fn test00_start(ch: chan<int>, message: int, count: int) {
-    #debug("Starting test00_start");
+    debug!{"Starting test00_start"};
     let mut i: int = 0;
     while i < count {
-        #debug("Sending Message");
+        debug!{"Sending Message"};
         send(ch, message + 0);
         i = i + 1;
     }
-    #debug("Ending test00_start");
+    debug!{"Ending test00_start"};
 }
 
 fn test00() {
     let number_of_tasks: int = 1;
     let number_of_messages: int = 4;
-    #debug("Creating tasks");
+    debug!{"Creating tasks"};
 
     let po = port();
     let ch = chan(po);
@@ -55,7 +55,7 @@ fn test00() {
 
     for results.each |r| { future::get(r); }
 
-    #debug("Completed: Final number is: ");
+    debug!{"Completed: Final number is: "};
     assert (sum ==
                 number_of_messages *
                     (number_of_tasks * number_of_tasks + number_of_tasks) /
@@ -64,7 +64,7 @@ fn test00() {
 
 fn test01() {
     let p = port();
-    #debug("Reading from a port that is never written to.");
+    debug!{"Reading from a port that is never written to."};
     let value: int = recv(p);
     log(debug, value);
 }
@@ -72,25 +72,25 @@ fn test01() {
 fn test02() {
     let p = port();
     let c = chan(p);
-    #debug("Writing to a local task channel.");
+    debug!{"Writing to a local task channel."};
     send(c, 42);
-    #debug("Reading from a local task port.");
+    debug!{"Reading from a local task port."};
     let value: int = recv(p);
     log(debug, value);
 }
 
 fn test04_start() {
-    #debug("Started task");
+    debug!{"Started task"};
     let mut i: int = 1024 * 1024;
     while i > 0 { i = i - 1; }
-    #debug("Finished task");
+    debug!{"Finished task"};
 }
 
 fn test04() {
-    #debug("Spawning lots of tasks.");
+    debug!{"Spawning lots of tasks."};
     let mut i: int = 4;
     while i > 0 { i = i - 1; task::spawn(|| test04_start() ); }
-    #debug("Finishing up.");
+    debug!{"Finishing up."};
 }
 
 fn test05_start(ch: chan<int>) {
@@ -113,15 +113,15 @@ fn test05() {
 }
 
 fn test06_start(&&task_number: int) {
-    #debug("Started task.");
+    debug!{"Started task."};
     let mut i: int = 0;
     while i < 1000000 { i = i + 1; }
-    #debug("Finished task.");
+    debug!{"Finished task."};
 }
 
 fn test06() {
     let number_of_tasks: int = 4;
-    #debug("Creating tasks");
+    debug!{"Creating tasks"};
 
     let mut i: int = 0;
 

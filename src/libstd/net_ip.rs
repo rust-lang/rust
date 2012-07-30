@@ -92,7 +92,7 @@ fn get_addr(++node: ~str, iotask: iotask)
         -> result::result<~[ip_addr], ip_get_addr_err> unsafe {
     do comm::listen |output_ch| {
         do str::as_buf(node) |node_ptr, len| {
-            log(debug, #fmt("slice len %?", len));
+            log(debug, fmt!{"slice len %?", len});
             let handle = create_uv_getaddrinfo_t();
             let handle_ptr = ptr::addr_of(handle);
             let handle_data: get_addr_data = {
@@ -167,10 +167,10 @@ mod v4 {
             }
         });
         if vec::len(parts) != 4u {
-                result::err(#fmt("'%s' doesn't have 4 parts", ip))
+                result::err(fmt!{"'%s' doesn't have 4 parts", ip})
                 }
         else if vec::contains(parts, 256u) {
-                result::err(#fmt("invalid octal in addr '%s'", ip))
+                result::err(fmt!{"invalid octal in addr '%s'", ip})
                 }
         else {
             result::ok({a: parts[0] as u8, b: parts[1] as u8,
@@ -191,8 +191,8 @@ mod v4 {
 
             let new_addr = uv_ip4_addr(ip, 22);
             let reformatted_name = uv_ip4_name(&new_addr);
-            log(debug, #fmt("try_parse_addr: input ip: %s reparsed ip: %s",
-                            ip, reformatted_name));
+            log(debug, fmt!{"try_parse_addr: input ip: %s reparsed ip: %s",
+                            ip, reformatted_name});
             let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name);
             if result::is_err(ref_ip_rep_result) {
                 let err_str = result::get_err(ref_ip_rep_result);
@@ -238,13 +238,13 @@ mod v6 {
             // need to figure out how to establish a parse failure..
             let new_addr = uv_ip6_addr(ip, 22);
             let reparsed_name = uv_ip6_name(&new_addr);
-            log(debug, #fmt("v6::try_parse_addr ip: '%s' reparsed '%s'",
-                            ip, reparsed_name));
+            log(debug, fmt!{"v6::try_parse_addr ip: '%s' reparsed '%s'",
+                            ip, reparsed_name});
             // '::' appears to be uv_ip6_name() returns for bogus
             // parses..
             if  ip != ~"::" && reparsed_name == ~"::" {
-                result::err({err_msg:#fmt("failed to parse '%s'",
-                                           ip)})
+                result::err({err_msg:fmt!{"failed to parse '%s'",
+                                           ip}})
             }
             else {
                 result::ok(ipv6(new_addr))
@@ -265,7 +265,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
     if status == 0i32 {
         if res != (ptr::null::<addrinfo>()) {
             let mut out_vec = ~[];
-            log(debug, #fmt("initial addrinfo: %?", res));
+            log(debug, fmt!{"initial addrinfo: %?", res});
             let mut curr_addr = res;
             loop {
                 let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
@@ -292,11 +292,11 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                 }
                 else {
                     curr_addr = next_addr;
-                    log(debug, #fmt("next_addr addrinfo: %?", curr_addr));
+                    log(debug, fmt!{"next_addr addrinfo: %?", curr_addr});
                 }
             }
-            log(debug, #fmt("successful process addrinfo result, len: %?",
-                            vec::len(out_vec)));
+            log(debug, fmt!{"successful process addrinfo result, len: %?",
+                            vec::len(out_vec)});
             (*handle_data).output_ch.send(result::ok(out_vec));
         }
         else {
@@ -328,19 +328,19 @@ mod test {
     fn test_ip_ipv6_parse_and_format_ip() {
         let localhost_str = ~"::1";
         let format_result = format_addr(v6::parse_addr(localhost_str));
-        log(debug, #fmt("results: expected: '%s' actual: '%s'",
-            localhost_str, format_result));
+        log(debug, fmt!{"results: expected: '%s' actual: '%s'",
+            localhost_str, format_result});
         assert format_result == localhost_str;
     }
     #[test]
     fn test_ip_ipv4_bad_parse() {
         alt v4::try_parse_addr(~"b4df00d") {
           result::err(err_info) {
-            log(debug, #fmt("got error as expected %?", err_info));
+            log(debug, fmt!{"got error as expected %?", err_info});
             assert true;
           }
           result::ok(addr) {
-            fail #fmt("Expected failure, but got addr %?", addr);
+            fail fmt!{"Expected failure, but got addr %?", addr};
           }
         }
     }
@@ -349,11 +349,11 @@ mod test {
     fn test_ip_ipv6_bad_parse() {
         alt v6::try_parse_addr(~"::,~2234k;") {
           result::err(err_info) {
-            log(debug, #fmt("got error as expected %?", err_info));
+            log(debug, fmt!{"got error as expected %?", err_info});
             assert true;
           }
           result::ok(addr) {
-            fail #fmt("Expected failure, but got addr %?", addr);
+            fail fmt!{"Expected failure, but got addr %?", addr};
           }
         }
     }
@@ -369,8 +369,8 @@ mod test {
         // note really sure how to realiably test/assert
         // this.. mostly just wanting to see it work, atm.
         let results = result::unwrap(ga_result);
-        log(debug, #fmt("test_get_addr: Number of results for %s: %?",
-                        localhost_name, vec::len(results)));
+        log(debug, fmt!{"test_get_addr: Number of results for %s: %?",
+                        localhost_name, vec::len(results)});
         for vec::each(results) |r| {
             let ipv_prefix = alt r {
               ipv4(_) {
@@ -380,8 +380,8 @@ mod test {
                 ~"IPv6"
               }
             };
-            log(debug, #fmt("test_get_addr: result %s: '%s'",
-                            ipv_prefix, format_addr(r)));
+            log(debug, fmt!{"test_get_addr: result %s: '%s'",
+                            ipv_prefix, format_addr(r)});
         }
         // at least one result.. this is going to vary from system
         // to system, based on stuff like the contents of /etc/hosts

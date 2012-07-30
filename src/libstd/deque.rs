@@ -278,37 +278,37 @@ mod tests {
         fn reccyeq(a: reccy, b: reccy) -> bool {
             ret a.x == b.x && a.y == b.y && taggyeq(a.t, b.t);
         }
-        #debug("*** test boxes");
+        debug!{"*** test boxes"};
         test_boxes(@5, @72, @64, @175);
-        #debug("*** end test boxes");
-        #debug("test parameterized: int");
+        debug!{"*** end test boxes"};
+        debug!{"test parameterized: int"};
         let eq1: eqfn<int> = inteq;
         test_parameterized::<int>(eq1, 5, 72, 64, 175);
-        #debug("*** test parameterized: @int");
+        debug!{"*** test parameterized: @int"};
         let eq2: eqfn<@int> = intboxeq;
         test_parameterized::<@int>(eq2, @5, @72, @64, @175);
-        #debug("*** end test parameterized @int");
-        #debug("test parameterized: taggy");
+        debug!{"*** end test parameterized @int"};
+        debug!{"test parameterized: taggy"};
         let eq3: eqfn<taggy> = taggyeq;
         test_parameterized::<taggy>(eq3, one(1), two(1, 2), three(1, 2, 3),
                                     two(17, 42));
 
-        #debug("*** test parameterized: taggypar<int>");
+        debug!{"*** test parameterized: taggypar<int>"};
         let eq4: eqfn<taggypar<int>> = |x,y| taggypareq::<int>(x, y);
         test_parameterized::<taggypar<int>>(eq4, onepar::<int>(1),
                                             twopar::<int>(1, 2),
                                             threepar::<int>(1, 2, 3),
                                             twopar::<int>(17, 42));
-        #debug("*** end test parameterized: taggypar::<int>");
+        debug!{"*** end test parameterized: taggypar::<int>"};
 
-        #debug("*** test parameterized: reccy");
+        debug!{"*** test parameterized: reccy"};
         let reccy1: reccy = {x: 1, y: 2, t: one(1)};
         let reccy2: reccy = {x: 345, y: 2, t: two(1, 2)};
         let reccy3: reccy = {x: 1, y: 777, t: three(1, 2, 3)};
         let reccy4: reccy = {x: 19, y: 252, t: two(17, 42)};
         let eq5: eqfn<reccy> = reccyeq;
         test_parameterized::<reccy>(eq5, reccy1, reccy2, reccy3, reccy4);
-        #debug("*** end test parameterized: reccy");
-        #debug("*** done");
+        debug!{"*** end test parameterized: reccy"};
+        debug!{"*** done"};
     }
 }

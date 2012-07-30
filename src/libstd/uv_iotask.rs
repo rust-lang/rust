@@ -29,9 +29,9 @@ fn spawn_iotask(-task: task::task_builder) -> iotask {
     do listen |iotask_ch| {
 
         do task.sched_mode(task::single_threaded).spawn {
-            #debug("entering libuv task");
+            debug!{"entering libuv task"};
             run_loop(iotask_ch);
-            #debug("libuv task exiting");
+            debug!{"libuv task exiting"};
         };
 
         iotask_ch.recv()
@@ -136,8 +136,8 @@ fn send_msg(iotask: iotask,
 extern fn wake_up_cb(async_handle: *ll::uv_async_t,
                     status: int) unsafe {
 
-    log(debug, #fmt("wake_up_cb extern.. handle: %? status: %?",
-                     async_handle, status));
+    log(debug, fmt!{"wake_up_cb extern.. handle: %? status: %?",
+                     async_handle, status});
 
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
     let data = ll::get_data_for_uv_handle(async_handle) as *iotask_loop_data;
@@ -164,22 +164,22 @@ fn begin_teardown(data: *iotask_loop_data) unsafe {
 extern fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
     let loop_ptr = ll::get_loop_for_uv_handle(handle);
     let loop_refs = ll::loop_refcount(loop_ptr);
-    log(debug, #fmt("tear_down_close_cb called, closing handle at %? refs %?",
-                    handle, loop_refs));
+    log(debug, fmt!{"tear_down_close_cb called, closing handle at %? refs %?",
+                    handle, loop_refs});
     assert loop_refs == 1i32;
 }
 
 #[cfg(test)]
 mod test {
     extern fn async_close_cb(handle: *ll::uv_async_t) unsafe {
-        log(debug, #fmt("async_close_cb handle %?", handle));
+        log(debug, fmt!{"async_close_cb handle %?", handle});
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)
                         as *ah_data)).exit_ch;
         comm::send(exit_ch, ());
     }
     extern fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int)
         unsafe {
-        log(debug, #fmt("async_handle_cb handle %? status %?",handle,status));
+        log(debug, fmt!{"async_handle_cb handle %? status %?",handle,status});
         ll::close(handle, async_close_cb);
     }
     type ah_data = {
@@ -217,13 +217,13 @@ mod test {
     }
 
     extern fn lifetime_handle_close(handle: *libc::c_void) unsafe {
-        log(debug, #fmt("lifetime_handle_close ptr %?", handle));
+        log(debug, fmt!{"lifetime_handle_close ptr %?", handle});
     }
 
     extern fn lifetime_async_callback(handle: *libc::c_void,
                                      status: libc::c_int) {
-        log(debug, #fmt("lifetime_handle_close ptr %? status %?",
-                        handle, status));
+        log(debug, fmt!{"lifetime_handle_close ptr %? status %?",
+                        handle, status});
     }
 
     #[test]

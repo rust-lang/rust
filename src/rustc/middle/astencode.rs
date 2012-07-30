@@ -89,9 +89,9 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
                        path: ast_map::path,
                        ii: ast::inlined_item,
                        maps: maps) {
-    #debug["> Encoding inlined item: %s::%s (%u)",
+    debug!{"> Encoding inlined item: %s::%s (%u)",
            ast_map::path_to_str(path), *ii.ident(),
-           ebml_w.writer.tell()];
+           ebml_w.writer.tell()};
 
     let id_range = ast_util::compute_id_range_for_inlined_item(ii);
     do ebml_w.wr_tag(c::tag_ast as uint) {
@@ -100,9 +100,9 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
         encode_side_tables_for_ii(ecx, maps, ebml_w, ii);
     }
 
-    #debug["< Encoded inlined fn: %s::%s (%u)",
+    debug!{"< Encoded inlined fn: %s::%s (%u)",
            ast_map::path_to_str(path), *ii.ident(),
-           ebml_w.writer.tell()];
+           ebml_w.writer.tell()};
 }
 
 fn decode_inlined_item(cdata: cstore::crate_metadata,
@@ -114,7 +114,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
     alt par_doc.opt_child(c::tag_ast) {
       none { none }
       some(ast_doc) {
-        #debug["> Decoding inlined fn: %s::?", ast_map::path_to_str(path)];
+        debug!{"> Decoding inlined fn: %s::?", ast_map::path_to_str(path)};
         let ast_dsr = ebml::ebml_deserializer(ast_doc);
         let from_id_range = ast_util::deserialize_id_range(ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
@@ -125,14 +125,14 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         let ii = renumber_ast(xcx, raw_ii);
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
                                   dcx.tcx.items, path, ii);
-        #debug["Fn named: %s", *ii.ident()];
+        debug!{"Fn named: %s", *ii.ident()};
         decode_side_tables(xcx, ast_doc);
-        #debug["< Decoded inlined fn: %s::%s",
-               ast_map::path_to_str(path), *ii.ident()];
+        debug!{"< Decoded inlined fn: %s::%s",
+               ast_map::path_to_str(path), *ii.ident()};
         alt ii {
           ast::ii_item(i) {
-            #debug(">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
-                   syntax::print::pprust::item_to_str(i));
+            debug!{">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
+                   syntax::print::pprust::item_to_str(i)};
           }
           _ { }
         }
@@ -641,7 +641,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
                              id: ast::node_id) {
     let tcx = ecx.tcx;
 
-    #debug["Encoding side tables for id %d", id];
+    debug!{"Encoding side tables for id %d", id};
 
     do option::iter(tcx.def_map.find(id)) |def| {
         do ebml_w.tag(c::tag_table_def) {
@@ -833,9 +833,9 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         let id0 = entry_doc[c::tag_table_id as uint].as_int();
         let id = xcx.tr_id(id0);
 
-        #debug[">> Side table document with tag 0x%x \
+        debug!{">> Side table document with tag 0x%x \
                 found for id %d (orig %d)",
-               tag, id, id0];
+               tag, id, id0};
 
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
@@ -884,11 +884,11 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.tcx.borrowings.insert(id, borrow);
             } else {
                 xcx.dcx.tcx.sess.bug(
-                    #fmt["unknown tag found in side tables: %x", tag]);
+                    fmt!{"unknown tag found in side tables: %x", tag});
             }
         }
 
-        #debug[">< Side table doc loaded"];
+        debug!{">< Side table doc loaded"};
     }
 }
 
@@ -931,21 +931,21 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: @ast::item) {
-    #debug["in_item = %s", pprust::item_to_str(in_item)];
+    debug!{"in_item = %s", pprust::item_to_str(in_item)};
     let mbuf = io::mem_buffer();
     let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
     encode_item_ast(ebml_w, in_item);
     let ebml_doc = ebml::doc(@io::mem_buffer_buf(mbuf));
     let out_item = decode_item_ast(ebml_doc);
-    #debug["out_item = %s", pprust::item_to_str(out_item)];
+    debug!{"out_item = %s", pprust::item_to_str(out_item)};
 
     let exp_str =
         io::with_str_writer(|w| ast::serialize_item(w, *in_item) );
     let out_str =
         io::with_str_writer(|w| ast::serialize_item(w, *out_item) );
 
-    #debug["expected string: %s", exp_str];
-    #debug["actual string  : %s", out_str];
+    debug!{"expected string: %s", exp_str};
+    debug!{"actual string  : %s", out_str};
 
     assert exp_str == out_str;
 }
@@ -953,7 +953,7 @@ fn roundtrip(in_item: @ast::item) {
 #[test]
 fn test_basic() {
     let ext_cx = mk_ctxt();
-    roundtrip(#ast(item){
+    roundtrip(#ast[item]{
         fn foo() {}
     });
 }
@@ -961,7 +961,7 @@ fn test_basic() {
 #[test]
 fn test_smalltalk() {
     let ext_cx = mk_ctxt();
-    roundtrip(#ast(item){
+    roundtrip(#ast[item]{
         fn foo() -> int { 3 + 4 } // first smalltalk program ever executed.
     });
 }
@@ -969,7 +969,7 @@ fn test_smalltalk() {
 #[test]
 fn test_more() {
     let ext_cx = mk_ctxt();
-    roundtrip(#ast(item){
+    roundtrip(#ast[item]{
         fn foo(x: uint, y: uint) -> uint {
             let z = x + y;
             ret z;
@@ -980,14 +980,14 @@ fn test_more() {
 #[test]
 fn test_simplification() {
     let ext_cx = mk_ctxt();
-    let item_in = ast::ii_item(#ast(item) {
+    let item_in = ast::ii_item(#ast[item] {
         fn new_int_alist<B: copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
             ret {eq_fn: eq_int, mut data: ~[]};
         }
     });
     let item_out = simplify_ast(item_in);
-    let item_exp = ast::ii_item(#ast(item) {
+    let item_exp = ast::ii_item(#ast[item] {
         fn new_int_alist<B: copy>() -> alist<int, B> {
             ret {eq_fn: eq_int, mut data: ~[]};
         }

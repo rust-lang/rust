@@ -68,20 +68,20 @@ fn parse_config(args: ~[~str]) -> config {
 
 fn log_config(config: config) {
     let c = config;
-    logv(c, #fmt["configuration:"]);
-    logv(c, #fmt["compile_lib_path: %s", config.compile_lib_path]);
-    logv(c, #fmt["run_lib_path: %s", config.run_lib_path]);
-    logv(c, #fmt["rustc_path: %s", config.rustc_path]);
-    logv(c, #fmt["src_base: %s", config.src_base]);
-    logv(c, #fmt["build_base: %s", config.build_base]);
-    logv(c, #fmt["stage_id: %s", config.stage_id]);
-    logv(c, #fmt["mode: %s", mode_str(config.mode)]);
-    logv(c, #fmt["run_ignored: %b", config.run_ignored]);
-    logv(c, #fmt["filter: %s", opt_str(config.filter)]);
-    logv(c, #fmt["runtool: %s", opt_str(config.runtool)]);
-    logv(c, #fmt["rustcflags: %s", opt_str(config.rustcflags)]);
-    logv(c, #fmt["verbose: %b", config.verbose]);
-    logv(c, #fmt["\n"]);
+    logv(c, fmt!{"configuration:"});
+    logv(c, fmt!{"compile_lib_path: %s", config.compile_lib_path});
+    logv(c, fmt!{"run_lib_path: %s", config.run_lib_path});
+    logv(c, fmt!{"rustc_path: %s", config.rustc_path});
+    logv(c, fmt!{"src_base: %s", config.src_base});
+    logv(c, fmt!{"build_base: %s", config.build_base});
+    logv(c, fmt!{"stage_id: %s", config.stage_id});
+    logv(c, fmt!{"mode: %s", mode_str(config.mode)});
+    logv(c, fmt!{"run_ignored: %b", config.run_ignored});
+    logv(c, fmt!{"filter: %s", opt_str(config.filter)});
+    logv(c, fmt!{"runtool: %s", opt_str(config.runtool)});
+    logv(c, fmt!{"rustcflags: %s", opt_str(config.rustcflags)});
+    logv(c, fmt!{"verbose: %b", config.verbose});
+    logv(c, fmt!{"\n"});
 }
 
 fn opt_str(maybestr: option<~str>) -> ~str {
@@ -134,11 +134,11 @@ fn test_opts(config: config) -> test::test_opts {
 }
 
 fn make_tests(config: config) -> ~[test::test_desc] {
-    #debug("making tests from %s", config.src_base);
+    debug!{"making tests from %s", config.src_base};
     let mut tests = ~[];
     for os::list_dir_path(config.src_base).each |file| {
         let file = file;
-        #debug("inspecting file %s", file);
+        debug!{"inspecting file %s", file};
         if is_test(config, file) {
             vec::push(tests, make_test(config, file))
         }
@@ -177,7 +177,7 @@ fn make_test(config: config, testfile: ~str) ->
 }
 
 fn make_test_name(config: config, testfile: ~str) -> ~str {
-    #fmt["[%s] %s", mode_str(config.mode), testfile]
+    fmt!{"[%s] %s", mode_str(config.mode), testfile}
 }
 
 fn make_test_closure(config: config, testfile: ~str) -> test::test_fn {
