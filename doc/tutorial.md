@@ -350,7 +350,7 @@ more underscores.
 
 The double-colon (`::`) is used as a module separator, so
 `io::println` means 'the thing named `println` in the module
-named `io`'.
+named `io`.
 
 Rust will normally emit warnings about unused variables. These can be
 suppressed by using a variable name that starts with an underscore.
@@ -1413,7 +1413,7 @@ let exchange_crayons: ~[crayon] = ~[banana_mania, beaver, bittersweet];
 > but is deprecated. In the future it will probably represent some
 > "reasonable default" vector type.
 >
-> Unique vectors are the currently-recomended vector type for general
+> Unique vectors are the currently-recommended vector type for general
 > use as they are the most tested and well-supported by existing
 > libraries. There will be a gradual shift toward using more
 > stack and local vectors in the coming releases.
@@ -2814,7 +2814,7 @@ C functions often take pointers to structs as arguments. Since Rust
 records are binary-compatible with C structs, Rust programs can call
 such functions directly.
 
-This program uses the Posix function `gettimeofday` to get a
+This program uses the POSIX function `gettimeofday` to get a
 microsecond-resolution timer.
 
 ~~~~
