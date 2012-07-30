@@ -45,13 +45,14 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              pat_range, pat_rec, pat_tup, pat_uniq, pat_wild, path, private,
              proto, proto_any, proto_bare, proto_block, proto_box, proto_uniq,
              provided, public, pure_fn, purity, re_anon, re_named, region,
-             rem, required, ret_style, return_val, shl, shr, stmt, stmt_decl,
-             stmt_expr, stmt_semi, subtract, token_tree, trait_method,
-             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty,
-             ty_, ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac,
-             ty_method, ty_nil, ty_param, ty_path, ty_ptr, ty_rec, ty_rptr,
-             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk,
-             uniq, unsafe_blk, unsafe_fn, variant, view_item, view_item_,
+             rem, required, ret_style, return_val, self_ty, shl, shr, stmt,
+             stmt_decl, stmt_expr, stmt_semi, subtract, sty_box, sty_by_ref,
+             sty_region, sty_uniq, sty_value, token_tree, trait_method,
+             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty, ty_,
+             ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method,
+             ty_nil, ty_param, ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup,
+             ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk, uniq,
+             unsafe_blk, unsafe_fn, variant, view_item, view_item_,
              view_item_export, view_item_import, view_item_use, view_path,
              view_path_glob, view_path_list, view_path_simple, visibility,
              vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
@@ -273,7 +274,8 @@ class parser {
             let tps = p.parse_ty_params();
             let d = p.parse_ty_fn_decl(pur);
             let hi = p.last_span.hi;
-            debug!{"parse_trait_methods(): trait method signature ends in \
+            let self_ty = spanned(lo, hi, sty_by_ref);  // XXX: Wrong.
+            debug!["parse_trait_methods(): trait method signature ends in \
                     `%s`",
                    token_to_str(p.reader, p.token)};
             alt p.token {
@@ -294,6 +296,7 @@ class parser {
                 provided(@{ident: ident,
                            attrs: attrs,
                            tps: tps,
+                           self_ty: self_ty,
                            decl: d,
                            body: body,
                            id: p.get_id(),
@@ -1978,6 +1981,142 @@ class parser {
               cf: ret_style}, capture_clause);
     }
 
+    fn is_self_ident() -> bool {
+        alt self.token {
+            token::IDENT(sid, false) if str::eq(~"self", *self.get_str(sid)) {
+                true
+            }
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn expect_self_ident() {
+        if !self.is_self_ident() {
+            self.fatal(#fmt("expected `self` but found `%s`",
+                            token_to_str(self.reader, self.token)));
+        }
+        self.bump();
+    }
+
+    fn parse_fn_decl_with_self(purity: purity,
+                               parse_arg_fn:
+                                    fn(parser) -> arg_or_capture_item)
+                            -> (self_ty, fn_decl, capture_clause) {
+
+        self.expect(token::LPAREN);
+
+        // A bit of complexity and lookahead is needed here in order to to be
+        // backwards compatible.
+        let lo = self.span.lo;
+        let self_ty;
+        alt copy self.token {
+            token::BINOP(token::AND) => {
+                // We need to make sure it isn't a mode.
+                self.bump();
+                if self.token_is_keyword(~"self", self.look_ahead(1)) ||
+                    ((self.token_is_keyword(~"const", self.look_ahead(1)) ||
+                      self.token_is_keyword(~"mut", self.look_ahead(1))) &&
+                      self.token_is_keyword(~"self", self.look_ahead(2))) {
+
+                    self.bump();
+                    let mutability = self.parse_mutability();
+                    self.expect_self_ident();
+
+                    // Parse an explicit region, if possible.
+                    let region_name;
+                    alt copy self.token {
+                        token::BINOP(token::SLASH) => {
+                            self.bump();
+                            alt copy self.token {
+                                token::IDENT(sid, false) => {
+                                    self.bump();
+                                    region_name = some(self.get_str(sid));
+                                }
+                                _ => {
+                                    region_name = none;
+                                }
+                            }
+                        }
+                        _ => {
+                            region_name = none;
+                        }
+                    }
+
+                    let region = self.region_from_name(region_name);
+                    self_ty = sty_region(region, mutability);
+                } else {
+                    self_ty = sty_by_ref;
+                }
+            }
+            token::AT => {
+                self.bump();
+                let mutability = self.parse_mutability();
+                self.expect_self_ident();
+                self_ty = sty_box(mutability);
+            }
+            token::TILDE => {
+                self.bump();
+                let mutability = self.parse_mutability();
+                self.expect_self_ident();
+                self_ty = sty_uniq(mutability);
+            }
+            token::IDENT(*) if self.is_self_ident() => {
+                self.bump();
+                self_ty = sty_value;
+            }
+            _ => {
+                self_ty = sty_by_ref;
+            }
+        }
+
+        // If we parsed a self type, expect a comma before the argument list.
+        let args_or_capture_items;
+        if self_ty != sty_by_ref {
+            alt copy self.token {
+                token::COMMA => {
+                    self.bump();
+                    let sep = seq_sep_trailing_disallowed(token::COMMA);
+                    args_or_capture_items =
+                        self.parse_seq_to_before_end(token::RPAREN,
+                                                     sep,
+                                                     parse_arg_fn);
+                }
+                token::RPAREN => {
+                    args_or_capture_items = ~[];
+                }
+                _ => {
+                    self.fatal(~"expected `,` or `)`, found `" +
+                               token_to_str(self.reader, self.token) + "`");
+                }
+            }
+        } else {
+            let sep = seq_sep_trailing_disallowed(token::COMMA);
+            args_or_capture_items =
+                self.parse_seq_to_before_end(token::RPAREN,
+                                             sep,
+                                             parse_arg_fn);
+        }
+
+        self.expect(token::RPAREN);
+
+        let hi = self.span.hi;
+
+        let inputs = either::lefts(args_or_capture_items);
+        let capture_clause = @either::rights(args_or_capture_items);
+        let (ret_style, ret_ty) = self.parse_ret_ty();
+
+        let fn_decl = {
+            inputs: inputs,
+            output: ret_ty,
+            purity: purity,
+            cf: ret_style
+        };
+
+        (spanned(lo, hi, self_ty), fn_decl, capture_clause)
+    }
+
     fn parse_fn_block_decl() -> (fn_decl, capture_clause) {
         let inputs_captures = {
             if self.eat(token::OROR) {
@@ -2049,11 +2188,13 @@ class parser {
         let lo = self.span.lo, pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
-        let (decl, _) = self.parse_fn_decl(pur, |p| p.parse_arg());
+        let (self_ty, decl, _) = do self.parse_fn_decl_with_self(pur) |p| {
+            p.parse_arg()
+        };
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let attrs = vec::append(attrs, inner_attrs);
-        @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
-          id: self.get_id(), span: mk_sp(lo, body.span.hi),
+        @{ident: ident, attrs: attrs, tps: tps, self_ty: self_ty, decl: decl,
+          body: body, id: self.get_id(), span: mk_sp(lo, body.span.hi),
           self_id: self.get_id(), vis: pr}
     }
 

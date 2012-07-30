@@ -297,6 +297,7 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
     ret @{ident: fld.fold_ident(m.ident),
           attrs: /* FIXME (#2543) */ copy m.attrs,
           tps: fold_ty_params(m.tps, fld),
+          self_ty: m.self_ty,
           decl: fold_fn_decl(m.decl, fld),
           body: fld.fold_block(m.body),
           id: fld.new_id(m.id),

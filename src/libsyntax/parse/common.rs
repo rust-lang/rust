@@ -117,12 +117,16 @@ impl parser_common of parser_common for parser {
         }
     }
 
+    fn token_is_word(word: ~str, ++tok: token::token) -> bool {
+        alt tok {
+          token::IDENT(sid, false) => { str::eq(word, *self.get_str(sid)) }
+          _ => { false }
+        }
+    }
+
     fn token_is_keyword(word: ~str, ++tok: token::token) -> bool {
         self.require_keyword(word);
-        alt tok {
-          token::IDENT(sid, false) { str::eq(word, *self.get_str(sid)) }
-          _ { false }
-        }
+        self.token_is_word(word, tok)
     }
 
     fn is_keyword(word: ~str) -> bool {

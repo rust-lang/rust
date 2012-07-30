@@ -19,7 +19,6 @@ import std::serialization::{serializer,
                             deserialize_bool};
 import parse::token;
 
-
 /* Note #1972 -- spans are serialized but not deserialized */
 fn serialize_span<S>(_s: S, _v: span) {
 }
@@ -590,8 +589,20 @@ enum ret_style {
 }
 
 #[auto_serialize]
+enum self_ty_ {
+    sty_by_ref,                         // old by-reference self: ``
+    sty_value,                          // by-value self: `self`
+    sty_region(@region, mutability),    // by-region self: `&self`
+    sty_box(mutability),                // by-managed-pointer self: `@self`
+    sty_uniq(mutability)                // by-unique-pointer self: `~self`
+}
+
+#[auto_serialize]
+type self_ty = spanned<self_ty_>;
+
+#[auto_serialize]
 type method = {ident: ident, attrs: ~[attribute],
-               tps: ~[ty_param], decl: fn_decl, body: blk,
+               tps: ~[ty_param], self_ty: self_ty, decl: fn_decl, body: blk,
                id: node_id, span: span, self_id: node_id,
                vis: visibility};  // always public, unless it's a
                                   // class method
