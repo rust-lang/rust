@@ -136,7 +136,7 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
       DOT { ~"." }
       ELLIPSIS { ~"..." }
       COMMA { ~"," }
-      SEMI { ~"" }
+      SEMI { ~";" }
       COLON { ~":" }
       MOD_SEP { ~"::" }
       RARROW { ~"->" }
