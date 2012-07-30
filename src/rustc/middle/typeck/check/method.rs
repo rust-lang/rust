@@ -214,8 +214,8 @@ class lookup {
               }
             };
 
-            let ifce_methods = ty::trait_methods(tcx, iid);
-            alt vec::position(*ifce_methods, |m| m.ident == self.m_name) {
+            let trt_methods = ty::trait_methods(tcx, iid);
+            alt vec::position(*trt_methods, |m| m.ident == self.m_name) {
               none {
                 /* check next bound */
                 trait_bnd_idx += 1u;
@@ -233,7 +233,7 @@ class lookup {
                               with bound_substs};
 
                 self.add_candidates_from_m(
-                    substs, ifce_methods[pos],
+                    substs, trt_methods[pos],
                     method_param({trait_id:iid,
                                   method_num:pos,
                                   param_num:n,

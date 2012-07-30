@@ -255,12 +255,12 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
     let tcx = ccx.tcx;
 
     // XXX: This should support multiple traits.
-    let ifce_id = expect(ccx.sess,
-                         ty::ty_to_def_id(ty::impl_traits(tcx, impl_id)[0]),
-                         || ~"make_impl_vtable: non-trait-type implemented");
+    let trt_id = expect(ccx.sess,
+                        ty::ty_to_def_id(ty::impl_traits(tcx, impl_id)[0]),
+                        || ~"make_impl_vtable: non-trait-type implemented");
 
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
-    make_vtable(ccx, vec::map(*ty::trait_methods(tcx, ifce_id), |im| {
+    make_vtable(ccx, vec::map(*ty::trait_methods(tcx, trt_id), |im| {
         let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             C_null(T_ptr(T_nil()))
