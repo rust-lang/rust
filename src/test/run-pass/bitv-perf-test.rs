@@ -9,5 +9,5 @@ fn bitv_test() -> bool {
 }
 
 fn main() {
-    do iter::repeat(1000000) || {bitv_test()};
+    do iter::repeat(10000) || {bitv_test()};
 }
