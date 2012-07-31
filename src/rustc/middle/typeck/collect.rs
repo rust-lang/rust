@@ -432,6 +432,7 @@ fn ty_of_method(ccx: @crate_ctxt,
      tps: ty_param_bounds(ccx, m.tps),
      fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare,
                         m.decl, none),
+     self_ty: m.self_ty.node,
      purity: m.decl.purity,
      vis: m.vis}
 }
@@ -444,6 +445,7 @@ fn ty_of_ty_method(self: @crate_ctxt,
      fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare,
                                  m.decl, none),
      // assume public, because this is only invoked on trait methods
+     self_ty: m.self_ty.node,
      purity: m.decl.purity, vis: ast::public}
 }
 

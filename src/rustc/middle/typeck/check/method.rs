@@ -1,12 +1,14 @@
 /* Code to handle method lookups (which can be quite complex) */
 
 import coherence::get_base_type_def_id;
-import middle::resolve3::Impl;
+import middle::resolve3::{Impl, MethodInfo};
+import middle::ty::{mk_box, mk_rptr, mk_uniq};
 import middle::typeck::infer::methods; // next_ty_vars
-import syntax::ast::def_id;
+import syntax::ast::{def_id, sty_box, sty_by_ref, sty_region, sty_uniq};
+import syntax::ast::{sty_value};
 import syntax::ast_map;
 import syntax::ast_map::node_id_to_str;
-import syntax::ast_util::new_def_hash;
+import syntax::ast_util::{dummy_sp, new_def_hash};
 import dvec::{dvec, extensions};
 
 type candidate = {
@@ -17,6 +19,28 @@ type candidate = {
     fty: ty::t,              // type of the method
     entry: method_map_entry
 };
+
+fn transform_self_type_for_method(fcx: @fn_ctxt,
+                                  impl_ty: ty::t,
+                                  method_info: MethodInfo)
+                               -> ty::t {
+    alt method_info.self_type {
+        sty_by_ref | sty_value => {
+            impl_ty
+        }
+        sty_region(r, mutability) => {
+            // XXX: dummy_sp is unfortunate here.
+            let region = ast_region_to_region(fcx, fcx, dummy_sp(), r);
+            mk_rptr(fcx.ccx.tcx, region, { ty: impl_ty, mutbl: mutability })
+        }
+        sty_box(mutability) => {
+            mk_box(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+        }
+        sty_uniq(mutability) => {
+            mk_uniq(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+        }
+    }
+}
 
 class lookup {
     let fcx: @fn_ctxt;
@@ -369,6 +393,10 @@ class lookup {
             // variables for each parameter:
             let {substs: impl_substs, ty: impl_ty} =
                 impl_self_ty(self.fcx, im.did);
+
+            let impl_ty = transform_self_type_for_method(self.fcx,
+                                                         impl_ty,
+                                                         *m);
 
             // Depending on our argument, we find potential
             // matches either by checking subtypability or

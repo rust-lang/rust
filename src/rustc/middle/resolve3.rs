@@ -28,13 +28,13 @@ import syntax::ast::{item_mod, item_trait, item_ty, le, local, local_crate};
 import syntax::ast::{lt, method, mul, ne, neg, node_id, pat, pat_enum};
 import syntax::ast::{pat_ident, path, prim_ty, pat_box, pat_uniq, pat_lit};
 import syntax::ast::{pat_range, pat_rec, pat_tup, pat_wild, provided};
-import syntax::ast::{required, rem, shl, stmt_decl, subtract, ty, ty_bool};
-import syntax::ast::{ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16};
-import syntax::ast::{ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path};
-import syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
-import syntax::ast::{variant, view_item, view_item_export, view_item_import};
-import syntax::ast::{view_item_use, view_path_glob, view_path_list};
-import syntax::ast::{view_path_simple};
+import syntax::ast::{required, rem, self_ty_, shl, stmt_decl, subtract, ty};
+import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
+import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
+import syntax::ast::{ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8};
+import syntax::ast::{ty_uint, variant, view_item, view_item_export};
+import syntax::ast::{view_item_import, view_item_use, view_path_glob};
+import syntax::ast::{view_path_list, view_path_simple};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{walk_pat};
 import syntax::attr::{attr_metas, contains_name};
@@ -59,7 +59,16 @@ import str_eq = str::eq;
 type DefMap = hashmap<node_id,def>;
 
 // Implementation resolution
-type MethodInfo = { did: def_id, n_tps: uint, ident: ident };
+
+// XXX: This kind of duplicates information kept in ty::method. Maybe it
+// should go away.
+type MethodInfo = {
+    did: def_id,
+    n_tps: uint,
+    ident: ident,
+    self_type: self_ty_
+};
+
 type Impl = { did: def_id, ident: ident, methods: ~[@MethodInfo] };
 type ImplScope = @~[@Impl];
 type ImplScopes = @list<ImplScope>;
@@ -925,7 +934,8 @@ class Resolver {
                                 @{
                                     did: local_def(method.id),
                                     n_tps: method.tps.len(),
-                                    ident: method.ident
+                                    ident: method.ident,
+                                    self_type: method.self_ty.node
                                 }
                             ];
                         }
@@ -962,7 +972,8 @@ class Resolver {
                         @{
                             did: local_def(method.id),
                             n_tps: method.tps.len(),
-                            ident: method.ident
+                            ident: method.ident,
+                            self_type: method.self_ty.node
                         }
                     ];
                 }

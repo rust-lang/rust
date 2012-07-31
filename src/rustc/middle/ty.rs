@@ -183,6 +183,7 @@ type param_bounds = @~[param_bound];
 type method = {ident: ast::ident,
                tps: @~[param_bounds],
                fty: fn_ty,
+               self_ty: ast::self_ty_,
                purity: ast::purity,
                vis: ast::visibility};
 

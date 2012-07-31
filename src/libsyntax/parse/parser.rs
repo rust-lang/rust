@@ -286,6 +286,7 @@ class parser {
                 // methods are ignored; this could change.
                 required({ident: ident, attrs: attrs,
                           decl: {purity: pur with d}, tps: tps,
+                          self_ty: self_ty,
                           span: mk_sp(lo, hi)})
               }
               token::LBRACE {
