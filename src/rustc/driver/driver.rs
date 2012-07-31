@@ -197,6 +197,9 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                                                             impl_map,
                                                             trait_map,
                                                             crate));
+    // These next two const passes can probably be merged
+    time(time_passes, ~"const marking", ||
+        middle::const_eval::process_crate(crate, def_map, ty_cx));
 
     time(time_passes, ~"const checking", ||
         middle::check_const::check_crate(sess, crate, ast_map, def_map,

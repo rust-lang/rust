@@ -469,6 +469,9 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(e.id);
         },
 
+        visit_expr_post: fn@(_e: @expr) {
+        },
+
         visit_ty: fn@(t: @ty) {
             alt t.node {
               ty_path(_, id) {
