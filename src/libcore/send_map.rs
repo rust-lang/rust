@@ -289,7 +289,7 @@ mod linear {
         }
         */
 
-        fn each(blk: fn(k: &K, v: &V) -> bool) {
+        fn each_ref(blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
                 let mut broke = false;
                 do slot.iter |bucket| {
@@ -300,11 +300,27 @@ mod linear {
                 if broke { break; }
             }
         }
-        fn each_key(blk: fn(k: &K) -> bool) {
-            self.each(|k, _v| blk(k))
+        fn each_key_ref(blk: fn(k: &K) -> bool) {
+            self.each_ref(|k, _v| blk(k))
         }
-        fn each_value(blk: fn(v: &V) -> bool) {
-            self.each(|_k, v| blk(v))
+        fn each_value_ref(blk: fn(v: &V) -> bool) {
+            self.each_ref(|_k, v| blk(v))
+        }
+    }
+
+    impl public_methods<K: copy, V: copy> for &linear_map<K,V> {
+        fn each(blk: fn(+K,+V) -> bool) {
+            self.each_ref(|k,v| blk(copy *k, copy *v));
+        }
+    }
+    impl public_methods<K: copy, V> for &linear_map<K,V> {
+        fn each_key(blk: fn(+K) -> bool) {
+            self.each_key_ref(|k| blk(copy *k));
+        }
+    }
+    impl public_methods<K, V: copy> for &linear_map<K,V> {
+        fn each_value(blk: fn(+V) -> bool) {
+            self.each_value_ref(|v| blk(copy *v));
         }
     }
 }
@@ -359,5 +375,19 @@ mod test {
         assert m.remove(&1);
         assert m.get(&9) == 4;
         assert m.get(&5) == 3;
+    }
+
+    #[test]
+    fn iterate() {
+        let mut m = linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        for uint::range(0, 32) |i| {
+            assert (&mut m).insert(i, i*2);
+        }
+        let mut observed = 0;
+        for (&m).each |k, v| {
+            assert v == k*2;
+            observed |= (1 << k);
+        }
+        assert observed == 0xFFFF_FFFF;
     }
 }
