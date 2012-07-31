@@ -85,7 +85,7 @@ class lookup {
         }
 
         loop {
-            // First, see whether this is an interface-bounded parameter.
+            // First, see whether this is a bounded parameter.
             alt ty::get(self.self_ty).struct {
               ty::ty_param(p) {
                 self.add_candidates_from_param(p.idx, p.def_id);

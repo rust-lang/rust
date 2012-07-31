@@ -1,4 +1,4 @@
-iface to_str {
+trait to_str {
     fn to_str() -> ~str;
 }
 impl of to_str for int {
@@ -11,7 +11,7 @@ impl of to_str for () {
     fn to_str() -> ~str { ~"()" }
 }
 
-iface map<T> {
+trait map<T> {
     fn map<U>(f: fn(T) -> U) -> ~[U];
 }
 impl <T> of map<T> for ~[T] {

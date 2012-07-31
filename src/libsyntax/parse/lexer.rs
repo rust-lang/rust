@@ -9,7 +9,7 @@ export tt_reader,  new_tt_reader;
 export nextch, is_eof, bump, get_str_from, new_low_level_string_reader;
 export string_reader_as_reader, tt_reader_as_reader;
 
-iface reader {
+trait reader {
     fn is_eof() -> bool;
     fn next_token() -> {tok: token::token, sp: span};
     fn fatal(~str) -> !;

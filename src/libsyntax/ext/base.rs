@@ -114,7 +114,7 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
 // One of these is made during expansion and incrementally updated as we go;
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
-iface ext_ctxt {
+trait ext_ctxt {
     fn codemap() -> codemap;
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;

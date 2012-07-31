@@ -22,7 +22,7 @@ enum fragment {
     from_ty(@ast::ty)
 }
 
-iface qq_helper {
+trait qq_helper {
     fn span() -> span;
     fn visit(aq_ctxt, vt<aq_ctxt>);
     fn extract_mac() -> option<ast::mac_>;

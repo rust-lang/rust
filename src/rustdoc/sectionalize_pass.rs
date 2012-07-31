@@ -206,7 +206,7 @@ fn should_eliminate_desc_if_it_is_just_whitespace() {
 #[test]
 fn should_sectionalize_trait_methods() {
     let doc = test::mk_doc(
-        ~"iface i {
+        ~"trait i {
          #[doc = \"\
          # Header\n\
          Body\"]\

@@ -588,7 +588,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_trait(tps, methods) {
-        head(s, ~"iface");
+        head(s, ~"trait");
         word(s.s, *item.ident);
         print_type_params(s, tps);
         word(s.s, ~" ");

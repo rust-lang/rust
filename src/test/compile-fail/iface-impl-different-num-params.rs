@@ -1,4 +1,4 @@
-iface foo {
+trait foo {
     fn bar(x: uint) -> self;
 }
 impl of foo for int {

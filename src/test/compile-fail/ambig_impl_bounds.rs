@@ -1,5 +1,5 @@
-iface A { fn foo(); }
-iface B { fn foo(); }
+trait A { fn foo(); }
+trait B { fn foo(); }
 
 fn foo<T: A B>(t: T) {
     t.foo(); //~ ERROR multiple applicable methods in scope

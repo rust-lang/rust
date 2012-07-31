@@ -1,4 +1,4 @@
-iface base_iter<A> {
+trait base_iter<A> {
     fn each(blk: fn(A) -> bool);
     fn size_hint() -> option<uint>;
 }
@@ -13,10 +13,10 @@ trait extended_iter<A> {
     fn position(f: fn(A) -> bool) -> option<uint>;
 }
 
-iface times {
+trait times {
     fn times(it: fn() -> bool);
 }
-iface timesi{
+trait timesi{
     fn timesi(it: fn(uint) -> bool);
 }
 

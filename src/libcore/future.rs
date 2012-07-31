@@ -158,7 +158,7 @@ fn test_from_fn() {
 }
 
 #[test]
-fn test_iface_get() {
+fn test_interface_get() {
     let f = from_value(~"fail");
     assert f.get() == ~"fail";
 }
@@ -170,7 +170,7 @@ fn test_with() {
 }
 
 #[test]
-fn test_iface_with() {
+fn test_interface_with() {
     let f = from_value(~"kale");
     assert f.with(|v| v) == ~"kale";
 }

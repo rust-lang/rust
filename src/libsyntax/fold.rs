@@ -18,7 +18,7 @@ export fold_ty_params;
 export fold_fn_decl;
 export extensions;
 
-iface ast_fold {
+trait ast_fold {
     fn fold_crate(crate) -> crate;
     fn fold_crate_directive(&&@crate_directive) -> @crate_directive;
     fn fold_view_item(&&@view_item) -> @view_item;

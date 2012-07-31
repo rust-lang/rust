@@ -31,7 +31,7 @@ fn test() {
          const iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \
-         iface iiface { fn a(); } \
+         trait itrait { fn a(); } \
          impl iimpl for int { fn a() { } } \
          type itype = int;";
     do astsrv::from_str(source) |srv| {
@@ -40,7 +40,7 @@ fn test() {
         assert doc.cratemod().items[0].name() == ~"iconst";
         assert doc.cratemod().items[1].name() == ~"itype";
         assert doc.cratemod().items[2].name() == ~"ienum";
-        assert doc.cratemod().items[3].name() == ~"iiface";
+        assert doc.cratemod().items[3].name() == ~"itrait";
         assert doc.cratemod().items[4].name() == ~"iimpl";
         assert doc.cratemod().items[5].name() == ~"ifn";
         assert doc.cratemod().items[6].name() == ~"imod";

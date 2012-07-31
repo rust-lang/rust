@@ -120,7 +120,7 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
         return;
     }
 
-    void walk_iface2() {
+    void walk_trait2() {
         walk_box2();
     }
 

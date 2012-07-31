@@ -133,7 +133,7 @@ class bored {
  * neighboring hillside churchyard of St. John's, whose hidden expanse of
  * Eighteenth Century gravestones had for him a peculiar fascination.
  */
-iface the_shunned_house {
+trait the_shunned_house {
     /**
      * Now the irony is this. In this walk, so many times repeated, the
      * world's greatest master of the terrible and the bizarre was

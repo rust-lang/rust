@@ -3,7 +3,7 @@
 import option::{some, none};
 import dvec::{dvec, extensions};
 
-iface t<T> {
+trait t<T> {
     fn size() -> uint;
     fn add_front(T);
     fn add_back(T);

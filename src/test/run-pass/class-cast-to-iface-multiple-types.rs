@@ -1,4 +1,4 @@
-iface noisy {
+trait noisy {
   fn speak() -> int;
 }
 

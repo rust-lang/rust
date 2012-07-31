@@ -11,7 +11,7 @@ import syntax::codemap;
 import syntax::parse;
 import syntax::print::*;
 
-iface fake_ext_ctxt {
+trait fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg;
     fn parse_sess() -> parse::parse_sess;
 }

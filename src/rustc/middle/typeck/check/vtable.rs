@@ -189,7 +189,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
     }
 
     tcx.sess.span_fatal(
-        sp, ~"failed to find an implementation of interface " +
+        sp, ~"failed to find an implementation of trait " +
         ty_to_str(tcx, trait_ty) + ~" for " +
         ty_to_str(tcx, ty));
 }
@@ -291,7 +291,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
     visit::visit_expr(ex, fcx, v);
 }
 
-// Detect points where an interface-bounded type parameter is
+// Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
     visit::visit_block(bl, fcx, visit::mk_vt(@{

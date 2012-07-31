@@ -1,6 +1,6 @@
 use std;
 
-iface siphash {
+trait siphash {
     fn reset();
 }
 

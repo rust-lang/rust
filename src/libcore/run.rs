@@ -19,7 +19,7 @@ extern mod rustrt {
 }
 
 /// A value representing a child process
-iface program {
+trait program {
     /// Returns the process id of the program
     fn get_id() -> pid_t;
 

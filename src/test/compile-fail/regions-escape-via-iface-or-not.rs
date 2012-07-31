@@ -1,4 +1,4 @@
-iface deref {
+trait deref {
     fn get() -> int;
 }
 

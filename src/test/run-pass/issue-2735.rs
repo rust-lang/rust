@@ -1,4 +1,4 @@
-iface hax { } 
+trait hax { } 
 impl <A> of hax for A { } 
 
 fn perform_hax<T: owned>(x: @T) -> hax {

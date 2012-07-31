@@ -392,8 +392,8 @@ type opt_region = option<region>;
 /// appear within a region-parameterized type is `self`.
 ///
 /// `self_ty` is the type to which `self` should be remapped, if any.  The
-/// `self` type is rather funny in that it can only appear on interfaces and
-/// is always substituted away to the implementing type for an interface.
+/// `self` type is rather funny in that it can only appear on traits and
+/// is always substituted away to the implementing type for a trait.
 type substs = {
     self_r: opt_region,
     self_ty: option<ty::t>,
@@ -477,7 +477,7 @@ enum tv_vid = uint;
 enum tvi_vid = uint;
 enum region_vid = uint;
 
-iface vid {
+trait vid {
     fn to_uint() -> uint;
     fn to_str() -> ~str;
 }
@@ -2633,7 +2633,7 @@ fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
       some(ms) { ret ms; }
       _ {}
     }
-    // Local interfaces are supposed to have been added explicitly.
+    // Local traits are supposed to have been added explicitly.
     assert id.crate != ast::local_crate;
     let result = csearch::get_trait_methods(cx, id);
     cx.trait_method_cache.insert(id, result);

@@ -27,8 +27,8 @@ extern mod rustrt {
 enum seek_style { seek_set, seek_end, seek_cur, }
 
 
-// The raw underlying reader iface. All readers must implement this.
-iface reader {
+// The raw underlying reader trait. All readers must implement this.
+trait reader {
     // FIXME (#2004): Seekable really should be orthogonal.
 
     // FIXME (#2982): This should probably return an error.
@@ -250,7 +250,7 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
     }
 }
 
-// FIXME (#2004): this should either be an iface-less impl, a set of
+// FIXME (#2004): this should either be an trait-less impl, a set of
 // top-level functions that take a reader, or a set of default methods on
 // reader (which can then be called reader)
 
@@ -335,7 +335,7 @@ enum writer_type { screen, file }
 
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64
-iface writer {
+trait writer {
     fn write(v: &[const u8]);
     fn seek(int, seek_style);
     fn tell() -> uint;
@@ -781,7 +781,7 @@ mod fsync {
     }
 
     // Type of objects that may want to fsync
-    iface t { fn fsync(l: level) -> int; }
+    trait t { fn fsync(l: level) -> int; }
 
     // Call o.fsync after executing blk
     fn obj_sync(&&o: t, opt_level: option<level>, blk: fn(&&res<t>)) {

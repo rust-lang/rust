@@ -1,6 +1,6 @@
 import result::result;
 
-iface region_scope {
+trait region_scope {
     fn anon_region() -> result<ty::region, ~str>;
     fn named_region(id: ast::ident) -> result<ty::region, ~str>;
 }

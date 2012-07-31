@@ -1,6 +1,6 @@
 enum chan { }
 
-iface channel<T> {
+trait channel<T> {
     fn send(v: T);
 }
 

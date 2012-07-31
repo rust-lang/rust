@@ -1,11 +1,11 @@
-iface repeat<A> { fn get() -> A; }
+trait repeat<A> { fn get() -> A; }
 
 impl<A:copy> of repeat<A> for @A {
     fn get() -> A { *self }
 }
 
 fn repeater<A:copy>(v: @A) -> repeat<A> {
-    // Note: owned kind is not necessary as A appears in the iface type
+    // Note: owned kind is not necessary as A appears in the trait type
     v as repeat::<A> // No
 }
 

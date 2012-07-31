@@ -11,8 +11,8 @@ type unboxed_vec_repr = {
 
 #[doc = "High-level interfaces to `intrinsic::visit_ty` reflection system."]
 
-/// Iface for visitor that wishes to reflect on data.
-iface movable_ptr {
+/// Trait for visitor that wishes to reflect on data.
+trait movable_ptr {
     fn move_ptr(adjustment: fn(*c_void) -> *c_void);
 }
 

@@ -20,7 +20,7 @@
 export sha1;
 
 /// The SHA-1 interface
-iface sha1 {
+trait sha1 {
     /// Provide message input as bytes
     fn input(~[u8]);
     /// Provide message input as string

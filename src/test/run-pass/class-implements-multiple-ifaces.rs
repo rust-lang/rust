@@ -8,15 +8,15 @@ import dvec::{dvec, extensions};
 enum furniture { chair, couch, bed }
 enum body_part { finger, toe, nose, ear }
 
-iface noisy {
+trait noisy {
   fn speak() -> int;
 }
 
-iface scratchy {
+trait scratchy {
   fn scratch() -> option<furniture>;
 }
 
-iface bitey {
+trait bitey {
   fn bite() -> body_part;
 }
 

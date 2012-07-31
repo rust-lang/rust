@@ -315,7 +315,7 @@ impl util of page_utils for ~[page] {
     }
 }
 
-iface item {
+trait item {
     fn item() -> itemdoc;
 }
 

@@ -1,6 +1,6 @@
 type ctxt = { v: uint };
 
-iface get_ctxt {
+trait get_ctxt {
     fn get_ctxt() -> &self/ctxt;
 }
 

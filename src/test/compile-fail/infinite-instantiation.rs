@@ -1,7 +1,7 @@
 // error-pattern: overly deep expansion
 // issue 2258
 
-iface to_opt {
+trait to_opt {
     fn to_option() -> option<self>;
 }
 
