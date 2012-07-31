@@ -4,7 +4,7 @@ CodeMirror.defineMode("rust", function() {
     "if": "if-style", "while": "if-style", "loop": "if-style", "else": "else-style",
     "do": "else-style", "ret": "else-style", "fail": "else-style",
     "break": "atom", "cont": "atom", "const": "let", "resource": "fn",
-    "let": "let", "fn": "fn", "for": "for", "alt": "alt", "iface": "iface",
+    "let": "let", "fn": "fn", "for": "for", "alt": "alt", "trait": "trait",
     "impl": "impl", "type": "type", "enum": "enum", "class": "atom", "mod": "mod",
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
     "claim": "op", "extern": "ignore", "unsafe": "ignore", "import": "else-style",
@@ -179,7 +179,7 @@ CodeMirror.defineMode("rust", function() {
     if (type == "type") return cont(pushlex("stat"), tydef, endstatement, poplex, block);
     if (type == "enum") return stat_of(tagdef);
     if (type == "mod") return stat_of(mod);
-    if (type == "iface") return stat_of(iface);
+    if (type == "trait") return stat_of(trait);
     if (type == "impl") return stat_of(impl);
     if (type == "open-attr") return cont(pushlex("]"), commasep(expression, "]"), poplex);
     if (type == "ignore" || type.match(/[\]\);,]/)) return cont(block);
@@ -291,9 +291,9 @@ CodeMirror.defineMode("rust", function() {
     if (type == "{") return cont(pushlex("}"), block, poplex);
     return pass();
   }
-  function iface(type) {
-    if (type == "name") {cx.marked = "def"; return cont(iface);}
-    if (content == "<") return cont(typarams, iface);
+  function trait(type) {
+    if (type == "name") {cx.marked = "def"; return cont(trait);}
+    if (content == "<") return cont(typarams, trait);
     if (type == "{") return cont(pushlex("}"), block, poplex);
     return pass();
   }
