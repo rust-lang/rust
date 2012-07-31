@@ -249,6 +249,7 @@ type ctxt =
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
+      ccache: constness_cache,
       short_names_cache: hashmap<t, @~str>,
       needs_drop_cache: hashmap<t, bool>,
       needs_unwind_cleanup_cache: hashmap<t, bool>,
@@ -534,6 +535,8 @@ type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
+type constness_cache = hashmap<ast::def_id, const_eval::constness>;
+
 type node_type_table = @smallintmap::smallintmap<t>;
 
 fn mk_rcache() -> creader_cache {
@@ -581,6 +584,7 @@ fn mk_ctxt(s: session::session,
       freevars: freevars,
       tcache: ast_util::new_def_hash(),
       rcache: mk_rcache(),
+      ccache: ast_util::new_def_hash(),
       short_names_cache: new_ty_hash(),
       needs_drop_cache: new_ty_hash(),
       needs_unwind_cleanup_cache: new_ty_hash(),

@@ -1,4 +1,182 @@
-import syntax::ast::*;
+import syntax::{ast,ast_util,visit};
+import ast::*;
+
+//
+// This pass classifies expressions by their constant-ness.
+//
+// Constant-ness comes in 3 flavours:
+//
+//   - Integer-constants: can be evaluated by the frontend all the way down
+//     to their actual value. They are used in a few places (enum
+//     discriminants, switch arms) and are a subset of
+//     general-constants. They cover all the integer and integer-ish
+//     literals (nil, bool, int, uint, char, iNN, uNN) and all integer
+//     operators and copies applied to them.
+//
+//   - General-constants: can be evaluated by LLVM but not necessarily by
+//     the frontend; usually due to reliance on target-specific stuff such
+//     as "where in memory the value goes" or "what floating point mode the
+//     target uses". This _includes_ integer-constants, plus the following
+//     constructors:
+//
+//        fixed-size vectors and strings: []/_ and ""/_
+//        vector and string slices: &[] and &""
+//        tuples: (,)
+//        records: {...}
+//        enums: foo(...)
+//        floating point literals and operators
+//        & and * pointers
+//        copies of general constants
+//
+//        (in theory, probably not at first: if/alt on integer-const
+//         conditions / descriminants)
+//
+//   - Non-constants: everything else.
+//
+
+enum constness {
+    integral_const,
+    general_const,
+    non_const
+}
+
+fn join(a: constness, b: constness) -> constness {
+    alt (a,b) {
+      (integral_const, integral_const) { integral_const }
+      (integral_const, general_const)
+      | (general_const, integral_const)
+      | (general_const, general_const) { general_const }
+      _ { non_const }
+    }
+}
+
+fn join_all(cs: &[constness]) -> constness {
+    vec::foldl(integral_const, cs, join)
+}
+
+fn classify(e: @expr,
+            def_map: resolve3::DefMap,
+            tcx: ty::ctxt) -> constness {
+    let did = ast_util::local_def(e.id);
+    alt tcx.ccache.find(did) {
+      some(x) { x }
+      none {
+        let cn =
+            alt e.node {
+              ast::expr_lit(lit) {
+                alt lit.node {
+                  ast::lit_str(*) |
+                  ast::lit_float(*) { general_const }
+                  _ { integral_const }
+                }
+              }
+
+              ast::expr_copy(inner) |
+              ast::expr_unary(_, inner) {
+                classify(inner, def_map, tcx)
+              }
+
+              ast::expr_binary(_, a, b) {
+                join(classify(a, def_map, tcx),
+                     classify(b, def_map, tcx))
+              }
+
+              ast::expr_tup(es) |
+              ast::expr_vec(es, ast::m_imm) {
+                join_all(vec::map(es, |e| classify(e, def_map, tcx)))
+              }
+
+              ast::expr_vstore(e, vstore) {
+                alt vstore {
+                  ast::vstore_fixed(_) |
+                  ast::vstore_slice(_) { classify(e, def_map, tcx) }
+                  ast::vstore_uniq |
+                  ast::vstore_box { non_const }
+                }
+              }
+
+              ast::expr_rec(fs, none) {
+                let cs = do vec::map(fs) |f| {
+                    if f.node.mutbl == ast::m_imm {
+                        classify(f.node.expr, def_map, tcx)
+                    } else {
+                        non_const
+                    }
+                };
+                join_all(cs)
+              }
+
+              ast::expr_cast(base, _) {
+                let ty = ty::expr_ty(tcx, e);
+                let base = classify(base, def_map, tcx);
+                if ty::type_is_integral(ty) {
+                    join(integral_const, base)
+                } else if ty::type_is_fp(ty) {
+                    join(general_const, base)
+                } else {
+                    non_const
+                }
+              }
+
+              ast::expr_field(base, _, _) {
+                classify(base, def_map, tcx)
+              }
+
+              ast::expr_index(base, idx) {
+                join(classify(base, def_map, tcx),
+                     classify(idx, def_map, tcx))
+              }
+
+              ast::expr_addr_of(ast::m_imm, base) {
+                classify(base, def_map, tcx)
+              }
+
+              // FIXME: #1272, we can probably do something CCI-ish
+              // surrounding nonlocal constants. But we don't yet.
+              ast::expr_path(_) {
+                alt def_map.find(e.id) {
+                  some(ast::def_const(def_id)) {
+                    if ast_util::is_local(def_id) {
+                        let ty = ty::expr_ty(tcx, e);
+                        if ty::type_is_integral(ty) {
+                            integral_const
+                        } else {
+                            general_const
+                        }
+                    } else {
+                        non_const
+                    }
+                  }
+                  some(_) {
+                    non_const
+                  }
+                  none {
+                    tcx.sess.span_bug(e.span,
+                                      ~"unknown path when \
+                                        classifying constants");
+                  }
+                }
+              }
+
+              _ { non_const }
+            };
+        tcx.ccache.insert(did, cn);
+        cn
+      }
+    }
+}
+
+fn process_crate(crate: @ast::crate,
+                 def_map: resolve3::DefMap,
+                 tcx: ty::ctxt) {
+    let v = visit::mk_simple_visitor(@{
+        visit_expr_post: |e| { classify(e, def_map, tcx); }
+        with *visit::default_simple_visitor()
+    });
+    visit::visit_crate(*crate, (), v);
+    tcx.sess.abort_if_errors();
+}
+
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
@@ -175,3 +353,12 @@ fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
 fn lit_eq(a: @lit, b: @lit) -> bool {
     compare_const_vals(lit_to_const(a), lit_to_const(b)) == 0
 }
+
+
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
