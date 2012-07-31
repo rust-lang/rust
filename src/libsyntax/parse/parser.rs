@@ -883,9 +883,15 @@ class parser {
             /* `!`, as an operator, is prefix, so we know this isn't that */
             if self.token == token::NOT {
                 self.bump();
-                let tts = self.parse_unspanned_seq(
-                    token::LBRACE, token::RBRACE, seq_sep_none(),
-                    |p| p.parse_token_tree());
+                let tts = alt self.token {
+                  token::LPAREN | token::LBRACE | token::LBRACKET {
+                    let ket = token::flip_delimiter(self.token);
+                    self.parse_unspanned_seq(copy self.token, ket,
+                                             seq_sep_none(),
+                                             |p| p.parse_token_tree())
+                  }
+                  _ { self.fatal(~"expected open delimiter"); }
+                };
                 let hi = self.span.hi;
 
                 ret pexpr(self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts)));
@@ -1083,16 +1089,6 @@ class parser {
     }
 
     fn parse_token_tree() -> token_tree {
-        /// what's the opposite delimiter?
-        fn flip(&t: token::token) -> token::token {
-            alt t {
-              token::LPAREN { token::RPAREN }
-              token::LBRACE { token::RBRACE }
-              token::LBRACKET { token::RBRACKET }
-              _ { fail }
-            }
-        }
-
         fn parse_tt_tok(p: parser, delim_ok: bool) -> token_tree {
             alt p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
@@ -1127,7 +1123,7 @@ class parser {
 
         ret alt self.token {
           token::LPAREN | token::LBRACE | token::LBRACKET {
-            let ket = flip(self.token);
+            let ket = token::flip_delimiter(self.token);
             tt_delim(vec::append(
                 ~[parse_tt_tok(self, true)],
                 vec::append(
@@ -2718,9 +2714,15 @@ class parser {
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
             let id = self.parse_ident();
-            let tts = self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
-                                               seq_sep_none(),
-                                               |p| p.parse_token_tree());
+            let tts = alt self.token {
+              token::LPAREN | token::LBRACE | token::LBRACKET {
+                let ket = token::flip_delimiter(self.token);
+                self.parse_unspanned_seq(copy self.token, ket,
+                                         seq_sep_none(),
+                                         |p| p.parse_token_tree())
+              }
+              _ { self.fatal(~"expected open delimiter"); }
+            };
             let m = ast::mac_invoc_tt(pth, tts);
             let m: ast::mac = {node: m,
                                span: {lo: self.span.lo,
