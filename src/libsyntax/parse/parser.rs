@@ -275,7 +275,7 @@ class parser {
             let d = p.parse_ty_fn_decl(pur);
             let hi = p.last_span.hi;
             let self_ty = spanned(lo, hi, sty_by_ref);  // XXX: Wrong.
-            debug!["parse_trait_methods(): trait method signature ends in \
+            debug!{"parse_trait_methods(): trait method signature ends in \
                     `%s`",
                    token_to_str(p.reader, p.token)};
             alt p.token {
