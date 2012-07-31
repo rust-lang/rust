@@ -8,10 +8,9 @@ fn main() {
     let y =
         alt x {
           some(_) =>
-          "some" + "very" + "very" + "very" + "very" + "very" + "very" +
-              "very" + "very" + "long" + "string",
-
-          none => "none"
+          ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" +
+              ~"very" + ~"very" + ~"very" + ~"long" + ~"string",
+          none => ~"none"
         };
-    assert y == "some(_)";
+    assert y == ~"some(_)";
 }
