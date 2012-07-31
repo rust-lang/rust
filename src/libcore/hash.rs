@@ -401,3 +401,45 @@ fn test_hash_uint() {
     assert hash_u64(val as u64) != hash_uint(val as uint);
     assert hash_u32(val as u32) == hash_uint(val as uint);
 }
+
+#[test]
+fn test_hash_idempotent() {
+    let val64 = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val64) == hash_u64(val64);
+    let val32 = 0xdeadbeef_u32;
+    assert hash_u32(val32) == hash_u32(val32);
+}
+
+#[test]
+fn test_hash_no_bytes_dropped_64() {
+    let val = 0xdeadbeef_deadbeef_u64;
+
+    assert hash_u64(val) != hash_u64(zero_byte(val, 0));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 1));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 2));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 3));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 4));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 5));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 6));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 7));
+
+    fn zero_byte(val: u64, byte: uint) -> u64 {
+        assert 0 <= byte; assert byte < 8;
+        val & !(0xff << (byte * 8))
+    }
+}
+
+#[test]
+fn test_hash_no_bytes_dropped_32() {
+    let val = 0xdeadbeef_u32;
+
+    assert hash_u32(val) != hash_u32(zero_byte(val, 0));
+    assert hash_u32(val) != hash_u32(zero_byte(val, 1));
+    assert hash_u32(val) != hash_u32(zero_byte(val, 2));
+    assert hash_u32(val) != hash_u32(zero_byte(val, 3));
+
+    fn zero_byte(val: u32, byte: uint) -> u32 {
+        assert 0 <= byte; assert byte < 4;
+        val & !(0xff << (byte * 8))
+    }
+}
