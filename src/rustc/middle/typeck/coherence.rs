@@ -492,7 +492,8 @@ class CoherenceChecker {
                     push(methods, @{
                         did: local_def(ast_method.id),
                         n_tps: ast_method.tps.len(),
-                        ident: ast_method.ident
+                        ident: ast_method.ident,
+                        self_type: ast_method.self_ty.node
                     });
                 }
 
@@ -513,7 +514,8 @@ class CoherenceChecker {
                             push(methods, @{
                                 did: local_def(ast_method.id),
                                 n_tps: ast_method.tps.len(),
-                                ident: ast_method.ident
+                                ident: ast_method.ident,
+                                self_type: ast_method.self_ty.node
                             });
                         }
                     }

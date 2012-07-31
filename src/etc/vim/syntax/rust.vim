@@ -23,7 +23,7 @@ syn keyword   rustKeyword     use while with
 syn keyword   rustKeyword     mod trait class struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
 
-syn match     rustIdentifier  "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
+syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved words
@@ -114,8 +114,11 @@ syn match rustFatArrowHead contained ">" conceal cchar= 
 syn match rustFatArrowTail contained "=" conceal cchar=⟹
 syn match rustFatArrowFull "=>" contains=rustFatArrowHead,rustFatArrowTail
 
-hi def link rustHexNumber     rustNumber
-hi def link rustBinNumber     rustNumber
+syn match rustIdentifierPrime /\<\@!_\(_*\>\)\@=/ conceal cchar=′
+
+hi def link rustHexNumber       rustNumber
+hi def link rustBinNumber       rustNumber
+hi def link rustIdentifierPrime rustIdentifier
 
 hi def link rustString        String
 hi def link rustCharacter     Character

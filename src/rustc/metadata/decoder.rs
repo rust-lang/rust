@@ -565,8 +565,57 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 }
 
 // NB: These types are duplicated in resolve.rs
-type method_info = {did: ast::def_id, n_tps: uint, ident: ast::ident};
+type method_info = {
+    did: ast::def_id,
+    n_tps: uint,
+    ident: ast::ident,
+    self_type: ast::self_ty_
+};
+
 type _impl = {did: ast::def_id, ident: ast::ident, methods: ~[@method_info]};
+
+fn get_self_ty(item: ebml::doc) -> ast::self_ty_ {
+    fn get_mutability(ch: u8) -> ast::mutability {
+        alt ch as char {
+            'i' => { ast::m_imm }
+            'm' => { ast::m_mutbl }
+            'c' => { ast::m_const }
+            _ => {
+                fail fmt!{"unknown mutability character: `%c`", ch as char}
+            }
+        }
+    }
+
+    let self_type_doc = ebml::get_doc(item, tag_item_trait_method_self_ty);
+    let string = ebml::doc_as_str(self_type_doc);
+
+    let self_ty_kind = string[0];
+    alt self_ty_kind as char {
+        'r' => { ret ast::sty_by_ref; }
+        'v' => { ret ast::sty_value; }
+        '@' => { ret ast::sty_box(get_mutability(string[1])); }
+        '~' => { ret ast::sty_uniq(get_mutability(string[1])); }
+        '&' => {
+            let mutability = get_mutability(string[1]);
+
+            let region;
+            let region_doc =
+                ebml::get_doc(self_type_doc,
+                              tag_item_trait_method_self_ty_region);
+            let region_string = str::from_bytes(ebml::doc_data(region_doc));
+            if str::eq(region_string, ~"") {
+                region = ast::re_anon;
+            } else {
+                region = ast::re_named(@region_string);
+            }
+
+            ret ast::sty_region(@{ id: 0, node: region }, mutability);
+        }
+        _ => {
+            fail fmt!{"unknown self type code: `%c`", self_ty_kind as char};
+        }
+    }
+}
 
 fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     -> ~[@method_info] {
@@ -574,10 +623,12 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     for ebml::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = ebml::with_doc_data(doc, |d| parse_def_id(d));
         let mth_item = lookup_item(m_did.node, cdata.data);
+        let self_ty = get_self_ty(mth_item);
         vec::push(rslt, @{did: translate_def_id(cdata, m_did),
                     /* FIXME (maybe #2323) tjc: take a look at this. */
                    n_tps: item_ty_param_count(mth_item) - base_tps,
-                   ident: item_name(mth_item)});
+                   ident: item_name(mth_item),
+                   self_type: self_ty});
     }
     rslt
 }
@@ -628,7 +679,9 @@ fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
             tcx.diag.handler().bug(
                 ~"get_trait_methods: id has non-function type");
         } };
+        let self_ty = get_self_ty(mth);
         vec::push(result, {ident: name, tps: bounds, fty: fty,
+                    self_ty: self_ty,
                     purity: alt check item_family(mth) {
                       'u' { ast::unsafe_fn }
                       'f' { ast::impure_fn }
