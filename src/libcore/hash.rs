@@ -13,6 +13,44 @@ pure fn hash_bytes(buf: &[const u8]) -> u64 {
     ret hash_bytes_keyed(buf, 0u64, 0u64);
 }
 
+pure fn hash_u64(val: u64) -> u64 {
+    let bytes: [u8]/8 = // Explicitly say 8 bytes to be mistaken-change-proof.
+        [(val >> 00) as u8,
+         (val >> 08) as u8,
+         (val >> 16) as u8,
+         (val >> 24) as u8,
+         (val >> 32) as u8,
+         (val >> 40) as u8,
+         (val >> 48) as u8,
+         (val >> 56) as u8];
+    hash_bytes(bytes)
+}
+
+pure fn hash_u32(val: u32) -> u64 {
+    let bytes: [u8]/4 = // Explicitly say 4 bytes to be mistaken-change-proof.
+        [(val >> 00) as u8,
+         (val >> 08) as u8,
+         (val >> 16) as u8,
+         (val >> 24) as u8];
+    hash_bytes(bytes)
+}
+
+#[cfg(target_arch = "arm")]
+pure fn hash_uint(val: uint) -> u64 {
+    assert sys::size_of::<uint>() == sys::size_of::<u32>();
+    hash_u32(val as u32)
+}
+#[cfg(target_arch = "x86_64")]
+pure fn hash_uint(val: uint) -> u64 {
+    assert sys::size_of::<uint>() == sys::size_of::<u64>();
+    hash_u64(val as u64)
+}
+#[cfg(target_arch = "x86")]
+pure fn hash_uint(val: uint) -> u64 {
+    assert sys::size_of::<uint>() == sys::size_of::<u32>();
+    hash_u32(val as u32)
+}
+
 pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
 
     let mut v0 : u64 = k0 ^ 0x736f_6d65_7073_6575;
