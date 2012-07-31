@@ -225,6 +225,21 @@ pure fn can_begin_expr(t: token) -> bool {
     }
 }
 
+/// what's the opposite delimiter?
+fn flip_delimiter(&t: token::token) -> token::token {
+    alt t {
+      token::LPAREN { token::RPAREN }
+      token::LBRACE { token::RBRACE }
+      token::LBRACKET { token::RBRACKET }
+      token::RPAREN { token::LPAREN }
+      token::RBRACE { token::LBRACE }
+      token::RBRACKET { token::LBRACKET }
+      _ { fail }
+    }
+}
+
+
+
 fn is_lit(t: token) -> bool {
     alt t {
       LIT_INT(_, _) { true }
