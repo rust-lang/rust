@@ -52,11 +52,11 @@ fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
 
 fn moddoc_from_mod(
     itemdoc: doc::itemdoc,
-    module: ast::_mod
+    module_: ast::_mod
 ) -> doc::moddoc {
     doc::moddoc_({
         item: itemdoc,
-        items: do vec::filter_map(module.items) |item| {
+        items: do vec::filter_map(module_.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::item_mod(m) {
@@ -110,11 +110,11 @@ fn moddoc_from_mod(
 
 fn nmoddoc_from_mod(
     itemdoc: doc::itemdoc,
-    module: ast::foreign_mod
+    module_: ast::foreign_mod
 ) -> doc::nmoddoc {
     {
         item: itemdoc,
-        fns: do vec::map(module.items) |item| {
+        fns: do vec::map(module_.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::foreign_item_fn(_, _) {

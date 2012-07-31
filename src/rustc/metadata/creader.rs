@@ -78,10 +78,10 @@ fn warn_if_multiple_versions(diag: span_handler,
         if matches.len() != 1u {
             diag.handler().warn(
                 fmt!{"using multiple versions of crate `%s`", *name});
-            for matches.each |match| {
-                diag.span_note(match.span, ~"used here");
+            for matches.each |match_| {
+                diag.span_note(match_.span, ~"used here");
                 let attrs = ~[
-                    attr::mk_attr(attr::mk_list_item(@~"link", *match.metas))
+                    attr::mk_attr(attr::mk_list_item(@~"link", *match_.metas))
                 ];
                 loader::note_linkage_attrs(diag, attrs);
             }

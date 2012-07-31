@@ -41,29 +41,29 @@ fn parse_config(args: ~[~str]) -> config {
 
     assert (vec::is_not_empty(args));
     let args_ = vec::tail(args);
-    let match =
+    let matches =
         alt getopts::getopts(args_, opts) {
           ok(m) { m }
           err(f) { fail getopts::fail_str(f) }
         };
 
-    ret {compile_lib_path: getopts::opt_str(match, ~"compile-lib-path"),
-         run_lib_path: getopts::opt_str(match, ~"run-lib-path"),
-         rustc_path: getopts::opt_str(match, ~"rustc-path"),
-         src_base: getopts::opt_str(match, ~"src-base"),
-         build_base: getopts::opt_str(match, ~"build-base"),
-         aux_base: getopts::opt_str(match, ~"aux-base"),
-         stage_id: getopts::opt_str(match, ~"stage-id"),
-         mode: str_mode(getopts::opt_str(match, ~"mode")),
-         run_ignored: getopts::opt_present(match, ~"ignored"),
+    ret {compile_lib_path: getopts::opt_str(matches, ~"compile-lib-path"),
+         run_lib_path: getopts::opt_str(matches, ~"run-lib-path"),
+         rustc_path: getopts::opt_str(matches, ~"rustc-path"),
+         src_base: getopts::opt_str(matches, ~"src-base"),
+         build_base: getopts::opt_str(matches, ~"build-base"),
+         aux_base: getopts::opt_str(matches, ~"aux-base"),
+         stage_id: getopts::opt_str(matches, ~"stage-id"),
+         mode: str_mode(getopts::opt_str(matches, ~"mode")),
+         run_ignored: getopts::opt_present(matches, ~"ignored"),
          filter:
-             if vec::len(match.free) > 0u {
-                 option::some(match.free[0])
+             if vec::len(matches.free) > 0u {
+                 option::some(matches.free[0])
              } else { option::none },
-         logfile: getopts::opt_maybe_str(match, ~"logfile"),
-         runtool: getopts::opt_maybe_str(match, ~"runtool"),
-         rustcflags: getopts::opt_maybe_str(match, ~"rustcflags"),
-         verbose: getopts::opt_present(match, ~"verbose")};
+         logfile: getopts::opt_maybe_str(matches, ~"logfile"),
+         runtool: getopts::opt_maybe_str(matches, ~"runtool"),
+         rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
+         verbose: getopts::opt_present(matches, ~"verbose")};
 }
 
 fn log_config(config: config) {

@@ -128,7 +128,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
 
     if vec::len(args) == 0u { usage(binary); ret; }
 
-    let match =
+    let matches =
         alt getopts::getopts(args, opts()) {
           ok(m) { m }
           err(f) {
@@ -136,31 +136,31 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
           }
         };
 
-    if opt_present(match, ~"h") || opt_present(match, ~"help") {
+    if opt_present(matches, ~"h") || opt_present(matches, ~"help") {
         usage(binary);
         ret;
     }
 
-    let lint_flags = vec::append(getopts::opt_strs(match, ~"W"),
-                                 getopts::opt_strs(match, ~"warn"));
+    let lint_flags = vec::append(getopts::opt_strs(matches, ~"W"),
+                                 getopts::opt_strs(matches, ~"warn"));
     if lint_flags.contains(~"help") {
         describe_warnings();
         ret;
     }
 
-    if getopts::opt_strs(match, ~"Z").contains(~"help") {
+    if getopts::opt_strs(matches, ~"Z").contains(~"help") {
         describe_debug_flags();
         ret;
     }
 
-    if opt_present(match, ~"v") || opt_present(match, ~"version") {
+    if opt_present(matches, ~"v") || opt_present(matches, ~"version") {
         version(binary);
         ret;
     }
-    let input = alt vec::len(match.free) {
+    let input = alt vec::len(matches.free) {
       0u { early_error(demitter, ~"no input filename given") }
       1u {
-        let ifile = match.free[0];
+        let ifile = matches.free[0];
         if ifile == ~"-" {
             let src = str::from_bytes(io::stdin().read_whole_stream());
             str_input(src)
@@ -171,20 +171,20 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
       _ { early_error(demitter, ~"multiple input filenames provided") }
     };
 
-    let sopts = build_session_options(match, demitter);
+    let sopts = build_session_options(matches, demitter);
     let sess = build_session(sopts, demitter);
-    let odir = getopts::opt_maybe_str(match, ~"out-dir");
-    let ofile = getopts::opt_maybe_str(match, ~"o");
+    let odir = getopts::opt_maybe_str(matches, ~"out-dir");
+    let ofile = getopts::opt_maybe_str(matches, ~"o");
     let cfg = build_configuration(sess, binary, input);
     let pretty =
-        option::map(getopts::opt_default(match, ~"pretty",
+        option::map(getopts::opt_default(matches, ~"pretty",
                                          ~"normal"),
                     |a| parse_pretty(sess, a) );
     alt pretty {
       some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, input, ppm); ret; }
       none::<pp_mode> {/* continue */ }
     }
-    let ls = opt_present(match, ~"ls");
+    let ls = opt_present(matches, ~"ls");
     if ls {
         alt input {
           file_input(ifile) {

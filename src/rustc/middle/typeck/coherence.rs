@@ -363,10 +363,10 @@ class CoherenceChecker {
         visit_crate(*crate, (), mk_vt(@{
             visit_item: |item, _context, visitor| {
                 alt item.node {
-                    item_mod(module) {
+                    item_mod(module_) {
                         // First, gather up all privileged types.
                         let privileged_types =
-                            self.gather_privileged_types(module.items);
+                            self.gather_privileged_types(module_.items);
                         for privileged_types.each |privileged_type| {
                             debug!{"(checking privileged scopes) entering \
                                     privileged scope of %d:%d",
@@ -377,7 +377,7 @@ class CoherenceChecker {
                         }
 
                         // Then visit the module items.
-                        visit_mod(module, item.span, item.id, (), visitor);
+                        visit_mod(module_, item.span, item.id, (), visitor);
 
                         // Finally, remove privileged types from the map.
                         for privileged_types.each |privileged_type| {

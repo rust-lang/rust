@@ -789,7 +789,7 @@ class parser {
             ret pexpr(self.parse_while_expr());
         } else if self.eat_keyword(~"loop") {
             ret pexpr(self.parse_loop_expr());
-        } else if self.eat_keyword(~"alt") {
+        } else if self.eat_keyword(~"alt") || self.eat_keyword(~"match") {
             ret pexpr(self.parse_alt_expr());
         } else if self.eat_keyword(~"fn") {
             let proto = self.parse_fn_ty_proto();
@@ -838,7 +838,7 @@ class parser {
             let e = self.parse_expr();
             ex = expr_assert(e);
             hi = e.span.hi;
-        } else if self.eat_keyword(~"ret") {
+        } else if self.eat_keyword(~"ret") || self.eat_keyword(~"return") {
             if can_begin_expr(self.token) {
                 let e = self.parse_expr();
                 hi = e.span.hi;
@@ -2569,7 +2569,11 @@ class parser {
     }
 
     fn parse_item_foreign_mod() -> item_info {
-        self.expect_keyword(~"mod");
+        if self.is_keyword(~"mod") {
+            self.expect_keyword(~"mod");
+        } else {
+            self.expect_keyword(~"module");
+        }
         let id = self.parse_ident();
         self.expect(token::LBRACE);
         let more_attrs = self.parse_inner_attrs_and_next();
@@ -2714,7 +2718,7 @@ class parser {
             } else {
                 self.parse_item_foreign_mod()
             }
-        } else if self.eat_keyword(~"mod") {
+        } else if self.eat_keyword(~"mod") || self.eat_keyword(~"module") {
             self.parse_item_mod()
         } else if self.eat_keyword(~"type") {
             self.parse_item_type()
@@ -2919,8 +2923,14 @@ class parser {
         let expect_mod = vec::len(outer_attrs) > 0u;
 
         let lo = self.span.lo;
-        if expect_mod || self.is_keyword(~"mod") {
-            self.expect_keyword(~"mod");
+        if expect_mod || self.is_keyword(~"mod") ||
+            self.is_keyword(~"module") {
+
+            if self.is_keyword(~"mod") {
+                self.expect_keyword(~"mod");
+            } else {
+                self.expect_keyword(~"module");
+            }
             let id = self.parse_ident();
             alt self.token {
               // mod x = "foo.rs";
@@ -2958,7 +2968,11 @@ class parser {
         // accept seeing the terminator next, so if we do see it then fail the
         // same way parse_crate_directive would
         if vec::len(first_outer_attr) > 0u && self.token == term {
-            self.expect_keyword(~"mod");
+            if self.is_keyword(~"mod") {
+                self.expect_keyword(~"mod");
+            } else {
+                self.expect_keyword(~"module");
+            }
         }
 
         let mut cdirs: ~[@crate_directive] = ~[];

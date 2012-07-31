@@ -332,13 +332,13 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
       pat_box(a) | pat_uniq(a) { some(vec::append(~[a], vec::tail(r))) }
       pat_lit(expr) {
         let e_v = eval_const_expr(tcx, expr);
-        let match = alt check ctor_id {
+        let match_ = alt check ctor_id {
           val(v) { compare_const_vals(e_v, v) == 0 }
           range(c_lo, c_hi) { compare_const_vals(c_lo, e_v) >= 0 &&
                               compare_const_vals(c_hi, e_v) <= 0 }
           single { true }
         };
-        if match { some(vec::tail(r)) } else { none }
+        if match_ { some(vec::tail(r)) } else { none }
       }
       pat_range(lo, hi) {
         let (c_lo, c_hi) = alt check ctor_id {
@@ -348,9 +348,9 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         };
         let v_lo = eval_const_expr(tcx, lo),
             v_hi = eval_const_expr(tcx, hi);
-        let match = compare_const_vals(c_lo, v_lo) >= 0 &&
+        let match_ = compare_const_vals(c_lo, v_lo) >= 0 &&
                     compare_const_vals(c_hi, v_hi) <= 0;
-        if match { some(vec::tail(r)) } else { none }
+        if match_ { some(vec::tail(r)) } else { none }
       }
     }
 }
