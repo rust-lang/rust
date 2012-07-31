@@ -602,6 +602,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
                   'r' { str::push_char(accum_str, '\r'); }
                   't' { str::push_char(accum_str, '\t'); }
                   '\\' { str::push_char(accum_str, '\\'); }
+                  '\'' { str::push_char(accum_str, '\''); }
                   '"' { str::push_char(accum_str, '"'); }
                   '\n' { consume_whitespace(rdr); }
                   'x' {
