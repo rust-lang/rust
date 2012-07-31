@@ -279,16 +279,34 @@ mod linear {
         }
     }
 
-    /*
-    FIXME --- #2979 must be fixed to typecheck this
     impl imm_methods<K,V> for &linear_map<K,V> {
+        /*
+        FIXME --- #2979 must be fixed to typecheck this
         fn find_ptr(k: K) -> option<&V> {
             //XXX this should not type check as written, but it should
             //be *possible* to typecheck it...
             self.with_ptr(k, |v| v)
         }
+        */
+
+        fn each(blk: fn(k: &K, v: &V) -> bool) {
+            for vec::each(self.buckets) |slot| {
+                let mut broke = false;
+                do slot.iter |bucket| {
+                    if !blk(&bucket.key, &bucket.value) {
+                        broke = true; // FIXME(#3064) just write "break;"
+                    }
+                }
+                if broke { break; }
+            }
+        }
+        fn each_key(blk: fn(k: &K) -> bool) {
+            self.each(|k, _v| blk(k))
+        }
+        fn each_value(blk: fn(v: &V) -> bool) {
+            self.each(|_k, v| blk(v))
+        }
     }
-    */
 }
 
 #[test]
