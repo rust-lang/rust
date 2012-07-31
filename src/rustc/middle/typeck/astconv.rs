@@ -13,7 +13,7 @@
  * used as the `ast_conv`, `get_item_ty()` just looks up the item type in
  * `tcx.tcache`.
  *
- * The `region_scope` interface controls how region references are
+ * The `region_scope` trait controls how region references are
  * handled.  It has two methods which are used to resolve anonymous
  * region references (e.g., `&T`) and named region references (e.g.,
  * `&a.T`).  There are numerous region scopes that can be used, but most
@@ -46,7 +46,7 @@ import check::fn_ctxt;
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
 
-iface ast_conv {
+trait ast_conv {
     fn tcx() -> ty::ctxt;
     fn ccx() -> @crate_ctxt;
     fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty;

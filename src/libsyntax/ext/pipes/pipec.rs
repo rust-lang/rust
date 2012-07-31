@@ -383,7 +383,7 @@ impl compile of gen_init for protocol {
     }
 }
 
-iface to_source {
+trait to_source {
     // Takes a thing and generates a string containing rust code for it.
     fn to_source() -> ~str;
 }

@@ -77,7 +77,7 @@ enum extended_decode_ctxt {
     extended_decode_ctxt_(@extended_decode_ctxt_)
 }
 
-iface tr {
+trait tr {
     fn tr(xcx: extended_decode_ctxt) -> self;
 }
 
@@ -910,7 +910,7 @@ fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
 }
 
 #[cfg(test)]
-iface fake_ext_ctxt {
+trait fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg;
     fn parse_sess() -> parse::parse_sess;
 }

@@ -525,7 +525,7 @@ fn test_to_str_inf() {
 }
 
 #[test]
-fn test_ifaces() {
+fn test_traits() {
     fn test<U:num::num>(ten: U) {
         assert (ten.to_int() == 10);
 

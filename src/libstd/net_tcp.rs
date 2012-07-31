@@ -54,7 +54,7 @@ class tcp_socket {
  * A buffered wrapper for `net::tcp::tcp_socket`
  *
  * It is created with a call to `net::tcp::socket_buf()` and has impls that
- * satisfy both the `io::reader` and `io::writer` ifaces.
+ * satisfy both the `io::reader` and `io::writer` traits.
  */
 class tcp_socket_buf {
   let data: @tcp_buffered_socket_data;
@@ -764,7 +764,7 @@ impl tcp_socket for tcp_socket {
     }
 }
 
-/// Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
+/// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl tcp_socket_buf of io::reader for @tcp_socket_buf {
     fn read(buf: &[mut u8], len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
@@ -817,7 +817,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
     }
 }
 
-/// Implementation of `io::reader` iface for a buffered `net::tcp::tcp_socket`
+/// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl tcp_socket_buf of io::writer for @tcp_socket_buf {
     fn write(data: &[const u8]) unsafe {
         let socket_data_ptr =
@@ -1083,11 +1083,11 @@ enum tcp_read_result {
     tcp_read_err(tcp_err_data)
 }
 
-iface to_tcp_err_iface {
+trait to_tcp_err {
     fn to_tcp_err() -> tcp_err_data;
 }
 
-impl of to_tcp_err_iface for uv::ll::uv_err_data {
+impl of to_tcp_err for uv::ll::uv_err_data {
     fn to_tcp_err() -> tcp_err_data {
         { err_name: self.err_name, err_msg: self.err_msg }
     }

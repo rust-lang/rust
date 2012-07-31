@@ -1,7 +1,7 @@
 // pp-exact - Make sure we print all the attributes
 
 #[frobable]
-iface frobable {
+trait frobable {
     #[frob_attr]
     fn frob();
     #[defrob_attr]

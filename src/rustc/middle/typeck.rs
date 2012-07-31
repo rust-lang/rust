@@ -142,7 +142,7 @@ enum vtable_origin {
      */
     vtable_param(uint, uint),
     /*
-      Dynamic vtable, comes from something known to have an interface
+      Dynamic vtable, comes from something known to have a trait
       type. def_id refers to the trait item, tys are the substs
      */
     vtable_trait(ast::def_id, ~[ty::t]),

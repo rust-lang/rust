@@ -3059,7 +3059,7 @@ class Resolver {
                 self_type_rib.bindings.insert(self.self_atom,
                                               dl_def(def_self(item.id)));
 
-                // Create a new rib for the interface-wide type parameters.
+                // Create a new rib for the trait-wide type parameters.
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters, item.id, 0u,
                                            NormalRibKind)) {
@@ -3106,12 +3106,12 @@ class Resolver {
                 (*self.type_ribs).pop();
             }
 
-            item_class(ty_params, interfaces, class_members,
+            item_class(ty_params, traits, class_members,
                        optional_constructor, optional_destructor) {
 
                 self.resolve_class(item.id,
                                    @copy ty_params,
-                                   interfaces,
+                                   traits,
                                    class_members,
                                    optional_constructor,
                                    optional_destructor,
@@ -3330,8 +3330,8 @@ class Resolver {
                     bound_copy | bound_send | bound_const | bound_owned {
                         // Nothing to do.
                     }
-                    bound_trait(interface_type) {
-                        self.resolve_type(interface_type, visitor);
+                    bound_trait(trait_type) {
+                        self.resolve_type(trait_type, visitor);
                     }
                 }
             }
@@ -3340,7 +3340,7 @@ class Resolver {
 
     fn resolve_class(id: node_id,
                      type_parameters: @~[ty_param],
-                     interfaces: ~[@trait_ref],
+                     traits: ~[@trait_ref],
                      class_members: ~[@class_member],
                      optional_constructor: option<class_ctor>,
                      optional_destructor: option<class_dtor>,
@@ -3359,22 +3359,22 @@ class Resolver {
             // Resolve the type parameters.
             self.resolve_type_parameters(*type_parameters, visitor);
 
-            // Resolve implemented interfaces.
-            for interfaces.each |interface| {
-                alt self.resolve_path(interface.path, TypeNS, true, visitor) {
+            // Resolve implemented traits.
+            for traits.each |trt| {
+                alt self.resolve_path(trt.path, TypeNS, true, visitor) {
                     none {
-                        self.session.span_err(interface.path.span,
+                        self.session.span_err(trt.path.span,
                                               ~"attempt to implement a \
                                                nonexistent trait");
                     }
                     some(def) {
-                        // Write a mapping from the interface ID to the
-                        // definition of the interface into the definition
+                        // Write a mapping from the trait ID to the
+                        // definition of the trait into the definition
                         // map.
 
                         debug!{"(resolving class) found trait def: %?", def};
 
-                        self.record_def(interface.ref_id, def);
+                        self.record_def(trt.ref_id, def);
 
                         // XXX: This is wrong but is needed for tests to
                         // pass.
@@ -3475,7 +3475,7 @@ class Resolver {
             // Resolve the type parameters.
             self.resolve_type_parameters(type_parameters, visitor);
 
-            // Resolve the interface reference, if necessary.
+            // Resolve the trait reference, if necessary.
             let original_trait_refs = self.current_trait_refs;
             if trait_references.len() >= 1 {
                 let mut new_trait_refs = @dvec();

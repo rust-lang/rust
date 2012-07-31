@@ -429,7 +429,7 @@ fn root_map() -> root_map {
 // ___________________________________________________________________________
 // Misc
 
-iface ast_node {
+trait ast_node {
     fn id() -> ast::node_id;
     fn span() -> span;
 }

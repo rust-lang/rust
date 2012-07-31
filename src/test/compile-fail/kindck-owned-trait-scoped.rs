@@ -1,7 +1,7 @@
-// A dummy iface/impl that work close over any type.  The iface will
+// A dummy trait/impl that work close over any type.  The trait will
 // be parameterized by a region due to the &self/int constraint.
 
-iface foo {
+trait foo {
     fn foo(i: &self/int) -> int;
 }
 

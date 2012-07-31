@@ -1,4 +1,4 @@
-iface bar { fn dup() -> self; fn blah<X>(); }
+trait bar { fn dup() -> self; fn blah<X>(); }
 impl of bar for int { fn dup() -> int { self } fn blah<X>() {} }
 impl of bar for uint { fn dup() -> uint { self } fn blah<X>() {} }
 

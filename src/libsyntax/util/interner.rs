@@ -19,7 +19,7 @@ fn mk<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
 }
 
 /* when traits can extend traits, we should extend index<uint,T> to get [] */
-iface interner<T: const copy> {
+trait interner<T: const copy> {
     fn intern(T) -> uint;
     pure fn get(uint) -> T;
     fn len() -> uint;

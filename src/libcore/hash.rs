@@ -79,7 +79,7 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
 }
 
 
-iface streaming {
+trait streaming {
     fn input(~[u8]);
     fn input_str(~str);
     fn result() -> ~[u8];

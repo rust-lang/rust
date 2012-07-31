@@ -230,7 +230,7 @@ fn test_to_str() {
 }
 
 #[test]
-fn test_ifaces() {
+fn test_interfaces() {
     fn test<U:num::num>(ten: U) {
         assert (ten.to_int() == 10);
 

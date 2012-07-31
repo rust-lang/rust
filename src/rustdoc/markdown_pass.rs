@@ -666,28 +666,28 @@ fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
 
 #[test]
 fn should_write_trait_header() {
-    let markdown = test::render(~"iface i { fn a(); }");
+    let markdown = test::render(~"trait i { fn a(); }");
     assert str::contains(markdown, ~"## Interface `i`");
 }
 
 #[test]
 fn should_write_trait_desc() {
     let markdown = test::render(
-        ~"#[doc = \"desc\"] iface i { fn a(); }");
+        ~"#[doc = \"desc\"] trait i { fn a(); }");
     assert str::contains(markdown, ~"desc");
 }
 
 #[test]
 fn should_write_trait_method_header() {
     let markdown = test::render(
-        ~"iface i { fn a(); }");
+        ~"trait i { fn a(); }");
     assert str::contains(markdown, ~"### Method `a`");
 }
 
 #[test]
 fn should_write_trait_method_signature() {
     let markdown = test::render(
-        ~"iface i { fn a(); }");
+        ~"trait i { fn a(); }");
     assert str::contains(markdown, ~"\n    fn a()");
 }
 

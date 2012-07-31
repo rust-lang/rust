@@ -15,7 +15,7 @@ extern mod rustrt {
 }
 
 /// A random number generator
-iface rng {
+trait rng {
     /// Return the next random integer
     fn next() -> u32;
 }

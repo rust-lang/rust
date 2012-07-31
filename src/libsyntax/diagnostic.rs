@@ -13,7 +13,7 @@ type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
                    msg: ~str, lvl: level);
 
 
-iface span_handler {
+trait span_handler {
     fn span_fatal(sp: span, msg: ~str) -> !;
     fn span_err(sp: span, msg: ~str);
     fn span_warn(sp: span, msg: ~str);
@@ -23,7 +23,7 @@ iface span_handler {
     fn handler() -> handler;
 }
 
-iface handler {
+trait handler {
     fn fatal(msg: ~str) -> !;
     fn err(msg: ~str);
     fn bump_err_count();

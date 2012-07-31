@@ -15,7 +15,7 @@ fn new_parse_sess() -> parse::parse_sess {
   fail;
 }
 
-iface fake_ext_ctxt {
+trait fake_ext_ctxt {
     fn session() -> fake_session;
 }
 

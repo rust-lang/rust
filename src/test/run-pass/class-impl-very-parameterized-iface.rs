@@ -6,7 +6,7 @@ enum cat_type { tuxedo, tabby, tortoiseshell }
 // Very silly -- this just returns the value of the name field
 // for any int value that's less than the meows field
 
-// ok: T should be in scope when resolving the iface ref for map
+// ok: T should be in scope when resolving the trait ref for map
 class cat<T: copy> : map<int, T> {
   priv {
     // Yes, you can have negative meows

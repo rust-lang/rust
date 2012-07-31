@@ -6,7 +6,7 @@ use core;
 Core serialization interfaces.
 */
 
-iface serializer {
+trait serializer {
     // Primitive types:
     fn emit_nil();
     fn emit_uint(v: uint);
@@ -39,7 +39,7 @@ iface serializer {
     fn emit_tup_elt(idx: uint, f: fn());
 }
 
-iface deserializer {
+trait deserializer {
     // Primitive types:
     fn read_nil() -> ();
 

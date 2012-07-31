@@ -476,7 +476,7 @@ impl methods<T:copy> of cres_helpers<T> for cres<T> {
     }
 }
 
-iface to_str {
+trait to_str {
     fn to_str(cx: infer_ctxt) -> ~str;
 }
 
@@ -533,7 +533,7 @@ impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
     }
 }
 
-iface st {
+trait st {
     fn sub(infcx: infer_ctxt, b: self) -> ures;
     fn lub(infcx: infer_ctxt, b: self) -> cres<self>;
     fn glb(infcx: infer_ctxt, b: self) -> cres<self>;
@@ -1506,7 +1506,7 @@ impl assignment for infer_ctxt {
 // Type combining
 //
 // There are three type combiners: sub, lub, and glb.  Each implements
-// the interface `combine` and contains methods for combining two
+// the trait `combine` and contains methods for combining two
 // instances of various things and yielding a new instance.  These
 // combiner methods always yield a `result<T>`---failure is propagated
 // upward using `chain()` methods.
@@ -1520,9 +1520,9 @@ impl assignment for infer_ctxt {
 // to the `super` routine or to do other things.
 //
 // In reality, the sub operation is rather different from lub/glb, but
-// they are combined into one interface to avoid duplication (they
-// used to be separate but there were many bugs because there were two
-// copies of most routines).
+// they are combined into one trait to avoid duplication (they used to
+// be separate but there were many bugs because there were two copies
+// of most routines).
 //
 // The differences are:
 //
@@ -1548,7 +1548,7 @@ impl assignment for infer_ctxt {
 
 type cres<T> = result<T,ty::type_err>;
 
-iface combine {
+trait combine {
     fn infcx() -> infer_ctxt;
     fn tag() -> ~str;
 
@@ -2457,7 +2457,7 @@ impl of combine for glb {
 // This is common code used by both LUB and GLB to compute the LUB/GLB
 // for pairs of variables or for variables and values.
 
-iface lattice_ops {
+trait lattice_ops {
     fn bnd<T:copy>(b: bounds<T>) -> option<T>;
     fn with_bnd<T:copy>(b: bounds<T>, t: T) -> bounds<T>;
     fn ty_bot(t: ty::t) -> cres<ty::t>;

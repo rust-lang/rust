@@ -1,6 +1,6 @@
 use std;
 fn main() {
-iface seq { }
+trait seq { }
 
 impl <T> of seq<T> for ~[T] { //~ ERROR wrong number of type arguments
     /* ... */

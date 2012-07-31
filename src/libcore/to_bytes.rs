@@ -1,4 +1,4 @@
-iface to_bytes {
+trait to_bytes {
     fn to_bytes() -> ~[u8];
 }
 

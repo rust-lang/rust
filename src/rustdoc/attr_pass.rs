@@ -242,14 +242,14 @@ fn merge_method_attrs(
 
 #[test]
 fn should_extract_trait_docs() {
-    let doc = test::mk_doc(~"#[doc = \"whatever\"] iface i { fn a(); }");
+    let doc = test::mk_doc(~"#[doc = \"whatever\"] trait i { fn a(); }");
     assert doc.cratemod().traits()[0].desc() == some(~"whatever");
 }
 
 #[test]
 fn should_extract_trait_method_docs() {
     let doc = test::mk_doc(
-        ~"iface i {\
+        ~"trait i {\
          #[doc = \"desc\"]\
          fn f(a: bool) -> bool;\
          }");

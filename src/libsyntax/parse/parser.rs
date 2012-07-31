@@ -2702,6 +2702,7 @@ class parser {
         } else if self.eat_keyword(~"enum") {
             self.parse_item_enum(vis)
         } else if self.eat_keyword(~"iface") {
+            self.warn(~"`iface` is deprecated; use `trait`");
             self.parse_item_trait()
         } else if self.eat_keyword(~"trait") {
             self.parse_item_trait()

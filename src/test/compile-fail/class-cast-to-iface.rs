@@ -1,5 +1,5 @@
 // error-pattern: attempted access of field `eat` on type `noisy`
-iface noisy {
+trait noisy {
   fn speak();
 }
 

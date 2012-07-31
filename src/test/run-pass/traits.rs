@@ -8,7 +8,7 @@ trait Eq {
     fn eq(a: self) -> bool;
 
     fn neq(a: self) -> bool {
-        !self.neq(a)
+        !self.eq(a)
     }
 }
 
@@ -34,12 +34,12 @@ trait Ord < Eq {
 
 // pronounced "impl of Ord for int" -- not sold on this yet
 impl int: Ord {
-    fn lt(a: self) -> bool {
+    fn lt(a: int) -> bool {
         self < a
     }
 
     // is this the place to put this?
-    fn eq(a: self) -> bool {
+    fn eq(a: int) -> bool {
         self == a
     }
 }

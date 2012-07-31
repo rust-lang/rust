@@ -21,7 +21,7 @@ fn new_parse_sess() -> parser::parse_sess {
     ret sess;
 }
 
-iface fake_ext_ctxt {
+trait fake_ext_ctxt {
     fn session() -> fake_session;
     fn cfg() -> ast::crate_cfg;
     fn parse_sess() -> parser::parse_sess;

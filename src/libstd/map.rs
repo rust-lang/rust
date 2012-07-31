@@ -24,7 +24,7 @@ type set<K> = hashmap<K, ()>;
 
 type hashmap<K, V> = chained::t<K, V>;
 
-iface map<K, V: copy> {
+trait map<K, V: copy> {
     /// Return the number of elements in the map
     fn size() -> uint;
 

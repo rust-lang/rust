@@ -587,7 +587,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
                   _ {
                     ccx.tcx.sess.span_err(
                         t.span, ~"type parameter bounds must be \
-                                 interface types");
+                                  trait types");
                     ~[]
                   }
                 }

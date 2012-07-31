@@ -23,7 +23,7 @@ fn pick_file(file: path, path: path) -> option<path> {
     else { option::none }
 }
 
-iface filesearch {
+trait filesearch {
     fn sysroot() -> path;
     fn lib_search_paths() -> ~[path];
     fn get_target_lib_path() -> path;

@@ -70,7 +70,7 @@ fn should_promote_desc() {
 
 #[test]
 fn should_promote_trait_method_desc() {
-    let doc = test::mk_doc(~"iface i { #[doc = \"desc\"] fn a(); }");
+    let doc = test::mk_doc(~"trait i { #[doc = \"desc\"] fn a(); }");
     assert doc.cratemod().traits()[0].methods[0].brief == some(~"desc");
 }
 
