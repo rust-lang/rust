@@ -165,7 +165,13 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
       LIT_INT_UNSUFFIXED(i) {
         int::to_str(i as int, 10u)
       }
-      LIT_FLOAT(s, t) { *in.get(s) + ast_util::float_ty_to_str(t) }
+      LIT_FLOAT(s, t) {
+        let mut body = *in.get(s);
+        if body.ends_with(".") {
+            body = body + "0";  // `10.f` is not a float literal
+        }
+        body + ast_util::float_ty_to_str(t)
+      }
       LIT_STR(s) { ~"\"" + str::escape_default( *in.get(s)) + ~"\"" }
 
       /* Name components */
