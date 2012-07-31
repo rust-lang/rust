@@ -408,19 +408,19 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(match: getopts::matches,
+fn build_session_options(matches: getopts::matches,
                          demitter: diagnostic::emitter) -> @session::options {
-    let crate_type = if opt_present(match, ~"lib") {
+    let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
-    } else if opt_present(match, ~"bin") {
+    } else if opt_present(matches, ~"bin") {
         session::bin_crate
     } else {
         session::unknown_crate
     };
-    let static = opt_present(match, ~"static");
+    let static = opt_present(matches, ~"static");
 
-    let parse_only = opt_present(match, ~"parse-only");
-    let no_trans = opt_present(match, ~"no-trans");
+    let parse_only = opt_present(matches, ~"parse-only");
+    let no_trans = opt_present(matches, ~"no-trans");
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
@@ -429,8 +429,8 @@ fn build_session_options(match: getopts::matches,
     for lint_levels.each |level| {
         let level_name = lint::level_to_str(level);
         let level_short = level_name.substr(0,1).to_upper();
-        let flags = vec::append(getopts::opt_strs(match, level_short),
-                                getopts::opt_strs(match, level_name));
+        let flags = vec::append(getopts::opt_strs(matches, level_short),
+                                getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
             let lint_name = str::replace(lint_name, ~"-", ~"_");
             alt lint_dict.find(lint_name) {
@@ -446,7 +446,7 @@ fn build_session_options(match: getopts::matches,
     }
 
     let mut debugging_opts = 0u;
-    let debug_flags = getopts::opt_strs(match, ~"Z");
+    let debug_flags = getopts::opt_strs(matches, ~"Z");
     let debug_map = session::debugging_opts_map();
     for debug_flags.each |debug_flag| {
         let mut this_bit = 0u;
@@ -466,34 +466,34 @@ fn build_session_options(match: getopts::matches,
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
-        } else if opt_present(match, ~"S") &&
-                  opt_present(match, ~"emit-llvm") {
+        } else if opt_present(matches, ~"S") &&
+                  opt_present(matches, ~"emit-llvm") {
             link::output_type_llvm_assembly
-        } else if opt_present(match, ~"S") {
+        } else if opt_present(matches, ~"S") {
             link::output_type_assembly
-        } else if opt_present(match, ~"c") {
+        } else if opt_present(matches, ~"c") {
             link::output_type_object
-        } else if opt_present(match, ~"emit-llvm") {
+        } else if opt_present(matches, ~"emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let extra_debuginfo = opt_present(match, ~"xg");
-    let debuginfo = opt_present(match, ~"g") || extra_debuginfo;
-    let sysroot_opt = getopts::opt_maybe_str(match, ~"sysroot");
-    let target_opt = getopts::opt_maybe_str(match, ~"target");
-    let save_temps = getopts::opt_present(match, ~"save-temps");
+    let extra_debuginfo = opt_present(matches, ~"xg");
+    let debuginfo = opt_present(matches, ~"g") || extra_debuginfo;
+    let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
+    let target_opt = getopts::opt_maybe_str(matches, ~"target");
+    let save_temps = getopts::opt_present(matches, ~"save-temps");
     alt output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
       link::output_type_llvm_assembly | link::output_type_assembly {}
       _ { debugging_opts |= session::no_asm_comments; }
     }
     let opt_level: uint =
-        if opt_present(match, ~"O") {
-            if opt_present(match, ~"opt-level") {
+        if opt_present(matches, ~"O") {
+            if opt_present(matches, ~"opt-level") {
                 early_error(demitter, ~"-O and --opt-level both provided");
             }
             2u
-        } else if opt_present(match, ~"opt-level") {
-            alt getopts::opt_str(match, ~"opt-level") {
+        } else if opt_present(matches, ~"opt-level") {
+            alt getopts::opt_str(matches, ~"opt-level") {
               ~"0" { 0u }
               ~"1" { 1u }
               ~"2" { 2u }
@@ -510,9 +510,9 @@ fn build_session_options(match: getopts::matches,
             some(s) { s }
         };
 
-    let addl_lib_search_paths = getopts::opt_strs(match, ~"L");
-    let cfg = parse_cfgspecs(getopts::opt_strs(match, ~"cfg"));
-    let test = opt_present(match, ~"test");
+    let addl_lib_search_paths = getopts::opt_strs(matches, ~"L");
+    let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"));
+    let test = opt_present(matches, ~"test");
     let sopts: @session::options =
         @{crate_type: crate_type,
           static: static,
@@ -719,13 +719,13 @@ mod test {
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
-        let match =
+        let matches =
             alt getopts::getopts(~[~"--test"], opts()) {
               ok(m) { m }
               err(f) { fail ~"test_switch_implies_cfg_test: " +
                        getopts::fail_str(f); }
             };
-        let sessopts = build_session_options(match, diagnostic::emit);
+        let sessopts = build_session_options(matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, ~"whatever", str_input(~""));
         assert (attr::contains_name(cfg, ~"test"));
@@ -735,7 +735,7 @@ mod test {
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
-        let match =
+        let matches =
             alt getopts::getopts(~[~"--test", ~"--cfg=test"], opts()) {
               ok(m) { m }
               err(f) {
@@ -743,7 +743,7 @@ mod test {
                     getopts::fail_str(f);
               }
             };
-        let sessopts = build_session_options(match, diagnostic::emit);
+        let sessopts = build_session_options(matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, ~"whatever", str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");

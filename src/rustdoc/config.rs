@@ -101,11 +101,11 @@ fn parse_config_(
     let args = vec::tail(args);
     let opts = vec::unzip(opts()).first();
     alt getopts::getopts(args, opts) {
-        result::ok(match) {
-            if vec::len(match.free) == 1u {
-                let input_crate = vec::head(match.free);
-                config_from_opts(input_crate, match, program_output)
-            } else if vec::is_empty(match.free) {
+        result::ok(matches) {
+            if vec::len(matches.free) == 1u {
+                let input_crate = vec::head(matches.free);
+                config_from_opts(input_crate, matches, program_output)
+            } else if vec::is_empty(matches.free) {
                 result::err(~"no crates specified")
             } else {
                 result::err(~"multiple crates specified")
@@ -119,14 +119,14 @@ fn parse_config_(
 
 fn config_from_opts(
     input_crate: ~str,
-    match: getopts::matches,
+    matches: getopts::matches,
     program_output: program_output
 ) -> result<config, ~str> {
 
     let config = default_config(input_crate);
     let result = result::ok(config);
     let result = do result::chain(result) |config| {
-        let output_dir = getopts::opt_maybe_str(match, opt_output_dir());
+        let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
         result::ok({
             output_dir: option::get_default(output_dir, config.output_dir)
             with config
@@ -134,7 +134,7 @@ fn config_from_opts(
     };
     let result = do result::chain(result) |config| {
         let output_format = getopts::opt_maybe_str(
-            match, opt_output_format());
+            matches, opt_output_format());
         do option::map_default(output_format, result::ok(config))
             |output_format| {
             do result::chain(parse_output_format(output_format))
@@ -148,7 +148,8 @@ fn config_from_opts(
         }
     };
     let result = do result::chain(result) |config| {
-        let output_style = getopts::opt_maybe_str(match, opt_output_style());
+        let output_style =
+            getopts::opt_maybe_str(matches, opt_output_style());
         do option::map_default(output_style, result::ok(config))
             |output_style| {
             do result::chain(parse_output_style(output_style))
@@ -161,7 +162,7 @@ fn config_from_opts(
         }
     };
     let result = do result::chain(result) |config| {
-        let pandoc_cmd = getopts::opt_maybe_str(match, opt_pandoc_cmd());
+        let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
             config, pandoc_cmd, program_output);
         do result::chain(pandoc_cmd) |pandoc_cmd| {

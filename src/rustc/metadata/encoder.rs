@@ -157,11 +157,11 @@ fn encode_class_item_paths(ebml_w: ebml::writer,
 }
 
 fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
-                            module: _mod, path: ~[ident],
+                            module_: _mod, path: ~[ident],
                             &index: ~[entry<~str>]) {
-    for module.items.each |it| {
+    for module_.items.each |it| {
         if !reachable(ecx, it.id) ||
-           !ast_util::is_exported(it.ident, module) { again; }
+           !ast_util::is_exported(it.ident, module_) { again; }
         if !ast_util::is_item_impl(it) {
             add_to_index(ebml_w, path, index, it.ident);
         }

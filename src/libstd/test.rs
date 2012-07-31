@@ -68,19 +68,19 @@ type opt_res = either<test_opts, ~str>;
 fn parse_opts(args: ~[~str]) -> opt_res {
     let args_ = vec::tail(args);
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
-    let match =
+    let matches =
         alt getopts::getopts(args_, opts) {
           ok(m) { m }
           err(f) { ret either::right(getopts::fail_str(f)) }
         };
 
     let filter =
-        if vec::len(match.free) > 0u {
-            option::some(match.free[0])
+        if vec::len(matches.free) > 0u {
+            option::some(matches.free[0])
         } else { option::none };
 
-    let run_ignored = getopts::opt_present(match, ~"ignored");
-    let logfile = getopts::opt_maybe_str(match, ~"logfile");
+    let run_ignored = getopts::opt_present(matches, ~"ignored");
+    let logfile = getopts::opt_maybe_str(matches, ~"logfile");
 
     let test_opts = {filter: filter, run_ignored: run_ignored,
                      logfile: logfile};

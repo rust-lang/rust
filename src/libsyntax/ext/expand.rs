@@ -129,17 +129,17 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
 fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
-                    module: ast::_mod, fld: ast_fold,
+                    module_: ast::_mod, fld: ast_fold,
                     orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
     -> ast::_mod
 {
     // Fold the contents first:
-    let module = orig(module, fld);
+    let module_ = orig(module_, fld);
 
     // For each item, look through the attributes.  If any of them are
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
-    let new_items = do vec::flat_map(module.items) |item| {
+    let new_items = do vec::flat_map(module_.items) |item| {
         do vec::foldr(item.attrs, ~[item]) |attr, items| {
             let mname = alt attr.node.value.node {
               ast::meta_word(n) { n }
@@ -159,7 +159,7 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
         }
     };
 
-    ret {items: new_items with module};
+    ret {items: new_items with module_};
 }
 
 

@@ -600,21 +600,21 @@ fn load_source_packages(c: cargo, src: source) {
 }
 
 fn build_cargo_options(argv: ~[~str]) -> options {
-    let match = alt getopts::getopts(argv, opts()) {
+    let matches = alt getopts::getopts(argv, opts()) {
         result::ok(m) { m }
         result::err(f) {
             fail fmt!{"%s", getopts::fail_str(f)};
         }
     };
 
-    let test = opt_present(match, ~"test");
-    let G    = opt_present(match, ~"G");
-    let g    = opt_present(match, ~"g");
-    let help = opt_present(match, ~"h") || opt_present(match, ~"help");
-    let len  = vec::len(match.free);
+    let test = opt_present(matches, ~"test");
+    let G    = opt_present(matches, ~"G");
+    let g    = opt_present(matches, ~"g");
+    let help = opt_present(matches, ~"h") || opt_present(matches, ~"help");
+    let len  = vec::len(matches.free);
 
-    let is_install = len > 1u && match.free[1] == ~"install";
-    let is_uninstall = len > 1u && match.free[1] == ~"uninstall";
+    let is_install = len > 1u && matches.free[1] == ~"install";
+    let is_uninstall = len > 1u && matches.free[1] == ~"uninstall";
 
     if G && g { fail ~"-G and -g both provided"; }
 
@@ -627,7 +627,7 @@ fn build_cargo_options(argv: ~[~str]) -> options {
         else if G { system_mode }
         else { local_mode };
 
-    {test: test, mode: mode, free: match.free, help: help}
+    {test: test, mode: mode, free: matches.free, help: help}
 }
 
 fn configure(opts: options) -> cargo {

@@ -192,18 +192,18 @@ mod tests {
 
     #[test]
     fn test_find_success() {
-        fn match(&&i: int) -> bool { ret i == 2; }
+        fn match_(&&i: int) -> bool { ret i == 2; }
         let l = from_vec(~[0, 1, 2]);
-        assert (list::find(l, match) == option::some(2));
+        assert (list::find(l, match_) == option::some(2));
     }
 
     #[test]
     fn test_find_fail() {
-        fn match(&&_i: int) -> bool { ret false; }
+        fn match_(&&_i: int) -> bool { ret false; }
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::nil::<int>;
-        assert (list::find(l, match) == option::none::<int>);
-        assert (list::find(empty, match) == option::none::<int>);
+        assert (list::find(l, match_) == option::none::<int>);
+        assert (list::find(empty, match_) == option::none::<int>);
     }
 
     #[test]
