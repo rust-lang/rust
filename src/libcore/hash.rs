@@ -382,3 +382,22 @@ fn test_siphash() {
         t += 1;
     }
 }
+
+#[test] #[cfg(target_arch = "arm")]
+fn test_hash_uint() {
+    let val = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val as u64) == hash_uint(val as uint);
+    assert hash_u32(val as u32) != hash_uint(val as uint);
+}
+#[test] #[cfg(target_arch = "x86_64")]
+fn test_hash_uint() {
+    let val = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val as u64) == hash_uint(val as uint);
+    assert hash_u32(val as u32) != hash_uint(val as uint);
+}
+#[test] #[cfg(target_arch = "x86")]
+fn test_hash_uint() {
+    let val = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val as u64) != hash_uint(val as uint);
+    assert hash_u32(val as u32) == hash_uint(val as uint);
+}
