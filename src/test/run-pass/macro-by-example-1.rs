@@ -1,4 +1,3 @@
-// xfail-pretty - token trees can't pretty print
 
 fn main() {
     #macro[[#apply[f, [x, ...]], f(x, ...)]];
