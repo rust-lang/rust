@@ -215,7 +215,7 @@ check class const copy
 drop
 else enum export extern
 fail false fn for
-if iface impl import
+if impl import
 let log loop
 mod mut
 pure
