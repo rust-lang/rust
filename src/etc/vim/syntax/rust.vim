@@ -104,7 +104,7 @@ syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo ke
 syn keyword   rustTodo        TODO FIXME XXX NB
 
 " For those who don't want to see `::`...
-syn match   rustModPathSep  "::" conceal cchar=・
+syn match   rustModPathSep  "::" conceal cchar=ㆍ
 
 syn match rustArrowHead contained ">" conceal cchar= 
 syn match rustArrowTail contained "-" conceal cchar=⟶
