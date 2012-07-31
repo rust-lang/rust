@@ -163,7 +163,7 @@ pure fn uint_ty_max(t: uint_ty) -> u64 {
 }
 
 pure fn float_ty_to_str(t: float_ty) -> ~str {
-    alt t { ty_f { ~"" } ty_f32 { ~"f32" } ty_f64 { ~"f64" } }
+    alt t { ty_f { ~"f" } ty_f32 { ~"f32" } ty_f64 { ~"f64" } }
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
