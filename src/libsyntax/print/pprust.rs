@@ -622,12 +622,14 @@ fn print_tt(s: ps, tt: ast::token_tree) {
         for tts.each() |tt_elt| { print_tt(s, tt_elt); }
       }
       ast::tt_tok(_, tk) {
-        word(s.s, parse::token::to_str(*s.intr, tk));
         alt tk {
-          // gotta keep them separated
-          parse::token::IDENT(*) { word(s.s, ~" ") }
-          _ {}
+          parse::token::IDENT(*) { // don't let idents run together
+            if s.s.token_tree_last_was_ident { word(s.s, ~" ") }
+            s.s.token_tree_last_was_ident = true;
+          }
+          _ { s.s.token_tree_last_was_ident = false; }
         }
+        word(s.s, parse::token::to_str(*s.intr, tk));
       }
       ast::tt_seq(_, tts, sep, zerok) {
         word(s.s, ~"$(");
@@ -638,9 +640,11 @@ fn print_tt(s: ps, tt: ast::token_tree) {
           none {}
         }
         word(s.s, if zerok { ~"*" } else { ~"+" });
+        s.s.token_tree_last_was_ident = false;
       }
       ast::tt_nonterminal(_, name) {
         word(s.s, ~"$" + *name);
+        s.s.token_tree_last_was_ident = true;
       }
     }
 }

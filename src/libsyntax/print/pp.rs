@@ -118,7 +118,8 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
                mut top: 0u,
                mut bottom: 0u,
                print_stack: dvec(),
-               mut pending_indentation: 0})
+               mut pending_indentation: 0,
+               mut token_tree_last_was_ident: false})
 }
 
 
@@ -223,7 +224,8 @@ type printer_ = {
     // stack of blocks-in-progress being flushed by print
     print_stack: dvec<print_stack_elt>,
     // buffered indentation to avoid writing trailing whitespace
-    mut pending_indentation: int
+    mut pending_indentation: int,
+    mut token_tree_last_was_ident: bool
 };
 
 enum printer {
