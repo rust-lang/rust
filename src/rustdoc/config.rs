@@ -119,7 +119,7 @@ fn parse_config_(
 
 fn config_from_opts(
     input_crate: ~str,
-    match: getopts::match,
+    match: getopts::matches,
     program_output: program_output
 ) -> result<config, ~str> {
 

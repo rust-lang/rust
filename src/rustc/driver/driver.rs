@@ -408,7 +408,7 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(match: getopts::match,
+fn build_session_options(match: getopts::matches,
                          demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(match, ~"lib") {
         session::lib_crate
