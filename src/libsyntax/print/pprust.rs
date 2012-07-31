@@ -1056,7 +1056,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
               some(expr) => {
                 end(s); // close the ibox for the pattern
                 print_expr(s, expr);
-                if i < len - 1 { word_space(s, ~","); }
+                if i < len - 1 { word(s.s, ~","); }
                 end(s); // close enclosing cbox
               }
               none => {

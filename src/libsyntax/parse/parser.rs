@@ -761,33 +761,11 @@ class parser {
             // which affects expr_is_complete().
             ret self.mk_pexpr(lo, hi, expr_tup(es));
         } else if self.token == token::LBRACE {
-            self.bump();
-            if self.is_keyword(~"mut") ||
-                is_plain_ident(self.token)
-                && self.look_ahead(1u) == token::COLON {
-                let mut fields = ~[self.parse_field(token::COLON)];
-                let mut base = none;
-                while self.token != token::RBRACE {
-                    // optional comma before "with"
-                    if self.token == token::COMMA
-                        && self.token_is_keyword(~"with",
-                                                 self.look_ahead(1u)) {
-                        self.bump();
-                    }
-                    if self.eat_keyword(~"with") {
-                        base = some(self.parse_expr()); break;
-                    }
-                    self.expect(token::COMMA);
-                    if self.token == token::RBRACE {
-                        // record ends by an optional trailing comma
-                        break;
-                    }
-                    vec::push(fields, self.parse_field(token::COLON));
-                }
+            if self.looking_at_record_literal() {
+                ex = self.parse_record_literal();
                 hi = self.span.hi;
-                self.expect(token::RBRACE);
-                ex = expr_rec(fields, base);
             } else {
+                self.bump();
                 let blk = self.parse_block_tail(lo, default_blk);
                 ret self.mk_pexpr(blk.span.lo, blk.span.hi, expr_block(blk));
             }
@@ -897,25 +875,18 @@ class parser {
                 ret pexpr(self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts)));
             } else if self.token == token::LBRACE {
                 // This might be a struct literal.
-                let lookahead = self.look_ahead(1);
-                if self.token_is_keyword(~"mut", lookahead) ||
-                        (is_plain_ident(lookahead) &&
-                         self.look_ahead(2) == token::COLON) {
-
+                if self.looking_at_record_literal() {
                     // It's a struct literal.
                     self.bump();
                     let mut fields = ~[];
-                    if self.is_keyword(~"mut") || is_plain_ident(self.token)
-                            && self.look_ahead(1) == token::COLON {
-                        vec::push(fields, self.parse_field(token::COLON));
-                        while self.token != token::RBRACE {
-                            self.expect(token::COMMA);
-                            if self.token == token::RBRACE {
-                                // Accept an optional trailing comma.
-                                break;
-                            }
-                            vec::push(fields, self.parse_field(token::COLON));
+                    vec::push(fields, self.parse_field(token::COLON));
+                    while self.token != token::RBRACE {
+                        self.expect(token::COMMA);
+                        if self.token == token::RBRACE {
+                            // Accept an optional trailing comma.
+                            break;
                         }
+                        vec::push(fields, self.parse_field(token::COLON));
                     }
 
                     hi = pth.span.hi;
@@ -1500,6 +1471,39 @@ class parser {
         ret self.mk_expr(lo, hi, expr_loop(body));
     }
 
+    // For distingishing between record literals and blocks
+    fn looking_at_record_literal() -> bool {
+        let lookahead = self.look_ahead(1);
+        self.token_is_keyword(~"mut", lookahead) ||
+            (is_plain_ident(lookahead) &&
+             self.look_ahead(2) == token::COLON)
+    }
+
+    fn parse_record_literal() -> expr_ {
+        self.expect(token::LBRACE);
+        let mut fields = ~[self.parse_field(token::COLON)];
+        let mut base = none;
+        while self.token != token::RBRACE {
+            // optional comma before "with"
+            if self.token == token::COMMA
+                && self.token_is_keyword(~"with",
+                                         self.look_ahead(1u)) {
+                self.bump();
+            }
+            if self.eat_keyword(~"with") {
+                base = some(self.parse_expr()); break;
+            }
+            self.expect(token::COMMA);
+            if self.token == token::RBRACE {
+                // record ends by an optional trailing comma
+                break;
+            }
+            vec::push(fields, self.parse_field(token::COLON));
+        }
+        self.expect(token::RBRACE);
+        ret expr_rec(fields, base);
+    }
+
     fn parse_alt_expr() -> @expr {
         let lo = self.last_span.lo;
         let mode = if self.eat_keyword(~"check") { alt_check }
@@ -1515,7 +1519,8 @@ class parser {
                 self.parse_block()
             } else {
                 self.bump();
-                if self.token == token::LBRACE {
+                if self.token == token::LBRACE
+                    && !self.looking_at_record_literal() {
                     self.parse_block()
                 } else {
                     let expr = self.parse_expr();
