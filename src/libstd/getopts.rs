@@ -6,7 +6,7 @@
  * along with a vector of actual arguments (not including argv[0]). You'll
  * either get a failure code back, or a match. You'll have to verify whether
  * the amount of 'free' arguments in the match is what you expect. Use opt_*
- * accessors to get argument values out of the match object.
+ * accessors to get argument values out of the matches object.
  *
  * Single-character options are expected to appear on the command line with a
  * single preceding dash; multiple-character options are expected to be
@@ -43,17 +43,17 @@
  *             optflag("h"),
  *             optflag("help")
  *         ];
- *         let match = alt getopts(vec::tail(args), opts) {
+ *         let matches = alt getopts(vec::tail(args), opts) {
  *             result::ok(m) { m }
  *             result::err(f) { fail fail_str(f) }
  *         };
- *         if opt_present(match, "h") || opt_present(match, "help") {
+ *         if opt_present(matches, "h") || opt_present(matches, "help") {
  *             print_usage(program);
  *             ret;
  *         }
- *         let output = opt_maybe_str(match, "o");
- *         let input = if vec::is_not_empty(match.free) {
- *             match.free[0]
+ *         let output = opt_maybe_str(matches, "o");
+ *         let input = if vec::is_not_empty(matches.free) {
+ *             matches.free[0]
  *         } else {
  *             print_usage(program);
  *             ret;
@@ -72,7 +72,7 @@ export optflag;
 export optflagopt;
 export optmulti;
 export getopts;
-export match;
+export matches;
 export fail_;
 export fail_str;
 export opt_present;
@@ -133,7 +133,7 @@ enum optval { val(~str), given, }
  * The result of checking command line arguments. Contains a vector
  * of matches and a vector of free strings.
  */
-type match = {opts: ~[opt], vals: ~[~[optval]], free: ~[~str]};
+type matches = {opts: ~[opt], vals: ~[~[optval]], free: ~[~str]};
 
 fn is_arg(arg: ~str) -> bool {
     ret str::len(arg) > 1u && arg[0] == '-' as u8;
@@ -178,9 +178,9 @@ fn fail_str(f: fail_) -> ~str {
 
 /**
  * The result of parsing a command line with a set of options
- * (result::t<match, fail_>)
+ * (result::t<matches, fail_>)
  */
-type result = result::result<match, fail_>;
+type result = result::result<matches, fail_>;
 
 /**
  * Parse command line arguments according to the provided options
@@ -311,22 +311,22 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
     ret ok({opts: opts, vals: vec::from_mut(vals), free: free});
 }
 
-fn opt_vals(m: match, nm: ~str) -> ~[optval] {
+fn opt_vals(m: matches, nm: ~str) -> ~[optval] {
     ret alt find_opt(m.opts, mkname(nm)) {
           some(id) { m.vals[id] }
           none { error!{"No option '%s' defined", nm}; fail }
         };
 }
 
-fn opt_val(m: match, nm: ~str) -> optval { ret opt_vals(m, nm)[0]; }
+fn opt_val(m: matches, nm: ~str) -> optval { ret opt_vals(m, nm)[0]; }
 
 /// Returns true if an option was matched
-fn opt_present(m: match, nm: ~str) -> bool {
+fn opt_present(m: matches, nm: ~str) -> bool {
     ret vec::len::<optval>(opt_vals(m, nm)) > 0u;
 }
 
 /// Returns true if any of several options were matched
-fn opts_present(m: match, names: ~[~str]) -> bool {
+fn opts_present(m: matches, names: ~[~str]) -> bool {
     for vec::each(names) |nm| {
         alt find_opt(m.opts, mkname(nm)) {
           some(_) { ret true; }
@@ -343,7 +343,7 @@ fn opts_present(m: match, names: ~[~str]) -> bool {
  * Fails if the option was not matched or if the match did not take an
  * argument
  */
-fn opt_str(m: match, nm: ~str) -> ~str {
+fn opt_str(m: matches, nm: ~str) -> ~str {
     ret alt opt_val(m, nm) { val(s) { s } _ { fail } };
 }
 
@@ -353,7 +353,7 @@ fn opt_str(m: match, nm: ~str) -> ~str {
  * Fails if the no option was provided from the given list, or if the no such
  * option took an argument
  */
-fn opts_str(m: match, names: ~[~str]) -> ~str {
+fn opts_str(m: matches, names: ~[~str]) -> ~str {
     for vec::each(names) |nm| {
         alt opt_val(m, nm) {
           val(s) { ret s }
@@ -370,7 +370,7 @@ fn opts_str(m: match, names: ~[~str]) -> ~str {
  *
  * Used when an option accepts multiple values.
  */
-fn opt_strs(m: match, nm: ~str) -> ~[~str] {
+fn opt_strs(m: matches, nm: ~str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
     for vec::each(opt_vals(m, nm)) |v| {
         alt v { val(s) { vec::push(acc, s); } _ { } }
@@ -379,7 +379,7 @@ fn opt_strs(m: match, nm: ~str) -> ~[~str] {
 }
 
 /// Returns the string argument supplied to a matching option or none
-fn opt_maybe_str(m: match, nm: ~str) -> option<~str> {
+fn opt_maybe_str(m: matches, nm: ~str) -> option<~str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { ret none::<~str>; }
     ret alt vals[0] { val(s) { some::<~str>(s) } _ { none::<~str> } };
@@ -393,7 +393,7 @@ fn opt_maybe_str(m: match, nm: ~str) -> option<~str> {
  * present but no argument was provided, and the argument if the option was
  * present and an argument was provided.
  */
-fn opt_default(m: match, nm: ~str, def: ~str) -> option<~str> {
+fn opt_default(m: matches, nm: ~str, def: ~str) -> option<~str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { ret none::<~str>; }
     ret alt vals[0] { val(s) { some::<~str>(s) } _ { some::<~str>(def) } }
@@ -872,33 +872,33 @@ mod tests {
     fn test_multi() {
         let args = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
         let opts = ~[optopt(~"e"), optopt(~"encrypt")];
-        let match = alt getopts(args, opts) {
+        let matches = alt getopts(args, opts) {
           result::ok(m) { m }
           result::err(f) { fail; }
         };
-        assert opts_present(match, ~[~"e"]);
-        assert opts_present(match, ~[~"encrypt"]);
-        assert opts_present(match, ~[~"encrypt", ~"e"]);
-        assert opts_present(match, ~[~"e", ~"encrypt"]);
-        assert !opts_present(match, ~[~"thing"]);
-        assert !opts_present(match, ~[]);
+        assert opts_present(matches, ~[~"e"]);
+        assert opts_present(matches, ~[~"encrypt"]);
+        assert opts_present(matches, ~[~"encrypt", ~"e"]);
+        assert opts_present(matches, ~[~"e", ~"encrypt"]);
+        assert !opts_present(matches, ~[~"thing"]);
+        assert !opts_present(matches, ~[]);
 
-        assert opts_str(match, ~[~"e"]) == ~"foo";
-        assert opts_str(match, ~[~"encrypt"]) == ~"foo";
-        assert opts_str(match, ~[~"e", ~"encrypt"]) == ~"foo";
-        assert opts_str(match, ~[~"encrypt", ~"e"]) == ~"foo";
+        assert opts_str(matches, ~[~"e"]) == ~"foo";
+        assert opts_str(matches, ~[~"encrypt"]) == ~"foo";
+        assert opts_str(matches, ~[~"e", ~"encrypt"]) == ~"foo";
+        assert opts_str(matches, ~[~"encrypt", ~"e"]) == ~"foo";
     }
 
     #[test]
     fn test_nospace() {
         let args = ~[~"-Lfoo"];
         let opts = ~[optmulti(~"L")];
-        let match = alt getopts(args, opts) {
+        let matches = alt getopts(args, opts) {
           result::ok(m) { m }
           result::err(f) { fail; }
         };
-        assert opts_present(match, ~[~"L"]);
-        assert opts_str(match, ~[~"L"]) == ~"foo";
+        assert opts_present(matches, ~[~"L"]);
+        assert opts_str(matches, ~[~"L"]) == ~"foo";
     }
 }
 
