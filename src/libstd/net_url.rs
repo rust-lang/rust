@@ -47,7 +47,7 @@ fn encode_inner(s: ~str, full_url: bool) -> ~str {
 
         while !rdr.eof() {
             let ch = rdr.read_byte() as char;
-            alt ch {
+            match ch {
               // unreserved:
               'A' to 'Z' |
               'a' to 'z' |
@@ -57,7 +57,7 @@ fn encode_inner(s: ~str, full_url: bool) -> ~str {
               }
               _ {
                 if full_url {
-                    alt ch {
+                    match ch {
                       // gen-delims:
                       ':' | '/' | '?' | '#' | '[' | ']' | '@' |
 
@@ -105,14 +105,14 @@ fn decode_inner(s: ~str, full_url: bool) -> ~str {
         let mut out = ~"";
 
         while !rdr.eof() {
-            alt rdr.read_char() {
+            match rdr.read_char() {
               '%' {
                 let bytes = rdr.read_bytes(2u);
                 let ch = uint::parse_buf(bytes, 16u).get() as char;
 
                 if full_url {
                     // Only decode some characters:
-                    alt ch {
+                    match ch {
                       // gen-delims:
                       ':' | '/' | '?' | '#' | '[' | ']' | '@' |
 
@@ -160,7 +160,7 @@ fn encode_plus(s: ~str) -> ~str {
 
         while !rdr.eof() {
             let ch = rdr.read_byte() as char;
-            alt ch {
+            match ch {
               'A' to 'Z' | 'a' to 'z' | '0' to '9' | '_' | '.' | '-' {
                 str::push_char(out, ch);
               }
@@ -211,10 +211,10 @@ fn decode_form_urlencoded(s: ~[u8]) ->
         let mut parsing_key = true;
 
         while !rdr.eof() {
-            alt rdr.read_char() {
+            match rdr.read_char() {
               '&' | ';' {
                 if key != ~"" && value != ~"" {
-                    let values = alt m.find(key) {
+                    let values = match m.find(key) {
                       some(values) { values }
                       none {
                         let values = @dvec();
@@ -231,7 +231,7 @@ fn decode_form_urlencoded(s: ~[u8]) ->
               }
               '=' { parsing_key = false; }
               ch {
-                let ch = alt ch {
+                let ch = match ch {
                   '%' {
                     uint::parse_buf(rdr.read_bytes(2u), 16u).get() as char
                   }
@@ -249,7 +249,7 @@ fn decode_form_urlencoded(s: ~[u8]) ->
         }
 
         if key != ~"" && value != ~"" {
-            let values = alt m.find(key) {
+            let values = match m.find(key) {
               some(values) { values }
               none {
                 let values = @dvec();
@@ -268,7 +268,7 @@ fn decode_form_urlencoded(s: ~[u8]) ->
 fn split_char_first(s: ~str, c: char) -> (~str, ~str) {
     let len = str::len(s);
     let mut index = len;
-    let mut match_ = 0;
+    let mut mat = 0;
     do io::with_str_reader(s) |rdr| {
         let mut ch : char;
         while !rdr.eof() {
@@ -276,16 +276,16 @@ fn split_char_first(s: ~str, c: char) -> (~str, ~str) {
             if ch == c {
                 // found a match, adjust markers
                 index = rdr.tell()-1;
-                match_ = 1;
+                mat = 1;
                 break;
             }
         }
     }
-    if index+match_ == len {
+    if index+mat == len {
         return (str::slice(s, 0, index), ~"");
     } else {
         return (str::slice(s, 0, index),
-             str::slice(s, index + match_, str::len(s)));
+             str::slice(s, index + mat, str::len(s)));
     }
 }
 
@@ -332,7 +332,7 @@ fn query_to_str(query: query) -> ~str {
 // returns the scheme and the rest of the url, or a parsing error
 fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
-        alt c {
+        match c {
           'A' to 'Z' | 'a' to 'z' { again; }
           '0' to '9' | '+' | '-' | '.' {
             if i == 0 {
@@ -392,7 +392,7 @@ fn get_authority(rawurl: ~str) ->
         if i < 2 { again; } // ignore the leading //
 
         // deal with input class first
-        alt c {
+        match c {
           '0' to '9' { }
           'A' to 'F' | 'a' to 'f' {
             if in == digit {
@@ -412,10 +412,10 @@ fn get_authority(rawurl: ~str) ->
         }
 
         // now process states
-        alt c {
+        match c {
           ':' {
             colon_count += 1;
-            alt st {
+            match st {
               start {
                 pos = i;
                 st = pass_host_port;
@@ -458,7 +458,7 @@ fn get_authority(rawurl: ~str) ->
           '@' {
             in = digit; // reset input class
             colon_count = 0; // reset count
-            alt st {
+            match st {
               start {
                 let user = str::slice(rawurl, begin, i);
                 userinfo = option::some({user : user,
@@ -489,7 +489,7 @@ fn get_authority(rawurl: ~str) ->
     }
 
     // finish up
-    alt st {
+    match st {
       start {
         if end+1 == len {
             host = str::slice(rawurl, begin, end+1);
@@ -527,7 +527,7 @@ fn get_path(rawurl: ~str, authority : bool) ->
     let len = str::len(rawurl);
     let mut end = len;
     for str::each_chari(rawurl) |i,c| {
-        alt c {
+        match c {
           'A' to 'Z' | 'a' to 'z' | '0' to '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '=' {
             again;
@@ -657,11 +657,11 @@ fn to_str(url: url) -> ~str {
     };
 
     return str::concat(~[copy url.scheme,
-                         ~":",
-                         authority,
-                         copy url.path,
-                         query,
-                         fragment]);
+                      ~":",
+                      authority,
+                      copy url.path,
+                      query,
+                      fragment]);
 }
 
 impl of to_str::to_str for url {
