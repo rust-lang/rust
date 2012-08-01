@@ -17,6 +17,7 @@ type url = {
     scheme: ~str,
     user: option<userinfo>,
     host: ~str,
+    port: option<~str>,
     path: ~str,
     query: query,
     fragment: option<~str>
@@ -29,9 +30,9 @@ type userinfo = {
 
 type query = ~[(~str, ~str)];
 
-fn url(-scheme: ~str, -user: option<userinfo>, -host: ~str,
+fn url(-scheme: ~str, -user: option<userinfo>, -host: ~str, -port: option<~str>,
        -path: ~str, -query: query, -fragment: option<~str>) -> url {
-    { scheme: scheme, user: user, host: host,
+    { scheme: scheme, user: user, host: host, port: port,
      path: path, query: query, fragment: fragment }
 }
 
@@ -319,12 +320,13 @@ fn query_from_str(rawquery: ~str) -> query {
 fn query_to_str(query: query) -> ~str {
     let mut strvec = ~[];
     for query.each |kv| {
-        let (k, v) = kv;
+        let (k, v) = copy kv;
         strvec += ~[#fmt("%s=%s", encode_component(k), encode_component(v))];
     };
     return str::connect(strvec, ~"&");
 }
 
+// returns the scheme and the rest of the url, or a parsing error
 fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
         alt c {
@@ -340,7 +342,7 @@ fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
                 return result::err(@~"url: Scheme cannot be empty.");
             } else {
                 return result::ok((rawurl.slice(0,i),
-                                rawurl.slice(i+3,str::len(rawurl))));
+                                rawurl.slice(i+1,str::len(rawurl))));
             }
           }
           _  {
@@ -349,6 +351,226 @@ fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
         }
     };
     return result::ok((copy rawurl, ~""));
+}
+
+// returns userinfo, host, port, and unparsed part, or an error
+// currently doesn't handle IPv6 addresses.
+fn get_authority(rawurl: ~str) -> 
+    result::result<(option<userinfo>, ~str, option<~str>, ~str), @~str> {
+    if !str::starts_with(rawurl, ~"//") {
+        // there is no authority.
+        return result::ok((option::none, ~"", option::none, copy rawurl));
+    }
+
+    enum state {
+        start, // starting state
+        pass_host_port, // could be in user or port
+        ip6_port, // either in ipv6 host or port
+        ip6_host, // are in an ipv6 host
+        in_host, // are in a host - may be ipv6, but don't know yet
+        in_port // are in port
+    }
+    enum input {
+        digit, // all digits
+        hex, // digits and letters a-f
+        unreserved // all other legal characters in usernames, passwords, hosts
+    }
+    let len = str::len(rawurl);
+    let mut st : state = start;
+    let mut in : input = digit; // most restricted, start here.
+
+    let mut userinfo : option<userinfo> = option::none;
+    let mut host : ~str = ~"";
+    let mut port : option::option<~str> = option::none;
+
+    let mut colon_count = 0;
+    let mut pos : uint = 0, begin : uint = 2;
+    let mut i : uint = 0;
+
+    let rdr = io::str_reader(rawurl);
+    let mut c : char;
+    while !rdr.eof() {
+        c = rdr.read_byte() as char;
+        i = rdr.tell() - 1; // we want base 0
+
+        if i < 2 { again; } // ignore the leading //
+
+        // deal with input class first
+        alt c {
+          '0' to '9' { }
+          'A' to 'F' | 'a' to 'f' {
+            if in == digit { 
+                in = hex; 
+            }
+          }
+          'G' to 'Z' | 'g' to 'z' | '-' | '.' | '_' | '~' | '%' |
+          '&' |'\'' | '(' | ')' | '+' | '!' | '*' | ',' | ';' | '=' {
+            in = unreserved;
+          }
+          ':' | '@' | '?' | '#' | '/' {
+            // separators, don't change anything
+          }
+          _ {
+            return result::err(@~"Illegal character in authority");
+          }
+        }
+
+        // now state machine        
+        alt c {
+          ':' {
+            colon_count += 1;
+            alt st {
+              start {
+                pos = i;
+                st = pass_host_port;
+              }
+              pass_host_port {
+                // multiple colons means ipv6 address.
+                if in == unreserved {
+                    return result::err(@~"Illegal characters in IPv6 address.");
+                }
+                st = ip6_host;
+              }
+              in_host {
+                pos = i;
+                // can't be sure whether this is an ipv6 address or a port
+                if in == unreserved {
+                    return result::err(@~"Illegal characters in authority.");
+                }
+                st = ip6_port;
+              }
+              ip6_port {
+                if in == unreserved {
+                    return result::err(@~"Illegal characters in authority.");
+                }
+                st = ip6_host;
+              }
+              ip6_host {
+                if colon_count > 7 {
+                    host = str::slice(rawurl, begin, i);
+                    pos = i;
+                    st = in_port;
+                }
+              }
+              _ {
+                return result::err(@~"Invalid ':' in authority.");
+              }
+            }
+            in = digit; // reset input class
+          }
+
+          '@' {
+            in = digit; // reset input class
+            colon_count = 0; // reset count
+            alt st {
+              start {
+                let user = str::slice(rawurl, begin, i);
+                userinfo = option::some({user : user, 
+                                         pass: option::none});
+                st = in_host;
+              }
+              pass_host_port {
+                let user = str::slice(rawurl, begin, pos);
+                let pass = str::slice(rawurl, pos+1, i);
+                userinfo = option::some({user: user, 
+                                         pass: option::some(pass)});
+                st = in_host;
+              }
+              _ {
+                return result::err(@~"Invalid '@' in authority.");
+              }
+            }
+            begin = i+1;
+          }
+          
+          '?' | '#' | '/' {
+            break;
+          }
+          _ { }
+        }
+    }
+
+    // finish up
+    alt st {
+      start {
+        if i+1 == len {
+            host = str::slice(rawurl, begin, i+1);
+        } else {
+            host = str::slice(rawurl, begin, i);
+        }
+      }
+      pass_host_port | ip6_port {
+        if in != digit {
+            return result::err(@~"Non-digit characters in port.");
+        }
+        host = str::slice(rawurl, begin, pos);
+        port = option::some(str::slice(rawurl, pos+1, i));
+      }
+      ip6_host | in_host {
+        host = str::slice(rawurl, begin, i);
+      }
+      in_port {
+        if in != digit {
+            return result::err(@~"Non-digit characters in port.");
+        }
+        port = option::some(str::slice(rawurl, pos+1, i));
+      }
+    }
+
+    let rest = if i+1 == len { ~"" } 
+    else { str::slice(rawurl, i, len) };
+    return result::ok((userinfo, host, port, rest));
+}
+
+
+// returns the path and unparsed part of url, or an error
+fn get_path(rawurl: ~str, authority : bool) -> 
+    result::result<(~str, ~str), @~str> {
+    let len = str::len(rawurl);
+    let mut end = len;
+    for str::each_chari(rawurl) |i,c| {
+        alt c {
+          'A' to 'Z' | 'a' to 'z' | '0' to '9' | '&' |'\'' | '(' | ')' | '.'
+          | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '=' {
+            again;
+          }
+          '?' | '#' {
+            end = i;
+            break;
+          }
+          _ { return result::err(@~"Invalid character in path.") }
+        }
+    }
+
+    if authority {
+        if end != 0 && !str::starts_with(rawurl, ~"/") {
+            return result::err(@~"Non-empty path must begin with\
+                               '/' in presence of authority.");
+        }
+    }
+    
+    return result::ok((decode_component(str::slice(rawurl, 0, end)), 
+                    str::slice(rawurl, end, len)));
+}
+
+// returns the parsed query and the fragment, if present
+fn get_query_fragment(rawurl: ~str) -> 
+    result::result<(query, option<~str>), @~str> {
+    if !str::starts_with(rawurl, ~"?") {
+        if str::starts_with(rawurl, ~"#") {
+            let f = decode_component(str::slice(rawurl, 
+                                                1, 
+                                                str::len(rawurl)));
+            return result::ok((~[], option::some(f)));
+        } else {
+            return result::ok((~[], option::none));
+        }
+    }
+    let (q, r) = split_char_first(str::slice(rawurl, 1, 
+                                             str::len(rawurl)), '#');
+    let f = if str::len(r) != 0 { 
+        option::some(decode_component(r)) } else { option::none };
+    return result::ok((query_from_str(q), f));
 }
 
 /**
@@ -365,37 +587,37 @@ fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
  */
 
 fn from_str(rawurl: ~str) -> result::result<url, ~str> {
+    // scheme
     let mut schm = get_scheme(rawurl);
     if result::is_err(schm) {
         return result::err(copy *result::get_err(schm));
     }
     let (scheme, rest) = result::unwrap(schm);
-    let (u, rest) = split_char_first(rest, '@');
-    let user = if str::len(rest) == 0 {
-        option::none
-    } else {
-        option::some(userinfo_from_str(u))
-    };
-    let rest = if str::len(rest) == 0 {
-         u
-    } else {
-        rest
-    };
-    let (rest, frag) = split_char_first(rest, '#');
-    let fragment = if str::len(frag) == 0 {
-        option::none
-    } else {
-        option::some(frag)
-    };
-    let (rest, query) = split_char_first(rest, '?');
-    let query = query_from_str(query);
-    let (host, pth) = split_char_first(rest, '/');
-    let mut path = decode_component(pth);
-    if str::len(path) != 0 {
-        str::unshift_char(path, '/');
-    }
 
-    return result::ok(url(scheme, user, host, path, query, fragment));
+    // authority
+    let mut auth = get_authority(rest);
+    if result::is_err(auth) {
+        return result::err(copy *result::get_err(auth));
+    }
+    let (userinfo, host, port, rest) = result::unwrap(auth);
+
+    // path
+    let has_authority = if host == ~"" { false } else { true };
+    let mut pth = get_path(rest, has_authority);
+    if result::is_err(pth) {
+        return result::err(copy *result::get_err(pth));
+    } 
+    let (path, rest) = result::unwrap(pth);
+
+    // query and fragment
+    let mut qry = get_query_fragment(rest);
+    if result::is_err(qry) {
+        return result::err(copy *result::get_err(qry));
+    }
+    let (query, fragment) = result::unwrap(qry);
+
+    return result::ok(url(scheme, userinfo, host, 
+                       port, path, query, fragment));
 }
 
 /**
@@ -425,7 +647,7 @@ fn to_str(url: url) -> ~str {
         str::concat(~[~"?", query_to_str(url.query)])
     };
     let fragment = if option::is_some(url.fragment) {
-        str::concat(~[~"#", option::unwrap(copy url.fragment)])
+        str::concat(~[~"#", encode_component(option::unwrap(copy url.fragment))])
     } else {
         ~""
     };
@@ -452,12 +674,91 @@ mod tests {
         let (u,v) = split_char_first(~"hello, sweet world", ',');
         assert u == ~"hello";
         assert v == ~" sweet world";
+        
+        let (u,v) = split_char_first(~"hello sweet world", ',');
+        assert u == ~"hello sweet world";
+        assert v == ~"";
+    }
+
+    #[test]
+    fn test_get_authority() {
+        let (u, h, p, r) = result::unwrap(get_authority(
+            ~"//user:pass@rust-lang.org/something"));
+        assert u == option::some({user: ~"user", 
+                                  pass: option::some(~"pass")});
+        assert h == ~"rust-lang.org";
+        assert option::is_none(p);
+        assert r == ~"/something";
+
+        let (u, h, p, r) = result::unwrap(get_authority(
+            ~"//rust-lang.org:8000?something"));
+        assert option::is_none(u);
+        assert h == ~"rust-lang.org";
+        assert p == option::some(~"8000");
+        assert r == ~"?something";
+        
+        let (u, h, p, r) = result::unwrap(get_authority(
+            ~"//rust-lang.org#blah"));
+        assert option::is_none(u);
+        assert h == ~"rust-lang.org";
+        assert option::is_none(p);
+        assert r == ~"#blah";
+
+        // ipv6 tests
+        let (_, h, _, _) = result::unwrap(get_authority(
+            ~"//2001:0db8:85a3:0042:0000:8a2e:0370:7334#blah"));
+        assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
+
+        let (_, h, p, _) = result::unwrap(get_authority(
+            ~"//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"));
+        assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
+        assert p == option::some(~"8000");
+
+        let (u, h, p, _) = result::unwrap(get_authority(
+            ~"//us:p@2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"));
+        assert u == option::some({user: ~"us", pass : option::some(~"p")});
+        assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
+        assert p == option::some(~"8000");        
+
+        // invalid authorities; 
+        assert result::is_err(get_authority(~"//user:pass@rust-lang:something"));        
+        assert result::is_err(get_authority(~"//user@rust-lang:something:/path"));
+        assert result::is_err(get_authority(
+            ~"//2001:0db8:85a3:0042:0000:8a2e:0370:7334:800a"));
+        assert result::is_err(get_authority(
+            ~"//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000:00"));
+
+        // these parse as empty, because they don't start with '//'
+        let (_, h, _, _) = result::unwrap(get_authority(~"user:pass@rust-lang"));
+        assert h == ~"";
+        let (_, h, _, _) = result::unwrap(get_authority(~"rust-lang.org"));
+        assert h == ~"";
+
+    }
+
+    #[test]
+    fn test_get_path() {
+        let (p, r) = result::unwrap(get_path(~"/something+%20orother", true));
+        assert p == ~"/something+ orother";
+        assert r == ~"";
+        let (p, r) = result::unwrap(get_path(~"test@email.com#fragment", false));
+        assert p == ~"test@email.com";
+        assert r == ~"#fragment";
+        let (p, r) = result::unwrap(get_path(~"/gen/:addr=?q=v", false));
+        assert p == ~"/gen/:addr=";
+        assert r == ~"?q=v";
+        
+        //failure cases
+        assert result::is_err(get_path(~"something?q", true));
+        
     }
 
     #[test]
     fn test_url_parse() {
         let url = ~"http://user:pass@rust-lang.org/doc?s=v#something";
-        let u = result::unwrap(from_str(url));
+        
+        let up = from_str(url);
+        let u = result::unwrap(up);
         assert u.scheme == ~"http";
         assert option::unwrap(copy u.user).user == ~"user";
         assert option::unwrap(copy option::unwrap(copy u.user).pass) == ~"pass";
