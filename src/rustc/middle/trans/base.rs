@@ -1420,35 +1420,6 @@ fn store_temp_expr(cx: block, action: copy_action, dst: ValueRef,
     ret move_val(cx, action, dst, src, t);
 }
 
-fn trans_crate_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
-    -> ValueRef {
-    let _icx = cx.insn_ctxt(~"trans_crate_lit");
-    alt lit.node {
-      ast::lit_int(i, t) { C_integral(T_int_ty(cx, t), i as u64, True) }
-      ast::lit_uint(u, t) { C_integral(T_uint_ty(cx, t), u, False) }
-      ast::lit_int_unsuffixed(i) {
-        let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
-        alt ty::get(lit_int_ty).struct {
-          ty::ty_int(t) {
-            C_integral(T_int_ty(cx, t), i as u64, True)
-          }
-          ty::ty_uint(t) {
-            C_integral(T_uint_ty(cx, t), i as u64, False)
-          }
-          _ { cx.sess.span_bug(lit.span,
-                               ~"integer literal doesn't have a type");
-            }
-        }
-      }
-      ast::lit_float(fs, t) { C_floating(*fs, T_float_ty(cx, t)) }
-      ast::lit_bool(b) { C_bool(b) }
-      ast::lit_nil { C_nil() }
-      ast::lit_str(s) {
-        cx.sess.span_unimpl(lit.span, ~"unique string in this context");
-      }
-    }
-}
-
 fn trans_lit(cx: block, e: @ast::expr, lit: ast::lit, dest: dest) -> block {
     let _icx = cx.insn_ctxt(~"trans_lit");
     if dest == ignore { ret cx; }
@@ -1456,11 +1427,10 @@ fn trans_lit(cx: block, e: @ast::expr, lit: ast::lit, dest: dest) -> block {
       ast::lit_str(s) { tvec::trans_estr(cx, s,
                                          ast::vstore_fixed(none), dest) }
       _ {
-        store_in_dest(cx, trans_crate_lit(cx.ccx(), e, lit), dest)
+        store_in_dest(cx, consts::const_lit(cx.ccx(), e, lit), dest)
       }
     }
 }
-
 
 fn trans_boxed_expr(bcx: block, contents: @ast::expr,
                     t: ty::t, heap: heap,
@@ -1472,7 +1442,6 @@ fn trans_boxed_expr(bcx: block, contents: @ast::expr,
     revoke_clean(bcx, box);
     ret store_in_dest(bcx, box, dest);
 }
-
 
 fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
                un_expr: @ast::expr, dest: dest) -> block {
@@ -4716,142 +4685,6 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     finish_fn(fcx, lltop);
 }
 
-
-// FIXME (#2530): this should do some structural hash-consing to avoid
-// duplicate constants. I think. Maybe LLVM has a magical mode that does so
-// later on?
-fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
-    let _icx = cx.insn_ctxt(~"trans_const_expr");
-    alt e.node {
-      ast::expr_lit(lit) { trans_crate_lit(cx, e, *lit) }
-      // If we have a vstore, just keep going; it has to be a string
-      ast::expr_vstore(e, _) { trans_const_expr(cx, e) }
-      ast::expr_binary(b, e1, e2) {
-        let te1 = trans_const_expr(cx, e1);
-        let te2 = trans_const_expr(cx, e2);
-
-        let te2 = cast_shift_const_rhs(b, te1, te2);
-
-        /* Neither type is bottom, and we expect them to be unified already,
-         * so the following is safe. */
-        let ty = ty::expr_ty(cx.tcx, e1);
-        let is_float = ty::type_is_fp(ty);
-        let signed = ty::type_is_signed(ty);
-        ret alt b {
-          ast::add    {
-            if is_float { llvm::LLVMConstFAdd(te1, te2) }
-            else        { llvm::LLVMConstAdd(te1, te2) }
-          }
-          ast::subtract {
-            if is_float { llvm::LLVMConstFSub(te1, te2) }
-            else        { llvm::LLVMConstSub(te1, te2) }
-          }
-          ast::mul    {
-            if is_float { llvm::LLVMConstFMul(te1, te2) }
-            else        { llvm::LLVMConstMul(te1, te2) }
-          }
-          ast::div    {
-            if is_float    { llvm::LLVMConstFDiv(te1, te2) }
-            else if signed { llvm::LLVMConstSDiv(te1, te2) }
-            else           { llvm::LLVMConstUDiv(te1, te2) }
-          }
-          ast::rem    {
-            if is_float    { llvm::LLVMConstFRem(te1, te2) }
-            else if signed { llvm::LLVMConstSRem(te1, te2) }
-            else           { llvm::LLVMConstURem(te1, te2) }
-          }
-          ast::and    |
-          ast::or     { cx.sess.span_unimpl(e.span, ~"binop logic"); }
-          ast::bitxor { llvm::LLVMConstXor(te1, te2) }
-          ast::bitand { llvm::LLVMConstAnd(te1, te2) }
-          ast::bitor  { llvm::LLVMConstOr(te1, te2) }
-          ast::shl    { llvm::LLVMConstShl(te1, te2) }
-          ast::shr    {
-            if signed { llvm::LLVMConstAShr(te1, te2) }
-            else      { llvm::LLVMConstLShr(te1, te2) }
-          }
-          ast::eq     |
-          ast::lt     |
-          ast::le     |
-          ast::ne     |
-          ast::ge     |
-          ast::gt     { cx.sess.span_unimpl(e.span, ~"binop comparator"); }
-        }
-      }
-      ast::expr_unary(u, e) {
-        let te = trans_const_expr(cx, e);
-        let ty = ty::expr_ty(cx.tcx, e);
-        let is_float = ty::type_is_fp(ty);
-        ret alt u {
-          ast::box(_)  |
-          ast::uniq(_) |
-          ast::deref   { cx.sess.span_bug(e.span,
-                           ~"bad unop type in trans_const_expr"); }
-          ast::not    { llvm::LLVMConstNot(te) }
-          ast::neg    {
-            if is_float { llvm::LLVMConstFNeg(te) }
-            else        { llvm::LLVMConstNeg(te) }
-          }
-        }
-      }
-      ast::expr_cast(base, tp) {
-        let ety = ty::expr_ty(cx.tcx, e), llty = type_of(cx, ety);
-        let basety = ty::expr_ty(cx.tcx, base);
-        let v = trans_const_expr(cx, base);
-        alt check (cast_type_kind(basety), cast_type_kind(ety)) {
-          (cast_integral, cast_integral) {
-            let s = if ty::type_is_signed(basety) { True } else { False };
-            llvm::LLVMConstIntCast(v, llty, s)
-          }
-          (cast_integral, cast_float) {
-            if ty::type_is_signed(basety) { llvm::LLVMConstSIToFP(v, llty) }
-            else { llvm::LLVMConstUIToFP(v, llty) }
-          }
-          (cast_float, cast_float) { llvm::LLVMConstFPCast(v, llty) }
-          (cast_float, cast_integral) {
-            if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
-            else { llvm::LLVMConstFPToUI(v, llty) }
-          }
-        }
-      }
-      ast::expr_path(path) {
-        alt cx.tcx.def_map.find(e.id) {
-          some(ast::def_const(def_id)) {
-            // Don't know how to handle external consts
-            assert ast_util::is_local(def_id);
-            alt cx.tcx.items.get(def_id.node) {
-              ast_map::node_item(@{
-                node: ast::item_const(_, subexpr), _
-              }, _) {
-                // FIXME (#2530): Instead of recursing here to regenerate
-                // the values for other constants, we should just look up
-                // the already-defined value.
-                trans_const_expr(cx, subexpr)
-              }
-              _ {
-                cx.sess.span_bug(e.span, ~"expected item");
-              }
-            }
-          }
-          _ { cx.sess.span_bug(e.span, ~"expected to find a const def") }
-        }
-      }
-      _ { cx.sess.span_bug(e.span,
-            ~"bad constant expression type in trans_const_expr"); }
-    }
-}
-
-fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
-    let _icx = ccx.insn_ctxt(~"trans_const");
-    let v = trans_const_expr(ccx, e);
-
-    // The scalars come back as 1st class LLVM vals
-    // which we have to stick into global constants.
-    let g = get_item_val(ccx, id);
-    llvm::LLVMSetInitializer(g, v);
-    llvm::LLVMSetGlobalConstant(g, True);
-}
-
 fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                     body: ast::blk, llctor_decl: ValueRef,
                     psubsts: param_substs, ctor_id: ast::node_id,
@@ -5008,7 +4841,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_const(_, expr) { trans_const(ccx, expr, item.id); }
+      ast::item_const(_, expr) { consts::trans_const(ccx, expr, item.id); }
       ast::item_foreign_mod(foreign_mod) {
         let abi = alt attr::foreign_abi(item.attrs) {
           either::right(abi_) { abi_ }

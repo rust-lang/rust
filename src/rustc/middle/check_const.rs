@@ -101,6 +101,8 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
               }
             }
           }
+          expr_tup(*) |
+          expr_rec(*) { }
           _ {
             sess.span_err(e.span,
                           ~"constant contains unimplemented expression type");
