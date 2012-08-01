@@ -1,3 +1,37 @@
+/*! Implementation of proto! extension.
+
+This is frequently called the pipe compiler. It handles code such as...
+
+~~~
+proto! pingpong {
+    ping: send {
+        ping -> pong
+    }
+    pong: recv {
+        pong -> ping
+    }
+}
+~~~
+
+There are several components:
+
+ * The parser (libsyntax/ext/pipes/parse_proto.rs)
+   * Responsible for building an AST from a protocol specification.
+
+ * The checker (libsyntax/ext/pipes/check.rs)
+   * Basic correctness checking for protocols (i.e. no undefined states, etc.)
+
+ * The analyzer (libsyntax/ext/pipes/liveness.rs)
+   * Determines whether the protocol is bounded or unbounded.
+
+ * The compiler (libsynatx/ext/pipes/pipec.rs)
+   * Generates a Rust AST from the protocol AST and the results of analysis.
+
+There is more documentation in each of the files referenced above.
+
+FIXME (#3072) - This is still incomplete.
+
+*/
 
 import codemap::span;
 import ext::base::ext_ctxt;
