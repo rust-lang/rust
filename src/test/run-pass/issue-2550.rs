@@ -9,7 +9,7 @@ class C {
 fn f<T:copy>(_x: T) {
 }
 
-#[warn(err_non_implicitly_copyable_typarams)]
+#[deny(non_implicitly_copyable_typarams)]
 fn main() {
     f(C(1u));
 }

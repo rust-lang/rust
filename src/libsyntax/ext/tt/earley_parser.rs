@@ -63,7 +63,7 @@ fn count_names(ms: &[matcher]) -> uint {
         }})
 }
 
-#[warn(no_non_implicitly_copyable_typarams)]
+#[allow(non_implicitly_copyable_typarams)]
 fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
     -> matcher_pos {
     let mut match_idx_hi = 0u;

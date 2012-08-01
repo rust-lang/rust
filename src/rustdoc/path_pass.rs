@@ -17,7 +17,7 @@ type ctxt = {
     mut path: ~[~str]
 };
 
-#[warn(no_non_implicitly_copyable_typarams)]
+#[allow(non_implicitly_copyable_typarams)]
 fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let ctxt = {
         srv: srv,
@@ -39,7 +39,7 @@ fn fold_item(fold: fold::fold<ctxt>, doc: doc::itemdoc) -> doc::itemdoc {
     }
 }
 
-#[warn(no_non_implicitly_copyable_typarams)]
+#[allow(non_implicitly_copyable_typarams)]
 fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
     let is_topmod = doc.id() == ast::crate_node_id;
 
