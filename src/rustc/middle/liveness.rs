@@ -470,8 +470,8 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       expr_loop_body(*) | expr_do_body(*) | expr_cast(*) |
       expr_unary(*) | expr_fail(*) |
       expr_break | expr_again | expr_lit(_) | expr_ret(*) |
-      expr_block(*) | expr_move(*) | expr_assign(*) | expr_swap(*) |
-      expr_assign_op(*) | expr_mac(*) | expr_struct(*) {
+      expr_block(*) | expr_move(*) | expr_unary_move(*) | expr_assign(*) |
+      expr_swap(*) | expr_assign_op(*) | expr_mac(*) | expr_struct(*) => {
           visit::visit_expr(expr, self, vt);
       }
     }
@@ -1104,6 +1104,7 @@ class liveness {
           expr_assert(e) |
           expr_addr_of(_, e) |
           expr_copy(e) |
+          expr_unary_move(e) |
           expr_loop_body(e) |
           expr_do_body(e) |
           expr_cast(e, _) |
@@ -1425,6 +1426,12 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
 
       expr_move(l, r) {
         self.check_lvalue(l, vt);
+        self.check_move_from_expr(r, vt);
+
+        visit::visit_expr(expr, self, vt);
+      }
+
+      expr_unary_move(r) {
         self.check_move_from_expr(r, vt);
 
         visit::visit_expr(expr, self, vt);

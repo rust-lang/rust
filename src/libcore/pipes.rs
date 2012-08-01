@@ -22,13 +22,13 @@ export stream, port, chan, shared_chan, port_set, channel;
 
 const SPIN_COUNT: uint = 0;
 
-macro_rules! move {
+macro_rules! move_it {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
 // This is to help make sure we only move out of enums in safe
 // places. Once there is unary move, it can be removed.
-fn move<T>(-x: T) -> T { x }
+fn move_it<T>(-x: T) -> T { x }
 
 enum state {
     empty,
@@ -228,7 +228,7 @@ class buffer_resource<T: send> {
     }
 
     drop unsafe {
-        let b = move!{self.buffer};
+        let b = move_it!{self.buffer};
         //let p = ptr::addr_of(*b);
         //error!{"drop %?", p};
         let old_count = atomic_sub_rel(b.header.ref_count, 1);
@@ -725,10 +725,10 @@ impl port<T: send> of recv<T> for port<T> {
     fn try_recv() -> option<T> {
         let mut endp = none;
         endp <-> self.endp;
-        alt move(pipes::try_recv(unwrap(endp))) {
+        alt move_it(pipes::try_recv(unwrap(endp))) {
           some(streamp::data(x, endp)) {
-            self.endp = some(move!{endp});
-            some(move!{x})
+            self.endp = some(move_it!{endp});
+            some(move_it!{x})
           }
           none { none }
         }
@@ -770,9 +770,9 @@ class port_set<T: send> : recv<T> {
             let i = wait_many(self.ports.map(|p| p.header()));
             // dereferencing an unsafe pointer nonsense to appease the
             // borrowchecker.
-            alt move(unsafe {(*ptr::addr_of(self.ports[i])).try_recv()}) {
+            alt move_it(unsafe {(*ptr::addr_of(self.ports[i])).try_recv()}) {
               some(m) {
-                  result = some(move!{m});
+                  result = some(move_it!{m});
               }
               none {
                 // Remove this port.

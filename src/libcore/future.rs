@@ -60,7 +60,7 @@ fn from_value<A>(+val: A) -> future<A> {
     })
 }
 
-macro_rules! move{
+macro_rules! move_it {
     {$x:expr} => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
@@ -78,7 +78,7 @@ fn from_port<A:send>(-port: future_pipe::client::waiting<A>) -> future<A> {
         port_ <-> *port;
         let port = option::unwrap(port_);
         alt recv(port) {
-          future_pipe::completed(data) { move!{data} }
+          future_pipe::completed(data) { move_it!{data} }
         }
     }
 }

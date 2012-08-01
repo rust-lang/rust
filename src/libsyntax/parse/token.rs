@@ -327,7 +327,7 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
         ~"fail", ~"false", ~"fn", ~"for",
         ~"if", ~"iface", ~"impl", ~"import",
         ~"let", ~"log", ~"loop",
-        ~"match", ~"mod", ~"module", ~"mut",
+        ~"match", ~"mod", ~"module", ~"move", ~"mut",
         ~"new",
         ~"owned",
         ~"pure",

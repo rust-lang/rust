@@ -1100,6 +1100,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_copy(e) { word_space(s, ~"copy"); print_expr(s, e); }
+      ast::expr_unary_move(e) { word_space(s, ~"move"); print_expr(s, e); }
       ast::expr_move(lhs, rhs) {
         print_expr(s, lhs);
         space(s.s);
