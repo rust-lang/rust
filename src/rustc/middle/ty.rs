@@ -235,7 +235,7 @@ type ctxt =
 
       // Stores the types for various nodes in the AST.  Note that this table
       // is not guaranteed to be populated until after typeck.  See
-      // typeck::fn_ctxt for details.
+      // typeck::check::fn_ctxt for details.
       node_types: node_type_table,
 
       // Stores the type parameters which were substituted to obtain the type
