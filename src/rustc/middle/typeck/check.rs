@@ -436,23 +436,23 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         do option::iter(m_dtor) |dtor| {
             // typecheck the dtor
             check_bare_fn(ccx, ast_util::dtor_dec(),
-                         dtor.node.body, dtor.node.id,
-                         some(class_t));
+                          dtor.node.body, dtor.node.id,
+                          some(class_t));
             // Write the dtor's self's type
             write_ty_to_tcx(tcx, dtor.node.self_id, class_t.self_ty);
         };
 
         // typecheck the members
         for members.each |m| { check_class_member(ccx, class_t, m); }
-          // Check that there's at least one field
-          let (fields,_) = split_class_items(members);
-          if fields.len() < 1u {
-              ccx.tcx.sess.span_err(
-                  it.span,
-                  ~"a class must have at least one field");
-          }
-          // Check that the class is instantiable
-          check_instantiable(ccx.tcx, it.span, it.id);
+        // Check that there's at least one field
+        let (fields,_) = split_class_items(members);
+        if fields.len() < 1u {
+            ccx.tcx.sess.span_err(
+                it.span,
+                ~"a class must have at least one field");
+        }
+        // Check that the class is instantiable
+        check_instantiable(ccx.tcx, it.span, it.id);
       }
       ast::item_ty(t, tps) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
