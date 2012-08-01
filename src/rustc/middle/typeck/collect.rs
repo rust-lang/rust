@@ -278,10 +278,10 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     } // |if_m|
 } // fn
 
-fn convert_class_item(ccx: @crate_ctxt,
-                      rp: bool,
-                      bounds: @~[ty::param_bounds],
-                      v: ast_util::ivar) {
+fn convert_field(ccx: @crate_ctxt,
+                 rp: bool,
+                 bounds: @~[ty::param_bounds],
+                 v: ast_util::ivar) {
     let tt = ccx.to_ty(type_rscope(rp), v.ty);
     write_ty_to_tcx(ccx.tcx, v.id, tt);
     /* add the field to the tcache */
@@ -391,7 +391,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         // Write the type of each of the members
         let (fields, methods) = split_class_items(members);
         for fields.each |f| {
-           convert_class_item(ccx, rp, tpt.bounds, f);
+           convert_field(ccx, rp, tpt.bounds, f);
         }
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let selfty = ty::mk_class(tcx, local_def(it.id), substs);
