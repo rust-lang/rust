@@ -32,7 +32,7 @@ proto! bank {
     }
 }
 
-macro_rules! move {
+macro_rules! move_it {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
@@ -41,15 +41,15 @@ fn switch<T: send, U>(+endp: pipes::recv_packet<T>,
     f(pipes::try_recv(endp))
 }
 
-fn move<T>(-x: T) -> T { x }
+fn move_it<T>(-x: T) -> T { x }
 
 macro_rules! follow {
     { 
         $($message:path($($x: ident),+) => $next:ident $e:expr)+
     } => (
-        |m| alt move(m) {
+        |m| alt move_it(m) {
           $(some($message($($x,)* next)) {
-            let $next = move!{next};
+            let $next = move_it!{next};
             $e })+
           _ { fail }
         }
@@ -58,9 +58,9 @@ macro_rules! follow {
     { 
         $($message:path => $next:ident $e:expr)+
     } => (
-        |m| alt move(m) {
+        |m| alt move_it(m) {
             $(some($message(next)) {
-                let $next = move!{next};
+                let $next = move_it!{next};
                 $e })+
                 _ { fail }
         } 
@@ -111,7 +111,7 @@ fn bank_client(+bank: bank::client::login) {
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = alt try_recv(bank) {
       some(ok(connected)) {
-        move!{connected}
+        move_it!{connected}
       }
       some(invalid(_)) { fail ~"login unsuccessful" }
       none { fail ~"bank closed the connection" }
