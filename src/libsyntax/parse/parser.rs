@@ -1477,9 +1477,10 @@ class parser {
     // For distingishing between record literals and blocks
     fn looking_at_record_literal() -> bool {
         let lookahead = self.look_ahead(1);
-        self.token_is_keyword(~"mut", lookahead) ||
-            (is_plain_ident(lookahead) &&
-             self.look_ahead(2) == token::COLON)
+        self.token == token::LBRACE &&
+            (self.token_is_keyword(~"mut", lookahead) ||
+             (is_plain_ident(lookahead) &&
+              self.look_ahead(2) == token::COLON))
     }
 
     fn parse_record_literal() -> expr_ {
@@ -1518,26 +1519,30 @@ class parser {
             let pats = self.parse_pats();
             let mut guard = none;
             if self.eat_keyword(~"if") { guard = some(self.parse_expr()); }
-            let blk = if self.token != token::FAT_ARROW {
-                self.parse_block()
+            let expr = if self.token != token::FAT_ARROW {
+                self.parse_block_expr(self.last_span.lo, default_blk)
             } else {
                 self.bump();
-                if self.token == token::LBRACE
-                    && !self.looking_at_record_literal() {
-                    self.parse_block()
-                } else {
-                    let expr = self.parse_expr();
-                    if self.token != token::RBRACE {
-                        self.expect(token::COMMA);
-                    }
-                    {node: {view_items: ~[],
-                            stmts: ~[],
-                            expr: some(expr),
-                            id: self.get_id(),
-                            rules: default_blk},
-                     span: expr.span}
-                }
+                self.parse_expr_res(RESTRICT_STMT_EXPR)
             };
+
+            let require_comma =
+                classify::expr_requires_semi_to_be_stmt(expr)
+                && self.token != token::RBRACE;
+
+            if require_comma {
+                self.expect(token::COMMA);
+            } else {
+                self.eat(token::COMMA);
+            }
+
+            let blk = {node: {view_items: ~[],
+                              stmts: ~[],
+                              expr: some(expr),
+                              id: self.get_id(),
+                              rules: default_blk},
+                       span: expr.span};
+
             vec::push(arms, {pats: pats, guard: guard, body: blk});
         }
         let mut hi = self.span.hi;
