@@ -229,6 +229,7 @@ mod linear {
                 self.insert_bucket(bucket);
                 idx = self.next_bucket(idx, len_buckets);
             }
+            self.size -= 1;
             ret true;
         }
     }
@@ -240,8 +241,12 @@ mod linear {
     }
 
     impl public_methods<K,V> for &const linear_map<K,V> {
-        fn size() -> uint {
+        fn len() -> uint {
             self.size
+        }
+
+        fn is_empty() -> bool {
+            self.len() == 0
         }
 
         fn contains_key(k: &K) -> bool {
@@ -375,6 +380,15 @@ mod test {
         assert m.remove(&1);
         assert m.get(&9) == 4;
         assert m.get(&5) == 3;
+    }
+
+    #[test]
+    fn empty() {
+        let mut m = ~linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        assert m.insert(1, 2);
+        assert !m.is_empty();
+        assert m.remove(&1);
+        assert m.is_empty();
     }
 
     #[test]
