@@ -120,22 +120,28 @@ macro_rules! maybe_whole_expr {
 }
 
 macro_rules! maybe_whole {
-    {$p:expr, $constructor:path} => { alt copy $p.token {
-      INTERPOLATED($constructor(x)) { $p.bump(); return x; }
+    {$p:expr, $constructor:ident} => { alt copy $p.token {
+      INTERPOLATED(token::$constructor(x)) { $p.bump(); return x; }
+      _ {}
+    }} ;
+    {deref $p:expr, $constructor:ident} => { alt copy $p.token {
+      INTERPOLATED(token::$constructor(x)) { $p.bump(); return *x; }
+      _ {}
+    }} ;
+    {some $p:expr, $constructor:ident} => { alt copy $p.token {
+      INTERPOLATED(token::$constructor(x)) { $p.bump(); return some(x); }
+      _ {}
+    }} ;
+    {pair_empty $p:expr, $constructor:ident} => { alt copy $p.token {
+      INTERPOLATED(token::$constructor(x)) { $p.bump(); return (~[], x); }
       _ {}
     }}
+
 }
+
+
 
 /* ident is handled by common.rs */
-
-fn dummy() {
-    /* we will need this to bootstrap maybe_whole! */
-    #macro[[#maybe_whole_path[p],
-            alt p.token {
-                INTERPOLATED(token::nt_path(pt)) { p.bump(); return pt; }
-                _ {} }]];
-}
-
 
 class parser {
     let sess: parse_sess;
@@ -389,6 +395,8 @@ class parser {
     }
 
     fn parse_ty(colons_before_params: bool) -> @ty {
+        maybe_whole!{self, nt_ty};
+
         let lo = self.span.lo;
 
         alt self.maybe_parse_dollar_mac() {
@@ -610,6 +618,7 @@ class parser {
         parse_ident: fn(parser) -> ident,
         parse_last_ident: fn(parser) -> ident) -> @path {
 
+        maybe_whole!{self, nt_path};
         let lo = self.span.lo;
         let global = self.eat(token::MOD_SEP);
         let mut ids = ~[];
@@ -638,6 +647,7 @@ class parser {
     fn parse_path_with_tps(colons: bool) -> @path {
         debug!{"parse_path_with_tps(colons=%b)", colons};
 
+        maybe_whole!{self, nt_path};
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
         if colons && !self.eat(token::MOD_SEP) {
@@ -1067,6 +1077,8 @@ class parser {
     }
 
     fn parse_token_tree() -> token_tree {
+        maybe_whole!{deref self, nt_tt};
+
         fn parse_tt_tok(p: parser, delim_ok: bool) -> token_tree {
             alt p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
@@ -1115,6 +1127,9 @@ class parser {
     }
 
     fn parse_matchers() -> ~[matcher] {
+        // unification of matchers and token_trees would vastly improve
+        // the interpolation of matchers
+        maybe_whole!{self, nt_matchers};
         let name_idx = @mut 0u;
         return self.parse_matcher_subseq(
             name_idx, token::LBRACE, token::RBRACE);
@@ -1601,6 +1616,8 @@ class parser {
     }
 
     fn parse_pat(refutable: bool) -> @pat {
+        maybe_whole!{self, nt_pat};
+
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         let mut pat;
@@ -1830,6 +1847,8 @@ class parser {
     }
 
     fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
+        maybe_whole!{self, nt_stmt};
+
         fn check_expected_item(p: parser, current_attrs: ~[attribute]) {
             // If we have attributes then we should have an item
             if vec::is_not_empty(current_attrs) {
@@ -1889,6 +1908,8 @@ class parser {
 
     fn parse_inner_attrs_and_block(parse_attrs: bool)
         -> (~[attribute], blk) {
+
+        maybe_whole!{pair_empty self, nt_block};
 
         fn maybe_parse_inner_attrs_and_next(p: parser, parse_attrs: bool) ->
             {inner: ~[attribute], next: ~[attribute]} {
@@ -2735,6 +2756,8 @@ class parser {
 
     fn parse_item(+attrs: ~[attribute], vis: visibility)
         -> option<@item> {
+
+        maybe_whole!{some self,nt_item};
         let lo = self.span.lo;
         let (ident, item_, extra_attrs) = if self.eat_keyword(~"const") {
             self.parse_item_const()
