@@ -41,7 +41,7 @@ fn nested(x: &x/int) {  // (1)
         // let f: &x/int = foo(&z, &z, |_x, _y, z| z ); // ERROR mismatched types: expected `&x/int` but found
 
         foo(x, &z, |x, _y, _z| x ); //~ ERROR mismatched types: expected `&z/int` but found `&x/int`
-        foo(x, &z, |_x, y, _z| y ); //~ ERROR mismatched types: expected `&z/int` but found `&<expression at
+        foo(x, &z, |_x, y, _z| y ); //~ ERROR mismatched types: expected `&z/int` but found `&
     }
 }
 

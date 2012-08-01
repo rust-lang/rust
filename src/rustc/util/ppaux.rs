@@ -3,7 +3,8 @@ import middle::ty;
 import middle::ty::{arg, canon_mode};
 import middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 import middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
-import middle::ty::{mt, re_bound, re_free, re_scope, re_var, region, t};
+import middle::ty::{mt, t};
+import middle::ty::{re_bound, re_free, re_scope, re_var, re_static, region};
 import middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
 import middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 import middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
@@ -12,12 +13,67 @@ import middle::ty::{ty_type, ty_uniq, ty_uint, ty_var, ty_var_integral};
 import middle::ty::{ty_unboxed_vec, vid};
 import metadata::encoder;
 import syntax::codemap;
+import syntax::codemap::span;
 import syntax::print::pprust;
 import syntax::print::pprust::{path_to_str, proto_to_str,
                                mode_to_str, purity_to_str};
 import syntax::{ast, ast_util};
 import syntax::ast_map;
 import driver::session::session;
+
+/// Returns a string like "reference valid for the block at 27:31 in foo.rs"
+/// that attempts to explain a lifetime in a way it might plausibly be
+/// understood.
+fn explain_region(cx: ctxt, region: ty::region) -> ~str {
+    ret alt region {
+      re_scope(node_id) => {
+        let scope_str = alt cx.items.find(node_id) {
+          some(ast_map::node_block(blk)) => {
+            explain_span(cx, ~"block", blk.span)
+          }
+          some(ast_map::node_expr(expr)) => {
+            alt expr.node {
+              ast::expr_call(*) => { explain_span(cx, ~"call", expr.span) }
+              ast::expr_alt(*) => { explain_span(cx, ~"alt", expr.span) }
+              _ => { explain_span(cx, ~"expression", expr.span) }
+            }
+          }
+          some(_) | none => {
+            // this really should not happen
+            fmt!{"unknown scope: %d.  Please report a bug.", node_id}
+          }
+        };
+        fmt!{"reference valid for the %s", scope_str}
+      }
+
+      re_free(id, br) => {
+        alt cx.items.find(id) {
+          some(ast_map::node_block(blk)) => {
+            fmt!{"reference with lifetime %s as defined on %s",
+                 bound_region_to_str(cx, br),
+                 explain_span(cx, ~"the block", blk.span)}
+          }
+          some(_) | none => {
+            // this really should not happen
+            fmt!{"reference with lifetime %s as defined on node %d",
+                 bound_region_to_str(cx, br), id}
+          }
+        }
+      }
+
+      re_static => { ~"reference to static data" }
+
+      // I believe these cases should not occur.
+      re_var(_) | re_bound(_) => {
+        fmt!{"reference with lifetime %?", region}
+      }
+    };
+
+    fn explain_span(cx: ctxt, heading: ~str, span: span) -> ~str {
+        let lo = codemap::lookup_char_pos_adj(cx.sess.codemap, span.lo);
+        fmt!{"%s at %u:%u", heading, lo.line, lo.col}
+    }
+}
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
     alt br {
@@ -79,8 +135,16 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 
 fn region_to_str(cx: ctxt, region: region) -> ~str {
     alt region {
-      re_scope(node_id) { fmt!{"&%s", re_scope_id_to_str(cx, node_id)} }
-      re_bound(br) { bound_region_to_str(cx, br) }
+      re_scope(node_id) {
+        if cx.sess.ppregions() {
+            fmt!{"&%s", re_scope_id_to_str(cx, node_id)}
+        } else {
+            ~"&"
+        }
+      }
+      re_bound(br) {
+          bound_region_to_str(cx, br)
+      }
       re_free(id, br) {
         if cx.sess.ppregions() {
             // For debugging, this version is sometimes helpful:
