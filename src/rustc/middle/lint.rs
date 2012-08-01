@@ -49,6 +49,7 @@ enum lint {
     non_implicitly_copyable_typarams,
     vecs_implicitly_copyable,
     deprecated_mode,
+    non_camel_case_types
 }
 
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
@@ -64,6 +65,7 @@ fn int_to_lint(i: int) -> lint {
       6 { non_implicitly_copyable_typarams }
       7 { vecs_implicitly_copyable }
       8 { deprecated_mode }
+      9 { non_camel_case_types }
     }
 }
 
@@ -136,6 +138,11 @@ fn get_lint_dict() -> lint_dict {
         (~"deprecated_mode",
          @{lint: deprecated_mode,
            desc: ~"warn about deprecated uses of modes",
+           default: allow}),
+
+        (~"non_camel_case_types",
+         @{lint: non_camel_case_types,
+           desc: ~"types, variants and traits must have camel case names",
            default: allow})
     ];
     hash_from_strs(v)
@@ -333,6 +340,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_ctypes(cx, i);
     check_item_while_true(cx, i);
     check_item_path_statement(cx, i);
+    check_item_non_camel_case_types(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -431,6 +439,39 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
         with *visit::default_simple_visitor()
     }));
     visit::visit_item(it, (), visit);
+}
+
+fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
+    fn is_camel_case(ident: ast::ident) -> bool {
+        assert ident.is_not_empty();
+        char::is_uppercase(str::char_at(*ident, 0)) &&
+            !ident.contains_char('_')
+    }
+
+    fn check_case(cx: ty::ctxt, ident: ast::ident,
+                  expr_id: ast::node_id, item_id: ast::node_id,
+                  span: span) {
+        if !is_camel_case(ident) {
+            cx.sess.span_lint(
+                non_camel_case_types, expr_id, item_id, span,
+                ~"type, variant, or trait must be camel case");
+        }
+    }
+
+    alt it.node {
+      ast::item_ty(*) | ast::item_class(*) |
+      ast::item_trait(*) | ast::item_impl(*) {
+        check_case(cx, it.ident, it.id, it.id, it.span)
+      }
+      ast::item_enum(variants, _) {
+        check_case(cx, it.ident, it.id, it.id, it.span);
+        for variants.each |variant| {
+            check_case(cx, variant.node.name,
+                       variant.node.id, it.id, variant.span);
+        }
+      }
+      _ { }
+    }
 }
 
 fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
