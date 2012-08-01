@@ -79,11 +79,16 @@ import typeck::infer::{resolve_type, force_tvar};
 
 import std::map::str_hash;
 
+type self_info = {
+    self_ty: ty::t,
+    node_id: ast::node_id,
+};
+
 type fn_ctxt_ =
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
-    {self_ty: option<ty::t>,
+    {self_info: option<self_info>,
      ret_ty: ty::t,
      // Used by loop bodies that return from the outer function
      indirect_ret_ty: option<ty::t>,
@@ -122,7 +127,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
                  region_bnd: ast::node_id) -> @fn_ctxt {
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
-    @fn_ctxt_({self_ty: none,
+    @fn_ctxt_({self_info: none,
                ret_ty: rty,
                indirect_ret_ty: none,
                purity: ast::pure_fn,
@@ -170,14 +175,14 @@ fn check_bare_fn(ccx: @crate_ctxt,
                  decl: ast::fn_decl,
                  body: ast::blk,
                  id: ast::node_id,
-                 self_ty: option<ty::t>) {
+                 self_info: option<self_info>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
     let fn_ty = alt check ty::get(fty).struct { ty::ty_fn(f) {f} };
-    check_fn(ccx, self_ty, fn_ty, decl, body, false, none);
+    check_fn(ccx, self_info, fn_ty, decl, body, false, none);
 }
 
 fn check_fn(ccx: @crate_ctxt,
-            self_ty: option<ty::t>,
+            self_info: option<self_info>,
             fn_ty: ty::fn_ty,
             decl: ast::fn_decl,
             body: ast::blk,
@@ -191,20 +196,20 @@ fn check_fn(ccx: @crate_ctxt,
     // types with free ones.  The free region references will be bound
     // the node_id of the body block.
 
-    let {isr, self_ty, fn_ty} = {
+    let {isr, self_info, fn_ty} = {
         let old_isr = option::map_default(old_fcx, @nil,
                                          |fcx| fcx.in_scope_regions);
-        replace_bound_regions_in_fn_ty(tcx, old_isr, self_ty, fn_ty,
+        replace_bound_regions_in_fn_ty(tcx, old_isr, self_info, fn_ty,
                                        |br| ty::re_free(body.node.id, br))
     };
 
     let arg_tys = fn_ty.inputs.map(|a| a.ty);
     let ret_ty = fn_ty.output;
 
-    debug!{"check_fn(arg_tys=%?, ret_ty=%?, self_ty=%?)",
+    debug!{"check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
            arg_tys.map(|a| ty_to_str(tcx, a)),
            ty_to_str(tcx, ret_ty),
-           option::map(self_ty, |st| ty_to_str(tcx, st))};
+           option::map(self_info, |s| ty_to_str(tcx, s.self_ty))};
 
     // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,
@@ -237,7 +242,7 @@ fn check_fn(ccx: @crate_ctxt,
             }
         } else { none };
 
-        @fn_ctxt_({self_ty: self_ty,
+        @fn_ctxt_({self_info: self_info,
                    ret_ty: ret_ty,
                    indirect_ret_ty: indirect_ret_ty,
                    purity: purity,
@@ -359,11 +364,12 @@ fn check_fn(ccx: @crate_ctxt,
     }
 }
 
-fn check_method(ccx: @crate_ctxt, method: @ast::method, self_ty: ty::t) {
-    check_bare_fn(ccx, method.decl, method.body, method.id, some(self_ty));
+fn check_method(ccx: @crate_ctxt, method: @ast::method,
+                self_info: self_info) {
+    check_bare_fn(ccx, method.decl, method.body, method.id, some(self_info));
 }
 
-fn check_class_member(ccx: @crate_ctxt, class_t: ty::t,
+fn check_class_member(ccx: @crate_ctxt, class_t: self_info,
                       cm: @ast::class_member) {
     alt cm.node {
       ast::instance_var(_,t,_,_,_) { }
@@ -409,12 +415,14 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let rp = ccx.tcx.region_paramd_items.contains_key(it.id);
         debug!{"item_impl %s with id %d rp %b",
                *it.ident, it.id, rp};
-        let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
-        for ms.each |m| { check_method(ccx, m, self_ty);}
+        let self_info = {self_ty: ccx.to_ty(rscope::type_rscope(rp), ty),
+                         node_id: it.id };
+        for ms.each |m| { check_method(ccx, m, self_info);}
       }
       ast::item_class(tps, traits, members, m_ctor, m_dtor) {
         let tcx = ccx.tcx;
-        let class_t = ty::node_id_to_type(tcx, it.id);
+        let class_t = {self_ty: ty::node_id_to_type(tcx, it.id),
+                       node_id: it.id};
 
         do option::iter(m_ctor) |ctor| {
             // typecheck the ctor
@@ -422,7 +430,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                           ctor.node.body, ctor.node.id,
                           some(class_t));
             // Write the ctor's self's type
-            write_ty_to_tcx(tcx, ctor.node.self_id, class_t);
+            write_ty_to_tcx(tcx, ctor.node.self_id, class_t.self_ty);
         }
 
         do option::iter(m_dtor) |dtor| {
@@ -431,7 +439,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                          dtor.node.body, dtor.node.id,
                          some(class_t));
             // Write the dtor's self's type
-            write_ty_to_tcx(tcx, dtor.node.self_id, class_t);
+            write_ty_to_tcx(tcx, dtor.node.self_id, class_t.self_ty);
         };
 
         // typecheck the members
@@ -1123,7 +1131,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         fcx.write_ty(expr.id, fty);
 
-        check_fn(fcx.ccx, fcx.self_ty, fn_ty, decl, body,
+        check_fn(fcx.ccx, fcx.self_info, fn_ty, decl, body,
                  is_loop_body, some(fcx));
     }
 
@@ -2145,12 +2153,12 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         ret no_params(typ);
       }
       ast::def_self(_) {
-        alt fcx.self_ty {
-          some(self_ty) {
-            ret no_params(self_ty);
+        alt fcx.self_info {
+          some(self_info) {
+            ret no_params(self_info.self_ty);
           }
           none {
-              fcx.ccx.tcx.sess.span_bug(sp, ~"def_self with no self_ty");
+              fcx.ccx.tcx.sess.span_bug(sp, ~"def_self with no self_info");
           }
         }
       }
