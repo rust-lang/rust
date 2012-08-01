@@ -634,6 +634,11 @@ fn to_str(url: url) -> ~str {
     } else {
        ~""
     };
+    let authority = if str::len(url.host) != 0 {
+        str::concat(~[~"//", user, copy url.host])
+    } else {
+        ~""
+    };
     let query = if url.query.len() == 0 {
         ~""
     } else {
@@ -647,9 +652,8 @@ fn to_str(url: url) -> ~str {
     };
 
     ret str::concat(~[copy url.scheme,
-                      ~"://",
-                      user,
-                      copy url.host,
+                      ~":",
+                      authority,
                       copy url.path,
                       query,
                       fragment]);
@@ -836,6 +840,12 @@ mod tests {
         let u = result::unwrap(from_str(url));
         assert u.path == ~"/doc uments";
         assert u.query[0] == (~"ba%d ", ~"#&+");
+    }
+
+    #[test]
+    fn test_url_without_authority() {
+        let url = ~"mailto:test@email.com";
+        assert to_str(result::unwrap(from_str(url))) == url;
     }
 
     #[test]
