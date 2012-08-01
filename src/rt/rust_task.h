@@ -431,10 +431,10 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     assert(get_sp_limit() != 0 && "Stack must be configured");
     assert(next_rust_sp);
 
-    bool had_reentered_rust_stack = reentered_rust_stack;
+    bool had_reentered_rust_stack;
     {
-        // FIXME (#1868) This must be racy. Figure it out.
         scoped_lock with(lifecycle_lock);
+        had_reentered_rust_stack = reentered_rust_stack;
         reentered_rust_stack = true;
     }
 

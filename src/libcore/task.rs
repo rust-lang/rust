@@ -81,11 +81,13 @@ enum task { task_handle(task_id) }
 /**
  * Indicates the manner in which a task exited.
  *
- * A task that completes without failing and whose supervised children
- * complete without failing is considered to exit successfully.
+ * A task that completes without failing is considered to exit successfully.
+ * Supervised ancestors and linked siblings may yet fail after this task
+ * succeeds. Also note that in such a case, it may be nondeterministic whether
+ * linked failure or successful exit happen first.
  *
- * FIXME (See #1868): This description does not indicate the current behavior
- * for linked failure.
+ * If you wish for this result's delivery to block until all linked and/or
+ * children tasks complete, recommend using a result future.
  */
 enum task_result {
     success,
@@ -1505,8 +1507,7 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
 // A couple bonus linked failure tests - testing for failure propagation even
 // when the middle task exits successfully early before kill signals are sent.
 
-#[test] #[should_fail] // #[ignore(cfg(windows))]
-#[ignore] // FIXME (#1868) (bblum) make this work
+#[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_failure_propagate_grandchild() {
     // Middle task exits; does grandparent's failure propagate across the gap?
     do spawn_supervised {

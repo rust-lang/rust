@@ -634,7 +634,7 @@ rust_task::on_rust_stack() {
 void
 rust_task::inhibit_kill() {
     scoped_lock with(lifecycle_lock);
-    // FIXME (#1868) Check here if we have to die
+    // Here might be good, though not mandatory, to check if we have to die.
     disallow_kill++;
 }
 
