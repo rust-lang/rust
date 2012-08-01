@@ -2,6 +2,8 @@ import run::spawn_process;
 import io::{writer_util, reader_util};
 import libc::{c_int, pid_t};
 
+import pipes::chan;
+
 export run;
 
 #[cfg(target_os = "win32")]
@@ -58,29 +60,30 @@ fn run(lib_path: ~str,
 
 
     writeclose(pipe_in.out, input);
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = pipes::port_set();
+    let ch = p.chan();
     do task::spawn_sched(task::single_threaded) {
         let errput = readclose(pipe_err.in);
-        comm::send(ch, (2, errput));
+        ch.send((2, errput));
     }
+    let ch = p.chan();
     do task::spawn_sched(task::single_threaded) {
         let output = readclose(pipe_out.in);
-        comm::send(ch, (1, output));
+        ch.send((1, output));
     }
     let status = run::waitpid(pid);
     let mut errs = ~"";
     let mut outs = ~"";
     let mut count = 2;
     while count > 0 {
-        let stream = comm::recv(p);
-        alt check stream {
-            (1, s) {
-                outs = s;
-            }
-            (2, s) {
-                errs = s;
-            }
+        alt p.recv() {
+          (1, s) {
+            outs = s;
+          }
+          (2, s) {
+            errs = s;
+          }
+          _ { fail }
         };
         count -= 1;
     };
