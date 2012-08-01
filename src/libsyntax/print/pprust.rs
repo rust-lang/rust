@@ -6,7 +6,7 @@ import pp::{break_offset, word, printer,
             inconsistent, eof};
 import diagnostic;
 import ast::{required, provided};
-import ast_util::{operator_prec, lone_block_expr};
+import ast_util::{operator_prec};
 import dvec::{dvec, extensions};
 import parse::classify::*;
 import util::interner;
@@ -1052,17 +1052,21 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
               none { }
             }
             word_space(s, ~"=>");
-            alt lone_block_expr(arm.body) {
+            // Extract the expression from the extra block the parser adds
+            assert arm.body.node.view_items.is_empty();
+            assert arm.body.node.stmts.is_empty();
+            assert arm.body.node.rules == ast::default_blk;
+            alt arm.body.node.expr {
               some(expr) => {
                 end(s); // close the ibox for the pattern
                 print_expr(s, expr);
-                if i < len - 1 { word(s.s, ~","); }
+                if expr_requires_semi_to_be_stmt(expr)
+                    && i < len - 1 {
+                    word(s.s, ~",");
+                }
                 end(s); // close enclosing cbox
               }
-              none => {
-                print_possibly_embedded_block(s, arm.body, block_normal,
-                                              alt_indent_unit);
-              }
+              none => fail
             }
         }
         bclose_(s, expr.span, alt_indent_unit);

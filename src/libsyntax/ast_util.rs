@@ -588,13 +588,6 @@ fn view_path_id(p: @view_path) -> node_id {
     }
 }
 
-fn lone_block_expr(blk: blk) -> option<@ast::expr> {
-    if blk.node.view_items.len() != 0 { ret none; }
-    if blk.node.stmts.len() != 0 { ret none; }
-    if blk.node.rules != default_blk { ret none; }
-    ret blk.node.expr;
-}
-
 // Local Variables:
 // mode: rust
 // fill-column: 78;
