@@ -1,16 +1,9 @@
 //! Types/fns concerning URLs (see RFC 3986)
 
-import map;
-import map::{hashmap, str_hash};
-import io::{reader, reader_util};
-import dvec::{dvec, extensions};
+use std;
+import std::*;
 
-export url, userinfo, query;
-export from_str, to_str;
-
-export encode, decode;
-export encode_component, decode_component;
-export encode_form_urlencoded, decode_form_urlencoded;
+export url, userinfo, query, from_str, to_str, get_scheme;
 
 type url = {
     scheme: ~str,
@@ -26,7 +19,7 @@ type userinfo = {
     pass: option<~str>
 };
 
-type query = map::hashmap<~str, @~str>;
+type query = ~[(~str, ~str)];
 
 fn url(-scheme: ~str, -user: option<userinfo>, -host: ~str,
        -path: ~str, -query: query, -fragment: option<~str>) -> url {
@@ -173,7 +166,7 @@ fn encode_plus(s: ~str) -> ~str {
 /** 
  * Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
  */
-fn encode_form_urlencoded(m: hashmap<~str, @dvec<@~str>>) -> ~str {
+fn encode_form_urlencoded(m: map::hashmap<~str, @dvec::dvec<@~str>>) -> ~str {
     let mut out = ~"";
     let mut first = true;
 
@@ -199,9 +192,9 @@ fn encode_form_urlencoded(m: hashmap<~str, @dvec<@~str>>) -> ~str {
  * Decode a string encoded with the 'application/x-www-form-urlencoded' media
  * type into a hashmap.
  */
-fn decode_form_urlencoded(s: ~[u8]) -> hashmap<~str, @dvec<@~str>> {
+fn decode_form_urlencoded(s: ~[u8]) -> map::hashmap<~str, @dvec::dvec<@~str>> {
     do io::with_bytes_reader(s) |rdr| {
-        let m = str_hash();
+        let m = map::str_hash();
         let mut key = ~"";
         let mut value = ~"";
         let mut parsing_key = true;
@@ -213,7 +206,7 @@ fn decode_form_urlencoded(s: ~[u8]) -> hashmap<~str, @dvec<@~str>> {
                     let values = alt m.find(key) {
                       some(values) { values }
                       none {
-                        let values = @dvec();
+                        let values = @dvec::dvec();
                         m.insert(key, values);
                         values
                       }
@@ -248,7 +241,7 @@ fn decode_form_urlencoded(s: ~[u8]) -> hashmap<~str, @dvec<@~str>> {
             let values = alt m.find(key) {
               some(values) { values }
               none {
-                let values = @dvec();
+                let values = @dvec::dvec();
                 m.insert(key, values);
                 values
               }
@@ -305,11 +298,11 @@ fn userinfo_to_str(-userinfo: userinfo) -> ~str {
 }
 
 fn query_from_str(rawquery: ~str) -> query {
-    let query: query = map::str_hash();
+    let mut query: query = ~[];
     if str::len(rawquery) != 0 {
         for str::split_char(rawquery, '&').each |p| {
             let (k, v) = split_char_first(p, '=');
-            query.insert(decode_component(k), @decode_component(v));
+            vec::push(query, (decode_component(k), decode_component(v)));
         };
     }
     ret query;
@@ -317,8 +310,9 @@ fn query_from_str(rawquery: ~str) -> query {
 
 fn query_to_str(query: query) -> ~str {
     let mut strvec = ~[];
-    for query.each |k, v| {
-        strvec += ~[#fmt("%s=%s", encode_component(k), encode_component(*v))];
+    for query.each |kv| {
+        let (k, v) = kv;
+        strvec += ~[#fmt("%s=%s", encode_component(k), encode_component(v))];
     };
     ret str::connect(strvec, ~"&");
 }
@@ -417,7 +411,7 @@ fn to_str(url: url) -> ~str {
     } else {
        ~""
     };
-    let query = if url.query.size() == 0 {
+    let query = if url.query.len() == 0 {
         ~""
     } else {
         str::concat(~[~"?", query_to_str(url.query)])
@@ -435,6 +429,12 @@ fn to_str(url: url) -> ~str {
                       copy url.path,
                       query,
                       fragment]);
+}
+
+impl of to_str::to_str for url {
+    fn to_str() -> ~str {
+        to_str(self)
+    }
 }
 
 #[cfg(test)]
@@ -455,7 +455,7 @@ mod tests {
         assert option::unwrap(copy option::unwrap(copy u.user).pass) == ~"pass";
         assert u.host == ~"rust-lang.org";
         assert u.path == ~"/doc";
-        assert *u.query.get(~"s") == ~"v";
+        assert u.query[0] == (~"s", ~"v");
         assert option::unwrap(copy u.fragment) == ~"something";
     }
 
@@ -525,7 +525,7 @@ mod tests {
         let url = ~"http://rust-lang.org/doc%20uments?ba%25d%20=%23%26%2B";
         let u = result::unwrap(from_str(url));
         assert u.path == ~"/doc uments";
-        assert *u.query.get(~"ba%d ") == ~"#&+";
+        assert u.query[0] == (~"ba%d ", ~"#&+");
     }
 
     #[test]
@@ -642,18 +642,18 @@ mod tests {
 
     #[test]
     fn test_encode_form_urlencoded() {
-        let m = str_hash();
+        let m = map::str_hash();
         assert encode_form_urlencoded(m) == ~"";
 
-        m.insert(~"", @dvec());
-        m.insert(~"foo", @dvec());
+        m.insert(~"", @dvec::dvec());
+        m.insert(~"foo", @dvec::dvec());
         assert encode_form_urlencoded(m) == ~"";
 
-        let m = str_hash();
+        let m = map::str_hash();
         m.insert(~"foo", @dvec::from_vec(~[mut @~"bar", @~"123"]));
         assert encode_form_urlencoded(m) == ~"foo=bar&foo=123";
 
-        let m = str_hash();
+        let m = map::str_hash();
         m.insert(~"foo bar", @dvec::from_vec(~[mut @~"abc", @~"12 = 34"]));
         assert encode_form_urlencoded(m) == ~"foo+bar=abc&foo+bar=12+%3D+34";
     }
@@ -662,7 +662,7 @@ mod tests {
     fn test_decode_form_urlencoded() {
         import map::hash_from_strs;
 
-        assert decode_form_urlencoded(~[]) == str_hash();
+        assert decode_form_urlencoded(~[]) == map::str_hash();
 
         let s = str::bytes(~"a=1&foo+bar=abc&foo+bar=12+%3D+34");
         assert decode_form_urlencoded(s) == hash_from_strs(~[

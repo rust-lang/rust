@@ -18,7 +18,8 @@ def report_err(s):
     print("%s:%d: %s" % (fileinput.filename(), fileinput.filelineno(), s))
     err=1
 
-file_names = [s for s in sys.argv[1:] if not s.endswith("_gen.rs")]
+file_names = [s for s in sys.argv[1:] if (not s.endswith("_gen.rs"))
+                                     and (not s.startswith(".#"))]
 
 try:
     for line in fileinput.input(file_names,

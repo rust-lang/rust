@@ -7,7 +7,6 @@
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 
 #[link(name = "cargo",
@@ -19,7 +18,15 @@
 
 #[no_core];
 
-#[warn(no_non_implicitly_copyable_typarams,no_vecs_not_implicitly_copyable)];
+
+// NB: transitional for stage0:
+#[allow(unrecognized_lint)];
+#[warn(no_unrecognized_warning)];
+#[warn(no_non_implicitly_copyable_typarams,
+       no_vecs_not_implicitly_copyable)];
+// The new version:
+#[allow(vecs_implicitly_copyable,
+        non_implicitly_copyable_typarams)];
 
 use core(vers = "0.3");
 use std(vers = "0.3");

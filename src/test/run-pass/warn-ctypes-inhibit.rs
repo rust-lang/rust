@@ -1,6 +1,6 @@
-// compile-flags:-W err-ctypes
+// compile-flags:-D ctypes
 
-#[warn(no_ctypes)];
+#[allow(ctypes)];
 
 #[nolink]
 extern mod libc {

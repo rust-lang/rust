@@ -1,7 +1,7 @@
 import std::map::hashmap;
 
 import ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
-             tt_delim, tt_flat, item_mac};
+             tt_delim, tt_tok, item_mac};
 import fold::*;
 import ext::base::*;
 import ext::qquote::{qq_helper};
@@ -16,7 +16,12 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     -> (expr_, span)
 {
     ret alt e {
+      // expr_mac should really be expr_ext or something; it's the
+      // entry-point for all syntax extensions.
           expr_mac(mac) {
+
+            // Old-style macros, for compatibility, will erase this whole
+            // block once we've transitioned.
             alt mac.node {
               mac_invoc(pth, args, body) {
                 assert (vec::len(pth.idents) > 0u);
@@ -58,6 +63,9 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                   }
                 }
               }
+
+              // Token-tree macros, these will be the only case when we're
+              // finished transitioning.
               mac_invoc_tt(pth, tts) {
                 assert (vec::len(pth.idents) == 1u);
                 let extname = pth.idents[0];
@@ -81,7 +89,20 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                     cx.bt_pop();
 
                     (fully_expanded, s)
+                  }
+                  some(normal({expander: exp, span: exp_sp})) {
+                    //convert the new-style invoc for the old-style macro
+                    let arg = base::tt_args_to_original_flavor(cx, pth.span,
+                                                               tts);
+                    let expanded = exp(cx, mac.span, arg, none);
 
+                    cx.bt_push(expanded_from({call_site: s,
+                                callie: {name: *extname, span: exp_sp}}));
+                    //keep going, outside-in
+                    let fully_expanded = fld.fold_expr(expanded).node;
+                    cx.bt_pop();
+
+                    (fully_expanded, s)
                   }
                   _ {
                     cx.span_fatal(pth.span,
@@ -98,6 +119,15 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
         };
 }
 
+// This is a secondary mechanism for invoking syntax extensions on items:
+// "decorator" attributes, such as #[auto_serialize]. These are invoked by an
+// attribute prefixing an item, and are interpreted by feeding the item
+// through the named attribute _as a syntax extension_ and splicing in the
+// resulting item vec into place in favour of the decorator. Note that
+// these do _not_ work for macro extensions, just item_decorator ones.
+//
+// NB: there is some redundancy between this and expand_item, below, and
+// they might benefit from some amount of semantic and language-UI merger.
 fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                     module: ast::_mod, fld: ast_fold,
                     orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
@@ -132,7 +162,8 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     ret {items: new_items with module};
 }
 
-/* record module we enter for `#mod` */
+// Support for item-position macro invocations, exactly the same
+// logic as for expression-position macro invocations.
 fn expand_item(exts: hashmap<~str, syntax_extension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                orig: fn@(&&@ast::item, ast_fold) -> option<@ast::item>)

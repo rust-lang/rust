@@ -15,7 +15,7 @@ import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      clear_in_poststate_};
 import driver::session::session;
 import dvec::{dvec, extensions};
-import tritv::{dont_care, tfalse, tritv_get, ttrue};
+import tritv::{trit, tfalse, ttrue, dont_care, t};
 
 import syntax::print::pprust::{constr_args_to_str, lit_to_str};
 
@@ -59,7 +59,7 @@ fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> ~str {
     let mut s = ~"";
     let mut comma = false;
     for constraints(fcx).each |p| {
-        alt tritv_get(v, p.bit_num) {
+        alt v.get(p.bit_num) {
           dont_care { }
           tt {
             s +=
@@ -80,8 +80,8 @@ fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
    -> ~str {
     let mut s = ~"";
     for constraints(fcx).each |c| {
-        if tritv_get(expected, c.bit_num) == ttrue &&
-               tritv_get(actual, c.bit_num) != ttrue {
+      if expected.get(c.bit_num) == ttrue &&
+         actual.get(c.bit_num) != ttrue {
             s = constraint_to_str(fcx.ccx.tcx, c.c);
             break;
         }
@@ -108,8 +108,8 @@ fn log_cond(v: ~[uint]) { log(debug, tos(v)); }
 fn log_cond_err(v: ~[uint]) { log(error, tos(v)); }
 
 fn log_pp(pp: pre_and_post) {
-    let p1 = tritv::to_vec(pp.precondition);
-    let p2 = tritv::to_vec(pp.postcondition);
+    let p1 = pp.precondition.to_vec();
+    let p2 = pp.postcondition.to_vec();
     #debug("pre:");
     log_cond(p1);
     #debug("post:");
@@ -117,8 +117,8 @@ fn log_pp(pp: pre_and_post) {
 }
 
 fn log_pp_err(pp: pre_and_post) {
-    let p1 = tritv::to_vec(pp.precondition);
-    let p2 = tritv::to_vec(pp.postcondition);
+    let p1 = pp.precondition.to_vec();
+    let p2 = pp.postcondition.to_vec();
     #error("pre:");
     log_cond_err(p1);
     #error("post:");
@@ -126,8 +126,8 @@ fn log_pp_err(pp: pre_and_post) {
 }
 
 fn log_states(pp: pre_and_post_state) {
-    let p1 = tritv::to_vec(pp.prestate);
-    let p2 = tritv::to_vec(pp.poststate);
+    let p1 = pp.prestate.to_vec();
+    let p2 = pp.poststate.to_vec();
     #debug("prestate:");
     log_cond(p1);
     #debug("poststate:");
@@ -135,8 +135,8 @@ fn log_states(pp: pre_and_post_state) {
 }
 
 fn log_states_err(pp: pre_and_post_state) {
-    let p1 = tritv::to_vec(pp.prestate);
-    let p2 = tritv::to_vec(pp.poststate);
+    let p1 = pp.prestate.to_vec();
+    let p2 = pp.poststate.to_vec();
     #error("prestate:");
     log_cond_err(p1);
     #error("poststate:");

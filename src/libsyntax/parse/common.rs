@@ -86,7 +86,7 @@ impl parser_common of parser_common for parser {
     fn parse_ident() -> ast::ident {
         alt copy self.token {
           token::IDENT(i, _) { self.bump(); ret self.get_str(i); }
-          token::ACTUALLY(token::w_ident(*)) { self.bug(
+          token::INTERPOLATED(token::nt_ident(*)) { self.bug(
               ~"ident interpolation not converted to real token"); }
           _ { self.fatal(~"expected ident, found `"
                          + token_to_str(self.reader, self.token)
@@ -141,17 +141,18 @@ impl parser_common of parser_common for parser {
     fn eat_keyword(word: ~str) -> bool {
         self.require_keyword(word);
 
-        // FIXME (#13042): this gratuitous use of @ is to
-        // workaround LLVM bug.
-        alt @self.token {
-          @token::IDENT(sid, false) {
+        let mut bump = false;
+        let val = alt self.token {
+          token::IDENT(sid, false) {
             if str::eq(word, *self.get_str(sid)) {
-                self.bump();
-                ret true;
-            } else { ret false; }
+                bump = true;
+                true
+            } else { false }
           }
-          _ { ret false; }
-        }
+          _ { false }
+        };
+        if bump { self.bump() }
+        val
     }
 
     fn expect_keyword(word: ~str) {

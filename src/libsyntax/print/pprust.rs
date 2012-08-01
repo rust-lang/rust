@@ -728,7 +728,7 @@ fn print_block_with_attrs(s: ps, blk: ast::blk, attrs: ~[ast::attribute]) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs);
 }
 
-enum embed_type { block_macro, block_block_fn, block_normal, }
+enum embed_type { block_block_fn, block_normal, }
 
 fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
                                  indented: uint) {
@@ -747,7 +747,6 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
     let ann_node = node_block(s, blk);
     s.ann.pre(ann_node);
     alt embedded {
-      block_macro { word(s.s, ~"#{"); end(s); }
       block_block_fn { end(s); }
       block_normal { bopen(s); }
     }
@@ -840,14 +839,6 @@ fn print_mac(s: ps, m: ast::mac) {
         bopen(s);
         for tts.each() |tt| { print_tt(s, tt); }
         bclose(s, m.span);
-      }
-      ast::mac_embed_type(ty) {
-        word(s.s, ~"#<");
-        print_type(s, ty);
-        word(s.s, ~">");
-      }
-      ast::mac_embed_block(blk) {
-        print_possibly_embedded_block(s, blk, block_normal, indent_unit);
       }
       ast::mac_ellipsis { word(s.s, ~"..."); }
       ast::mac_var(v) { word(s.s, #fmt("$%u", v)); }

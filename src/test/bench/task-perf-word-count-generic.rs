@@ -1,4 +1,3 @@
-// xfail-test
 /**
    A parallel word-frequency counting program.
 
@@ -308,8 +307,7 @@ fn main(argv: ~[~str]) {
     }
 
     let readers: ~[fn~() -> word_reader]  = if argv.len() >= 2 {
-        // FIXME (#2880)
-        vec::slice(argv, 1u, argv.len()).map(
+        vec::view(argv, 1u, argv.len()).map(
             |f| fn~() -> word_reader { file_word_reader(f) } )
     }
     else {

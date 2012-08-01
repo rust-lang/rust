@@ -11,8 +11,8 @@ import syntax::codemap::span;
 import metadata::csearch;
 import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
-import middle::lint::{get_warning_level, vecs_not_implicitly_copyable,
-                      ignore};
+import middle::lint;
+import middle::lint::{get_lint_level, allow};
 import syntax::ast::*;
 import syntax::print::pprust::*;
 import util::ppaux::{ty_to_str, tys_to_str};
@@ -117,6 +117,7 @@ export operators;
 export type_err, terr_vstore_kind;
 export type_err_to_str;
 export type_needs_drop;
+export type_is_empty;
 export type_is_integral;
 export type_is_numeric;
 export type_is_pod;
@@ -212,9 +213,11 @@ enum ast_ty_to_ty_cache_entry {
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
 
-#[auto_serialize]
+// N.B.: Borrows from inlined content are not accurately deserialized.  This
+// is because we don't need the details in trans, we only care if there is an
+// entry in the table or not.
 type borrow = {
-    scope_id: ast::node_id,
+    region: ty::region,
     mutbl: ast::mutability
 };
 
@@ -560,8 +563,8 @@ fn mk_ctxt(s: session::session,
             option::map_default(k.o_def_id, 0u, ast_util::hash_def)
     }, |&&a, &&b| a == b);
     let vecs_implicitly_copyable =
-        get_warning_level(s.warning_settings.default_settings,
-                          vecs_not_implicitly_copyable) == ignore;
+        get_lint_level(s.lint_settings.default_settings,
+                       lint::vecs_implicitly_copyable) == allow;
     @{diag: s.diagnostic(),
       interner: interner,
       mut next_id: 0u,
@@ -1471,6 +1474,30 @@ impl operators for kind {
     }
 }
 
+impl operators of ops::bitand<kind,kind> for kind {
+    pure fn bitand(other: kind) -> kind {
+        unchecked {
+            lower_kind(self, other)
+        }
+    }
+}
+
+impl operators of ops::bitor<kind,kind> for kind {
+    pure fn bitor(other: kind) -> kind {
+        unchecked {
+            raise_kind(self, other)
+        }
+    }
+}
+
+impl operators of ops::sub<kind,kind> for kind {
+    pure fn sub(other: kind) -> kind {
+        unchecked {
+            kind_(*self & !*other)
+        }
+    }
+}
+
 // Using these query functions is preferable to direct comparison or matching
 // against the kind constants, as we may modify the kind hierarchy in the
 // future.
@@ -1584,7 +1611,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         remove_send(mutable_type_kind(cx, tm) | kind_safe_for_default_mode())
       }
 
-      // Iface instances are (for now) like shared boxes, basically
+      // Trait instances are (for now) like shared boxes, basically
       ty_trait(_, _) { kind_safe_for_default_mode() | kind_owned() }
 
       // Region pointers are copyable but NOT owned nor sendable
@@ -1684,7 +1711,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         param_bounds_to_kind(cx.ty_param_bounds.get(p.def_id.node))
       }
 
-      // self is a special type parameter that can only appear in ifaces; it
+      // self is a special type parameter that can only appear in traits; it
       // is never bounded in any way, hence it has the bottom kind.
       ty_self { kind_noncopyable() }
 
@@ -2587,7 +2614,7 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     alt def {
-      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_)
+      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_, _)
         { true }
       _ { false }
     }
@@ -2746,6 +2773,15 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
 
 fn enum_is_univariant(cx: ctxt, id: ast::def_id) -> bool {
     vec::len(*enum_variants(cx, id)) == 1u
+}
+
+fn type_is_empty(cx: ctxt, t: t) -> bool {
+    alt ty::get(t).struct {
+       ty_enum(did, _) {
+           (*enum_variants(cx, did)).is_empty()
+        }
+       _ { false }
+     }
 }
 
 fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
@@ -3065,6 +3101,10 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
     }
 
     let t = alt get(t).struct {
+        ty_rptr(region, mt) {
+            // This type has a region. Get rid of it
+            mk_rptr(cx, re_static, mt)
+        }
         ty_enum(did, r) {
             alt r.self_r {
               some(_) {

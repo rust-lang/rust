@@ -62,9 +62,10 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
             #fmt("<method at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap))
           }
-          _ { cx.sess.bug(
-              #fmt["re_scope refers to %s",
-                   ast_map::node_id_to_str(cx.items, node_id)]) }
+          _ {
+            #fmt("<expression at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
+          }
         }
       }
       none {

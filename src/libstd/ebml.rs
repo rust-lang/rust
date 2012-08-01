@@ -27,6 +27,8 @@ export serializer;
 export ebml_deserializer;
 export deserializer;
 export with_doc_data;
+export get_doc;
+export extensions;
 
 type ebml_tag = {id: uint, size: uint};
 
@@ -39,6 +41,24 @@ type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 type doc = {data: @~[u8], start: uint, end: uint};
 
 type tagged_doc = {tag: uint, doc: doc};
+
+trait get_doc {
+    fn [](tag: uint) -> doc;
+}
+
+impl extensions of get_doc for doc {
+    fn [](tag: uint) -> doc {
+        get_doc(self, tag)
+    }
+}
+
+impl extensions of ops::index<uint,doc> for doc {
+    pure fn index(&&tag: uint) -> doc {
+        unchecked {
+            get_doc(self, tag)
+        }
+    }
+}
 
 fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     let a = data[start];
@@ -98,24 +118,28 @@ fn get_doc(d: doc, tg: uint) -> doc {
     }
 }
 
-fn docs(d: doc, it: fn(uint, doc)) {
+fn docs(d: doc, it: fn(uint, doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
         let elt_size = vuint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
-        it(elt_tag.val, {data: d.data, start: elt_size.next, end: pos});
+        if !it(elt_tag.val, {data: d.data, start: elt_size.next, end: pos}) {
+            break;
+        }
     }
 }
 
-fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
+fn tagged_docs(d: doc, tg: uint, it: fn(doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
         let elt_size = vuint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
-            it({data: d.data, start: elt_size.next, end: pos});
+            if !it({data: d.data, start: elt_size.next, end: pos}) {
+                break;
+            }
         }
     }
 }
@@ -123,8 +147,7 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
 fn doc_data(d: doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
 
 fn with_doc_data<T>(d: doc, f: fn(x: &[u8]) -> T) -> T {
-    // FIXME (#2880): use vec::view once the region inferencer can handle it.
-    ret f(vec::slice::<u8>(*d.data, d.start, d.end));
+    ret f(vec::view(*d.data, d.start, d.end));
 }
 
 fn doc_as_str(d: doc) -> ~str { ret str::from_bytes(doc_data(d)); }

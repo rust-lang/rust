@@ -2,24 +2,24 @@
 
 const fuzzy_epsilon: float = 1.0e-6;
 
-iface fuzzy_eq {
-    fn fuzzy_eq(&&other: self) -> bool;
+trait fuzzy_eq {
+    pure fn fuzzy_eq(&&other: self) -> bool;
 }
 
 impl fuzzy_eq of fuzzy_eq for float {
-    fn fuzzy_eq(&&other: float) -> bool {
+    pure fn fuzzy_eq(&&other: float) -> bool {
         ret float::abs(self - other) < fuzzy_epsilon;
     }
 }
 
 impl fuzzy_eq of fuzzy_eq for f32 {
-    fn fuzzy_eq(&&other: f32) -> bool {
+    pure fn fuzzy_eq(&&other: f32) -> bool {
         ret f32::abs(self - other) < (fuzzy_epsilon as f32);
     }
 }
 
 impl fuzzy_eq of fuzzy_eq for f64 {
-    fn fuzzy_eq(&&other: f64) -> bool {
+    pure fn fuzzy_eq(&&other: f64) -> bool {
         ret f64::abs(self - other) < (fuzzy_epsilon as f64);
     }
 }

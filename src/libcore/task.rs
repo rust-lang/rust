@@ -945,8 +945,13 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
  * task-local data slot (and use class destructors, not code inside the
  * function, if specific teardown is needed). DO NOT use multiple
  * instantiations of a single polymorphic function to index data of different
- * types; arbitrary type coercion is possible this way. The interface is safe
- * as long as all key functions are monomorphic.
+ * types; arbitrary type coercion is possible this way.
+ *
+ * One other exception is that this global state can be used in a destructor
+ * context to create a circular @-box reference, which will crash during task
+ * failure (see issue #3039).
+ *
+ * These two cases aside, the interface is safe.
  */
 type local_data_key<T: owned> = fn@(+@T);
 
@@ -1214,7 +1219,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     do spawn_unlinked {
         do spawn_unlinked {
             // Give middle task a chance to fail-but-not-kill-us.
-            for iter::repeat(8192) { task::yield(); }
+            for iter::repeat(128) { task::yield(); }
             comm::send(ch, ()); // If killed first, grandparent hangs.
         }
         fail; // Shouldn't kill either (grand)parent or (grand)child.
@@ -1229,7 +1234,7 @@ fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do spawn_supervised { fail; }
     // Give child a chance to fail-but-not-kill-us.
-    for iter::repeat(8192) { task::yield(); }
+    for iter::repeat(128) { task::yield(); }
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_fail_down() {
@@ -1299,7 +1304,7 @@ fn test_spawn_failure_propagate_grandchild() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(8192) { task::yield(); }
+    for iter::repeat(128) { task::yield(); }
     fail;
 }
 
@@ -1311,7 +1316,7 @@ fn test_spawn_failure_propagate_secondborn() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(8192) { task::yield(); }
+    for iter::repeat(128) { task::yield(); }
     fail;
 }
 
@@ -1323,7 +1328,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(8192) { task::yield(); }
+    for iter::repeat(128) { task::yield(); }
     fail;
 }
 
@@ -1335,7 +1340,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(8192) { task::yield(); }
+    for iter::repeat(128) { task::yield(); }
     fail;
 }
 
@@ -1736,7 +1741,7 @@ fn test_atomically_nested() {
 fn test_child_doesnt_ref_parent() {
     // If the child refcounts the parent task, this will stack overflow when
     // climbing the task tree to dereference each ancestor. (See #1789)
-    const generations: uint = 8192;
+    const generations: uint = 128;
     fn child_no(x: uint) -> fn~() {
         ret || {
             if x < generations {

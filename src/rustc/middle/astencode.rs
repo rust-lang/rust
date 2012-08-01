@@ -13,6 +13,8 @@ import std::ebml;
 import std::ebml::writer;
 import std::ebml::serializer;
 import std::ebml::deserializer;
+import std::ebml::extensions;
+import std::ebml::get_doc;
 import std::map::hashmap;
 import std::serialization::serializer;
 import std::serialization::deserializer;
@@ -285,7 +287,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 }
 
 fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
-    let chi_doc = par_doc[c::tag_tree];
+    let chi_doc = par_doc[c::tag_tree as uint];
     let d = ebml::ebml_deserializer(chi_doc);
     ast::deserialize_inlined_item(d)
 }
@@ -369,10 +371,13 @@ impl of tr for ast::def {
           ast::def_upvar(nid1, def, nid2) {
             ast::def_upvar(xcx.tr_id(nid1), @(*def).tr(xcx), xcx.tr_id(nid2))
           }
-          ast::def_class(did) {
-            ast::def_class(did.tr(xcx))
+          ast::def_class(did, has_constructor) {
+            ast::def_class(did.tr(xcx), has_constructor)
           }
           ast::def_region(nid) { ast::def_region(xcx.tr_id(nid)) }
+          ast::def_typaram_binder(nid) {
+            ast::def_typaram_binder(xcx.tr_id(nid))
+          }
         }
     }
 }
@@ -428,21 +433,6 @@ impl of tr for method_origin {
             typeck::method_trait(did.tr(xcx), m)
           }
         }
-    }
-}
-
-// ______________________________________________________________________
-// Encoding and decoding of borrow
-
-trait read_borrow_helper {
-    fn read_borrow(xcx: extended_decode_ctxt) -> ty::borrow;
-}
-
-impl helper of read_borrow_helper for ebml::ebml_deserializer {
-    fn read_borrow(xcx: extended_decode_ctxt) -> ty::borrow {
-        let borrow = ty::deserialize_borrow(self);
-        {scope_id: xcx.tr_id(borrow.scope_id),
-         mutbl: borrow.mutbl}
     }
 }
 
@@ -761,11 +751,13 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(tcx.borrowings.find(id)) |borrow| {
+    do option::iter(tcx.borrowings.find(id)) |_borrow| {
         do ebml_w.tag(c::tag_table_borrowings) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                ty::serialize_borrow(ebml_w, borrow)
+                // N.B. We don't actually serialize borrows as, in
+                // trans, we only care whether a value is borrowed or
+                // not.
             }
         }
     }
@@ -773,15 +765,11 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
 
 trait doc_decoder_helpers {
     fn as_int() -> int;
-    fn [](tag: c::astencode_tag) -> ebml::doc;
     fn opt_child(tag: c::astencode_tag) -> option<ebml::doc>;
 }
 
 impl decoder of doc_decoder_helpers for ebml::doc {
     fn as_int() -> int { ebml::doc_as_u64(self) as int }
-    fn [](tag: c::astencode_tag) -> ebml::doc {
-        ebml::get_doc(self, tag as uint)
-    }
     fn opt_child(tag: c::astencode_tag) -> option<ebml::doc> {
         ebml::maybe_get_doc(self, tag as uint)
     }
@@ -840,9 +828,9 @@ impl decoder of ebml_deserializer_decoder_helpers
 fn decode_side_tables(xcx: extended_decode_ctxt,
                       ast_doc: ebml::doc) {
     let dcx = xcx.dcx;
-    let tbl_doc = ast_doc[c::tag_table];
-    do ebml::docs(tbl_doc) |tag, entry_doc| {
-        let id0 = entry_doc[c::tag_table_id].as_int();
+    let tbl_doc = ast_doc[c::tag_table as uint];
+    for ebml::docs(tbl_doc) |tag, entry_doc| {
+        let id0 = entry_doc[c::tag_table_id as uint].as_int();
         let id = xcx.tr_id(id0);
 
         #debug[">> Side table document with tag 0x%x \
@@ -852,7 +840,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
         } else {
-            let val_doc = entry_doc[c::tag_table_val];
+            let val_doc = entry_doc[c::tag_table_val as uint];
             let val_dsr = ebml::ebml_deserializer(val_doc);
             if tag == (c::tag_table_def as uint) {
                 let def = decode_def(xcx, val_doc);
@@ -889,7 +877,10 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.maps.vtable_map.insert(id,
                                            val_dsr.read_vtable_res(xcx));
             } else if tag == (c::tag_table_borrowings as uint) {
-                let borrow = val_dsr.read_borrow(xcx);
+                // N.B.: we don't actually *serialize* borrows because, in
+                // trans, the only thing we care about is whether a value was
+                // borrowed or not.
+                let borrow = {region: ty::re_static, mutbl: ast::m_imm};
                 dcx.tcx.borrowings.insert(id, borrow);
             } else {
                 xcx.dcx.tcx.sess.bug(
@@ -913,7 +904,7 @@ fn encode_item_ast(ebml_w: ebml::writer, item: @ast::item) {
 
 #[cfg(test)]
 fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
-    let chi_doc = par_doc[c::tag_tree];
+    let chi_doc = par_doc[c::tag_tree as uint];
     let d = ebml::ebml_deserializer(chi_doc);
     @ast::deserialize_item(d)
 }

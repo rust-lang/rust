@@ -1,10 +1,12 @@
 import base::{ext_ctxt, mac_result, mr_expr, mr_def, expr_tt};
 import codemap::span;
-import ast::{ident, matcher_, matcher, mtc_tok, mtc_bb, mtc_rep, tt_delim};
+import ast::{ident, matcher_, matcher, match_tok,
+             match_nonterminal, match_seq, tt_delim};
 import parse::lexer::{new_tt_reader, tt_reader_as_reader, reader};
-import parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, w_mtcs, w_tt};
+import parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 import parse::parser::{parser, SOURCE_FILE};
-import earley_parser::{parse, success, failure, arb_depth, seq, leaf};
+import earley_parser::{parse, success, failure, named_match,
+                       matched_seq, matched_nonterminal};
 import std::map::hashmap;
 
 
@@ -17,10 +19,10 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     }
 
     let argument_gram = ~[
-        ms(mtc_rep(~[
-            ms(mtc_bb(@~"lhs",@~"mtcs", 0u)),
-            ms(mtc_tok(FAT_ARROW)),
-            ms(mtc_bb(@~"rhs",@~"tt", 1u)),
+        ms(match_seq(~[
+            ms(match_nonterminal(@~"lhs",@~"matchers", 0u)),
+            ms(match_tok(FAT_ARROW)),
+            ms(match_nonterminal(@~"rhs",@~"tt", 1u)),
         ], some(SEMI), false, 0u, 2u))];
 
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
@@ -32,16 +34,16 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     };
 
     let lhses = alt arguments.get(@~"lhs") {
-      @seq(s, sp) { s }
+      @matched_seq(s, sp) { s }
       _ { cx.span_bug(sp, ~"wrong-structured lhs") }
     };
     let rhses = alt arguments.get(@~"rhs") {
-      @seq(s, sp) { s }
+      @matched_seq(s, sp) { s }
       _ { cx.span_bug(sp, ~"wrong-structured rhs") }
     };
 
     fn generic_extension(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree],
-                         lhses: ~[@arb_depth], rhses: ~[@arb_depth])
+                         lhses: ~[@named_match], rhses: ~[@named_match])
     -> mac_result {
         let mut best_fail_spot = {lo: 0u, hi: 0u, expn_info: none};
         let mut best_fail_msg = ~"internal error: ran no matchers";
@@ -51,12 +53,12 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
         for lhses.eachi() |i, lhs| {
             alt lhs {
-              @leaf(w_mtcs(mtcs)) {
+              @matched_nonterminal(nt_matchers(mtcs)) {
                 let arg_rdr = new_tt_reader(s_d, itr, none, arg) as reader;
                 alt parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtcs) {
                   success(m) {
                     let rhs = alt rhses[i] {
-                      @leaf(w_tt(@tt)) { tt }
+                      @matched_nonterminal(nt_tt(@tt)) { tt }
                       _ { cx.span_bug(sp, ~"bad thing in rhs") }
                     };
                     let trncbr = new_tt_reader(s_d, itr, some(m), ~[rhs]);

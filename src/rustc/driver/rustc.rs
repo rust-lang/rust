@@ -1,5 +1,10 @@
 #[no_core];
+// NB: transitional for stage0:
+#[allow(unrecognized_lint)];
+#[warn(no_unrecognized_warning)];
 #[warn(no_vecs_not_implicitly_copyable)];
+// The new version:
+#[allow(vecs_implicitly_copyable)];
 
 use core(vers = "0.3");
 use std(vers = "0.3");
@@ -66,10 +71,12 @@ Options:
                        (see http://sources.redhat.com/autobook/autobook/
                        autobook_17.html for detail)
 
-    -W <foo>           enable warning <foo>
-    -W no-<foo>        disable warning <foo>
-    -W err-<foo>       enable warning <foo> as an error
-    -W help            Print available warnings and default settings
+    -(W|A|D|F) help    Print available 'lint' checks and default settings
+
+    -W <foo>           warn about <foo> by default
+    -A <foo>           allow <foo> by default
+    -D <foo>           deny <foo> by default
+    -F <foo>           forbid <foo> (deny, and deny all overrides)
 
     -Z help            list internal options for debugging rustc
 
@@ -84,7 +91,7 @@ fn describe_warnings() {
     fn padded(max: uint, s: ~str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
-    io::println(#fmt("\nAvailable warnings:\n"));
+    io::println(#fmt("\nAvailable lint checks:\n"));
     io::println(#fmt("    %s  %7.7s  %s",
                      padded(max_key, ~"name"), ~"default", ~"meaning"));
     io::println(#fmt("    %s  %7.7s  %s\n",
@@ -93,9 +100,12 @@ fn describe_warnings() {
         let k = str::replace(k, ~"_", ~"-");
         io::println(#fmt("    %s  %7.7s  %s",
                          padded(max_key, k),
-                         alt v.default { lint::warn { ~"warn" }
-                                        lint::error { ~"error" }
-                                        lint::ignore { ~"ignore" } },
+                         alt v.default {
+                             lint::allow { ~"allow" }
+                             lint::warn { ~"warn" }
+                             lint::deny { ~"deny" }
+                             lint::forbid { ~"forbid" }
+                         },
                          v.desc));
     }
     io::println(~"");

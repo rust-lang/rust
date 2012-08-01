@@ -13,7 +13,7 @@ fn main() {
     // Here, an error results as the type of y is inferred to
     // repeater<&lt/3> where lt is the block.
     let y = { //~ ERROR reference is not valid outside of its lifetime
-        let x = &3;
+        let x: &blk/int = &3;
         repeater(@x)
     };
     assert 3 == *(y.get()); //~ ERROR reference is not valid outside of its lifetime

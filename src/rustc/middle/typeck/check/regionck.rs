@@ -137,9 +137,9 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
       }
 
       ast::expr_cast(source, _) {
-        // Determine if we are casting `source` to an iface instance.
+        // Determine if we are casting `source` to an trait instance.
         // If so, we have to be sure that the type of the source obeys
-        // the iface's region bound.
+        // the trait's region bound.
         //
         // Note: there is a subtle point here concerning type
         // parameters.  It is possible that the type of `source`
@@ -155,12 +155,12 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
           result::ok(target_ty) => {
             alt ty::get(target_ty).struct {
               ty::ty_trait(_, substs) {
-                let iface_region = alt substs.self_r {
+                let trait_region = alt substs.self_r {
                   some(r) => {r}
                   none => {ty::re_static}
                 };
                 let source_ty = rcx.fcx.expr_ty(source);
-                constrain_regions_in_type(rcx, iface_region,
+                constrain_regions_in_type(rcx, trait_region,
                                           e.span, source_ty);
               }
               _ { }

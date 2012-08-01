@@ -3,36 +3,42 @@ import metadata::csearch::{each_path, get_impls_for_mod};
 import metadata::csearch::{get_method_names_if_trait, lookup_defs};
 import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
-import middle::lint::{error, ignore, level, unused_imports, warn};
-import syntax::ast::{_mod, arm, blk, bound_const, bound_copy, bound_trait};
-import syntax::ast::{bound_owned};
-import syntax::ast::{bound_send, capture_clause, class_ctor, class_dtor};
-import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
-import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
+import middle::lang_items::LanguageItems;
+import middle::lint::{deny, allow, forbid, level, unused_imports, warn};
+import syntax::ast::{_mod, add, arm, bitand, bitor, bitxor, blk, bound_const};
+import syntax::ast::{bound_copy, bound_owned, bound_send, bound_trait};
+import syntax::ast::{capture_clause, class_ctor, class_dtor, class_member};
+import syntax::ast::{class_method, crate, crate_num, decl_item, def, def_arg};
+import syntax::ast::{def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
-import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
+import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param,
+                     def_typaram_binder};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_new, expr_path};
+import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
+import syntax::ast::{def_upvar, def_use, def_variant, div, eq, expr};
+import syntax::ast::{expr_assign_op, expr_binary, expr_cast, expr_field};
+import syntax::ast::{expr_fn, expr_fn_block, expr_index, expr_new, expr_path};
 import syntax::ast::{expr_struct, expr_unary, fn_decl, foreign_item};
-import syntax::ast::{foreign_item_fn, ident, trait_ref, impure_fn};
+import syntax::ast::{foreign_item_fn, ge, gt, ident, trait_ref, impure_fn};
 import syntax::ast::{instance_var, item, item_class, item_const, item_enum};
 import syntax::ast::{item_fn, item_mac, item_foreign_mod, item_impl};
-import syntax::ast::{item_mod, item_trait, item_ty, local, local_crate};
-import syntax::ast::{method, node_id, pat, pat_enum, pat_ident};
-import syntax::ast::{path, prim_ty, pat_box, pat_uniq, pat_lit, pat_range};
-import syntax::ast::{pat_rec, pat_tup, pat_wild, stmt_decl};
-import syntax::ast::{ty, ty_bool, ty_char, ty_f, ty_f32, ty_f64};
-import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
-import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
-import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
-import syntax::ast::{view_item_import, view_item_use, view_path_glob};
-import syntax::ast::{view_path_list, view_path_simple};
-import syntax::ast::{required, provided};
+import syntax::ast::{item_mod, item_trait, item_ty, le, local, local_crate};
+import syntax::ast::{lt, method, mul, ne, neg, node_id, pat, pat_enum};
+import syntax::ast::{pat_ident, path, prim_ty, pat_box, pat_uniq, pat_lit};
+import syntax::ast::{pat_range, pat_rec, pat_tup, pat_wild, provided};
+import syntax::ast::{required, rem, shl, stmt_decl, subtract, ty, ty_bool};
+import syntax::ast::{ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16};
+import syntax::ast::{ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path};
+import syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
+import syntax::ast::{variant, view_item, view_item_export, view_item_import};
+import syntax::ast::{view_item_use, view_path_glob, view_path_list};
+import syntax::ast::{view_path_simple};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{walk_pat};
 import syntax::attr::{attr_metas, contains_name};
-import syntax::print::pprust::path_to_str;
+import syntax::print::pprust::{pat_to_str, path_to_str};
 import syntax::codemap::span;
 import syntax::visit::{default_visitor, fk_method, mk_vt, visit_block};
 import syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
@@ -41,13 +47,12 @@ import syntax::visit::{visit_mod, visit_ty, vt};
 
 import box::ptr_eq;
 import dvec::{dvec, extensions};
-import option::get;
+import option::{get, is_some};
 import str::{connect, split_str};
 import vec::pop;
 
 import std::list::{cons, list, nil};
 import std::map::{hashmap, int_hash, str_hash};
-import ASTMap = syntax::ast_map::map;
 import str_eq = str::eq;
 
 // Definition mapping
@@ -171,8 +176,21 @@ enum RibKind {
     // upvars as appropriate.
     FunctionRibKind(node_id),
 
+    // We passed through a class, impl, or trait and are now in one of its
+    // methods. Allow references to ty params that that class, impl or trait
+    // binds. Disallow any other upvars (including other ty params that are
+    // upvars).
+              // parent;   method itself
+    MethodRibKind(node_id, MethodSort),
+
     // We passed through a function *item* scope. Disallow upvars.
     OpaqueFunctionRibKind
+}
+
+// Methods can be required or provided. Required methods only occur in traits.
+enum MethodSort {
+    Required,
+    Provided(node_id)
 }
 
 // The X-ray flag indicates that a context has the X-ray privilege, which
@@ -447,7 +465,7 @@ fn unused_import_lint_level(session: session) -> level {
             ret lint_level;
         }
     }
-    ret ignore;
+    ret allow;
 }
 
 // Records the definitions (at most one for each namespace) that a name is
@@ -594,7 +612,7 @@ class PrimitiveTypeTable {
 /// The main resolver class.
 class Resolver {
     let session: session;
-    let ast_map: ASTMap;
+    let lang_items: LanguageItems;
     let crate: @crate;
 
     let atom_table: @AtomTable;
@@ -604,7 +622,7 @@ class Resolver {
     let unused_import_lint_level: level;
 
     let trait_info: hashmap<def_id,@hashmap<Atom,()>>;
-    let structs: hashmap<def_id,()>;
+    let structs: hashmap<def_id,bool>;
 
     // The number of imports that are currently unresolved.
     let mut unresolved_imports: uint;
@@ -641,9 +659,9 @@ class Resolver {
     let export_map: ExportMap;
     let trait_map: TraitMap;
 
-    new(session: session, ast_map: ASTMap, crate: @crate) {
+    new(session: session, lang_items: LanguageItems, crate: @crate) {
         self.session = session;
-        self.ast_map = ast_map;
+        self.lang_items = copy lang_items;
         self.crate = crate;
 
         self.atom_table = @AtomTable();
@@ -926,7 +944,8 @@ class Resolver {
                 (*name_bindings).define_impl(impl_info);
 
                 // Record the def ID of this struct.
-                self.structs.insert(local_def(item.id), ());
+                self.structs.insert(local_def(item.id),
+                                    is_some(optional_ctor));
 
                 visit_item(item, new_parent, visitor);
             }
@@ -1378,16 +1397,21 @@ class Resolver {
 
                             (*child_name_bindings).define_type(def);
                         }
-                        def_class(def_id) {
+                        def_class(def_id, has_constructor) {
                             #debug("(building reduced graph for external \
-                                    crate) building value and type %s",
-                                    final_ident);
-                            (*child_name_bindings).define_value(def);
+                                    crate) building type %s (value? %d)",
+                                    final_ident,
+                                    if has_constructor { 1 } else { 0 });
                             (*child_name_bindings).define_type(def);
+
+                            if has_constructor {
+                                (*child_name_bindings).define_value(def);
+                            }
                         }
                         def_self(*) | def_arg(*) | def_local(*) |
                         def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
-                        def_use(*) | def_upvar(*) | def_region(*) {
+                        def_use(*) | def_upvar(*) | def_region(*) |
+                          def_typaram_binder(*) {
                             fail #fmt("didn't expect `%?`", def);
                         }
                     }
@@ -2886,6 +2910,36 @@ class Resolver {
                                         function_id);
                     }
                 }
+                MethodRibKind(item_id, method_id) {
+                  // If the def is a ty param, and came from the parent
+                  // item, it's ok
+                  alt def {
+                    def_ty_param(did, _) if self.def_map.find(copy(did.node))
+                      == some(def_typaram_binder(item_id)) {
+                      // ok
+                    }
+                    _ {
+                    if !is_ty_param {
+                        // This was an attempt to access an upvar inside a
+                        // named function item. This is not allowed, so we
+                        // report an error.
+
+                        self.session.span_err(
+                            span,
+                            ~"attempted dynamic environment-capture");
+                    } else {
+                        // This was an attempt to use a type parameter outside
+                        // its scope.
+
+                        self.session.span_err(span,
+                                              ~"attempt to use a type \
+                                               argument out of scope");
+                    }
+
+                    ret none;
+                    }
+                  }
+                }
                 OpaqueFunctionRibKind {
                     if !is_ty_param {
                         // This was an attempt to access an upvar inside a
@@ -3024,7 +3078,7 @@ class Resolver {
                                 (HasTypeParameters(&ty_m.tps,
                                                    item.id,
                                                    type_parameters.len(),
-                                                   NormalRibKind)) {
+                                        MethodRibKind(item.id, Required))) {
 
                                 // Resolve the method-specific type
                                 // parameters.
@@ -3039,7 +3093,8 @@ class Resolver {
                             }
                           }
                           provided(m) {
-                              self.resolve_method(NormalRibKind,
+                              self.resolve_method(MethodRibKind(item.id,
+                                                     Provided(m.id)),
                                                   m,
                                                   type_parameters.len(),
                                                   visitor)
@@ -3143,9 +3198,15 @@ class Resolver {
                 for (*type_parameters).eachi |index, type_parameter| {
                     let name =
                         (*self.atom_table).intern(type_parameter.ident);
+                    #debug("with_type_parameter_rib: %d %d", node_id,
+                           type_parameter.id);
                     let def_like = dl_def(def_ty_param
                         (local_def(type_parameter.id),
                          index + initial_index));
+                    // Associate this type parameter with
+                    // the item that bound it
+                    self.record_def(type_parameter.id,
+                                    def_typaram_binder(node_id));
                     (*function_type_rib).bindings.insert(name, def_like);
                 }
             }
@@ -3304,7 +3365,7 @@ class Resolver {
                     none {
                         self.session.span_err(interface.path.span,
                                               ~"attempt to implement a \
-                                               nonexistent interface");
+                                               nonexistent trait");
                     }
                     some(def) {
                         // Write a mapping from the interface ID to the
@@ -3327,7 +3388,8 @@ class Resolver {
             for class_members.each |class_member| {
                 alt class_member.node {
                     class_method(method) {
-                      self.resolve_method(NormalRibKind,
+                      self.resolve_method(MethodRibKind(id,
+                                               Provided(method.id)),
                                           method,
                                           outer_type_parameter_count,
                                           visitor);
@@ -3446,7 +3508,7 @@ class Resolver {
                 // type parameters.
 
                 let borrowed_type_parameters = &method.tps;
-                self.resolve_function(NormalRibKind,
+                self.resolve_function(MethodRibKind(id, Provided(method.id)),
                                       some(@method.decl),
                                       HasTypeParameters
                                         (borrowed_type_parameters,
@@ -3653,9 +3715,12 @@ class Resolver {
     fn resolve_pattern(pattern: @pat,
                        mode: PatternBindingMode,
                        mutability: Mutability,
-                       bindings_list: option<hashmap<Atom,()>>,
+                       // Maps idents to the node ID for the (outermost)
+                       // pattern that binds them
+                       bindings_list: option<hashmap<Atom,node_id>>,
                        visitor: ResolveVisitor) {
 
+        let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
             alt pattern.node {
                 pat_ident(path, _)
@@ -3700,19 +3765,18 @@ class Resolver {
 
                             let is_mutable = mutability == Mutable;
 
-                            let mut def;
-                            alt mode {
+                            let def = alt mode {
                                 RefutableMode {
                                     // For pattern arms, we must use
                                     // `def_binding` definitions.
 
-                                    def = def_binding(pattern.id);
+                                    def_binding(pattern.id)
                                 }
                                 IrrefutableMode {
                                     // But for locals, we use `def_local`.
-                                    def = def_local(pattern.id, is_mutable);
+                                    def_local(pattern.id, is_mutable)
                                 }
-                            }
+                            };
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from
@@ -3732,10 +3796,19 @@ class Resolver {
                                     let last_rib = (*self.value_ribs).last();
                                     last_rib.bindings.insert(atom,
                                                              dl_def(def));
-                                    bindings_list.insert(atom, ());
+                                    bindings_list.insert(atom, pat_id);
                                 }
-                                some(_) {
-                                    // Do nothing.
+                                some(b) {
+                                  if b.find(atom) == some(pat_id) {
+                                      // Then this is a duplicate variable
+                                      // in the same disjunct, which is an
+                                      // error
+                                     self.session.span_err(pattern.span,
+                                       #fmt("Identifier %s is bound more \
+                                             than once in the same pattern",
+                                            path_to_str(path)));
+                                  }
+                                  // Not bound in the same pattern: do nothing
                                 }
                                 none {
                                     let last_rib = (*self.value_ribs).last();
@@ -4201,7 +4274,9 @@ class Resolver {
                     some(definition @ def_ty(class_id))
                             if self.structs.contains_key(class_id) {
 
-                        self.record_def(expr.id, def_class(class_id));
+                        let has_constructor = self.structs.get(class_id);
+                        let class_def = def_class(class_id, has_constructor);
+                        self.record_def(expr.id, class_def);
                     }
                     _ {
                         self.session.span_err(path.span,
@@ -4241,16 +4316,61 @@ class Resolver {
 
     fn record_candidate_traits_for_expr_if_necessary(expr: @expr) {
         alt expr.node {
-            expr_field(_, ident, _) {
+            expr_field(_, ident, _) => {
                 let atom = (*self.atom_table).intern(ident);
                 let traits = self.search_for_traits_containing_method(atom);
                 self.trait_map.insert(expr.id, traits);
             }
-            _ {
+            expr_binary(add, _, _) | expr_assign_op(add, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.add_trait);
+            }
+            expr_binary(subtract, _, _) | expr_assign_op(subtract, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.sub_trait);
+            }
+            expr_binary(mul, _, _) | expr_assign_op(mul, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.mul_trait);
+            }
+            expr_binary(div, _, _) | expr_assign_op(div, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.div_trait);
+            }
+            expr_binary(rem, _, _) | expr_assign_op(rem, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.modulo_trait);
+            }
+            expr_binary(bitxor, _, _) | expr_assign_op(bitxor, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.bitxor_trait);
+            }
+            expr_binary(bitand, _, _) | expr_assign_op(bitand, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.bitand_trait);
+            }
+            expr_binary(bitor, _, _) | expr_assign_op(bitor, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.bitor_trait);
+            }
+            expr_binary(shl, _, _) | expr_assign_op(shl, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.shl_trait);
+            }
+            expr_binary(shr, _, _) | expr_assign_op(shr, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.shr_trait);
+            }
+            expr_unary(neg, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.neg_trait);
+            }
+            expr_index(*) {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.index_trait);
+            }
+            _ => {
                 // Nothing to do.
-                //
-                // XXX: Handle more here... operator overloading, placement
-                // new, etc.
             }
         }
     }
@@ -4343,6 +4463,12 @@ class Resolver {
         }
     }
 
+    fn add_fixed_trait_for_expr(expr_id: node_id, +trait_id: option<def_id>) {
+        let traits = @dvec();
+        traits.push(trait_id.get());
+        self.trait_map.insert(expr_id, traits);
+    }
+
     fn record_def(node_id: node_id, def: def) {
         #debug("(recording def) recording %? for %?", def, node_id);
         self.def_map.insert(node_id, def);
@@ -4356,7 +4482,7 @@ class Resolver {
     //
 
     fn check_for_unused_imports_if_necessary() {
-        if self.unused_import_lint_level == ignore {
+        if self.unused_import_lint_level == allow {
             ret;
         }
 
@@ -4411,14 +4537,14 @@ class Resolver {
                         self.session.span_warn(import_resolution.span,
                                                ~"unused import");
                     }
-                    error {
-                        self.session.span_err(import_resolution.span,
-                                              ~"unused import");
+                    deny | forbid {
+                      self.session.span_err(import_resolution.span,
+                                            ~"unused import");
                     }
-                    ignore {
-                        self.session.span_bug(import_resolution.span,
-                                              ~"shouldn't be here if lint \
-                                               pass is ignored");
+                    allow {
+                      self.session.span_bug(import_resolution.span,
+                                            ~"shouldn't be here if lint \
+                                              is allowed");
                     }
                 }
             }
@@ -4551,13 +4677,13 @@ class Resolver {
 }
 
 /// Entry point to crate resolution.
-fn resolve_crate(session: session, ast_map: ASTMap, crate: @crate)
+fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
               -> { def_map: DefMap,
                    exp_map: ExportMap,
                    impl_map: ImplMap,
                    trait_map: TraitMap } {
 
-    let resolver = @Resolver(session, ast_map, crate);
+    let resolver = @Resolver(session, lang_items, crate);
     (*resolver).resolve(resolver);
     ret {
         def_map: resolver.def_map,

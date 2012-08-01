@@ -105,7 +105,6 @@ type fn_ctxt_ =
      // use.  In practice, this is the innermost loop or function
      // body.
      mut region_lb: ast::node_id,
-     mut region_ub: ast::node_id,
 
      in_scope_regions: isr_alist,
 
@@ -130,7 +129,6 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
                infcx: infer::new_infer_ctxt(ccx.tcx),
                locals: int_hash(),
                mut region_lb: region_bnd,
-               mut region_ub: region_bnd,
                in_scope_regions: @nil,
                node_types: map::int_hash(),
                node_type_substs: map::int_hash(),
@@ -246,7 +244,6 @@ fn check_fn(ccx: @crate_ctxt,
                    infcx: infcx,
                    locals: locals,
                    mut region_lb: body.node.id,
-                   mut region_ub: body.node.id,
                    in_scope_regions: isr,
                    node_types: node_types,
                    node_type_substs: node_type_substs,
@@ -376,6 +373,29 @@ fn check_class_member(ccx: @crate_ctxt, class_t: ty::t,
     }
 }
 
+fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
+                             ~[(ast::ident, span)]) {
+    let field_names = hashmap::<@~str, span>(|x| str::hash(*x),
+                                             |x,y| str::eq(*x, *y));
+    for fields.each |p| {
+        let (id, sp) = p;
+        alt field_names.find(id) {
+          some(orig_sp) {
+            tcx.sess.span_err(sp, #fmt("Duplicate field \
+                                   name %s in record type declaration",
+                                   *id));
+            tcx.sess.span_note(orig_sp, ~"First declaration of \
+                                          this field occurred here");
+            break;
+          }
+          none {
+            field_names.insert(id, sp);
+          }
+        }
+    }
+
+}
+
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
@@ -429,6 +449,14 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_ty(t, tps) {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, tps, tpt_ty);
+        // If this is a record ty, check for duplicate fields
+        alt t.node {
+            ast::ty_rec(fields) {
+              check_no_duplicate_fields(ccx.tcx, fields.map(|f|
+                                              (f.node.ident, f.span)));
+            }
+            _ {}
+        }
       }
       ast::item_foreign_mod(m) {
         if syntax::attr::foreign_abi(it.attrs) ==
@@ -569,15 +597,13 @@ impl methods for @fn_ctxt {
 
     fn mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
                    sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, borrow_lb: borrow_lb,
-                     borrow_ub: self.region_ub};
+        let anmnt = {expr_id: expr.id, span: expr.span, borrow_lb: borrow_lb};
         infer::mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
     fn can_mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
-                      sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, borrow_lb: borrow_lb,
-                     borrow_ub: self.region_ub};
+                       sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+        let anmnt = {expr_id: expr.id, span: expr.span, borrow_lb: borrow_lb};
         infer::can_mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
@@ -604,13 +630,6 @@ impl methods for @fn_ctxt {
         self.region_lb = lb;
         let v <- f();
         self.region_lb = old_region_lb;
-        ret v;
-    }
-    fn with_region_ub<R>(ub: ast::node_id, f: fn() -> R) -> R {
-        let old_region_ub = self.region_ub;
-        self.region_ub = ub;
-        let v <- f();
-        self.region_ub = old_region_ub;
         ret v;
     }
 }
@@ -930,14 +949,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         ret if_bot;
     }
 
-    fn binop_method(op: ast::binop) -> option<~str> {
-        alt op {
-          ast::add | ast::subtract | ast::mul | ast::div | ast::rem |
-          ast::bitxor | ast::bitand | ast::bitor | ast::shl | ast::shr
-          { some(ast_util::binop_to_str(op)) }
-          _ { none }
-        }
-    }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
                         self_ex: @ast::expr, self_t: ty::t,
                         opname: ~str, args: ~[@ast::expr])
@@ -1010,7 +1021,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         lhs_expr: @ast::expr, lhs_resolved_t: ty::t,
                         op: ast::binop, rhs: @ast::expr) -> (ty::t, bool) {
         let tcx = fcx.ccx.tcx;
-        alt binop_method(op) {
+        alt ast_util::binop_to_method_name(op) {
           some(name) {
             alt lookup_op_method(fcx, ex,
                                  lhs_expr, lhs_resolved_t,
@@ -1334,7 +1345,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::get(oprnd_t).struct == ty::ty_bool) {
-                oprnd_t = check_user_unop(fcx, ~"!", ~"!", expr,
+                oprnd_t = check_user_unop(fcx, ~"!", ~"not", expr,
                                          oprnd, oprnd_t);
             }
           }
@@ -1342,7 +1353,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
                  ty::type_is_fp(oprnd_t)) {
-                oprnd_t = check_user_unop(fcx, ~"-", ~"unary-", expr,
+                oprnd_t = check_user_unop(fcx, ~"-", ~"neg", expr,
                                          oprnd, oprnd_t);
             }
           }
@@ -1353,7 +1364,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_expr(fcx, oprnd, unpack_expected(fcx, expected, |ty|
             alt ty { ty::ty_rptr(_, mt) { some(mt.ty) } _ { none } }
         ));
-        let region = region_of(fcx, oprnd);
+        //let region = region_of(fcx, oprnd);
+        let region = fcx.infcx.next_region_var_with_scope_lb(expr.id);
         let tm = { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = ty::mk_rptr(tcx, region, tm);
         fcx.write_ty(id, oprnd_t);
@@ -1423,15 +1435,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_while(cond, body) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
-        do fcx.with_region_ub(body.node.id) {
-            check_block_no_value(fcx, body);
-        }
+        check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
       }
       ast::expr_loop(body) {
-        do fcx.with_region_ub(body.node.id) {
-            check_block_no_value(fcx, body);
-        }
+        check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
         bot = !may_break(body);
       }
@@ -1617,6 +1625,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fn get_node(f: spanned<field>) -> field { f.node }
             let typ = ty::mk_rec(tcx, vec::map(fields_t, get_node));
             fcx.write_ty(id, typ);
+            /* Check for duplicate fields */
+            /* Only do this check if there's no base expr -- the reason is
+               that we're extending a record we know has no dup fields, and
+               it would be ill-typed anyway if we duplicated one of its
+               fields */
+            check_no_duplicate_fields(tcx, fields.map(|f|
+                                                    (f.node.ident, f.span)));
           }
           some(bexpr) {
             let bexpr_t = fcx.expr_ty(bexpr);
@@ -1649,7 +1664,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Resolve the path.
         let class_id;
         alt tcx.def_map.find(id) {
-            some(ast::def_class(type_def_id)) => {
+            some(ast::def_class(type_def_id, _)) => {
                 class_id = type_def_id;
             }
             _ => {
@@ -1793,7 +1808,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           none {
             let resolved = structurally_resolved_type(fcx, expr.span,
                                                       raw_base_t);
-            alt lookup_op_method(fcx, expr, base, resolved, ~"[]",
+            alt lookup_op_method(fcx, expr, base, resolved, ~"index",
                                  ~[idx]) {
               some((ret_ty, _)) { fcx.write_ty(id, ret_ty); }
               _ {
@@ -2160,7 +2175,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       }
 
       ast::def_fn(id, _) | ast::def_const(id) |
-      ast::def_variant(_, id) | ast::def_class(id) {
+      ast::def_variant(_, id) | ast::def_class(id, _) {
         ret ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       ast::def_binding(nid) {
@@ -2185,6 +2200,10 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       }
       ast::def_region(*) {
         fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found region");
+      }
+      ast::def_typaram_binder(*) {
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type \
+                                          parameter");
       }
     }
 }

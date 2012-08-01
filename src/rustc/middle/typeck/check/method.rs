@@ -214,8 +214,8 @@ class lookup {
               }
             };
 
-            let ifce_methods = ty::trait_methods(tcx, iid);
-            alt vec::position(*ifce_methods, |m| m.ident == self.m_name) {
+            let trt_methods = ty::trait_methods(tcx, iid);
+            alt vec::position(*trt_methods, |m| m.ident == self.m_name) {
               none {
                 /* check next bound */
                 trait_bnd_idx += 1u;
@@ -233,7 +233,7 @@ class lookup {
                               with bound_substs};
 
                 self.add_candidates_from_m(
-                    substs, ifce_methods[pos],
+                    substs, trt_methods[pos],
                     method_param({trait_id:iid,
                                   method_num:pos,
                                   param_num:n,
@@ -258,7 +258,7 @@ class lookup {
                 self.tcx().sess.span_err(
                     self.expr.span,
                     ~"can not call a method that contains a \
-                     self type through a boxed iface");
+                     self type through a boxed trait");
             }
 
             if (*m.tps).len() > 0u {
@@ -447,8 +447,7 @@ class lookup {
         // Add trait methods.
         alt self.fcx.ccx.trait_map.find(self.expr.id) {
             none {
-                // XXX: This particular operation is not yet trait-ified;
-                // leave it alone for now.
+                // Should only happen for placement new right now.
             }
             some(trait_ids) {
                 for (*trait_ids).each |trait_id| {

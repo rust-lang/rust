@@ -16,12 +16,12 @@ import ext::base::{mk_ctxt, ext_ctxt};
 import parse;
 import parse::*;
 import proto::*;
+import ast::methods;
 
 import ast_builder::append_types;
 import ast_builder::ast_builder;
 import ast_builder::methods;
 import ast_builder::path;
-import ast_builder::path_concat;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

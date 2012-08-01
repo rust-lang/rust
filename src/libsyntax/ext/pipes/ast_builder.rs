@@ -31,23 +31,6 @@ fn empty_span() -> span {
     {lo: 0, hi: 0, expn_info: none}
 }
 
-trait path_concat {
-    fn +(id: ident) -> @ast::path;
-}
-
-impl methods of path_concat for ident {
-    fn +(id: ident) -> @ast::path {
-        path(self, empty_span()) + id
-    }
-}
-
-impl methods of path_concat for @ast::path {
-    fn +(id: ident) -> @ast::path {
-        @{idents: vec::append_one(self.idents, id)
-          with *self}
-    }
-}
-
 trait append_types {
     fn add_ty(ty: @ast::ty) -> @ast::path;
     fn add_tys(+tys: ~[@ast::ty]) -> @ast::path;
@@ -183,7 +166,6 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
         {mode: ast::infer(self.next_id()),
          ty: ty,
          ident: name,
-         // FIXME #2886: should this be the same as the infer id?
          id: self.next_id()}
     }
 
@@ -280,7 +262,6 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
     }
 
     fn ty_path_ast_builder(path: @ast::path) -> @ast::ty {
-        // FIXME #2886: make sure the node ids are legal.
         @{id: self.next_id(),
           node: ast::ty_path(path, self.next_id()),
           span: self.empty_span()}

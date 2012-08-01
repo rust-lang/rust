@@ -1,7 +1,5 @@
-// error-pattern: mismatched types
-
-fn f(x : &a/int) -> &a/int {
-    ret &3;
+fn f(_x : &a/int) -> &a/int {
+    ret &3; //~ ERROR illegal borrow
 }
 
 fn main() {

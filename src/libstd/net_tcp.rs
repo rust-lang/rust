@@ -840,6 +840,9 @@ impl tcp_socket_buf of io::writer for @tcp_socket_buf {
     fn flush() -> int {
         0
     }
+    fn get_type() -> io::writer_type {
+        io::file
+    }
 }
 
 // INTERNAL API
@@ -1115,8 +1118,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
         log(debug, #fmt("tcp on_read_cb nread: %d", nread as int));
         let reader_ch = (*socket_data_ptr).reader_ch;
         let buf_base = uv::ll::get_base_from_buf(buf);
-        let buf_len = uv::ll::get_len_from_buf(buf);
-        let new_bytes = vec::unsafe::from_buf(buf_base, buf_len as uint);
+        let new_bytes = vec::unsafe::from_buf(buf_base, nread as uint);
         comm::send(reader_ch, result::ok(new_bytes));
       }
     }

@@ -345,6 +345,12 @@ pure fn peek<T: send, Tb: send>(p: recv_packet_buffered<T, Tb>) -> bool {
     }
 }
 
+impl peek<T: send, Tb: send> for recv_packet_buffered<T, Tb> {
+    pure fn peek() -> bool {
+        peek(self)
+    }
+}
+
 fn sender_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { &*p };
     alt swap_state_rel(p.header.state, terminated) {

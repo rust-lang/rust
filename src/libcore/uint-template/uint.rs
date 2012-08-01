@@ -71,7 +71,7 @@ pure fn hash(&&x: uint) -> uint { ret x; }
  * `true` If execution proceeded correctly, `false` if it was interrupted,
  * that is if `it` returned `false` at any point.
  */
-fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
+pure fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     let mut i = lo;
     while i < hi {
         if (!it(i)) { ret false; }

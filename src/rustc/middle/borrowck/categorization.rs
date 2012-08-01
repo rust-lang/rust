@@ -50,10 +50,10 @@ fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
         some(deref_ptr(uniq_ptr))
       }
 
-      ty::ty_rptr(*) |
-      ty::ty_evec(_, ty::vstore_slice(_)) |
-      ty::ty_estr(ty::vstore_slice(_)) {
-        some(deref_ptr(region_ptr))
+      ty::ty_rptr(r, _) |
+      ty::ty_evec(_, ty::vstore_slice(r)) |
+      ty::ty_estr(ty::vstore_slice(r)) {
+        some(deref_ptr(region_ptr(r)))
       }
 
       ty::ty_box(*) |
@@ -192,12 +192,12 @@ impl public_methods for borrowck_ctxt {
                expr_ty: ty::t,
                def: ast::def) -> cmt {
         alt def {
-          ast::def_fn(_, _) | ast::def_mod(_) |
+          ast::def_fn(*) | ast::def_mod(_) |
           ast::def_foreign_mod(_) | ast::def_const(_) |
-          ast::def_use(_) | ast::def_variant(_, _) |
+          ast::def_use(_) | ast::def_variant(*) |
           ast::def_ty(_) | ast::def_prim_ty(_) |
-          ast::def_ty_param(_, _) | ast::def_class(_) |
-          ast::def_region(_) {
+          ast::def_ty_param(*) | ast::def_class(*) |
+          ast::def_typaram_binder(*) | ast::def_region(_) {
             @{id:id, span:span,
               cat:cat_special(sk_static_item), lp:none,
               mutbl:m_imm, ty:expr_ty}
@@ -343,7 +343,7 @@ impl public_methods for borrowck_ctxt {
                     // not loanable.
                     alt ptr {
                       uniq_ptr => {some(@lp_deref(l, ptr))}
-                      gc_ptr | region_ptr | unsafe_ptr => {none}
+                      gc_ptr | region_ptr(_) | unsafe_ptr => {none}
                     }
                 };
 
@@ -353,7 +353,7 @@ impl public_methods for borrowck_ctxt {
                   uniq_ptr => {
                     self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
                   }
-                  gc_ptr | region_ptr | unsafe_ptr => {
+                  gc_ptr | region_ptr(_) | unsafe_ptr => {
                     mt.mutbl
                   }
                 };
@@ -402,7 +402,7 @@ impl public_methods for borrowck_ctxt {
               uniq_ptr => {
                 self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
               }
-              gc_ptr | region_ptr | unsafe_ptr => {
+              gc_ptr | region_ptr(_) | unsafe_ptr => {
                 mt.mutbl
               }
             };

@@ -1,78 +1,146 @@
 // ----------------------------------------------------------------------
 // Preserve(Ex, S) holds if ToAddr(Ex) will remain valid for the entirety of
 // the scope S.
-export public_methods;
+//
+
+export public_methods, preserve_condition, pc_ok, pc_if_pure;
+
+enum preserve_condition {
+    pc_ok,
+    pc_if_pure(bckerr)
+}
+
+impl public_methods for preserve_condition {
+    // combines two preservation conditions such that if either of
+    // them requires purity, the result requires purity
+    fn combine(pc: preserve_condition) -> preserve_condition {
+        alt self {
+          pc_ok => {pc}
+          pc_if_pure(e) => {self}
+        }
+    }
+}
 
 impl public_methods for borrowck_ctxt {
-    fn preserve(cmt: cmt, opt_scope_id: option<ast::node_id>) -> bckres<()> {
-        #debug["preserve(%s)", self.cmt_to_repr(cmt)];
+    fn preserve(cmt: cmt,
+                scope_region: ty::region,
+                item_ub: ast::node_id,
+                root_ub: ast::node_id)
+        -> bckres<preserve_condition> {
+
+        let ctxt = preserve_ctxt({bccx: self,
+                                  scope_region: scope_region,
+                                  item_ub: item_ub,
+                                  root_ub: root_ub,
+                                  root_managed_data: true});
+        (&ctxt).preserve(cmt)
+    }
+}
+
+enum preserve_ctxt = {
+    bccx: borrowck_ctxt,
+
+    // the region scope for which we must preserve the memory
+    scope_region: ty::region,
+
+    // the scope for the body of the enclosing fn/method item
+    item_ub: ast::node_id,
+
+    // the upper bound on how long we can root an @T pointer
+    root_ub: ast::node_id,
+
+    // if false, do not attempt to root managed data
+    root_managed_data: bool
+};
+
+
+impl private_methods for &preserve_ctxt {
+    fn tcx() -> ty::ctxt { self.bccx.tcx }
+
+    fn preserve(cmt: cmt) -> bckres<preserve_condition> {
+        #debug["preserve(cmt=%s, root_ub=%?, root_managed_data=%b)",
+               self.bccx.cmt_to_repr(cmt), self.root_ub,
+               self.root_managed_data];
         let _i = indenter();
 
         alt cmt.cat {
-          cat_rvalue | cat_special(_) {
-            ok(())
+          cat_special(sk_self) | cat_special(sk_heap_upvar) {
+            self.compare_scope(cmt, ty::re_scope(self.item_ub))
+          }
+          cat_special(sk_static_item) | cat_special(sk_method) {
+            ok(pc_ok)
+          }
+          cat_rvalue {
+            // when we borrow an rvalue, we can keep it rooted but only
+            // up to the root_ub point
+
+            // FIXME(#2977)--need to update trans!
+            self.compare_scope(cmt, ty::re_scope(self.root_ub))
           }
           cat_stack_upvar(cmt) {
-            self.preserve(cmt, opt_scope_id)
+            self.preserve(cmt)
           }
-          cat_local(_) {
+          cat_local(local_id) {
             // Normally, local variables are lendable, and so this
             // case should never trigger.  However, if we are
             // preserving an expression like a.b where the field `b`
             // has @ type, then it will recurse to ensure that the `a`
             // is stable to try and avoid rooting the value `a.b`.  In
-            // this case, opt_scope_id will be none.
-            if opt_scope_id.is_some() {
-                self.tcx.sess.span_bug(
+            // this case, root_managed_data will be false.
+            if self.root_managed_data {
+                self.tcx().sess.span_bug(
                     cmt.span,
-                    ~"preserve() called with local and \
-                      non-none opt_scope_id");
+                    ~"preserve() called with local and !root_managed_data");
             }
-            ok(())
+            let local_scope_id = self.tcx().region_map.get(local_id);
+            self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
-          cat_binding(_) {
+          cat_binding(local_id) {
             // Bindings are these kind of weird implicit pointers (cc
             // #2329).  We require (in gather_loans) that they be
             // rooted in an immutable location.
-            ok(())
+            let local_scope_id = self.tcx().region_map.get(local_id);
+            self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
-          cat_arg(_) {
+          cat_arg(local_id) {
             // This can happen as not all args are lendable (e.g., &&
-            // modes).  In that case, the caller guarantees stability.
-            // This is basically a deref of a region ptr.
-            ok(())
+            // modes).  In that case, the caller guarantees stability
+            // for at least the scope of the fn.  This is basically a
+            // deref of a region ptr.
+            let local_scope_id = self.tcx().region_map.get(local_id);
+            self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_comp(cmt_base, comp_field(*)) |
           cat_comp(cmt_base, comp_index(*)) |
           cat_comp(cmt_base, comp_tuple) {
             // Most embedded components: if the base is stable, the
             // type never changes.
-            self.preserve(cmt_base, opt_scope_id)
+            self.preserve(cmt_base)
           }
           cat_comp(cmt_base, comp_variant(enum_did)) {
-            if ty::enum_is_univariant(self.tcx, enum_did) {
-                self.preserve(cmt_base, opt_scope_id)
+            if ty::enum_is_univariant(self.tcx(), enum_did) {
+                self.preserve(cmt_base)
             } else {
                 // If there are multiple variants: overwriting the
                 // base could cause the type of this memory to change,
                 // so require imm.
-                self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_variant)
+                self.require_imm(cmt, cmt_base, err_mut_variant)
             }
           }
           cat_deref(cmt_base, _, uniq_ptr) {
             // Overwriting the base could cause this memory to be
             // freed, so require imm.
-            self.require_imm(cmt, cmt_base, opt_scope_id, err_mut_uniq)
+            self.require_imm(cmt, cmt_base, err_mut_uniq)
           }
-          cat_deref(_, _, region_ptr) {
-            // References are always "stable" by induction (when the
-            // reference of type &MT was created, the memory must have
-            // been stable)
-            ok(())
+          cat_deref(_, _, region_ptr(region)) {
+            // References are always "stable" for lifetime `region` by
+            // induction (when the reference of type &MT was created,
+            // the memory must have been stable).
+            self.compare_scope(cmt, region)
           }
           cat_deref(_, _, unsafe_ptr) {
             // Unsafe pointers are the user's problem
-            ok(())
+            ok(pc_ok)
           }
           cat_deref(base, derefs, gc_ptr) {
             // GC'd pointers of type @MT: if this pointer lives in
@@ -80,13 +148,26 @@ impl public_methods for borrowck_ctxt {
             // otherwise we have no guarantee the pointer will stay
             // live, so we must root the pointer (i.e., inc the ref
             // count) for the duration of the loan.
+            #debug["base.mutbl = %?", self.bccx.mut_to_str(base.mutbl)];
             if base.mutbl == m_imm {
-                alt self.preserve(base, none) {
-                  ok(()) {ok(())}
-                  err(_) {self.attempt_root(cmt, opt_scope_id, base, derefs)}
+                let non_rooting_ctxt =
+                    preserve_ctxt({root_managed_data: false with **self});
+                alt (&non_rooting_ctxt).preserve(base) {
+                  ok(pc_ok) => {
+                    ok(pc_ok)
+                  }
+                  ok(pc_if_pure(_)) {
+                    #debug["must root @T, otherwise purity req'd"];
+                    self.attempt_root(cmt, base, derefs)
+                  }
+                  err(e) => {
+                    #debug["must root @T, err: %s",
+                           self.bccx.bckerr_code_to_str(e.code)];
+                    self.attempt_root(cmt, base, derefs)
+                  }
                 }
             } else {
-                self.attempt_root(cmt, opt_scope_id, base, derefs)
+                self.attempt_root(cmt, base, derefs)
             }
           }
           cat_discr(base, alt_id) {
@@ -144,43 +225,124 @@ impl public_methods for borrowck_ctxt {
             // in the *arm* vs the *alt*.
 
             // current scope must be the arm, which is always a child of alt:
-            assert self.tcx.region_map.get(opt_scope_id.get()) == alt_id;
+            assert {
+                alt check self.scope_region {
+                  ty::re_scope(arm_id) => {
+                    self.tcx().region_map.get(arm_id) == alt_id
+                  }
+                  _ => {false}
+                }
+            };
 
-            self.preserve(base, some(alt_id))
+            let alt_rooting_ctxt =
+                preserve_ctxt({scope_region: ty::re_scope(alt_id)
+                               with **self});
+            (&alt_rooting_ctxt).preserve(base)
           }
         }
     }
-}
 
-impl private_methods for borrowck_ctxt {
+    /// Reqiures that `cmt` (which is a deref or subcomponent of
+    /// `base`) be found in an immutable location (that is, `base`
+    /// must be immutable).  Also requires that `base` itself is
+    /// preserved.
     fn require_imm(cmt: cmt,
                    cmt_base: cmt,
-                   opt_scope_id: option<ast::node_id>,
-                   code: bckerr_code) -> bckres<()> {
+                   code: bckerr_code) -> bckres<preserve_condition> {
         // Variant contents and unique pointers: must be immutably
         // rooted to a preserved address.
-        alt cmt_base.mutbl {
-          m_mutbl | m_const { err({cmt:cmt, code:code}) }
-          m_imm { self.preserve(cmt_base, opt_scope_id) }
+        alt self.preserve(cmt_base) {
+          // the base is preserved, but if we are not mutable then
+          // purity is required
+          ok(pc_ok) => {
+            alt cmt_base.mutbl {
+              m_mutbl | m_const => {
+                ok(pc_if_pure({cmt:cmt, code:code}))
+              }
+              m_imm => {
+                ok(pc_ok)
+              }
+            }
+          }
+
+          // the base requires purity too, that's fine
+          ok(pc_if_pure(e)) => {
+            ok(pc_if_pure(e))
+          }
+
+          // base is not stable, doesn't matter
+          err(e) => {
+            err(e)
+          }
         }
     }
 
-    fn attempt_root(cmt: cmt, opt_scope_id: option<ast::node_id>,
-                    base: cmt, derefs: uint) -> bckres<()> {
-        alt opt_scope_id {
-          some(scope_id) {
-            #debug["Inserting root map entry for %s: \
-                    node %d:%u -> scope %d",
-                   self.cmt_to_repr(cmt), base.id,
-                   derefs, scope_id];
+    /// Checks that the scope for which the value must be preserved
+    /// is a subscope of `scope_ub`; if so, success.
+    fn compare_scope(cmt: cmt,
+                     scope_ub: ty::region) -> bckres<preserve_condition> {
+        let region_map = self.tcx().region_map;
+        if region::subregion(region_map, scope_ub, self.scope_region) {
+            ok(pc_ok)
+        } else {
+            err({cmt:cmt, code:err_out_of_scope(scope_ub,
+                                                self.scope_region)})
+        }
+    }
 
-            let rk = {id: base.id, derefs: derefs};
-            self.root_map.insert(rk, scope_id);
-            ok(())
+    /// Here, `cmt=*base` is always a deref of managed data (if
+    /// `derefs` != 0, then an auto-deref).  This routine determines
+    /// whether it is safe to MAKE cmt stable by rooting the pointer
+    /// `base`.  We can only do the dynamic root if the desired
+    /// lifetime `self.scope_region` is a subset of `self.root_ub`
+    /// scope; otherwise, it would either require that we hold the
+    /// value live for longer than the current fn or else potentially
+    /// require that an statically unbounded number of values be
+    /// rooted (if a loop exists).
+    fn attempt_root(cmt: cmt, base: cmt,
+                    derefs: uint) -> bckres<preserve_condition> {
+        if !self.root_managed_data {
+            // normally, there is a root_ub; the only time that this
+            // is none is when a boxed value is stored in an immutable
+            // location.  In that case, we will test to see if that
+            // immutable location itself can be preserved long enough
+            // in which case no rooting is necessary.  But there it
+            // would be sort of pointless to avoid rooting the inner
+            // box by rooting an outer box, as it would just keep more
+            // memory live than necessary, so we set root_ub to none.
+            ret err({cmt:cmt, code:err_root_not_permitted});
+        }
+
+        let root_region = ty::re_scope(self.root_ub);
+        alt self.scope_region {
+          // we can only root values if the desired region is some concrete
+          // scope within the fn body
+          ty::re_scope(scope_id) => {
+            let region_map = self.tcx().region_map;
+            #debug["Considering root map entry for %s: \
+                    node %d:%u -> scope_id %?, root_ub %?",
+                   self.bccx.cmt_to_repr(cmt), base.id,
+                   derefs, scope_id, self.root_ub];
+            if region::subregion(region_map, root_region, self.scope_region) {
+                #debug["Elected to root"];
+                let rk = {id: base.id, derefs: derefs};
+                self.bccx.root_map.insert(rk, scope_id);
+                ret ok(pc_ok);
+            } else {
+                #debug["Unable to root"];
+                ret err({cmt:cmt,
+                         code:err_out_of_root_scope(root_region,
+                                                    self.scope_region)});
+            }
           }
-          none {
-            err({cmt:cmt, code:err_preserve_gc})
+
+          // we won't be able to root long enough
+          _ => {
+              ret err({cmt:cmt,
+                       code:err_out_of_root_scope(root_region,
+                                                  self.scope_region)});
           }
+
         }
     }
 }

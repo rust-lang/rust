@@ -277,20 +277,20 @@ mod rt {
 
     type conv = {flags: u32, width: count, precision: count, ty: ty};
 
-    fn conv_int(cv: conv, i: int) -> ~str {
+    pure fn conv_int(cv: conv, i: int) -> ~str {
         let radix = 10u;
         let prec = get_int_precision(cv);
         let mut s : ~str = int_to_str_prec(i, radix, prec);
         if 0 <= i {
             if have_flag(cv.flags, flag_sign_always) {
-                str::unshift_char(s, '+');
+                unchecked { str::unshift_char(s, '+') };
             } else if have_flag(cv.flags, flag_space_for_sign) {
-                str::unshift_char(s, ' ');
+                unchecked { str::unshift_char(s, ' ') };
             }
         }
-        ret pad(cv, s, pad_signed);
+        ret unchecked { pad(cv, s, pad_signed) };
     }
-    fn conv_uint(cv: conv, u: uint) -> ~str {
+    pure fn conv_uint(cv: conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
         let mut rs =
             alt cv.ty {
@@ -300,17 +300,17 @@ mod rt {
               ty_bits { uint_to_str_prec(u, 2u, prec) }
               ty_octal { uint_to_str_prec(u, 8u, prec) }
             };
-        ret pad(cv, rs, pad_unsigned);
+        ret unchecked { pad(cv, rs, pad_unsigned) };
     }
-    fn conv_bool(cv: conv, b: bool) -> ~str {
+    pure fn conv_bool(cv: conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
         ret conv_str(cv, s);
     }
-    fn conv_char(cv: conv, c: char) -> ~str {
+    pure fn conv_char(cv: conv, c: char) -> ~str {
         let mut s = str::from_char(c);
-        ret pad(cv, s, pad_nozero);
+        ret unchecked { pad(cv, s, pad_nozero) };
     }
     pure fn conv_str(cv: conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
@@ -325,12 +325,12 @@ mod rt {
         };
         ret unchecked { pad(cv, unpadded, pad_nozero) };
     }
-    fn conv_float(cv: conv, f: float) -> ~str {
+    pure fn conv_float(cv: conv, f: float) -> ~str {
         let (to_str, digits) = alt cv.precision {
               count_is(c) { (float::to_str_exact, c as uint) }
               count_implied { (float::to_str, 6u) }
         };
-        let mut s = to_str(f, digits);
+        let mut s = unchecked { to_str(f, digits) };
         if 0.0 <= f {
             if have_flag(cv.flags, flag_sign_always) {
                 s = ~"+" + s;
@@ -338,16 +338,16 @@ mod rt {
                 s = ~" " + s;
             }
         }
-        ret pad(cv, s, pad_float);
+        ret unchecked { pad(cv, s, pad_float) };
     }
-    fn conv_poly<T>(cv: conv, v: T) -> ~str {
+    pure fn conv_poly<T>(cv: conv, v: T) -> ~str {
         let s = sys::log_str(v);
         ret conv_str(cv, s);
     }
 
     // Convert an int to string with minimum number of digits. If precision is
     // 0 and num is 0 then the result is the empty string.
-    fn int_to_str_prec(num: int, radix: uint, prec: uint) -> ~str {
+    pure fn int_to_str_prec(num: int, radix: uint, prec: uint) -> ~str {
         ret if num < 0 {
                 ~"-" + uint_to_str_prec(-num as uint, radix, prec)
             } else { uint_to_str_prec(num as uint, radix, prec) };
@@ -356,7 +356,7 @@ mod rt {
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
     // to uint: but it doesn't seem all that useful.
-    fn uint_to_str_prec(num: uint, radix: uint, prec: uint) -> ~str {
+    pure fn uint_to_str_prec(num: uint, radix: uint, prec: uint) -> ~str {
         ret if prec == 0u && num == 0u {
                 ~""
             } else {
@@ -369,7 +369,7 @@ mod rt {
                 } else { s }
             };
     }
-    fn get_int_precision(cv: conv) -> uint {
+    pure fn get_int_precision(cv: conv) -> uint {
         ret alt cv.precision {
               count_is(c) { c as uint }
               count_implied { 1u }

@@ -4,6 +4,19 @@ import diagnostic::span_handler;
 import codemap::{codemap, span, expn_info, expanded_from};
 import std::map::str_hash;
 
+// obsolete old-style #macro code:
+//
+//    syntax_expander, normal, macro_defining, macro_definer,
+//    builtin
+//
+// new-style macro! tt code:
+//
+//    syntax_expander_tt, syntax_expander_tt_item, mac_result,
+//    expr_tt, item_tt
+//
+// also note that ast::mac has way too many cases and can probably
+// be trimmed down substantially.
+
 // second argument is the span to blame for general argument problems
 type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
@@ -11,8 +24,11 @@ type syntax_expander_ =
 type syntax_expander = {expander: syntax_expander_, span: option<span>};
 
 type macro_def = {ident: ast::ident, ext: syntax_extension};
+
+// macro_definer is obsolete, remove when #old_macros go away.
 type macro_definer =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
+
 type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
@@ -32,10 +48,17 @@ enum mac_result {
 }
 
 enum syntax_extension {
+
+    // normal() is obsolete, remove when #old_macros go away.
     normal(syntax_expander),
+
+    // macro_defining() is obsolete, remove when #old_macros go away.
     macro_defining(macro_definer),
+
+    // #[auto_serialize] and such. will probably survive death of #old_macros
     item_decorator(item_decorator),
 
+    // Token-tree expanders
     expr_tt(syntax_expander_tt),
     item_tt(syntax_expander_tt_item),
 }
@@ -87,6 +110,10 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
     ret syntax_expanders;
 }
 
+
+// One of these is made during expansion and incrementally updated as we go;
+// when a macro expansion occurs, the resulting nodes have the backtrace()
+// -> expn_info of their expansion context stored into their span.
 iface ext_ctxt {
     fn codemap() -> codemap;
     fn parse_sess() -> parse::parse_sess;
@@ -242,6 +269,48 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
       some(body) {body}
       none {cx.span_fatal(sp, ~"missing macro body")}
     }
+}
+
+// Massage syntactic form of new-style arguments to internal representation
+// of old-style macro args, such that old-style macro can be run and invoked
+// using new syntax. This will be obsolete when #old_macros go away.
+fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
+    -> ast::mac_arg {
+    import ast::{matcher, matcher_, match_tok, match_seq, match_nonterminal};
+    import parse::lexer::{new_tt_reader, tt_reader_as_reader, reader};
+    import tt::earley_parser::{parse_or_else, matched_seq,
+                               matched_nonterminal};
+
+    // these spans won't matter, anyways
+    fn ms(m: matcher_) -> matcher {
+        {node: m, span: {lo: 0u, hi: 0u, expn_info: none}}
+    }
+
+    let argument_gram = ~[ms(match_seq(~[
+        ms(match_nonterminal(@~"arg",@~"expr", 0u))
+    ], some(parse::token::COMMA), true, 0u, 1u))];
+
+    let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
+                                   cx.parse_sess().interner, none, arg);
+    let args =
+        alt parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
+                          argument_gram).get(@~"arg") {
+          @matched_seq(s, _) {
+            do s.map() |lf| {
+                alt lf {
+                  @matched_nonterminal(parse::token::nt_expr(arg)) {
+                    arg /* whew! list of exprs, here we come! */
+                  }
+                  _ { fail ~"badly-structured parse result"; }
+                }
+            }
+          }
+          _ { fail ~"badly-structured parse result"; }
+        };
+
+    ret some(@{id: parse::next_node_id(cx.parse_sess()),
+               callee_id: parse::next_node_id(cx.parse_sess()),
+               node: ast::expr_vec(args, ast::m_imm), span: sp});
 }
 
 //

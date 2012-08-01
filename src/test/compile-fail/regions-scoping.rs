@@ -33,10 +33,15 @@ fn nested(x: &x/int) {  // (1)
         let z = 3i;
         let d: &x/int = foo(x, x, |_x, _y, z| z );
         let e: &x/int = foo(x, &z, |_x, _y, z| z );
-        let f: &x/int = foo(&z, &z, |_x, _y, z| z ); //~ ERROR mismatched types: expected `&x/int` but found
+
+        // This would result in an error, but it is not reported by typeck
+        // anymore but rather borrowck. Therefore, it doesn't end up
+        // getting printed out since compilation fails after typeck.
+        //
+        // let f: &x/int = foo(&z, &z, |_x, _y, z| z ); // ERROR mismatched types: expected `&x/int` but found
 
         foo(x, &z, |x, _y, _z| x ); //~ ERROR mismatched types: expected `&z/int` but found `&x/int`
-        foo(x, &z, |_x, y, _z| y ); //~ ERROR mismatched types: expected `&z/int` but found `&<block at
+        foo(x, &z, |_x, y, _z| y ); //~ ERROR mismatched types: expected `&z/int` but found `&<expression at
     }
 }
 

@@ -53,9 +53,10 @@ pure fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_class(id) { id }
+      def_use(id) | def_class(id, _) { id }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
-      def_upvar(id, _, _) | def_binding(id) | def_region(id) {
+      def_upvar(id, _, _) | def_binding(id) | def_region(id)
+      | def_typaram_binder(id) {
         local_def(id)
       }
 
@@ -83,6 +84,22 @@ pure fn binop_to_str(op: binop) -> ~str {
       ne { ret ~"!="; }
       ge { ret ~">="; }
       gt { ret ~">"; }
+    }
+}
+
+pure fn binop_to_method_name(op: binop) -> option<~str> {
+    alt op {
+      add { ret some(~"add"); }
+      subtract { ret some(~"sub"); }
+      mul { ret some(~"mul"); }
+      div { ret some(~"div"); }
+      rem { ret some(~"modulo"); }
+      bitxor { ret some(~"bitxor"); }
+      bitand { ret some(~"bitand"); }
+      bitor { ret some(~"bitor"); }
+      shl { ret some(~"shl"); }
+      shr { ret some(~"shr"); }
+      and | or | eq | lt | le | ne | ge | gt { ret none; }
     }
 }
 

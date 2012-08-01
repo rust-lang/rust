@@ -110,8 +110,8 @@ type crate_ctxt = {
      module_data: hashmap<~str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
-     sha: std::sha1::sha1,
-     type_sha1s: hashmap<ty::t, ~str>,
+     symbol_hasher: hash::streaming,
+     type_hashcodes: hashmap<ty::t, ~str>,
      type_short_names: hashmap<ty::t, ~str>,
      all_llvm_symbols: set<~str>,
      tcx: ty::ctxt,
@@ -314,8 +314,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
         })) |i| {
             info.cleanups =
                 vec::append(vec::slice(info.cleanups, 0u, i),
-                            // FIXME (#2880): use view here.
-                            vec::slice(info.cleanups,
+                            vec::view(info.cleanups,
                                       i + 1u,
                                       info.cleanups.len()));
             scope_clean_changed(info);
