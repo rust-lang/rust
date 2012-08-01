@@ -228,7 +228,7 @@ impl helpers of ext_ctxt_helpers for ext_ctxt {
         let path = @{span: span, global: false, idents: ~[nm],
                      rp: none, types: ~[]};
         @{id: self.next_id(),
-          node: ast::pat_ident(path, none),
+          node: ast::pat_ident(ast::bind_by_ref, path, none),
           span: span}
     }
 
@@ -834,7 +834,9 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: ast::ident,
             // Generate pattern var(v1, v2, v3)
             |pats| {
                 if vec::is_empty(pats) {
-                    ast::pat_ident(cx.path(v_span, ~[v_name]), none)
+                    ast::pat_ident(ast::bind_by_ref,
+                                   cx.path(v_span, ~[v_name]),
+                                   none)
                 } else {
                     ast::pat_enum(cx.path(v_span, ~[v_name]), some(pats))
                 }

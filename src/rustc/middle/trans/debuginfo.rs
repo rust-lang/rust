@@ -646,7 +646,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     }
 
     let name = alt local.node.pat.node {
-      ast::pat_ident(pth, _) { ast_util::path_to_ident(pth) }
+      ast::pat_ident(_, pth, _) { ast_util::path_to_ident(pth) }
       // FIXME this should be handled (#2533)
       _ { fail ~"no single variable name for local"; }
     };

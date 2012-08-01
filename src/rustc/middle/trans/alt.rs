@@ -79,7 +79,12 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> opt {
     core::unreachable();
 }
 
-type bind_map = ~[{ident: ast::ident, val: ValueRef}];
+type bind_map = ~[{
+    ident: ast::ident,
+    val: ValueRef,
+    mode: ast::binding_mode
+}];
+
 fn assoc(key: ast::ident, list: bind_map) -> option<ValueRef> {
     for vec::each(list) |elt| {
         if str::eq(*elt.ident, *key) { ret some(elt.val); }
@@ -98,7 +103,7 @@ type match_ = ~[match_branch];
 fn has_nested_bindings(m: match_, col: uint) -> bool {
     for vec::each(m) |br| {
         alt br.pats[col].node {
-          ast::pat_ident(_, some(_)) { ret true; }
+          ast::pat_ident(_, _, some(_)) { ret true; }
           _ {}
         }
     }
@@ -109,7 +114,7 @@ fn expand_nested_bindings(m: match_, col: uint, val: ValueRef) -> match_ {
     let mut result = ~[];
     for vec::each(m) |br| {
       alt br.pats[col].node {
-          ast::pat_ident(name, some(inner)) {
+          ast::pat_ident(mode, name, some(inner)) {
             let pats = vec::append(
                 vec::slice(br.pats, 0u, col),
                 vec::append(~[inner],
@@ -118,7 +123,8 @@ fn expand_nested_bindings(m: match_, col: uint, val: ValueRef) -> match_ {
                       @{pats: pats,
                         bound: vec::append(
                             br.bound, ~[{ident: path_to_ident(name),
-                                        val: val}])
+                                        val: val,
+                                        mode: mode}])
                                 with *br});
           }
           _ { vec::push(result, br); }
@@ -140,9 +146,11 @@ fn enter_match(dm: DefMap, m: match_, col: uint, val: ValueRef,
                 vec::view(br.pats, col + 1u, br.pats.len()));
             let self = br.pats[col];
             let bound = alt self.node {
-              ast::pat_ident(name, none) if !pat_is_variant(dm, self) {
+              ast::pat_ident(mode, name, none) if !pat_is_variant(dm, self) {
                 vec::append(br.bound,
-                            ~[{ident: path_to_ident(name), val: val}])
+                            ~[{ident: path_to_ident(name),
+                               val: val,
+                               mode: mode}])
               }
               _ { br.bound }
             };
@@ -158,7 +166,7 @@ fn enter_default(dm: DefMap, m: match_, col: uint, val: ValueRef) -> match_ {
     do enter_match(dm, m, col, val) |p| {
         alt p.node {
           ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) { some(~[]) }
-          ast::pat_ident(_, none) if !pat_is_variant(dm, p) {
+          ast::pat_ident(_, _, none) if !pat_is_variant(dm, p) {
             some(~[])
           }
           _ { none }
@@ -177,7 +185,7 @@ fn enter_opt(tcx: ty::ctxt, m: match_, opt: opt, col: uint,
                      vec::from_elem(variant_size, dummy))) }
             else { none }
           }
-          ast::pat_ident(_, none) if pat_is_variant(tcx.def_map, p) {
+          ast::pat_ident(_, _, none) if pat_is_variant(tcx.def_map, p) {
             if opt_eq(tcx, variant_opt(tcx, p.id), opt) { some(~[]) }
             else { none }
           }
@@ -359,7 +367,7 @@ fn pick_col(m: match_) -> uint {
     fn score(p: @ast::pat) -> uint {
         alt p.node {
           ast::pat_lit(_) | ast::pat_enum(_, _) | ast::pat_range(_, _) { 1u }
-          ast::pat_ident(_, some(p)) { score(p) }
+          ast::pat_ident(_, _, some(p)) { score(p) }
           _ { 0u }
         }
     }
@@ -725,7 +733,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
 
     // Necessary since bind_irrefutable_pat is called outside trans_alt
     alt pat.node {
-      ast::pat_ident(_,inner) {
+      ast::pat_ident(_, _,inner) {
         if pat_is_variant(bcx.tcx().def_map, pat) { ret bcx; }
         if make_copy {
             let ty = node_id_type(bcx, pat.id);

@@ -155,7 +155,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, b_ty);
       }
-      ast::pat_ident(name, sub) if !pat_is_variant(tcx.def_map, pat) {
+      ast::pat_ident(_, name, sub) if !pat_is_variant(tcx.def_map, pat) {
         let vid = lookup_local(fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
         demand::suptype(fcx, pat.span, expected, typ);
@@ -171,7 +171,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ {}
         }
       }
-      ast::pat_ident(path, c) {
+      ast::pat_ident(_, path, c) {
         check_pat_variant(pcx, pat, path, some(~[]), expected);
       }
       ast::pat_enum(path, subpats) {

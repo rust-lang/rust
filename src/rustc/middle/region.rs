@@ -208,7 +208,7 @@ fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
     alt pat.node {
-      ast::pat_ident(path, _) {
+      ast::pat_ident(_, path, _) {
         let defn_opt = cx.def_map.find(pat.id);
         alt defn_opt {
           some(ast::def_variant(_,_)) {
