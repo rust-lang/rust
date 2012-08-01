@@ -15,10 +15,10 @@ use std;
 import std::{time, getopts};
 import io::writer_util;
 import int::range;
-import comm::port;
-import comm::chan;
-import comm::send;
-import comm::recv;
+import pipes::port;
+import pipes::chan;
+import pipes::send;
+import pipes::recv;
 
 import core::result;
 import result::{ok, err};
@@ -26,22 +26,22 @@ import result::{ok, err};
 fn fib(n: int) -> int {
     fn pfib(c: chan<int>, n: int) {
         if n == 0 {
-            send(c, 0);
+            c.send(0);
         } else if n <= 2 {
-            send(c, 1);
+            c.send(1);
         } else {
-            let p = port();
-            let ch = chan(p);
+            let p = pipes::port_set();
+            let ch = p.chan();
             task::spawn(|| pfib(ch, n - 1) );
+            let ch = p.chan();
             task::spawn(|| pfib(ch, n - 2) );
-            send(c, recv(p) + recv(p));
+            c.send(p.recv() + p.recv());
         }
     }
 
-    let p = port();
-    let ch = chan(p);
+    let (ch, p) = pipes::stream();
     let t = task::spawn(|| pfib(ch, n) );
-    return recv(p);
+    p.recv()
 }
 
 type config = {stress: bool};
