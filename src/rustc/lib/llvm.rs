@@ -1090,7 +1090,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
             if addrspace == 0u {
                 ~""
             } else {
-                #fmt("addrspace(%u)", addrspace)
+                fmt!{"addrspace(%u)", addrspace}
             }
         };
         ret addrstr + ~"*" +

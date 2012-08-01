@@ -46,7 +46,7 @@ fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
 fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
                path: ~[ast::ident]) -> ~[ast::def] {
     let mut result = ~[];
-    #debug("lookup_defs: path = %? cnum = %?", path, cnum);
+    debug!{"lookup_defs: path = %? cnum = %?", path, cnum};
     for resolve_path(cstore, cnum, path).each |elt| {
         let (c, data, def) = elt;
         vec::push(result, decoder::lookup_def(c, data, def));
@@ -68,8 +68,8 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
                 path: ~[ast::ident]) ->
     ~[(ast::crate_num, @~[u8], ast::def_id)] {
     let cm = cstore::get_crate_data(cstore, cnum);
-    #debug("resolve_path %s in crates[%d]:%s",
-           ast_util::path_name_i(path), cnum, cm.name);
+    debug!{"resolve_path %s in crates[%d]:%s",
+           ast_util::path_name_i(path), cnum, cm.name};
     let mut result = ~[];
     for decoder::resolve_path(path, cm.data).each |def| {
         if def.crate == ast::local_crate {
@@ -181,17 +181,17 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, class_id.crate);
     let all_items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
-    #debug("Looking up %?", class_id);
+    debug!{"Looking up %?", class_id};
     let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),
-                           || #fmt("get_field_type: class ID %? not found",
-                                   class_id) );
-    #debug("looking up %? : %?", def, class_doc);
+                           || fmt!{"get_field_type: class ID %? not found",
+                                   class_id} );
+    debug!{"looking up %? : %?", def, class_doc};
     let the_field = expect(tcx.diag,
         decoder::maybe_find_item(def.node, class_doc),
-        || #fmt("get_field_type: in class %?, field ID %? not found",
-                 class_id, def) );
-    #debug("got field data %?", the_field);
+        || fmt!{"get_field_type: in class %?, field ID %? not found",
+                 class_id, def} );
+    debug!{"got field data %?", the_field};
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ret {bounds: @~[], rp: false, ty: ty};
 }

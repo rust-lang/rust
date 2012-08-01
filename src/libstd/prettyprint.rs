@@ -8,63 +8,63 @@ impl of serializer for writer {
     }
 
     fn emit_uint(v: uint) {
-        self.write_str(#fmt["%?u", v]);
+        self.write_str(fmt!{"%?u", v});
     }
 
     fn emit_u64(v: u64) {
-        self.write_str(#fmt["%?_u64", v]);
+        self.write_str(fmt!{"%?_u64", v});
     }
 
     fn emit_u32(v: u32) {
-        self.write_str(#fmt["%?_u32", v]);
+        self.write_str(fmt!{"%?_u32", v});
     }
 
     fn emit_u16(v: u16) {
-        self.write_str(#fmt["%?_u16", v]);
+        self.write_str(fmt!{"%?_u16", v});
     }
 
     fn emit_u8(v: u8) {
-        self.write_str(#fmt["%?_u8", v]);
+        self.write_str(fmt!{"%?_u8", v});
     }
 
     fn emit_int(v: int) {
-        self.write_str(#fmt["%?", v]);
+        self.write_str(fmt!{"%?", v});
     }
 
     fn emit_i64(v: i64) {
-        self.write_str(#fmt["%?_i64", v]);
+        self.write_str(fmt!{"%?_i64", v});
     }
 
     fn emit_i32(v: i32) {
-        self.write_str(#fmt["%?_i32", v]);
+        self.write_str(fmt!{"%?_i32", v});
     }
 
     fn emit_i16(v: i16) {
-        self.write_str(#fmt["%?_i16", v]);
+        self.write_str(fmt!{"%?_i16", v});
     }
 
     fn emit_i8(v: i8) {
-        self.write_str(#fmt["%?_i8", v]);
+        self.write_str(fmt!{"%?_i8", v});
     }
 
     fn emit_bool(v: bool) {
-        self.write_str(#fmt["%b", v]);
+        self.write_str(fmt!{"%b", v});
     }
 
     fn emit_float(v: float) {
-        self.write_str(#fmt["%?_f", v]);
+        self.write_str(fmt!{"%?_f", v});
     }
 
     fn emit_f64(v: f64) {
-        self.write_str(#fmt["%?_f64", v]);
+        self.write_str(fmt!{"%?_f64", v});
     }
 
     fn emit_f32(v: f32) {
-        self.write_str(#fmt["%?_f32", v]);
+        self.write_str(fmt!{"%?_f32", v});
     }
 
     fn emit_str(v: ~str) {
-        self.write_str(#fmt["%?", v]);
+        self.write_str(fmt!{"%?", v});
     }
 
     fn emit_enum(_name: ~str, f: fn()) {

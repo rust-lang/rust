@@ -140,7 +140,7 @@ class irc : public shape::data<irc,shape::ptr> {
         }
     }
 
-    void walk_iface2() {
+    void walk_trait2() {
         walk_box2();
     }
 
@@ -400,7 +400,7 @@ class mark : public shape::data<mark,shape::ptr> {
         }
     }
 
-    void walk_iface2() {
+    void walk_trait2() {
         walk_box2();
     }
 

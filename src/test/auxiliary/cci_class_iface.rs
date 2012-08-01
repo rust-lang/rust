@@ -1,6 +1,6 @@
 mod animals {
 
-iface noisy {
+trait noisy {
   fn speak();
 }
 

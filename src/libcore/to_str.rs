@@ -1,4 +1,4 @@
-iface to_str { fn to_str() -> ~str; }
+trait to_str { fn to_str() -> ~str; }
 
 impl of to_str for int {
     fn to_str() -> ~str { int::str(self) }

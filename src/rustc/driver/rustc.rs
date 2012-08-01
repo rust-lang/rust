@@ -27,14 +27,14 @@ import io::reader_util;
 
 fn version(argv0: ~str) {
     let mut vers = ~"unknown version";
-    let env_vers = #env["CFG_VERSION"];
+    let env_vers = env!{"CFG_VERSION"};
     if str::len(env_vers) != 0u { vers = env_vers; }
-    io::println(#fmt("%s %s", argv0, vers));
-    io::println(#fmt("host: %s", host_triple()));
+    io::println(fmt!{"%s %s", argv0, vers});
+    io::println(fmt!{"host: %s", host_triple()});
 }
 
 fn usage(argv0: ~str) {
-    io::println(#fmt("Usage: %s [options] <input>\n", argv0) +
+    io::println(fmt!{"Usage: %s [options] <input>\n", argv0} +
                  ~"
 Options:
 
@@ -91,14 +91,14 @@ fn describe_warnings() {
     fn padded(max: uint, s: ~str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
-    io::println(#fmt("\nAvailable lint checks:\n"));
-    io::println(#fmt("    %s  %7.7s  %s",
-                     padded(max_key, ~"name"), ~"default", ~"meaning"));
-    io::println(#fmt("    %s  %7.7s  %s\n",
-                     padded(max_key, ~"----"), ~"-------", ~"-------"));
+    io::println(fmt!{"\nAvailable lint checks:\n"});
+    io::println(fmt!{"    %s  %7.7s  %s",
+                     padded(max_key, ~"name"), ~"default", ~"meaning"});
+    io::println(fmt!{"    %s  %7.7s  %s\n",
+                     padded(max_key, ~"----"), ~"-------", ~"-------"});
     for lint_dict.each |k, v| {
         let k = str::replace(k, ~"_", ~"-");
-        io::println(#fmt("    %s  %7.7s  %s",
+        io::println(fmt!{"    %s  %7.7s  %s",
                          padded(max_key, k),
                          alt v.default {
                              lint::allow { ~"allow" }
@@ -106,16 +106,16 @@ fn describe_warnings() {
                              lint::deny { ~"deny" }
                              lint::forbid { ~"forbid" }
                          },
-                         v.desc));
+                         v.desc});
     }
     io::println(~"");
 }
 
 fn describe_debug_flags() {
-    io::println(#fmt("\nAvailable debug options:\n"));
+    io::println(fmt!{"\nAvailable debug options:\n"});
     for session::debugging_opts_map().each |pair| {
         let (name, desc, _) = pair;
-        io::println(#fmt("    -Z%-20s -- %s", name, desc));
+        io::println(fmt!{"    -Z%-20s -- %s", name, desc});
     }
 }
 
@@ -128,7 +128,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
 
     if vec::len(args) == 0u { usage(binary); ret; }
 
-    let match =
+    let matches =
         alt getopts::getopts(args, opts()) {
           ok(m) { m }
           err(f) {
@@ -136,31 +136,31 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
           }
         };
 
-    if opt_present(match, ~"h") || opt_present(match, ~"help") {
+    if opt_present(matches, ~"h") || opt_present(matches, ~"help") {
         usage(binary);
         ret;
     }
 
-    let lint_flags = vec::append(getopts::opt_strs(match, ~"W"),
-                                 getopts::opt_strs(match, ~"warn"));
+    let lint_flags = vec::append(getopts::opt_strs(matches, ~"W"),
+                                 getopts::opt_strs(matches, ~"warn"));
     if lint_flags.contains(~"help") {
         describe_warnings();
         ret;
     }
 
-    if getopts::opt_strs(match, ~"Z").contains(~"help") {
+    if getopts::opt_strs(matches, ~"Z").contains(~"help") {
         describe_debug_flags();
         ret;
     }
 
-    if opt_present(match, ~"v") || opt_present(match, ~"version") {
+    if opt_present(matches, ~"v") || opt_present(matches, ~"version") {
         version(binary);
         ret;
     }
-    let input = alt vec::len(match.free) {
+    let input = alt vec::len(matches.free) {
       0u { early_error(demitter, ~"no input filename given") }
       1u {
-        let ifile = match.free[0];
+        let ifile = matches.free[0];
         if ifile == ~"-" {
             let src = str::from_bytes(io::stdin().read_whole_stream());
             str_input(src)
@@ -171,20 +171,20 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
       _ { early_error(demitter, ~"multiple input filenames provided") }
     };
 
-    let sopts = build_session_options(match, demitter);
+    let sopts = build_session_options(matches, demitter);
     let sess = build_session(sopts, demitter);
-    let odir = getopts::opt_maybe_str(match, ~"out-dir");
-    let ofile = getopts::opt_maybe_str(match, ~"o");
+    let odir = getopts::opt_maybe_str(matches, ~"out-dir");
+    let ofile = getopts::opt_maybe_str(matches, ~"o");
     let cfg = build_configuration(sess, binary, input);
     let pretty =
-        option::map(getopts::opt_default(match, ~"pretty",
+        option::map(getopts::opt_default(matches, ~"pretty",
                                          ~"normal"),
                     |a| parse_pretty(sess, a) );
     alt pretty {
       some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, input, ppm); ret; }
       none::<pp_mode> {/* continue */ }
     }
-    let ls = opt_present(match, ~"ls");
+    let ls = opt_present(matches, ~"ls");
     if ls {
         alt input {
           file_input(ifile) {

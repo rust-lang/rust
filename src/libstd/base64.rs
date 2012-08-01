@@ -1,6 +1,6 @@
 import io::{reader, reader_util};
 
-iface to_base64 {
+trait to_base64 {
     fn to_base64() -> ~str;
 }
 
@@ -58,7 +58,7 @@ impl of to_base64 for ~str {
     }
 }
 
-iface from_base64 {
+trait from_base64 {
     fn from_base64() -> ~[u8];
 }
 

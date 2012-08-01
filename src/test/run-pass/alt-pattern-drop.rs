@@ -14,7 +14,7 @@ fn foo(s: @int) {
         log(debug, y); // ref up then down
 
       }
-      _ { #debug("?"); fail; }
+      _ { debug!{"?"}; fail; }
     }
     log(debug, sys::refcount(s));
     assert (sys::refcount(s) == count + 1u);

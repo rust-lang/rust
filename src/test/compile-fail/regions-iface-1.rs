@@ -1,6 +1,6 @@
 type ctxt = { v: uint };
 
-iface get_ctxt {
+trait get_ctxt {
     // Here the `&` is bound in the method definition:
     fn get_ctxt() -> &ctxt;
 }

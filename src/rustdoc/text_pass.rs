@@ -117,28 +117,28 @@ fn should_execute_op_on_variant_desc() {
 #[test]
 fn should_execute_op_on_trait_brief() {
     let doc = test::mk_doc(
-        ~"#[doc = \" a \"] iface i { fn a(); }");
+        ~"#[doc = \" a \"] trait i { fn a(); }");
     assert doc.cratemod().traits()[0].brief() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_desc() {
     let doc = test::mk_doc(
-        ~"#[doc = \" a \"] iface i { fn a(); }");
+        ~"#[doc = \" a \"] trait i { fn a(); }");
     assert doc.cratemod().traits()[0].desc() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_method_brief() {
     let doc = test::mk_doc(
-        ~"iface i { #[doc = \" a \"] fn a(); }");
+        ~"trait i { #[doc = \" a \"] fn a(); }");
     assert doc.cratemod().traits()[0].methods[0].brief == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_method_desc() {
     let doc = test::mk_doc(
-        ~"iface i { #[doc = \" a \"] fn a(); }");
+        ~"trait i { #[doc = \" a \"] fn a(); }");
     assert doc.cratemod().traits()[0].methods[0].desc == some(~"a");
 }
 
@@ -207,7 +207,7 @@ fn should_execute_on_item_section_bodies() {
 #[test]
 fn should_execute_on_trait_method_section_headers() {
     let doc = test::mk_doc(
-        ~"iface i {
+        ~"trait i {
          #[doc = \"\
          # Header    \n\
          Body\"]\
@@ -219,7 +219,7 @@ fn should_execute_on_trait_method_section_headers() {
 #[test]
 fn should_execute_on_trait_method_section_bodies() {
     let doc = test::mk_doc(
-        ~"iface i {
+        ~"trait i {
          #[doc = \"\
          # Header\n\
          Body     \"]\

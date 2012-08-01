@@ -163,7 +163,7 @@ pure fn uint_ty_max(t: uint_ty) -> u64 {
 }
 
 pure fn float_ty_to_str(t: float_ty) -> ~str {
-    alt t { ty_f { ~"" } ty_f32 { ~"f32" } ty_f64 { ~"f64" } }
+    alt t { ty_f { ~"f" } ty_f32 { ~"f32" } ty_f64 { ~"f64" } }
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
@@ -469,6 +469,9 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(e.id);
         },
 
+        visit_expr_post: fn@(_e: @expr) {
+        },
+
         visit_ty: fn@(t: @ty) {
             alt t.node {
               ty_path(_, id) {
@@ -565,7 +568,7 @@ pure fn is_item_impl(item: @ast::item) -> bool {
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     alt pat.node {
-      pat_ident(pth, some(p)) { walk_pat(p, it); }
+      pat_ident(_, pth, some(p)) { walk_pat(p, it); }
       pat_rec(fields, _) {
         for fields.each |f| { walk_pat(f.pat, it); }
       }
@@ -573,7 +576,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
         for s.each |p| { walk_pat(p, it); }
       }
       pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
-      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _)
+      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _)
         | pat_enum(_, _) {}
     }
 }
@@ -583,6 +586,13 @@ fn view_path_id(p: @view_path) -> node_id {
       view_path_simple(_, _, id) | view_path_glob(_, id) |
       view_path_list(_, _, id) { id }
     }
+}
+
+fn lone_block_expr(blk: blk) -> option<@ast::expr> {
+    if blk.node.view_items.len() != 0 { ret none; }
+    if blk.node.stmts.len() != 0 { ret none; }
+    if blk.node.rules != default_blk { ret none; }
+    ret blk.node.expr;
 }
 
 // Local Variables:

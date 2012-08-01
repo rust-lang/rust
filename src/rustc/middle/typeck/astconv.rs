@@ -13,7 +13,7 @@
  * used as the `ast_conv`, `get_item_ty()` just looks up the item type in
  * `tcx.tcache`.
  *
- * The `region_scope` interface controls how region references are
+ * The `region_scope` trait controls how region references are
  * handled.  It has two methods which are used to resolve anonymous
  * region references (e.g., `&T`) and named region references (e.g.,
  * `&a.T`).  There are numerous region scopes that can be used, but most
@@ -46,7 +46,7 @@ import check::fn_ctxt;
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
 
-iface ast_conv {
+trait ast_conv {
     fn tcx() -> ty::ctxt;
     fn ccx() -> @crate_ctxt;
     fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty;
@@ -87,8 +87,8 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     let {bounds: decl_bounds, rp: decl_rp, ty: decl_ty} =
         self.get_item_ty(did);
 
-    #debug["ast_path_to_substs_and_ty: did=%? decl_rp=%b",
-           did, decl_rp];
+    debug!{"ast_path_to_substs_and_ty: did=%? decl_rp=%b",
+           did, decl_rp};
 
     // If the type is parameterized by the self region, then replace self
     // region with the current anon region binding (in other words,
@@ -100,9 +100,9 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
       (false, some(_)) {
         tcx.sess.span_err(
             path.span,
-            #fmt["no region bound is allowed on `%s`, \
+            fmt!{"no region bound is allowed on `%s`, \
                   which is not declared as containing region pointers",
-                 ty::item_path_str(tcx, did)]);
+                 ty::item_path_str(tcx, did)});
         none
       }
       (true, none) {
@@ -119,8 +119,8 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     if !vec::same_length(*decl_bounds, path.types) {
         self.tcx().sess.span_fatal(
             path.span,
-            #fmt["wrong number of type arguments: expected %u but found %u",
-                 (*decl_bounds).len(), path.types.len()]);
+            fmt!{"wrong number of type arguments: expected %u but found %u",
+                 (*decl_bounds).len(), path.types.len()});
     }
     let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, a_t));
 
@@ -266,8 +266,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
       }
       ast::ty_path(path, id) {
         let a_def = alt tcx.def_map.find(id) {
-          none { tcx.sess.span_fatal(ast_ty.span, #fmt("unbound path %s",
-                                                       path_to_str(path))); }
+          none { tcx.sess.span_fatal(ast_ty.span, fmt!{"unbound path %s",
+                                                       path_to_str(path)}); }
           some(d) { d }};
         alt a_def {
           ast::def_ty(did) | ast::def_class(did, _) {
@@ -322,8 +322,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
                         |ty| {
                             tcx.sess.span_err(
                                 a_t.span,
-                                #fmt["bound not allowed on a %s",
-                                     ty::ty_sort_str(tcx, ty.ty)]);
+                                fmt!{"bound not allowed on a %s",
+                                     ty::ty_sort_str(tcx, ty.ty)});
                             ty.ty
                         })
       }
@@ -400,7 +400,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     decl: ast::fn_decl,
     expected_tys: expected_tys) -> ty::fn_ty {
 
-    #debug["ty_of_fn_decl"];
+    debug!{"ty_of_fn_decl"};
     do indent {
         // new region names that appear inside of the fn decl are bound to
         // that function type

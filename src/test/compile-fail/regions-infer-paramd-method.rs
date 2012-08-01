@@ -1,7 +1,7 @@
 // Here: foo is parameterized because it contains a method that
 // refers to self.
 
-iface foo {
+trait foo {
     fn self_int() -> &self/int;
 
     fn any_int() -> &int;
@@ -21,7 +21,7 @@ impl methods of set_foo_foo for with_foo {
 
 // Bar is not region parameterized.
 
-iface bar {
+trait bar {
     fn any_int() -> &int;
 }
 

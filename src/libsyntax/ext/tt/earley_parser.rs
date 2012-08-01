@@ -274,13 +274,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     alt ei.elts[ei.idx].node {
                       match_nonterminal(bind,name,_) {
-                        #fmt["%s ('%s')", *name, *bind]
+                        fmt!{"%s ('%s')", *name, *bind}
                       }
                       _ { fail; } } }), ~" or ");
-                ret failure(sp, #fmt[
+                ret failure(sp, fmt!{
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
-                    nts, next_eis.len()]);
+                    nts, next_eis.len()});
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 ret failure(sp, ~"No rules expected the token "
                             + to_str(*rdr.interner(), tok));
@@ -326,7 +326,7 @@ fn parse_nt(p: parser, name: ~str) -> nonterminal {
       }}
       ~"block" { token::nt_block(p.parse_block()) }
       ~"stmt" { token::nt_stmt(p.parse_stmt(~[])) }
-      ~"pat" { token::nt_pat(p.parse_pat()) }
+      ~"pat" { token::nt_pat(p.parse_pat(true)) }
       ~"expr" { token::nt_expr(p.parse_expr()) }
       ~"ty" { token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)) }
       // this could be handled like a token, since it is one

@@ -103,7 +103,7 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
                             builtin(ext::source_util::expand_include_str));
     syntax_expanders.insert(~"include_bin",
                             builtin(ext::source_util::expand_include_bin));
-    syntax_expanders.insert(~"mod",
+    syntax_expanders.insert(~"module_path",
                             builtin(ext::source_util::expand_mod));
     syntax_expanders.insert(~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
@@ -114,7 +114,7 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
 // One of these is made during expansion and incrementally updated as we go;
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
-iface ext_ctxt {
+trait ext_ctxt {
     fn codemap() -> codemap;
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
@@ -243,22 +243,22 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
             alt max {
               some(max) if ! (min <= elts_len && elts_len <= max) {
                 cx.span_fatal(sp,
-                              #fmt["#%s takes between %u and %u arguments.",
-                                   name, min, max]);
+                              fmt!{"#%s takes between %u and %u arguments.",
+                                   name, min, max});
               }
               none if ! (min <= elts_len) {
-                cx.span_fatal(sp, #fmt["#%s needs at least %u arguments.",
-                                       name, min]);
+                cx.span_fatal(sp, fmt!{"#%s needs at least %u arguments.",
+                                       name, min});
               }
               _ { ret elts; /* we're good */}
             }
           }
           _ {
-            cx.span_fatal(sp, #fmt["#%s: malformed invocation", name])
+            cx.span_fatal(sp, fmt!{"#%s: malformed invocation", name})
           }
         }
       }
-      none {cx.span_fatal(sp, #fmt["#%s: missing arguments", name])}
+      none {cx.span_fatal(sp, fmt!{"#%s: missing arguments", name})}
     }
 }
 

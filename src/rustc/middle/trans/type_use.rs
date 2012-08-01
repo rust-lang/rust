@@ -61,8 +61,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     }
     let map_node = alt ccx.tcx.items.find(fn_id_loc.node) {
         some(x) { x }
-        none    { ccx.sess.bug(#fmt("type_uses_for: unbound item ID %?",
-                                    fn_id_loc)); }
+        none    { ccx.sess.bug(fmt!{"type_uses_for: unbound item ID %?",
+                                    fn_id_loc}); }
     };
     alt check map_node {
       ast_map::node_item(@{node: item_fn(_, _, body), _}, _) |
@@ -158,7 +158,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_rec(_, _) | expr_struct(*) | expr_tup(_) |
       expr_unary(box(_), _) | expr_unary(uniq(_), _) |
       expr_binary(add, _, _) |
-      expr_copy(_) | expr_move(_, _) {
+      expr_copy(_) | expr_move(_, _) | expr_unary_move(_) {
         node_type_needs(cx, use_repr, e.id);
       }
       expr_cast(base, _) {

@@ -22,7 +22,7 @@ enum fragment {
     from_ty(@ast::ty)
 }
 
-iface qq_helper {
+trait qq_helper {
     fn span() -> span;
     fn visit(aq_ctxt, vt<aq_ctxt>);
     fn extract_mac() -> option<ast::mac_>;
@@ -170,7 +170,7 @@ fn parse_crate(p: parser) -> @ast::crate { p.parse_crate_mod(~[]) }
 fn parse_ty(p: parser) -> @ast::ty { p.parse_ty(false) }
 fn parse_stmt(p: parser) -> @ast::stmt { p.parse_stmt(~[]) }
 fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
-fn parse_pat(p: parser) -> @ast::pat { p.parse_pat() }
+fn parse_pat(p: parser) -> @ast::pat { p.parse_pat(true) }
 
 fn parse_item(p: parser) -> @ast::item {
     alt p.parse_item(~[], ast::public) {
@@ -185,7 +185,7 @@ fn finish<T: qq_helper>
 {
     let cm = ecx.codemap();
     let str = @codemap::span_to_snippet(body.span, cm);
-    #debug["qquote--str==%?", str];
+    debug!{"qquote--str==%?", str};
     let fname = codemap::mk_substr_filename(cm, body.span);
     let node = parse_from_source_str
         (f, fname, codemap::fss_internal(body.span), str,
@@ -211,7 +211,7 @@ fn finish<T: qq_helper>
     do str::chars_iter(*str) |ch| {
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
-            let repl = #fmt("$%u ", j);
+            let repl = fmt!{"$%u ", j};
             state = skip(str::char_len(repl));
             str2 += repl;
         }

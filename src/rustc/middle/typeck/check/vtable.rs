@@ -56,8 +56,8 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                  allow_unsafe: bool)
               -> vtable_origin {
 
-    #debug["lookup_vtable(ty=%s, trait_ty=%s)",
-           fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(trait_ty)];
+    debug!{"lookup_vtable(ty=%s, trait_ty=%s)",
+           fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(trait_ty)};
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;
@@ -78,8 +78,8 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                 alt check ty::get(ity).struct {
                   ty::ty_trait(idid, substs) {
                     if trait_id == idid {
-                        #debug("(checking vtable) @0 relating ty to trait ty
-                                with did %?", idid);
+                        debug!{"(checking vtable) @0 relating ty to trait ty
+                                with did %?", idid};
                         relate_trait_tys(fcx, sp, trait_ty, ity);
                         ret vtable_param(n, n_bound);
                     }
@@ -92,8 +92,8 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
       }
 
       ty::ty_trait(did, substs) if trait_id == did {
-        #debug("(checking vtable) @1 relating ty to trait ty with did %?",
-               did);
+        debug!{"(checking vtable) @1 relating ty to trait ty with did %?",
+               did};
 
         relate_trait_tys(fcx, sp, trait_ty, ty);
         if !allow_unsafe {
@@ -153,10 +153,10 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                         }
 
                         // check that desired trait type unifies
-                        #debug("(checking vtable) @2 relating trait ty %s to \
+                        debug!{"(checking vtable) @2 relating trait ty %s to \
                                 of_ty %s",
                                fcx.infcx.ty_to_str(trait_ty),
-                               fcx.infcx.ty_to_str(of_ty));
+                               fcx.infcx.ty_to_str(of_ty)};
                         let of_ty = ty::subst(tcx, substs, of_ty);
                         relate_trait_tys(fcx, sp, trait_ty, of_ty);
 
@@ -189,7 +189,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
     }
 
     tcx.sess.span_fatal(
-        sp, ~"failed to find an implementation of interface " +
+        sp, ~"failed to find an implementation of trait " +
         ty_to_str(tcx, trait_ty) + ~" for " +
         ty_to_str(tcx, ty));
 }
@@ -201,9 +201,9 @@ fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
       result::err(e) {
         tcx.sess.span_fatal(
             sp,
-            #fmt["cannot determine a type \
+            fmt!{"cannot determine a type \
                   for this bounded type parameter: %s",
-                 fixup_err_to_str(e)])
+                 fixup_err_to_str(e)})
       }
     }
 }
@@ -215,8 +215,8 @@ fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
     // XXX: This should work for multiple traits.
     let ity = ty::impl_traits(tcx, impl_did)[0];
     let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
-    #debug("(connect trait tps) trait type is %?, impl did is %?",
-           ty::get(trait_ty).struct, impl_did);
+    debug!{"(connect trait tps) trait type is %?, impl did is %?",
+           ty::get(trait_ty).struct, impl_did};
     alt check ty::get(trait_ty).struct {
       ty::ty_trait(_, substs) {
         vec::iter2(substs.tps, trait_tys,
@@ -291,7 +291,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
     visit::visit_expr(ex, fcx, v);
 }
 
-// Detect points where an interface-bounded type parameter is
+// Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
     visit::visit_block(bl, fcx, visit::mk_vt(@{

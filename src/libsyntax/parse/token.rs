@@ -166,23 +166,21 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
         int::to_str(i as int, 10u)
       }
       LIT_FLOAT(s, t) {
-        *interner::get(in, s) +
-            ast_util::float_ty_to_str(t)
+        let mut body = *in.get(s);
+        if body.ends_with(".") {
+            body = body + "0";  // `10.f` is not a float literal
+        }
+        body + ast_util::float_ty_to_str(t)
       }
-      LIT_STR(s) {
-        ~"\""
-            + str::escape_default(*interner::get(in, s))
-            + ~"\""
-      }
+      LIT_STR(s) { ~"\"" + str::escape_default( *in.get(s)) + ~"\"" }
 
       /* Name components */
-      IDENT(s, _) {
-        *interner::get(in, s)
-      }
+      IDENT(s, _) { *in.get(s) }
+
       UNDERSCORE { ~"_" }
 
       /* Other */
-      DOC_COMMENT(s) { *interner::get(in, s) }
+      DOC_COMMENT(s) { *in.get(s) }
       EOF { ~"<eof>" }
       INTERPOLATED(nt) {
         ~"an interpolated " +
@@ -226,6 +224,21 @@ pure fn can_begin_expr(t: token) -> bool {
       _ { false }
     }
 }
+
+/// what's the opposite delimiter?
+fn flip_delimiter(&t: token::token) -> token::token {
+    alt t {
+      token::LPAREN { token::RPAREN }
+      token::LBRACE { token::RBRACE }
+      token::LBRACKET { token::RBRACKET }
+      token::RPAREN { token::LPAREN }
+      token::RBRACE { token::LBRACE }
+      token::RBRACKET { token::LBRACKET }
+      _ { fail }
+    }
+}
+
+
 
 fn is_lit(t: token) -> bool {
     alt t {
@@ -314,11 +327,11 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
         ~"fail", ~"false", ~"fn", ~"for",
         ~"if", ~"iface", ~"impl", ~"import",
         ~"let", ~"log", ~"loop",
-        ~"mod", ~"mut",
+        ~"match", ~"mod", ~"module", ~"move", ~"mut",
         ~"new",
         ~"owned",
         ~"pure",
-        ~"ret",
+        ~"ref", ~"ret", ~"return",
         ~"struct",
         ~"true", ~"trait", ~"type",
         ~"unchecked", ~"unsafe",

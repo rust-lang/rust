@@ -88,7 +88,7 @@ pure fn get_default<T: copy>(opt: option<T>, def: T) -> T {
     alt opt { some(x) { x } none { def } }
 }
 
-pure fn map_default<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
+pure fn map_default<T, U>(opt: option<T>, +def: U, f: fn(T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
     alt opt { none { def } some(t) { f(t) } }
@@ -133,7 +133,7 @@ impl extensions<T> for option<T> {
      */
     pure fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
     /// Applies a function to the contained value or returns a default
-    pure fn map_default<U: copy>(def: U, f: fn(T) -> U) -> U
+    pure fn map_default<U>(+def: U, f: fn(T) -> U) -> U
         { map_default(self, def, f) }
     /// Performs an operation on the contained value or does nothing
     pure fn iter(f: fn(T)) { iter(self, f) }

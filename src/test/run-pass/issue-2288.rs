@@ -1,4 +1,4 @@
-iface clam<A: copy> {
+trait clam<A: copy> {
   fn chowder(y: A);
 }
 class foo<A: copy> : clam<A> {

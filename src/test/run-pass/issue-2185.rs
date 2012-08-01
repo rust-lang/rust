@@ -1,8 +1,8 @@
-// This test had to do with an outdated version of the iterable iface.
+// This test had to do with an outdated version of the iterable trait.
 // However, the condition it was testing seemed complex enough to
 // warrant still having a test, so I inlined the old definitions.
 
-iface iterable<A> {
+trait iterable<A> {
     fn iter(blk: fn(A));
 }
 
@@ -44,5 +44,5 @@ fn main() {
         a);
     let sum = foldl(filt, 0u, |accum, &&n: uint| accum + n );
 
-    io::println(#fmt("%u", sum));
+    io::println(fmt!{"%u", sum});
 }

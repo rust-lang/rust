@@ -80,7 +80,7 @@ impl of word_reader for io::reader {
 fn file_word_reader(filename: ~str) -> word_reader {
     alt io::file_reader(filename) {
       result::ok(f) { f as word_reader }
-      result::err(e) { fail #fmt("%?", e) }
+      result::err(e) { fail fmt!{"%?", e} }
     }
 }
 
@@ -99,7 +99,7 @@ fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
 
     loop { alt get() { some(_) { count += 1; } none { break; } } }
     
-    io::println(#fmt("%s\t%?", word, count));
+    io::println(fmt!{"%s\t%?", word, count});
 }
 
 class box<T> {
@@ -225,11 +225,11 @@ mod map_reduce {
             while !is_done || ref_count > 0 {
                 alt recv(p) {
                   emit_val(v) {
-                    // #error("received %d", v);
+                    // error!{"received %d", v};
                     ret some(v);
                   }
                   done {
-                    // #error("all done");
+                    // error!{"all done"};
                     is_done = true;
                   }
                   ref { ref_count += 1; }
@@ -260,7 +260,7 @@ mod map_reduce {
             let (_ready, message, ctrls) = pipes::select(ctrl);
             alt option::unwrap(message) {
               ctrl_proto::mapper_done {
-                // #error("received mapper terminated.");
+                // error!{"received mapper terminated."};
                 num_mappers -= 1;
                 ctrl = ctrls;
               }
@@ -301,7 +301,7 @@ fn main(argv: ~[~str]) {
     if vec::len(argv) < 2u && !os::getenv(~"RUST_BENCH").is_some() {
         let out = io::stdout();
 
-        out.write_line(#fmt["Usage: %s <filename> ...", argv[0]]);
+        out.write_line(fmt!{"Usage: %s <filename> ...", argv[0]});
 
         ret;
     }

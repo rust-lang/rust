@@ -97,7 +97,7 @@ impl private_methods<A> for dvec<A> {
     }
 
     #[inline(always)]
-    fn return(-data: ~[mut A]) {
+    fn give_back(-data: ~[mut A]) {
         unsafe {
             self.data <- data;
         }
@@ -120,7 +120,7 @@ impl extensions<A> for dvec<A> {
      */
     #[inline(always)]
     fn swap(f: fn(-~[mut A]) -> ~[mut A]) {
-        self.borrow(|v| self.return(f(v)))
+        self.borrow(|v| self.give_back(f(v)))
     }
 
     /// Returns the number of elements currently in the dvec
@@ -128,7 +128,7 @@ impl extensions<A> for dvec<A> {
         unchecked {
             do self.borrow |v| {
                 let l = v.len();
-                self.return(v);
+                self.give_back(v);
                 l
             }
         }
@@ -145,7 +145,7 @@ impl extensions<A> for dvec<A> {
         do self.borrow |v| {
             let mut v <- v;
             let result = vec::pop(v);
-            self.return(v);
+            self.give_back(v);
             result
         }
     }
@@ -175,7 +175,7 @@ impl extensions<A> for dvec<A> {
         do self.borrow |v| {
             let mut v = vec::from_mut(v);
             let result = vec::shift(v);
-            self.return(vec::to_mut(v));
+            self.give_back(vec::to_mut(v));
             result
         }
     }
@@ -247,7 +247,7 @@ impl extensions<A:copy> for dvec<A> {
         unchecked {
             do self.borrow |v| {
                 let w = vec::from_mut(copy v);
-                self.return(v);
+                self.give_back(v);
                 w
             }
         }

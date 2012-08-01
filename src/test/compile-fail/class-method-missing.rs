@@ -1,5 +1,5 @@
 // error-pattern:missing method `eat`
-iface animal {
+trait animal {
   fn eat();
 }
 

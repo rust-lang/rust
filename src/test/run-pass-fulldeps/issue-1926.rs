@@ -21,7 +21,7 @@ fn new_parse_sess() -> parser::parse_sess {
     ret sess;
 }
 
-iface fake_ext_ctxt {
+trait fake_ext_ctxt {
     fn session() -> fake_session;
     fn cfg() -> ast::crate_cfg;
     fn parse_sess() -> parser::parse_sess;
@@ -46,8 +46,8 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 fn main() {
     let ext_cx = mk_ctxt();
-    let s = #ast(expr){__s};
-    let e = #ast(expr){__e};
-    let f = #ast(expr){$(s).foo {|__e| $(e)}};
+    let s = #ast[expr]{__s};
+    let e = #ast[expr]{__e};
+    let f = #ast[expr]{$(s).foo {|__e| $(e)}};
     log(error, pprust::expr_to_str(f));
 }

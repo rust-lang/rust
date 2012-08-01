@@ -68,5 +68,5 @@ fn main(args: ~[~str]) {
     let sum = alt check comm::recv(port) {
       done(sum) { sum }
     };
-    #error("How many tasks? %d tasks.", sum);
+    error!{"How many tasks? %d tasks.", sum};
 }

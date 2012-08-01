@@ -6,7 +6,7 @@ fn mk_nil<C:ty_ops>(cx: C) -> uint {
     cx.mk()
 }
 
-iface ty_ops {
+trait ty_ops {
     fn mk() -> uint;
 }
 

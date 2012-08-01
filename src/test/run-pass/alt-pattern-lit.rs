@@ -2,8 +2,8 @@
 
 fn altlit(f: int) -> int {
     alt check f {
-      10 { #debug("case 10"); ret 20; }
-      11 { #debug("case 11"); ret 22; }
+      10 { debug!{"case 10"}; ret 20; }
+      11 { debug!{"case 11"}; ret 22; }
     }
 }
 

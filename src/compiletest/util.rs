@@ -9,7 +9,7 @@ fn make_new_path(path: ~str) -> ~str {
     // maintain the current value while adding our own
     alt getenv(lib_path_env_var()) {
       option::some(curr) {
-        #fmt["%s%s%s", path, path_div(), curr]
+        fmt!{"%s%s%s", path, path_div(), curr}
       }
       option::none { path }
     }

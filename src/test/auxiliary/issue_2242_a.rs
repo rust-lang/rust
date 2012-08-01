@@ -1,7 +1,7 @@
 #[link(name = "a", vers = "0.1")];
 #[crate_type = "lib"];
 
-iface to_str {
+trait to_str {
     fn to_str() -> str;
 }
 

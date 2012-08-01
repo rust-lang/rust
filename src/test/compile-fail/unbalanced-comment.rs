@@ -7,5 +7,5 @@
  */
 
 fn main() {
-  #debug("hello, world.");
+  debug!{"hello, world."};
 }

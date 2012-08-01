@@ -15,14 +15,12 @@ import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
 import dvec::{dvec, extensions};
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
-             bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
-             bound_copy, bound_send, bound_trait, bound_owned,
-             box, by_copy, by_move,
-             by_mutbl_ref, by_ref, by_val, capture_clause, capture_item,
-             cdir_dir_mod, cdir_src_mod,
-             cdir_view_item, class_immutable,
-             class_member, class_method, class_mutable,
-             crate, crate_cfg, crate_directive, decl,
+             bind_by_ref, bind_by_value, bitand, bitor, bitxor, blk,
+             blk_check_mode, bound_const, bound_copy, bound_send, bound_trait,
+             bound_owned, box, by_copy, by_move, by_mutbl_ref, by_ref, by_val,
+             capture_clause, capture_item, cdir_dir_mod, cdir_src_mod,
+             cdir_view_item, class_immutable, class_member, class_method,
+             class_mutable, crate, crate_cfg, crate_directive, decl,
              decl_item, decl_local, default_blk, deref, div, expl, expr,
              expr_, expr_addr_of, expr_alt, expr_again, expr_assert,
              expr_assign, expr_assign_op, expr_binary, expr_block, expr_break,
@@ -31,12 +29,12 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              expr_index, expr_lit, expr_log, expr_loop,
              expr_loop_body, expr_mac, expr_move, expr_new, expr_path,
              expr_rec, expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
-             expr_vec, expr_vstore, expr_while, extern_fn, field, fn_decl,
-             foreign_item, foreign_item_fn, foreign_mod, ident, impure_fn,
-             infer, init_assign, init_move, initializer, instance_var, item,
-             item_, item_class, item_const, item_enum, item_fn,
-             item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
-             item_ty, lit, lit_, lit_bool, lit_float, lit_int,
+             expr_unary_move, expr_vec, expr_vstore, expr_while, extern_fn,
+             field, fn_decl, foreign_item, foreign_item_fn, foreign_mod,
+             ident, impure_fn, infer, init_assign, init_move, initializer,
+             instance_var, item, item_, item_class, item_const, item_enum,
+             item_fn, item_foreign_mod, item_impl, item_mac, item_mod,
+             item_trait, item_ty, lit, lit_, lit_bool, lit_float, lit_int,
              lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const,
              m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis,
              mac_invoc, mac_invoc_tt, mac_var, matcher, match_nonterminal,
@@ -45,13 +43,14 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              pat_range, pat_rec, pat_tup, pat_uniq, pat_wild, path, private,
              proto, proto_any, proto_bare, proto_block, proto_box, proto_uniq,
              provided, public, pure_fn, purity, re_anon, re_named, region,
-             rem, required, ret_style, return_val, shl, shr, stmt, stmt_decl,
-             stmt_expr, stmt_semi, subtract, token_tree, trait_method,
-             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty,
-             ty_, ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac,
-             ty_method, ty_nil, ty_param, ty_path, ty_ptr, ty_rec, ty_rptr,
-             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk,
-             uniq, unsafe_blk, unsafe_fn, variant, view_item, view_item_,
+             rem, required, ret_style, return_val, self_ty, shl, shr, stmt,
+             stmt_decl, stmt_expr, stmt_semi, subtract, sty_box, sty_by_ref,
+             sty_region, sty_uniq, sty_value, token_tree, trait_method,
+             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty, ty_,
+             ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method,
+             ty_nil, ty_param, ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup,
+             ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk, uniq,
+             unsafe_blk, unsafe_fn, variant, view_item, view_item_,
              view_item_export, view_item_import, view_item_use, view_path,
              view_path_glob, view_path_list, view_path_simple, visibility,
              vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
@@ -224,7 +223,7 @@ class parser {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
     pure fn get_str(i: token::str_num) -> @~str {
-        interner::get(*self.reader.interner(), i)
+        (*self.reader.interner()).get(i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 
@@ -273,27 +272,30 @@ class parser {
             let tps = p.parse_ty_params();
             let d = p.parse_ty_fn_decl(pur);
             let hi = p.last_span.hi;
-            #debug["parse_trait_methods(): trait method signature ends in \
+            let self_ty = spanned(lo, hi, sty_by_ref);  // XXX: Wrong.
+            debug!{"parse_trait_methods(): trait method signature ends in \
                     `%s`",
-                   token_to_str(p.reader, p.token)];
+                   token_to_str(p.reader, p.token)};
             alt p.token {
               token::SEMI {
                 p.bump();
-                #debug["parse_trait_methods(): parsing required method"];
+                debug!{"parse_trait_methods(): parsing required method"};
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
                 required({ident: ident, attrs: attrs,
                           decl: {purity: pur with d}, tps: tps,
+                          self_ty: self_ty,
                           span: mk_sp(lo, hi)})
               }
               token::LBRACE {
-                #debug["parse_trait_methods(): parsing provided method"];
+                debug!{"parse_trait_methods(): parsing provided method"};
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block(true);
                 let attrs = vec::append(attrs, inner_attrs);
                 provided(@{ident: ident,
                            attrs: attrs,
                            tps: tps,
+                           self_ty: self_ty,
                            decl: d,
                            body: body,
                            id: p.get_id(),
@@ -632,7 +634,7 @@ class parser {
     }
 
     fn parse_path_with_tps(colons: bool) -> @path {
-        #debug["parse_path_with_tps(colons=%b)", colons];
+        debug!{"parse_path_with_tps(colons=%b)", colons};
 
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
@@ -758,33 +760,11 @@ class parser {
             // which affects expr_is_complete().
             ret self.mk_pexpr(lo, hi, expr_tup(es));
         } else if self.token == token::LBRACE {
-            self.bump();
-            if self.is_keyword(~"mut") ||
-                is_plain_ident(self.token)
-                && self.look_ahead(1u) == token::COLON {
-                let mut fields = ~[self.parse_field(token::COLON)];
-                let mut base = none;
-                while self.token != token::RBRACE {
-                    // optional comma before "with"
-                    if self.token == token::COMMA
-                        && self.token_is_keyword(~"with",
-                                                 self.look_ahead(1u)) {
-                        self.bump();
-                    }
-                    if self.eat_keyword(~"with") {
-                        base = some(self.parse_expr()); break;
-                    }
-                    self.expect(token::COMMA);
-                    if self.token == token::RBRACE {
-                        // record ends by an optional trailing comma
-                        break;
-                    }
-                    vec::push(fields, self.parse_field(token::COLON));
-                }
+            if self.looking_at_record_literal() {
+                ex = self.parse_record_literal();
                 hi = self.span.hi;
-                self.expect(token::RBRACE);
-                ex = expr_rec(fields, base);
             } else {
+                self.bump();
                 let blk = self.parse_block_tail(lo, default_blk);
                 ret self.mk_pexpr(blk.span.lo, blk.span.hi, expr_block(blk));
             }
@@ -807,7 +787,7 @@ class parser {
             ret pexpr(self.parse_while_expr());
         } else if self.eat_keyword(~"loop") {
             ret pexpr(self.parse_loop_expr());
-        } else if self.eat_keyword(~"alt") {
+        } else if self.eat_keyword(~"alt") || self.eat_keyword(~"match") {
             ret pexpr(self.parse_alt_expr());
         } else if self.eat_keyword(~"fn") {
             let proto = self.parse_fn_ty_proto();
@@ -856,7 +836,7 @@ class parser {
             let e = self.parse_expr();
             ex = expr_assert(e);
             hi = e.span.hi;
-        } else if self.eat_keyword(~"ret") {
+        } else if self.eat_keyword(~"ret") || self.eat_keyword(~"return") {
             if can_begin_expr(self.token) {
                 let e = self.parse_expr();
                 hi = e.span.hi;
@@ -872,6 +852,10 @@ class parser {
             let e = self.parse_expr();
             ex = expr_copy(e);
             hi = e.span.hi;
+        } else if self.eat_keyword(~"move") {
+            let e = self.parse_expr();
+            ex = expr_unary_move(e);
+            hi = e.span.hi;
         } else if self.token == token::MOD_SEP ||
             is_ident(self.token) && !self.is_keyword(~"true") &&
             !self.is_keyword(~"false") {
@@ -880,33 +864,32 @@ class parser {
             /* `!`, as an operator, is prefix, so we know this isn't that */
             if self.token == token::NOT {
                 self.bump();
-                let tts = self.parse_unspanned_seq(
-                    token::LBRACE, token::RBRACE, seq_sep_none(),
-                    |p| p.parse_token_tree());
+                let tts = alt self.token {
+                  token::LPAREN | token::LBRACE | token::LBRACKET {
+                    let ket = token::flip_delimiter(self.token);
+                    self.parse_unspanned_seq(copy self.token, ket,
+                                             seq_sep_none(),
+                                             |p| p.parse_token_tree())
+                  }
+                  _ { self.fatal(~"expected open delimiter"); }
+                };
                 let hi = self.span.hi;
 
                 ret pexpr(self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts)));
             } else if self.token == token::LBRACE {
                 // This might be a struct literal.
-                let lookahead = self.look_ahead(1);
-                if self.token_is_keyword(~"mut", lookahead) ||
-                        (is_plain_ident(lookahead) &&
-                         self.look_ahead(2) == token::COLON) {
-
+                if self.looking_at_record_literal() {
                     // It's a struct literal.
                     self.bump();
                     let mut fields = ~[];
-                    if self.is_keyword(~"mut") || is_plain_ident(self.token)
-                            && self.look_ahead(1) == token::COLON {
-                        vec::push(fields, self.parse_field(token::COLON));
-                        while self.token != token::RBRACE {
-                            self.expect(token::COMMA);
-                            if self.token == token::RBRACE {
-                                // Accept an optional trailing comma.
-                                break;
-                            }
-                            vec::push(fields, self.parse_field(token::COLON));
+                    vec::push(fields, self.parse_field(token::COLON));
+                    while self.token != token::RBRACE {
+                        self.expect(token::COMMA);
+                        if self.token == token::RBRACE {
+                            // Accept an optional trailing comma.
+                            break;
                         }
+                        vec::push(fields, self.parse_field(token::COLON));
                     }
 
                     hi = pth.span.hi;
@@ -1080,16 +1063,6 @@ class parser {
     }
 
     fn parse_token_tree() -> token_tree {
-        /// what's the opposite delimiter?
-        fn flip(&t: token::token) -> token::token {
-            alt t {
-              token::LPAREN { token::RPAREN }
-              token::LBRACE { token::RBRACE }
-              token::LBRACKET { token::RBRACKET }
-              _ { fail }
-            }
-        }
-
         fn parse_tt_tok(p: parser, delim_ok: bool) -> token_tree {
             alt p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
@@ -1124,7 +1097,7 @@ class parser {
 
         ret alt self.token {
           token::LPAREN | token::LBRACE | token::LBRACKET {
-            let ket = flip(self.token);
+            let ket = token::flip_delimiter(self.token);
             tt_delim(vec::append(
                 ~[parse_tt_tok(self, true)],
                 vec::append(
@@ -1479,9 +1452,9 @@ class parser {
             // There may be other types of expressions that can
             // represent the callee in `for` and `do` expressions
             // but they aren't represented by tests
-            #debug("sugary call on %?", e.node);
+            debug!{"sugary call on %?", e.node};
             self.span_fatal(
-                lo, #fmt("`%s` must be followed by a block call", keyword));
+                lo, fmt!{"`%s` must be followed by a block call", keyword});
           }
         }
     }
@@ -1501,6 +1474,39 @@ class parser {
         ret self.mk_expr(lo, hi, expr_loop(body));
     }
 
+    // For distingishing between record literals and blocks
+    fn looking_at_record_literal() -> bool {
+        let lookahead = self.look_ahead(1);
+        self.token_is_keyword(~"mut", lookahead) ||
+            (is_plain_ident(lookahead) &&
+             self.look_ahead(2) == token::COLON)
+    }
+
+    fn parse_record_literal() -> expr_ {
+        self.expect(token::LBRACE);
+        let mut fields = ~[self.parse_field(token::COLON)];
+        let mut base = none;
+        while self.token != token::RBRACE {
+            // optional comma before "with"
+            if self.token == token::COMMA
+                && self.token_is_keyword(~"with",
+                                         self.look_ahead(1u)) {
+                self.bump();
+            }
+            if self.eat_keyword(~"with") {
+                base = some(self.parse_expr()); break;
+            }
+            self.expect(token::COMMA);
+            if self.token == token::RBRACE {
+                // record ends by an optional trailing comma
+                break;
+            }
+            vec::push(fields, self.parse_field(token::COLON));
+        }
+        self.expect(token::RBRACE);
+        ret expr_rec(fields, base);
+    }
+
     fn parse_alt_expr() -> @expr {
         let lo = self.last_span.lo;
         let mode = if self.eat_keyword(~"check") { alt_check }
@@ -1512,8 +1518,26 @@ class parser {
             let pats = self.parse_pats();
             let mut guard = none;
             if self.eat_keyword(~"if") { guard = some(self.parse_expr()); }
-            if self.token == token::FAT_ARROW { self.bump(); }
-            let blk = self.parse_block();
+            let blk = if self.token != token::FAT_ARROW {
+                self.parse_block()
+            } else {
+                self.bump();
+                if self.token == token::LBRACE
+                    && !self.looking_at_record_literal() {
+                    self.parse_block()
+                } else {
+                    let expr = self.parse_expr();
+                    if self.token != token::RBRACE {
+                        self.expect(token::COMMA);
+                    }
+                    {node: {view_items: ~[],
+                            stmts: ~[],
+                            expr: some(expr),
+                            id: self.get_id(),
+                            rules: default_blk},
+                     span: expr.span}
+                }
+            };
             vec::push(arms, {pats: pats, guard: guard, body: blk});
         }
         let mut hi = self.span.hi;
@@ -1559,13 +1583,13 @@ class parser {
     fn parse_pats() -> ~[@pat] {
         let mut pats = ~[];
         loop {
-            vec::push(pats, self.parse_pat());
+            vec::push(pats, self.parse_pat(true));
             if self.token == token::BINOP(token::OR) { self.bump(); }
             else { ret pats; }
         };
     }
 
-    fn parse_pat() -> @pat {
+    fn parse_pat(refutable: bool) -> @pat {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         let mut pat;
@@ -1573,7 +1597,7 @@ class parser {
           token::UNDERSCORE { self.bump(); pat = pat_wild; }
           token::AT {
             self.bump();
-            let sub = self.parse_pat();
+            let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
             // HACK: parse @"..." as a literal of a vstore @str
             pat = alt sub.node {
@@ -1588,7 +1612,7 @@ class parser {
           }
           token::TILDE {
             self.bump();
-            let sub = self.parse_pat();
+            let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = alt sub.node {
@@ -1634,11 +1658,13 @@ class parser {
                 let mut subpat;
                 if self.token == token::COLON {
                     self.bump();
-                    subpat = self.parse_pat();
+                    subpat = self.parse_pat(refutable);
                 } else {
-                    subpat = @{id: self.get_id(),
-                               node: pat_ident(fieldpath, none),
-                               span: mk_sp(lo, hi)};
+                    subpat = @{
+                        id: self.get_id(),
+                        node: pat_ident(bind_by_ref, fieldpath, none),
+                        span: mk_sp(lo, hi)
+                    };
                 }
                 vec::push(fields, {ident: fieldname, pat: subpat});
             }
@@ -1655,10 +1681,10 @@ class parser {
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
-                let mut fields = ~[self.parse_pat()];
+                let mut fields = ~[self.parse_pat(refutable)];
                 while self.token == token::COMMA {
                     self.bump();
-                    vec::push(fields, self.parse_pat());
+                    vec::push(fields, self.parse_pat(refutable));
                 }
                 if vec::len(fields) == 1u { self.expect(token::COMMA); }
                 hi = self.span.hi;
@@ -1678,50 +1704,80 @@ class parser {
                     hi = val.span.hi;
                     pat = pat_lit(val);
                 }
-            } else if is_plain_ident(self.token) &&
-                alt self.look_ahead(1u) {
-                  token::LPAREN | token::LBRACKET | token::LT { false }
-                  _ { true }
-                } {
-                let name = self.parse_value_path();
-                let sub = if self.eat(token::AT) { some(self.parse_pat()) }
-                else { none };
-                pat = pat_ident(name, sub);
             } else {
-                let enum_path = self.parse_path_with_tps(true);
-                hi = enum_path.span.hi;
-                let mut args: ~[@pat] = ~[];
-                let mut star_pat = false;
-                alt self.token {
-                  token::LPAREN {
-                    alt self.look_ahead(1u) {
-                      token::BINOP(token::STAR) {
-                        // This is a "top constructor only" pat
-                        self.bump(); self.bump();
-                        star_pat = true;
-                        self.expect(token::RPAREN);
-                      }
-                      _ {
-                        args = self.parse_unspanned_seq(
-                            token::LPAREN, token::RPAREN,
-                            seq_sep_trailing_disallowed(token::COMMA),
-                            |p| p.parse_pat());
-                        hi = self.span.hi;
-                      }
+                let binding_mode;
+                if self.eat_keyword(~"ref") {
+                    binding_mode = bind_by_ref;
+                } else {
+                    alt self.token {
+                        token::BINOP(token::PLUS) => {
+                            // XXX: Temporary thing pending a snapshot.
+                            self.bump();
+                            binding_mode = bind_by_value;
+                        }
+                        _ if refutable => {
+                            // XXX: Should be bind_by_value, but that's not
+                            // backward compatible.
+                            binding_mode = bind_by_ref;
+                        }
+                        _ => {
+                            binding_mode = bind_by_value;
+                        }
                     }
-                  }
-                  _ { }
                 }
-                // at this point, we're not sure whether it's a enum or a bind
-                if star_pat {
-                    pat = pat_enum(enum_path, none);
-                }
-                else if vec::is_empty(args) &&
-                    vec::len(enum_path.idents) == 1u {
-                    pat = pat_ident(enum_path, none);
-                }
-                else {
-                    pat = pat_enum(enum_path, some(args));
+
+                if is_plain_ident(self.token) &&
+                    alt self.look_ahead(1) {
+                      token::LPAREN | token::LBRACKET | token::LT => {
+                        false
+                      }
+                      _ => {
+                        true
+                      }
+                    } {
+                    let name = self.parse_value_path();
+                    let sub = if self.eat(token::AT) {
+                        some(self.parse_pat(refutable))
+                    }
+                    else { none };
+                    pat = pat_ident(binding_mode, name, sub);
+                } else {
+                    let enum_path = self.parse_path_with_tps(true);
+                    hi = enum_path.span.hi;
+                    let mut args: ~[@pat] = ~[];
+                    let mut star_pat = false;
+                    alt self.token {
+                      token::LPAREN {
+                        alt self.look_ahead(1u) {
+                          token::BINOP(token::STAR) {
+                            // This is a "top constructor only" pat
+                            self.bump(); self.bump();
+                            star_pat = true;
+                            self.expect(token::RPAREN);
+                          }
+                          _ {
+                            args = self.parse_unspanned_seq(
+                                token::LPAREN, token::RPAREN,
+                                seq_sep_trailing_disallowed(token::COMMA),
+                                |p| p.parse_pat(refutable));
+                            hi = self.span.hi;
+                          }
+                        }
+                      }
+                      _ { }
+                    }
+                    // at this point, we're not sure whether it's a enum or a
+                    // bind
+                    if star_pat {
+                        pat = pat_enum(enum_path, none);
+                    }
+                    else if vec::is_empty(args) &&
+                        vec::len(enum_path.idents) == 1u {
+                        pat = pat_ident(binding_mode, enum_path, none);
+                    }
+                    else {
+                        pat = pat_enum(enum_path, some(args));
+                    }
                 }
             }
           }
@@ -1732,7 +1788,7 @@ class parser {
     fn parse_local(is_mutbl: bool,
                    allow_init: bool) -> @local {
         let lo = self.span.lo;
-        let pat = self.parse_pat();
+        let pat = self.parse_pat(false);
         let mut ty = @{id: self.get_id(),
                        node: ty_infer,
                        span: mk_sp(lo, lo)};
@@ -1978,6 +2034,142 @@ class parser {
               cf: ret_style}, capture_clause);
     }
 
+    fn is_self_ident() -> bool {
+        alt self.token {
+            token::IDENT(sid, false) if str::eq(~"self", *self.get_str(sid)) {
+                true
+            }
+            _ => {
+                false
+            }
+        }
+    }
+
+    fn expect_self_ident() {
+        if !self.is_self_ident() {
+            self.fatal(#fmt("expected `self` but found `%s`",
+                            token_to_str(self.reader, self.token)));
+        }
+        self.bump();
+    }
+
+    fn parse_fn_decl_with_self(purity: purity,
+                               parse_arg_fn:
+                                    fn(parser) -> arg_or_capture_item)
+                            -> (self_ty, fn_decl, capture_clause) {
+
+        self.expect(token::LPAREN);
+
+        // A bit of complexity and lookahead is needed here in order to to be
+        // backwards compatible.
+        let lo = self.span.lo;
+        let self_ty;
+        alt copy self.token {
+            token::BINOP(token::AND) => {
+                // We need to make sure it isn't a mode.
+                self.bump();
+                if self.token_is_keyword(~"self", self.look_ahead(1)) ||
+                    ((self.token_is_keyword(~"const", self.look_ahead(1)) ||
+                      self.token_is_keyword(~"mut", self.look_ahead(1))) &&
+                      self.token_is_keyword(~"self", self.look_ahead(2))) {
+
+                    self.bump();
+                    let mutability = self.parse_mutability();
+                    self.expect_self_ident();
+
+                    // Parse an explicit region, if possible.
+                    let region_name;
+                    alt copy self.token {
+                        token::BINOP(token::SLASH) => {
+                            self.bump();
+                            alt copy self.token {
+                                token::IDENT(sid, false) => {
+                                    self.bump();
+                                    region_name = some(self.get_str(sid));
+                                }
+                                _ => {
+                                    region_name = none;
+                                }
+                            }
+                        }
+                        _ => {
+                            region_name = none;
+                        }
+                    }
+
+                    let region = self.region_from_name(region_name);
+                    self_ty = sty_region(region, mutability);
+                } else {
+                    self_ty = sty_by_ref;
+                }
+            }
+            token::AT => {
+                self.bump();
+                let mutability = self.parse_mutability();
+                self.expect_self_ident();
+                self_ty = sty_box(mutability);
+            }
+            token::TILDE => {
+                self.bump();
+                let mutability = self.parse_mutability();
+                self.expect_self_ident();
+                self_ty = sty_uniq(mutability);
+            }
+            token::IDENT(*) if self.is_self_ident() => {
+                self.bump();
+                self_ty = sty_value;
+            }
+            _ => {
+                self_ty = sty_by_ref;
+            }
+        }
+
+        // If we parsed a self type, expect a comma before the argument list.
+        let args_or_capture_items;
+        if self_ty != sty_by_ref {
+            alt copy self.token {
+                token::COMMA => {
+                    self.bump();
+                    let sep = seq_sep_trailing_disallowed(token::COMMA);
+                    args_or_capture_items =
+                        self.parse_seq_to_before_end(token::RPAREN,
+                                                     sep,
+                                                     parse_arg_fn);
+                }
+                token::RPAREN => {
+                    args_or_capture_items = ~[];
+                }
+                _ => {
+                    self.fatal(~"expected `,` or `)`, found `" +
+                               token_to_str(self.reader, self.token) + "`");
+                }
+            }
+        } else {
+            let sep = seq_sep_trailing_disallowed(token::COMMA);
+            args_or_capture_items =
+                self.parse_seq_to_before_end(token::RPAREN,
+                                             sep,
+                                             parse_arg_fn);
+        }
+
+        self.expect(token::RPAREN);
+
+        let hi = self.span.hi;
+
+        let inputs = either::lefts(args_or_capture_items);
+        let capture_clause = @either::rights(args_or_capture_items);
+        let (ret_style, ret_ty) = self.parse_ret_ty();
+
+        let fn_decl = {
+            inputs: inputs,
+            output: ret_ty,
+            purity: purity,
+            cf: ret_style
+        };
+
+        (spanned(lo, hi, self_ty), fn_decl, capture_clause)
+    }
+
     fn parse_fn_block_decl() -> (fn_decl, capture_clause) {
         let inputs_captures = {
             if self.eat(token::OROR) {
@@ -2049,11 +2241,13 @@ class parser {
         let lo = self.span.lo, pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
-        let (decl, _) = self.parse_fn_decl(pur, |p| p.parse_arg());
+        let (self_ty, decl, _) = do self.parse_fn_decl_with_self(pur) |p| {
+            p.parse_arg()
+        };
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let attrs = vec::append(attrs, inner_attrs);
-        @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
-          id: self.get_id(), span: mk_sp(lo, body.span.hi),
+        @{ident: ident, attrs: attrs, tps: tps, self_ty: self_ty, decl: decl,
+          body: body, id: self.get_id(), span: mk_sp(lo, body.span.hi),
           self_id: self.get_id(), vis: pr}
     }
 
@@ -2121,8 +2315,7 @@ class parser {
             }
 
             if self.eat_keyword(~"of") {
-                let for_atom = interner::intern(*self.reader.interner(),
-                                                @~"for");
+                let for_atom = (*self.reader.interner()).intern(@~"for");
                 traits = self.parse_trait_ref_list
                     (token::IDENT(for_atom, false));
                 if traits.len() >= 1 && option::is_none(ident_old) {
@@ -2322,7 +2515,7 @@ class parser {
                 attrs = vec::append(attrs_remaining, attrs);
                 first = false;
             }
-            #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
+            debug!{"parse_mod_items: parse_item(attrs=%?)", attrs};
             let vis = self.parse_visibility(private);
             alt self.parse_item(attrs, vis) {
               some(i) { vec::push(items, i); }
@@ -2331,7 +2524,7 @@ class parser {
                            token_to_str(self.reader, self.token) + ~"`");
               }
             }
-            #debug["parse_mod_items: attrs=%?", attrs];
+            debug!{"parse_mod_items: attrs=%?", attrs};
         }
 
         if first && attrs_remaining.len() > 0u {
@@ -2410,7 +2603,11 @@ class parser {
     }
 
     fn parse_item_foreign_mod() -> item_info {
-        self.expect_keyword(~"mod");
+        if self.is_keyword(~"mod") {
+            self.expect_keyword(~"mod");
+        } else {
+            self.expect_keyword(~"module");
+        }
         let id = self.parse_ident();
         self.expect(token::LBRACE);
         let more_attrs = self.parse_inner_attrs_and_next();
@@ -2555,13 +2752,14 @@ class parser {
             } else {
                 self.parse_item_foreign_mod()
             }
-        } else if self.eat_keyword(~"mod") {
+        } else if self.eat_keyword(~"mod") || self.eat_keyword(~"module") {
             self.parse_item_mod()
         } else if self.eat_keyword(~"type") {
             self.parse_item_type()
         } else if self.eat_keyword(~"enum") {
             self.parse_item_enum(vis)
         } else if self.eat_keyword(~"iface") {
+            self.warn(~"`iface` is deprecated; use `trait`");
             self.parse_item_trait()
         } else if self.eat_keyword(~"trait") {
             self.parse_item_trait()
@@ -2577,9 +2775,15 @@ class parser {
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
             let id = self.parse_ident();
-            let tts = self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
-                                               seq_sep_none(),
-                                               |p| p.parse_token_tree());
+            let tts = alt self.token {
+              token::LPAREN | token::LBRACE | token::LBRACKET {
+                let ket = token::flip_delimiter(self.token);
+                self.parse_unspanned_seq(copy self.token, ket,
+                                         seq_sep_none(),
+                                         |p| p.parse_token_tree())
+              }
+              _ { self.fatal(~"expected open delimiter"); }
+            };
             let m = ast::mac_invoc_tt(pth, tts);
             let m: ast::mac = {node: m,
                                span: {lo: self.span.lo,
@@ -2604,7 +2808,7 @@ class parser {
         let lo = self.span.lo;
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        #debug("parsed view_path: %s", *first_ident);
+        debug!{"parsed view_path: %s", *first_ident};
         alt self.token {
           token::EQ {
             // x = foo::bar
@@ -2753,8 +2957,14 @@ class parser {
         let expect_mod = vec::len(outer_attrs) > 0u;
 
         let lo = self.span.lo;
-        if expect_mod || self.is_keyword(~"mod") {
-            self.expect_keyword(~"mod");
+        if expect_mod || self.is_keyword(~"mod") ||
+            self.is_keyword(~"module") {
+
+            if self.is_keyword(~"mod") {
+                self.expect_keyword(~"mod");
+            } else {
+                self.expect_keyword(~"module");
+            }
             let id = self.parse_ident();
             alt self.token {
               // mod x = "foo.rs";
@@ -2792,7 +3002,11 @@ class parser {
         // accept seeing the terminator next, so if we do see it then fail the
         // same way parse_crate_directive would
         if vec::len(first_outer_attr) > 0u && self.token == term {
-            self.expect_keyword(~"mod");
+            if self.is_keyword(~"mod") {
+                self.expect_keyword(~"mod");
+            } else {
+                self.expect_keyword(~"module");
+            }
         }
 
         let mut cdirs: ~[@crate_directive] = ~[];

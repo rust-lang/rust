@@ -10,10 +10,10 @@ fn main() {
       none {}
       some(_) {
   if test_comm::recv(p) == 0 {
-      #error("floop");
+      error!{"floop"};
   }
   else {
-      #error("bloop");
+      error!{"bloop"};
   }
       }}
 }

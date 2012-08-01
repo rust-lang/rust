@@ -1,4 +1,4 @@
-// Test cyclic detector when using iface instances.
+// Test cyclic detector when using trait instances.
 
 enum Tree = TreeR;
 type TreeR = @{
@@ -7,7 +7,7 @@ type TreeR = @{
     val: to_str
 };
 
-iface to_str {
+trait to_str {
     fn to_str() -> ~str;
 }
 
@@ -27,8 +27,8 @@ impl of to_str for int {
 impl of to_str for Tree {
     fn to_str() -> ~str {
         let l = self.left, r = self.right;
-        #fmt["[%s, %s, %s]", self.val.to_str(),
-             l.to_str(), r.to_str()]
+        fmt!{"[%s, %s, %s]", self.val.to_str(),
+             l.to_str(), r.to_str()}
     }
 }
 

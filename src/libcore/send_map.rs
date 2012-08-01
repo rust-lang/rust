@@ -78,7 +78,7 @@ mod linear {
         pure fn next_bucket(idx: uint, len_buckets: uint) -> uint {
             let n = (idx + 1) % len_buckets;
             unsafe{ // argh. log not considered pure.
-                #debug["next_bucket(%?, %?) = %?", idx, len_buckets, n];
+                debug!{"next_bucket(%?, %?) = %?", idx, len_buckets, n};
             }
             ret n;
         }
@@ -163,15 +163,15 @@ mod linear {
                                               unsafe{borrow(k)}) {
               table_full => {fail ~"Internal logic error";}
               found_hole(idx) {
-                #debug["insert fresh (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash];
+                debug!{"insert fresh (%?->%?) at idx %?, hash %?",
+                       k, v, idx, hash};
                 self.buckets[idx] = some({hash: hash, key: k, value: v});
                 self.size += 1;
                 ret true;
               }
               found_entry(idx) => {
-                #debug["insert overwrite (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash];
+                debug!{"insert overwrite (%?->%?) at idx %?, hash %?",
+                       k, v, idx, hash};
                 self.buckets[idx] = some({hash: hash, key: k, value: v});
                 ret false;
               }
@@ -269,7 +269,7 @@ mod linear {
         fn get(k: &K) -> V {
             let value = self.find(k);
             if value.is_none() {
-                fail #fmt["No entry found for key: %?", k];
+                fail fmt!{"No entry found for key: %?", k};
             }
             option::unwrap(value)
         }
@@ -279,16 +279,50 @@ mod linear {
         }
     }
 
-    /*
-    FIXME --- #2979 must be fixed to typecheck this
     impl imm_methods<K,V> for &linear_map<K,V> {
+        /*
+        FIXME --- #2979 must be fixed to typecheck this
         fn find_ptr(k: K) -> option<&V> {
             //XXX this should not type check as written, but it should
             //be *possible* to typecheck it...
             self.with_ptr(k, |v| v)
         }
+        */
+
+        fn each_ref(blk: fn(k: &K, v: &V) -> bool) {
+            for vec::each(self.buckets) |slot| {
+                let mut broke = false;
+                do slot.iter |bucket| {
+                    if !blk(&bucket.key, &bucket.value) {
+                        broke = true; // FIXME(#3064) just write "break;"
+                    }
+                }
+                if broke { break; }
+            }
+        }
+        fn each_key_ref(blk: fn(k: &K) -> bool) {
+            self.each_ref(|k, _v| blk(k))
+        }
+        fn each_value_ref(blk: fn(v: &V) -> bool) {
+            self.each_ref(|_k, v| blk(v))
+        }
     }
-    */
+
+    impl public_methods<K: copy, V: copy> for &linear_map<K,V> {
+        fn each(blk: fn(+K,+V) -> bool) {
+            self.each_ref(|k,v| blk(copy *k, copy *v));
+        }
+    }
+    impl public_methods<K: copy, V> for &linear_map<K,V> {
+        fn each_key(blk: fn(+K) -> bool) {
+            self.each_key_ref(|k| blk(copy *k));
+        }
+    }
+    impl public_methods<K, V: copy> for &linear_map<K,V> {
+        fn each_value(blk: fn(+V) -> bool) {
+            self.each_value_ref(|v| blk(copy *v));
+        }
+    }
 }
 
 #[test]
@@ -341,5 +375,19 @@ mod test {
         assert m.remove(&1);
         assert m.get(&9) == 4;
         assert m.get(&5) == 3;
+    }
+
+    #[test]
+    fn iterate() {
+        let mut m = linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        for uint::range(0, 32) |i| {
+            assert (&mut m).insert(i, i*2);
+        }
+        let mut observed = 0;
+        for (&m).each |k, v| {
+            assert v == k*2;
+            observed |= (1 << k);
+        }
+        assert observed == 0xFFFF_FFFF;
     }
 }

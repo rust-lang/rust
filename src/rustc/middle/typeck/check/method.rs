@@ -1,12 +1,14 @@
 /* Code to handle method lookups (which can be quite complex) */
 
 import coherence::get_base_type_def_id;
-import middle::resolve3::Impl;
+import middle::resolve3::{Impl, MethodInfo};
+import middle::ty::{mk_box, mk_rptr, mk_uniq};
 import middle::typeck::infer::methods; // next_ty_vars
-import syntax::ast::def_id;
+import syntax::ast::{def_id, sty_box, sty_by_ref, sty_region, sty_uniq};
+import syntax::ast::{sty_value};
 import syntax::ast_map;
 import syntax::ast_map::node_id_to_str;
-import syntax::ast_util::new_def_hash;
+import syntax::ast_util::{dummy_sp, new_def_hash};
 import dvec::{dvec, extensions};
 
 type candidate = {
@@ -17,6 +19,28 @@ type candidate = {
     fty: ty::t,              // type of the method
     entry: method_map_entry
 };
+
+fn transform_self_type_for_method(fcx: @fn_ctxt,
+                                  impl_ty: ty::t,
+                                  method_info: MethodInfo)
+                               -> ty::t {
+    alt method_info.self_type {
+        sty_by_ref | sty_value => {
+            impl_ty
+        }
+        sty_region(r, mutability) => {
+            // XXX: dummy_sp is unfortunate here.
+            let region = ast_region_to_region(fcx, fcx, dummy_sp(), r);
+            mk_rptr(fcx.ccx.tcx, region, { ty: impl_ty, mutbl: mutability })
+        }
+        sty_box(mutability) => {
+            mk_box(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+        }
+        sty_uniq(mutability) => {
+            mk_uniq(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+        }
+    }
+}
 
 class lookup {
     let fcx: @fn_ctxt;
@@ -58,9 +82,9 @@ class lookup {
 
     // Entrypoint:
     fn method() -> option<method_map_entry> {
-        #debug["method lookup(m_name=%s, self_ty=%s, %?)",
+        debug!{"method lookup(m_name=%s, self_ty=%s, %?)",
                *self.m_name, self.fcx.infcx.ty_to_str(self.self_ty),
-               ty::get(self.self_ty).struct];
+               ty::get(self.self_ty).struct};
 
         // Determine if there are any inherent methods we can call.
         let optional_inherent_methods;
@@ -71,21 +95,21 @@ class lookup {
                 optional_inherent_methods = none;
             }
             some(base_type_def_id) {
-                #debug("(checking method) found base type");
+                debug!{"(checking method) found base type"};
                 optional_inherent_methods =
                     self.fcx.ccx.coherence_info.inherent_methods.find
                         (base_type_def_id);
 
                 if optional_inherent_methods.is_none() {
-                    #debug("(checking method) ... no inherent methods found");
+                    debug!{"(checking method) ... no inherent methods found"};
                 } else {
-                    #debug("(checking method) ... inherent methods found");
+                    debug!{"(checking method) ... inherent methods found"};
                 }
             }
         }
 
         loop {
-            // First, see whether this is an interface-bounded parameter.
+            // First, see whether this is a bounded parameter.
             alt ty::get(self.self_ty).struct {
               ty::ty_param(p) {
                 self.add_candidates_from_param(p.idx, p.def_id);
@@ -173,30 +197,30 @@ class lookup {
         };
         self.tcx().sess.span_note(
             span,
-            #fmt["candidate #%u is `%s`",
+            fmt!{"candidate #%u is `%s`",
                  (idx+1u),
-                 ty::item_path_str(self.tcx(), did)]);
+                 ty::item_path_str(self.tcx(), did)});
     }
 
     fn report_param_candidate(idx: uint, did: ast::def_id) {
         self.tcx().sess.span_note(
             self.expr.span,
-            #fmt["candidate #%u derives from the bound `%s`",
+            fmt!{"candidate #%u derives from the bound `%s`",
                  (idx+1u),
-                 ty::item_path_str(self.tcx(), did)]);
+                 ty::item_path_str(self.tcx(), did)});
     }
 
     fn report_trait_candidate(idx: uint, did: ast::def_id) {
         self.tcx().sess.span_note(
             self.expr.span,
-            #fmt["candidate #%u derives from the type of the receiver, \
+            fmt!{"candidate #%u derives from the type of the receiver, \
                   which is the trait `%s`",
                  (idx+1u),
-                 ty::item_path_str(self.tcx(), did)]);
+                 ty::item_path_str(self.tcx(), did)});
     }
 
     fn add_candidates_from_param(n: uint, did: ast::def_id) {
-        #debug["candidates_from_param"];
+        debug!{"candidates_from_param"};
 
         let tcx = self.tcx();
         let mut trait_bnd_idx = 0u; // count only trait bounds
@@ -246,7 +270,7 @@ class lookup {
 
     fn add_candidates_from_trait(did: ast::def_id, trait_substs: ty::substs) {
 
-        #debug["method_from_trait"];
+        debug!{"method_from_trait"};
 
         let ms = *ty::trait_methods(self.tcx(), did);
         for ms.eachi |i, m| {
@@ -281,7 +305,7 @@ class lookup {
 
     fn add_candidates_from_class(did: ast::def_id, class_substs: ty::substs) {
 
-        #debug["method_from_class"];
+        debug!{"method_from_class"};
 
         let ms = *ty::trait_methods(self.tcx(), did);
 
@@ -341,7 +365,7 @@ class lookup {
         let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
         let mut added_any = false;
 
-        #debug["method_from_scope"];
+        debug!{"method_from_scope"};
 
         for list::each(impls_vecs) |impls| {
             for vec::each(*impls) |im| {
@@ -370,6 +394,10 @@ class lookup {
             let {substs: impl_substs, ty: impl_ty} =
                 impl_self_ty(self.fcx, im.did);
 
+            let impl_ty = transform_self_type_for_method(self.fcx,
+                                                         impl_ty,
+                                                         *m);
+
             // Depending on our argument, we find potential
             // matches either by checking subtypability or
             // type assignability. Collect the matches.
@@ -379,7 +407,7 @@ class lookup {
             } else {
                 self.fcx.can_mk_subty(self.self_ty, impl_ty)
             };
-            #debug["matches = %?", matches];
+            debug!{"matches = %?", matches};
             alt matches {
               result::err(_) { /* keep looking */ }
               result::ok(_) {
@@ -431,13 +459,13 @@ class lookup {
                 // Continue.
             }
             some(inherent_methods) {
-                #debug("(adding inherent and extension candidates) adding \
-                        inherent candidates");
+                debug!{"(adding inherent and extension candidates) adding \
+                        inherent candidates"};
                 for inherent_methods.each |implementation| {
-                    #debug("(adding inherent and extension candidates) \
+                    debug!{"(adding inherent and extension candidates) \
                             adding candidates from impl: %s",
                            node_id_to_str(self.tcx().items,
-                                          implementation.did.node));
+                                          implementation.did.node)};
                     self.add_candidates_from_impl(implementation,
                                                   use_assignability);
                 }
@@ -451,9 +479,9 @@ class lookup {
             }
             some(trait_ids) {
                 for (*trait_ids).each |trait_id| {
-                    #debug("(adding inherent and extension candidates) \
+                    debug!{"(adding inherent and extension candidates) \
                             trying trait: %s",
-                           self.def_id_to_str(trait_id));
+                           self.def_id_to_str(trait_id)};
 
                     let coherence_info = self.fcx.ccx.coherence_info;
                     alt coherence_info.extension_methods.find(trait_id) {
@@ -462,10 +490,10 @@ class lookup {
                         }
                         some(extension_methods) {
                             for extension_methods.each |implementation| {
-                                #debug("(adding inherent and extension \
+                                debug!{"(adding inherent and extension \
                                          candidates) adding impl %s",
                                        self.def_id_to_str
-                                        (implementation.did));
+                                        (implementation.did)};
                                 self.add_candidates_from_impl
                                     (implementation, use_assignability);
                             }
@@ -487,10 +515,10 @@ class lookup {
     fn write_mty_from_candidate(cand: candidate) -> method_map_entry {
         let tcx = self.fcx.ccx.tcx;
 
-        #debug["write_mty_from_candidate(n_tps_m=%u, fty=%s, entry=%?)",
+        debug!{"write_mty_from_candidate(n_tps_m=%u, fty=%s, entry=%?)",
                cand.n_tps_m,
                self.fcx.infcx.ty_to_str(cand.fty),
-               cand.entry];
+               cand.entry};
 
         // Make the actual receiver type (cand.self_ty) assignable to the
         // required receiver type (cand.rcvr_ty).  If this method is not
@@ -501,9 +529,9 @@ class lookup {
           result::err(_) {
             self.tcx().sess.span_bug(
                 self.expr.span,
-                #fmt["%s was assignable to %s but now is not?",
+                fmt!{"%s was assignable to %s but now is not?",
                      self.fcx.infcx.ty_to_str(cand.self_ty),
-                     self.fcx.infcx.ty_to_str(cand.rcvr_ty)]);
+                     self.fcx.infcx.ty_to_str(cand.rcvr_ty)});
           }
         }
 

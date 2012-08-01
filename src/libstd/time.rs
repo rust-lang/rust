@@ -200,9 +200,9 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         if c == ch {
             ok(next)
         } else {
-            err(#fmt("Expected %?, found %?",
+            err(fmt!{"Expected %?, found %?",
                 str::from_char(c),
-                str::from_char(ch)))
+                str::from_char(ch)})
         }
     }
 
@@ -525,7 +525,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           }
           '%' { parse_char(s, pos, '%') }
           ch {
-            err(#fmt("unknown formatting type: %?", str::from_char(ch)))
+            err(fmt!{"unknown formatting type: %?", str::from_char(ch)})
           }
         }
     }
@@ -643,70 +643,70 @@ fn strftime(format: ~str, tm: tm) -> ~str {
               11 { ~"Dec" }
             }
           }
-          'C' { #fmt("%02d", (tm.tm_year as int + 1900) / 100) }
+          'C' { fmt!{"%02d", (tm.tm_year as int + 1900) / 100} }
           'c' {
-            #fmt("%s %s %s %s %s",
+            fmt!{"%s %s %s %s %s",
                 parse_type('a', tm),
                 parse_type('b', tm),
                 parse_type('e', tm),
                 parse_type('T', tm),
-                parse_type('Y', tm))
+                parse_type('Y', tm)}
           }
           'D' | 'x' {
-            #fmt("%s/%s/%s",
+            fmt!{"%s/%s/%s",
                 parse_type('m', tm),
                 parse_type('d', tm),
-                parse_type('y', tm))
+                parse_type('y', tm)}
           }
-          'd' { #fmt("%02d", tm.tm_mday as int) }
-          'e' { #fmt("%2d", tm.tm_mday as int) }
+          'd' { fmt!{"%02d", tm.tm_mday as int} }
+          'e' { fmt!{"%2d", tm.tm_mday as int} }
           'F' {
-            #fmt("%s-%s-%s",
+            fmt!{"%s-%s-%s",
                 parse_type('Y', tm),
                 parse_type('m', tm),
-                parse_type('d', tm))
+                parse_type('d', tm)}
           }
           //'G' {}
           //'g' {}
-          'H' { #fmt("%02d", tm.tm_hour as int) }
+          'H' { fmt!{"%02d", tm.tm_hour as int} }
           'I' {
             let mut h = tm.tm_hour as int;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
-            #fmt("%02d", h)
+            fmt!{"%02d", h}
           }
-          'j' { #fmt("%03d", tm.tm_yday as int + 1) }
-          'k' { #fmt("%2d", tm.tm_hour as int) }
+          'j' { fmt!{"%03d", tm.tm_yday as int + 1} }
+          'k' { fmt!{"%2d", tm.tm_hour as int} }
           'l' {
             let mut h = tm.tm_hour as int;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
-            #fmt("%2d", h)
+            fmt!{"%2d", h}
           }
-          'M' { #fmt("%02d", tm.tm_min as int) }
-          'm' { #fmt("%02d", tm.tm_mon as int + 1) }
+          'M' { fmt!{"%02d", tm.tm_min as int} }
+          'm' { fmt!{"%02d", tm.tm_mon as int + 1} }
           'n' { ~"\n" }
           'P' { if tm.tm_hour as int < 12 { ~"am" } else { ~"pm" } }
           'p' { if tm.tm_hour as int < 12 { ~"AM" } else { ~"PM" } }
           'R' {
-            #fmt("%s:%s",
+            fmt!{"%s:%s",
                 parse_type('H', tm),
-                parse_type('M', tm))
+                parse_type('M', tm)}
           }
           'r' {
-            #fmt("%s:%s:%s %s",
+            fmt!{"%s:%s:%s %s",
                 parse_type('I', tm),
                 parse_type('M', tm),
                 parse_type('S', tm),
-                parse_type('p', tm))
+                parse_type('p', tm)}
           }
-          'S' { #fmt("%02d", tm.tm_sec as int) }
-          's' { #fmt("%d", tm.to_timespec().sec as int) }
+          'S' { fmt!{"%02d", tm.tm_sec as int} }
+          's' { fmt!{"%d", tm.to_timespec().sec as int} }
           'T' | 'X' {
-            #fmt("%s:%s:%s",
+            fmt!{"%s:%s:%s",
                 parse_type('H', tm),
                 parse_type('M', tm),
-                parse_type('S', tm))
+                parse_type('S', tm)}
           }
           't' { ~"\t" }
           //'U' {}
@@ -716,24 +716,24 @@ fn strftime(format: ~str, tm: tm) -> ~str {
           }
           //'V' {}
           'v' {
-            #fmt("%s-%s-%s",
+            fmt!{"%s-%s-%s",
                 parse_type('e', tm),
                 parse_type('b', tm),
-                parse_type('Y', tm))
+                parse_type('Y', tm)}
           }
           //'W' {}
           'w' { int::str(tm.tm_wday as int) }
           //'X' {}
           //'x' {}
           'Y' { int::str(tm.tm_year as int + 1900) }
-          'y' { #fmt("%02d", (tm.tm_year as int + 1900) % 100) }
+          'y' { fmt!{"%02d", (tm.tm_year as int + 1900) % 100} }
           'Z' { tm.tm_zone }
           'z' {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = i32::abs(tm.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
-            #fmt("%c%02d%02d", sign, h as int, m as int)
+            fmt!{"%c%02d%02d", sign, h as int, m as int}
           }
           //'+' {}
           '%' { ~"%" }
@@ -824,7 +824,7 @@ impl tm for tm {
             let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
-            s + #fmt("%c%02d:%02d", sign, h as int, m as int)
+            s + fmt!{"%c%02d:%02d", sign, h as int, m as int}
         }
     }
 }
@@ -905,7 +905,7 @@ mod tests {
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let local = at(time);
 
-        #error("time_at: %?", local);
+        error!{"time_at: %?", local};
 
         assert local.tm_sec == 30_i32;
         assert local.tm_min == 31_i32;
@@ -1111,7 +1111,7 @@ mod tests {
         let utc   = at_utc(time);
         let local = at(time);
 
-        #error("test_ctime: %? %?", utc.ctime(), local.ctime());
+        error!{"test_ctime: %? %?", utc.ctime(), local.ctime()};
 
         assert utc.ctime()   == ~"Fri Feb 13 23:31:30 2009";
         assert local.ctime() == ~"Fri Feb 13 15:31:30 2009";

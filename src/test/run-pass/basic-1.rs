@@ -17,15 +17,15 @@ fn main() {
     let mut n: int = 0;
     n = recv(p);
     n = recv(p);
-    //    #debug("Finished.");
+    //    debug!{"Finished."};
 }
 
 fn b(c: chan<int>) {
-    //    #debug("task b0");
-    //    #debug("task b1");
-    //    #debug("task b2");
-    //    #debug("task b3");
-    //    #debug("task b4");
-    //    #debug("task b5");
+    //    debug!{"task b0"};
+    //    debug!{"task b1"};
+    //    debug!{"task b2"};
+    //    debug!{"task b3"};
+    //    debug!{"task b4"};
+    //    debug!{"task b5"};
     send(c, 10);
 }

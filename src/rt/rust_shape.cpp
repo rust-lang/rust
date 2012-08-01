@@ -290,7 +290,7 @@ public:
         data<cmp,ptr_pair>::walk_rptr_contents1();
     }
 
-    void walk_iface2() {
+    void walk_trait2() {
         data<cmp,ptr_pair>::walk_box_contents1();
     }
 

@@ -4,7 +4,7 @@ enum foo<T> { arm(T), }
 
 fn altfoo<T>(f: foo<T>) {
     let mut hit = false;
-    alt f { arm::<T>(x) { #debug("in arm"); hit = true; } }
+    alt f { arm::<T>(x) { debug!{"in arm"}; hit = true; } }
     assert (hit);
 }
 

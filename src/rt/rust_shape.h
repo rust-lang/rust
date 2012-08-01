@@ -544,7 +544,7 @@ public:
           default: abort();
         }
     }
-    void walk_iface1() { DPRINT("iface"); }
+    void walk_trait1() { DPRINT("trait"); }
 
     void walk_tydesc1(char kind) {
         switch(kind) {
@@ -598,7 +598,7 @@ public:
                             { sa.set(sizeof(void *)*2, sizeof(void *)); }
     void walk_box1()        { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_fn1(char)     { sa.set(sizeof(void *)*2, sizeof(void *)); }
-    void walk_iface1()      { sa.set(sizeof(void *),   sizeof(void *)); }
+    void walk_trait1()      { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_tydesc1(char) { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_closure1();
 
@@ -851,7 +851,7 @@ protected:
     void walk_uniq_contents1();
     void walk_rptr_contents1();
     void walk_fn_contents1();
-    void walk_iface_contents1();
+    void walk_trait_contents1();
     void walk_variant1(tag_info &tinfo, tag_variant_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
@@ -927,10 +927,10 @@ public:
         dp = next_dp;
     }
 
-    void walk_iface1() {
+    void walk_trait1() {
         ALIGN_TO(rust_alignof<void *>());
         U next_dp = dp + sizeof(void *);
-        static_cast<T *>(this)->walk_iface2();
+        static_cast<T *>(this)->walk_trait2();
         dp = next_dp;
     }
 
@@ -1137,7 +1137,7 @@ void
 
 template<typename T,typename U>
 void
-data<T,U>::walk_iface_contents1() {
+data<T,U>::walk_trait_contents1() {
     walk_box_contents1();
 }
 
@@ -1234,10 +1234,10 @@ private:
         data<log,ptr>::walk_fn_contents1();
     }
 
-    void walk_iface2() {
-        out << prefix << "iface(";
+    void walk_trait2() {
+        out << prefix << "trait(";
         prefix = "";
-        data<log,ptr>::walk_iface_contents1();
+        data<log,ptr>::walk_trait_contents1();
         out << prefix << ")";
     }
 

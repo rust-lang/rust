@@ -55,6 +55,7 @@ type visitor<E> =
       visit_pat: fn@(@pat, E, vt<E>),
       visit_decl: fn@(@decl, E, vt<E>),
       visit_expr: fn@(@expr, E, vt<E>),
+      visit_expr_post: fn@(@expr, E, vt<E>),
       visit_ty: fn@(@ty, E, vt<E>),
       visit_ty_params: fn@(~[ty_param], E, vt<E>),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
@@ -74,6 +75,7 @@ fn default_visitor<E>() -> visitor<E> {
           visit_pat: |a,b,c|visit_pat::<E>(a, b, c),
           visit_decl: |a,b,c|visit_decl::<E>(a, b, c),
           visit_expr: |a,b,c|visit_expr::<E>(a, b, c),
+          visit_expr_post: |_a,_b,_c| (),
           visit_ty: |a,b,c|skip_ty::<E>(a, b, c),
           visit_ty_params: |a,b,c|visit_ty_params::<E>(a, b, c),
           visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
@@ -227,7 +229,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       pat_box(inner) | pat_uniq(inner) {
         v.visit_pat(inner, e, v);
       }
-      pat_ident(path, inner) {
+      pat_ident(_, path, inner) {
           visit_path(path, e, v);
           do option::iter(inner) |subpat| { v.visit_pat(subpat, e, v)};
       }
@@ -406,6 +408,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_block(b) { v.visit_block(b, e, v); }
       expr_assign(a, b) { v.visit_expr(b, e, v); v.visit_expr(a, e, v); }
       expr_copy(a) { v.visit_expr(a, e, v); }
+      expr_unary_move(a) { v.visit_expr(a, e, v); }
       expr_move(a, b) { v.visit_expr(b, e, v); v.visit_expr(a, e, v); }
       expr_swap(a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_assign_op(_, a, b) {
@@ -428,6 +431,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_mac(mac) { visit_mac(mac, e, v); }
     }
+    v.visit_expr_post(ex, e, v);
 }
 
 fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
@@ -451,6 +455,7 @@ type simple_visitor =
       visit_pat: fn@(@pat),
       visit_decl: fn@(@decl),
       visit_expr: fn@(@expr),
+      visit_expr_post: fn@(@expr),
       visit_ty: fn@(@ty),
       visit_ty_params: fn@(~[ty_param]),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
@@ -472,6 +477,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_pat: fn@(_p: @pat) { },
           visit_decl: fn@(_d: @decl) { },
           visit_expr: fn@(_e: @expr) { },
+          visit_expr_post: fn@(_e: @expr) { },
           visit_ty: simple_ignore_ty,
           visit_ty_params: fn@(_ps: ~[ty_param]) {},
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
@@ -529,6 +535,9 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(ex);
         visit_expr(ex, e, v);
     }
+    fn v_expr_post(f: fn@(@expr), ex: @expr, &&_e: (), _v: vt<()>) {
+        f(ex);
+    }
     fn v_ty(f: fn@(@ty), ty: @ty, &&e: (), v: vt<()>) {
         f(ty);
         visit_ty(ty, e, v);
@@ -578,6 +587,8 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                 visit_pat: |a,b,c|v_pat(v.visit_pat, a, b, c),
                 visit_decl: |a,b,c|v_decl(v.visit_decl, a, b, c),
                 visit_expr: |a,b,c|v_expr(v.visit_expr, a, b, c),
+                visit_expr_post: |a,b,c| v_expr_post(v.visit_expr_post,
+                                                     a, b, c),
                 visit_ty: visit_ty,
                 visit_ty_params: |a,b,c|
                     v_ty_params(v.visit_ty_params, a, b, c),

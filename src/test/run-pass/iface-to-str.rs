@@ -1,4 +1,4 @@
-iface to_str {
+trait to_str {
     fn to_str() -> ~str;
 }
 

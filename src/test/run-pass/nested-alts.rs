@@ -8,7 +8,7 @@ fn foo() {
         alt none::<int> { none::<int> { bar = 5; } _ { baz(); } }
         log(debug, bar);
       }
-      none::<int> { #debug("hello"); }
+      none::<int> { debug!{"hello"}; }
     }
 }
 

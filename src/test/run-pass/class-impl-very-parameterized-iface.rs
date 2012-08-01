@@ -6,14 +6,14 @@ enum cat_type { tuxedo, tabby, tortoiseshell }
 // Very silly -- this just returns the value of the name field
 // for any int value that's less than the meows field
 
-// ok: T should be in scope when resolving the iface ref for map
+// ok: T should be in scope when resolving the trait ref for map
 class cat<T: copy> : map<int, T> {
   priv {
     // Yes, you can have negative meows
     let mut meows : int;
     fn meow() {
       self.meows += 1;
-      #error("Meow %d", self.meows);
+      error!{"Meow %d", self.meows};
       if self.meows % 5 == 0 {
           self.how_hungry += 1;
       }
@@ -30,12 +30,12 @@ class cat<T: copy> : map<int, T> {
 
   fn eat() -> bool {
     if self.how_hungry > 0 {
-        #error("OM NOM NOM");
+        error!{"OM NOM NOM"};
         self.how_hungry -= 2;
         ret true;
     }
     else {
-        #error("Not hungry!");
+        error!{"Not hungry!"};
         ret false;
     }
   }

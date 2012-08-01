@@ -15,15 +15,15 @@ syn match     rustAssert      "assert\(\w\)*"
 syn keyword   rustKeyword     alt again as break
 syn keyword   rustKeyword     check claim const copy do drop else export extern fail
 syn keyword   rustKeyword     for if impl import in let log
-syn keyword   rustKeyword     loop mod mut new of owned pure
-syn keyword   rustKeyword     ret self to unchecked
+syn keyword   rustKeyword     loop match mod module move mut new of owned pure
+syn keyword   rustKeyword     ret return self to unchecked
 syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
 syn keyword   rustKeyword     use while with
 " FIXME: Scoped impl's name is also fallen in this category
-syn keyword   rustKeyword     mod iface trait class struct enum type nextgroup=rustIdentifier skipwhite
+syn keyword   rustKeyword     mod trait class struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
 
-syn match     rustIdentifier  "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
+syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved words
@@ -104,7 +104,7 @@ syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo ke
 syn keyword   rustTodo        TODO FIXME XXX NB
 
 " For those who don't want to see `::`...
-syn match   rustModPathSep  "::" conceal cchar=・
+syn match   rustModPathSep  "::" conceal cchar=ㆍ
 
 syn match rustArrowHead contained ">" conceal cchar= 
 syn match rustArrowTail contained "-" conceal cchar=⟶
@@ -114,8 +114,11 @@ syn match rustFatArrowHead contained ">" conceal cchar= 
 syn match rustFatArrowTail contained "=" conceal cchar=⟹
 syn match rustFatArrowFull "=>" contains=rustFatArrowHead,rustFatArrowTail
 
-hi def link rustHexNumber     rustNumber
-hi def link rustBinNumber     rustNumber
+syn match rustIdentifierPrime /\<\@!_\(_*\>\)\@=/ conceal cchar=′
+
+hi def link rustHexNumber       rustNumber
+hi def link rustBinNumber       rustNumber
+hi def link rustIdentifierPrime rustIdentifier
 
 hi def link rustString        String
 hi def link rustCharacter     Character

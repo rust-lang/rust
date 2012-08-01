@@ -218,7 +218,7 @@ fn get_method_sig(
 
 #[test]
 fn should_add_trait_method_sigs() {
-    let doc = test::mk_doc(~"iface i { fn a<T>() -> int; }");
+    let doc = test::mk_doc(~"trait i { fn a<T>() -> int; }");
     assert doc.cratemod().traits()[0].methods[0].sig
         == some(~"fn a<T>() -> int");
 }
@@ -291,12 +291,12 @@ fn fold_type(
                 ident: ident,
                 node: ast::item_ty(ty, params), _
               }, _) {
-                some(#fmt(
+                some(fmt!{
                     "type %s%s = %s",
                     *ident,
                     pprust::typarams_to_str(params),
                     pprust::ty_to_str(ty)
-                ))
+                })
               }
               _ { fail ~"expected type" }
             }

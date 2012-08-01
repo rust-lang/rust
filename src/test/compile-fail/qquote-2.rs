@@ -15,7 +15,7 @@ fn new_parse_sess() -> parser::parse_sess {
   fail;
 }
 
-iface fake_ext_ctxt {
+trait fake_ext_ctxt {
     fn session() -> fake_session;
 }
 
@@ -37,7 +37,7 @@ fn mk_ctxt() -> fake_ext_ctxt {
 fn main() {
     let ext_cx = mk_ctxt();
 
-    let stmt = #ast(stmt){let x int = 20;}; //~ ERROR expected end-of-string
+    let stmt = #ast[stmt]{let x int = 20;}; //~ ERROR expected end-of-string
     check_pp(*stmt,  pprust::print_stmt, "");
 }
 

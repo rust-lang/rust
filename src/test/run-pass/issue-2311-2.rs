@@ -1,4 +1,4 @@
-iface clam<A: copy> { }
+trait clam<A: copy> { }
 class foo<A: copy> {
   let x: A;
   new(b: A) { self.x = b; }

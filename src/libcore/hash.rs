@@ -13,6 +13,44 @@ pure fn hash_bytes(buf: &[const u8]) -> u64 {
     ret hash_bytes_keyed(buf, 0u64, 0u64);
 }
 
+pure fn hash_u64(val: u64) -> u64 {
+    let bytes: [u8]/8 = // Explicitly say 8 bytes to be mistaken-change-proof.
+        [(val >> 00) as u8,
+         (val >> 08) as u8,
+         (val >> 16) as u8,
+         (val >> 24) as u8,
+         (val >> 32) as u8,
+         (val >> 40) as u8,
+         (val >> 48) as u8,
+         (val >> 56) as u8];
+    hash_bytes(bytes)
+}
+
+pure fn hash_u32(val: u32) -> u64 {
+    let bytes: [u8]/4 = // Explicitly say 4 bytes to be mistaken-change-proof.
+        [(val >> 00) as u8,
+         (val >> 08) as u8,
+         (val >> 16) as u8,
+         (val >> 24) as u8];
+    hash_bytes(bytes)
+}
+
+#[cfg(target_arch = "arm")]
+pure fn hash_uint(val: uint) -> u64 {
+    assert sys::size_of::<uint>() == sys::size_of::<u32>();
+    hash_u32(val as u32)
+}
+#[cfg(target_arch = "x86_64")]
+pure fn hash_uint(val: uint) -> u64 {
+    assert sys::size_of::<uint>() == sys::size_of::<u64>();
+    hash_u64(val as u64)
+}
+#[cfg(target_arch = "x86")]
+pure fn hash_uint(val: uint) -> u64 {
+    assert sys::size_of::<uint>() == sys::size_of::<u32>();
+    hash_u32(val as u32)
+}
+
 pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
 
     let mut v0 : u64 = k0 ^ 0x736f_6d65_7073_6575;
@@ -20,7 +58,7 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
     let mut v2 : u64 = k0 ^ 0x6c79_6765_6e65_7261;
     let mut v3 : u64 = k1 ^ 0x7465_6462_7974_6573;
 
-    #macro([#u8to64_le(buf,i),
+    #macro[[#u8to64_le(buf,i),
             (buf[0+i] as u64 |
              buf[1+i] as u64 << 8 |
              buf[2+i] as u64 << 16 |
@@ -28,16 +66,16 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
              buf[4+i] as u64 << 32 |
              buf[5+i] as u64 << 40 |
              buf[6+i] as u64 << 48 |
-             buf[7+i] as u64 << 56)]);
+             buf[7+i] as u64 << 56)]];
 
-    #macro([#rotl(x,b), (x << b) | (x >> (64 - b))]);
+    #macro[[#rotl(x,b), (x << b) | (x >> (64 - b))]];
 
-    #macro([#compress(v0,v1,v2,v3), {
+    #macro[[#compress(v0,v1,v2,v3), {
         v0 += v1; v1 = #rotl(v1, 13); v1 ^= v0; v0 = #rotl(v0, 32);
         v2 += v3; v3 = #rotl(v3, 16); v3 ^= v2;
         v0 += v3; v3 = #rotl(v3, 21); v3 ^= v0;
         v2 += v1; v1 = #rotl(v1, 17); v1 ^= v2; v2 = #rotl(v2, 32);
-    }]);
+    }]];
 
     let len = vec::len(buf);
     let end = len & (!0x7);
@@ -45,10 +83,10 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
 
     let mut i = 0;
     while i < end {
-        let m = #u8to64_le(buf, i);
+        let m = u8to64_le!{buf, i};
         v3 ^= m;
-        #compress(v0,v1,v2,v3);
-        #compress(v0,v1,v2,v3);
+        compress!{v0,v1,v2,v3};
+        compress!{v0,v1,v2,v3};
         v0 ^= m;
         i += 8;
     }
@@ -64,22 +102,22 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
     if left > 6 { b |= buf[i + 6] as u64 << 48; }
 
     v3 ^= b;
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
     v0 ^= b;
 
     v2 ^= 0xff;
 
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
-    #compress(v0,v1,v2,v3);
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
+    compress!{v0,v1,v2,v3};
 
     ret v0 ^ v1 ^ v2 ^ v3;
 }
 
 
-iface streaming {
+trait streaming {
     fn input(~[u8]);
     fn input_str(~str);
     fn result() -> ~[u8];
@@ -127,11 +165,11 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
                 t += 1;
             }
 
-            let m = #u8to64_le(st.tail, 0);
+            let m = u8to64_le!{st.tail, 0};
 
             st.v3 ^= m;
-            #compress(st.v0, st.v1, st.v2, st.v3);
-            #compress(st.v0, st.v1, st.v2, st.v3);
+            compress!{st.v0, st.v1, st.v2, st.v3};
+            compress!{st.v0, st.v1, st.v2, st.v3};
             st.v0 ^= m;
 
             st.ntail = 0;
@@ -143,11 +181,11 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
 
         let mut i = needed;
         while i < end {
-            let mi = #u8to64_le(msg, i);
+            let mi = u8to64_le!{msg, i};
 
             st.v3 ^= mi;
-            #compress(st.v0, st.v1, st.v2, st.v3);
-            #compress(st.v0, st.v1, st.v2, st.v3);
+            compress!{st.v0, st.v1, st.v2, st.v3};
+            compress!{st.v0, st.v1, st.v2, st.v3};
             st.v0 ^= mi;
 
             i += 8;
@@ -179,15 +217,15 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
         if st.ntail > 6 { b |= st.tail[6] as u64 << 48; }
 
         v3 ^= b;
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
         v0 ^= b;
 
         v2 ^= 0xff;
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
-        #compress(v0, v1, v2, v3);
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
+        compress!{v0, v1, v2, v3};
 
         let h = v0 ^ v1 ^ v2 ^ v3;
 
@@ -323,10 +361,10 @@ fn test_siphash() {
     }
 
     while t < 64 {
-        #debug("siphash test %?", t);
-        let vec = #u8to64_le(vecs[t], 0);
+        debug!{"siphash test %?", t};
+        let vec = u8to64_le!{vecs[t], 0};
         let out = hash_bytes_keyed(buf, k0, k1);
-        #debug("got %?, expected %?", out, vec);
+        debug!{"got %?, expected %?", out, vec};
         assert vec == out;
 
         stream_full.reset();
@@ -334,7 +372,7 @@ fn test_siphash() {
         let f = stream_full.result_str();
         let i = stream_inc.result_str();
         let v = to_hex_str(vecs[t]);
-        #debug["%d: (%s) => inc=%s full=%s", t, v, i, f];
+        debug!{"%d: (%s) => inc=%s full=%s", t, v, i, f};
 
         assert f == i && f == v;
 
@@ -342,5 +380,66 @@ fn test_siphash() {
         stream_inc.input(~[t as u8]);
 
         t += 1;
+    }
+}
+
+#[test] #[cfg(target_arch = "arm")]
+fn test_hash_uint() {
+    let val = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val as u64) == hash_uint(val as uint);
+    assert hash_u32(val as u32) != hash_uint(val as uint);
+}
+#[test] #[cfg(target_arch = "x86_64")]
+fn test_hash_uint() {
+    let val = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val as u64) == hash_uint(val as uint);
+    assert hash_u32(val as u32) != hash_uint(val as uint);
+}
+#[test] #[cfg(target_arch = "x86")]
+fn test_hash_uint() {
+    let val = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val as u64) != hash_uint(val as uint);
+    assert hash_u32(val as u32) == hash_uint(val as uint);
+}
+
+#[test]
+fn test_hash_idempotent() {
+    let val64 = 0xdeadbeef_deadbeef_u64;
+    assert hash_u64(val64) == hash_u64(val64);
+    let val32 = 0xdeadbeef_u32;
+    assert hash_u32(val32) == hash_u32(val32);
+}
+
+#[test]
+fn test_hash_no_bytes_dropped_64() {
+    let val = 0xdeadbeef_deadbeef_u64;
+
+    assert hash_u64(val) != hash_u64(zero_byte(val, 0));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 1));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 2));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 3));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 4));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 5));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 6));
+    assert hash_u64(val) != hash_u64(zero_byte(val, 7));
+
+    fn zero_byte(val: u64, byte: uint) -> u64 {
+        assert 0 <= byte; assert byte < 8;
+        val & !(0xff << (byte * 8))
+    }
+}
+
+#[test]
+fn test_hash_no_bytes_dropped_32() {
+    let val = 0xdeadbeef_u32;
+
+    assert hash_u32(val) != hash_u32(zero_byte(val, 0));
+    assert hash_u32(val) != hash_u32(zero_byte(val, 1));
+    assert hash_u32(val) != hash_u32(zero_byte(val, 2));
+    assert hash_u32(val) != hash_u32(zero_byte(val, 3));
+
+    fn zero_byte(val: u32, byte: uint) -> u32 {
+        assert 0 <= byte; assert byte < 4;
+        val & !(0xff << (byte * 8))
     }
 }

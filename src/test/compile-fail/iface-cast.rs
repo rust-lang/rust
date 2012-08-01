@@ -1,4 +1,4 @@
-iface foo<T> { }
+trait foo<T> { }
 
 fn bar(x: foo<uint>) -> foo<int> {
     ret (x as foo::<int>);

@@ -36,7 +36,7 @@ type pointy = {
     mut n : ~[mut maybe_pointy],
     mut o : {x : int, y : maybe_pointy}
 };
-// To add: objects; ifaces; anything type-parameterized?
+// To add: objects; traits; anything type-parameterized?
 
 fn empty_pointy() -> @pointy {
     ret @{

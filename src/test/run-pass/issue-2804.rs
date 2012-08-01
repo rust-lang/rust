@@ -19,7 +19,7 @@ fn lookup(table: std::map::hashmap<~str, std::json::json>, key: ~str, default: ~
         }
         option::some(value)
         {
-            #error["%s was expected to be a string but is a %?", key, value];
+            error!{"%s was expected to be a string but is a %?", key, value};
             default
         }
         option::none
@@ -36,13 +36,13 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::json) -> (~str, 
         std::json::dict(interface)
         {
             let name = lookup(interface, ~"ifDescr", ~"");
-            let label = #fmt["%s-%s", managed_ip, name];
+            let label = fmt!{"%s-%s", managed_ip, name};
 
             (label, bool_value(false))
         }
         _
         {
-            #error["Expected dict for %s interfaces but found %?", managed_ip, data];
+            error!{"Expected dict for %s interfaces but found %?", managed_ip, data};
             (~"gnos:missing-interface", bool_value(true))
         }
     }
@@ -60,7 +60,7 @@ fn add_interfaces(store: int, managed_ip: ~str, device: std::map::hashmap<~str, 
         }
         _
         {
-            #error["Expected list for %s interfaces but found %?", managed_ip, device[~"interfaces"]];
+            error!{"Expected list for %s interfaces but found %?", managed_ip, device[~"interfaces"]};
             ~[]
         }
     }

@@ -9,7 +9,7 @@ extern mod rustrt {
 }
 
 fn fact(n: uint) -> uint {
-    #debug("n = %?", n);
+    debug!{"n = %?", n};
     rustrt::rust_dbg_call(cb, n)
 }
 

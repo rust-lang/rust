@@ -27,8 +27,8 @@ extern mod rustrt {
 enum seek_style { seek_set, seek_end, seek_cur, }
 
 
-// The raw underlying reader iface. All readers must implement this.
-iface reader {
+// The raw underlying reader trait. All readers must implement this.
+trait reader {
     // FIXME (#2004): Seekable really should be orthogonal.
 
     // FIXME (#2982): This should probably return an error.
@@ -250,7 +250,7 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
     }
 }
 
-// FIXME (#2004): this should either be an iface-less impl, a set of
+// FIXME (#2004): this should either be an trait-less impl, a set of
 // top-level functions that take a reader, or a set of default methods on
 // reader (which can then be called reader)
 
@@ -291,7 +291,7 @@ impl of reader for byte_buf {
         ret b as int;
     }
     // FIXME (#2738): implement this
-    fn unread_byte(_byte: int) { #error("Unimplemented: unread_byte"); fail; }
+    fn unread_byte(_byte: int) { error!{"Unimplemented: unread_byte"}; fail; }
     fn eof() -> bool { self.pos == self.len }
     fn seek(offset: int, whence: seek_style) {
         let pos = self.pos;
@@ -335,7 +335,7 @@ enum writer_type { screen, file }
 
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64
-iface writer {
+trait writer {
     fn write(v: &[const u8]);
     fn seek(int, seek_style);
     fn tell() -> uint;
@@ -357,7 +357,7 @@ impl of writer for *libc::FILE {
             let nout = libc::fwrite(vbuf as *c_void, len as size_t,
                                     1u as size_t, self);
             if nout < 1 as size_t {
-                #error("error writing buffer");
+                error!{"error writing buffer"};
                 log(error, os::last_os_error());
                 fail;
             }
@@ -392,7 +392,7 @@ impl of writer for fd_t {
                 let vb = ptr::const_offset(vbuf, count) as *c_void;
                 let nout = libc::write(self, vb, len as size_t);
                 if nout < 0 as ssize_t {
-                    #error("error writing buffer");
+                    error!{"error writing buffer"};
                     log(error, os::last_os_error());
                     fail;
                 }
@@ -401,11 +401,11 @@ impl of writer for fd_t {
         }
     }
     fn seek(_offset: int, _whence: seek_style) {
-        #error("need 64-bit foreign calls for seek, sorry");
+        error!{"need 64-bit foreign calls for seek, sorry"};
         fail;
     }
     fn tell() -> uint {
-        #error("need 64-bit foreign calls for tell, sorry");
+        error!{"need 64-bit foreign calls for tell, sorry"};
         fail;
     }
     fn flush() -> int { 0 }
@@ -452,7 +452,7 @@ fn mk_file_writer(path: ~str, flags: ~[fileflag])
                    (S_IRUSR | S_IWUSR) as c_int)
     };
     if fd < (0 as c_int) {
-        result::err(#fmt("error opening %s: %s", path, os::last_os_error()))
+        result::err(fmt!{"error opening %s: %s", path, os::last_os_error()})
     } else {
         result::ok(fd_writer(fd, true))
     }
@@ -781,7 +781,7 @@ mod fsync {
     }
 
     // Type of objects that may want to fsync
-    iface t { fn fsync(l: level) -> int; }
+    trait t { fn fsync(l: level) -> int; }
 
     // Call o.fsync after executing blk
     fn obj_sync(&&o: t, opt_level: option<level>, blk: fn(&&res<t>)) {

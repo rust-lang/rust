@@ -1,4 +1,4 @@
-iface add {
+trait add {
     fn plus(x: self) -> self;
 }
 

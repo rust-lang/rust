@@ -510,7 +510,7 @@ fn eq(value0: json, value1: json) -> bool {
     }
 }
 
-iface to_json { fn to_json() -> json; }
+trait to_json { fn to_json() -> json; }
 
 impl of to_json for json {
     fn to_json() -> json { self }
@@ -632,7 +632,7 @@ impl of to_str::to_str for json {
 
 impl of to_str::to_str for error {
     fn to_str() -> ~str {
-        #fmt("%u:%u: %s", self.line, self.col, *self.msg)
+        fmt!{"%u:%u: %s", self.line, self.col, *self.msg}
     }
 }
 

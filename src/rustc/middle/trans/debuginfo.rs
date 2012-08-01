@@ -178,7 +178,7 @@ fn create_compile_unit(cx: @crate_ctxt)
                          lli32(DW_LANG_RUST),
                          llstr(crate_name),
                          llstr(work_dir),
-                         llstr(#env["CFG_VERSION"]),
+                         llstr(env!{"CFG_VERSION"}),
                          lli1(true), // deprecated: main compile unit
                          lli1(cx.sess.opts.optimize != 0u),
                          llstr(~""), // flags (???)
@@ -646,7 +646,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     }
 
     let name = alt local.node.pat.node {
-      ast::pat_ident(pth, _) { ast_util::path_to_ident(pth) }
+      ast::pat_ident(_, pth, _) { ast_util::path_to_ident(pth) }
       // FIXME this should be handled (#2533)
       _ { fail ~"no single variable name for local"; }
     };
@@ -734,7 +734,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let cx = fcx.ccx;
     let dbg_cx = option::get(cx.dbg_cx);
 
-    #debug("~~");
+    debug!{"~~"};
     log(debug, fcx.id);
 
     let sp = option::get(fcx.span);

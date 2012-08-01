@@ -1,4 +1,4 @@
-import util::interner::{interner,intern};
+import util::interner::interner;
 import diagnostic::span_handler;
 import codemap::span;
 import ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
@@ -9,7 +9,7 @@ export tt_reader,  new_tt_reader;
 export nextch, is_eof, bump, get_str_from, new_low_level_string_reader;
 export string_reader_as_reader, tt_reader_as_reader;
 
-iface reader {
+trait reader {
     fn is_eof() -> bool;
     fn next_token() -> {tok: token::token, sp: span};
     fn fatal(~str) -> !;
@@ -217,7 +217,7 @@ fn consume_any_line_comment(rdr: string_reader)
                     bump(rdr);
                 }
                 ret some({
-                    tok: token::DOC_COMMENT(intern(*rdr.interner, @acc)),
+                    tok: token::DOC_COMMENT((*rdr.interner).intern(@acc)),
                     sp: ast_util::mk_sp(start_chpos, rdr.chpos)
                 });
             } else {
@@ -262,7 +262,7 @@ fn consume_block_comment(rdr: string_reader)
             bump(rdr);
             bump(rdr);
             ret some({
-                tok: token::DOC_COMMENT(intern(*rdr.interner, @acc)),
+                tok: token::DOC_COMMENT((*rdr.interner).intern(@acc)),
                 sp: ast_util::mk_sp(start_chpos, rdr.chpos)
             });
         }
@@ -395,12 +395,12 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
+            ret token::LIT_FLOAT((*rdr.interner).intern(@num_str),
                                  ast::ty_f32);
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
+            ret token::LIT_FLOAT((*rdr.interner).intern(@num_str),
                                  ast::ty_f64);
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
@@ -410,16 +410,15 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         }
     }
     if is_float {
-        ret token::LIT_FLOAT(intern(*rdr.interner, @num_str),
-                             ast::ty_f);
+        ret token::LIT_FLOAT((*rdr.interner).intern(@num_str), ast::ty_f);
     } else {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
 
-        #debug["lexing %s as an unsuffixed integer literal",
-               num_str];
+        debug!{"lexing %s as an unsuffixed integer literal",
+               num_str};
         ret token::LIT_INT_UNSUFFIXED(parsed as i64);
     }
 }
@@ -430,7 +429,7 @@ fn scan_numeric_escape(rdr: string_reader, n_hex_digits: uint) -> char {
         let n = rdr.curr;
         bump(rdr);
         if !is_hex_digit(n) {
-            rdr.fatal(#fmt["illegal numeric character escape: %d", n as int]);
+            rdr.fatal(fmt!{"illegal numeric character escape: %d", n as int});
         }
         accum_int *= 16;
         accum_int += hex_digit_val(n);
@@ -459,7 +458,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         let is_mod_name = c == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
-        ret token::IDENT(intern(*rdr.interner, @accum_str), is_mod_name);
+        ret token::IDENT((*rdr.interner).intern(@accum_str), is_mod_name);
     }
     if is_dec_digit(c) {
         ret scan_number(c, rdr);
@@ -573,7 +572,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
               'u' { c2 = scan_numeric_escape(rdr, 4u); }
               'U' { c2 = scan_numeric_escape(rdr, 8u); }
               c2 {
-                rdr.fatal(#fmt["unknown character escape: %d", c2 as int]);
+                rdr.fatal(fmt!{"unknown character escape: %d", c2 as int});
               }
             }
         }
@@ -588,8 +587,8 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {
-                rdr.fatal(#fmt["unterminated double quote string: %s",
-                               get_str_from(rdr, n)]);
+                rdr.fatal(fmt!{"unterminated double quote string: %s",
+                               get_str_from(rdr, n)});
             }
 
             let ch = rdr.curr;
@@ -603,6 +602,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
                   'r' { str::push_char(accum_str, '\r'); }
                   't' { str::push_char(accum_str, '\t'); }
                   '\\' { str::push_char(accum_str, '\\'); }
+                  '\'' { str::push_char(accum_str, '\''); }
                   '"' { str::push_char(accum_str, '"'); }
                   '\n' { consume_whitespace(rdr); }
                   'x' {
@@ -615,7 +615,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 8u));
                   }
                   c2 {
-                    rdr.fatal(#fmt["unknown string escape: %d", c2 as int]);
+                    rdr.fatal(fmt!{"unknown string escape: %d", c2 as int});
                   }
                 }
               }
@@ -623,7 +623,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             }
         }
         bump(rdr);
-        ret token::LIT_STR(intern(*rdr.interner, @accum_str));
+        ret token::LIT_STR((*rdr.interner).intern(@accum_str));
       }
       '-' {
         if nextch(rdr) == '>' {
@@ -650,7 +650,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
       '/' { ret binop(rdr, token::SLASH); }
       '^' { ret binop(rdr, token::CARET); }
       '%' { ret binop(rdr, token::PERCENT); }
-      c { rdr.fatal(#fmt["unknown start of token: %d", c as int]); }
+      c { rdr.fatal(fmt!{"unknown start of token: %d", c as int}); }
     }
 }
 

@@ -4,7 +4,7 @@ fn failfn() {
     fail;
 }
 
-iface i {
+trait i {
     fn foo();
 }
 

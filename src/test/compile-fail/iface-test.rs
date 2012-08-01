@@ -1,4 +1,4 @@
-iface foo { fn foo(); }
+trait foo { fn foo(); }
 
 impl of int for uint { fn foo() {} } //~ ERROR trait
 

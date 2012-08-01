@@ -937,10 +937,10 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
               ast_map::node_expr(e) { e.span }
             };
             ccx.sess.span_fatal(
-                sp, #fmt("reinterpret_cast called on types \
+                sp, fmt!{"reinterpret_cast called on types \
                           with different size: %s (%u) to %s (%u)",
                          ty_to_str(ccx.tcx, tp_ty), tp_sz,
-                         ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
+                         ty_to_str(ccx.tcx, substs.tys[1]), out_sz});
         }
         if !ty::type_is_nil(substs.tys[1]) {
             let cast = PointerCast(bcx, get_param(decl, first_real_arg),

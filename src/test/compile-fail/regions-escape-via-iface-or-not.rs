@@ -1,4 +1,4 @@
-iface deref {
+trait deref {
     fn get() -> int;
 }
 
@@ -20,5 +20,5 @@ fn return_it() -> int {
 
 fn main() {
     let x = return_it();
-    #debug["foo=%d", x];
+    debug!{"foo=%d", x};
 }

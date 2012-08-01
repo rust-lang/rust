@@ -19,7 +19,6 @@ import std::serialization::{serializer,
                             deserialize_bool};
 import parse::token;
 
-
 /* Note #1972 -- spans are serialized but not deserialized */
 fn serialize_span<S>(_s: S, _v: span) {
 }
@@ -147,6 +146,12 @@ type pat = {id: node_id, node: pat_, span: span};
 type field_pat = {ident: ident, pat: @pat};
 
 #[auto_serialize]
+enum binding_mode {
+    bind_by_value,
+    bind_by_ref
+}
+
+#[auto_serialize]
 enum pat_ {
     pat_wild,
     // A pat_ident may either be a new bound variable,
@@ -156,7 +161,7 @@ enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(@path, option<@pat>),
+    pat_ident(binding_mode, @path, option<@pat>),
     pat_enum(@path, option<~[@pat]>), // "none" means a * pattern where
                                   // we don't bind the fields to names
     pat_rec(~[field_pat], bool),
@@ -323,6 +328,7 @@ enum expr_ {
 
     expr_copy(@expr),
     expr_move(@expr, @expr),
+    expr_unary_move(@expr),
     expr_assign(@expr, @expr),
     expr_swap(@expr, @expr),
     expr_assign_op(binop, @expr, @expr),
@@ -504,7 +510,8 @@ type ty_field = spanned<ty_field_>;
 
 #[auto_serialize]
 type ty_method = {ident: ident, attrs: ~[attribute],
-                  decl: fn_decl, tps: ~[ty_param], span: span};
+                  decl: fn_decl, tps: ~[ty_param], self_ty: self_ty,
+                  span: span};
 
 #[auto_serialize]
 // A trait method is either required (meaning it doesn't have an
@@ -590,8 +597,20 @@ enum ret_style {
 }
 
 #[auto_serialize]
+enum self_ty_ {
+    sty_by_ref,                         // old by-reference self: ``
+    sty_value,                          // by-value self: `self`
+    sty_region(@region, mutability),    // by-region self: `&self`
+    sty_box(mutability),                // by-managed-pointer self: `@self`
+    sty_uniq(mutability)                // by-unique-pointer self: `~self`
+}
+
+#[auto_serialize]
+type self_ty = spanned<self_ty_>;
+
+#[auto_serialize]
 type method = {ident: ident, attrs: ~[attribute],
-               tps: ~[ty_param], decl: fn_decl, body: blk,
+               tps: ~[ty_param], self_ty: self_ty, decl: fn_decl, body: blk,
                id: node_id, span: span, self_id: node_id,
                vis: visibility};  // always public, unless it's a
                                   // class method

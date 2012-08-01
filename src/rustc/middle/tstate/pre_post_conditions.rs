@@ -16,12 +16,12 @@ import driver::session::session;
 import std::map::hashmap;
 
 fn find_pre_post_mod(_m: _mod) -> _mod {
-    #debug("implement find_pre_post_mod!");
+    debug!{"implement find_pre_post_mod!"};
     fail;
 }
 
 fn find_pre_post_foreign_mod(_m: foreign_mod) -> foreign_mod {
-    #debug("implement find_pre_post_foreign_mod");
+    debug!{"implement find_pre_post_foreign_mod"};
     fail;
 }
 
@@ -66,7 +66,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
    be the union of all postconditions for <args> */
 fn find_pre_post_exprs(fcx: fn_ctxt, args: ~[@expr], id: node_id) {
     if vec::len::<@expr>(args) > 0u {
-        #debug["find_pre_post_exprs: oper = %s", expr_to_str(args[0])];
+        debug!{"find_pre_post_exprs: oper = %s", expr_to_str(args[0])};
     }
     fn do_one(fcx: fn_ctxt, e: @expr) { find_pre_post_expr(fcx, e); }
     for args.each |e| { do_one(fcx, e); }
@@ -452,7 +452,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 }
 
 fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
-    #debug["stmt = %s", stmt_to_str(s)];
+    debug!{"stmt = %s", stmt_to_str(s)};
     alt s.node {
       stmt_decl(adecl, id) {
         alt adecl.node {

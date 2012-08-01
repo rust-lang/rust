@@ -536,7 +536,7 @@ fn push_slow<T>(&v: ~[const T], +initval: T) {
 
 // Unchecked vector indexing
 #[inline(always)]
-unsafe fn ref<T: copy>(v: &[const T], i: uint) -> T {
+unsafe fn get_ref<T: copy>(v: &[const T], i: uint) -> T {
     as_buf(v, |p, _len| *ptr::offset(p, i))
 }
 
@@ -555,7 +555,7 @@ fn push_all<T: copy>(&v: ~[const T], rhs: &[const T]) {
     reserve(v, v.len() + rhs.len());
 
     for uint::range(0u, rhs.len()) |i| {
-        push(v, unsafe { ref(rhs, i) })
+        push(v, unsafe { get_ref(rhs, i) })
     }
 }
 

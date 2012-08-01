@@ -955,7 +955,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
  */
 type local_data_key<T: owned> = fn@(+@T);
 
-iface local_data { }
+trait local_data { }
 impl<T: owned> of local_data for @T { }
 
 // We use dvec because it's the best data structure in core. If TLS is used

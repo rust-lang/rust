@@ -6,9 +6,10 @@ import pp::{break_offset, word, printer,
             inconsistent, eof};
 import diagnostic;
 import ast::{required, provided};
-import ast_util::operator_prec;
+import ast_util::{operator_prec, lone_block_expr};
 import dvec::{dvec, extensions};
 import parse::classify::*;
+import util::interner;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {
@@ -27,6 +28,7 @@ fn no_ann() -> pp_ann {
 type ps =
     @{s: pp::printer,
       cm: option<codemap>,
+      intr: @interner::interner<@~str>,
       comments: option<~[comments::cmnt]>,
       literals: option<~[comments::lit]>,
       mut cur_cmnt: uint,
@@ -47,6 +49,8 @@ fn end(s: ps) {
 fn rust_printer(writer: io::writer) -> ps {
     ret @{s: pp::mk_printer(writer, default_columns),
           cm: none::<codemap>,
+          intr: @interner::mk::<@~str>(|x| str::hash(*x),
+                                       |x,y| str::eq(*x, *y)),
           comments: none::<~[comments::cmnt]>,
           literals: none::<~[comments::lit]>,
           mut cur_cmnt: 0u,
@@ -63,7 +67,8 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
+fn print_crate(cm: codemap, intr: @interner::interner<@~str>,
+               span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::reader,
                out: io::writer, ann: pp_ann, is_expanded: bool) {
     let r = comments::gather_comments_and_literals(span_diagnostic,
@@ -71,6 +76,7 @@ fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
     let s =
         @{s: pp::mk_printer(out, default_columns),
           cm: some(cm),
+          intr: intr,
           comments: some(r.cmnts),
           // If the code is post expansion, don't use the table of
           // literals, since it doesn't correspond with the literals
@@ -582,7 +588,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_trait(tps, methods) {
-        head(s, ~"iface");
+        head(s, ~"trait");
         word(s.s, *item.ident);
         print_type_params(s, tps);
         word(s.s, ~" ");
@@ -591,10 +597,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) {
-
-        word(s.s, *item.ident);
+        head(s, path_to_str(pth) + "! " + *item.ident);
         bopen(s);
-        for tts.each |tt| { print_tt(s, tt); }
+        for tts.each |tt| { print_tt(s, tt);  }
         bclose(s, item.span);
       }
       ast::item_mac(_) {
@@ -604,13 +609,44 @@ fn print_item(s: ps, &&item: @ast::item) {
     s.ann.post(ann_node);
 }
 
-/// Unimplemented because ident tokens lose their meaning without the interner
-/// present. Fixing that would make invoking the pretty printer painful.
-/// If this did work, the naive way of implementing it would be really ugly.
-/// A prettier option would involve scraping the macro grammar for formatting
-/// advice. But that would be hard.
-fn print_tt(_s: ps, _tt: ast::token_tree) {
-    fail ~"token trees cannot be pretty-printed"
+/// This doesn't deserve to be called "pretty" printing, but it should be
+/// meaning-preserving. A quick hack that might help would be to look at the
+/// spans embedded in the TTs to decide where to put spaces and newlines.
+/// But it'd be better to parse these according to the grammar of the
+/// appropriate macro, transcribe back into the grammar we just parsed from,
+/// and then pretty-print the resulting AST nodes (so, e.g., we print
+/// expression arguments as expressions). It can be done! I think.
+fn print_tt(s: ps, tt: ast::token_tree) {
+    alt tt {
+      ast::tt_delim(tts) {
+        for tts.each() |tt_elt| { print_tt(s, tt_elt); }
+      }
+      ast::tt_tok(_, tk) {
+        alt tk {
+          parse::token::IDENT(*) { // don't let idents run together
+            if s.s.token_tree_last_was_ident { word(s.s, ~" ") }
+            s.s.token_tree_last_was_ident = true;
+          }
+          _ { s.s.token_tree_last_was_ident = false; }
+        }
+        word(s.s, parse::token::to_str(*s.intr, tk));
+      }
+      ast::tt_seq(_, tts, sep, zerok) {
+        word(s.s, ~"$(");
+        for tts.each() |tt_elt| { print_tt(s, tt_elt); }
+        word(s.s, ~")");
+        alt sep {
+          some(tk) { word(s.s, parse::token::to_str(*s.intr, tk)); }
+          none {}
+        }
+        word(s.s, if zerok { ~"*" } else { ~"+" });
+        s.s.token_tree_last_was_ident = false;
+      }
+      ast::tt_nonterminal(_, name) {
+        word(s.s, ~"$" + *name);
+        s.s.token_tree_last_was_ident = true;
+      }
+    }
 }
 
 fn print_variant(s: ps, v: ast::variant) {
@@ -833,22 +869,21 @@ fn print_mac(s: ps, m: ast::mac) {
         option::iter(arg, |a| print_expr(s, a));
         // FIXME: extension 'body' (#2339)
       }
-      ast::mac_invoc_tt(path, tts) {
-        print_path(s, path, false);
-        word(s.s, ~"!");
+      ast::mac_invoc_tt(pth, tts) {
+        head(s, path_to_str(pth) + "!");
         bopen(s);
         for tts.each() |tt| { print_tt(s, tt); }
         bclose(s, m.span);
       }
       ast::mac_ellipsis { word(s.s, ~"..."); }
-      ast::mac_var(v) { word(s.s, #fmt("$%u", v)); }
+      ast::mac_var(v) { word(s.s, fmt!{"$%u", v}); }
       _ { /* fixme */ }
     }
 }
 
 fn print_vstore(s: ps, t: ast::vstore) {
     alt t {
-      ast::vstore_fixed(some(i)) { word(s.s, #fmt("%u", i)); }
+      ast::vstore_fixed(some(i)) { word(s.s, fmt!{"%u", i}); }
       ast::vstore_fixed(none) { word(s.s, ~"_"); }
       ast::vstore_uniq { word(s.s, ~"~"); }
       ast::vstore_box { word(s.s, ~"@"); }
@@ -999,7 +1034,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_maybe_parens_discrim(s, expr);
         space(s.s);
         bopen(s);
-        for arms.each |arm| {
+        let len = arms.len();
+        for arms.eachi |i, arm| {
             space(s.s);
             cbox(s, alt_indent_unit);
             ibox(s, 0u);
@@ -1015,8 +1051,19 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
               some(e) { word_space(s, ~"if"); print_expr(s, e); space(s.s); }
               none { }
             }
-            print_possibly_embedded_block(s, arm.body, block_normal,
-                                          alt_indent_unit);
+            word_space(s, ~"=>");
+            alt lone_block_expr(arm.body) {
+              some(expr) => {
+                end(s); // close the ibox for the pattern
+                print_expr(s, expr);
+                if i < len - 1 { word(s.s, ~","); }
+                end(s); // close enclosing cbox
+              }
+              none => {
+                print_possibly_embedded_block(s, arm.body, block_normal,
+                                              alt_indent_unit);
+              }
+            }
         }
         bclose_(s, expr.span, alt_indent_unit);
       }
@@ -1053,6 +1100,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_copy(e) { word_space(s, ~"copy"); print_expr(s, e); }
+      ast::expr_unary_move(e) { word_space(s, ~"move"); print_expr(s, e); }
       ast::expr_move(lhs, rhs) {
         print_expr(s, lhs);
         space(s.s);
@@ -1254,11 +1302,15 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
      is that it doesn't matter */
     alt pat.node {
       ast::pat_wild { word(s.s, ~"_"); }
-      ast::pat_ident(path, sub) {
+      ast::pat_ident(binding_mode, path, sub) {
+        alt binding_mode {
+          ast::bind_by_ref => { word_space(s, ~"ref"); }
+          ast::bind_by_value => {}
+        }
         print_path(s, path, true);
         alt sub {
-          some(p) { word(s.s, ~"@"); print_pat(s, p); }
-          none {}
+          some(p) => { word(s.s, ~"@"); print_pat(s, p); }
+          none => {}
         }
       }
       ast::pat_enum(path, args_) {

@@ -18,7 +18,7 @@ export fold_ty_params;
 export fold_fn_decl;
 export extensions;
 
-iface ast_fold {
+trait ast_fold {
     fn fold_crate(crate) -> crate;
     fn fold_crate_directive(&&@crate_directive) -> @crate_directive;
     fn fold_view_item(&&@view_item) -> @view_item;
@@ -297,6 +297,7 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
     ret @{ident: fld.fold_ident(m.ident),
           attrs: /* FIXME (#2543) */ copy m.attrs,
           tps: fold_ty_params(m.tps, fld),
+          self_ty: m.self_ty,
           decl: fold_fn_decl(m.decl, fld),
           body: fld.fold_block(m.body),
           id: fld.new_id(m.id),
@@ -331,8 +332,9 @@ fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
 fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
     ret alt p {
           pat_wild { pat_wild }
-          pat_ident(pth, sub) {
-            pat_ident(fld.fold_path(pth),
+          pat_ident(binding_mode, pth, sub) {
+            pat_ident(binding_mode,
+                      fld.fold_path(pth),
                       option::map(sub, |x| fld.fold_pat(x)))
           }
           pat_lit(e) { pat_lit(fld.fold_expr(e)) }
@@ -453,6 +455,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_move(fld.fold_expr(el), fld.fold_expr(er))
           }
           expr_copy(e) { expr_copy(fld.fold_expr(e)) }
+          expr_unary_move(e) { expr_unary_move(fld.fold_expr(e)) }
           expr_assign(el, er) {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
           }

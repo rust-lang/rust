@@ -13,4 +13,4 @@ fn foo<T>(y: option<T>) {
     ret;
 }
 
-fn main() { #debug("hello"); foo::<int>(some::<int>(5)); }
+fn main() { debug!{"hello"}; foo::<int>(some::<int>(5)); }

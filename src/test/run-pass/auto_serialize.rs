@@ -19,7 +19,7 @@ fn test_ser_and_deser<A>(a1: A,
     // check the pretty printer:
     io_ser_fn(io::stdout(), a1);
     let s = io::with_str_writer(|w| io_ser_fn(w, a1) );
-    #debug["s == %?", s];
+    debug!{"s == %?", s};
     assert s == expected;
 
     // check the EBML serializer:

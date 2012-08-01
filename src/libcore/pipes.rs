@@ -22,13 +22,13 @@ export stream, port, chan, shared_chan, port_set, channel;
 
 const SPIN_COUNT: uint = 0;
 
-macro_rules! move {
+macro_rules! move_it {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
 // This is to help make sure we only move out of enums in safe
 // places. Once there is unary move, it can be removed.
-fn move<T>(-x: T) -> T { x }
+fn move_it<T>(-x: T) -> T { x }
 
 enum state {
     empty,
@@ -222,15 +222,15 @@ class buffer_resource<T: send> {
     let buffer: ~buffer<T>;
     new(+b: ~buffer<T>) {
         //let p = ptr::addr_of(*b);
-        //#error("take %?", p);
+        //error!{"take %?", p};
         atomic_add_acq(b.header.ref_count, 1);
         self.buffer = b;
     }
 
     drop unsafe {
-        let b = move!{self.buffer};
+        let b = move_it!{self.buffer};
         //let p = ptr::addr_of(*b);
-        //#error("drop %?", p);
+        //error!{"drop %?", p};
         let old_count = atomic_sub_rel(b.header.ref_count, 1);
         //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
         if old_count == 1 {
@@ -262,7 +262,7 @@ fn send<T: send, Tbuffer: send>(-p: send_packet_buffered<T, Tbuffer>,
       }
       full { fail ~"duplicate send" }
       blocked {
-        #debug("waking up task for %?", p_);
+        debug!{"waking up task for %?", p_};
         alt p.header.blocked_task {
           some(task) {
             rustrt::task_signal_event(
@@ -301,7 +301,7 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
                                        blocked);
         alt old_state {
           empty {
-            #debug("no data available on %?, going to sleep.", p_);
+            debug!{"no data available on %?, going to sleep.", p_};
             if count == 0 {
                 wait_event(this);
             }
@@ -314,7 +314,7 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
                 // sometimes blocking the thing we are waiting on.
                 task::yield();
             }
-            #debug("woke up, p.state = %?", copy p.header.state);
+            debug!{"woke up, p.state = %?", copy p.header.state};
           }
           blocked {
             if first {
@@ -418,7 +418,7 @@ fn wait_many(pkts: &[*packet_header]) -> uint {
     }
 
     while !data_avail {
-        #debug("sleeping on %? packets", pkts.len());
+        debug!{"sleeping on %? packets", pkts.len()};
         let event = wait_event(this) as *packet_header;
         let pos = vec::position(pkts, |p| p == event);
 
@@ -428,16 +428,16 @@ fn wait_many(pkts: &[*packet_header]) -> uint {
             data_avail = true;
           }
           none {
-            #debug("ignoring spurious event, %?", event);
+            debug!{"ignoring spurious event, %?", event};
           }
         }
     }
 
-    #debug("%?", pkts[ready_packet]);
+    debug!{"%?", pkts[ready_packet]};
 
     for pkts.each |p| { unsafe{ (*p).unblock()} }
 
-    #debug("%?, %?", ready_packet, pkts[ready_packet]);
+    debug!{"%?, %?", ready_packet, pkts[ready_packet]};
 
     unsafe {
         assert (*pkts[ready_packet]).state == full
@@ -510,7 +510,7 @@ class send_packet_buffered<T: send, Tbuffer: send> {
     let mut p: option<*packet<T>>;
     let mut buffer: option<buffer_resource<Tbuffer>>;
     new(p: *packet<T>) {
-        //#debug("take send %?", p);
+        //debug!{"take send %?", p};
         self.p = some(p);
         unsafe {
             self.buffer = some(
@@ -520,17 +520,17 @@ class send_packet_buffered<T: send, Tbuffer: send> {
     }
     drop {
         //if self.p != none {
-        //    #debug("drop send %?", option::get(self.p));
+        //    debug!{"drop send %?", option::get(self.p)};
         //}
         if self.p != none {
             let mut p = none;
             p <-> self.p;
             sender_terminate(option::unwrap(p))
         }
-        //unsafe { #error("send_drop: %?",
+        //unsafe { error!{"send_drop: %?",
         //                if self.buffer == none {
         //                    "none"
-        //                } else { "some" }); }
+        //                } else { "some" }}; }
     }
     fn unwrap() -> *packet<T> {
         let mut p = none;
@@ -553,7 +553,7 @@ class send_packet_buffered<T: send, Tbuffer: send> {
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
-        //#error("send reuse_buffer");
+        //error!{"send reuse_buffer"};
         let mut tmp = none;
         tmp <-> self.buffer;
         option::unwrap(tmp)
@@ -570,7 +570,7 @@ class recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     let mut p: option<*packet<T>>;
     let mut buffer: option<buffer_resource<Tbuffer>>;
     new(p: *packet<T>) {
-        //#debug("take recv %?", p);
+        //debug!{"take recv %?", p};
         self.p = some(p);
         unsafe {
             self.buffer = some(
@@ -580,17 +580,17 @@ class recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     }
     drop {
         //if self.p != none {
-        //    #debug("drop recv %?", option::get(self.p));
+        //    debug!{"drop recv %?", option::get(self.p)};
         //}
         if self.p != none {
             let mut p = none;
             p <-> self.p;
             receiver_terminate(option::unwrap(p))
         }
-        //unsafe { #error("recv_drop: %?",
+        //unsafe { error!{"recv_drop: %?",
         //                if self.buffer == none {
         //                    "none"
-        //                } else { "some" }); }
+        //                } else { "some" }}; }
     }
     fn unwrap() -> *packet<T> {
         let mut p = none;
@@ -613,7 +613,7 @@ class recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
-        //#error("recv reuse_buffer");
+        //error!{"recv reuse_buffer"};
         let mut tmp = none;
         tmp <-> self.buffer;
         option::unwrap(tmp)
@@ -725,10 +725,10 @@ impl port<T: send> of recv<T> for port<T> {
     fn try_recv() -> option<T> {
         let mut endp = none;
         endp <-> self.endp;
-        alt move(pipes::try_recv(unwrap(endp))) {
+        alt move_it(pipes::try_recv(unwrap(endp))) {
           some(streamp::data(x, endp)) {
-            self.endp = some(move!{endp});
-            some(move!{x})
+            self.endp = some(move_it!{endp});
+            some(move_it!{x})
           }
           none { none }
         }
@@ -770,9 +770,9 @@ class port_set<T: send> : recv<T> {
             let i = wait_many(self.ports.map(|p| p.header()));
             // dereferencing an unsafe pointer nonsense to appease the
             // borrowchecker.
-            alt move(unsafe {(*ptr::addr_of(self.ports[i])).try_recv()}) {
+            alt move_it(unsafe {(*ptr::addr_of(self.ports[i])).try_recv()}) {
               some(m) {
-                  result = some(move!{m});
+                  result = some(move_it!{m});
               }
               none {
                 // Remove this port.
