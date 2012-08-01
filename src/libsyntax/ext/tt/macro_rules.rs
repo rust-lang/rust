@@ -24,7 +24,10 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
             ms(match_nonterminal(@~"lhs",@~"matchers", 0u)),
             ms(match_tok(FAT_ARROW)),
             ms(match_nonterminal(@~"rhs",@~"tt", 1u)),
-        ], some(SEMI), false, 0u, 2u))];
+        ], some(SEMI), false, 0u, 2u)),
+        //to phase into semicolon-termination instead of
+        //semicolon-separation
+        ms(match_seq(~[ms(match_tok(SEMI))], none, true, 2u, 2u))];
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
