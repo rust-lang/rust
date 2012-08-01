@@ -66,7 +66,7 @@ mod NBodySystem {
         }
 
         i = 0;
-        while i < 5 { move(bodies[i], dt); i += 1; }
+        while i < 5 { move_(bodies[i], dt); i += 1; }
     }
 
     fn advance_one(bi: Body::props, bj: Body::props, dt: float) unsafe {
@@ -88,7 +88,7 @@ mod NBodySystem {
         bj.vz += dz * bi.mass * mag;
     }
 
-    fn move(b: Body::props, dt: float) {
+    fn move_(b: Body::props, dt: float) {
         b.x += dt * b.vx;
         b.y += dt * b.vy;
         b.z += dt * b.vz;

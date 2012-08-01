@@ -33,7 +33,7 @@ import comm::recv;
 import comm::send;
 import comm::methods;
 
-macro_rules! move {
+macro_rules! move_out {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
@@ -151,7 +151,7 @@ mod map_reduce {
         }
     }
 
-    enum reduce_proto<V: copy send> { emit_val(V), done, ref, release }
+    enum reduce_proto<V: copy send> { emit_val(V), done, addref, release }
 
     fn start_mappers<K1: copy send, K2: const copy send hash_key,
                      V: copy send>(
@@ -188,12 +188,12 @@ mod map_reduce {
                     alt pipes::recv(ctrl) {
                       ctrl_proto::reducer(c_, ctrl) {
                         c = some(c_);
-                        move!{ctrl}
+                        move_out!{ctrl}
                       }
                     }
                 }
                 intermediates.insert(key, c.get());
-                send(c.get(), ref);
+                send(c.get(), addref);
               }
             }
             send(c.get(), emit_val(val));
@@ -232,7 +232,7 @@ mod map_reduce {
                     // error!{"all done"};
                     is_done = true;
                   }
-                  ref { ref_count += 1; }
+                  addref { ref_count += 1; }
                   release { ref_count -= 1; }
                 }
             }
@@ -286,7 +286,7 @@ mod map_reduce {
                 }
                 ctrl = vec::append_one(
                     ctrls,
-                    ctrl_proto::server::reducer(move!{cc}, c));
+                    ctrl_proto::server::reducer(move_out!{cc}, c));
               }
             }
         }

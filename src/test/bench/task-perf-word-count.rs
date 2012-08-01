@@ -56,7 +56,7 @@ mod map_reduce {
         mapper_done,
     }
 
-    enum reduce_proto { emit_val(int), done, ref, release, }
+    enum reduce_proto { emit_val(int), done, addref, release, }
 
     fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: ~[~str]) ->
        ~[future::future<task::task_result>] {
@@ -87,7 +87,7 @@ mod map_reduce {
                 send(ctrl, find_reducer(key, chan(p)));
                 c = recv(p);
                 im.insert(key, c);
-                send(c, ref);
+                send(c, addref);
               }
             }
             send(c, emit_val(val));
@@ -120,7 +120,7 @@ mod map_reduce {
                     // error!{"all done"};
                     state.is_done = true;
                   }
-                  ref { state.ref_count += 1; }
+                  addref { state.ref_count += 1; }
                   release { state.ref_count -= 1; }
                 }
             }
