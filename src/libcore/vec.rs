@@ -189,7 +189,7 @@ pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
-    while i < n_elts unsafe { ref_set(v, i, op(i)); i += 1u; }
+    while i < n_elts unsafe { unsafe::set(v, i, op(i)); i += 1u; }
     unsafe { unsafe::set_len(v, n_elts); }
     ret v;
 }
@@ -204,8 +204,8 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts)}
     let mut i: uint = 0u;
-    unsafe { // because ref_set is unsafe
-        while i < n_elts { ref_set(v, i, t); i += 1u; }
+    unsafe { // because unsafe::set is unsafe
+        while i < n_elts { unsafe::set(v, i, t); i += 1u; }
         unsafe { unsafe::set_len(v, n_elts); }
     }
     ret v;
@@ -534,28 +534,12 @@ fn push_slow<T>(&v: ~[const T], +initval: T) {
     unsafe { push_fast(v, initval) }
 }
 
-// Unchecked vector indexing
-#[inline(always)]
-unsafe fn get_ref<T: copy>(v: &[const T], i: uint) -> T {
-    as_buf(v, |p, _len| *ptr::offset(p, i))
-}
-
-#[inline(always)]
-unsafe fn ref_set<T>(v: &[mut T], i: uint, +val: T) {
-    let mut box = some(val);
-    do as_mut_buf(v) |p, _len| {
-        let mut box2 = none;
-        box2 <-> box;
-        rusti::move_val_init(*ptr::mut_offset(p, i), option::unwrap(box2));
-    }
-}
-
 #[inline(always)]
 fn push_all<T: copy>(&v: ~[const T], rhs: &[const T]) {
     reserve(v, v.len() + rhs.len());
 
     for uint::range(0u, rhs.len()) |i| {
-        push(v, unsafe { get_ref(rhs, i) })
+        push(v, unsafe { unsafe::get(rhs, i) })
     }
 }
 
@@ -1609,6 +1593,28 @@ mod unsafe {
         let v : *(&blk/[T]) =
             ::unsafe::reinterpret_cast(ptr::addr_of(pair));
         f(*v)
+    }
+
+    /**
+     * Unchecked vector indexing.
+     */
+    #[inline(always)]
+    unsafe fn get<T: copy>(v: &[const T], i: uint) -> T {
+        as_buf(v, |p, _len| *ptr::offset(p, i))
+    }
+
+    /**
+     * Unchecked vector index assignment.
+     */
+    #[inline(always)]
+    unsafe fn set<T>(v: &[mut T], i: uint, +val: T) {
+        let mut box = some(val);
+        do as_mut_buf(v) |p, _len| {
+            let mut box2 = none;
+            box2 <-> box;
+            rusti::move_val_init(*ptr::mut_offset(p, i),
+                                 option::unwrap(box2));
+        }
     }
 
     /**
