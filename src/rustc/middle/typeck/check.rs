@@ -1416,7 +1416,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_expr_with(fcx, e, ty::mk_bool(tcx));
         fcx.write_nil(id);
       }
-      ast::expr_copy(a) {
+      ast::expr_copy(a) | ast::expr_unary_move(a) {
         bot = check_expr(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));
       }

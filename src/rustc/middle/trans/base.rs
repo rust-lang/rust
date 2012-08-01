@@ -3682,7 +3682,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_do_body(blk) {
             ret trans_expr(bcx, blk, dest);
           }
-          ast::expr_copy(a) {
+          ast::expr_copy(a) | ast::expr_unary_move(a) {
             if !expr_is_lval(bcx, a) {
                 ret trans_expr(bcx, a, dest);
             }

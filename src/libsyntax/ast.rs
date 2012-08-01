@@ -322,6 +322,7 @@ enum expr_ {
 
     expr_copy(@expr),
     expr_move(@expr, @expr),
+    expr_unary_move(@expr),
     expr_assign(@expr, @expr),
     expr_swap(@expr, @expr),
     expr_assign_op(binop, @expr, @expr),

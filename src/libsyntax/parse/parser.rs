@@ -31,12 +31,12 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              expr_index, expr_lit, expr_log, expr_loop,
              expr_loop_body, expr_mac, expr_move, expr_new, expr_path,
              expr_rec, expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
-             expr_vec, expr_vstore, expr_while, extern_fn, field, fn_decl,
-             foreign_item, foreign_item_fn, foreign_mod, ident, impure_fn,
-             infer, init_assign, init_move, initializer, instance_var, item,
-             item_, item_class, item_const, item_enum, item_fn,
-             item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
-             item_ty, lit, lit_, lit_bool, lit_float, lit_int,
+             expr_unary_move, expr_vec, expr_vstore, expr_while, extern_fn,
+             field, fn_decl, foreign_item, foreign_item_fn, foreign_mod,
+             ident, impure_fn, infer, init_assign, init_move, initializer,
+             instance_var, item, item_, item_class, item_const, item_enum,
+             item_fn, item_foreign_mod, item_impl, item_mac, item_mod,
+             item_trait, item_ty, lit, lit_, lit_bool, lit_float, lit_int,
              lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const,
              m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis,
              mac_invoc, mac_invoc_tt, mac_var, matcher, match_nonterminal,
@@ -853,6 +853,10 @@ class parser {
         } else if self.eat_keyword(~"copy") {
             let e = self.parse_expr();
             ex = expr_copy(e);
+            hi = e.span.hi;
+        } else if self.eat_keyword(~"move") {
+            let e = self.parse_expr();
+            ex = expr_unary_move(e);
             hi = e.span.hi;
         } else if self.token == token::MOD_SEP ||
             is_ident(self.token) && !self.is_keyword(~"true") &&
