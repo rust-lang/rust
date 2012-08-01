@@ -357,7 +357,6 @@ fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
 }
 
 // returns userinfo, host, port, and unparsed part, or an error
-// currently doesn't handle IPv6 addresses.
 fn get_authority(rawurl: ~str) ->
     result::result<(option<userinfo>, ~str, option<~str>, ~str), @~str> {
     if !str::starts_with(rawurl, ~"//") {
@@ -387,15 +386,9 @@ fn get_authority(rawurl: ~str) ->
     let mut port : option::option<~str> = option::none;
 
     let mut colon_count = 0;
-    let mut pos : uint = 0, begin : uint = 2;
-    let mut i : uint = 0;
+    let mut pos : uint = 0, begin : uint = 2, end : uint = len;
 
-    let rdr = io::str_reader(rawurl);
-    let mut c : char;
-    while !rdr.eof() {
-        c = rdr.read_byte() as char;
-        i = rdr.tell() - 1; // we want base 0
-
+    for str::each_chari(rawurl) |i,c| {
         if i < 2 { again; } // ignore the leading //
 
         // deal with input class first
@@ -487,19 +480,21 @@ fn get_authority(rawurl: ~str) ->
           }
 
           '?' | '#' | '/' {
+            end = i;
             break;
           }
           _ { }
         }
+        end = i;
     }
 
     // finish up
     alt st {
       start {
-        if i+1 == len {
-            host = str::slice(rawurl, begin, i+1);
+        if end+1 == len {
+            host = str::slice(rawurl, begin, end+1);
         } else {
-            host = str::slice(rawurl, begin, i);
+            host = str::slice(rawurl, begin, end);
         }
       }
       pass_host_port | ip6_port {
@@ -507,21 +502,21 @@ fn get_authority(rawurl: ~str) ->
             return result::err(@~"Non-digit characters in port.");
         }
         host = str::slice(rawurl, begin, pos);
-        port = option::some(str::slice(rawurl, pos+1, i));
+        port = option::some(str::slice(rawurl, pos+1, end));
       }
       ip6_host | in_host {
-        host = str::slice(rawurl, begin, i);
+        host = str::slice(rawurl, begin, end);
       }
       in_port {
         if in != digit {
             return result::err(@~"Non-digit characters in port.");
         }
-        port = option::some(str::slice(rawurl, pos+1, i));
+        port = option::some(str::slice(rawurl, pos+1, end));
       }
     }
 
-    let rest = if i+1 == len { ~"" }
-    else { str::slice(rawurl, i, len) };
+    let rest = if end+1 == len { ~"" }
+    else { str::slice(rawurl, end, len) };
     return result::ok((userinfo, host, port, rest));
 }
 
