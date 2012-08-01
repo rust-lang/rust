@@ -1131,8 +1131,13 @@ class parser {
         // the interpolation of matchers
         maybe_whole!{self, nt_matchers};
         let name_idx = @mut 0u;
-        return self.parse_matcher_subseq(
-            name_idx, token::LBRACE, token::RBRACE);
+        return alt self.token {
+          token::LBRACE | token::LPAREN | token::LBRACKET {
+            self.parse_matcher_subseq(name_idx, copy self.token,
+                                      token::flip_delimiter(self.token))
+          }
+          _ { self.fatal(~"expected open delimiter"); }
+        }
     }
 
 
