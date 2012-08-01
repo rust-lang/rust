@@ -473,11 +473,13 @@ impl methods for gather_loan_ctxt {
             }
           }
 
-          ast::pat_ident(_, none) if self.pat_is_variant(pat) {
+          ast::pat_ident(_, _, none) if self.pat_is_variant(pat) {
             // nullary variant
             debug!{"nullary variant"};
           }
-          ast::pat_ident(id, o_pat) {
+          ast::pat_ident(_, id, o_pat) {
+            // XXX: Needs to take by-ref/by-val into account.
+
             // x or x @ p --- `x` must remain valid for the scope of the alt
             debug!{"defines identifier %s", pprust::path_to_str(id)};
 

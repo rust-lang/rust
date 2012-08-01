@@ -320,14 +320,14 @@ fn check_fn(ccx: @crate_ctxt,
         // Add pattern bindings.
         let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
             alt p.node {
-              ast::pat_ident(path, _)
-              if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
+              ast::pat_ident(_, path, _)
+                  if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) => {
                 assign(p.id, none);
                 debug!{"Pattern binding %s is assigned to %s",
                        *path.idents[0],
                        fcx.locals.get(p.id).to_str()};
               }
-              _ {}
+              _ => {}
             }
             visit::visit_pat(p, e, v);
         };

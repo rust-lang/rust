@@ -105,7 +105,7 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
 fn visit_pat(p: @ast::pat, &&rcx: @rcx, v: rvt) {
     let fcx = rcx.fcx;
     alt p.node {
-      ast::pat_ident(path, _)
+      ast::pat_ident(_, path, _)
       if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
         debug!{"visit_pat binding=%s", *path.idents[0]};
         visit_node(p.id, p.span, rcx);

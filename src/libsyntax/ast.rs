@@ -146,6 +146,12 @@ type pat = {id: node_id, node: pat_, span: span};
 type field_pat = {ident: ident, pat: @pat};
 
 #[auto_serialize]
+enum binding_mode {
+    bind_by_value,
+    bind_by_ref
+}
+
+#[auto_serialize]
 enum pat_ {
     pat_wild,
     // A pat_ident may either be a new bound variable,
@@ -155,7 +161,7 @@ enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(@path, option<@pat>),
+    pat_ident(binding_mode, @path, option<@pat>),
     pat_enum(@path, option<~[@pat]>), // "none" means a * pattern where
                                   // we don't bind the fields to names
     pat_rec(~[field_pat], bool),

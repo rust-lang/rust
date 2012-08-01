@@ -170,7 +170,7 @@ fn parse_crate(p: parser) -> @ast::crate { p.parse_crate_mod(~[]) }
 fn parse_ty(p: parser) -> @ast::ty { p.parse_ty(false) }
 fn parse_stmt(p: parser) -> @ast::stmt { p.parse_stmt(~[]) }
 fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
-fn parse_pat(p: parser) -> @ast::pat { p.parse_pat() }
+fn parse_pat(p: parser) -> @ast::pat { p.parse_pat(true) }
 
 fn parse_item(p: parser) -> @ast::item {
     alt p.parse_item(~[], ast::public) {

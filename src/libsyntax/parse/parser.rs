@@ -15,14 +15,12 @@ import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
 import dvec::{dvec, extensions};
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
-             bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
-             bound_copy, bound_send, bound_trait, bound_owned,
-             box, by_copy, by_move,
-             by_mutbl_ref, by_ref, by_val, capture_clause, capture_item,
-             cdir_dir_mod, cdir_src_mod,
-             cdir_view_item, class_immutable,
-             class_member, class_method, class_mutable,
-             crate, crate_cfg, crate_directive, decl,
+             bind_by_ref, bind_by_value, bitand, bitor, bitxor, blk,
+             blk_check_mode, bound_const, bound_copy, bound_send, bound_trait,
+             bound_owned, box, by_copy, by_move, by_mutbl_ref, by_ref, by_val,
+             capture_clause, capture_item, cdir_dir_mod, cdir_src_mod,
+             cdir_view_item, class_immutable, class_member, class_method,
+             class_mutable, crate, crate_cfg, crate_directive, decl,
              decl_item, decl_local, default_blk, deref, div, expl, expr,
              expr_, expr_addr_of, expr_alt, expr_again, expr_assert,
              expr_assign, expr_assign_op, expr_binary, expr_block, expr_break,
@@ -1585,13 +1583,13 @@ class parser {
     fn parse_pats() -> ~[@pat] {
         let mut pats = ~[];
         loop {
-            vec::push(pats, self.parse_pat());
+            vec::push(pats, self.parse_pat(true));
             if self.token == token::BINOP(token::OR) { self.bump(); }
             else { ret pats; }
         };
     }
 
-    fn parse_pat() -> @pat {
+    fn parse_pat(refutable: bool) -> @pat {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         let mut pat;
@@ -1599,7 +1597,7 @@ class parser {
           token::UNDERSCORE { self.bump(); pat = pat_wild; }
           token::AT {
             self.bump();
-            let sub = self.parse_pat();
+            let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
             // HACK: parse @"..." as a literal of a vstore @str
             pat = alt sub.node {
@@ -1614,7 +1612,7 @@ class parser {
           }
           token::TILDE {
             self.bump();
-            let sub = self.parse_pat();
+            let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = alt sub.node {
@@ -1660,11 +1658,13 @@ class parser {
                 let mut subpat;
                 if self.token == token::COLON {
                     self.bump();
-                    subpat = self.parse_pat();
+                    subpat = self.parse_pat(refutable);
                 } else {
-                    subpat = @{id: self.get_id(),
-                               node: pat_ident(fieldpath, none),
-                               span: mk_sp(lo, hi)};
+                    subpat = @{
+                        id: self.get_id(),
+                        node: pat_ident(bind_by_ref, fieldpath, none),
+                        span: mk_sp(lo, hi)
+                    };
                 }
                 vec::push(fields, {ident: fieldname, pat: subpat});
             }
@@ -1681,10 +1681,10 @@ class parser {
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
-                let mut fields = ~[self.parse_pat()];
+                let mut fields = ~[self.parse_pat(refutable)];
                 while self.token == token::COMMA {
                     self.bump();
-                    vec::push(fields, self.parse_pat());
+                    vec::push(fields, self.parse_pat(refutable));
                 }
                 if vec::len(fields) == 1u { self.expect(token::COMMA); }
                 hi = self.span.hi;
@@ -1704,50 +1704,80 @@ class parser {
                     hi = val.span.hi;
                     pat = pat_lit(val);
                 }
-            } else if is_plain_ident(self.token) &&
-                alt self.look_ahead(1u) {
-                  token::LPAREN | token::LBRACKET | token::LT { false }
-                  _ { true }
-                } {
-                let name = self.parse_value_path();
-                let sub = if self.eat(token::AT) { some(self.parse_pat()) }
-                else { none };
-                pat = pat_ident(name, sub);
             } else {
-                let enum_path = self.parse_path_with_tps(true);
-                hi = enum_path.span.hi;
-                let mut args: ~[@pat] = ~[];
-                let mut star_pat = false;
-                alt self.token {
-                  token::LPAREN {
-                    alt self.look_ahead(1u) {
-                      token::BINOP(token::STAR) {
-                        // This is a "top constructor only" pat
-                        self.bump(); self.bump();
-                        star_pat = true;
-                        self.expect(token::RPAREN);
-                      }
-                      _ {
-                        args = self.parse_unspanned_seq(
-                            token::LPAREN, token::RPAREN,
-                            seq_sep_trailing_disallowed(token::COMMA),
-                            |p| p.parse_pat());
-                        hi = self.span.hi;
-                      }
+                let binding_mode;
+                if self.eat_keyword(~"ref") {
+                    binding_mode = bind_by_ref;
+                } else {
+                    alt self.token {
+                        token::BINOP(token::PLUS) => {
+                            // XXX: Temporary thing pending a snapshot.
+                            self.bump();
+                            binding_mode = bind_by_value;
+                        }
+                        _ if refutable => {
+                            // XXX: Should be bind_by_value, but that's not
+                            // backward compatible.
+                            binding_mode = bind_by_ref;
+                        }
+                        _ => {
+                            binding_mode = bind_by_value;
+                        }
                     }
-                  }
-                  _ { }
                 }
-                // at this point, we're not sure whether it's a enum or a bind
-                if star_pat {
-                    pat = pat_enum(enum_path, none);
-                }
-                else if vec::is_empty(args) &&
-                    vec::len(enum_path.idents) == 1u {
-                    pat = pat_ident(enum_path, none);
-                }
-                else {
-                    pat = pat_enum(enum_path, some(args));
+
+                if is_plain_ident(self.token) &&
+                    alt self.look_ahead(1) {
+                      token::LPAREN | token::LBRACKET | token::LT => {
+                        false
+                      }
+                      _ => {
+                        true
+                      }
+                    } {
+                    let name = self.parse_value_path();
+                    let sub = if self.eat(token::AT) {
+                        some(self.parse_pat(refutable))
+                    }
+                    else { none };
+                    pat = pat_ident(binding_mode, name, sub);
+                } else {
+                    let enum_path = self.parse_path_with_tps(true);
+                    hi = enum_path.span.hi;
+                    let mut args: ~[@pat] = ~[];
+                    let mut star_pat = false;
+                    alt self.token {
+                      token::LPAREN {
+                        alt self.look_ahead(1u) {
+                          token::BINOP(token::STAR) {
+                            // This is a "top constructor only" pat
+                            self.bump(); self.bump();
+                            star_pat = true;
+                            self.expect(token::RPAREN);
+                          }
+                          _ {
+                            args = self.parse_unspanned_seq(
+                                token::LPAREN, token::RPAREN,
+                                seq_sep_trailing_disallowed(token::COMMA),
+                                |p| p.parse_pat(refutable));
+                            hi = self.span.hi;
+                          }
+                        }
+                      }
+                      _ { }
+                    }
+                    // at this point, we're not sure whether it's a enum or a
+                    // bind
+                    if star_pat {
+                        pat = pat_enum(enum_path, none);
+                    }
+                    else if vec::is_empty(args) &&
+                        vec::len(enum_path.idents) == 1u {
+                        pat = pat_ident(binding_mode, enum_path, none);
+                    }
+                    else {
+                        pat = pat_enum(enum_path, some(args));
+                    }
                 }
             }
           }
@@ -1758,7 +1788,7 @@ class parser {
     fn parse_local(is_mutbl: bool,
                    allow_init: bool) -> @local {
         let lo = self.span.lo;
-        let pat = self.parse_pat();
+        let pat = self.parse_pat(false);
         let mut ty = @{id: self.get_id(),
                        node: ty_infer,
                        span: mk_sp(lo, lo)};

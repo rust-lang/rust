@@ -20,7 +20,7 @@ type package = {
     url: ~str,
     method: ~str,
     description: ~str,
-    ref: option<~str>,
+    reference: option<~str>,
     tags: ~[~str],
     versions: ~[(~str, ~str)]
 };
@@ -497,7 +497,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
         }
     };
 
-    let ref = alt p.find(~"ref") {
+    let reference = alt p.find(~"ref") {
         some(json::string(n)) { some(*n) }
         _ { none }
     };
@@ -530,7 +530,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
         url: url,
         method: method,
         description: description,
-        ref: ref,
+        reference: reference,
         tags: tags,
         versions: ~[]
     };
@@ -815,10 +815,10 @@ fn install_source(c: cargo, path: ~str) {
     }
 }
 
-fn install_git(c: cargo, wd: ~str, url: ~str, ref: option<~str>) {
+fn install_git(c: cargo, wd: ~str, url: ~str, reference: option<~str>) {
     run::program_output(~"git", ~[~"clone", url, wd]);
-    if option::is_some(ref) {
-        let r = option::get(ref);
+    if option::is_some(reference) {
+        let r = option::get(reference);
         os::change_dir(wd);
         run::run_program(~"git", ~[~"checkout", r]);
     }
@@ -855,7 +855,7 @@ fn install_package(c: cargo, src: ~str, wd: ~str, pkg: package) {
     info(fmt!{"installing %s/%s via %s...", src, pkg.name, method});
 
     alt method {
-        ~"git" { install_git(c, wd, url, copy pkg.ref); }
+        ~"git" { install_git(c, wd, url, copy pkg.reference); }
         ~"file" { install_file(c, wd, url); }
         ~"curl" { install_curl(c, wd, copy url); }
         _ {}
@@ -1034,12 +1034,12 @@ fn install_query(c: cargo, wd: ~str, target: ~str) {
         install_file(c, wd, target);
         ret;
     } else if is_git_url(target) {
-        let ref = if c.opts.free.len() >= 4u {
+        let reference = if c.opts.free.len() >= 4u {
             some(c.opts.free[3u])
         } else {
             none
         };
-        install_git(c, wd, target, ref);
+        install_git(c, wd, target, reference);
     } else if !valid_pkg_name(target) && has_archive_extension(target) {
         install_curl(c, wd, target);
         ret;

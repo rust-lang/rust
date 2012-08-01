@@ -71,8 +71,8 @@ fn check_arms(tcx: ty::ctxt, arms: ~[arm]) {
 
 fn raw_pat(p: @pat) -> @pat {
     alt p.node {
-      pat_ident(_, some(s)) { raw_pat(s) }
-      _ { p }
+      pat_ident(_, _, some(s)) => { raw_pat(s) }
+      _ => { p }
     }
 }
 
@@ -199,32 +199,34 @@ fn is_useful_specialized(tcx: ty::ctxt, m: matrix, v: ~[@pat], ctor: ctor,
 fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> option<ctor> {
     let pat = raw_pat(p);
     alt pat.node {
-      pat_wild { none }
-      pat_ident(_, _) | pat_enum(_, _) {
+      pat_wild => { none }
+      pat_ident(_, _, _) | pat_enum(_, _) => {
         alt tcx.def_map.find(pat.id) {
           some(def_variant(_, id)) { some(variant(id)) }
           _ { none }
         }
       }
-      pat_lit(expr) { some(val(eval_const_expr(tcx, expr))) }
-      pat_range(lo, hi) {
+      pat_lit(expr) => { some(val(eval_const_expr(tcx, expr))) }
+      pat_range(lo, hi) => {
         some(range(eval_const_expr(tcx, lo), eval_const_expr(tcx, hi)))
       }
-      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) { some(single) }
+      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) => {
+        some(single)
+      }
     }
 }
 
 fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
     let pat = raw_pat(p);
     alt pat.node {
-      pat_wild { true }
-      pat_ident(_, _) {
+      pat_wild => { true }
+      pat_ident(_, _, _) => {
         alt tcx.def_map.find(pat.id) {
-          some(def_variant(_, _)) { false }
-          _ { true }
+          some(def_variant(_, _)) => { false }
+          _ => { true }
         }
       }
-      _ { false }
+      _ => { false }
     }
 }
 
@@ -296,7 +298,7 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
     alt r0.node {
       pat_wild { some(vec::append(vec::from_elem(arity, wild()),
                                   vec::tail(r))) }
-      pat_ident(_, _) {
+      pat_ident(_, _, _) {
         alt tcx.def_map.find(r0.id) {
           some(def_variant(_, id)) {
             if variant(id) == ctor_id { some(vec::tail(r)) }
@@ -377,26 +379,26 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     }
 
     alt pat.node {
-      pat_box(sub) | pat_uniq(sub) | pat_ident(_, some(sub)) {
+      pat_box(sub) | pat_uniq(sub) | pat_ident(_, _, some(sub)) => {
         is_refutable(tcx, sub)
       }
-      pat_wild | pat_ident(_, none) { false }
-      pat_lit(_) | pat_range(_, _) { true }
-      pat_rec(fields, _) {
+      pat_wild | pat_ident(_, _, none) => { false }
+      pat_lit(_) | pat_range(_, _) => { true }
+      pat_rec(fields, _) => {
         for fields.each |it| {
             if is_refutable(tcx, it.pat) { ret true; }
         }
         false
       }
-      pat_tup(elts) {
+      pat_tup(elts) => {
         for elts.each |elt| { if is_refutable(tcx, elt) { ret true; } }
         false
       }
-      pat_enum(_, some(args)) {
+      pat_enum(_, some(args)) => {
         for args.each |p| { if is_refutable(tcx, p) { ret true; } };
         false
       }
-      pat_enum(_,_) { false }
+      pat_enum(_,_) => { false }
     }
 }
 

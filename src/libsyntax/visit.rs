@@ -229,7 +229,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       pat_box(inner) | pat_uniq(inner) {
         v.visit_pat(inner, e, v);
       }
-      pat_ident(path, inner) {
+      pat_ident(_, path, inner) {
           visit_path(path, e, v);
           do option::iter(inner) |subpat| { v.visit_pat(subpat, e, v)};
       }

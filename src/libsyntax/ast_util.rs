@@ -568,7 +568,7 @@ pure fn is_item_impl(item: @ast::item) -> bool {
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     alt pat.node {
-      pat_ident(pth, some(p)) { walk_pat(p, it); }
+      pat_ident(_, pth, some(p)) { walk_pat(p, it); }
       pat_rec(fields, _) {
         for fields.each |f| { walk_pat(f.pat, it); }
       }
@@ -576,7 +576,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
         for s.each |p| { walk_pat(p, it); }
       }
       pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
-      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _)
+      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _)
         | pat_enum(_, _) {}
     }
 }

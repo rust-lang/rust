@@ -1302,11 +1302,15 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
      is that it doesn't matter */
     alt pat.node {
       ast::pat_wild { word(s.s, ~"_"); }
-      ast::pat_ident(path, sub) {
+      ast::pat_ident(binding_mode, path, sub) {
+        alt binding_mode {
+          ast::bind_by_ref => { word_space(s, ~"ref"); }
+          ast::bind_by_value => {}
+        }
         print_path(s, path, true);
         alt sub {
-          some(p) { word(s.s, ~"@"); print_pat(s, p); }
-          none {}
+          some(p) => { word(s.s, ~"@"); print_pat(s, p); }
+          none => {}
         }
       }
       ast::pat_enum(path, args_) {

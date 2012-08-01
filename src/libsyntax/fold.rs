@@ -332,8 +332,9 @@ fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
 fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
     ret alt p {
           pat_wild { pat_wild }
-          pat_ident(pth, sub) {
-            pat_ident(fld.fold_path(pth),
+          pat_ident(binding_mode, pth, sub) {
+            pat_ident(binding_mode,
+                      fld.fold_path(pth),
                       option::map(sub, |x| fld.fold_pat(x)))
           }
           pat_lit(e) { pat_lit(fld.fold_expr(e)) }

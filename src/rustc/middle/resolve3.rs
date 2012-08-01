@@ -5,11 +5,11 @@ import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 import middle::lang_items::LanguageItems;
 import middle::lint::{deny, allow, forbid, level, unused_imports, warn};
-import syntax::ast::{_mod, add, arm, bitand, bitor, bitxor, blk, bound_const};
-import syntax::ast::{bound_copy, bound_owned, bound_send, bound_trait};
-import syntax::ast::{capture_clause, class_ctor, class_dtor, class_member};
-import syntax::ast::{class_method, crate, crate_num, decl_item, def, def_arg};
-import syntax::ast::{def_binding, def_class, def_const, def_fn};
+import syntax::ast::{_mod, add, arm, bind_by_value, bitand, bitor, bitxor};
+import syntax::ast::{blk, bound_const, bound_copy, bound_owned, bound_send};
+import syntax::ast::{bound_trait, capture_clause, class_ctor, class_dtor};
+import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
+import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param,
                      def_typaram_binder};
@@ -3734,8 +3734,8 @@ class Resolver {
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
             alt pattern.node {
-                pat_ident(path, _)
-                        if !path.global && path.idents.len() == 1u {
+                pat_ident(_, path, _)
+                        if !path.global && path.idents.len() == 1u => {
 
                     // The meaning of pat_ident with no type parameters
                     // depends on whether an enum variant with that name is in
@@ -3748,14 +3748,14 @@ class Resolver {
                     let atom = (*self.atom_table).intern(path.idents[0]);
 
                     alt self.resolve_enum_variant_or_const(atom) {
-                        FoundEnumVariant(def) if mode == RefutableMode {
+                        FoundEnumVariant(def) if mode == RefutableMode => {
                             debug!{"(resolving pattern) resolving `%s` to \
                                     enum variant",
                                    *path.idents[0]};
 
                             self.record_def(pattern.id, def);
                         }
-                        FoundEnumVariant(_) {
+                        FoundEnumVariant(_) => {
                             self.session.span_err(pattern.span,
                                                   fmt!{"declaration of `%s` \
                                                         shadows an enum \
@@ -3764,13 +3764,13 @@ class Resolver {
                                                             atom_to_str
                                                             (atom)});
                         }
-                        FoundConst {
+                        FoundConst => {
                             self.session.span_err(pattern.span,
                                                   ~"pattern variable \
                                                    conflicts with a constant \
                                                    in scope");
                         }
-                        EnumVariantOrConstNotFound {
+                        EnumVariantOrConstNotFound => {
                             debug!{"(resolving pattern) binding `%s`",
                                    *path.idents[0]};
 
@@ -3836,7 +3836,7 @@ class Resolver {
                     }
                 }
 
-                pat_ident(path, _) | pat_enum(path, _) {
+                pat_ident(_, path, _) | pat_enum(path, _) => {
                     // These two must be enum variants.
                     alt self.resolve_path(path, ValueNS, false, visitor) {
                         some(def @ def_variant(*)) {
@@ -3860,16 +3860,16 @@ class Resolver {
                     }
                 }
 
-                pat_lit(expr) {
+                pat_lit(expr) => {
                     self.resolve_expr(expr, visitor);
                 }
 
-                pat_range(first_expr, last_expr) {
+                pat_range(first_expr, last_expr) => {
                     self.resolve_expr(first_expr, visitor);
                     self.resolve_expr(last_expr, visitor);
                 }
 
-                _ {
+                _ => {
                     // Nothing to do.
                 }
             }

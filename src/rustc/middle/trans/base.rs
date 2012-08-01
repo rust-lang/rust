@@ -4380,7 +4380,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     let _icx = cx.insn_ctxt(~"alloc_local");
     let t = node_id_type(cx, local.node.id);
     let simple_name = alt local.node.pat.node {
-      ast::pat_ident(pth, none) { some(path_to_ident(pth)) }
+      ast::pat_ident(_, pth, none) { some(path_to_ident(pth)) }
       _ { none }
     };
     let val = alloc_ty(cx, t);
