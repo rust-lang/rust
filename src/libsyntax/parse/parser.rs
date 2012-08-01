@@ -1693,7 +1693,7 @@ class parser {
             }
           }
           tok {
-            if (!is_ident(tok) && tok != token::BINOP(token::PLUS)) ||
+            if !is_ident(tok) ||
                     self.is_keyword(~"true") || self.is_keyword(~"false") {
                 let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 if self.eat_keyword(~"to") {
@@ -1708,22 +1708,14 @@ class parser {
                 let binding_mode;
                 if self.eat_keyword(~"ref") {
                     binding_mode = bind_by_ref;
+                } else if self.eat_keyword(~"copy") {
+                    binding_mode = bind_by_value;
+                } else if refutable {
+                    // XXX: Should be bind_by_value, but that's not
+                    // backward compatible.
+                    binding_mode = bind_by_ref;
                 } else {
-                    alt self.token {
-                        token::BINOP(token::PLUS) => {
-                            // XXX: Temporary thing pending a snapshot.
-                            self.bump();
-                            binding_mode = bind_by_value;
-                        }
-                        _ if refutable => {
-                            // XXX: Should be bind_by_value, but that's not
-                            // backward compatible.
-                            binding_mode = bind_by_ref;
-                        }
-                        _ => {
-                            binding_mode = bind_by_value;
-                        }
-                    }
+                    binding_mode = bind_by_value;
                 }
 
                 if is_plain_ident(self.token) &&
