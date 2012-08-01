@@ -419,6 +419,21 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                          node_id: it.id };
         for ms.each |m| { check_method(ccx, m, self_info);}
       }
+      ast::item_trait(_, trait_methods) {
+        for trait_methods.each |trait_method| {
+            alt trait_method {
+              required(ty_m) {
+                // Nothing to do, since required methods don't have
+                // bodies to check.
+              }
+              provided(m) {
+                let self_info = {self_ty: ty::mk_self(ccx.tcx),
+                                 node_id: it.id};
+                check_method(ccx, m, self_info);
+              }
+            }
+        }
+      }
       ast::item_class(tps, traits, members, m_ctor, m_dtor) {
         let tcx = ccx.tcx;
         let class_t = {self_ty: ty::node_id_to_type(tcx, it.id),
