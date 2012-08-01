@@ -112,6 +112,7 @@ impl methods<T: send> for exclusive<T> {
     unsafe fn with<U>(f: fn(sys::condition, x: &mut T) -> U) -> U {
         let ptr: ~arc_data<ex_data<T>> =
             unsafe::reinterpret_cast(self.data);
+        assert ptr.count > 0;
         let r = {
             let rec: &ex_data<T> = &(*ptr).data;
             rec.lock.lock_cond(|c| f(c, &mut rec.data))
