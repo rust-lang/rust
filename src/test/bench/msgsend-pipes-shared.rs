@@ -17,7 +17,7 @@ import io::writer_util;
 import arc::methods;
 import pipes::{port, chan, shared_chan};
 
-macro_rules! move {
+macro_rules! move_out {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
@@ -75,7 +75,7 @@ fn run(args: &[~str]) {
     vec::iter(worker_results, |r| { future::get(r); } );
     //error!{"sending stop message"};
     to_child.send(stop);
-    move!{to_child};
+    move_out!{to_child};
     let result = from_child.recv();
     let end = std::time::precise_time_s();
     let elapsed = end - start;

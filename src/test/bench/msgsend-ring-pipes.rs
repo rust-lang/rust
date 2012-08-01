@@ -23,7 +23,7 @@ proto! ring {
 
 fn macros() {
     #macro[
-        [#move[x],
+        [#move_out[x],
          unsafe { let y <- *ptr::addr_of(x); y }]
     ];
 }
@@ -46,7 +46,7 @@ fn thread_ring(i: uint,
         alt recv(port) {
           ring::num(_n, p) {
             //log(error, _n);
-            num_port = some(move!{p});
+            num_port = some(move_out!{p});
           }
         }
     };

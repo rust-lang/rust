@@ -31,11 +31,6 @@
 // Don't link to core. We are core.
 #[no_core];
 
-// NB: transitional for stage0:
-#[allow(unrecognized_lint)];
-#[warn(no_unrecognized_warning)];
-#[warn(no_vecs_not_implicitly_copyable)];
-// The new version:
 #[allow(vecs_implicitly_copyable)];
 
 export int, i8, i16, i32, i64;

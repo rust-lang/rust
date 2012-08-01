@@ -10,11 +10,6 @@
 
 #[no_core];
 
-// NB: transitional for stage0:
-#[allow(unrecognized_lint)];
-#[warn(no_unrecognized_warning)];
-#[warn(no_vecs_not_implicitly_copyable)];
-// The new version:
 #[allow(vecs_implicitly_copyable)];
 
 use core(vers = "0.3");

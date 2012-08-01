@@ -1693,8 +1693,8 @@ class parser {
             }
           }
           tok {
-            if !is_ident(tok) || self.is_keyword(~"true")
-                || self.is_keyword(~"false") {
+            if (!is_ident(tok) && tok != token::BINOP(token::PLUS)) ||
+                    self.is_keyword(~"true") || self.is_keyword(~"false") {
                 let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 if self.eat_keyword(~"to") {
                     let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);

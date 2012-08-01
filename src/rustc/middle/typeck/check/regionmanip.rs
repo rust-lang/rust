@@ -5,16 +5,24 @@ import syntax::print::pprust::{expr_to_str};
 fn replace_bound_regions_in_fn_ty(
     tcx: ty::ctxt,
     isr: isr_alist,
-    self_ty: option<ty::t>,
+    self_info: option<self_info>,
     fn_ty: ty::fn_ty,
-    mapf: fn(ty::bound_region) -> ty::region) -> {isr: isr_alist,
-                                                  self_ty: option<ty::t>,
-                                                  fn_ty: ty::fn_ty} {
+    mapf: fn(ty::bound_region) -> ty::region) ->
+    {isr: isr_alist, self_info: option<self_info>, fn_ty: ty::fn_ty} {
+
+    // Take self_info apart; the self_ty part is the only one we want
+    // to update here.
+    let self_ty = alt self_info {
+      some(s) { some(s.self_ty) }
+      none { none }
+    };
 
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
+
     for self_ty.each |t| { vec::push(all_tys, t) }
 
-    debug!{"replace_bound_regions_in_fn_ty(self_ty=%?, fn_ty=%s, all_tys=%?)",
+    debug!{"replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
+                all_tys=%?)",
            self_ty.map(|t| ty_to_str(tcx, t)),
            ty_to_str(tcx, ty::mk_fn(tcx, fn_ty)),
            all_tys.map(|t| ty_to_str(tcx, t))};
@@ -29,12 +37,27 @@ fn replace_bound_regions_in_fn_ty(
     });
     let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, t));
 
-    debug!{"result of replace_bound_regions_in_fn_ty: self_ty=%?, fn_ty=%s",
+    debug!{"result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
+                fn_ty=%s",
            t_self.map(|t| ty_to_str(tcx, t)),
            ty_to_str(tcx, t_fn)};
 
+
+    // Glue updated self_ty back together with its original node_id.
+    let new_self_info = alt self_info {
+        some(s) {
+            alt check t_self {
+              some(t) {
+                some({self_ty: t, node_id: s.node_id})
+              }
+              // this 'none' case shouldn't happen
+            }
+        }
+        none { none }
+    };
+
     ret {isr: isr,
-         self_ty: t_self,
+         self_info: new_self_info,
          fn_ty: alt check ty::get(t_fn).struct { ty::ty_fn(o) {o} }};
 
 
