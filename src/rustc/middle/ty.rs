@@ -9,8 +9,7 @@ import syntax::ast_util::{is_local, local_def, split_class_items,
                           new_def_hash};
 import syntax::codemap::span;
 import metadata::csearch;
-import util::ppaux::region_to_str;
-import util::ppaux::vstore_to_str;
+import util::ppaux::{region_to_str, explain_region, vstore_to_str};
 import middle::lint;
 import middle::lint::{get_lint_level, allow};
 import syntax::ast::*;
@@ -2590,10 +2589,9 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
             ~" but found " + mode_to_str(a_mode);
       }
       terr_regions_differ(subregion, superregion) {
-        ret fmt!{"references with lifetime %s do not necessarily \
-                  outlive references with lifetime %s",
-                 region_to_str(cx, subregion),
-                 region_to_str(cx, superregion)};
+        ret fmt!{"%s does not necessarily outlive %s",
+                 explain_region(cx, subregion),
+                 explain_region(cx, superregion)};
       }
       terr_vstores_differ(k, e_vs, a_vs) {
         ret fmt!{"%s storage differs: expected %s but found %s",
