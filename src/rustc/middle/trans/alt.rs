@@ -58,14 +58,14 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
           }
           _ {
             ret single_result(
-                rslt(bcx, trans_const_expr(ccx, l)));
+                rslt(bcx, consts::const_expr(ccx, l)));
           }
         }
       }
       var(disr_val, _) { ret single_result(rslt(bcx, C_int(ccx, disr_val))); }
       range(l1, l2) {
-        ret range_result(rslt(bcx, trans_const_expr(ccx, l1)),
-                         rslt(bcx, trans_const_expr(ccx, l2)));
+        ret range_result(rslt(bcx, consts::const_expr(ccx, l1)),
+                         rslt(bcx, consts::const_expr(ccx, l2)));
       }
     }
 }
